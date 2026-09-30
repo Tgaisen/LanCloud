@@ -1,0 +1,320 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../core/app_controller.dart';
+import '../core/data/app_db.dart';
+import '../core/transfer/transfer_manager.dart';
+import 'common.dart';
+import 'drive_page.dart';
+import 'scroll_tint.dart';
+import 'share_page.dart';
+
+class HomePage extends StatefulWidget {
+  const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  List<RecentItem> _recents = [];
+  List<FavoriteItem> _favorites = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final app = context.read<AppController>();
+    final uid = app.activeUid ?? '';
+    final recents = await app.db.recents(uid, limit: 6);
+    final favorites = await app.db.favorites();
+    if (!mounted) return;
+    setState(() {
+      _recents = recents;
+      _favorites = favorites.take(6).toList();
+      _loading = false;
+    });
+  }
+
+  Future<void> _openItem(
+    BuildContext context,
+    String kind,
+    String ref,
+    String name,
+    String pwd,
+  ) async {
+    switch (kind) {
+      case 'folder':
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => DrivePage(initialFolderId: ref, initialName: name),
+          ),
+        );
+      case 'file':
+        await _showOwnFileActions(context, ref, name);
+      case 'shareFile':
+      case 'shareFolder':
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => SharePage(initialLink: ref, initialPwd: pwd),
+          ),
+        );
+    }
+    if (mounted) _load();
+  }
+
+  Future<void> _showOwnFileActions(
+    BuildContext context,
+    String fileId,
+    String name,
+  ) async {
+    final app = context.read<AppController>();
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.download_outlined),
+              title: const Text('下载'),
+              onTap: () async {
+                Navigator.of(sheetContext).pop();
+                final client = app.client;
+                if (client == null) return;
+                try {
+                  final info = await client.shareInfoOfFile(fileId);
+                  if (!context.mounted) return;
+                  await downloadShareFile(
+                    context,
+                    url: info.url,
+                    pwd: info.pwd,
+                    fallbackName: name,
+                  );
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context)
+                        .showSnackBar(SnackBar(content: Text('$e')));
+                  }
+                }
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.link_outlined),
+              title: const Text('复制链接'),
+              onTap: () async {
+                Navigator.of(sheetContext).pop();
+                final client = app.client;
+                if (client == null) return;
+                try {
+                  final info = await client.shareInfoOfFile(fileId);
+                  if (!context.mounted) return;
+                  await copyText(
+                    context,
+                    info.pwd.isEmpty
+                        ? info.url
+                        : '${info.url} 提取码：${info.pwd}',
+                  );
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context)
+                        .showSnackBar(SnackBar(content: Text('$e')));
+                  }
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final app = context.watch<AppController>();
+    final transfers = context.watch<TransferManager>();
+    final running = transfers.tasks
+        .where((t) =>
+            t.status == TransferStatus.running ||
+            t.status == TransferStatus.queued)
+        .length;
+    final accountLabel = app.activeUid == null ? '未登录' : '账号 ${app.activeUid}';
+    return Scaffold(
+      body: RefreshIndicator(
+        onRefresh: _load,
+        child: CustomScrollView(
+          slivers: [
+            SliverAppBar(
+              // floating：向上滚动立刻开始出现；pinned 只由设置决定
+              floating: app.settings.hideTopBar,
+              snap: false,
+              pinned: !app.settings.hideTopBar,
+              backgroundColor: Color.lerp(
+                Theme.of(context).colorScheme.surface,
+                Theme.of(context).colorScheme.surfaceContainerHighest,
+                ScrollTint.of(context),
+              ),
+              scrolledUnderElevation: 0,
+              title: const Text('LanCloud'),
+              actions: [
+                IconButton(
+                  tooltip: '打开分享链接',
+                  icon: const Icon(Icons.link),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const SharePage()),
+                  ),
+                ),
+                IconButton(
+                  tooltip: '扫码（后续版本）',
+                  icon: const Icon(Icons.qr_code_scanner),
+                  onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('扫码功能将在后续版本加入')),
+                  ),
+                ),
+              ],
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.all(16),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  Row(
+                    children: [
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const SharePage(),
+                            ),
+                          ),
+                          icon: const Icon(Icons.open_in_new),
+                          label: const Text('打开分享链接'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {},
+                          icon: const Icon(Icons.cloud_upload_outlined),
+                          label: Text(running > 0 ? '传输中 $running' : '传输中心'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  const SectionCard(
+                    title: '快速访问',
+                    child: EmptyHint(
+                      icon: Icons.push_pin_outlined,
+                      text: '可以在网盘页把常用文件夹固定到这里（后续版本）',
+                    ),
+                  ),
+                  SectionCard(
+                    title: '最近使用',
+                    trailing: Chip(
+                      visualDensity: VisualDensity.compact,
+                      label: Text(accountLabel),
+                    ),
+                    child: _loading
+                        ? const Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Center(child: CircularProgressIndicator()),
+                          )
+                        : (_recents.isEmpty
+                            ? const EmptyHint(
+                                icon: Icons.history,
+                                text: '还没有最近使用的记录',
+                              )
+                            : Column(
+                                children: [
+                                  for (final item in _recents)
+                                    ListTile(
+                                      contentPadding: EdgeInsets.zero,
+                                      leading: Icon(
+                                        item.kind.contains('folder')
+                                            ? Icons.folder_outlined
+                                            : iconForFile(item.name),
+                                      ),
+                                      title: Text(
+                                        item.name,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      subtitle: Text(
+                                        item.kind.startsWith('share')
+                                            ? '分享内容'
+                                            : '我的网盘',
+                                      ),
+                                      onTap: () => _openItem(
+                                        context,
+                                        item.kind,
+                                        item.ref,
+                                        item.name,
+                                        item.pwd,
+                                      ),
+                                    ),
+                                ],
+                              )),
+                  ),
+                  SectionCard(
+                    title: '我的收藏',
+                    child: _loading
+                        ? const SizedBox.shrink()
+                        : (_favorites.isEmpty
+                            ? const EmptyHint(
+                                icon: Icons.star_border,
+                                text: '收藏的文件和分享会出现在这里',
+                              )
+                            : Column(
+                                children: [
+                                  for (final item in _favorites)
+                                    ListTile(
+                                      contentPadding: EdgeInsets.zero,
+                                      leading: Icon(
+                                        item.kind.contains('folder')
+                                            ? Icons.folder_special_outlined
+                                            : Icons.star_outline,
+                                      ),
+                                      title: Text(
+                                        item.name,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      subtitle: Text(
+                                        item.kind.startsWith('share')
+                                            ? '分享内容'
+                                            : '我的网盘',
+                                      ),
+                                      onTap: () => _openItem(
+                                        context,
+                                        item.kind,
+                                        item.ref,
+                                        item.name,
+                                        item.pwd,
+                                      ),
+                                      trailing: IconButton(
+                                        tooltip: '取消收藏',
+                                        icon: const Icon(Icons.close),
+                                        onPressed: () async {
+                                          await app.db
+                                              .removeFavorite(item.ref);
+                                          _load();
+                                        },
+                                      ),
+                                    ),
+                                ],
+                              )),
+                  ),
+                ]),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

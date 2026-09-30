@@ -1,0 +1,143 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:provider/provider.dart';
+
+import '../core/api/lanzou_client.dart';
+import '../core/app_controller.dart';
+
+/// 用内嵌浏览器完成登录，登录成功后读取系统 Cookie 并保存账号。
+class WebLoginPage extends StatefulWidget {
+  const WebLoginPage({super.key});
+
+  @override
+  State<WebLoginPage> createState() => _WebLoginPageState();
+}
+
+class _WebLoginPageState extends State<WebLoginPage> {
+  static const _loginUrl = 'https://pc.woozooo.com/account.php';
+
+  bool _checking = false;
+  bool _done = false;
+  double _progress = 0;
+  String? _error;
+
+  Future<void> _tryCapture() async {
+    if (_checking || _done) return;
+    final app = context.read<AppController>();
+    setState(() {
+      _checking = true;
+      _error = null;
+    });
+    try {
+      final cookies = await CookieManager.instance().getCookies(
+        url: WebUri(_loginUrl),
+      );
+      final map = <String, String>{};
+      for (final cookie in cookies) {
+        if (cookie.name.isNotEmpty && cookie.value != null) {
+          map[cookie.name] = cookie.value!;
+        }
+      }
+      final header =
+          map.entries.map((e) => '${e.key}=${e.value}').join('; ');
+      if ((map['ylogin'] ?? '').isEmpty || (map['phpdisk_info'] ?? '').isEmpty) {
+        setState(() {
+          _checking = false;
+          _error = '还没有检测到登录状态，请先在上方页面完成登录';
+        });
+        return;
+      }
+      await app.addAccountFromCookie(header);
+      if (!mounted) return;
+      setState(() {
+        _done = true;
+        _checking = false;
+      });
+      Navigator.of(context).pop(true);
+    } on LanzouException catch (e) {
+      setState(() {
+        _checking = false;
+        _error = e.message;
+      });
+    } catch (e) {
+      setState(() {
+        _checking = false;
+        _error = '$e';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('网页登录'),
+        actions: [
+          TextButton(
+            onPressed: _checking ? null : _tryCapture,
+            child: Text(_checking ? '检测中…' : '完成登录'),
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            color: scheme.secondaryContainer,
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+            child: Text(
+              '请使用你的蓝奏云账号登录；遇到滑块验证正常完成即可。'
+              '登录成功跳到网盘页面后会自动保存账号。',
+              style: TextStyle(color: scheme.onSecondaryContainer),
+            ),
+          ),
+          if (_progress < 1)
+            LinearProgressIndicator(value: _progress, minHeight: 2),
+          Expanded(
+            child: InAppWebView(
+              initialUrlRequest: URLRequest(url: WebUri(_loginUrl)),
+              initialSettings: InAppWebViewSettings(
+                javaScriptEnabled: true,
+                domStorageEnabled: true,
+                thirdPartyCookiesEnabled: true,
+                useHybridComposition: true,
+                userAgent:
+                    'Mozilla/5.0 (Linux; Android 13; Pixel 7) '
+                    'AppleWebKit/537.36 (KHTML, like Gecko) '
+                    'Chrome/124.0.0.0 Mobile Safari/537.36',
+              ),
+              onProgressChanged: (controller, progress) {
+                setState(() => _progress = progress / 100);
+              },
+              onLoadStop: (controller, url) async {
+                final target = url?.toString() ?? '';
+                if (target.contains('mydisk')) {
+                  await _tryCapture();
+                }
+              },
+            ),
+          ),
+          if (_error != null)
+            Container(
+              width: double.infinity,
+              color: scheme.errorContainer,
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, size: 18, color: scheme.onErrorContainer),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _error!,
+                      style: TextStyle(color: scheme.onErrorContainer),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
