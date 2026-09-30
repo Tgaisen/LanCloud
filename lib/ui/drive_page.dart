@@ -1482,21 +1482,11 @@ class _DrivePageState extends State<DrivePage>
       child: CustomScrollView(
         controller: _scroll,
         slivers: [
-          if (hideTopBar)
-            SliverPersistentHeader(
-              pinned: true,
-              delegate: _StatusBarSpacerDelegate(
-                height: MediaQuery.paddingOf(context).top,
-                tint: _appBarAnim.value,
-              ),
-            ),
           SliverAppBar(
             // floating：向上滚动立刻开始出现；pinned 只由设置决定
             floating: hideTopBar,
             snap: false,
             pinned: !hideTopBar,
-            // 顶栏收起时状态栏区域交给上面的 spacer，AppBar 不再自带 top inset
-            primary: !hideTopBar,
             backgroundColor: Color.lerp(
               Theme.of(context).colorScheme.surface,
               Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -1636,6 +1626,9 @@ class _DrivePageState extends State<DrivePage>
             height: 46,
             // 多选期间禁用路径切换，但路径栏保持可见
             tint: _appBarAnim.value,
+            // 顶栏收起并顶到顶部时，由路径栏自己盖住状态栏区域
+            topInset:
+                hideTopBar ? MediaQuery.paddingOf(context).top : 0,
             child: IgnorePointer(ignoring: _selecting, child: _pathBar()),
           ),
           ..._contentSlivers(grid),
@@ -1824,41 +1817,6 @@ class _DrivePageState extends State<DrivePage>
       ),
     ];
   }
-}
-
-/// “顶栏收起”模式下钉在状态栏区域的着色条：
-/// 工具栏滑走后仍为状态栏保留实色背景，路径栏则钉在它的下方。
-class _StatusBarSpacerDelegate extends SliverPersistentHeaderDelegate {
-  _StatusBarSpacerDelegate({required this.height, required this.tint});
-
-  final double height;
-  final double tint;
-
-  @override
-  double get minExtent => height;
-
-  @override
-  double get maxExtent => height;
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    final scheme = Theme.of(context).colorScheme;
-    return ColoredBox(
-      color:
-          Color.lerp(scheme.surface, scheme.surfaceContainerHighest, tint) ??
-          scheme.surface,
-      // 必须有实际尺寸，否则 paintExtent 为 0，浮动顶栏会被 overlap 拉回到 y=0。
-      child: const SizedBox.expand(),
-    );
-  }
-
-  @override
-  bool shouldRebuild(_StatusBarSpacerDelegate oldDelegate) =>
-      oldDelegate.height != height || oldDelegate.tint != tint;
 }
 
 class _FolderTile extends StatelessWidget {
