@@ -38,8 +38,14 @@ class _DrivePageState extends State<DrivePage>
     duration: const Duration(milliseconds: 50),
   );
 
+  /// “顶栏收起”模式下顶栏滑出时，工具栏元素的淡出进度。
+  late final AnimationController _appBarFade = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 150),
+  );
 
   final ScrollController _scroll = ScrollController();
+  double _lastPixels = 0;
   final TextEditingController _searchController = TextEditingController();
 
   late String _folderId = widget.initialFolderId;
@@ -83,6 +89,7 @@ class _DrivePageState extends State<DrivePage>
     }
     _selAnim.dispose();
     _appBarAnim.dispose();
+    _appBarFade.dispose();
     _scroll.dispose();
     _searchController.dispose();
     super.dispose();
@@ -112,12 +119,31 @@ class _DrivePageState extends State<DrivePage>
 
   void _onScroll() {
     if (!_scroll.hasClients) return;
-    if (_scroll.position.pixels > 0) {
+    final pixels = _scroll.position.pixels;
+    if (pixels > 0) {
       _appBarAnim.forward();
     } else {
       _appBarAnim.reverse();
     }
-    if (_scroll.position.pixels >= _scroll.position.maxScrollExtent - 320) {
+    // 顶栏收起时：顶栏滑向状态栏区域的过程中，元素按比例淡出；
+    // 上滑顶栏浮回时再淡入。
+    if (context.read<AppController>().settings.hideTopBar) {
+      final range = MediaQuery.paddingOf(context).top;
+      final delta = pixels - _lastPixels;
+      _lastPixels = pixels;
+      if (delta < -2) {
+        _appBarFade.reverse();
+      } else if (delta > 2) {
+        if (range > 0 && pixels <= range) {
+          _appBarFade.value = pixels / range;
+        } else if (pixels > 0) {
+          _appBarFade.forward();
+        }
+      } else if (pixels <= 0) {
+        _appBarFade.value = 0;
+      }
+    }
+    if (pixels >= _scroll.position.maxScrollExtent - 320) {
       _loadMore();
     }
   }
@@ -1478,107 +1504,138 @@ class _DrivePageState extends State<DrivePage>
             ),
             scrolledUnderElevation: 0,
             leading: Navigator.of(context).canPop()
-                ? IconButton(
-                    icon: const Icon(Icons.arrow_back),
-                    onPressed: () => Navigator.of(context).pop(),
+                ? AnimatedBuilder(
+                    animation: _appBarFade,
+                    builder: (context, child) => Opacity(
+                      opacity: 1 - _appBarFade.value,
+                      child: child,
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Icons.arrow_back),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
                   )
                 : null,
-            title: _searching
-                ? TextField(
-                    controller: _searchController,
-                    autofocus: true,
-                    decoration: const InputDecoration(
-                      hintText: '搜索当前目录',
-                      border: InputBorder.none,
+            title: AnimatedBuilder(
+              animation: _appBarFade,
+              builder: (context, child) => Opacity(
+                opacity: 1 - _appBarFade.value,
+                child: child,
+              ),
+              child: _searching
+                  ? TextField(
+                      controller: _searchController,
+                      autofocus: true,
+                      decoration: const InputDecoration(
+                        hintText: '搜索当前目录',
+                        border: InputBorder.none,
+                      ),
+                      onChanged: (value) =>
+                          setState(() => _filter = value.trim()),
+                    )
+                  : GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: _scrollToTop,
+                      child: const Text('网盘'),
                     ),
-                    onChanged: (value) =>
-                        setState(() => _filter = value.trim()),
-                  )
-                : GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: _scrollToTop,
-                    child: const Text('网盘'),
-                  ),
-            actions: _searching
-                ? [
-                    IconButton(
-                      tooltip: '关闭搜索',
-                      icon: const Icon(Icons.close),
-                      onPressed: () => setState(() {
-                        _searching = false;
-                        _filter = '';
-                        _searchController.clear();
-                      }),
-                    ),
-                  ]
-                : [
-                    IconButton(
-                      tooltip: '搜索',
-                      icon: const Icon(Icons.search),
-                      onPressed: () => setState(() => _searching = true),
-                    ),
-                    PopupMenuButton<String>(
-                      tooltip: '菜单',
-                      icon: const Icon(Icons.more_vert),
-                      onSelected: (value) {
-                        switch (value) {
-                          case 'sort-name':
-                            setState(
-                              () => _files.sort(
-                                (a, b) => a.name.compareTo(b.name),
+            ),
+            actions: [
+              AnimatedBuilder(
+                animation: _appBarFade,
+                builder: (context, child) => Opacity(
+                  opacity: 1 - _appBarFade.value,
+                  child: child,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: _searching
+                      ? [
+                          IconButton(
+                            tooltip: '关闭搜索',
+                            icon: const Icon(Icons.close),
+                            onPressed: () => setState(() {
+                              _searching = false;
+                              _filter = '';
+                              _searchController.clear();
+                            }),
+                          ),
+                        ]
+                      : [
+                          IconButton(
+                            tooltip: '搜索',
+                            icon: const Icon(Icons.search),
+                            onPressed: () =>
+                                setState(() => _searching = true),
+                          ),
+                          PopupMenuButton<String>(
+                            tooltip: '菜单',
+                            icon: const Icon(Icons.more_vert),
+                            onSelected: (value) {
+                              switch (value) {
+                                case 'sort-name':
+                                  setState(
+                                    () => _files.sort(
+                                      (a, b) => a.name.compareTo(b.name),
+                                    ),
+                                  );
+                                case 'sort-size':
+                                  setState(
+                                    () => _files.sort(
+                                      (a, b) => lzSizeToBytes(b.size)
+                                          .compareTo(lzSizeToBytes(a.size)),
+                                    ),
+                                  );
+                                case 'sort-time':
+                                  setState(
+                                    () => _files.sort(
+                                      (a, b) => b.time.compareTo(a.time),
+                                    ),
+                                  );
+                                case 'view':
+                                  app.setGridView(!grid);
+                                case 'select':
+                                  _enterSelection();
+                                case 'refresh':
+                                  _reloadAfterChange();
+                              }
+                            },
+                            itemBuilder: (_) => const [
+                              PopupMenuItem(
+                                value: 'sort-name',
+                                child: Text('按名称排序'),
                               ),
-                            );
-                          case 'sort-size':
-                            setState(
-                              () => _files.sort(
-                                (a, b) => lzSizeToBytes(b.size)
-                                    .compareTo(lzSizeToBytes(a.size)),
+                              PopupMenuItem(
+                                value: 'sort-size',
+                                child: Text('按大小排序'),
                               ),
-                            );
-                          case 'sort-time':
-                            setState(
-                              () => _files.sort(
-                                (a, b) => b.time.compareTo(a.time),
+                              PopupMenuItem(
+                                value: 'sort-time',
+                                child: Text('按时间排序'),
                               ),
-                            );
-                          case 'view':
-                            app.setGridView(!grid);
-                          case 'select':
-                            _enterSelection();
-                          case 'refresh':
-                            _reloadAfterChange();
-                        }
-                      },
-                      itemBuilder: (_) => const [
-                        PopupMenuItem(
-                          value: 'sort-name',
-                          child: Text('按名称排序'),
-                        ),
-                        PopupMenuItem(
-                          value: 'sort-size',
-                          child: Text('按大小排序'),
-                        ),
-                        PopupMenuItem(
-                          value: 'sort-time',
-                          child: Text('按时间排序'),
-                        ),
-                        PopupMenuDivider(),
-                        PopupMenuItem(
-                          value: 'view',
-                          child: Text('切换布局样式'),
-                        ),
-                        PopupMenuItem(value: 'select', child: Text('多选')),
-                        PopupMenuItem(
-                          value: 'refresh',
-                          child: Text('刷新'),
-                        ),
-                      ],
-                    ),
-                  ],
+                              PopupMenuDivider(),
+                              PopupMenuItem(
+                                value: 'view',
+                                child: Text('切换布局样式'),
+                              ),
+                              PopupMenuItem(
+                                value: 'select',
+                                child: Text('多选'),
+                              ),
+                              PopupMenuItem(
+                                value: 'refresh',
+                                child: Text('刷新'),
+                              ),
+                            ],
+                          ),
+                        ],
+                ),
+              ),
+            ],
           ),
           SliverPinnedHeader(
             height: 46,
             // 多选期间禁用路径切换，但路径栏保持可见
+            tint: _appBarAnim.value,
             child: IgnorePointer(ignoring: _selecting, child: _pathBar()),
           ),
           ..._contentSlivers(grid),

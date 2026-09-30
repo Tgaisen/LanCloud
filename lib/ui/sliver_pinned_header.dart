@@ -7,25 +7,35 @@ class SliverPinnedHeader extends StatelessWidget {
     super.key,
     required this.height,
     required this.child,
+    this.tint,
   });
 
   final double height;
   final Widget child;
 
+  /// 顶栏滚动变色进度（0=顶部，1=已滚动）。非 null 时跟随顶栏一起变色，
+  /// 否则回退为按 [overlapsContent] 二值切换。
+  final double? tint;
+
   @override
   Widget build(BuildContext context) {
     return SliverPersistentHeader(
       pinned: true,
-      delegate: _PinnedHeaderDelegate(height: height, child: child),
+      delegate: _PinnedHeaderDelegate(height: height, child: child, tint: tint),
     );
   }
 }
 
 class _PinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
-  _PinnedHeaderDelegate({required this.height, required this.child});
+  _PinnedHeaderDelegate({
+    required this.height,
+    required this.child,
+    this.tint,
+  });
 
   final double height;
   final Widget child;
+  final double? tint;
 
   @override
   double get minExtent => height;
@@ -39,15 +49,23 @@ class _PinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
     double shrinkOffset,
     bool overlapsContent,
   ) {
+    final scheme = Theme.of(context).colorScheme;
+    final tint = this.tint;
     return Material(
-      color: overlapsContent
-          ? Theme.of(context).colorScheme.surfaceContainerHighest
-          : Theme.of(context).colorScheme.surface,
+      color: tint == null
+          ? (overlapsContent
+              ? scheme.surfaceContainerHighest
+              : scheme.surface)
+          : (Color.lerp(
+                  scheme.surface, scheme.surfaceContainerHighest, tint) ??
+              scheme.surface),
       child: SizedBox(height: height, child: child),
     );
   }
 
   @override
   bool shouldRebuild(_PinnedHeaderDelegate oldDelegate) =>
-      oldDelegate.height != height || oldDelegate.child != child;
+      oldDelegate.height != height ||
+      oldDelegate.child != child ||
+      oldDelegate.tint != tint;
 }
