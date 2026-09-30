@@ -9,6 +9,7 @@ import '../core/app_controller.dart';
 import '../core/drive_cache.dart';
 import '../core/transfer/transfer_manager.dart';
 import 'common.dart';
+import 'sliver_pinned_header.dart';
 
 const int kFreeUploadLimit = 100 * 1024 * 1024;
 
@@ -1336,295 +1337,333 @@ class _DrivePageState extends State<DrivePage>
   Widget build(BuildContext context) {
     final app = context.watch<AppController>();
     final grid = app.settings.gridView;
+    final hideTopBar = app.settings.hideTopBar;
     final selectedCount = _selectedFiles.length + _selectedFolders.length;
 
     return AnimatedBuilder(
       animation: Listenable.merge([_selAnim, _appBarAnim]),
       builder: (context, _) {
-        final pathHeight = 46 * (1 - _selAnim.value);
         return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: Size.fromHeight(kToolbarHeight + pathHeight),
-        child: AnimatedSwitcher(
-          duration: _anim,
-          switchInCurve: Curves.easeInOut,
-          switchOutCurve: Curves.easeInOut,
-          transitionBuilder: (child, animation) =>
-              FadeTransition(opacity: animation, child: child),
-          child: _selecting
-              ? _selectionAppBar(selectedCount)
-              : AppBar(
-                  key: const ValueKey('normal-appbar'),
-                  scrolledUnderElevation: 0,
-                  backgroundColor: Color.lerp(
-                    Theme.of(context).colorScheme.surface,
-                    Theme.of(context).colorScheme.surfaceContainerHighest,
-                    _appBarAnim.value,
-                  ),
-                  leading: Navigator.of(context).canPop()
-                      ? IconButton(
-                          icon: const Icon(Icons.arrow_back),
-                          onPressed: () => Navigator.of(context).pop(),
-                        )
-                      : null,
-                  title: _searching
-                      ? TextField(
-                          controller: _searchController,
-                          autofocus: true,
-                          decoration: const InputDecoration(
-                            hintText: '搜索当前目录',
-                            border: InputBorder.none,
-                          ),
-                          onChanged: (value) =>
-                              setState(() => _filter = value.trim()),
-                        )
-                      : GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: _scrollToTop,
-                          child: const Text('网盘'),
-                        ),
-                  actions: _searching
-                      ? [
-                          IconButton(
-                            tooltip: '关闭搜索',
-                            icon: const Icon(Icons.close),
-                            onPressed: () => setState(() {
-                              _searching = false;
-                              _filter = '';
-                              _searchController.clear();
-                            }),
-                          ),
-                        ]
-                      : [
-                          IconButton(
-                            tooltip: '搜索',
-                            icon: const Icon(Icons.search),
-                            onPressed: () => setState(() => _searching = true),
-                          ),
-                          PopupMenuButton<String>(
-                            tooltip: '菜单',
-                            icon: const Icon(Icons.more_vert),
-                            onSelected: (value) {
-                              switch (value) {
-                                case 'sort-name':
-                                  setState(
-                                    () => _files.sort(
-                                      (a, b) => a.name.compareTo(b.name),
-                                    ),
-                                  );
-                                case 'sort-size':
-                                  setState(
-                                    () => _files.sort(
-                                      (a, b) =>
-                                          lzSizeToBytes(b.size)
-                                              .compareTo(lzSizeToBytes(a.size)),
-                                    ),
-                                  );
-                                case 'sort-time':
-                                  setState(
-                                    () => _files.sort(
-                                      (a, b) => b.time.compareTo(a.time),
-                                    ),
-                                  );
-                                case 'view':
-                                  app.setGridView(!grid);
-                                case 'select':
-                                  _enterSelection();
-                                case 'refresh':
-                                  _reloadAfterChange();
-                              }
-                            },
-                            itemBuilder: (_) => const [
-                              PopupMenuItem(
-                                value: 'sort-name',
-                                child: Text('按名称排序'),
-                              ),
-                              PopupMenuItem(
-                                value: 'sort-size',
-                                child: Text('按大小排序'),
-                              ),
-                              PopupMenuItem(
-                                value: 'sort-time',
-                                child: Text('按时间排序'),
-                              ),
-                              PopupMenuDivider(),
-                              PopupMenuItem(
-                                value: 'view',
-                                child: Text('切换布局样式'),
-                              ),
-                              PopupMenuItem(value: 'select', child: Text('多选')),
-                              PopupMenuItem(
-                                value: 'refresh',
-                                child: Text('刷新'),
-                              ),
-                            ],
-                          ),
-                        ],
-                  bottom: PreferredSize(
-                    preferredSize: Size.fromHeight(pathHeight),
-                    child: ClipRect(
-                      child: SizedBox(
-                        height: pathHeight,
-                        child: Opacity(
-                          opacity: 1 - _selAnim.value,
-                          child: ListView(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
+          body: Stack(
+            children: [
+              _buildBody(grid, hideTopBar: hideTopBar),
+              // 多选时覆盖顶栏 + 路径栏；平时透明且不拦截点击
+              Positioned(
+                left: 0,
+                right: 0,
+                top: 0,
+                child: IgnorePointer(
+                  ignoring: !_selecting,
+                  child: Opacity(
+                    opacity: _selAnim.value,
+                    child: Material(
+                      elevation: 2,
+                      color: Theme.of(context).colorScheme.surface,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          for (var i = -1; i < _path.length; i++)
-                            Row(
-                              children: [
-                                TextButton(
-                                  onPressed: () => _jumpTo(i),
-                                  child: Text(
-                                    i < 0 ? '根目录' : _path[i].name,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                if (i < _path.length - 1)
-                                  const Icon(Icons.chevron_right, size: 18),
-                              ],
-                            ),
+                          _selectionAppBar(selectedCount),
+                          const SizedBox(height: 46),
                         ],
-                          ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: IgnorePointer(
+                  ignoring: !_selecting,
+                  child: AnimatedOpacity(
+                    opacity: _selecting ? 1 : 0,
+                    duration: _anim,
+                    curve: Curves.easeInOut,
+                    child: BottomAppBar(
+                      height: 72,
+                      padding: EdgeInsets.zero,
+                      child: SafeArea(
+                        top: false,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            _BatchAction(
+                              icon: Icons.delete_outline,
+                              label: '删除',
+                              onPressed:
+                                  selectedCount == 0 ? null : _deleteSelected,
+                            ),
+                            _BatchAction(
+                              icon: Icons.download_outlined,
+                              label: '下载',
+                              onPressed: _selectedFiles.isEmpty
+                                  ? null
+                                  : _batchDownload,
+                            ),
+                            _BatchAction(
+                              icon: Icons.share_outlined,
+                              label: '分享',
+                              onPressed:
+                                  _selectedFiles.isEmpty ? null : _batchShare,
+                            ),
+                            _BatchAction(
+                              icon: Icons.star_outline,
+                              label: '收藏',
+                              onPressed: _selectedFiles.isEmpty
+                                  ? null
+                                  : _batchFavorite,
+                            ),
+                            _BatchAction(
+                              icon: Icons.more_horiz,
+                              label: '更多',
+                              onPressed:
+                                  _selectedFiles.isEmpty ? null : _batchMore,
+                            ),
+                          ],
                         ),
                       ),
                     ),
                   ),
                 ),
-            ),
-        ),
+              ),
+            ],
+          ),
       floatingActionButton: Padding(
         padding: EdgeInsets.only(
           bottom: app.settings.floatingNavBar ? 76 : 0,
         ),
         child: AnimatedScale(
-        scale: (_selecting ||
-                ((app.settings.hideTopBar || app.settings.hideBottomBar) && app.barsHidden))
-            ? 0
-            : 1,
-        duration: _anim,
-        curve: Curves.easeOut,
-        child: FloatingActionButton.extended(
-          onPressed: _showAddMenu,
-          icon: const Icon(Icons.add),
-          label: const Text('添加'),
-        ),
-      ),
-      ),
-      body: Stack(
-        children: [
-          _buildBody(grid),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: IgnorePointer(
-              ignoring: !_selecting,
-              child: AnimatedOpacity(
-                opacity: _selecting ? 1 : 0,
-                duration: _anim,
-                curve: Curves.easeInOut,
-                child: BottomAppBar(
-                  height: 72,
-                  padding: EdgeInsets.zero,
-                  child: SafeArea(
-                    top: false,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        _BatchAction(
-                          icon: Icons.delete_outline,
-                          label: '删除',
-                          onPressed:
-                              selectedCount == 0 ? null : _deleteSelected,
-                        ),
-                        _BatchAction(
-                          icon: Icons.download_outlined,
-                          label: '下载',
-                          onPressed: _selectedFiles.isEmpty
-                              ? null
-                              : _batchDownload,
-                        ),
-                        _BatchAction(
-                          icon: Icons.share_outlined,
-                          label: '分享',
-                          onPressed:
-                              _selectedFiles.isEmpty ? null : _batchShare,
-                        ),
-                        _BatchAction(
-                          icon: Icons.star_outline,
-                          label: '收藏',
-                          onPressed: _selectedFiles.isEmpty
-                              ? null
-                              : _batchFavorite,
-                        ),
-                        _BatchAction(
-                          icon: Icons.more_horiz,
-                          label: '更多',
-                          onPressed:
-                              _selectedFiles.isEmpty ? null : _batchMore,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
+          scale: (_selecting ||
+                  ((app.settings.hideTopBar || app.settings.hideBottomBar) &&
+                      app.barsHidden))
+              ? 0
+              : 1,
+          duration: _anim,
+          curve: Curves.easeOut,
+          child: FloatingActionButton.extended(
+            onPressed: _showAddMenu,
+            icon: const Icon(Icons.add),
+            label: const Text('添加'),
           ),
-        ],
+        ),
       ),
         );
       },
     );
   }
 
-  Widget _buildBody(bool grid) {
-    if (_loading) return const Center(child: CircularProgressIndicator());
-    if (_error != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+  /// 顶栏是第一个 sliver（随“顶栏收起”设置滑走或钉住），
+  /// 路径栏用 [SliverPinnedHeader] 常显，其后跟内容 slivers。
+  Widget _buildBody(bool grid, {required bool hideTopBar}) {
+    final app = context.read<AppController>();
+    return RefreshIndicator(
+      onRefresh: _reloadAfterChange,
+      child: CustomScrollView(
+        controller: _scroll,
+        slivers: [
+          SliverAppBar(
+            // floating：向上滚动立刻开始出现；pinned 只由设置决定
+            floating: hideTopBar,
+            snap: false,
+            pinned: !hideTopBar,
+            backgroundColor: Color.lerp(
+              Theme.of(context).colorScheme.surface,
+              Theme.of(context).colorScheme.surfaceContainerHighest,
+              _appBarAnim.value,
+            ),
+            scrolledUnderElevation: 0,
+            leading: Navigator.of(context).canPop()
+                ? IconButton(
+                    icon: const Icon(Icons.arrow_back),
+                    onPressed: () => Navigator.of(context).pop(),
+                  )
+                : null,
+            title: _searching
+                ? TextField(
+                    controller: _searchController,
+                    autofocus: true,
+                    decoration: const InputDecoration(
+                      hintText: '搜索当前目录',
+                      border: InputBorder.none,
+                    ),
+                    onChanged: (value) =>
+                        setState(() => _filter = value.trim()),
+                  )
+                : GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: _scrollToTop,
+                    child: const Text('网盘'),
+                  ),
+            actions: _searching
+                ? [
+                    IconButton(
+                      tooltip: '关闭搜索',
+                      icon: const Icon(Icons.close),
+                      onPressed: () => setState(() {
+                        _searching = false;
+                        _filter = '';
+                        _searchController.clear();
+                      }),
+                    ),
+                  ]
+                : [
+                    IconButton(
+                      tooltip: '搜索',
+                      icon: const Icon(Icons.search),
+                      onPressed: () => setState(() => _searching = true),
+                    ),
+                    PopupMenuButton<String>(
+                      tooltip: '菜单',
+                      icon: const Icon(Icons.more_vert),
+                      onSelected: (value) {
+                        switch (value) {
+                          case 'sort-name':
+                            setState(
+                              () => _files.sort(
+                                (a, b) => a.name.compareTo(b.name),
+                              ),
+                            );
+                          case 'sort-size':
+                            setState(
+                              () => _files.sort(
+                                (a, b) => lzSizeToBytes(b.size)
+                                    .compareTo(lzSizeToBytes(a.size)),
+                              ),
+                            );
+                          case 'sort-time':
+                            setState(
+                              () => _files.sort(
+                                (a, b) => b.time.compareTo(a.time),
+                              ),
+                            );
+                          case 'view':
+                            app.setGridView(!grid);
+                          case 'select':
+                            _enterSelection();
+                          case 'refresh':
+                            _reloadAfterChange();
+                        }
+                      },
+                      itemBuilder: (_) => const [
+                        PopupMenuItem(
+                          value: 'sort-name',
+                          child: Text('按名称排序'),
+                        ),
+                        PopupMenuItem(
+                          value: 'sort-size',
+                          child: Text('按大小排序'),
+                        ),
+                        PopupMenuItem(
+                          value: 'sort-time',
+                          child: Text('按时间排序'),
+                        ),
+                        PopupMenuDivider(),
+                        PopupMenuItem(
+                          value: 'view',
+                          child: Text('切换布局样式'),
+                        ),
+                        PopupMenuItem(value: 'select', child: Text('多选')),
+                        PopupMenuItem(
+                          value: 'refresh',
+                          child: Text('刷新'),
+                        ),
+                      ],
+                    ),
+                  ],
+          ),
+          SliverPinnedHeader(
+            height: 46,
+            // 多选期间禁用路径切换（此时覆盖层也会盖住它）
+            child: IgnorePointer(ignoring: _selecting, child: _pathBar()),
+          ),
+          ..._contentSlivers(grid),
+        ],
+      ),
+    );
+  }
+
+  Widget _pathBar() {
+    return ListView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      children: [
+        for (var i = -1; i < _path.length; i++)
+          Row(
             children: [
-              Icon(
-                Icons.cloud_off,
-                size: 40,
-                color: Theme.of(context).colorScheme.outline,
+              TextButton(
+                onPressed: () => _jumpTo(i),
+                child: Text(
+                  i < 0 ? '根目录' : _path[i].name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-              const SizedBox(height: 12),
-              Text('加载失败：$_error', textAlign: TextAlign.center),
-              const SizedBox(height: 12),
-              FilledButton(
-                onPressed: () => _load(force: true),
-                child: const Text('重试'),
-              ),
+              if (i < _path.length - 1)
+                const Icon(Icons.chevron_right, size: 18),
             ],
           ),
+      ],
+    );
+  }
+
+  /// 顶栏与路径栏之外的剩余 slivers，按加载状态切换。
+  List<Widget> _contentSlivers(bool grid) {
+    if (_loading) {
+      return const [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: Center(child: CircularProgressIndicator()),
         ),
-      );
+      ];
+    }
+    if (_error != null) {
+      return [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.cloud_off,
+                    size: 40,
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
+                  const SizedBox(height: 12),
+                  Text('加载失败：$_error', textAlign: TextAlign.center),
+                  const SizedBox(height: 12),
+                  FilledButton(
+                    onPressed: () => _load(force: true),
+                    child: const Text('重试'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ];
     }
     final folders = _visibleFolders;
     final files = _visibleFiles;
     if (folders.isEmpty && files.isEmpty && !_loadingMore) {
-      return RefreshIndicator(
-        onRefresh: _reloadAfterChange,
-        child: ListView(
-          children: [
+      return [
+        SliverList(
+          delegate: SliverChildListDelegate([
             if (_filter.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.all(12),
                 child: Text('没有匹配「$_filter」的内容'),
               ),
             const EmptyHint(icon: Icons.folder_open, text: '这个文件夹是空的'),
-          ],
+          ]),
         ),
-      );
+      ];
     }
     final showFolders = _filter.isEmpty || folders.isNotEmpty;
-    final folderSlivers = <Widget>[
+    return [
       if (showFolders && folders.isNotEmpty)
         if (grid)
           SliverPadding(
@@ -1663,8 +1702,6 @@ class _DrivePageState extends State<DrivePage>
               );
             },
           ),
-    ];
-    final fileSlivers = <Widget>[
       if (files.isNotEmpty)
         if (grid)
           SliverPadding(
@@ -1705,36 +1742,26 @@ class _DrivePageState extends State<DrivePage>
               );
             },
           ),
-    ];
-    return RefreshIndicator(
-      onRefresh: _reloadAfterChange,
-      child: CustomScrollView(
-        controller: _scroll,
-        slivers: [
-          ...folderSlivers,
-          ...fileSlivers,
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-              child: Center(
-                child: _loadingMore
-                    ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Text(
-                        _hasMore
-                            ? ''
-                            : (_filter.isEmpty ? '已经到底了' : '筛选结果'),
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-              ),
-            ),
+      SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+          child: Center(
+            child: _loadingMore
+                ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text(
+                    _hasMore
+                        ? ''
+                        : (_filter.isEmpty ? '已经到底了' : '筛选结果'),
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
           ),
-        ],
+        ),
       ),
-    );
+    ];
   }
 }
 
