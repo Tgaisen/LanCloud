@@ -1715,6 +1715,7 @@ class _DrivePageState extends State<DrivePage>
               itemBuilder: (context, index) {
                 final folder = folders[index];
                 return _AnimatedListItem(
+                  key: ValueKey('$_folderId-f-$index'),
                   index: index,
                   enabled: animate,
                   child: _FolderTile(
@@ -1734,6 +1735,7 @@ class _DrivePageState extends State<DrivePage>
             itemBuilder: (context, index) {
               final folder = folders[index];
               return _AnimatedListItem(
+                key: ValueKey('$_folderId-f-$index'),
                 index: index,
                 enabled: animate,
                 child: _FolderRow(
@@ -1761,6 +1763,7 @@ class _DrivePageState extends State<DrivePage>
               itemBuilder: (context, index) {
                 final file = files[index];
                 return _AnimatedListItem(
+                  key: ValueKey('$_folderId-l-$index'),
                   index: index,
                   enabled: animate,
                   child: _FileTile(
@@ -1781,6 +1784,7 @@ class _DrivePageState extends State<DrivePage>
             itemBuilder: (context, index) {
               final file = files[index];
               return _AnimatedListItem(
+                key: ValueKey('$_folderId-l-$index'),
                 index: index,
                 enabled: animate,
                 child: _FileRow(
@@ -1822,6 +1826,7 @@ class _DrivePageState extends State<DrivePage>
 /// 列表出现动画：按 index 错峰淡入并轻微上移；开关关闭时直接渲染。
 class _AnimatedListItem extends StatelessWidget {
   const _AnimatedListItem({
+    super.key,
     required this.index,
     required this.enabled,
     required this.child,
