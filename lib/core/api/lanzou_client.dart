@@ -217,8 +217,15 @@ class LanzouClient {
     return (folders: folders, path: path);
   }
 
-  Future<void> mkdir(String parentId, String name, {String desc = ''}) async {
-    final safe = name.replaceAll(' ', '_').replaceAll(RegExp(r'''[\$%^!*<>)(+=`'"/:;,?]'''), '');
+  /// 新建文件夹，返回新文件夹 id（同名文件夹已存在时直接复用其 id）。
+  Future<String> mkdir(String parentId, String name, {String desc = ''}) async {
+    final safe = name
+        .replaceAll(' ', '_')
+        .replaceAll(RegExp(r'''[\$%^!*<>)(+=`'"/:;,?]'''), '');
+    final existing = await listFolders(parentId);
+    for (final folder in existing.folders) {
+      if (folder.name == safe) return folder.id;
+    }
     final resp = await dio.post<String>(
       '$apiBase/doupload.php',
       data: {
@@ -232,6 +239,14 @@ class LanzouClient {
     if ('${_asMap(resp.data)['zt']}' != '1') {
       throw const LanzouException('新建文件夹失败');
     }
+    final beforeIds = existing.folders.map((f) => f.id).toSet();
+    final after = await listFolders(parentId);
+    final added =
+        after.folders.where((f) => !beforeIds.contains(f.id)).toList();
+    if (added.isEmpty) {
+      throw const LanzouException('新建文件夹失败');
+    }
+    return added.first.id;
   }
 
   Future<void> deleteItem({required String id, required bool isFile}) async {
@@ -245,11 +260,11 @@ class LanzouClient {
     }
   }
 
-  /// 移动文件到目标文件夹（task 7）。
+  /// 移动文件到目标文件夹（task 20）。
   Future<void> moveFile(String fileId, String folderId) async {
     final resp = await dio.post<String>(
       '$apiBase/doupload.php',
-      data: {'task': 7, 'file_id': fileId, 'folder_id': folderId},
+      data: {'task': 20, 'file_id': fileId, 'folder_id': folderId},
       options: _options(),
     );
     if ('${_asMap(resp.data)['zt']}' != '1') {
@@ -257,16 +272,33 @@ class LanzouClient {
     }
   }
 
-  /// 移动文件夹到目标父目录（task 19）。
+  /// 移动文件夹到目标父目录。
+  /// 官方没有直接的文件夹移动接口，参照 LanZouCloud-API：
+  /// 在目标目录重建同名文件夹，迁移其中的文件后删除原文件夹。
+  /// 仅支持不含子文件夹的目录。
   Future<void> moveFolder(String folderId, String parentId) async {
-    final resp = await dio.post<String>(
-      '$apiBase/doupload.php',
-      data: {'task': 19, 'folder_id': folderId, 'folder_id_bb': parentId},
-      options: _options(),
-    );
-    if ('${_asMap(resp.data)['zt']}' != '1') {
-      throw const LanzouException('移动文件夹失败');
+    if (folderId == parentId) {
+      throw const LanzouException('不能移动到当前目录');
     }
+    final subs = await listFolders(folderId);
+    if (subs.folders.isNotEmpty) {
+      throw const LanzouException('暂不支持移动含子文件夹的目录');
+    }
+    final info = await shareInfoOfFolder(folderId);
+    if (info.name.isEmpty) {
+      throw const LanzouException('无法读取文件夹信息');
+    }
+    final newId = await mkdir(parentId, info.name, desc: info.desc);
+    if (newId == folderId) {
+      throw const LanzouException('目标位置与当前位置相同');
+    }
+    if (info.pwd.isNotEmpty) {
+      await setFolderPasswd(newId, info.pwd);
+    }
+    for (final file in await listFiles(folderId)) {
+      await moveFile(file.id, newId);
+    }
+    await deleteItem(id: folderId, isFile: false);
   }
 
   /// 修改文件简介（task 11）。
