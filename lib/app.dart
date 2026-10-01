@@ -131,7 +131,7 @@ class _RootShellState extends State<RootShell> {
       if (handled) return false;
     }
     if (_index != defaultIndex) {
-      setState(() => _index = defaultIndex);
+      _goTo(defaultIndex);
       return false;
     }
     if (active.isEmpty) return true;
