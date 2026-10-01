@@ -129,20 +129,30 @@ class FolderShareDetail {
   FolderShareDetail({
     required this.name,
     this.desc = '',
+    this.sharer = '',
     this.files = const [],
     this.folders = const [],
   });
 
   final String name;
   final String desc;
+  final String sharer;
   final List<ShareFileItem> files;
   final List<SubFolder> folders;
 }
 
 class DirectFile {
-  DirectFile({required this.name, required this.url, this.size = ''});
+  DirectFile({
+    required this.name,
+    required this.url,
+    this.size = '',
+    this.desc = '',
+    this.sharer = '',
+  });
 
   final String name;
   final String url;
   final String size;
+  final String desc;
+  final String sharer;
 }

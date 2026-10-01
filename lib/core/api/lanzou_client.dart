@@ -794,6 +794,14 @@ class LanzouClient {
         url.split('/').last;
     final size =
         (_match(html, [r'大小.+?(\d[\d.,]+\s?[BKM]?)<']) ?? '').replaceAll(',', '');
+    final sharer =
+        _match(html, [
+          r'<span class="user-name">([^<]+)</span>',
+          r'class="user-name"[^>]*>([^<]+)<',
+        ]) ??
+        '';
+    var desc =
+        _cleanDesc(_match(html, [r'class="n_box_des">(.*?)</div>']) ?? '');
 
     // 新版流程：分享页 -> iframe -> ajaxfile.php
     final iframeRaw = RegExp(r'<iframe.*?src="(.+?)"').firstMatch(html)?.group(1);
@@ -807,9 +815,17 @@ class LanzouClient {
       if (frameTitle != null && frameTitle.trim().isNotEmpty) {
         name = frameTitle.trim();
       }
+      final frameDesc = _match(iframeHtml, [r'class="n_box_des">(.*?)</div>']);
+      if (frameDesc != null) desc = _cleanDesc(frameDesc);
       final direct = await _resolveViaAjaxFile(iframeHtml, iframeUrl, url, pwd);
       if (direct != null) {
-        return DirectFile(name: name, url: direct, size: size);
+        return DirectFile(
+          name: name,
+          url: direct,
+          size: size,
+          desc: desc,
+          sharer: sharer,
+        );
       }
     }
 
@@ -822,6 +838,8 @@ class LanzouClient {
           name: passwordDirect.name.isEmpty ? name : passwordDirect.name,
           url: passwordDirect.url,
           size: size,
+          desc: desc,
+          sharer: sharer,
         );
       }
     }
@@ -866,7 +884,22 @@ class LanzouClient {
     if (direct == null || direct.isEmpty) {
       throw const LanzouException('未获取到直链');
     }
-    return DirectFile(name: name, url: direct, size: size);
+    return DirectFile(
+      name: name,
+      url: direct,
+      size: size,
+      desc: desc,
+      sharer: sharer,
+    );
+  }
+
+  String _cleanDesc(String raw) {
+    return raw
+        .replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n')
+        .replaceAll(RegExp(r'<[^>]+>'), '')
+        .replaceAll('&nbsp;', ' ')
+        .replaceAll('&amp;', '&')
+        .trim();
   }
 
   /// 新版带密码分享：首页直接 POST ajaxfile.php（isngis 作 sign、kdns 作 kd、p 为提取码）。
@@ -967,6 +1000,12 @@ class LanzouClient {
           r'<div class="user-radio-\d"></div>(.+?)</div>',
         ]) ??
         '';
+    final sharer =
+        _match(html, [
+          r'<span class="user-name">([^<]+)</span>',
+          r'class="user-name"[^>]*>([^<]+)<',
+        ]) ??
+        '';
     final files = <ShareFileItem>[];
     var page = 1;
     while (page <= 50) {
@@ -1027,6 +1066,12 @@ class LanzouClient {
         url: href.startsWith('http') ? href : '$base$href',
       ));
     }
-    return FolderShareDetail(name: name, desc: desc, files: files, folders: folders);
+    return FolderShareDetail(
+      name: name,
+      desc: desc,
+      sharer: sharer,
+      files: files,
+      folders: folders,
+    );
   }
 }

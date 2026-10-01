@@ -460,5 +460,25 @@
   "notifChannelProgress": "传输进度",
   "notifChannelProgressDesc": "下载与上传进行中的进度",
   "notifChannelDone": "传输完成",
-  "notifChannelDoneDesc": "下载与上传完成或失败的提醒"
+  "notifChannelDoneDesc": "下载与上传完成或失败的提醒",
+  "files": "文件",
+  "shareMessage": "来自分享者的信息",
+  "favoritedPartial": "{ok} 个已收藏，{failed} 个失败",
+  "@favoritedPartial": {
+    "placeholders": {
+      "ok": {"type": "int"},
+      "failed": {"type": "int"}
+    }
+  },
+  "file": "文件",
+  "sharerLabel": "分享者 {name}",
+  "@sharerLabel": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "editInfo": "修改信息",
+  "favoriteTitle": "自定义标题",
+  "favoriteTitleHint": "留空则使用默认名称",
+  "shareInvalid": "该分享已失效（已取消或删除）"
 }

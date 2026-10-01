@@ -37,12 +37,14 @@ class Icons {
   static const IconData delete_sweep_outlined = Symbols.delete_sweep;
   static const IconData description_outlined = Symbols.description;
   static const IconData dns_outlined = Symbols.dns;
+  static const IconData done_all = Symbols.done_all;
   static const IconData download = Symbols.download;
   static const IconData download_done = Symbols.download_done;
   static const IconData download_for_offline_outlined = Symbols.download_for_offline;
   static const IconData download_outlined = Symbols.download;
   static const IconData drive_file_move_outline = Symbols.drive_file_move;
   static const IconData edit_note = Symbols.edit_note;
+  static const IconData error_outline = Symbols.error_outline;
   static const IconData flip = Symbols.flip;
   static const IconData folder = Symbols.folder;
   static const IconData folder_open = Symbols.folder_open;

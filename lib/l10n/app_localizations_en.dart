@@ -984,4 +984,36 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get notifChannelDoneDesc =>
       'Alerts when downloads and uploads finish or fail';
+
+  @override
+  String get files => 'Files';
+
+  @override
+  String get shareMessage => 'Message from the sharer';
+
+  @override
+  String favoritedPartial(int ok, int failed) {
+    return '$ok favorited, $failed failed';
+  }
+
+  @override
+  String get file => 'File';
+
+  @override
+  String sharerLabel(String name) {
+    return 'Shared by $name';
+  }
+
+  @override
+  String get editInfo => 'Edit info';
+
+  @override
+  String get favoriteTitle => 'Custom title';
+
+  @override
+  String get favoriteTitleHint => 'Leave empty to use the default name';
+
+  @override
+  String get shareInvalid =>
+      'This share is no longer available (canceled or deleted)';
 }

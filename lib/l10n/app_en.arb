@@ -298,5 +298,25 @@
   "notifChannelProgress": "Transfer progress",
   "notifChannelProgressDesc": "Progress of downloads and uploads in progress",
   "notifChannelDone": "Transfers finished",
-  "notifChannelDoneDesc": "Alerts when downloads and uploads finish or fail"
+  "notifChannelDoneDesc": "Alerts when downloads and uploads finish or fail",
+  "files": "Files",
+  "shareMessage": "Message from the sharer",
+  "favoritedPartial": "{ok} favorited, {failed} failed",
+  "@favoritedPartial": {
+    "placeholders": {
+      "ok": {"type": "int"},
+      "failed": {"type": "int"}
+    }
+  },
+  "file": "File",
+  "sharerLabel": "Shared by {name}",
+  "@sharerLabel": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "editInfo": "Edit info",
+  "favoriteTitle": "Custom title",
+  "favoriteTitleHint": "Leave empty to use the default name",
+  "shareInvalid": "This share is no longer available (canceled or deleted)"
 }

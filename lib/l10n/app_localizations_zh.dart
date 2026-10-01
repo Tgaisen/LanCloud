@@ -955,4 +955,35 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get notifChannelDoneDesc => '下载与上传完成或失败的提醒';
+
+  @override
+  String get files => '文件';
+
+  @override
+  String get shareMessage => '来自分享者的信息';
+
+  @override
+  String favoritedPartial(int ok, int failed) {
+    return '$ok 个已收藏，$failed 个失败';
+  }
+
+  @override
+  String get file => '文件';
+
+  @override
+  String sharerLabel(String name) {
+    return '分享者 $name';
+  }
+
+  @override
+  String get editInfo => '修改信息';
+
+  @override
+  String get favoriteTitle => '自定义标题';
+
+  @override
+  String get favoriteTitleHint => '留空则使用默认名称';
+
+  @override
+  String get shareInvalid => '该分享已失效（已取消或删除）';
 }

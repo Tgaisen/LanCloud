@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart' hide Icons;
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../core/api/lanzou_client.dart';
 import '../core/app_controller.dart';
@@ -18,6 +19,14 @@ String formatBytes(int bytes) {
     unit += 1;
   }
   return '${value.toStringAsFixed(value >= 100 || unit == 0 ? 0 : 1)} ${units[unit]}';
+}
+
+/// 时间戳 -> yyyy-MM-dd（用于收藏副标题）。
+String formatDateShort(int millis) {
+  final date = DateTime.fromMillisecondsSinceEpoch(millis);
+  final mm = date.month.toString().padLeft(2, '0');
+  final dd = date.day.toString().padLeft(2, '0');
+  return '${date.year}-$mm-$dd';
 }
 
 /// 蓝奏云接口返回的大小是 "1.2 M" 这类文本。
@@ -141,6 +150,59 @@ class EmptyHint extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 本地生成二维码弹窗（不经过任何服务器）。
+Future<void> showQrDialog(
+  BuildContext context, {
+  required String title,
+  required String url,
+  String pwd = '',
+}) async {
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: ColoredBox(
+              color: Colors.white,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: QrImageView(
+                  data: url,
+                  size: 200,
+                  backgroundColor: Colors.white,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SelectableText(url, style: Theme.of(context).textTheme.bodySmall),
+          if (pwd.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(context.l10n.passwordLabel(pwd)),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(),
+          child: Text(context.l10n.close),
+        ),
+        FilledButton(
+          onPressed: () {
+            Navigator.of(dialogContext).pop();
+            copyText(context, url);
+          },
+          child: Text(context.l10n.copyLink),
+        ),
+      ],
+    ),
+  );
 }
 
 class SectionCard extends StatelessWidget {
@@ -290,43 +352,38 @@ Future<bool> downloadShareFile(
 }) async {
   final app = context.read<AppController>();
   final transfers = context.read<TransferManager>();
-  showLoadingDialog(context, context.l10n.resolvingDownload);
+  final navigator = Navigator.of(context);
+  final messenger = ScaffoldMessenger.of(context);
+  final l10n = context.l10n;
+  showLoadingDialog(context, l10n.resolvingDownload);
   try {
     final direct = await app.publicClient.resolveFileShare(url, pwd: pwd);
-    if (context.mounted) Navigator.of(context).pop();
+    navigator.pop();
     transfers.addDownload(
       url: direct.url,
       name: direct.name.isEmpty ? (fallbackName ?? 'download') : direct.name,
       referer: url,
       via: app.publicClient,
     );
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.addedToQueue)),
-      );
-    }
+    messenger.showSnackBar(
+      SnackBar(content: Text(l10n.addedToQueue)),
+    );
     return true;
   } on NeedPasswordException {
-    if (context.mounted) Navigator.of(context).pop();
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.shareNeedsPassword)),
-      );
-    }
+    navigator.pop();
+    messenger.showSnackBar(
+      SnackBar(content: Text(l10n.shareNeedsPassword)),
+    );
     return false;
   } on LanzouException catch (e) {
-    if (context.mounted) Navigator.of(context).pop();
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
-    }
+    navigator.pop();
+    messenger.showSnackBar(SnackBar(content: Text(e.message)));
     return false;
   } catch (e) {
-    if (context.mounted) Navigator.of(context).pop();
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.resolveFailed('$e'))),
-      );
-    }
+    navigator.pop();
+    messenger.showSnackBar(
+      SnackBar(content: Text(l10n.resolveFailed('$e'))),
+    );
     return false;
   }
 }
@@ -341,7 +398,10 @@ Future<void> downloadShareFiles(
   if (urls.isEmpty || urls.length != names.length) return;
   final app = context.read<AppController>();
   final transfers = context.read<TransferManager>();
-  showLoadingDialog(context, context.l10n.resolvingDownload);
+  final navigator = Navigator.of(context);
+  final messenger = ScaffoldMessenger.of(context);
+  final l10n = context.l10n;
+  showLoadingDialog(context, l10n.resolvingDownload);
   var added = 0;
   var failed = 0;
   for (var i = 0; i < urls.length; i++) {
@@ -358,16 +418,14 @@ Future<void> downloadShareFiles(
       failed += 1;
     }
   }
-  if (context.mounted) Navigator.of(context).pop();
-  if (context.mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          failed == 0
-              ? context.l10n.addedDownloads(added)
-              : context.l10n.addedDownloadsPartial(added, failed),
-        ),
+  navigator.pop();
+  messenger.showSnackBar(
+    SnackBar(
+      content: Text(
+        failed == 0
+            ? l10n.addedDownloads(added)
+            : l10n.addedDownloadsPartial(added, failed),
       ),
-    );
-  }
+    ),
+  );
 }

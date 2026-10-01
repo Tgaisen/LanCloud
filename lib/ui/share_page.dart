@@ -7,6 +7,8 @@ import '../core/app_controller.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
+import 'share_folder_page.dart';
+import 'share_file_sheet.dart';
 
 class SharePage extends StatefulWidget {
   const SharePage({super.key, this.initialLink, this.initialPwd});
@@ -26,7 +28,6 @@ class _SharePageState extends State<SharePage> {
   bool _loading = false;
   String? _error;
   DirectFile? _file;
-  FolderShareDetail? _folder;
 
   @override
   void initState() {
@@ -59,15 +60,23 @@ class _SharePageState extends State<SharePage> {
       _loading = true;
       _error = null;
       _file = null;
-      _folder = null;
     });
     final client = context.read<AppController>().publicClient;
     try {
       if (_looksLikeFolder) {
         final folder = await client.resolveFolderShare(link, pwd: pwd);
         if (!mounted) return;
-        setState(() => _folder = folder);
         await _saveRecent('shareFolder', folder.name, link, pwd);
+        if (!mounted) return;
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ShareFolderPage(
+              folder: folder,
+              link: link,
+              pwd: pwd,
+            ),
+          ),
+        );
       } else {
         try {
           final file = await client.resolveFileShare(link, pwd: pwd);
@@ -77,8 +86,17 @@ class _SharePageState extends State<SharePage> {
         } on LanzouException {
           final folder = await client.resolveFolderShare(link, pwd: pwd);
           if (!mounted) return;
-          setState(() => _folder = folder);
           await _saveRecent('shareFolder', folder.name, link, pwd);
+          if (!mounted) return;
+          await Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => ShareFolderPage(
+                folder: folder,
+                link: link,
+                pwd: pwd,
+              ),
+            ),
+          );
         }
       }
     } on NeedPasswordException catch (e) {
@@ -101,33 +119,6 @@ class _SharePageState extends State<SharePage> {
       ref: link,
       pwd: pwd,
     );
-  }
-
-  Future<void> _favorite() async {
-    final app = context.read<AppController>();
-    final link = _linkController.text.trim();
-    final pwd = _pwdController.text.trim();
-    if (_file != null) {
-      await app.db.addFavorite(
-        kind: 'shareFile',
-        name: _file!.name,
-        ref: link,
-        pwd: pwd,
-        size: _file!.size,
-      );
-    } else if (_folder != null) {
-      await app.db.addFavorite(
-        kind: 'shareFolder',
-        name: _folder!.name,
-        ref: link,
-        pwd: pwd,
-      );
-    }
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.addedToFavorites)),
-      );
-    }
   }
 
   @override
@@ -183,22 +174,7 @@ class _SharePageState extends State<SharePage> {
             _FileResultCard(
               file: _file!,
               link: _linkController.text.trim(),
-              onDownload: () => downloadShareFile(
-                context,
-                url: _linkController.text.trim(),
-                pwd: _pwdController.text.trim(),
-                fallbackName: _file!.name,
-              ),
-              onFavorite: _favorite,
-            ),
-          ],
-          if (_folder != null) ...[
-            const SizedBox(height: 16),
-            _FolderResultView(
-              folder: _folder!,
-              link: _linkController.text.trim(),
               pwd: _pwdController.text.trim(),
-              onFavorite: _favorite,
             ),
           ],
         ],
@@ -211,260 +187,42 @@ class _FileResultCard extends StatelessWidget {
   const _FileResultCard({
     required this.file,
     required this.link,
-    required this.onDownload,
-    required this.onFavorite,
+    required this.pwd,
   });
 
   final DirectFile file;
   final String link;
-  final VoidCallback onDownload;
-  final Future<void> Function() onFavorite;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(iconForFile(file.name), size: 28),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    file.name,
-                    style: Theme.of(context).textTheme.titleMedium,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            if (file.size.isNotEmpty) ...[
-              const SizedBox(height: 6),
-              Text(l10n.sizeLabel(prettyLzSize(file.size))),
-            ],
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: onDownload,
-                    icon: const Icon(Icons.download),
-                    label: Text(l10n.download),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                IconButton.filledTonal(
-                  tooltip: l10n.favorite,
-                  onPressed: onFavorite,
-                  icon: const Icon(Icons.star_outline),
-                ),
-                const SizedBox(width: 6),
-                IconButton.filledTonal(
-                  tooltip: l10n.copyLink,
-                  onPressed: () => copyText(context, link),
-                  icon: const Icon(Icons.copy),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _FolderResultView extends StatefulWidget {
-  const _FolderResultView({
-    required this.folder,
-    required this.link,
-    required this.pwd,
-    required this.onFavorite,
-  });
-
-  final FolderShareDetail folder;
-  final String link;
   final String pwd;
-  final Future<void> Function() onFavorite;
-
-  @override
-  State<_FolderResultView> createState() => _FolderResultViewState();
-}
-
-class _FolderResultViewState extends State<_FolderResultView> {
-  bool _selecting = false;
-  final Set<String> _selected = {};
-
-  void _toggleSelecting() {
-    setState(() {
-      _selecting = !_selecting;
-      _selected.clear();
-    });
-  }
-
-  void _toggleFile(String url) {
-    setState(() {
-      if (!_selected.remove(url)) _selected.add(url);
-    });
-  }
-
-  void _selectAll() {
-    setState(() {
-      if (_selected.length == widget.folder.files.length) {
-        _selected.clear();
-      } else {
-        _selected
-          ..clear()
-          ..addAll(widget.folder.files.map((f) => f.url));
-      }
-    });
-  }
-
-  Future<void> _downloadSelected() async {
-    final files = widget.folder.files
-        .where((f) => _selected.contains(f.url))
-        .toList();
-    if (files.isEmpty) return;
-    await downloadShareFiles(
-      context,
-      urls: [for (final f in files) f.url],
-      names: [for (final f in files) f.name],
-      pwd: widget.pwd,
-    );
-    if (mounted) _toggleSelecting();
-  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final folder = widget.folder;
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.folder_outlined, size: 28),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    folder.name,
-                    style: Theme.of(context).textTheme.titleMedium,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                IconButton(
-                  tooltip: l10n.favorite,
-                  onPressed: widget.onFavorite,
-                  icon: const Icon(Icons.star_outline),
-                ),
-                IconButton(
-                  tooltip: l10n.copyLink,
-                  onPressed: () => copyText(context, widget.link),
-                  icon: const Icon(Icons.copy),
-                ),
-                IconButton(
-                  tooltip: _selecting ? l10n.exitSelection : l10n.multiSelect,
-                  onPressed: _toggleSelecting,
-                  icon: Icon(_selecting ? Icons.close : Icons.select_all),
-                ),
-              ],
-            ),
-            if (folder.desc.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(right: 8, bottom: 6),
-                child: Text(folder.desc),
-              ),
-            if (folder.folders.isNotEmpty) ...[
-              const Divider(),
-              for (final sub in folder.folders)
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.folder_outlined),
-                  title: Text(sub.name),
-                  subtitle: sub.desc.isEmpty ? null : Text(sub.desc),
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => SharePage(
-                        initialLink: sub.url,
-                        initialPwd: widget.pwd,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-            if (folder.files.isNotEmpty) ...[
-              if (_selecting) ...[
-                Padding(
-                  padding: const EdgeInsets.only(right: 8, bottom: 4),
-                  child: Row(
-                    children: [
-                      Text(l10n.selectedCount(_selected.length)),
-                      const Spacer(),
-                      TextButton(
-                        onPressed: _selectAll,
-                        child: Text(l10n.selectAll),
-                      ),
-                      const SizedBox(width: 8),
-                      FilledButton(
-                        onPressed:
-                            _selected.isEmpty ? null : _downloadSelected,
-                        child: Text(l10n.download),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-              const Divider(),
-              for (final file in folder.files)
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: _selecting
-                      ? Checkbox(
-                          value: _selected.contains(file.url),
-                          onChanged: (_) => _toggleFile(file.url),
-                        )
-                      : Icon(iconForFile(file.name)),
-                  title: Text(file.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  subtitle: Text(
-                    [
-                      prettyLzSize(file.size),
-                      if (file.time.isNotEmpty) file.time,
-                    ].where((e) => e.isNotEmpty).join(' · '),
-                  ),
-                  selected: _selecting && _selected.contains(file.url),
-                  trailing: _selecting
-                      ? null
-                      : const Icon(Icons.download_outlined),
-                  onTap: () {
-                    if (_selecting) {
-                      _toggleFile(file.url);
-                    } else {
-                      downloadShareFile(
-                        context,
-                        url: file.url,
-                        pwd: widget.pwd,
-                        fallbackName: file.name,
-                      );
-                    }
-                  },
-                ),
-            ],
-            if (folder.files.isEmpty && folder.folders.isEmpty)
-              Padding(
-                padding: EdgeInsets.all(16),
-                child: Text(l10n.shareEmpty),
-              ),
-          ],
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(16),
+        leading: Icon(iconForFile(file.name), size: 30),
+        title: Text(
+          file.name,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        subtitle: file.size.isEmpty
+            ? null
+            : Text(l10n.sizeLabel(prettyLzSize(file.size))),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => showModalBottomSheet<void>(
+          context: context,
+          showDragHandle: true,
+          builder: (_) => ShareFileInfoSheet(
+            name: file.name,
+            url: link,
+            pwd: pwd,
+            size: file.size,
+          ),
         ),
       ),
     );
   }
 }
+

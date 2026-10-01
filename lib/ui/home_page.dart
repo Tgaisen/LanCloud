@@ -9,6 +9,7 @@ import 'app_icons.dart';
 import 'common.dart';
 import 'drive_page.dart';
 import 'scroll_tint.dart';
+import 'share_file_sheet.dart';
 import 'share_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -23,6 +24,7 @@ class _HomePageState extends State<HomePage>
   List<RecentItem> _recents = [];
   List<FavoriteItem> _favorites = [];
   bool _loading = true;
+  late final AppDb _db;
 
   @override
   bool get wantKeepAlive => true;
@@ -30,7 +32,15 @@ class _HomePageState extends State<HomePage>
   @override
   void initState() {
     super.initState();
+    _db = context.read<AppController>().db;
     _load();
+    _db.revision.addListener(_load);
+  }
+
+  @override
+  void dispose() {
+    _db.revision.removeListener(_load);
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -44,6 +54,103 @@ class _HomePageState extends State<HomePage>
       _favorites = favorites.take(6).toList();
       _loading = false;
     });
+  }
+
+  String _favoriteSubtitle(AppLocalizations l10n, FavoriteItem item) {
+    if (item.kind.toLowerCase().contains('folder')) return l10n.folder;
+    final parts = <String>[l10n.file];
+    if (item.size.isNotEmpty) parts.add(prettyLzSize(item.size));
+    return parts.join(' · ');
+  }
+
+  Future<void> _favoriteOptions(FavoriteItem item) async {
+    final app = context.read<AppController>();
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit_note),
+              title: Text(context.l10n.editInfo),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                _editFavorite(item);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline),
+              title: Text(context.l10n.delete),
+              onTap: () async {
+                Navigator.of(sheetContext).pop();
+                await app.db.removeFavoriteById(item.id);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _editFavorite(FavoriteItem item) async {
+    final app = context.read<AppController>();
+    final titleController = TextEditingController(text: item.title);
+    final linkController = TextEditingController(text: item.ref);
+    final pwdController = TextEditingController(text: item.pwd);
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(context.l10n.editInfo),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: titleController,
+                decoration: InputDecoration(
+                  labelText: context.l10n.favoriteTitle,
+                  hintText: context.l10n.favoriteTitleHint,
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: linkController,
+                decoration:
+                    InputDecoration(labelText: context.l10n.shareLink),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: pwdController,
+                decoration:
+                    InputDecoration(labelText: context.l10n.passwordOptional),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(context.l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final link = linkController.text.trim();
+              if (link.isEmpty) return;
+              Navigator.of(dialogContext).pop();
+              await app.db.updateFavorite(
+                item.id,
+                title: titleController.text.trim(),
+                ref: link,
+                pwd: pwdController.text.trim(),
+              );
+            },
+            child: Text(context.l10n.save),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _openItem(
@@ -243,7 +350,7 @@ class _HomePageState extends State<HomePage>
                                       contentPadding:
                                           const EdgeInsets.symmetric(horizontal: 16),
                                       leading: Icon(
-                                        item.kind.contains('folder')
+                                        item.kind.toLowerCase().contains('folder')
                                             ? Icons.folder_outlined
                                             : iconForFile(item.name),
                                       ),
@@ -284,35 +391,43 @@ class _HomePageState extends State<HomePage>
                                       contentPadding:
                                           const EdgeInsets.symmetric(horizontal: 16),
                                       leading: Icon(
-                                        item.kind.contains('folder')
-                                            ? Icons.folder_special_outlined
-                                            : Icons.star_outline,
+                                        item.kind.toLowerCase().contains('folder')
+                                            ? Icons.folder_outlined
+                                            : iconForFile(item.name),
                                       ),
                                       title: Text(
-                                        item.name,
+                                        item.title.isEmpty ? item.name : item.title,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                       ),
-                                      subtitle: Text(
-                                        item.kind.startsWith('share')
-                                            ? l10n.sharedContent
-                                            : l10n.myDrive,
-                                      ),
-                                      onTap: () => _openItem(
-                                        context,
-                                        item.kind,
-                                        item.ref,
-                                        item.name,
-                                        item.pwd,
-                                      ),
+                                      subtitle: Text(_favoriteSubtitle(l10n, item)),
+                                      onTap: () {
+                                        if (item.kind == 'shareFile') {
+                                          showModalBottomSheet<void>(
+                                            context: context,
+                                            showDragHandle: true,
+                                            builder: (_) => ShareFileInfoSheet(
+                                              name: item.name,
+                                              url: item.ref,
+                                              pwd: item.pwd,
+                                              size: item.size,
+                                            ),
+                                          );
+                                        } else {
+                                          _openItem(
+                                            context,
+                                            item.kind,
+                                            item.ref,
+                                            item.name,
+                                            item.pwd,
+                                          );
+                                        }
+                                      },
                                       trailing: IconButton(
-                                        tooltip: l10n.unfavorite,
-                                        icon: const Icon(Icons.close),
-                                        onPressed: () async {
-                                          await app.db
-                                              .removeFavorite(item.ref);
-                                          _load();
-                                        },
+                                        tooltip: l10n.moreActions,
+                                        icon: const Icon(Icons.more_vert),
+                                        onPressed: () =>
+                                            _favoriteOptions(item),
                                       ),
                                     ),
                                 ],

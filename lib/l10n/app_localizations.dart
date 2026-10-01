@@ -1861,6 +1861,60 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'下载与上传完成或失败的提醒'**
   String get notifChannelDoneDesc;
+
+  /// No description provided for @files.
+  ///
+  /// In zh, this message translates to:
+  /// **'文件'**
+  String get files;
+
+  /// No description provided for @shareMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'来自分享者的信息'**
+  String get shareMessage;
+
+  /// No description provided for @favoritedPartial.
+  ///
+  /// In zh, this message translates to:
+  /// **'{ok} 个已收藏，{failed} 个失败'**
+  String favoritedPartial(int ok, int failed);
+
+  /// No description provided for @file.
+  ///
+  /// In zh, this message translates to:
+  /// **'文件'**
+  String get file;
+
+  /// No description provided for @sharerLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'分享者 {name}'**
+  String sharerLabel(String name);
+
+  /// No description provided for @editInfo.
+  ///
+  /// In zh, this message translates to:
+  /// **'修改信息'**
+  String get editInfo;
+
+  /// No description provided for @favoriteTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义标题'**
+  String get favoriteTitle;
+
+  /// No description provided for @favoriteTitleHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'留空则使用默认名称'**
+  String get favoriteTitleHint;
+
+  /// No description provided for @shareInvalid.
+  ///
+  /// In zh, this message translates to:
+  /// **'该分享已失效（已取消或删除）'**
+  String get shareInvalid;
 }
 
 class _AppLocalizationsDelegate

@@ -485,7 +485,7 @@ class _DrivePageState extends State<DrivePage>
               ),
               const SizedBox(height: 12),
                 ListTile(
-                  leading: const Icon(Icons.select_all),
+                  leading: const Icon(Icons.done_all),
                   title: Text(context.l10n.multiSelect),
                   onTap: () {
                     Navigator.of(sheetContext).pop();
@@ -801,21 +801,57 @@ class _DrivePageState extends State<DrivePage>
 
   Future<void> _batchFavorite() async {
     final app = context.read<AppController>();
+    final client = app.client;
+    final sharer = app.activeAccount?.nickname ?? '';
     final fileIds = _selectedFiles.toList();
     final folderIds = _selectedFolders.toList();
-    for (final id in fileIds) {
-      final file = _files.firstWhere((f) => f.id == id);
-      await app.db.addFavorite(kind: 'file', name: file.name, ref: id);
+    var count = 0;
+    var failed = 0;
+    if (client != null) {
+      for (final id in fileIds) {
+        try {
+          final file = _files.firstWhere((f) => f.id == id);
+          final info = await client.shareInfoOfFile(id);
+          await app.db.addFavorite(
+            kind: 'shareFile',
+            name: file.name,
+            ref: info.url,
+            pwd: info.pwd,
+            size: file.size,
+            sharer: sharer,
+          );
+          count += 1;
+        } catch (_) {
+          failed += 1;
+        }
+      }
+      for (final id in folderIds) {
+        try {
+          final folder = _folders.firstWhere((f) => f.id == id);
+          final info = await client.shareInfoOfFolder(id);
+          await app.db.addFavorite(
+            kind: 'shareFolder',
+            name: folder.name,
+            ref: info.url,
+            pwd: info.pwd,
+            sharer: sharer,
+          );
+          count += 1;
+        } catch (_) {
+          failed += 1;
+        }
+      }
     }
-    for (final id in folderIds) {
-      final folder = _folders.firstWhere((f) => f.id == id);
-      await app.db.addFavorite(kind: 'folder', name: folder.name, ref: id);
-    }
-    final count = fileIds.length + folderIds.length;
     if (mounted) _exitSelection();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(context.l10n.favoritedCount(count))),
+      SnackBar(
+        content: Text(
+          failed == 0
+              ? context.l10n.favoritedCount(count)
+              : context.l10n.favoritedPartial(count, failed),
+        ),
+      ),
     );
   }
 
@@ -1476,23 +1512,47 @@ class _DrivePageState extends State<DrivePage>
 
   Future<void> _favoriteFile(LzFile file) async {
     final app = context.read<AppController>();
-    await app.db.addFavorite(
-      kind: 'file',
-      name: file.name,
-      ref: file.id,
-      size: file.size,
-    );
-    if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(context.l10n.favorited)));
+    final client = app.client;
+    if (client == null) return;
+    try {
+      final info = await client.shareInfoOfFile(file.id);
+      await app.db.addFavorite(
+        kind: 'shareFile',
+        name: file.name,
+        ref: info.url,
+        pwd: info.pwd,
+        size: file.size,
+        sharer: app.activeAccount?.nickname ?? '',
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(context.l10n.favorited)));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    }
   }
 
   Future<void> _favoriteFolder(LzFolder folder) async {
     final app = context.read<AppController>();
-    await app.db.addFavorite(kind: 'folder', name: folder.name, ref: folder.id);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(context.l10n.favorited)));
+    final client = app.client;
+    if (client == null) return;
+    try {
+      final info = await client.shareInfoOfFolder(folder.id);
+      await app.db.addFavorite(
+        kind: 'shareFolder',
+        name: folder.name,
+        ref: info.url,
+        pwd: info.pwd,
+        sharer: app.activeAccount?.nickname ?? '',
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(context.l10n.favorited)));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    }
   }
 
   Future<void> _deleteFile(LzFile file) async {

@@ -1,4 +1,5 @@
 import 'package:path/path.dart' as p;
+import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 
 class FavoriteItem {
@@ -9,6 +10,8 @@ class FavoriteItem {
     required this.ref,
     this.pwd = '',
     this.size = '',
+    this.title = '',
+    this.sharer = '',
     this.createdAt = 0,
   });
 
@@ -18,6 +21,8 @@ class FavoriteItem {
   final String ref; // file id / folder id / share url
   final String pwd;
   final String size;
+  final String title;
+  final String sharer;
   final int createdAt;
 }
 
@@ -48,13 +53,18 @@ class AppDb {
 
   Database? _db;
 
+  /// 收藏/最近使用发生变化时自增，供首页即时刷新。
+  final ValueNotifier<int> revision = ValueNotifier(0);
+
+  void _touch() => revision.value += 1;
+
   Future<Database> get db async => _db ??= await _open();
 
   Future<Database> _open() async {
     final path = p.join(await getDatabasesPath(), 'lancloud.db');
     return openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: (db, version) async {
         await db.execute(
           'CREATE TABLE favorites('
@@ -64,6 +74,8 @@ class AppDb {
           'ref TEXT NOT NULL,'
           'pwd TEXT DEFAULT "",'
           'size TEXT DEFAULT "",'
+          'title TEXT DEFAULT "",'
+          'sharer TEXT DEFAULT "",'
           'created_at INTEGER NOT NULL)',
         );
         await db.execute(
@@ -122,6 +134,14 @@ class AppDb {
             'ref TEXT DEFAULT "",'
             'folder_id TEXT DEFAULT "",'
             'created_at INTEGER NOT NULL)',
+          );
+        }
+        if (oldVersion < 4) {
+          await db.execute(
+            'ALTER TABLE favorites ADD COLUMN title TEXT DEFAULT ""',
+          );
+          await db.execute(
+            'ALTER TABLE favorites ADD COLUMN sharer TEXT DEFAULT ""',
           );
         }
       },
@@ -224,6 +244,8 @@ class AppDb {
     required String ref,
     String pwd = '',
     String size = '',
+    String title = '',
+    String sharer = '',
   }) async {
     final database = await db;
     await database.delete('favorites', where: 'ref = ?', whereArgs: [ref]);
@@ -233,13 +255,43 @@ class AppDb {
       'ref': ref,
       'pwd': pwd,
       'size': size,
+      'title': title,
+      'sharer': sharer,
       'created_at': DateTime.now().millisecondsSinceEpoch,
     });
+    _touch();
+  }
+
+  Future<void> updateFavorite(
+    int id, {
+    String? title,
+    String? ref,
+    String? pwd,
+  }) async {
+    final database = await db;
+    await database.update(
+      'favorites',
+      {
+        'title': ?title,
+        'ref': ?ref,
+        'pwd': ?pwd,
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    _touch();
   }
 
   Future<void> removeFavorite(String ref) async {
     final database = await db;
     await database.delete('favorites', where: 'ref = ?', whereArgs: [ref]);
+    _touch();
+  }
+
+  Future<void> removeFavoriteById(int id) async {
+    final database = await db;
+    await database.delete('favorites', where: 'id = ?', whereArgs: [id]);
+    _touch();
   }
 
   Future<bool> isFavorite(String ref) async {
@@ -259,6 +311,8 @@ class AppDb {
               ref: '${r['ref']}',
               pwd: '${r['pwd']}',
               size: '${r['size']}',
+              title: '${r['title'] ?? ''}',
+              sharer: '${r['sharer'] ?? ''}',
               createdAt: r['created_at'] as int,
             ))
         .toList();
@@ -293,6 +347,7 @@ class AppDb {
       'AND account = ?',
       [account, account],
     );
+    _touch();
   }
 
   Future<List<RecentItem>> recents(String account, {int limit = 20}) async {
@@ -320,5 +375,6 @@ class AppDb {
   Future<void> clearRecents(String account) async {
     final database = await db;
     await database.delete('recents', where: 'account = ?', whereArgs: [account]);
+    _touch();
   }
 }
