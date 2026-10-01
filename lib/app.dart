@@ -24,11 +24,13 @@ class LanCloudApp extends StatelessWidget {
     final app = context.watch<AppController>();
     final seed = Color(app.settings.themeSeed);
     final oledDark = app.settings.oledBlack;
-    ThemeData buildTheme(Brightness brightness) => ThemeData(
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: seed,
-            brightness: brightness,
-          ),
+    ThemeData buildTheme(Brightness brightness) {
+      final scheme = ColorScheme.fromSeed(
+        seedColor: seed,
+        brightness: brightness,
+      );
+      return ThemeData(
+          colorScheme: scheme,
           scaffoldBackgroundColor:
               (brightness == Brightness.dark && oledDark) ? Colors.black : null,
           appBarTheme: AppBarTheme(
@@ -68,7 +70,19 @@ class LanCloudApp extends StatelessWidget {
             highlightElevation: 0,
             disabledElevation: 0,
           ),
+          // MD3 Expressive 按钮组（connected）：细描边 + 圆角容器 + 选中勾选
+          segmentedButtonTheme: SegmentedButtonThemeData(
+            style: ButtonStyle(
+              side: WidgetStatePropertyAll(
+                BorderSide(color: scheme.outlineVariant),
+              ),
+              visualDensity: VisualDensity.standard,
+              tapTargetSize: MaterialTapTargetSize.padded,
+              animationDuration: const Duration(milliseconds: 240),
+            ),
+          ),
         );
+    }
     final mode = app.settings.themeMode;
     final language = app.settings.language;
     return MaterialApp(

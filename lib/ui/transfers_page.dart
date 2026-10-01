@@ -72,7 +72,6 @@ class _TransfersPageState extends State<TransfersPage>
                       ),
                     ],
                     selected: {_tab},
-                    showSelectedIcon: false,
                     onSelectionChanged: (values) =>
                         setState(() => _tab = values.first),
                   ),

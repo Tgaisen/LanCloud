@@ -182,6 +182,85 @@ class SectionCard extends StatelessWidget {
   }
 }
 
+/// MD3 Expressive 分段列表：
+/// 圆角容器内整宽涟漪 + 条目间“带间距（With Gap）”分隔线，
+/// 按下时容器圆角做 Shape Morphing 动画。
+class SegmentedList extends StatefulWidget {
+  const SegmentedList({
+    super.key,
+    required this.children,
+    this.margin = const EdgeInsets.all(4),
+    this.padding = EdgeInsets.zero,
+    this.color,
+    this.restRadius = 16,
+    this.pressedRadius = 28,
+    this.dividerGap = 16,
+  });
+
+  final List<Widget> children;
+  final EdgeInsetsGeometry margin;
+  final EdgeInsetsGeometry padding;
+  final Color? color;
+  final double restRadius;
+  final double pressedRadius;
+  final double dividerGap;
+
+  @override
+  State<SegmentedList> createState() => _SegmentedListState();
+}
+
+class _SegmentedListState extends State<SegmentedList> {
+  bool _pressed = false;
+
+  void _setPressed(bool value) {
+    if (_pressed != value && mounted) setState(() => _pressed = value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final radius = _pressed ? widget.pressedRadius : widget.restRadius;
+    return Padding(
+      padding: widget.margin,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween<double>(begin: widget.restRadius, end: radius),
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        builder: (context, r, child) => Material(
+          color: widget.color ?? scheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(r),
+          clipBehavior: Clip.antiAlias,
+          child: child,
+        ),
+        child: Listener(
+          onPointerDown: (_) => _setPressed(true),
+          onPointerUp: (_) => _setPressed(false),
+          onPointerCancel: (_) => _setPressed(false),
+          child: Padding(
+            padding: widget.padding,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (var i = 0; i < widget.children.length; i++) ...[
+                  if (i > 0)
+                    Divider(
+                      height: 1,
+                      thickness: 1,
+                      indent: widget.dividerGap,
+                      endIndent: widget.dividerGap,
+                    ),
+                  widget.children[i],
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 Future<void> showLoadingDialog(BuildContext context, String text) {
   return showDialog<void>(
     context: context,

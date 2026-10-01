@@ -443,7 +443,6 @@ class _DrivePageState extends State<DrivePage>
                           ),
                         ],
                         selected: {grid ? 'grid' : 'list'},
-                        showSelectedIcon: false,
                         onSelectionChanged: (values) {
                           final value = values.first;
                           setSheetState(() => grid = value == 'grid');
@@ -475,7 +474,6 @@ class _DrivePageState extends State<DrivePage>
                           ),
                         ],
                         selected: {sort},
-                        showSelectedIcon: false,
                         onSelectionChanged: (values) {
                           setSheetState(() => sort = values.first);
                           setState(() => _sortMode = values.first);

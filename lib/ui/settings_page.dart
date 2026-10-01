@@ -6,6 +6,7 @@ import '../core/app_controller.dart';
 import '../core/notifications.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
+import 'common.dart';
 import 'scroll_tint.dart';
 
 /// 独立设置页：分类卡片 + 高级覆盖项二级页 + 全量搜索。
@@ -551,16 +552,18 @@ class _SettingsPageState extends State<SettingsPage> {
         widgets
           ..add(_sectionTitle(context, l10n.categoryAdvanced))
           ..add(
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.tune),
-                title: Text(l10n.advanced),
-                subtitle: Text(l10n.advancedSubtitle),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const _AdvancedPage()),
+            SegmentedList(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.tune),
+                  title: Text(l10n.advanced),
+                  subtitle: Text(l10n.advancedSubtitle),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const _AdvancedPage()),
+                  ),
                 ),
-              ),
+              ],
             ),
           );
         continue;
@@ -568,15 +571,10 @@ class _SettingsPageState extends State<SettingsPage> {
       widgets
         ..add(_sectionTitle(context, _categoryName(name)))
         ..add(
-          Card(
-            child: Column(
-              children: [
-                for (var i = 0; i < groups[name]!.length; i++) ...[
-                  if (i > 0) const Divider(height: 1),
-                  groups[name]![i].build(context, app),
-                ],
-              ],
-            ),
+          SegmentedList(
+            children: [
+              for (final entry in groups[name]!) entry.build(context, app),
+            ],
           ),
         );
     }
@@ -659,15 +657,10 @@ class _SettingsPageState extends State<SettingsPage> {
       ];
     }
     return [
-      Card(
-        child: Column(
-          children: [
-            for (var i = 0; i < matching.length; i++) ...[
-              if (i > 0) const Divider(height: 1),
-              matching[i].build(context, app),
-            ],
-          ],
-        ),
+      SegmentedList(
+        children: [
+          for (final entry in matching) entry.build(context, app),
+        ],
       ),
     ];
   }
@@ -1023,64 +1016,59 @@ class _AdvancedPage extends StatelessWidget {
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                       ),
-                      Card(
-                        child: Column(
-                          children: [
-                            ListTile(
-                              leading: const Icon(Icons.dns_outlined),
-                              title: Text(l10n.apiHost),
-                              subtitle: Text(
-                                app.settings.apiHost == 'up'
-                                    ? 'up.woozooo.com'
-                                    : 'pc.woozooo.com',
-                              ),
-                              onTap: () =>
-                                  _SettingsPageState._pickApiHost(context),
+                      SegmentedList(
+                        children: [
+                          ListTile(
+                            leading: const Icon(Icons.dns_outlined),
+                            title: Text(l10n.apiHost),
+                            subtitle: Text(
+                              app.settings.apiHost == 'up'
+                                  ? 'up.woozooo.com'
+                                  : 'pc.woozooo.com',
                             ),
-                            const Divider(height: 1),
-                            ListTile(
-                              leading: const Icon(Icons.cloud_upload_outlined),
-                              title: Text(l10n.uploadDomain),
-                              subtitle: Text(
-                                app.settings.uploadDomain.isEmpty
-                                    ? l10n.defaultUploadDomain
-                                    : app.settings.uploadDomain,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              onTap: () => _SettingsPageState
-                                  ._editUploadDomain(context),
+                            onTap: () =>
+                                _SettingsPageState._pickApiHost(context),
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.cloud_upload_outlined),
+                            title: Text(l10n.uploadDomain),
+                            subtitle: Text(
+                              app.settings.uploadDomain.isEmpty
+                                  ? l10n.defaultUploadDomain
+                                  : app.settings.uploadDomain,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            const Divider(height: 1),
-                            ListTile(
-                              leading: const Icon(Icons.link_outlined),
-                              title: Text(l10n.shareDomain),
-                              subtitle: Text(
-                                app.settings.shareDomain.isEmpty
-                                    ? l10n.defaultShareDomain
-                                    : app.settings.shareDomain,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              onTap: () =>
-                                  _SettingsPageState._editShareDomain(context),
+                            onTap: () => _SettingsPageState
+                                ._editUploadDomain(context),
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.link_outlined),
+                            title: Text(l10n.shareDomain),
+                            subtitle: Text(
+                              app.settings.shareDomain.isEmpty
+                                  ? l10n.defaultShareDomain
+                                  : app.settings.shareDomain,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            const Divider(height: 1),
-                            ListTile(
-                              leading: const Icon(Icons.badge_outlined),
-                              title: Text(l10n.userAgent),
-                              subtitle: Text(
-                                app.settings.userAgent.isEmpty
-                                    ? l10n.defaultUserAgent
-                                    : app.settings.userAgent,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              onTap: () =>
-                                  _SettingsPageState._editUserAgent(context),
+                            onTap: () =>
+                                _SettingsPageState._editShareDomain(context),
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.badge_outlined),
+                            title: Text(l10n.userAgent),
+                            subtitle: Text(
+                              app.settings.userAgent.isEmpty
+                                  ? l10n.defaultUserAgent
+                                  : app.settings.userAgent,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          ],
-                        ),
+                            onTap: () =>
+                                _SettingsPageState._editUserAgent(context),
+                          ),
+                        ],
                       ),
                     ]),
                   ),
