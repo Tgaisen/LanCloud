@@ -1309,11 +1309,11 @@ class _DrivePageState extends State<DrivePage>
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.download_outlined),
-              title: Text(context.l10n.download),
+              leading: const Icon(Icons.drive_file_move_outline),
+              title: Text(context.l10n.move),
               onTap: () {
                 Navigator.of(sheetContext).pop();
-                _downloadOwnFile(file);
+                _moveSingleFile(file);
               },
             ),
             ListTile(
@@ -1345,6 +1345,31 @@ class _DrivePageState extends State<DrivePage>
         ),
       ),
     );
+  }
+
+  Future<void> _moveSingleFile(LzFile file) async {
+    final app = context.read<AppController>();
+    final client = app.client;
+    if (client == null) return;
+    final target = await showDialog<_MoveTarget>(
+      context: context,
+      builder: (_) => _MoveDialog(
+        client: client,
+        excludeIds: {file.id},
+      ),
+    );
+    if (target == null || !mounted) return;
+    try {
+      await client.moveFile(file.id, target.folderId);
+      await _reloadAfterChange();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.movedTo(1, target.name))),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    }
   }
 
   Future<void> _singleSetDesc(LzFile file) async {
