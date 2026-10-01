@@ -506,7 +506,10 @@ class _SettingsPageState extends State<SettingsPage> {
           Card(
             child: Column(
               children: [
-                for (final e in groups[name]!) e.build(context, app),
+                for (var i = 0; i < groups[name]!.length; i++) ...[
+                  if (i > 0) const Divider(height: 1),
+                  groups[name]![i].build(context, app),
+                ],
               ],
             ),
           ),
@@ -545,7 +548,10 @@ class _SettingsPageState extends State<SettingsPage> {
       Card(
         child: Column(
           children: [
-            for (final e in matching) e.build(context, app),
+            for (var i = 0; i < matching.length; i++) ...[
+              if (i > 0) const Divider(height: 1),
+              matching[i].build(context, app),
+            ],
           ],
         ),
       ),
@@ -917,6 +923,7 @@ class _AdvancedPage extends StatelessWidget {
                               onTap: () =>
                                   _SettingsPageState._pickApiHost(context),
                             ),
+                            const Divider(height: 1),
                             ListTile(
                               leading: const Icon(Icons.cloud_upload_outlined),
                               title: Text(l10n.uploadDomain),
@@ -930,6 +937,7 @@ class _AdvancedPage extends StatelessWidget {
                               onTap: () => _SettingsPageState
                                   ._editUploadDomain(context),
                             ),
+                            const Divider(height: 1),
                             ListTile(
                               leading: const Icon(Icons.link_outlined),
                               title: Text(l10n.shareDomain),
@@ -943,6 +951,7 @@ class _AdvancedPage extends StatelessWidget {
                               onTap: () =>
                                   _SettingsPageState._editShareDomain(context),
                             ),
+                            const Divider(height: 1),
                             ListTile(
                               leading: const Icon(Icons.badge_outlined),
                               title: Text(l10n.userAgent),

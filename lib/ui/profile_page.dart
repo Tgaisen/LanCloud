@@ -72,6 +72,7 @@ class ProfilePage extends StatelessWidget {
                         title: Text(l10n.switchAccount),
                         onTap: () => _showAccountSwitcher(context),
                       ),
+                      const Divider(height: 1),
                       ListTile(
                         leading: const Icon(Icons.delete_outline),
                         title: Text(l10n.removeCurrentAccount),
@@ -92,6 +93,7 @@ class ProfilePage extends StatelessWidget {
                         onTap: () =>
                             _openWeb('https://pc.woozooo.com/mydisk.php'),
                       ),
+                      const Divider(height: 1),
                       ListTile(
                         leading: const Icon(Icons.restore_from_trash_outlined),
                         title: Text(l10n.recycleBin),
