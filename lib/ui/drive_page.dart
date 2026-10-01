@@ -1209,108 +1209,16 @@ class _DrivePageState extends State<DrivePage>
   }
 
   Future<void> _folderActions(LzFolder folder) async {
-    // 已统计过就直接显示
     if (_selecting) {
       setState(() {
         if (!_selectedFolders.remove(folder.id)) _selectedFolders.add(folder.id);
       });
       return;
     }
-    // 列表接口返回的简介是截断的，这里按需拉取完整内容
-    if (!_folderDescCache.containsKey(folder.id)) {
-      try {
-        final client = context.read<AppController>().client;
-        final info = await client?.shareInfoOfFolder(folder.id);
-        if (info != null && info.desc.isNotEmpty) {
-          _folderDescCache[folder.id] = info.desc;
-        }
-      } catch (_) {}
-      if (!mounted) return;
-    }
-    if (!_folderSizeCache.containsKey(folder.id)) {
-      try {
-        final stats = await context.read<AppController>().client?.folderStats(folder.id);
-        if (stats != null) {
-          if (stats.desc.isNotEmpty) _folderDescCache[folder.id] = stats.desc;
-          if (stats.size.isNotEmpty || stats.count > 0) {
-            _folderSizeCache[folder.id] = [
-              if (stats.size.isNotEmpty) stats.size,
-              if (stats.count > 0) '${stats.count} 个文件',
-            ].join(' · ');
-          }
-        }
-      } catch (_) {}
-      if (!mounted) return;
-    }
     await showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _PropertyHeader(
-              icon: Icons.folder,
-              title: folder.name,
-              subtitle: [
-                '文件夹',
-                if (_folderSizeCache[folder.id] != null)
-                  _folderSizeCache[folder.id]!,
-              ].join(' · '),
-              desc: _folderDescCache[folder.id] ?? folder.desc,
-            ),
-            const Divider(height: 1),
-            ListTile(
-              leading: const Icon(Icons.folder_open),
-              title: const Text('打开文件夹'),
-              onTap: () {
-                Navigator.of(sheetContext).pop();
-                _openFolder(folder);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.link_outlined),
-              title: const Text('复制链接'),
-              onTap: () {
-                Navigator.of(sheetContext).pop();
-                _copyFolderShareLink(folder);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.open_in_new),
-              title: const Text('打开链接'),
-              onTap: () {
-                Navigator.of(sheetContext).pop();
-                _openFolderShareInBrowser(folder);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.qr_code_2),
-              title: const Text('显示二维码'),
-              onTap: () {
-                Navigator.of(sheetContext).pop();
-                _showFolderQr(folder);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.star_outline),
-              title: const Text('添加收藏'),
-              onTap: () {
-                Navigator.of(sheetContext).pop();
-                _favoriteFolder(folder);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.delete_outline),
-              title: const Text('删除'),
-              onTap: () {
-                Navigator.of(sheetContext).pop();
-                _deleteFolder(folder);
-              },
-            ),
-          ],
-        ),
-      ),
+      builder: (_) => _FolderInfoSheet(folder: folder, page: this),
     );
   }
 
@@ -1519,23 +1427,28 @@ class _DrivePageState extends State<DrivePage>
               ),
             ],
           ),
-      floatingActionButton: Padding(
-        padding: EdgeInsets.only(
-          bottom: app.settings.floatingNavBar ? 76 : 0,
-        ),
-        child: AnimatedScale(
-          scale: (_selecting ||
-                  ((app.settings.hideTopBar || app.settings.hideBottomBar) &&
-                      app.barsHidden))
-              ? 0
-              : 1,
-          duration: _anim,
-          curve: Curves.easeOut,
-          child: FloatingActionButton.extended(
-            onPressed: _showAddMenu,
-            icon: const Icon(Icons.add),
-            label: const Text('添加'),
+      floatingActionButton: ValueListenableBuilder<double>(
+        valueListenable: app.barsHide,
+        builder: (context, hide, child) => Padding(
+          padding: EdgeInsets.only(
+            bottom: app.settings.floatingNavBar ? 76 : 0,
           ),
+          child: AnimatedScale(
+            scale: (_selecting ||
+                    ((app.settings.hideTopBar ||
+                            app.settings.hideBottomBar) &&
+                        hide >= 1))
+                ? 0
+                : 1,
+            duration: _anim,
+            curve: Curves.easeOut,
+            child: child,
+          ),
+        ),
+        child: FloatingActionButton.extended(
+          onPressed: _showAddMenu,
+          icon: const Icon(Icons.add),
+          label: const Text('添加'),
         ),
       ),
         );
@@ -2079,6 +1992,152 @@ class _FileRow extends StatelessWidget {
   }
 }
 
+/// 文件夹属性弹窗：先展示缓存/占位内容，后台拉取完整简介与统计后渐入更新。
+class _FolderInfoSheet extends StatefulWidget {
+  const _FolderInfoSheet({required this.folder, required this.page});
+
+  final LzFolder folder;
+  final _DrivePageState page;
+
+  @override
+  State<_FolderInfoSheet> createState() => _FolderInfoSheetState();
+}
+
+class _FolderInfoSheetState extends State<_FolderInfoSheet> {
+  String? _desc;
+  String? _stats;
+  bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _desc = widget.page._folderDescCache[widget.folder.id];
+    _stats = widget.page._folderSizeCache[widget.folder.id];
+    final needDesc = !widget.page._folderDescCache.containsKey(widget.folder.id);
+    final needStats =
+        !widget.page._folderSizeCache.containsKey(widget.folder.id);
+    _loading = needDesc || needStats;
+    _fetch();
+  }
+
+  Future<void> _fetch() async {
+    final id = widget.folder.id;
+    final needDesc = !widget.page._folderDescCache.containsKey(id);
+    final needStats = !widget.page._folderSizeCache.containsKey(id);
+    if (!needDesc && !needStats) return;
+    final client = context.read<AppController>().client;
+    if (needDesc) {
+      try {
+        final info = await client?.shareInfoOfFolder(id);
+        if (info != null && info.desc.isNotEmpty) {
+          widget.page._folderDescCache[id] = info.desc;
+          if (mounted) setState(() => _desc = info.desc);
+        }
+      } catch (_) {}
+    }
+    if (needStats) {
+      try {
+        final stats = await client?.folderStats(id);
+        if (stats != null) {
+          if (stats.desc.isNotEmpty) {
+            widget.page._folderDescCache[id] = stats.desc;
+            if (mounted) setState(() => _desc = stats.desc);
+          }
+          if (stats.size.isNotEmpty || stats.count > 0) {
+            final text = [
+              if (stats.size.isNotEmpty) stats.size,
+              if (stats.count > 0) '${stats.count} 个文件',
+            ].join(' · ');
+            widget.page._folderSizeCache[id] = text;
+            if (mounted) setState(() => _stats = text);
+          }
+        }
+      } catch (_) {}
+    }
+    if (mounted) setState(() => _loading = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final folder = widget.folder;
+    final page = widget.page;
+    return SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 220),
+            child: _loading
+                ? const LinearProgressIndicator(
+                    key: ValueKey('loading'),
+                    minHeight: 2,
+                  )
+                : const SizedBox.shrink(key: ValueKey('idle')),
+          ),
+          _PropertyHeader(
+            icon: Icons.folder,
+            title: folder.name,
+            subtitle: [
+              '文件夹',
+              ?_stats,
+            ].join(' · '),
+            desc: _desc ?? folder.desc,
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: const Icon(Icons.folder_open),
+            title: const Text('打开文件夹'),
+            onTap: () {
+              Navigator.of(context).pop();
+              page._openFolder(folder);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.link_outlined),
+            title: const Text('复制链接'),
+            onTap: () {
+              Navigator.of(context).pop();
+              page._copyFolderShareLink(folder);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.open_in_new),
+            title: const Text('打开链接'),
+            onTap: () {
+              Navigator.of(context).pop();
+              page._openFolderShareInBrowser(folder);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.qr_code_2),
+            title: const Text('显示二维码'),
+            onTap: () {
+              Navigator.of(context).pop();
+              page._showFolderQr(folder);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.star_outline),
+            title: const Text('添加收藏'),
+            onTap: () {
+              Navigator.of(context).pop();
+              page._favoriteFolder(folder);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.delete_outline),
+            title: const Text('删除'),
+            onTap: () {
+              Navigator.of(context).pop();
+              page._deleteFolder(folder);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _PropertyHeader extends StatelessWidget {
   const _PropertyHeader({
     required this.icon,
@@ -2112,11 +2171,33 @@ class _PropertyHeader extends StatelessWidget {
                 ),
                 if (subtitle.isNotEmpty) ...[
                   const SizedBox(height: 4),
-                  Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 220),
+                    switchInCurve: Curves.easeOut,
+                    switchOutCurve: Curves.easeIn,
+                    transitionBuilder: (child, animation) =>
+                        FadeTransition(opacity: animation, child: child),
+                    child: Text(
+                      subtitle,
+                      key: ValueKey(subtitle),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
                 ],
                 if (desc.isNotEmpty) ...[
                   const SizedBox(height: 8),
-                  Text(desc, style: Theme.of(context).textTheme.bodyMedium),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 220),
+                    switchInCurve: Curves.easeOut,
+                    switchOutCurve: Curves.easeIn,
+                    transitionBuilder: (child, animation) =>
+                        FadeTransition(opacity: animation, child: child),
+                    child: Text(
+                      desc,
+                      key: ValueKey(desc),
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ),
                 ],
               ],
             ),

@@ -127,12 +127,15 @@ class EmptyHint extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 24),
-      child: Column(
-        children: [
-          Icon(icon, size: 36, color: scheme.outline),
-          const SizedBox(height: 8),
-          Text(text, style: TextStyle(color: scheme.outline)),
-        ],
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 36, color: scheme.outline),
+            const SizedBox(height: 8),
+            Text(text, style: TextStyle(color: scheme.outline)),
+          ],
+        ),
       ),
     );
   }

@@ -65,15 +65,6 @@ class ProfilePage extends StatelessWidget {
                         onTap: () => _showAccountSwitcher(context),
                       ),
                       ListTile(
-                        leading: const Icon(Icons.person_add_alt),
-                        title: const Text('添加账号'),
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const LoginPage(),
-                          ),
-                        ),
-                      ),
-                      ListTile(
                         leading: const Icon(Icons.delete_outline),
                         title: const Text('移除当前账号'),
                         onTap: () => _removeAccount(context, uid),

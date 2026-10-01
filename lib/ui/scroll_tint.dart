@@ -3,11 +3,18 @@ import 'package:flutter/material.dart';
 /// 顶栏滚动变色的公共实现：离开顶部即触发，50ms 过渡。
 /// 用法：页面外层包 [ScrollTint]，页面 AppBar 里读 [ScrollTint.of] 作为渐变进度。
 class ScrollTint extends StatefulWidget {
-  const ScrollTint({super.key, required this.child, this.onBarsHidden});
+  const ScrollTint({
+    super.key,
+    required this.child,
+    this.onBarsHidden,
+    this.hideDistance = 80,
+  });
 
   final Widget child;
-  /// 下滑时通知隐藏顶栏/底栏；回到顶部或上滑时通知显示。
-  final void Function(bool hidden)? onBarsHidden;
+  /// 滚动时按距离通知底栏隐藏进度 0..1（0 显示，1 完全隐藏）。
+  final void Function(double progress)? onBarsHidden;
+  /// 完全收起所需的滚动距离，与底栏高度一致可实现 1:1 跟随。
+  final double hideDistance;
 
   static double of(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<_TintScope>()?.value ?? 0;
@@ -19,7 +26,7 @@ class ScrollTint extends StatefulWidget {
 class _ScrollTintState extends State<ScrollTint>
     with SingleTickerProviderStateMixin {
   double _lastPixels = 0;
-  bool _barsHidden = false;
+  double _hide = 0;
   late final AnimationController _controller = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 50),
@@ -39,18 +46,17 @@ class _ScrollTintState extends State<ScrollTint>
     }
     if (widget.onBarsHidden != null) {
       final pixels = notification.metrics.pixels;
-      final down = pixels > _lastPixels + 2;
-      final up = pixels < _lastPixels - 2;
+      final delta = pixels - _lastPixels;
       _lastPixels = pixels;
-      var hidden = _barsHidden;
-      if (pixels <= 8 || up) {
-        hidden = false;
-      } else if (down && pixels > 80) {
-        hidden = true;
+      var hide = _hide;
+      if (pixels <= 0) {
+        hide = 0;
+      } else if (delta != 0) {
+        hide = (hide + delta / widget.hideDistance).clamp(0.0, 1.0);
       }
-      if (hidden != _barsHidden) {
-        _barsHidden = hidden;
-        widget.onBarsHidden!(hidden);
+      if (hide != _hide) {
+        _hide = hide;
+        widget.onBarsHidden!(hide);
       }
     }
     if (notification.metrics.pixels > 0) {

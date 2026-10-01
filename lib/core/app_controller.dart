@@ -97,27 +97,18 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
-  bool barsHidden = false;
-
-  void setBarsHidden(bool value) {
-    if (barsHidden == value) return;
-    barsHidden = value;
-    notifyListeners();
-  }
+  /// 底栏滑动隐藏进度 0..1，由各页面的 ScrollTint 按滚动距离驱动。
+  final ValueNotifier<double> barsHide = ValueNotifier(0);
 
   Future<void> setHideTopBar(bool value) async {
     await settings.setHideTopBar(value);
-    if (!value) setBarsHidden(false);
+    if (!value) barsHide.value = 0;
     notifyListeners();
   }
 
   Future<void> setHideBottomBar(bool value) async {
     await settings.setHideBottomBar(value);
-    notifyListeners();
-  }
-
-  Future<void> setInstantHide(bool value) async {
-    await settings.setInstantHide(value);
+    if (!value) barsHide.value = 0;
     notifyListeners();
   }
 

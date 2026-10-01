@@ -21,7 +21,6 @@ class SettingsStore {
   static const _keyHideBarsMode = 'hide_bars_mode';
   static const _keyHideTopBar = 'hide_top_bar';
   static const _keyHideBottomBar = 'hide_bottom_bar';
-  static const _keyInstantHide = 'instant_hide';
   static const _keyFloatingNav = 'floating_nav_bar';
 
   String? downloadDir;
@@ -44,8 +43,6 @@ class SettingsStore {
   bool swipeTabs = false;
   bool hideTopBar = false;
   bool hideBottomBar = false;
-  /// 收起类型：false=同步（跟随滚动），true=即时（到阈值整块收起）
-  bool instantHide = false;
   bool floatingNavBar = false;
 
   Future<void> load() async {
@@ -77,7 +74,6 @@ class SettingsStore {
     }
     hideTopBar = prefs.getBool(_keyHideTopBar) ?? hideTopBar;
     hideBottomBar = prefs.getBool(_keyHideBottomBar) ?? hideBottomBar;
-    instantHide = prefs.getBool(_keyInstantHide) ?? false;
     floatingNavBar = prefs.getBool(_keyFloatingNav) ?? false;
   }
 
@@ -91,12 +87,6 @@ class SettingsStore {
     hideBottomBar = value;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyHideBottomBar, value);
-  }
-
-  Future<void> setInstantHide(bool value) async {
-    instantHide = value;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_keyInstantHide, value);
   }
 
   Future<void> setFloatingNavBar(bool value) async {

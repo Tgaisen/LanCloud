@@ -182,6 +182,8 @@ class _RootShellState extends State<RootShell> {
       const TransfersPage(),
       const ProfilePage(),
     ];
+    // 底栏整体高度：悬浮样式含上下留白，用于 1:1 跟随滚动的收起距离
+    final barHeight = app.settings.floatingNavBar ? 108.0 : 80.0;
     final keyed = KeyedSubtree(
       key: ValueKey('shell-${app.activeUid}'),
       // 横向滑动切换视图；设置里可关闭手势（只能点底栏切换）
@@ -194,8 +196,9 @@ class _RootShellState extends State<RootShell> {
         children: [
           for (final page in pages)
             ScrollTint(
+              hideDistance: barHeight,
               onBarsHidden: (app.settings.hideTopBar || app.settings.hideBottomBar)
-                  ? (hidden) => app.setBarsHidden(hidden)
+                  ? (progress) => app.barsHide.value = progress
                   : null,
               child: page,
             ),
@@ -247,64 +250,60 @@ class _RootShellState extends State<RootShell> {
           : Scaffold(
               body: keyed,
               extendBody: app.settings.floatingNavBar,
-              // 多选栏是覆盖层，底栏保持常显，避免隐藏/显示带来的布局位移
-              bottomNavigationBar: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 200),
-                switchInCurve: Curves.easeOut,
-                switchOutCurve: Curves.easeOut,
-                transitionBuilder: (child, animation) => SizeTransition(
-                  sizeFactor: animation,
-                  alignment: Alignment.bottomCenter,
-                  child: SlideTransition(
-                    position: Tween<Offset>(
-                      begin: const Offset(0, 1),
-                      end: Offset.zero,
-                    ).animate(animation),
-                    child: FadeTransition(opacity: animation, child: child),
+              // 底栏跟随滚动按比例下沉；完全收起后腾出布局空间
+              bottomNavigationBar: ValueListenableBuilder<double>(
+                valueListenable: app.barsHide,
+                builder: (context, hide, child) => SizedBox(
+                  height: app.settings.hideBottomBar
+                      ? barHeight * (1 - hide)
+                      : barHeight,
+                  child: ClipRect(
+                    child: OverflowBox(
+                      alignment: Alignment.bottomCenter,
+                      maxHeight: barHeight,
+                      child: child,
+                    ),
                   ),
                 ),
-                child: (app.settings.hideBottomBar && app.barsHidden)
-                    ? const SizedBox.shrink(key: ValueKey('no-nav'))
-                    : Padding(
-                        padding: app.settings.floatingNavBar
-                            ? const EdgeInsets.only(top: 16)
-                            : EdgeInsets.zero,
-                        child: Container(
-                        key: const ValueKey('nav'),
-                        margin: app.settings.floatingNavBar
-                            ? const EdgeInsets.fromLTRB(12, 0, 12, 12)
-                            : EdgeInsets.zero,
-                        decoration: app.settings.floatingNavBar
-                            ? BoxDecoration(
-                                borderRadius: BorderRadius.circular(28),
-                                boxShadow: const [
-                                  BoxShadow(blurRadius: 14, color: Colors.black26),
-                                ],
-                              )
-                            : null,
-                        clipBehavior: app.settings.floatingNavBar
-                            ? Clip.antiAlias
-                            : Clip.none,
-                        child: NavigationBar(
-                selectedIndex: _index,
-                onDestinationSelected: (i) {
-                  if (app.selectionMode) {
-                    app.onRequestExitSelection?.call();
-                  }
-                  _goTo(i);
-                },
-                destinations: [
-                  for (var i = 0; i < _destinations.length; i++)
-                    NavigationDestination(
-                      icon: iconFor(i, selected: false),
-                      selectedIcon: iconFor(i, selected: true),
-                      label: _destinations[i].label,
+                child: Padding(
+                  padding: app.settings.floatingNavBar
+                      ? const EdgeInsets.only(top: 16)
+                      : EdgeInsets.zero,
+                  child: Container(
+                    margin: app.settings.floatingNavBar
+                        ? const EdgeInsets.fromLTRB(12, 0, 12, 12)
+                        : EdgeInsets.zero,
+                    decoration: app.settings.floatingNavBar
+                        ? BoxDecoration(
+                            borderRadius: BorderRadius.circular(28),
+                            boxShadow: const [
+                              BoxShadow(blurRadius: 14, color: Colors.black26),
+                            ],
+                          )
+                        : null,
+                    clipBehavior: app.settings.floatingNavBar
+                        ? Clip.antiAlias
+                        : Clip.none,
+                    child: NavigationBar(
+                      selectedIndex: _index,
+                      onDestinationSelected: (i) {
+                        if (app.selectionMode) {
+                          app.onRequestExitSelection?.call();
+                        }
+                        _goTo(i);
+                      },
+                      destinations: [
+                        for (var i = 0; i < _destinations.length; i++)
+                          NavigationDestination(
+                            icon: iconFor(i, selected: false),
+                            selectedIcon: iconFor(i, selected: true),
+                            label: _destinations[i].label,
+                          ),
+                      ],
                     ),
-                ],
-                      ),
-                      ),
-                      ),
-            ),
+                  ),
+                ),
+              ),
           ),
     );
   }

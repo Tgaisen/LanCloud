@@ -125,21 +125,6 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
         ),
         _Entry(
-          id: 'hide_type',
-          title: '收起类型',
-          subtitle: app.settings.instantHide ? '即时（到阈值整块收起）' : '同步（跟随滚动）',
-          keywords: const ['收起', '即时', '同步'],
-          category: '外观',
-          build: (context, app) => ListTile(
-            leading: const Icon(Icons.swap_horiz),
-            title: const Text('收起类型'),
-            subtitle: Text(
-              app.settings.instantHide ? '即时（到阈值整块收起）' : '同步（跟随滚动）',
-            ),
-            onTap: () => _pickHideType(context),
-          ),
-        ),
-        _Entry(
           id: 'floating_nav',
           title: 'MD3 悬浮底栏',
           subtitle: '带圆角和阴影，浮在内容之上',
@@ -398,7 +383,6 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     final app = context.watch<AppController>();
-    final scheme = Theme.of(context).colorScheme;
     final entries = _entries(app);
     final query = _search.text.trim().toLowerCase();
 
@@ -411,55 +395,60 @@ class _SettingsPageState extends State<SettingsPage> {
         .toList();
 
     return ScrollTint(
-      child: Scaffold(
-        body: CustomScrollView(
-          slivers: [
-            SliverAppBar(
-              floating: app.settings.hideTopBar,
-              snap: false,
-              pinned: !app.settings.hideTopBar,
-              backgroundColor: Color.lerp(
-                scheme.surface,
-                scheme.surfaceContainerHighest,
-                ScrollTint.of(context),
-              ),
-              scrolledUnderElevation: 0,
-              title: _searching
-                  ? TextField(
-                      controller: _search,
-                      autofocus: true,
-                      decoration: const InputDecoration(
-                        hintText: '搜索设置',
-                        border: InputBorder.none,
-                      ),
-                      onChanged: (_) => setState(() {}),
-                    )
-                  : const Text('设置'),
-              actions: [
-                IconButton(
-                  tooltip: _searching ? '关闭搜索' : '搜索设置',
-                  icon: Icon(_searching ? Icons.close : Icons.search),
-                  onPressed: () {
-                    setState(() {
-                      _searching = !_searching;
-                      if (!_searching) _search.clear();
-                    });
-                  },
+      child: Builder(
+        builder: (context) {
+          final scheme = Theme.of(context).colorScheme;
+          return Scaffold(
+            body: CustomScrollView(
+              slivers: [
+                SliverAppBar(
+                  floating: app.settings.hideTopBar,
+                  snap: false,
+                  pinned: !app.settings.hideTopBar,
+                  backgroundColor: Color.lerp(
+                    scheme.surface,
+                    scheme.surfaceContainerHighest,
+                    ScrollTint.of(context),
+                  ),
+                  scrolledUnderElevation: 0,
+                  title: _searching
+                      ? TextField(
+                          controller: _search,
+                          autofocus: true,
+                          decoration: const InputDecoration(
+                            hintText: '搜索设置',
+                            border: InputBorder.none,
+                          ),
+                          onChanged: (_) => setState(() {}),
+                        )
+                      : const Text('设置'),
+                  actions: [
+                    IconButton(
+                      tooltip: _searching ? '关闭搜索' : '搜索设置',
+                      icon: Icon(_searching ? Icons.close : Icons.search),
+                      onPressed: () {
+                        setState(() {
+                          _searching = !_searching;
+                          if (!_searching) _search.clear();
+                        });
+                      },
+                    ),
+                  ],
+                ),
+                SliverPadding(
+                  padding: const EdgeInsets.all(16),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate(
+                      _searching
+                          ? _buildSearchResults(context, app, matching)
+                          : _buildCategories(context, app, entries),
+                    ),
+                  ),
                 ),
               ],
             ),
-            SliverPadding(
-              padding: const EdgeInsets.all(16),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate(
-                  _searching
-                      ? _buildSearchResults(context, app, matching)
-                      : _buildCategories(context, app, entries),
-                ),
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -653,20 +642,6 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  static Future<void> _pickHideType(BuildContext context) {
-    final app = context.read<AppController>();
-    return _pickRadio(
-      context,
-      title: '收起类型',
-      options: const [
-        (false, '同步（跟随滚动）'),
-        (true, '即时（到阈值整块收起）'),
-      ],
-      current: app.settings.instantHide,
-      onSelect: (value) => app.setInstantHide(value),
-    );
-  }
-
   static Future<void> _pickApiHost(BuildContext context) {
     final app = context.read<AppController>();
     return _pickRadio(
@@ -847,95 +822,99 @@ class _AdvancedPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final app = context.watch<AppController>();
-    final scheme = Theme.of(context).colorScheme;
     return ScrollTint(
-      child: Scaffold(
-        body: CustomScrollView(
-          slivers: [
-            SliverAppBar(
-              floating: app.settings.hideTopBar,
-              snap: false,
-              pinned: !app.settings.hideTopBar,
-              backgroundColor: Color.lerp(
-                scheme.surface,
-                scheme.surfaceContainerHighest,
-                ScrollTint.of(context),
-              ),
-              scrolledUnderElevation: 0,
-              title: const Text('高级覆盖项'),
-            ),
-            SliverPadding(
-              padding: const EdgeInsets.all(16),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
-                    child: Text(
-                      '仅在连接异常或域名被墙时修改，留空恢复默认',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
+      child: Builder(
+        builder: (context) {
+          final scheme = Theme.of(context).colorScheme;
+          return Scaffold(
+            body: CustomScrollView(
+              slivers: [
+                SliverAppBar(
+                  floating: app.settings.hideTopBar,
+                  snap: false,
+                  pinned: !app.settings.hideTopBar,
+                  backgroundColor: Color.lerp(
+                    scheme.surface,
+                    scheme.surfaceContainerHighest,
+                    ScrollTint.of(context),
                   ),
-                  Card(
-                    child: Column(
-                      children: [
-                        ListTile(
-                          leading: const Icon(Icons.dns_outlined),
-                          title: const Text('网盘接口域名'),
-                          subtitle: Text(
-                            app.settings.apiHost == 'up'
-                                ? 'up.woozooo.com'
-                                : 'pc.woozooo.com',
-                          ),
-                          onTap: () =>
-                              _SettingsPageState._pickApiHost(context),
+                  scrolledUnderElevation: 0,
+                  title: const Text('高级覆盖项'),
+                ),
+                SliverPadding(
+                  padding: const EdgeInsets.all(16),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate([
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+                        child: Text(
+                          '仅在连接异常或域名被墙时修改，留空恢复默认',
+                          style: Theme.of(context).textTheme.bodySmall,
                         ),
-                        ListTile(
-                          leading: const Icon(Icons.cloud_upload_outlined),
-                          title: const Text('上传域名'),
-                          subtitle: Text(
-                            app.settings.uploadDomain.isEmpty
-                                ? '默认（up.woozooo.com）'
-                                : app.settings.uploadDomain,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          onTap: () =>
-                              _SettingsPageState._editUploadDomain(context),
+                      ),
+                      Card(
+                        child: Column(
+                          children: [
+                            ListTile(
+                              leading: const Icon(Icons.dns_outlined),
+                              title: const Text('网盘接口域名'),
+                              subtitle: Text(
+                                app.settings.apiHost == 'up'
+                                    ? 'up.woozooo.com'
+                                    : 'pc.woozooo.com',
+                              ),
+                              onTap: () =>
+                                  _SettingsPageState._pickApiHost(context),
+                            ),
+                            ListTile(
+                              leading: const Icon(Icons.cloud_upload_outlined),
+                              title: const Text('上传域名'),
+                              subtitle: Text(
+                                app.settings.uploadDomain.isEmpty
+                                    ? '默认（up.woozooo.com）'
+                                    : app.settings.uploadDomain,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              onTap: () => _SettingsPageState
+                                  ._editUploadDomain(context),
+                            ),
+                            ListTile(
+                              leading: const Icon(Icons.link_outlined),
+                              title: const Text('分享链接域名'),
+                              subtitle: Text(
+                                app.settings.shareDomain.isEmpty
+                                    ? '默认（自动尝试内置镜像）'
+                                    : app.settings.shareDomain,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              onTap: () =>
+                                  _SettingsPageState._editShareDomain(context),
+                            ),
+                            ListTile(
+                              leading: const Icon(Icons.badge_outlined),
+                              title: const Text('自定义 User-Agent'),
+                              subtitle: Text(
+                                app.settings.userAgent.isEmpty
+                                    ? '默认（模拟桌面浏览器）'
+                                    : app.settings.userAgent,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              onTap: () =>
+                                  _SettingsPageState._editUserAgent(context),
+                            ),
+                          ],
                         ),
-                        ListTile(
-                          leading: const Icon(Icons.link_outlined),
-                          title: const Text('分享链接域名'),
-                          subtitle: Text(
-                            app.settings.shareDomain.isEmpty
-                                ? '默认（自动尝试内置镜像）'
-                                : app.settings.shareDomain,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          onTap: () =>
-                              _SettingsPageState._editShareDomain(context),
-                        ),
-                        ListTile(
-                          leading: const Icon(Icons.badge_outlined),
-                          title: const Text('自定义 User-Agent'),
-                          subtitle: Text(
-                            app.settings.userAgent.isEmpty
-                                ? '默认（模拟桌面浏览器）'
-                                : app.settings.userAgent,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          onTap: () =>
-                              _SettingsPageState._editUserAgent(context),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ]),
                   ),
-                ]),
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
