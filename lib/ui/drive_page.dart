@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../core/api/lanzou_client.dart';
 import '../core/api/models.dart';
 import '../core/app_controller.dart';
 import '../core/drive_cache.dart';
@@ -651,6 +652,12 @@ class _DrivePageState extends State<DrivePage>
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
+              leading: const Icon(Icons.drive_file_move_outline),
+              title: const Text('移动'),
+              subtitle: const Text('把选中的文件/文件夹移动到其他目录'),
+              onTap: () => Navigator.of(sheetContext).pop('move'),
+            ),
+            ListTile(
               leading: const Icon(Icons.edit_note),
               title: const Text('修改简介'),
               subtitle: const Text('批量设置选中的文件/文件夹简介'),
@@ -667,8 +674,54 @@ class _DrivePageState extends State<DrivePage>
       ),
     );
     if (!mounted) return;
+    if (action == 'move') await _batchMove();
     if (action == 'desc') await _batchSetDesc();
     if (action == 'pwd') await _batchSetPasswd();
+  }
+
+  Future<void> _batchMove() async {
+    final app = context.read<AppController>();
+    final client = app.client;
+    if (client == null) return;
+    final fileIds = _selectedFiles.toList();
+    final folderIds = _selectedFolders.toList();
+    if (fileIds.isEmpty && folderIds.isEmpty) return;
+    final target = await showDialog<_MoveTarget>(
+      context: context,
+      builder: (_) => _MoveDialog(
+        client: client,
+        excludeIds: {...fileIds, ...folderIds},
+      ),
+    );
+    if (target == null || !mounted) return;
+    var failed = 0;
+    for (final id in fileIds) {
+      try {
+        await client.moveFile(id, target.folderId);
+      } catch (_) {
+        failed += 1;
+      }
+    }
+    for (final id in folderIds) {
+      try {
+        await client.moveFolder(id, target.folderId);
+      } catch (_) {
+        failed += 1;
+      }
+    }
+    final count = fileIds.length + folderIds.length;
+    _exitSelection();
+    await _reloadAfterChange();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          failed == 0
+              ? '已移动 $count 个条目到「${target.name}」'
+              : '已移动 ${count - failed} 个条目，$failed 个失败',
+        ),
+      ),
+    );
   }
 
   Future<void> _batchSetDesc() async {
@@ -2105,6 +2158,158 @@ class _BatchAction extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _MoveTarget {
+  const _MoveTarget(this.folderId, this.name);
+
+  final String folderId;
+  final String name;
+}
+
+/// 移动目标文件夹选择弹窗：逐级浏览，点“移动到这里”确认。
+class _MoveDialog extends StatefulWidget {
+  const _MoveDialog({required this.client, required this.excludeIds});
+
+  final LanzouClient client;
+
+  /// 正在被移动的条目 id（避免把文件夹移进它自己）。
+  final Set<String> excludeIds;
+
+  @override
+  State<_MoveDialog> createState() => _MoveDialogState();
+}
+
+class _MoveDialogState extends State<_MoveDialog> {
+  String _folderId = '-1';
+  List<LzFolder> _folders = [];
+  List<PathNode> _path = [];
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load('-1');
+  }
+
+  Future<void> _load(String folderId) async {
+    setState(() {
+      _folderId = folderId;
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final result = await widget.client.listFolders(folderId);
+      if (!mounted) return;
+      setState(() {
+        _folders = result.folders;
+        _path = result.path;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = '$e';
+      });
+    }
+  }
+
+  String get _parentId =>
+      _path.length >= 2 ? _path[_path.length - 2].id : '-1';
+
+  String get _targetName => _path.isEmpty ? '根目录' : _path.last.name;
+
+  String get _targetPath => _path.isEmpty
+      ? '根目录'
+      : _path.map((p) => p.name).join(' / ');
+
+  @override
+  Widget build(BuildContext context) {
+    final visible =
+        _folders.where((f) => !widget.excludeIds.contains(f.id)).toList();
+    return AlertDialog(
+      title: const Text('选择目标文件夹'),
+      content: SizedBox(
+        width: 360,
+        height: 420,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                IconButton(
+                  tooltip: '上一级',
+                  onPressed: _path.isEmpty ? null : () => _load(_parentId),
+                  icon: const Icon(Icons.arrow_upward),
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    _targetName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+              ],
+            ),
+            ListTile(
+              leading: const Icon(Icons.drive_file_move_outline),
+              title: const Text('移动到这里'),
+              subtitle: Text(
+                _targetPath,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              onTap: () => Navigator.of(context)
+                  .pop(_MoveTarget(_folderId, _targetName)),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _error != null
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Text(
+                              '加载失败：$_error',
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        )
+                      : visible.isEmpty
+                          ? const Center(child: Text('这个文件夹里没有子文件夹'))
+                          : ListView.builder(
+                              itemCount: visible.length,
+                              itemBuilder: (context, index) {
+                                final folder = visible[index];
+                                return ListTile(
+                                  leading: const Icon(Icons.folder_outlined),
+                                  title: Text(
+                                    folder.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  trailing: const Icon(Icons.chevron_right),
+                                  onTap: () => _load(folder.id),
+                                );
+                              },
+                            ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('取消'),
+        ),
+      ],
     );
   }
 }

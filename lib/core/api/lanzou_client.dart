@@ -245,6 +245,30 @@ class LanzouClient {
     }
   }
 
+  /// 移动文件到目标文件夹（task 7）。
+  Future<void> moveFile(String fileId, String folderId) async {
+    final resp = await dio.post<String>(
+      '$apiBase/doupload.php',
+      data: {'task': 7, 'file_id': fileId, 'folder_id': folderId},
+      options: _options(),
+    );
+    if ('${_asMap(resp.data)['zt']}' != '1') {
+      throw const LanzouException('移动文件失败');
+    }
+  }
+
+  /// 移动文件夹到目标父目录（task 19）。
+  Future<void> moveFolder(String folderId, String parentId) async {
+    final resp = await dio.post<String>(
+      '$apiBase/doupload.php',
+      data: {'task': 19, 'folder_id': folderId, 'folder_id_bb': parentId},
+      options: _options(),
+    );
+    if ('${_asMap(resp.data)['zt']}' != '1') {
+      throw const LanzouException('移动文件夹失败');
+    }
+  }
+
   /// 修改文件简介（task 11）。
   /// 网页版文件夹信息页：直接读取该文件夹的统计信息。
   /// 解析失败返回 null，由调用方回退到遍历统计。
