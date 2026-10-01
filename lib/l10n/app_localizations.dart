@@ -275,7 +275,7 @@ abstract class AppLocalizations {
   /// No description provided for @myFavorites.
   ///
   /// In zh, this message translates to:
-  /// **'我的收藏'**
+  /// **'收藏内容'**
   String get myFavorites;
 
   /// No description provided for @favoritesHint.
@@ -449,7 +449,7 @@ abstract class AppLocalizations {
   /// No description provided for @webManagement.
   ///
   /// In zh, this message translates to:
-  /// **'网页版管理'**
+  /// **'网页版'**
   String get webManagement;
 
   /// No description provided for @webManagementSubtitle.
@@ -491,7 +491,7 @@ abstract class AppLocalizations {
   /// No description provided for @transfers.
   ///
   /// In zh, this message translates to:
-  /// **'传输管理'**
+  /// **'传输'**
   String get transfers;
 
   /// No description provided for @clearFinished.
@@ -605,7 +605,7 @@ abstract class AppLocalizations {
   /// No description provided for @openShare.
   ///
   /// In zh, this message translates to:
-  /// **'打开分享'**
+  /// **'打开链接'**
   String get openShare;
 
   /// No description provided for @shareLink.
@@ -1915,6 +1915,24 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'该分享已失效（已取消或删除）'**
   String get shareInvalid;
+
+  /// No description provided for @manage.
+  ///
+  /// In zh, this message translates to:
+  /// **'管理'**
+  String get manage;
+
+  /// No description provided for @logout.
+  ///
+  /// In zh, this message translates to:
+  /// **'退出登录'**
+  String get logout;
+
+  /// No description provided for @appName.
+  ///
+  /// In zh, this message translates to:
+  /// **'蓝云'**
+  String get appName;
 }
 
 class _AppLocalizationsDelegate

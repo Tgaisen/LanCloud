@@ -86,6 +86,10 @@ class _WebLoginPageState extends State<WebLoginPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.webLogin),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         actions: [
           TextButton(
             onPressed: _checking ? null : _tryCapture,

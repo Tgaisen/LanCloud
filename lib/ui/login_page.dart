@@ -66,7 +66,15 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     return Scaffold(
-      appBar: widget.firstRun ? null : AppBar(title: Text(l10n.addAccount)),
+      appBar: widget.firstRun
+          ? null
+          : AppBar(
+              title: Text(l10n.addAccount),
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [

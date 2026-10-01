@@ -58,7 +58,7 @@
   "removeCurrentAccount": "Remove current account",
   "settings": "Settings",
   "settingsSubtitle": "Appearance, behavior, connections and advanced overrides",
-  "webManagement": "Web management",
+  "webManagement": "Web version",
   "webManagementSubtitle": "Official features like changing your password or avatar",
   "recycleBin": "Recycle bin",
   "removeAccountTitle": "Remove account",
@@ -318,5 +318,8 @@
   "editInfo": "Edit info",
   "favoriteTitle": "Custom title",
   "favoriteTitleHint": "Leave empty to use the default name",
-  "shareInvalid": "This share is no longer available (canceled or deleted)"
+  "shareInvalid": "This share is no longer available (canceled or deleted)",
+  "manage": "Manage",
+  "logout": "Log out",
+  "appName": "LanCloud"
 }

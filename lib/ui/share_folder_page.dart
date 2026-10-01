@@ -216,7 +216,10 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
                 icon: const Icon(Icons.close),
                 onPressed: _toggleSelecting,
               )
-            : null,
+            : IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
         title: _selecting
             ? Text(l10n.selectedCount(_selected.length))
             : Text(folder.name),

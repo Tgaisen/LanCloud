@@ -7,26 +7,41 @@ import '../core/app_controller.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
-import 'share_folder_page.dart';
 import 'share_file_sheet.dart';
+import 'share_folder_page.dart';
 
-class SharePage extends StatefulWidget {
-  const SharePage({super.key, this.initialLink, this.initialPwd});
+/// 打开分享链接：以底部弹窗形式呈现。
+Future<void> openShareSheet(
+  BuildContext context, {
+  String? initialLink,
+  String? initialPwd,
+}) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (_) => ShareSheet(initialLink: initialLink, initialPwd: initialPwd),
+  );
+}
+
+class ShareSheet extends StatefulWidget {
+  const ShareSheet({super.key, this.initialLink, this.initialPwd});
 
   final String? initialLink;
   final String? initialPwd;
 
   @override
-  State<SharePage> createState() => _SharePageState();
+  State<ShareSheet> createState() => _ShareSheetState();
 }
 
-class _SharePageState extends State<SharePage> {
+class _ShareSheetState extends State<ShareSheet> {
   late final TextEditingController _linkController =
       TextEditingController(text: widget.initialLink ?? '');
   late final TextEditingController _pwdController =
       TextEditingController(text: widget.initialPwd ?? '');
   bool _loading = false;
   String? _error;
+  String? _pwdError;
   DirectFile? _file;
 
   @override
@@ -59,16 +74,19 @@ class _SharePageState extends State<SharePage> {
     setState(() {
       _loading = true;
       _error = null;
+      _pwdError = null;
       _file = null;
     });
     final client = context.read<AppController>().publicClient;
+    final navigator = Navigator.of(context);
     try {
       if (_looksLikeFolder) {
         final folder = await client.resolveFolderShare(link, pwd: pwd);
         if (!mounted) return;
         await _saveRecent('shareFolder', folder.name, link, pwd);
         if (!mounted) return;
-        await Navigator.of(context).push(
+        navigator.pop();
+        await navigator.push(
           MaterialPageRoute(
             builder: (_) => ShareFolderPage(
               folder: folder,
@@ -88,7 +106,8 @@ class _SharePageState extends State<SharePage> {
           if (!mounted) return;
           await _saveRecent('shareFolder', folder.name, link, pwd);
           if (!mounted) return;
-          await Navigator.of(context).push(
+          navigator.pop();
+          await navigator.push(
             MaterialPageRoute(
               builder: (_) => ShareFolderPage(
                 folder: folder,
@@ -100,7 +119,10 @@ class _SharePageState extends State<SharePage> {
         }
       }
     } on NeedPasswordException catch (e) {
-      setState(() => _error = e.message);
+      setState(() {
+        _error = null;
+        _pwdError = e.message;
+      });
     } on LanzouException catch (e) {
       setState(() => _error = e.message);
     } catch (e) {
@@ -110,7 +132,12 @@ class _SharePageState extends State<SharePage> {
     }
   }
 
-  Future<void> _saveRecent(String kind, String name, String link, String pwd) async {
+  Future<void> _saveRecent(
+    String kind,
+    String name,
+    String link,
+    String pwd,
+  ) async {
     final app = context.read<AppController>();
     await app.db.addRecent(
       account: app.activeUid ?? '',
@@ -124,60 +151,84 @@ class _SharePageState extends State<SharePage> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.openShare)),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          TextField(
-            controller: _linkController,
-            decoration: InputDecoration(
-              border: OutlineInputBorder(),
-              labelText: l10n.shareLink,
-              hintText: l10n.shareLinkHint,
-              prefixIcon: const Icon(Icons.link),
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _pwdController,
-            decoration: InputDecoration(
-              border: OutlineInputBorder(),
-              labelText: l10n.passwordOptional,
-              prefixIcon: const Icon(Icons.password),
-            ),
-          ),
-          const SizedBox(height: 16),
-          FilledButton.icon(
-            onPressed: _loading ? null : _parse,
-            icon: _loading
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.search),
-            label: Text(_loading ? l10n.resolving : l10n.resolve),
-          ),
-          if (_error != null) ...[
-            const SizedBox(height: 16),
-            Card(
-              color: Theme.of(context).colorScheme.errorContainer,
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Text(_error!),
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.only(bottom: bottomInset),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                l10n.openShare,
+                style: Theme.of(context).textTheme.titleLarge,
               ),
-            ),
-          ],
-          if (_file != null) ...[
-            const SizedBox(height: 16),
-            _FileResultCard(
-              file: _file!,
-              link: _linkController.text.trim(),
-              pwd: _pwdController.text.trim(),
-            ),
-          ],
-        ],
+              const SizedBox(height: 8),
+              TextField(
+                controller: _linkController,
+                decoration: InputDecoration(
+                  border: const OutlineInputBorder(),
+                  labelText: l10n.shareLink,
+                  hintText: l10n.shareLinkHint,
+                  prefixIcon: const Icon(Icons.link),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _pwdController,
+                decoration: InputDecoration(
+                  border: const OutlineInputBorder(),
+                  labelText: l10n.passwordOptional,
+                  prefixIcon: const Icon(Icons.password),
+                  errorText: _pwdError,
+                  suffixIcon: _pwdError == null
+                      ? null
+                      : Icon(
+                          Icons.cancel,
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                ),
+                onChanged: (_) {
+                  if (_pwdError != null) {
+                    setState(() => _pwdError = null);
+                  }
+                },
+              ),
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: _loading ? null : _parse,
+                icon: _loading
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.search),
+                label: Text(_loading ? l10n.resolving : l10n.resolve),
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 16),
+                Card(
+                  color: Theme.of(context).colorScheme.errorContainer,
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Text(_error!),
+                  ),
+                ),
+              ],
+              if (_file != null) ...[
+                const SizedBox(height: 16),
+                _FileResultCard(
+                  file: _file!,
+                  link: _linkController.text.trim(),
+                  pwd: _pwdController.text.trim(),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -225,4 +276,3 @@ class _FileResultCard extends StatelessWidget {
     );
   }
 }
-

@@ -204,7 +204,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Appearance, behavior, connections and advanced overrides';
 
   @override
-  String get webManagement => 'Web management';
+  String get webManagement => 'Web version';
 
   @override
   String get webManagementSubtitle =>
@@ -1016,4 +1016,13 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get shareInvalid =>
       'This share is no longer available (canceled or deleted)';
+
+  @override
+  String get manage => 'Manage';
+
+  @override
+  String get logout => 'Log out';
+
+  @override
+  String get appName => 'LanCloud';
 }

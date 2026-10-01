@@ -488,6 +488,10 @@ class _SettingsPageState extends State<SettingsPage> {
                   floating: app.settings.hideTopBar,
                   snap: false,
                   pinned: !app.settings.hideTopBar,
+                  leading: IconButton(
+                    icon: const Icon(Icons.arrow_back),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
                   backgroundColor: Color.lerp(
                     scheme.surface,
                     scheme.surfaceContainerHighest,
@@ -997,6 +1001,10 @@ class _AdvancedPage extends StatelessWidget {
                   floating: app.settings.hideTopBar,
                   snap: false,
                   pinned: !app.settings.hideTopBar,
+                  leading: IconButton(
+                    icon: const Icon(Icons.arrow_back),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
                   backgroundColor: Color.lerp(
                     scheme.surface,
                     scheme.surfaceContainerHighest,

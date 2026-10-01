@@ -19,6 +19,7 @@ class Icons {
   static const IconData article_outlined = Symbols.article;
   static const IconData badge_outlined = Symbols.badge;
   static const IconData cached_outlined = Symbols.cached;
+  static const IconData cancel = Symbols.cancel;
   static const IconData check = Symbols.check;
   static const IconData check_circle = Symbols.check_circle;
   static const IconData chevron_right = Symbols.chevron_right;
@@ -62,6 +63,7 @@ class Icons {
   static const IconData lock_outline = Symbols.lock;
   static const IconData notifications_outlined = Symbols.notifications;
   static const IconData login = Symbols.login;
+  static const IconData logout = Symbols.logout;
   static const IconData more_horiz = Symbols.more_horiz;
   static const IconData more_vert = Symbols.more_vert;
   static const IconData movie_outlined = Symbols.movie;

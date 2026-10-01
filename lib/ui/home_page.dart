@@ -170,12 +170,17 @@ class _HomePageState extends State<HomePage>
       case 'file':
         await _showOwnFileActions(context, ref, name);
       case 'shareFile':
-      case 'shareFolder':
-        await Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => SharePage(initialLink: ref, initialPwd: pwd),
+        await showModalBottomSheet<void>(
+          context: context,
+          showDragHandle: true,
+          builder: (_) => ShareFileInfoSheet(
+            name: name,
+            url: ref,
+            pwd: pwd,
           ),
         );
+      case 'shareFolder':
+        await openShareSheet(context, initialLink: ref, initialPwd: pwd);
     }
     if (mounted) _load();
   }
@@ -274,14 +279,12 @@ class _HomePageState extends State<HomePage>
                 ScrollTint.of(context),
               ),
               scrolledUnderElevation: 0,
-              title: const Text('LanCloud'),
+              title: Text(l10n.appName),
               actions: [
                 IconButton(
                   tooltip: l10n.openShareLink,
                   icon: const Icon(Icons.link),
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const SharePage()),
-                  ),
+                  onPressed: () => openShareSheet(context),
                 ),
                 IconButton(
                   tooltip: l10n.scanComingSoonTooltip,
@@ -300,11 +303,7 @@ class _HomePageState extends State<HomePage>
                     children: [
                       Expanded(
                         child: FilledButton.icon(
-                          onPressed: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const SharePage(),
-                            ),
-                          ),
+                          onPressed: () => openShareSheet(context),
                           icon: const Icon(Icons.open_in_new),
                           label: Text(l10n.openShareLink),
                         ),

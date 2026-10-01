@@ -2,6 +2,7 @@ import 'package:flutter/material.dart' hide Icons;
 import 'package:provider/provider.dart';
 
 import '../core/app_controller.dart';
+import '../core/data/account_store.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
@@ -57,9 +58,7 @@ class ProfilePage extends StatelessWidget {
                   children: [
                     ListTile(
                       leading: CircleAvatar(
-                        child: Text(
-                          uid.isEmpty ? '?' : uid.substring(uid.length - 1),
-                        ),
+                        child: Text(_avatarInitial(account, uid)),
                       ),
                       title: Text(
                         account == null
@@ -71,23 +70,8 @@ class ProfilePage extends StatelessWidget {
                       subtitle: Text(l10n.uidLabel(uid)),
                       trailing: FilledButton.tonal(
                         onPressed: () => _showAccountSwitcher(context),
-                        child: Text(l10n.switchAccountShort),
+                        child: Text(l10n.manage),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                SegmentedList(
-                  children: [
-                    ListTile(
-                      leading: const Icon(Icons.switch_account_outlined),
-                      title: Text(l10n.switchAccount),
-                      onTap: () => _showAccountSwitcher(context),
-                    ),
-                    ListTile(
-                      leading: const Icon(Icons.delete_outline),
-                      title: Text(l10n.removeCurrentAccount),
-                      onTap: () => _removeAccount(context, uid),
                     ),
                   ],
                 ),
@@ -97,7 +81,6 @@ class ProfilePage extends StatelessWidget {
                     ListTile(
                       leading: const Icon(Icons.public),
                       title: Text(l10n.webManagement),
-                      subtitle: Text(l10n.webManagementSubtitle),
                       trailing: const Icon(Icons.open_in_new),
                       onTap: () => _openWeb(
                         context,
@@ -123,7 +106,6 @@ class ProfilePage extends StatelessWidget {
                     ListTile(
                       leading: const Icon(Icons.settings_outlined),
                       title: Text(l10n.settings),
-                      subtitle: Text(l10n.settingsSubtitle),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(
@@ -134,12 +116,19 @@ class ProfilePage extends StatelessWidget {
                     ListTile(
                       leading: const Icon(Icons.info_outline),
                       title: Text(l10n.about),
-                      subtitle: Text(l10n.aboutSubtitle),
-                      onTap: () => showAboutDialog(
+                      onTap: () => showDialog<void>(
                         context: context,
-                        applicationName: 'LanCloud',
-                        applicationVersion: '0.8.9',
-                        children: [Text(l10n.aboutText)],
+                        builder: (dialogContext) => AlertDialog(
+                          title: Text('${l10n.appName} 0.8.9'),
+                          content: Text(l10n.aboutText),
+                          actions: [
+                            TextButton(
+                              onPressed: () =>
+                                  Navigator.of(dialogContext).pop(),
+                              child: Text(l10n.close),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
@@ -150,6 +139,16 @@ class ProfilePage extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _avatarInitial(Account? account, String uid) {
+    final name = account == null
+        ? ''
+        : account.nickname.isNotEmpty
+            ? account.nickname
+            : uid;
+    if (name.isEmpty) return '?';
+    return name.substring(0, 1);
   }
 
   Future<void> _showAccountSwitcher(BuildContext context) async {
@@ -187,6 +186,16 @@ class ProfilePage extends StatelessWidget {
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const LoginPage()),
                 );
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.logout),
+              title: Text(context.l10n.logout),
+              onTap: () {
+                final uid = app.activeUid;
+                Navigator.of(sheetContext).pop();
+                if (uid != null) _removeAccount(context, uid);
               },
             ),
           ],

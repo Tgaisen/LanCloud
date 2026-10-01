@@ -107,7 +107,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get myDrive => '我的网盘';
 
   @override
-  String get myFavorites => '我的收藏';
+  String get myFavorites => '收藏内容';
 
   @override
   String get favoritesHint => '收藏的文件和分享会出现在这里';
@@ -197,7 +197,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsSubtitle => '外观、行为、连接与高级覆盖项';
 
   @override
-  String get webManagement => '网页版管理';
+  String get webManagement => '网页版';
 
   @override
   String get webManagementSubtitle => '修改密码、头像等官方功能';
@@ -220,7 +220,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get remove => '移除';
 
   @override
-  String get transfers => '传输管理';
+  String get transfers => '传输';
 
   @override
   String get clearFinished => '清除已完成';
@@ -279,7 +279,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get addedToFavorites => '已加入收藏';
 
   @override
-  String get openShare => '打开分享';
+  String get openShare => '打开链接';
 
   @override
   String get shareLink => '分享链接';
@@ -986,4 +986,13 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get shareInvalid => '该分享已失效（已取消或删除）';
+
+  @override
+  String get manage => '管理';
+
+  @override
+  String get logout => '退出登录';
+
+  @override
+  String get appName => '蓝云';
 }
