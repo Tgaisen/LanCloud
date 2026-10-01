@@ -259,7 +259,7 @@ class _RootShellState extends State<RootShell> {
                       : barHeight,
                   child: ClipRect(
                     child: OverflowBox(
-                      alignment: Alignment.bottomCenter,
+                      alignment: Alignment.topCenter,
                       maxHeight: barHeight,
                       child: child,
                     ),
