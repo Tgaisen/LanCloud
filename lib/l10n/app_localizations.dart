@@ -842,6 +842,24 @@ abstract class AppLocalizations {
   /// **'滑动 手势 tab'**
   String get swipeTabsKeywords;
 
+  /// No description provided for @transitionAnimations.
+  ///
+  /// In zh, this message translates to:
+  /// **'过渡动画'**
+  String get transitionAnimations;
+
+  /// No description provided for @transitionAnimationsSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'目录切换与列表出现时的淡入动画'**
+  String get transitionAnimationsSubtitle;
+
+  /// No description provided for @transitionAnimationsKeywords.
+  ///
+  /// In zh, this message translates to:
+  /// **'动画 过渡 淡入 目录 列表'**
+  String get transitionAnimationsKeywords;
+
   /// No description provided for @downloadDir.
   ///
   /// In zh, this message translates to:

@@ -23,6 +23,7 @@ class SettingsStore {
   static const _keyHideTopBar = 'hide_top_bar';
   static const _keyHideBottomBar = 'hide_bottom_bar';
   static const _keyFloatingNav = 'floating_nav_bar';
+  static const _keyTransitions = 'transition_animations';
 
   String? downloadDir;
   String language = 'system';
@@ -46,6 +47,8 @@ class SettingsStore {
   bool hideTopBar = false;
   bool hideBottomBar = false;
   bool floatingNavBar = false;
+  /// 目录切换与列表出现动画，关闭可减少低端设备掉帧。
+  bool transitionAnimations = true;
 
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -78,6 +81,7 @@ class SettingsStore {
     hideTopBar = prefs.getBool(_keyHideTopBar) ?? hideTopBar;
     hideBottomBar = prefs.getBool(_keyHideBottomBar) ?? hideBottomBar;
     floatingNavBar = prefs.getBool(_keyFloatingNav) ?? false;
+    transitionAnimations = prefs.getBool(_keyTransitions) ?? true;
   }
 
   Future<void> setHideTopBar(bool value) async {
@@ -96,6 +100,12 @@ class SettingsStore {
     floatingNavBar = value;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyFloatingNav, value);
+  }
+
+  Future<void> setTransitionAnimations(bool value) async {
+    transitionAnimations = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyTransitions, value);
   }
 
   Future<void> setSwipeTabs(bool value) async {

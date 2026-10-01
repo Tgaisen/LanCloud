@@ -169,6 +169,20 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
       ),
       _Entry(
+        id: 'transition_animations',
+        title: l10n.transitionAnimations,
+        subtitle: l10n.transitionAnimationsSubtitle,
+        keywords: l10n.transitionAnimationsKeywords.split(' '),
+        category: 'appearance',
+        build: (context, app) => SwitchListTile(
+          secondary: const Icon(Icons.animation),
+          title: Text(context.l10n.transitionAnimations),
+          subtitle: Text(context.l10n.transitionAnimationsSubtitle),
+          value: app.settings.transitionAnimations,
+          onChanged: (value) => app.setTransitionAnimations(value),
+        ),
+      ),
+      _Entry(
         id: 'download_dir',
         title: l10n.downloadDir,
         subtitle: app.settings.downloadDir ?? l10n.defaultDownloadDir,

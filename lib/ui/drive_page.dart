@@ -1693,6 +1693,8 @@ class _DrivePageState extends State<DrivePage>
       ];
     }
     final showFolders = _filter.isEmpty || folders.isNotEmpty;
+    final animate =
+        context.read<AppController>().settings.transitionAnimations;
     return [
       if (showFolders && folders.isNotEmpty)
         if (grid)
@@ -1708,12 +1710,16 @@ class _DrivePageState extends State<DrivePage>
               itemCount: folders.length,
               itemBuilder: (context, index) {
                 final folder = folders[index];
-                return _FolderTile(
-                  folder: folder,
-                  selected: _selectedFolders.contains(folder.id),
-                  onTap: () => _openFolder(folder),
-                  onMenu: () => _folderActions(folder),
-                  onLongPress: () => _enterSelection(folderId: folder.id),
+                return _AnimatedListItem(
+                  index: index,
+                  enabled: animate,
+                  child: _FolderTile(
+                    folder: folder,
+                    selected: _selectedFolders.contains(folder.id),
+                    onTap: () => _openFolder(folder),
+                    onMenu: () => _folderActions(folder),
+                    onLongPress: () => _enterSelection(folderId: folder.id),
+                  ),
                 );
               },
             ),
@@ -1723,12 +1729,16 @@ class _DrivePageState extends State<DrivePage>
             itemCount: folders.length,
             itemBuilder: (context, index) {
               final folder = folders[index];
-              return _FolderRow(
-                folder: folder,
-                selected: _selectedFolders.contains(folder.id),
-                onTap: () => _openFolder(folder),
-                onMenu: () => _folderActions(folder),
-                onLongPress: () => _enterSelection(folderId: folder.id),
+              return _AnimatedListItem(
+                index: index,
+                enabled: animate,
+                child: _FolderRow(
+                  folder: folder,
+                  selected: _selectedFolders.contains(folder.id),
+                  onTap: () => _openFolder(folder),
+                  onMenu: () => _folderActions(folder),
+                  onLongPress: () => _enterSelection(folderId: folder.id),
+                ),
               );
             },
           ),
@@ -1746,13 +1756,17 @@ class _DrivePageState extends State<DrivePage>
               itemCount: files.length,
               itemBuilder: (context, index) {
                 final file = files[index];
-                return _FileTile(
-                  file: file,
-                  selected: _selectedFiles.contains(file.id),
-                  downloaded: _downloaded.contains(file.id),
-                  onTap: () => _fileActions(file),
-                  onMenu: () => _fileMenuSheet(file),
-                  onLongPress: () => _enterSelection(fileId: file.id),
+                return _AnimatedListItem(
+                  index: index,
+                  enabled: animate,
+                  child: _FileTile(
+                    file: file,
+                    selected: _selectedFiles.contains(file.id),
+                    downloaded: _downloaded.contains(file.id),
+                    onTap: () => _fileActions(file),
+                    onMenu: () => _fileMenuSheet(file),
+                    onLongPress: () => _enterSelection(fileId: file.id),
+                  ),
                 );
               },
             ),
@@ -1762,13 +1776,17 @@ class _DrivePageState extends State<DrivePage>
             itemCount: files.length,
             itemBuilder: (context, index) {
               final file = files[index];
-              return _FileRow(
-                file: file,
-                selected: _selectedFiles.contains(file.id),
-                downloaded: _downloaded.contains(file.id),
-                onTap: () => _fileActions(file),
-                onMenu: () => _fileMenuSheet(file),
-                onLongPress: () => _enterSelection(fileId: file.id),
+              return _AnimatedListItem(
+                index: index,
+                enabled: animate,
+                child: _FileRow(
+                  file: file,
+                  selected: _selectedFiles.contains(file.id),
+                  downloaded: _downloaded.contains(file.id),
+                  onTap: () => _fileActions(file),
+                  onMenu: () => _fileMenuSheet(file),
+                  onLongPress: () => _enterSelection(fileId: file.id),
+                ),
               );
             },
           ),
@@ -1794,6 +1812,41 @@ class _DrivePageState extends State<DrivePage>
         ),
       ),
     ];
+  }
+}
+
+/// 列表出现动画：按 index 错峰淡入并轻微上移；开关关闭时直接渲染。
+class _AnimatedListItem extends StatelessWidget {
+  const _AnimatedListItem({
+    required this.index,
+    required this.enabled,
+    required this.child,
+  });
+
+  final int index;
+  final bool enabled;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!enabled) return child;
+    const total = 440.0;
+    final delay = (index.clamp(0, 8) * 26).toDouble();
+    final begin = (delay / total).clamp(0.0, 1.0);
+    final end = ((delay + 232) / total).clamp(begin, 1.0);
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 440),
+      curve: Interval(begin, end, curve: Curves.easeOutCubic),
+      builder: (context, t, child) => Opacity(
+        opacity: t,
+        child: Transform.translate(
+          offset: Offset(0, 10 * (1 - t)),
+          child: child,
+        ),
+      ),
+      child: child,
+    );
   }
 }
 

@@ -117,6 +117,11 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setTransitionAnimations(bool value) async {
+    await settings.setTransitionAnimations(value);
+    notifyListeners();
+  }
+
   Future<void> setMaxUploads(int value) async {
     await settings.setMaxUploads(value);
     notifyListeners();

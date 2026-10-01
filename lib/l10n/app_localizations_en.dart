@@ -412,6 +412,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get swipeTabsKeywords => 'swipe gesture tab';
 
   @override
+  String get transitionAnimations => 'Transition animations';
+
+  @override
+  String get transitionAnimationsSubtitle =>
+      'Fade in when switching folders or loading lists';
+
+  @override
+  String get transitionAnimationsKeywords =>
+      'animation transition fade folder list';
+
+  @override
   String get downloadDir => 'Download folder';
 
   @override

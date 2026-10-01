@@ -401,6 +401,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get swipeTabsKeywords => '滑动 手势 tab';
 
   @override
+  String get transitionAnimations => '过渡动画';
+
+  @override
+  String get transitionAnimationsSubtitle => '目录切换与列表出现时的淡入动画';
+
+  @override
+  String get transitionAnimationsKeywords => '动画 过渡 淡入 目录 列表';
+
+  @override
   String get downloadDir => '下载目录';
 
   @override
