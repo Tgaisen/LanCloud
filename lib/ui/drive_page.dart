@@ -1,5 +1,5 @@
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Icons;
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -10,6 +10,7 @@ import '../core/app_controller.dart';
 import '../core/drive_cache.dart';
 import '../core/transfer/transfer_manager.dart';
 import '../l10n/l10n.dart';
+import 'app_icons.dart';
 import 'common.dart';
 
 const int kFreeUploadLimit = 100 * 1024 * 1024;
@@ -56,6 +57,8 @@ class _DrivePageState extends State<DrivePage>
   String? _error;
   bool _searching = false;
   String _filter = '';
+  String _sortMode = 'name';
+  final Map<String, double> _folderOffsets = {};
   bool _selecting = false;
   final Set<String> _selectedFiles = {};
   final Set<String> _selectedFolders = {};
@@ -252,9 +255,20 @@ class _DrivePageState extends State<DrivePage>
 
   List<LzFile> get _visibleFiles {
     final query = _filter.toLowerCase();
-    return _files
+    final list = _files
         .where((f) => query.isEmpty || f.name.toLowerCase().contains(query))
         .toList();
+    switch (_sortMode) {
+      case 'size':
+        list.sort(
+          (a, b) => lzSizeToBytes(b.size).compareTo(lzSizeToBytes(a.size)),
+        );
+      case 'time':
+        list.sort((a, b) => b.time.compareTo(a.time));
+      default:
+        list.sort((a, b) => a.name.compareTo(b.name));
+    }
+    return list;
   }
 
   void _enterSelection({String? fileId, String? folderId}) {
@@ -333,6 +347,7 @@ class _DrivePageState extends State<DrivePage>
       name: folder.name,
       ref: folder.id,
     );
+    _rememberFolderOffset();
     setState(() {
       _folderId = folder.id;
       _path = [..._path, PathNode(id: folder.id, name: folder.name)];
@@ -340,11 +355,12 @@ class _DrivePageState extends State<DrivePage>
       _searchController.clear();
     });
     await _load();
-    if (_scroll.hasClients) _scroll.jumpTo(0);
+    _restoreFolderOffset(folder.id);
   }
 
   Future<void> _jumpTo(int index) async {
     final newPath = index < 0 ? <PathNode>[] : _path.sublist(0, index + 1);
+    _rememberFolderOffset();
     setState(() {
       _path = newPath;
       _folderId = newPath.isEmpty ? '-1' : newPath.last.id;
@@ -352,7 +368,23 @@ class _DrivePageState extends State<DrivePage>
       _searchController.clear();
     });
     await _load();
-    if (_scroll.hasClients) _scroll.jumpTo(0);
+    _restoreFolderOffset(_folderId);
+  }
+
+  void _rememberFolderOffset() {
+    if (_scroll.hasClients) {
+      _folderOffsets[_folderId] = _scroll.position.pixels;
+    }
+  }
+
+  void _restoreFolderOffset(String folderId) {
+    final target = _folderOffsets[folderId] ?? 0;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _scroll.hasClients) {
+        final max = _scroll.position.maxScrollExtent;
+        _scroll.jumpTo(target.clamp(0.0, max));
+      }
+    });
   }
 
   void _scrollToTop() {
@@ -363,6 +395,129 @@ class _DrivePageState extends State<DrivePage>
         curve: Curves.easeOut,
       );
     }
+  }
+
+  /// 网盘菜单：底部弹窗承载布局、排序与列表操作。
+  Future<void> _showDriveMenu() async {
+    final app = context.read<AppController>();
+    var grid = app.settings.gridView;
+    var sort = _sortMode;
+    final isRoot = _folderId == '-1';
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  context.l10n.layout,
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: SegmentedButton<String>(
+                    segments: [
+                      ButtonSegment(
+                        value: 'grid',
+                        icon: const Icon(Icons.grid_view),
+                        label: Text(context.l10n.grid),
+                      ),
+                      ButtonSegment(
+                        value: 'list',
+                        icon: const Icon(Icons.view_list),
+                        label: Text(context.l10n.list),
+                      ),
+                    ],
+                    selected: {grid ? 'grid' : 'list'},
+                    showSelectedIcon: false,
+                    onSelectionChanged: (values) {
+                      final value = values.first;
+                      setSheetState(() => grid = value == 'grid');
+                      app.setGridView(grid);
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  context.l10n.sort,
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: SegmentedButton<String>(
+                    segments: [
+                      ButtonSegment(
+                        value: 'name',
+                        label: Text(context.l10n.sortName),
+                      ),
+                      ButtonSegment(
+                        value: 'size',
+                        label: Text(context.l10n.sortSize),
+                      ),
+                      ButtonSegment(
+                        value: 'time',
+                        label: Text(context.l10n.sortTime),
+                      ),
+                    ],
+                    selected: {sort},
+                    showSelectedIcon: false,
+                    onSelectionChanged: (values) {
+                      setSheetState(() => sort = values.first);
+                      setState(() => _sortMode = values.first);
+                    },
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ListTile(
+                  leading: const Icon(Icons.select_all),
+                  title: Text(context.l10n.multiSelect),
+                  onTap: () {
+                    Navigator.of(sheetContext).pop();
+                    _enterSelection();
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.refresh),
+                  title: Text(context.l10n.refresh),
+                  onTap: () {
+                    Navigator.of(sheetContext).pop();
+                    _reloadAfterChange();
+                  },
+                ),
+                if (!isRoot)
+                  ListTile(
+                    leading: const Icon(Icons.info_outline),
+                    title: Text(context.l10n.folderProperties),
+                    onTap: () {
+                      Navigator.of(sheetContext).pop();
+                      showModalBottomSheet<void>(
+                        context: context,
+                        showDragHandle: true,
+                        builder: (_) => _FolderInfoSheet(
+                          folder: LzFolder(
+                            id: _folderId,
+                            name: _path.last.name,
+                            desc: '',
+                          ),
+                          page: this,
+                          showOpen: false,
+                        ),
+                      );
+                    },
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _showAddMenu() async {
@@ -1474,7 +1629,6 @@ class _DrivePageState extends State<DrivePage>
   /// 顶栏是第一个 sliver，路径栏作为它的 bottom 组成一个整体：
   /// 和其它视图相比只是更高、多了一行路径，浮动/钉住逻辑完全一致。
   Widget _buildBody(bool grid, {required bool hideTopBar}) {
-    final app = context.read<AppController>();
     return RefreshIndicator(
       onRefresh: _reloadAfterChange,
       child: CustomScrollView(
@@ -1531,65 +1685,10 @@ class _DrivePageState extends State<DrivePage>
                       icon: const Icon(Icons.search),
                       onPressed: () => setState(() => _searching = true),
                     ),
-                    PopupMenuButton<String>(
+                    IconButton(
                       tooltip: context.l10n.menu,
                       icon: const Icon(Icons.more_vert),
-                      onSelected: (value) {
-                        switch (value) {
-                          case 'sort-name':
-                            setState(
-                              () => _files.sort(
-                                (a, b) => a.name.compareTo(b.name),
-                              ),
-                            );
-                          case 'sort-size':
-                            setState(
-                              () => _files.sort(
-                                (a, b) => lzSizeToBytes(b.size)
-                                    .compareTo(lzSizeToBytes(a.size)),
-                              ),
-                            );
-                          case 'sort-time':
-                            setState(
-                              () => _files.sort(
-                                (a, b) => b.time.compareTo(a.time),
-                              ),
-                            );
-                          case 'view':
-                            app.setGridView(!grid);
-                          case 'select':
-                            _enterSelection();
-                          case 'refresh':
-                            _reloadAfterChange();
-                        }
-                      },
-                      itemBuilder: (_) => [
-                        PopupMenuItem(
-                          value: 'sort-name',
-                          child: Text(context.l10n.sortByName),
-                        ),
-                        PopupMenuItem(
-                          value: 'sort-size',
-                          child: Text(context.l10n.sortBySize),
-                        ),
-                        PopupMenuItem(
-                          value: 'sort-time',
-                          child: Text(context.l10n.sortByTime),
-                        ),
-                        const PopupMenuDivider(),
-                        PopupMenuItem(
-                          value: 'view',
-                          child: Text(context.l10n.toggleLayout),
-                        ),
-                        PopupMenuItem(
-                          value: 'select',
-                          child: Text(context.l10n.multiSelect),
-                        ),
-                        PopupMenuItem(
-                          value: 'refresh',
-                          child: Text(context.l10n.refresh),
-                        ),
-                      ],
+                      onPressed: _showDriveMenu,
                     ),
                   ],
             bottom: PreferredSize(
@@ -2078,10 +2177,16 @@ class _FileRow extends StatelessWidget {
 
 /// 文件夹属性弹窗：先展示缓存/占位内容，后台拉取完整简介与统计后渐入更新。
 class _FolderInfoSheet extends StatefulWidget {
-  const _FolderInfoSheet({required this.folder, required this.page});
+  const _FolderInfoSheet({
+    required this.folder,
+    required this.page,
+    this.showOpen = true,
+  });
 
   final LzFolder folder;
   final _DrivePageState page;
+  /// 当前目录查看属性时隐藏“打开文件夹”（自己打开自己没有意义）。
+  final bool showOpen;
 
   @override
   State<_FolderInfoSheet> createState() => _FolderInfoSheetState();
@@ -2169,14 +2274,15 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
             desc: _desc ?? folder.desc,
           ),
           const Divider(height: 1),
-          ListTile(
-            leading: const Icon(Icons.folder_open),
-            title: Text(context.l10n.openFolder),
-            onTap: () {
-              Navigator.of(context).pop();
-              page._openFolder(folder);
-            },
-          ),
+          if (widget.showOpen)
+            ListTile(
+              leading: const Icon(Icons.folder_open),
+              title: Text(context.l10n.openFolder),
+              onTap: () {
+                Navigator.of(context).pop();
+                page._openFolder(folder);
+              },
+            ),
           ListTile(
             leading: const Icon(Icons.link_outlined),
             title: Text(context.l10n.copyLink),

@@ -1,9 +1,10 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Icons;
 import 'package:provider/provider.dart';
 
 import '../core/api/lanzou_client.dart';
 import '../core/app_controller.dart';
 import '../l10n/l10n.dart';
+import 'app_icons.dart';
 import 'web_login_page.dart';
 
 class LoginPage extends StatefulWidget {

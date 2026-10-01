@@ -1,10 +1,11 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Icons;
 import 'package:provider/provider.dart';
 
 import '../core/app_controller.dart';
 import '../core/data/app_db.dart';
 import '../core/transfer/transfer_manager.dart';
 import '../l10n/l10n.dart';
+import 'app_icons.dart';
 import 'common.dart';
 import 'drive_page.dart';
 import 'scroll_tint.dart';

@@ -1,9 +1,10 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Icons;
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:provider/provider.dart';
 
 import '../core/api/lanzou_client.dart';
 import '../core/app_controller.dart';
+import 'app_icons.dart';
 import '../l10n/l10n.dart';
 
 /// 用内嵌浏览器完成登录，登录成功后读取系统 Cookie 并保存账号。

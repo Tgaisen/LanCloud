@@ -817,6 +817,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get menu => 'Menu';
 
   @override
+  String get layout => 'Layout';
+
+  @override
+  String get grid => 'Grid';
+
+  @override
+  String get list => 'List';
+
+  @override
+  String get sort => 'Sort';
+
+  @override
+  String get sortName => 'Name';
+
+  @override
+  String get sortSize => 'Size';
+
+  @override
+  String get sortTime => 'Time';
+
+  @override
+  String get folderProperties => 'Folder details';
+
+  @override
   String get sortByName => 'Sort by name';
 
   @override

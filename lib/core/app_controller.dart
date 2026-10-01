@@ -42,6 +42,7 @@ class AppController extends ChangeNotifier {
     LanzouClient.uploadBase = _withScheme(settings.uploadDomain) ??
         'https://up.woozooo.com';
     LanzouClient.shareDomain = settings.shareDomain;
+    await driveCache.loadFromDisk();
     ready = true;
     notifyListeners();
   }

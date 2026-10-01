@@ -26,6 +26,16 @@ class LzFile {
         hasPwd: '${j['onof'] ?? 0}' == '1',
         hasDes: '${j['is_des'] ?? 0}' == '1',
       );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'time': time,
+        'size': size,
+        'downs': downs,
+        'hasPwd': hasPwd,
+        'hasDes': hasDes,
+      };
 }
 
 class LzFolder {
@@ -47,6 +57,13 @@ class LzFolder {
         desc: '${j['folder_des'] ?? ''}'.replaceAll('[', '').replaceAll(']', '').trim(),
         hasPwd: '${j['onof'] ?? 0}' == '1',
       );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'desc': desc,
+        'hasPwd': hasPwd,
+      };
 }
 
 class PathNode {
@@ -54,6 +71,11 @@ class PathNode {
 
   final String id;
   final String name;
+
+  Map<String, dynamic> toJson() => {'id': id, 'name': name};
+
+  factory PathNode.fromJson(Map<String, dynamic> j) =>
+      PathNode(id: '${j['id']}', name: '${j['name']}');
 }
 
 class ShareInfo {

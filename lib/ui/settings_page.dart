@@ -1,9 +1,10 @@
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Icons;
 import 'package:provider/provider.dart';
 
 import '../core/app_controller.dart';
 import '../l10n/l10n.dart';
+import 'app_icons.dart';
 import 'scroll_tint.dart';
 
 /// 独立设置页：分类卡片 + 高级覆盖项二级页 + 全量搜索。

@@ -1,9 +1,10 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Icons;
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../core/app_controller.dart';
 import '../l10n/l10n.dart';
+import 'app_icons.dart';
 import 'login_page.dart';
 import 'scroll_tint.dart';
 import 'settings_page.dart';

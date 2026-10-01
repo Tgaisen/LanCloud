@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Icons;
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
@@ -11,6 +11,7 @@ import 'ui/login_page.dart';
 import 'ui/profile_page.dart';
 import 'ui/scroll_tint.dart';
 import 'ui/transfers_page.dart';
+import 'ui/app_icons.dart';
 
 class LanCloudApp extends StatelessWidget {
   const LanCloudApp({super.key});
@@ -94,8 +95,25 @@ class _RootShellState extends State<RootShell> {
 
   int _index = 0;
   bool _programmaticJump = false;
+  Size? _lastSize;
   late final PageController _pageController =
       PageController(initialPage: _index);
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // 旋转后视口尺寸变化，PageView 的像素偏移会对应到错误的页，
+    // 这里在布局结束后校正回当前标签，避免“底栏指向原视图但内容回到首页”。
+    final size = MediaQuery.sizeOf(context);
+    if (_lastSize != null && _lastSize != size) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _pageController.hasClients) {
+          _pageController.jumpToPage(_index);
+        }
+      });
+    }
+    _lastSize = size;
+  }
 
   @override
   void dispose() {

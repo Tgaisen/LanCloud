@@ -49,6 +49,7 @@ dependencies:
   url_launcher: ^6.3.2
   flutter_inappwebview: 6.2.0-beta.3
   qr_flutter: ^4.1.0
+  material_symbols_icons: ^4.2960.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

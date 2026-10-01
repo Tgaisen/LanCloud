@@ -793,6 +793,30 @@ class AppLocalizationsZh extends AppLocalizations {
   String get menu => '菜单';
 
   @override
+  String get layout => '布局';
+
+  @override
+  String get grid => '网格';
+
+  @override
+  String get list => '列表';
+
+  @override
+  String get sort => '排序';
+
+  @override
+  String get sortName => '名称';
+
+  @override
+  String get sortSize => '大小';
+
+  @override
+  String get sortTime => '时间';
+
+  @override
+  String get folderProperties => '目录属性';
+
+  @override
   String get sortByName => '按名称排序';
 
   @override

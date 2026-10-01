@@ -1550,6 +1550,54 @@ abstract class AppLocalizations {
   /// **'菜单'**
   String get menu;
 
+  /// No description provided for @layout.
+  ///
+  /// In zh, this message translates to:
+  /// **'布局'**
+  String get layout;
+
+  /// No description provided for @grid.
+  ///
+  /// In zh, this message translates to:
+  /// **'网格'**
+  String get grid;
+
+  /// No description provided for @list.
+  ///
+  /// In zh, this message translates to:
+  /// **'列表'**
+  String get list;
+
+  /// No description provided for @sort.
+  ///
+  /// In zh, this message translates to:
+  /// **'排序'**
+  String get sort;
+
+  /// No description provided for @sortName.
+  ///
+  /// In zh, this message translates to:
+  /// **'名称'**
+  String get sortName;
+
+  /// No description provided for @sortSize.
+  ///
+  /// In zh, this message translates to:
+  /// **'大小'**
+  String get sortSize;
+
+  /// No description provided for @sortTime.
+  ///
+  /// In zh, this message translates to:
+  /// **'时间'**
+  String get sortTime;
+
+  /// No description provided for @folderProperties.
+  ///
+  /// In zh, this message translates to:
+  /// **'目录属性'**
+  String get folderProperties;
+
   /// No description provided for @sortByName.
   ///
   /// In zh, this message translates to:
