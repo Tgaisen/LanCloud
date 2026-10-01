@@ -336,6 +336,47 @@ class LanzouClient {
     }
   }
 
+  /// 修改文件夹简介：先 task 18 取当前名称，再 task 4 保存。
+  Future<void> setFolderDesc(String folderId, String desc) async {
+    final infoResp = await dio.post<String>(
+      '$apiBase/doupload.php',
+      data: {'task': 18, 'folder_id': folderId},
+      options: _options(),
+    );
+    final info = (_asMap(infoResp.data)['info'] as Map).cast<String, dynamic>();
+    final name = '${info['name'] ?? ''}';
+    final resp = await dio.post<String>(
+      '$apiBase/doupload.php',
+      data: {
+        'task': 4,
+        'folder_id': folderId,
+        'folder_name': name,
+        'folder_description': desc,
+      },
+      options: _options(),
+    );
+    if ('${_asMap(resp.data)['zt']}' != '1') {
+      throw const LanzouException('修改文件夹简介失败');
+    }
+  }
+
+  /// 设置文件夹访问密码（task 16，免费账号只能设置不能关闭）。
+  Future<void> setFolderPasswd(String folderId, String pwd) async {
+    final resp = await dio.post<String>(
+      '$apiBase/doupload.php',
+      data: {
+        'task': 16,
+        'folder_id': folderId,
+        'shows': pwd.isEmpty ? 0 : 1,
+        'shownames': pwd,
+      },
+      options: _options(),
+    );
+    if ('${_asMap(resp.data)['zt']}' != '1') {
+      throw const LanzouException('设置文件夹访问密码失败');
+    }
+  }
+
   // ----------------------------------------------------------------- upload
 
   Future<void> uploadFile({

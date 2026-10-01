@@ -584,11 +584,12 @@ class _DrivePageState extends State<DrivePage>
   }
 
   Future<void> _batchShare() async {
-    final ids = _selectedFiles.toList();
-    if (ids.isEmpty) return;
+    final fileIds = _selectedFiles.toList();
+    final folderIds = _selectedFolders.toList();
+    if (fileIds.isEmpty && folderIds.isEmpty) return;
     final app = context.read<AppController>();
     final lines = <String>[];
-    for (final id in ids) {
+    for (final id in fileIds) {
       try {
         final info = await app.client!.shareInfoOfFile(id);
         final file = _files.firstWhere((f) => f.id == id);
@@ -596,6 +597,18 @@ class _DrivePageState extends State<DrivePage>
           info.pwd.isEmpty
               ? '${file.name} ${info.url}'
               : '${file.name} ${info.url} 提取码：${info.pwd}',
+        );
+      } catch (_) {}
+    }
+    for (final id in folderIds) {
+      try {
+        final info = await app.client!.shareInfoOfFolder(id);
+        final folder = _folders.firstWhere((f) => f.id == id);
+        final name = info.name.isEmpty ? folder.name : info.name;
+        lines.add(
+          info.pwd.isEmpty
+              ? '$name ${info.url}'
+              : '$name ${info.url} 提取码：${info.pwd}',
         );
       } catch (_) {}
     }
@@ -611,15 +624,21 @@ class _DrivePageState extends State<DrivePage>
 
   Future<void> _batchFavorite() async {
     final app = context.read<AppController>();
-    final ids = _selectedFiles.toList();
-    for (final id in ids) {
+    final fileIds = _selectedFiles.toList();
+    final folderIds = _selectedFolders.toList();
+    for (final id in fileIds) {
       final file = _files.firstWhere((f) => f.id == id);
       await app.db.addFavorite(kind: 'file', name: file.name, ref: id);
     }
+    for (final id in folderIds) {
+      final folder = _folders.firstWhere((f) => f.id == id);
+      await app.db.addFavorite(kind: 'folder', name: folder.name, ref: id);
+    }
+    final count = fileIds.length + folderIds.length;
     if (mounted) _exitSelection();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('已收藏 ${ids.length} 个文件')),
+      SnackBar(content: Text('已收藏 $count 个条目')),
     );
   }
 
@@ -634,13 +653,13 @@ class _DrivePageState extends State<DrivePage>
             ListTile(
               leading: const Icon(Icons.edit_note),
               title: const Text('修改简介'),
-              subtitle: const Text('批量设置选中的文件简介'),
+              subtitle: const Text('批量设置选中的文件/文件夹简介'),
               onTap: () => Navigator.of(sheetContext).pop('desc'),
             ),
             ListTile(
               leading: const Icon(Icons.password),
               title: const Text('设置访问密码'),
-              subtitle: const Text('2-6 位；免费账号只能设置不能关闭'),
+              subtitle: const Text('批量设置选中条目的访问密码；免费账号只能设置不能关闭'),
               onTap: () => Navigator.of(sheetContext).pop('pwd'),
             ),
           ],
@@ -679,15 +698,24 @@ class _DrivePageState extends State<DrivePage>
     if (ok != true || !mounted) return;
     final client = context.read<AppController>().client;
     if (client == null) return;
-    final ids = _selectedFiles.toList();
+    final fileIds = _selectedFiles.toList();
+    final folderIds = _selectedFolders.toList();
     var failed = 0;
-    for (final id in ids) {
+    for (final id in fileIds) {
       try {
         await client.setDesc(id, controller.text.trim());
       } catch (_) {
         failed += 1;
       }
     }
+    for (final id in folderIds) {
+      try {
+        await client.setFolderDesc(id, controller.text.trim());
+      } catch (_) {
+        failed += 1;
+      }
+    }
+    final count = fileIds.length + folderIds.length;
     _exitSelection();
     _fileDescCache.clear();
     _folderDescCache.clear();
@@ -697,8 +725,8 @@ class _DrivePageState extends State<DrivePage>
       SnackBar(
         content: Text(
           failed == 0
-              ? '已修改 ${ids.length} 个文件的简介'
-              : '已修改 ${ids.length - failed} 个，$failed 个失败',
+              ? '已修改 $count 个条目的简介'
+              : '已修改 ${count - failed} 个，$failed 个失败',
         ),
       ),
     );
@@ -740,23 +768,32 @@ class _DrivePageState extends State<DrivePage>
     }
     final client = context.read<AppController>().client;
     if (client == null) return;
-    final ids = _selectedFiles.toList();
+    final fileIds = _selectedFiles.toList();
+    final folderIds = _selectedFolders.toList();
     var failed = 0;
-    for (final id in ids) {
+    for (final id in fileIds) {
       try {
         await client.setPasswd(id, pwd);
       } catch (_) {
         failed += 1;
       }
     }
+    for (final id in folderIds) {
+      try {
+        await client.setFolderPasswd(id, pwd);
+      } catch (_) {
+        failed += 1;
+      }
+    }
+    final count = fileIds.length + folderIds.length;
     _exitSelection();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
           failed == 0
-              ? '已为 ${ids.length} 个文件设置提取码'
-              : '已设置 ${ids.length - failed} 个，$failed 个失败',
+              ? '已为 $count 个条目设置提取码'
+              : '已设置 ${count - failed} 个，$failed 个失败',
         ),
       ),
     );
@@ -1373,47 +1410,54 @@ class _DrivePageState extends State<DrivePage>
                     opacity: _selecting ? 1 : 0,
                     duration: _anim,
                     curve: Curves.easeInOut,
-                    child: BottomAppBar(
-                      height: 72,
-                      padding: EdgeInsets.zero,
+                    // 紧贴按钮内容，避免固定高度带来的上下留白遮挡列表
+                    child: Material(
+                      elevation: 8,
+                      color: Theme.of(context).colorScheme.surfaceContainer,
                       child: SafeArea(
                         top: false,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            _BatchAction(
-                              icon: Icons.delete_outline,
-                              label: '删除',
-                              onPressed:
-                                  selectedCount == 0 ? null : _deleteSelected,
-                            ),
-                            _BatchAction(
-                              icon: Icons.download_outlined,
-                              label: '下载',
-                              onPressed: _selectedFiles.isEmpty
-                                  ? null
-                                  : _batchDownload,
-                            ),
-                            _BatchAction(
-                              icon: Icons.share_outlined,
-                              label: '分享',
-                              onPressed:
-                                  _selectedFiles.isEmpty ? null : _batchShare,
-                            ),
-                            _BatchAction(
-                              icon: Icons.star_outline,
-                              label: '收藏',
-                              onPressed: _selectedFiles.isEmpty
-                                  ? null
-                                  : _batchFavorite,
-                            ),
-                            _BatchAction(
-                              icon: Icons.more_horiz,
-                              label: '更多',
-                              onPressed:
-                                  _selectedFiles.isEmpty ? null : _batchMore,
-                            ),
-                          ],
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              _BatchAction(
+                                icon: Icons.delete_outline,
+                                label: '删除',
+                                onPressed: selectedCount == 0
+                                    ? null
+                                    : _deleteSelected,
+                              ),
+                              _BatchAction(
+                                icon: Icons.download_outlined,
+                                label: '下载',
+                                onPressed: _selectedFiles.isEmpty
+                                    ? null
+                                    : _batchDownload,
+                              ),
+                              _BatchAction(
+                                icon: Icons.share_outlined,
+                                label: '分享',
+                                onPressed: selectedCount == 0
+                                    ? null
+                                    : _batchShare,
+                              ),
+                              _BatchAction(
+                                icon: Icons.star_outline,
+                                label: '收藏',
+                                onPressed: selectedCount == 0
+                                    ? null
+                                    : _batchFavorite,
+                              ),
+                              _BatchAction(
+                                icon: Icons.more_horiz,
+                                label: '更多',
+                                onPressed: selectedCount == 0
+                                    ? null
+                                    : _batchMore,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -2051,7 +2095,7 @@ class _BatchAction extends StatelessWidget {
       onTap: onPressed,
       borderRadius: BorderRadius.circular(12),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
