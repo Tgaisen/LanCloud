@@ -23,6 +23,16 @@ class NeedPasswordException extends LanzouException {
   const NeedPasswordException() : super('该分享需要提取码');
 }
 
+/// Cookie 缺少 ylogin 字段。
+class CookieFormatException extends LanzouException {
+  const CookieFormatException() : super('未找到 ylogin，请确认复制的是完整 Cookie');
+}
+
+/// Cookie 无效或已过期。
+class CookieInvalidException extends LanzouException {
+  const CookieInvalidException() : super('Cookie 无效或已过期，请重新获取');
+}
+
 class LanzouClient {
   /// 全局请求间隔，避免触发风控（可在设置里调整）。
   static Duration requestInterval = const Duration(milliseconds: 300);

@@ -1,6 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsStore {
+  static const _keyLanguage = 'language';
   static const _keyDownloadDir = 'download_dir';
   static const _keyGridView = 'grid_view';
   static const _keyLaunchPage = 'launch_page';
@@ -24,6 +25,7 @@ class SettingsStore {
   static const _keyFloatingNav = 'floating_nav_bar';
 
   String? downloadDir;
+  String language = 'system';
   bool gridView = true;
   String launchPage = 'home';
   bool cacheFolders = true;
@@ -47,6 +49,7 @@ class SettingsStore {
 
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
+    language = prefs.getString(_keyLanguage) ?? 'system';
     downloadDir = prefs.getString(_keyDownloadDir);
     gridView = prefs.getBool(_keyGridView) ?? true;
     launchPage = prefs.getString(_keyLaunchPage) ?? 'home';
@@ -195,6 +198,12 @@ class SettingsStore {
     } else {
       await prefs.setString(_keyDownloadDir, downloadDir!);
     }
+  }
+
+  Future<void> setLanguage(String value) async {
+    language = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyLanguage, value);
   }
 
   Future<void> setGridView(bool value) async {

@@ -9,6 +9,7 @@ import '../core/api/models.dart';
 import '../core/app_controller.dart';
 import '../core/drive_cache.dart';
 import '../core/transfer/transfer_manager.dart';
+import '../l10n/l10n.dart';
 import 'common.dart';
 
 const int kFreeUploadLimit = 100 * 1024 * 1024;
@@ -296,19 +297,19 @@ class _DrivePageState extends State<DrivePage>
   PreferredSizeWidget _selectionAppBar(int count) => AppBar(
     key: const ValueKey('selection-appbar'),
     leading: IconButton(
-      tooltip: '退出多选',
+      tooltip: context.l10n.exitSelection,
       icon: const Icon(Icons.close),
       onPressed: _exitSelection,
     ),
-    title: Text('已选择 $count 项'),
+    title: Text(context.l10n.selectedCount(count)),
     actions: [
       IconButton(
-        tooltip: '全选',
+        tooltip: context.l10n.selectAll,
         icon: const Icon(Icons.select_all),
         onPressed: _selectAll,
       ),
       IconButton(
-        tooltip: '反选',
+        tooltip: context.l10n.invertSelection,
         icon: const Icon(Icons.flip_to_front),
         onPressed: _invertSelection,
       ),
@@ -371,7 +372,7 @@ class _DrivePageState extends State<DrivePage>
           children: [
             ListTile(
               leading: const Icon(Icons.create_new_folder_outlined),
-              title: const Text('新建文件夹'),
+              title: Text(context.l10n.newFolder),
               onTap: () {
                 Navigator.of(sheetContext).pop();
                 _mkdir();
@@ -379,8 +380,8 @@ class _DrivePageState extends State<DrivePage>
             ),
             ListTile(
               leading: const Icon(Icons.upload_file_outlined),
-              title: const Text('上传文件'),
-              subtitle: const Text('从本机或其他应用中选择文件'),
+              title: Text(context.l10n.uploadFile),
+              subtitle: Text(context.l10n.uploadFileSubtitle),
               onTap: () {
                 Navigator.of(sheetContext).pop();
                 _upload();
@@ -419,8 +420,8 @@ class _DrivePageState extends State<DrivePage>
       SnackBar(
         content: Text(
           skipped > 0
-              ? '已加入 $added 个上传任务，跳过 $skipped 个超过 100MB 的文件'
-              : '已加入 $added 个上传任务',
+              ? context.l10n.uploadSkipped(added, skipped)
+              : context.l10n.uploadAdded(added),
         ),
       ),
     );
@@ -432,30 +433,30 @@ class _DrivePageState extends State<DrivePage>
     final result = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('新建文件夹'),
+        title: Text(context.l10n.newFolder),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: nameController,
               autofocus: true,
-              decoration: const InputDecoration(labelText: '名称（必填）'),
+              decoration: InputDecoration(labelText: context.l10n.nameRequired),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: descController,
-              decoration: const InputDecoration(labelText: '简介（选填）'),
+              decoration: InputDecoration(labelText: context.l10n.descOptional),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('取消'),
+            child: Text(context.l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('创建'),
+            child: Text(context.l10n.create),
           ),
         ],
       ),
@@ -464,7 +465,7 @@ class _DrivePageState extends State<DrivePage>
     final name = nameController.text.trim();
     if (name.isEmpty) {
       ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('文件夹名称不能为空')));
+          .showSnackBar(SnackBar(content: Text(context.l10n.folderNameRequired)));
       return;
     }
     try {
@@ -486,16 +487,16 @@ class _DrivePageState extends State<DrivePage>
     final ok = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('删除确认'),
-        content: Text('将把选中的 $count 个条目移入回收站，继续吗？'),
+        title: Text(context.l10n.deleteConfirmTitle),
+        content: Text(context.l10n.deleteConfirmMessage(count)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('取消'),
+            child: Text(context.l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('删除'),
+            child: Text(context.l10n.delete),
           ),
         ],
       ),
@@ -528,6 +529,7 @@ class _DrivePageState extends State<DrivePage>
     if (_selectedFiles.isEmpty) return;
     final app = context.read<AppController>();
     final transfers = context.read<TransferManager>();
+    final l10n = context.l10n;
     final ids = _selectedFiles.toList();
     var failed = 0;
     final messenger = ScaffoldMessenger.of(context);
@@ -535,7 +537,7 @@ class _DrivePageState extends State<DrivePage>
       context: context,
       barrierDismissible: false,
       builder: (_) => AlertDialog(
-        title: const Text('批量下载'),
+        title: Text(context.l10n.batchDownload),
         content: Row(
           children: [
             const SizedBox(
@@ -544,7 +546,9 @@ class _DrivePageState extends State<DrivePage>
               child: CircularProgressIndicator(strokeWidth: 2.5),
             ),
             const SizedBox(width: 16),
-            Expanded(child: Text('正在解析并加入下载队列（共 ${ids.length} 个）')),
+            Expanded(
+              child: Text(context.l10n.resolvingBatch(ids.length)),
+            ),
           ],
         ),
       ),
@@ -577,8 +581,8 @@ class _DrivePageState extends State<DrivePage>
       SnackBar(
         content: Text(
           failed == 0
-              ? '已加入 ${ids.length} 个下载任务'
-              : '已加入 ${ids.length - failed} 个下载任务，$failed 个解析失败',
+              ? l10n.addedDownloads(ids.length)
+              : l10n.addedDownloadsPartial(ids.length - failed, failed),
         ),
       ),
     );
@@ -589,6 +593,7 @@ class _DrivePageState extends State<DrivePage>
     final folderIds = _selectedFolders.toList();
     if (fileIds.isEmpty && folderIds.isEmpty) return;
     final app = context.read<AppController>();
+    final l10n = context.l10n;
     final lines = <String>[];
     for (final id in fileIds) {
       try {
@@ -597,7 +602,10 @@ class _DrivePageState extends State<DrivePage>
         lines.add(
           info.pwd.isEmpty
               ? '${file.name} ${info.url}'
-              : '${file.name} ${info.url} 提取码：${info.pwd}',
+              : l10n.linkWithPassword(
+                  '${file.name} ${info.url}',
+                  info.pwd,
+                ),
         );
       } catch (_) {}
     }
@@ -609,15 +617,16 @@ class _DrivePageState extends State<DrivePage>
         lines.add(
           info.pwd.isEmpty
               ? '$name ${info.url}'
-              : '$name ${info.url} 提取码：${info.pwd}',
+              : l10n.linkWithPassword('$name ${info.url}', info.pwd),
         );
       } catch (_) {}
     }
     if (!mounted) return;
     _exitSelection();
     if (lines.isEmpty) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('没有可复制的分享链接')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.noLinksToCopy)),
+      );
       return;
     }
     await copyText(context, lines.join('\n'));
@@ -639,7 +648,7 @@ class _DrivePageState extends State<DrivePage>
     if (mounted) _exitSelection();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('已收藏 $count 个条目')),
+      SnackBar(content: Text(context.l10n.favoritedCount(count))),
     );
   }
 
@@ -653,20 +662,20 @@ class _DrivePageState extends State<DrivePage>
           children: [
             ListTile(
               leading: const Icon(Icons.drive_file_move_outline),
-              title: const Text('移动'),
-              subtitle: const Text('把选中的文件/文件夹移动到其他目录'),
+              title: Text(context.l10n.move),
+              subtitle: Text(context.l10n.moveSubtitle),
               onTap: () => Navigator.of(sheetContext).pop('move'),
             ),
             ListTile(
               leading: const Icon(Icons.edit_note),
-              title: const Text('修改简介'),
-              subtitle: const Text('批量设置选中的文件/文件夹简介'),
+              title: Text(context.l10n.editDesc),
+              subtitle: Text(context.l10n.editDescBatchSubtitle),
               onTap: () => Navigator.of(sheetContext).pop('desc'),
             ),
             ListTile(
               leading: const Icon(Icons.password),
-              title: const Text('设置访问密码'),
-              subtitle: const Text('批量设置选中条目的访问密码；免费账号只能设置不能关闭'),
+              title: Text(context.l10n.setPassword),
+              subtitle: Text(context.l10n.setPasswordSubtitle),
               onTap: () => Navigator.of(sheetContext).pop('pwd'),
             ),
           ],
@@ -717,8 +726,8 @@ class _DrivePageState extends State<DrivePage>
       SnackBar(
         content: Text(
           failed == 0
-              ? '已移动 $count 个条目到「${target.name}」'
-              : '已移动 ${count - failed} 个条目，$failed 个失败',
+              ? context.l10n.movedTo(count, target.name)
+              : context.l10n.movedPartial(count - failed, failed),
         ),
       ),
     );
@@ -729,21 +738,21 @@ class _DrivePageState extends State<DrivePage>
     final ok = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('修改简介'),
+        title: Text(context.l10n.editDesc),
         content: TextField(
           controller: controller,
           maxLines: 3,
           autofocus: true,
-          decoration: const InputDecoration(hintText: '输入新的简介'),
+          decoration: InputDecoration(hintText: context.l10n.newDescHint),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('取消'),
+            child: Text(context.l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('确定'),
+            child: Text(context.l10n.confirm),
           ),
         ],
       ),
@@ -778,8 +787,8 @@ class _DrivePageState extends State<DrivePage>
       SnackBar(
         content: Text(
           failed == 0
-              ? '已修改 $count 个条目的简介'
-              : '已修改 ${count - failed} 个，$failed 个失败',
+              ? context.l10n.descUpdatedCount(count)
+              : context.l10n.descUpdatedPartial(count - failed, failed),
         ),
       ),
     );
@@ -790,23 +799,21 @@ class _DrivePageState extends State<DrivePage>
     final ok = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('设置访问密码'),
+        title: Text(context.l10n.setPassword),
         content: TextField(
           controller: controller,
           autofocus: true,
           maxLength: 6,
-          decoration: const InputDecoration(
-            hintText: '2-6 位提取码',
-          ),
+          decoration: InputDecoration(hintText: context.l10n.pwdHint),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('取消'),
+            child: Text(context.l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('确定'),
+            child: Text(context.l10n.confirm),
           ),
         ],
       ),
@@ -815,7 +822,7 @@ class _DrivePageState extends State<DrivePage>
     final pwd = controller.text.trim();
     if (pwd.length < 2) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('提取码至少 2 位')),
+        SnackBar(content: Text(context.l10n.pwdTooShort)),
       );
       return;
     }
@@ -845,8 +852,8 @@ class _DrivePageState extends State<DrivePage>
       SnackBar(
         content: Text(
           failed == 0
-              ? '已为 $count 个条目设置提取码'
-              : '已设置 ${count - failed} 个，$failed 个失败',
+              ? context.l10n.passwordSetCount(count)
+              : context.l10n.passwordSetPartial(count - failed, failed),
         ),
       ),
     );
@@ -910,21 +917,21 @@ class _DrivePageState extends State<DrivePage>
             SelectableText(url, style: Theme.of(context).textTheme.bodySmall),
             if (pwd.isNotEmpty) ...[
               const SizedBox(height: 6),
-              Text('提取码：$pwd'),
+              Text(context.l10n.passwordLabel(pwd)),
             ],
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('关闭'),
+            child: Text(context.l10n.close),
           ),
           FilledButton(
             onPressed: () {
               Navigator.of(dialogContext).pop();
               copyText(context, url);
             },
-            child: const Text('复制链接'),
+            child: Text(context.l10n.copyLink),
           ),
         ],
       ),
@@ -998,15 +1005,15 @@ class _DrivePageState extends State<DrivePage>
               subtitle: [
                 if (file.size.isNotEmpty) prettyLzSize(file.size),
                 if (file.time.isNotEmpty) file.time,
-                if (file.downs > 0) '下载 ${file.downs}',
-                if (file.hasPwd) '有提取码',
+                if (file.downs > 0) context.l10n.downloadsCount(file.downs),
+                if (file.hasPwd) context.l10n.hasPassword,
               ].join(' · '),
               desc: _fileDescCache[file.id] ?? '',
             ),
             const Divider(height: 1),
             ListTile(
               leading: const Icon(Icons.download_outlined),
-              title: const Text('下载'),
+              title: Text(context.l10n.download),
               onTap: () {
                 Navigator.of(sheetContext).pop();
                 _downloadOwnFile(file);
@@ -1014,7 +1021,7 @@ class _DrivePageState extends State<DrivePage>
             ),
             ListTile(
               leading: const Icon(Icons.link_outlined),
-              title: const Text('复制链接'),
+              title: Text(context.l10n.copyLink),
               onTap: () {
                 Navigator.of(sheetContext).pop();
                 _copyShareLink(file);
@@ -1022,7 +1029,7 @@ class _DrivePageState extends State<DrivePage>
             ),
             ListTile(
               leading: const Icon(Icons.open_in_new),
-              title: const Text('打开链接'),
+              title: Text(context.l10n.openLink),
               onTap: () {
                 Navigator.of(sheetContext).pop();
                 _openShareInBrowser(file);
@@ -1030,7 +1037,7 @@ class _DrivePageState extends State<DrivePage>
             ),
             ListTile(
               leading: const Icon(Icons.qr_code_2),
-              title: const Text('显示二维码'),
+              title: Text(context.l10n.showQr),
               onTap: () {
                 Navigator.of(sheetContext).pop();
                 _showFileQr(file);
@@ -1038,7 +1045,7 @@ class _DrivePageState extends State<DrivePage>
             ),
             ListTile(
               leading: const Icon(Icons.star_outline),
-              title: const Text('添加收藏'),
+              title: Text(context.l10n.addFavorite),
               onTap: () {
                 Navigator.of(sheetContext).pop();
                 _favoriteFile(file);
@@ -1046,7 +1053,7 @@ class _DrivePageState extends State<DrivePage>
             ),
             ListTile(
               leading: const Icon(Icons.delete_outline),
-              title: const Text('删除'),
+              title: Text(context.l10n.delete),
               onTap: () {
                 Navigator.of(sheetContext).pop();
                 _deleteFile(file);
@@ -1054,7 +1061,7 @@ class _DrivePageState extends State<DrivePage>
             ),
             ListTile(
               leading: const Icon(Icons.more_horiz),
-              title: const Text('更多操作'),
+              title: Text(context.l10n.moreActions),
               onTap: () {
                 Navigator.of(sheetContext).pop();
                 _fileMenuSheet(file);
@@ -1084,7 +1091,7 @@ class _DrivePageState extends State<DrivePage>
           children: [
             ListTile(
               leading: const Icon(Icons.download_outlined),
-              title: const Text('下载'),
+              title: Text(context.l10n.download),
               onTap: () {
                 Navigator.of(sheetContext).pop();
                 _downloadOwnFile(file);
@@ -1092,7 +1099,7 @@ class _DrivePageState extends State<DrivePage>
             ),
             ListTile(
               leading: const Icon(Icons.edit_note),
-              title: const Text('修改简介'),
+              title: Text(context.l10n.editDesc),
               onTap: () {
                 Navigator.of(sheetContext).pop();
                 _singleSetDesc(file);
@@ -1100,8 +1107,8 @@ class _DrivePageState extends State<DrivePage>
             ),
             ListTile(
               leading: const Icon(Icons.password),
-              title: const Text('设置访问密码'),
-              subtitle: const Text('免费账号只能设置不能关闭'),
+              title: Text(context.l10n.setPassword),
+              subtitle: Text(context.l10n.freeAccountPasswordNote),
               onTap: () {
                 Navigator.of(sheetContext).pop();
                 _singleSetPasswd(file);
@@ -1109,7 +1116,7 @@ class _DrivePageState extends State<DrivePage>
             ),
             ListTile(
               leading: const Icon(Icons.delete_outline),
-              title: const Text('删除'),
+              title: Text(context.l10n.delete),
               onTap: () {
                 Navigator.of(sheetContext).pop();
                 _deleteFile(file);
@@ -1126,21 +1133,21 @@ class _DrivePageState extends State<DrivePage>
     final ok = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('修改简介'),
+        title: Text(context.l10n.editDesc),
         content: TextField(
           controller: controller,
           maxLines: 3,
           autofocus: true,
-          decoration: const InputDecoration(hintText: '输入新的简介'),
+          decoration: InputDecoration(hintText: context.l10n.newDescHint),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('取消'),
+            child: Text(context.l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('确定'),
+            child: Text(context.l10n.confirm),
           ),
         ],
       ),
@@ -1156,7 +1163,7 @@ class _DrivePageState extends State<DrivePage>
       await _reloadAfterChange();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('简介已更新')),
+        SnackBar(content: Text(context.l10n.descUpdated)),
       );
     } catch (e) {
       if (!mounted) return;
@@ -1169,21 +1176,21 @@ class _DrivePageState extends State<DrivePage>
     final ok = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('设置访问密码'),
+        title: Text(context.l10n.setPassword),
         content: TextField(
           controller: controller,
           autofocus: true,
           maxLength: 6,
-          decoration: const InputDecoration(hintText: '2-6 位提取码'),
+          decoration: InputDecoration(hintText: context.l10n.pwdHint),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('取消'),
+            child: Text(context.l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('确定'),
+            child: Text(context.l10n.confirm),
           ),
         ],
       ),
@@ -1192,7 +1199,7 @@ class _DrivePageState extends State<DrivePage>
     final pwd = controller.text.trim();
     if (pwd.length < 2) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('提取码至少 2 位')),
+        SnackBar(content: Text(context.l10n.pwdTooShort)),
       );
       return;
     }
@@ -1200,7 +1207,7 @@ class _DrivePageState extends State<DrivePage>
       await context.read<AppController>().client?.setPasswd(file.id, pwd);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('已设置提取码')),
+        SnackBar(content: Text(context.l10n.passwordSet)),
       );
     } catch (e) {
       if (!mounted) return;
@@ -1243,7 +1250,7 @@ class _DrivePageState extends State<DrivePage>
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('已加入下载队列')));
+          .showSnackBar(SnackBar(content: Text(context.l10n.addedToQueue)));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
@@ -1258,7 +1265,9 @@ class _DrivePageState extends State<DrivePage>
       if (!mounted) return;
       await copyText(
         context,
-        info.pwd.isEmpty ? info.url : '${info.url} 提取码：${info.pwd}',
+        info.pwd.isEmpty
+            ? info.url
+            : context.l10n.linkWithPassword(info.url, info.pwd),
       );
     } catch (e) {
       if (!mounted) return;
@@ -1274,7 +1283,9 @@ class _DrivePageState extends State<DrivePage>
       if (!mounted) return;
       await copyText(
         context,
-        info.pwd.isEmpty ? info.url : '${info.url} 提取码：${info.pwd}',
+        info.pwd.isEmpty
+            ? info.url
+            : context.l10n.linkWithPassword(info.url, info.pwd),
       );
     } catch (e) {
       if (!mounted) return;
@@ -1292,7 +1303,7 @@ class _DrivePageState extends State<DrivePage>
     );
     if (!mounted) return;
     ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('已收藏')));
+        .showSnackBar(SnackBar(content: Text(context.l10n.favorited)));
   }
 
   Future<void> _favoriteFolder(LzFolder folder) async {
@@ -1300,7 +1311,7 @@ class _DrivePageState extends State<DrivePage>
     await app.db.addFavorite(kind: 'folder', name: folder.name, ref: folder.id);
     if (!mounted) return;
     ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('已收藏')));
+        .showSnackBar(SnackBar(content: Text(context.l10n.favorited)));
   }
 
   Future<void> _deleteFile(LzFile file) async {
@@ -1384,35 +1395,35 @@ class _DrivePageState extends State<DrivePage>
                             children: [
                               _BatchAction(
                                 icon: Icons.delete_outline,
-                                label: '删除',
+                                label: context.l10n.delete,
                                 onPressed: selectedCount == 0
                                     ? null
                                     : _deleteSelected,
                               ),
                               _BatchAction(
                                 icon: Icons.download_outlined,
-                                label: '下载',
+                                label: context.l10n.download,
                                 onPressed: _selectedFiles.isEmpty
                                     ? null
                                     : _batchDownload,
                               ),
                               _BatchAction(
                                 icon: Icons.share_outlined,
-                                label: '分享',
+                                label: context.l10n.share,
                                 onPressed: selectedCount == 0
                                     ? null
                                     : _batchShare,
                               ),
                               _BatchAction(
                                 icon: Icons.star_outline,
-                                label: '收藏',
+                                label: context.l10n.favorite,
                                 onPressed: selectedCount == 0
                                     ? null
                                     : _batchFavorite,
                               ),
                               _BatchAction(
                                 icon: Icons.more_horiz,
-                                label: '更多',
+                                label: context.l10n.more,
                                 onPressed: selectedCount == 0
                                     ? null
                                     : _batchMore,
@@ -1448,7 +1459,7 @@ class _DrivePageState extends State<DrivePage>
         child: FloatingActionButton.extended(
           onPressed: _showAddMenu,
           icon: const Icon(Icons.add),
-          label: const Text('添加'),
+          label: Text(context.l10n.add),
         ),
       ),
         );
@@ -1486,8 +1497,8 @@ class _DrivePageState extends State<DrivePage>
                 ? TextField(
                     controller: _searchController,
                     autofocus: true,
-                    decoration: const InputDecoration(
-                      hintText: '搜索当前目录',
+                    decoration: InputDecoration(
+                      hintText: context.l10n.searchCurrentFolder,
                       border: InputBorder.none,
                     ),
                     onChanged: (value) =>
@@ -1496,12 +1507,12 @@ class _DrivePageState extends State<DrivePage>
                 : GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTap: _scrollToTop,
-                    child: const Text('网盘'),
+                    child: Text(context.l10n.tabDrive),
                   ),
             actions: _searching
                 ? [
                     IconButton(
-                      tooltip: '关闭搜索',
+                      tooltip: context.l10n.closeSearch,
                       icon: const Icon(Icons.close),
                       onPressed: () => setState(() {
                         _searching = false;
@@ -1512,12 +1523,12 @@ class _DrivePageState extends State<DrivePage>
                   ]
                 : [
                     IconButton(
-                      tooltip: '搜索',
+                      tooltip: context.l10n.search,
                       icon: const Icon(Icons.search),
                       onPressed: () => setState(() => _searching = true),
                     ),
                     PopupMenuButton<String>(
-                      tooltip: '菜单',
+                      tooltip: context.l10n.menu,
                       icon: const Icon(Icons.more_vert),
                       onSelected: (value) {
                         switch (value) {
@@ -1548,28 +1559,31 @@ class _DrivePageState extends State<DrivePage>
                             _reloadAfterChange();
                         }
                       },
-                      itemBuilder: (_) => const [
+                      itemBuilder: (_) => [
                         PopupMenuItem(
                           value: 'sort-name',
-                          child: Text('按名称排序'),
+                          child: Text(context.l10n.sortByName),
                         ),
                         PopupMenuItem(
                           value: 'sort-size',
-                          child: Text('按大小排序'),
+                          child: Text(context.l10n.sortBySize),
                         ),
                         PopupMenuItem(
                           value: 'sort-time',
-                          child: Text('按时间排序'),
+                          child: Text(context.l10n.sortByTime),
                         ),
-                        PopupMenuDivider(),
+                        const PopupMenuDivider(),
                         PopupMenuItem(
                           value: 'view',
-                          child: Text('切换布局样式'),
+                          child: Text(context.l10n.toggleLayout),
                         ),
-                        PopupMenuItem(value: 'select', child: Text('多选')),
+                        PopupMenuItem(
+                          value: 'select',
+                          child: Text(context.l10n.multiSelect),
+                        ),
                         PopupMenuItem(
                           value: 'refresh',
-                          child: Text('刷新'),
+                          child: Text(context.l10n.refresh),
                         ),
                       ],
                     ),
@@ -1604,7 +1618,7 @@ class _DrivePageState extends State<DrivePage>
               TextButton(
                 onPressed: () => _jumpTo(i),
                 child: Text(
-                  i < 0 ? '根目录' : _path[i].name,
+                  i < 0 ? context.l10n.root : _path[i].name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -1643,11 +1657,14 @@ class _DrivePageState extends State<DrivePage>
                     color: Theme.of(context).colorScheme.outline,
                   ),
                   const SizedBox(height: 12),
-                  Text('加载失败：$_error', textAlign: TextAlign.center),
+                  Text(
+                    context.l10n.loadFailed(_error!),
+                    textAlign: TextAlign.center,
+                  ),
                   const SizedBox(height: 12),
                   FilledButton(
                     onPressed: () => _load(force: true),
-                    child: const Text('重试'),
+                    child: Text(context.l10n.retry),
                   ),
                 ],
               ),
@@ -1665,9 +1682,12 @@ class _DrivePageState extends State<DrivePage>
             if (_filter.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.all(12),
-                child: Text('没有匹配「$_filter」的内容'),
+                child: Text(context.l10n.noMatchContent(_filter)),
               ),
-            const EmptyHint(icon: Icons.folder_open, text: '这个文件夹是空的'),
+            EmptyHint(
+              icon: Icons.folder_open,
+              text: context.l10n.emptyFolder,
+            ),
           ]),
         ),
       ];
@@ -1765,7 +1785,9 @@ class _DrivePageState extends State<DrivePage>
                 : Text(
                     _hasMore
                         ? ''
-                        : (_filter.isEmpty ? '已经到底了' : '筛选结果'),
+                        : (_filter.isEmpty
+                            ? context.l10n.reachedEnd
+                            : context.l10n.filterResult),
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
           ),
@@ -1817,7 +1839,7 @@ class _FolderTile extends StatelessWidget {
                   IconButton(
                     visualDensity: VisualDensity.compact,
                     iconSize: 18,
-                    tooltip: '文件夹操作',
+                    tooltip: context.l10n.folderActions,
                     onPressed: onMenu,
                     icon: const Icon(Icons.more_vert),
                   ),
@@ -1887,7 +1909,7 @@ class _FileTile extends StatelessWidget {
                   IconButton(
                     visualDensity: VisualDensity.compact,
                     iconSize: 18,
-                    tooltip: '文件操作',
+                    tooltip: context.l10n.fileActions,
                     onPressed: onMenu,
                     icon: const Icon(Icons.more_vert),
                   ),
@@ -1938,7 +1960,7 @@ class _FolderRow extends StatelessWidget {
       title: Text(folder.name, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: folder.desc.isEmpty ? null : Text(folder.desc, maxLines: 1),
       trailing: IconButton(
-        tooltip: '文件夹操作',
+        tooltip: context.l10n.folderActions,
         icon: const Icon(Icons.more_vert),
         onPressed: onMenu,
       ),
@@ -1978,11 +2000,11 @@ class _FileRow extends StatelessWidget {
         [
           prettyLzSize(file.size),
           if (file.time.isNotEmpty) file.time,
-          if (downloaded) '已下载',
+          if (downloaded) context.l10n.downloaded,
         ].where((e) => e.isNotEmpty).join(' · '),
       ),
       trailing: IconButton(
-        tooltip: '文件操作',
+        tooltip: context.l10n.fileActions,
         icon: const Icon(Icons.more_vert),
         onPressed: onMenu,
       ),
@@ -2021,6 +2043,7 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
   }
 
   Future<void> _fetch() async {
+    final l10n = context.l10n;
     final id = widget.folder.id;
     final needDesc = !widget.page._folderDescCache.containsKey(id);
     final needStats = !widget.page._folderSizeCache.containsKey(id);
@@ -2046,7 +2069,7 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
           if (stats.size.isNotEmpty || stats.count > 0) {
             final text = [
               if (stats.size.isNotEmpty) stats.size,
-              if (stats.count > 0) '${stats.count} 个文件',
+              if (stats.count > 0) l10n.fileCount(stats.count),
             ].join(' · ');
             widget.page._folderSizeCache[id] = text;
             if (mounted) setState(() => _stats = text);
@@ -2078,7 +2101,7 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
             icon: Icons.folder,
             title: folder.name,
             subtitle: [
-              '文件夹',
+              context.l10n.folder,
               ?_stats,
             ].join(' · '),
             desc: _desc ?? folder.desc,
@@ -2086,7 +2109,7 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
           const Divider(height: 1),
           ListTile(
             leading: const Icon(Icons.folder_open),
-            title: const Text('打开文件夹'),
+            title: Text(context.l10n.openFolder),
             onTap: () {
               Navigator.of(context).pop();
               page._openFolder(folder);
@@ -2094,7 +2117,7 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
           ),
           ListTile(
             leading: const Icon(Icons.link_outlined),
-            title: const Text('复制链接'),
+            title: Text(context.l10n.copyLink),
             onTap: () {
               Navigator.of(context).pop();
               page._copyFolderShareLink(folder);
@@ -2102,7 +2125,7 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
           ),
           ListTile(
             leading: const Icon(Icons.open_in_new),
-            title: const Text('打开链接'),
+            title: Text(context.l10n.openLink),
             onTap: () {
               Navigator.of(context).pop();
               page._openFolderShareInBrowser(folder);
@@ -2110,7 +2133,7 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
           ),
           ListTile(
             leading: const Icon(Icons.qr_code_2),
-            title: const Text('显示二维码'),
+            title: Text(context.l10n.showQr),
             onTap: () {
               Navigator.of(context).pop();
               page._showFolderQr(folder);
@@ -2118,7 +2141,7 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
           ),
           ListTile(
             leading: const Icon(Icons.star_outline),
-            title: const Text('添加收藏'),
+            title: Text(context.l10n.addFavorite),
             onTap: () {
               Navigator.of(context).pop();
               page._favoriteFolder(folder);
@@ -2126,7 +2149,7 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
           ),
           ListTile(
             leading: const Icon(Icons.delete_outline),
-            title: const Text('删除'),
+            title: Text(context.l10n.delete),
             onTap: () {
               Navigator.of(context).pop();
               page._deleteFolder(folder);
@@ -2302,18 +2325,20 @@ class _MoveDialogState extends State<_MoveDialog> {
   String get _parentId =>
       _path.length >= 2 ? _path[_path.length - 2].id : '-1';
 
-  String get _targetName => _path.isEmpty ? '根目录' : _path.last.name;
+  String _targetName(AppLocalizations l10n) =>
+      _path.isEmpty ? l10n.root : _path.last.name;
 
-  String get _targetPath => _path.isEmpty
-      ? '根目录'
+  String _targetPath(AppLocalizations l10n) => _path.isEmpty
+      ? l10n.root
       : _path.map((p) => p.name).join(' / ');
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final visible =
         _folders.where((f) => !widget.excludeIds.contains(f.id)).toList();
     return AlertDialog(
-      title: const Text('选择目标文件夹'),
+      title: Text(l10n.chooseTargetFolder),
       content: SizedBox(
         width: 360,
         height: 420,
@@ -2323,14 +2348,14 @@ class _MoveDialogState extends State<_MoveDialog> {
             Row(
               children: [
                 IconButton(
-                  tooltip: '上一级',
+                  tooltip: l10n.parentFolder,
                   onPressed: _path.isEmpty ? null : () => _load(_parentId),
                   icon: const Icon(Icons.arrow_upward),
                 ),
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
-                    _targetName,
+                    _targetName(l10n),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleMedium,
@@ -2340,14 +2365,14 @@ class _MoveDialogState extends State<_MoveDialog> {
             ),
             ListTile(
               leading: const Icon(Icons.drive_file_move_outline),
-              title: const Text('移动到这里'),
+              title: Text(l10n.moveHere),
               subtitle: Text(
-                _targetPath,
+                _targetPath(l10n),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
               onTap: () => Navigator.of(context)
-                  .pop(_MoveTarget(_folderId, _targetName)),
+                  .pop(_MoveTarget(_folderId, _targetName(l10n))),
             ),
             const Divider(height: 1),
             Expanded(
@@ -2358,13 +2383,13 @@ class _MoveDialogState extends State<_MoveDialog> {
                           child: Padding(
                             padding: const EdgeInsets.all(16),
                             child: Text(
-                              '加载失败：$_error',
+                              l10n.loadFailed(_error!),
                               textAlign: TextAlign.center,
                             ),
                           ),
                         )
                       : visible.isEmpty
-                          ? const Center(child: Text('这个文件夹里没有子文件夹'))
+                          ? Center(child: Text(l10n.noSubfolders))
                           : ListView.builder(
                               itemCount: visible.length,
                               itemBuilder: (context, index) {
@@ -2388,7 +2413,7 @@ class _MoveDialogState extends State<_MoveDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('取消'),
+          child: Text(l10n.cancel),
         ),
       ],
     );

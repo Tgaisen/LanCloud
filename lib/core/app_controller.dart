@@ -150,12 +150,12 @@ class AppController extends ChangeNotifier {
     final cookie = rawCookie.trim();
     final uid = RegExp(r'ylogin=(\d+)').firstMatch(cookie)?.group(1);
     if (uid == null) {
-      throw const LanzouException('未找到 ylogin，请确认复制的是完整 Cookie');
+      throw const CookieFormatException();
     }
     final c = LanzouClient(uid: uid)..setCookieHeader(cookie);
     final ok = await c.verify();
-    if (!ok) throw const LanzouException('Cookie 无效或已过期，请重新获取');
-    await accounts.upsert(Account(uid: uid, cookie: cookie, nickname: '账号 $uid'));
+    if (!ok) throw const CookieInvalidException();
+    await accounts.upsert(Account(uid: uid, cookie: cookie));
     _clients[uid] = c;
     notifyListeners();
   }
@@ -217,6 +217,11 @@ class AppController extends ChangeNotifier {
 
   Future<void> setThemeSeed(int value) async {
     await settings.setThemeSeed(value);
+    notifyListeners();
+  }
+
+  Future<void> setLanguage(String value) async {
+    await settings.setLanguage(value);
     notifyListeners();
   }
 

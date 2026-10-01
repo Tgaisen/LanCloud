@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../core/api/lanzou_client.dart';
 import '../core/api/models.dart';
 import '../core/app_controller.dart';
+import '../l10n/l10n.dart';
 import 'common.dart';
 
 class SharePage extends StatefulWidget {
@@ -50,7 +51,7 @@ class _SharePageState extends State<SharePage> {
     final link = _linkController.text.trim();
     final pwd = _pwdController.text.trim();
     if (link.isEmpty) {
-      setState(() => _error = '请先粘贴蓝奏云分享链接');
+      setState(() => _error = context.l10n.pleasePasteShareLink);
       return;
     }
     setState(() {
@@ -84,7 +85,7 @@ class _SharePageState extends State<SharePage> {
     } on LanzouException catch (e) {
       setState(() => _error = e.message);
     } catch (e) {
-      setState(() => _error = '解析失败：$e');
+      setState(() => _error = context.l10n.resolveFailed('$e'));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -123,34 +124,35 @@ class _SharePageState extends State<SharePage> {
     }
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('已加入收藏')),
+        SnackBar(content: Text(context.l10n.addedToFavorites)),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Scaffold(
-      appBar: AppBar(title: const Text('打开分享')),
+      appBar: AppBar(title: Text(l10n.openShare)),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           TextField(
             controller: _linkController,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               border: OutlineInputBorder(),
-              labelText: '分享链接',
-              hintText: 'https://www.lanzou.com/xxxxx',
-              prefixIcon: Icon(Icons.link),
+              labelText: l10n.shareLink,
+              hintText: l10n.shareLinkHint,
+              prefixIcon: const Icon(Icons.link),
             ),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _pwdController,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               border: OutlineInputBorder(),
-              labelText: '提取码（如有）',
-              prefixIcon: Icon(Icons.password),
+              labelText: l10n.passwordOptional,
+              prefixIcon: const Icon(Icons.password),
             ),
           ),
           const SizedBox(height: 16),
@@ -163,7 +165,7 @@ class _SharePageState extends State<SharePage> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.search),
-            label: Text(_loading ? '解析中…' : '解析'),
+            label: Text(_loading ? l10n.resolving : l10n.resolve),
           ),
           if (_error != null) ...[
             const SizedBox(height: 16),
@@ -219,6 +221,7 @@ class _FileResultCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -241,7 +244,7 @@ class _FileResultCard extends StatelessWidget {
             ),
             if (file.size.isNotEmpty) ...[
               const SizedBox(height: 6),
-              Text('大小：${prettyLzSize(file.size)}'),
+              Text(l10n.sizeLabel(prettyLzSize(file.size))),
             ],
             const SizedBox(height: 14),
             Row(
@@ -250,18 +253,18 @@ class _FileResultCard extends StatelessWidget {
                   child: FilledButton.icon(
                     onPressed: onDownload,
                     icon: const Icon(Icons.download),
-                    label: const Text('下载'),
+                    label: Text(l10n.download),
                   ),
                 ),
                 const SizedBox(width: 10),
                 IconButton.filledTonal(
-                  tooltip: '收藏',
+                  tooltip: l10n.favorite,
                   onPressed: onFavorite,
                   icon: const Icon(Icons.star_outline),
                 ),
                 const SizedBox(width: 6),
                 IconButton.filledTonal(
-                  tooltip: '复制链接',
+                  tooltip: l10n.copyLink,
                   onPressed: () => copyText(context, link),
                   icon: const Icon(Icons.copy),
                 ),
@@ -289,6 +292,7 @@ class _FolderResultView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Card(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
@@ -308,12 +312,12 @@ class _FolderResultView extends StatelessWidget {
                   ),
                 ),
                 IconButton(
-                  tooltip: '收藏',
+                  tooltip: l10n.favorite,
                   onPressed: onFavorite,
                   icon: const Icon(Icons.star_outline),
                 ),
                 IconButton(
-                  tooltip: '复制链接',
+                  tooltip: l10n.copyLink,
                   onPressed: () => copyText(context, link),
                   icon: const Icon(Icons.copy),
                 ),
@@ -362,9 +366,9 @@ class _FolderResultView extends StatelessWidget {
                 ),
             ],
             if (folder.files.isEmpty && folder.folders.isEmpty)
-              const Padding(
+              Padding(
                 padding: EdgeInsets.all(16),
-                child: Text('这个分享里没有文件'),
+                child: Text(l10n.shareEmpty),
               ),
           ],
         ),

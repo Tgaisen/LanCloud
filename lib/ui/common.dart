@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../core/api/lanzou_client.dart';
 import '../core/app_controller.dart';
 import '../core/transfer/transfer_manager.dart';
+import '../l10n/l10n.dart';
 
 String formatBytes(int bytes) {
   if (bytes <= 0) return '0 B';
@@ -60,7 +61,7 @@ Future<void> copyText(BuildContext context, String text) async {
   await Clipboard.setData(ClipboardData(text: text));
   if (context.mounted) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('已复制到剪贴板')),
+      SnackBar(content: Text(context.l10n.copiedToClipboard)),
     );
   }
 }
@@ -209,7 +210,7 @@ Future<bool> downloadShareFile(
 }) async {
   final app = context.read<AppController>();
   final transfers = context.read<TransferManager>();
-  showLoadingDialog(context, '正在解析下载地址…');
+  showLoadingDialog(context, context.l10n.resolvingDownload);
   try {
     final direct = await app.publicClient.resolveFileShare(url, pwd: pwd);
     if (context.mounted) Navigator.of(context).pop();
@@ -221,7 +222,7 @@ Future<bool> downloadShareFile(
     );
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('已加入下载队列')),
+        SnackBar(content: Text(context.l10n.addedToQueue)),
       );
     }
     return true;
@@ -229,7 +230,7 @@ Future<bool> downloadShareFile(
     if (context.mounted) Navigator.of(context).pop();
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('该文件需要提取码')),
+        SnackBar(content: Text(context.l10n.shareNeedsPassword)),
       );
     }
     return false;
@@ -242,7 +243,9 @@ Future<bool> downloadShareFile(
   } catch (e) {
     if (context.mounted) Navigator.of(context).pop();
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('解析失败：$e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.resolveFailed('$e'))),
+      );
     }
     return false;
   }

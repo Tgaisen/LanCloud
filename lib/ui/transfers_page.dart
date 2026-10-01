@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../core/app_controller.dart';
 import '../core/transfer/transfer_manager.dart';
+import '../l10n/l10n.dart';
 import 'common.dart';
 import 'scroll_tint.dart';
 
@@ -22,6 +23,7 @@ class _TransfersPageState extends State<TransfersPage> {
     final app = context.watch<AppController>();
     final scheme = Theme.of(context).colorScheme;
     final hideTop = app.settings.hideTopBar;
+    final l10n = context.l10n;
     return Scaffold(
       body: CustomScrollView(
         slivers: [
@@ -35,10 +37,10 @@ class _TransfersPageState extends State<TransfersPage> {
               ScrollTint.of(context),
             ),
             scrolledUnderElevation: 0,
-            title: const Text('传输管理'),
+            title: Text(l10n.transfers),
             actions: [
               IconButton(
-                tooltip: '清除已完成',
+                tooltip: l10n.clearFinished,
                 icon: const Icon(Icons.delete_sweep_outlined),
                 onPressed: () =>
                     context.read<TransferManager>().clearFinished(),
@@ -51,16 +53,16 @@ class _TransfersPageState extends State<TransfersPage> {
                 child: SizedBox(
                   width: double.infinity,
                   child: SegmentedButton<int>(
-                    segments: const [
+                    segments: [
                       ButtonSegment(
                         value: 0,
-                        label: Text('上传'),
-                        icon: Icon(Icons.upload_file),
+                        label: Text(l10n.upload),
+                        icon: const Icon(Icons.upload_file),
                       ),
                       ButtonSegment(
                         value: 1,
-                        label: Text('下载'),
-                        icon: Icon(Icons.download),
+                        label: Text(l10n.download),
+                        icon: const Icon(Icons.download),
                       ),
                     ],
                     selected: {_tab},
@@ -89,6 +91,7 @@ class _TransferListSliver extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final manager = context.watch<TransferManager>();
+    final l10n = context.l10n;
     final tasks = manager.byKind(kind);
     if (tasks.isEmpty) {
       return SliverFillRemaining(
@@ -98,7 +101,7 @@ class _TransferListSliver extends StatelessWidget {
             icon: kind == TransferKind.upload
                 ? Icons.upload_file
                 : Icons.download,
-            text: kind == TransferKind.upload ? '暂无上传任务' : '暂无下载任务',
+            text: kind == TransferKind.upload ? l10n.noUploads : l10n.noDownloads,
           ),
         ),
       );
@@ -113,11 +116,11 @@ class _TransferListSliver extends StatelessWidget {
       sliver: SliverList(
         delegate: SliverChildListDelegate([
           if (active.isNotEmpty) ...[
-            _SectionHeader(title: '进行中', count: active.length),
+            _SectionHeader(title: l10n.inProgress, count: active.length),
             for (final task in active) _TransferCard(task: task),
           ],
           if (finished.isNotEmpty) ...[
-            _SectionHeader(title: '已结束', count: finished.length),
+            _SectionHeader(title: l10n.finished, count: finished.length),
             for (final task in finished) _TransferCard(task: task),
           ],
         ]),
@@ -154,18 +157,18 @@ class _TransferCard extends StatelessWidget {
 
   final TransferTask task;
 
-  String get _statusText {
+  String _statusText(AppLocalizations l10n) {
     switch (task.status) {
       case TransferStatus.queued:
-        return '排队中';
+        return l10n.queued;
       case TransferStatus.running:
-        return task.kind == TransferKind.upload ? '上传中' : '下载中';
+        return task.kind == TransferKind.upload ? l10n.uploading : l10n.downloading;
       case TransferStatus.done:
-        return '已完成';
+        return l10n.completed;
       case TransferStatus.failed:
-        return '失败：${task.error ?? '未知错误'}';
+        return l10n.failedWithError(task.error ?? l10n.unknownError);
       case TransferStatus.canceled:
-        return '已取消';
+        return l10n.canceled;
     }
   }
 
@@ -173,6 +176,7 @@ class _TransferCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final manager = context.read<TransferManager>();
     final scheme = Theme.of(context).colorScheme;
+    final l10n = context.l10n;
     final active = task.status == TransferStatus.running || task.status == TransferStatus.queued;
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
@@ -215,8 +219,8 @@ class _TransferCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     task.status == TransferStatus.failed
-                        ? _statusText
-                        : '$_statusText · ${formatBytes(task.received)} / ${task.total > 0 ? formatBytes(task.total) : '未知大小'}',
+                        ? _statusText(l10n)
+                        : '${_statusText(l10n)} · ${formatBytes(task.received)} / ${task.total > 0 ? formatBytes(task.total) : l10n.unknownSize}',
                     style: Theme.of(context).textTheme.bodySmall,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -224,19 +228,19 @@ class _TransferCard extends StatelessWidget {
                 ),
                 if (active)
                   IconButton(
-                    tooltip: '取消',
+                    tooltip: l10n.cancel,
                     icon: const Icon(Icons.close),
                     onPressed: () => manager.cancel(task.id),
                   ),
                 if (task.status == TransferStatus.failed)
                   IconButton(
-                    tooltip: '重试',
+                    tooltip: l10n.retry,
                     icon: const Icon(Icons.refresh),
                     onPressed: () => manager.retry(task.id),
                   ),
                 if (task.status == TransferStatus.done && task.savedPath != null) ...[
                   IconButton(
-                    tooltip: '打开',
+                    tooltip: l10n.open,
                     icon: const Icon(Icons.open_in_new),
                     onPressed: () => OpenFilex.open(task.savedPath!),
                   ),

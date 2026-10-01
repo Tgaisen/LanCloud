@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../core/app_controller.dart';
 import '../core/data/app_db.dart';
 import '../core/transfer/transfer_manager.dart';
+import '../l10n/l10n.dart';
 import 'common.dart';
 import 'drive_page.dart';
 import 'scroll_tint.dart';
@@ -82,7 +83,7 @@ class _HomePageState extends State<HomePage> {
           children: [
             ListTile(
               leading: const Icon(Icons.download_outlined),
-              title: const Text('下载'),
+              title: Text(context.l10n.download),
               onTap: () async {
                 Navigator.of(sheetContext).pop();
                 final client = app.client;
@@ -106,7 +107,7 @@ class _HomePageState extends State<HomePage> {
             ),
             ListTile(
               leading: const Icon(Icons.link_outlined),
-              title: const Text('复制链接'),
+              title: Text(context.l10n.copyLink),
               onTap: () async {
                 Navigator.of(sheetContext).pop();
                 final client = app.client;
@@ -118,7 +119,7 @@ class _HomePageState extends State<HomePage> {
                     context,
                     info.pwd.isEmpty
                         ? info.url
-                        : '${info.url} 提取码：${info.pwd}',
+                        : context.l10n.linkWithPassword(info.url, info.pwd),
                   );
                 } catch (e) {
                   if (context.mounted) {
@@ -138,12 +139,17 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final app = context.watch<AppController>();
     final transfers = context.watch<TransferManager>();
+    final l10n = context.l10n;
     final running = transfers.tasks
         .where((t) =>
             t.status == TransferStatus.running ||
             t.status == TransferStatus.queued)
         .length;
-    final accountLabel = app.activeUid == null ? '未登录' : '账号 ${app.activeUid}';
+    final accountLabel = app.activeUid == null
+        ? l10n.notLoggedIn
+        : (app.activeAccount?.nickname.isNotEmpty ?? false)
+            ? app.activeAccount!.nickname
+            : l10n.accountUid(app.activeUid!);
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: _load,
@@ -163,17 +169,17 @@ class _HomePageState extends State<HomePage> {
               title: const Text('LanCloud'),
               actions: [
                 IconButton(
-                  tooltip: '打开分享链接',
+                  tooltip: l10n.openShareLink,
                   icon: const Icon(Icons.link),
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute(builder: (_) => const SharePage()),
                   ),
                 ),
                 IconButton(
-                  tooltip: '扫码（后续版本）',
+                  tooltip: l10n.scanComingSoonTooltip,
                   icon: const Icon(Icons.qr_code_scanner),
                   onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('扫码功能将在后续版本加入')),
+                    SnackBar(content: Text(l10n.scanComingSoon)),
                   ),
                 ),
               ],
@@ -192,7 +198,7 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
                           icon: const Icon(Icons.open_in_new),
-                          label: const Text('打开分享链接'),
+                          label: Text(l10n.openShareLink),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -200,21 +206,25 @@ class _HomePageState extends State<HomePage> {
                         child: OutlinedButton.icon(
                           onPressed: () {},
                           icon: const Icon(Icons.cloud_upload_outlined),
-                          label: Text(running > 0 ? '传输中 $running' : '传输中心'),
+                          label: Text(
+                            running > 0
+                                ? l10n.transferringCount(running)
+                                : l10n.transferCenter,
+                          ),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
-                  const SectionCard(
-                    title: '快速访问',
+                  SectionCard(
+                    title: l10n.quickAccess,
                     child: EmptyHint(
                       icon: Icons.push_pin_outlined,
-                      text: '可以在网盘页把常用文件夹固定到这里（后续版本）',
+                      text: l10n.quickAccessHint,
                     ),
                   ),
                   SectionCard(
-                    title: '最近使用',
+                    title: l10n.recent,
                     trailing: Chip(
                       visualDensity: VisualDensity.compact,
                       label: Text(accountLabel),
@@ -225,9 +235,9 @@ class _HomePageState extends State<HomePage> {
                             child: Center(child: CircularProgressIndicator()),
                           )
                         : (_recents.isEmpty
-                            ? const EmptyHint(
+                            ? EmptyHint(
                                 icon: Icons.history,
-                                text: '还没有最近使用的记录',
+                                text: l10n.noRecent,
                               )
                             : Column(
                                 children: [
@@ -246,8 +256,8 @@ class _HomePageState extends State<HomePage> {
                                       ),
                                       subtitle: Text(
                                         item.kind.startsWith('share')
-                                            ? '分享内容'
-                                            : '我的网盘',
+                                            ? l10n.sharedContent
+                                            : l10n.myDrive,
                                       ),
                                       onTap: () => _openItem(
                                         context,
@@ -261,13 +271,13 @@ class _HomePageState extends State<HomePage> {
                               )),
                   ),
                   SectionCard(
-                    title: '我的收藏',
+                    title: l10n.myFavorites,
                     child: _loading
                         ? const SizedBox.shrink()
                         : (_favorites.isEmpty
-                            ? const EmptyHint(
+                            ? EmptyHint(
                                 icon: Icons.star_border,
-                                text: '收藏的文件和分享会出现在这里',
+                                text: l10n.favoritesHint,
                               )
                             : Column(
                                 children: [
@@ -286,8 +296,8 @@ class _HomePageState extends State<HomePage> {
                                       ),
                                       subtitle: Text(
                                         item.kind.startsWith('share')
-                                            ? '分享内容'
-                                            : '我的网盘',
+                                            ? l10n.sharedContent
+                                            : l10n.myDrive,
                                       ),
                                       onTap: () => _openItem(
                                         context,
@@ -297,7 +307,7 @@ class _HomePageState extends State<HomePage> {
                                         item.pwd,
                                       ),
                                       trailing: IconButton(
-                                        tooltip: '取消收藏',
+                                        tooltip: l10n.unfavorite,
                                         icon: const Icon(Icons.close),
                                         onPressed: () async {
                                           await app.db

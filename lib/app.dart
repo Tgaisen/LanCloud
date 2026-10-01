@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'core/app_controller.dart';
 import 'core/transfer/transfer_manager.dart';
+import 'l10n/l10n.dart';
 import 'ui/drive_page.dart';
 import 'ui/home_page.dart';
 import 'ui/login_page.dart';
@@ -44,9 +45,17 @@ class LanCloudApp extends StatelessWidget {
           ),
         );
     final mode = app.settings.themeMode;
+    final language = app.settings.language;
     return MaterialApp(
       title: 'LanCloud',
       debugShowCheckedModeBanner: false,
+      locale: language == 'zh'
+          ? const Locale('zh')
+          : language == 'en'
+              ? const Locale('en')
+              : null,
+      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
       theme: buildTheme(Brightness.light),
       darkTheme: buildTheme(Brightness.dark),
       themeMode: mode == 'light'
@@ -68,14 +77,13 @@ class RootShell extends StatefulWidget {
 
 class _RootShellState extends State<RootShell> {
   static const _destinations = [
-    (icon: Icons.dashboard_outlined, selected: Icons.dashboard, label: '首页'),
-    (icon: Icons.folder_outlined, selected: Icons.folder, label: '网盘'),
+    (icon: Icons.dashboard_outlined, selected: Icons.dashboard),
+    (icon: Icons.folder_outlined, selected: Icons.folder),
     (
       icon: Icons.swap_vert_outlined,
       selected: Icons.swap_vert,
-      label: '传输'
     ),
-    (icon: Icons.person_outline, selected: Icons.person, label: '我的'),
+    (icon: Icons.person_outline, selected: Icons.person),
   ];
 
   int _index = 0;
@@ -139,16 +147,16 @@ class _RootShellState extends State<RootShell> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('还有任务在进行'),
-        content: Text('当前有 ${active.length} 个传输任务，退出会终止它们，确定退出吗？'),
+        title: Text(context.l10n.exitTitle),
+        content: Text(context.l10n.exitMessage(active.length)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('继续传输'),
+            child: Text(context.l10n.keepTransferring),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('终止并退出'),
+            child: Text(context.l10n.exitAndCancel),
           ),
         ],
       ),
@@ -164,6 +172,7 @@ class _RootShellState extends State<RootShell> {
   Widget build(BuildContext context) {
     final app = context.watch<AppController>();
     final transfers = context.watch<TransferManager>();
+    final l10n = context.l10n;
     if (!app.ready) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
@@ -213,6 +222,13 @@ class _RootShellState extends State<RootShell> {
       return Badge(label: Text('$running'), child: icon);
     }
 
+    String labelFor(int i) => switch (i) {
+          0 => l10n.tabHome,
+          1 => l10n.tabDrive,
+          2 => l10n.tabTransfers,
+          _ => l10n.tabProfile,
+        };
+
     final width = MediaQuery.sizeOf(context).width;
     return PopScope(
       canPop: false,
@@ -238,7 +254,7 @@ class _RootShellState extends State<RootShell> {
                         NavigationRailDestination(
                           icon: iconFor(i, selected: false),
                           selectedIcon: iconFor(i, selected: true),
-                          label: Text(_destinations[i].label),
+                          label: Text(labelFor(i)),
                         ),
                     ],
                   ),
@@ -297,7 +313,7 @@ class _RootShellState extends State<RootShell> {
                           NavigationDestination(
                             icon: iconFor(i, selected: false),
                             selectedIcon: iconFor(i, selected: true),
-                            label: _destinations[i].label,
+                            label: labelFor(i),
                           ),
                       ],
                     ),

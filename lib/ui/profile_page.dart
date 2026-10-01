@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../core/app_controller.dart';
+import '../l10n/l10n.dart';
 import 'login_page.dart';
 import 'scroll_tint.dart';
 import 'settings_page.dart';
@@ -20,6 +21,7 @@ class ProfilePage extends StatelessWidget {
     final account = app.activeAccount;
     final uid = app.activeUid ?? '';
     final scheme = Theme.of(context).colorScheme;
+    final l10n = context.l10n;
 
     return Scaffold(
       body: CustomScrollView(
@@ -34,7 +36,7 @@ class ProfilePage extends StatelessWidget {
               ScrollTint.of(context),
             ),
             scrolledUnderElevation: 0,
-            title: const Text('我的'),
+            title: Text(l10n.my),
           ),
           SliverPadding(
             padding: const EdgeInsets.all(16),
@@ -47,11 +49,17 @@ class ProfilePage extends StatelessWidget {
                         uid.isEmpty ? '?' : uid.substring(uid.length - 1),
                       ),
                     ),
-                    title: Text(account?.nickname ?? '未登录'),
-                    subtitle: Text('UID: $uid'),
+                    title: Text(
+                      account == null
+                          ? l10n.notLoggedIn
+                          : account.nickname.isEmpty
+                              ? l10n.accountUid(uid)
+                              : account.nickname,
+                    ),
+                    subtitle: Text(l10n.uidLabel(uid)),
                     trailing: FilledButton.tonal(
                       onPressed: () => _showAccountSwitcher(context),
-                      child: const Text('切换'),
+                      child: Text(l10n.switchAccountShort),
                     ),
                   ),
                 ),
@@ -61,12 +69,12 @@ class ProfilePage extends StatelessWidget {
                     children: [
                       ListTile(
                         leading: const Icon(Icons.switch_account_outlined),
-                        title: const Text('切换账号'),
+                        title: Text(l10n.switchAccount),
                         onTap: () => _showAccountSwitcher(context),
                       ),
                       ListTile(
                         leading: const Icon(Icons.delete_outline),
-                        title: const Text('移除当前账号'),
+                        title: Text(l10n.removeCurrentAccount),
                         onTap: () => _removeAccount(context, uid),
                       ),
                     ],
@@ -76,8 +84,8 @@ class ProfilePage extends StatelessWidget {
                 Card(
                   child: ListTile(
                     leading: const Icon(Icons.settings_outlined),
-                    title: const Text('设置'),
-                    subtitle: const Text('外观、行为、连接与高级覆盖项'),
+                    title: Text(l10n.settings),
+                    subtitle: Text(l10n.settingsSubtitle),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute(builder: (_) => const SettingsPage()),
@@ -90,15 +98,15 @@ class ProfilePage extends StatelessWidget {
                     children: [
                       ListTile(
                         leading: const Icon(Icons.public),
-                        title: const Text('网页版管理'),
-                        subtitle: const Text('修改密码、头像等官方功能'),
+                        title: Text(l10n.webManagement),
+                        subtitle: Text(l10n.webManagementSubtitle),
                         trailing: const Icon(Icons.open_in_new),
                         onTap: () =>
                             _openWeb('https://pc.woozooo.com/mydisk.php'),
                       ),
                       ListTile(
                         leading: const Icon(Icons.restore_from_trash_outlined),
-                        title: const Text('回收站'),
+                        title: Text(l10n.recycleBin),
                         trailing: const Icon(Icons.open_in_new),
                         onTap: () => _openWeb(
                           'https://pc.woozooo.com/mydisk.php?item=recycle',
@@ -131,8 +139,12 @@ class ProfilePage extends StatelessWidget {
                       ? Icons.radio_button_checked
                       : Icons.radio_button_unchecked,
                 ),
-                title: Text(account.nickname),
-                subtitle: Text('UID: ${account.uid}'),
+                title: Text(
+                  account.nickname.isEmpty
+                      ? context.l10n.accountUid(account.uid)
+                      : account.nickname,
+                ),
+                subtitle: Text(context.l10n.uidLabel(account.uid)),
                 onTap: () async {
                   Navigator.of(sheetContext).pop();
                   await app.switchAccount(account.uid);
@@ -140,7 +152,7 @@ class ProfilePage extends StatelessWidget {
               ),
             ListTile(
               leading: const Icon(Icons.add),
-              title: const Text('添加账号'),
+              title: Text(context.l10n.addAccount),
               onTap: () {
                 Navigator.of(sheetContext).pop();
                 Navigator.of(context).push(
@@ -159,16 +171,16 @@ class ProfilePage extends StatelessWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('移除账号'),
-        content: Text('将从本机移除账号 $uid 及其登录信息，云端文件不受影响。'),
+        title: Text(context.l10n.removeAccountTitle),
+        content: Text(context.l10n.removeAccountMessage(uid)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('取消'),
+            child: Text(context.l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('移除'),
+            child: Text(context.l10n.remove),
           ),
         ],
       ),

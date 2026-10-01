@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../core/api/lanzou_client.dart';
 import '../core/app_controller.dart';
+import '../l10n/l10n.dart';
 
 /// 用内嵌浏览器完成登录，登录成功后读取系统 Cookie 并保存账号。
 class WebLoginPage extends StatefulWidget {
@@ -43,7 +44,7 @@ class _WebLoginPageState extends State<WebLoginPage> {
       if ((map['ylogin'] ?? '').isEmpty || (map['phpdisk_info'] ?? '').isEmpty) {
         setState(() {
           _checking = false;
-          _error = '还没有检测到登录状态，请先在上方页面完成登录';
+          _error = context.l10n.noLoginDetected;
         });
         return;
       }
@@ -54,6 +55,16 @@ class _WebLoginPageState extends State<WebLoginPage> {
         _checking = false;
       });
       Navigator.of(context).pop(true);
+    } on CookieFormatException {
+      setState(() {
+        _checking = false;
+        _error = context.l10n.cookieMissingYlogin;
+      });
+    } on CookieInvalidException {
+      setState(() {
+        _checking = false;
+        _error = context.l10n.cookieInvalid;
+      });
     } on LanzouException catch (e) {
       setState(() {
         _checking = false;
@@ -70,13 +81,14 @@ class _WebLoginPageState extends State<WebLoginPage> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final l10n = context.l10n;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('网页登录'),
+        title: Text(l10n.webLogin),
         actions: [
           TextButton(
             onPressed: _checking ? null : _tryCapture,
-            child: Text(_checking ? '检测中…' : '完成登录'),
+            child: Text(_checking ? l10n.checking : l10n.finishLogin),
           ),
         ],
       ),
@@ -87,8 +99,7 @@ class _WebLoginPageState extends State<WebLoginPage> {
             color: scheme.secondaryContainer,
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
             child: Text(
-              '请使用你的蓝奏云账号登录；遇到滑块验证正常完成即可。'
-              '登录成功跳到网盘页面后会自动保存账号。',
+              l10n.webLoginGuide,
               style: TextStyle(color: scheme.onSecondaryContainer),
             ),
           ),

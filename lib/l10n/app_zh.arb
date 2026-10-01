@@ -1,0 +1,426 @@
+{
+  "@@locale": "zh",
+  "copiedToClipboard": "已复制到剪贴板",
+  "resolvingDownload": "正在解析下载地址…",
+  "addedToQueue": "已加入下载队列",
+  "shareNeedsPassword": "该文件需要提取码",
+  "resolveFailed": "解析失败：{error}",
+  "@resolveFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "tabHome": "首页",
+  "tabDrive": "网盘",
+  "tabTransfers": "传输",
+  "tabProfile": "我的",
+  "exitTitle": "还有任务在进行",
+  "exitMessage": "当前有 {count} 个传输任务，退出会终止它们，确定退出吗？",
+  "@exitMessage": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "keepTransferring": "继续传输",
+  "exitAndCancel": "终止并退出",
+  "download": "下载",
+  "copyLink": "复制链接",
+  "linkWithPassword": "{url} 提取码：{pwd}",
+  "@linkWithPassword": {
+    "placeholders": {
+      "url": {"type": "String"},
+      "pwd": {"type": "String"}
+    }
+  },
+  "notLoggedIn": "未登录",
+  "accountUid": "账号 {uid}",
+  "@accountUid": {
+    "placeholders": {
+      "uid": {"type": "String"}
+    }
+  },
+  "openShareLink": "打开分享链接",
+  "scanComingSoonTooltip": "扫码（后续版本）",
+  "scanComingSoon": "扫码功能将在后续版本加入",
+  "transferringCount": "传输中 {count}",
+  "@transferringCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "transferCenter": "传输中心",
+  "quickAccess": "快速访问",
+  "quickAccessHint": "可以在网盘页把常用文件夹固定到这里（后续版本）",
+  "recent": "最近使用",
+  "noRecent": "还没有最近使用的记录",
+  "sharedContent": "分享内容",
+  "myDrive": "我的网盘",
+  "myFavorites": "我的收藏",
+  "favoritesHint": "收藏的文件和分享会出现在这里",
+  "unfavorite": "取消收藏",
+  "addAccount": "添加账号",
+  "lanCloudSubtitle": "蓝奏云第三方客户端",
+  "howToGetCookie": "如何获取 Cookie",
+  "cookieSteps": "1. 用浏览器打开并登录蓝奏云官网\n2. 按 F12 打开开发者工具，切到 Network（网络）面板\n3. 随便点击一个请求，找到 Request Headers 里的 Cookie\n4. 复制整段内容（需包含 ylogin 和 phpdisk_info）",
+  "webLoginRecommended": "网页登录（推荐）",
+  "orPasteCookie": "或者手动粘贴 Cookie",
+  "lanzouCookie": "蓝奏云 Cookie",
+  "cookieHint": "ylogin=1234567; phpdisk_info=xxxxxx...",
+  "verifying": "正在验证…",
+  "saveAndLogin": "保存并登录",
+  "cookiePrivacy": "Cookie 只保存在你手机本地（系统加密存储），不会上传到任何第三方服务器。",
+  "pleasePasteCookie": "请先粘贴 Cookie",
+  "cookieMissingYlogin": "未找到 ylogin，请确认复制的是完整 Cookie",
+  "cookieInvalid": "Cookie 无效或已过期，请重新获取",
+  "webLogin": "网页登录",
+  "checking": "检测中…",
+  "finishLogin": "完成登录",
+  "webLoginGuide": "请使用你的蓝奏云账号登录；遇到滑块验证正常完成即可。登录成功跳到网盘页面后会自动保存账号。",
+  "noLoginDetected": "还没有检测到登录状态，请先在上方页面完成登录",
+  "my": "我的",
+  "uidLabel": "UID: {uid}",
+  "@uidLabel": {
+    "placeholders": {
+      "uid": {"type": "String"}
+    }
+  },
+  "switchAccountShort": "切换",
+  "switchAccount": "切换账号",
+  "removeCurrentAccount": "移除当前账号",
+  "settings": "设置",
+  "settingsSubtitle": "外观、行为、连接与高级覆盖项",
+  "webManagement": "网页版管理",
+  "webManagementSubtitle": "修改密码、头像等官方功能",
+  "recycleBin": "回收站",
+  "removeAccountTitle": "移除账号",
+  "removeAccountMessage": "将从本机移除账号 {uid} 及其登录信息，云端文件不受影响。",
+  "@removeAccountMessage": {
+    "placeholders": {
+      "uid": {"type": "String"}
+    }
+  },
+  "cancel": "取消",
+  "remove": "移除",
+  "transfers": "传输管理",
+  "clearFinished": "清除已完成",
+  "upload": "上传",
+  "noUploads": "暂无上传任务",
+  "noDownloads": "暂无下载任务",
+  "inProgress": "进行中",
+  "finished": "已结束",
+  "queued": "排队中",
+  "uploading": "上传中",
+  "downloading": "下载中",
+  "completed": "已完成",
+  "failedWithError": "失败：{error}",
+  "@failedWithError": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "unknownError": "未知错误",
+  "canceled": "已取消",
+  "unknownSize": "未知大小",
+  "retry": "重试",
+  "open": "打开",
+  "pleasePasteShareLink": "请先粘贴蓝奏云分享链接",
+  "addedToFavorites": "已加入收藏",
+  "openShare": "打开分享",
+  "shareLink": "分享链接",
+  "shareLinkHint": "https://www.lanzou.com/xxxxx",
+  "passwordOptional": "提取码（如有）",
+  "resolving": "解析中…",
+  "resolve": "解析",
+  "sizeLabel": "大小：{size}",
+  "@sizeLabel": {
+    "placeholders": {
+      "size": {"type": "String"}
+    }
+  },
+  "favorite": "收藏",
+  "shareEmpty": "这个分享里没有文件",
+  "language": "语言",
+  "followSystem": "跟随系统",
+  "chinese": "中文",
+  "english": "English",
+  "themeMode": "深浅色模式",
+  "light": "浅色",
+  "dark": "深色",
+  "themeModeKeywords": "主题 夜间 深色 浅色",
+  "oled": "OLED 纯黑",
+  "oledSubtitle": "深色模式下用纯黑背景，更省电",
+  "oledKeywords": "纯黑 省电 oled",
+  "themeColor": "主题色",
+  "themeColorKeywords": "配色 颜色 主题",
+  "classicBlue": "经典蓝",
+  "teal": "青绿",
+  "violet": "紫罗兰",
+  "vermilion": "朱红",
+  "olive": "橄榄绿",
+  "custom": "自定义",
+  "hideTopBar": "顶栏收起",
+  "hideTopBarSubtitle": "列表滑动时收起顶栏",
+  "hideTopBarKeywords": "顶栏 滑动隐藏 收起",
+  "hideBottomBar": "底栏收起",
+  "hideBottomBarSubtitle": "列表滑动时收起底栏",
+  "hideBottomBarKeywords": "底栏 滑动隐藏 收起",
+  "floatingNav": "MD3 悬浮底栏",
+  "floatingNavSubtitle": "带圆角和阴影，浮在内容之上",
+  "floatingNavKeywords": "底栏 悬浮 md3",
+  "swipeTabs": "横滑切换视图",
+  "swipeTabsSubtitle": "左右滑动在首页/网盘/传输/我的之间切换",
+  "swipeTabsKeywords": "滑动 手势 tab",
+  "downloadDir": "下载目录",
+  "defaultDownloadDir": "默认（应用文档目录/LanCloud）",
+  "downloadDirKeywords": "下载 目录 保存位置",
+  "launchPage": "默认启动页",
+  "launchPageKeywords": "启动 首页 网盘",
+  "cacheFolders": "缓存目录数据",
+  "cacheFoldersSubtitle": "返回上一级时不再重新加载",
+  "cacheFoldersKeywords": "缓存 目录",
+  "loadAllPages": "自动加载全部目录内容",
+  "loadAllPagesSubtitle": "关闭时按页加载，滑到底部再加载下一页",
+  "loadAllPagesKeywords": "分页 加载 目录",
+  "requestInterval": "网络请求间隔",
+  "requestIntervalSubtitle": "{ms} ms（默认 300，过小可能触发限流）",
+  "@requestIntervalSubtitle": {
+    "placeholders": {
+      "ms": {"type": "int"}
+    }
+  },
+  "requestIntervalKeywords": "间隔 限流 风控 请求",
+  "maxUploads": "同时上传数量",
+  "uploadKeywords": "上传 并发",
+  "maxDownloads": "同时下载数量",
+  "downloadKeywords": "下载 并发",
+  "apiHost": "网盘接口域名",
+  "apiHostKeywords": "域名 接口 连接异常 pc up",
+  "uploadDomain": "上传域名",
+  "defaultUploadDomain": "默认（up.woozooo.com）",
+  "uploadDomainKeywords": "上传 域名 up",
+  "shareDomain": "分享链接域名",
+  "defaultShareDomain": "默认（自动尝试内置镜像）",
+  "shareDomainKeywords": "分享 域名 镜像 链接",
+  "userAgent": "自定义 User-Agent",
+  "defaultUserAgent": "默认（模拟桌面浏览器）",
+  "userAgentKeywords": "ua user-agent 浏览器",
+  "advanced": "高级覆盖项",
+  "advancedSubtitle": "接口/上传/分享域名与自定义 UA",
+  "advancedHint": "仅在连接异常或域名被墙时修改，留空恢复默认",
+  "clearRecents": "清空最近使用记录",
+  "clearRecentsSubtitle": "删除首页最近使用条目",
+  "clearRecentsKeywords": "最近 清空 记录",
+  "about": "关于",
+  "aboutSubtitle": "LanCloud · 蓝奏云第三方客户端",
+  "aboutKeywords": "版本 关于 开源 协议",
+  "aboutText": "自用的蓝奏云第三方客户端，基于非官方接口实现，请勿传播或用于商业用途。",
+  "searchSettings": "搜索设置",
+  "closeSearch": "关闭搜索",
+  "searchPlaceholder": "输入关键词搜索设置，如：域名、收起、下载、并发",
+  "noMatch": "没有匹配的设置项",
+  "cleared": "已清空",
+  "restoredDefaultDir": "已恢复默认目录",
+  "restoreDefault": "恢复默认",
+  "change": "更改",
+  "downloadDirSet": "下载目录已设为 {dir}",
+  "@downloadDirSet": {
+    "placeholders": {
+      "dir": {"type": "String"}
+    }
+  },
+  "pickDirFailed": "选择目录失败：{error}",
+  "@pickDirFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "noInterval": "不间隔",
+  "save": "保存",
+  "uploadDomainHint": "留空使用默认 up.woozooo.com，可带 https://",
+  "shareDomainHint": "留空自动尝试内置镜像，可带 https://",
+  "userAgentHint": "留空表示使用默认值",
+  "categoryAppearance": "外观",
+  "categoryBehavior": "行为",
+  "categoryConnection": "连接",
+  "categoryAdvanced": "高级覆盖项",
+  "categoryData": "数据",
+  "exitSelection": "退出多选",
+  "selectedCount": "已选择 {count} 项",
+  "@selectedCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "selectAll": "全选",
+  "invertSelection": "反选",
+  "newFolder": "新建文件夹",
+  "uploadFile": "上传文件",
+  "uploadFileSubtitle": "从本机或其他应用中选择文件",
+  "uploadSkipped": "已加入 {added} 个上传任务，跳过 {skipped} 个超过 100MB 的文件",
+  "@uploadSkipped": {
+    "placeholders": {
+      "added": {"type": "int"},
+      "skipped": {"type": "int"}
+    }
+  },
+  "uploadAdded": "已加入 {count} 个上传任务",
+  "@uploadAdded": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "nameRequired": "名称（必填）",
+  "descOptional": "简介（选填）",
+  "create": "创建",
+  "folderNameRequired": "文件夹名称不能为空",
+  "deleteConfirmTitle": "删除确认",
+  "deleteConfirmMessage": "将把选中的 {count} 个条目移入回收站，继续吗？",
+  "@deleteConfirmMessage": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "delete": "删除",
+  "batchDownload": "批量下载",
+  "resolvingBatch": "正在解析并加入下载队列（共 {count} 个）",
+  "@resolvingBatch": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "addedDownloads": "已加入 {count} 个下载任务",
+  "@addedDownloads": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "addedDownloadsPartial": "已加入 {ok} 个下载任务，{failed} 个解析失败",
+  "@addedDownloadsPartial": {
+    "placeholders": {
+      "ok": {"type": "int"},
+      "failed": {"type": "int"}
+    }
+  },
+  "noLinksToCopy": "没有可复制的分享链接",
+  "passwordLabel": "提取码：{pwd}",
+  "@passwordLabel": {
+    "placeholders": {
+      "pwd": {"type": "String"}
+    }
+  },
+  "favoritedCount": "已收藏 {count} 个条目",
+  "@favoritedCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "move": "移动",
+  "moveSubtitle": "把选中的文件/文件夹移动到其他目录",
+  "editDesc": "修改简介",
+  "editDescBatchSubtitle": "批量设置选中的文件/文件夹简介",
+  "setPassword": "设置访问密码",
+  "setPasswordSubtitle": "批量设置选中条目的访问密码；免费账号只能设置不能关闭",
+  "movedTo": "已移动 {count} 个条目到「{name}」",
+  "@movedTo": {
+    "placeholders": {
+      "count": {"type": "int"},
+      "name": {"type": "String"}
+    }
+  },
+  "movedPartial": "已移动 {ok} 个条目，{failed} 个失败",
+  "@movedPartial": {
+    "placeholders": {
+      "ok": {"type": "int"},
+      "failed": {"type": "int"}
+    }
+  },
+  "newDescHint": "输入新的简介",
+  "confirm": "确定",
+  "descUpdatedCount": "已修改 {count} 个条目的简介",
+  "@descUpdatedCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "descUpdatedPartial": "已修改 {ok} 个，{failed} 个失败",
+  "@descUpdatedPartial": {
+    "placeholders": {
+      "ok": {"type": "int"},
+      "failed": {"type": "int"}
+    }
+  },
+  "pwdHint": "2-6 位提取码",
+  "pwdTooShort": "提取码至少 2 位",
+  "passwordSetCount": "已为 {count} 个条目设置提取码",
+  "@passwordSetCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "passwordSetPartial": "已设置 {ok} 个，{failed} 个失败",
+  "@passwordSetPartial": {
+    "placeholders": {
+      "ok": {"type": "int"},
+      "failed": {"type": "int"}
+    }
+  },
+  "close": "关闭",
+  "downloadsCount": "下载 {count}",
+  "@downloadsCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "hasPassword": "有提取码",
+  "openLink": "打开链接",
+  "showQr": "显示二维码",
+  "addFavorite": "添加收藏",
+  "moreActions": "更多操作",
+  "freeAccountPasswordNote": "免费账号只能设置不能关闭",
+  "descUpdated": "简介已更新",
+  "passwordSet": "已设置提取码",
+  "favorited": "已收藏",
+  "share": "分享",
+  "more": "更多",
+  "add": "添加",
+  "searchCurrentFolder": "搜索当前目录",
+  "search": "搜索",
+  "menu": "菜单",
+  "sortByName": "按名称排序",
+  "sortBySize": "按大小排序",
+  "sortByTime": "按时间排序",
+  "toggleLayout": "切换布局样式",
+  "multiSelect": "多选",
+  "refresh": "刷新",
+  "root": "根目录",
+  "loadFailed": "加载失败：{error}",
+  "@loadFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "noMatchContent": "没有匹配「{query}」的内容",
+  "@noMatchContent": {
+    "placeholders": {
+      "query": {"type": "String"}
+    }
+  },
+  "emptyFolder": "这个文件夹是空的",
+  "reachedEnd": "已经到底了",
+  "filterResult": "筛选结果",
+  "folderActions": "文件夹操作",
+  "fileActions": "文件操作",
+  "downloaded": "已下载",
+  "folder": "文件夹",
+  "fileCount": "{count} 个文件",
+  "@fileCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "openFolder": "打开文件夹",
+  "chooseTargetFolder": "选择目标文件夹",
+  "parentFolder": "上一级",
+  "moveHere": "移动到这里",
+  "noSubfolders": "这个文件夹里没有子文件夹"
+}

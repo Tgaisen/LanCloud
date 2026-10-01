@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../core/api/lanzou_client.dart';
 import '../core/app_controller.dart';
+import '../l10n/l10n.dart';
 import 'web_login_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -28,7 +29,7 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _submit() async {
     final cookie = _controller.text.trim();
     if (cookie.isEmpty) {
-      setState(() => _error = '请先粘贴 Cookie');
+      setState(() => _error = context.l10n.pleasePasteCookie);
       return;
     }
     setState(() {
@@ -39,6 +40,10 @@ class _LoginPageState extends State<LoginPage> {
       await context.read<AppController>().addAccountFromCookie(cookie);
       if (!mounted) return;
       if (!widget.firstRun) Navigator.of(context).pop();
+    } on CookieFormatException {
+      setState(() => _error = context.l10n.cookieMissingYlogin);
+    } on CookieInvalidException {
+      setState(() => _error = context.l10n.cookieInvalid);
     } on LanzouException catch (e) {
       setState(() => _error = e.message);
     } catch (e) {
@@ -58,8 +63,9 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Scaffold(
-      appBar: widget.firstRun ? null : AppBar(title: const Text('添加账号')),
+      appBar: widget.firstRun ? null : AppBar(title: Text(l10n.addAccount)),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
@@ -78,7 +84,7 @@ class _LoginPageState extends State<LoginPage> {
             ),
             const SizedBox(height: 4),
             Text(
-              '蓝奏云第三方客户端',
+              l10n.lanCloudSubtitle,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium,
             ),
@@ -90,14 +96,10 @@ class _LoginPageState extends State<LoginPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('如何获取 Cookie', style: Theme.of(context).textTheme.titleMedium),
+                  Text(l10n.howToGetCookie,
+                      style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 8),
-                  const Text(
-                    '1. 用浏览器打开并登录蓝奏云官网\n'
-                    '2. 按 F12 打开开发者工具，切到 Network（网络）面板\n'
-                    '3. 随便点击一个请求，找到 Request Headers 里的 Cookie\n'
-                    '4. 复制整段内容（需包含 ylogin 和 phpdisk_info）',
-                  ),
+                  Text(l10n.cookieSteps),
                 ],
               ),
             ),
@@ -106,7 +108,7 @@ class _LoginPageState extends State<LoginPage> {
           FilledButton.icon(
             onPressed: _busy ? null : _webLogin,
             icon: const Icon(Icons.public),
-            label: const Text('网页登录（推荐）'),
+            label: Text(l10n.webLoginRecommended),
           ),
           const SizedBox(height: 20),
           Row(
@@ -115,7 +117,7 @@ class _LoginPageState extends State<LoginPage> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Text(
-                  '或者手动粘贴 Cookie',
+                  l10n.orPasteCookie,
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ),
@@ -127,10 +129,10 @@ class _LoginPageState extends State<LoginPage> {
             controller: _controller,
             maxLines: 6,
             minLines: 3,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               border: OutlineInputBorder(),
-              labelText: '蓝奏云 Cookie',
-              hintText: 'ylogin=1234567; phpdisk_info=xxxxxx...',
+              labelText: l10n.lanzouCookie,
+              hintText: l10n.cookieHint,
             ),
           ),
           if (_error != null) ...[
@@ -150,11 +152,11 @@ class _LoginPageState extends State<LoginPage> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.login),
-            label: Text(_busy ? '正在验证…' : '保存并登录'),
+            label: Text(_busy ? l10n.verifying : l10n.saveAndLogin),
           ),
           const SizedBox(height: 12),
           Text(
-            'Cookie 只保存在你手机本地（系统加密存储），不会上传到任何第三方服务器。',
+            l10n.cookiePrivacy,
             style: Theme.of(context).textTheme.bodySmall,
           ),
         ],
