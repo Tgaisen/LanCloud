@@ -23,8 +23,12 @@ class LzFile {
         time: '${j['time'] ?? ''}',
         size: '${j['size'] ?? ''}'.replaceAll(',', ''),
         downs: int.tryParse('${j['downs'] ?? 0}') ?? 0,
-        hasPwd: '${j['onof'] ?? 0}' == '1',
-        hasDes: '${j['is_des'] ?? 0}' == '1',
+        hasPwd: j['onof'] != null
+            ? '${j['onof']}' == '1'
+            : (j['hasPwd'] == true || '${j['hasPwd']}' == 'true'),
+        hasDes: j['is_des'] != null
+            ? '${j['is_des']}' == '1'
+            : (j['hasDes'] == true || '${j['hasDes']}' == 'true'),
       );
 
   Map<String, dynamic> toJson() => {
@@ -52,10 +56,15 @@ class LzFolder {
   final bool hasPwd;
 
   factory LzFolder.fromJson(Map<String, dynamic> j) => LzFolder(
-        id: '${j['fol_id']}',
+        id: '${j['fol_id'] ?? j['id'] ?? ''}',
         name: '${j['name'] ?? ''}',
-        desc: '${j['folder_des'] ?? ''}'.replaceAll('[', '').replaceAll(']', '').trim(),
-        hasPwd: '${j['onof'] ?? 0}' == '1',
+        desc: '${j['folder_des'] ?? j['desc'] ?? ''}'
+            .replaceAll('[', '')
+            .replaceAll(']', '')
+            .trim(),
+        hasPwd: j['onof'] != null
+            ? '${j['onof']}' == '1'
+            : (j['hasPwd'] == true || '${j['hasPwd']}' == 'true'),
       );
 
   Map<String, dynamic> toJson() => {

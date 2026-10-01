@@ -328,7 +328,7 @@ class LanzouClient {
       })?> folderStats(String folderId) async {
     try {
       final resp = await dio.get<String>(
-        '$uploadBase/myfile.php?item=3&folder_id=$folderId&v2',
+        'https://up.woozooo.com/myfile.php?item=3&folder_id=$folderId&v2',
         options: _options(referer: '$apiBase/mydisk.php'),
       );
       final html = resp.data ?? '';
@@ -535,7 +535,7 @@ class LanzouClient {
 
   Future<ShareInfo> shareInfoOfFolder(String folderId) async {
     final resp = await dio.post<String>(
-      '$uploadBase/doupload.php',
+      '$apiBase/doupload.php',
       queryParameters: {'uid': uid},
       data: {'task': 18, 'folder_id': folderId, 'pg': ''},
       options: _options(),
