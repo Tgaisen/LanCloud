@@ -2241,6 +2241,22 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
             widget.page._folderSizeCache[id] = text;
             if (mounted) setState(() => _stats = text);
           }
+        } else {
+          final files = client == null
+              ? const <LzFile>[]
+              : await client.listFiles(id);
+          if (files.isNotEmpty) {
+            final total = files.fold<int>(
+              0,
+              (sum, file) => sum + lzSizeToBytes(file.size),
+            );
+            final text = [
+              formatBytes(total),
+              l10n.fileCount(files.length),
+            ].join(' · ');
+            widget.page._folderSizeCache[id] = text;
+            if (mounted) setState(() => _stats = text);
+          }
         }
       } catch (_) {}
     }

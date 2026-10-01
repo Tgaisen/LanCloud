@@ -328,12 +328,13 @@ class LanzouClient {
       })?> folderStats(String folderId) async {
     try {
       final resp = await dio.get<String>(
-        'https://up.woozooo.com/myfile.php',
-        queryParameters: {'item': '3', 'folder_id': folderId, 'v2': ''},
+        '$uploadBase/myfile.php?item=3&folder_id=$folderId&v2',
         options: _options(referer: '$apiBase/mydisk.php'),
       );
       final html = resp.data ?? '';
-      if (html.isEmpty || html.contains('网盘用户登录')) return null;
+      if (html.isEmpty || html.contains('网盘用户登录')) {
+        return null;
+      }
       final size = RegExp(
         r'<div class="folsha2">大小<div class="folsha3">([^<]*)</div>',
       ).firstMatch(html)?.group(1)?.trim() ??
@@ -534,11 +535,16 @@ class LanzouClient {
 
   Future<ShareInfo> shareInfoOfFolder(String folderId) async {
     final resp = await dio.post<String>(
-      '$apiBase/doupload.php',
-      data: {'task': 18, 'folder_id': folderId},
+      '$uploadBase/doupload.php',
+      queryParameters: {'uid': uid},
+      data: {'task': 18, 'folder_id': folderId, 'pg': ''},
       options: _options(),
     );
-    final info = (_asMap(resp.data)['info'] as Map).cast<String, dynamic>();
+    final map = _asMap(resp.data);
+    if ('${map['zt']}' != '1') {
+      throw LanzouException('${map['info'] ?? '获取文件夹分享信息失败'}');
+    }
+    final info = (map['info'] as Map).cast<String, dynamic>();
     return ShareInfo(
       url: '${info['new_url'] ?? ''}',
       pwd: '${info['onof']}' == '1' ? '${info['pwd']}' : '',
