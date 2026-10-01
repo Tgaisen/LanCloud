@@ -39,8 +39,19 @@ class AppController extends ChangeNotifier {
         ? 'https://up.woozooo.com'
         : 'https://pc.woozooo.com';
     LanzouClient.userAgent = settings.userAgent;
+    LanzouClient.uploadBase = _withScheme(settings.uploadDomain) ??
+        'https://up.woozooo.com';
+    LanzouClient.shareDomain = settings.shareDomain;
     ready = true;
     notifyListeners();
+  }
+
+  String? _withScheme(String domain) {
+    if (domain.isEmpty) return null;
+    if (domain.startsWith('http://') || domain.startsWith('https://')) {
+      return domain.replaceAll(RegExp(r'/$'), '');
+    }
+    return 'https://$domain'.replaceAll(RegExp(r'/$'), '');
   }
 
   Future<void> setRequestInterval(int ms) async {
@@ -63,8 +74,26 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setUploadDomain(String value) async {
+    await settings.setUploadDomain(value);
+    LanzouClient.uploadBase =
+        _withScheme(settings.uploadDomain) ?? 'https://up.woozooo.com';
+    notifyListeners();
+  }
+
+  Future<void> setShareDomain(String value) async {
+    await settings.setShareDomain(value);
+    LanzouClient.shareDomain = settings.shareDomain;
+    notifyListeners();
+  }
+
   Future<void> setSwipeTabs(bool value) async {
     await settings.setSwipeTabs(value);
+    notifyListeners();
+  }
+
+  Future<void> setDownloadDir(String? dir) async {
+    await settings.setDownloadDir(dir);
     notifyListeners();
   }
 

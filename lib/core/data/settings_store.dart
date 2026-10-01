@@ -14,9 +14,13 @@ class SettingsStore {
   static const _keyMaxDown = 'max_downloads';
   static const _keyApiHost = 'api_host';
   static const _keyUserAgent = 'user_agent';
+  static const _keyUploadDomain = 'upload_domain';
+  static const _keyShareDomain = 'share_domain';
   static const _keySwipeTabs = 'swipe_tabs';
   static const _keyHideBars = 'hide_bars_on_scroll';
   static const _keyHideBarsMode = 'hide_bars_mode';
+  static const _keyHideTopBar = 'hide_top_bar';
+  static const _keyHideBottomBar = 'hide_bottom_bar';
   static const _keyInstantHide = 'instant_hide';
   static const _keyFloatingNav = 'floating_nav_bar';
 
@@ -33,6 +37,10 @@ class SettingsStore {
   int maxDownloads = 3;
   String apiHost = 'pc';
   String userAgent = '';
+  /// 自定义上传域名，留空使用默认 up.woozooo.com。
+  String uploadDomain = '';
+  /// 自定义分享链接域名，留空使用内置镜像回退列表。
+  String shareDomain = '';
   bool swipeTabs = false;
   bool hideTopBar = false;
   bool hideBottomBar = false;
@@ -55,6 +63,8 @@ class SettingsStore {
     maxDownloads = prefs.getInt(_keyMaxDown) ?? 3;
     apiHost = prefs.getString(_keyApiHost) ?? 'pc';
     userAgent = prefs.getString(_keyUserAgent) ?? '';
+    uploadDomain = prefs.getString(_keyUploadDomain) ?? '';
+    shareDomain = prefs.getString(_keyShareDomain) ?? '';
     swipeTabs = prefs.getBool(_keySwipeTabs) ?? false;
     final legacyMode = prefs.getString(_keyHideBarsMode);
     if (legacyMode != null) {
@@ -65,6 +75,8 @@ class SettingsStore {
       hideTopBar = legacyBool;
       hideBottomBar = legacyBool;
     }
+    hideTopBar = prefs.getBool(_keyHideTopBar) ?? hideTopBar;
+    hideBottomBar = prefs.getBool(_keyHideBottomBar) ?? hideBottomBar;
     instantHide = prefs.getBool(_keyInstantHide) ?? false;
     floatingNavBar = prefs.getBool(_keyFloatingNav) ?? false;
   }
@@ -72,13 +84,13 @@ class SettingsStore {
   Future<void> setHideTopBar(bool value) async {
     hideTopBar = value;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_keyHideBars, value);
+    await prefs.setBool(_keyHideTopBar, value);
   }
 
   Future<void> setHideBottomBar(bool value) async {
     hideBottomBar = value;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_keyHideBars, value);
+    await prefs.setBool(_keyHideBottomBar, value);
   }
 
   Future<void> setInstantHide(bool value) async {
@@ -109,6 +121,26 @@ class SettingsStore {
     userAgent = value;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyUserAgent, value);
+  }
+
+  Future<void> setUploadDomain(String value) async {
+    uploadDomain = value.trim();
+    final prefs = await SharedPreferences.getInstance();
+    if (uploadDomain.isEmpty) {
+      await prefs.remove(_keyUploadDomain);
+    } else {
+      await prefs.setString(_keyUploadDomain, uploadDomain);
+    }
+  }
+
+  Future<void> setShareDomain(String value) async {
+    shareDomain = value.trim();
+    final prefs = await SharedPreferences.getInstance();
+    if (shareDomain.isEmpty) {
+      await prefs.remove(_keyShareDomain);
+    } else {
+      await prefs.setString(_keyShareDomain, shareDomain);
+    }
   }
 
   Future<void> setRequestInterval(int value) async {
