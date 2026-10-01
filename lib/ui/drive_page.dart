@@ -347,6 +347,9 @@ class _DrivePageState extends State<DrivePage>
       name: folder.name,
       ref: folder.id,
     );
+    // 进入新目录时若顶/底栏处于收起状态，先恢复显示，
+    // 否则目录内容较少无法滚动时底栏就唤不出来。
+    app.barsHide.value = 0;
     _rememberFolderOffset();
     setState(() {
       _folderId = folder.id;
@@ -359,6 +362,8 @@ class _DrivePageState extends State<DrivePage>
   }
 
   Future<void> _jumpTo(int index) async {
+    final app = context.read<AppController>();
+    app.barsHide.value = 0;
     final newPath = index < 0 ? <PathNode>[] : _path.sublist(0, index + 1);
     _rememberFolderOffset();
     setState(() {
@@ -408,73 +413,79 @@ class _DrivePageState extends State<DrivePage>
       showDragHandle: true,
       builder: (sheetContext) => StatefulBuilder(
         builder: (sheetContext, setSheetState) => SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  context.l10n.layout,
-                  style: Theme.of(context).textTheme.labelLarge,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      context.l10n.layout,
+                      style: Theme.of(context).textTheme.labelLarge,
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: SegmentedButton<String>(
+                        segments: [
+                          ButtonSegment(
+                            value: 'grid',
+                            icon: const Icon(Icons.grid_view),
+                            label: Text(context.l10n.grid),
+                          ),
+                          ButtonSegment(
+                            value: 'list',
+                            icon: const Icon(Icons.view_list),
+                            label: Text(context.l10n.list),
+                          ),
+                        ],
+                        selected: {grid ? 'grid' : 'list'},
+                        showSelectedIcon: false,
+                        onSelectionChanged: (values) {
+                          final value = values.first;
+                          setSheetState(() => grid = value == 'grid');
+                          app.setGridView(grid);
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      context.l10n.sort,
+                      style: Theme.of(context).textTheme.labelLarge,
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: SegmentedButton<String>(
+                        segments: [
+                          ButtonSegment(
+                            value: 'name',
+                            label: Text(context.l10n.sortName),
+                          ),
+                          ButtonSegment(
+                            value: 'size',
+                            label: Text(context.l10n.sortSize),
+                          ),
+                          ButtonSegment(
+                            value: 'time',
+                            label: Text(context.l10n.sortTime),
+                          ),
+                        ],
+                        selected: {sort},
+                        showSelectedIcon: false,
+                        onSelectionChanged: (values) {
+                          setSheetState(() => sort = values.first);
+                          setState(() => _sortMode = values.first);
+                        },
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: SegmentedButton<String>(
-                    segments: [
-                      ButtonSegment(
-                        value: 'grid',
-                        icon: const Icon(Icons.grid_view),
-                        label: Text(context.l10n.grid),
-                      ),
-                      ButtonSegment(
-                        value: 'list',
-                        icon: const Icon(Icons.view_list),
-                        label: Text(context.l10n.list),
-                      ),
-                    ],
-                    selected: {grid ? 'grid' : 'list'},
-                    showSelectedIcon: false,
-                    onSelectionChanged: (values) {
-                      final value = values.first;
-                      setSheetState(() => grid = value == 'grid');
-                      app.setGridView(grid);
-                    },
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  context.l10n.sort,
-                  style: Theme.of(context).textTheme.labelLarge,
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: SegmentedButton<String>(
-                    segments: [
-                      ButtonSegment(
-                        value: 'name',
-                        label: Text(context.l10n.sortName),
-                      ),
-                      ButtonSegment(
-                        value: 'size',
-                        label: Text(context.l10n.sortSize),
-                      ),
-                      ButtonSegment(
-                        value: 'time',
-                        label: Text(context.l10n.sortTime),
-                      ),
-                    ],
-                    selected: {sort},
-                    showSelectedIcon: false,
-                    onSelectionChanged: (values) {
-                      setSheetState(() => sort = values.first);
-                      setState(() => _sortMode = values.first);
-                    },
-                  ),
-                ),
-                const SizedBox(height: 8),
+              ),
+              const SizedBox(height: 12),
                 ListTile(
                   leading: const Icon(Icons.select_all),
                   title: Text(context.l10n.multiSelect),
@@ -512,8 +523,8 @@ class _DrivePageState extends State<DrivePage>
                       );
                     },
                   ),
-              ],
-            ),
+              const SizedBox(height: 8),
+            ],
           ),
         ),
       ),
@@ -1194,7 +1205,7 @@ class _DrivePageState extends State<DrivePage>
               },
             ),
             ListTile(
-              leading: const Icon(Icons.qr_code_2),
+              leading: const Icon(Icons.qr_code),
               title: Text(context.l10n.showQr),
               onTap: () {
                 Navigator.of(sheetContext).pop();
@@ -1524,7 +1535,7 @@ class _DrivePageState extends State<DrivePage>
                   child: Opacity(
                     opacity: _selAnim.value,
                     child: Material(
-                      elevation: 2,
+                      elevation: 0,
                       color: Theme.of(context).colorScheme.surface,
                       child: _selectionAppBar(selectedCount),
                     ),
@@ -1543,7 +1554,7 @@ class _DrivePageState extends State<DrivePage>
                     curve: Curves.easeInOut,
                     // 紧贴按钮内容，避免固定高度带来的上下留白遮挡列表
                     child: Material(
-                      elevation: 8,
+                      elevation: 0,
                       color: Theme.of(context).colorScheme.surfaceContainer,
                       child: SafeArea(
                         top: false,
@@ -2271,15 +2282,6 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 220),
-            child: _loading
-                ? const LinearProgressIndicator(
-                    key: ValueKey('loading'),
-                    minHeight: 2,
-                  )
-                : const SizedBox.shrink(key: ValueKey('idle')),
-          ),
           _PropertyHeader(
             icon: Icons.folder,
             title: folder.name,
@@ -2288,6 +2290,7 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
               ?_stats,
             ].join(' · '),
             desc: _desc ?? folder.desc,
+            loading: _loading,
           ),
           const Divider(height: 1),
           if (widget.showOpen)
@@ -2300,28 +2303,37 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
               },
             ),
           ListTile(
+            enabled: !_loading,
             leading: const Icon(Icons.link_outlined),
             title: Text(context.l10n.copyLink),
-            onTap: () {
-              Navigator.of(context).pop();
-              page._copyFolderShareLink(folder);
-            },
+            onTap: _loading
+                ? null
+                : () {
+                    Navigator.of(context).pop();
+                    page._copyFolderShareLink(folder);
+                  },
           ),
           ListTile(
+            enabled: !_loading,
             leading: const Icon(Icons.open_in_new),
             title: Text(context.l10n.openLink),
-            onTap: () {
-              Navigator.of(context).pop();
-              page._openFolderShareInBrowser(folder);
-            },
+            onTap: _loading
+                ? null
+                : () {
+                    Navigator.of(context).pop();
+                    page._openFolderShareInBrowser(folder);
+                  },
           ),
           ListTile(
-            leading: const Icon(Icons.qr_code_2),
+            enabled: !_loading,
+            leading: const Icon(Icons.qr_code),
             title: Text(context.l10n.showQr),
-            onTap: () {
-              Navigator.of(context).pop();
-              page._showFolderQr(folder);
-            },
+            onTap: _loading
+                ? null
+                : () {
+                    Navigator.of(context).pop();
+                    page._showFolderQr(folder);
+                  },
           ),
           ListTile(
             leading: const Icon(Icons.star_outline),
@@ -2351,12 +2363,14 @@ class _PropertyHeader extends StatelessWidget {
     required this.title,
     this.subtitle = '',
     this.desc = '',
+    this.loading = false,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
   final String desc;
+  final bool loading;
 
   @override
   Widget build(BuildContext context) {
@@ -2370,11 +2384,25 @@ class _PropertyHeader extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleMedium,
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ),
+                    if (loading) ...[
+                      const SizedBox(width: 8),
+                      const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ],
+                  ],
                 ),
                 if (subtitle.isNotEmpty) ...[
                   const SizedBox(height: 4),

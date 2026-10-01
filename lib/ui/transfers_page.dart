@@ -116,7 +116,8 @@ class _TransferListSliver extends StatelessWidget {
         t.status == TransferStatus.queued ||
         t.status == TransferStatus.running;
     final active = tasks.where(isActive).toList();
-    final finished = tasks.where((t) => !isActive(t)).toList();
+    final finished =
+        tasks.where((t) => !isActive(t)).toList().reversed.toList();
     return SliverPadding(
       padding: const EdgeInsets.all(12),
       sliver: SliverList(
@@ -178,14 +179,36 @@ class _TransferCard extends StatelessWidget {
     }
   }
 
+  String _sizeText(AppLocalizations l10n) {
+    if (task.total <= 0) {
+      return task.status == TransferStatus.running ? l10n.unknownSize : '';
+    }
+    if (task.received >= task.total) return formatBytes(task.total);
+    return '${formatBytes(task.received)} / ${formatBytes(task.total)}';
+  }
+
+  String _statusLine(AppLocalizations l10n) {
+    final status = _statusText(l10n);
+    if (task.status == TransferStatus.failed) return status;
+    final size = _sizeText(l10n);
+    return size.isEmpty ? status : '$status · $size';
+  }
+
   @override
   Widget build(BuildContext context) {
     final manager = context.read<TransferManager>();
     final scheme = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     final active = task.status == TransferStatus.running || task.status == TransferStatus.queued;
+    final finished = !active;
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
+      color: finished
+          ? Color.alphaBlend(
+              scheme.primary.withValues(alpha: 0.06),
+              scheme.surfaceContainerLow,
+            )
+          : null,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 12, 8, 6),
         child: Column(
@@ -210,23 +233,23 @@ class _TransferCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: task.status == TransferStatus.done ? 1 : task.progress,
-                minHeight: 6,
-                backgroundColor: scheme.surfaceContainerHighest,
+            if (active) ...[
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: task.progress,
+                  minHeight: 6,
+                  backgroundColor: scheme.surfaceContainerHighest,
+                ),
               ),
-            ),
+            ],
             const SizedBox(height: 6),
             Row(
               children: [
                 Expanded(
                   child: Text(
-                    task.status == TransferStatus.failed
-                        ? _statusText(l10n)
-                        : '${_statusText(l10n)} · ${formatBytes(task.received)} / ${task.total > 0 ? formatBytes(task.total) : l10n.unknownSize}',
+                    _statusLine(l10n),
                     style: Theme.of(context).textTheme.bodySmall,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

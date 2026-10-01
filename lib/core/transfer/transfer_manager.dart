@@ -121,7 +121,7 @@ class TransferManager extends ChangeNotifier {
   }
 
   List<TransferTask> byKind(TransferKind kind) =>
-      tasks.where((t) => t.kind == kind).toList().reversed.toList();
+      tasks.where((t) => t.kind == kind).toList();
 
   void addUpload({
     required String name,

@@ -160,23 +160,23 @@ class SectionCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Row(
               children: [
                 Expanded(
-                  child: Text(title, style: Theme.of(context).textTheme.titleMedium),
+                  child:
+                      Text(title, style: Theme.of(context).textTheme.titleMedium),
                 ),
                 ?trailing,
               ],
             ),
-            const SizedBox(height: 4),
-            child,
-          ],
-        ),
+          ),
+          child,
+        ],
       ),
     );
   }

@@ -178,7 +178,7 @@ class _HomePageState extends State<HomePage>
                 ),
                 IconButton(
                   tooltip: l10n.scanComingSoonTooltip,
-                  icon: const Icon(Icons.qr_code_scanner),
+                  icon: const Icon(Icons.qr_code),
                   onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text(l10n.scanComingSoon)),
                   ),
@@ -240,7 +240,8 @@ class _HomePageState extends State<HomePage>
                                 children: [
                                   for (final item in _recents)
                                     ListTile(
-                                      contentPadding: EdgeInsets.zero,
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(horizontal: 16),
                                       leading: Icon(
                                         item.kind.contains('folder')
                                             ? Icons.folder_outlined
@@ -280,7 +281,8 @@ class _HomePageState extends State<HomePage>
                                 children: [
                                   for (final item in _favorites)
                                     ListTile(
-                                      contentPadding: EdgeInsets.zero,
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(horizontal: 16),
                                       leading: Icon(
                                         item.kind.contains('folder')
                                             ? Icons.folder_special_outlined

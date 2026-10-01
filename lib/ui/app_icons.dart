@@ -72,8 +72,7 @@ class Icons {
   static const IconData picture_as_pdf_outlined = Symbols.picture_as_pdf;
   static const IconData public = Symbols.public;
   static const IconData push_pin_outlined = Symbols.push_pin;
-  static const IconData qr_code_2 = Symbols.qr_code_2;
-  static const IconData qr_code_scanner = Symbols.qr_code_scanner;
+  static const IconData qr_code = Symbols.qr_code;
   static const IconData radio_button_checked = Symbols.radio_button_checked;
   static const IconData radio_button_unchecked = Symbols.radio_button_unchecked;
   static const IconData refresh = Symbols.refresh;

@@ -32,7 +32,7 @@ class LanCloudApp extends StatelessWidget {
           scaffoldBackgroundColor:
               (brightness == Brightness.dark && oledDark) ? Colors.black : null,
           appBarTheme: AppBarTheme(
-            scrolledUnderElevation: 3,
+            scrolledUnderElevation: 0,
             backgroundColor:
                 (brightness == Brightness.dark && oledDark) ? Colors.black : null,
             systemOverlayStyle: SystemUiOverlayStyle(
@@ -50,6 +50,23 @@ class LanCloudApp extends StatelessWidget {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.all(Radius.circular(12)),
             ),
+          ),
+          // Material Symbols：outlined、不填充、字重 400、层级 0、光学尺寸 24
+          iconTheme: const IconThemeData(
+            fill: 0,
+            weight: 400,
+            grade: 0,
+            opticalSize: 24,
+          ),
+          // MD3 扁平化：控件统一去阴影
+          cardTheme: const CardThemeData(elevation: 0),
+          navigationBarTheme: const NavigationBarThemeData(elevation: 0),
+          floatingActionButtonTheme: const FloatingActionButtonThemeData(
+            elevation: 0,
+            focusElevation: 0,
+            hoverElevation: 0,
+            highlightElevation: 0,
+            disabledElevation: 0,
           ),
         );
     final mode = app.settings.themeMode;
@@ -328,9 +345,6 @@ class _RootShellState extends State<RootShell> {
                     decoration: app.settings.floatingNavBar
                         ? BoxDecoration(
                             borderRadius: BorderRadius.circular(28),
-                            boxShadow: const [
-                              BoxShadow(blurRadius: 14, color: Colors.black26),
-                            ],
                           )
                         : null,
                     clipBehavior: app.settings.floatingNavBar
