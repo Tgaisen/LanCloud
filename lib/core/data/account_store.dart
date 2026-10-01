@@ -71,6 +71,13 @@ class AccountStore {
     await _save();
   }
 
+  Future<void> setNickname(String uid, String nickname) async {
+    final account = byUid(uid);
+    if (account == null || account.nickname == nickname) return;
+    account.nickname = nickname;
+    await _save();
+  }
+
   Future<void> remove(String uid) async {
     accounts.removeWhere((a) => a.uid == uid);
     if (activeUid == uid) activeUid = accounts.isEmpty ? null : accounts.first.uid;

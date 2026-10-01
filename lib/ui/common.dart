@@ -330,3 +330,44 @@ Future<bool> downloadShareFile(
     return false;
   }
 }
+
+/// 批量解析分享文件并加入下载队列（分享文件夹多选用）。
+Future<void> downloadShareFiles(
+  BuildContext context, {
+  required List<String> urls,
+  required List<String> names,
+  String pwd = '',
+}) async {
+  if (urls.isEmpty || urls.length != names.length) return;
+  final app = context.read<AppController>();
+  final transfers = context.read<TransferManager>();
+  showLoadingDialog(context, context.l10n.resolvingDownload);
+  var added = 0;
+  var failed = 0;
+  for (var i = 0; i < urls.length; i++) {
+    try {
+      final direct = await app.publicClient.resolveFileShare(urls[i], pwd: pwd);
+      transfers.addDownload(
+        url: direct.url,
+        name: direct.name.isEmpty ? names[i] : direct.name,
+        referer: urls[i],
+        via: app.publicClient,
+      );
+      added += 1;
+    } catch (_) {
+      failed += 1;
+    }
+  }
+  if (context.mounted) Navigator.of(context).pop();
+  if (context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          failed == 0
+              ? context.l10n.addedDownloads(added)
+              : context.l10n.addedDownloadsPartial(added, failed),
+        ),
+      ),
+    );
+  }
+}

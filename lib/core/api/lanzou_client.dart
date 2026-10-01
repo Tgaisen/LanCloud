@@ -501,6 +501,30 @@ class LanzouClient {
 
   // ------------------------------------------------------------------ share
 
+  /// 网页版个人中心昵称；解析失败返回 null（UI 回退显示 UID）。
+  Future<String?> fetchNickname() async {
+    try {
+      final resp = await dio.get<String>(
+        'https://up.woozooo.com/myfile.php?item=1&v2',
+        options: _options(referer: '$apiBase/mydisk.php'),
+      );
+      final html = resp.data ?? '';
+      if (html.isEmpty || html.contains('网盘用户登录')) return null;
+      // 顶栏的登录用户名优先；发布者昵称（shownames）作为兜底。
+      final loginName = RegExp(r'<div class="c_topr">([^<]+)<span')
+          .firstMatch(html)
+          ?.group(1)
+          ?.trim();
+      if (loginName != null && loginName.isNotEmpty) return loginName;
+      return RegExp(r'id="shownames"[^>]*value="([^"]*)"')
+          .firstMatch(html)
+          ?.group(1)
+          ?.trim();
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<ShareInfo> shareInfoOfFile(String fileId) async {
     final resp = await dio.post<String>(
       '$apiBase/doupload.php',
@@ -921,13 +945,19 @@ class LanzouClient {
     final needPwd = html.contains('id="pwdload"') || html.contains('id="passwddiv"');
     if (needPwd && pwd.isEmpty) throw const NeedPasswordException();
     final lx = _match(html, [r"'lx':'?(\d)'?,"]);
-    final t = _match(html, [r"var [0-9a-z]{6} = '(\d{10})';"]);
-    final k = _match(html, [r"var [0-9a-z]{6} = '([0-9a-z]{15,})';"]);
-    final fid = _match(html, [r"'fid':'?(\d+)'?,"]);
+    final t = _match(html, [r"var [0-9a-z_]{6} = '(\d{10})';"]);
+    final k = _match(html, [r"var [0-9a-z_]{6} = '([0-9a-z]{15,})';"]);
+    final fid = _match(html, [
+      r"'fid':'?(\d+)'?,",
+      r'filemoreajax\.php\?file=(\d+)',
+    ]);
+    final uid = _match(html, [r"'uid'\s*:\s*'(\d+)'"]);
+    final puid = _match(html, [r"'puid'\s*:\s*'([^']+)'"]);
     if (lx == null || t == null || k == null || fid == null) {
       throw const LanzouException('分享页结构解析失败');
     }
     final name = _match(html, [
+          r'<title>([^<]*)</title>',
           r"var.+?='(.+?)';\n.+document.title",
           r'<div class="user-title">(.+?)</div>',
         ]) ??
@@ -942,8 +972,19 @@ class LanzouClient {
     while (page <= 50) {
       if (page >= 2) await Future.delayed(const Duration(milliseconds: 600));
       final resp = await dio.post<String>(
-        '$base/filemoreajax.php',
-        data: {'lx': lx, 'pg': page, 'k': k, 't': t, 'fid': fid, 'pwd': pwd},
+        '$base/filemoreajax.php?file=$fid',
+        data: <String, dynamic>{
+          'lx': lx,
+          'fid': fid,
+          'uid': ?uid,
+          'puid': ?puid,
+          'pg': page,
+          'rep': '0',
+          't': t,
+          'k': k,
+          'up': 1,
+          if (pwd.isNotEmpty) 'pwd': pwd,
+        },
         options: _options(referer: url),
       );
       final map = _asMap(resp.data);
@@ -953,11 +994,13 @@ class LanzouClient {
         if (text is List) {
           for (final item in text) {
             if (item is Map) {
+              final id = '${item['id'] ?? ''}';
+              if (id.isEmpty || id == '-1') continue;
               files.add(ShareFileItem(
                 name: '${item['name_all'] ?? ''}',
                 time: '${item['time'] ?? ''}',
                 size: '${item['size'] ?? ''}',
-                url: '$base/${item['id']}',
+                url: id.startsWith('http') ? id : '$base/$id',
               ));
             }
           }
@@ -968,6 +1011,8 @@ class LanzouClient {
       if (zt == '2') break;
       if (zt == '3') throw const LanzouException('提取码错误');
       if (zt == '4') continue;
+      final info = '${map['info'] ?? ''}';
+      if (info.isNotEmpty) throw LanzouException(info);
       throw const LanzouException('获取分享文件列表失败');
     }
     final folders = <SubFolder>[];

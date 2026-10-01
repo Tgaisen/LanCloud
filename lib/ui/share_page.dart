@@ -278,7 +278,7 @@ class _FileResultCard extends StatelessWidget {
   }
 }
 
-class _FolderResultView extends StatelessWidget {
+class _FolderResultView extends StatefulWidget {
   const _FolderResultView({
     required this.folder,
     required this.link,
@@ -292,8 +292,56 @@ class _FolderResultView extends StatelessWidget {
   final Future<void> Function() onFavorite;
 
   @override
+  State<_FolderResultView> createState() => _FolderResultViewState();
+}
+
+class _FolderResultViewState extends State<_FolderResultView> {
+  bool _selecting = false;
+  final Set<String> _selected = {};
+
+  void _toggleSelecting() {
+    setState(() {
+      _selecting = !_selecting;
+      _selected.clear();
+    });
+  }
+
+  void _toggleFile(String url) {
+    setState(() {
+      if (!_selected.remove(url)) _selected.add(url);
+    });
+  }
+
+  void _selectAll() {
+    setState(() {
+      if (_selected.length == widget.folder.files.length) {
+        _selected.clear();
+      } else {
+        _selected
+          ..clear()
+          ..addAll(widget.folder.files.map((f) => f.url));
+      }
+    });
+  }
+
+  Future<void> _downloadSelected() async {
+    final files = widget.folder.files
+        .where((f) => _selected.contains(f.url))
+        .toList();
+    if (files.isEmpty) return;
+    await downloadShareFiles(
+      context,
+      urls: [for (final f in files) f.url],
+      names: [for (final f in files) f.name],
+      pwd: widget.pwd,
+    );
+    if (mounted) _toggleSelecting();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final folder = widget.folder;
     return Card(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
@@ -314,13 +362,18 @@ class _FolderResultView extends StatelessWidget {
                 ),
                 IconButton(
                   tooltip: l10n.favorite,
-                  onPressed: onFavorite,
+                  onPressed: widget.onFavorite,
                   icon: const Icon(Icons.star_outline),
                 ),
                 IconButton(
                   tooltip: l10n.copyLink,
-                  onPressed: () => copyText(context, link),
+                  onPressed: () => copyText(context, widget.link),
                   icon: const Icon(Icons.copy),
+                ),
+                IconButton(
+                  tooltip: _selecting ? l10n.exitSelection : l10n.multiSelect,
+                  onPressed: _toggleSelecting,
+                  icon: Icon(_selecting ? Icons.close : Icons.select_all),
                 ),
               ],
             ),
@@ -339,17 +392,46 @@ class _FolderResultView extends StatelessWidget {
                   subtitle: sub.desc.isEmpty ? null : Text(sub.desc),
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) => SharePage(initialLink: sub.url, initialPwd: pwd),
+                      builder: (_) => SharePage(
+                        initialLink: sub.url,
+                        initialPwd: widget.pwd,
+                      ),
                     ),
                   ),
                 ),
             ],
             if (folder.files.isNotEmpty) ...[
+              if (_selecting) ...[
+                Padding(
+                  padding: const EdgeInsets.only(right: 8, bottom: 4),
+                  child: Row(
+                    children: [
+                      Text(l10n.selectedCount(_selected.length)),
+                      const Spacer(),
+                      TextButton(
+                        onPressed: _selectAll,
+                        child: Text(l10n.selectAll),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton(
+                        onPressed:
+                            _selected.isEmpty ? null : _downloadSelected,
+                        child: Text(l10n.download),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const Divider(),
               for (final file in folder.files)
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading: Icon(iconForFile(file.name)),
+                  leading: _selecting
+                      ? Checkbox(
+                          value: _selected.contains(file.url),
+                          onChanged: (_) => _toggleFile(file.url),
+                        )
+                      : Icon(iconForFile(file.name)),
                   title: Text(file.name, maxLines: 1, overflow: TextOverflow.ellipsis),
                   subtitle: Text(
                     [
@@ -357,13 +439,22 @@ class _FolderResultView extends StatelessWidget {
                       if (file.time.isNotEmpty) file.time,
                     ].where((e) => e.isNotEmpty).join(' · '),
                   ),
-                  trailing: const Icon(Icons.download_outlined),
-                  onTap: () => downloadShareFile(
-                    context,
-                    url: file.url,
-                    pwd: pwd,
-                    fallbackName: file.name,
-                  ),
+                  selected: _selecting && _selected.contains(file.url),
+                  trailing: _selecting
+                      ? null
+                      : const Icon(Icons.download_outlined),
+                  onTap: () {
+                    if (_selecting) {
+                      _toggleFile(file.url);
+                    } else {
+                      downloadShareFile(
+                        context,
+                        url: file.url,
+                        pwd: widget.pwd,
+                        fallbackName: file.name,
+                      );
+                    }
+                  },
                 ),
             ],
             if (folder.files.isEmpty && folder.folders.isEmpty)

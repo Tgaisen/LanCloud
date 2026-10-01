@@ -45,6 +45,7 @@ class AppController extends ChangeNotifier {
     await driveCache.loadFromDisk();
     ready = true;
     notifyListeners();
+    _refreshActiveNickname();
   }
 
   String? _withScheme(String domain) {
@@ -171,9 +172,29 @@ class AppController extends ChangeNotifier {
     final c = LanzouClient(uid: uid)..setCookieHeader(cookie);
     final ok = await c.verify();
     if (!ok) throw const CookieInvalidException();
-    await accounts.upsert(Account(uid: uid, cookie: cookie));
+    var nickname = '';
+    try {
+      nickname = await c.fetchNickname() ?? '';
+    } catch (_) {}
+    await accounts.upsert(
+      Account(uid: uid, cookie: cookie, nickname: nickname),
+    );
     _clients[uid] = c;
     notifyListeners();
+  }
+
+  /// 账号没有昵称时，后台解析一次网页版个人中心并落盘。
+  Future<void> _refreshActiveNickname() async {
+    final uid = accounts.activeUid;
+    if (uid == null) return;
+    final account = accounts.byUid(uid);
+    if (account == null || account.nickname.isNotEmpty) return;
+    try {
+      final nickname = await clientFor(uid).fetchNickname();
+      if (nickname == null || nickname.isEmpty) return;
+      await accounts.setNickname(uid, nickname);
+      notifyListeners();
+    } catch (_) {}
   }
 
   Future<void> switchAccount(String uid) async {

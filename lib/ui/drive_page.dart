@@ -2,7 +2,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart' hide Icons;
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../core/api/lanzou_client.dart';
 import '../core/api/models.dart';
@@ -12,6 +11,7 @@ import '../core/transfer/transfer_manager.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
+import 'web_page.dart';
 
 const int kFreeUploadLimit = 100 * 1024 * 1024;
 
@@ -1027,13 +1027,20 @@ class _DrivePageState extends State<DrivePage>
   }
 
   Future<void> _openShareInBrowser(LzFile file) async {
-    final client = context.read<AppController>().client;
+    final app = context.read<AppController>();
+    final client = app.client;
     if (client == null) return;
     try {
       final info = await client.shareInfoOfFile(file.id);
-      await launchUrl(
-        Uri.parse(info.url),
-        mode: LaunchMode.externalApplication,
+      if (!mounted) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => WebPage(
+            title: file.name,
+            url: info.url,
+            cookie: app.activeAccount?.cookie,
+          ),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
@@ -1042,13 +1049,20 @@ class _DrivePageState extends State<DrivePage>
   }
 
   Future<void> _openFolderShareInBrowser(LzFolder folder) async {
-    final client = context.read<AppController>().client;
+    final app = context.read<AppController>();
+    final client = app.client;
     if (client == null) return;
     try {
       final info = await client.shareInfoOfFolder(folder.id);
-      await launchUrl(
-        Uri.parse(info.url),
-        mode: LaunchMode.externalApplication,
+      if (!mounted) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => WebPage(
+            title: folder.name,
+            url: info.url,
+            cookie: app.activeAccount?.cookie,
+          ),
+        ),
       );
     } catch (e) {
       if (!mounted) return;

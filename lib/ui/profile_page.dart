@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart' hide Icons;
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../core/app_controller.dart';
 import '../l10n/l10n.dart';
@@ -9,12 +8,22 @@ import 'common.dart';
 import 'login_page.dart';
 import 'scroll_tint.dart';
 import 'settings_page.dart';
+import 'web_page.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
 
-  Future<void> _openWeb(String url) async {
-    await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+  void _openWeb(BuildContext context, String url, String title) {
+    final app = context.read<AppController>();
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => WebPage(
+          title: title,
+          url: url,
+          cookie: app.activeAccount?.cookie,
+        ),
+      ),
+    );
   }
 
   @override
@@ -90,15 +99,20 @@ class ProfilePage extends StatelessWidget {
                       title: Text(l10n.webManagement),
                       subtitle: Text(l10n.webManagementSubtitle),
                       trailing: const Icon(Icons.open_in_new),
-                      onTap: () =>
-                          _openWeb('https://pc.woozooo.com/mydisk.php'),
+                      onTap: () => _openWeb(
+                        context,
+                        'https://pc.woozooo.com/mydisk.php',
+                        l10n.webManagement,
+                      ),
                     ),
                     ListTile(
                       leading: const Icon(Icons.restore_from_trash_outlined),
                       title: Text(l10n.recycleBin),
                       trailing: const Icon(Icons.open_in_new),
                       onTap: () => _openWeb(
+                        context,
                         'https://pc.woozooo.com/mydisk.php?item=recycle',
+                        l10n.recycleBin,
                       ),
                     ),
                   ],
