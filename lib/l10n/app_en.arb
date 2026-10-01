@@ -271,5 +271,32 @@
   "chooseTargetFolder": "Choose destination folder",
   "parentFolder": "Up one level",
   "moveHere": "Move here",
-  "noSubfolders": "No subfolders in this folder"
+  "noSubfolders": "No subfolders in this folder",
+  "notifications": "Notifications",
+  "notifProgress": "Transfer progress",
+  "notifProgressSubtitle": "Show progress in the notification shade while transferring",
+  "notifProgressKeywords": "notification progress transfer",
+  "notifDone": "Completion alerts",
+  "notifDoneSubtitle": "Notify when a download or upload finishes or fails",
+  "notifDoneKeywords": "notification complete alert",
+  "notifPermission": "Notification permission",
+  "notifPermissionKeywords": "notification permission allow",
+  "notifPermissionChecking": "Checking…",
+  "notifPermissionGranted": "Granted",
+  "notifPermissionDenied": "Not granted",
+  "notifPermissionDeniedHint": "Notifications are disabled. Enable them in system settings.",
+  "notifProgressTitle": "Transferring",
+  "notifProgressBody": "{count} tasks in progress",
+  "@notifProgressBody": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "notifUploadDone": "Upload complete",
+  "notifDownloadDone": "Download complete",
+  "notifFailed": "Transfer failed",
+  "notifChannelProgress": "Transfer progress",
+  "notifChannelProgressDesc": "Progress of downloads and uploads in progress",
+  "notifChannelDone": "Transfers finished",
+  "notifChannelDoneDesc": "Alerts when downloads and uploads finish or fail"
 }

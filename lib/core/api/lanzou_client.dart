@@ -789,6 +789,19 @@ class LanzouClient {
       }
     }
 
+    // 新版密码流程：首页 JS 自带 isngis(sign)/kdns(kd)，直接 POST ajaxfile.php
+    if (needPwd) {
+      final passwordDirect =
+          await _resolvePasswordShare(html, url, uri, base, pwd);
+      if (passwordDirect != null) {
+        return DirectFile(
+          name: passwordDirect.name.isEmpty ? name : passwordDirect.name,
+          url: passwordDirect.url,
+          size: size,
+        );
+      }
+    }
+
     // 旧版流程回退：ajaxm.php
     String? sign;
     if (needPwd) {
@@ -830,6 +843,68 @@ class LanzouClient {
       throw const LanzouException('未获取到直链');
     }
     return DirectFile(name: name, url: direct, size: size);
+  }
+
+  /// 新版带密码分享：首页直接 POST ajaxfile.php（isngis 作 sign、kdns 作 kd、p 为提取码）。
+  Future<DirectFile?> _resolvePasswordShare(
+    String html,
+    String url,
+    Uri uri,
+    String base,
+    String pwd,
+  ) async {
+    final signCandidates = RegExp(r"var\s+isngis\s*=\s*'([^']*)'")
+        .allMatches(html)
+        .map((m) => m.group(1)!)
+        .where((s) => s.isNotEmpty)
+        .toList();
+    final endpointRaw = RegExp(r"url\s*:\s*'([^']*ajaxfile\.php[^']*)'")
+        .firstMatch(html)
+        ?.group(1);
+    if (signCandidates.isEmpty || endpointRaw == null) return null;
+    final kd = RegExp(r'var\s+kdns\s*=\s*([^;]+);')
+            .firstMatch(html)
+            ?.group(1)
+            ?.trim() ??
+        '1';
+    final lanosso =
+        RegExp(r"var\s+lanosso\s*=\s*'([^']*)'").firstMatch(html)?.group(1) ?? '';
+    final endpoint = _absoluteUrl(base, uri.scheme, endpointRaw);
+    final resp = await dio.post<String>(
+      endpoint,
+      data: <String, dynamic>{
+        'action': 'downprocess',
+        'sign': signCandidates.last,
+        'kd': kd,
+        'p': pwd,
+      },
+      options: _options(referer: url),
+    );
+    final map = _asMap(resp.data);
+    if ('${map['zt']}' != '1') {
+      final info = '${map['inf'] ?? map['info'] ?? ''}';
+      throw LanzouException(info.isNotEmpty ? info : '提取码错误或获取下载地址失败');
+    }
+    final dom = '${map['dom'] ?? ''}';
+    final pathRaw = '${map['url'] ?? ''}';
+    final path = lanosso.isNotEmpty && !pathRaw.contains(lanosso)
+        ? '$pathRaw$lanosso'
+        : pathRaw;
+    final name = '${map['inf'] ?? ''}'.replaceAll('*', '_');
+    if (path.startsWith('http')) return DirectFile(name: name, url: path);
+    if (path.startsWith('?') && dom.isNotEmpty) {
+      final directUrl = '$dom/file/$path';
+      await _primeDirectUrl(directUrl);
+      return DirectFile(name: name, url: directUrl);
+    }
+    if (dom.isNotEmpty && path.isNotEmpty) {
+      final direct = await _followDownloadRedirect(dom, path, url);
+      if (direct != null && direct.isNotEmpty) {
+        return DirectFile(name: name, url: direct);
+      }
+      return DirectFile(name: name, url: '$dom/file/$path');
+    }
+    return null;
   }
 
   Future<FolderShareDetail> resolveFolderShare(

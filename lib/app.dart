@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'core/app_controller.dart';
+import 'core/notifications.dart';
 import 'core/transfer/transfer_manager.dart';
 import 'l10n/l10n.dart';
 import 'ui/drive_page.dart';
@@ -203,6 +204,7 @@ class _RootShellState extends State<RootShell> {
     final app = context.watch<AppController>();
     final transfers = context.watch<TransferManager>();
     final l10n = context.l10n;
+    NotificationService.i18n = l10n;
     if (!app.ready) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }

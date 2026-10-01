@@ -3,6 +3,7 @@ import 'package:flutter/material.dart' hide Icons;
 import 'package:provider/provider.dart';
 
 import '../core/app_controller.dart';
+import '../core/notifications.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'scroll_tint.dart';
@@ -35,12 +36,24 @@ class _Entry {
 
 class _SettingsPageState extends State<SettingsPage> {
   bool _searching = false;
+  bool? _notifGranted;
   final TextEditingController _search = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshNotifPermission();
+  }
 
   @override
   void dispose() {
     _search.dispose();
     super.dispose();
+  }
+
+  Future<void> _refreshNotifPermission() async {
+    final granted = await NotificationService.instance.hasPermission();
+    if (mounted) setState(() => _notifGranted = granted);
   }
 
   List<_Entry> _entries(AppController app) {
@@ -243,6 +256,57 @@ class _SettingsPageState extends State<SettingsPage> {
           subtitle: Text(context.l10n.loadAllPagesSubtitle),
           value: app.settings.loadAllPages,
           onChanged: (value) => app.setLoadAllPages(value),
+        ),
+      ),
+      _Entry(
+        id: 'notify_progress',
+        title: l10n.notifProgress,
+        subtitle: l10n.notifProgressSubtitle,
+        keywords: l10n.notifProgressKeywords.split(' '),
+        category: 'notifications',
+        build: (context, app) => SwitchListTile(
+          secondary: const Icon(Icons.speed),
+          title: Text(context.l10n.notifProgress),
+          subtitle: Text(context.l10n.notifProgressSubtitle),
+          value: app.settings.notifyProgress,
+          onChanged: _setNotifyProgress,
+        ),
+      ),
+      _Entry(
+        id: 'notify_done',
+        title: l10n.notifDone,
+        subtitle: l10n.notifDoneSubtitle,
+        keywords: l10n.notifDoneKeywords.split(' '),
+        category: 'notifications',
+        build: (context, app) => SwitchListTile(
+          secondary: const Icon(Icons.task_alt),
+          title: Text(context.l10n.notifDone),
+          subtitle: Text(context.l10n.notifDoneSubtitle),
+          value: app.settings.notifyDone,
+          onChanged: _setNotifyDone,
+        ),
+      ),
+      _Entry(
+        id: 'notify_permission',
+        title: l10n.notifPermission,
+        subtitle: _notifGranted == null
+            ? l10n.notifPermissionChecking
+            : (_notifGranted!
+                ? l10n.notifPermissionGranted
+                : l10n.notifPermissionDenied),
+        keywords: l10n.notifPermissionKeywords.split(' '),
+        category: 'notifications',
+        build: (context, app) => ListTile(
+          leading: const Icon(Icons.notifications_outlined),
+          title: Text(context.l10n.notifPermission),
+          subtitle: Text(
+            _notifGranted == null
+                ? context.l10n.notifPermissionChecking
+                : (_notifGranted!
+                    ? context.l10n.notifPermissionGranted
+                    : context.l10n.notifPermissionDenied),
+          ),
+          onTap: _requestNotifPermission,
         ),
       ),
       _Entry(
@@ -522,11 +586,60 @@ class _SettingsPageState extends State<SettingsPage> {
   String _categoryName(String id) => switch (id) {
         'appearance' => context.l10n.categoryAppearance,
         'behavior' => context.l10n.categoryBehavior,
+        'notifications' => context.l10n.notifications,
         'connection' => context.l10n.categoryConnection,
         'advanced' => context.l10n.categoryAdvanced,
         'data' => context.l10n.categoryData,
         _ => id,
       };
+
+  Future<void> _setNotifyProgress(bool value) async {
+    final app = context.read<AppController>();
+    if (value) {
+      final messenger = ScaffoldMessenger.of(context);
+      final l10n = context.l10n;
+      final granted = await NotificationService.instance.requestPermission();
+      if (mounted) setState(() => _notifGranted = granted);
+      if (!granted) {
+        messenger.showSnackBar(
+          SnackBar(content: Text(l10n.notifPermissionDeniedHint)),
+        );
+      }
+    }
+    await app.setNotifyProgress(value);
+  }
+
+  Future<void> _setNotifyDone(bool value) async {
+    final app = context.read<AppController>();
+    if (value) {
+      final messenger = ScaffoldMessenger.of(context);
+      final l10n = context.l10n;
+      final granted = await NotificationService.instance.requestPermission();
+      if (mounted) setState(() => _notifGranted = granted);
+      if (!granted) {
+        messenger.showSnackBar(
+          SnackBar(content: Text(l10n.notifPermissionDeniedHint)),
+        );
+      }
+    }
+    await app.setNotifyDone(value);
+  }
+
+  Future<void> _requestNotifPermission() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final l10n = context.l10n;
+    final granted = await NotificationService.instance.requestPermission();
+    if (mounted) setState(() => _notifGranted = granted);
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          granted
+              ? l10n.notifPermissionGranted
+              : l10n.notifPermissionDeniedHint,
+        ),
+      ),
+    );
+  }
 
   List<Widget> _buildSearchResults(
     BuildContext context,

@@ -433,5 +433,32 @@
   "chooseTargetFolder": "选择目标文件夹",
   "parentFolder": "上一级",
   "moveHere": "移动到这里",
-  "noSubfolders": "这个文件夹里没有子文件夹"
+  "noSubfolders": "这个文件夹里没有子文件夹",
+  "notifications": "通知",
+  "notifProgress": "传输进度通知",
+  "notifProgressSubtitle": "传输进行中在通知栏显示进度",
+  "notifProgressKeywords": "通知 进度 传输",
+  "notifDone": "传输完成提醒",
+  "notifDoneSubtitle": "下载或上传完成、失败时提醒",
+  "notifDoneKeywords": "通知 完成 提醒",
+  "notifPermission": "通知权限",
+  "notifPermissionKeywords": "通知 权限 授权",
+  "notifPermissionChecking": "检查中…",
+  "notifPermissionGranted": "已授权",
+  "notifPermissionDenied": "未授权",
+  "notifPermissionDeniedHint": "通知权限未开启，请到系统设置中允许通知",
+  "notifProgressTitle": "传输中",
+  "notifProgressBody": "{count} 个任务进行中",
+  "@notifProgressBody": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "notifUploadDone": "上传完成",
+  "notifDownloadDone": "下载完成",
+  "notifFailed": "传输失败",
+  "notifChannelProgress": "传输进度",
+  "notifChannelProgressDesc": "下载与上传进行中的进度",
+  "notifChannelDone": "传输完成",
+  "notifChannelDoneDesc": "下载与上传完成或失败的提醒"
 }

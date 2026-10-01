@@ -911,4 +911,77 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noSubfolders => 'No subfolders in this folder';
+
+  @override
+  String get notifications => 'Notifications';
+
+  @override
+  String get notifProgress => 'Transfer progress';
+
+  @override
+  String get notifProgressSubtitle =>
+      'Show progress in the notification shade while transferring';
+
+  @override
+  String get notifProgressKeywords => 'notification progress transfer';
+
+  @override
+  String get notifDone => 'Completion alerts';
+
+  @override
+  String get notifDoneSubtitle =>
+      'Notify when a download or upload finishes or fails';
+
+  @override
+  String get notifDoneKeywords => 'notification complete alert';
+
+  @override
+  String get notifPermission => 'Notification permission';
+
+  @override
+  String get notifPermissionKeywords => 'notification permission allow';
+
+  @override
+  String get notifPermissionChecking => 'Checking…';
+
+  @override
+  String get notifPermissionGranted => 'Granted';
+
+  @override
+  String get notifPermissionDenied => 'Not granted';
+
+  @override
+  String get notifPermissionDeniedHint =>
+      'Notifications are disabled. Enable them in system settings.';
+
+  @override
+  String get notifProgressTitle => 'Transferring';
+
+  @override
+  String notifProgressBody(int count) {
+    return '$count tasks in progress';
+  }
+
+  @override
+  String get notifUploadDone => 'Upload complete';
+
+  @override
+  String get notifDownloadDone => 'Download complete';
+
+  @override
+  String get notifFailed => 'Transfer failed';
+
+  @override
+  String get notifChannelProgress => 'Transfer progress';
+
+  @override
+  String get notifChannelProgressDesc =>
+      'Progress of downloads and uploads in progress';
+
+  @override
+  String get notifChannelDone => 'Transfers finished';
+
+  @override
+  String get notifChannelDoneDesc =>
+      'Alerts when downloads and uploads finish or fail';
 }

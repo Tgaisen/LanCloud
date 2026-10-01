@@ -1729,6 +1729,138 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'这个文件夹里没有子文件夹'**
   String get noSubfolders;
+
+  /// No description provided for @notifications.
+  ///
+  /// In zh, this message translates to:
+  /// **'通知'**
+  String get notifications;
+
+  /// No description provided for @notifProgress.
+  ///
+  /// In zh, this message translates to:
+  /// **'传输进度通知'**
+  String get notifProgress;
+
+  /// No description provided for @notifProgressSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'传输进行中在通知栏显示进度'**
+  String get notifProgressSubtitle;
+
+  /// No description provided for @notifProgressKeywords.
+  ///
+  /// In zh, this message translates to:
+  /// **'通知 进度 传输'**
+  String get notifProgressKeywords;
+
+  /// No description provided for @notifDone.
+  ///
+  /// In zh, this message translates to:
+  /// **'传输完成提醒'**
+  String get notifDone;
+
+  /// No description provided for @notifDoneSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载或上传完成、失败时提醒'**
+  String get notifDoneSubtitle;
+
+  /// No description provided for @notifDoneKeywords.
+  ///
+  /// In zh, this message translates to:
+  /// **'通知 完成 提醒'**
+  String get notifDoneKeywords;
+
+  /// No description provided for @notifPermission.
+  ///
+  /// In zh, this message translates to:
+  /// **'通知权限'**
+  String get notifPermission;
+
+  /// No description provided for @notifPermissionKeywords.
+  ///
+  /// In zh, this message translates to:
+  /// **'通知 权限 授权'**
+  String get notifPermissionKeywords;
+
+  /// No description provided for @notifPermissionChecking.
+  ///
+  /// In zh, this message translates to:
+  /// **'检查中…'**
+  String get notifPermissionChecking;
+
+  /// No description provided for @notifPermissionGranted.
+  ///
+  /// In zh, this message translates to:
+  /// **'已授权'**
+  String get notifPermissionGranted;
+
+  /// No description provided for @notifPermissionDenied.
+  ///
+  /// In zh, this message translates to:
+  /// **'未授权'**
+  String get notifPermissionDenied;
+
+  /// No description provided for @notifPermissionDeniedHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'通知权限未开启，请到系统设置中允许通知'**
+  String get notifPermissionDeniedHint;
+
+  /// No description provided for @notifProgressTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'传输中'**
+  String get notifProgressTitle;
+
+  /// No description provided for @notifProgressBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 个任务进行中'**
+  String notifProgressBody(int count);
+
+  /// No description provided for @notifUploadDone.
+  ///
+  /// In zh, this message translates to:
+  /// **'上传完成'**
+  String get notifUploadDone;
+
+  /// No description provided for @notifDownloadDone.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载完成'**
+  String get notifDownloadDone;
+
+  /// No description provided for @notifFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'传输失败'**
+  String get notifFailed;
+
+  /// No description provided for @notifChannelProgress.
+  ///
+  /// In zh, this message translates to:
+  /// **'传输进度'**
+  String get notifChannelProgress;
+
+  /// No description provided for @notifChannelProgressDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载与上传进行中的进度'**
+  String get notifChannelProgressDesc;
+
+  /// No description provided for @notifChannelDone.
+  ///
+  /// In zh, this message translates to:
+  /// **'传输完成'**
+  String get notifChannelDone;
+
+  /// No description provided for @notifChannelDoneDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载与上传完成或失败的提醒'**
+  String get notifChannelDoneDesc;
 }
 
 class _AppLocalizationsDelegate

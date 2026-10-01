@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 
 import '../api/lanzou_client.dart';
 import '../app_controller.dart';
+import '../notifications.dart';
 
 enum TransferKind { upload, download }
 
@@ -255,6 +256,7 @@ class TransferManager extends ChangeNotifier {
     task.error = null;
     _persist(task);
     notifyListeners();
+    _syncProgressNotification();
     try {
       if (task.kind == TransferKind.upload) {
         await _runUpload(task);
@@ -288,6 +290,52 @@ class TransferManager extends ChangeNotifier {
       _persist(task);
       notifyListeners();
       _pump();
+      _notifyFinished(task);
+      _syncProgressNotification();
+    }
+  }
+
+  /// 汇总所有运行中任务的进度，节流更新通知栏进度。
+  void _syncProgressNotification() {
+    final ns = NotificationService.instance;
+    if (!_app.settings.notifyProgress) {
+      ns.cancelProgress();
+      return;
+    }
+    final running = tasks
+        .where((t) => t.status == TransferStatus.running)
+        .toList();
+    if (running.isEmpty) {
+      ns.cancelProgress();
+      return;
+    }
+    var total = 0;
+    var received = 0;
+    var known = 0;
+    for (final t in running) {
+      received += t.received;
+      if (t.total > 0) {
+        total += t.total;
+        known += 1;
+      }
+    }
+    ns.showProgress(
+      count: running.length,
+      percent: total > 0 ? (received * 100) ~/ total : 0,
+      indeterminate: known == 0,
+    );
+  }
+
+  void _notifyFinished(TransferTask task) {
+    if (!_app.settings.notifyDone) return;
+    final ns = NotificationService.instance;
+    if (task.status == TransferStatus.done) {
+      ns.showDone(
+        upload: task.kind == TransferKind.upload,
+        name: task.name,
+      );
+    } else if (task.status == TransferStatus.failed) {
+      ns.showFailed(name: task.name, error: task.error ?? '');
     }
   }
 
@@ -304,6 +352,7 @@ class TransferManager extends ChangeNotifier {
         task.received = sent;
         if (total > 0) task.total = total;
         notifyListeners();
+        _syncProgressNotification();
       },
     );
   }
@@ -319,6 +368,7 @@ class TransferManager extends ChangeNotifier {
         task.received = received;
         if (total > 0) task.total = total;
         notifyListeners();
+        _syncProgressNotification();
       },
       options: Options(
         headers: {

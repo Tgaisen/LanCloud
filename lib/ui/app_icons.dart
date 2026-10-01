@@ -58,6 +58,7 @@ class Icons {
   static const IconData link = Symbols.link;
   static const IconData link_outlined = Symbols.link;
   static const IconData lock_outline = Symbols.lock;
+  static const IconData notifications_outlined = Symbols.notifications;
   static const IconData login = Symbols.login;
   static const IconData more_horiz = Symbols.more_horiz;
   static const IconData more_vert = Symbols.more_vert;
@@ -83,9 +84,11 @@ class Icons {
   static const IconData share_outlined = Symbols.share;
   static const IconData slideshow_outlined = Symbols.slideshow;
   static const IconData smart_button = Symbols.smart_button;
+  static const IconData speed = Symbols.speed;
   static const IconData star_border = Symbols.star_border;
   static const IconData star_outline = Symbols.star;
   static const IconData swap_vert = Symbols.swap_vert;
+  static const IconData task_alt = Symbols.task_alt;
   static const IconData swap_vert_outlined = Symbols.swap_vert;
   static const IconData swipe = Symbols.swipe;
   static const IconData switch_account_outlined = Symbols.switch_account;

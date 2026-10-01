@@ -24,6 +24,8 @@ class SettingsStore {
   static const _keyHideBottomBar = 'hide_bottom_bar';
   static const _keyFloatingNav = 'floating_nav_bar';
   static const _keyTransitions = 'transition_animations';
+  static const _keyNotifyProgress = 'notify_progress';
+  static const _keyNotifyDone = 'notify_done';
 
   String? downloadDir;
   String language = 'system';
@@ -49,6 +51,10 @@ class SettingsStore {
   bool floatingNavBar = false;
   /// 目录切换与列表出现动画，关闭可减少低端设备掉帧。
   bool transitionAnimations = true;
+  /// 传输进行中在通知栏显示进度。
+  bool notifyProgress = true;
+  /// 下载或上传完成时提醒。
+  bool notifyDone = true;
 
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -82,6 +88,20 @@ class SettingsStore {
     hideBottomBar = prefs.getBool(_keyHideBottomBar) ?? hideBottomBar;
     floatingNavBar = prefs.getBool(_keyFloatingNav) ?? false;
     transitionAnimations = prefs.getBool(_keyTransitions) ?? true;
+    notifyProgress = prefs.getBool(_keyNotifyProgress) ?? true;
+    notifyDone = prefs.getBool(_keyNotifyDone) ?? true;
+  }
+
+  Future<void> setNotifyProgress(bool value) async {
+    notifyProgress = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyNotifyProgress, value);
+  }
+
+  Future<void> setNotifyDone(bool value) async {
+    notifyDone = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyNotifyDone, value);
   }
 
   Future<void> setHideTopBar(bool value) async {

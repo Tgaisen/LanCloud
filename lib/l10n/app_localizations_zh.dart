@@ -887,4 +887,72 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get noSubfolders => '这个文件夹里没有子文件夹';
+
+  @override
+  String get notifications => '通知';
+
+  @override
+  String get notifProgress => '传输进度通知';
+
+  @override
+  String get notifProgressSubtitle => '传输进行中在通知栏显示进度';
+
+  @override
+  String get notifProgressKeywords => '通知 进度 传输';
+
+  @override
+  String get notifDone => '传输完成提醒';
+
+  @override
+  String get notifDoneSubtitle => '下载或上传完成、失败时提醒';
+
+  @override
+  String get notifDoneKeywords => '通知 完成 提醒';
+
+  @override
+  String get notifPermission => '通知权限';
+
+  @override
+  String get notifPermissionKeywords => '通知 权限 授权';
+
+  @override
+  String get notifPermissionChecking => '检查中…';
+
+  @override
+  String get notifPermissionGranted => '已授权';
+
+  @override
+  String get notifPermissionDenied => '未授权';
+
+  @override
+  String get notifPermissionDeniedHint => '通知权限未开启，请到系统设置中允许通知';
+
+  @override
+  String get notifProgressTitle => '传输中';
+
+  @override
+  String notifProgressBody(int count) {
+    return '$count 个任务进行中';
+  }
+
+  @override
+  String get notifUploadDone => '上传完成';
+
+  @override
+  String get notifDownloadDone => '下载完成';
+
+  @override
+  String get notifFailed => '传输失败';
+
+  @override
+  String get notifChannelProgress => '传输进度';
+
+  @override
+  String get notifChannelProgressDesc => '下载与上传进行中的进度';
+
+  @override
+  String get notifChannelDone => '传输完成';
+
+  @override
+  String get notifChannelDoneDesc => '下载与上传完成或失败的提醒';
 }

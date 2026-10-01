@@ -123,6 +123,16 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setNotifyProgress(bool value) async {
+    await settings.setNotifyProgress(value);
+    notifyListeners();
+  }
+
+  Future<void> setNotifyDone(bool value) async {
+    await settings.setNotifyDone(value);
+    notifyListeners();
+  }
+
   Future<void> setMaxUploads(int value) async {
     await settings.setMaxUploads(value);
     notifyListeners();
