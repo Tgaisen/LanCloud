@@ -62,7 +62,7 @@ class _TransfersPageState extends State<TransfersPage>
                       ButtonSegment(
                         value: 0,
                         label: Text(l10n.upload),
-                        icon: const Icon(Icons.upload_file),
+                        icon: const Icon(Icons.upload),
                       ),
                       ButtonSegment(
                         value: 1,

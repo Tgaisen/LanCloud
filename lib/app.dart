@@ -43,6 +43,12 @@ class LanCloudApp extends StatelessWidget {
                   : Brightness.light,
             ),
           ),
+          snackBarTheme: const SnackBarThemeData(
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(Radius.circular(12)),
+            ),
+          ),
         );
     final mode = app.settings.themeMode;
     final language = app.settings.language;
@@ -87,6 +93,7 @@ class _RootShellState extends State<RootShell> {
   ];
 
   int _index = 0;
+  bool _programmaticJump = false;
   late final PageController _pageController =
       PageController(initialPage: _index);
 
@@ -99,12 +106,17 @@ class _RootShellState extends State<RootShell> {
   void _goTo(int i) {
     if (i == _index) return;
     setState(() => _index = i);
+    _programmaticJump = true;
     if (_pageController.hasClients) {
       _pageController.animateToPage(
         i,
         duration: const Duration(milliseconds: 220),
         curve: Curves.easeOutCubic,
-      );
+      ).whenComplete(() {
+        if (mounted) _programmaticJump = false;
+      });
+    } else {
+      _programmaticJump = false;
     }
   }
 
@@ -201,7 +213,11 @@ class _RootShellState extends State<RootShell> {
         physics: app.settings.swipeTabs
             ? const PageScrollPhysics()
             : const NeverScrollableScrollPhysics(),
-        onPageChanged: (i) => setState(() => _index = i),
+        onPageChanged: (i) {
+          // 程序化跳转经过中间页时保持指示器停留在目标，避免底栏按钮闪烁
+          if (_programmaticJump && i != _index) return;
+          setState(() => _index = i);
+        },
         children: [
           for (final page in pages)
             ScrollTint(

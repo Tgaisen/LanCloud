@@ -150,11 +150,6 @@ class _HomePageState extends State<HomePage>
             t.status == TransferStatus.running ||
             t.status == TransferStatus.queued)
         .length;
-    final accountLabel = app.activeUid == null
-        ? l10n.notLoggedIn
-        : (app.activeAccount?.nickname.isNotEmpty ?? false)
-            ? app.activeAccount!.nickname
-            : l10n.accountUid(app.activeUid!);
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: _load,
@@ -230,10 +225,6 @@ class _HomePageState extends State<HomePage>
                   ),
                   SectionCard(
                     title: l10n.recent,
-                    trailing: Chip(
-                      visualDensity: VisualDensity.compact,
-                      label: Text(accountLabel),
-                    ),
                     child: _loading
                         ? const Padding(
                             padding: EdgeInsets.all(16),

@@ -313,7 +313,7 @@ class _DrivePageState extends State<DrivePage>
       ),
       IconButton(
         tooltip: context.l10n.invertSelection,
-        icon: const Icon(Icons.flip_to_front),
+        icon: const Icon(Icons.flip),
         onPressed: _invertSelection,
       ),
     ],

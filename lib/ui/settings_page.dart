@@ -384,26 +384,6 @@ class _SettingsPageState extends State<SettingsPage> {
           },
         ),
       ),
-      _Entry(
-        id: 'about',
-        title: l10n.about,
-        subtitle: l10n.aboutSubtitle,
-        keywords: l10n.aboutKeywords.split(' '),
-        category: 'data',
-        build: (context, app) => ListTile(
-          leading: const Icon(Icons.info_outline),
-          title: Text(context.l10n.about),
-          subtitle: Text(context.l10n.aboutSubtitle),
-          onTap: () => showAboutDialog(
-            context: context,
-            applicationName: 'LanCloud',
-            applicationVersion: '0.8.9',
-            children: [
-              Text(context.l10n.aboutText),
-            ],
-          ),
-        ),
-      ),
     ];
   }
 

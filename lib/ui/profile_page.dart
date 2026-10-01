@@ -82,18 +82,6 @@ class ProfilePage extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Card(
-                  child: ListTile(
-                    leading: const Icon(Icons.settings_outlined),
-                    title: Text(l10n.settings),
-                    subtitle: Text(l10n.settingsSubtitle),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const SettingsPage()),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Card(
                   child: Column(
                     children: [
                       ListTile(
@@ -110,6 +98,36 @@ class ProfilePage extends StatelessWidget {
                         trailing: const Icon(Icons.open_in_new),
                         onTap: () => _openWeb(
                           'https://pc.woozooo.com/mydisk.php?item=recycle',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Card(
+                  child: Column(
+                    children: [
+                      ListTile(
+                        leading: const Icon(Icons.settings_outlined),
+                        title: Text(l10n.settings),
+                        subtitle: Text(l10n.settingsSubtitle),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const SettingsPage(),
+                          ),
+                        ),
+                      ),
+                      const Divider(height: 1),
+                      ListTile(
+                        leading: const Icon(Icons.info_outline),
+                        title: Text(l10n.about),
+                        subtitle: Text(l10n.aboutSubtitle),
+                        onTap: () => showAboutDialog(
+                          context: context,
+                          applicationName: 'LanCloud',
+                          applicationVersion: '0.8.9',
+                          children: [Text(l10n.aboutText)],
                         ),
                       ),
                     ],
