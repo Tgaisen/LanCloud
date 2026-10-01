@@ -25,8 +25,11 @@ class DrivePage extends StatefulWidget {
 }
 
 class _DrivePageState extends State<DrivePage>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   static const _anim = Duration(milliseconds: 200);
+
+  @override
+  bool get wantKeepAlive => true;
 
   late final AnimationController _selAnim = AnimationController(
     vsync: this,
@@ -1343,6 +1346,7 @@ class _DrivePageState extends State<DrivePage>
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final app = context.watch<AppController>();
     final grid = app.settings.gridView;
     final hideTopBar = app.settings.hideTopBar;

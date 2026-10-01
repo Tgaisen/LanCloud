@@ -15,11 +15,16 @@ class TransfersPage extends StatefulWidget {
   State<TransfersPage> createState() => _TransfersPageState();
 }
 
-class _TransfersPageState extends State<TransfersPage> {
+class _TransfersPageState extends State<TransfersPage>
+    with AutomaticKeepAliveClientMixin {
   int _tab = 0;
 
   @override
+  bool get wantKeepAlive => true;
+
+  @override
   Widget build(BuildContext context) {
+    super.build(context);
     final app = context.watch<AppController>();
     final scheme = Theme.of(context).colorScheme;
     final hideTop = app.settings.hideTopBar;
