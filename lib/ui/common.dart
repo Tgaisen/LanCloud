@@ -701,6 +701,64 @@ class Md3ListItem extends StatelessWidget {
   }
 }
 
+/// MD3E 大号宽版图标按钮：胶囊形容器（默认 surfaceContainerLow，与列表卡片同色）
+/// + 大图标，说明文字放在按钮下方。首页「打开链接 / 传输中心」使用。
+class ExpressiveIconButton extends StatelessWidget {
+  const ExpressiveIconButton({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+    this.badge,
+    this.height = 96,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onPressed;
+
+  /// 角标文字（例如进行中的传输数量）。
+  final String? badge;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final iconWidget = Icon(icon, size: 32, color: scheme.onSurfaceVariant);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Material(
+          color: scheme.surfaceContainerLow,
+          shape: const StadiumBorder(),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onPressed,
+            child: SizedBox(
+              height: height,
+              width: double.infinity,
+              child: Center(
+                child: badge == null
+                    ? iconWidget
+                    : Badge(label: Text(badge!), child: iconWidget),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.labelLarge
+              ?.copyWith(color: scheme.onSurfaceVariant),
+        ),
+      ],
+    );
+  }
+}
+
 /// MD3E 路径胶囊：当前项用主色容器强调，其余为中性容器。
 /// 网盘路径栏与文件夹选择弹窗共用。
 class PathChip extends StatelessWidget {

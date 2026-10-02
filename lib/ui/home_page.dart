@@ -283,24 +283,22 @@ class _HomePageState extends State<HomePage>
             sliver: SliverList(
               delegate: SliverChildListDelegate([
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
-                      child: FilledButton.icon(
+                      child: ExpressiveIconButton(
+                        icon: Icons.open_in_new,
+                        label: l10n.openLink,
                         onPressed: () => openShareSheet(context),
-                        icon: const Icon(Icons.open_in_new),
-                        label: Text(l10n.openShareLink),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () {},
-                        icon: const Icon(Icons.cloud_upload_outlined),
-                        label: Text(
-                          running > 0
-                              ? l10n.transferringCount(running)
-                              : l10n.transferCenter,
-                        ),
+                      child: ExpressiveIconButton(
+                        icon: Icons.cloud_upload_outlined,
+                        label: l10n.transferCenter,
+                        badge: running > 0 ? '$running' : null,
+                        onPressed: () => app.switchTab(2),
                       ),
                     ),
                   ],
