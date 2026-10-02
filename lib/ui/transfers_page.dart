@@ -367,7 +367,6 @@ class _TransferListSliver extends StatelessWidget {
     final active = tasks.where(isActive).toList();
     final finished =
         tasks.where((t) => !isActive(t)).toList().reversed.toList();
-    final scheme = Theme.of(context).colorScheme;
     return SliverPadding(
       // 与收藏页一致：外层 12 + SegmentedList 自带 4
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
@@ -393,11 +392,7 @@ class _TransferListSliver extends StatelessWidget {
           if (finished.isNotEmpty) ...[
             SectionHeader(title: l10n.finished, count: finished.length),
             SegmentedList(
-              // 已结束整体淡一层主题色，和进行中区分
-              color: Color.alphaBlend(
-                scheme.primary.withValues(alpha: 0.06),
-                scheme.surfaceContainerLow,
-              ),
+              // 与收藏页同色（SegmentedList 默认 surfaceContainerLow）
               children: [
                 for (final task in finished)
                   _TransferTile(
