@@ -145,4 +145,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(_fake.batteryRequests, 1);
   });
+
+  testWidgets('设置底部新增隐私分组，包含显示 Cookie', (tester) async {
+    await pumpSettings(tester);
+    await scrollToSetting(tester, '显示 Cookie');
+
+    expect(find.text('隐私'), findsOneWidget);
+    expect(find.text('显示 Cookie'), findsOneWidget);
+    expect(find.text('需通过生物识别 / 锁屏验证'), findsOneWidget);
+  });
 }

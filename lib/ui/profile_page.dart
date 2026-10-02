@@ -7,7 +7,6 @@ import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'about_page.dart';
 import 'common.dart';
-import 'cookie_sheet.dart';
 import 'login_page.dart';
 import 'settings_page.dart';
 import 'web_page.dart';
@@ -62,16 +61,6 @@ class ProfileSheet extends StatelessWidget {
                   onPressed: () => _showAccountSwitcher(context),
                   child: Text(l10n.manage),
                 ),
-              ),
-              ListTile(
-                leading: const Icon(Icons.key_outlined),
-                title: Text(l10n.showCookie),
-                subtitle: Text(l10n.showCookieSubtitle),
-                trailing: const Icon(Icons.chevron_right),
-                enabled: account != null,
-                onTap: account == null
-                    ? null
-                    : () => showCookieFlow(context, account),
               ),
             ],
           ),

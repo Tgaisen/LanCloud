@@ -2198,6 +2198,18 @@ abstract class AppLocalizations {
   /// **'权限'**
   String get categoryPermissions;
 
+  /// No description provided for @categoryPrivacy.
+  ///
+  /// In zh, this message translates to:
+  /// **'隐私'**
+  String get categoryPrivacy;
+
+  /// No description provided for @showCookieKeywords.
+  ///
+  /// In zh, this message translates to:
+  /// **'cookie 显示 隐私 凭据 key'**
+  String get showCookieKeywords;
+
   /// No description provided for @permissionCamera.
   ///
   /// In zh, this message translates to:
@@ -2557,12 +2569,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'项目主页'**
   String get aboutProjectHome;
-
-  /// No description provided for @aboutCopyright.
-  ///
-  /// In zh, this message translates to:
-  /// **'© 2026 Tgaisen · Apache License 2.0'**
-  String get aboutCopyright;
 
   /// No description provided for @termsDisclaimer.
   ///

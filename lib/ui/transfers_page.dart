@@ -21,10 +21,20 @@ class TransfersPage extends StatefulWidget {
 }
 
 class _TransfersPageState extends State<TransfersPage>
-    with AutomaticKeepAliveClientMixin {
+    with AutomaticKeepAliveClientMixin, SingleTickerProviderStateMixin {
   static const _anim = Duration(milliseconds: 200);
 
   int _tab = 0;
+  /// 上传 / 下载切换时列表淡入
+  late final AnimationController _tabAnim = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 220),
+    value: 1,
+  );
+  late final Animation<double> _tabFade = CurvedAnimation(
+    parent: _tabAnim,
+    curve: Curves.easeOutCubic,
+  );
   final ScrollController _scroll = ScrollController();
   bool _selecting = false;
   final Set<String> _selected = {};
@@ -46,6 +56,7 @@ class _TransfersPageState extends State<TransfersPage>
       app.setSelectionMode(false);
       app.onRequestExitSelection = null;
     }
+    _tabAnim.dispose();
     _scroll.dispose();
     super.dispose();
   }
@@ -184,12 +195,15 @@ class _TransfersPageState extends State<TransfersPage>
               slivers: [
               // 顶栏不占布局，这里留出等高占位
               SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
-              _TransferListSliver(
-                kind: _kind,
-                selecting: _selecting,
-                selected: _selected,
-                onToggle: _toggleSelected,
-                onLongPress: _enterSelection,
+              SliverFadeTransition(
+                opacity: _tabFade,
+                sliver: _TransferListSliver(
+                  kind: _kind,
+                  selecting: _selecting,
+                  selected: _selected,
+                  onToggle: _toggleSelected,
+                  onLongPress: _enterSelection,
+                ),
               ),
               ],
             ),
@@ -243,8 +257,11 @@ class _TransfersPageState extends State<TransfersPage>
                             ),
                           ],
                           selected: {_tab},
-                          onSelectionChanged: (values) =>
-                              setState(() => _tab = values.first),
+                          onSelectionChanged: (values) {
+                            if (values.first == _tab) return;
+                            setState(() => _tab = values.first);
+                            _tabAnim.forward(from: 0);
+                          },
                         ),
                       ),
                     ),

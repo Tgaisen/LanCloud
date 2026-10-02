@@ -1142,6 +1142,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get categoryPermissions => '权限';
 
   @override
+  String get categoryPrivacy => '隐私';
+
+  @override
+  String get showCookieKeywords => 'cookie 显示 隐私 凭据 key';
+
+  @override
   String get permissionCamera => '相机（扫码）';
 
   @override
@@ -1332,9 +1338,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutProjectHome => '项目主页';
-
-  @override
-  String get aboutCopyright => '© 2026 Tgaisen · Apache License 2.0';
 
   @override
   String get termsDisclaimer =>

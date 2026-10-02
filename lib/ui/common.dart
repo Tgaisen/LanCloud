@@ -710,7 +710,7 @@ class ExpressiveIconButton extends StatelessWidget {
     required this.label,
     required this.onPressed,
     this.badge,
-    this.width = 140,
+    this.width = 72,
     this.height = 56,
   });
 

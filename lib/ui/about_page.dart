@@ -113,14 +113,6 @@ class AboutPage extends StatelessWidget {
                         ),
                       ],
                     ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(4, 20, 4, 4),
-                      child: Text(
-                        l10n.aboutCopyright,
-                        style: theme.textTheme.bodySmall
-                            ?.copyWith(color: scheme.outline),
-                      ),
-                    ),
                   ]),
                 ),
               ),

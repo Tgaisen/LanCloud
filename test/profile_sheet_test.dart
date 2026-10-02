@@ -34,7 +34,7 @@ void main() {
 
     expect(find.text('未登录'), findsOneWidget);
     expect(find.text('管理'), findsOneWidget);
-    expect(find.text('显示 Cookie'), findsOneWidget);
+    expect(find.text('显示 Cookie'), findsNothing);
     expect(find.text('网页版'), findsOneWidget);
     expect(find.text('回收站'), findsOneWidget);
     expect(find.text('设置'), findsOneWidget);

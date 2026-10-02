@@ -1174,6 +1174,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get categoryPermissions => 'Permissions';
 
   @override
+  String get categoryPrivacy => 'Privacy';
+
+  @override
+  String get showCookieKeywords => 'cookie show privacy credential key';
+
+  @override
   String get permissionCamera => 'Camera (QR scan)';
 
   @override
@@ -1371,9 +1377,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutProjectHome => 'Project home';
-
-  @override
-  String get aboutCopyright => '© 2026 Tgaisen · Apache License 2.0';
 
   @override
   String get termsDisclaimer =>

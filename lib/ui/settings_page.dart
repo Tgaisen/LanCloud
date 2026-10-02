@@ -9,6 +9,7 @@ import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'backup_page.dart';
 import 'common.dart';
+import 'cookie_sheet.dart';
 import 'scroll_tint.dart';
 
 /// 独立设置页：分类卡片 + 高级覆盖项二级页 + 全量搜索。
@@ -564,6 +565,25 @@ class _SettingsPageState extends State<SettingsPage>
           },
         ),
       ),
+      _Entry(
+        id: 'show_cookie',
+        title: l10n.showCookie,
+        subtitle: l10n.showCookieSubtitle,
+        keywords: l10n.showCookieKeywords.split(' '),
+        category: 'privacy',
+        build: (context, app) {
+          final account = app.activeAccount;
+          return ListTile(
+            leading: const Icon(Icons.key_outlined),
+            title: Text(context.l10n.showCookie),
+            subtitle: Text(context.l10n.showCookieSubtitle),
+            enabled: account != null,
+            onTap: account == null
+                ? null
+                : () => showCookieFlow(context, account),
+          );
+        },
+      ),
     ];
   }
 
@@ -704,6 +724,7 @@ class _SettingsPageState extends State<SettingsPage>
         'behavior' => context.l10n.categoryBehavior,
         'notifications' => context.l10n.notifications,
         'permissions' => context.l10n.categoryPermissions,
+        'privacy' => context.l10n.categoryPrivacy,
         'connection' => context.l10n.categoryConnection,
         'advanced' => context.l10n.categoryAdvanced,
         'data' => context.l10n.categoryData,

@@ -28,7 +28,6 @@ void main() {
     expect(find.text('隐私政策'), findsOneWidget);
     expect(find.text('开源许可'), findsOneWidget);
     expect(find.text('项目主页'), findsOneWidget);
-    expect(find.textContaining('Apache License 2.0'), findsOneWidget);
     app.dispose();
   });
 

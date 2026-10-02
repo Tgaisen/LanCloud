@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart' hide Icons;
 import 'package:provider/provider.dart';
 
@@ -284,40 +282,30 @@ class _HomePageState extends State<HomePage>
             padding: const EdgeInsets.all(16),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                // 入口按钮：宽屏铺满，小屏 / 以后加更多按钮时横向滑动
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    const gap = 12.0;
-                    final actions = [
-                      ExpressiveIconButton(
-                        icon: Icons.open_in_new,
-                        label: l10n.openLink,
-                        onPressed: () => openShareSheet(context),
-                      ),
-                      ExpressiveIconButton(
-                        icon: Icons.cloud_upload_outlined,
-                        label: l10n.transferCenter,
-                        badge: running > 0 ? '$running' : null,
-                        onPressed: () => app.switchTab(2),
-                      ),
-                    ];
-                    final perButton =
-                        (constraints.maxWidth - gap * (actions.length - 1)) /
-                            actions.length;
-                    final width = math.max(140.0, perButton);
-                    return SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          for (var i = 0; i < actions.length; i++) ...[
-                            if (i > 0) const SizedBox(width: gap),
-                            SizedBox(width: width, child: actions[i]),
-                          ],
-                        ],
-                      ),
-                    );
-                  },
+                // 入口按钮：左边距与 Md3ListItem 卡片一致（16 + 4），
+                // 按钮间距为其两倍；按钮多了 / 小屏时横向滑动
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ExpressiveIconButton(
+                          icon: Icons.open_in_new,
+                          label: l10n.openLink,
+                          onPressed: () => openShareSheet(context),
+                        ),
+                        const SizedBox(width: 40),
+                        ExpressiveIconButton(
+                          icon: Icons.cloud_upload_outlined,
+                          label: l10n.transferCenter,
+                          badge: running > 0 ? '$running' : null,
+                          onPressed: () => app.switchTab(2),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 16),
                 SectionCard(
@@ -409,11 +397,6 @@ class _HomePageState extends State<HomePage>
                 scrolledUnderElevation: 0,
                 title: Text(l10n.appName),
                 actions: [
-                  IconButton(
-                    tooltip: l10n.openShareLink,
-                    icon: const Icon(Icons.link),
-                    onPressed: () => openShareSheet(context),
-                  ),
                   IconButton(
                     tooltip: l10n.scanComingSoonTooltip,
                     icon: const Icon(Icons.qr_code),
