@@ -1078,13 +1078,25 @@ class _DrivePageState extends State<DrivePage>
     if (client == null) return;
     final fileIds = _selectedFiles.toList();
     final folderIds = _selectedFolders.toList();
+    final fileNames = {for (final f in _files) f.id: f.name};
+    final folderNames = {for (final f in _folders) f.id: f.name};
     try {
-      for (final id in fileIds) {
-        await client.deleteItem(id: id, isFile: true);
-      }
-      for (final id in folderIds) {
-        await client.deleteItem(id: id, isFile: false);
-      }
+      await runBatchWithProgress(
+        context,
+        title: context.l10n.delete,
+        total: fileIds.length + folderIds.length,
+        run: (report) async {
+          var done = 0;
+          for (final id in fileIds) {
+            report(++done, fileNames[id] ?? '');
+            await client.deleteItem(id: id, isFile: true);
+          }
+          for (final id in folderIds) {
+            report(++done, folderNames[id] ?? '');
+            await client.deleteItem(id: id, isFile: false);
+          }
+        },
+      );
       await app.db.removeDownloaded([
         for (final id in fileIds) '${app.activeUid ?? ''}:$id',
       ]);
@@ -1106,51 +1118,38 @@ class _DrivePageState extends State<DrivePage>
     final transfers = context.read<TransferManager>();
     final l10n = context.l10n;
     final ids = _selectedFiles.toList();
+    final names = {for (final file in _files) file.id: file.name};
     var failed = 0;
     final messenger = ScaffoldMessenger.of(context);
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        title: Text(context.l10n.batchDownload),
-        content: Row(
-          children: [
-            const SizedBox(
-              width: 22,
-              height: 22,
-              child: CircularProgressIndicator(strokeWidth: 2.5),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(context.l10n.resolvingBatch(ids.length)),
-            ),
-          ],
-        ),
-      ),
-    );
-    try {
-      for (final id in ids) {
-        final file = _files.firstWhere((f) => f.id == id);
-        try {
-          final info = await app.client!.shareInfoOfFile(id);
-          final direct = await app.publicClient.resolveFileShare(
-            info.url,
-            pwd: info.pwd,
-          );
-          transfers.addDownload(
-            url: direct.url,
-            name: direct.name.isEmpty ? file.name : direct.name,
-            referer: info.url,
-            via: app.publicClient,
-            refId: '${app.activeUid ?? ''}:$id',
-          );
-        } catch (_) {
-          failed += 1;
+    await runBatchWithProgress(
+      context,
+      title: l10n.batchDownload,
+      total: ids.length,
+      run: (report) async {
+        for (var i = 0; i < ids.length; i++) {
+          final id = ids[i];
+          final name = names[id] ?? '';
+          report(i + 1, name);
+          try {
+            final info = await app.client!.shareInfoOfFile(id);
+            final direct = await app.publicClient.resolveFileShare(
+              info.url,
+              pwd: info.pwd,
+            );
+            transfers.addDownload(
+              url: direct.url,
+              name: direct.name.isEmpty ? name : direct.name,
+              referer: info.url,
+              via: app.publicClient,
+              refId: '${app.activeUid ?? ''}:$id',
+            );
+          } catch (_) {
+            failed += 1;
+          }
         }
-      }
-    } finally {
-      if (mounted) Navigator.of(context).pop();
-    }
+      },
+    );
+    if (!mounted) return;
     _exitSelection();
     messenger.showSnackBar(
       SnackBar(
@@ -1170,32 +1169,41 @@ class _DrivePageState extends State<DrivePage>
     final app = context.read<AppController>();
     final l10n = context.l10n;
     final lines = <String>[];
-    for (final id in fileIds) {
-      try {
-        final info = await app.client!.shareInfoOfFile(id);
-        final file = _files.firstWhere((f) => f.id == id);
-        lines.add(
-          info.pwd.isEmpty
-              ? '${file.name} ${info.url}'
-              : l10n.linkWithPassword(
-                  '${file.name} ${info.url}',
-                  info.pwd,
-                ),
-        );
-      } catch (_) {}
-    }
-    for (final id in folderIds) {
-      try {
-        final info = await app.client!.shareInfoOfFolder(id);
-        final folder = _folders.firstWhere((f) => f.id == id);
-        final name = info.name.isEmpty ? folder.name : info.name;
-        lines.add(
-          info.pwd.isEmpty
-              ? '$name ${info.url}'
-              : l10n.linkWithPassword('$name ${info.url}', info.pwd),
-        );
-      } catch (_) {}
-    }
+    final fileNames = {for (final f in _files) f.id: f.name};
+    final folderNames = {for (final f in _folders) f.id: f.name};
+    await runBatchWithProgress(
+      context,
+      title: l10n.share,
+      total: fileIds.length + folderIds.length,
+      run: (report) async {
+        var done = 0;
+        for (final id in fileIds) {
+          final name = fileNames[id] ?? '';
+          report(++done, name);
+          try {
+            final info = await app.client!.shareInfoOfFile(id);
+            lines.add(
+              info.pwd.isEmpty
+                  ? '$name ${info.url}'
+                  : l10n.linkWithPassword('$name ${info.url}', info.pwd),
+            );
+          } catch (_) {}
+        }
+        for (final id in folderIds) {
+          final name = folderNames[id] ?? '';
+          report(++done, name);
+          try {
+            final info = await app.client!.shareInfoOfFolder(id);
+            final linkName = info.name.isEmpty ? name : info.name;
+            lines.add(
+              info.pwd.isEmpty
+                  ? '$linkName ${info.url}'
+                  : l10n.linkWithPassword('$linkName ${info.url}', info.pwd),
+            );
+          } catch (_) {}
+        }
+      },
+    );
     if (!mounted) return;
     _exitSelection();
     if (lines.isEmpty) {
@@ -1216,39 +1224,51 @@ class _DrivePageState extends State<DrivePage>
     var count = 0;
     var failed = 0;
     if (client != null) {
-      for (final id in fileIds) {
-        try {
-          final file = _files.firstWhere((f) => f.id == id);
-          final info = await client.shareInfoOfFile(id);
-          await app.db.addFavorite(
-            kind: 'shareFile',
-            name: file.name,
-            ref: info.url,
-            pwd: info.pwd,
-            size: file.size,
-            sharer: sharer,
-          );
-          count += 1;
-        } catch (_) {
-          failed += 1;
-        }
-      }
-      for (final id in folderIds) {
-        try {
-          final folder = _folders.firstWhere((f) => f.id == id);
-          final info = await client.shareInfoOfFolder(id);
-          await app.db.addFavorite(
-            kind: 'shareFolder',
-            name: folder.name,
-            ref: info.url,
-            pwd: info.pwd,
-            sharer: sharer,
-          );
-          count += 1;
-        } catch (_) {
-          failed += 1;
-        }
-      }
+      final files = {for (final f in _files) f.id: f};
+      final folders = {for (final f in _folders) f.id: f};
+      await runBatchWithProgress(
+        context,
+        title: context.l10n.favorite,
+        total: fileIds.length + folderIds.length,
+        run: (report) async {
+          var done = 0;
+          for (final id in fileIds) {
+            final file = files[id];
+            report(++done, file?.name ?? '');
+            try {
+              final info = await client.shareInfoOfFile(id);
+              await app.db.addFavorite(
+                kind: 'shareFile',
+                name: file?.name ?? '',
+                ref: info.url,
+                pwd: info.pwd,
+                size: file?.size ?? '',
+                sharer: sharer,
+              );
+              count += 1;
+            } catch (_) {
+              failed += 1;
+            }
+          }
+          for (final id in folderIds) {
+            final folder = folders[id];
+            report(++done, folder?.name ?? '');
+            try {
+              final info = await client.shareInfoOfFolder(id);
+              await app.db.addFavorite(
+                kind: 'shareFolder',
+                name: folder?.name ?? '',
+                ref: info.url,
+                pwd: info.pwd,
+                sharer: sharer,
+              );
+              count += 1;
+            } catch (_) {
+              failed += 1;
+            }
+          }
+        },
+      );
     }
     if (mounted) _exitSelection();
     if (!mounted) return;
@@ -1309,21 +1329,34 @@ class _DrivePageState extends State<DrivePage>
       excludeIds: {...fileIds, ...folderIds},
     );
     if (target == null || !mounted) return;
+    final fileNames = {for (final f in _files) f.id: f.name};
+    final folderNames = {for (final f in _folders) f.id: f.name};
     var failed = 0;
-    for (final id in fileIds) {
-      try {
-        await client.moveFile(id, target.folderId);
-      } catch (_) {
-        failed += 1;
-      }
-    }
-    for (final id in folderIds) {
-      try {
-        await client.moveFolder(id, target.folderId);
-      } catch (_) {
-        failed += 1;
-      }
-    }
+    await runBatchWithProgress(
+      context,
+      title: context.l10n.move,
+      total: fileIds.length + folderIds.length,
+      run: (report) async {
+        var done = 0;
+        for (final id in fileIds) {
+          report(++done, fileNames[id] ?? '');
+          try {
+            await client.moveFile(id, target.folderId);
+          } catch (_) {
+            failed += 1;
+          }
+        }
+        for (final id in folderIds) {
+          report(++done, folderNames[id] ?? '');
+          try {
+            await client.moveFolder(id, target.folderId);
+          } catch (_) {
+            failed += 1;
+          }
+        }
+      },
+    );
+    if (!mounted) return;
     final count = fileIds.length + folderIds.length;
     _exitSelection();
     // 局部刷新：移走的条目原位淡出，其余条目保持不动
@@ -1370,21 +1403,34 @@ class _DrivePageState extends State<DrivePage>
     if (client == null) return;
     final fileIds = _selectedFiles.toList();
     final folderIds = _selectedFolders.toList();
+    final fileNames = {for (final f in _files) f.id: f.name};
+    final folderNames = {for (final f in _folders) f.id: f.name};
     var failed = 0;
-    for (final id in fileIds) {
-      try {
-        await client.setDesc(id, controller.text.trim());
-      } catch (_) {
-        failed += 1;
-      }
-    }
-    for (final id in folderIds) {
-      try {
-        await client.setFolderDesc(id, controller.text.trim());
-      } catch (_) {
-        failed += 1;
-      }
-    }
+    await runBatchWithProgress(
+      context,
+      title: context.l10n.editDesc,
+      total: fileIds.length + folderIds.length,
+      run: (report) async {
+        var done = 0;
+        for (final id in fileIds) {
+          report(++done, fileNames[id] ?? '');
+          try {
+            await client.setDesc(id, controller.text.trim());
+          } catch (_) {
+            failed += 1;
+          }
+        }
+        for (final id in folderIds) {
+          report(++done, folderNames[id] ?? '');
+          try {
+            await client.setFolderDesc(id, controller.text.trim());
+          } catch (_) {
+            failed += 1;
+          }
+        }
+      },
+    );
+    if (!mounted) return;
     final count = fileIds.length + folderIds.length;
     _exitSelection();
     _fileDescCache.clear();
@@ -1470,21 +1516,34 @@ class _DrivePageState extends State<DrivePage>
     if (client == null) return;
     final fileIds = _selectedFiles.toList();
     final folderIds = _selectedFolders.toList();
+    final fileNames = {for (final f in _files) f.id: f.name};
+    final folderNames = {for (final f in _folders) f.id: f.name};
     var failed = 0;
-    for (final id in fileIds) {
-      try {
-        await client.setPasswd(id, pwd);
-      } catch (_) {
-        failed += 1;
-      }
-    }
-    for (final id in folderIds) {
-      try {
-        await client.setFolderPasswd(id, pwd);
-      } catch (_) {
-        failed += 1;
-      }
-    }
+    await runBatchWithProgress(
+      context,
+      title: context.l10n.setPassword,
+      total: fileIds.length + folderIds.length,
+      run: (report) async {
+        var done = 0;
+        for (final id in fileIds) {
+          report(++done, fileNames[id] ?? '');
+          try {
+            await client.setPasswd(id, pwd);
+          } catch (_) {
+            failed += 1;
+          }
+        }
+        for (final id in folderIds) {
+          report(++done, folderNames[id] ?? '');
+          try {
+            await client.setFolderPasswd(id, pwd);
+          } catch (_) {
+            failed += 1;
+          }
+        }
+      },
+    );
+    if (!mounted) return;
     final count = fileIds.length + folderIds.length;
     _exitSelection();
     if (!mounted) return;

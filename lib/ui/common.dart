@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart' hide Icons;
 import 'package:flutter/services.dart';
@@ -863,6 +864,112 @@ class _ConnectedSegmentedButtonState<T>
   }
 }
 
+/// 批量操作进度报告：current 为当前处理到第几项（从 1 起），detail 为当前项说明。
+typedef BatchProgressReport = void Function(int current, String detail);
+
+/// 批量操作进度弹窗（MD3E 风格，内容居中）：
+/// 圆角进度条 + “1/20” 计数 + 当前处理项，[run] 完成后自动关闭。
+/// 操作进行中不可用返回键关闭。
+Future<void> runBatchWithProgress(
+  BuildContext context, {
+  required String title,
+  required int total,
+  required Future<void> Function(BatchProgressReport report) run,
+}) async {
+  final navigator = Navigator.of(context);
+  final current = ValueNotifier<int>(1);
+  final detail = ValueNotifier<String>('');
+  showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) => _BatchProgressDialog(
+      title: title,
+      total: total,
+      current: current,
+      detail: detail,
+    ),
+  );
+  try {
+    await run((value, text) {
+      current.value = value.clamp(1, total);
+      detail.value = text;
+    });
+  } finally {
+    if (navigator.canPop()) navigator.pop();
+  }
+}
+
+class _BatchProgressDialog extends StatelessWidget {
+  const _BatchProgressDialog({
+    required this.title,
+    required this.total,
+    required this.current,
+    required this.detail,
+  });
+
+  final String title;
+  final int total;
+  final ValueListenable<int> current;
+  final ValueListenable<String> detail;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    return PopScope(
+      canPop: false,
+      child: AlertDialog(
+        title: Text(title, textAlign: TextAlign.center),
+        content: SizedBox(
+          width: 240,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              ValueListenableBuilder<int>(
+                valueListenable: current,
+                builder: (context, value, _) => Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: total <= 0
+                            ? null
+                            : (value / total).clamp(0.0, 1.0),
+                        minHeight: 8,
+                        backgroundColor: scheme.surfaceContainerHighest,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text('$value/$total', style: textTheme.labelLarge),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 6),
+              ValueListenableBuilder<String>(
+                valueListenable: detail,
+                builder: (context, text, _) => SizedBox(
+                  width: double.infinity,
+                  child: Text(
+                    text.isEmpty ? ' ' : text,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 Future<void> showLoadingDialog(BuildContext context, String text) {
   return showDialog<void>(
     context: context,
@@ -938,27 +1045,36 @@ Future<void> downloadShareFiles(
   if (urls.isEmpty || urls.length != names.length) return;
   final app = context.read<AppController>();
   final transfers = context.read<TransferManager>();
-  final navigator = Navigator.of(context);
   final messenger = ScaffoldMessenger.of(context);
   final l10n = context.l10n;
-  showLoadingDialog(context, l10n.resolvingDownload);
   var added = 0;
   var failed = 0;
-  for (var i = 0; i < urls.length; i++) {
-    try {
-      final direct = await app.publicClient.resolveFileShare(urls[i], pwd: pwd);
-      transfers.addDownload(
-        url: direct.url,
-        name: direct.name.isEmpty ? names[i] : direct.name,
-        referer: urls[i],
-        via: app.publicClient,
-      );
-      added += 1;
-    } catch (_) {
-      failed += 1;
-    }
-  }
-  navigator.pop();
+  await runBatchWithProgress(
+    context,
+    title: l10n.batchDownload,
+    total: urls.length,
+    run: (report) async {
+      for (var i = 0; i < urls.length; i++) {
+        report(i + 1, names[i]);
+        try {
+          final direct = await app.publicClient.resolveFileShare(
+            urls[i],
+            pwd: pwd,
+          );
+          transfers.addDownload(
+            url: direct.url,
+            name: direct.name.isEmpty ? names[i] : direct.name,
+            referer: urls[i],
+            via: app.publicClient,
+          );
+          added += 1;
+        } catch (_) {
+          failed += 1;
+        }
+      }
+    },
+  );
+  if (!context.mounted) return;
   messenger.showSnackBar(
     SnackBar(
       content: Text(
