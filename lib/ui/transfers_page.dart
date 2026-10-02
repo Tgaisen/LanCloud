@@ -304,31 +304,20 @@ class _TransfersPageState extends State<TransfersPage>
                 opacity: _selecting ? 1 : 0,
                 duration: _anim,
                 curve: Curves.easeInOut,
-                child: Material(
-                  elevation: 0,
-                  color: scheme.surfaceContainer,
-                  child: SafeArea(
-                    top: false,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          BatchAction(
-                            icon: Icons.delete_outline,
-                            label: l10n.delete,
-                            onPressed:
-                                selectedCount == 0 ? null : _deleteSelected,
-                          ),
-                          BatchAction(
-                            icon: Icons.refresh,
-                            label: l10n.retry,
-                            onPressed: retryCount == 0 ? null : _retrySelected,
-                          ),
-                        ],
-                      ),
+                child: BatchActionBar(
+                  children: [
+                    BatchAction(
+                      icon: Icons.delete_outline,
+                      label: l10n.delete,
+                      onPressed:
+                          selectedCount == 0 ? null : _deleteSelected,
                     ),
-                  ),
+                    BatchAction(
+                      icon: Icons.refresh,
+                      label: l10n.retry,
+                      onPressed: retryCount == 0 ? null : _retrySelected,
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -378,15 +367,15 @@ class _TransferListSliver extends StatelessWidget {
     final active = tasks.where(isActive).toList();
     final finished =
         tasks.where((t) => !isActive(t)).toList().reversed.toList();
-    final scheme = Theme.of(context).colorScheme;
     return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+      // 左右留白由卡片自己控制，这里只留上下间距
+      padding: const EdgeInsets.fromLTRB(0, 4, 0, 12),
       sliver: SliverList(
         delegate: SliverChildListDelegate([
           if (active.isNotEmpty) ...[
             SectionHeader(title: l10n.inProgress, count: active.length),
             // MD3E 连接式列表：进行中的任务成组显示
-            SegmentedList(
+            Column(
               children: [
                 for (final task in active)
                   _TransferTile(
@@ -402,12 +391,7 @@ class _TransferListSliver extends StatelessWidget {
           ],
           if (finished.isNotEmpty) ...[
             SectionHeader(title: l10n.finished, count: finished.length),
-            SegmentedList(
-              // 已结束整体淡一层主题色，和进行中区分
-              color: Color.alphaBlend(
-                scheme.primary.withValues(alpha: 0.06),
-                scheme.surfaceContainerLow,
-              ),
+            Column(
               children: [
                 for (final task in finished)
                   _TransferTile(
@@ -480,15 +464,21 @@ class _TransferTile extends StatelessWidget {
     final l10n = context.l10n;
     final active = task.status == TransferStatus.running || task.status == TransferStatus.queued;
     final done = task.status == TransferStatus.done && task.savedPath != null;
-    return Material(
-      type: MaterialType.transparency,
-      child: InkWell(
-        onTap: onTap,
-        onLongPress: onLongPress,
-        child: ColoredBox(
-          color: selected ? scheme.primaryContainer : Colors.transparent,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+      child: Material(
+        color: selected
+            ? scheme.primaryContainer
+            : active
+                ? scheme.surfaceContainerHigh
+                : scheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(selected ? 14 : 18),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          onLongPress: onLongPress,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 4, 12),
+            padding: const EdgeInsets.fromLTRB(12, 10, 6, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -501,10 +491,10 @@ class _TransferTile extends StatelessWidget {
                 height: 40,
                 decoration: BoxDecoration(
                   color: selected
-                      ? Colors.transparent
+                      ? scheme.surface
                       : active
-                      ? scheme.secondaryContainer
-                      : scheme.surfaceContainerHighest,
+                          ? scheme.secondaryContainer
+                          : scheme.surfaceContainerLowest,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
@@ -594,7 +584,7 @@ class _TransferTile extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: task.progress,
                 minHeight: 6,
-                backgroundColor: scheme.surfaceContainerHighest,
+                backgroundColor: scheme.surfaceContainerLowest,
               ),
             ),
           ],

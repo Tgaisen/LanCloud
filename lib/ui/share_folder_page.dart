@@ -204,7 +204,6 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final folder = widget.folder;
-    final scheme = Theme.of(context).colorScheme;
     final isEmpty =
         folder.files.isEmpty && folder.folders.isEmpty && folder.desc.isEmpty;
     return Scaffold(
@@ -348,37 +347,24 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
         ],
       ),
       bottomNavigationBar: _selecting
-          ? Material(
-              color: scheme.surfaceContainer,
-              child: SafeArea(
-                top: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _BatchAction(
-                        icon: Icons.download,
-                        label: l10n.download,
-                        onPressed:
-                            _selected.isEmpty ? null : _downloadSelected,
-                      ),
-                      _BatchAction(
-                        icon: Icons.copy,
-                        label: l10n.copyLink,
-                        onPressed:
-                            _selected.isEmpty ? null : _copySelectedLinks,
-                      ),
-                      _BatchAction(
-                        icon: Icons.star_outline,
-                        label: l10n.favorite,
-                        onPressed:
-                            _selected.isEmpty ? null : _favoriteSelected,
-                      ),
-                    ],
-                  ),
+          ? BatchActionBar(
+              children: [
+                BatchAction(
+                  icon: Icons.download,
+                  label: l10n.download,
+                  onPressed: _selected.isEmpty ? null : _downloadSelected,
                 ),
-              ),
+                BatchAction(
+                  icon: Icons.copy,
+                  label: l10n.copyLink,
+                  onPressed: _selected.isEmpty ? null : _copySelectedLinks,
+                ),
+                BatchAction(
+                  icon: Icons.star_outline,
+                  label: l10n.favorite,
+                  onPressed: _selected.isEmpty ? null : _favoriteSelected,
+                ),
+              ],
             )
           : null,
     );
@@ -405,43 +391,3 @@ class _SectionTitle extends StatelessWidget {
   }
 }
 
-class _BatchAction extends StatelessWidget {
-  const _BatchAction({
-    required this.icon,
-    required this.label,
-    required this.onPressed,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final enabled = onPressed != null;
-    final color = enabled
-        ? Theme.of(context).colorScheme.onSurface
-        : Theme.of(context).colorScheme.outline;
-    return InkWell(
-      onTap: onPressed,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: color),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: Theme.of(context)
-                  .textTheme
-                  .labelSmall
-                  ?.copyWith(color: color),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

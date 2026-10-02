@@ -2338,56 +2338,38 @@ class _DrivePageState extends State<DrivePage>
                     opacity: _selecting ? 1 : 0,
                     duration: _anim,
                     curve: Curves.easeInOut,
-                    // 紧贴按钮内容，避免固定高度带来的上下留白遮挡列表
-                    child: Material(
-                      elevation: 0,
-                      color: Theme.of(context).colorScheme.surfaceContainer,
-                      child: SafeArea(
-                        top: false,
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              _BatchAction(
-                                icon: Icons.delete_outline,
-                                label: context.l10n.delete,
-                                onPressed: selectedCount == 0
-                                    ? null
-                                    : _deleteSelected,
-                              ),
-                              _BatchAction(
-                                icon: Icons.download_outlined,
-                                label: context.l10n.download,
-                                onPressed: _selectedFiles.isEmpty
-                                    ? null
-                                    : _batchDownload,
-                              ),
-                              _BatchAction(
-                                icon: Icons.share_outlined,
-                                label: context.l10n.share,
-                                onPressed: selectedCount == 0
-                                    ? null
-                                    : _batchShare,
-                              ),
-                              _BatchAction(
-                                icon: Icons.star_outline,
-                                label: context.l10n.favorite,
-                                onPressed: selectedCount == 0
-                                    ? null
-                                    : _batchFavorite,
-                              ),
-                              _BatchAction(
-                                icon: Icons.more_horiz,
-                                label: context.l10n.more,
-                                onPressed: selectedCount == 0
-                                    ? null
-                                    : _batchMore,
-                              ),
-                            ],
-                          ),
+                    child: BatchActionBar(
+                      children: [
+                        BatchAction(
+                          icon: Icons.delete_outline,
+                          label: context.l10n.delete,
+                          onPressed:
+                              selectedCount == 0 ? null : _deleteSelected,
                         ),
-                      ),
+                        BatchAction(
+                          icon: Icons.download_outlined,
+                          label: context.l10n.download,
+                          onPressed: _selectedFiles.isEmpty
+                              ? null
+                              : _batchDownload,
+                        ),
+                        BatchAction(
+                          icon: Icons.share_outlined,
+                          label: context.l10n.share,
+                          onPressed: selectedCount == 0 ? null : _batchShare,
+                        ),
+                        BatchAction(
+                          icon: Icons.star_outline,
+                          label: context.l10n.favorite,
+                          onPressed:
+                              selectedCount == 0 ? null : _batchFavorite,
+                        ),
+                        BatchAction(
+                          icon: Icons.more_horiz,
+                          label: context.l10n.more,
+                          onPressed: selectedCount == 0 ? null : _batchMore,
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -2538,26 +2520,66 @@ class _DrivePageState extends State<DrivePage>
   }
 
   Widget _pathBar() {
-    return ListView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      children: [
-        for (var i = -1; i < _path.length; i++)
-          Row(
-            children: [
-              TextButton(
-                onPressed: () => _jumpTo(i),
-                child: Text(
-                  i < 0 ? context.l10n.root : _path[i].name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+    final scheme = Theme.of(context).colorScheme;
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        children: [
+          for (var i = -1; i < _path.length; i++) ...[
+            if (i >= 0)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                child: Icon(
+                  Icons.chevron_right,
+                  size: 16,
+                  color: scheme.outline,
                 ),
               ),
-              if (i < _path.length - 1)
-                const Icon(Icons.chevron_right, size: 18),
-            ],
+            _pathChip(
+              label: i < 0 ? context.l10n.root : _path[i].name,
+              current: i == _path.length - 1,
+              onTap: () => _jumpTo(i),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// MD3E 路径胶囊：当前目录用主色容器强调，其余为中性容器。
+  Widget _pathChip({
+    required String label,
+    required bool current,
+    required VoidCallback onTap,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Material(
+        color: current ? scheme.secondaryContainer : scheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(10),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: current ? FontWeight.w600 : FontWeight.w400,
+                color: current
+                    ? scheme.onSecondaryContainer
+                    : scheme.onSurfaceVariant,
+              ),
+            ),
           ),
-      ],
+        ),
+      ),
     );
   }
 
@@ -3530,41 +3552,6 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
             },
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _BatchAction extends StatelessWidget {
-  const _BatchAction({
-    required this.icon,
-    required this.label,
-    required this.onPressed,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final enabled = onPressed != null;
-    final color = enabled
-        ? Theme.of(context).colorScheme.onSurface
-        : Theme.of(context).colorScheme.outline;
-    return InkWell(
-      onTap: onPressed,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: color),
-            const SizedBox(height: 2),
-            Text(label, style: TextStyle(fontSize: 12, color: color)),
-          ],
-        ),
       ),
     );
   }

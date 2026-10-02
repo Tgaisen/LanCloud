@@ -559,19 +559,56 @@ class BatchAction extends StatelessWidget {
   Widget build(BuildContext context) {
     final enabled = onPressed != null;
     final scheme = Theme.of(context).colorScheme;
-    final color = enabled ? scheme.onSurface : scheme.outline;
+    final color = enabled
+        ? scheme.onSurface
+        : scheme.outline.withValues(alpha: 0.6);
     return InkWell(
       onTap: onPressed,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(16),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: color),
+            Icon(icon, size: 22, color: color),
             const SizedBox(height: 2),
             Text(label, style: TextStyle(fontSize: 12, color: color)),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 多选底部操作栏（MD3E）：悬浮圆角容器，操作项均分整行。
+/// 网盘、传输、收藏、分享浏览页共用，样式保持一致。
+class BatchActionBar extends StatelessWidget {
+  const BatchActionBar({super.key, required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+        child: Material(
+          // 浮在列表卡片之上：用最浅的容器色 + 轻微投影区分开
+          elevation: 3,
+          shadowColor: scheme.shadow.withValues(alpha: 0.28),
+          color: scheme.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(24),
+          clipBehavior: Clip.antiAlias,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+            child: Row(
+              children: [
+                for (final child in children) Expanded(child: child),
+              ],
+            ),
+          ),
         ),
       ),
     );

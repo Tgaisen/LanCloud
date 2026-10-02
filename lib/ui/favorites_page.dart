@@ -502,26 +502,15 @@ class _FavoritesPageState extends State<FavoritesPage>
                 opacity: _selecting ? 1 : 0,
                 duration: _anim,
                 curve: Curves.easeInOut,
-                child: Material(
-                  elevation: 0,
-                  color: scheme.surfaceContainer,
-                  child: SafeArea(
-                    top: false,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          BatchAction(
-                            icon: Icons.delete_outline,
-                            label: l10n.delete,
-                            onPressed:
-                                selectedCount == 0 ? null : _deleteSelected,
-                          ),
-                        ],
-                      ),
+                child: BatchActionBar(
+                  children: [
+                    BatchAction(
+                      icon: Icons.delete_outline,
+                      label: l10n.delete,
+                      onPressed:
+                          selectedCount == 0 ? null : _deleteSelected,
                     ),
-                  ),
+                  ],
                 ),
               ),
             ),
