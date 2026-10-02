@@ -2946,7 +2946,9 @@ class _FolderTile extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Card(
       clipBehavior: Clip.antiAlias,
-      color: selected ? scheme.primaryContainer : null,
+      color:
+          selected ? scheme.primaryContainer : scheme.surfaceContainerHigh,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: InkWell(
         onTap: onTap,
         onLongPress: onLongPress,
@@ -2957,12 +2959,22 @@ class _FolderTile extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Icon(
-                    selected ? Icons.check_circle : Icons.folder,
-                    size: 30,
-                    color: selected
-                        ? scheme.primary
-                        : scheme.primary.withValues(alpha: 0.85),
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? scheme.surface
+                          : scheme.surfaceContainerLowest,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      selected ? Icons.check_circle : Icons.folder,
+                      size: 21,
+                      color: selected
+                          ? scheme.primary
+                          : scheme.primary.withValues(alpha: 0.9),
+                    ),
                   ),
                   const Spacer(),
                   IconButton(
@@ -3016,7 +3028,9 @@ class _FileTile extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Card(
       clipBehavior: Clip.antiAlias,
-      color: selected ? scheme.primaryContainer : null,
+      color:
+          selected ? scheme.primaryContainer : scheme.surfaceContainerHigh,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: InkWell(
         onTap: onTap,
         onLongPress: onLongPress,
@@ -3027,10 +3041,20 @@ class _FileTile extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Icon(
-                    selected ? Icons.check_circle : iconForFile(file.name),
-                    size: 30,
-                    color: selected ? scheme.primary : scheme.secondary,
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? scheme.surface
+                          : scheme.surfaceContainerLowest,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      selected ? Icons.check_circle : iconForFile(file.name),
+                      size: 21,
+                      color: selected ? scheme.primary : scheme.secondary,
+                    ),
                   ),
                   const Spacer(),
                   if (downloaded)
@@ -3068,6 +3092,141 @@ class _FileTile extends StatelessWidget {
   }
 }
 
+/// MD3E 列表项：用留白分隔而不是分割线；图标放在圆角色块里；
+/// 选中时整行填充主色容器，圆角与图标块同步做形状过渡。
+class _DriveRow extends StatelessWidget {
+  const _DriveRow({
+    required this.icon,
+    required this.selected,
+    required this.title,
+    required this.subtitle,
+    required this.menuTooltip,
+    required this.onTap,
+    required this.onMenu,
+    required this.onLongPress,
+    this.folder = false,
+    this.locked = false,
+    this.downloaded = false,
+  });
+
+  final IconData icon;
+  final bool selected;
+  final String title;
+  final String subtitle;
+  final String menuTooltip;
+  final VoidCallback onTap;
+  final VoidCallback onMenu;
+  final VoidCallback onLongPress;
+
+  /// 文件夹用主色图标块，文件用中性色。
+  final bool folder;
+  final bool locked;
+  final bool downloaded;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+      child: Material(
+        color: selected ? scheme.primaryContainer : Colors.transparent,
+        borderRadius: BorderRadius.circular(selected ? 14 : 18),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          onLongPress: onLongPress,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(10, 8, 2, 8),
+            child: Row(
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? scheme.surface
+                        : folder
+                            ? scheme.primaryContainer
+                            : scheme.surfaceContainerHigh,
+                    borderRadius: BorderRadius.circular(selected ? 14 : 12),
+                  ),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 200),
+                    child: Icon(
+                      selected ? Icons.check_circle : icon,
+                      key: ValueKey(selected),
+                      size: 22,
+                      color: selected
+                          ? scheme.primary
+                          : folder
+                              ? scheme.onPrimaryContainer
+                              : scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyLarge,
+                      ),
+                      if (subtitle.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            subtitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodySmall
+                                ?.copyWith(color: scheme.outline),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                if (downloaded)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4),
+                    child: Icon(
+                      Icons.download_done,
+                      size: 18,
+                      color: scheme.primary,
+                    ),
+                  ),
+                if (locked)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4),
+                    child: Icon(
+                      Icons.lock_outline,
+                      size: 16,
+                      color: scheme.outline,
+                    ),
+                  ),
+                IconButton(
+                  tooltip: menuTooltip,
+                  visualDensity: VisualDensity.compact,
+                  iconSize: 20,
+                  color: selected ? scheme.onPrimaryContainer : null,
+                  icon: const Icon(Icons.more_vert),
+                  onPressed: onMenu,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _FolderRow extends StatelessWidget {
   const _FolderRow({
     required this.folder,
@@ -3085,27 +3244,16 @@ class _FolderRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return ListTile(
-      leading: Icon(
-        selected ? Icons.check_circle : Icons.folder_outlined,
-        color: selected ? scheme.primary : null,
-      ),
-      title: Text(folder.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: folder.desc.isEmpty ? null : Text(folder.desc, maxLines: 1),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (folder.hasPwd)
-            Icon(Icons.lock_outline, size: 16, color: scheme.outline),
-          IconButton(
-            tooltip: context.l10n.folderActions,
-            icon: const Icon(Icons.more_vert),
-            onPressed: onMenu,
-          ),
-        ],
-      ),
+    return _DriveRow(
+      icon: Icons.folder_outlined,
+      folder: true,
+      selected: selected,
+      title: folder.name,
+      subtitle: folder.desc,
+      locked: folder.hasPwd,
+      menuTooltip: context.l10n.folderActions,
       onTap: onTap,
+      onMenu: onMenu,
       onLongPress: onLongPress,
     );
   }
@@ -3130,33 +3278,20 @@ class _FileRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return ListTile(
-      leading: Icon(
-        selected ? Icons.check_circle : iconForFile(file.name),
-        color: selected ? scheme.primary : null,
-      ),
-      title: Text(file.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: Text(
-        [
-          prettyLzSize(file.size),
-          if (file.time.isNotEmpty) file.time,
-          if (downloaded) context.l10n.downloaded,
-        ].where((e) => e.isNotEmpty).join(' · '),
-      ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (file.hasPwd)
-            Icon(Icons.lock_outline, size: 16, color: scheme.outline),
-          IconButton(
-            tooltip: context.l10n.fileActions,
-            icon: const Icon(Icons.more_vert),
-            onPressed: onMenu,
-          ),
-        ],
-      ),
+    return _DriveRow(
+      icon: iconForFile(file.name),
+      selected: selected,
+      title: file.name,
+      subtitle: [
+        prettyLzSize(file.size),
+        if (file.time.isNotEmpty) file.time,
+        if (downloaded) context.l10n.downloaded,
+      ].where((e) => e.isNotEmpty).join(' · '),
+      locked: file.hasPwd,
+      downloaded: downloaded,
+      menuTooltip: context.l10n.fileActions,
       onTap: onTap,
+      onMenu: onMenu,
       onLongPress: onLongPress,
     );
   }
