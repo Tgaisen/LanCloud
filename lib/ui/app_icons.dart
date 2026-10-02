@@ -46,6 +46,7 @@ class Icons {
   static const IconData drive_file_move_outline = Symbols.drive_file_move;
   static const IconData edit_note = Symbols.edit_note;
   static const IconData error_outline = Symbols.error_outline;
+  static const IconData file_open = Symbols.file_open;
   static const IconData flip = Symbols.flip;
   static const IconData folder = Symbols.folder;
   static const IconData folder_open = Symbols.folder_open;
@@ -58,6 +59,7 @@ class Icons {
   static const IconData image_outlined = Symbols.image;
   static const IconData info_outline = Symbols.info;
   static const IconData insert_drive_file_outlined = Symbols.insert_drive_file;
+  static const IconData install_mobile = Symbols.install_mobile;
   static const IconData link = Symbols.link;
   static const IconData link_outlined = Symbols.link;
   static const IconData lock_outline = Symbols.lock;

@@ -321,5 +321,21 @@
   "shareInvalid": "This share is no longer available (canceled or deleted)",
   "manage": "Manage",
   "logout": "Log out",
-  "appName": "LanCloud"
+  "appName": "LanCloud",
+  "shareReceivedFiles": "Received {count} files; starting upload",
+  "@shareReceivedFiles": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "shareTargetUnsupported": "Unrecognized shared content",
+  "uploadHere": "Upload here",
+  "uploadFromApp": "Upload from apps",
+  "uploadTasksAdded": "Added {count} upload tasks",
+  "@uploadTasksAdded": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "install": "Install"
 }

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart' hide Icons;
 import 'package:flutter/services.dart';
+import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 
 import 'core/app_controller.dart';
 import 'core/notifications.dart';
+import 'core/share_inbox.dart';
 import 'core/transfer/transfer_manager.dart';
 import 'l10n/l10n.dart';
 import 'ui/drive_page.dart';
@@ -11,6 +13,7 @@ import 'ui/home_page.dart';
 import 'ui/login_page.dart';
 import 'ui/profile_page.dart';
 import 'ui/scroll_tint.dart';
+import 'ui/share_page.dart';
 import 'ui/transfers_page.dart';
 import 'ui/app_icons.dart';
 
@@ -150,6 +153,9 @@ class _RootShellState extends State<RootShell> {
   @override
   void dispose() {
     NotificationService.onOpenTransfers = null;
+    SharedInbox.instance.onText = null;
+    SharedInbox.instance.onFiles = null;
+    SharedInbox.instance.dispose();
     _pageController.dispose();
     super.dispose();
   }
@@ -178,6 +184,10 @@ class _RootShellState extends State<RootShell> {
   void initState() {
     super.initState();
     NotificationService.onOpenTransfers = () => _goTo(2);
+    SharedInbox.instance.onText = _handleSharedText;
+    SharedInbox.instance.onFiles = _handleSharedFiles;
+    SharedInbox.instance.attach();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _processPendingShare());
     if (NotificationService.pendingTransfers) {
       NotificationService.pendingTransfers = false;
       _index = 2;
@@ -186,6 +196,75 @@ class _RootShellState extends State<RootShell> {
           ? 1
           : 0;
     }
+  }
+
+  String? _extractShareLink(String text) {
+    final match = RegExp(
+      r'https?://[^\s]*lanzou[a-z]*\.(com|cn)[^\s]*',
+    ).firstMatch(text);
+    if (match == null) return null;
+    return match.group(0)!.replaceAll(RegExp(r'[),。，;；]+$'), '');
+  }
+
+  void _handleSharedText(String text) {
+    final link = _extractShareLink(text);
+    if (link == null || link.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.shareTargetUnsupported)),
+      );
+      return;
+    }
+    openShareSheet(context, initialLink: link);
+  }
+
+  Future<void> _handleSharedFiles(List<String> files) async {
+    final app = context.read<AppController>();
+    final client = app.client;
+    if (client == null || app.activeUid == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.notLoggedIn)),
+      );
+      return;
+    }
+    final target = await showFolderPicker(
+      context,
+      client: client,
+      confirmLabel: context.l10n.uploadHere,
+      initialName: files.length == 1 ? p.basename(files.first) : null,
+    );
+    if (target == null || !mounted) return;
+    final transfers = context.read<TransferManager>();
+    var added = 0;
+    for (final path in files) {
+      final editedName = target.fileName;
+      final name = files.length == 1 &&
+              editedName != null &&
+              editedName.isNotEmpty
+          ? editedName
+          : p.basename(path);
+      transfers.addUpload(
+        name: name,
+        folderId: target.folderId,
+        path: path,
+      );
+      added += 1;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(context.l10n.shareReceivedFiles(added))),
+    );
+  }
+
+  void _processPendingShare() {
+    final inbox = SharedInbox.instance;
+    final text = inbox.pendingText;
+    inbox.pendingText = null;
+    if (text != null && text.isNotEmpty) {
+      _handleSharedText(text);
+      return;
+    }
+    final files = inbox.pendingFiles;
+    inbox.pendingFiles = [];
+    if (files.isNotEmpty) _handleSharedFiles(files);
   }
 
   List<TransferTask> get _activeTasks => context

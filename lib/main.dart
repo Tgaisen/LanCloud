@@ -1,13 +1,35 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:provider/provider.dart';
 
 import 'app.dart';
 import 'core/app_controller.dart';
 import 'core/notifications.dart';
+import 'core/share_inbox.dart';
 import 'core/transfer/transfer_manager.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  FlutterForegroundTask.initCommunicationPort();
+  FlutterForegroundTask.init(
+    androidNotificationOptions: AndroidNotificationOptions(
+      channelId: 'foreground_service',
+      channelName: '蓝云',
+      channelDescription: '传输进行中时保持后台运行',
+      channelImportance: NotificationChannelImportance.LOW,
+      priority: NotificationPriority.LOW,
+      onlyAlertOnce: true,
+      playSound: false,
+      showBadge: false,
+      showWhen: false,
+    ),
+    iosNotificationOptions: const IOSNotificationOptions(),
+    foregroundTaskOptions: ForegroundTaskOptions(
+      eventAction: ForegroundTaskEventAction.nothing(),
+      allowWakeLock: true,
+      allowWifiLock: true,
+    ),
+  );
   final app = AppController();
   await app.init();
   final language = app.settings.language;
@@ -18,6 +40,7 @@ Future<void> main() async {
           : null;
   await NotificationService.instance.init(locale);
   await NotificationService.instance.consumeLaunchDetails();
+  await SharedInbox.instance.init();
   runApp(
     MultiProvider(
       providers: [

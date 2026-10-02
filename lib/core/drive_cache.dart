@@ -67,7 +67,9 @@ class DriveCache {
       if (raw == null || raw.isEmpty || _folders.containsKey('-1')) return;
       final map = jsonDecode(raw);
       if (map is Map<String, dynamic>) {
-        _folders['-1'] = CachedFolder.fromJson(map);
+        final cached = CachedFolder.fromJson(map);
+        // 根目录快照不应带路径；坏快照直接丢弃，冷启动走网络重拉
+        if (cached.path.isEmpty) _folders['-1'] = cached;
       }
     } catch (_) {
       // 缓存损坏时忽略，走正常网络加载

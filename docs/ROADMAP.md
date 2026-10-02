@@ -29,7 +29,7 @@
 - [x] 分享文件夹浏览页的多选批量
 - [x] 统一 WebView 页（个人中心/分享），注入 Cookie 免二次登录
 
-## v0.4 设置与外观（进行中）
+## v0.4 设置与外观（已完成）
 
 - [x] 深浅色模式、OLED 纯黑、MD3 预设配色
 - [x] 横滑切换四个视图（可开关）
@@ -43,19 +43,19 @@
 - [x] 高级覆盖项：分享链接域名、上传域名
 - [x] 通知设置：传输进度通知与完成提醒开关、通知渠道、Android 13+ 权限申请
 
-## v0.5 完善细节
+## v0.5 完善细节（进行中）
 
 - [ ] 后台传输（前台服务 + 常驻通知，合规方式）
 - [x] 网盘菜单排序方式增加“默认”，即按照API返回的顺序不二次排序
 - [ ] 批量操作通知栏进度
 - [x] 点击传输相关通知跳转传输视图
 - [ ] 分享目标：从其他应用分享链接或文件到 LanCloud
-- [ ] APK/常见文件类型的系统打开与安装流程
-- [ ] -添加页增加“从应用上传”（ACTION_OPEN_DOCUMENT和ACTION_GET_CONTENT的区别）
+- [x] APK/常见文件类型的系统打开与安装流程
+- [x] -添加页增加“从应用上传”（ACTION_OPEN_DOCUMENT和ACTION_GET_CONTENT的区别）
 
 ## v0.6 高级能力
 
-- [ ] 网盘文件变动局部刷新（文件上传完毕notifyitemInserted、删除notifyitemremoved、修改notifyitemchanged）
+- [ ] 网盘文件变动局部刷新（例如：文件上传完毕notifyitemInserted、删除notifyitemremoved、修改notifyitemchanged）
 - [ ] 快速访问（网盘页文件夹属性弹窗“添加到快速访问”选项固定至此）
 
 ## v0.7 锦上添花

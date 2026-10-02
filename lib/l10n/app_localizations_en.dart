@@ -1025,4 +1025,26 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get appName => 'LanCloud';
+
+  @override
+  String shareReceivedFiles(int count) {
+    return 'Received $count files; starting upload';
+  }
+
+  @override
+  String get shareTargetUnsupported => 'Unrecognized shared content';
+
+  @override
+  String get uploadHere => 'Upload here';
+
+  @override
+  String get uploadFromApp => 'Upload from apps';
+
+  @override
+  String uploadTasksAdded(int count) {
+    return 'Added $count upload tasks';
+  }
+
+  @override
+  String get install => 'Install';
 }

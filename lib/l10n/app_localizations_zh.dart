@@ -883,7 +883,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get parentFolder => '上一级';
 
   @override
-  String get moveHere => '移动到这里';
+  String get moveHere => '移动到此';
 
   @override
   String get noSubfolders => '这个文件夹里没有子文件夹';
@@ -995,4 +995,26 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get appName => '蓝云';
+
+  @override
+  String shareReceivedFiles(int count) {
+    return '已接收 $count 个文件，开始上传';
+  }
+
+  @override
+  String get shareTargetUnsupported => '无法识别的分享内容';
+
+  @override
+  String get uploadHere => '上传到此';
+
+  @override
+  String get uploadFromApp => '从应用上传';
+
+  @override
+  String uploadTasksAdded(int count) {
+    return '已加入 $count 个上传任务';
+  }
+
+  @override
+  String get install => '安装';
 }

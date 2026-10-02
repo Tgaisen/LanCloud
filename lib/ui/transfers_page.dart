@@ -3,6 +3,7 @@ import 'package:open_filex/open_filex.dart';
 import 'package:provider/provider.dart';
 
 import '../core/app_controller.dart';
+import '../core/apk_installer.dart';
 import '../core/transfer/transfer_manager.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
@@ -268,6 +269,22 @@ class _TransferCard extends StatelessWidget {
                     onPressed: () => manager.retry(task.id),
                   ),
                 if (task.status == TransferStatus.done && task.savedPath != null) ...[
+                  if (task.name.toLowerCase().endsWith('.apk'))
+                    IconButton(
+                      tooltip: l10n.install,
+                      icon: const Icon(Icons.install_mobile),
+                      onPressed: () async {
+                        try {
+                          await ApkInstaller.installApk(task.savedPath!);
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('$e')),
+                            );
+                          }
+                        }
+                      },
+                    ),
                   IconButton(
                     tooltip: l10n.open,
                     icon: const Icon(Icons.open_in_new),

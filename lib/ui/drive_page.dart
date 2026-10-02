@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart' hide Icons;
 import 'package:lpinyin/lpinyin.dart';
+import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
@@ -8,6 +11,7 @@ import '../core/api/lanzou_client.dart';
 import '../core/api/models.dart';
 import '../core/app_controller.dart';
 import '../core/drive_cache.dart';
+import '../core/file_picker_channel.dart';
 import '../core/transfer/transfer_manager.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
@@ -59,6 +63,8 @@ class _DrivePageState extends State<DrivePage>
   bool _searching = false;
   String _filter = '';
   String _sortMode = 'default';
+  int _refreshEpoch = 0;
+  double _pullOffset = 0;
   final Map<String, double> _folderOffsets = {};
   bool _selecting = false;
   final Set<String> _selectedFiles = {};
@@ -151,7 +157,9 @@ class _DrivePageState extends State<DrivePage>
       setState(() {
         _folders = cached.folders;
         _files = cached.files;
-        _path = cached.path.isEmpty ? _path : cached.path;
+        _path = _folderId == '-1'
+            ? const <PathNode>[]
+            : (cached.path.isEmpty ? _path : cached.path);
         _page = cached.page;
         _hasMore = cached.hasMore;
         _loading = false;
@@ -182,8 +190,8 @@ class _DrivePageState extends State<DrivePage>
       if (!mounted) return;
       setState(() {
         _folders = foldersResult.folders;
-        _path = foldersResult.path.isEmpty && _path.isEmpty
-            ? _path
+        _path = _folderId == '-1'
+            ? const <PathNode>[]
             : (foldersResult.path.isEmpty ? _path : foldersResult.path);
         _files = files;
         _page = page;
@@ -572,6 +580,14 @@ class _DrivePageState extends State<DrivePage>
                 _upload();
               },
             ),
+            ListTile(
+              leading: const Icon(Icons.file_open),
+              title: Text(context.l10n.uploadFromApp),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                _uploadFromApp();
+              },
+            ),
           ],
         ),
       ),
@@ -610,6 +626,44 @@ class _DrivePageState extends State<DrivePage>
         ),
       ),
     );
+  }
+
+  /// 从其他应用/文档提供器选取文件上传（ACTION_OPEN_DOCUMENT）。
+  Future<void> _uploadFromApp() async {
+    try {
+      final paths = await ProviderFilePicker.pickFiles();
+      if (paths.isEmpty || !mounted) return;
+      final transfers = context.read<TransferManager>();
+      var added = 0;
+      var skipped = 0;
+      for (final path in paths) {
+        final size = await File(path).length();
+        if (size > kFreeUploadLimit) {
+          skipped += 1;
+          continue;
+        }
+        transfers.addUpload(
+          name: p.basename(path),
+          folderId: _folderId,
+          path: path,
+          size: size,
+        );
+        added += 1;
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            skipped > 0
+                ? context.l10n.uploadSkipped(added, skipped)
+                : context.l10n.uploadTasksAdded(added),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    }
   }
 
   Future<void> _mkdir() async {
@@ -916,12 +970,10 @@ class _DrivePageState extends State<DrivePage>
     final fileIds = _selectedFiles.toList();
     final folderIds = _selectedFolders.toList();
     if (fileIds.isEmpty && folderIds.isEmpty) return;
-    final target = await showDialog<_MoveTarget>(
-      context: context,
-      builder: (_) => _MoveDialog(
-        client: client,
-        excludeIds: {...fileIds, ...folderIds},
-      ),
+    final target = await showFolderPicker(
+      context,
+      client: client,
+      excludeIds: {...fileIds, ...folderIds},
     );
     if (target == null || !mounted) return;
     var failed = 0;
@@ -1367,12 +1419,10 @@ class _DrivePageState extends State<DrivePage>
     final app = context.read<AppController>();
     final client = app.client;
     if (client == null) return;
-    final target = await showDialog<_MoveTarget>(
-      context: context,
-      builder: (_) => _MoveDialog(
-        client: client,
-        excludeIds: {file.id},
-      ),
+    final target = await showFolderPicker(
+      context,
+      client: client,
+      excludeIds: {file.id},
     );
     if (target == null || !mounted) return;
     try {
@@ -1755,11 +1805,41 @@ class _DrivePageState extends State<DrivePage>
   /// 顶栏是第一个 sliver，路径栏作为它的 bottom 组成一个整体：
   /// 和其它视图相比只是更高、多了一行路径，浮动/钉住逻辑完全一致。
   Widget _buildBody(bool grid, {required bool hideTopBar}) {
-    return RefreshIndicator(
-      onRefresh: _reloadAfterChange,
-      child: CustomScrollView(
-        controller: _scroll,
-        slivers: [
+    final headerInset =
+        MediaQuery.of(context).padding.top + kToolbarHeight + 46;
+    return NotificationListener<ScrollNotification>(
+      onNotification: (notification) {
+        if (notification is ScrollStartNotification) {
+          _pullOffset = 0;
+        } else if (notification is OverscrollNotification &&
+            notification.metrics.axisDirection == AxisDirection.down) {
+          _pullOffset = -notification.overscroll;
+        } else if (notification is ScrollUpdateNotification &&
+            notification.dragDetails != null &&
+            notification.dragDetails!.delta.dy < 0 &&
+            _pullOffset > 8) {
+          // 顶部下拉后只要往上滑，就立即取消刷新球
+          setState(() {
+            _refreshEpoch += 1;
+            _pullOffset = 0;
+          });
+        } else if (notification is ScrollEndNotification) {
+          _pullOffset = 0;
+        }
+        return false;
+      },
+      child: KeyedSubtree(
+        key: ValueKey('drive-refresh-$_refreshEpoch'),
+        child: RefreshIndicator(
+          onRefresh: _reloadAfterChange,
+          edgeOffset: headerInset,
+          triggerMode: RefreshIndicatorTriggerMode.anywhere,
+          child: CustomScrollView(
+            controller: _scroll,
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
+            slivers: [
           SliverAppBar(
             // floating：向上滚动立刻开始出现；pinned 只由设置决定
             floating: hideTopBar,
@@ -1831,7 +1911,9 @@ class _DrivePageState extends State<DrivePage>
             ),
           ),
           ..._contentSlivers(grid),
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -2593,37 +2675,76 @@ class _BatchAction extends StatelessWidget {
   }
 }
 
-class _MoveTarget {
-  const _MoveTarget(this.folderId, this.name);
+class FolderPickResult {
+  const FolderPickResult(this.folderId, this.name, {this.fileName});
 
   final String folderId;
   final String name;
+  final String? fileName;
 }
 
-/// 移动目标文件夹选择弹窗：逐级浏览，点“移动到这里”确认。
-class _MoveDialog extends StatefulWidget {
-  const _MoveDialog({required this.client, required this.excludeIds});
+/// 目标文件夹选择弹窗（移动 / 上传共用）。
+Future<FolderPickResult?> showFolderPicker(
+  BuildContext context, {
+  required LanzouClient client,
+  Set<String> excludeIds = const {},
+  String? confirmLabel,
+  String? initialName,
+}) {
+  return showDialog<FolderPickResult>(
+    context: context,
+    builder: (_) => FolderPickerDialog(
+      client: client,
+      excludeIds: excludeIds,
+      confirmLabel: confirmLabel,
+      initialName: initialName,
+    ),
+  );
+}
+
+/// 目标文件夹选择弹窗：路径栏可横滑点击，支持新建文件夹；
+/// 上传模式下顶部可修改文件名。
+class FolderPickerDialog extends StatefulWidget {
+  const FolderPickerDialog({
+    super.key,
+    required this.client,
+    required this.excludeIds,
+    this.confirmLabel,
+    this.initialName,
+  });
 
   final LanzouClient client;
 
-  /// 正在被移动的条目 id（避免把文件夹移进它自己）。
+  /// 需要排除的条目 id（避免把文件夹移进它自己）。
   final Set<String> excludeIds;
+  final String? confirmLabel;
+
+  /// 上传时预填的文件名；为 null 表示移动模式，不显示名称输入框。
+  final String? initialName;
 
   @override
-  State<_MoveDialog> createState() => _MoveDialogState();
+  State<FolderPickerDialog> createState() => _FolderPickerDialogState();
 }
 
-class _MoveDialogState extends State<_MoveDialog> {
+class _FolderPickerDialogState extends State<FolderPickerDialog> {
   String _folderId = '-1';
   List<LzFolder> _folders = [];
   List<PathNode> _path = [];
   bool _loading = true;
   String? _error;
+  late final TextEditingController _nameController =
+      TextEditingController(text: widget.initialName ?? '');
 
   @override
   void initState() {
     super.initState();
     _load('-1');
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
   }
 
   Future<void> _load(String folderId) async {
@@ -2649,15 +2770,47 @@ class _MoveDialogState extends State<_MoveDialog> {
     }
   }
 
-  String get _parentId =>
-      _path.length >= 2 ? _path[_path.length - 2].id : '-1';
+  void _jumpTo(int index) {
+    final newPath = index < 0 ? <PathNode>[] : _path.sublist(0, index + 1);
+    _load(newPath.isEmpty ? '-1' : newPath.last.id);
+  }
+
+  Future<void> _mkdir() async {
+    final controller = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(context.l10n.newFolder),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: InputDecoration(labelText: context.l10n.nameRequired),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(context.l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.of(dialogContext).pop(controller.text.trim()),
+            child: Text(context.l10n.create),
+          ),
+        ],
+      ),
+    );
+    if (name == null || name.isEmpty || !mounted) return;
+    try {
+      await widget.client.mkdir(_folderId, name);
+      await _load(_folderId);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = '$e');
+    }
+  }
 
   String _targetName(AppLocalizations l10n) =>
       _path.isEmpty ? l10n.root : _path.last.name;
-
-  String _targetPath(AppLocalizations l10n) => _path.isEmpty
-      ? l10n.root
-      : _path.map((p) => p.name).join(' / ');
 
   @override
   Widget build(BuildContext context) {
@@ -2668,38 +2821,50 @@ class _MoveDialogState extends State<_MoveDialog> {
       title: Text(l10n.chooseTargetFolder),
       content: SizedBox(
         width: 360,
-        height: 420,
+        height: 440,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (widget.initialName != null) ...[
+              TextField(
+                controller: _nameController,
+                decoration: InputDecoration(
+                  isDense: true,
+                  border: const OutlineInputBorder(),
+                  labelText: l10n.nameRequired,
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
             Row(
               children: [
-                IconButton(
-                  tooltip: l10n.parentFolder,
-                  onPressed: _path.isEmpty ? null : () => _load(_parentId),
-                  icon: const Icon(Icons.arrow_upward),
-                ),
-                const SizedBox(width: 4),
                 Expanded(
-                  child: Text(
-                    _targetName(l10n),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        for (var i = -1; i < _path.length; i++) ...[
+                          if (i >= 0)
+                            const Icon(Icons.chevron_right, size: 18),
+                          TextButton(
+                            onPressed: () => _jumpTo(i),
+                            child: Text(
+                              i < 0 ? l10n.root : _path[i].name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
                 ),
+                IconButton(
+                  tooltip: l10n.newFolder,
+                  icon: const Icon(Icons.create_new_folder_outlined),
+                  onPressed: _loading ? null : _mkdir,
+                ),
               ],
-            ),
-            ListTile(
-              leading: const Icon(Icons.drive_file_move_outline),
-              title: Text(l10n.moveHere),
-              subtitle: Text(
-                _targetPath(l10n),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              onTap: () => Navigator.of(context)
-                  .pop(_MoveTarget(_folderId, _targetName(l10n))),
             ),
             const Divider(height: 1),
             Expanded(
@@ -2741,6 +2906,23 @@ class _MoveDialogState extends State<_MoveDialog> {
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
           child: Text(l10n.cancel),
+        ),
+        FilledButton(
+          onPressed: _loading
+              ? null
+              : () {
+                  final edited = _nameController.text.trim();
+                  Navigator.of(context).pop(
+                    FolderPickResult(
+                      _folderId,
+                      _targetName(l10n),
+                      fileName: widget.initialName == null
+                          ? null
+                          : (edited.isEmpty ? widget.initialName : edited),
+                    ),
+                  );
+                },
+          child: Text(widget.confirmLabel ?? l10n.moveHere),
         ),
       ],
     );

@@ -432,7 +432,7 @@
   "openFolder": "打开文件夹",
   "chooseTargetFolder": "选择目标文件夹",
   "parentFolder": "上一级",
-  "moveHere": "移动到这里",
+  "moveHere": "移动到此",
   "noSubfolders": "这个文件夹里没有子文件夹",
   "notifications": "通知",
   "notifProgress": "传输进度通知",
@@ -483,5 +483,21 @@
   "shareInvalid": "该分享已失效（已取消或删除）",
   "manage": "管理",
   "logout": "退出登录",
-  "appName": "蓝云"
+  "appName": "蓝云",
+  "shareReceivedFiles": "已接收 {count} 个文件，开始上传",
+  "@shareReceivedFiles": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "shareTargetUnsupported": "无法识别的分享内容",
+  "uploadHere": "上传到此",
+  "uploadFromApp": "从应用上传",
+  "uploadTasksAdded": "已加入 {count} 个上传任务",
+  "@uploadTasksAdded": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "install": "安装"
 }

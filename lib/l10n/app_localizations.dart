@@ -1721,7 +1721,7 @@ abstract class AppLocalizations {
   /// No description provided for @moveHere.
   ///
   /// In zh, this message translates to:
-  /// **'移动到这里'**
+  /// **'移动到此'**
   String get moveHere;
 
   /// No description provided for @noSubfolders.
@@ -1933,6 +1933,42 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'蓝云'**
   String get appName;
+
+  /// No description provided for @shareReceivedFiles.
+  ///
+  /// In zh, this message translates to:
+  /// **'已接收 {count} 个文件，开始上传'**
+  String shareReceivedFiles(int count);
+
+  /// No description provided for @shareTargetUnsupported.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法识别的分享内容'**
+  String get shareTargetUnsupported;
+
+  /// No description provided for @uploadHere.
+  ///
+  /// In zh, this message translates to:
+  /// **'上传到此'**
+  String get uploadHere;
+
+  /// No description provided for @uploadFromApp.
+  ///
+  /// In zh, this message translates to:
+  /// **'从应用上传'**
+  String get uploadFromApp;
+
+  /// No description provided for @uploadTasksAdded.
+  ///
+  /// In zh, this message translates to:
+  /// **'已加入 {count} 个上传任务'**
+  String uploadTasksAdded(int count);
+
+  /// No description provided for @install.
+  ///
+  /// In zh, this message translates to:
+  /// **'安装'**
+  String get install;
 }
 
 class _AppLocalizationsDelegate

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
 import '../api/lanzou_client.dart';
 import '../app_controller.dart';
@@ -62,6 +63,7 @@ class TransferManager extends ChangeNotifier {
   final AppController _app;
   final List<TransferTask> tasks = [];
   int _seq = 0;
+  bool _serviceRunning = false;
 
   Future<void> _restore() async {
     try {
@@ -248,6 +250,29 @@ class TransferManager extends ChangeNotifier {
         runningDownloads += 1;
         _start(task);
       }
+    }
+    _syncForegroundService();
+  }
+
+  /// 有进行中任务时启动前台服务保持后台传输；全部结束则停止服务。
+  void _syncForegroundService() {
+    final active = tasks.any(
+      (t) =>
+          t.status == TransferStatus.running ||
+          t.status == TransferStatus.queued,
+    );
+    if (active && !_serviceRunning) {
+      _serviceRunning = true;
+      final i18n = NotificationService.i18n;
+      FlutterForegroundTask.startService(
+        serviceId: 1000,
+        serviceTypes: const [ForegroundServiceTypes.dataSync],
+        notificationTitle: i18n?.appName ?? '蓝云',
+        notificationText: i18n?.notifProgressTitle ?? '传输中',
+      );
+    } else if (!active && _serviceRunning) {
+      _serviceRunning = false;
+      FlutterForegroundTask.stopService();
     }
   }
 
