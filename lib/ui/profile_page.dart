@@ -5,6 +5,7 @@ import '../core/app_controller.dart';
 import '../core/data/account_store.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
+import 'about_page.dart';
 import 'common.dart';
 import 'cookie_sheet.dart';
 import 'login_page.dart';
@@ -113,18 +114,9 @@ class ProfileSheet extends StatelessWidget {
               ListTile(
                 leading: const Icon(Icons.info_outline),
                 title: Text(l10n.about),
-                onTap: () => showDialog<void>(
-                  context: context,
-                  builder: (dialogContext) => AlertDialog(
-                    title: Text('${l10n.appName} 0.8.9'),
-                    content: Text(l10n.aboutText),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.of(dialogContext).pop(),
-                        child: Text(l10n.close),
-                      ),
-                    ],
-                  ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const AboutPage()),
                 ),
               ),
             ],

@@ -1342,4 +1342,52 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get restoreDone => 'Restored from backup';
+
+  @override
+  String aboutVersion(String version, int build) {
+    return 'Version $version (build $build)';
+  }
+
+  @override
+  String get aboutTerms => 'Terms of service';
+
+  @override
+  String get aboutPrivacy => 'Privacy policy';
+
+  @override
+  String get aboutLicenses => 'Open-source licenses';
+
+  @override
+  String get aboutProjectHome => 'Project home';
+
+  @override
+  String get aboutCopyright => '© 2026 Tgaisen · Apache License 2.0';
+
+  @override
+  String get aboutDisclaimerTitle => 'Disclaimer';
+
+  @override
+  String get aboutDisclaimer =>
+      'This is an unofficial third-party LanZou Cloud client, not affiliated with or endorsed by LanZou. It is provided \"as is\"; account risks, data loss or service interruptions are at your own risk.';
+
+  @override
+  String get firstRunWelcome => 'Welcome to LanCloud';
+
+  @override
+  String get firstRunMessage =>
+      'Please read and accept the Terms of Service and Privacy Policy first. The app collects no personal data; accounts and data stay on this device.';
+
+  @override
+  String get agreeAndContinue => 'Agree and continue';
+
+  @override
+  String get disagreeAndExit => 'Decline and exit';
+
+  @override
+  String get termsBody =>
+      'Terms of Service\n\n1. This is an unofficial third-party LanZou Cloud client for personal use. It is not affiliated with, authorized by, or endorsed by LanZou.\n\n2. You use your own LanZou account. Do not use this app to violate LanZou\'s terms, applicable laws, or the rights of others.\n\n3. The app is provided \"as is\", without warranty of any kind. Risks such as account restrictions, data loss, or failed uploads/downloads are yours to bear.\n\n4. The APIs used are collected from public and unofficial sources and may stop working at any time.\n\n5. The app is open source under the Apache License 2.0. You may modify and redistribute the code, keeping the original license and copyright notices.\n\n6. Continuing to use the app means you have read and accepted these terms; if not, please uninstall it.';
+
+  @override
+  String get privacyBody =>
+      'Privacy Policy\n\n1. The app collects and uploads no personal data. There is no account system, analytics, ads, or crash-reporting SDK.\n\n2. Your LanZou account (cookie), nickname, favorites, recents, transfer history and settings stay on this device. The cookie is kept in encrypted system storage; viewing it requires biometric or screen-lock verification.\n\n3. The app talks directly to official LanZou endpoints (pc.woozooo.com, up.woozooo.com, etc.); requests only serve the actions you start, such as signing in, listing, uploading or downloading.\n\n4. Sharing goes through the system share sheet: content or files are handed to the app you pick, only when you tap share. The clipboard is written only when you tap Copy.\n\n5. If you configure WebDAV under Backup & restore, backups are uploaded to the server you enter; cookies are excluded by default. Enabling it and choosing the server is entirely up to you.\n\n6. The camera permission is only for QR scanning (not enabled yet), the install-apps permission is only for opening APKs you downloaded, and ignoring battery optimization only keeps background transfers stable. All can be revoked in system settings.\n\n7. Uninstalling the app deletes the accounts and data stored on this device, so back up first.';
 }

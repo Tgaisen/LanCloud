@@ -4,11 +4,13 @@ import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 
 import 'core/app_controller.dart';
+import 'core/agreements.dart';
 import 'core/notifications.dart';
 import 'core/share_inbox.dart';
 import 'core/transfer/transfer_manager.dart';
 import 'l10n/l10n.dart';
 import 'ui/drive_page.dart';
+import 'ui/first_run_terms.dart';
 import 'ui/favorites_page.dart';
 import 'ui/home_page.dart';
 import 'ui/login_page.dart';
@@ -108,8 +110,46 @@ class LanCloudApp extends StatelessWidget {
               : ThemeMode.system,
       // 全局 BouncingScrollPhysics（网盘页同款）
       scrollBehavior: const AppScrollBehavior(),
-      home: const RootShell(),
+      home: const AgreementGate(),
     );
+  }
+}
+
+/// 首次启动先请求同意用户协议与隐私政策；不同意则退出应用。
+class AgreementGate extends StatefulWidget {
+  const AgreementGate({super.key});
+
+  @override
+  State<AgreementGate> createState() => _AgreementGateState();
+}
+
+class _AgreementGateState extends State<AgreementGate> {
+  bool _checked = false;
+  bool _accepted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Agreements.accepted().then((value) {
+      if (!mounted) return;
+      setState(() {
+        _checked = true;
+        _accepted = value;
+      });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_checked) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (!_accepted) {
+      return FirstRunTerms(
+        onAccepted: () => setState(() => _accepted = true),
+      );
+    }
+    return const RootShell();
   }
 }
 
