@@ -661,6 +661,32 @@ class AppLocalizationsZh extends AppLocalizations {
   String get delete => '删除';
 
   @override
+  String get folderInfo => '修改信息';
+
+  @override
+  String get folderInfoSubtitle => '修改名称与简介';
+
+  @override
+  String get accessPassword => '访问密码';
+
+  @override
+  String get accessPasswordSubtitle => '可设置或关闭访问密码';
+
+  @override
+  String get enablePassword => '启用访问密码';
+
+  @override
+  String get folderInfoSaved => '文件夹信息已更新';
+
+  @override
+  String get passwordCleared => '已关闭访问密码';
+
+  @override
+  String passwordClearedCount(int count) {
+    return '已关闭 $count 项的访问密码';
+  }
+
+  @override
   String get transferDeleteConfirmTitle => '删除传输记录';
 
   @override

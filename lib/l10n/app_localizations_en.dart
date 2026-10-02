@@ -681,6 +681,32 @@ class AppLocalizationsEn extends AppLocalizations {
   String get delete => 'Delete';
 
   @override
+  String get folderInfo => 'Edit info';
+
+  @override
+  String get folderInfoSubtitle => 'Change name and description';
+
+  @override
+  String get accessPassword => 'Access password';
+
+  @override
+  String get accessPasswordSubtitle => 'Set or disable the access password';
+
+  @override
+  String get enablePassword => 'Enable access password';
+
+  @override
+  String get folderInfoSaved => 'Folder info updated';
+
+  @override
+  String get passwordCleared => 'Access password disabled';
+
+  @override
+  String passwordClearedCount(int count) {
+    return 'Disabled access password for $count items';
+  }
+
+  @override
   String get transferDeleteConfirmTitle => 'Delete transfer records';
 
   @override

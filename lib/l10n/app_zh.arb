@@ -288,6 +288,19 @@
     }
   },
   "delete": "删除",
+  "folderInfo": "修改信息",
+  "folderInfoSubtitle": "修改名称与简介",
+  "accessPassword": "访问密码",
+  "accessPasswordSubtitle": "可设置或关闭访问密码",
+  "enablePassword": "启用访问密码",
+  "folderInfoSaved": "文件夹信息已更新",
+  "passwordCleared": "已关闭访问密码",
+  "passwordClearedCount": "已关闭 {count} 项的访问密码",
+  "@passwordClearedCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
   "transferDeleteConfirmTitle": "删除传输记录",
   "transferDeleteConfirmMessage": "将移除选中的 {count} 条记录（进行中的会先取消），继续吗？",
   "@transferDeleteConfirmMessage": {

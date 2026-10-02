@@ -416,18 +416,30 @@ class LanzouClient {
     );
     final info = (_asMap(infoResp.data)['info'] as Map).cast<String, dynamic>();
     final name = '${info['name'] ?? ''}';
+    await setFolderInfo(folderId, name: name, desc: desc);
+  }
+
+  /// 修改文件夹信息（名称 + 简介）：task 4。
+  Future<void> setFolderInfo(
+    String folderId, {
+    required String name,
+    required String desc,
+  }) async {
+    if (name.trim().isEmpty) {
+      throw const LanzouException('文件夹名称不能为空');
+    }
     final resp = await dio.post<String>(
       '$apiBase/doupload.php',
       data: {
         'task': 4,
         'folder_id': folderId,
-        'folder_name': name,
+        'folder_name': name.trim(),
         'folder_description': desc,
       },
       options: _options(),
     );
     if ('${_asMap(resp.data)['zt']}' != '1') {
-      throw const LanzouException('修改文件夹简介失败');
+      throw const LanzouException('保存文件夹信息失败');
     }
   }
 

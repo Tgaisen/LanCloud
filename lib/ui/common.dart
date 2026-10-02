@@ -903,6 +903,80 @@ class _ConnectedSegmentedButtonState<T>
 /// 批量操作进度报告：current 为当前处理到第几项（从 1 起），detail 为当前项说明。
 typedef BatchProgressReport = void Function(int current, String detail);
 
+/// 访问密码编辑结果：enabled 为是否启用，pwd 为密码（关闭时为空）。
+typedef PasswordEditResult = ({bool enabled, String pwd});
+
+/// 访问密码弹窗：顶部「启用访问密码」开关 + 密码输入框。
+/// 打开前应先取到当前是否启用与密码，用于预填开关和输入框；
+/// 关闭开关后确认即表示关闭访问密码。
+Future<PasswordEditResult?> showPasswordDialog(
+  BuildContext context, {
+  required bool enabled,
+  required String pwd,
+}) {
+  final controller = TextEditingController(text: pwd);
+  var isEnabled = enabled;
+  String? error;
+  // 注意：不在弹窗关闭时立即 dispose 控制器——退场动画期间组件仍会重建。
+  return showDialog<PasswordEditResult>(
+    context: context,
+    builder: (dialogContext) => StatefulBuilder(
+      builder: (context, setDialogState) {
+        final l10n = context.l10n;
+        return AlertDialog(
+          title: Text(l10n.accessPassword),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(l10n.enablePassword),
+                value: isEnabled,
+                onChanged: (value) => setDialogState(() {
+                  isEnabled = value;
+                  error = null;
+                }),
+              ),
+              TextField(
+                controller: controller,
+                enabled: isEnabled,
+                maxLength: 6,
+                autofocus: isEnabled,
+                decoration: InputDecoration(
+                  hintText: l10n.pwdHint,
+                  errorText: error,
+                ),
+                onChanged: (_) {
+                  if (error != null) setDialogState(() => error = null);
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(l10n.cancel),
+            ),
+            FilledButton(
+              onPressed: () {
+                final value = controller.text.trim();
+                if (isEnabled && value.length < 2) {
+                  setDialogState(() => error = l10n.pwdTooShort);
+                  return;
+                }
+                Navigator.of(dialogContext).pop(
+                  (enabled: isEnabled, pwd: isEnabled ? value : ''),
+                );
+              },
+              child: Text(l10n.confirm),
+            ),
+          ],
+        );
+      },
+    ),
+  );
+}
+
 /// 批量操作进度弹窗（MD3E 风格，内容居中）：
 /// 圆角进度条 + “1/20” 计数 + 当前处理项，[run] 完成后自动关闭。
 /// 操作进行中不可用返回键关闭。

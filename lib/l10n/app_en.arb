@@ -206,6 +206,19 @@
   "deleteConfirmTitle": "Confirm deletion",
   "deleteConfirmMessage": "Move {count} selected items to the recycle bin?",
   "delete": "Delete",
+  "folderInfo": "Edit info",
+  "folderInfoSubtitle": "Change name and description",
+  "accessPassword": "Access password",
+  "accessPasswordSubtitle": "Set or disable the access password",
+  "enablePassword": "Enable access password",
+  "folderInfoSaved": "Folder info updated",
+  "passwordCleared": "Access password disabled",
+  "passwordClearedCount": "Disabled access password for {count} items",
+  "@passwordClearedCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
   "transferDeleteConfirmTitle": "Delete transfer records",
   "transferDeleteConfirmMessage": "Remove {count} selected records (running ones will be canceled)?",
   "@transferDeleteConfirmMessage": {

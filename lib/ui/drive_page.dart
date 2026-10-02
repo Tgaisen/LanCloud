@@ -1481,37 +1481,14 @@ class _DrivePageState extends State<DrivePage>
   }
 
   Future<void> _batchSetPasswd() async {
-    final controller = TextEditingController();
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(context.l10n.setPassword),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          maxLength: 6,
-          decoration: InputDecoration(hintText: context.l10n.pwdHint),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(context.l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(context.l10n.confirm),
-          ),
-        ],
-      ),
+    // 批量不逐项取密码，默认按“启用”打开（留空即关闭）
+    final result = await showPasswordDialog(
+      context,
+      enabled: true,
+      pwd: '',
     );
-    if (ok != true || !mounted) return;
-    final pwd = controller.text.trim();
-    if (pwd.length < 2) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.pwdTooShort)),
-      );
-      return;
-    }
+    if (result == null || !mounted) return;
+    final pwd = result.enabled ? result.pwd : '';
     final client = context.read<AppController>().client;
     if (client == null) return;
     final fileIds = _selectedFiles.toList();
@@ -1583,7 +1560,9 @@ class _DrivePageState extends State<DrivePage>
       SnackBar(
         content: Text(
           failed == 0
-              ? context.l10n.passwordSetCount(count)
+              ? (pwd.isEmpty
+                    ? context.l10n.passwordClearedCount(count)
+                    : context.l10n.passwordSetCount(count))
               : context.l10n.passwordSetPartial(count - failed, failed),
         ),
       ),
@@ -1956,39 +1935,29 @@ class _DrivePageState extends State<DrivePage>
   }
 
   Future<void> _singleSetPasswd(LzFile file) async {
-    final controller = TextEditingController();
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(context.l10n.setPassword),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          maxLength: 6,
-          decoration: InputDecoration(hintText: context.l10n.pwdHint),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(context.l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(context.l10n.confirm),
-          ),
-        ],
-      ),
-    );
-    if (ok != true || !mounted) return;
-    final pwd = controller.text.trim();
-    if (pwd.length < 2) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.pwdTooShort)),
-      );
-      return;
-    }
+    final client = context.read<AppController>().client;
+    if (client == null) return;
+    // 先取当前是否启用与密码，用于预填开关和输入框
+    final navigator = Navigator.of(context);
+    showLoadingDialog(context, context.l10n.resolving);
+    String currentPwd = '';
     try {
-      await context.read<AppController>().client?.setPasswd(file.id, pwd);
+      currentPwd = (await client.shareInfoOfFile(file.id)).pwd;
+    } catch (_) {
+      // 取不到就按未启用处理
+    } finally {
+      navigator.pop();
+    }
+    if (!mounted) return;
+    final result = await showPasswordDialog(
+      context,
+      enabled: currentPwd.isNotEmpty,
+      pwd: currentPwd,
+    );
+    if (result == null || !mounted) return;
+    final pwd = result.enabled ? result.pwd : '';
+    try {
+      await client.setPasswd(file.id, pwd);
       if (!mounted) return;
       setState(() {
         _files = [
@@ -2009,11 +1978,156 @@ class _DrivePageState extends State<DrivePage>
       _pulseItems(fileIds: {file.id});
       _updateCacheSnapshot();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.passwordSet)),
+        SnackBar(
+          content: Text(
+            pwd.isEmpty ? context.l10n.passwordCleared : context.l10n.passwordSet,
+          ),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    }
+  }
+
+  /// 文件夹改名 / 简介 / 密码变化后同步到列表、路径与缓存。
+  void _applyFolderUpdate(
+    String folderId, {
+    String? name,
+    String? desc,
+    bool? hasPwd,
+  }) {
+    setState(() {
+      _folders = [
+        for (final folder in _folders)
+          folder.id == folderId
+              ? LzFolder(
+                  id: folder.id,
+                  name: name ?? folder.name,
+                  desc: desc ?? folder.desc,
+                  hasPwd: hasPwd ?? folder.hasPwd,
+                )
+              : folder,
+      ];
+      if (name != null) {
+        _path = [
+          for (final node in _path)
+            node.id == folderId ? PathNode(id: node.id, name: name) : node,
+        ];
+      }
+    });
+    if (desc != null) _folderDescCache[folderId] = desc;
+    _pulseItems(folderIds: {folderId});
+    _updateCacheSnapshot();
+  }
+
+  /// 文件夹访问密码：先取当前是否启用与密码，再弹开关 + 密码框。
+  Future<void> _setFolderPasswd(LzFolder folder) async {
+    final client = context.read<AppController>().client;
+    if (client == null) return;
+    final navigator = Navigator.of(context);
+    showLoadingDialog(context, context.l10n.resolving);
+    var currentPwd = '';
+    try {
+      currentPwd = (await client.shareInfoOfFolder(folder.id)).pwd;
+    } catch (_) {
+      // 取不到就按未启用处理
+    } finally {
+      navigator.pop();
+    }
+    if (!mounted) return;
+    final result = await showPasswordDialog(
+      context,
+      enabled: currentPwd.isNotEmpty,
+      pwd: currentPwd,
+    );
+    if (result == null || !mounted) return;
+    final pwd = result.enabled ? result.pwd : '';
+    try {
+      await client.setFolderPasswd(folder.id, pwd);
+      if (!mounted) return;
+      _applyFolderUpdate(folder.id, hasPwd: pwd.isNotEmpty);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            pwd.isEmpty
+                ? context.l10n.passwordCleared
+                : context.l10n.passwordSet,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    }
+  }
+
+  /// 修改文件夹信息（名称 + 简介），成功后返回新值给调用方刷新弹窗。
+  Future<({String name, String desc})?> _editFolderInfo(
+    LzFolder folder,
+  ) async {
+    final client = context.read<AppController>().client;
+    if (client == null) return null;
+    final nameController = TextEditingController(text: folder.name);
+    final descController = TextEditingController(text: folder.desc);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(context.l10n.folderInfo),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: context.l10n.nameRequired,
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: descController,
+              decoration: InputDecoration(
+                labelText: context.l10n.descOptional,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(context.l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(context.l10n.confirm),
+          ),
+        ],
+      ),
+    );
+    final name = nameController.text.trim();
+    final desc = descController.text.trim();
+    nameController.dispose();
+    descController.dispose();
+    if (ok != true || !mounted) return null;
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.folderNameRequired)),
+      );
+      return null;
+    }
+    try {
+      await client.setFolderInfo(folder.id, name: name, desc: desc);
+      if (!mounted) return null;
+      _applyFolderUpdate(folder.id, name: name, desc: desc);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.folderInfoSaved)),
+      );
+      return (name: name, desc: desc);
+    } catch (e) {
+      if (!mounted) return null;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      return null;
     }
   }
 
@@ -3074,6 +3188,7 @@ class _FolderInfoSheet extends StatefulWidget {
 }
 
 class _FolderInfoSheetState extends State<_FolderInfoSheet> {
+  late String _name = widget.folder.name;
   String? _desc;
   String? _stats;
   bool _loading = false;
@@ -3112,6 +3227,24 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
       if (mounted) setState(() => _pinned = true);
     }
   }
+
+  LzFolder get _folder => LzFolder(
+    id: widget.folder.id,
+    name: _name,
+    desc: _desc ?? widget.folder.desc,
+    hasPwd: widget.folder.hasPwd,
+  );
+
+  Future<void> _editInfo() async {
+    final updated = await widget.page._editFolderInfo(_folder);
+    if (updated == null || !mounted) return;
+    setState(() {
+      _name = updated.name;
+      _desc = updated.desc;
+    });
+  }
+
+  Future<void> _editPassword() => widget.page._setFolderPasswd(_folder);
 
   Future<void> _fetch() async {
     final l10n = context.l10n;
@@ -3177,7 +3310,7 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
         children: [
           _PropertyHeader(
             icon: Icons.folder,
-            title: folder.name,
+            title: _name,
             subtitle: [
               context.l10n.folder,
               ?_stats,
@@ -3192,9 +3325,21 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
               title: Text(context.l10n.openFolder),
               onTap: () {
                 Navigator.of(context).pop();
-                page._openFolder(folder);
+                page._openFolder(_folder);
               },
             ),
+          ListTile(
+            leading: const Icon(Icons.edit_note),
+            title: Text(context.l10n.folderInfo),
+            subtitle: Text(context.l10n.folderInfoSubtitle),
+            onTap: _editInfo,
+          ),
+          ListTile(
+            leading: const Icon(Icons.password),
+            title: Text(context.l10n.accessPassword),
+            subtitle: Text(context.l10n.accessPasswordSubtitle),
+            onTap: _editPassword,
+          ),
           ListTile(
             leading: Icon(
               _pinned ? Icons.push_pin : Icons.push_pin_outlined,
@@ -3214,7 +3359,7 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
                 ? null
                 : () {
                     Navigator.of(context).pop();
-                    page._copyFolderShareLink(folder);
+                    page._copyFolderShareLink(_folder);
                   },
           ),
           ListTile(
@@ -3225,7 +3370,7 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
                 ? null
                 : () {
                     Navigator.of(context).pop();
-                    page._openFolderShareInBrowser(folder);
+                    page._openFolderShareInBrowser(_folder);
                   },
           ),
           ListTile(
@@ -3236,7 +3381,7 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
                 ? null
                 : () {
                     Navigator.of(context).pop();
-                    page._showFolderQr(folder);
+                    page._showFolderQr(_folder);
                   },
           ),
           ListTile(
@@ -3244,7 +3389,7 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
             title: Text(context.l10n.addFavorite),
             onTap: () {
               Navigator.of(context).pop();
-              page._favoriteFolder(folder);
+              page._favoriteFolder(_folder);
             },
           ),
           ListTile(
@@ -3252,7 +3397,7 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
             title: Text(context.l10n.delete),
             onTap: () {
               Navigator.of(context).pop();
-              page._deleteFolder(folder);
+              page._deleteFolder(_folder);
             },
           ),
         ],

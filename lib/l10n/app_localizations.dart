@@ -1334,6 +1334,54 @@ abstract class AppLocalizations {
   /// **'删除'**
   String get delete;
 
+  /// No description provided for @folderInfo.
+  ///
+  /// In zh, this message translates to:
+  /// **'修改信息'**
+  String get folderInfo;
+
+  /// No description provided for @folderInfoSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'修改名称与简介'**
+  String get folderInfoSubtitle;
+
+  /// No description provided for @accessPassword.
+  ///
+  /// In zh, this message translates to:
+  /// **'访问密码'**
+  String get accessPassword;
+
+  /// No description provided for @accessPasswordSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'可设置或关闭访问密码'**
+  String get accessPasswordSubtitle;
+
+  /// No description provided for @enablePassword.
+  ///
+  /// In zh, this message translates to:
+  /// **'启用访问密码'**
+  String get enablePassword;
+
+  /// No description provided for @folderInfoSaved.
+  ///
+  /// In zh, this message translates to:
+  /// **'文件夹信息已更新'**
+  String get folderInfoSaved;
+
+  /// No description provided for @passwordCleared.
+  ///
+  /// In zh, this message translates to:
+  /// **'已关闭访问密码'**
+  String get passwordCleared;
+
+  /// No description provided for @passwordClearedCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'已关闭 {count} 项的访问密码'**
+  String passwordClearedCount(int count);
+
   /// No description provided for @transferDeleteConfirmTitle.
   ///
   /// In zh, this message translates to:
