@@ -410,5 +410,61 @@
   "permissionBlockedMessage": "Camera permission was denied by the system. Enable it in system settings, then come back.",
   "permissionOpenSystemSettings": "Open system settings",
   "permissionCameraGranted": "Camera permission granted",
-  "permissionOpenFailed": "Unable to open system settings"
+  "permissionOpenFailed": "Unable to open system settings",
+  "backupAndRestore": "Backup & restore",
+  "backupAndRestoreSubtitle": "Local files and WebDAV",
+  "backupKeywords": "backup restore webdav cookie export",
+  "localBackup": "Local backup",
+  "backupNow": "Back up now",
+  "backupNowSubtitle": "Export a JSON backup file",
+  "backupSaved": "Saved to {path}",
+  "@backupSaved": {
+    "placeholders": {
+      "path": {"type": "String"}
+    }
+  },
+  "restoreFromFile": "Restore from file",
+  "restoreFromFileSubtitle": "Pick a previously exported backup",
+  "chooseBackupFile": "Choose backup file",
+  "includeCookies": "Include cookies",
+  "includeCookiesSubtitle": "Off by default; a backup with cookies is an account credential",
+  "webdavSection": "WebDAV",
+  "webdavServer": "WebDAV URL",
+  "webdavServerHint": "https://example.com/dav/",
+  "webdavUsername": "Username",
+  "webdavPassword": "Password",
+  "webdavNotSet": "Not set",
+  "webdavBackup": "Cloud backup",
+  "webdavTest": "Test connection",
+  "webdavTestOk": "Connected",
+  "webdavUpload": "Upload backup",
+  "webdavUploadDone": "Uploaded {name}",
+  "@webdavUploadDone": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "webdavRestore": "Restore from cloud",
+  "webdavNoBackups": "No backups in the cloud yet",
+  "webdavAutoBackup": "Auto backup",
+  "webdavAutoBackupSubtitle": "Upload automatically at launch",
+  "webdavInterval": "Backup frequency",
+  "webdavDaily": "Daily",
+  "webdavWeekly": "Weekly",
+  "lastBackupAt": "Last backup: {time}",
+  "@lastBackupAt": {
+    "placeholders": {
+      "time": {"type": "String"}
+    }
+  },
+  "neverBackedUp": "Not yet",
+  "backupFailed": "Last backup failed: {error}",
+  "@backupFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "restoreConfirmTitle": "Restore from backup?",
+  "restoreConfirmMessage": "This overwrites settings, favorites, recents and transfers; your sign-in is kept.",
+  "restoreDone": "Restored from backup"
 }

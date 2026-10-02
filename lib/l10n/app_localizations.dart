@@ -2287,6 +2287,222 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'无法打开系统设置'**
   String get permissionOpenFailed;
+
+  /// No description provided for @backupAndRestore.
+  ///
+  /// In zh, this message translates to:
+  /// **'备份与恢复'**
+  String get backupAndRestore;
+
+  /// No description provided for @backupAndRestoreSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'本地文件与 WebDAV 云端'**
+  String get backupAndRestoreSubtitle;
+
+  /// No description provided for @backupKeywords.
+  ///
+  /// In zh, this message translates to:
+  /// **'backup restore webdav cookie 备份 恢复 云端 导出'**
+  String get backupKeywords;
+
+  /// No description provided for @localBackup.
+  ///
+  /// In zh, this message translates to:
+  /// **'本地备份'**
+  String get localBackup;
+
+  /// No description provided for @backupNow.
+  ///
+  /// In zh, this message translates to:
+  /// **'立即备份'**
+  String get backupNow;
+
+  /// No description provided for @backupNowSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'导出为 JSON 备份文件'**
+  String get backupNowSubtitle;
+
+  /// No description provided for @backupSaved.
+  ///
+  /// In zh, this message translates to:
+  /// **'已保存到 {path}'**
+  String backupSaved(String path);
+
+  /// No description provided for @restoreFromFile.
+  ///
+  /// In zh, this message translates to:
+  /// **'从文件恢复'**
+  String get restoreFromFile;
+
+  /// No description provided for @restoreFromFileSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择之前导出的备份文件'**
+  String get restoreFromFileSubtitle;
+
+  /// No description provided for @chooseBackupFile.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择备份文件'**
+  String get chooseBackupFile;
+
+  /// No description provided for @includeCookies.
+  ///
+  /// In zh, this message translates to:
+  /// **'备份包含 Cookie'**
+  String get includeCookies;
+
+  /// No description provided for @includeCookiesSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'默认不含；包含后备份文件等同于账号凭据'**
+  String get includeCookiesSubtitle;
+
+  /// No description provided for @webdavSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'WebDAV'**
+  String get webdavSection;
+
+  /// No description provided for @webdavServer.
+  ///
+  /// In zh, this message translates to:
+  /// **'WebDAV 地址'**
+  String get webdavServer;
+
+  /// No description provided for @webdavServerHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'https://example.com/dav/'**
+  String get webdavServerHint;
+
+  /// No description provided for @webdavUsername.
+  ///
+  /// In zh, this message translates to:
+  /// **'用户名'**
+  String get webdavUsername;
+
+  /// No description provided for @webdavPassword.
+  ///
+  /// In zh, this message translates to:
+  /// **'密码'**
+  String get webdavPassword;
+
+  /// No description provided for @webdavNotSet.
+  ///
+  /// In zh, this message translates to:
+  /// **'未设置'**
+  String get webdavNotSet;
+
+  /// No description provided for @webdavBackup.
+  ///
+  /// In zh, this message translates to:
+  /// **'云端备份'**
+  String get webdavBackup;
+
+  /// No description provided for @webdavTest.
+  ///
+  /// In zh, this message translates to:
+  /// **'测试连接'**
+  String get webdavTest;
+
+  /// No description provided for @webdavTestOk.
+  ///
+  /// In zh, this message translates to:
+  /// **'连接成功'**
+  String get webdavTestOk;
+
+  /// No description provided for @webdavUpload.
+  ///
+  /// In zh, this message translates to:
+  /// **'上传备份'**
+  String get webdavUpload;
+
+  /// No description provided for @webdavUploadDone.
+  ///
+  /// In zh, this message translates to:
+  /// **'已上传 {name}'**
+  String webdavUploadDone(String name);
+
+  /// No description provided for @webdavRestore.
+  ///
+  /// In zh, this message translates to:
+  /// **'从云端恢复'**
+  String get webdavRestore;
+
+  /// No description provided for @webdavNoBackups.
+  ///
+  /// In zh, this message translates to:
+  /// **'云端还没有备份文件'**
+  String get webdavNoBackups;
+
+  /// No description provided for @webdavAutoBackup.
+  ///
+  /// In zh, this message translates to:
+  /// **'自动备份'**
+  String get webdavAutoBackup;
+
+  /// No description provided for @webdavAutoBackupSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'启动应用时按频率自动上传'**
+  String get webdavAutoBackupSubtitle;
+
+  /// No description provided for @webdavInterval.
+  ///
+  /// In zh, this message translates to:
+  /// **'备份频率'**
+  String get webdavInterval;
+
+  /// No description provided for @webdavDaily.
+  ///
+  /// In zh, this message translates to:
+  /// **'每天'**
+  String get webdavDaily;
+
+  /// No description provided for @webdavWeekly.
+  ///
+  /// In zh, this message translates to:
+  /// **'每周'**
+  String get webdavWeekly;
+
+  /// No description provided for @lastBackupAt.
+  ///
+  /// In zh, this message translates to:
+  /// **'上次备份：{time}'**
+  String lastBackupAt(String time);
+
+  /// No description provided for @neverBackedUp.
+  ///
+  /// In zh, this message translates to:
+  /// **'尚未备份'**
+  String get neverBackedUp;
+
+  /// No description provided for @backupFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'上次备份失败：{error}'**
+  String backupFailed(String error);
+
+  /// No description provided for @restoreConfirmTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'从备份恢复？'**
+  String get restoreConfirmTitle;
+
+  /// No description provided for @restoreConfirmMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'将覆盖当前设置、收藏、最近使用与传输记录；账号登录态会保留。'**
+  String get restoreConfirmMessage;
+
+  /// No description provided for @restoreDone.
+  ///
+  /// In zh, this message translates to:
+  /// **'已从备份恢复'**
+  String get restoreDone;
 }
 
 class _AppLocalizationsDelegate

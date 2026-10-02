@@ -148,6 +148,43 @@ class MainActivity : FlutterFragmentActivity() {
                         result.error("share_failed", e.message, null)
                     }
                 }
+                "shareFile" -> {
+                    val path = call.argument<String>("path")
+                    if (path.isNullOrEmpty()) {
+                        result.error("bad_args", "path required", null)
+                        return@setMethodCallHandler
+                    }
+                    try {
+                        val file = File(path)
+                        if (!file.exists()) {
+                            result.error("not_found", "file not found", null)
+                            return@setMethodCallHandler
+                        }
+                        val uri = FileProvider.getUriForFile(
+                            this,
+                            "$packageName.fileProvider",
+                            file,
+                        )
+                        val subject = call.argument<String>("subject").orEmpty()
+                        val send = Intent(Intent.ACTION_SEND).apply {
+                            type = call.argument<String>("mime") ?: "application/octet-stream"
+                            putExtra(Intent.EXTRA_STREAM, uri)
+                            if (subject.isNotEmpty()) {
+                                putExtra(Intent.EXTRA_SUBJECT, subject)
+                            }
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        val chooser = Intent.createChooser(
+                            send,
+                            subject.ifEmpty { null },
+                        )
+                        chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        startActivity(chooser)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("share_failed", e.message, null)
+                    }
+                }
                 else -> result.notImplemented()
             }
         }

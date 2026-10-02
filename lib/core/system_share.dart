@@ -7,10 +7,30 @@ class SystemShare {
   static const _channel = MethodChannel('lancloud/share');
 
   static Future<bool> shareText(String text, {String subject = ''}) async {
+    return _invoke('shareText', {'text': text, 'subject': subject});
+  }
+
+  /// 导出文件：交给系统分享面板（可另存到文件管理器、发送到其他应用）。
+  static Future<bool> shareFile(
+    String path, {
+    String subject = '',
+    String mime = 'application/json',
+  }) {
+    return _invoke('shareFile', {
+      'path': path,
+      'subject': subject,
+      'mime': mime,
+    });
+  }
+
+  static Future<bool> _invoke(
+    String method,
+    Map<String, Object?> arguments,
+  ) async {
     try {
       final ok = await _channel.invokeMethod<bool>(
-        'shareText',
-        {'text': text, 'subject': subject},
+        method,
+        arguments,
       );
       return ok ?? false;
     } on PlatformException {

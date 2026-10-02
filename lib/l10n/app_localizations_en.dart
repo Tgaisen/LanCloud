@@ -1224,4 +1224,122 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get permissionOpenFailed => 'Unable to open system settings';
+
+  @override
+  String get backupAndRestore => 'Backup & restore';
+
+  @override
+  String get backupAndRestoreSubtitle => 'Local files and WebDAV';
+
+  @override
+  String get backupKeywords => 'backup restore webdav cookie export';
+
+  @override
+  String get localBackup => 'Local backup';
+
+  @override
+  String get backupNow => 'Back up now';
+
+  @override
+  String get backupNowSubtitle => 'Export a JSON backup file';
+
+  @override
+  String backupSaved(String path) {
+    return 'Saved to $path';
+  }
+
+  @override
+  String get restoreFromFile => 'Restore from file';
+
+  @override
+  String get restoreFromFileSubtitle => 'Pick a previously exported backup';
+
+  @override
+  String get chooseBackupFile => 'Choose backup file';
+
+  @override
+  String get includeCookies => 'Include cookies';
+
+  @override
+  String get includeCookiesSubtitle =>
+      'Off by default; a backup with cookies is an account credential';
+
+  @override
+  String get webdavSection => 'WebDAV';
+
+  @override
+  String get webdavServer => 'WebDAV URL';
+
+  @override
+  String get webdavServerHint => 'https://example.com/dav/';
+
+  @override
+  String get webdavUsername => 'Username';
+
+  @override
+  String get webdavPassword => 'Password';
+
+  @override
+  String get webdavNotSet => 'Not set';
+
+  @override
+  String get webdavBackup => 'Cloud backup';
+
+  @override
+  String get webdavTest => 'Test connection';
+
+  @override
+  String get webdavTestOk => 'Connected';
+
+  @override
+  String get webdavUpload => 'Upload backup';
+
+  @override
+  String webdavUploadDone(String name) {
+    return 'Uploaded $name';
+  }
+
+  @override
+  String get webdavRestore => 'Restore from cloud';
+
+  @override
+  String get webdavNoBackups => 'No backups in the cloud yet';
+
+  @override
+  String get webdavAutoBackup => 'Auto backup';
+
+  @override
+  String get webdavAutoBackupSubtitle => 'Upload automatically at launch';
+
+  @override
+  String get webdavInterval => 'Backup frequency';
+
+  @override
+  String get webdavDaily => 'Daily';
+
+  @override
+  String get webdavWeekly => 'Weekly';
+
+  @override
+  String lastBackupAt(String time) {
+    return 'Last backup: $time';
+  }
+
+  @override
+  String get neverBackedUp => 'Not yet';
+
+  @override
+  String backupFailed(String error) {
+    return 'Last backup failed: $error';
+  }
+
+  @override
+  String get restoreConfirmTitle => 'Restore from backup?';
+
+  @override
+  String get restoreConfirmMessage =>
+      'This overwrites settings, favorites, recents and transfers; your sign-in is kept.';
+
+  @override
+  String get restoreDone => 'Restored from backup';
 }

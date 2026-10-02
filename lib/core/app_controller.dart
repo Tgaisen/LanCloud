@@ -35,6 +35,14 @@ class AppController extends ChangeNotifier {
   Future<void> init() async {
     await accounts.load();
     await settings.load();
+    _applyRuntimeSettings();
+    await driveCache.loadFromDisk();
+    ready = true;
+    notifyListeners();
+    _refreshActiveNickname();
+  }
+
+  void _applyRuntimeSettings() {
     LanzouClient.requestInterval =
         Duration(milliseconds: settings.requestInterval);
     LanzouClient.apiBase = settings.apiHost == 'up'
@@ -44,8 +52,15 @@ class AppController extends ChangeNotifier {
     LanzouClient.uploadBase = _withScheme(settings.uploadDomain) ??
         'https://up.woozooo.com';
     LanzouClient.shareDomain = settings.shareDomain;
-    await driveCache.loadFromDisk();
-    ready = true;
+  }
+
+  /// 备份恢复后重新读取账号与设置，并重建网盘客户端。
+  Future<void> reloadFromStorage() async {
+    await accounts.load();
+    await settings.load();
+    _applyRuntimeSettings();
+    _clients.clear();
+    if (!settings.cacheFolders) driveCache.clear();
     notifyListeners();
     _refreshActiveNickname();
   }

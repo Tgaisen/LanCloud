@@ -387,4 +387,73 @@ class AppDb {
     await database.delete('recents', where: 'account = ?', whereArgs: [account]);
     _touch();
   }
+
+  // ------------------------------------------------------------------- backup
+
+  /// 备份：导出会随备份迁移的本地表。
+  Future<Map<String, List<Map<String, Object?>>>> exportTables() async {
+    final database = await db;
+    return {
+      'favorites': await database.query('favorites'),
+      'recents': await database.query('recents'),
+      'downloads': await database.query('downloads'),
+      'transfers': await database.query('transfers'),
+    };
+  }
+
+  static const _tableColumns = <String, List<String>>{
+    'favorites': [
+      'id',
+      'kind',
+      'name',
+      'ref',
+      'pwd',
+      'size',
+      'title',
+      'sharer',
+      'created_at',
+    ],
+    'recents': ['id', 'account', 'kind', 'name', 'ref', 'pwd', 'opened_at'],
+    'downloads': ['ref', 'name', 'path', 'created_at'],
+    'transfers': [
+      'id',
+      'kind',
+      'name',
+      'status',
+      'total',
+      'received',
+      'error',
+      'saved_path',
+      'ref',
+      'folder_id',
+      'created_at',
+    ],
+  };
+
+  /// 恢复：整表替换备份里的数据，忽略未知列与非 Map 行。
+  Future<void> importTables(Map<String, dynamic> data) async {
+    final database = await db;
+    await database.transaction((txn) async {
+      for (final table in _tableColumns.keys) {
+        final rows = data[table];
+        if (rows is! List) continue;
+        final columns = _tableColumns[table]!;
+        await txn.delete(table);
+        for (final row in rows) {
+          if (row is! Map) continue;
+          final values = <String, Object?>{
+            for (final key in columns)
+              if (row.containsKey(key)) key: row[key],
+          };
+          if (values.isEmpty) continue;
+          await txn.insert(
+            table,
+            values,
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
+        }
+      }
+    });
+    _touch();
+  }
 }

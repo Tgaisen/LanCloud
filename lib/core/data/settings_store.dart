@@ -261,4 +261,61 @@ class SettingsStore {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyGridView, value);
   }
+
+  // ------------------------------------------------------------------ backup
+
+  /// 备份用：导出全部设置项（键名与存储键一致）。
+  Map<String, Object?> toJson() => {
+        _keyLanguage: language,
+        _keyDownloadDir: downloadDir,
+        _keyGridView: gridView,
+        _keyLaunchPage: launchPage,
+        _keyHomeFolderOpen: homeFolderOpenMode,
+        _keyCacheFolders: cacheFolders,
+        _keyLoadAllPages: loadAllPages,
+        _keyThemeMode: themeMode,
+        _keyOled: oledBlack,
+        _keySeed: themeSeed,
+        _keyInterval: requestInterval,
+        _keyMaxUp: maxUploads,
+        _keyMaxDown: maxDownloads,
+        _keyApiHost: apiHost,
+        _keyUserAgent: userAgent,
+        _keyUploadDomain: uploadDomain,
+        _keyShareDomain: shareDomain,
+        _keySwipeTabs: swipeTabs,
+        _keyHideTopBar: hideTopBar,
+        _keyHideBottomBar: hideBottomBar,
+        _keyFloatingNav: floatingNavBar,
+        _keyTransitions: transitionAnimations,
+        _keyNotifyProgress: notifyProgress,
+        _keyNotifyDone: notifyDone,
+        _keySortMode: sortMode,
+      };
+
+  /// 恢复备份里的设置：只接受已知键，空值表示恢复为未设置，最后重新读取一次。
+  Future<void> applyJson(Map<String, Object?> json) async {
+    final prefs = await SharedPreferences.getInstance();
+    final known = toJson().keys.toSet();
+    for (final entry in json.entries) {
+      if (!known.contains(entry.key)) continue;
+      final value = entry.value;
+      if (value == null || (value is String && value.isEmpty)) {
+        if (entry.key == _keyUserAgent) {
+          await prefs.setString(entry.key, '');
+        } else {
+          await prefs.remove(entry.key);
+        }
+      } else if (value is bool) {
+        await prefs.setBool(entry.key, value);
+      } else if (value is int) {
+        await prefs.setInt(entry.key, value);
+      } else if (value is double) {
+        await prefs.setDouble(entry.key, value);
+      } else {
+        await prefs.setString(entry.key, '$value');
+      }
+    }
+    await load();
+  }
 }

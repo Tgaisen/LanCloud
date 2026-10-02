@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:provider/provider.dart';
 
 import 'app.dart';
 import 'core/app_controller.dart';
+import 'core/backup/backup_service.dart';
 import 'core/notifications.dart';
 import 'core/share_inbox.dart';
 import 'core/transfer/transfer_manager.dart';
@@ -41,6 +44,8 @@ Future<void> main() async {
   await NotificationService.instance.init(locale);
   await NotificationService.instance.consumeLaunchDetails();
   await SharedInbox.instance.init();
+  // 自动备份：按每天/每周频率在启动时补一次，失败只记录不打扰。
+  unawaited(BackupService.of(app).maybeAutoBackup());
   runApp(
     MultiProvider(
       providers: [

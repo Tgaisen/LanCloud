@@ -572,5 +572,61 @@
   "permissionBlockedMessage": "相机权限已被系统拒绝，请到系统设置中手动开启，然后回到应用。",
   "permissionOpenSystemSettings": "打开系统设置",
   "permissionCameraGranted": "相机权限已授权",
-  "permissionOpenFailed": "无法打开系统设置"
+  "permissionOpenFailed": "无法打开系统设置",
+  "backupAndRestore": "备份与恢复",
+  "backupAndRestoreSubtitle": "本地文件与 WebDAV 云端",
+  "backupKeywords": "backup restore webdav cookie 备份 恢复 云端 导出",
+  "localBackup": "本地备份",
+  "backupNow": "立即备份",
+  "backupNowSubtitle": "导出为 JSON 备份文件",
+  "backupSaved": "已保存到 {path}",
+  "@backupSaved": {
+    "placeholders": {
+      "path": {"type": "String"}
+    }
+  },
+  "restoreFromFile": "从文件恢复",
+  "restoreFromFileSubtitle": "选择之前导出的备份文件",
+  "chooseBackupFile": "选择备份文件",
+  "includeCookies": "备份包含 Cookie",
+  "includeCookiesSubtitle": "默认不含；包含后备份文件等同于账号凭据",
+  "webdavSection": "WebDAV",
+  "webdavServer": "WebDAV 地址",
+  "webdavServerHint": "https://example.com/dav/",
+  "webdavUsername": "用户名",
+  "webdavPassword": "密码",
+  "webdavNotSet": "未设置",
+  "webdavBackup": "云端备份",
+  "webdavTest": "测试连接",
+  "webdavTestOk": "连接成功",
+  "webdavUpload": "上传备份",
+  "webdavUploadDone": "已上传 {name}",
+  "@webdavUploadDone": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "webdavRestore": "从云端恢复",
+  "webdavNoBackups": "云端还没有备份文件",
+  "webdavAutoBackup": "自动备份",
+  "webdavAutoBackupSubtitle": "启动应用时按频率自动上传",
+  "webdavInterval": "备份频率",
+  "webdavDaily": "每天",
+  "webdavWeekly": "每周",
+  "lastBackupAt": "上次备份：{time}",
+  "@lastBackupAt": {
+    "placeholders": {
+      "time": {"type": "String"}
+    }
+  },
+  "neverBackedUp": "尚未备份",
+  "backupFailed": "上次备份失败：{error}",
+  "@backupFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "restoreConfirmTitle": "从备份恢复？",
+  "restoreConfirmMessage": "将覆盖当前设置、收藏、最近使用与传输记录；账号登录态会保留。",
+  "restoreDone": "已从备份恢复"
 }

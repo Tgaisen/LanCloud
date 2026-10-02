@@ -1187,4 +1187,120 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get permissionOpenFailed => '无法打开系统设置';
+
+  @override
+  String get backupAndRestore => '备份与恢复';
+
+  @override
+  String get backupAndRestoreSubtitle => '本地文件与 WebDAV 云端';
+
+  @override
+  String get backupKeywords => 'backup restore webdav cookie 备份 恢复 云端 导出';
+
+  @override
+  String get localBackup => '本地备份';
+
+  @override
+  String get backupNow => '立即备份';
+
+  @override
+  String get backupNowSubtitle => '导出为 JSON 备份文件';
+
+  @override
+  String backupSaved(String path) {
+    return '已保存到 $path';
+  }
+
+  @override
+  String get restoreFromFile => '从文件恢复';
+
+  @override
+  String get restoreFromFileSubtitle => '选择之前导出的备份文件';
+
+  @override
+  String get chooseBackupFile => '选择备份文件';
+
+  @override
+  String get includeCookies => '备份包含 Cookie';
+
+  @override
+  String get includeCookiesSubtitle => '默认不含；包含后备份文件等同于账号凭据';
+
+  @override
+  String get webdavSection => 'WebDAV';
+
+  @override
+  String get webdavServer => 'WebDAV 地址';
+
+  @override
+  String get webdavServerHint => 'https://example.com/dav/';
+
+  @override
+  String get webdavUsername => '用户名';
+
+  @override
+  String get webdavPassword => '密码';
+
+  @override
+  String get webdavNotSet => '未设置';
+
+  @override
+  String get webdavBackup => '云端备份';
+
+  @override
+  String get webdavTest => '测试连接';
+
+  @override
+  String get webdavTestOk => '连接成功';
+
+  @override
+  String get webdavUpload => '上传备份';
+
+  @override
+  String webdavUploadDone(String name) {
+    return '已上传 $name';
+  }
+
+  @override
+  String get webdavRestore => '从云端恢复';
+
+  @override
+  String get webdavNoBackups => '云端还没有备份文件';
+
+  @override
+  String get webdavAutoBackup => '自动备份';
+
+  @override
+  String get webdavAutoBackupSubtitle => '启动应用时按频率自动上传';
+
+  @override
+  String get webdavInterval => '备份频率';
+
+  @override
+  String get webdavDaily => '每天';
+
+  @override
+  String get webdavWeekly => '每周';
+
+  @override
+  String lastBackupAt(String time) {
+    return '上次备份：$time';
+  }
+
+  @override
+  String get neverBackedUp => '尚未备份';
+
+  @override
+  String backupFailed(String error) {
+    return '上次备份失败：$error';
+  }
+
+  @override
+  String get restoreConfirmTitle => '从备份恢复？';
+
+  @override
+  String get restoreConfirmMessage => '将覆盖当前设置、收藏、最近使用与传输记录；账号登录态会保留。';
+
+  @override
+  String get restoreDone => '已从备份恢复';
 }

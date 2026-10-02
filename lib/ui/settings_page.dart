@@ -7,6 +7,7 @@ import '../core/app_permissions.dart';
 import '../core/notifications.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
+import 'backup_page.dart';
 import 'common.dart';
 import 'scroll_tint.dart';
 
@@ -506,6 +507,22 @@ class _SettingsPageState extends State<SettingsPage>
             overflow: TextOverflow.ellipsis,
           ),
           onTap: () => _editUserAgent(context),
+        ),
+      ),
+      _Entry(
+        id: 'backup',
+        title: l10n.backupAndRestore,
+        subtitle: l10n.backupAndRestoreSubtitle,
+        keywords: l10n.backupKeywords.split(' '),
+        category: 'data',
+        build: (context, app) => ListTile(
+          leading: const Icon(Icons.cloud_upload_outlined),
+          title: Text(context.l10n.backupAndRestore),
+          subtitle: Text(context.l10n.backupAndRestoreSubtitle),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const BackupPage()),
+          ),
         ),
       ),
       _Entry(
