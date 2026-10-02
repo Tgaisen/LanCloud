@@ -1299,7 +1299,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get restoreConfirmTitle => '从备份恢复？';
 
   @override
-  String get restoreConfirmMessage => '将覆盖当前设置、收藏、最近使用与传输记录；账号登录态会保留。';
+  String get restoreConfirmMessage => '将覆盖当前设置、收藏、最近使用与快速访问；账号登录态与传输记录会保留。';
 
   @override
   String get restoreDone => '已从备份恢复';

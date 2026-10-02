@@ -7,7 +7,9 @@ Map<String, Object?> groupByAccount(List<Map<String, Object?>> rows) {
   final groups = <String, List<Map<String, Object?>>>{};
   for (final row in rows) {
     final account = '${row['account'] ?? ''}';
-    groups.putIfAbsent(account, () => []).add(row);
+    // 账号已经写在分组上，行内不再重复保存
+    final data = {...row}..remove('account');
+    groups.putIfAbsent(account, () => []).add(data);
   }
   final accounts = groups.keys.toList()..sort();
   return {

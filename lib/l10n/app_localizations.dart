@@ -2495,7 +2495,7 @@ abstract class AppLocalizations {
   /// No description provided for @restoreConfirmMessage.
   ///
   /// In zh, this message translates to:
-  /// **'将覆盖当前设置、收藏、最近使用与传输记录；账号登录态会保留。'**
+  /// **'将覆盖当前设置、收藏、最近使用与快速访问；账号登录态与传输记录会保留。'**
   String get restoreConfirmMessage;
 
   /// No description provided for @restoreDone.

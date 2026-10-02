@@ -16,6 +16,9 @@ void main() {
     expect(first.length, 2);
     expect((first[0] as Map)['ref'], '3990616');
     expect((first[1] as Map)['ref'], '359289');
+    // 账号已在分组上，行内不再重复保存
+    expect((first[0] as Map).containsKey('account'), isFalse);
+    expect((first[1] as Map).containsKey('account'), isFalse);
   });
 
   test('读取分组格式：行内没有 account 时用分组账号补齐', () {

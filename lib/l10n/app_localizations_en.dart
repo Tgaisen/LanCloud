@@ -1338,7 +1338,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get restoreConfirmMessage =>
-      'This overwrites settings, favorites, recents and transfers; your sign-in is kept.';
+      'This overwrites settings, favorites, recents and quick access; your sign-in and transfer history are kept.';
 
   @override
   String get restoreDone => 'Restored from backup';

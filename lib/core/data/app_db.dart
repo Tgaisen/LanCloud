@@ -501,6 +501,7 @@ class AppDb {
 
   /// 备份：导出会随备份迁移的本地表。
   /// 快速访问（pins）与最近使用（recents）按账号分组，其余表平铺。
+  /// 传输列表不参与备份（迁移意义不大）。
   Future<Map<String, Object?>> exportTables() async {
     final database = await db;
     return {
@@ -508,7 +509,6 @@ class AppDb {
       'pins': groupByAccount(await database.query('pins')),
       'recents': groupByAccount(await database.query('recents')),
       'downloads': await database.query('downloads'),
-      'transfers': await database.query('transfers'),
     };
   }
 
@@ -527,19 +527,6 @@ class AppDb {
     'pins': ['id', 'account', 'name', 'ref', 'created_at'],
     'recents': ['id', 'account', 'kind', 'name', 'ref', 'pwd', 'opened_at'],
     'downloads': ['ref', 'name', 'path', 'created_at'],
-    'transfers': [
-      'id',
-      'kind',
-      'name',
-      'status',
-      'total',
-      'received',
-      'error',
-      'saved_path',
-      'ref',
-      'folder_id',
-      'created_at',
-    ],
   };
 
   /// 恢复：整表替换备份里的数据，忽略未知列与非 Map 行。

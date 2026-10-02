@@ -465,7 +465,7 @@
     }
   },
   "restoreConfirmTitle": "Restore from backup?",
-  "restoreConfirmMessage": "This overwrites settings, favorites, recents and transfers; your sign-in is kept.",
+  "restoreConfirmMessage": "This overwrites settings, favorites, recents and quick access; your sign-in and transfer history are kept.",
   "restoreDone": "Restored from backup",
   "aboutVersion": "Version {version} (build {build})",
   "@aboutVersion": {
