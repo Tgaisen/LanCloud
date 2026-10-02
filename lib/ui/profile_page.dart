@@ -54,9 +54,14 @@ class _ProfilePageState extends State<ProfilePage> {
     return Scaffold(
       body: Stack(
         children: [
-          CustomScrollView(
-            controller: _scroll,
-            slivers: [
+          ScrollTint(
+            hideDistance: headerHeight,
+            readBarsHidden: () => app.topBarHide.value,
+            onBarsHidden:
+                app.settings.hideTopBar ? app.setTopBarHideFromScroll : null,
+            child: CustomScrollView(
+              controller: _scroll,
+              slivers: [
               // 顶栏不占布局，这里留出等高占位
               SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
           SliverPadding(
@@ -145,7 +150,8 @@ class _ProfilePageState extends State<ProfilePage> {
               ]),
             ),
           ),
-            ],
+              ],
+            ),
           ),
           // 顶栏浮层：与底栏共用收起进度，切换视图时会下滑出现
           Positioned(

@@ -107,6 +107,10 @@ class AppController extends ChangeNotifier {
   /// 当前激活的 page 视图下标：页面据此把折叠的顶栏动画调出来。
   final ValueNotifier<int> activeTab = ValueNotifier(0);
 
+  /// 顶栏收起进度 0..1：与底栏同一套手感，但收起距离等于顶栏自身高度，
+  /// 因此滑动时两者都与手指 1:1 跟随。
+  final ValueNotifier<double> topBarHide = ValueNotifier(0);
+
   /// 首页“目录打开方式 = 网盘页”时请求打开的目录 id（消费后置空）。
   final ValueNotifier<String?> driveFolderRequest = ValueNotifier(null);
 
@@ -124,6 +128,7 @@ class AppController extends ChangeNotifier {
   late final Ticker _barsTicker = Ticker(_onBarsTick);
   double _barsFrom = 0;
   double _barsTo = 0;
+  double _topBarFrom = 0;
   Curve _barsCurve = Curves.easeOutCubic;
   Duration _barsDuration = const Duration(milliseconds: 240);
 
@@ -134,6 +139,13 @@ class AppController extends ChangeNotifier {
     if (barsHide.value != target) barsHide.value = target;
   }
 
+  /// 顶栏滚动驱动：1:1 跟随手指（距离由各页面的顶栏高度决定）。
+  void setTopBarHideFromScroll(double value) {
+    if (_barsTicker.isActive) _barsTicker.stop();
+    final target = value.clamp(0.0, 1.0);
+    if (topBarHide.value != target) topBarHide.value = target;
+  }
+
   /// 程序化显示/隐藏：平滑过渡。
   /// 例如加载新目录时把已收起的顶/底栏调出来，会滑动出现而不是瞬间弹出。
   void animateBarsHide(
@@ -142,8 +154,9 @@ class AppController extends ChangeNotifier {
     Curve curve = Curves.easeOutCubic,
   }) {
     final to = target.clamp(0.0, 1.0);
-    if (to == barsHide.value) return;
+    if (to == barsHide.value && to == topBarHide.value) return;
     _barsFrom = barsHide.value;
+    _topBarFrom = topBarHide.value;
     _barsTo = to;
     _barsCurve = curve;
     _barsDuration = duration;
@@ -160,6 +173,9 @@ class AppController extends ChangeNotifier {
     barsHide.value =
         (_barsFrom + (_barsTo - _barsFrom) * _barsCurve.transform(t))
             .clamp(0.0, 1.0);
+    topBarHide.value =
+        (_topBarFrom + (_barsTo - _topBarFrom) * _barsCurve.transform(t))
+            .clamp(0.0, 1.0);
     if (t >= 1) _barsTicker.stop();
   }
 
@@ -167,6 +183,7 @@ class AppController extends ChangeNotifier {
   void dispose() {
     _barsTicker.dispose();
     barsHide.dispose();
+    topBarHide.dispose();
     activeTab.dispose();
     driveFolderRequest.dispose();
     super.dispose();

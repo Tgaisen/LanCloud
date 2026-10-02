@@ -18,6 +18,7 @@ import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
 import 'drive_refresh_indicator.dart' as drive_refresh;
+import 'scroll_tint.dart';
 import 'web_page.dart';
 
 const int kFreeUploadLimit = 100 * 1024 * 1024;
@@ -2336,10 +2337,16 @@ class _DrivePageState extends State<DrivePage>
   Widget _buildBody(bool grid) {
     final headerInset =
         MediaQuery.of(context).padding.top + kToolbarHeight + 46;
-    return drive_refresh.LanRefreshIndicator(
-      onRefresh: _reloadAfterChange,
-      edgeOffset: headerInset,
-      child: CustomScrollView(
+    final app = context.read<AppController>();
+    return ScrollTint(
+      hideDistance: headerInset,
+      readBarsHidden: () => app.topBarHide.value,
+      onBarsHidden:
+          app.settings.hideTopBar ? app.setTopBarHideFromScroll : null,
+      child: drive_refresh.LanRefreshIndicator(
+        onRefresh: _reloadAfterChange,
+        edgeOffset: headerInset,
+        child: CustomScrollView(
         controller: _scroll,
         slivers: [
           SliverToBoxAdapter(child: SizedBox(height: headerInset)),
@@ -2352,6 +2359,7 @@ class _DrivePageState extends State<DrivePage>
           ),
             ],
           ),
+      ),
     );
   }
 

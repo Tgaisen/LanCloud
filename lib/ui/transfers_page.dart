@@ -2,6 +2,7 @@ import 'package:flutter/material.dart' hide Icons;
 import 'package:open_filex/open_filex.dart';
 import 'package:provider/provider.dart';
 
+import '../core/app_controller.dart';
 import '../core/apk_installer.dart';
 import '../core/transfer/transfer_manager.dart';
 import '../l10n/l10n.dart';
@@ -36,21 +37,28 @@ class _TransfersPageState extends State<TransfersPage>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final app = context.read<AppController>();
     final scheme = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     final headerHeight = MediaQuery.paddingOf(context).top + kToolbarHeight + 58;
     return Scaffold(
       body: Stack(
         children: [
-          CustomScrollView(
-            controller: _scroll,
-            slivers: [
+          ScrollTint(
+            hideDistance: headerHeight,
+            readBarsHidden: () => app.topBarHide.value,
+            onBarsHidden:
+                app.settings.hideTopBar ? app.setTopBarHideFromScroll : null,
+            child: CustomScrollView(
+              controller: _scroll,
+              slivers: [
               // 顶栏不占布局，这里留出等高占位
               SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
               _TransferListSliver(
                 kind: _tab == 0 ? TransferKind.upload : TransferKind.download,
               ),
-            ],
+              ],
+            ),
           ),
           // 顶栏浮层：与底栏共用收起进度，切换视图时会下滑出现
           Positioned(

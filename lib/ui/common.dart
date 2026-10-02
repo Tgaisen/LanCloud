@@ -218,7 +218,8 @@ class TopBarOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     final app = context.watch<AppController>();
     return ValueListenableBuilder<double>(
-      valueListenable: app.barsHide,
+      // 顶栏用独立的收起进度（距离 = 顶栏自身高度，才能 1:1 跟手）
+      valueListenable: app.topBarHide,
       child: child,
       builder: (context, hide, child) {
         // 只有开启「顶栏收起」时才跟随收起进度
