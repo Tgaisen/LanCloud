@@ -1,6 +1,8 @@
 import 'dart:io';
 
+import 'package:flutter/animation.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
@@ -99,18 +101,67 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 底栏滑动隐藏进度 0..1，由各页面的 ScrollTint 按滚动距离驱动。
+  /// 顶栏/底栏滑动隐藏进度 0..1，由各页面的 ScrollTint 按滚动距离驱动。
   final ValueNotifier<double> barsHide = ValueNotifier(0);
+
+  late final Ticker _barsTicker = Ticker(_onBarsTick);
+  double _barsFrom = 0;
+  double _barsTo = 0;
+  Curve _barsCurve = Curves.easeOutCubic;
+  Duration _barsDuration = const Duration(milliseconds: 240);
+
+  /// 滚动驱动：1:1 跟随手指，立即生效并打断正在播放的程序化动画。
+  void setBarsHideFromScroll(double value) {
+    if (_barsTicker.isActive) _barsTicker.stop();
+    final target = value.clamp(0.0, 1.0);
+    if (barsHide.value != target) barsHide.value = target;
+  }
+
+  /// 程序化显示/隐藏：平滑过渡。
+  /// 例如加载新目录时把已收起的顶/底栏调出来，会滑动出现而不是瞬间弹出。
+  void animateBarsHide(
+    double target, {
+    Duration duration = const Duration(milliseconds: 240),
+    Curve curve = Curves.easeOutCubic,
+  }) {
+    final to = target.clamp(0.0, 1.0);
+    if (to == barsHide.value) return;
+    _barsFrom = barsHide.value;
+    _barsTo = to;
+    _barsCurve = curve;
+    _barsDuration = duration;
+    _barsTicker
+      ..stop()
+      ..start();
+  }
+
+  void _onBarsTick(Duration elapsed) {
+    final total = _barsDuration.inMicroseconds;
+    final t = total <= 0
+        ? 1.0
+        : (elapsed.inMicroseconds / total).clamp(0.0, 1.0);
+    barsHide.value =
+        (_barsFrom + (_barsTo - _barsFrom) * _barsCurve.transform(t))
+            .clamp(0.0, 1.0);
+    if (t >= 1) _barsTicker.stop();
+  }
+
+  @override
+  void dispose() {
+    _barsTicker.dispose();
+    barsHide.dispose();
+    super.dispose();
+  }
 
   Future<void> setHideTopBar(bool value) async {
     await settings.setHideTopBar(value);
-    if (!value) barsHide.value = 0;
+    if (!value) animateBarsHide(0);
     notifyListeners();
   }
 
   Future<void> setHideBottomBar(bool value) async {
     await settings.setHideBottomBar(value);
-    if (!value) barsHide.value = 0;
+    if (!value) animateBarsHide(0);
     notifyListeners();
   }
 

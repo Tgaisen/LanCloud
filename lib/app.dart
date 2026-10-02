@@ -12,6 +12,7 @@ import 'ui/drive_page.dart';
 import 'ui/home_page.dart';
 import 'ui/login_page.dart';
 import 'ui/profile_page.dart';
+import 'ui/app_scroll.dart';
 import 'ui/scroll_tint.dart';
 import 'ui/share_page.dart';
 import 'ui/transfers_page.dart';
@@ -105,6 +106,8 @@ class LanCloudApp extends StatelessWidget {
           : mode == 'dark'
               ? ThemeMode.dark
               : ThemeMode.system,
+      // 全局 BouncingScrollPhysics（网盘页同款）
+      scrollBehavior: const AppScrollBehavior(),
       home: const RootShell(),
     );
   }
@@ -372,8 +375,9 @@ class _RootShellState extends State<RootShell> {
           for (final page in pages)
             ScrollTint(
               hideDistance: barHeight,
+              readBarsHidden: () => app.barsHide.value,
               onBarsHidden: (app.settings.hideTopBar || app.settings.hideBottomBar)
-                  ? (progress) => app.barsHide.value = progress
+                  ? app.setBarsHideFromScroll
                   : null,
               child: page,
             ),

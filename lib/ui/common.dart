@@ -130,26 +130,69 @@ IconData iconForFile(String name) {
 }
 
 class EmptyHint extends StatelessWidget {
-  const EmptyHint({super.key, required this.icon, required this.text});
+  const EmptyHint({
+    super.key,
+    required this.icon,
+    required this.text,
+    this.animate = true,
+  });
 
   final IconData icon;
   final String text;
+  /// 出现时是否淡入（提示类空状态的显隐渐变）。
+  final bool animate;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Padding(
+    final hint = Padding(
       padding: const EdgeInsets.symmetric(vertical: 24),
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 36, color: scheme.outline),
-            const SizedBox(height: 8),
-            Text(text, style: TextStyle(color: scheme.outline)),
-          ],
-        ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 36, color: scheme.outline),
+          const SizedBox(height: 8),
+          Text(
+            text,
+            textAlign: TextAlign.center,
+            style: TextStyle(color: scheme.outline),
+          ),
+        ],
       ),
+    );
+    return Center(child: animate ? FadeIn(child: hint) : hint);
+  }
+}
+
+/// 出现时淡入：用于空状态、提示文案的显隐渐变。
+class FadeIn extends StatelessWidget {
+  const FadeIn({
+    super.key,
+    required this.child,
+    this.duration = const Duration(milliseconds: 260),
+    this.offset = 0,
+  });
+
+  final Widget child;
+  final Duration duration;
+  /// 相对位移（px），会随淡入一起归位。
+  final double offset;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: duration,
+      curve: Curves.easeOutCubic,
+      builder: (context, t, child) {
+        final faded = Opacity(opacity: t, child: child);
+        if (offset == 0) return faded;
+        return Transform.translate(
+          offset: Offset(0, offset * (1 - t)),
+          child: faded,
+        );
+      },
+      child: child,
     );
   }
 }
@@ -271,6 +314,9 @@ class _MeasuredNestedSheetState extends State<_MeasuredNestedSheet> {
       child: SizedBox(
         height: height,
         child: NestedScrollView(
+          // 弹窗的手感依赖“到边界后把下拉交给弹窗收起”，
+          // 这里保持 Clamping，不跟随全局的 BouncingScrollPhysics。
+          physics: const ClampingScrollPhysics(),
           headerSliverBuilder: (context, innerBoxIsScrolled) =>
               const <Widget>[],
           body: SingleChildScrollView(

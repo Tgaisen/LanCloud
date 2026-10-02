@@ -7,12 +7,16 @@ class ScrollTint extends StatefulWidget {
     super.key,
     required this.child,
     this.onBarsHidden,
+    this.readBarsHidden,
     this.hideDistance = 80,
   });
 
   final Widget child;
   /// 滚动时按距离通知底栏隐藏进度 0..1（0 显示，1 完全隐藏）。
   final void Function(double progress)? onBarsHidden;
+  /// 读取外部真实的收起进度：每次开始拖动时对齐，
+  /// 避免程序化显示/隐藏之后累计值漂移导致下一次滑动瞬间跳变。
+  final double Function()? readBarsHidden;
   /// 完全收起所需的滚动距离，与底栏高度一致可实现 1:1 跟随。
   final double hideDistance;
 
@@ -48,6 +52,9 @@ class _ScrollTintState extends State<ScrollTint>
       final pixels = notification.metrics.pixels;
       final delta = pixels - _lastPixels;
       _lastPixels = pixels;
+      if (notification is ScrollStartNotification) {
+        _hide = widget.readBarsHidden?.call() ?? _hide;
+      }
       var hide = _hide;
       if (pixels <= 0) {
         hide = 0;

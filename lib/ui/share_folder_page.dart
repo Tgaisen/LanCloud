@@ -205,6 +205,8 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
     final l10n = context.l10n;
     final folder = widget.folder;
     final scheme = Theme.of(context).colorScheme;
+    final isEmpty =
+        folder.files.isEmpty && folder.folders.isEmpty && folder.desc.isEmpty;
     return Scaffold(
       appBar: AppBar(
         leading: _selecting
@@ -246,9 +248,11 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
                 ),
               ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
+      body: Stack(
         children: [
+          ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
           if (folder.desc.isNotEmpty) ...[
             _SectionTitle(text: l10n.shareMessage),
             SegmentedList(
@@ -327,10 +331,19 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
               ],
             ),
           ],
-          if (folder.files.isEmpty && folder.folders.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 24),
-              child: Center(child: Text(l10n.shareEmpty)),
+              ],
+            ),
+          // 空分享：提示整体居中显示（带淡入）
+          if (isEmpty)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Center(
+                  child: EmptyHint(
+                    icon: Icons.folder_open,
+                    text: l10n.shareEmpty,
+                  ),
+                ),
+              ),
             ),
         ],
       ),

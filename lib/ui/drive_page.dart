@@ -33,7 +33,7 @@ class DrivePage extends StatefulWidget {
 }
 
 class _DrivePageState extends State<DrivePage>
-    with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
+    with TickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   static const _anim = Duration(milliseconds: 200);
 
   @override
@@ -49,6 +49,34 @@ class _DrivePageState extends State<DrivePage>
     vsync: this,
     duration: const Duration(milliseconds: 50),
   );
+
+  /// 目录切换：当前内容先淡出（[_exitAnim]），新内容再按 index 错峰淡入。
+  /// 整张列表共享同一个 [_enterAnim]，滑动时新构建的条目只会读到当前进度，
+  /// 所以“逐个显现”只在目录加载完成后播放一次，滑动不会重播。
+  late final AnimationController _enterAnim = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 440),
+    value: 1,
+  );
+
+  late final AnimationController _exitAnim = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 170),
+  );
+
+  late final Animation<double> _contentFade = Tween<double>(
+    begin: 1,
+    end: 0,
+  ).animate(CurvedAnimation(parent: _exitAnim, curve: Curves.easeIn));
+
+  /// 局部刷新的行内动画状态：正在淡出 / 刚出现 / 刚被修改的条目 id。
+  final Set<String> _removingFiles = {};
+  final Set<String> _removingFolders = {};
+  final Set<String> _appearingFiles = {};
+  final Set<String> _appearingFolders = {};
+  final Set<String> _pulsingFiles = {};
+  final Set<String> _pulsingFolders = {};
+  bool _directorySwitching = false;
 
   final ScrollController _scroll = ScrollController();
   final TextEditingController _searchController = TextEditingController();
@@ -99,10 +127,15 @@ class _DrivePageState extends State<DrivePage>
     }
     _selAnim.dispose();
     _appBarAnim.dispose();
+    _enterAnim.dispose();
+    _exitAnim.dispose();
     _scroll.dispose();
     _searchController.dispose();
     super.dispose();
   }
+
+  bool get _animationsEnabled =>
+      context.read<AppController>().settings.transitionAnimations;
 
   /// 上传完成后，若目标是当前目录，只刷新文件列表（局部刷新）。
   void _onTaskDone(TransferTask task) {
@@ -111,27 +144,212 @@ class _DrivePageState extends State<DrivePage>
         !mounted) {
       return;
     }
-    _refreshFilesOnly();
+    _refreshInPlace();
   }
 
-  Future<void> _refreshFilesOnly() async {
+  /// 局部刷新：保持当前列表可见，拉取完成后按差异播放新增/移除动画。
+  /// [refreshFolders] 为 true 时同时重新拉取文件夹列表（新建/移动之后需要）。
+  Future<bool> _refreshInPlace({bool refreshFolders = false}) async {
     final app = context.read<AppController>();
     final client = app.client;
-    if (client == null) return;
+    if (client == null) return false;
     try {
-      final first = await client.listFilesPage(_folderId, 1);
-      if (!mounted) return;
-      setState(() {
-        _files = first.files;
-        _page = 1;
-        _hasMore = first.hasMore;
-      });
-      if (app.settings.cacheFolders) {
-        app.driveCache.put(_folderId, _snapshot());
-      }
+      // 已经加载过几页就刷新几页，避免局部刷新把后面的条目吞掉
+      final listing = await _fetchListing(
+        app,
+        client,
+        maxPages: math.max(_page, 1),
+        withFolders: refreshFolders,
+      );
+      if (!mounted) return false;
+      _applyListing(
+        folders: refreshFolders ? listing.folders : _folders,
+        files: listing.files,
+        page: listing.page,
+        hasMore: listing.hasMore,
+      );
+      return true;
     } catch (_) {
       // 局部刷新失败不打扰用户，下拉或菜单刷新可兜底
+      return false;
     }
+  }
+
+  /// 拉取当前目录快照；[maxPages] 控制最多加载多少页（默认按“全部加载”设置）。
+  Future<_Listing> _fetchListing(
+    AppController app,
+    LanzouClient client, {
+    int? maxPages,
+    bool withFolders = true,
+  }) async {
+    final foldersResult =
+        withFolders ? await client.listFolders(_folderId) : null;
+    final limit = maxPages ?? (app.settings.loadAllPages ? 60 : 1);
+    final first = await client.listFilesPage(_folderId, 1);
+    var files = first.files;
+    var hasMore = first.hasMore;
+    var page = 1;
+    while (hasMore && page < limit) {
+      page += 1;
+      final next = await client.listFilesPage(_folderId, page);
+      files = [...files, ...next.files];
+      hasMore = next.hasMore;
+    }
+    return _Listing(
+      folders: foldersResult?.folders ?? const [],
+      files: files,
+      path: foldersResult?.path ?? const [],
+      page: page,
+      hasMore: hasMore,
+    );
+  }
+
+  /// 把最新快照合并进列表：新增条目渐入、消失条目留在原位淡出，
+  /// 动画结束后再对齐到全量快照。
+  void _applyListing({
+    required List<LzFolder> folders,
+    required List<LzFile> files,
+    int? page,
+    bool? hasMore,
+    List<PathNode>? path,
+  }) {
+    final animate = _animationsEnabled;
+    final oldFolders = _folders;
+    final oldFiles = _files;
+    final oldFolderIds = {for (final f in oldFolders) f.id};
+    final oldFileIds = {for (final f in oldFiles) f.id};
+    final folderIds = {for (final f in folders) f.id};
+    final fileIds = {for (final f in files) f.id};
+    final addedFolders = folderIds.difference(oldFolderIds);
+    final addedFiles = fileIds.difference(oldFileIds);
+    final goneFolders =
+        animate ? oldFolderIds.difference(folderIds) : const <String>{};
+    final goneFiles =
+        animate ? oldFileIds.difference(fileIds) : const <String>{};
+
+    setState(() {
+      _removingFolders.addAll(goneFolders);
+      _removingFiles.addAll(goneFiles);
+      _appearingFolders.addAll(addedFolders);
+      _appearingFiles.addAll(addedFiles);
+      _folders = goneFolders.isEmpty
+          ? folders
+          : _mergeVanishing(oldFolders, folders, goneFolders, (f) => f.id);
+      _files = goneFiles.isEmpty
+          ? files
+          : _mergeVanishing(oldFiles, files, goneFiles, (f) => f.id);
+      _page = page ?? _page;
+      _hasMore = hasMore ?? _hasMore;
+      if (path != null) _path = path;
+    });
+
+    if (addedFolders.isNotEmpty || addedFiles.isNotEmpty) {
+      Future<void>.delayed(const Duration(milliseconds: 420), () {
+        if (!mounted) return;
+        setState(() {
+          _appearingFolders.removeAll(addedFolders);
+          _appearingFiles.removeAll(addedFiles);
+        });
+      });
+    }
+    if (goneFolders.isNotEmpty || goneFiles.isNotEmpty) {
+      Future<void>.delayed(const Duration(milliseconds: 240), () {
+        if (!mounted) return;
+        setState(() {
+          _removingFolders.removeAll(goneFolders);
+          _removingFiles.removeAll(goneFiles);
+          _folders = folders;
+          _files = files;
+        });
+        _updateCacheSnapshot();
+      });
+    } else {
+      _updateCacheSnapshot();
+    }
+  }
+
+  /// 保留正在淡出的旧条目，并按原索引插回结果，避免它们瞬间消失。
+  List<T> _mergeVanishing<T>(
+    List<T> oldList,
+    List<T> newList,
+    Set<String> goneIds,
+    String Function(T item) idOf,
+  ) {
+    final result = [...newList];
+    for (var i = 0; i < oldList.length; i++) {
+      final item = oldList[i];
+      if (!goneIds.contains(idOf(item))) continue;
+      result.insert(math.min(i, result.length), item);
+    }
+    return result;
+  }
+
+  /// 先播放移除动画再从列表里移除；无动画时直接移除。
+  Future<void> _removeItemsWithAnimation({
+    Set<String> fileIds = const {},
+    Set<String> folderIds = const {},
+  }) async {
+    if (fileIds.isEmpty && folderIds.isEmpty) return;
+    if (_animationsEnabled) {
+      setState(() {
+        _removingFiles.addAll(fileIds);
+        _removingFolders.addAll(folderIds);
+      });
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      if (!mounted) return;
+    }
+    setState(() {
+      _removingFiles.removeAll(fileIds);
+      _removingFolders.removeAll(folderIds);
+      _files.removeWhere((f) => fileIds.contains(f.id));
+      _folders.removeWhere((f) => folderIds.contains(f.id));
+    });
+    _updateCacheSnapshot();
+  }
+
+  /// 条目内容被修改后播放一次高亮闪烁。
+  void _pulseItems({
+    Set<String> fileIds = const {},
+    Set<String> folderIds = const {},
+  }) {
+    if (!_animationsEnabled || (fileIds.isEmpty && folderIds.isEmpty)) return;
+    setState(() {
+      _pulsingFiles.addAll(fileIds);
+      _pulsingFolders.addAll(folderIds);
+    });
+    Future<void>.delayed(const Duration(milliseconds: 720), () {
+      if (!mounted) return;
+      setState(() {
+        _pulsingFiles.removeAll(fileIds);
+        _pulsingFolders.removeAll(folderIds);
+      });
+    });
+  }
+
+  /// 目录切换动画：先淡出当前内容，再把已收起的悬浮顶栏顺势滑下来
+  /// （滑动的过程发生在内容淡出之后，视觉上只有顶栏在动），
+  /// 然后调用方才真正切换数据。等新内容就绪后再播放错峰出现动画。
+  Future<void> _animateDirectorySwitch(String targetFolderId) async {
+    if (!_animationsEnabled || _loading) return;
+    await _exitAnim.forward(from: 0);
+    if (!mounted || !_scroll.hasClients) return;
+    final target = _folderOffsets[targetFolderId] ?? 0;
+    final from = _scroll.position.pixels;
+    if (target >= from) return;
+    await _scroll.animateTo(
+      target,
+      duration: const Duration(milliseconds: 240),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  /// 内容就绪：恢复不透明度并播放一次错峰出现动画。
+  void _playEnterAnimation() {
+    if (!_animationsEnabled) {
+      _enterAnim.value = 1;
+      return;
+    }
+    _enterAnim.forward(from: 0);
   }
 
   @override
@@ -193,6 +411,7 @@ class _DrivePageState extends State<DrivePage>
         ? app.driveCache.get(_folderId)
         : null;
     if (!force && cached != null) {
+      _exitAnim.value = 0;
       setState(() {
         _folders = cached.folders;
         _files = cached.files;
@@ -204,41 +423,40 @@ class _DrivePageState extends State<DrivePage>
         _loading = false;
         _error = null;
       });
+      _playEnterAnimation();
       _refreshDownloaded();
       return;
     }
 
+    // 旧内容已经淡出，加载指示器需要恢复可见
+    _exitAnim.value = 0;
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
-      final foldersResult = await client.listFolders(_folderId);
-      final firstPage = await client.listFilesPage(_folderId, 1);
-      var files = firstPage.files;
-      var hasMore = firstPage.hasMore;
-      var page = 1;
-      if (app.settings.loadAllPages) {
-        while (hasMore && page < 60) {
-          page += 1;
-          final next = await client.listFilesPage(_folderId, page);
-          files = [...files, ...next.files];
-          hasMore = next.hasMore;
-        }
-      }
+      final listing = await _fetchListing(app, client);
       if (!mounted) return;
+      _exitAnim.value = 0;
       setState(() {
-        _folders = foldersResult.folders;
+        _folders = listing.folders;
         _path = _folderId == '-1'
             ? const <PathNode>[]
-            : (foldersResult.path.isEmpty ? _path : foldersResult.path);
-        _files = files;
-        _page = page;
-        _hasMore = hasMore;
+            : (listing.path.isEmpty ? _path : listing.path);
+        _files = listing.files;
+        _page = listing.page;
+        _hasMore = listing.hasMore;
         _loading = false;
         _selectedFiles.clear();
         _selectedFolders.clear();
+        _removingFiles.clear();
+        _removingFolders.clear();
+        _appearingFiles.clear();
+        _appearingFolders.clear();
+        _pulsingFiles.clear();
+        _pulsingFolders.clear();
       });
+      _playEnterAnimation();
       if (app.settings.cacheFolders) {
         app.driveCache.put(_folderId, _snapshot());
       }
@@ -253,7 +471,8 @@ class _DrivePageState extends State<DrivePage>
   }
 
   Future<void> _loadMore() async {
-    if (_loadingMore || !_hasMore || _filter.isNotEmpty) return;
+    if (_loading || _directorySwitching || _loadingMore || !_hasMore) return;
+    if (_filter.isNotEmpty) return;
     final app = context.read<AppController>();
     final client = app.client;
     if (client == null) return;
@@ -402,40 +621,59 @@ class _DrivePageState extends State<DrivePage>
       });
       return;
     }
-    final app = context.read<AppController>();
-    await app.db.addRecent(
-      account: app.activeUid ?? '',
-      kind: 'folder',
-      name: folder.name,
-      ref: folder.id,
-    );
-    // 进入新目录时若顶/底栏处于收起状态，先恢复显示，
-    // 否则目录内容较少无法滚动时底栏就唤不出来。
-    app.barsHide.value = 0;
-    _rememberFolderOffset();
-    setState(() {
-      _folderId = folder.id;
-      _path = [..._path, PathNode(id: folder.id, name: folder.name)];
-      _filter = '';
-      _searchController.clear();
-    });
-    await _load();
-    _restoreFolderOffset(folder.id);
+    if (_directorySwitching) return;
+    _directorySwitching = true;
+    try {
+      final app = context.read<AppController>();
+      await app.db.addRecent(
+        account: app.activeUid ?? '',
+        kind: 'folder',
+        name: folder.name,
+        ref: folder.id,
+      );
+      // 进入新目录时若顶/底栏处于收起状态，先带动画恢复显示，
+      // 否则目录内容较少无法滚动时底栏就唤不出来。
+      app.animateBarsHide(0);
+      _rememberFolderOffset();
+      await _animateDirectorySwitch(folder.id);
+      if (!mounted) return;
+      setState(() {
+        _folderId = folder.id;
+        _path = [..._path, PathNode(id: folder.id, name: folder.name)];
+        _filter = '';
+        _searchController.clear();
+      });
+      await _load();
+      if (!mounted) return;
+      _restoreFolderOffset(folder.id);
+    } finally {
+      _directorySwitching = false;
+    }
   }
 
   Future<void> _jumpTo(int index) async {
-    final app = context.read<AppController>();
-    app.barsHide.value = 0;
-    final newPath = index < 0 ? <PathNode>[] : _path.sublist(0, index + 1);
-    _rememberFolderOffset();
-    setState(() {
-      _path = newPath;
-      _folderId = newPath.isEmpty ? '-1' : newPath.last.id;
-      _filter = '';
-      _searchController.clear();
-    });
-    await _load();
-    _restoreFolderOffset(_folderId);
+    if (_directorySwitching) return;
+    _directorySwitching = true;
+    try {
+      final app = context.read<AppController>();
+      app.animateBarsHide(0);
+      final newPath = index < 0 ? <PathNode>[] : _path.sublist(0, index + 1);
+      final targetId = newPath.isEmpty ? '-1' : newPath.last.id;
+      _rememberFolderOffset();
+      await _animateDirectorySwitch(targetId);
+      if (!mounted) return;
+      setState(() {
+        _path = newPath;
+        _folderId = targetId;
+        _filter = '';
+        _searchController.clear();
+      });
+      await _load();
+      if (!mounted) return;
+      _restoreFolderOffset(targetId);
+    } finally {
+      _directorySwitching = false;
+    }
   }
 
   void _rememberFolderOffset() {
@@ -449,7 +687,21 @@ class _DrivePageState extends State<DrivePage>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && _scroll.hasClients) {
         final max = _scroll.position.maxScrollExtent;
-        _scroll.jumpTo(target.clamp(0.0, max));
+        final to = target.clamp(0.0, max);
+        final from = _scroll.position.pixels;
+        // 回到列表顶部时让悬浮顶栏顺势滑下来（下移显示），
+        // 而不是 jumpTo 造成的瞬间出现。
+        final slideTopBar = _animationsEnabled &&
+            context.read<AppController>().settings.hideTopBar;
+        if (slideTopBar && to < from) {
+          _scroll.animateTo(
+            to,
+            duration: const Duration(milliseconds: 240),
+            curve: Curves.easeOutCubic,
+          );
+        } else {
+          _scroll.jumpTo(to);
+        }
       }
     });
   }
@@ -745,7 +997,9 @@ class _DrivePageState extends State<DrivePage>
         name,
         desc: descController.text.trim(),
       );
-      await _reloadAfterChange();
+      // 局部刷新：只重新拉取文件夹列表，新文件夹淡入出现
+      final ok = await _refreshInPlace(refreshFolders: true);
+      if (!ok) await _reloadAfterChange();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
@@ -790,11 +1044,10 @@ class _DrivePageState extends State<DrivePage>
       ]);
       if (!mounted) return;
       _exitSelection();
-      setState(() {
-        _files.removeWhere((f) => fileIds.contains(f.id));
-        _folders.removeWhere((f) => folderIds.contains(f.id));
-      });
-      _updateCacheSnapshot();
+      await _removeItemsWithAnimation(
+        fileIds: fileIds.toSet(),
+        folderIds: folderIds.toSet(),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
@@ -1027,7 +1280,9 @@ class _DrivePageState extends State<DrivePage>
     }
     final count = fileIds.length + folderIds.length;
     _exitSelection();
-    await _reloadAfterChange();
+    // 局部刷新：移走的条目原位淡出，其余条目保持不动
+    final ok = await _refreshInPlace(refreshFolders: true);
+    if (!ok) await _reloadAfterChange();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -1116,6 +1371,10 @@ class _DrivePageState extends State<DrivePage>
               : fo,
       ];
     });
+    _pulseItems(
+      fileIds: fileIds.toSet(),
+      folderIds: folderIds.toSet(),
+    );
     _updateCacheSnapshot();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -1210,6 +1469,10 @@ class _DrivePageState extends State<DrivePage>
               : fo,
       ];
     });
+    _pulseItems(
+      fileIds: fileIds.toSet(),
+      folderIds: folderIds.toSet(),
+    );
     _updateCacheSnapshot();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -1514,7 +1777,9 @@ class _DrivePageState extends State<DrivePage>
     if (target == null || !mounted) return;
     try {
       await client.moveFile(file.id, target.folderId);
-      await _reloadAfterChange();
+      // 局部刷新：被移走的条目原位淡出
+      final ok = await _refreshInPlace(refreshFolders: true);
+      if (!ok) await _reloadAfterChange();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.l10n.movedTo(1, target.name))),
@@ -1573,6 +1838,7 @@ class _DrivePageState extends State<DrivePage>
                 : f,
         ];
       });
+      _pulseItems(fileIds: {file.id});
       _updateCacheSnapshot();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1635,6 +1901,7 @@ class _DrivePageState extends State<DrivePage>
                 : f,
         ];
       });
+      _pulseItems(fileIds: {file.id});
       _updateCacheSnapshot();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.l10n.passwordSet)),
@@ -1775,9 +2042,8 @@ class _DrivePageState extends State<DrivePage>
       await client.deleteItem(id: file.id, isFile: true);
       await app.db.removeDownloaded(['${app.activeUid ?? ''}:${file.id}']);
       if (!mounted) return;
-      setState(() => _files.removeWhere((f) => f.id == file.id));
       _fileDescCache.remove(file.id);
-      _updateCacheSnapshot();
+      await _removeItemsWithAnimation(fileIds: {file.id});
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
@@ -1791,10 +2057,9 @@ class _DrivePageState extends State<DrivePage>
     try {
       await client.deleteItem(id: folder.id, isFile: false);
       if (!mounted) return;
-      setState(() => _folders.removeWhere((f) => f.id == folder.id));
       _folderDescCache.remove(folder.id);
       _folderSizeCache.remove(folder.id);
-      _updateCacheSnapshot();
+      await _removeItemsWithAnimation(folderIds: {folder.id});
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
@@ -1810,7 +2075,7 @@ class _DrivePageState extends State<DrivePage>
     final selectedCount = _selectedFiles.length + _selectedFolders.length;
 
     return AnimatedBuilder(
-      animation: Listenable.merge([_selAnim, _appBarAnim]),
+      animation: Listenable.merge([_selAnim, _appBarAnim, _exitAnim]),
       builder: (context, _) {
         return Scaffold(
           body: Stack(
@@ -1901,22 +2166,37 @@ class _DrivePageState extends State<DrivePage>
           ),
       floatingActionButton: ValueListenableBuilder<double>(
         valueListenable: app.barsHide,
-        builder: (context, hide, child) => Padding(
-          padding: EdgeInsets.only(
-            bottom: app.settings.floatingNavBar ? 76 : 0,
-          ),
-          child: AnimatedScale(
-            scale: (_selecting ||
-                    ((app.settings.hideTopBar ||
-                            app.settings.hideBottomBar) &&
-                        hide >= 1))
-                ? 0
-                : 1,
-            duration: _anim,
-            curve: Curves.easeOut,
-            child: child,
-          ),
-        ),
+        builder: (context, hide, child) {
+          // 只跟随“底栏收起”设置：底栏跟随滚动时 FAB 也同步下滑，
+          // 多选等程序化隐藏则用补间动画，方向统一为上滑显示、下滑消失。
+          final follow = app.settings.hideBottomBar
+              ? hide.clamp(0.0, 1.0)
+              : 0.0;
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: app.settings.floatingNavBar ? 76 : 0,
+            ),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: _selecting ? 1.0 : 0.0),
+              duration: _anim,
+              curve: Curves.easeOutCubic,
+              builder: (context, selecting, child) {
+                final t = math.max(selecting, follow);
+                return IgnorePointer(
+                  ignoring: t > 0.85,
+                  child: Opacity(
+                    opacity: (1 - t).clamp(0.0, 1.0),
+                    child: Transform.translate(
+                      offset: Offset(0, 150 * t),
+                      child: child,
+                    ),
+                  ),
+                );
+              },
+              child: child,
+            ),
+          );
+        },
         child: FloatingActionButton.extended(
           onPressed: _showAddMenu,
           icon: const Icon(Icons.add),
@@ -2009,7 +2289,13 @@ class _DrivePageState extends State<DrivePage>
               ),
             ),
           ),
-          ..._contentSlivers(grid),
+          // 目录切换时内容整体淡出（顶栏与路径栏不受影响）
+          ..._contentSlivers(grid).map(
+            (sliver) => SliverFadeTransition(
+              opacity: _contentFade,
+              sliver: sliver,
+            ),
+          ),
             ],
           ),
     );
@@ -2053,28 +2339,30 @@ class _DrivePageState extends State<DrivePage>
       return [
         SliverFillRemaining(
           hasScrollBody: false,
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.cloud_off,
-                    size: 40,
-                    color: Theme.of(context).colorScheme.outline,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    context.l10n.loadFailed(_error!),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 12),
-                  FilledButton(
-                    onPressed: () => _load(force: true),
-                    child: Text(context.l10n.retry),
-                  ),
-                ],
+          child: FadeIn(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.cloud_off,
+                      size: 40,
+                      color: Theme.of(context).colorScheme.outline,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      context.l10n.loadFailed(_error!),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    FilledButton(
+                      onPressed: () => _load(force: true),
+                      child: Text(context.l10n.retry),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -2085,24 +2373,14 @@ class _DrivePageState extends State<DrivePage>
     final files = _visibleFiles;
     if (folders.isEmpty && files.isEmpty && !_loadingMore) {
       return [
-        SliverList(
-          delegate: SliverChildListDelegate([
-            if (_filter.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: Text(context.l10n.noMatchContent(_filter)),
-              ),
-            EmptyHint(
-              icon: Icons.folder_open,
-              text: context.l10n.emptyFolder,
-            ),
-          ]),
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: _EmptyFolderView(filter: _filter),
         ),
       ];
     }
     final showFolders = _filter.isEmpty || folders.isNotEmpty;
-    final animate =
-        context.read<AppController>().settings.transitionAnimations;
+    final animate = _animationsEnabled;
     return [
       if (showFolders && folders.isNotEmpty)
         if (grid)
@@ -2116,41 +2394,23 @@ class _DrivePageState extends State<DrivePage>
                 childAspectRatio: 0.86,
               ),
               itemCount: folders.length,
-              itemBuilder: (context, index) {
-                final folder = folders[index];
-                return _AnimatedListItem(
-                  key: ValueKey('$_folderId-f-$index'),
-                  index: index,
-                  enabled: animate,
-                  child: _FolderTile(
-                    folder: folder,
-                    selected: _selectedFolders.contains(folder.id),
-                    onTap: () => _openFolder(folder),
-                    onMenu: () => _folderActions(folder),
-                    onLongPress: () => _enterSelection(folderId: folder.id),
-                  ),
-                );
-              },
+              itemBuilder: (context, index) => _folderItem(
+                folders[index],
+                index,
+                grid: true,
+                animate: animate,
+              ),
             ),
           )
         else
           SliverList.builder(
             itemCount: folders.length,
-            itemBuilder: (context, index) {
-              final folder = folders[index];
-              return _AnimatedListItem(
-                key: ValueKey('$_folderId-f-$index'),
-                index: index,
-                enabled: animate,
-                child: _FolderRow(
-                  folder: folder,
-                  selected: _selectedFolders.contains(folder.id),
-                  onTap: () => _openFolder(folder),
-                  onMenu: () => _folderActions(folder),
-                  onLongPress: () => _enterSelection(folderId: folder.id),
-                ),
-              );
-            },
+            itemBuilder: (context, index) => _folderItem(
+              folders[index],
+              index,
+              grid: false,
+              animate: animate,
+            ),
           ),
       if (files.isNotEmpty)
         if (grid)
@@ -2164,43 +2424,23 @@ class _DrivePageState extends State<DrivePage>
                 childAspectRatio: 0.86,
               ),
               itemCount: files.length,
-              itemBuilder: (context, index) {
-                final file = files[index];
-                return _AnimatedListItem(
-                  key: ValueKey('$_folderId-l-$index'),
-                  index: index,
-                  enabled: animate,
-                  child: _FileTile(
-                    file: file,
-                    selected: _selectedFiles.contains(file.id),
-                    downloaded: _downloaded.contains(file.id),
-                    onTap: () => _fileActions(file),
-                    onMenu: () => _fileMenuSheet(file),
-                    onLongPress: () => _enterSelection(fileId: file.id),
-                  ),
-                );
-              },
+              itemBuilder: (context, index) => _fileItem(
+                files[index],
+                index,
+                grid: true,
+                animate: animate,
+              ),
             ),
           )
         else
           SliverList.builder(
             itemCount: files.length,
-            itemBuilder: (context, index) {
-              final file = files[index];
-              return _AnimatedListItem(
-                key: ValueKey('$_folderId-l-$index'),
-                index: index,
-                enabled: animate,
-                child: _FileRow(
-                  file: file,
-                  selected: _selectedFiles.contains(file.id),
-                  downloaded: _downloaded.contains(file.id),
-                  onTap: () => _fileActions(file),
-                  onMenu: () => _fileMenuSheet(file),
-                  onLongPress: () => _enterSelection(fileId: file.id),
-                ),
-              );
-            },
+            itemBuilder: (context, index) => _fileItem(
+              files[index],
+              index,
+              grid: false,
+              animate: animate,
+            ),
           ),
       SliverToBoxAdapter(
         child: Padding(
@@ -2225,42 +2465,229 @@ class _DrivePageState extends State<DrivePage>
       ),
     ];
   }
+
+  /// 单个文件夹条目的动画包装（共享错峰控制器 + 局部刷新动画）。
+  Widget _folderItem(
+    LzFolder folder,
+    int index, {
+    required bool grid,
+    required bool animate,
+  }) {
+    return _AnimatedListItem(
+      key: ValueKey('$_folderId-f-${folder.id}'),
+      index: index,
+      enter: _enterAnim,
+      enabled: animate,
+      removing: _removingFolders.contains(folder.id),
+      appearing: _appearingFolders.contains(folder.id),
+      pulsing: _pulsingFolders.contains(folder.id),
+      collapse: !grid,
+      child: grid
+          ? _FolderTile(
+              folder: folder,
+              selected: _selectedFolders.contains(folder.id),
+              onTap: () => _openFolder(folder),
+              onMenu: () => _folderActions(folder),
+              onLongPress: () => _enterSelection(folderId: folder.id),
+            )
+          : _FolderRow(
+              folder: folder,
+              selected: _selectedFolders.contains(folder.id),
+              onTap: () => _openFolder(folder),
+              onMenu: () => _folderActions(folder),
+              onLongPress: () => _enterSelection(folderId: folder.id),
+            ),
+    );
+  }
+
+  /// 单个文件条目的动画包装。
+  Widget _fileItem(
+    LzFile file,
+    int index, {
+    required bool grid,
+    required bool animate,
+  }) {
+    return _AnimatedListItem(
+      key: ValueKey('$_folderId-l-${file.id}'),
+      index: index,
+      enter: _enterAnim,
+      enabled: animate,
+      removing: _removingFiles.contains(file.id),
+      appearing: _appearingFiles.contains(file.id),
+      pulsing: _pulsingFiles.contains(file.id),
+      collapse: !grid,
+      child: grid
+          ? _FileTile(
+              file: file,
+              selected: _selectedFiles.contains(file.id),
+              downloaded: _downloaded.contains(file.id),
+              onTap: () => _fileActions(file),
+              onMenu: () => _fileMenuSheet(file),
+              onLongPress: () => _enterSelection(fileId: file.id),
+            )
+          : _FileRow(
+              file: file,
+              selected: _selectedFiles.contains(file.id),
+              downloaded: _downloaded.contains(file.id),
+              onTap: () => _fileActions(file),
+              onMenu: () => _fileMenuSheet(file),
+              onLongPress: () => _enterSelection(fileId: file.id),
+            ),
+    );
+  }
 }
 
-/// 列表出现动画：按 index 错峰淡入并轻微上移；开关关闭时直接渲染。
+/// 列表项动画：
+/// - [enter] 目录加载后的错峰出现（整张列表共享一个控制器，
+///   滑到新构建的条目时只会读到当前进度，不会重播动画）；
+/// - [appearing] 局部刷新新增条目的淡入；
+/// - [removing] 移除前的淡出（列表模式同时收起高度，条目平滑收拢）；
+/// - [pulsing] 修改描述/密码后的高亮闪烁。
 class _AnimatedListItem extends StatelessWidget {
   const _AnimatedListItem({
     super.key,
     required this.index,
+    required this.enter,
     required this.enabled,
     required this.child,
+    this.appearing = false,
+    this.removing = false,
+    this.pulsing = false,
+    this.collapse = false,
   });
 
   final int index;
+  /// 目录进入动画的共享进度（0..1，动画结束后为 1）。
+  final Animation<double> enter;
   final bool enabled;
   final Widget child;
+  final bool appearing;
+  final bool removing;
+  final bool pulsing;
+  final bool collapse;
+
+  /// 与控制器时长一致，用于把共享进度换算成单项的错峰区间。
+  static const double _enterDuration = 440;
+  static const double _enterItemDuration = 232;
+  static const double _enterStep = 26;
 
   @override
   Widget build(BuildContext context) {
     if (!enabled) return child;
-    const total = 440.0;
-    final delay = (index.clamp(0, 8) * 26).toDouble();
-    final begin = (delay / total).clamp(0.0, 1.0);
-    final end = ((delay + 232) / total).clamp(begin, 1.0);
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 440),
-      curve: Interval(begin, end, curve: Curves.easeOutCubic),
-      builder: (context, t, child) => Opacity(
-        opacity: t,
-        child: Transform.translate(
-          offset: Offset(0, 10 * (1 - t)),
-          child: child,
+    var item = child;
+
+    if (removing) {
+      item = TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: 1),
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInCubic,
+        builder: (context, t, child) {
+          final faded = Opacity(
+            opacity: (1 - t).clamp(0.0, 1.0),
+            child: Transform.scale(scale: 1 - 0.06 * t, child: child),
+          );
+          if (!collapse) return faded;
+          return Align(
+            heightFactor: (1 - t).clamp(0.0, 1.0),
+            alignment: Alignment.topCenter,
+            child: faded,
+          );
+        },
+        child: item,
+      );
+    } else if (appearing) {
+      item = TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: 1),
+        duration: const Duration(milliseconds: 260),
+        curve: Curves.easeOutCubic,
+        builder: (context, t, child) => Opacity(
+          opacity: t,
+          child: Transform.scale(scale: 0.94 + 0.06 * t, child: child),
         ),
-      ),
-      child: child,
+        child: item,
+      );
+    }
+
+    if (pulsing) {
+      final scheme = Theme.of(context).colorScheme;
+      item = TweenAnimationBuilder<double>(
+        tween: Tween(begin: 1, end: 0),
+        duration: const Duration(milliseconds: 700),
+        curve: Curves.easeOut,
+        builder: (context, t, child) => Stack(
+          children: [
+            child!,
+            Positioned.fill(
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: scheme.primary.withValues(alpha: 0.16 * t),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        child: item,
+      );
+    }
+
+    if (removing || appearing) return item;
+    // 共享错峰出现：动画结束后进度恒为 1，之后滑动出来的条目直接显示。
+    return AnimatedBuilder(
+      animation: enter,
+      child: item,
+      builder: (context, child) {
+        final delay = index.clamp(0, 8) * _enterStep;
+        final progress =
+            ((enter.value * _enterDuration - delay) / _enterItemDuration)
+                .clamp(0.0, 1.0);
+        final t = Curves.easeOutCubic.transform(progress);
+        return Opacity(
+          opacity: t,
+          child: Transform.translate(
+            offset: Offset(0, 10 * (1 - t)),
+            child: child,
+          ),
+        );
+      },
     );
   }
+}
+
+/// 空目录 / 无匹配结果：整块居中显示并带显隐渐变。
+class _EmptyFolderView extends StatelessWidget {
+  const _EmptyFolderView({required this.filter});
+
+  final String filter;
+
+  @override
+  Widget build(BuildContext context) {
+    return EmptyHint(
+      icon: Icons.folder_open,
+      text: filter.isEmpty
+          ? context.l10n.emptyFolder
+          : context.l10n.noMatchContent(filter),
+    );
+  }
+}
+
+/// 一次目录拉取的结果。
+class _Listing {
+  const _Listing({
+    required this.folders,
+    required this.files,
+    required this.path,
+    required this.page,
+    required this.hasMore,
+  });
+
+  final List<LzFolder> folders;
+  final List<LzFile> files;
+  final List<PathNode> path;
+  final int page;
+  final bool hasMore;
 }
 
 class _FolderTile extends StatelessWidget {

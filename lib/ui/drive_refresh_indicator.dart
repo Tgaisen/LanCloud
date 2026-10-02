@@ -696,4 +696,14 @@ class _RefreshScrollBehavior extends ScrollBehavior {
 
   @override
   ScrollPhysics getScrollPhysics(BuildContext context) => physics;
+
+  /// 回弹位移已经表达了越界，不再叠加 Android 的拉伸/发光指示器。
+  @override
+  Widget buildOverscrollIndicator(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) {
+    return child;
+  }
 }
