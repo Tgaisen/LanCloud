@@ -60,6 +60,7 @@ class Icons {
   static const IconData info_outline = Symbols.info;
   static const IconData insert_drive_file_outlined = Symbols.insert_drive_file;
   static const IconData install_mobile = Symbols.install_mobile;
+  static const IconData key_outlined = Symbols.key;
   static const IconData link = Symbols.link;
   static const IconData link_outlined = Symbols.link;
   static const IconData lock_outline = Symbols.lock;
@@ -106,6 +107,7 @@ class Icons {
   static const IconData upload_file = Symbols.upload_file;
   static const IconData upload_file_outlined = Symbols.upload_file;
   static const IconData upload_outlined = Symbols.upload;
+  static const IconData warning_outlined = Symbols.warning;
   static const IconData vertical_align_bottom = Symbols.vertical_align_bottom;
   static const IconData vertical_align_top = Symbols.vertical_align_top;
   static const IconData view_list = Symbols.view_list;

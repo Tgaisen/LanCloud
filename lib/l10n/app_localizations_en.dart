@@ -1117,4 +1117,44 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get removeFromQuickAccess => 'Remove from quick access';
+
+  @override
+  String get copy => 'Copy';
+
+  @override
+  String get continueLabel => 'Continue';
+
+  @override
+  String get showCookie => 'Show cookie';
+
+  @override
+  String get showCookieSubtitle =>
+      'Requires biometric or screen-lock verification';
+
+  @override
+  String get cookieRiskTitle => 'Show cookie?';
+
+  @override
+  String get cookieRiskMessage =>
+      'The cookie is your account credential. Anyone who has it can sign in and operate your cloud drive. Don\'t screenshot, forward, or paste it into untrusted devices or apps.';
+
+  @override
+  String get cookieAuthReason => 'Verify your identity to show the cookie';
+
+  @override
+  String get cookieAuthFailed =>
+      'Verification failed; the cookie will not be shown';
+
+  @override
+  String get cookieAuthUnavailable =>
+      'No screen lock or biometrics is set up on this device, so identity can\'t be verified';
+
+  @override
+  String get cookieSheetTitle => 'Account cookie';
+
+  @override
+  String get cookieExport => 'Export';
+
+  @override
+  String get cookieExportFailed => 'Export failed';
 }

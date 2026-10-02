@@ -378,5 +378,17 @@
     }
   },
   "addToQuickAccess": "Add to quick access",
-  "removeFromQuickAccess": "Remove from quick access"
+  "removeFromQuickAccess": "Remove from quick access",
+  "copy": "Copy",
+  "continueLabel": "Continue",
+  "showCookie": "Show cookie",
+  "showCookieSubtitle": "Requires biometric or screen-lock verification",
+  "cookieRiskTitle": "Show cookie?",
+  "cookieRiskMessage": "The cookie is your account credential. Anyone who has it can sign in and operate your cloud drive. Don't screenshot, forward, or paste it into untrusted devices or apps.",
+  "cookieAuthReason": "Verify your identity to show the cookie",
+  "cookieAuthFailed": "Verification failed; the cookie will not be shown",
+  "cookieAuthUnavailable": "No screen lock or biometrics is set up on this device, so identity can't be verified",
+  "cookieSheetTitle": "Account cookie",
+  "cookieExport": "Export",
+  "cookieExportFailed": "Export failed"
 }

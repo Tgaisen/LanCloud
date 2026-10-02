@@ -2095,6 +2095,78 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'从快速访问移除'**
   String get removeFromQuickAccess;
+
+  /// No description provided for @copy.
+  ///
+  /// In zh, this message translates to:
+  /// **'复制'**
+  String get copy;
+
+  /// No description provided for @continueLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'继续'**
+  String get continueLabel;
+
+  /// No description provided for @showCookie.
+  ///
+  /// In zh, this message translates to:
+  /// **'显示 Cookie'**
+  String get showCookie;
+
+  /// No description provided for @showCookieSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'需通过生物识别 / 锁屏验证'**
+  String get showCookieSubtitle;
+
+  /// No description provided for @cookieRiskTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'显示 Cookie？'**
+  String get cookieRiskTitle;
+
+  /// No description provided for @cookieRiskMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'Cookie 等同于账号登录凭据，任何拿到它的人都能直接登录并操作你的网盘。请勿截图、转发或粘贴到不可信的设备与应用中。'**
+  String get cookieRiskMessage;
+
+  /// No description provided for @cookieAuthReason.
+  ///
+  /// In zh, this message translates to:
+  /// **'验证身份后显示 Cookie'**
+  String get cookieAuthReason;
+
+  /// No description provided for @cookieAuthFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'身份验证未通过，已取消显示'**
+  String get cookieAuthFailed;
+
+  /// No description provided for @cookieAuthUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前设备未设置锁屏密码或生物识别，无法验证身份'**
+  String get cookieAuthUnavailable;
+
+  /// No description provided for @cookieSheetTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'账号 Cookie'**
+  String get cookieSheetTitle;
+
+  /// No description provided for @cookieExport.
+  ///
+  /// In zh, this message translates to:
+  /// **'导出'**
+  String get cookieExport;
+
+  /// No description provided for @cookieExportFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'导出失败'**
+  String get cookieExportFailed;
 }
 
 class _AppLocalizationsDelegate

@@ -540,5 +540,17 @@
     }
   },
   "addToQuickAccess": "添加到快速访问",
-  "removeFromQuickAccess": "从快速访问移除"
+  "removeFromQuickAccess": "从快速访问移除",
+  "copy": "复制",
+  "continueLabel": "继续",
+  "showCookie": "显示 Cookie",
+  "showCookieSubtitle": "需通过生物识别 / 锁屏验证",
+  "cookieRiskTitle": "显示 Cookie？",
+  "cookieRiskMessage": "Cookie 等同于账号登录凭据，任何拿到它的人都能直接登录并操作你的网盘。请勿截图、转发或粘贴到不可信的设备与应用中。",
+  "cookieAuthReason": "验证身份后显示 Cookie",
+  "cookieAuthFailed": "身份验证未通过，已取消显示",
+  "cookieAuthUnavailable": "当前设备未设置锁屏密码或生物识别，无法验证身份",
+  "cookieSheetTitle": "账号 Cookie",
+  "cookieExport": "导出",
+  "cookieExportFailed": "导出失败"
 }

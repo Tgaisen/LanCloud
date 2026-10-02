@@ -1088,4 +1088,41 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get removeFromQuickAccess => '从快速访问移除';
+
+  @override
+  String get copy => '复制';
+
+  @override
+  String get continueLabel => '继续';
+
+  @override
+  String get showCookie => '显示 Cookie';
+
+  @override
+  String get showCookieSubtitle => '需通过生物识别 / 锁屏验证';
+
+  @override
+  String get cookieRiskTitle => '显示 Cookie？';
+
+  @override
+  String get cookieRiskMessage =>
+      'Cookie 等同于账号登录凭据，任何拿到它的人都能直接登录并操作你的网盘。请勿截图、转发或粘贴到不可信的设备与应用中。';
+
+  @override
+  String get cookieAuthReason => '验证身份后显示 Cookie';
+
+  @override
+  String get cookieAuthFailed => '身份验证未通过，已取消显示';
+
+  @override
+  String get cookieAuthUnavailable => '当前设备未设置锁屏密码或生物识别，无法验证身份';
+
+  @override
+  String get cookieSheetTitle => '账号 Cookie';
+
+  @override
+  String get cookieExport => '导出';
+
+  @override
+  String get cookieExportFailed => '导出失败';
 }

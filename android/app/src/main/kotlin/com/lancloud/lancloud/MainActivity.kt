@@ -7,12 +7,13 @@ import android.provider.DocumentsContract
 import android.provider.OpenableColumns
 import android.provider.Settings
 import androidx.core.content.FileProvider
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.io.File
 
-class MainActivity : FlutterActivity() {
+// local_auth（生物识别）要求宿主 Activity 必须是 FragmentActivity。
+class MainActivity : FlutterFragmentActivity() {
     private var pickFilesResult: MethodChannel.Result? = null
 
     companion object {
@@ -102,6 +103,40 @@ class MainActivity : FlutterActivity() {
                     } catch (e: Exception) {
                         pickFilesResult = null
                         result.error("pick_failed", e.message, null)
+                    }
+                }
+                else -> result.notImplemented()
+            }
+        }
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "lancloud/share",
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "shareText" -> {
+                    val text = call.argument<String>("text")
+                    if (text.isNullOrEmpty()) {
+                        result.error("bad_args", "text required", null)
+                        return@setMethodCallHandler
+                    }
+                    val subject = call.argument<String>("subject").orEmpty()
+                    try {
+                        val send = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, text)
+                            if (subject.isNotEmpty()) {
+                                putExtra(Intent.EXTRA_SUBJECT, subject)
+                            }
+                        }
+                        val chooser = Intent.createChooser(
+                            send,
+                            subject.ifEmpty { null },
+                        )
+                        chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        startActivity(chooser)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("share_failed", e.message, null)
                     }
                 }
                 else -> result.notImplemented()
