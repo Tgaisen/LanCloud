@@ -58,6 +58,20 @@ bool retryEnabled(WidgetTester tester) {
 }
 
 void main() {
+  testWidgets('直接点击条目进入多选并选中它（多选栏一起出现）', (tester) async {
+    final (app, _) = await host(tester);
+
+    await tester.tap(find.text('a.zip'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('transfers-selection-appbar')),
+      findsOneWidget,
+    );
+    expect(find.text('已选择 1 项'), findsOneWidget);
+    expect(app.selectionMode, isTrue);
+  });
+
   testWidgets('长按进入多选：显示已选数量，重试仅对失败项可用', (tester) async {
     final (app, manager) = await host(tester);
 

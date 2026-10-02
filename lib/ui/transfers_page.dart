@@ -82,6 +82,11 @@ class _TransfersPageState extends State<TransfersPage>
   }
 
   void _toggleSelected(String id) {
+    // 不在多选时点击条目：直接进入多选并选中它（否则只会亮起却看不到多选栏）
+    if (!_selecting) {
+      _enterSelection(taskId: id);
+      return;
+    }
     setState(() {
       if (!_selected.remove(id)) _selected.add(id);
     });

@@ -212,8 +212,11 @@ class _RootShellState extends State<RootShell> {
 
   void _goTo(int i) {
     if (i == _index) return;
+    // 切换视图（含底栏、侧栏、程序化跳转）时退出多选
+    final app = context.read<AppController>();
+    if (app.selectionMode) app.onRequestExitSelection?.call();
     // 切换视图时把被收起的顶/底栏带动画调出来
-    context.read<AppController>().animateBarsHide(0);
+    app.animateBarsHide(0);
     setState(() => _index = i);
     _programmaticJump = true;
     if (_pageController.hasClients) {
@@ -415,6 +418,8 @@ class _RootShellState extends State<RootShell> {
         onPageChanged: (i) {
           // 程序化跳转经过中间页时保持指示器停留在目标，避免底栏按钮闪烁
           if (_programmaticJump && i != _index) return;
+          // 横滑切换视图时同样退出多选
+          if (app.selectionMode) app.onRequestExitSelection?.call();
           // 视图真正切换后：恢复底栏并通知页面把折叠的顶栏调出来
           app.animateBarsHide(0);
           app.activeTab.value = i;
