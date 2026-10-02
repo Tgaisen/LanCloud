@@ -2425,7 +2425,7 @@ class _DrivePageState extends State<DrivePage>
     return AppBar(
       backgroundColor: Color.lerp(
         Theme.of(context).colorScheme.surface,
-        Theme.of(context).colorScheme.surfaceContainerHighest,
+        Theme.of(context).colorScheme.surfaceContainer,
         _appBarAnim.value,
       ),
       scrolledUnderElevation: 0,
@@ -2537,48 +2537,13 @@ class _DrivePageState extends State<DrivePage>
                   color: scheme.outline,
                 ),
               ),
-            _pathChip(
+            PathChip(
               label: i < 0 ? context.l10n.root : _path[i].name,
               current: i == _path.length - 1,
               onTap: () => _jumpTo(i),
             ),
           ],
         ],
-      ),
-    );
-  }
-
-  /// MD3E 路径胶囊：当前目录用主色容器强调，其余为中性容器。
-  Widget _pathChip({
-    required String label,
-    required bool current,
-    required VoidCallback onTap,
-  }) {
-    final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Material(
-        color: current ? scheme.secondaryContainer : scheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(10),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: current ? FontWeight.w600 : FontWeight.w400,
-                color: current
-                    ? scheme.onSecondaryContainer
-                    : scheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }
@@ -3697,116 +3662,206 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final visible =
         _folders.where((f) => !widget.excludeIds.contains(f.id)).toList();
-    return AlertDialog(
-      title: Text(l10n.chooseTargetFolder),
-      content: SizedBox(
-        width: 360,
-        height: math.min(440.0, MediaQuery.sizeOf(context).height * 0.55),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (widget.initialName != null) ...[
-              TextField(
-                controller: _nameController,
-                decoration: InputDecoration(
-                  isDense: true,
-                  border: const OutlineInputBorder(),
-                  labelText: l10n.nameRequired,
-                ),
-              ),
-              const SizedBox(height: 8),
-            ],
-            Row(
-              children: [
-                Expanded(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        for (var i = -1; i < _path.length; i++) ...[
-                          if (i >= 0)
-                            const Icon(Icons.chevron_right, size: 18),
-                          TextButton(
-                            onPressed: () => _jumpTo(i),
-                            child: Text(
-                              i < 0 ? l10n.root : _path[i].name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ],
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: 400,
+          maxHeight: math.min(520, MediaQuery.sizeOf(context).height * 0.8),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: scheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(
+                      Icons.drive_file_move_outline,
+                      size: 22,
+                      color: scheme.onPrimaryContainer,
                     ),
                   ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      l10n.chooseTargetFolder,
+                      style: theme.textTheme.titleMedium,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              if (widget.initialName != null) ...[
+                TextField(
+                  controller: _nameController,
+                  decoration: InputDecoration(
+                    isDense: true,
+                    border: const OutlineInputBorder(),
+                    labelText: l10n.nameRequired,
+                  ),
                 ),
-                IconButton(
-                  tooltip: l10n.newFolder,
-                  icon: const Icon(Icons.create_new_folder_outlined),
-                  onPressed: _loading ? null : _mkdir,
-                ),
+                const SizedBox(height: 12),
               ],
-            ),
-            const Divider(height: 1),
-            Expanded(
-              child: _loading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _error != null
-                      ? Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Text(
-                              l10n.loadFailed(_error!),
-                              textAlign: TextAlign.center,
+              Row(
+                children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          for (var i = -1; i < _path.length; i++) ...[
+                            if (i >= 0)
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 2),
+                                child: Icon(
+                                  Icons.chevron_right,
+                                  size: 16,
+                                  color: scheme.outline,
+                                ),
+                              ),
+                            PathChip(
+                              label: i < 0 ? l10n.root : _path[i].name,
+                              current: i == _path.length - 1,
+                              onTap: () => _jumpTo(i),
+                              verticalPadding: 4,
                             ),
-                          ),
-                        )
-                      : visible.isEmpty
-                          ? Center(child: Text(l10n.noSubfolders))
-                          : ListView.builder(
-                              itemCount: visible.length,
-                              itemBuilder: (context, index) {
-                                final folder = visible[index];
-                                return ListTile(
-                                  leading: const Icon(Icons.folder_outlined),
-                                  title: Text(
-                                    folder.name,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  trailing: const Icon(Icons.chevron_right),
-                                  onTap: () => _load(folder.id),
-                                );
-                              },
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  IconButton.filledTonal(
+                    tooltip: l10n.newFolder,
+                    icon: const Icon(Icons.create_new_folder_outlined),
+                    onPressed: _loading ? null : _mkdir,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Flexible(
+                child: _loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _error != null
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Text(
+                                l10n.loadFailed(_error!),
+                                textAlign: TextAlign.center,
+                              ),
                             ),
-            ),
-          ],
+                          )
+                        : visible.isEmpty
+                            ? Center(
+                                child: Text(
+                                  l10n.noSubfolders,
+                                  style: TextStyle(color: scheme.outline),
+                                ),
+                              )
+                            : ListView.builder(
+                                padding: EdgeInsets.zero,
+                                itemCount: visible.length,
+                                itemBuilder: (context, index) =>
+                                    _folderRow(visible[index]),
+                              ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: Text(l10n.cancel),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: _loading
+                        ? null
+                        : () {
+                            final edited = _nameController.text.trim();
+                            Navigator.of(context).pop(
+                              FolderPickResult(
+                                _folderId,
+                                _targetName(l10n),
+                                fileName: widget.initialName == null
+                                    ? null
+                                    : (edited.isEmpty
+                                        ? widget.initialName
+                                        : edited),
+                              ),
+                            );
+                          },
+                    child: Text(widget.confirmLabel ?? l10n.moveHere),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(l10n.cancel),
+    );
+  }
+
+  /// MD3E 目录行：圆角图标块 + 名称 + 进入箭头。
+  Widget _folderRow(LzFolder folder) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => _load(folder.id),
+          child: Padding(
+            padding: const EdgeInsets.all(6),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: scheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.folder_outlined,
+                    size: 19,
+                    color: scheme.onPrimaryContainer,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    folder.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyLarge,
+                  ),
+                ),
+                Icon(Icons.chevron_right, size: 20, color: scheme.outline),
+              ],
+            ),
+          ),
         ),
-        FilledButton(
-          onPressed: _loading
-              ? null
-              : () {
-                  final edited = _nameController.text.trim();
-                  Navigator.of(context).pop(
-                    FolderPickResult(
-                      _folderId,
-                      _targetName(l10n),
-                      fileName: widget.initialName == null
-                          ? null
-                          : (edited.isEmpty ? widget.initialName : edited),
-                    ),
-                  );
-                },
-          child: Text(widget.confirmLabel ?? l10n.moveHere),
-        ),
-      ],
+      ),
     );
   }
 }

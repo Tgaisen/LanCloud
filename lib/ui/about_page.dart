@@ -35,7 +35,7 @@ class AboutPage extends StatelessWidget {
                 ),
                 backgroundColor: Color.lerp(
                   scheme.surface,
-                  scheme.surfaceContainerHighest,
+                  scheme.surfaceContainer,
                   ScrollTint.of(context),
                 ),
                 scrolledUnderElevation: 0,

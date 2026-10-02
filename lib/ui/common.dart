@@ -580,6 +580,54 @@ class BatchAction extends StatelessWidget {
   }
 }
 
+/// MD3E 路径胶囊：当前项用主色容器强调，其余为中性容器。
+/// 网盘路径栏与文件夹选择弹窗共用。
+class PathChip extends StatelessWidget {
+  const PathChip({
+    super.key,
+    required this.label,
+    required this.current,
+    required this.onTap,
+    this.verticalPadding = 8,
+  });
+
+  final String label;
+  final bool current;
+  final VoidCallback onTap;
+  final double verticalPadding;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: verticalPadding),
+      child: Material(
+        color: current ? scheme.secondaryContainer : scheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(10),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: current ? FontWeight.w600 : FontWeight.w400,
+                color: current
+                    ? scheme.onSecondaryContainer
+                    : scheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// 多选底部操作栏（MD3E）：悬浮圆角容器，操作项均分整行。
 /// 网盘、传输、收藏、分享浏览页共用，样式保持一致。
 class BatchActionBar extends StatelessWidget {
@@ -1326,20 +1374,37 @@ class _BatchProgressDialog extends StatelessWidget {
 }
 
 Future<void> showLoadingDialog(BuildContext context, String text) {
+  final theme = Theme.of(context);
+  final scheme = theme.colorScheme;
   return showDialog<void>(
     context: context,
     barrierDismissible: false,
-    builder: (_) => AlertDialog(
-      content: Row(
-        children: [
-          const SizedBox(
-            width: 22,
-            height: 22,
-            child: CircularProgressIndicator(strokeWidth: 2.5),
-          ),
-          const SizedBox(width: 16),
-          Expanded(child: Text(text)),
-        ],
+    builder: (_) => Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 24, 20),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: scheme.primaryContainer,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  color: scheme.onPrimaryContainer,
+                ),
+              ),
+            ),
+            const SizedBox(width: 18),
+            Flexible(child: Text(text, style: theme.textTheme.bodyLarge)),
+          ],
+        ),
       ),
     ),
   );

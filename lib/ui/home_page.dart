@@ -358,7 +358,7 @@ class _HomePageState extends State<HomePage>
               child: AppBar(
                 backgroundColor: Color.lerp(
                   Theme.of(context).colorScheme.surface,
-                  Theme.of(context).colorScheme.surfaceContainerHighest,
+                  Theme.of(context).colorScheme.surfaceContainer,
                   ScrollTint.of(context),
                 ),
                 scrolledUnderElevation: 0,

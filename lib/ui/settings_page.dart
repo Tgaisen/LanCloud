@@ -608,7 +608,7 @@ class _SettingsPageState extends State<SettingsPage>
                   ),
                   backgroundColor: Color.lerp(
                     scheme.surface,
-                    scheme.surfaceContainerHighest,
+                    scheme.surfaceContainer,
                     ScrollTint.of(context),
                   ),
                   scrolledUnderElevation: 0,
@@ -1236,7 +1236,7 @@ class _AdvancedPage extends StatelessWidget {
                   ),
                   backgroundColor: Color.lerp(
                     scheme.surface,
-                    scheme.surfaceContainerHighest,
+                    scheme.surfaceContainer,
                     ScrollTint.of(context),
                   ),
                   scrolledUnderElevation: 0,

@@ -441,7 +441,7 @@ class _FavoritesPageState extends State<FavoritesPage>
               child: AppBar(
                 backgroundColor: Color.lerp(
                   scheme.surface,
-                  scheme.surfaceContainerHighest,
+                  scheme.surfaceContainer,
                   ScrollTint.of(context),
                 ),
                 scrolledUnderElevation: 0,

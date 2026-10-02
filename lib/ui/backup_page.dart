@@ -255,7 +255,7 @@ class _BackupPageState extends State<BackupPage> {
                 ),
                 backgroundColor: Color.lerp(
                   scheme.surface,
-                  scheme.surfaceContainerHighest,
+                  scheme.surfaceContainer,
                   ScrollTint.of(context),
                 ),
                 scrolledUnderElevation: 0,
