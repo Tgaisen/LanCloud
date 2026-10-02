@@ -311,9 +311,13 @@ class _HomePageState extends State<HomePage>
                   expanded: _quickExpanded,
                   onToggle: _toggleQuickExpanded,
                   child: _quick.isEmpty
-                      ? EmptyHint(
-                          icon: Icons.push_pin_outlined,
-                          text: l10n.quickAccessHint,
+                      ? SegmentedList(
+                          children: [
+                            EmptyHint(
+                              icon: Icons.push_pin_outlined,
+                              text: l10n.quickAccessHint,
+                            ),
+                          ],
                         )
                       : SegmentedList(
                           children: [
@@ -337,9 +341,13 @@ class _HomePageState extends State<HomePage>
                           child: Center(child: CircularProgressIndicator()),
                         )
                       : (_recents.isEmpty
-                          ? EmptyHint(
-                              icon: Icons.history,
-                              text: l10n.noRecent,
+                          ? SegmentedList(
+                              children: [
+                                EmptyHint(
+                                  icon: Icons.history,
+                                  text: l10n.noRecent,
+                                ),
+                              ],
                             )
                           : SegmentedList(
                               children: [

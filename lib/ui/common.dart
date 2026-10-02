@@ -807,6 +807,7 @@ class SectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final header = Padding(
       // 与分组（SegmentedList 自带 4dp 外边距）左对齐
       padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
@@ -819,6 +820,11 @@ class SectionCard extends StatelessWidget {
           if (onToggle != null)
             IconButton(
               tooltip: expanded ? context.l10n.collapse : context.l10n.expand,
+              style: IconButton.styleFrom(
+                // 与分组卡片同底色，展开 / 收起按钮浮在标题行右侧
+                backgroundColor: scheme.surfaceContainerLow,
+                foregroundColor: scheme.onSurfaceVariant,
+              ),
               onPressed: onToggle,
               icon: AnimatedRotation(
                 turns: expanded ? 0.25 : 0,

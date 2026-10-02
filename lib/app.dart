@@ -59,13 +59,9 @@ class LanCloudApp extends StatelessWidget {
               borderRadius: BorderRadius.all(Radius.circular(12)),
             ),
           ),
-          // Material Symbols：outlined、不填充、字重 400、层级 0、光学尺寸 24
-          iconTheme: const IconThemeData(
-            fill: 0,
-            weight: 400,
-            grade: 0,
-            opticalSize: 24,
-          ),
+          // 注意：不要在这里放"只有字重/填充轴、没有颜色"的 iconTheme，
+          // 会让 IconButton 的前景色变成 null（按黑色绘制，深色模式下看不见）。
+          // Material Symbols 的默认轴就是 outlined / 400 / grade0 / 24dp。
           // MD3 扁平化：控件统一去阴影
           cardTheme: const CardThemeData(elevation: 0),
           navigationBarTheme: const NavigationBarThemeData(elevation: 0),
