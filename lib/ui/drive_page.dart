@@ -2193,7 +2193,11 @@ class _DrivePageState extends State<DrivePage>
                 top: 0,
                 child: TopBarOverlay(
                   height: headerHeight,
-                  child: _topBar(context),
+                  // 显式高度：带 bottom（路径栏）的 AppBar 需要有限高度约束
+                  child: SizedBox(
+                    height: headerHeight,
+                    child: _topBar(context),
+                  ),
                 ),
               ),
               // 多选时只覆盖顶栏；路径栏保持可见，平时透明且不拦截点击
@@ -2208,7 +2212,12 @@ class _DrivePageState extends State<DrivePage>
                     child: Material(
                       elevation: 0,
                       color: Theme.of(context).colorScheme.surface,
-                      child: _selectionAppBar(selectedCount),
+                      // 显式高度：Stack 的 Positioned 不提供高度约束
+                      child: SizedBox(
+                        height:
+                            MediaQuery.paddingOf(context).top + kToolbarHeight,
+                        child: _selectionAppBar(selectedCount),
+                      ),
                     ),
                   ),
                 ),

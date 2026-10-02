@@ -48,6 +48,8 @@ class TransferTask {
   TransferStatus status = TransferStatus.queued;
   String? error;
   String? savedPath;
+  /// 已被用户删除：进行中的任务结束后不再写回记录。
+  bool removed = false;
 
   double get progress => total > 0 ? (received / total).clamp(0, 1).toDouble() : 0;
 }
@@ -115,6 +117,7 @@ class TransferManager extends ChangeNotifier {
   }
 
   Future<void> _persist(TransferTask task) async {
+    if (task.removed) return;
     try {
       await _app.db.saveTransfer(
         id: task.id,
@@ -229,9 +232,23 @@ class TransferManager extends ChangeNotifier {
         t.status == TransferStatus.done ||
         t.status == TransferStatus.canceled);
     for (final id in removed) {
-      _app.db.deleteTransfer(id);
+      _app.db.deleteTransfer(id).catchError((_) {});
     }
     notifyListeners();
+  }
+
+  /// 删除一条传输记录：进行中的先取消，避免残留记录被写回。
+  void removeTask(String id) {
+    final task = _find(id);
+    if (task == null) return;
+    task.removed = true;
+    if (task.status == TransferStatus.running) {
+      task.cancelToken.cancel('removed');
+    }
+    tasks.remove(task);
+    _app.db.deleteTransfer(id).catchError((_) {});
+    notifyListeners();
+    _pump();
   }
 
   TransferTask? _find(String id) {

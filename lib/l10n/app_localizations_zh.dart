@@ -661,6 +661,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get delete => '删除';
 
   @override
+  String get transferDeleteConfirmTitle => '删除传输记录';
+
+  @override
+  String transferDeleteConfirmMessage(int count) {
+    return '将移除选中的 $count 条记录（进行中的会先取消），继续吗？';
+  }
+
+  @override
   String get batchDownload => '批量下载';
 
   @override

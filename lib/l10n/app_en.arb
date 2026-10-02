@@ -206,6 +206,13 @@
   "deleteConfirmTitle": "Confirm deletion",
   "deleteConfirmMessage": "Move {count} selected items to the recycle bin?",
   "delete": "Delete",
+  "transferDeleteConfirmTitle": "Delete transfer records",
+  "transferDeleteConfirmMessage": "Remove {count} selected records (running ones will be canceled)?",
+  "@transferDeleteConfirmMessage": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
   "batchDownload": "Batch download",
   "resolvingBatch": "Resolving and adding to the download queue ({count} total)",
   "addedDownloads": "Added {count} download tasks",

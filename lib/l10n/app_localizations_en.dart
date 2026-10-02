@@ -681,6 +681,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get delete => 'Delete';
 
   @override
+  String get transferDeleteConfirmTitle => 'Delete transfer records';
+
+  @override
+  String transferDeleteConfirmMessage(int count) {
+    return 'Remove $count selected records (running ones will be canceled)?';
+  }
+
+  @override
   String get batchDownload => 'Batch download';
 
   @override

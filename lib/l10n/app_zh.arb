@@ -288,6 +288,13 @@
     }
   },
   "delete": "删除",
+  "transferDeleteConfirmTitle": "删除传输记录",
+  "transferDeleteConfirmMessage": "将移除选中的 {count} 条记录（进行中的会先取消），继续吗？",
+  "@transferDeleteConfirmMessage": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
   "batchDownload": "批量下载",
   "resolvingBatch": "正在解析并加入下载队列（共 {count} 个）",
   "@resolvingBatch": {

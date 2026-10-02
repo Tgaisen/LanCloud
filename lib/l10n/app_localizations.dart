@@ -1334,6 +1334,18 @@ abstract class AppLocalizations {
   /// **'删除'**
   String get delete;
 
+  /// No description provided for @transferDeleteConfirmTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除传输记录'**
+  String get transferDeleteConfirmTitle;
+
+  /// No description provided for @transferDeleteConfirmMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'将移除选中的 {count} 条记录（进行中的会先取消），继续吗？'**
+  String transferDeleteConfirmMessage(int count);
+
   /// No description provided for @batchDownload.
   ///
   /// In zh, this message translates to:

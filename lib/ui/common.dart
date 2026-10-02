@@ -509,6 +509,42 @@ class _SheetDragPhysics extends ClampingScrollPhysics {
       _SheetDragPhysics(parent: buildParent(ancestor), onOffset: onOffset);
 }
 
+/// 多选操作栏里的单个操作（图标 + 文字，禁用时置灰）。
+class BatchAction extends StatelessWidget {
+  const BatchAction({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onPressed != null;
+    final scheme = Theme.of(context).colorScheme;
+    final color = enabled ? scheme.onSurface : scheme.outline;
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color),
+            const SizedBox(height: 2),
+            Text(label, style: TextStyle(fontSize: 12, color: color)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class SectionCard extends StatelessWidget {
   const SectionCard({
     super.key,
