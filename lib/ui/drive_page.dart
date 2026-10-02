@@ -16,6 +16,7 @@ import '../core/transfer/transfer_manager.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
+import 'drive_refresh_indicator.dart' as drive_refresh;
 import 'web_page.dart';
 
 const int kFreeUploadLimit = 100 * 1024 * 1024;
@@ -63,8 +64,6 @@ class _DrivePageState extends State<DrivePage>
   bool _searching = false;
   String _filter = '';
   String _sortMode = 'default';
-  int _refreshEpoch = 0;
-  double _pullOffset = 0;
   final Map<String, double> _folderOffsets = {};
   bool _selecting = false;
   final Set<String> _selectedFiles = {};
@@ -1807,39 +1806,12 @@ class _DrivePageState extends State<DrivePage>
   Widget _buildBody(bool grid, {required bool hideTopBar}) {
     final headerInset =
         MediaQuery.of(context).padding.top + kToolbarHeight + 46;
-    return NotificationListener<ScrollNotification>(
-      onNotification: (notification) {
-        if (notification is ScrollStartNotification) {
-          _pullOffset = 0;
-        } else if (notification is OverscrollNotification &&
-            notification.metrics.axisDirection == AxisDirection.down) {
-          _pullOffset = -notification.overscroll;
-        } else if (notification is ScrollUpdateNotification &&
-            notification.dragDetails != null &&
-            notification.dragDetails!.delta.dy < 0 &&
-            _pullOffset > 8) {
-          // 顶部下拉后只要往上滑，就立即取消刷新球
-          setState(() {
-            _refreshEpoch += 1;
-            _pullOffset = 0;
-          });
-        } else if (notification is ScrollEndNotification) {
-          _pullOffset = 0;
-        }
-        return false;
-      },
-      child: KeyedSubtree(
-        key: ValueKey('drive-refresh-$_refreshEpoch'),
-        child: RefreshIndicator(
-          onRefresh: _reloadAfterChange,
-          edgeOffset: headerInset,
-          triggerMode: RefreshIndicatorTriggerMode.anywhere,
-          child: CustomScrollView(
-            controller: _scroll,
-            physics: const AlwaysScrollableScrollPhysics(
-              parent: BouncingScrollPhysics(),
-            ),
-            slivers: [
+    return drive_refresh.LanRefreshIndicator(
+      onRefresh: _reloadAfterChange,
+      edgeOffset: headerInset,
+      child: CustomScrollView(
+        controller: _scroll,
+        slivers: [
           SliverAppBar(
             // floating：向上滚动立刻开始出现；pinned 只由设置决定
             floating: hideTopBar,
@@ -1913,8 +1885,6 @@ class _DrivePageState extends State<DrivePage>
           ..._contentSlivers(grid),
             ],
           ),
-        ),
-      ),
     );
   }
 
