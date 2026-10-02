@@ -17,18 +17,13 @@ Future<void> showLegalDialog(BuildContext context, LegalDoc doc) {
     context: context,
     builder: (dialogContext) => AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      // 让标题 + 正文整体可滚动，长文本在弹窗内可以滑到底
+      scrollable: true,
       title: Text(title),
-      content: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxWidth: 420,
-          maxHeight: MediaQuery.sizeOf(dialogContext).height * 0.6,
-        ),
-        child: SingleChildScrollView(
-          child: SelectableText(
-            body,
-            style: theme.textTheme.bodyMedium?.copyWith(height: 1.7),
-          ),
-        ),
+      // 用普通 Text：SelectableText 会吃掉竖向拖动手势，导致弹窗滚不动
+      content: Text(
+        body,
+        style: theme.textTheme.bodyMedium?.copyWith(height: 1.7),
       ),
       actions: [
         TextButton(

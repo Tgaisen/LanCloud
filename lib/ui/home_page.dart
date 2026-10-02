@@ -296,7 +296,7 @@ class _HomePageState extends State<HomePage>
                           label: l10n.openLink,
                           onPressed: () => openShareSheet(context),
                         ),
-                        const SizedBox(width: 40),
+                        const SizedBox(width: 30),
                         ExpressiveIconButton(
                           icon: Icons.cloud_upload_outlined,
                           label: l10n.transferCenter,

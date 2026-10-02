@@ -105,7 +105,6 @@ class _DrivePageState extends State<DrivePage>
   bool _selecting = false;
   final Set<String> _selectedFiles = {};
   final Set<String> _selectedFolders = {};
-  Set<String> _downloaded = {};
   final Map<String, String> _fileDescCache = {};
   final Map<String, String> _folderDescCache = {};
   final Map<String, String> _folderSizeCache = {};
@@ -472,7 +471,6 @@ class _DrivePageState extends State<DrivePage>
         _error = null;
       });
       _playEnterAnimation();
-      _refreshDownloaded();
       return;
     }
 
@@ -508,7 +506,6 @@ class _DrivePageState extends State<DrivePage>
       if (app.settings.cacheFolders) {
         app.driveCache.put(_folderId, _snapshot());
       }
-      _refreshDownloaded();
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -540,20 +537,6 @@ class _DrivePageState extends State<DrivePage>
     } catch (_) {
       if (mounted) setState(() => _loadingMore = false);
     }
-  }
-
-  Future<void> _refreshDownloaded() async {
-    final app = context.read<AppController>();
-    final prefix = '${app.activeUid ?? ''}:';
-    final refs = await app.db.downloadedRefs();
-    if (!mounted) return;
-    setState(() {
-      // 已下载标记按账号区分，避免不同账号的文件 ID 撞号
-      _downloaded = refs
-          .where((ref) => ref.startsWith(prefix))
-          .map((ref) => ref.substring(prefix.length))
-          .toSet();
-    });
   }
 
   Future<void> _reloadAfterChange() async {
@@ -877,7 +860,6 @@ class _DrivePageState extends State<DrivePage>
                         desc: '',
                       ),
                       page: this,
-                      showOpen: false,
                     ),
                   );
                 },
@@ -906,7 +888,6 @@ class _DrivePageState extends State<DrivePage>
             ListTile(
               leading: const Icon(Icons.upload_file_outlined),
               title: Text(context.l10n.uploadFile),
-              subtitle: Text(context.l10n.uploadFileSubtitle),
               onTap: () {
                 Navigator.of(context).pop();
                 _upload();
@@ -1822,7 +1803,6 @@ class _DrivePageState extends State<DrivePage>
             ListTile(
               leading: const Icon(Icons.password),
               title: Text(context.l10n.setPassword),
-              subtitle: Text(context.l10n.freeAccountPasswordNote),
               onTap: () {
                 Navigator.of(context).pop();
                 _singleSetPasswd(file);
@@ -2747,7 +2727,6 @@ class _DrivePageState extends State<DrivePage>
           ? _FileTile(
               file: file,
               selected: _selectedFiles.contains(file.id),
-              downloaded: _downloaded.contains(file.id),
               onTap: () => _fileActions(file),
               onMenu: () => _fileMenuSheet(file),
               onLongPress: () => _enterSelection(fileId: file.id),
@@ -2755,7 +2734,6 @@ class _DrivePageState extends State<DrivePage>
           : _FileRow(
               file: file,
               selected: _selectedFiles.contains(file.id),
-              downloaded: _downloaded.contains(file.id),
               onTap: () => _fileActions(file),
               onMenu: () => _fileMenuSheet(file),
               onLongPress: () => _enterSelection(fileId: file.id),
@@ -3001,7 +2979,6 @@ class _FileTile extends StatelessWidget {
   const _FileTile({
     required this.file,
     required this.selected,
-    required this.downloaded,
     required this.onTap,
     required this.onMenu,
     required this.onLongPress,
@@ -3009,7 +2986,6 @@ class _FileTile extends StatelessWidget {
 
   final LzFile file;
   final bool selected;
-  final bool downloaded;
   final VoidCallback onTap;
   final VoidCallback onMenu;
   final VoidCallback onLongPress;
@@ -3048,8 +3024,6 @@ class _FileTile extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
-                  if (downloaded)
-                    Icon(Icons.download_done, size: 16, color: scheme.primary),
                   IconButton(
                     visualDensity: VisualDensity.compact,
                     iconSize: 18,
@@ -3097,7 +3071,6 @@ class _DriveRow extends StatelessWidget {
     required this.onLongPress,
     this.folder = false,
     this.locked = false,
-    this.downloaded = false,
   });
 
   final IconData icon;
@@ -3112,7 +3085,6 @@ class _DriveRow extends StatelessWidget {
   /// 文件夹用主色图标块，文件用中性色。
   final bool folder;
   final bool locked;
-  final bool downloaded;
 
   @override
   Widget build(BuildContext context) {
@@ -3190,15 +3162,6 @@ class _DriveRow extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (downloaded)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 4),
-                    child: Icon(
-                      Icons.download_done,
-                      size: 18,
-                      color: scheme.primary,
-                    ),
-                  ),
                 if (locked)
                   Padding(
                     padding: const EdgeInsets.only(left: 4),
@@ -3261,7 +3224,6 @@ class _FileRow extends StatelessWidget {
   const _FileRow({
     required this.file,
     required this.selected,
-    required this.downloaded,
     required this.onTap,
     required this.onMenu,
     required this.onLongPress,
@@ -3269,7 +3231,6 @@ class _FileRow extends StatelessWidget {
 
   final LzFile file;
   final bool selected;
-  final bool downloaded;
   final VoidCallback onTap;
   final VoidCallback onMenu;
   final VoidCallback onLongPress;
@@ -3283,10 +3244,8 @@ class _FileRow extends StatelessWidget {
       subtitle: [
         prettyLzSize(file.size),
         if (file.time.isNotEmpty) file.time,
-        if (downloaded) context.l10n.downloaded,
       ].where((e) => e.isNotEmpty).join(' · '),
       locked: file.hasPwd,
-      downloaded: downloaded,
       menuTooltip: context.l10n.fileActions,
       onTap: onTap,
       onMenu: onMenu,
@@ -3300,13 +3259,10 @@ class _FolderInfoSheet extends StatefulWidget {
   const _FolderInfoSheet({
     required this.folder,
     required this.page,
-    this.showOpen = true,
   });
 
   final LzFolder folder;
   final _DrivePageState page;
-  /// 当前目录查看属性时隐藏“打开文件夹”（自己打开自己没有意义）。
-  final bool showOpen;
 
   @override
   State<_FolderInfoSheet> createState() => _FolderInfoSheetState();
@@ -3456,15 +3412,6 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
             desc: _desc ?? folder.desc,
             loading: _loading,
           ),
-          if (widget.showOpen)
-            ListTile(
-              leading: const Icon(Icons.folder_open),
-              title: Text(context.l10n.openFolder),
-              onTap: () {
-                Navigator.of(context).pop();
-                page._openFolder(_folder);
-              },
-            ),
           ListTile(
             leading: const Icon(Icons.edit_note),
             title: Text(context.l10n.folderInfo),
@@ -3476,17 +3423,6 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
             title: Text(context.l10n.accessPassword),
             subtitle: Text(context.l10n.accessPasswordSubtitle),
             onTap: _editPassword,
-          ),
-          ListTile(
-            leading: Icon(
-              _pinned ? Icons.push_pin : Icons.push_pin_outlined,
-            ),
-            title: Text(
-              _pinned
-                  ? context.l10n.removeFromQuickAccess
-                  : context.l10n.addToQuickAccess,
-            ),
-            onTap: _toggleQuickAccess,
           ),
           ListTile(
             enabled: !_loading,
@@ -3520,6 +3456,17 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
                     Navigator.of(context).pop();
                     page._showFolderQr(_folder);
                   },
+          ),
+          ListTile(
+            leading: Icon(
+              _pinned ? Icons.push_pin : Icons.push_pin_outlined,
+            ),
+            title: Text(
+              _pinned
+                  ? context.l10n.removeFromQuickAccess
+                  : context.l10n.addToQuickAccess,
+            ),
+            onTap: _toggleQuickAccess,
           ),
           ListTile(
             leading: const Icon(Icons.star_outline),
