@@ -124,6 +124,12 @@ IconData iconForFile(String name) {
     case 'txt':
     case 'md':
     case 'log':
+    case 'xml':
+    case 'json':
+    case 'yml':
+    case 'yaml':
+    case 'ini':
+    case 'conf':
       return Icons.article_outlined;
     default:
       return Icons.insert_drive_file_outlined;

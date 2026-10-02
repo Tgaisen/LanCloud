@@ -147,18 +147,33 @@ class _TransferListSliver extends StatelessWidget {
     final active = tasks.where(isActive).toList();
     final finished =
         tasks.where((t) => !isActive(t)).toList().reversed.toList();
+    final scheme = Theme.of(context).colorScheme;
     return SliverPadding(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
       sliver: SliverList(
         delegate: SliverChildListDelegate([
           if (active.isNotEmpty) ...[
             _SectionHeader(title: l10n.inProgress, count: active.length),
-            for (final task in active) _TransferCard(task: task),
+            // MD3E 连接式列表：进行中的任务成组显示
+            SegmentedList(
+              children: [for (final task in active) _TransferTile(task: task)],
+            ),
+            const SizedBox(height: 20),
           ],
           if (finished.isNotEmpty) ...[
             _SectionHeader(title: l10n.finished, count: finished.length),
-            for (final task in finished) _TransferCard(task: task),
+            SegmentedList(
+              // 已结束整体淡一层主题色，和进行中区分
+              color: Color.alphaBlend(
+                scheme.primary.withValues(alpha: 0.06),
+                scheme.surfaceContainerLow,
+              ),
+              children: [
+                for (final task in finished) _TransferTile(task: task),
+              ],
+            ),
           ],
+          const SizedBox(height: 96),
         ]),
       ),
     );
@@ -178,9 +193,16 @@ class _SectionHeader extends StatelessWidget {
         children: [
           Text(title, style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(width: 8),
-          Text(
-            '$count',
-            style: Theme.of(context).textTheme.bodySmall,
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              '$count',
+              style: Theme.of(context).textTheme.labelSmall,
+            ),
           ),
         ],
       ),
@@ -188,8 +210,10 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-class _TransferCard extends StatelessWidget {
-  const _TransferCard({required this.task});
+/// 单条传输记录：MD3E 列表条目 —— 文件类型图标（圆角容器）+ 名称/状态 + 操作，
+/// 进行中在下方显示进度条。
+class _TransferTile extends StatelessWidget {
+  const _TransferTile({required this.task});
 
   final TransferTask task;
 
@@ -229,100 +253,114 @@ class _TransferCard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     final active = task.status == TransferStatus.running || task.status == TransferStatus.queued;
-    final finished = !active;
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      color: finished
-          ? Color.alphaBlend(
-              scheme.primary.withValues(alpha: 0.06),
-              scheme.surfaceContainerLow,
-            )
-          : null,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 12, 8, 6),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  task.kind == TransferKind.upload
-                      ? Icons.upload_file
-                      : iconForFile(task.name),
+    final done = task.status == TransferStatus.done && task.savedPath != null;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 12, 4, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 文件类型图标（跟随文件名后缀）
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: active
+                      ? scheme.secondaryContainer
+                      : scheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  iconForFile(task.name),
                   size: 22,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    task.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                ),
-              ],
-            ),
-            if (active) ...[
-              const SizedBox(height: 8),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: task.progress,
-                  minHeight: 6,
-                  backgroundColor: scheme.surfaceContainerHighest,
+                  color: active
+                      ? scheme.onSecondaryContainer
+                      : scheme.onSurfaceVariant,
                 ),
               ),
-            ],
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    _statusLine(l10n),
-                    style: Theme.of(context).textTheme.bodySmall,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                if (active)
-                  IconButton(
-                    tooltip: l10n.cancel,
-                    icon: const Icon(Icons.close),
-                    onPressed: () => manager.cancel(task.id),
-                  ),
-                if (task.status == TransferStatus.failed)
-                  IconButton(
-                    tooltip: l10n.retry,
-                    icon: const Icon(Icons.refresh),
-                    onPressed: () => manager.retry(task.id),
-                  ),
-                if (task.status == TransferStatus.done && task.savedPath != null) ...[
-                  if (task.name.toLowerCase().endsWith('.apk'))
-                    IconButton(
-                      tooltip: l10n.install,
-                      icon: const Icon(Icons.install_mobile),
-                      onPressed: () async {
-                        try {
-                          await ApkInstaller.installApk(task.savedPath!);
-                        } catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('$e')),
-                            );
-                          }
-                        }
-                      },
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      task.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleSmall,
                     ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _statusLine(l10n),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(color: scheme.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+              if (active)
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  iconSize: 20,
+                  tooltip: l10n.cancel,
+                  icon: const Icon(Icons.close),
+                  onPressed: () => manager.cancel(task.id),
+                ),
+              if (task.status == TransferStatus.failed)
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  iconSize: 20,
+                  tooltip: l10n.retry,
+                  icon: const Icon(Icons.refresh),
+                  onPressed: () => manager.retry(task.id),
+                ),
+              if (done) ...[
+                if (task.name.toLowerCase().endsWith('.apk'))
                   IconButton(
-                    tooltip: l10n.open,
-                    icon: const Icon(Icons.open_in_new),
-                    onPressed: () => OpenFilex.open(task.savedPath!),
+                    visualDensity: VisualDensity.compact,
+                    iconSize: 20,
+                    tooltip: l10n.install,
+                    icon: const Icon(Icons.install_mobile),
+                    onPressed: () async {
+                      try {
+                        await ApkInstaller.installApk(task.savedPath!);
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('$e')),
+                          );
+                        }
+                      }
+                    },
                   ),
-                ],
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  iconSize: 20,
+                  tooltip: l10n.open,
+                  icon: const Icon(Icons.open_in_new),
+                  onPressed: () => OpenFilex.open(task.savedPath!),
+                ),
               ],
+            ],
+          ),
+          if (active) ...[
+            const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: task.progress,
+                minHeight: 6,
+                backgroundColor: scheme.surfaceContainerHighest,
+              ),
             ),
           ],
-        ),
+        ],
       ),
     );
   }
