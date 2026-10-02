@@ -373,7 +373,14 @@ class _TransferListSliver extends StatelessWidget {
       sliver: SliverList(
         delegate: SliverChildListDelegate([
           if (active.isNotEmpty) ...[
-            SectionHeader(title: l10n.inProgress, count: active.length),
+            // 与收藏页小标题对齐：外层 12 + SectionHeader 自带 4
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: SectionHeader(
+                title: l10n.inProgress,
+                count: active.length,
+              ),
+            ),
             // MD3E 连接式列表：进行中的任务成组显示
             Column(
               children: [
@@ -390,7 +397,13 @@ class _TransferListSliver extends StatelessWidget {
             const SizedBox(height: 20),
           ],
           if (finished.isNotEmpty) ...[
-            SectionHeader(title: l10n.finished, count: finished.length),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: SectionHeader(
+                title: l10n.finished,
+                count: finished.length,
+              ),
+            ),
             Column(
               children: [
                 for (final task in finished)
