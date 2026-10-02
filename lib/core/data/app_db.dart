@@ -300,6 +300,16 @@ class AppDb {
     return rows.isNotEmpty;
   }
 
+  Future<bool> isQuickAccess(String ref) async {
+    final database = await db;
+    final rows = await database.query(
+      'favorites',
+      where: 'ref = ? AND kind = ?',
+      whereArgs: [ref, 'pinFolder'],
+    );
+    return rows.isNotEmpty;
+  }
+
   Future<List<FavoriteItem>> favorites() async {
     final database = await db;
     final rows = await database.query('favorites', orderBy: 'created_at DESC');

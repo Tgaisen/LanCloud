@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart' hide Icons;
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -203,6 +205,93 @@ Future<void> showQrDialog(
       ],
     ),
   );
+}
+
+/// 统一的底部弹窗：NestedScrollView 协同父子滚动；
+/// 内层滚到顶后继续下拉可带动弹窗收起，内容超过上限时内部滚动。
+Future<T?> showAppSheet<T>(
+  BuildContext context, {
+  required Widget child,
+  double maxHeightRatio = 0.8,
+}) {
+  final maxHeight = MediaQuery.sizeOf(context).height * maxHeightRatio;
+  return showModalBottomSheet<T>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (_) => SafeArea(
+      child: _MeasuredNestedSheet(maxHeight: maxHeight, child: child),
+    ),
+  );
+}
+
+/// 先测量内容自然高度，再取 min(内容高度, 上限) 作为弹窗高度；
+/// 内容尺寸变化时自动重新测量，内部使用 NestedScrollView 协同滚动。
+class _MeasuredNestedSheet extends StatefulWidget {
+  const _MeasuredNestedSheet({
+    required this.child,
+    required this.maxHeight,
+  });
+
+  final Widget child;
+  final double maxHeight;
+
+  @override
+  State<_MeasuredNestedSheet> createState() => _MeasuredNestedSheetState();
+}
+
+class _MeasuredNestedSheetState extends State<_MeasuredNestedSheet> {
+  final GlobalKey _contentKey = GlobalKey();
+  double? _contentHeight;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _measure());
+  }
+
+  void _measure() {
+    if (!mounted) return;
+    final box = _contentKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    final height = box.size.height;
+    if (height != _contentHeight) {
+      setState(() => _contentHeight = height);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final measured = _contentHeight;
+    final height = measured == null
+        ? widget.maxHeight
+        : math.min(widget.maxHeight, measured);
+    return Opacity(
+      opacity: measured == null ? 0 : 1,
+      child: SizedBox(
+        height: height,
+        child: NestedScrollView(
+          headerSliverBuilder: (context, innerBoxIsScrolled) =>
+              const <Widget>[],
+          body: SingleChildScrollView(
+            physics: const ClampingScrollPhysics(),
+            child: NotificationListener<SizeChangedLayoutNotification>(
+              onNotification: (notification) {
+                _measure();
+                return false;
+              },
+              child: SizeChangedLayoutNotifier(
+                child: SizedBox(
+                  key: _contentKey,
+                  child: widget.child,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class SectionCard extends StatelessWidget {

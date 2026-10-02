@@ -112,6 +112,7 @@ class NotificationService {
   /// 传输中的汇总进度通知（约每秒节流一次）。
   void showProgress({
     required int count,
+    int done = 0,
     required int percent,
     bool indeterminate = false,
   }) {
@@ -124,6 +125,7 @@ class NotificationService {
     final strings = i18n;
     final body = [
       strings?.notifProgressBody(count) ?? '$count tasks in progress',
+      if (done > 0) strings?.notifDoneCount(done) ?? '$done completed',
       if (!indeterminate) '$percent%',
     ].join(' · ');
     final clamped = percent < 0 ? 0 : (percent > 100 ? 100 : percent);

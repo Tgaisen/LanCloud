@@ -337,5 +337,13 @@
       "count": {"type": "int"}
     }
   },
-  "install": "Install"
+  "install": "Install",
+  "notifDoneCount": "{count} completed",
+  "@notifDoneCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "addToQuickAccess": "Add to quick access",
+  "removeFromQuickAccess": "Remove from quick access"
 }

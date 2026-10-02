@@ -153,13 +153,11 @@ class ProfilePage extends StatelessWidget {
 
   Future<void> _showAccountSwitcher(BuildContext context) async {
     final app = context.read<AppController>();
-    await showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
+    await showAppSheet<void>(
+      context,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
             for (final account in app.accounts.accounts)
               ListTile(
                 leading: Icon(
@@ -174,7 +172,7 @@ class ProfilePage extends StatelessWidget {
                 ),
                 subtitle: Text(context.l10n.uidLabel(account.uid)),
                 onTap: () async {
-                  Navigator.of(sheetContext).pop();
+                  Navigator.of(context).pop();
                   await app.switchAccount(account.uid);
                 },
               ),
@@ -182,7 +180,7 @@ class ProfilePage extends StatelessWidget {
               leading: const Icon(Icons.add),
               title: Text(context.l10n.addAccount),
               onTap: () {
-                Navigator.of(sheetContext).pop();
+                Navigator.of(context).pop();
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const LoginPage()),
                 );
@@ -194,12 +192,11 @@ class ProfilePage extends StatelessWidget {
               title: Text(context.l10n.logout),
               onTap: () {
                 final uid = app.activeUid;
-                Navigator.of(sheetContext).pop();
+                Navigator.of(context).pop();
                 if (uid != null) _removeAccount(context, uid);
               },
             ),
-          ],
-        ),
+        ],
       ),
     );
   }

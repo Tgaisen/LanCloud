@@ -499,5 +499,13 @@
       "count": {"type": "int"}
     }
   },
-  "install": "安装"
+  "install": "安装",
+  "notifDoneCount": "已完成 {count} 个",
+  "@notifDoneCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "addToQuickAccess": "添加到快速访问",
+  "removeFromQuickAccess": "从快速访问移除"
 }

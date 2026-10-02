@@ -262,10 +262,9 @@ class _FileResultCard extends StatelessWidget {
             ? null
             : Text(l10n.sizeLabel(prettyLzSize(file.size))),
         trailing: const Icon(Icons.chevron_right),
-        onTap: () => showModalBottomSheet<void>(
-          context: context,
-          showDragHandle: true,
-          builder: (_) => ShareFileInfoSheet(
+        onTap: () => showAppSheet<void>(
+          context,
+          child: ShareFileInfoSheet(
             name: file.name,
             url: link,
             pwd: pwd,

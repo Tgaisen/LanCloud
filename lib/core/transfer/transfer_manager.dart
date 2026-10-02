@@ -62,8 +62,17 @@ class TransferManager extends ChangeNotifier {
 
   final AppController _app;
   final List<TransferTask> tasks = [];
+  final List<void Function(TransferTask)> _taskListeners = [];
   int _seq = 0;
   bool _serviceRunning = false;
+
+  void addTaskListener(void Function(TransferTask) listener) {
+    _taskListeners.add(listener);
+  }
+
+  void removeTaskListener(void Function(TransferTask) listener) {
+    _taskListeners.remove(listener);
+  }
 
   Future<void> _restore() async {
     try {
@@ -317,6 +326,11 @@ class TransferManager extends ChangeNotifier {
       _pump();
       _notifyFinished(task);
       _syncProgressNotification();
+      if (task.status == TransferStatus.done) {
+        for (final listener in _taskListeners) {
+          listener(task);
+        }
+      }
     }
   }
 
@@ -337,6 +351,9 @@ class TransferManager extends ChangeNotifier {
     var total = 0;
     var received = 0;
     var known = 0;
+    final done = tasks
+        .where((t) => t.status == TransferStatus.done)
+        .length;
     for (final t in running) {
       received += t.received;
       if (t.total > 0) {
@@ -346,6 +363,7 @@ class TransferManager extends ChangeNotifier {
     }
     ns.showProgress(
       count: running.length,
+      done: done,
       percent: total > 0 ? (received * 100) ~/ total : 0,
       indeterminate: known == 0,
     );

@@ -128,18 +128,16 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
 
   Future<void> _showMenu() async {
     final app = context.read<AppController>();
-    await showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
+    await showAppSheet<void>(
+      context,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
             ListTile(
               leading: const Icon(Icons.star_outline),
               title: Text(context.l10n.favorite),
               onTap: () {
-                Navigator.of(sheetContext).pop();
+                Navigator.of(context).pop();
                 _favoriteFolder();
               },
             ),
@@ -147,7 +145,7 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
               leading: const Icon(Icons.copy),
               title: Text(context.l10n.copyLink),
               onTap: () {
-                Navigator.of(sheetContext).pop();
+                Navigator.of(context).pop();
                 copyText(context, widget.link);
               },
             ),
@@ -155,7 +153,7 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
               leading: const Icon(Icons.open_in_new),
               title: Text(context.l10n.openLink),
               onTap: () {
-                Navigator.of(sheetContext).pop();
+                Navigator.of(context).pop();
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) => WebPage(
@@ -167,8 +165,7 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
                 );
               },
             ),
-          ],
-        ),
+        ],
       ),
     );
   }
@@ -314,10 +311,9 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
                       if (_selecting) {
                         _toggleFile(file.url);
                       } else {
-                        showModalBottomSheet<void>(
-                          context: context,
-                          showDragHandle: true,
-                          builder: (_) => ShareFileInfoSheet(
+                        showAppSheet<void>(
+                          context,
+                          child: ShareFileInfoSheet(
                             name: file.name,
                             url: file.url,
                             pwd: widget.pwd,

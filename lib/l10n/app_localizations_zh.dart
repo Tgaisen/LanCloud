@@ -1017,4 +1017,15 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get install => '安装';
+
+  @override
+  String notifDoneCount(int count) {
+    return '已完成 $count 个';
+  }
+
+  @override
+  String get addToQuickAccess => '添加到快速访问';
+
+  @override
+  String get removeFromQuickAccess => '从快速访问移除';
 }

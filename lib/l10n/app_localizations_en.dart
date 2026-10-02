@@ -1047,4 +1047,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get install => 'Install';
+
+  @override
+  String notifDoneCount(int count) {
+    return '$count completed';
+  }
+
+  @override
+  String get addToQuickAccess => 'Add to quick access';
+
+  @override
+  String get removeFromQuickAccess => 'Remove from quick access';
 }

@@ -23,6 +23,7 @@ class _HomePageState extends State<HomePage>
     with AutomaticKeepAliveClientMixin {
   List<RecentItem> _recents = [];
   List<FavoriteItem> _favorites = [];
+  List<FavoriteItem> _quick = [];
   bool _loading = true;
   late final AppDb _db;
 
@@ -51,7 +52,9 @@ class _HomePageState extends State<HomePage>
     if (!mounted) return;
     setState(() {
       _recents = recents;
-      _favorites = favorites.take(6).toList();
+      _quick = favorites.where((f) => f.kind == 'pinFolder').toList();
+      _favorites =
+          favorites.where((f) => f.kind != 'pinFolder').take(6).toList();
       _loading = false;
     });
   }
@@ -170,10 +173,9 @@ class _HomePageState extends State<HomePage>
       case 'file':
         await _showOwnFileActions(context, ref, name);
       case 'shareFile':
-        await showModalBottomSheet<void>(
-          context: context,
-          showDragHandle: true,
-          builder: (_) => ShareFileInfoSheet(
+        await showAppSheet<void>(
+          context,
+          child: ShareFileInfoSheet(
             name: name,
             url: ref,
             pwd: pwd,
@@ -325,10 +327,41 @@ class _HomePageState extends State<HomePage>
                   const SizedBox(height: 16),
                   SectionCard(
                     title: l10n.quickAccess,
-                    child: EmptyHint(
-                      icon: Icons.push_pin_outlined,
-                      text: l10n.quickAccessHint,
-                    ),
+                    child: _quick.isEmpty
+                        ? EmptyHint(
+                            icon: Icons.push_pin_outlined,
+                            text: l10n.quickAccessHint,
+                          )
+                        : Column(
+                            children: [
+                              for (final item in _quick)
+                                ListTile(
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                  ),
+                                  leading: const Icon(Icons.folder_outlined),
+                                  title: Text(
+                                    item.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  trailing: IconButton(
+                                    tooltip: l10n.removeFromQuickAccess,
+                                    icon: const Icon(Icons.close),
+                                    onPressed: () async {
+                                      await app.db.removeFavorite(item.ref);
+                                    },
+                                  ),
+                                  onTap: () => _openItem(
+                                    context,
+                                    'folder',
+                                    item.ref,
+                                    item.name,
+                                    '',
+                                  ),
+                                ),
+                            ],
+                          ),
                   ),
                   SectionCard(
                     title: l10n.recent,
@@ -402,10 +435,9 @@ class _HomePageState extends State<HomePage>
                                       subtitle: Text(_favoriteSubtitle(l10n, item)),
                                       onTap: () {
                                         if (item.kind == 'shareFile') {
-                                          showModalBottomSheet<void>(
-                                            context: context,
-                                            showDragHandle: true,
-                                            builder: (_) => ShareFileInfoSheet(
+                                          showAppSheet<void>(
+                                            context,
+                                            child: ShareFileInfoSheet(
                                               name: item.name,
                                               url: item.ref,
                                               pwd: item.pwd,

@@ -1969,6 +1969,24 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'安装'**
   String get install;
+
+  /// No description provided for @notifDoneCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'已完成 {count} 个'**
+  String notifDoneCount(int count);
+
+  /// No description provided for @addToQuickAccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加到快速访问'**
+  String get addToQuickAccess;
+
+  /// No description provided for @removeFromQuickAccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'从快速访问移除'**
+  String get removeFromQuickAccess;
 }
 
 class _AppLocalizationsDelegate

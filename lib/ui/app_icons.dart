@@ -77,6 +77,7 @@ class Icons {
   static const IconData person_outline = Symbols.person;
   static const IconData picture_as_pdf_outlined = Symbols.picture_as_pdf;
   static const IconData public = Symbols.public;
+  static const IconData push_pin = Symbols.push_pin;
   static const IconData push_pin_outlined = Symbols.push_pin;
   static const IconData qr_code = Symbols.qr_code;
   static const IconData radio_button_checked = Symbols.radio_button_checked;
