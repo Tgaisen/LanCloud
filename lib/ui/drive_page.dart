@@ -3198,7 +3198,10 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
     context
         .read<AppController>()
         .db
-        .isQuickAccess(widget.folder.id)
+        .isPinned(
+          context.read<AppController>().activeUid ?? '',
+          widget.folder.id,
+        )
         .then((value) {
       if (mounted) setState(() => _pinned = value);
     });
@@ -3208,11 +3211,11 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
   Future<void> _toggleQuickAccess() async {
     final app = context.read<AppController>();
     if (_pinned) {
-      await app.db.removeFavorite(widget.folder.id);
+      await app.db.removePin(widget.folder.id);
       if (mounted) setState(() => _pinned = false);
     } else {
-      await app.db.addFavorite(
-        kind: 'pinFolder',
+      await app.db.addPin(
+        account: app.activeUid ?? '',
         name: widget.folder.name,
         ref: widget.folder.id,
       );

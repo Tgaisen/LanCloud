@@ -2,6 +2,27 @@ import 'package:path/path.dart' as p;
 import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 
+import 'account_data.dart';
+
+/// 快速访问里固定的一个网盘目录（按账号区分）。
+class PinItem {
+  PinItem({
+    required this.id,
+    required this.account,
+    required this.name,
+    required this.ref,
+    this.createdAt = 0,
+  });
+
+  final int id;
+  final String account;
+  final String name;
+
+  /// 网盘目录 id。
+  final String ref;
+  final int createdAt;
+}
+
 class FavoriteItem {
   FavoriteItem({
     required this.id,
@@ -64,7 +85,7 @@ class AppDb {
     final path = p.join(await getDatabasesPath(), 'lancloud.db');
     return openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: (db, version) async {
         await db.execute(
           'CREATE TABLE favorites('
@@ -87,6 +108,14 @@ class AppDb {
           'ref TEXT NOT NULL,'
           'pwd TEXT DEFAULT "",'
           'opened_at INTEGER NOT NULL)',
+        );
+        await db.execute(
+          'CREATE TABLE pins('
+          'id INTEGER PRIMARY KEY AUTOINCREMENT,'
+          'account TEXT NOT NULL,'
+          'name TEXT NOT NULL,'
+          'ref TEXT NOT NULL,'
+          'created_at INTEGER NOT NULL)',
         );
         await db.execute(
           'CREATE TABLE downloads('
@@ -142,6 +171,37 @@ class AppDb {
           );
           await db.execute(
             'ALTER TABLE favorites ADD COLUMN sharer TEXT DEFAULT ""',
+          );
+        }
+        if (oldVersion < 5) {
+          // 快速访问从收藏表独立出来，并按账号区分；
+          // 旧数据没有账号信息，account 留空表示所有账号可见。
+          await db.execute(
+            'CREATE TABLE IF NOT EXISTS pins('
+            'id INTEGER PRIMARY KEY AUTOINCREMENT,'
+            'account TEXT NOT NULL,'
+            'name TEXT NOT NULL,'
+            'ref TEXT NOT NULL,'
+            'created_at INTEGER NOT NULL)',
+          );
+          final legacy = await db.query(
+            'favorites',
+            where: 'kind = ?',
+            whereArgs: ['pinFolder'],
+          );
+          for (final row in legacy) {
+            await db.insert('pins', {
+              'account': '',
+              'name': '${row['name']}',
+              'ref': '${row['ref']}',
+              'created_at': row['created_at'] ??
+                  DateTime.now().millisecondsSinceEpoch,
+            });
+          }
+          await db.delete(
+            'favorites',
+            where: 'kind = ?',
+            whereArgs: ['pinFolder'],
           );
         }
       },
@@ -300,19 +360,14 @@ class AppDb {
     return rows.isNotEmpty;
   }
 
-  Future<bool> isQuickAccess(String ref) async {
+  Future<List<FavoriteItem>> favorites() async {
     final database = await db;
     final rows = await database.query(
       'favorites',
-      where: 'ref = ? AND kind = ?',
-      whereArgs: [ref, 'pinFolder'],
+      where: 'kind != ?',
+      whereArgs: ['pinFolder'],
+      orderBy: 'created_at DESC',
     );
-    return rows.isNotEmpty;
-  }
-
-  Future<List<FavoriteItem>> favorites() async {
-    final database = await db;
-    final rows = await database.query('favorites', orderBy: 'created_at DESC');
     return rows
         .map((r) => FavoriteItem(
               id: r['id'] as int,
@@ -326,6 +381,60 @@ class AppDb {
               createdAt: r['created_at'] as int,
             ))
         .toList();
+  }
+
+  // --------------------------------------------------------------------- pins
+
+  /// 某个账号的快速访问（旧数据 account 为空，所有账号都可见）。
+  Future<List<PinItem>> pins(String account) async {
+    final database = await db;
+    final rows = await database.query(
+      'pins',
+      where: "account = ? OR account = ''",
+      whereArgs: [account],
+      orderBy: 'created_at DESC',
+    );
+    return rows
+        .map((r) => PinItem(
+              id: r['id'] as int,
+              account: '${r['account']}',
+              name: '${r['name']}',
+              ref: '${r['ref']}',
+              createdAt: r['created_at'] as int,
+            ))
+        .toList();
+  }
+
+  Future<bool> isPinned(String account, String ref) async {
+    final database = await db;
+    final rows = await database.query(
+      'pins',
+      where: "ref = ? AND (account = ? OR account = '')",
+      whereArgs: [ref, account],
+    );
+    return rows.isNotEmpty;
+  }
+
+  Future<void> addPin({
+    required String account,
+    required String name,
+    required String ref,
+  }) async {
+    final database = await db;
+    await database.delete('pins', where: 'ref = ?', whereArgs: [ref]);
+    await database.insert('pins', {
+      'account': account,
+      'name': name,
+      'ref': ref,
+      'created_at': DateTime.now().millisecondsSinceEpoch,
+    });
+    _touch();
+  }
+
+  Future<void> removePin(String ref) async {
+    final database = await db;
+    await database.delete('pins', where: 'ref = ?', whereArgs: [ref]);
+    _touch();
   }
 
   // ------------------------------------------------------------------ recents
@@ -391,11 +500,13 @@ class AppDb {
   // ------------------------------------------------------------------- backup
 
   /// 备份：导出会随备份迁移的本地表。
-  Future<Map<String, List<Map<String, Object?>>>> exportTables() async {
+  /// 快速访问（pins）与最近使用（recents）按账号分组，其余表平铺。
+  Future<Map<String, Object?>> exportTables() async {
     final database = await db;
     return {
       'favorites': await database.query('favorites'),
-      'recents': await database.query('recents'),
+      'pins': groupByAccount(await database.query('pins')),
+      'recents': groupByAccount(await database.query('recents')),
       'downloads': await database.query('downloads'),
       'transfers': await database.query('transfers'),
     };
@@ -413,6 +524,7 @@ class AppDb {
       'sharer',
       'created_at',
     ],
+    'pins': ['id', 'account', 'name', 'ref', 'created_at'],
     'recents': ['id', 'account', 'kind', 'name', 'ref', 'pwd', 'opened_at'],
     'downloads': ['ref', 'name', 'path', 'created_at'],
     'transfers': [
@@ -431,16 +543,37 @@ class AppDb {
   };
 
   /// 恢复：整表替换备份里的数据，忽略未知列与非 Map 行。
+  /// 兼容两种格式：按账号分组的 `{data_version, data}`，以及早期的平铺数组；
+  /// 早期把快速访问混在 favorites 里的备份会自动恢复到 pins 表。
   Future<void> importTables(Map<String, dynamic> data) async {
     final database = await db;
     await database.transaction((txn) async {
       for (final table in _tableColumns.keys) {
-        final rows = data[table];
-        if (rows is! List) continue;
+        final raw = data[table];
+        if (raw == null) continue;
+        var rows = rowsOfAccountData(raw);
+        if (table == 'favorites') {
+          final legacyPins = rows
+              .where((row) => '${row['kind']}' == 'pinFolder')
+              .toList();
+          rows = rows.where((row) => '${row['kind']}' != 'pinFolder').toList();
+          for (final pin in legacyPins) {
+            await txn.insert(
+              'pins',
+              {
+                'account': '${pin['account'] ?? ''}',
+                'name': '${pin['name'] ?? ''}',
+                'ref': '${pin['ref'] ?? ''}',
+                'created_at': pin['created_at'] ??
+                    DateTime.now().millisecondsSinceEpoch,
+              },
+              conflictAlgorithm: ConflictAlgorithm.replace,
+            );
+          }
+        }
         final columns = _tableColumns[table]!;
         await txn.delete(table);
         for (final row in rows) {
-          if (row is! Map) continue;
           final values = <String, Object?>{
             for (final key in columns)
               if (row.containsKey(key)) key: row[key],

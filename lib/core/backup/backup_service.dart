@@ -8,8 +8,9 @@ import '../app_controller.dart';
 import 'webdav_client.dart';
 import 'webdav_store.dart';
 
-/// 备份文件格式版本。恢复时按 backupAppTag 判断是不是本应用的备份。
-const int backupFormatVersion = 1;
+/// 备份文件格式版本。
+/// 1 → 2：快速访问（pins）从收藏独立出来，pins / recents 改为按账号分组。
+const int backupFormatVersion = 2;
 const String backupAppTag = 'lancloud';
 
 /// 备份与恢复：本地 JSON 文件 + WebDAV 云端。
@@ -59,6 +60,10 @@ class BackupService {
     }
     if (decoded is! Map || decoded['app'] != backupAppTag) {
       throw const BackupException('不是 LanCloud 的备份文件');
+    }
+    final format = (decoded['format'] as num?)?.toInt() ?? 1;
+    if (format > backupFormatVersion) {
+      throw const BackupException('备份来自更新版本的应用，请先升级再恢复');
     }
     final settings = decoded['settings'];
     if (settings is Map) {

@@ -26,7 +26,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage>
     with AutomaticKeepAliveClientMixin {
   List<RecentItem> _recents = [];
-  List<FavoriteItem> _quick = [];
+  List<PinItem> _quick = [];
   bool _loading = true;
   late final AppDb _db;
   final ScrollController _scroll = ScrollController();
@@ -64,14 +64,18 @@ class _HomePageState extends State<HomePage>
   Future<void> _load() async {
     final app = context.read<AppController>();
     final uid = app.activeUid ?? '';
-    final recents = await app.db.recents(uid, limit: 6);
-    final favorites = await app.db.favorites();
-    if (!mounted) return;
-    setState(() {
-      _recents = recents;
-      _quick = favorites.where((f) => f.kind == 'pinFolder').toList();
-      _loading = false;
-    });
+    try {
+      final recents = await app.db.recents(uid, limit: 6);
+      final pins = await app.db.pins(uid);
+      if (!mounted) return;
+      setState(() {
+        _recents = recents;
+        _quick = pins;
+        _loading = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   Future<void> _openItem(
@@ -257,7 +261,7 @@ class _HomePageState extends State<HomePage>
                                   tooltip: l10n.removeFromQuickAccess,
                                   icon: const Icon(Icons.close),
                                   onPressed: () async {
-                                    await app.db.removeFavorite(item.ref);
+                                    await app.db.removePin(item.ref);
                                   },
                                 ),
                                 onTap: () => _openItem(
