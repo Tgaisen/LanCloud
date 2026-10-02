@@ -16,11 +16,12 @@ Future<void> openShareSheet(
   String? initialLink,
   String? initialPwd,
 }) {
-  return showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    showDragHandle: true,
-    builder: (_) => ShareSheet(initialLink: initialLink, initialPwd: initialPwd),
+  // 复用统一弹窗外壳：滚到顶部后继续下拉可带动弹窗收起。
+  // 上限取整屏，保证弹出键盘时表单仍能完整显示（与改造前一致）。
+  return showAppSheet<void>(
+    context,
+    maxHeightRatio: 1,
+    child: ShareSheet(initialLink: initialLink, initialPwd: initialPwd),
   );
 }
 
@@ -152,12 +153,9 @@ class _ShareSheetState extends State<ShareSheet> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-    return SafeArea(
-      child: Padding(
-        padding: EdgeInsets.only(bottom: bottomInset),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-          child: Column(
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, 0, 20, 20 + bottomInset),
+      child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -227,9 +225,7 @@ class _ShareSheetState extends State<ShareSheet> {
                 ),
               ],
             ],
-          ),
         ),
-      ),
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart' hide Icons;
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -250,8 +251,9 @@ Future<void> showQrDialog(
   );
 }
 
-/// 统一的底部弹窗：NestedScrollView 协同父子滚动；
-/// 内层滚到顶后继续下拉可带动弹窗收起，内容超过上限时内部滚动。
+/// 统一的底部弹窗：自适应内容高度，内容超过上限时内部滚动；
+/// 内容滚到顶部后继续下拉会带动整个弹窗下滑（等效 NestedScrolling），
+/// 松手按拖动距离/速度决定关闭或弹回。
 Future<T?> showAppSheet<T>(
   BuildContext context, {
   required Widget child,
@@ -263,15 +265,19 @@ Future<T?> showAppSheet<T>(
     isScrollControlled: true,
     showDragHandle: true,
     builder: (_) => SafeArea(
-      child: _MeasuredNestedSheet(maxHeight: maxHeight, child: child),
+      child: MeasuredSheet(maxHeight: maxHeight, child: child),
     ),
   );
 }
 
-/// 先测量内容自然高度，再取 min(内容高度, 上限) 作为弹窗高度；
-/// 内容尺寸变化时自动重新测量，内部使用 NestedScrollView 协同滚动。
-class _MeasuredNestedSheet extends StatefulWidget {
-  const _MeasuredNestedSheet({
+/// 自适应内容高度的弹窗外壳：
+/// - 先测量内容自然高度，再取 min(内容高度, 上限) 作为弹窗高度；
+/// - 内容尺寸变化（例如弹出键盘）时自动重新测量；
+/// - 内容滚到顶部后继续下拉，剩余位移会带动弹窗下滑（等效 Android 的
+///   NestedScrolling），松手时按拖动距离与速度决定关闭或弹回。
+class MeasuredSheet extends StatefulWidget {
+  const MeasuredSheet({
+    super.key,
     required this.child,
     required this.maxHeight,
   });
@@ -280,17 +286,45 @@ class _MeasuredNestedSheet extends StatefulWidget {
   final double maxHeight;
 
   @override
-  State<_MeasuredNestedSheet> createState() => _MeasuredNestedSheetState();
+  State<MeasuredSheet> createState() => _MeasuredSheetState();
 }
 
-class _MeasuredNestedSheetState extends State<_MeasuredNestedSheet> {
+class _MeasuredSheetState extends State<MeasuredSheet>
+    with SingleTickerProviderStateMixin {
   final GlobalKey _contentKey = GlobalKey();
   double? _contentHeight;
+
+  /// 弹窗被向下拖出的距离（0 = 完全展开）。
+  double _pull = 0;
+
+  /// 松手后的弹回动画。
+  late final AnimationController _settle = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 220),
+  );
+  Animation<double>? _settleTween;
+
+  /// 指针速度采样：用于判断“快速下滑关闭”。
+  VelocityTracker? _tracker;
+  int? _pointer;
 
   @override
   void initState() {
     super.initState();
+    _settle.addListener(_onSettleTick);
     WidgetsBinding.instance.addPostFrameCallback((_) => _measure());
+  }
+
+  @override
+  void dispose() {
+    _settle.dispose();
+    super.dispose();
+  }
+
+  void _onSettleTick() {
+    final tween = _settleTween;
+    if (tween == null) return;
+    setState(() => _pull = tween.value);
   }
 
   void _measure() {
@@ -303,24 +337,96 @@ class _MeasuredNestedSheetState extends State<_MeasuredNestedSheet> {
     }
   }
 
+  /// 完全展开时的高度：内容自然高度，不超过上限。
+  double get _expandedHeight => _contentHeight == null
+      ? widget.maxHeight
+      : math.min(widget.maxHeight, _contentHeight!);
+
+  void _stopSettle() {
+    if (_settle.isAnimating) _settle.stop();
+    _settleTween = null;
+  }
+
+  void _springBack() {
+    if (_pull <= 0) return;
+    _settleTween = Tween<double>(begin: _pull, end: 0).animate(
+      CurvedAnimation(parent: _settle, curve: Curves.easeOutCubic),
+    );
+    _settle.forward(from: 0);
+  }
+
+  /// 手势位移分配（滚动坐标：正值 = 手指下拉）。
+  /// 列表先滚到顶部，超出的位移带动弹窗下滑；反向拖动先还回弹窗。
+  double _distributeDrag(double offset, ScrollMetrics position) {
+    if (offset == 0) return 0;
+    var remaining = offset;
+    if (_pull > 0 && remaining < 0) {
+      // 弹窗正被拖出时向上拖动：优先把弹窗还回去
+      final back = math.min(_pull, -remaining);
+      _stopSettle();
+      setState(() => _pull -= back);
+      remaining += back;
+    }
+    if (remaining <= 0) return remaining;
+    final target = position.pixels - remaining;
+    if (target >= position.minScrollExtent) return remaining;
+    // 列表已经到顶：超出的位移交给弹窗（列表只走到顶部为止）
+    final extra = position.minScrollExtent - target;
+    final capacity = math.max(0.0, _expandedHeight - _pull);
+    final used = math.min(extra, capacity);
+    if (used > 0) {
+      _stopSettle();
+      setState(() => _pull += used);
+    }
+    return remaining - (extra - used);
+  }
+
+  void _onPointerDown(PointerDownEvent event) {
+    _pointer = event.pointer;
+    _tracker = VelocityTracker.withKind(event.kind)
+      ..addPosition(event.timeStamp, event.position);
+  }
+
+  void _onPointerMove(PointerMoveEvent event) {
+    if (event.pointer != _pointer) return;
+    _tracker?.addPosition(event.timeStamp, event.position);
+  }
+
+  void _onPointerEnd(PointerEvent event) {
+    if (event.pointer != _pointer) return;
+    final pull = _pull;
+    final velocity = _tracker?.getVelocity().pixelsPerSecond.dy ?? 0.0;
+    _pointer = null;
+    _tracker = null;
+    if (pull <= 0) return;
+    // 快速下滑，或拖过弹窗高度的 35%：关闭弹窗，否则弹回
+    final shouldClose = velocity > 700 ||
+        (velocity > -700 && pull > _expandedHeight * 0.35);
+    if (shouldClose) {
+      Navigator.of(context).pop();
+    } else {
+      _springBack();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final measured = _contentHeight;
-    final height = measured == null
-        ? widget.maxHeight
-        : math.min(widget.maxHeight, measured);
+    final height = math.max(0.0, _expandedHeight - _pull);
     return Opacity(
       opacity: measured == null ? 0 : 1,
       child: SizedBox(
         height: height,
-        child: NestedScrollView(
-          // 弹窗的手感依赖“到边界后把下拉交给弹窗收起”，
-          // 这里保持 Clamping，不跟随全局的 BouncingScrollPhysics。
-          physics: const ClampingScrollPhysics(),
-          headerSliverBuilder: (context, innerBoxIsScrolled) =>
-              const <Widget>[],
-          body: SingleChildScrollView(
-            physics: const ClampingScrollPhysics(),
+        child: Listener(
+          onPointerDown: _onPointerDown,
+          onPointerMove: _onPointerMove,
+          onPointerUp: _onPointerEnd,
+          onPointerCancel: _onPointerEnd,
+          child: SingleChildScrollView(
+            physics: _SheetDragPhysics(
+              parent: const AlwaysScrollableScrollPhysics(),
+              onOffset: _distributeDrag,
+            ),
             child: NotificationListener<SizeChangedLayoutNotification>(
               onNotification: (notification) {
                 _measure();
@@ -338,6 +444,24 @@ class _MeasuredNestedSheetState extends State<_MeasuredNestedSheet> {
       ),
     );
   }
+}
+
+/// 弹窗内部滚动用的物理：把“到顶后继续下拉”的位移交给弹窗（[onOffset]），
+/// 列表只滚到顶部为止 —— 等效 Android 的 NestedScrolling。
+class _SheetDragPhysics extends ClampingScrollPhysics {
+  const _SheetDragPhysics({super.parent, required this.onOffset});
+
+  /// 输入本次手势位移（滚动坐标：正值 = 手指下拉），
+  /// 返回列表实际应用的位移。
+  final double Function(double offset, ScrollMetrics position) onOffset;
+
+  @override
+  double applyPhysicsToUserOffset(ScrollMetrics position, double offset) =>
+      onOffset(offset, position);
+
+  @override
+  _SheetDragPhysics applyTo(ScrollPhysics? ancestor) =>
+      _SheetDragPhysics(parent: buildParent(ancestor), onOffset: onOffset);
 }
 
 class SectionCard extends StatelessWidget {
