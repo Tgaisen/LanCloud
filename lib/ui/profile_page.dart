@@ -11,8 +11,24 @@ import 'scroll_tint.dart';
 import 'settings_page.dart';
 import 'web_page.dart';
 
-class ProfilePage extends StatelessWidget {
-  const ProfilePage({super.key});
+class ProfilePage extends StatefulWidget {
+  const ProfilePage({super.key, this.tabIndex});
+
+  /// 外壳中的 page 视图下标；作为独立路由打开时为 null（不响应切换通知）。
+  final int? tabIndex;
+
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  final ScrollController _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
 
   void _openWeb(BuildContext context, String url, String title) {
     final app = context.read<AppController>();
@@ -34,22 +50,15 @@ class ProfilePage extends StatelessWidget {
     final uid = app.activeUid ?? '';
     final scheme = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-
+    final headerHeight = MediaQuery.paddingOf(context).top + kToolbarHeight;
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            floating: app.settings.hideTopBar,
-            snap: false,
-            pinned: !app.settings.hideTopBar,
-            backgroundColor: Color.lerp(
-              scheme.surface,
-              scheme.surfaceContainerHighest,
-              ScrollTint.of(context),
-            ),
-            scrolledUnderElevation: 0,
-            title: Text(l10n.my),
-          ),
+      body: Stack(
+        children: [
+          CustomScrollView(
+            controller: _scroll,
+            slivers: [
+              // 顶栏不占布局，这里留出等高占位
+              SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
           SliverPadding(
             padding: const EdgeInsets.all(16),
             sliver: SliverList(
@@ -134,6 +143,26 @@ class ProfilePage extends StatelessWidget {
                   ],
                 ),
               ]),
+            ),
+          ),
+            ],
+          ),
+          // 顶栏浮层：与底栏共用收起进度，切换视图时会下滑出现
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            child: TopBarOverlay(
+              height: headerHeight,
+              child: AppBar(
+                backgroundColor: Color.lerp(
+                  scheme.surface,
+                  scheme.surfaceContainerHighest,
+                  ScrollTint.of(context),
+                ),
+                scrolledUnderElevation: 0,
+                title: Text(l10n.my),
+              ),
             ),
           ),
         ],

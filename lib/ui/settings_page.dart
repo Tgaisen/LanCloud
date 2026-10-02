@@ -232,6 +232,25 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
       ),
       _Entry(
+        id: 'home_folder_open',
+        title: l10n.homeFolderOpen,
+        subtitle: app.settings.homeFolderOpenMode == 'drive'
+            ? l10n.openInDriveTab
+            : l10n.openInNewPage,
+        keywords: l10n.homeFolderOpenKeywords.split(' '),
+        category: 'behavior',
+        build: (context, app) => ListTile(
+          leading: const Icon(Icons.open_in_new),
+          title: Text(context.l10n.homeFolderOpen),
+          subtitle: Text(
+            app.settings.homeFolderOpenMode == 'drive'
+                ? context.l10n.openInDriveTab
+                : context.l10n.openInNewPage,
+          ),
+          onTap: () => _pickHomeFolderOpenMode(context),
+        ),
+      ),
+      _Entry(
         id: 'cache_folders',
         title: l10n.cacheFolders,
         subtitle: l10n.cacheFoldersSubtitle,
@@ -768,6 +787,21 @@ class _SettingsPageState extends State<SettingsPage> {
       options: [('home', l10n.tabHome), ('drive', l10n.tabDrive)],
       current: app.settings.launchPage,
       onSelect: (value) => app.setLaunchPage(value),
+    );
+  }
+
+  static Future<void> _pickHomeFolderOpenMode(BuildContext context) {
+    final app = context.read<AppController>();
+    final l10n = context.l10n;
+    return _pickRadio(
+      context,
+      title: l10n.homeFolderOpen,
+      options: [
+        ('page', l10n.openInNewPage),
+        ('drive', l10n.openInDriveTab),
+      ],
+      current: app.settings.homeFolderOpenMode,
+      onSelect: (value) => app.setHomeFolderOpenMode(value),
     );
   }
 

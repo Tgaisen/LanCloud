@@ -104,6 +104,23 @@ class AppController extends ChangeNotifier {
   /// 顶栏/底栏滑动隐藏进度 0..1，由各页面的 ScrollTint 按滚动距离驱动。
   final ValueNotifier<double> barsHide = ValueNotifier(0);
 
+  /// 当前激活的 page 视图下标：页面据此把折叠的顶栏动画调出来。
+  final ValueNotifier<int> activeTab = ValueNotifier(0);
+
+  /// 首页“目录打开方式 = 网盘页”时请求打开的目录 id（消费后置空）。
+  final ValueNotifier<String?> driveFolderRequest = ValueNotifier(null);
+
+  /// 由外壳注册：切换到指定 page 视图。
+  void Function(int index)? onSwitchTab;
+
+  void switchTab(int index) => onSwitchTab?.call(index);
+
+  /// 在网盘页打开指定目录，并切换到网盘视图。
+  void openFolderInDrive(String folderId) {
+    driveFolderRequest.value = folderId;
+    switchTab(1);
+  }
+
   late final Ticker _barsTicker = Ticker(_onBarsTick);
   double _barsFrom = 0;
   double _barsTo = 0;
@@ -150,6 +167,8 @@ class AppController extends ChangeNotifier {
   void dispose() {
     _barsTicker.dispose();
     barsHide.dispose();
+    activeTab.dispose();
+    driveFolderRequest.dispose();
     super.dispose();
   }
 
@@ -284,6 +303,11 @@ class AppController extends ChangeNotifier {
 
   Future<void> setLaunchPage(String page) async {
     await settings.setLaunchPage(page);
+    notifyListeners();
+  }
+
+  Future<void> setHomeFolderOpenMode(String value) async {
+    await settings.setHomeFolderOpenMode(value);
     notifyListeners();
   }
 

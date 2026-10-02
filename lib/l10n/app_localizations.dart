@@ -245,7 +245,7 @@ abstract class AppLocalizations {
   /// No description provided for @quickAccessHint.
   ///
   /// In zh, this message translates to:
-  /// **'可以在网盘页把常用文件夹固定到这里（后续版本）'**
+  /// **'可在此固定常用网盘目录'**
   String get quickAccessHint;
 
   /// No description provided for @recent.
@@ -889,6 +889,30 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'启动 首页 网盘'**
   String get launchPageKeywords;
+
+  /// No description provided for @homeFolderOpen.
+  ///
+  /// In zh, this message translates to:
+  /// **'首页目录打开方式'**
+  String get homeFolderOpen;
+
+  /// No description provided for @homeFolderOpenKeywords.
+  ///
+  /// In zh, this message translates to:
+  /// **'首页 目录 打开方式 新页面 网盘'**
+  String get homeFolderOpenKeywords;
+
+  /// No description provided for @openInNewPage.
+  ///
+  /// In zh, this message translates to:
+  /// **'新页面'**
+  String get openInNewPage;
+
+  /// No description provided for @openInDriveTab.
+  ///
+  /// In zh, this message translates to:
+  /// **'网盘页'**
+  String get openInDriveTab;
 
   /// No description provided for @cacheFolders.
   ///

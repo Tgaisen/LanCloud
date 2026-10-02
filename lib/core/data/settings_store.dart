@@ -5,6 +5,7 @@ class SettingsStore {
   static const _keyDownloadDir = 'download_dir';
   static const _keyGridView = 'grid_view';
   static const _keyLaunchPage = 'launch_page';
+  static const _keyHomeFolderOpen = 'home_folder_open';
   static const _keyCacheFolders = 'cache_folders';
   static const _keyLoadAllPages = 'load_all_pages';
   static const _keyThemeMode = 'theme_mode';
@@ -32,6 +33,8 @@ class SettingsStore {
   String language = 'system';
   bool gridView = true;
   String launchPage = 'home';
+  /// 首页目录打开方式：page = 新页面，drive = 跳转网盘页。
+  String homeFolderOpenMode = 'page';
   bool cacheFolders = true;
   bool loadAllPages = false;
   String themeMode = 'system';
@@ -65,6 +68,7 @@ class SettingsStore {
     downloadDir = prefs.getString(_keyDownloadDir);
     gridView = prefs.getBool(_keyGridView) ?? true;
     launchPage = prefs.getString(_keyLaunchPage) ?? 'home';
+    homeFolderOpenMode = prefs.getString(_keyHomeFolderOpen) ?? 'page';
     cacheFolders = prefs.getBool(_keyCacheFolders) ?? true;
     loadAllPages = prefs.getBool(_keyLoadAllPages) ?? false;
     themeMode = prefs.getString(_keyThemeMode) ?? 'system';
@@ -216,6 +220,12 @@ class SettingsStore {
     launchPage = page;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyLaunchPage, page);
+  }
+
+  Future<void> setHomeFolderOpenMode(String value) async {
+    homeFolderOpenMode = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyHomeFolderOpen, value);
   }
 
   Future<void> setCacheFolders(bool value) async {

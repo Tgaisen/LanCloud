@@ -161,6 +161,7 @@ class _RootShellState extends State<RootShell> {
 
   @override
   void dispose() {
+    context.read<AppController>().onSwitchTab = null;
     NotificationService.onOpenTransfers = null;
     SharedInbox.instance.onText = null;
     SharedInbox.instance.onFiles = null;
@@ -171,6 +172,8 @@ class _RootShellState extends State<RootShell> {
 
   void _goTo(int i) {
     if (i == _index) return;
+    // 切换视图时把被收起的顶/底栏带动画调出来
+    context.read<AppController>().animateBarsHide(0);
     setState(() => _index = i);
     _programmaticJump = true;
     if (_pageController.hasClients) {
@@ -192,6 +195,7 @@ class _RootShellState extends State<RootShell> {
   @override
   void initState() {
     super.initState();
+    context.read<AppController>().onSwitchTab = _goTo;
     NotificationService.onOpenTransfers = () => _goTo(2);
     SharedInbox.instance.onText = _handleSharedText;
     SharedInbox.instance.onFiles = _handleSharedFiles;
@@ -205,6 +209,8 @@ class _RootShellState extends State<RootShell> {
           ? 1
           : 0;
     }
+    // 记录初始视图，便于页面判断自己是否被激活
+    context.read<AppController>().activeTab.value = _index;
   }
 
   String? _extractShareLink(String text) {
@@ -350,10 +356,10 @@ class _RootShellState extends State<RootShell> {
         .length;
 
     final pages = <Widget>[
-      const HomePage(),
-      const DrivePage(),
-      const TransfersPage(),
-      const ProfilePage(),
+      const HomePage(tabIndex: 0),
+      const DrivePage(tabIndex: 1),
+      const TransfersPage(tabIndex: 2),
+      const ProfilePage(tabIndex: 3),
     ];
     // 底栏整体高度：悬浮样式含上下留白，用于 1:1 跟随滚动的收起距离
     final barHeight = app.settings.floatingNavBar ? 108.0 : 80.0;
@@ -369,6 +375,9 @@ class _RootShellState extends State<RootShell> {
         onPageChanged: (i) {
           // 程序化跳转经过中间页时保持指示器停留在目标，避免底栏按钮闪烁
           if (_programmaticJump && i != _index) return;
+          // 视图真正切换后：恢复底栏并通知页面把折叠的顶栏调出来
+          app.animateBarsHide(0);
+          app.activeTab.value = i;
           setState(() => _index = i);
         },
         children: [

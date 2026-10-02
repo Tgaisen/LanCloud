@@ -198,6 +198,43 @@ class FadeIn extends StatelessWidget {
   }
 }
 
+/// 顶栏浮层：和底栏共用同一套收起进度（[AppController.barsHide]），
+/// 滚动向下时整体上滑隐藏、调出时（[AppController.animateBarsHide]）下滑显示。
+///
+/// 顶栏不参与列表布局，因此推动它不会改变页面的滚动位置；
+/// 页面需要在列表顶部留出等高的占位（见各页面的 spacer sliver）。
+class TopBarOverlay extends StatelessWidget {
+  const TopBarOverlay({
+    super.key,
+    required this.height,
+    required this.child,
+  });
+
+  /// 顶栏完整高度（状态栏 + 工具栏 + bottom），用于计算滑出距离。
+  final double height;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final app = context.watch<AppController>();
+    return ValueListenableBuilder<double>(
+      valueListenable: app.barsHide,
+      child: child,
+      builder: (context, hide, child) {
+        // 只有开启「顶栏收起」时才跟随收起进度
+        final t = app.settings.hideTopBar ? hide.clamp(0.0, 1.0) : 0.0;
+        return IgnorePointer(
+          ignoring: t >= 0.999,
+          child: Transform.translate(
+            offset: Offset(0, -height * t),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+}
+
 /// 本地生成二维码弹窗（不经过任何服务器）。
 Future<void> showQrDialog(
   BuildContext context, {

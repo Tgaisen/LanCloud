@@ -2,7 +2,6 @@ import 'package:flutter/material.dart' hide Icons;
 import 'package:open_filex/open_filex.dart';
 import 'package:provider/provider.dart';
 
-import '../core/app_controller.dart';
 import '../core/apk_installer.dart';
 import '../core/transfer/transfer_manager.dart';
 import '../l10n/l10n.dart';
@@ -11,7 +10,10 @@ import 'common.dart';
 import 'scroll_tint.dart';
 
 class TransfersPage extends StatefulWidget {
-  const TransfersPage({super.key});
+  const TransfersPage({super.key, this.tabIndex});
+
+  /// 外壳中的 page 视图下标；作为独立路由打开时为 null（不响应切换通知）。
+  final int? tabIndex;
 
   @override
   State<TransfersPage> createState() => _TransfersPageState();
@@ -20,69 +22,88 @@ class TransfersPage extends StatefulWidget {
 class _TransfersPageState extends State<TransfersPage>
     with AutomaticKeepAliveClientMixin {
   int _tab = 0;
+  final ScrollController _scroll = ScrollController();
 
   @override
   bool get wantKeepAlive => true;
 
   @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     super.build(context);
-    final app = context.watch<AppController>();
     final scheme = Theme.of(context).colorScheme;
-    final hideTop = app.settings.hideTopBar;
     final l10n = context.l10n;
+    final headerHeight = MediaQuery.paddingOf(context).top + kToolbarHeight + 58;
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            floating: hideTop,
-            snap: false,
-            pinned: !hideTop,
-            backgroundColor: Color.lerp(
-              scheme.surface,
-              scheme.surfaceContainerHighest,
-              ScrollTint.of(context),
-            ),
-            scrolledUnderElevation: 0,
-            title: Text(l10n.transfers),
-            actions: [
-              IconButton(
-                tooltip: l10n.clearFinished,
-                icon: const Icon(Icons.delete_sweep_outlined),
-                onPressed: () =>
-                    context.read<TransferManager>().clearFinished(),
+      body: Stack(
+        children: [
+          CustomScrollView(
+            controller: _scroll,
+            slivers: [
+              // 顶栏不占布局，这里留出等高占位
+              SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
+              _TransferListSliver(
+                kind: _tab == 0 ? TransferKind.upload : TransferKind.download,
               ),
             ],
-            bottom: PreferredSize(
-              preferredSize: const Size.fromHeight(58),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: SegmentedButton<int>(
-                    segments: [
-                      ButtonSegment(
-                        value: 0,
-                        label: Text(l10n.upload),
-                        icon: const Icon(Icons.upload),
+          ),
+          // 顶栏浮层：与底栏共用收起进度，切换视图时会下滑出现
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            child: TopBarOverlay(
+              height: headerHeight,
+              child: AppBar(
+                backgroundColor: Color.lerp(
+                  scheme.surface,
+                  scheme.surfaceContainerHighest,
+                  ScrollTint.of(context),
+                ),
+                scrolledUnderElevation: 0,
+                title: Text(l10n.transfers),
+                actions: [
+                  IconButton(
+                    tooltip: l10n.clearFinished,
+                    icon: const Icon(Icons.delete_sweep_outlined),
+                    onPressed: () =>
+                        context.read<TransferManager>().clearFinished(),
+                  ),
+                ],
+                bottom: PreferredSize(
+                  preferredSize: const Size.fromHeight(58),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: SegmentedButton<int>(
+                        segments: [
+                          ButtonSegment(
+                            value: 0,
+                            label: Text(l10n.upload),
+                            icon: const Icon(Icons.upload),
+                          ),
+                          ButtonSegment(
+                            value: 1,
+                            label: Text(l10n.download),
+                            icon: const Icon(Icons.download),
+                          ),
+                        ],
+                        selected: {_tab},
+                        selectedIcon: const Icon(Icons.check),
+                        onSelectionChanged: (values) =>
+                            setState(() => _tab = values.first),
                       ),
-                      ButtonSegment(
-                        value: 1,
-                        label: Text(l10n.download),
-                        icon: const Icon(Icons.download),
-                      ),
-                    ],
-                    selected: {_tab},
-                    selectedIcon: const Icon(Icons.check),
-                    onSelectionChanged: (values) =>
-                        setState(() => _tab = values.first),
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-          _TransferListSliver(
-            kind: _tab == 0 ? TransferKind.upload : TransferKind.download,
           ),
         ],
       ),

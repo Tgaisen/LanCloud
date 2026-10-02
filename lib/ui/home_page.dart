@@ -13,7 +13,10 @@ import 'share_file_sheet.dart';
 import 'share_page.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  const HomePage({super.key, this.tabIndex});
+
+  /// 外壳中的 page 视图下标；作为独立路由打开时为 null（不响应切换通知）。
+  final int? tabIndex;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -26,6 +29,7 @@ class _HomePageState extends State<HomePage>
   List<FavoriteItem> _quick = [];
   bool _loading = true;
   late final AppDb _db;
+  final ScrollController _scroll = ScrollController();
 
   @override
   bool get wantKeepAlive => true;
@@ -33,15 +37,28 @@ class _HomePageState extends State<HomePage>
   @override
   void initState() {
     super.initState();
-    _db = context.read<AppController>().db;
+    final app = context.read<AppController>();
+    _db = app.db;
     _load();
     _db.revision.addListener(_load);
+    app.activeTab.addListener(_onActiveTabChanged);
   }
 
   @override
   void dispose() {
     _db.revision.removeListener(_load);
+    context.read<AppController>().activeTab.removeListener(_onActiveTabChanged);
+    _scroll.dispose();
     super.dispose();
+  }
+
+  /// 切到本视图时刷新本地数据（收藏/最近使用可能已在别处变化）。
+  void _onActiveTabChanged() {
+    final app = context.read<AppController>();
+    if (widget.tabIndex == null) return;
+    if (app.activeTab.value == widget.tabIndex) {
+      _load();
+    }
   }
 
   Future<void> _load() async {
@@ -165,11 +182,18 @@ class _HomePageState extends State<HomePage>
   ) async {
     switch (kind) {
       case 'folder':
-        await Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => DrivePage(initialFolderId: ref, initialName: name),
-          ),
-        );
+        final app = context.read<AppController>();
+        if (app.settings.homeFolderOpenMode == 'drive') {
+          // 跳转网盘视图并加载到该目录
+          app.openFolderInDrive(ref);
+        } else {
+          await Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) =>
+                  DrivePage(initialFolderId: ref, initialName: name),
+            ),
+          );
+        }
       case 'file':
         await _showOwnFileActions(context, ref, name);
       case 'shareFile':
@@ -265,210 +289,220 @@ class _HomePageState extends State<HomePage>
             t.status == TransferStatus.running ||
             t.status == TransferStatus.queued)
         .length;
+    final headerHeight = MediaQuery.paddingOf(context).top + kToolbarHeight;
     return Scaffold(
-      body: RefreshIndicator(
-        onRefresh: _load,
-        child: CustomScrollView(
-          slivers: [
-            SliverAppBar(
-              // floating：向上滚动立刻开始出现；pinned 只由设置决定
-              floating: app.settings.hideTopBar,
-              snap: false,
-              pinned: !app.settings.hideTopBar,
-              backgroundColor: Color.lerp(
-                Theme.of(context).colorScheme.surface,
-                Theme.of(context).colorScheme.surfaceContainerHighest,
-                ScrollTint.of(context),
-              ),
-              scrolledUnderElevation: 0,
-              title: Text(l10n.appName),
-              actions: [
-                IconButton(
-                  tooltip: l10n.openShareLink,
-                  icon: const Icon(Icons.link),
-                  onPressed: () => openShareSheet(context),
-                ),
-                IconButton(
-                  tooltip: l10n.scanComingSoonTooltip,
-                  icon: const Icon(Icons.qr_code),
-                  onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(l10n.scanComingSoon)),
-                  ),
-                ),
-              ],
-            ),
-            SliverPadding(
-              padding: const EdgeInsets.all(16),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  Row(
-                    children: [
-                      Expanded(
-                        child: FilledButton.icon(
-                          onPressed: () => openShareSheet(context),
-                          icon: const Icon(Icons.open_in_new),
-                          label: Text(l10n.openShareLink),
+      body: Stack(
+        children: [
+          CustomScrollView(
+            controller: _scroll,
+            slivers: [
+              // 顶栏不占布局，这里留出等高占位
+              SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
+          SliverPadding(
+            padding: const EdgeInsets.all(16),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                Row(
+                  children: [
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: () => openShareSheet(context),
+                        icon: const Icon(Icons.open_in_new),
+                        label: Text(l10n.openShareLink),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () {},
+                        icon: const Icon(Icons.cloud_upload_outlined),
+                        label: Text(
+                          running > 0
+                              ? l10n.transferringCount(running)
+                              : l10n.transferCenter,
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () {},
-                          icon: const Icon(Icons.cloud_upload_outlined),
-                          label: Text(
-                            running > 0
-                                ? l10n.transferringCount(running)
-                                : l10n.transferCenter,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  SectionCard(
-                    title: l10n.quickAccess,
-                    child: _quick.isEmpty
-                        ? EmptyHint(
-                            icon: Icons.push_pin_outlined,
-                            text: l10n.quickAccessHint,
-                          )
-                        : Column(
-                            children: [
-                              for (final item in _quick)
-                                ListTile(
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                  ),
-                                  leading: const Icon(Icons.folder_outlined),
-                                  title: Text(
-                                    item.name,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  trailing: IconButton(
-                                    tooltip: l10n.removeFromQuickAccess,
-                                    icon: const Icon(Icons.close),
-                                    onPressed: () async {
-                                      await app.db.removeFavorite(item.ref);
-                                    },
-                                  ),
-                                  onTap: () => _openItem(
-                                    context,
-                                    'folder',
-                                    item.ref,
-                                    item.name,
-                                    '',
-                                  ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                SectionCard(
+                  title: l10n.quickAccess,
+                  child: _quick.isEmpty
+                      ? EmptyHint(
+                          icon: Icons.push_pin_outlined,
+                          text: l10n.quickAccessHint,
+                        )
+                      : Column(
+                          children: [
+                            for (final item in _quick)
+                              ListTile(
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
                                 ),
-                            ],
-                          ),
-                  ),
-                  SectionCard(
-                    title: l10n.recent,
-                    child: _loading
-                        ? const Padding(
-                            padding: EdgeInsets.all(16),
-                            child: Center(child: CircularProgressIndicator()),
-                          )
-                        : (_recents.isEmpty
-                            ? EmptyHint(
-                                icon: Icons.history,
-                                text: l10n.noRecent,
-                              )
-                            : Column(
-                                children: [
-                                  for (final item in _recents)
-                                    ListTile(
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(horizontal: 16),
-                                      leading: Icon(
-                                        item.kind.toLowerCase().contains('folder')
-                                            ? Icons.folder_outlined
-                                            : iconForFile(item.name),
-                                      ),
-                                      title: Text(
-                                        item.name,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      subtitle: Text(
-                                        item.kind.startsWith('share')
-                                            ? l10n.sharedContent
-                                            : l10n.myDrive,
-                                      ),
-                                      onTap: () => _openItem(
-                                        context,
-                                        item.kind,
-                                        item.ref,
-                                        item.name,
-                                        item.pwd,
-                                      ),
+                                leading: const Icon(Icons.folder_outlined),
+                                title: Text(
+                                  item.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                trailing: IconButton(
+                                  tooltip: l10n.removeFromQuickAccess,
+                                  icon: const Icon(Icons.close),
+                                  onPressed: () async {
+                                    await app.db.removeFavorite(item.ref);
+                                  },
+                                ),
+                                onTap: () => _openItem(
+                                  context,
+                                  'folder',
+                                  item.ref,
+                                  item.name,
+                                  '',
+                                ),
+                              ),
+                          ],
+                        ),
+                ),
+                SectionCard(
+                  title: l10n.recent,
+                  child: _loading
+                      ? const Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Center(child: CircularProgressIndicator()),
+                        )
+                      : (_recents.isEmpty
+                          ? EmptyHint(
+                              icon: Icons.history,
+                              text: l10n.noRecent,
+                            )
+                          : Column(
+                              children: [
+                                for (final item in _recents)
+                                  ListTile(
+                                    contentPadding:
+                                        const EdgeInsets.symmetric(horizontal: 16),
+                                    leading: Icon(
+                                      item.kind.toLowerCase().contains('folder')
+                                          ? Icons.folder_outlined
+                                          : iconForFile(item.name),
                                     ),
-                                ],
-                              )),
-                  ),
-                  SectionCard(
-                    title: l10n.myFavorites,
-                    child: _loading
-                        ? const SizedBox.shrink()
-                        : (_favorites.isEmpty
-                            ? EmptyHint(
-                                icon: Icons.star_border,
-                                text: l10n.favoritesHint,
-                              )
-                            : Column(
-                                children: [
-                                  for (final item in _favorites)
-                                    ListTile(
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(horizontal: 16),
-                                      leading: Icon(
-                                        item.kind.toLowerCase().contains('folder')
-                                            ? Icons.folder_outlined
-                                            : iconForFile(item.name),
-                                      ),
-                                      title: Text(
-                                        item.title.isEmpty ? item.name : item.title,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      subtitle: Text(_favoriteSubtitle(l10n, item)),
-                                      onTap: () {
-                                        if (item.kind == 'shareFile') {
-                                          showAppSheet<void>(
-                                            context,
-                                            child: ShareFileInfoSheet(
-                                              name: item.name,
-                                              url: item.ref,
-                                              pwd: item.pwd,
-                                              size: item.size,
-                                            ),
-                                          );
-                                        } else {
-                                          _openItem(
-                                            context,
-                                            item.kind,
-                                            item.ref,
-                                            item.name,
-                                            item.pwd,
-                                          );
-                                        }
-                                      },
-                                      trailing: IconButton(
-                                        tooltip: l10n.moreActions,
-                                        icon: const Icon(Icons.more_vert),
-                                        onPressed: () =>
-                                            _favoriteOptions(item),
-                                      ),
+                                    title: Text(
+                                      item.name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                ],
-                              )),
+                                    subtitle: Text(
+                                      item.kind.startsWith('share')
+                                          ? l10n.sharedContent
+                                          : l10n.myDrive,
+                                    ),
+                                    onTap: () => _openItem(
+                                      context,
+                                      item.kind,
+                                      item.ref,
+                                      item.name,
+                                      item.pwd,
+                                    ),
+                                  ),
+                              ],
+                            )),
+                ),
+                SectionCard(
+                  title: l10n.myFavorites,
+                  child: _loading
+                      ? const SizedBox.shrink()
+                      : (_favorites.isEmpty
+                          ? EmptyHint(
+                              icon: Icons.star_border,
+                              text: l10n.favoritesHint,
+                            )
+                          : Column(
+                              children: [
+                                for (final item in _favorites)
+                                  ListTile(
+                                    contentPadding:
+                                        const EdgeInsets.symmetric(horizontal: 16),
+                                    leading: Icon(
+                                      item.kind.toLowerCase().contains('folder')
+                                          ? Icons.folder_outlined
+                                          : iconForFile(item.name),
+                                    ),
+                                    title: Text(
+                                      item.title.isEmpty ? item.name : item.title,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    subtitle: Text(_favoriteSubtitle(l10n, item)),
+                                    onTap: () {
+                                      if (item.kind == 'shareFile') {
+                                        showAppSheet<void>(
+                                          context,
+                                          child: ShareFileInfoSheet(
+                                            name: item.name,
+                                            url: item.ref,
+                                            pwd: item.pwd,
+                                            size: item.size,
+                                          ),
+                                        );
+                                      } else {
+                                        _openItem(
+                                          context,
+                                          item.kind,
+                                          item.ref,
+                                          item.name,
+                                          item.pwd,
+                                        );
+                                      }
+                                    },
+                                    trailing: IconButton(
+                                      tooltip: l10n.moreActions,
+                                      icon: const Icon(Icons.more_vert),
+                                      onPressed: () =>
+                                          _favoriteOptions(item),
+                                    ),
+                                  ),
+                              ],
+                            )),
+                ),
+              ]),
+            ),
+          ),
+            ],
+          ),
+          // 顶栏浮层：与底栏共用收起进度，切换视图时会下滑出现
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            child: TopBarOverlay(
+              height: headerHeight,
+              child: AppBar(
+                backgroundColor: Color.lerp(
+                  Theme.of(context).colorScheme.surface,
+                  Theme.of(context).colorScheme.surfaceContainerHighest,
+                  ScrollTint.of(context),
+                ),
+                scrolledUnderElevation: 0,
+                title: Text(l10n.appName),
+                actions: [
+                  IconButton(
+                    tooltip: l10n.openShareLink,
+                    icon: const Icon(Icons.link),
+                    onPressed: () => openShareSheet(context),
                   ),
-                ]),
+                  IconButton(
+                    tooltip: l10n.scanComingSoonTooltip,
+                    icon: const Icon(Icons.qr_code),
+                    onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(l10n.scanComingSoon)),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

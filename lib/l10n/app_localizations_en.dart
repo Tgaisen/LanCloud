@@ -92,8 +92,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get quickAccess => 'Quick access';
 
   @override
-  String get quickAccessHint =>
-      'Pin frequently used folders from the drive page here (coming soon)';
+  String get quickAccessHint => 'Pin frequently used drive folders here';
 
   @override
   String get recent => 'Recent';
@@ -436,6 +435,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get launchPageKeywords => 'start home drive';
+
+  @override
+  String get homeFolderOpen => 'Open home folders in';
+
+  @override
+  String get homeFolderOpenKeywords => 'home folder open mode page drive';
+
+  @override
+  String get openInNewPage => 'New page';
+
+  @override
+  String get openInDriveTab => 'Drive tab';
 
   @override
   String get cacheFolders => 'Cache folder data';

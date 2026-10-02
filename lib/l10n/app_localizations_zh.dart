@@ -92,7 +92,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get quickAccess => '快速访问';
 
   @override
-  String get quickAccessHint => '可以在网盘页把常用文件夹固定到这里（后续版本）';
+  String get quickAccessHint => '可在此固定常用网盘目录';
 
   @override
   String get recent => '最近使用';
@@ -423,6 +423,18 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get launchPageKeywords => '启动 首页 网盘';
+
+  @override
+  String get homeFolderOpen => '首页目录打开方式';
+
+  @override
+  String get homeFolderOpenKeywords => '首页 目录 打开方式 新页面 网盘';
+
+  @override
+  String get openInNewPage => '新页面';
+
+  @override
+  String get openInDriveTab => '网盘页';
 
   @override
   String get cacheFolders => '缓存目录数据';

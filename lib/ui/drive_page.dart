@@ -23,10 +23,17 @@ import 'web_page.dart';
 const int kFreeUploadLimit = 100 * 1024 * 1024;
 
 class DrivePage extends StatefulWidget {
-  const DrivePage({super.key, this.initialFolderId = '-1', this.initialName});
+  const DrivePage({
+    super.key,
+    this.initialFolderId = '-1',
+    this.initialName,
+    this.tabIndex,
+  });
 
   final String initialFolderId;
   final String? initialName;
+  /// 外壳中的 page 视图下标；作为独立路由打开时为 null（不响应切换通知）。
+  final int? tabIndex;
 
   @override
   State<DrivePage> createState() => _DrivePageState();
@@ -106,17 +113,25 @@ class _DrivePageState extends State<DrivePage>
   @override
   void initState() {
     super.initState();
-    _sortMode = context.read<AppController>().settings.sortMode;
+    final app = context.read<AppController>();
+    _sortMode = app.settings.sortMode;
     context.read<TransferManager>().addTaskListener(_onTaskDone);
     if (widget.initialName != null) {
       _path = [PathNode(id: widget.initialFolderId, name: widget.initialName!)];
     }
     _scroll.addListener(_onScroll);
-    _load();
+    app.driveFolderRequest.addListener(_onDriveFolderRequest);
+    if (app.driveFolderRequest.value != null) {
+      // 首页请求的目录：直接加载目标目录，不再先加载根目录
+      WidgetsBinding.instance.addPostFrameCallback((_) => _onDriveFolderRequest());
+    } else {
+      _load();
+    }
   }
 
   @override
   void dispose() {
+    _app.driveFolderRequest.removeListener(_onDriveFolderRequest);
     context.read<TransferManager>().removeTaskListener(_onTaskDone);
     if (widget.initialFolderId == '-1' && widget.initialName == null) {
       _app.onDriveBack = null;
@@ -136,6 +151,38 @@ class _DrivePageState extends State<DrivePage>
 
   bool get _animationsEnabled =>
       context.read<AppController>().settings.transitionAnimations;
+
+  /// 首页选择“网盘页打开”时：跳转到请求的目录。
+  void _onDriveFolderRequest() {
+    final folderId = _app.driveFolderRequest.value;
+    if (folderId == null) return;
+    _app.driveFolderRequest.value = null;
+    if (!mounted) return;
+    _openFolderById(folderId);
+  }
+
+  /// 直接定位到指定目录（路径由接口返回，从根目录算起）。
+  Future<void> _openFolderById(String folderId) async {
+    if (_directorySwitching || folderId == _folderId) return;
+    _directorySwitching = true;
+    try {
+      _app.animateBarsHide(0);
+      _rememberFolderOffset();
+      await _animateDirectorySwitch(folderId);
+      if (!mounted) return;
+      setState(() {
+        _folderId = folderId;
+        _filter = '';
+        _searchController.clear();
+        _path = const [];
+      });
+      await _load();
+      if (!mounted) return;
+      _restoreFolderOffset(folderId);
+    } finally {
+      _directorySwitching = false;
+    }
+  }
 
   /// 上传完成后，若目标是当前目录，只刷新文件列表（局部刷新）。
   void _onTaskDone(TransferTask task) {
@@ -2071,8 +2118,8 @@ class _DrivePageState extends State<DrivePage>
     super.build(context);
     final app = context.watch<AppController>();
     final grid = app.settings.gridView;
-    final hideTopBar = app.settings.hideTopBar;
     final selectedCount = _selectedFiles.length + _selectedFolders.length;
+    final headerHeight = MediaQuery.paddingOf(context).top + kToolbarHeight + 46;
 
     return AnimatedBuilder(
       animation: Listenable.merge([_selAnim, _appBarAnim, _exitAnim]),
@@ -2080,7 +2127,17 @@ class _DrivePageState extends State<DrivePage>
         return Scaffold(
           body: Stack(
             children: [
-              _buildBody(grid, hideTopBar: hideTopBar),
+              _buildBody(grid),
+              // 顶栏浮层：与底栏共用收起进度，切换视图时会下滑出现
+              Positioned(
+                left: 0,
+                right: 0,
+                top: 0,
+                child: TopBarOverlay(
+                  height: headerHeight,
+                  child: _topBar(context),
+                ),
+              ),
               // 多选时只覆盖顶栏；路径栏保持可见，平时透明且不拦截点击
               Positioned(
                 left: 0,
@@ -2208,9 +2265,77 @@ class _DrivePageState extends State<DrivePage>
     );
   }
 
-  /// 顶栏是第一个 sliver，路径栏作为它的 bottom 组成一个整体：
-  /// 和其它视图相比只是更高、多了一行路径，浮动/钉住逻辑完全一致。
-  Widget _buildBody(bool grid, {required bool hideTopBar}) {
+  /// 顶栏（含路径栏）：作为浮层显示，与底栏共用收起进度。
+  Widget _topBar(BuildContext context) {
+    return AppBar(
+      backgroundColor: Color.lerp(
+        Theme.of(context).colorScheme.surface,
+        Theme.of(context).colorScheme.surfaceContainerHighest,
+        _appBarAnim.value,
+      ),
+      scrolledUnderElevation: 0,
+      leading: (ModalRoute.of(context)?.isFirst ?? true)
+          ? null
+          : IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+      title: _searching
+          ? TextField(
+              controller: _searchController,
+              autofocus: true,
+              decoration: InputDecoration(
+                hintText: context.l10n.searchCurrentFolder,
+                border: InputBorder.none,
+              ),
+              onChanged: (value) => setState(() => _filter = value.trim()),
+            )
+          : GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: _scrollToTop,
+              child: Text(context.l10n.tabDrive),
+            ),
+      actions: _searching
+          ? [
+              IconButton(
+                tooltip: context.l10n.closeSearch,
+                icon: const Icon(Icons.close),
+                onPressed: () => setState(() {
+                  _searching = false;
+                  _filter = '';
+                  _searchController.clear();
+                }),
+              ),
+            ]
+          : [
+              IconButton(
+                tooltip: context.l10n.search,
+                icon: const Icon(Icons.search),
+                onPressed: () => setState(() => _searching = true),
+              ),
+              IconButton(
+                tooltip: context.l10n.menu,
+                icon: const Icon(Icons.more_vert),
+                onPressed: _showDriveMenu,
+              ),
+            ],
+      bottom: PreferredSize(
+        preferredSize: const Size.fromHeight(46),
+        // 多选期间禁用路径切换，但路径栏保持可见；
+        // bottom 拿到的是无界高度，必须自己声明固定高度，否则会把工具栏挤成 0
+        child: SizedBox(
+          height: 46,
+          child: IgnorePointer(
+            ignoring: _selecting,
+            child: _pathBar(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 顶栏不参与列表布局，列表顶部留出等高占位。
+  Widget _buildBody(bool grid) {
     final headerInset =
         MediaQuery.of(context).padding.top + kToolbarHeight + 46;
     return drive_refresh.LanRefreshIndicator(
@@ -2219,76 +2344,7 @@ class _DrivePageState extends State<DrivePage>
       child: CustomScrollView(
         controller: _scroll,
         slivers: [
-          SliverAppBar(
-            // floating：向上滚动立刻开始出现；pinned 只由设置决定
-            floating: hideTopBar,
-            snap: false,
-            pinned: !hideTopBar,
-            backgroundColor: Color.lerp(
-              Theme.of(context).colorScheme.surface,
-              Theme.of(context).colorScheme.surfaceContainerHighest,
-              _appBarAnim.value,
-            ),
-            scrolledUnderElevation: 0,
-            leading: (ModalRoute.of(context)?.isFirst ?? true)
-                ? null
-                : IconButton(
-                    icon: const Icon(Icons.arrow_back),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-            title: _searching
-                ? TextField(
-                    controller: _searchController,
-                    autofocus: true,
-                    decoration: InputDecoration(
-                      hintText: context.l10n.searchCurrentFolder,
-                      border: InputBorder.none,
-                    ),
-                    onChanged: (value) =>
-                        setState(() => _filter = value.trim()),
-                  )
-                : GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: _scrollToTop,
-                    child: Text(context.l10n.tabDrive),
-                  ),
-            actions: _searching
-                ? [
-                    IconButton(
-                      tooltip: context.l10n.closeSearch,
-                      icon: const Icon(Icons.close),
-                      onPressed: () => setState(() {
-                        _searching = false;
-                        _filter = '';
-                        _searchController.clear();
-                      }),
-                    ),
-                  ]
-                : [
-                    IconButton(
-                      tooltip: context.l10n.search,
-                      icon: const Icon(Icons.search),
-                      onPressed: () => setState(() => _searching = true),
-                    ),
-                    IconButton(
-                      tooltip: context.l10n.menu,
-                      icon: const Icon(Icons.more_vert),
-                      onPressed: _showDriveMenu,
-                    ),
-                  ],
-            bottom: PreferredSize(
-              preferredSize: const Size.fromHeight(46),
-              // 多选期间禁用路径切换，但路径栏保持可见
-              // bottom 拿到的是无界高度，必须自己声明固定高度，否则会把工具栏挤成 0
-              child: SizedBox(
-                height: 46,
-                child: IgnorePointer(
-                  ignoring: _selecting,
-                  child: _pathBar(),
-                ),
-              ),
-            ),
-          ),
+          SliverToBoxAdapter(child: SizedBox(height: headerInset)),
           // 目录切换时内容整体淡出（顶栏与路径栏不受影响）
           ..._contentSlivers(grid).map(
             (sliver) => SliverFadeTransition(
