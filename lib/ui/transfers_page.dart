@@ -465,128 +465,77 @@ class _TransferTile extends StatelessWidget {
     final l10n = context.l10n;
     final active = task.status == TransferStatus.running || task.status == TransferStatus.queued;
     final done = task.status == TransferStatus.done && task.savedPath != null;
-    // 圆角由外层 SegmentedList 统一控制（组外侧 16dp / 组内相邻 4dp），
-    // 这里只负责内容与选中底色。
-    return Material(
-      type: MaterialType.transparency,
-      child: InkWell(
-        onTap: onTap,
-        onLongPress: onLongPress,
-        child: ColoredBox(
-          color: selected ? scheme.primaryContainer : Colors.transparent,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 4, 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 文件类型图标（跟随文件名后缀）
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 220),
-                curve: Curves.easeOutCubic,
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: selected
-                      ? scheme.surface
-                      : scheme.secondaryContainer,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  selected ? Icons.check_circle : iconForFile(task.name),
-                  size: 22,
-                  color:
-                      selected ? scheme.primary : scheme.onSecondaryContainer,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      task.name,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleSmall,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      _statusLine(l10n),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodySmall
-                          ?.copyWith(color: scheme.onSurfaceVariant),
-                    ),
-                  ],
-                ),
-              ),
-              // 多选期间隐藏行内操作，避免误触
-              if (!selecting && active)
-                IconButton(
-                  visualDensity: VisualDensity.compact,
-                  iconSize: 20,
-                  tooltip: l10n.cancel,
-                  icon: const Icon(Icons.close),
-                  onPressed: () => manager.cancel(task.id),
-                ),
-              if (!selecting && task.status == TransferStatus.failed)
-                IconButton(
-                  visualDensity: VisualDensity.compact,
-                  iconSize: 20,
-                  tooltip: l10n.retry,
-                  icon: const Icon(Icons.refresh),
-                  onPressed: () => manager.retry(task.id),
-                ),
-              if (!selecting && done) ...[
-                if (task.name.toLowerCase().endsWith('.apk'))
+    // 与首页 / 收藏共用同一套列表项布局，圆角由外层 SegmentedList 控制
+    return Md3ListItem(
+      icon: iconForFile(task.name),
+      title: task.name,
+      subtitle: _statusLine(l10n),
+      titleMaxLines: 2,
+      subtitleMaxLines: 2,
+      selected: selected,
+      onTap: onTap,
+      onLongPress: onLongPress,
+      // 多选期间隐藏行内操作，避免误触
+      trailing: selecting
+          ? null
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (active)
                   IconButton(
                     visualDensity: VisualDensity.compact,
                     iconSize: 20,
-                    tooltip: l10n.install,
-                    icon: const Icon(Icons.install_mobile),
-                    onPressed: () async {
-                      try {
-                        await ApkInstaller.installApk(task.savedPath!);
-                      } catch (e) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('$e')),
-                          );
-                        }
-                      }
-                    },
+                    tooltip: l10n.cancel,
+                    icon: const Icon(Icons.close),
+                    onPressed: () => manager.cancel(task.id),
                   ),
-                IconButton(
-                  visualDensity: VisualDensity.compact,
-                  iconSize: 20,
-                  tooltip: l10n.open,
-                  icon: const Icon(Icons.open_in_new),
-                  onPressed: () => OpenFilex.open(task.savedPath!),
-                ),
+                if (task.status == TransferStatus.failed)
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    iconSize: 20,
+                    tooltip: l10n.retry,
+                    icon: const Icon(Icons.refresh),
+                    onPressed: () => manager.retry(task.id),
+                  ),
+                if (done) ...[
+                  if (task.name.toLowerCase().endsWith('.apk'))
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      iconSize: 20,
+                      tooltip: l10n.install,
+                      icon: const Icon(Icons.install_mobile),
+                      onPressed: () async {
+                        try {
+                          await ApkInstaller.installApk(task.savedPath!);
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('$e')),
+                            );
+                          }
+                        }
+                      },
+                    ),
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    iconSize: 20,
+                    tooltip: l10n.open,
+                    icon: const Icon(Icons.open_in_new),
+                    onPressed: () => OpenFilex.open(task.savedPath!),
+                  ),
+                ],
               ],
-            ],
-          ),
-          if (active) ...[
-            const SizedBox(height: 10),
-            ClipRRect(
+            ),
+      bottom: active
+          ? ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(
                 value: task.progress,
                 minHeight: 6,
                 backgroundColor: scheme.surfaceContainerLowest,
               ),
-            ),
-          ],
-          ],
-        ),
-      ),
-    ),
-  ),
-);
+            )
+          : null,
+    );
   }
 }

@@ -288,79 +288,27 @@ class _FavoritesPageState extends State<FavoritesPage>
   }
 
   Widget _tile(FavoriteItem item) {
-    final scheme = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     final selected = _selected.contains(item.id);
     final isFolder = item.kind == 'shareFolder';
-    return Material(
-      type: MaterialType.transparency,
-      child: InkWell(
-        onTap: () => _open(item),
-        onLongPress: () => _enterSelection(id: item.id),
-        child: ColoredBox(
-          color: selected ? scheme.primaryContainer : Colors.transparent,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
-            child: Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: selected
-                        ? Colors.transparent
-                        : scheme.secondaryContainer,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    selected
-                        ? Icons.check_circle
-                        : (isFolder
-                              ? Icons.folder_outlined
-                              : iconForFile(item.name)),
-                    size: 22,
-                    color: selected
-                        ? scheme.primary
-                        : scheme.onSecondaryContainer,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item.title.isEmpty ? item.name : item.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleSmall,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _subtitle(item),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodySmall
-                            ?.copyWith(color: scheme.onSurfaceVariant),
-                      ),
-                    ],
-                  ),
-                ),
-                if (!_selecting)
-                  IconButton(
-                    visualDensity: VisualDensity.compact,
-                    iconSize: 20,
-                    tooltip: l10n.moreActions,
-                    icon: const Icon(Icons.more_vert),
-                    onPressed: () => _itemOptions(item),
-                  ),
-              ],
+    return Md3ListItem(
+      icon: isFolder ? Icons.folder_outlined : iconForFile(item.name),
+      title: item.title.isEmpty ? item.name : item.title,
+      subtitle: _subtitle(item),
+      titleMaxLines: 2,
+      subtitleMaxLines: 2,
+      selected: selected,
+      onTap: () => _open(item),
+      onLongPress: () => _enterSelection(id: item.id),
+      trailing: _selecting
+          ? null
+          : IconButton(
+              visualDensity: VisualDensity.compact,
+              iconSize: 20,
+              tooltip: l10n.moreActions,
+              icon: const Icon(Icons.more_vert),
+              onPressed: () => _itemOptions(item),
             ),
-          ),
-        ),
-      ),
     );
   }
 

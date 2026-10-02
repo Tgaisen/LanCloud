@@ -86,19 +86,10 @@ class _HomePageState extends State<HomePage>
     required bool first,
   }) {
     final l10n = context.l10n;
-    final scheme = Theme.of(context).colorScheme;
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-      leading: const Icon(Icons.folder_outlined),
-      title: Text(item.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: item.path.isEmpty
-          ? null
-          : Text(
-              item.path,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: scheme.outline, fontSize: 12),
-            ),
+    return Md3ListItem(
+      icon: Icons.folder_outlined,
+      title: item.name,
+      subtitle: item.path,
       trailing: IconButton(
         tooltip: l10n.moreActions,
         icon: const Icon(Icons.more_vert),
@@ -355,24 +346,16 @@ class _HomePageState extends State<HomePage>
                           : SegmentedList(
                               children: [
                                 for (final item in _recents)
-                                  ListTile(
-                                    contentPadding:
-                                        const EdgeInsets.symmetric(horizontal: 16),
-                                    leading: Icon(
-                                      item.kind.toLowerCase().contains('folder')
-                                          ? Icons.folder_outlined
-                                          : iconForFile(item.name),
-                                    ),
-                                    title: Text(
-                                      item.name,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    subtitle: Text(
-                                      item.kind.startsWith('share')
-                                          ? l10n.sharedContent
-                                          : l10n.myDrive,
-                                    ),
+                                  Md3ListItem(
+                                    icon: item.kind
+                                            .toLowerCase()
+                                            .contains('folder')
+                                        ? Icons.folder_outlined
+                                        : iconForFile(item.name),
+                                    title: item.name,
+                                    subtitle: item.kind.startsWith('share')
+                                        ? l10n.sharedContent
+                                        : l10n.myDrive,
                                     onTap: () => _openItem(
                                       context,
                                       item.kind,

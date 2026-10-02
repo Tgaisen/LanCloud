@@ -580,6 +580,127 @@ class BatchAction extends StatelessWidget {
   }
 }
 
+/// MD3E 标准列表项：圆角图标块 + 标题 / 副标题 + 尾部操作。
+/// 首页（快速访问、最近使用）、传输、收藏共用，参数与网盘列表项一致：
+/// 内边距 10/8、图标块 42dp（圆角 12）、标题 bodyLarge、副标题 bodyMedium。
+class Md3ListItem extends StatelessWidget {
+  const Md3ListItem({
+    super.key,
+    required this.icon,
+    required this.title,
+    this.subtitle = '',
+    this.onTap,
+    this.onLongPress,
+    this.trailing,
+    this.selected = false,
+    this.iconBoxColor,
+    this.bottom,
+    this.titleMaxLines = 1,
+    this.subtitleMaxLines = 1,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
+
+  /// 尾部操作（⋯、重试、打开等）。
+  final Widget? trailing;
+
+  /// 多选选中态：整行填主色容器，圆角由外层分组控制。
+  final bool selected;
+
+  /// 图标块底色，默认 secondaryContainer。
+  final Color? iconBoxColor;
+
+  /// 标题行下方的附加内容（例如传输进度条）。
+  final Widget? bottom;
+
+  final int titleMaxLines;
+  final int subtitleMaxLines;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Material(
+      type: MaterialType.transparency,
+      child: InkWell(
+        onTap: onTap,
+        onLongPress: onLongPress,
+        child: ColoredBox(
+          color: selected ? scheme.primaryContainer : Colors.transparent,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(10, 8, 2, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeOutCubic,
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? scheme.surface
+                            : iconBoxColor ?? scheme.secondaryContainer,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        selected ? Icons.check_circle : icon,
+                        size: 22,
+                        color: selected
+                            ? scheme.primary
+                            : scheme.onSecondaryContainer,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            maxLines: titleMaxLines,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodyLarge,
+                          ),
+                          if (subtitle.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Text(
+                                subtitle,
+                                maxLines: subtitleMaxLines,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodyMedium
+                                    ?.copyWith(color: scheme.onSurfaceVariant),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    if (trailing != null) ...[
+                      const SizedBox(width: 4),
+                      trailing!,
+                    ],
+                  ],
+                ),
+                if (bottom != null) ...[
+                  const SizedBox(height: 10),
+                  bottom!,
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// MD3E 路径胶囊：当前项用主色容器强调，其余为中性容器。
 /// 网盘路径栏与文件夹选择弹窗共用。
 class PathChip extends StatelessWidget {
