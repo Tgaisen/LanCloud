@@ -3116,10 +3116,17 @@ class _DriveRow extends StatelessWidget {
     final scheme = theme.colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
-      child: Material(
-        color: selected ? scheme.primaryContainer : Colors.transparent,
-        borderRadius: BorderRadius.circular(selected ? 14 : 18),
-        clipBehavior: Clip.antiAlias,
+      // 选中时圆角跟着做形状过渡（shape morph）
+      child: TweenAnimationBuilder<double>(
+        tween: Tween<double>(begin: 18, end: selected ? 14 : 18),
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        builder: (context, radius, child) => Material(
+          color: selected ? scheme.primaryContainer : Colors.transparent,
+          borderRadius: BorderRadius.circular(radius),
+          clipBehavior: Clip.antiAlias,
+          child: child,
+        ),
         child: InkWell(
           onTap: onTap,
           onLongPress: onLongPress,
@@ -3800,13 +3807,13 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: scheme.secondaryContainer,
+                    color: scheme.surfaceContainerHigh,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
                     Icons.folder_outlined,
                     size: 19,
-                    color: scheme.onSecondaryContainer,
+                    color: scheme.onSurfaceVariant,
                   ),
                 ),
                 const SizedBox(width: 12),

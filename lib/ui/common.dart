@@ -648,7 +648,7 @@ class BatchActionBar extends StatelessWidget {
           elevation: 3,
           shadowColor: scheme.shadow.withValues(alpha: 0.28),
           color: scheme.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(16),
           clipBehavior: Clip.antiAlias,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),

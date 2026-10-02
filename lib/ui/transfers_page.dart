@@ -479,19 +479,26 @@ class _TransferTile extends StatelessWidget {
     final done = task.status == TransferStatus.done && task.savedPath != null;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
-      child: Material(
-        color: selected
-            ? scheme.primaryContainer
-            : active
-                ? scheme.surfaceContainerHigh
-                : scheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(selected ? 14 : 18),
+      // 选中时圆角与底色一起做形状过渡（shape morph）
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        decoration: BoxDecoration(
+          color: selected
+              ? scheme.primaryContainer
+              : active
+                  ? scheme.surfaceContainerHigh
+                  : scheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(selected ? 14 : 18),
+        ),
         clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          onLongPress: onLongPress,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 10, 6, 12),
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            onTap: onTap,
+            onLongPress: onLongPress,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 6, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -499,25 +506,22 @@ class _TransferTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // 文件类型图标（跟随文件名后缀）
-              Container(
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
                   color: selected
                       ? scheme.surface
-                      : active
-                          ? scheme.secondaryContainer
-                          : scheme.surfaceContainerLowest,
+                      : scheme.secondaryContainer,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   selected ? Icons.check_circle : iconForFile(task.name),
                   size: 22,
-                  color: selected
-                      ? scheme.primary
-                      : active
-                      ? scheme.onSecondaryContainer
-                      : scheme.onSurfaceVariant,
+                  color:
+                      selected ? scheme.primary : scheme.onSecondaryContainer,
                 ),
               ),
               const SizedBox(width: 12),
@@ -603,6 +607,7 @@ class _TransferTile extends StatelessWidget {
           ],
         ],
       ),
+            ),
           ),
         ),
       ),
