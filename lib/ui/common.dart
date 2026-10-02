@@ -701,8 +701,8 @@ class Md3ListItem extends StatelessWidget {
   }
 }
 
-/// MD3E 大号宽版图标按钮：胶囊形容器（默认 surfaceContainerLow，与列表卡片同色）
-/// + 大图标，说明文字放在按钮下方。首页「打开链接 / 传输中心」使用。
+/// MD3E 中号宽版图标按钮：胶囊形容器（默认 surfaceContainerLow，与列表卡片同色）
+/// + 24dp 图标，说明文字放在按钮下方。首页「打开链接 / 传输中心」使用。
 class ExpressiveIconButton extends StatelessWidget {
   const ExpressiveIconButton({
     super.key,
@@ -710,7 +710,8 @@ class ExpressiveIconButton extends StatelessWidget {
     required this.label,
     required this.onPressed,
     this.badge,
-    this.height = 96,
+    this.width = 140,
+    this.height = 56,
   });
 
   final IconData icon;
@@ -719,13 +720,14 @@ class ExpressiveIconButton extends StatelessWidget {
 
   /// 角标文字（例如进行中的传输数量）。
   final String? badge;
+  final double width;
   final double height;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final iconWidget = Icon(icon, size: 32, color: scheme.onSurfaceVariant);
+    final iconWidget = Icon(icon, size: 24, color: scheme.onSurfaceVariant);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -736,8 +738,8 @@ class ExpressiveIconButton extends StatelessWidget {
           child: InkWell(
             onTap: onPressed,
             child: SizedBox(
+              width: width,
               height: height,
-              width: double.infinity,
               child: Center(
                 child: badge == null
                     ? iconWidget

@@ -1376,11 +1376,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutCopyright => '© 2026 Tgaisen · Apache License 2.0';
 
   @override
-  String get aboutDisclaimerTitle => 'Disclaimer';
-
-  @override
-  String get aboutDisclaimer =>
-      'This is an unofficial third-party LanZou Cloud client, not affiliated with or endorsed by LanZou. It is provided \"as is\"; account risks, data loss or service interruptions are at your own risk.';
+  String get termsDisclaimer =>
+      '7. Disclaimer: this is an unofficial third-party LanZou Cloud client, not affiliated with or endorsed by LanZou. It is provided \"as is\"; account risks, data loss or service interruptions are at your own risk.';
 
   @override
   String get firstRunWelcome => 'Welcome to LanCloud';

@@ -7,7 +7,7 @@ import '../core/app_info.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
-import 'legal_page.dart';
+import 'legal_dialog.dart';
 import 'scroll_tint.dart';
 
 /// 关于页：版本、协议与隐私、开源许可、项目主页与免责声明。
@@ -77,23 +77,14 @@ class AboutPage extends StatelessWidget {
                           leading: const Icon(Icons.article_outlined),
                           title: Text(l10n.aboutTerms),
                           trailing: const Icon(Icons.chevron_right),
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  const LegalPage(doc: LegalDoc.terms),
-                            ),
-                          ),
+                          onTap: () => showLegalDialog(context, LegalDoc.terms),
                         ),
                         ListTile(
                           leading: const Icon(Icons.lock_outline),
                           title: Text(l10n.aboutPrivacy),
                           trailing: const Icon(Icons.chevron_right),
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  const LegalPage(doc: LegalDoc.privacy),
-                            ),
-                          ),
+                          onTap: () =>
+                              showLegalDialog(context, LegalDoc.privacy),
                         ),
                       ],
                     ),
@@ -114,7 +105,6 @@ class AboutPage extends StatelessWidget {
                         ListTile(
                           leading: const Icon(Icons.public),
                           title: Text(l10n.aboutProjectHome),
-                          subtitle: const Text(projectUrl),
                           trailing: const Icon(Icons.open_in_new),
                           onTap: () => launchUrl(
                             Uri.parse(projectUrl),
@@ -125,27 +115,10 @@ class AboutPage extends StatelessWidget {
                     ),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(4, 20, 4, 4),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            l10n.aboutDisclaimerTitle,
-                            style: theme.textTheme.titleSmall
-                                ?.copyWith(color: scheme.primary),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            l10n.aboutDisclaimer,
-                            style: theme.textTheme.bodySmall
-                                ?.copyWith(color: scheme.outline, height: 1.6),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            l10n.aboutCopyright,
-                            style: theme.textTheme.bodySmall
-                                ?.copyWith(color: scheme.outline),
-                          ),
-                        ],
+                      child: Text(
+                        l10n.aboutCopyright,
+                        style: theme.textTheme.bodySmall
+                            ?.copyWith(color: scheme.outline),
                       ),
                     ),
                   ]),

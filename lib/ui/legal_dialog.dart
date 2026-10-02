@@ -1,0 +1,41 @@
+import 'package:flutter/material.dart' hide Icons;
+
+import '../l10n/l10n.dart';
+
+enum LegalDoc { terms, privacy }
+
+/// 用户协议 / 隐私政策：文本弹窗（不单独开页面）。
+Future<void> showLegalDialog(BuildContext context, LegalDoc doc) {
+  final l10n = context.l10n;
+  final theme = Theme.of(context);
+  final title = doc == LegalDoc.terms ? l10n.aboutTerms : l10n.aboutPrivacy;
+  // 免责声明并入用户协议
+  final body = doc == LegalDoc.terms
+      ? '${l10n.termsBody}\n\n${l10n.termsDisclaimer}'
+      : l10n.privacyBody;
+  return showDialog<void>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      title: Text(title),
+      content: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: 420,
+          maxHeight: MediaQuery.sizeOf(dialogContext).height * 0.6,
+        ),
+        child: SingleChildScrollView(
+          child: SelectableText(
+            body,
+            style: theme.textTheme.bodyMedium?.copyWith(height: 1.7),
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(),
+          child: Text(l10n.close),
+        ),
+      ],
+    ),
+  );
+}

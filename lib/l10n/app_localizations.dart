@@ -2564,17 +2564,11 @@ abstract class AppLocalizations {
   /// **'© 2026 Tgaisen · Apache License 2.0'**
   String get aboutCopyright;
 
-  /// No description provided for @aboutDisclaimerTitle.
+  /// No description provided for @termsDisclaimer.
   ///
   /// In zh, this message translates to:
-  /// **'免责声明'**
-  String get aboutDisclaimerTitle;
-
-  /// No description provided for @aboutDisclaimer.
-  ///
-  /// In zh, this message translates to:
-  /// **'本应用是非官方的蓝奏云第三方客户端，与蓝奏云官方无任何关联，也未获得官方授权。应用按「现状」提供，因使用本应用造成的账号风险、数据丢失或服务中断由使用者自行承担。'**
-  String get aboutDisclaimer;
+  /// **'7. 免责声明：本应用是非官方的蓝奏云第三方客户端，与蓝奏云官方无任何关联，也未获得官方授权。应用按「现状」提供，因使用本应用造成的账号风险、数据丢失或服务中断由使用者自行承担。'**
+  String get termsDisclaimer;
 
   /// No description provided for @firstRunWelcome.
   ///

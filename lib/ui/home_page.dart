@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart' hide Icons;
 import 'package:provider/provider.dart';
 
@@ -282,26 +284,40 @@ class _HomePageState extends State<HomePage>
             padding: const EdgeInsets.all(16),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: ExpressiveIconButton(
+                // 入口按钮：宽屏铺满，小屏 / 以后加更多按钮时横向滑动
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    const gap = 12.0;
+                    final actions = [
+                      ExpressiveIconButton(
                         icon: Icons.open_in_new,
                         label: l10n.openLink,
                         onPressed: () => openShareSheet(context),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ExpressiveIconButton(
+                      ExpressiveIconButton(
                         icon: Icons.cloud_upload_outlined,
                         label: l10n.transferCenter,
                         badge: running > 0 ? '$running' : null,
                         onPressed: () => app.switchTab(2),
                       ),
-                    ),
-                  ],
+                    ];
+                    final perButton =
+                        (constraints.maxWidth - gap * (actions.length - 1)) /
+                            actions.length;
+                    final width = math.max(140.0, perButton);
+                    return SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          for (var i = 0; i < actions.length; i++) ...[
+                            if (i > 0) const SizedBox(width: gap),
+                            SizedBox(width: width, child: actions[i]),
+                          ],
+                        ],
+                      ),
+                    );
+                  },
                 ),
                 const SizedBox(height: 16),
                 SectionCard(

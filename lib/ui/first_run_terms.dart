@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../core/agreements.dart';
 import '../l10n/l10n.dart';
-import 'legal_page.dart';
+import 'legal_dialog.dart';
 
 /// 首次启动（或条款更新后）的同意页：同意后才能进入主界面。
 class FirstRunTerms extends StatelessWidget {
@@ -82,8 +82,6 @@ class FirstRunTerms extends StatelessWidget {
   }
 
   void _openLegal(BuildContext context, LegalDoc doc) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => LegalPage(doc: doc)),
-    );
+    showLegalDialog(context, doc);
   }
 }

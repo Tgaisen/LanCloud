@@ -5,7 +5,6 @@ import 'package:lancloud/core/agreements.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/first_run_terms.dart';
-import 'package:lancloud/ui/legal_page.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -53,16 +52,16 @@ void main() {
     expect(await Agreements.accepted(), isTrue);
   });
 
-  testWidgets('同意页可以打开用户协议与隐私政策全文', (tester) async {
+  testWidgets('同意页可以打开用户协议与隐私政策弹窗', (tester) async {
     await pumpApp(tester, FirstRunTerms(onAccepted: () {}));
 
     await tester.tap(find.text('用户协议'));
     await tester.pumpAndSettle();
-    expect(find.byType(LegalPage), findsOneWidget);
+    expect(find.byType(AlertDialog), findsOneWidget);
     expect(find.textContaining('非官方第三方客户端'), findsOneWidget);
+    expect(find.textContaining('免责声明'), findsOneWidget);
 
-    // 自定义 AppBar 的返回按钮（pageBack 依赖系统返回图标，这里直接点按钮）
-    await tester.tap(find.byType(IconButton).first);
+    await tester.tap(find.text('关闭'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('隐私政策'));
     await tester.pumpAndSettle();

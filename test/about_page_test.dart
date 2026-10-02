@@ -4,7 +4,6 @@ import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/app_info.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/about_page.dart';
-import 'package:lancloud/ui/legal_page.dart';
 import 'package:provider/provider.dart';
 
 void main() {
@@ -29,13 +28,11 @@ void main() {
     expect(find.text('隐私政策'), findsOneWidget);
     expect(find.text('开源许可'), findsOneWidget);
     expect(find.text('项目主页'), findsOneWidget);
-    expect(find.text(projectUrl), findsOneWidget);
-    expect(find.text('免责声明'), findsOneWidget);
     expect(find.textContaining('Apache License 2.0'), findsOneWidget);
     app.dispose();
   });
 
-  testWidgets('关于页可以进入隐私政策全文', (tester) async {
+  testWidgets('关于页可以打开隐私政策弹窗', (tester) async {
     final app = AppController();
     await tester.pumpWidget(
       ChangeNotifierProvider<AppController>.value(
@@ -53,7 +50,7 @@ void main() {
     await tester.tap(find.text('隐私政策'));
     await tester.pumpAndSettle();
 
-    expect(find.byType(LegalPage), findsOneWidget);
+    expect(find.byType(AlertDialog), findsOneWidget);
     expect(find.textContaining('WebDAV'), findsWidgets);
     app.dispose();
   });
