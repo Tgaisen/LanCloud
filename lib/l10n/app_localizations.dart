@@ -275,7 +275,7 @@ abstract class AppLocalizations {
   /// No description provided for @myFavorites.
   ///
   /// In zh, this message translates to:
-  /// **'收藏内容'**
+  /// **'收藏'**
   String get myFavorites;
 
   /// No description provided for @favoritesHint.
