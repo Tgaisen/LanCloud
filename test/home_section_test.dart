@@ -1,0 +1,82 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:lancloud/l10n/app_localizations.dart';
+import 'package:lancloud/ui/common.dart';
+
+void main() {
+  testWidgets('SectionCard 折叠后隐藏内容并旋转三角，展开后恢复', (tester) async {
+    var expanded = true;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: StatefulBuilder(
+            builder: (context, setState) => SectionCard(
+              title: '快速访问',
+              leading: const Icon(Icons.push_pin_outlined),
+              expanded: expanded,
+              onToggle: () => setState(() => expanded = !expanded),
+              child: const Text('内容'),
+            ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('内容'), findsOneWidget);
+    expect(
+      tester.widget<AnimatedRotation>(find.byType(AnimatedRotation)).turns,
+      0.25,
+    );
+
+    await tester.tap(find.text('快速访问'));
+    await tester.pumpAndSettle();
+    expect(find.text('内容'), findsNothing);
+    expect(
+      tester.widget<AnimatedRotation>(find.byType(AnimatedRotation)).turns,
+      0,
+    );
+
+    await tester.tap(find.text('快速访问'));
+    await tester.pumpAndSettle();
+    expect(find.text('内容'), findsOneWidget);
+  });
+
+  testWidgets('SectionCard 出现/隐藏内容时高度动画过渡', (tester) async {
+    var expanded = true;
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('zh'),
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: StatefulBuilder(
+            builder: (context, setState) => SectionCard(
+              title: '最近使用',
+              expanded: expanded,
+              onToggle: () => setState(() => expanded = !expanded),
+              child: const SizedBox(height: 200, width: 200),
+            ),
+            ),
+          ),
+        ),
+      ),
+    );
+    final fullHeight = tester.getSize(find.byType(SectionCard)).height;
+    expect(fullHeight, greaterThan(200));
+
+    await tester.tap(find.text('最近使用'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100)); // 动画进行中
+    final midHeight = tester.getSize(find.byType(SectionCard)).height;
+    expect(midHeight, greaterThan(0));
+    expect(midHeight, lessThan(fullHeight));
+
+    await tester.pumpAndSettle();
+    final collapsed = tester.getSize(find.byType(SectionCard)).height;
+    expect(collapsed, lessThan(midHeight));
+    expect(collapsed, lessThan(80));
+  });
+}

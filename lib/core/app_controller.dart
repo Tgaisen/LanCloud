@@ -241,6 +241,24 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setQuickExpanded(bool value) async {
+    await settings.setQuickExpanded(value);
+    notifyListeners();
+  }
+
+  Future<void> setRecentsExpanded(bool value) async {
+    await settings.setRecentsExpanded(value);
+    notifyListeners();
+  }
+
+  /// 设置最近使用条数（0 = 不记录），并立刻按新上限裁剪已有记录。
+  Future<void> setRecentLimit(int value) async {
+    await settings.setRecentLimit(value);
+    final uid = activeUid;
+    if (uid != null) await db.trimRecents(uid, value);
+    notifyListeners();
+  }
+
   Future<void> setMaxUploads(int value) async {
     await settings.setMaxUploads(value);
     notifyListeners();

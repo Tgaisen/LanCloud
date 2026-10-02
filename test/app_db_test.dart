@@ -99,4 +99,41 @@ void main() {
     await db.removePin('88');
     expect((await db.pins('523441')).length, 1);
   });
+
+  test('最近使用按上限裁剪：0 表示不记录', () async {
+    final db = AppDb.instance;
+    const account = 'limit-test';
+
+    for (var i = 0; i < 5; i++) {
+      await db.addRecent(
+        account: account,
+        kind: 'folder',
+        name: '目录 $i',
+        ref: '$i',
+        limit: 3,
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 3));
+    }
+    final kept = await db.recents(account);
+    expect(kept.length, 3);
+    expect(kept.first.name, '目录 4');
+
+    // limit = 0：不再记录新条目
+    await db.addRecent(
+      account: account,
+      kind: 'folder',
+      name: '不记录',
+      ref: 'x',
+      limit: 0,
+    );
+    expect((await db.recents(account)).length, 3);
+
+    // 调小上限立即裁剪
+    await db.trimRecents(account, 1);
+    expect((await db.recents(account)).single.name, '目录 4');
+
+    // 设为 0 清空
+    await db.trimRecents(account, 0);
+    expect(await db.recents(account), isEmpty);
+  });
 }

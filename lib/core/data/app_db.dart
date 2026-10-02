@@ -445,7 +445,9 @@ class AppDb {
     required String name,
     required String ref,
     String pwd = '',
+    int limit = 50,
   }) async {
+    if (limit <= 0) return;
     final database = await db;
     await database.delete(
       'recents',
@@ -460,13 +462,36 @@ class AppDb {
       'pwd': pwd,
       'opened_at': DateTime.now().millisecondsSinceEpoch,
     });
+    await _trimRecents(database, account, limit);
+    _touch();
+  }
+
+  /// 按上限裁剪某个账号的最近使用（0 表示清空该账号的记录）。
+  Future<void> trimRecents(String account, int limit) async {
+    final database = await db;
+    await _trimRecents(database, account, limit);
+    _touch();
+  }
+
+  Future<void> _trimRecents(
+    Database database,
+    String account,
+    int limit,
+  ) async {
+    if (limit <= 0) {
+      await database.delete(
+        'recents',
+        where: 'account = ?',
+        whereArgs: [account],
+      );
+      return;
+    }
     await database.rawDelete(
       'DELETE FROM recents WHERE id NOT IN '
-      '(SELECT id FROM recents WHERE account = ? ORDER BY opened_at DESC LIMIT 100) '
+      '(SELECT id FROM recents WHERE account = ? ORDER BY opened_at DESC LIMIT ?) '
       'AND account = ?',
-      [account, account],
+      [account, limit, account],
     );
-    _touch();
   }
 
   Future<List<RecentItem>> recents(String account, {int limit = 20}) async {

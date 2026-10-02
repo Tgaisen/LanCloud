@@ -113,10 +113,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get favoritesHint => 'Favorited files and shares will appear here';
 
   @override
-  String get favoriteFolders => 'Favorite folders';
+  String get favoriteFolders => 'Folders';
 
   @override
-  String get favoriteFiles => 'Favorite files';
+  String get favoriteFiles => 'Files';
 
   @override
   String get favoriteDeleteConfirmTitle => 'Delete favorites';
@@ -1382,6 +1382,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get disagreeAndExit => 'Decline and exit';
+
+  @override
+  String get recentLimit => 'Recent items limit';
+
+  @override
+  String get recentLimitOff => 'Don\'t record';
+
+  @override
+  String recentLimitValue(int count) {
+    return '$count items';
+  }
+
+  @override
+  String get recentLimitKeywords => 'recent limit history';
 
   @override
   String get termsBody =>

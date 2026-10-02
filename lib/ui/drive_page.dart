@@ -678,6 +678,7 @@ class _DrivePageState extends State<DrivePage>
         kind: 'folder',
         name: folder.name,
         ref: folder.id,
+        limit: app.settings.recentLimit,
       );
       // 进入新目录时若顶/底栏处于收起状态，先带动画恢复显示，
       // 否则目录内容较少无法滚动时底栏就唤不出来。
@@ -1717,7 +1718,7 @@ class _DrivePageState extends State<DrivePage>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-            _PropertyHeader(
+            PropertyHeaderCard(
               icon: iconForFile(file.name),
               title: file.name,
               subtitle: [
@@ -1728,7 +1729,6 @@ class _DrivePageState extends State<DrivePage>
               ].join(' · '),
               desc: _fileDescCache[file.id] ?? '',
             ),
-            const Divider(height: 1),
             ListTile(
               leading: const Icon(Icons.download_outlined),
               title: Text(context.l10n.download),
@@ -3303,7 +3303,7 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _PropertyHeader(
+          PropertyHeaderCard(
             icon: Icons.folder,
             title: _name,
             subtitle: [
@@ -3313,7 +3313,6 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
             desc: _desc ?? folder.desc,
             loading: _loading,
           ),
-          const Divider(height: 1),
           if (widget.showOpen)
             ListTile(
               leading: const Icon(Icons.folder_open),
@@ -3394,92 +3393,6 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
               Navigator.of(context).pop();
               page._deleteFolder(_folder);
             },
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PropertyHeader extends StatelessWidget {
-  const _PropertyHeader({
-    required this.icon,
-    required this.title,
-    this.subtitle = '',
-    this.desc = '',
-    this.loading = false,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final String desc;
-  final bool loading;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-      child: Row(
-        children: [
-          Icon(icon, size: 34),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                    ),
-                    if (loading) ...[
-                      const SizedBox(width: 8),
-                      const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                    ],
-                  ],
-                ),
-                if (subtitle.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 220),
-                    switchInCurve: Curves.easeOut,
-                    switchOutCurve: Curves.easeIn,
-                    transitionBuilder: (child, animation) =>
-                        FadeTransition(opacity: animation, child: child),
-                    child: Text(
-                      subtitle,
-                      key: ValueKey(subtitle),
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ),
-                ],
-                if (desc.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 220),
-                    switchInCurve: Curves.easeOut,
-                    switchOutCurve: Curves.easeIn,
-                    transitionBuilder: (child, animation) =>
-                        FadeTransition(opacity: animation, child: child),
-                    child: Text(
-                      desc,
-                      key: ValueKey(desc),
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ),
-                ],
-              ],
-            ),
           ),
         ],
       ),

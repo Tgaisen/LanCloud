@@ -28,6 +28,8 @@ class _HomePageState extends State<HomePage>
   List<RecentItem> _recents = [];
   List<PinItem> _quick = [];
   bool _loading = true;
+  bool _quickExpanded = true;
+  bool _recentsExpanded = true;
   late final AppDb _db;
   final ScrollController _scroll = ScrollController();
 
@@ -39,6 +41,8 @@ class _HomePageState extends State<HomePage>
     super.initState();
     final app = context.read<AppController>();
     _db = app.db;
+    _quickExpanded = app.settings.quickExpanded;
+    _recentsExpanded = app.settings.recentsExpanded;
     _load();
     _db.revision.addListener(_load);
     app.activeTab.addListener(_onActiveTabChanged);
@@ -59,6 +63,19 @@ class _HomePageState extends State<HomePage>
     if (app.activeTab.value == widget.tabIndex) {
       _load();
     }
+  }
+
+  /// 展开 / 折叠「快速访问」，状态记在设置里（重启后保持）。
+  Future<void> _toggleQuickExpanded() async {
+    final app = context.read<AppController>();
+    setState(() => _quickExpanded = !_quickExpanded);
+    await app.setQuickExpanded(_quickExpanded);
+  }
+
+  Future<void> _toggleRecentsExpanded() async {
+    final app = context.read<AppController>();
+    setState(() => _recentsExpanded = !_recentsExpanded);
+    await app.setRecentsExpanded(_recentsExpanded);
   }
 
   Future<void> _load() async {
@@ -239,6 +256,9 @@ class _HomePageState extends State<HomePage>
                 const SizedBox(height: 16),
                 SectionCard(
                   title: l10n.quickAccess,
+                  leading: const Icon(Icons.push_pin_outlined),
+                  expanded: _quickExpanded,
+                  onToggle: _toggleQuickExpanded,
                   child: _quick.isEmpty
                       ? EmptyHint(
                           icon: Icons.push_pin_outlined,
@@ -277,6 +297,9 @@ class _HomePageState extends State<HomePage>
                 ),
                 SectionCard(
                   title: l10n.recent,
+                  leading: const Icon(Icons.history),
+                  expanded: _recentsExpanded,
+                  onToggle: _toggleRecentsExpanded,
                   child: _loading
                       ? const Padding(
                           padding: EdgeInsets.all(16),

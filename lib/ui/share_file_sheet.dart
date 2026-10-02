@@ -84,64 +84,16 @@ class _ShareFileInfoSheetState extends State<ShareFileInfoSheet> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-            child: Row(
-              children: [
-                Icon(iconForFile(_name), size: 34),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              _name,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                          ),
-                          if (_loading) ...[
-                            const SizedBox(width: 8),
-                            const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                          ],
-                        ],
-                      ),
-                      if (_size.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          [
-                            prettyLzSize(_size),
-                            if (widget.time.isNotEmpty) widget.time,
-                          ].join(' · '),
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
-                      if (_desc.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 220),
-                          child: Text(
-                            _desc,
-                            key: ValueKey(_desc),
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ),
+          PropertyHeaderCard(
+            icon: iconForFile(_name),
+            title: _name,
+            subtitle: [
+              if (_size.isNotEmpty) prettyLzSize(_size),
+              if (widget.time.isNotEmpty) widget.time,
+            ].join(' · '),
+            desc: _desc,
+            loading: _loading,
           ),
-          const Divider(height: 1),
           if (_invalid)
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),

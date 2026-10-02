@@ -57,8 +57,8 @@
   "myDrive": "我的网盘",
   "myFavorites": "收藏",
   "favoritesHint": "收藏的文件和分享会出现在这里",
-  "favoriteFolders": "收藏的文件夹",
-  "favoriteFiles": "收藏的文件",
+  "favoriteFolders": "文件夹",
+  "favoriteFiles": "文件",
   "favoriteDeleteConfirmTitle": "删除收藏",
   "favoriteDeleteConfirmMessage": "将移除选中的 {count} 个收藏，继续吗？",
   "@favoriteDeleteConfirmMessage": {
@@ -647,6 +647,15 @@
   "firstRunMessage": "使用前请阅读并同意《用户协议》与《隐私政策》。应用不收集个人信息，账号与数据只保存在本机。",
   "agreeAndContinue": "同意并继续",
   "disagreeAndExit": "不同意并退出",
+  "recentLimit": "最近使用条数",
+  "recentLimitOff": "不记录",
+  "recentLimitValue": "{count} 条",
+  "@recentLimitValue": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "recentLimitKeywords": "recent limit history 最近 条数 记录",
   "termsBody": "《用户协议》\n\n1. 本应用是蓝奏云的非官方第三方客户端，仅供个人学习与自用，与蓝奏云官方无任何关联，也未获得官方授权或认可。\n\n2. 使用本应用需要你自己的蓝奏云账号。请勿利用本应用从事违反蓝奏云服务条款、相关法律法规或侵犯他人权益的行为。\n\n3. 本应用按「现状」提供，不提供任何形式的担保。因使用本应用造成的账号受限、数据丢失、上传或下载失败等风险，由使用者自行承担。\n\n4. 应用内使用的接口来自公开渠道与非官方整理，可能随时失效；开发者不保证功能持续可用。\n\n5. 本应用以 Apache License 2.0 开源，你可以自行修改与分发代码，但请保留原始许可与版权声明，并自行承担由此产生的责任。\n\n6. 继续使用即表示你已阅读并同意本协议；如不同意，请卸载本应用。",
   "privacyBody": "《隐私政策》\n\n1. 本应用不收集、不上传任何个人信息，没有账号系统，也没有统计、广告或崩溃上报 SDK。\n\n2. 你的蓝奏云账号（Cookie）、昵称、收藏、最近使用、传输记录与设置只保存在本机。Cookie 保存在系统加密存储中；查看 Cookie 需要先通过生物识别或锁屏验证。\n\n3. 应用运行时直接与蓝奏云官方接口通信（pc.woozooo.com、up.woozooo.com 等），请求内容仅用于完成你发起的登录、列表、上传、下载等操作。\n\n4. 分享由系统分享面板完成：只有你主动点击分享时，选中的内容或文件才会交给你选择的应用；剪贴板仅在你主动点击「复制」时写入。\n\n5. 如果你在「备份与恢复」中配置了 WebDAV，备份文件会上传到你自己填写的服务器；备份默认不包含 Cookie，是否开启与上传到哪台服务器完全由你决定。\n\n6. 相机权限仅用于扫码（当前版本尚未启用），安装应用权限仅用于打开你下载的 APK，忽略电池优化仅用于让后台传输更稳定；这些权限都可以随时在系统设置中撤销。\n\n7. 卸载应用会一并删除本机保存的账号与数据，删除前请自行备份。"
 }

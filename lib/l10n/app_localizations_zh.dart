@@ -113,10 +113,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get favoritesHint => '收藏的文件和分享会出现在这里';
 
   @override
-  String get favoriteFolders => '收藏的文件夹';
+  String get favoriteFolders => '文件夹';
 
   @override
-  String get favoriteFiles => '收藏的文件';
+  String get favoriteFiles => '文件';
 
   @override
   String get favoriteDeleteConfirmTitle => '删除收藏';
@@ -1342,6 +1342,20 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get disagreeAndExit => '不同意并退出';
+
+  @override
+  String get recentLimit => '最近使用条数';
+
+  @override
+  String get recentLimitOff => '不记录';
+
+  @override
+  String recentLimitValue(int count) {
+    return '$count 条';
+  }
+
+  @override
+  String get recentLimitKeywords => 'recent limit history 最近 条数 记录';
 
   @override
   String get termsBody =>

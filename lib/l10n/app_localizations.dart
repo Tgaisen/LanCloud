@@ -287,13 +287,13 @@ abstract class AppLocalizations {
   /// No description provided for @favoriteFolders.
   ///
   /// In zh, this message translates to:
-  /// **'收藏的文件夹'**
+  /// **'文件夹'**
   String get favoriteFolders;
 
   /// No description provided for @favoriteFiles.
   ///
   /// In zh, this message translates to:
-  /// **'收藏的文件'**
+  /// **'文件'**
   String get favoriteFiles;
 
   /// No description provided for @favoriteDeleteConfirmTitle.
@@ -2575,6 +2575,30 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'不同意并退出'**
   String get disagreeAndExit;
+
+  /// No description provided for @recentLimit.
+  ///
+  /// In zh, this message translates to:
+  /// **'最近使用条数'**
+  String get recentLimit;
+
+  /// No description provided for @recentLimitOff.
+  ///
+  /// In zh, this message translates to:
+  /// **'不记录'**
+  String get recentLimitOff;
+
+  /// No description provided for @recentLimitValue.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 条'**
+  String recentLimitValue(int count);
+
+  /// No description provided for @recentLimitKeywords.
+  ///
+  /// In zh, this message translates to:
+  /// **'recent limit history 最近 条数 记录'**
+  String get recentLimitKeywords;
 
   /// No description provided for @termsBody.
   ///

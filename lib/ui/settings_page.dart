@@ -526,6 +526,25 @@ class _SettingsPageState extends State<SettingsPage>
         ),
       ),
       _Entry(
+        id: 'recent_limit',
+        title: l10n.recentLimit,
+        subtitle: app.settings.recentLimit <= 0
+            ? l10n.recentLimitOff
+            : l10n.recentLimitValue(app.settings.recentLimit),
+        keywords: l10n.recentLimitKeywords.split(' '),
+        category: 'data',
+        build: (context, app) => ListTile(
+          leading: const Icon(Icons.history),
+          title: Text(context.l10n.recentLimit),
+          subtitle: Text(
+            app.settings.recentLimit <= 0
+                ? context.l10n.recentLimitOff
+                : context.l10n.recentLimitValue(app.settings.recentLimit),
+          ),
+          onTap: () => _pickRecentLimit(context),
+        ),
+      ),
+      _Entry(
         id: 'clear_recents',
         title: l10n.clearRecents,
         subtitle: l10n.clearRecentsSubtitle,
@@ -977,6 +996,23 @@ class _SettingsPageState extends State<SettingsPage>
       ],
       current: app.settings.themeMode,
       onSelect: (value) => app.setThemeMode(value),
+    );
+  }
+
+  /// 最近使用条数：0 表示不记录。
+  static Future<void> _pickRecentLimit(BuildContext context) {
+    final app = context.read<AppController>();
+    final l10n = context.l10n;
+    return _pickRadio<int>(
+      context,
+      title: l10n.recentLimit,
+      options: [
+        (0, l10n.recentLimitOff),
+        for (final count in const [10, 50, 100, 200])
+          (count, l10n.recentLimitValue(count)),
+      ],
+      current: app.settings.recentLimit,
+      onSelect: app.setRecentLimit,
     );
   }
 

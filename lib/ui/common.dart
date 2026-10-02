@@ -578,40 +578,214 @@ class BatchAction extends StatelessWidget {
   }
 }
 
+/// MD3E 分区卡片：大圆角 + 图标标题行，可选展开/折叠（右侧三角 + 动画）。
 class SectionCard extends StatelessWidget {
   const SectionCard({
     super.key,
     required this.title,
     required this.child,
     this.trailing,
+    this.leading,
+    this.expanded = true,
+    this.onToggle,
   });
 
   final String title;
   final Widget child;
   final Widget? trailing;
 
+  /// 标题左侧的图标（放在主色圆角块里）。
+  final Widget? leading;
+
+  /// 是否展开；只有提供 [onToggle] 时才可折叠。
+  final bool expanded;
+  final VoidCallback? onToggle;
+
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final header = Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+      child: Row(
+        children: [
+          if (leading != null) ...[
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: scheme.primaryContainer,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: IconTheme(
+                data: IconThemeData(
+                  size: 20,
+                  color: scheme.onPrimaryContainer,
+                ),
+                child: Center(child: leading!),
+              ),
+            ),
+            const SizedBox(width: 12),
+          ],
+          Expanded(
+            child: Text(title, style: Theme.of(context).textTheme.titleMedium),
+          ),
+          ?trailing,
+          if (onToggle != null) ...[
+            const SizedBox(width: 4),
+            AnimatedRotation(
+              turns: expanded ? 0.25 : 0,
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              child: const Icon(Icons.chevron_right),
+            ),
+          ],
+        ],
+      ),
+    );
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child:
-                      Text(title, style: Theme.of(context).textTheme.titleMedium),
-                ),
-                ?trailing,
-              ],
+          if (onToggle == null)
+            header
+          else
+            InkWell(onTap: onToggle, child: header),
+          ClipRect(
+            child: AnimatedSize(
+              duration: const Duration(milliseconds: 240),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.topCenter,
+              child: expanded
+                  ? child
+                  : const SizedBox(width: double.infinity, height: 0),
             ),
           ),
-          child,
         ],
+      ),
+    );
+  }
+}
+
+/// 属性弹窗顶部信息卡（MD3E）：圆角容器 + 主色图标块 + 标题/信息/简介。
+/// 文件、文件夹、分享文件属性弹窗共用。
+class PropertyHeaderCard extends StatelessWidget {
+  const PropertyHeaderCard({
+    super.key,
+    required this.icon,
+    required this.title,
+    this.subtitle = '',
+    this.desc = '',
+    this.loading = false,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final String desc;
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: scheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Icon(icon, size: 28, color: scheme.onPrimaryContainer),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.titleMedium,
+                            ),
+                          ),
+                          if (loading) ...[
+                            const SizedBox(width: 8),
+                            const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child:
+                                  CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          ],
+                        ],
+                      ),
+                      if (subtitle.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 220),
+                          switchInCurve: Curves.easeOut,
+                          switchOutCurve: Curves.easeIn,
+                          transitionBuilder: (child, animation) =>
+                              FadeTransition(opacity: animation, child: child),
+                          child: Text(
+                            subtitle,
+                            key: ValueKey(subtitle),
+                            style: theme.textTheme.bodySmall
+                                ?.copyWith(color: scheme.outline),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            if (desc.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: scheme.surface,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 220),
+                  switchInCurve: Curves.easeOut,
+                  switchOutCurve: Curves.easeIn,
+                  transitionBuilder: (child, animation) =>
+                      FadeTransition(opacity: animation, child: child),
+                  child: Text(
+                    desc,
+                    key: ValueKey(desc),
+                    style: theme.textTheme.bodyMedium?.copyWith(height: 1.5),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

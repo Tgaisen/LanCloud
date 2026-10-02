@@ -28,6 +28,9 @@ class SettingsStore {
   static const _keyNotifyProgress = 'notify_progress';
   static const _keyNotifyDone = 'notify_done';
   static const _keySortMode = 'sort_mode';
+  static const _keyQuickExpanded = 'quick_access_expanded';
+  static const _keyRecentsExpanded = 'recents_expanded';
+  static const _keyRecentLimit = 'recent_limit';
 
   String? downloadDir;
   String language = 'system';
@@ -61,6 +64,11 @@ class SettingsStore {
   bool notifyDone = true;
   /// 网盘文件排序方式：default / name / size / time。
   String sortMode = 'default';
+  /// 首页「快速访问」/「最近使用」是否展开（重启后保持）。
+  bool quickExpanded = true;
+  bool recentsExpanded = true;
+  /// 最近使用最多保留多少条，0 表示不记录。
+  int recentLimit = 50;
 
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -98,6 +106,9 @@ class SettingsStore {
     notifyProgress = prefs.getBool(_keyNotifyProgress) ?? true;
     notifyDone = prefs.getBool(_keyNotifyDone) ?? true;
     sortMode = prefs.getString(_keySortMode) ?? 'default';
+    quickExpanded = prefs.getBool(_keyQuickExpanded) ?? true;
+    recentsExpanded = prefs.getBool(_keyRecentsExpanded) ?? true;
+    recentLimit = prefs.getInt(_keyRecentLimit) ?? 50;
   }
 
   Future<void> setNotifyProgress(bool value) async {
@@ -116,6 +127,24 @@ class SettingsStore {
     sortMode = value;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keySortMode, value);
+  }
+
+  Future<void> setQuickExpanded(bool value) async {
+    quickExpanded = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyQuickExpanded, value);
+  }
+
+  Future<void> setRecentsExpanded(bool value) async {
+    recentsExpanded = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyRecentsExpanded, value);
+  }
+
+  Future<void> setRecentLimit(int value) async {
+    recentLimit = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_keyRecentLimit, value);
   }
 
   Future<void> setHideTopBar(bool value) async {
@@ -291,6 +320,9 @@ class SettingsStore {
         _keyNotifyProgress: notifyProgress,
         _keyNotifyDone: notifyDone,
         _keySortMode: sortMode,
+        _keyQuickExpanded: quickExpanded,
+        _keyRecentsExpanded: recentsExpanded,
+        _keyRecentLimit: recentLimit,
       };
 
   /// 恢复备份里的设置：只接受已知键，空值表示恢复为未设置，最后重新读取一次。
