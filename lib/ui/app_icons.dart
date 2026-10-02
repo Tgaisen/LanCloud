@@ -18,6 +18,7 @@ class Icons {
   static const IconData arrow_upward = Symbols.arrow_upward;
   static const IconData article_outlined = Symbols.article;
   static const IconData badge_outlined = Symbols.badge;
+  static const IconData battery_alert_outlined = Symbols.battery_alert;
   static const IconData cached_outlined = Symbols.cached;
   static const IconData cancel = Symbols.cancel;
   static const IconData check = Symbols.check;

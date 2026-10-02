@@ -3,6 +3,7 @@ import 'package:flutter/material.dart' hide Icons;
 import 'package:provider/provider.dart';
 
 import '../core/app_controller.dart';
+import '../core/app_permissions.dart';
 import '../core/notifications.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
@@ -35,26 +36,45 @@ class _Entry {
   final Widget Function(BuildContext context, AppController app) build;
 }
 
-class _SettingsPageState extends State<SettingsPage> {
+class _SettingsPageState extends State<SettingsPage>
+    with WidgetsBindingObserver {
   bool _searching = false;
   bool? _notifGranted;
+  PermissionSnapshot? _permissions;
   final TextEditingController _search = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _refreshNotifPermission();
+    _refreshPermissions();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _search.dispose();
     super.dispose();
+  }
+
+  /// 从系统设置页返回时刷新权限状态。
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _refreshPermissions();
+      _refreshNotifPermission();
+    }
   }
 
   Future<void> _refreshNotifPermission() async {
     final granted = await NotificationService.instance.hasPermission();
     if (mounted) setState(() => _notifGranted = granted);
+  }
+
+  Future<void> _refreshPermissions() async {
+    final snapshot = await AppPermissions.instance.status();
+    if (mounted) setState(() => _permissions = snapshot);
   }
 
   List<_Entry> _entries(AppController app) {
@@ -327,6 +347,45 @@ class _SettingsPageState extends State<SettingsPage> {
                     : context.l10n.notifPermissionDenied),
           ),
           onTap: _requestNotifPermission,
+        ),
+      ),
+      _Entry(
+        id: 'camera_permission',
+        title: l10n.permissionCamera,
+        subtitle: _cameraStatusText(),
+        keywords: l10n.permissionCameraKeywords.split(' '),
+        category: 'permissions',
+        build: (context, app) => ListTile(
+          leading: const Icon(Icons.qr_code),
+          title: Text(context.l10n.permissionCamera),
+          subtitle: Text(_cameraStatusText()),
+          onTap: _requestCameraPermission,
+        ),
+      ),
+      _Entry(
+        id: 'install_permission',
+        title: l10n.permissionInstall,
+        subtitle: _installStatusText(),
+        keywords: l10n.permissionInstallKeywords.split(' '),
+        category: 'permissions',
+        build: (context, app) => ListTile(
+          leading: const Icon(Icons.install_mobile),
+          title: Text(context.l10n.permissionInstall),
+          subtitle: Text(_installStatusText()),
+          onTap: _openInstallSettings,
+        ),
+      ),
+      _Entry(
+        id: 'battery_permission',
+        title: l10n.permissionBattery,
+        subtitle: _batteryStatusText(),
+        keywords: l10n.permissionBatteryKeywords.split(' '),
+        category: 'permissions',
+        build: (context, app) => ListTile(
+          leading: const Icon(Icons.battery_alert_outlined),
+          title: Text(context.l10n.permissionBattery),
+          subtitle: Text(_batteryStatusText()),
+          onTap: _requestBatteryOptimization,
         ),
       ),
       _Entry(
@@ -608,11 +667,94 @@ class _SettingsPageState extends State<SettingsPage> {
         'appearance' => context.l10n.categoryAppearance,
         'behavior' => context.l10n.categoryBehavior,
         'notifications' => context.l10n.notifications,
+        'permissions' => context.l10n.categoryPermissions,
         'connection' => context.l10n.categoryConnection,
         'advanced' => context.l10n.categoryAdvanced,
         'data' => context.l10n.categoryData,
         _ => id,
       };
+
+  String _cameraStatusText() => switch (_permissions?.camera) {
+        PermissionState.granted => context.l10n.permissionGranted,
+        PermissionState.denied => context.l10n.permissionDenied,
+        PermissionState.blocked => context.l10n.permissionBlocked,
+        _ => context.l10n.permissionChecking,
+      };
+
+  String _installStatusText() => switch (_permissions?.install) {
+        PermissionState.granted => context.l10n.permissionInstallGranted,
+        PermissionState.denied => context.l10n.permissionInstallDenied,
+        _ => context.l10n.permissionChecking,
+      };
+
+  String _batteryStatusText() => switch (_permissions?.battery) {
+        PermissionState.granted => context.l10n.permissionBatteryGranted,
+        PermissionState.denied => context.l10n.permissionBatteryRestricted,
+        _ => context.l10n.permissionChecking,
+      };
+
+  Future<void> _requestCameraPermission() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final l10n = context.l10n;
+    final state = await AppPermissions.instance.requestCamera();
+    if (!mounted) return;
+    await _refreshPermissions();
+    if (!mounted) return;
+    if (state == PermissionState.blocked) {
+      final open = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          icon: const Icon(Icons.lock_outline),
+          title: Text(l10n.permissionBlockedTitle),
+          content: Text(l10n.permissionBlockedMessage),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(l10n.cancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(l10n.permissionOpenSystemSettings),
+            ),
+          ],
+        ),
+      );
+      if (open == true) {
+        final ok = await AppPermissions.instance.openAppSettings();
+        if (!ok && mounted) {
+          messenger.showSnackBar(
+            SnackBar(content: Text(l10n.permissionOpenFailed)),
+          );
+        }
+      }
+      return;
+    }
+    if (state == PermissionState.granted) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(l10n.permissionCameraGranted)),
+      );
+    }
+  }
+
+  Future<void> _openInstallSettings() async {
+    final l10n = context.l10n;
+    final ok = await AppPermissions.instance.openInstallSettings();
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.permissionOpenFailed)),
+      );
+    }
+  }
+
+  Future<void> _requestBatteryOptimization() async {
+    final l10n = context.l10n;
+    final ok = await AppPermissions.instance.requestBattery();
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.permissionOpenFailed)),
+      );
+    }
+  }
 
   Future<void> _setNotifyProgress(bool value) async {
     final app = context.read<AppController>();

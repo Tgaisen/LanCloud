@@ -1125,4 +1125,66 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get cookieExportFailed => '导出失败';
+
+  @override
+  String get categoryPermissions => '权限';
+
+  @override
+  String get permissionCamera => '相机（扫码）';
+
+  @override
+  String get permissionCameraKeywords => 'camera qr scan 相机 扫码 权限';
+
+  @override
+  String get permissionInstall => '安装应用（打开 APK）';
+
+  @override
+  String get permissionInstallKeywords =>
+      'install apk unknown sources 安装 未知来源 权限';
+
+  @override
+  String get permissionBattery => '电池优化';
+
+  @override
+  String get permissionBatteryKeywords =>
+      'battery optimization background 电池 优化 后台 权限';
+
+  @override
+  String get permissionGranted => '已授权';
+
+  @override
+  String get permissionDenied => '未授权，点击授权';
+
+  @override
+  String get permissionBlocked => '已被系统拒绝，需到系统设置开启';
+
+  @override
+  String get permissionChecking => '检查中…';
+
+  @override
+  String get permissionInstallGranted => '已允许安装应用';
+
+  @override
+  String get permissionInstallDenied => '未允许，打开 APK 安装包前需授权';
+
+  @override
+  String get permissionBatteryGranted => '已忽略电池优化，后台传输更稳定';
+
+  @override
+  String get permissionBatteryRestricted => '受电池优化限制，后台传输可能被中断';
+
+  @override
+  String get permissionBlockedTitle => '需要到系统设置开启';
+
+  @override
+  String get permissionBlockedMessage => '相机权限已被系统拒绝，请到系统设置中手动开启，然后回到应用。';
+
+  @override
+  String get permissionOpenSystemSettings => '打开系统设置';
+
+  @override
+  String get permissionCameraGranted => '相机权限已授权';
+
+  @override
+  String get permissionOpenFailed => '无法打开系统设置';
 }

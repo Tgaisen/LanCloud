@@ -2167,6 +2167,126 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'导出失败'**
   String get cookieExportFailed;
+
+  /// No description provided for @categoryPermissions.
+  ///
+  /// In zh, this message translates to:
+  /// **'权限'**
+  String get categoryPermissions;
+
+  /// No description provided for @permissionCamera.
+  ///
+  /// In zh, this message translates to:
+  /// **'相机（扫码）'**
+  String get permissionCamera;
+
+  /// No description provided for @permissionCameraKeywords.
+  ///
+  /// In zh, this message translates to:
+  /// **'camera qr scan 相机 扫码 权限'**
+  String get permissionCameraKeywords;
+
+  /// No description provided for @permissionInstall.
+  ///
+  /// In zh, this message translates to:
+  /// **'安装应用（打开 APK）'**
+  String get permissionInstall;
+
+  /// No description provided for @permissionInstallKeywords.
+  ///
+  /// In zh, this message translates to:
+  /// **'install apk unknown sources 安装 未知来源 权限'**
+  String get permissionInstallKeywords;
+
+  /// No description provided for @permissionBattery.
+  ///
+  /// In zh, this message translates to:
+  /// **'电池优化'**
+  String get permissionBattery;
+
+  /// No description provided for @permissionBatteryKeywords.
+  ///
+  /// In zh, this message translates to:
+  /// **'battery optimization background 电池 优化 后台 权限'**
+  String get permissionBatteryKeywords;
+
+  /// No description provided for @permissionGranted.
+  ///
+  /// In zh, this message translates to:
+  /// **'已授权'**
+  String get permissionGranted;
+
+  /// No description provided for @permissionDenied.
+  ///
+  /// In zh, this message translates to:
+  /// **'未授权，点击授权'**
+  String get permissionDenied;
+
+  /// No description provided for @permissionBlocked.
+  ///
+  /// In zh, this message translates to:
+  /// **'已被系统拒绝，需到系统设置开启'**
+  String get permissionBlocked;
+
+  /// No description provided for @permissionChecking.
+  ///
+  /// In zh, this message translates to:
+  /// **'检查中…'**
+  String get permissionChecking;
+
+  /// No description provided for @permissionInstallGranted.
+  ///
+  /// In zh, this message translates to:
+  /// **'已允许安装应用'**
+  String get permissionInstallGranted;
+
+  /// No description provided for @permissionInstallDenied.
+  ///
+  /// In zh, this message translates to:
+  /// **'未允许，打开 APK 安装包前需授权'**
+  String get permissionInstallDenied;
+
+  /// No description provided for @permissionBatteryGranted.
+  ///
+  /// In zh, this message translates to:
+  /// **'已忽略电池优化，后台传输更稳定'**
+  String get permissionBatteryGranted;
+
+  /// No description provided for @permissionBatteryRestricted.
+  ///
+  /// In zh, this message translates to:
+  /// **'受电池优化限制，后台传输可能被中断'**
+  String get permissionBatteryRestricted;
+
+  /// No description provided for @permissionBlockedTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'需要到系统设置开启'**
+  String get permissionBlockedTitle;
+
+  /// No description provided for @permissionBlockedMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'相机权限已被系统拒绝，请到系统设置中手动开启，然后回到应用。'**
+  String get permissionBlockedMessage;
+
+  /// No description provided for @permissionOpenSystemSettings.
+  ///
+  /// In zh, this message translates to:
+  /// **'打开系统设置'**
+  String get permissionOpenSystemSettings;
+
+  /// No description provided for @permissionCameraGranted.
+  ///
+  /// In zh, this message translates to:
+  /// **'相机权限已授权'**
+  String get permissionCameraGranted;
+
+  /// No description provided for @permissionOpenFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法打开系统设置'**
+  String get permissionOpenFailed;
 }
 
 class _AppLocalizationsDelegate

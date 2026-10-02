@@ -1,11 +1,16 @@
 package com.lancloud.lancloud
 
+import android.Manifest
+import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import android.os.PowerManager
 import android.provider.DocumentsContract
 import android.provider.OpenableColumns
 import android.provider.Settings
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -15,9 +20,13 @@ import java.io.File
 // local_auth（生物识别）要求宿主 Activity 必须是 FragmentActivity。
 class MainActivity : FlutterFragmentActivity() {
     private var pickFilesResult: MethodChannel.Result? = null
+    private var cameraPermissionResult: MethodChannel.Result? = null
 
     companion object {
         private const val PICK_FILES_REQUEST = 2001
+        private const val CAMERA_PERMISSION_REQUEST = 2003
+        private const val PERMISSION_PREFS = "lancloud_permissions"
+        private const val KEY_CAMERA_REQUESTED = "camera_requested"
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -141,6 +150,127 @@ class MainActivity : FlutterFragmentActivity() {
                 }
                 else -> result.notImplemented()
             }
+        }
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "lancloud/permissions",
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "status" -> result.success(
+                    mapOf(
+                        "camera" to cameraPermissionStatus(),
+                        "install" to installPermissionStatus(),
+                        "battery" to batteryPermissionStatus(),
+                    ),
+                )
+                "requestCamera" -> requestCameraPermission(result)
+                "openInstallSettings" -> result.success(openInstallSettings())
+                "requestBattery" -> result.success(requestBatteryOptimization())
+                "openAppSettings" -> result.success(openAppSettings())
+                else -> result.notImplemented()
+            }
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode != CAMERA_PERMISSION_REQUEST) return
+        val result = cameraPermissionResult
+        cameraPermissionResult = null
+        result?.success(cameraPermissionStatus())
+    }
+
+    private fun hasCameraPermission(): Boolean =
+        ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) ==
+            PackageManager.PERMISSION_GRANTED
+
+    /// granted / denied / blocked（blocked = 已被系统记住拒绝，只能去系统设置开）
+    private fun cameraPermissionStatus(): String {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return "granted"
+        if (hasCameraPermission()) return "granted"
+        val requested = getSharedPreferences(PERMISSION_PREFS, Context.MODE_PRIVATE)
+            .getBoolean(KEY_CAMERA_REQUESTED, false)
+        if (requested && !shouldShowRequestPermissionRationale(Manifest.permission.CAMERA)) {
+            return "blocked"
+        }
+        return "denied"
+    }
+
+    private fun requestCameraPermission(result: MethodChannel.Result) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || hasCameraPermission()) {
+            result.success("granted")
+            return
+        }
+        if (cameraPermissionResult != null) {
+            result.error("in_progress", "camera permission request in progress", null)
+            return
+        }
+        cameraPermissionResult = result
+        getSharedPreferences(PERMISSION_PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(KEY_CAMERA_REQUESTED, true)
+            .apply()
+        requestPermissions(
+            arrayOf(Manifest.permission.CAMERA),
+            CAMERA_PERMISSION_REQUEST,
+        )
+    }
+
+    /// granted / denied（Android 8 以下默认允许）
+    private fun installPermissionStatus(): String {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return "granted"
+        return if (packageManager.canRequestPackageInstalls()) "granted" else "denied"
+    }
+
+    private fun openInstallSettings(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return false
+        return startSafely(
+            Intent(
+                Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                Uri.parse("package:$packageName"),
+            ),
+        )
+    }
+
+    /// granted / denied（Android 6 以下默认不受电池优化限制）
+    private fun batteryPermissionStatus(): String {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return "granted"
+        val power = getSystemService(Context.POWER_SERVICE) as PowerManager
+        return if (power.isIgnoringBatteryOptimizations(packageName)) {
+            "granted"
+        } else {
+            "denied"
+        }
+    }
+
+    private fun requestBatteryOptimization(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return false
+        val request = Intent(
+            Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+            Uri.parse("package:$packageName"),
+        )
+        if (startSafely(request)) return true
+        // 部分 ROM 不提供上面这个弹窗入口，退回到电池优化列表
+        return startSafely(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+    }
+
+    private fun openAppSettings(): Boolean = startSafely(
+        Intent(
+            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+            Uri.parse("package:$packageName"),
+        ),
+    )
+
+    private fun startSafely(intent: Intent): Boolean {
+        return try {
+            startActivity(intent)
+            true
+        } catch (_: Exception) {
+            false
         }
     }
 

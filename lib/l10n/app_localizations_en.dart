@@ -1157,4 +1157,71 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get cookieExportFailed => 'Export failed';
+
+  @override
+  String get categoryPermissions => 'Permissions';
+
+  @override
+  String get permissionCamera => 'Camera (QR scan)';
+
+  @override
+  String get permissionCameraKeywords => 'camera qr scan permission';
+
+  @override
+  String get permissionInstall => 'Install apps (open APK)';
+
+  @override
+  String get permissionInstallKeywords =>
+      'install apk unknown sources permission';
+
+  @override
+  String get permissionBattery => 'Battery optimization';
+
+  @override
+  String get permissionBatteryKeywords =>
+      'battery optimization background permission';
+
+  @override
+  String get permissionGranted => 'Granted';
+
+  @override
+  String get permissionDenied => 'Not granted; tap to allow';
+
+  @override
+  String get permissionBlocked =>
+      'Blocked by the system; enable it in system settings';
+
+  @override
+  String get permissionChecking => 'Checking…';
+
+  @override
+  String get permissionInstallGranted => 'Installing apps is allowed';
+
+  @override
+  String get permissionInstallDenied =>
+      'Not allowed; required before opening APK installers';
+
+  @override
+  String get permissionBatteryGranted =>
+      'Exempt from battery optimization; background transfers are stable';
+
+  @override
+  String get permissionBatteryRestricted =>
+      'Restricted by battery optimization; background transfers may be interrupted';
+
+  @override
+  String get permissionBlockedTitle => 'Enable it in system settings';
+
+  @override
+  String get permissionBlockedMessage =>
+      'Camera permission was denied by the system. Enable it in system settings, then come back.';
+
+  @override
+  String get permissionOpenSystemSettings => 'Open system settings';
+
+  @override
+  String get permissionCameraGranted => 'Camera permission granted';
+
+  @override
+  String get permissionOpenFailed => 'Unable to open system settings';
 }
