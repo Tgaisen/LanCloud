@@ -113,6 +113,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get favoritesHint => 'Favorited files and shares will appear here';
 
   @override
+  String get favoriteFolders => 'Favorite folders';
+
+  @override
+  String get favoriteFiles => 'Favorite files';
+
+  @override
+  String get favoriteDeleteConfirmTitle => 'Delete favorites';
+
+  @override
+  String favoriteDeleteConfirmMessage(int count) {
+    return 'Remove $count selected favorites?';
+  }
+
+  @override
   String get unfavorite => 'Remove favorite';
 
   @override

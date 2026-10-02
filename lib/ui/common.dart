@@ -509,6 +509,39 @@ class _SheetDragPhysics extends ClampingScrollPhysics {
       _SheetDragPhysics(parent: buildParent(ancestor), onOffset: onOffset);
 }
 
+/// 分组标题 + 数量 chip（传输、收藏等列表视图共用）。
+class SectionHeader extends StatelessWidget {
+  const SectionHeader({super.key, required this.title, required this.count});
+
+  final String title;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
+      child: Row(
+        children: [
+          Text(title, style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              '$count',
+              style: Theme.of(context).textTheme.labelSmall,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// 多选操作栏里的单个操作（图标 + 文字，禁用时置灰）。
 class BatchAction extends StatelessWidget {
   const BatchAction({

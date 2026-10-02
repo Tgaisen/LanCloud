@@ -384,7 +384,7 @@ class _TransferListSliver extends StatelessWidget {
       sliver: SliverList(
         delegate: SliverChildListDelegate([
           if (active.isNotEmpty) ...[
-            _SectionHeader(title: l10n.inProgress, count: active.length),
+            SectionHeader(title: l10n.inProgress, count: active.length),
             // MD3E 连接式列表：进行中的任务成组显示
             SegmentedList(
               children: [
@@ -401,7 +401,7 @@ class _TransferListSliver extends StatelessWidget {
             const SizedBox(height: 20),
           ],
           if (finished.isNotEmpty) ...[
-            _SectionHeader(title: l10n.finished, count: finished.length),
+            SectionHeader(title: l10n.finished, count: finished.length),
             SegmentedList(
               // 已结束整体淡一层主题色，和进行中区分
               color: Color.alphaBlend(
@@ -426,37 +426,6 @@ class _TransferListSliver extends StatelessWidget {
     );
   }
 }
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.title, required this.count});
-
-  final String title;
-  final int count;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
-      child: Row(
-        children: [
-          Text(title, style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              '$count',
-              style: Theme.of(context).textTheme.labelSmall,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 /// 单条传输记录：MD3E 列表条目 —— 文件类型图标（圆角容器）+ 名称/状态 + 操作，
 /// 进行中在下方显示进度条。
 class _TransferTile extends StatelessWidget {
@@ -572,7 +541,8 @@ class _TransferTile extends StatelessWidget {
                   ],
                 ),
               ),
-              if (active)
+              // 多选期间隐藏行内操作，避免误触
+              if (!selecting && active)
                 IconButton(
                   visualDensity: VisualDensity.compact,
                   iconSize: 20,
@@ -580,7 +550,7 @@ class _TransferTile extends StatelessWidget {
                   icon: const Icon(Icons.close),
                   onPressed: () => manager.cancel(task.id),
                 ),
-              if (task.status == TransferStatus.failed)
+              if (!selecting && task.status == TransferStatus.failed)
                 IconButton(
                   visualDensity: VisualDensity.compact,
                   iconSize: 20,
@@ -588,7 +558,7 @@ class _TransferTile extends StatelessWidget {
                   icon: const Icon(Icons.refresh),
                   onPressed: () => manager.retry(task.id),
                 ),
-              if (done) ...[
+              if (!selecting && done) ...[
                 if (task.name.toLowerCase().endsWith('.apk'))
                   IconButton(
                     visualDensity: VisualDensity.compact,

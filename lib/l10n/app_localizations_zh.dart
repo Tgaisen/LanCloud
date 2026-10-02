@@ -113,6 +113,20 @@ class AppLocalizationsZh extends AppLocalizations {
   String get favoritesHint => '收藏的文件和分享会出现在这里';
 
   @override
+  String get favoriteFolders => '收藏的文件夹';
+
+  @override
+  String get favoriteFiles => '收藏的文件';
+
+  @override
+  String get favoriteDeleteConfirmTitle => '删除收藏';
+
+  @override
+  String favoriteDeleteConfirmMessage(int count) {
+    return '将移除选中的 $count 个收藏，继续吗？';
+  }
+
+  @override
   String get unfavorite => '取消收藏';
 
   @override

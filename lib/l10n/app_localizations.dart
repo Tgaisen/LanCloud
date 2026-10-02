@@ -284,6 +284,30 @@ abstract class AppLocalizations {
   /// **'收藏的文件和分享会出现在这里'**
   String get favoritesHint;
 
+  /// No description provided for @favoriteFolders.
+  ///
+  /// In zh, this message translates to:
+  /// **'收藏的文件夹'**
+  String get favoriteFolders;
+
+  /// No description provided for @favoriteFiles.
+  ///
+  /// In zh, this message translates to:
+  /// **'收藏的文件'**
+  String get favoriteFiles;
+
+  /// No description provided for @favoriteDeleteConfirmTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除收藏'**
+  String get favoriteDeleteConfirmTitle;
+
+  /// No description provided for @favoriteDeleteConfirmMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'将移除选中的 {count} 个收藏，继续吗？'**
+  String favoriteDeleteConfirmMessage(int count);
+
   /// No description provided for @unfavorite.
   ///
   /// In zh, this message translates to:

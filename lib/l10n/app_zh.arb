@@ -57,6 +57,15 @@
   "myDrive": "我的网盘",
   "myFavorites": "收藏内容",
   "favoritesHint": "收藏的文件和分享会出现在这里",
+  "favoriteFolders": "收藏的文件夹",
+  "favoriteFiles": "收藏的文件",
+  "favoriteDeleteConfirmTitle": "删除收藏",
+  "favoriteDeleteConfirmMessage": "将移除选中的 {count} 个收藏，继续吗？",
+  "@favoriteDeleteConfirmMessage": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
   "unfavorite": "取消收藏",
   "addAccount": "添加账号",
   "lanCloudSubtitle": "蓝奏云第三方客户端",

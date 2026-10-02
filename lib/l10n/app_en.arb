@@ -31,6 +31,15 @@
   "myDrive": "My drive",
   "myFavorites": "Favorites",
   "favoritesHint": "Favorited files and shares will appear here",
+  "favoriteFolders": "Favorite folders",
+  "favoriteFiles": "Favorite files",
+  "favoriteDeleteConfirmTitle": "Delete favorites",
+  "favoriteDeleteConfirmMessage": "Remove {count} selected favorites?",
+  "@favoriteDeleteConfirmMessage": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
   "unfavorite": "Remove favorite",
   "addAccount": "Add account",
   "lanCloudSubtitle": "Third-party LanZou Cloud client",

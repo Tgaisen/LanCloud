@@ -9,9 +9,9 @@ import 'core/share_inbox.dart';
 import 'core/transfer/transfer_manager.dart';
 import 'l10n/l10n.dart';
 import 'ui/drive_page.dart';
+import 'ui/favorites_page.dart';
 import 'ui/home_page.dart';
 import 'ui/login_page.dart';
-import 'ui/profile_page.dart';
 import 'ui/app_scroll.dart';
 import 'ui/scroll_tint.dart';
 import 'ui/share_page.dart';
@@ -128,7 +128,7 @@ class _RootShellState extends State<RootShell> {
       icon: Icons.swap_vert_outlined,
       selected: Icons.swap_vert,
     ),
-    (icon: Icons.person_outline, selected: Icons.person),
+    (icon: Icons.star_border, selected: Icons.star_outline),
   ];
 
   int _index = 0;
@@ -359,7 +359,7 @@ class _RootShellState extends State<RootShell> {
       const HomePage(tabIndex: 0),
       const DrivePage(tabIndex: 1),
       const TransfersPage(tabIndex: 2),
-      const ProfilePage(tabIndex: 3),
+      const FavoritesPage(tabIndex: 3),
     ];
     // 底栏整体高度：悬浮样式含上下留白，用于 1:1 跟随滚动的收起距离
     final barHeight = app.settings.floatingNavBar ? 108.0 : 80.0;
@@ -405,7 +405,8 @@ class _RootShellState extends State<RootShell> {
           0 => l10n.tabHome,
           1 => l10n.tabDrive,
           2 => l10n.tabTransfers,
-          _ => l10n.tabProfile,
+          3 => l10n.favorite,
+          _ => l10n.tabHome,
         };
 
     final width = MediaQuery.sizeOf(context).width;
