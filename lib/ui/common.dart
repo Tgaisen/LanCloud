@@ -540,9 +540,89 @@ class SectionCard extends StatelessWidget {
   }
 }
 
-/// MD3 Expressive 分段列表：
-/// 圆角容器内整宽涟漪 + 条目间“带间距（With Gap）”分隔线，
-/// 按下时容器圆角做 Shape Morphing 动画。
+/// 连接式分组的排布方向。
+enum ConnectedAxis {
+  /// 横向（按钮组）：相邻边在左右两侧。
+  horizontal,
+
+  /// 纵向（列表）：相邻边在上下两端。
+  vertical,
+}
+
+/// MD3 Expressive 连接式分组的分角：
+/// 组两端（外侧）用 [outer]，组内相邻处用 [inner]；
+/// [axis] 决定“相邻边”在左右还是上下；
+/// [pressedIndex] 命中时该条目整体放大到 [pressedRadius]，
+/// 相邻条目的相邻角同步收圆到 [outer]（shape morphing）。
+BorderRadius connectedItemRadius({
+  required int index,
+  required int count,
+  required double outer,
+  required double inner,
+  ConnectedAxis axis = ConnectedAxis.vertical,
+  int? pressedIndex,
+  double? pressedRadius,
+}) {
+  final Radius outerRadius = Radius.circular(outer);
+  final Radius innerRadius = Radius.circular(inner);
+  final bool isFirst = index == 0;
+  final bool isLast = index == count - 1;
+  final bool horizontal = axis == ConnectedAxis.horizontal;
+  // 横向：左右两端是外侧圆角；纵向：上下两端是外侧圆角
+  Radius topLeft;
+  Radius topRight;
+  Radius bottomLeft;
+  Radius bottomRight;
+  if (horizontal) {
+    topLeft = isFirst ? outerRadius : innerRadius;
+    bottomLeft = isFirst ? outerRadius : innerRadius;
+    topRight = isLast ? outerRadius : innerRadius;
+    bottomRight = isLast ? outerRadius : innerRadius;
+  } else {
+    topLeft = isFirst ? outerRadius : innerRadius;
+    topRight = isFirst ? outerRadius : innerRadius;
+    bottomLeft = isLast ? outerRadius : innerRadius;
+    bottomRight = isLast ? outerRadius : innerRadius;
+  }
+
+  if (pressedIndex == null || pressedRadius == null) {
+    return BorderRadius.only(
+      topLeft: topLeft,
+      topRight: topRight,
+      bottomLeft: bottomLeft,
+      bottomRight: bottomRight,
+    );
+  }
+  if (index == pressedIndex) return BorderRadius.circular(pressedRadius);
+  if ((index - pressedIndex).abs() == 1) {
+    if (horizontal) {
+      if (index < pressedIndex) {
+        topRight = outerRadius;
+        bottomRight = outerRadius;
+      } else {
+        topLeft = outerRadius;
+        bottomLeft = outerRadius;
+      }
+    } else if (index < pressedIndex) {
+      bottomLeft = outerRadius;
+      bottomRight = outerRadius;
+    } else {
+      topLeft = outerRadius;
+      topRight = outerRadius;
+    }
+  }
+  return BorderRadius.only(
+    topLeft: topLeft,
+    topRight: topRight,
+    bottomLeft: bottomLeft,
+    bottomRight: bottomRight,
+  );
+}
+
+/// MD3 Expressive 连接式列表（Connected）：
+/// - 组外侧圆角 [outerRadius]（默认 16dp），组内相邻处圆角 [innerRadius]（默认 4dp）
+/// - 条目之间用空白间隔（[gap]）而不是分割线
+/// - 按下时该条目圆角做 Shape Morphing（相邻条目的相邻角同步收圆）
 class SegmentedList extends StatefulWidget {
   const SegmentedList({
     super.key,
@@ -550,66 +630,223 @@ class SegmentedList extends StatefulWidget {
     this.margin = const EdgeInsets.all(4),
     this.padding = EdgeInsets.zero,
     this.color,
-    this.restRadius = 16,
+    this.outerRadius = 16,
+    this.innerRadius = 4,
     this.pressedRadius = 28,
-    this.dividerGap = 16,
+    this.gap = 2,
   });
 
   final List<Widget> children;
   final EdgeInsetsGeometry margin;
   final EdgeInsetsGeometry padding;
   final Color? color;
-  final double restRadius;
+  /// 组两端（外侧）圆角。
+  final double outerRadius;
+  /// 组内相邻处的圆角。
+  final double innerRadius;
+  /// 按下时该条目的圆角。
   final double pressedRadius;
-  final double dividerGap;
+  /// 条目之间的空白间隔（替代分割线）。
+  final double gap;
 
   @override
   State<SegmentedList> createState() => _SegmentedListState();
 }
 
 class _SegmentedListState extends State<SegmentedList> {
-  bool _pressed = false;
+  int? _pressedIndex;
 
-  void _setPressed(bool value) {
-    if (_pressed != value && mounted) setState(() => _pressed = value);
+  void _setPressed(int? index) {
+    if (_pressedIndex != index && mounted) setState(() => _pressedIndex = index);
+  }
+
+  /// 计算单个条目的圆角：组外侧 16dp、组内相邻处 4dp；
+  /// 按下时整体放大，相邻条目的相邻角同步收圆。
+  BorderRadius _radiusFor(int index, int count) => connectedItemRadius(
+    index: index,
+    count: count,
+    outer: widget.outerRadius,
+    inner: widget.innerRadius,
+    pressedIndex: _pressedIndex,
+    pressedRadius: widget.pressedRadius,
+  );
+
+  Widget _item(BuildContext context, ColorScheme scheme, int index, int count) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+      decoration: BoxDecoration(
+        color: widget.color ?? scheme.surfaceContainerLow,
+        borderRadius: _radiusFor(index, count),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Material(
+        type: MaterialType.transparency,
+        child: Listener(
+          onPointerDown: (_) => _setPressed(index),
+          onPointerUp: (_) => _setPressed(null),
+          onPointerCancel: (_) => _setPressed(null),
+          child: Padding(
+            padding: widget.padding,
+            child: widget.children[index],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final radius = _pressed ? widget.pressedRadius : widget.restRadius;
+    final count = widget.children.length;
     return Padding(
       padding: widget.margin,
-      child: TweenAnimationBuilder<double>(
-        tween: Tween<double>(begin: widget.restRadius, end: radius),
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOutCubic,
-        builder: (context, r, child) => Material(
-          color: widget.color ?? scheme.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(r),
-          clipBehavior: Clip.antiAlias,
-          child: child,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < count; i++) ...[
+            if (i > 0) SizedBox(height: widget.gap),
+            _item(context, scheme, i, count),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// MD3 Expressive 连接式按钮组（Connected button group）：
+/// 外侧 [outerRadius]（16dp）、组内相邻处 [innerRadius]（4dp），
+/// 条目之间是空白间隔；选中项用主题色（secondaryContainer）强调，
+/// 不把图标替换成对勾，按下时做 shape morphing。
+///
+/// 目前仅支持单选（[selected] 取第一个命中项，重复点选不取消）。
+class ConnectedSegmentedButton<T> extends StatefulWidget {
+  const ConnectedSegmentedButton({
+    super.key,
+    required this.segments,
+    required this.selected,
+    required this.onSelectionChanged,
+    this.margin = EdgeInsets.zero,
+    this.outerRadius = 16,
+    this.innerRadius = 4,
+    this.pressedRadius = 28,
+    this.gap = 2,
+    this.expanded = true,
+  });
+
+  final List<ButtonSegment<T>> segments;
+  final Set<T> selected;
+  final ValueChanged<Set<T>>? onSelectionChanged;
+  final EdgeInsetsGeometry margin;
+  final double outerRadius;
+  final double innerRadius;
+  final double pressedRadius;
+  final double gap;
+
+  /// 是否让每个按钮等分整行宽度。
+  final bool expanded;
+
+  @override
+  State<ConnectedSegmentedButton<T>> createState() =>
+      _ConnectedSegmentedButtonState<T>();
+}
+
+class _ConnectedSegmentedButtonState<T>
+    extends State<ConnectedSegmentedButton<T>> {
+  int? _pressedIndex;
+
+  void _setPressed(int? index) {
+    if (_pressedIndex != index && mounted) setState(() => _pressedIndex = index);
+  }
+
+  void _select(T value) {
+    final onChanged = widget.onSelectionChanged;
+    if (onChanged == null || widget.selected.contains(value)) return;
+    onChanged({value});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final count = widget.segments.length;
+    return Padding(
+      padding: widget.margin,
+      child: Row(
+        children: [
+          for (var i = 0; i < count; i++) ...[
+            if (i > 0) SizedBox(width: widget.gap),
+            if (widget.expanded)
+              Expanded(child: _segment(context, scheme, i, count))
+            else
+              _segment(context, scheme, i, count),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _segment(
+    BuildContext context,
+    ColorScheme scheme,
+    int index,
+    int count,
+  ) {
+    final segment = widget.segments[index];
+    final enabled = segment.enabled && widget.onSelectionChanged != null;
+    final selected = widget.selected.contains(segment.value);
+    final radius = connectedItemRadius(
+      index: index,
+      count: count,
+      outer: widget.outerRadius,
+      inner: widget.innerRadius,
+      axis: ConnectedAxis.horizontal,
+      pressedIndex: _pressedIndex,
+      pressedRadius: widget.pressedRadius,
+    );
+    final Color foreground = !enabled
+        ? scheme.onSurface.withValues(alpha: 0.38)
+        : selected
+            ? scheme.onSecondaryContainer
+            : scheme.onSurfaceVariant;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+      decoration: BoxDecoration(
+        color: selected ? scheme.secondaryContainer : Colors.transparent,
+        borderRadius: radius,
+        border: Border.all(
+          color: selected ? Colors.transparent : scheme.outlineVariant,
         ),
-        child: Listener(
-          onPointerDown: (_) => _setPressed(true),
-          onPointerUp: (_) => _setPressed(false),
-          onPointerCancel: (_) => _setPressed(false),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: enabled ? () => _select(segment.value) : null,
+          onHighlightChanged: (pressed) => _setPressed(pressed ? index : null),
           child: Padding(
-            padding: widget.padding,
-            child: Column(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
               mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                for (var i = 0; i < widget.children.length; i++) ...[
-                  if (i > 0)
-                    Divider(
-                      height: 1,
-                      thickness: 1,
-                      indent: widget.dividerGap,
-                      endIndent: widget.dividerGap,
-                    ),
-                  widget.children[i],
+                if (segment.icon != null) ...[
+                  IconTheme.merge(
+                    data: IconThemeData(size: 18, color: foreground),
+                    child: segment.icon!,
+                  ),
+                  if (segment.label != null) const SizedBox(width: 8),
                 ],
+                if (segment.label != null)
+                  DefaultTextStyle.merge(
+                    style: TextStyle(
+                      color: foreground,
+                      fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                    ),
+                    child: segment.label!,
+                  ),
               ],
             ),
           ),

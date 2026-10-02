@@ -81,7 +81,7 @@ class _TransfersPageState extends State<TransfersPage>
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
                     child: SizedBox(
                       width: double.infinity,
-                      child: SegmentedButton<int>(
+                      child: ConnectedSegmentedButton<int>(
                         segments: [
                           ButtonSegment(
                             value: 0,
@@ -95,7 +95,6 @@ class _TransfersPageState extends State<TransfersPage>
                           ),
                         ],
                         selected: {_tab},
-                        selectedIcon: const Icon(Icons.check),
                         onSelectionChanged: (values) =>
                             setState(() => _tab = values.first),
                       ),

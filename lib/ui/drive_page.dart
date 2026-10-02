@@ -788,7 +788,7 @@ class _DrivePageState extends State<DrivePage>
                   const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
-                    child: SegmentedButton<String>(
+                    child: ConnectedSegmentedButton<String>(
                       segments: [
                         ButtonSegment(
                           value: 'grid',
@@ -802,7 +802,6 @@ class _DrivePageState extends State<DrivePage>
                         ),
                       ],
                       selected: {grid ? 'grid' : 'list'},
-                      selectedIcon: const Icon(Icons.check),
                       onSelectionChanged: (values) {
                         final value = values.first;
                         setSheetState(() => grid = value == 'grid');
@@ -818,7 +817,7 @@ class _DrivePageState extends State<DrivePage>
                   const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
-                    child: SegmentedButton<String>(
+                    child: ConnectedSegmentedButton<String>(
                       segments: [
                         ButtonSegment(
                           value: 'default',
@@ -834,7 +833,6 @@ class _DrivePageState extends State<DrivePage>
                         ),
                       ],
                       selected: {sort},
-                      selectedIcon: const Icon(Icons.check),
                       onSelectionChanged: (values) {
                         setSheetState(() => sort = values.first);
                         setState(() => _sortMode = values.first);
