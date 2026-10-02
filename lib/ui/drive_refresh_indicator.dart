@@ -326,7 +326,8 @@ class LanRefreshIndicatorState extends State<LanRefreshIndicator>
       return false;
     }
     if (notification is ScrollUpdateNotification) {
-      if (_status == RefreshIndicatorStatus.drag) {
+      if (_status == RefreshIndicatorStatus.drag &&
+          notification.dragDetails != null) {
         _dragOffset = _dragOffset! - notification.scrollDelta!;
         _checkDragOffset();
       }
@@ -581,11 +582,11 @@ class LanRefreshIndicatorState extends State<LanRefreshIndicator>
     return ScrollConfiguration(
       behavior: _RefreshScrollBehavior(
         physics: switch (defaultTargetPlatform) {
-          TargetPlatform.iOS || TargetPlatform.macOS => _RefreshBouncingPhysics(
+          TargetPlatform.iOS || TargetPlatform.macOS => _RefreshBouncingClampedPhysics(
             parent: const AlwaysScrollableScrollPhysics(),
             onDrag: _onDrag,
           ),
-          _ => _RefreshClampingPhysics(
+          _ => _RefreshBouncingPhysics(
             parent: const AlwaysScrollableScrollPhysics(),
             onDrag: _onDrag,
           ),
@@ -612,26 +613,9 @@ mixin _RefreshScrollPhysicsMixin on ScrollPhysics {
   }
 }
 
-/// Android 使用 PiliPlus 的 Clamping 物理。
-class _RefreshClampingPhysics extends ClampingScrollPhysics
-    with _RefreshScrollPhysicsMixin {
-  const _RefreshClampingPhysics({super.parent, required this.onDrag});
-
-  @override
-  final _RefreshOnDrag onDrag;
-
-  @override
-  _RefreshClampingPhysics applyTo(ScrollPhysics? ancestor) {
-    return _RefreshClampingPhysics(
-      parent: buildParent(ancestor),
-      onDrag: onDrag,
-    );
-  }
-}
-
-/// iOS 使用 PiliPlus 的 Bouncing 物理，并把边界行为改回 Clamping。
+/// Android 使用纯 Bouncing 物理，保留顶部回弹手感。
 class _RefreshBouncingPhysics extends BouncingScrollPhysics
-    with _RefreshScrollPhysicsMixin, ClampingBoundaryMixin {
+    with _RefreshScrollPhysicsMixin {
   const _RefreshBouncingPhysics({super.parent, required this.onDrag});
 
   @override
@@ -640,6 +624,26 @@ class _RefreshBouncingPhysics extends BouncingScrollPhysics
   @override
   _RefreshBouncingPhysics applyTo(ScrollPhysics? ancestor) {
     return _RefreshBouncingPhysics(
+      parent: buildParent(ancestor),
+      onDrag: onDrag,
+    );
+  }
+}
+
+/// iOS/macOS 使用 PiliPlus 的 Bouncing 物理，并把边界行为改回 Clamping。
+class _RefreshBouncingClampedPhysics extends BouncingScrollPhysics
+    with _RefreshScrollPhysicsMixin, ClampingBoundaryMixin {
+  const _RefreshBouncingClampedPhysics({
+    super.parent,
+    required this.onDrag,
+  });
+
+  @override
+  final _RefreshOnDrag onDrag;
+
+  @override
+  _RefreshBouncingClampedPhysics applyTo(ScrollPhysics? ancestor) {
+    return _RefreshBouncingClampedPhysics(
       parent: buildParent(ancestor),
       onDrag: onDrag,
     );
