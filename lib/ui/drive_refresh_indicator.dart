@@ -224,6 +224,7 @@ class LanRefreshIndicatorState extends State<LanRefreshIndicator>
   RefreshIndicatorStatus? _status;
   late Future<void> _pendingRefreshFuture;
   double? _dragOffset;
+  double? _dragUpdateConsumed;
   late Color _effectiveValueColor =
       widget.color ?? Theme.of(context).colorScheme.primary;
 
@@ -328,8 +329,14 @@ class LanRefreshIndicatorState extends State<LanRefreshIndicator>
     if (notification is ScrollUpdateNotification) {
       if (_status == RefreshIndicatorStatus.drag &&
           notification.dragDetails != null) {
-        _dragOffset = _dragOffset! - notification.scrollDelta!;
-        _checkDragOffset();
+        if (_dragUpdateConsumed != null &&
+            notification.scrollDelta == _dragUpdateConsumed) {
+          // 这次位移已经由 [_onDrag] 更新过小球，避免重复计数。
+          _dragUpdateConsumed = null;
+        } else {
+          _dragOffset = _dragOffset! - notification.scrollDelta!;
+          _checkDragOffset();
+        }
       }
       if (_status == RefreshIndicatorStatus.drag &&
           notification.dragDetails == null &&
@@ -381,6 +388,7 @@ class LanRefreshIndicatorState extends State<LanRefreshIndicator>
     assert(_status == null);
     assert(_dragOffset == null);
     _dragOffset = 0.0;
+    _dragUpdateConsumed = null;
     _scaleController.value = 0.0;
     _positionController.value = 0.0;
     return true;
@@ -405,6 +413,7 @@ class LanRefreshIndicatorState extends State<LanRefreshIndicator>
     if (_positionController.value > 0.0 &&
         _status == RefreshIndicatorStatus.drag) {
       _dragOffset = _dragOffset! + offset;
+      _dragUpdateConsumed = -offset;
       _checkDragOffset();
       return true;
     }
@@ -442,6 +451,7 @@ class LanRefreshIndicatorState extends State<LanRefreshIndicator>
     }
     if (mounted && _status == newMode) {
       _dragOffset = null;
+      _dragUpdateConsumed = null;
       setState(() {
         _status = null;
       });
@@ -607,7 +617,8 @@ mixin _RefreshScrollPhysicsMixin on ScrollPhysics {
   @override
   double applyPhysicsToUserOffset(ScrollMetrics position, double offset) {
     if (offset < 0.0 && onDrag(offset)) {
-      return 0.0;
+      // 小球已经吃掉这份位移，同时把原位移交给列表，让顶部空白一起跟随。
+      return offset;
     }
     return super.applyPhysicsToUserOffset(position, offset);
   }
