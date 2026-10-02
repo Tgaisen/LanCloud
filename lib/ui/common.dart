@@ -691,7 +691,8 @@ class SectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final header = Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+      // 与分组（SegmentedList 自带 4dp 外边距）左对齐
+      padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
       child: Row(
         children: [
           if (leading != null) ...[
@@ -725,17 +726,20 @@ class SectionCard extends StatelessWidget {
         ],
       ),
     );
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+    // 底色与圆角交给分组本身，标题行保持透明
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (onToggle == null)
             header
           else
-            InkWell(onTap: onToggle, child: header),
+            InkWell(
+              onTap: onToggle,
+              borderRadius: BorderRadius.circular(16),
+              child: header,
+            ),
           ClipRect(
             child: AnimatedSize(
               duration: const Duration(milliseconds: 240),

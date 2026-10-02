@@ -325,7 +325,7 @@ class _HomePageState extends State<HomePage>
                           icon: Icons.push_pin_outlined,
                           text: l10n.quickAccessHint,
                         )
-                      : Column(
+                      : SegmentedList(
                           children: [
                             for (var i = 0; i < _quick.length; i++)
                               _quickItem(
@@ -352,7 +352,7 @@ class _HomePageState extends State<HomePage>
                               icon: Icons.history,
                               text: l10n.noRecent,
                             )
-                          : Column(
+                          : SegmentedList(
                               children: [
                                 for (final item in _recents)
                                   ListTile(
