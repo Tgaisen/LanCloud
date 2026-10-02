@@ -3666,155 +3666,117 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
     final scheme = theme.colorScheme;
     final visible =
         _folders.where((f) => !widget.excludeIds.contains(f.id)).toList();
-    return Dialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+    return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxWidth: 400,
-          maxHeight: math.min(520, MediaQuery.sizeOf(context).height * 0.8),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: scheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Icon(
-                      Icons.drive_file_move_outline,
-                      size: 22,
-                      color: scheme.onPrimaryContainer,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      l10n.chooseTargetFolder,
-                      style: theme.textTheme.titleMedium,
-                    ),
-                  ),
-                ],
+      title: Text(l10n.chooseTargetFolder),
+      content: SizedBox(
+        width: 360,
+        height: math.min(440.0, MediaQuery.sizeOf(context).height * 0.55),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (widget.initialName != null) ...[
+              TextField(
+                controller: _nameController,
+                decoration: InputDecoration(
+                  isDense: true,
+                  border: const OutlineInputBorder(),
+                  labelText: l10n.nameRequired,
+                ),
               ),
-              const SizedBox(height: 16),
-              if (widget.initialName != null) ...[
-                TextField(
-                  controller: _nameController,
-                  decoration: InputDecoration(
-                    isDense: true,
-                    border: const OutlineInputBorder(),
-                    labelText: l10n.nameRequired,
+              const SizedBox(height: 8),
+            ],
+            Row(
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        for (var i = -1; i < _path.length; i++) ...[
+                          if (i >= 0)
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 2),
+                              child: Icon(
+                                Icons.chevron_right,
+                                size: 16,
+                                color: scheme.outline,
+                              ),
+                            ),
+                          PathChip(
+                            label: i < 0 ? l10n.root : _path[i].name,
+                            current: i == _path.length - 1,
+                            onTap: () => _jumpTo(i),
+                            verticalPadding: 4,
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(width: 4),
+                IconButton.filledTonal(
+                  tooltip: l10n.newFolder,
+                  icon: const Icon(Icons.create_new_folder_outlined),
+                  onPressed: _loading ? null : _mkdir,
+                ),
               ],
-              Row(
-                children: [
-                  Expanded(
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          for (var i = -1; i < _path.length; i++) ...[
-                            if (i >= 0)
-                              Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 2),
-                                child: Icon(
-                                  Icons.chevron_right,
-                                  size: 16,
-                                  color: scheme.outline,
-                                ),
-                              ),
-                            PathChip(
-                              label: i < 0 ? l10n.root : _path[i].name,
-                              current: i == _path.length - 1,
-                              onTap: () => _jumpTo(i),
-                              verticalPadding: 4,
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _error != null
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Text(
+                              l10n.loadFailed(_error!),
+                              textAlign: TextAlign.center,
                             ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  IconButton.filledTonal(
-                    tooltip: l10n.newFolder,
-                    icon: const Icon(Icons.create_new_folder_outlined),
-                    onPressed: _loading ? null : _mkdir,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Flexible(
-                child: _loading
-                    ? const Center(child: CircularProgressIndicator())
-                    : _error != null
-                        ? Center(
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
+                          ),
+                        )
+                      : visible.isEmpty
+                          ? Center(
                               child: Text(
-                                l10n.loadFailed(_error!),
-                                textAlign: TextAlign.center,
+                                l10n.noSubfolders,
+                                style: TextStyle(color: scheme.outline),
                               ),
+                            )
+                          : ListView.builder(
+                              padding: EdgeInsets.zero,
+                              itemCount: visible.length,
+                              itemBuilder: (context, index) =>
+                                  _folderRow(visible[index]),
                             ),
-                          )
-                        : visible.isEmpty
-                            ? Center(
-                                child: Text(
-                                  l10n.noSubfolders,
-                                  style: TextStyle(color: scheme.outline),
-                                ),
-                              )
-                            : ListView.builder(
-                                padding: EdgeInsets.zero,
-                                itemCount: visible.length,
-                                itemBuilder: (context, index) =>
-                                    _folderRow(visible[index]),
-                              ),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: Text(l10n.cancel),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton(
-                    onPressed: _loading
-                        ? null
-                        : () {
-                            final edited = _nameController.text.trim();
-                            Navigator.of(context).pop(
-                              FolderPickResult(
-                                _folderId,
-                                _targetName(l10n),
-                                fileName: widget.initialName == null
-                                    ? null
-                                    : (edited.isEmpty
-                                        ? widget.initialName
-                                        : edited),
-                              ),
-                            );
-                          },
-                    child: Text(widget.confirmLabel ?? l10n.moveHere),
-                  ),
-                ],
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l10n.cancel),
+        ),
+        FilledButton(
+          onPressed: _loading
+              ? null
+              : () {
+                  final edited = _nameController.text.trim();
+                  Navigator.of(context).pop(
+                    FolderPickResult(
+                      _folderId,
+                      _targetName(l10n),
+                      fileName: widget.initialName == null
+                          ? null
+                          : (edited.isEmpty ? widget.initialName : edited),
+                    ),
+                  );
+                },
+          child: Text(widget.confirmLabel ?? l10n.moveHere),
+        ),
+      ],
     );
   }
 
@@ -3838,13 +3800,13 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: scheme.primaryContainer,
+                    color: scheme.secondaryContainer,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
                     Icons.folder_outlined,
                     size: 19,
-                    color: scheme.onPrimaryContainer,
+                    color: scheme.onSecondaryContainer,
                   ),
                 ),
                 const SizedBox(width: 12),

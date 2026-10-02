@@ -602,7 +602,8 @@ class PathChip extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: verticalPadding),
       child: Material(
-        color: current ? scheme.secondaryContainer : scheme.surfaceContainerHigh,
+        // 只有当前目录带底色，上级目录保持透明
+        color: current ? scheme.secondaryContainer : Colors.transparent,
         borderRadius: BorderRadius.circular(10),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -702,10 +703,7 @@ class SectionCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: IconTheme(
-                data: IconThemeData(
-                  size: 20,
-                  color: scheme.onPrimaryContainer,
-                ),
+                data: IconThemeData(color: scheme.onPrimaryContainer),
                 child: Center(child: leading!),
               ),
             ),

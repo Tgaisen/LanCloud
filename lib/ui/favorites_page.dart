@@ -309,7 +309,7 @@ class _FavoritesPageState extends State<FavoritesPage>
                   decoration: BoxDecoration(
                     color: selected
                         ? Colors.transparent
-                        : scheme.surfaceContainerHighest,
+                        : scheme.secondaryContainer,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
@@ -321,7 +321,7 @@ class _FavoritesPageState extends State<FavoritesPage>
                     size: 22,
                     color: selected
                         ? scheme.primary
-                        : (isFolder ? scheme.primary : scheme.secondary),
+                        : scheme.onSecondaryContainer,
                   ),
                 ),
                 const SizedBox(width: 12),
