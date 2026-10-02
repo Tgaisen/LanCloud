@@ -136,4 +136,35 @@ void main() {
     await db.trimRecents(account, 0);
     expect(await db.recents(account), isEmpty);
   });
+
+  test('快速访问记录目录路径，并支持移到顶部', () async {
+    final db = AppDb.instance;
+    const account = 'pin-path-test';
+    List<PinItem> mine(List<PinItem> all) =>
+        all.where((p) => p.account == account).toList();
+
+    await db.addPin(
+      account: account,
+      name: 'A',
+      ref: 'pin-a',
+      path: '根目录/A',
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 3));
+    await db.addPin(
+      account: account,
+      name: 'B',
+      ref: 'pin-b',
+      path: '根目录/示例目录/B',
+    );
+
+    var list = mine(await db.pins(account));
+    expect(list.map((p) => p.name), ['B', 'A']);
+    expect(list.first.path, '根目录/示例目录/B');
+
+    await Future<void>.delayed(const Duration(milliseconds: 3));
+    await db.movePinToTop('pin-a');
+    list = mine(await db.pins(account));
+    expect(list.map((p) => p.name), ['A', 'B']);
+    expect(list.first.path, '根目录/A');
+  });
 }

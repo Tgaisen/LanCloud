@@ -78,6 +78,67 @@ class _HomePageState extends State<HomePage>
     await app.setRecentsExpanded(_recentsExpanded);
   }
 
+  /// 快速访问条目：名称 + 该目录路径，右侧 ⋯ 打开菜单。
+  Widget _quickItem(
+    BuildContext context,
+    AppController app,
+    PinItem item, {
+    required bool first,
+  }) {
+    final l10n = context.l10n;
+    final scheme = Theme.of(context).colorScheme;
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+      leading: const Icon(Icons.folder_outlined),
+      title: Text(item.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+      subtitle: item.path.isEmpty
+          ? null
+          : Text(
+              item.path,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: scheme.outline, fontSize: 12),
+            ),
+      trailing: IconButton(
+        tooltip: l10n.moreActions,
+        icon: const Icon(Icons.more_vert),
+        onPressed: () => _showPinMenu(item, first: first),
+      ),
+      onTap: () => _openItem(context, 'folder', item.ref, item.name, ''),
+    );
+  }
+
+  /// 快速访问菜单：取消固定；不在顶部时可以移到顶部。
+  Future<void> _showPinMenu(PinItem item, {required bool first}) async {
+    final app = context.read<AppController>();
+    final l10n = context.l10n;
+    await showAppSheet<void>(
+      context,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.push_pin_outlined),
+            title: Text(l10n.unpin),
+            onTap: () async {
+              Navigator.of(context).pop();
+              await app.db.removePin(item.ref);
+            },
+          ),
+          if (!first)
+            ListTile(
+              leading: const Icon(Icons.vertical_align_top),
+              title: Text(l10n.moveToTop),
+              onTap: () async {
+                Navigator.of(context).pop();
+                await app.db.movePinToTop(item.ref);
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _load() async {
     final app = context.read<AppController>();
     final uid = app.activeUid ?? '';
@@ -266,31 +327,12 @@ class _HomePageState extends State<HomePage>
                         )
                       : Column(
                           children: [
-                            for (final item in _quick)
-                              ListTile(
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                ),
-                                leading: const Icon(Icons.folder_outlined),
-                                title: Text(
-                                  item.name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                trailing: IconButton(
-                                  tooltip: l10n.removeFromQuickAccess,
-                                  icon: const Icon(Icons.close),
-                                  onPressed: () async {
-                                    await app.db.removePin(item.ref);
-                                  },
-                                ),
-                                onTap: () => _openItem(
-                                  context,
-                                  'folder',
-                                  item.ref,
-                                  item.name,
-                                  '',
-                                ),
+                            for (var i = 0; i < _quick.length; i++)
+                              _quickItem(
+                                context,
+                                app,
+                                _quick[i],
+                                first: i == 0,
                               ),
                           ],
                         ),

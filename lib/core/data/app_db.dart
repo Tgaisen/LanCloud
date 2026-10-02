@@ -11,6 +11,7 @@ class PinItem {
     required this.account,
     required this.name,
     required this.ref,
+    this.path = '',
     this.createdAt = 0,
   });
 
@@ -20,6 +21,9 @@ class PinItem {
 
   /// 网盘目录 id。
   final String ref;
+
+  /// 固定时的目录路径，例如 根目录/示例目录。
+  final String path;
   final int createdAt;
 }
 
@@ -85,7 +89,7 @@ class AppDb {
     final path = p.join(await getDatabasesPath(), 'lancloud.db');
     return openDatabase(
       path,
-      version: 5,
+      version: 6,
       onCreate: (db, version) async {
         await db.execute(
           'CREATE TABLE favorites('
@@ -115,6 +119,7 @@ class AppDb {
           'account TEXT NOT NULL,'
           'name TEXT NOT NULL,'
           'ref TEXT NOT NULL,'
+          'path TEXT DEFAULT "",'
           'created_at INTEGER NOT NULL)',
         );
         await db.execute(
@@ -202,6 +207,12 @@ class AppDb {
             'favorites',
             where: 'kind = ?',
             whereArgs: ['pinFolder'],
+          );
+        }
+        if (oldVersion < 6) {
+          // 快速访问记录所在路径，用于首页副标题
+          await db.execute(
+            'ALTER TABLE pins ADD COLUMN path TEXT DEFAULT ""',
           );
         }
       },
@@ -400,6 +411,7 @@ class AppDb {
               account: '${r['account']}',
               name: '${r['name']}',
               ref: '${r['ref']}',
+              path: '${r['path'] ?? ''}',
               createdAt: r['created_at'] as int,
             ))
         .toList();
@@ -419,6 +431,7 @@ class AppDb {
     required String account,
     required String name,
     required String ref,
+    String path = '',
   }) async {
     final database = await db;
     await database.delete('pins', where: 'ref = ?', whereArgs: [ref]);
@@ -426,6 +439,7 @@ class AppDb {
       'account': account,
       'name': name,
       'ref': ref,
+      'path': path,
       'created_at': DateTime.now().millisecondsSinceEpoch,
     });
     _touch();
@@ -434,6 +448,18 @@ class AppDb {
   Future<void> removePin(String ref) async {
     final database = await db;
     await database.delete('pins', where: 'ref = ?', whereArgs: [ref]);
+    _touch();
+  }
+
+  /// 把某个固定目录移到最前（刷新创建时间即可，列表按创建时间倒序）。
+  Future<void> movePinToTop(String ref) async {
+    final database = await db;
+    await database.update(
+      'pins',
+      {'created_at': DateTime.now().millisecondsSinceEpoch},
+      where: 'ref = ?',
+      whereArgs: [ref],
+    );
     _touch();
   }
 
@@ -549,7 +575,7 @@ class AppDb {
       'sharer',
       'created_at',
     ],
-    'pins': ['id', 'account', 'name', 'ref', 'created_at'],
+    'pins': ['id', 'account', 'name', 'ref', 'path', 'created_at'],
     'recents': ['id', 'account', 'kind', 'name', 'ref', 'pwd', 'opened_at'],
     'downloads': ['ref', 'name', 'path', 'created_at'],
   };

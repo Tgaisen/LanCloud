@@ -3339,14 +3339,24 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
 
   Future<void> _toggleQuickAccess() async {
     final app = context.read<AppController>();
+    final l10n = context.l10n;
     if (_pinned) {
       await app.db.removePin(widget.folder.id);
       if (mounted) setState(() => _pinned = false);
     } else {
+      // 当前目录查看属性时，自身的名字已经在路径里，避免重复拼一次
+      final ancestors = widget.page._path;
+      final isCurrent = ancestors.isNotEmpty &&
+          ancestors.last.id == widget.folder.id;
       await app.db.addPin(
         account: app.activeUid ?? '',
         name: widget.folder.name,
         ref: widget.folder.id,
+        path: [
+          l10n.root,
+          ...ancestors.map((node) => node.name),
+          if (!isCurrent) widget.folder.name,
+        ].join('/'),
       );
       if (mounted) setState(() => _pinned = true);
     }

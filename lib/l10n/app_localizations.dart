@@ -2096,6 +2096,18 @@ abstract class AppLocalizations {
   /// **'从快速访问移除'**
   String get removeFromQuickAccess;
 
+  /// No description provided for @unpin.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消固定'**
+  String get unpin;
+
+  /// No description provided for @moveToTop.
+  ///
+  /// In zh, this message translates to:
+  /// **'移到顶部'**
+  String get moveToTop;
+
   /// No description provided for @copy.
   ///
   /// In zh, this message translates to:

@@ -379,6 +379,8 @@
   },
   "addToQuickAccess": "Add to quick access",
   "removeFromQuickAccess": "Remove from quick access",
+  "unpin": "Unpin",
+  "moveToTop": "Move to top",
   "copy": "Copy",
   "continueLabel": "Continue",
   "showCookie": "Show cookie",

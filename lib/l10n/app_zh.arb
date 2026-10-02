@@ -541,6 +541,8 @@
   },
   "addToQuickAccess": "添加到快速访问",
   "removeFromQuickAccess": "从快速访问移除",
+  "unpin": "取消固定",
+  "moveToTop": "移到顶部",
   "copy": "复制",
   "continueLabel": "继续",
   "showCookie": "显示 Cookie",
