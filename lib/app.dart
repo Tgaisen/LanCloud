@@ -30,61 +30,11 @@ class LanCloudApp extends StatelessWidget {
     final app = context.watch<AppController>();
     final seed = Color(app.settings.themeSeed);
     final oledDark = app.settings.oledBlack;
-    ThemeData buildTheme(Brightness brightness) {
-      final scheme = ColorScheme.fromSeed(
-        seedColor: seed,
-        brightness: brightness,
-      );
-      return ThemeData(
-          colorScheme: scheme,
-          scaffoldBackgroundColor:
-              (brightness == Brightness.dark && oledDark) ? Colors.black : null,
-          appBarTheme: AppBarTheme(
-            scrolledUnderElevation: 0,
-            backgroundColor:
-                (brightness == Brightness.dark && oledDark) ? Colors.black : null,
-            systemOverlayStyle: SystemUiOverlayStyle(
-              statusBarColor: Colors.transparent,
-              statusBarIconBrightness: brightness == Brightness.dark
-                  ? Brightness.light
-                  : Brightness.dark,
-              statusBarBrightness: brightness == Brightness.dark
-                  ? Brightness.dark
-                  : Brightness.light,
-            ),
-          ),
-          snackBarTheme: const SnackBarThemeData(
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.all(Radius.circular(12)),
-            ),
-          ),
-          // 注意：不要在这里放"只有字重/填充轴、没有颜色"的 iconTheme，
-          // 会让 IconButton 的前景色变成 null（按黑色绘制，深色模式下看不见）。
-          // Material Symbols 的默认轴就是 outlined / 400 / grade0 / 24dp。
-          // MD3 扁平化：控件统一去阴影
-          cardTheme: const CardThemeData(elevation: 0),
-          navigationBarTheme: const NavigationBarThemeData(elevation: 0),
-          floatingActionButtonTheme: const FloatingActionButtonThemeData(
-            elevation: 0,
-            focusElevation: 0,
-            hoverElevation: 0,
-            highlightElevation: 0,
-            disabledElevation: 0,
-          ),
-          // MD3 Expressive 按钮组（connected）：细描边 + 圆角容器 + 选中勾选
-          segmentedButtonTheme: SegmentedButtonThemeData(
-            style: ButtonStyle(
-              side: WidgetStatePropertyAll(
-                BorderSide(color: scheme.outlineVariant),
-              ),
-              visualDensity: VisualDensity.standard,
-              tapTargetSize: MaterialTapTargetSize.padded,
-              animationDuration: const Duration(milliseconds: 240),
-            ),
-          ),
+    ThemeData buildTheme(Brightness brightness) => buildLanCloudTheme(
+          brightness: brightness,
+          seed: seed,
+          oledDark: oledDark,
         );
-    }
     final mode = app.settings.themeMode;
     final language = app.settings.language;
     return MaterialApp(
@@ -109,6 +59,79 @@ class LanCloudApp extends StatelessWidget {
       home: const AgreementGate(),
     );
   }
+}
+
+/// 应用主题（Material 3 + MD3E 细节）。抽出来便于测试。
+///
+/// 注意 [ThemeData.iconTheme] 必须保留默认图标颜色：如果传入一个
+/// "只有字重 / 填充轴、没有颜色"的 IconThemeData，IconButton 解析到的
+/// 前景色会是 null，深色模式下图标会被画成黑色。
+ThemeData buildLanCloudTheme({
+  required Brightness brightness,
+  required Color seed,
+  required bool oledDark,
+}) {
+  final scheme = ColorScheme.fromSeed(
+    seedColor: seed,
+    brightness: brightness,
+  );
+  final theme = ThemeData(
+          colorScheme: scheme,
+          scaffoldBackgroundColor:
+              (brightness == Brightness.dark && oledDark) ? Colors.black : null,
+          appBarTheme: AppBarTheme(
+            scrolledUnderElevation: 0,
+            backgroundColor:
+                (brightness == Brightness.dark && oledDark) ? Colors.black : null,
+            systemOverlayStyle: SystemUiOverlayStyle(
+              statusBarColor: Colors.transparent,
+              statusBarIconBrightness: brightness == Brightness.dark
+                  ? Brightness.light
+                  : Brightness.dark,
+              statusBarBrightness: brightness == Brightness.dark
+                  ? Brightness.dark
+                  : Brightness.light,
+            ),
+          ),
+          snackBarTheme: const SnackBarThemeData(
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(Radius.circular(12)),
+            ),
+          ),
+          // MD3 扁平化：控件统一去阴影
+          cardTheme: const CardThemeData(elevation: 0),
+          navigationBarTheme: const NavigationBarThemeData(elevation: 0),
+          floatingActionButtonTheme: const FloatingActionButtonThemeData(
+            elevation: 0,
+            focusElevation: 0,
+            hoverElevation: 0,
+            highlightElevation: 0,
+            disabledElevation: 0,
+          ),
+          // MD3 Expressive 按钮组（connected）：细描边 + 圆角容器 + 选中勾选
+          segmentedButtonTheme: SegmentedButtonThemeData(
+            style: ButtonStyle(
+              side: WidgetStatePropertyAll(
+                BorderSide(color: scheme.outlineVariant),
+              ),
+              visualDensity: VisualDensity.standard,
+              tapTargetSize: MaterialTapTargetSize.padded,
+              animationDuration: const Duration(milliseconds: 240),
+            ),
+          ),
+        );
+  // Material Symbols 可变轴：weight 400 / grade 0 / optical size 24（fill 0）。
+  // 必须用 copyWith 保留主题默认图标颜色——直接传一个"只有轴、没有颜色"的
+  // IconThemeData 会让 IconButton 前景色变成 null，深色模式下图标画成黑色。
+  return theme.copyWith(
+    iconTheme: theme.iconTheme.copyWith(
+      fill: 0,
+      weight: 400,
+      grade: 0,
+      opticalSize: 24,
+    ),
+  );
 }
 
 /// 首次启动先请求同意用户协议与隐私政策；不同意则退出应用。

@@ -3147,7 +3147,7 @@ class _DriveRow extends StatelessWidget {
                     color: selected
                         ? scheme.surface
                         : folder
-                            ? scheme.primaryContainer
+                            ? scheme.secondaryContainer
                             : scheme.surfaceContainerHigh,
                     borderRadius: BorderRadius.circular(selected ? 14 : 12),
                   ),
@@ -3160,7 +3160,7 @@ class _DriveRow extends StatelessWidget {
                       color: selected
                           ? scheme.primary
                           : folder
-                              ? scheme.onPrimaryContainer
+                              ? scheme.onSecondaryContainer
                               : scheme.onSurfaceVariant,
                     ),
                   ),

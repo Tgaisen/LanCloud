@@ -842,14 +842,8 @@ class SectionCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (onToggle == null)
-            header
-          else
-            InkWell(
-              onTap: onToggle,
-              borderRadius: BorderRadius.circular(16),
-              child: header,
-            ),
+          // 只有右侧 IconButton 能展开 / 收起，标题行本身不响应点击
+          header,
           ClipRect(
             child: AnimatedSize(
               duration: const Duration(milliseconds: 240),
