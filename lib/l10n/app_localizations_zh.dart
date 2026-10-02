@@ -107,7 +107,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get myDrive => '我的网盘';
 
   @override
-  String get myFavorites => '收藏内容';
+  String get myFavorites => '收藏';
 
   @override
   String get favoritesHint => '收藏的文件和分享会出现在这里';

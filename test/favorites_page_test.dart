@@ -21,7 +21,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('收藏内容'), findsOneWidget);
+    expect(find.text('收藏'), findsOneWidget);
     expect(find.text('收藏的文件和分享会出现在这里'), findsOneWidget);
     app.dispose();
   });
