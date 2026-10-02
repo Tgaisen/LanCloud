@@ -131,6 +131,12 @@ class _RootShellState extends State<RootShell> {
   int _index = 0;
   bool _programmaticJump = false;
   Size? _lastSize;
+  // 横竖屏切换跨越 640px 布局阈值时，PageView 会在 Scaffold.body 与
+  // Row/NavigationRail 两个不同深度的父级之间移动；ValueKey 无法跨父级
+  // 保留元素，重建后像素偏移会落到错误的页。GlobalKey 可让 PageView 只
+  // 移动、不重建。切换账号时更换 key，以保留重新挂载刷新页面的语义。
+  String? _pageViewUid;
+  late GlobalKey _pageViewKey = GlobalKey();
   late final PageController _pageController =
       PageController(initialPage: _index);
 
@@ -324,6 +330,10 @@ class _RootShellState extends State<RootShell> {
     final transfers = context.watch<TransferManager>();
     final l10n = context.l10n;
     NotificationService.i18n = l10n;
+    if (app.activeUid != _pageViewUid) {
+      _pageViewUid = app.activeUid;
+      _pageViewKey = GlobalKey();
+    }
     if (!app.ready) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
@@ -348,6 +358,7 @@ class _RootShellState extends State<RootShell> {
       key: ValueKey('shell-${app.activeUid}'),
       // 横向滑动切换视图；设置里可关闭手势（只能点底栏切换）
       child: PageView(
+        key: _pageViewKey,
         controller: _pageController,
         physics: app.settings.swipeTabs
             ? const PageScrollPhysics()
