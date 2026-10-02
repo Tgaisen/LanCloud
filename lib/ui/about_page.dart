@@ -49,13 +49,12 @@ class AboutPage extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       child: Column(
                         children: [
-                          CircleAvatar(
-                            radius: 32,
-                            backgroundColor: scheme.primaryContainer,
-                            child: Icon(
-                              Icons.cloud_outlined,
-                              size: 36,
-                              color: scheme.onPrimaryContainer,
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(20),
+                            child: Image.asset(
+                              'assets/app_icon.png',
+                              width: 72,
+                              height: 72,
                             ),
                           ),
                           const SizedBox(height: 12),

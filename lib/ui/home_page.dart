@@ -90,6 +90,7 @@ class _HomePageState extends State<HomePage>
       icon: Icons.folder_outlined,
       title: item.name,
       subtitle: item.path,
+      circleIcon: true,
       trailing: IconButton(
         tooltip: l10n.moreActions,
         icon: const Icon(Icons.more_vert),
@@ -356,6 +357,7 @@ class _HomePageState extends State<HomePage>
                                     subtitle: item.kind.startsWith('share')
                                         ? l10n.sharedContent
                                         : l10n.myDrive,
+                                    circleIcon: true,
                                     onTap: () => _openItem(
                                       context,
                                       item.kind,

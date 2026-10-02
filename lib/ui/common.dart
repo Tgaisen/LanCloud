@@ -597,6 +597,7 @@ class Md3ListItem extends StatelessWidget {
     this.bottom,
     this.titleMaxLines = 1,
     this.subtitleMaxLines = 1,
+    this.circleIcon = false,
   });
 
   final IconData icon;
@@ -619,6 +620,9 @@ class Md3ListItem extends StatelessWidget {
 
   final int titleMaxLines;
   final int subtitleMaxLines;
+
+  /// 图标块用圆形（首页快速访问 / 最近使用），默认圆角方形。
+  final bool circleIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -647,7 +651,9 @@ class Md3ListItem extends StatelessWidget {
                         color: selected
                             ? scheme.surface
                             : iconBoxColor ?? scheme.secondaryContainer,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(
+                          circleIcon ? 21 : 12,
+                        ),
                       ),
                       child: Icon(
                         selected ? Icons.check_circle : icon,

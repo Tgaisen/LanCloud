@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 
 import '../core/agreements.dart';
 import '../l10n/l10n.dart';
-import 'app_icons.dart';
 import 'legal_page.dart';
 
 /// 首次启动（或条款更新后）的同意页：同意后才能进入主界面。
@@ -25,7 +24,16 @@ class FirstRunTerms extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Spacer(),
-              Icon(Icons.cloud_outlined, size: 64, color: scheme.primary),
+              Center(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: Image.asset(
+                    'assets/app_icon.png',
+                    width: 72,
+                    height: 72,
+                  ),
+                ),
+              ),
               const SizedBox(height: 20),
               Text(
                 l10n.firstRunWelcome,

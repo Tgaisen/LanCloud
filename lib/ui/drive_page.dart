@@ -2422,7 +2422,11 @@ class _DrivePageState extends State<DrivePage>
 
   /// 顶栏（含路径栏）：作为浮层显示，与底栏共用收起进度。
   Widget _topBar(BuildContext context) {
-    return AppBar(
+    // 点顶栏空白处回到列表顶部（子级按钮 / 路径胶囊自行响应，不会误触）
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: _scrollToTop,
+      child: AppBar(
       backgroundColor: Color.lerp(
         Theme.of(context).colorScheme.surface,
         Theme.of(context).colorScheme.surfaceContainer,
@@ -2445,11 +2449,7 @@ class _DrivePageState extends State<DrivePage>
               ),
               onChanged: (value) => setState(() => _filter = value.trim()),
             )
-          : GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: _scrollToTop,
-              child: Text(context.l10n.tabDrive),
-            ),
+          : Text(context.l10n.tabDrive),
       actions: _searching
           ? [
               IconButton(
@@ -2485,6 +2485,7 @@ class _DrivePageState extends State<DrivePage>
             child: _pathBar(),
           ),
         ),
+      ),
       ),
     );
   }
@@ -2540,7 +2541,10 @@ class _DrivePageState extends State<DrivePage>
             PathChip(
               label: i < 0 ? context.l10n.root : _path[i].name,
               current: i == _path.length - 1,
-              onTap: () => _jumpTo(i),
+              // 点当前目录 = 刷新；点上一级 = 返回该目录
+              onTap: () => i == _path.length - 1
+                  ? _reloadAfterChange()
+                  : _jumpTo(i),
             ),
           ],
         ],
