@@ -17,6 +17,7 @@ Future<void> main() async {
           ? const Locale('en')
           : null;
   await NotificationService.instance.init(locale);
+  await NotificationService.instance.consumeLaunchDetails();
   runApp(
     MultiProvider(
       providers: [

@@ -26,6 +26,7 @@ class SettingsStore {
   static const _keyTransitions = 'transition_animations';
   static const _keyNotifyProgress = 'notify_progress';
   static const _keyNotifyDone = 'notify_done';
+  static const _keySortMode = 'sort_mode';
 
   String? downloadDir;
   String language = 'system';
@@ -55,6 +56,8 @@ class SettingsStore {
   bool notifyProgress = true;
   /// 下载或上传完成时提醒。
   bool notifyDone = true;
+  /// 网盘文件排序方式：default / name / size / time。
+  String sortMode = 'default';
 
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -90,6 +93,7 @@ class SettingsStore {
     transitionAnimations = prefs.getBool(_keyTransitions) ?? true;
     notifyProgress = prefs.getBool(_keyNotifyProgress) ?? true;
     notifyDone = prefs.getBool(_keyNotifyDone) ?? true;
+    sortMode = prefs.getString(_keySortMode) ?? 'default';
   }
 
   Future<void> setNotifyProgress(bool value) async {
@@ -102,6 +106,12 @@ class SettingsStore {
     notifyDone = value;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyNotifyDone, value);
+  }
+
+  Future<void> setSortMode(String value) async {
+    sortMode = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keySortMode, value);
   }
 
   Future<void> setHideTopBar(bool value) async {

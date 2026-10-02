@@ -134,6 +134,11 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setSortMode(String value) async {
+    await settings.setSortMode(value);
+    notifyListeners();
+  }
+
   Future<void> setMaxUploads(int value) async {
     await settings.setMaxUploads(value);
     notifyListeners();

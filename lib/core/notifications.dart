@@ -15,6 +15,12 @@ class NotificationService {
   /// 当前界面语言（用于通知文案）。
   static AppLocalizations? i18n;
 
+  /// 点击传输相关通知时回调（跳转传输视图），由 RootShell 注入。
+  static void Function()? onOpenTransfers;
+
+  /// 冷启动由通知拉起且目标是传输视图。
+  static bool pendingTransfers = false;
+
   static const _progressId = 1000;
 
   final FlutterLocalNotificationsPlugin _plugin =
@@ -36,6 +42,9 @@ class NotificationService {
       const android = AndroidInitializationSettings('@mipmap/ic_launcher');
       await _plugin.initialize(
         settings: const InitializationSettings(android: android),
+        onDidReceiveNotificationResponse: (response) {
+          if (response.payload == 'transfers') onOpenTransfers?.call();
+        },
       );
       final androidImpl = _plugin
           .resolvePlatformSpecificImplementation<
@@ -62,6 +71,17 @@ class NotificationService {
       _ready = true;
     } catch (_) {
       _ready = false;
+    }
+  }
+
+  /// 冷启动时读取通知启动信息：若由传输通知拉起则标记跳转传输视图。
+  Future<void> consumeLaunchDetails() async {
+    try {
+      final details = await _plugin.getNotificationAppLaunchDetails();
+      pendingTransfers = (details?.didNotificationLaunchApp ?? false) &&
+          details?.notificationResponse?.payload == 'transfers';
+    } catch (_) {
+      pendingTransfers = false;
     }
   }
 
@@ -111,6 +131,7 @@ class NotificationService {
       id: _progressId,
       title: strings?.notifProgressTitle ?? '传输中',
       body: body,
+      payload: 'transfers',
       notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
           progressChannelId,
@@ -144,6 +165,7 @@ class NotificationService {
           ? (strings?.notifUploadDone ?? '上传完成')
           : (strings?.notifDownloadDone ?? '下载完成'),
       body: name,
+      payload: 'transfers',
       notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
           doneChannelId,
@@ -163,6 +185,7 @@ class NotificationService {
       id: _doneId++,
       title: strings?.notifFailed ?? '传输失败',
       body: error.isEmpty ? name : '$name · $error',
+      payload: 'transfers',
       notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
           doneChannelId,

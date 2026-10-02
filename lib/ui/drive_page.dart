@@ -1,5 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart' hide Icons;
+import 'package:lpinyin/lpinyin.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
@@ -57,7 +58,7 @@ class _DrivePageState extends State<DrivePage>
   String? _error;
   bool _searching = false;
   String _filter = '';
-  String _sortMode = 'name';
+  String _sortMode = 'default';
   final Map<String, double> _folderOffsets = {};
   bool _selecting = false;
   final Set<String> _selectedFiles = {};
@@ -71,6 +72,7 @@ class _DrivePageState extends State<DrivePage>
   @override
   void initState() {
     super.initState();
+    _sortMode = context.read<AppController>().settings.sortMode;
     if (widget.initialName != null) {
       _path = [PathNode(id: widget.initialFolderId, name: widget.initialName!)];
     }
@@ -247,11 +249,22 @@ class _DrivePageState extends State<DrivePage>
 
   List<LzFolder> get _visibleFolders {
     final query = _filter.toLowerCase();
-    return _folders
+    final list = _folders
         .where((f) => query.isEmpty || f.name.toLowerCase().contains(query))
-        .toList()
-      ..sort((a, b) => a.name.compareTo(b.name));
+        .toList();
+    if (_sortMode == 'name') {
+      list.sort(
+        (a, b) => _nameSortKey(a.name).compareTo(_nameSortKey(b.name)),
+      );
+    }
+    return list;
   }
+
+  String _nameSortKey(String name) => PinyinHelper.getPinyinE(
+        name,
+        separator: '',
+        defPinyin: '~',
+      ).toLowerCase();
 
   List<LzFile> get _visibleFiles {
     final query = _filter.toLowerCase();
@@ -263,10 +276,12 @@ class _DrivePageState extends State<DrivePage>
         list.sort(
           (a, b) => lzSizeToBytes(b.size).compareTo(lzSizeToBytes(a.size)),
         );
-      case 'time':
-        list.sort((a, b) => b.time.compareTo(a.time));
+      case 'default':
+        break;
       default:
-        list.sort((a, b) => a.name.compareTo(b.name));
+        list.sort(
+          (a, b) => _nameSortKey(a.name).compareTo(_nameSortKey(b.name)),
+        );
     }
     return list;
   }
@@ -461,6 +476,10 @@ class _DrivePageState extends State<DrivePage>
                       width: double.infinity,
                       child: SegmentedButton<String>(
                         segments: [
+                      ButtonSegment(
+                        value: 'default',
+                        label: Text(context.l10n.sortTime),
+                      ),
                           ButtonSegment(
                             value: 'name',
                             label: Text(context.l10n.sortName),
@@ -469,16 +488,13 @@ class _DrivePageState extends State<DrivePage>
                             value: 'size',
                             label: Text(context.l10n.sortSize),
                           ),
-                          ButtonSegment(
-                            value: 'time',
-                            label: Text(context.l10n.sortTime),
-                          ),
                         ],
                         selected: {sort},
                         selectedIcon: const Icon(Icons.check),
                         onSelectionChanged: (values) {
                           setSheetState(() => sort = values.first);
                           setState(() => _sortMode = values.first);
+                      app.setSortMode(values.first);
                         },
                       ),
                     ),
@@ -1755,12 +1771,12 @@ class _DrivePageState extends State<DrivePage>
               _appBarAnim.value,
             ),
             scrolledUnderElevation: 0,
-            leading: Navigator.of(context).canPop()
-                ? IconButton(
+            leading: (ModalRoute.of(context)?.isFirst ?? true)
+                ? null
+                : IconButton(
                     icon: const Icon(Icons.arrow_back),
                     onPressed: () => Navigator.of(context).pop(),
-                  )
-                : null,
+                  ),
             title: _searching
                 ? TextField(
                     controller: _searchController,

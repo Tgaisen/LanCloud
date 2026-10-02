@@ -149,6 +149,7 @@ class _RootShellState extends State<RootShell> {
 
   @override
   void dispose() {
+    NotificationService.onOpenTransfers = null;
     _pageController.dispose();
     super.dispose();
   }
@@ -176,7 +177,15 @@ class _RootShellState extends State<RootShell> {
   @override
   void initState() {
     super.initState();
-    _index = context.read<AppController>().settings.launchPage == 'drive' ? 1 : 0;
+    NotificationService.onOpenTransfers = () => _goTo(2);
+    if (NotificationService.pendingTransfers) {
+      NotificationService.pendingTransfers = false;
+      _index = 2;
+    } else {
+      _index = context.read<AppController>().settings.launchPage == 'drive'
+          ? 1
+          : 0;
+    }
   }
 
   List<TransferTask> get _activeTasks => context
