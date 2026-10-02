@@ -849,7 +849,7 @@ class _DrivePageState extends State<DrivePage>
               leading: const Icon(Icons.done_all),
               title: Text(context.l10n.multiSelect),
               onTap: () {
-                Navigator.of(sheetContext).pop();
+                Navigator.of(context).pop();
                 _enterSelection();
               },
             ),
@@ -857,7 +857,7 @@ class _DrivePageState extends State<DrivePage>
               leading: const Icon(Icons.refresh),
               title: Text(context.l10n.refresh),
               onTap: () {
-                Navigator.of(sheetContext).pop();
+                Navigator.of(context).pop();
                 _reloadAfterChange();
               },
             ),
@@ -866,7 +866,7 @@ class _DrivePageState extends State<DrivePage>
                 leading: const Icon(Icons.info_outline),
                 title: Text(context.l10n.folderProperties),
                 onTap: () {
-                  Navigator.of(sheetContext).pop();
+                  Navigator.of(context).pop();
                   showAppSheet<void>(
                     context,
                     child: _FolderInfoSheet(
@@ -1710,19 +1710,13 @@ class _DrivePageState extends State<DrivePage>
       });
       return;
     }
-    await showModalBottomSheet<void>(
-      isScrollControlled: true,
-      context: context,
-      showDragHandle: true,
-      builder: (sheetContext) => SafeArea(
-        child: DraggableScrollableSheet(
-          expand: false,
-          initialChildSize: 0.6,
-          minChildSize: 0.3,
-          maxChildSize: 0.95,
-          builder: (sheetCtx, scrollController) => ListView(
-            controller: scrollController,
-            children: [
+    // 与文件夹属性等弹窗保持一致：统一使用 showAppSheet（内容自适应高度 +
+    // 到顶后继续下拉带走弹窗的手感）
+    await showAppSheet<void>(
+      context,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
             _PropertyHeader(
               icon: iconForFile(file.name),
               title: file.name,
@@ -1739,7 +1733,7 @@ class _DrivePageState extends State<DrivePage>
               leading: const Icon(Icons.download_outlined),
               title: Text(context.l10n.download),
               onTap: () {
-                Navigator.of(sheetContext).pop();
+                Navigator.of(context).pop();
                 _downloadOwnFile(file);
               },
             ),
@@ -1747,7 +1741,7 @@ class _DrivePageState extends State<DrivePage>
               leading: const Icon(Icons.link_outlined),
               title: Text(context.l10n.copyLink),
               onTap: () {
-                Navigator.of(sheetContext).pop();
+                Navigator.of(context).pop();
                 _copyShareLink(file);
               },
             ),
@@ -1755,7 +1749,7 @@ class _DrivePageState extends State<DrivePage>
               leading: const Icon(Icons.open_in_new),
               title: Text(context.l10n.openLink),
               onTap: () {
-                Navigator.of(sheetContext).pop();
+                Navigator.of(context).pop();
                 _openShareInBrowser(file);
               },
             ),
@@ -1763,7 +1757,7 @@ class _DrivePageState extends State<DrivePage>
               leading: const Icon(Icons.qr_code),
               title: Text(context.l10n.showQr),
               onTap: () {
-                Navigator.of(sheetContext).pop();
+                Navigator.of(context).pop();
                 _showFileQr(file);
               },
             ),
@@ -1771,7 +1765,7 @@ class _DrivePageState extends State<DrivePage>
               leading: const Icon(Icons.star_outline),
               title: Text(context.l10n.addFavorite),
               onTap: () {
-                Navigator.of(sheetContext).pop();
+                Navigator.of(context).pop();
                 _favoriteFile(file);
               },
             ),
@@ -1779,7 +1773,7 @@ class _DrivePageState extends State<DrivePage>
               leading: const Icon(Icons.delete_outline),
               title: Text(context.l10n.delete),
               onTap: () {
-                Navigator.of(sheetContext).pop();
+                Navigator.of(context).pop();
                 _deleteFile(file);
               },
             ),
@@ -1787,13 +1781,11 @@ class _DrivePageState extends State<DrivePage>
               leading: const Icon(Icons.more_horiz),
               title: Text(context.l10n.moreActions),
               onTap: () {
-                Navigator.of(sheetContext).pop();
+                Navigator.of(context).pop();
                 _fileMenuSheet(file);
               },
             ),
-          ],
-          ),
-        ),
+        ],
       ),
     );
   }
