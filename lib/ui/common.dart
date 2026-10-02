@@ -696,7 +696,8 @@ class PropertyHeaderCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: scheme.surfaceContainerHighest,
+          // 比 surfaceContainerHighest 浅一档，弹窗里更轻盈
+          color: scheme.surfaceContainerHigh,
           borderRadius: BorderRadius.circular(24),
         ),
         child: Column(
