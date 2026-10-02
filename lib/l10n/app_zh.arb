@@ -543,6 +543,8 @@
   "removeFromQuickAccess": "从快速访问移除",
   "unpin": "取消固定",
   "moveToTop": "移到顶部",
+  "expand": "展开",
+  "collapse": "收起",
   "copy": "复制",
   "continueLabel": "继续",
   "showCookie": "显示 Cookie",

@@ -8,12 +8,14 @@ void main() {
     var expanded = true;
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('zh'),
         home: Scaffold(
           body: SingleChildScrollView(
             child: StatefulBuilder(
             builder: (context, setState) => SectionCard(
               title: '快速访问',
-              leading: const Icon(Icons.push_pin_outlined),
               expanded: expanded,
               onToggle: () => setState(() => expanded = !expanded),
               child: const Text('内容'),
@@ -30,7 +32,8 @@ void main() {
       0.25,
     );
 
-    await tester.tap(find.text('快速访问'));
+    // 折叠按钮是标题行右侧的 IconButton（点标题文字不再触发）
+    await tester.tap(find.byType(IconButton));
     await tester.pumpAndSettle();
     expect(find.text('内容'), findsNothing);
     expect(
@@ -38,7 +41,7 @@ void main() {
       0,
     );
 
-    await tester.tap(find.text('快速访问'));
+    await tester.tap(find.byType(IconButton));
     await tester.pumpAndSettle();
     expect(find.text('内容'), findsOneWidget);
   });
@@ -67,7 +70,7 @@ void main() {
     final fullHeight = tester.getSize(find.byType(SectionCard)).height;
     expect(fullHeight, greaterThan(200));
 
-    await tester.tap(find.text('最近使用'));
+    await tester.tap(find.byType(IconButton));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100)); // 动画进行中
     final midHeight = tester.getSize(find.byType(SectionCard)).height;
@@ -77,6 +80,7 @@ void main() {
     await tester.pumpAndSettle();
     final collapsed = tester.getSize(find.byType(SectionCard)).height;
     expect(collapsed, lessThan(midHeight));
-    expect(collapsed, lessThan(80));
+    // 折叠后只剩标题行（展开按钮 48 + 上下留白）
+    expect(collapsed, lessThan(120));
   });
 }

@@ -1096,6 +1096,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get moveToTop => '移到顶部';
 
   @override
+  String get expand => '展开';
+
+  @override
+  String get collapse => '收起';
+
+  @override
   String get copy => '复制';
 
   @override

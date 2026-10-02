@@ -1125,6 +1125,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get moveToTop => 'Move to top';
 
   @override
+  String get expand => 'Expand';
+
+  @override
+  String get collapse => 'Collapse';
+
+  @override
   String get copy => 'Copy';
 
   @override

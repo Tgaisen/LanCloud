@@ -90,7 +90,6 @@ class _HomePageState extends State<HomePage>
       icon: Icons.folder_outlined,
       title: item.name,
       subtitle: item.path,
-      circleIcon: true,
       trailing: IconButton(
         tooltip: l10n.moreActions,
         icon: const Icon(Icons.more_vert),
@@ -309,7 +308,6 @@ class _HomePageState extends State<HomePage>
                 const SizedBox(height: 16),
                 SectionCard(
                   title: l10n.quickAccess,
-                  leading: const Icon(Icons.push_pin_outlined),
                   expanded: _quickExpanded,
                   onToggle: _toggleQuickExpanded,
                   child: _quick.isEmpty
@@ -331,7 +329,6 @@ class _HomePageState extends State<HomePage>
                 ),
                 SectionCard(
                   title: l10n.recent,
-                  leading: const Icon(Icons.history),
                   expanded: _recentsExpanded,
                   onToggle: _toggleRecentsExpanded,
                   child: _loading
@@ -357,7 +354,6 @@ class _HomePageState extends State<HomePage>
                                     subtitle: item.kind.startsWith('share')
                                         ? l10n.sharedContent
                                         : l10n.myDrive,
-                                    circleIcon: true,
                                     onTap: () => _openItem(
                                       context,
                                       item.kind,

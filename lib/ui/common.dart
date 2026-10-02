@@ -597,7 +597,6 @@ class Md3ListItem extends StatelessWidget {
     this.bottom,
     this.titleMaxLines = 1,
     this.subtitleMaxLines = 1,
-    this.circleIcon = false,
   });
 
   final IconData icon;
@@ -620,9 +619,6 @@ class Md3ListItem extends StatelessWidget {
 
   final int titleMaxLines;
   final int subtitleMaxLines;
-
-  /// 图标块用圆形（首页快速访问 / 最近使用），默认圆角方形。
-  final bool circleIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -651,9 +647,7 @@ class Md3ListItem extends StatelessWidget {
                         color: selected
                             ? scheme.surface
                             : iconBoxColor ?? scheme.secondaryContainer,
-                        borderRadius: BorderRadius.circular(
-                          circleIcon ? 21 : 12,
-                        ),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
                         selected ? Icons.check_circle : icon,
@@ -791,14 +785,14 @@ class BatchActionBar extends StatelessWidget {
   }
 }
 
-/// MD3E 分区卡片：大圆角 + 图标标题行，可选展开/折叠（右侧三角 + 动画）。
+/// MD3E 分区标题：标题文字 + 右侧展开/折叠按钮（IconButton，带旋转动画），
+/// 下方内容用 SegmentedList 分组承载。
 class SectionCard extends StatelessWidget {
   const SectionCard({
     super.key,
     required this.title,
     required this.child,
     this.trailing,
-    this.leading,
     this.expanded = true,
     this.onToggle,
   });
@@ -807,49 +801,32 @@ class SectionCard extends StatelessWidget {
   final Widget child;
   final Widget? trailing;
 
-  /// 标题左侧的图标（放在主色圆角块里）。
-  final Widget? leading;
-
   /// 是否展开；只有提供 [onToggle] 时才可折叠。
   final bool expanded;
   final VoidCallback? onToggle;
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final header = Padding(
       // 与分组（SegmentedList 自带 4dp 外边距）左对齐
       padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
       child: Row(
         children: [
-          if (leading != null) ...[
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: scheme.primaryContainer,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: IconTheme(
-                data: IconThemeData(color: scheme.onPrimaryContainer),
-                child: Center(child: leading!),
-              ),
-            ),
-            const SizedBox(width: 12),
-          ],
           Expanded(
             child: Text(title, style: Theme.of(context).textTheme.titleMedium),
           ),
           ?trailing,
-          if (onToggle != null) ...[
-            const SizedBox(width: 4),
-            AnimatedRotation(
-              turns: expanded ? 0.25 : 0,
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeOutCubic,
-              child: const Icon(Icons.chevron_right),
+          if (onToggle != null)
+            IconButton(
+              tooltip: expanded ? context.l10n.collapse : context.l10n.expand,
+              onPressed: onToggle,
+              icon: AnimatedRotation(
+                turns: expanded ? 0.25 : 0,
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
+                child: const Icon(Icons.chevron_right),
+              ),
             ),
-          ],
         ],
       ),
     );

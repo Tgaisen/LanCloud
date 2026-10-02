@@ -2108,6 +2108,18 @@ abstract class AppLocalizations {
   /// **'移到顶部'**
   String get moveToTop;
 
+  /// No description provided for @expand.
+  ///
+  /// In zh, this message translates to:
+  /// **'展开'**
+  String get expand;
+
+  /// No description provided for @collapse.
+  ///
+  /// In zh, this message translates to:
+  /// **'收起'**
+  String get collapse;
+
   /// No description provided for @copy.
   ///
   /// In zh, this message translates to:
