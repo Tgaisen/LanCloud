@@ -363,7 +363,15 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
   /// 未显示在底栏的视图：以独立页面打开同样的界面。
   void _openView(int viewId) {
     Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => _pageFor(viewId)),
+      // 大屏（横屏 / 平板）下独立打开的标签页也套 MD3E 卡片：
+      // 顶栏高度与外壳里一致，顶栏收起进度共用 app.topBarHide
+      MaterialPageRoute<void>(
+        builder: (_) => Md3ePageFrame(
+          topBarHeight: _topBarHeightFor(viewId),
+          hide: context.read<AppController>().topBarHide,
+          child: _pageFor(viewId),
+        ),
+      ),
     );
   }
 

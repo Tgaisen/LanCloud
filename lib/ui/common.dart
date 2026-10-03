@@ -29,10 +29,11 @@ const double kTransfersTabBarHeight = 58;
 bool isLargeLayout(BuildContext context) =>
     MediaQuery.sizeOf(context).width >= kLargeLayoutBreakpoint;
 
-/// 大屏外壳里的页面（侧栏布局的第一个路由）：背景由外壳的圆角卡片绘制，
-/// 页面自己必须透明，否则会盖住卡片的圆角。
+/// 大屏外壳里的页面（侧栏布局的第一个路由），或外面套了 [Md3ePageFrame]
+/// 的独立页面：背景由圆角卡片绘制，页面自己必须透明，否则会盖住卡片。
 bool transparentPageBackground(BuildContext context) =>
-    isLargeLayout(context) && (ModalRoute.of(context)?.isFirst ?? true);
+    isLargeLayout(context) &&
+    ((ModalRoute.of(context)?.isFirst ?? true) || Md3eFramedScope.of(context));
 
 /// 顶栏底色：大屏布局固定用 surfaceContainer（导航区颜色，与侧栏一致），
 /// 手机布局保持随滚动在 surface → surfaceContainer 之间过渡。
@@ -53,8 +54,9 @@ bool inRootShell(BuildContext context) =>
 /// 页面底部被占住的高度：外壳里等于底栏的完整高度（内容 + 系统手势区），
 /// 独立页面等于系统导航栏高度。滚动列表末尾留白、FAB 避让都用它。
 ///
-/// 大屏外壳（横屏 / 平板）里正文卡片已经由外壳让开了系统导航栏，
-/// 页面里不再重复补，返回 0。
+/// 外壳的大屏（横屏 / 平板）布局里，正文卡片已经让开了系统导航栏
+/// （8dp + inset），页面里不再重复补，返回 0；没有卡片的大屏页面
+/// （例如独立打开的标签页）仍按系统导航栏高度补。
 ///
 /// 必须在页面自己的上下文里读：Scaffold 会给正文、FAB 等槽位清掉底部内边距。
 double bottomObstructionHeight(BuildContext context) {
@@ -72,6 +74,124 @@ double shellBottomBarInset(BuildContext context) {
   final app = context.watch<AppController>();
   if (inRootShell(context) && app.settings.floatingNavBar) return 0;
   return bottomObstructionHeight(context);
+}
+
+/// 大屏（横屏 / 平板）下的 MD3E 正文卡片：body area 用 surface 底色、
+/// 四周 16dp 圆角，外圈留 8dp + 系统导航栏 inset；卡片外面（navigation area）
+/// 由页面 Scaffold 的 surfaceContainer 底色负责。
+///
+/// 卡片顶边跟随顶栏一起收起（[hide] 是 0..1 的收起进度，[topBarHeight]
+/// 含状态栏高度），和外壳里标签页的处理一致。小屏直接返回 [child]。
+class Md3eBodyCard extends StatelessWidget {
+  const Md3eBodyCard({
+    super.key,
+    this.topBarHeight = 0,
+    this.hide,
+    this.clipContent = false,
+    required this.child,
+  });
+
+  /// 顶栏高度（含状态栏）：卡片顶边从这里开始，顶栏收起时一起上移。
+  final double topBarHeight;
+
+  /// 顶栏收起进度 0..1；不收起时传 null。
+  final ValueListenable<double>? hide;
+
+  /// 是否把内容裁进卡片圆角里：不透明内容（如 WebView）需要，
+  /// 顶栏在内容里的页面不能开（否则顶栏会被裁掉）。
+  final bool clipContent;
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!isLargeLayout(context)) return child;
+    final listenable = hide;
+    if (listenable == null) {
+      return _build(context, 0);
+    }
+    return ValueListenableBuilder<double>(
+      valueListenable: listenable,
+      builder: (context, value, _) => _build(context, value.clamp(0.0, 1.0)),
+    );
+  }
+
+  Widget _build(BuildContext context, double hidden) {
+    final systemPadding = MediaQuery.paddingOf(context);
+    final card = Positioned(
+      // 左侧同样留 8dp + 系统 inset：横屏时挖孔可能在左边，不能贴边
+      left: 8 + systemPadding.left,
+      top: topBarHeight * (1 - hidden),
+      right: 8 + systemPadding.right,
+      bottom: 8 + systemPadding.bottom,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        // 与外壳里的标签页一致：跟随主题背景（OLED 纯黑时也是黑）
+        child: ColoredBox(color: Theme.of(context).scaffoldBackgroundColor),
+      ),
+    );
+    // 正文与卡片用同一组内边距，内容不会画到卡片外面
+    final content = Positioned(
+      left: 8 + systemPadding.left,
+      top: 0,
+      right: 8 + systemPadding.right,
+      bottom: 8 + systemPadding.bottom,
+      child: clipContent
+          ? ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: child,
+            )
+          : child,
+    );
+    return Stack(children: [card, content]);
+  }
+}
+
+/// 标记：本页面外面已经有 MD3E 卡片（[Md3ePageFrame]），
+/// 页面自己不要再铺底色，见 [transparentPageBackground]。
+class Md3eFramedScope extends InheritedWidget {
+  const Md3eFramedScope({super.key, required super.child});
+
+  static bool of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<Md3eFramedScope>() != null;
+
+  @override
+  bool updateShouldNotify(Md3eFramedScope oldWidget) => false;
+}
+
+/// 大屏（横屏 / 平板）下把"独立打开的页面"（例如没进底栏的标签页）
+/// 套成 MD3E 外壳：navigation area 用 surfaceContainer 底色，正文是
+/// 圆角 surface 卡片；顶栏仍由页面自己画在卡片上方。小屏直接返回 [child]。
+class Md3ePageFrame extends StatelessWidget {
+  const Md3ePageFrame({
+    super.key,
+    this.topBarHeight = 0,
+    this.hide,
+    required this.child,
+  });
+
+  /// 页面顶栏高度（含状态栏），用于让卡片顶边跟着顶栏收起。
+  final double topBarHeight;
+
+  /// 顶栏收起进度 0..1；不收起时传 null。
+  final ValueListenable<double>? hide;
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!isLargeLayout(context)) return child;
+    return Md3eFramedScope(
+      child: Scaffold(
+        backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
+        body: Md3eBodyCard(
+          topBarHeight: topBarHeight,
+          hide: hide,
+          child: child,
+        ),
+      ),
+    );
+  }
 }
 
 String formatBytes(int bytes) {
@@ -451,33 +571,43 @@ class _TopBarOverlayScaffoldState extends State<TopBarOverlayScaffold> {
           : null,
       child: Builder(
         builder: (context) => Scaffold(
-          // 大屏外壳里的第一个路由：背景交给外壳的圆角卡片
+          // 大屏外壳里的第一个路由：背景交给外壳的圆角卡片；
+          // 其余大屏页面（横屏 / 平板的二级页）自己铺 navigation area 的
+          // surfaceContainer 底色，正文再套一层圆角 surface 卡片
           backgroundColor: widget.backgroundColor ??
-              (transparentPageBackground(context) ? Colors.transparent : null),
+              (transparentPageBackground(context)
+                  ? Colors.transparent
+                  : isLargeLayout(context)
+                      ? scheme.surfaceContainer
+                      : null),
           resizeToAvoidBottomInset: widget.resizeToAvoidBottomInset,
-          body: Stack(
-            children: [
-              CustomScrollView(
-                controller: widget.controller,
-                slivers: [
-                  SliverToBoxAdapter(child: SizedBox(height: topInset)),
-                  ...widget.slivers,
-                  if (widget.bottomSafeInset)
-                    const SliverToBoxAdapter(child: _BottomSystemInset()),
-                ],
-              ),
-              Positioned(
-                left: 0,
-                right: 0,
-                top: 0,
-                child: TopBarOverlay(
-                  height: topInset,
-                  progress: _hide,
-                  background: topBarBackgroundColor(context, scheme),
-                  builder: (context) => widget.appBar,
+          body: Md3eBodyCard(
+            topBarHeight: topInset,
+            hide: _hide,
+            child: Stack(
+              children: [
+                CustomScrollView(
+                  controller: widget.controller,
+                  slivers: [
+                    SliverToBoxAdapter(child: SizedBox(height: topInset)),
+                    ...widget.slivers,
+                    if (widget.bottomSafeInset)
+                      const SliverToBoxAdapter(child: _BottomSystemInset()),
+                  ],
                 ),
-              ),
-            ],
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: 0,
+                  child: TopBarOverlay(
+                    height: topInset,
+                    progress: _hide,
+                    background: topBarBackgroundColor(context, scheme),
+                    builder: (context) => widget.appBar,
+                  ),
+                ),
+              ],
+            ),
           ),
           bottomNavigationBar: widget.bottomNavigationBar,
         ),
@@ -491,12 +621,17 @@ class _TopBarOverlayScaffoldState extends State<TopBarOverlayScaffold> {
 /// 只在 Scaffold 的 body 里构建：页面自带 [Scaffold.bottomNavigationBar] 时
 /// 系统已经把它算进布局，Scaffold 会把 body 的底部 padding 清成 0，
 /// 这里就自然不补；没有底栏的页面则按导航栏高度补足。
+/// 本组件用于 [TopBarOverlayScaffold]：大屏下它自己就套了 [Md3eBodyCard]，
+/// 由卡片统一让位，这里返回 0。
 class _BottomSystemInset extends StatelessWidget {
   const _BottomSystemInset();
 
   @override
-  Widget build(BuildContext context) =>
-      SizedBox(height: MediaQuery.paddingOf(context).bottom);
+  Widget build(BuildContext context) => SizedBox(
+        height: isLargeLayout(context)
+            ? 0
+            : MediaQuery.paddingOf(context).bottom,
+      );
 }
 
 /// 本地生成二维码弹窗（不经过任何服务器）。

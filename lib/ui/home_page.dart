@@ -214,8 +214,14 @@ class _HomePageState extends State<HomePage>
         } else {
           await Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (_) =>
-                  DrivePage(initialFolderId: ref, initialName: name),
+              // 大屏下独立打开的网盘页同样套 MD3E 卡片
+              builder: (_) => Md3ePageFrame(
+                topBarHeight: MediaQuery.paddingOf(context).top +
+                    kToolbarHeight +
+                    kDrivePathBarHeight,
+                hide: app.topBarHide,
+                child: DrivePage(initialFolderId: ref, initialName: name),
+              ),
             ),
           );
         }
