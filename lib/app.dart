@@ -90,11 +90,15 @@ ThemeData buildLanCloudTheme({
   ColorScheme? dynamicScheme,
 }) {
   // 动态取色（Android 12+）优先，取不到时回退到主题色。
-  final scheme = dynamicScheme ??
-      ColorScheme.fromSeed(
-        seedColor: seed,
-        brightness: brightness,
-      );
+  //
+  // 注意：dynamic_color 给的色板只包含旧版角色，surfaceContainer /
+  // surfaceContainerHigh / surfaceDim 这些 MD3 新角色没赋值，读取时会退化成
+  // surface，于是背景、卡片、导航区全变成一个颜色（看起来处处纯白）。
+  // 这里用系统取到的主色重新生成完整色板：保留壁纸色相，同时补齐所有角色。
+  final scheme = ColorScheme.fromSeed(
+    seedColor: dynamicScheme?.primary ?? seed,
+    brightness: brightness,
+  );
   final theme = ThemeData(
           colorScheme: scheme,
           scaffoldBackgroundColor:

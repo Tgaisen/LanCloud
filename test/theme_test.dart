@@ -29,4 +29,31 @@ void main() {
       expect(theme.iconTheme.opticalSize, 24);
     }
   });
+
+  test('动态取色也要补齐 surfaceContainer 等新角色（否则整屏一个颜色）', () {
+    // 模拟 dynamic_color 插件返回的色板：只有旧版角色
+    const dynamic = ColorScheme(
+      brightness: Brightness.light,
+      primary: Color(0xFF3B5F90),
+      onPrimary: Colors.white,
+      secondary: Color(0xFF565E71),
+      onSecondary: Colors.white,
+      error: Color(0xFFBA1A1A),
+      onError: Colors.white,
+      surface: Color(0xFFF9F9FF),
+      onSurface: Color(0xFF191C20),
+    );
+    final theme = buildLanCloudTheme(
+      brightness: Brightness.light,
+      seed: const Color(0xFF2E6BE6),
+      oledDark: false,
+      dynamicScheme: dynamic,
+    );
+    final scheme = theme.colorScheme;
+    expect(scheme.surfaceContainer, isNot(scheme.surface));
+    expect(scheme.surfaceContainerHigh, isNot(scheme.surface));
+    expect(scheme.surfaceContainerLowest, isNot(scheme.surface));
+    // 仍然跟随动态取色的色相（蓝色系主色）
+    expect(scheme.primary, isNot(const Color(0xFF3B5F90)));
+  });
 }

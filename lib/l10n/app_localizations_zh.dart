@@ -137,7 +137,7 @@ class AppLocalizationsZh extends AppLocalizations {
       '1. 用浏览器打开并登录蓝奏云官网\n2. 按 F12 打开开发者工具，切到 Network（网络）面板\n3. 随便点击一个请求，找到 Request Headers 里的 Cookie\n4. 复制整段内容（需包含 ylogin 和 phpdisk_info）';
 
   @override
-  String get webLoginRecommended => '网页登录（推荐）';
+  String get webLoginRecommended => '使用网页登录（推荐）';
 
   @override
   String get orPasteCookie => '或者手动粘贴 Cookie';
@@ -176,10 +176,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get finishLogin => '完成登录';
 
   @override
-  String get webLoginGuide => '请使用你的蓝奏云账号登录；遇到滑块验证正常完成即可。登录成功跳到网盘页面后会自动保存账号。';
+  String get webLoginGuide => '请在网页中登录蓝奏云账号；登录完成后会自动跳到网盘页面，或点按右上角“完成登录”进行手动检测。';
 
   @override
-  String get noLoginDetected => '还没有检测到登录状态，请先在上方页面完成登录';
+  String get noLoginDetected => '还没有检测到登录状态，请先在网页完成登录';
 
   @override
   String get my => '我的';
@@ -328,7 +328,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get english => 'English';
 
   @override
-  String get themeMode => '深浅色模式';
+  String get themeMode => '主题模式';
 
   @override
   String get light => '浅色';

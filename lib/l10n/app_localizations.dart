@@ -329,7 +329,7 @@ abstract class AppLocalizations {
   /// No description provided for @webLoginRecommended.
   ///
   /// In zh, this message translates to:
-  /// **'网页登录（推荐）'**
+  /// **'使用网页登录（推荐）'**
   String get webLoginRecommended;
 
   /// No description provided for @orPasteCookie.
@@ -407,13 +407,13 @@ abstract class AppLocalizations {
   /// No description provided for @webLoginGuide.
   ///
   /// In zh, this message translates to:
-  /// **'请使用你的蓝奏云账号登录；遇到滑块验证正常完成即可。登录成功跳到网盘页面后会自动保存账号。'**
+  /// **'请在网页中登录蓝奏云账号；登录完成后会自动跳到网盘页面，或点按右上角“完成登录”进行手动检测。'**
   String get webLoginGuide;
 
   /// No description provided for @noLoginDetected.
   ///
   /// In zh, this message translates to:
-  /// **'还没有检测到登录状态，请先在上方页面完成登录'**
+  /// **'还没有检测到登录状态，请先在网页完成登录'**
   String get noLoginDetected;
 
   /// No description provided for @my.
@@ -695,7 +695,7 @@ abstract class AppLocalizations {
   /// No description provided for @themeMode.
   ///
   /// In zh, this message translates to:
-  /// **'深浅色模式'**
+  /// **'主题模式'**
   String get themeMode;
 
   /// No description provided for @light.
