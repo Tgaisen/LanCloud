@@ -384,7 +384,9 @@ class _FavoritesPageState extends State<FavoritesPage>
                             children: [for (final item in _files) _tile(item)],
                           ),
                         ],
-                        const SizedBox(height: 96),
+                        // 外壳里给悬浮 / 收起的底栏让位；作为独立页面打开时
+                        // 末尾由 shellBottomBarInset 按系统导航栏补，这里不重复
+                        if (inRootShell(context)) const SizedBox(height: 96),
                       ]),
                     ),
                   ),

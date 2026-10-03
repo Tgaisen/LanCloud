@@ -122,4 +122,62 @@ void main() {
     expect(app.selectionMode, isFalse);
     app.dispose();
   });
+
+  testWidgets('独立页面打开时不再保留底栏专用的尾部留白（96）', (tester) async {
+    final app = AppController();
+    final manager = TransferManager(app);
+    manager.tasks.addAll([
+      for (var i = 0; i < 12; i++)
+        task('t$i', 'file$i.zip', status: TransferStatus.done),
+    ]);
+
+    Widget host(Widget home, {GlobalKey<NavigatorState>? navKey}) => MultiProvider(
+          providers: [
+            ChangeNotifierProvider<AppController>.value(value: app),
+            ChangeNotifierProvider<TransferManager>.value(value: manager),
+          ],
+          child: MaterialApp(
+            navigatorKey: navKey,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            locale: const Locale('zh'),
+            home: home,
+          ),
+        );
+
+    // 列表自己的滚动位置（不要用 Scrollable.last：页面里可能还有别的可滚动组件）
+    ScrollPosition listPosition() => tester
+        .state<ScrollableState>(
+          find.descendant(
+            of: find.byType(CustomScrollView),
+            matching: find.byType(Scrollable),
+          ),
+        )
+        .position;
+
+    /// 滚到底后，最后一条内容距列表底边的距离（= 末尾实际留白）
+    Future<double> tailGap() async {
+      listPosition().jumpTo(listPosition().maxScrollExtent);
+      await tester.pumpAndSettle();
+      return tester.getRect(find.byType(CustomScrollView)).bottom -
+          tester.getRect(find.text('file0.zip')).bottom;
+    }
+
+    // 作为外壳里的底栏项目：末尾保留给悬浮 / 收起底栏让位的 96
+    await tester.pumpWidget(host(const TransfersPage()));
+    await tester.pumpAndSettle();
+    final inShellGap = await tailGap();
+
+    // 作为独立页面（push）：末尾只留系统导航栏 + 常规留白，不再叠加 96
+    final navKey = GlobalKey<NavigatorState>();
+    await tester.pumpWidget(host(const Scaffold(), navKey: navKey));
+    navKey.currentState!.push(
+      MaterialPageRoute<void>(builder: (_) => const TransfersPage()),
+    );
+    await tester.pumpAndSettle();
+    final pushedGap = await tailGap();
+
+    expect(inShellGap - pushedGap, 96);
+    app.dispose();
+  });
 }

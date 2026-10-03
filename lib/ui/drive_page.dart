@@ -2747,7 +2747,14 @@ class _DrivePageState extends State<DrivePage>
           ),
       SliverToBoxAdapter(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+          // 外壳里给底栏（悬浮胶囊 / 收起）让位；作为独立页面打开时
+          // 末尾由 shellBottomBarInset 按系统导航栏补，只留常规留白
+          padding: EdgeInsets.fromLTRB(
+            16,
+            16,
+            16,
+            inRootShell(context) ? 96 : 16,
+          ),
           child: Center(
             child: _loadingMore
                 ? const SizedBox(
