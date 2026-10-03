@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../core/agreements.dart';
 import '../l10n/l10n.dart';
 import 'legal_dialog.dart';
+import 'login_page.dart';
 
 /// 首次启动（或条款更新后）的同意页：同意后才能进入主界面。
 class FirstRunTerms extends StatelessWidget {
@@ -95,6 +96,10 @@ class FirstRunTerms extends StatelessWidget {
               FilledButton(
                 onPressed: () async {
                   await Agreements.accept();
+                  if (!context.mounted) return;
+                  // 同意后弹出登录弹窗；关掉弹窗则留在欢迎页
+                  final ok = await showLoginSheet(context);
+                  if (!ok) return;
                   onAccepted();
                 },
                 child: Text(l10n.agreeAndContinue),

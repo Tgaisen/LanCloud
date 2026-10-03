@@ -153,11 +153,9 @@ class ProfileSheet extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.add),
             title: Text(context.l10n.addAccount),
-            onTap: () {
+            onTap: () async {
               Navigator.of(context).pop();
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const LoginPage()),
-              );
+              await showLoginSheet(context);
             },
           ),
           const Divider(),

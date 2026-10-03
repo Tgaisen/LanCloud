@@ -5,6 +5,7 @@ import 'package:lancloud/core/agreements.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/first_run_terms.dart';
+import 'package:lancloud/ui/login_page.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -36,7 +37,7 @@ void main() {
     expect(await Agreements.accepted(), isTrue);
   });
 
-  testWidgets('首次启动显示同意页，同意后写入标记', (tester) async {
+  testWidgets('首次启动同意后弹出登录弹窗；关闭弹窗留在欢迎页', (tester) async {
     var accepted = false;
     await pumpApp(tester, FirstRunTerms(onAccepted: () => accepted = true));
 
@@ -48,8 +49,16 @@ void main() {
     await tester.tap(find.text('同意并继续'));
     await tester.pumpAndSettle();
 
-    expect(accepted, isTrue);
+    // 同意已写入，但登录弹窗还没完成，仍留在欢迎页
     expect(await Agreements.accepted(), isTrue);
+    expect(find.text('网页登录'), findsOneWidget);
+    expect(find.text('Cookie 登录'), findsOneWidget);
+    expect(accepted, isFalse);
+
+    Navigator.of(tester.element(find.byType(LoginSheet))).pop();
+    await tester.pumpAndSettle();
+    expect(find.text('欢迎使用蓝云'), findsOneWidget);
+    expect(accepted, isFalse);
   });
 
   testWidgets('同意页可以打开用户协议与隐私政策弹窗', (tester) async {
