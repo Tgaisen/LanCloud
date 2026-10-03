@@ -2323,6 +2323,9 @@ class _DrivePageState extends State<DrivePage>
       animation: Listenable.merge([_selAnim, _exitAnim]),
       builder: (context, _) {
         return Scaffold(
+          // 大屏外壳里的页面：背景交给外壳的圆角卡片
+          backgroundColor:
+              transparentPageBackground(context) ? Colors.transparent : null,
           // 键盘弹出时不压缩页面：搜索框在顶栏，页面由外层底栏 Scaffold
           // 压到键盘上沿即可（FAB 的留白见 floatingActionButton）
           resizeToAvoidBottomInset: false,
@@ -2336,11 +2339,10 @@ class _DrivePageState extends State<DrivePage>
                 top: 0,
                 child: TopBarOverlay(
                   height: headerHeight,
-                  background: Color.lerp(
-                    Theme.of(context).colorScheme.surface,
-                    Theme.of(context).colorScheme.surfaceContainer,
-                    ScrollTint.of(context),
-                  )!,
+                  background: topBarBackgroundColor(
+                    context,
+                    Theme.of(context).colorScheme,
+                  ),
                   // 显式高度：带 bottom（路径栏）的 AppBar 需要有限高度约束
                   builder: (context) => SizedBox(
                     height: headerHeight,
@@ -2518,7 +2520,7 @@ class _DrivePageState extends State<DrivePage>
               ),
             ],
       bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(46),
+        preferredSize: const Size.fromHeight(kDrivePathBarHeight),
         // 多选期间禁用路径切换，但路径栏保持可见；
         // bottom 拿到的是无界高度，必须自己声明固定高度，否则会把工具栏挤成 0
         child: SizedBox(

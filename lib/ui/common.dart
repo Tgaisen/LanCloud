@@ -14,6 +14,37 @@ import '../core/app_controller.dart';
 import '../core/transfer/transfer_manager.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
+import 'scroll_tint.dart';
+
+/// 大屏（平板 / 桌面）布局阈值：≥640dp 时用侧栏 + 圆角内容卡片。
+const double kLargeLayoutBreakpoint = 640;
+
+/// 网盘页路径栏高度（顶栏的 bottom 部分）。
+const double kDrivePathBarHeight = 46;
+
+/// 传输页上传 / 下载切换栏高度（顶栏的 bottom 部分）。
+const double kTransfersTabBarHeight = 58;
+
+/// 是否是大屏布局（侧栏 + 圆角主视图）。
+bool isLargeLayout(BuildContext context) =>
+    MediaQuery.sizeOf(context).width >= kLargeLayoutBreakpoint;
+
+/// 大屏外壳里的页面（侧栏布局的第一个路由）：背景由外壳的圆角卡片绘制，
+/// 页面自己必须透明，否则会盖住卡片的圆角。
+bool transparentPageBackground(BuildContext context) =>
+    isLargeLayout(context) && (ModalRoute.of(context)?.isFirst ?? true);
+
+/// 顶栏底色：大屏布局固定用 surfaceContainer（导航区颜色，与侧栏一致），
+/// 手机布局保持随滚动在 surface → surfaceContainer 之间过渡。
+Color topBarBackgroundColor(BuildContext context, ColorScheme scheme) {
+  if (isLargeLayout(context)) return scheme.surfaceContainer;
+  return Color.lerp(
+        scheme.surface,
+        scheme.surfaceContainer,
+        ScrollTint.of(context),
+      ) ??
+      scheme.surface;
+}
 
 String formatBytes(int bytes) {
   if (bytes <= 0) return '0 B';

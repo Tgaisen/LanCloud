@@ -44,6 +44,9 @@ class ProfilePage extends StatelessWidget {
     final standalone = !(ModalRoute.of(context)?.isFirst ?? true);
 
     return Scaffold(
+      // 大屏外壳里的页面：背景交给外壳的圆角卡片
+      backgroundColor:
+          transparentPageBackground(context) ? Colors.transparent : null,
       body: Stack(
         children: [
           ScrollTint(
@@ -56,7 +59,8 @@ class ProfilePage extends StatelessWidget {
                 // 顶栏不占布局，这里留出等高占位
                 SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),
+                  // 顶部留白与左右一致
+                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
                   sliver: SliverList(
                     delegate: SliverChildListDelegate([
                       SegmentedList(
@@ -145,11 +149,7 @@ class ProfilePage extends StatelessWidget {
             top: 0,
             child: TopBarOverlay(
               height: headerHeight,
-              background: Color.lerp(
-                scheme.surface,
-                scheme.surfaceContainer,
-                ScrollTint.of(context),
-              )!,
+              background: topBarBackgroundColor(context, scheme),
               builder: (context) => AppBar(
                 backgroundColor: Colors.transparent,
                 scrolledUnderElevation: 0,

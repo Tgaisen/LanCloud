@@ -317,6 +317,9 @@ class _HomePageState extends State<HomePage>
         .length;
     final headerHeight = MediaQuery.paddingOf(context).top + kToolbarHeight;
     return Scaffold(
+      // 大屏外壳里的页面：背景交给外壳的圆角卡片
+      backgroundColor:
+          transparentPageBackground(context) ? Colors.transparent : null,
       body: Stack(
         children: [
           ScrollTint(
@@ -452,11 +455,7 @@ class _HomePageState extends State<HomePage>
             top: 0,
             child: TopBarOverlay(
               height: headerHeight,
-              background: Color.lerp(
-                scheme.surface,
-                scheme.surfaceContainer,
-                ScrollTint.of(context),
-              )!,
+              background: topBarBackgroundColor(context, scheme),
               builder: (context) => AppBar(
                 backgroundColor: Colors.transparent,
                 scrolledUnderElevation: 0,

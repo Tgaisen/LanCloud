@@ -216,6 +216,9 @@ class _TransfersPageState extends State<TransfersPage>
         )
         .length;
     return Scaffold(
+      // 大屏外壳里的页面：背景交给外壳的圆角卡片
+      backgroundColor:
+          transparentPageBackground(context) ? Colors.transparent : null,
       body: Stack(
         children: [
           ScrollTint(
@@ -248,11 +251,7 @@ class _TransfersPageState extends State<TransfersPage>
             top: 0,
             child: TopBarOverlay(
               height: headerHeight,
-              background: Color.lerp(
-                scheme.surface,
-                scheme.surfaceContainer,
-                ScrollTint.of(context),
-              )!,
+              background: topBarBackgroundColor(context, scheme),
               // 显式高度：带 bottom 的 AppBar 需要有限高度约束
               builder: (context) => SizedBox(
                 height: headerHeight,
@@ -275,7 +274,7 @@ class _TransfersPageState extends State<TransfersPage>
                   ),
                 ],
                 bottom: PreferredSize(
-                  preferredSize: const Size.fromHeight(58),
+                  preferredSize: const Size.fromHeight(kTransfersTabBarHeight),
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
                     // 多选期间禁用切换上传/下载

@@ -20,6 +20,7 @@ import 'ui/home_page.dart';
 import 'ui/login_page.dart';
 import 'ui/profile_page.dart';
 import 'ui/app_scroll.dart';
+import 'ui/common.dart';
 import 'ui/scroll_tint.dart';
 import 'ui/share_page.dart';
 import 'ui/transfers_page.dart';
@@ -263,6 +264,16 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
         if (app.settings.navShowFavorites) _viewFavorites,
         _viewProfile,
       ];
+
+  /// 各视图顶栏高度：大屏布局用它决定圆角内容卡片的起点。
+  double _topBarHeightFor(int viewId) {
+    final top = MediaQuery.paddingOf(context).top;
+    return switch (viewId) {
+      _viewDrive => top + kToolbarHeight + kDrivePathBarHeight,
+      _viewTransfers => top + kToolbarHeight + kTransfersTabBarHeight,
+      _ => top + kToolbarHeight,
+    };
+  }
 
   Widget _pageFor(int id) => switch (id) {
         _viewHome => const HomePage(tabIndex: _viewHome),
@@ -680,6 +691,9 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
     }
 
     final width = MediaQuery.sizeOf(context).width;
+    final scheme = Theme.of(context).colorScheme;
+    // 大屏（MD3E）：侧栏等导航区用 surfaceContainer，主视图是圆角的 surface 卡片
+    final bodyColor = Theme.of(context).scaffoldBackgroundColor;
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
@@ -689,15 +703,18 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
           await SystemNavigator.pop();
         }
       },
-      child: width >= 640
+      child: width >= kLargeLayoutBreakpoint
           ? Scaffold(
+              backgroundColor: scheme.surfaceContainer,
               body: Row(
                 children: [
                   NavigationRail(
+                    backgroundColor: Colors.transparent,
                     selectedIndex: _index,
-                    extended: width >= 1080,
-                    labelType:
-                        width >= 1080 ? null : NavigationRailLabelType.all,
+                    // 统一用非展开样式：图标在上、文字在下，栏宽 72dp。
+                    // 展开样式（extended）要 256dp，对这几个短标题太宽了。
+                    extended: false,
+                    labelType: NavigationRailLabelType.all,
                     onDestinationSelected: (i) => _goTo(_ids[i]),
                     destinations: [
                       for (final id in _ids)
@@ -708,8 +725,39 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
                         ),
                     ],
                   ),
-                  const VerticalDivider(width: 1),
-                  Expanded(child: keyed),
+                  // 主视图：顶栏留在导航区（surfaceContainer），
+                  // 圆角的 surface 卡片从顶栏下方开始，页面背景透明；
+                  // 顶栏收起时卡片顶边跟着上移，内容始终被顶栏或卡片盖住
+                  Expanded(
+                    child: ValueListenableBuilder<double>(
+                      valueListenable: app.topBarHide,
+                      builder: (context, hide, _) {
+                        final t =
+                            app.settings.hideTopBar ? hide.clamp(0.0, 1.0) : 0.0;
+                        return Stack(
+                          children: [
+                            Positioned(
+                              left: 0,
+                              top: _topBarHeightFor(_ids[_index]) * (1 - t),
+                              right: 8,
+                              bottom: 8,
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(16),
+                                child: ColoredBox(color: bodyColor),
+                              ),
+                            ),
+                            Positioned(
+                              left: 0,
+                              top: 0,
+                              right: 8,
+                              bottom: 8,
+                              child: keyed,
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
                 ],
               ),
             )

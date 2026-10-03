@@ -321,6 +321,9 @@ class _FavoritesPageState extends State<FavoritesPage>
     final headerHeight = MediaQuery.paddingOf(context).top + kToolbarHeight;
     final selectedCount = _selected.length;
     return Scaffold(
+      // 大屏外壳里的页面：背景交给外壳的圆角卡片
+      backgroundColor:
+          transparentPageBackground(context) ? Colors.transparent : null,
       body: Stack(
         children: [
           ScrollTint(
@@ -386,11 +389,7 @@ class _FavoritesPageState extends State<FavoritesPage>
             top: 0,
             child: TopBarOverlay(
               height: headerHeight,
-              background: Color.lerp(
-                scheme.surface,
-                scheme.surfaceContainer,
-                ScrollTint.of(context),
-              )!,
+              background: topBarBackgroundColor(context, scheme),
               builder: (context) => AppBar(
                 backgroundColor: Colors.transparent,
                 scrolledUnderElevation: 0,
