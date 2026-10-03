@@ -2269,10 +2269,11 @@ class _DrivePageState extends State<DrivePage>
       animation: Listenable.merge([_selAnim, _appBarAnim, _exitAnim]),
       builder: (context, _) {
         return Scaffold(
-          floatingActionButtonLocation: _DriveFabLocation(
-            // 悬浮底栏时抬到药丸上方，留出间距
-            lift: app.settings.floatingNavBar ? 88 : 0,
-          ),
+          // 悬浮底栏时抬到药丸上方留出间距；用常量实例，避免 Scaffold
+          // 因为位置对象每帧变化而反复播放「移动 FAB」的缩放动画
+          floatingActionButtonLocation: app.settings.floatingNavBar
+              ? _DriveFabLocation.floating
+              : _DriveFabLocation.normal,
           body: Stack(
             children: [
               _buildBody(grid),
@@ -3497,6 +3498,11 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
 /// 网盘 FAB 位置：不受软键盘影响；开启悬浮底栏时整体抬高，和底栏药丸留出间距。
 class _DriveFabLocation extends FloatingActionButtonLocation {
   const _DriveFabLocation({required this.lift});
+
+  /// 常量实例：Scaffold 通过 != 判断位置是否变化，
+  /// 每次重建都新建实例会导致它反复播放「移动 FAB」的缩放动画。
+  static const normal = _DriveFabLocation(lift: 0);
+  static const floating = _DriveFabLocation(lift: 88);
 
   /// 额外抬高距离（悬浮底栏的留白）。
   final double lift;

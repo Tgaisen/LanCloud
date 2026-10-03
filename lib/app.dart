@@ -520,6 +520,8 @@ class _RootShellState extends State<RootShell> {
                   child: ClipRect(
                     child: OverflowBox(
                       alignment: Alignment.topCenter,
+                      // minHeight 必须等于完整高度：否则底栏会被压扁（内容缩放）而不是滑出
+                      minHeight: barHeight,
                       maxHeight: barHeight,
                       child: child,
                     ),
