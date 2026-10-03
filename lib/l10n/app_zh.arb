@@ -177,13 +177,18 @@
   "floatingNavSubtitle": "带圆角和阴影，浮在内容之上",
   "floatingNavKeywords": "底栏 悬浮 md3",
   "swipeTabs": "横滑切换视图",
-  "swipeTabsSubtitle": "左右滑动在首页/网盘/传输/我的之间切换",
+  "swipeTabsSubtitle": "左右横滑切换主页视图",
   "swipeTabsKeywords": "滑动 手势 tab",
   "transitionAnimations": "过渡动画",
-  "transitionAnimationsSubtitle": "目录切换与列表出现时的淡入动画",
+  "transitionAnimationsSubtitle": "目录切换的淡入动画",
   "transitionAnimationsKeywords": "动画 过渡 淡入 目录 列表",
   "downloadDir": "下载目录",
-  "defaultDownloadDir": "默认（应用文档目录/LanCloud）",
+  "defaultDownloadDir": "默认（{path}）",
+  "@defaultDownloadDir": {
+    "placeholders": {
+      "path": {"type": "String"}
+    }
+  },
   "downloadDirKeywords": "下载 目录 保存位置",
   "launchPage": "默认启动页",
   "launchPageKeywords": "启动 首页 网盘",
@@ -555,7 +560,9 @@
   "showCookieSubtitle": "需通过生物识别 / 锁屏验证",
   "cookieRiskTitle": "显示 Cookie？",
   "cookieRiskMessage": "Cookie 等同于账号登录凭据，任何拿到它的人都能直接登录并操作你的网盘。请勿截图、转发或粘贴到不可信的设备与应用中。",
-  "cookieAuthReason": "验证身份后显示 Cookie",
+  "cookieAuthReason": "此操作需要验证身份",
+  "authVerifyTitle": "验证身份",
+  "authVerifyHint": "请使用指纹或锁屏密码",
   "cookieAuthFailed": "身份验证未通过，已取消显示",
   "cookieAuthUnavailable": "当前设备未设置锁屏密码或生物识别，无法验证身份",
   "cookieSheetTitle": "账号 Cookie",

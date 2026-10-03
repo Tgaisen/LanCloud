@@ -55,6 +55,9 @@ dependencies:
   receive_sharing_intent: ^1.9.0
   flutter_foreground_task: ^11.0.3
   local_auth: ^3.0.2
+  # 直接依赖平台实现包，用于传入系统验证弹窗的本地化文案
+  local_auth_android: 2.2.0
+  local_auth_darwin: 2.0.4
 dev_dependencies:
   flutter_test:
     sdk: flutter

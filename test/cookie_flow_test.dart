@@ -5,6 +5,7 @@ import 'package:lancloud/core/cookie_auth.dart';
 import 'package:lancloud/core/data/account_store.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/cookie_sheet.dart';
+import 'package:local_auth_android/local_auth_android.dart';
 import 'package:local_auth/local_auth.dart';
 
 class _FakeAuth extends CookieAuth {
@@ -14,7 +15,10 @@ class _FakeAuth extends CookieAuth {
   int calls = 0;
 
   @override
-  Future<CookieAuthResult> verify(String reason) async {
+  Future<CookieAuthResult> verify(
+    String reason, {
+    Iterable<AuthMessages> messages = const <AuthMessages>[],
+  }) async {
     calls += 1;
     return result;
   }

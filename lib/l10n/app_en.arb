@@ -131,13 +131,18 @@
   "floatingNavSubtitle": "Rounded with a shadow, floating above content",
   "floatingNavKeywords": "bottom bar floating md3",
   "swipeTabs": "Swipe to switch views",
-  "swipeTabsSubtitle": "Swipe left or right to switch between Home, Drive, Transfers and Profile",
+  "swipeTabsSubtitle": "Swipe left or right to switch home views",
   "swipeTabsKeywords": "swipe gesture tab",
   "transitionAnimations": "Transition animations",
-  "transitionAnimationsSubtitle": "Fade in when switching folders or loading lists",
+  "transitionAnimationsSubtitle": "Fade-in animation when switching folders",
   "transitionAnimationsKeywords": "animation transition fade folder list",
   "downloadDir": "Download folder",
-  "defaultDownloadDir": "Default (app documents/LanCloud)",
+  "defaultDownloadDir": "Default ({path})",
+  "@defaultDownloadDir": {
+    "placeholders": {
+      "path": {"type": "String"}
+    }
+  },
   "downloadDirKeywords": "download folder save location",
   "launchPage": "Default start page",
   "launchPageKeywords": "start home drive",
@@ -393,7 +398,9 @@
   "showCookieSubtitle": "Requires biometric or screen-lock verification",
   "cookieRiskTitle": "Show cookie?",
   "cookieRiskMessage": "The cookie is your account credential. Anyone who has it can sign in and operate your cloud drive. Don't screenshot, forward, or paste it into untrusted devices or apps.",
-  "cookieAuthReason": "Verify your identity to show the cookie",
+  "cookieAuthReason": "Verify your identity to continue",
+  "authVerifyTitle": "Verify identity",
+  "authVerifyHint": "Use your fingerprint or screen lock",
   "cookieAuthFailed": "Verification failed; the cookie will not be shown",
   "cookieAuthUnavailable": "No screen lock or biometrics is set up on this device, so identity can't be verified",
   "cookieSheetTitle": "Account cookie",

@@ -418,8 +418,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get swipeTabs => 'Swipe to switch views';
 
   @override
-  String get swipeTabsSubtitle =>
-      'Swipe left or right to switch between Home, Drive, Transfers and Profile';
+  String get swipeTabsSubtitle => 'Swipe left or right to switch home views';
 
   @override
   String get swipeTabsKeywords => 'swipe gesture tab';
@@ -429,7 +428,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get transitionAnimationsSubtitle =>
-      'Fade in when switching folders or loading lists';
+      'Fade-in animation when switching folders';
 
   @override
   String get transitionAnimationsKeywords =>
@@ -439,7 +438,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get downloadDir => 'Download folder';
 
   @override
-  String get defaultDownloadDir => 'Default (app documents/LanCloud)';
+  String defaultDownloadDir(String path) {
+    return 'Default ($path)';
+  }
 
   @override
   String get downloadDirKeywords => 'download folder save location';
@@ -1165,7 +1166,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'The cookie is your account credential. Anyone who has it can sign in and operate your cloud drive. Don\'t screenshot, forward, or paste it into untrusted devices or apps.';
 
   @override
-  String get cookieAuthReason => 'Verify your identity to show the cookie';
+  String get cookieAuthReason => 'Verify your identity to continue';
+
+  @override
+  String get authVerifyTitle => 'Verify identity';
+
+  @override
+  String get authVerifyHint => 'Use your fingerprint or screen lock';
 
   @override
   String get cookieAuthFailed =>

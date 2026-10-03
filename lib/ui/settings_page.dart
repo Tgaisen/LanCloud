@@ -43,6 +43,8 @@ class _SettingsPageState extends State<SettingsPage>
   bool _searching = false;
   bool? _notifGranted;
   PermissionSnapshot? _permissions;
+  /// 默认下载目录的真实路径（副标题里显示，进入设置时读一次）。
+  String? _defaultDownloadDir;
   final TextEditingController _search = TextEditingController();
 
   @override
@@ -51,6 +53,25 @@ class _SettingsPageState extends State<SettingsPage>
     WidgetsBinding.instance.addObserver(this);
     _refreshNotifPermission();
     _refreshPermissions();
+    _loadDefaultDownloadDir();
+  }
+
+  Future<void> _loadDefaultDownloadDir() async {
+    try {
+      final path =
+          await context.read<AppController>().defaultDownloadDirPath();
+      if (mounted) setState(() => _defaultDownloadDir = path);
+    } catch (_) {
+      // 取不到路径时保持占位符，不影响设置页其余内容
+    }
+  }
+
+  /// 下载目录副标题：自定义目录显示所选路径，默认目录显示真实路径。
+  String _downloadDirLabel(AppLocalizations l10n, AppController app) {
+    final custom = app.settings.downloadDir;
+    if (custom != null && custom.isNotEmpty) return custom;
+    final path = _defaultDownloadDir;
+    return l10n.defaultDownloadDir(path ?? '…');
   }
 
   @override
@@ -220,15 +241,16 @@ class _SettingsPageState extends State<SettingsPage>
       _Entry(
         id: 'download_dir',
         title: l10n.downloadDir,
-        subtitle: app.settings.downloadDir ?? l10n.defaultDownloadDir,
+        subtitle: _downloadDirLabel(l10n, app),
         keywords: l10n.downloadDirKeywords.split(' '),
         category: 'behavior',
         build: (context, app) => ListTile(
           leading: const Icon(Icons.folder_outlined),
           title: Text(context.l10n.downloadDir),
           subtitle: Text(
-            app.settings.downloadDir ?? context.l10n.defaultDownloadDir,
-            maxLines: 1,
+            _downloadDirLabel(context.l10n, app),
+            // 默认目录会带上真实路径，比较长：允许换行显示完整路径
+            maxLines: 3,
             overflow: TextOverflow.ellipsis,
           ),
           onTap: () => _changeDownloadDir(context),
@@ -899,11 +921,17 @@ class _SettingsPageState extends State<SettingsPage>
   static Future<void> _changeDownloadDir(BuildContext context) async {
     final app = context.read<AppController>();
     final l10n = context.l10n;
+    final custom = app.settings.downloadDir;
+    // 默认目录直接显示真实路径
+    final current = custom != null && custom.isNotEmpty
+        ? custom
+        : l10n.defaultDownloadDir(await app.defaultDownloadDirPath());
+    if (!context.mounted) return;
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(l10n.downloadDir),
-        content: Text(app.settings.downloadDir ?? l10n.defaultDownloadDir),
+        content: Text(current),
         actions: [
           TextButton(
             onPressed: () async {

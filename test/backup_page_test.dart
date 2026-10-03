@@ -8,6 +8,7 @@ import 'package:lancloud/core/backup/webdav_store.dart';
 import 'package:lancloud/core/cookie_auth.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/backup_page.dart';
+import 'package:local_auth_android/local_auth_android.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -63,7 +64,11 @@ class _FakeCookieAuth extends CookieAuth {
   final CookieAuthResult result;
 
   @override
-  Future<CookieAuthResult> verify(String reason) async => result;
+  Future<CookieAuthResult> verify(
+    String reason, {
+    Iterable<AuthMessages> messages = const <AuthMessages>[],
+  }) async =>
+      result;
 }
 
 void main() {

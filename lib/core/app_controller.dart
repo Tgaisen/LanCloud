@@ -333,17 +333,21 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 默认下载目录路径：Android/data/<包名>/files/LanCloud
+  /// （取不到外部专属目录时退回应用私有文档目录）。
+  Future<String> defaultDownloadDirPath() async {
+    final base = await getExternalStorageDirectory() ??
+        await getApplicationDocumentsDirectory();
+    return p.join(base.path, 'LanCloud');
+  }
+
   Future<Directory> downloadDirectory() async {
     Directory dir;
     final custom = settings.downloadDir;
     if (custom != null && custom.isNotEmpty) {
       dir = Directory(custom);
     } else {
-      // 默认放在应用专属外部目录：Android/data/<包名>/files/LanCloud
-      // （文件管理器可见；拿不到时退回应用私有文档目录）
-      final base = await getExternalStorageDirectory() ??
-          await getApplicationDocumentsDirectory();
-      dir = Directory(p.join(base.path, 'LanCloud'));
+      dir = Directory(await defaultDownloadDirPath());
     }
     if (!await dir.exists()) await dir.create(recursive: true);
     return dir;

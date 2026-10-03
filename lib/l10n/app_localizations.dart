@@ -857,7 +857,7 @@ abstract class AppLocalizations {
   /// No description provided for @swipeTabsSubtitle.
   ///
   /// In zh, this message translates to:
-  /// **'左右滑动在首页/网盘/传输/我的之间切换'**
+  /// **'左右横滑切换主页视图'**
   String get swipeTabsSubtitle;
 
   /// No description provided for @swipeTabsKeywords.
@@ -875,7 +875,7 @@ abstract class AppLocalizations {
   /// No description provided for @transitionAnimationsSubtitle.
   ///
   /// In zh, this message translates to:
-  /// **'目录切换与列表出现时的淡入动画'**
+  /// **'目录切换的淡入动画'**
   String get transitionAnimationsSubtitle;
 
   /// No description provided for @transitionAnimationsKeywords.
@@ -893,8 +893,8 @@ abstract class AppLocalizations {
   /// No description provided for @defaultDownloadDir.
   ///
   /// In zh, this message translates to:
-  /// **'默认（应用文档目录/LanCloud）'**
-  String get defaultDownloadDir;
+  /// **'默认（{path}）'**
+  String defaultDownloadDir(String path);
 
   /// No description provided for @downloadDirKeywords.
   ///
@@ -2183,8 +2183,20 @@ abstract class AppLocalizations {
   /// No description provided for @cookieAuthReason.
   ///
   /// In zh, this message translates to:
-  /// **'验证身份后显示 Cookie'**
+  /// **'此操作需要验证身份'**
   String get cookieAuthReason;
+
+  /// No description provided for @authVerifyTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'验证身份'**
+  String get authVerifyTitle;
+
+  /// No description provided for @authVerifyHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'请使用指纹或锁屏密码'**
+  String get authVerifyHint;
 
   /// No description provided for @cookieAuthFailed.
   ///

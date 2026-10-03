@@ -29,7 +29,10 @@ Future<void> showCookieFlow(BuildContext context, Account account) async {
     ),
   );
   if (confirmed != true || !context.mounted) return;
-  final result = await CookieAuth.instance.verify(l10n.cookieAuthReason);
+  final result = await CookieAuth.instance.verify(
+    l10n.cookieAuthReason,
+    messages: authMessagesFor(l10n),
+  );
   if (!context.mounted) return;
   switch (result) {
     case CookieAuthResult.ok:

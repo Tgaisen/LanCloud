@@ -1,4 +1,6 @@
 import 'package:local_auth/local_auth.dart';
+import 'package:local_auth_android/local_auth_android.dart';
+import 'package:local_auth_darwin/local_auth_darwin.dart';
 
 /// 查看敏感信息前的身份验证结果。
 enum CookieAuthResult {
@@ -22,7 +24,12 @@ class CookieAuth {
 
   static CookieAuth instance = CookieAuth();
 
-  Future<CookieAuthResult> verify(String reason) async {
+  /// [reason] 是弹窗里说明用途的一行文字；[messages] 用于本地化系统弹窗
+  /// 自身的标题 / 副标题 / 取消按钮（不传则用插件自带的英文默认值）。
+  Future<CookieAuthResult> verify(
+    String reason, {
+    Iterable<AuthMessages> messages = const <AuthMessages>[],
+  }) async {
     final auth = LocalAuthentication();
     bool supported;
     try {
@@ -32,7 +39,10 @@ class CookieAuth {
     }
     if (!supported) return CookieAuthResult.unavailable;
     try {
-      final ok = await auth.authenticate(localizedReason: reason);
+      final ok = await auth.authenticate(
+        localizedReason: reason,
+        authMessages: messages,
+      );
       return ok ? CookieAuthResult.ok : CookieAuthResult.failed;
     } on LocalAuthException catch (e) {
       return cookieAuthResultFor(e.code);

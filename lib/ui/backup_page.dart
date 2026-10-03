@@ -65,7 +65,10 @@ class _BackupPageState extends State<BackupPage> {
       if (mounted) setState(() {});
       return;
     }
-    final result = await CookieAuth.instance.verify(l10n.cookieAuthReason);
+    final result = await CookieAuth.instance.verify(
+      l10n.cookieAuthReason,
+      messages: authMessagesFor(l10n),
+    );
     if (!mounted) return;
     switch (result) {
       case CookieAuthResult.ok:
@@ -89,7 +92,10 @@ class _BackupPageState extends State<BackupPage> {
       if (mounted) setState(() {});
       return;
     }
-    final result = await CookieAuth.instance.verify(l10n.cookieAuthReason);
+    final result = await CookieAuth.instance.verify(
+      l10n.cookieAuthReason,
+      messages: authMessagesFor(l10n),
+    );
     if (!mounted) return;
     switch (result) {
       case CookieAuthResult.ok:

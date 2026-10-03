@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart' hide Icons;
 import 'package:flutter/services.dart';
+import 'package:local_auth_android/local_auth_android.dart';
+import 'package:local_auth_darwin/local_auth_darwin.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
@@ -79,6 +81,17 @@ Future<void> copyText(BuildContext context, String text) async {
     );
   }
 }
+
+/// 系统身份验证弹窗（生物识别 / 锁屏密码）的本地化文案。
+/// Android 取标题 + 副标题 + 取消按钮，iOS 只有取消按钮（其余用系统文案）。
+List<AuthMessages> authMessagesFor(AppLocalizations l10n) => [
+      AndroidAuthMessages(
+        signInTitle: l10n.authVerifyTitle,
+        signInHint: l10n.authVerifyHint,
+        cancelButton: l10n.cancel,
+      ),
+      IOSAuthMessages(cancelButton: l10n.cancel),
+    ];
 
 IconData iconForFile(String name) {
   final ext = name.contains('.') ? name.split('.').last.toLowerCase() : '';

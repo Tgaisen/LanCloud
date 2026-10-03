@@ -409,7 +409,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get swipeTabs => '横滑切换视图';
 
   @override
-  String get swipeTabsSubtitle => '左右滑动在首页/网盘/传输/我的之间切换';
+  String get swipeTabsSubtitle => '左右横滑切换主页视图';
 
   @override
   String get swipeTabsKeywords => '滑动 手势 tab';
@@ -418,7 +418,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get transitionAnimations => '过渡动画';
 
   @override
-  String get transitionAnimationsSubtitle => '目录切换与列表出现时的淡入动画';
+  String get transitionAnimationsSubtitle => '目录切换的淡入动画';
 
   @override
   String get transitionAnimationsKeywords => '动画 过渡 淡入 目录 列表';
@@ -427,7 +427,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get downloadDir => '下载目录';
 
   @override
-  String get defaultDownloadDir => '默认（应用文档目录/LanCloud）';
+  String defaultDownloadDir(String path) {
+    return '默认（$path）';
+  }
 
   @override
   String get downloadDirKeywords => '下载 目录 保存位置';
@@ -1134,7 +1136,13 @@ class AppLocalizationsZh extends AppLocalizations {
       'Cookie 等同于账号登录凭据，任何拿到它的人都能直接登录并操作你的网盘。请勿截图、转发或粘贴到不可信的设备与应用中。';
 
   @override
-  String get cookieAuthReason => '验证身份后显示 Cookie';
+  String get cookieAuthReason => '此操作需要验证身份';
+
+  @override
+  String get authVerifyTitle => '验证身份';
+
+  @override
+  String get authVerifyHint => '请使用指纹或锁屏密码';
 
   @override
   String get cookieAuthFailed => '身份验证未通过，已取消显示';
