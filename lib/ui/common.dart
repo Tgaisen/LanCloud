@@ -227,15 +227,20 @@ class TopBarOverlay extends StatelessWidget {
   const TopBarOverlay({
     super.key,
     required this.height,
+    required this.background,
     required this.builder,
   });
 
   /// 顶栏完整高度（状态栏 + 工具栏 + bottom），用于计算滑出距离。
   final double height;
 
-  /// 构建顶栏；[opacity] 随收起进度变化（0 = 完全收起），
-  /// 传给 AppBar 的 toolbarOpacity / bottomOpacity 让顶栏元素渐隐。
-  final Widget Function(BuildContext context, double opacity) builder;
+  /// 顶栏底色：和设置/关于页一样，只随滚动从 surface 过渡到
+  /// surfaceContainer，不参与渐隐。页面里的 AppBar 用透明底。
+  final Color background;
+
+  /// 构建顶栏。位移与内容渐隐由本组件统一处理：标题、按钮、路径栏
+  /// 1:1 跟随手指淡出，底色始终保持不透明。
+  final WidgetBuilder builder;
 
   @override
   Widget build(BuildContext context) {
@@ -246,14 +251,20 @@ class TopBarOverlay extends StatelessWidget {
       builder: (context, hide, _) {
         // 只有开启「顶栏收起」时才跟随收起进度
         final t = app.settings.hideTopBar ? hide.clamp(0.0, 1.0) : 0.0;
-        // 前 1/3 行程保持不透明，之后随滑动渐隐
-        final opacity =
-            (1 - (t - 0.3).clamp(0.0, 1.0) / 0.7).clamp(0.0, 1.0);
         return IgnorePointer(
           ignoring: t >= 0.999,
           child: Transform.translate(
             offset: Offset(0, -height * t),
-            child: builder(context, opacity),
+            child: Stack(
+              children: [
+                // 不透明底色（参数同设置/关于页），渐隐只作用于内容
+                Positioned.fill(child: ColoredBox(color: background)),
+                Opacity(
+                  opacity: (1 - t).clamp(0.0, 1.0),
+                  child: builder(context),
+                ),
+              ],
+            ),
           ),
         );
       },

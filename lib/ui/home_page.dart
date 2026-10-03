@@ -330,11 +330,12 @@ class _HomePageState extends State<HomePage>
               // 顶栏不占布局，这里留出等高占位
               SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
               // 入口按钮：横向滚动，左右边距用 padding 实现，
-              // 这样滑到头也不会被裁掉；按钮间距 = 卡片边距（20dp）
+              // 这样滑到头也不会被裁掉；按钮间距 = 卡片边距（20dp），
+              // 顶部留白与左右一致
               SliverToBoxAdapter(
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -451,41 +452,15 @@ class _HomePageState extends State<HomePage>
             top: 0,
             child: TopBarOverlay(
               height: headerHeight,
-              builder: (context, opacity) => AppBar(
-                toolbarOpacity: opacity,
-                backgroundColor: Color.lerp(
-                  Theme.of(context).colorScheme.surface,
-                  Theme.of(context).colorScheme.surfaceContainer,
-                  ScrollTint.of(context),
-                ),
+              background: Color.lerp(
+                scheme.surface,
+                scheme.surfaceContainer,
+                ScrollTint.of(context),
+              )!,
+              builder: (context) => AppBar(
+                backgroundColor: Colors.transparent,
                 scrolledUnderElevation: 0,
                 title: Text(l10n.appName),
-                actions: [
-                  // MD3 trailing avatar：圆形头像按钮，切到「我的」视图
-                  Padding(
-                    padding: const EdgeInsets.only(left: 4, right: 10),
-                    child: Material(
-                      color: scheme.primaryContainer,
-                      shape: const CircleBorder(),
-                      clipBehavior: Clip.antiAlias,
-                      child: InkWell(
-                        onTap: () => app.switchTab(4),
-                        child: Tooltip(
-                          message: l10n.my,
-                          child: SizedBox(
-                            width: 34,
-                            height: 34,
-                            child: Icon(
-                              Icons.person,
-                              size: 20,
-                              color: scheme.onPrimaryContainer,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
               ),
             ),
           ),

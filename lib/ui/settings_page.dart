@@ -4,8 +4,10 @@ import 'package:dynamic_color/dynamic_color.dart';
 import 'package:provider/provider.dart';
 
 import '../core/app_controller.dart';
+import '../core/app_log.dart';
 import '../core/app_permissions.dart';
 import '../core/notifications.dart';
+import '../core/system_share.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'backup_page.dart';
@@ -739,6 +741,19 @@ class _SettingsPageState extends State<SettingsPage>
           );
         },
       ),
+      _Entry(
+        id: 'export_logs',
+        title: l10n.exportLogs,
+        subtitle: l10n.exportLogsSubtitle,
+        keywords: l10n.exportLogsKeywords.split(' '),
+        category: 'privacy',
+        build: (context, app) => ListTile(
+          leading: const Icon(Icons.article_outlined),
+          title: Text(context.l10n.exportLogs),
+          subtitle: Text(context.l10n.exportLogsSubtitle),
+          onTap: () => _exportLogs(context),
+        ),
+      ),
     ];
   }
 
@@ -966,6 +981,38 @@ class _SettingsPageState extends State<SettingsPage>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l10n.permissionOpenFailed)),
       );
+    }
+  }
+
+  /// 导出运行日志：合并本机日志交到系统分享面板。
+  Future<void> _exportLogs(BuildContext context) async {
+    final l10n = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final file = await AppLog.instance.exportBundle();
+      if (!mounted) return;
+      if (file == null) {
+        messenger.showSnackBar(
+          SnackBar(content: Text(l10n.exportLogsEmpty)),
+        );
+        return;
+      }
+      final ok = await SystemShare.shareFile(
+        file.path,
+        subject: '${l10n.appName} ${l10n.exportLogs}',
+        mime: 'text/plain',
+      );
+      if (!ok && mounted) {
+        messenger.showSnackBar(
+          SnackBar(content: Text(l10n.exportLogsFailed)),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(content: Text(l10n.exportLogsFailed)),
+        );
+      }
     }
   }
 

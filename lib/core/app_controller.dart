@@ -36,7 +36,7 @@ class AppController extends ChangeNotifier {
     await accounts.load();
     await settings.load();
     _applyRuntimeSettings();
-    await driveCache.loadFromDisk();
+    await driveCache.bindAccount(accounts.activeUid);
     ready = true;
     notifyListeners();
     _refreshActiveNickname();
@@ -60,6 +60,7 @@ class AppController extends ChangeNotifier {
     await settings.load();
     _applyRuntimeSettings();
     _clients.clear();
+    await driveCache.bindAccount(accounts.activeUid);
     if (!settings.cacheFolders) driveCache.clear();
     notifyListeners();
     _refreshActiveNickname();
@@ -305,6 +306,8 @@ class AppController extends ChangeNotifier {
       Account(uid: uid, cookie: cookie, nickname: nickname),
     );
     _clients[uid] = c;
+    // 新账号登入后同样清掉上一个账号的网盘缓存
+    await driveCache.bindAccount(accounts.activeUid);
     notifyListeners();
   }
 
@@ -324,12 +327,15 @@ class AppController extends ChangeNotifier {
 
   Future<void> switchAccount(String uid) async {
     await accounts.setActive(uid);
+    // 网盘缓存按账号隔离：换账号时清掉旧账号的目录缓存
+    await driveCache.bindAccount(uid);
     notifyListeners();
   }
 
   Future<void> removeAccount(String uid) async {
     await accounts.remove(uid);
     _clients.remove(uid);
+    await driveCache.bindAccount(accounts.activeUid);
     notifyListeners();
   }
 

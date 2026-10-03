@@ -1,11 +1,13 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:provider/provider.dart';
 
 import 'app.dart';
 import 'core/app_controller.dart';
+import 'core/app_log.dart';
 import 'core/backup/backup_service.dart';
 import 'core/incoming_links.dart';
 import 'core/notifications.dart';
@@ -14,6 +16,24 @@ import 'core/transfer/transfer_manager.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // 运行日志：把异常与 debugPrint 写进本机文件，用户可在设置-隐私里导出
+  await AppLog.instance.init();
+  final defaultOnError = FlutterError.onError;
+  FlutterError.onError = (details) {
+    AppLog.instance.error('flutter', details.exception, details.stack);
+    defaultOnError?.call(details);
+  };
+  PlatformDispatcher.instance.onError = (error, stack) {
+    AppLog.instance.error('uncaught', error, stack);
+    return true;
+  };
+  final defaultDebugPrint = debugPrint;
+  debugPrint = (String? message, {int? wrapWidth}) {
+    if (message != null && message.isNotEmpty) {
+      AppLog.instance.log('print', message);
+    }
+    defaultDebugPrint(message, wrapWidth: wrapWidth);
+  };
   FlutterForegroundTask.initCommunicationPort();
   FlutterForegroundTask.init(
     androidNotificationOptions: AndroidNotificationOptions(

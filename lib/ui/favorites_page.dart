@@ -386,13 +386,13 @@ class _FavoritesPageState extends State<FavoritesPage>
             top: 0,
             child: TopBarOverlay(
               height: headerHeight,
-              builder: (context, opacity) => AppBar(
-                toolbarOpacity: opacity,
-                backgroundColor: Color.lerp(
-                  scheme.surface,
-                  scheme.surfaceContainer,
-                  ScrollTint.of(context),
-                ),
+              background: Color.lerp(
+                scheme.surface,
+                scheme.surfaceContainer,
+                ScrollTint.of(context),
+              )!,
+              builder: (context) => AppBar(
+                backgroundColor: Colors.transparent,
                 scrolledUnderElevation: 0,
                 leading: (ModalRoute.of(context)?.isFirst ?? true)
                     ? null

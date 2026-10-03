@@ -248,17 +248,16 @@ class _TransfersPageState extends State<TransfersPage>
             top: 0,
             child: TopBarOverlay(
               height: headerHeight,
+              background: Color.lerp(
+                scheme.surface,
+                scheme.surfaceContainer,
+                ScrollTint.of(context),
+              )!,
               // 显式高度：带 bottom 的 AppBar 需要有限高度约束
-              builder: (context, opacity) => SizedBox(
+              builder: (context) => SizedBox(
                 height: headerHeight,
                 child: AppBar(
-                toolbarOpacity: opacity,
-                bottomOpacity: opacity,
-                backgroundColor: Color.lerp(
-                  scheme.surface,
-                  scheme.surfaceContainer,
-                  ScrollTint.of(context),
-                ),
+                backgroundColor: Colors.transparent,
                 scrolledUnderElevation: 0,
                 leading: (ModalRoute.of(context)?.isFirst ?? true)
                     ? null

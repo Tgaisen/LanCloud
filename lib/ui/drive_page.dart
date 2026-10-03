@@ -55,12 +55,6 @@ class _DrivePageState extends State<DrivePage>
     duration: _anim,
   );
 
-  /// 顶栏滚动变色（离开顶部 -> 50ms 过渡到实色）
-  late final AnimationController _appBarAnim = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 50),
-  );
-
   /// 目录切换：当前内容先淡出（[_exitAnim]），新内容再按 index 错峰淡入。
   /// 整张列表共享同一个 [_enterAnim]，滑动时新构建的条目只会读到当前进度，
   /// 所以“逐个显现”只在目录加载完成后播放一次，滑动不会重播。
@@ -150,7 +144,6 @@ class _DrivePageState extends State<DrivePage>
       _app.onRequestExitSelection = null;
     }
     _selAnim.dispose();
-    _appBarAnim.dispose();
     _enterAnim.dispose();
     _exitAnim.dispose();
     _scroll.dispose();
@@ -424,6 +417,40 @@ class _DrivePageState extends State<DrivePage>
     if (widget.initialFolderId == '-1' && widget.initialName == null) {
       _app.onDriveBack = _handleDriveBack;
     }
+    // 换账号兜底：页面状态如果被保留下来，也要丢掉上一个账号的目录内容
+    final uid = _app.activeUid;
+    if (_loadedUid == null) {
+      _loadedUid = uid;
+    } else if (_loadedUid != uid) {
+      _loadedUid = uid;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _resetForAccount());
+    }
+  }
+
+  /// 当前已加载数据的账号，用于换账号时重置页面。
+  String? _loadedUid;
+
+  /// 换账号：清掉目录内容并回到根目录重新加载（缓存已按账号清空）。
+  void _resetForAccount() {
+    if (!mounted) return;
+    _folderOffsets.clear();
+    _fileDescCache.clear();
+    _folderDescCache.clear();
+    _folderSizeCache.clear();
+    _searchController.clear();
+    setState(() {
+      _folderId = '-1';
+      _path = const [];
+      _folders = [];
+      _files = [];
+      _filter = '';
+      _searching = false;
+      _page = 1;
+      _hasMore = false;
+      _loading = true;
+      _error = null;
+    });
+    _load(force: true);
   }
 
   /// 返回键：多选 > 搜索栏 > 上一级目录 > 交给外壳处理
@@ -456,11 +483,6 @@ class _DrivePageState extends State<DrivePage>
   void _onScroll() {
     if (!_scroll.hasClients) return;
     final pixels = _scroll.position.pixels;
-    if (pixels > 0) {
-      _appBarAnim.forward();
-    } else {
-      _appBarAnim.reverse();
-    }
     if (pixels >= _scroll.position.maxScrollExtent - 320) {
       _loadMore();
     }
@@ -2298,7 +2320,7 @@ class _DrivePageState extends State<DrivePage>
     final headerHeight = MediaQuery.paddingOf(context).top + kToolbarHeight + 46;
 
     return AnimatedBuilder(
-      animation: Listenable.merge([_selAnim, _appBarAnim, _exitAnim]),
+      animation: Listenable.merge([_selAnim, _exitAnim]),
       builder: (context, _) {
         return Scaffold(
           // 键盘弹出时不压缩页面：搜索框在顶栏，页面由外层底栏 Scaffold
@@ -2314,10 +2336,15 @@ class _DrivePageState extends State<DrivePage>
                 top: 0,
                 child: TopBarOverlay(
                   height: headerHeight,
+                  background: Color.lerp(
+                    Theme.of(context).colorScheme.surface,
+                    Theme.of(context).colorScheme.surfaceContainer,
+                    ScrollTint.of(context),
+                  )!,
                   // 显式高度：带 bottom（路径栏）的 AppBar 需要有限高度约束
-                  builder: (context, opacity) => SizedBox(
+                  builder: (context) => SizedBox(
                     height: headerHeight,
-                    child: _topBar(context, opacity),
+                    child: _topBar(context),
                   ),
                 ),
               ),
@@ -2445,19 +2472,13 @@ class _DrivePageState extends State<DrivePage>
   }
 
   /// 顶栏（含路径栏）：作为浮层显示，与底栏共用收起进度。
-  Widget _topBar(BuildContext context, double opacity) {
+  Widget _topBar(BuildContext context) {
     // 点顶栏空白处回到列表顶部（子级按钮 / 路径胶囊自行响应，不会误触）
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
       onTap: _scrollToTop,
       child: AppBar(
-      toolbarOpacity: opacity,
-      bottomOpacity: opacity,
-      backgroundColor: Color.lerp(
-        Theme.of(context).colorScheme.surface,
-        Theme.of(context).colorScheme.surfaceContainer,
-        _appBarAnim.value,
-      ),
+      backgroundColor: Colors.transparent,
       scrolledUnderElevation: 0,
       leading: (ModalRoute.of(context)?.isFirst ?? true)
           ? null

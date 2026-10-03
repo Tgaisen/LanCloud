@@ -47,22 +47,41 @@ class CachedFolder {
 
 /// 网盘目录的内存缓存：返回上一级时直接命中，避免重复请求。
 /// 根目录（-1）会持久化，冷启动时可直接展示。
+/// 缓存按账号隔离：换账号时会整体清空，根快照也按账号分开存。
 class DriveCache {
-  static const _prefsKey = 'drive_cache_root';
+  static const _prefsPrefix = 'drive_cache_root';
+  /// 旧版本只有一个全局快照，无法判断属于哪个账号，绑定账号时直接丢弃。
+  static const _legacyPrefsKey = 'drive_cache_root';
 
   final Map<String, CachedFolder> _folders = {};
+  String? _uid;
+
+  String get _prefsKey => '${_prefsPrefix}_${_uid ?? 'anon'}';
+
+  /// 绑定当前账号：账号变化时清空内存缓存，并读取该账号自己的根快照。
+  Future<void> bindAccount(String? uid) async {
+    if (_uid == uid) return;
+    _uid = uid;
+    _folders.clear();
+    await loadFromDisk();
+  }
 
   CachedFolder? get(String folderId) => _folders[folderId];
 
   void put(String folderId, CachedFolder value) {
     _folders[folderId] = value;
-    if (folderId == '-1') _persistRoot(value);
+    // 键名在这里就取好：写入是异步的，期间可能已经换了账号
+    if (folderId == '-1') _persistRoot(value, _prefsKey);
   }
 
-  /// 冷启动时读取上次持久化的根目录快照。
+  /// 冷启动 / 换账号时读取该账号上次持久化的根目录快照。
   Future<void> loadFromDisk() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      // 旧版本的全局快照作废，避免新账号读到别的账号的目录
+      if (prefs.containsKey(_legacyPrefsKey)) {
+        await prefs.remove(_legacyPrefsKey);
+      }
       final raw = prefs.getString(_prefsKey);
       if (raw == null || raw.isEmpty || _folders.containsKey('-1')) return;
       final map = jsonDecode(raw);
@@ -76,10 +95,10 @@ class DriveCache {
     }
   }
 
-  Future<void> _persistRoot(CachedFolder value) async {
+  Future<void> _persistRoot(CachedFolder value, String key) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_prefsKey, jsonEncode(value.toJson()));
+      await prefs.setString(key, jsonEncode(value.toJson()));
     } catch (_) {}
   }
 

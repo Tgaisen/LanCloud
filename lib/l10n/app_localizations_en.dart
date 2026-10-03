@@ -1206,6 +1206,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get showCookieKeywords => 'cookie show privacy credential key';
 
   @override
+  String get exportLogs => 'Export runtime logs';
+
+  @override
+  String get exportLogsSubtitle =>
+      'Kept on this device, export only when reporting a problem';
+
+  @override
+  String get exportLogsKeywords => 'log export share debug feedback';
+
+  @override
+  String get exportLogsEmpty => 'No logs to export yet';
+
+  @override
+  String get exportLogsFailed => 'Failed to export logs';
+
+  @override
   String get scan => 'Scan';
 
   @override
@@ -1518,5 +1534,5 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacyBody =>
-      'Privacy Policy\n\n1. The app collects and uploads no personal data. There is no account system, analytics, ads, or crash-reporting SDK.\n\n2. Your LanZou account (cookie), nickname, favorites, recents, transfer history and settings stay on this device. The cookie is kept in encrypted system storage; viewing it requires biometric or screen-lock verification.\n\n3. The app talks directly to official LanZou endpoints (pc.woozooo.com, up.woozooo.com, etc.); requests only serve the actions you start, such as signing in, listing, uploading or downloading.\n\n4. Sharing goes through the system share sheet: content or files are handed to the app you pick, only when you tap share. The clipboard is written only when you tap Copy; when the app returns to the foreground it reads the clipboard to detect LanCloud share links (can be turned off in Settings - Notifications), only to offer opening them, and never uploads it.\n\n5. If you configure WebDAV under Backup & restore, backups are uploaded to the server you enter; cookies are excluded by default. Enabling it and choosing the server is entirely up to you.\n\n6. The camera permission is only for QR scanning, the install-apps permission is only for opening APKs you downloaded, and ignoring battery optimization only keeps background transfers stable. All can be revoked in system settings.\n\n7. Uninstalling the app deletes the accounts and data stored on this device, so back up first.';
+      'Privacy Policy\n\n1. The app collects and uploads no personal data. There is no account system, analytics, ads, or crash-reporting SDK.\n\n2. Your LanZou account (cookie), nickname, favorites, recents, transfer history and settings stay on this device. The cookie is kept in encrypted system storage; viewing it requires biometric or screen-lock verification. Runtime logs (errors plus version info) are also kept on this device, and are handed to apps you choose only when you tap Export runtime logs.\n\n3. The app talks directly to official LanZou endpoints (pc.woozooo.com, up.woozooo.com, etc.); requests only serve the actions you start, such as signing in, listing, uploading or downloading.\n\n4. Sharing goes through the system share sheet: content or files are handed to the app you pick, only when you tap share. The clipboard is written only when you tap Copy; when the app returns to the foreground it reads the clipboard to detect LanCloud share links (can be turned off in Settings - Notifications), only to offer opening them, and never uploads it.\n\n5. If you configure WebDAV under Backup & restore, backups are uploaded to the server you enter; cookies are excluded by default. Enabling it and choosing the server is entirely up to you.\n\n6. The camera permission is only for QR scanning, the install-apps permission is only for opening APKs you downloaded, and ignoring battery optimization only keeps background transfers stable. All can be revoked in system settings.\n\n7. Uninstalling the app deletes the accounts and data stored on this device, so back up first.';
 }
