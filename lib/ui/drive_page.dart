@@ -41,7 +41,10 @@ class DrivePage extends StatefulWidget {
 }
 
 class _DrivePageState extends State<DrivePage>
-    with TickerProviderStateMixin, AutomaticKeepAliveClientMixin {
+    with
+        TickerProviderStateMixin,
+        AutomaticKeepAliveClientMixin,
+        WidgetsBindingObserver {
   static const _anim = Duration(milliseconds: 200);
 
   @override
@@ -108,11 +111,15 @@ class _DrivePageState extends State<DrivePage>
   final Map<String, String> _fileDescCache = {};
   final Map<String, String> _folderDescCache = {};
   final Map<String, String> _folderSizeCache = {};
+  /// 键盘是否弹出（悬浮底栏的 FAB 留白跟随它，见 didChangeMetrics）。
+  final ValueNotifier<bool> _keyboardUp = ValueNotifier(false);
   late AppController _app;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _keyboardUp.value = View.of(context).viewInsets.bottom > 0;
     final app = context.read<AppController>();
     _sortMode = app.settings.sortMode;
     context.read<TransferManager>().addTaskListener(_onTaskDone);
@@ -131,6 +138,8 @@ class _DrivePageState extends State<DrivePage>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _keyboardUp.dispose();
     _app.driveFolderRequest.removeListener(_onDriveFolderRequest);
     context.read<TransferManager>().removeTaskListener(_onTaskDone);
     if (widget.initialFolderId == '-1' && widget.initialName == null) {
@@ -147,6 +156,15 @@ class _DrivePageState extends State<DrivePage>
     _scroll.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeMetrics() {
+    super.didChangeMetrics();
+    if (!mounted) return;
+    // 底栏外壳的 Scaffold 会消耗键盘 inset（页面内 MediaQuery.viewInsets 归零），
+    // 所以直接读窗口的原始 inset 判断键盘是否弹出；只在状态变化时通知 FAB 重建。
+    _keyboardUp.value = View.of(context).viewInsets.bottom > 0;
   }
 
   bool get _animationsEnabled =>
@@ -2269,13 +2287,9 @@ class _DrivePageState extends State<DrivePage>
       animation: Listenable.merge([_selAnim, _appBarAnim, _exitAnim]),
       builder: (context, _) {
         return Scaffold(
-          // 键盘弹出时不压缩页面：搜索框在顶栏，FAB 位置也保持不动
+          // 键盘弹出时不压缩页面：搜索框在顶栏，页面由外层底栏 Scaffold
+          // 压到键盘上沿即可（FAB 的留白见 floatingActionButton）
           resizeToAvoidBottomInset: false,
-          // 悬浮底栏时抬到药丸上方留出间距；用常量实例，避免 Scaffold
-          // 因为位置对象每帧变化而反复播放「移动 FAB」的缩放动画
-          floatingActionButtonLocation: app.settings.floatingNavBar
-              ? _DriveFabLocation.floating
-              : _DriveFabLocation.normal,
           body: Stack(
             children: [
               _buildBody(grid),
@@ -2371,34 +2385,45 @@ class _DrivePageState extends State<DrivePage>
           final follow = app.settings.hideBottomBar
               ? hide.clamp(0.0, 1.0)
               : 0.0;
-          return Padding(
-            padding: EdgeInsets.zero,
-            child: TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: _selecting ? 1.0 : 0.0),
-              duration: _anim,
-              curve: Curves.easeOutCubic,
-              builder: (context, selecting, child) {
-                final t = math.max(selecting, follow);
-                return IgnorePointer(
-                  ignoring: t > 0.85,
-                  child: Opacity(
-                    opacity: (1 - t).clamp(0.0, 1.0),
-                    child: Transform.translate(
-                      offset: Offset(0, 150 * t),
-                      child: child,
-                    ),
+          return ValueListenableBuilder<bool>(
+            valueListenable: _keyboardUp,
+            builder: (context, keyboardUp, _) {
+              // 悬浮底栏留白：键盘弹出时底栏沉在键盘下方、屏幕上看不见，
+              // 此时页面已被外层 Scaffold 压到键盘上沿，FAB 停在键盘上方即可，
+              // 不能再叠加底栏高度，否则会高出约一个底栏的距离。
+              final lift =
+                  app.settings.floatingNavBar && !keyboardUp ? 88.0 : 0.0;
+              return AnimatedPadding(
+                padding: EdgeInsets.only(bottom: lift),
+                duration: _anim,
+                curve: Curves.easeOutCubic,
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: _selecting ? 1.0 : 0.0),
+                  duration: _anim,
+                  curve: Curves.easeOutCubic,
+                  builder: (context, selecting, child) {
+                    final t = math.max(selecting, follow);
+                    return IgnorePointer(
+                      ignoring: t > 0.85,
+                      child: Opacity(
+                        opacity: (1 - t).clamp(0.0, 1.0),
+                        child: Transform.translate(
+                          offset: Offset(0, 150 * t),
+                          child: child,
+                        ),
+                      ),
+                    );
+                  },
+                  child: FloatingActionButton.extended(
+                    onPressed: _showAddMenu,
+                    icon: const Icon(Icons.add),
+                    label: Text(context.l10n.add),
                   ),
-                );
-              },
-              child: child,
-            ),
+                ),
+              );
+            },
           );
         },
-        child: FloatingActionButton.extended(
-          onPressed: _showAddMenu,
-          icon: const Icon(Icons.add),
-          label: Text(context.l10n.add),
-        ),
       ),
         );
       },
@@ -3494,34 +3519,6 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
         ],
       ),
     );
-  }
-}
-
-/// 网盘 FAB 位置：不受软键盘影响；开启悬浮底栏时整体抬高，和底栏药丸留出间距。
-class _DriveFabLocation extends FloatingActionButtonLocation {
-  const _DriveFabLocation({required this.lift});
-
-  /// 常量实例：Scaffold 通过 != 判断位置是否变化，
-  /// 每次重建都新建实例会导致它反复播放「移动 FAB」的缩放动画。
-  static const normal = _DriveFabLocation(lift: 0);
-  static const floating = _DriveFabLocation(lift: 88);
-
-  /// 额外抬高距离（悬浮底栏的留白）。
-  final double lift;
-
-  @override
-  Offset getOffset(ScaffoldPrelayoutGeometry geometry) {
-    const endOffset = 16.0;
-    final fab = geometry.floatingActionButtonSize;
-    final bottom = geometry.scaffoldSize.height -
-        geometry.minInsets.bottom -
-        endOffset -
-        lift;
-    final right = geometry.scaffoldSize.width -
-        geometry.minInsets.right -
-        endOffset -
-        fab.width;
-    return Offset(right, bottom - fab.height);
   }
 }
 
