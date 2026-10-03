@@ -260,6 +260,7 @@ class TopBarOverlay extends StatelessWidget {
     required this.height,
     required this.background,
     required this.builder,
+    this.progress,
   });
 
   /// 顶栏完整高度（状态栏 + 工具栏 + bottom），用于计算滑出距离。
@@ -273,12 +274,16 @@ class TopBarOverlay extends StatelessWidget {
   /// 1:1 跟随手指淡出，底色始终保持不透明。
   final WidgetBuilder builder;
 
+  /// 收起进度来源；为空时用外壳的 [AppController.topBarHide]
+  /// （底栏视图共用），独立页面传各自的进度，互不影响。
+  final ValueListenable<double>? progress;
+
   @override
   Widget build(BuildContext context) {
     final app = context.watch<AppController>();
     return ValueListenableBuilder<double>(
       // 顶栏用独立的收起进度（距离 = 顶栏自身高度，才能 1:1 跟手）
-      valueListenable: app.topBarHide,
+      valueListenable: progress ?? app.topBarHide,
       builder: (context, hide, _) {
         // 只有开启「顶栏收起」时才跟随收起进度
         final t = app.settings.hideTopBar ? hide.clamp(0.0, 1.0) : 0.0;
@@ -299,6 +304,98 @@ class TopBarOverlay extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// 独立页面的顶栏脚手架（设置 / 高级 / 备份 / 关于 / 分享文件夹 / 登录页）：
+/// 顶栏不占布局，上滑时内容 1:1 随手指渐隐并整体滑出，底色保持不透明
+/// （手机布局只做 surface → surfaceContainer 过渡），与首页、网盘、传输、
+/// 收藏、我的五个视图完全一致。
+///
+/// [slivers] 不需要自己留顶栏占位，本组件会在最前面插入等高的 spacer。
+class TopBarOverlayScaffold extends StatefulWidget {
+  const TopBarOverlayScaffold({
+    super.key,
+    required this.appBar,
+    required this.slivers,
+    this.controller,
+    this.bottomNavigationBar,
+    this.backgroundColor,
+    this.resizeToAvoidBottomInset,
+  });
+
+  /// 顶栏内容：请使用透明底色的 AppBar；高度（含 bottom）由本组件计算。
+  final PreferredSizeWidget appBar;
+
+  /// 页面内容 slivers。
+  final List<Widget> slivers;
+
+  final ScrollController? controller;
+  final Widget? bottomNavigationBar;
+  final Color? backgroundColor;
+  final bool? resizeToAvoidBottomInset;
+
+  @override
+  State<TopBarOverlayScaffold> createState() => _TopBarOverlayScaffoldState();
+}
+
+class _TopBarOverlayScaffoldState extends State<TopBarOverlayScaffold> {
+  /// 页面自己的收起进度：不动外壳的 [AppController.topBarHide]，
+  /// 否则返回标签页时会把它们的顶栏一起带走。
+  final ValueNotifier<double> _hide = ValueNotifier<double>(0);
+
+  @override
+  void dispose() {
+    _hide.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final app = context.watch<AppController>();
+    final scheme = Theme.of(context).colorScheme;
+    final topInset =
+        MediaQuery.paddingOf(context).top + widget.appBar.preferredSize.height;
+    return ScrollTint(
+      hideDistance: topInset,
+      readBarsHidden: () => _hide.value,
+      onBarsHidden: app.settings.hideTopBar
+          ? (value) {
+              _hide.value = value;
+            }
+          : null,
+      child: Builder(
+        builder: (context) => Scaffold(
+          // 大屏外壳里的第一个路由：背景交给外壳的圆角卡片
+          backgroundColor: widget.backgroundColor ??
+              (transparentPageBackground(context) ? Colors.transparent : null),
+          resizeToAvoidBottomInset: widget.resizeToAvoidBottomInset,
+          body: Stack(
+            children: [
+              CustomScrollView(
+                controller: widget.controller,
+                slivers: [
+                  SliverToBoxAdapter(child: SizedBox(height: topInset)),
+                  ...widget.slivers,
+                ],
+              ),
+              Positioned(
+                left: 0,
+                right: 0,
+                top: 0,
+                child: TopBarOverlay(
+                  height: topInset,
+                  progress: _hide,
+                  background: topBarBackgroundColor(context, scheme),
+                  builder: (context) => widget.appBar,
+                ),
+              ),
+            ],
+          ),
+          bottomNavigationBar: widget.bottomNavigationBar,
+        ),
+      ),
     );
   }
 }

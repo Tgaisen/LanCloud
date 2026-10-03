@@ -75,7 +75,106 @@ double topOf(WidgetTester tester, String text) =>
 double barTop(WidgetTester tester) =>
     tester.getTopLeft(find.byType(AppBar, skipOffstage: false)).dy;
 
+/// 顶栏内容的渐隐进度（TopBarOverlay 里包住 AppBar 的那个 Opacity）。
+double barContentOpacity(WidgetTester tester) => tester
+    .widget<Opacity>(
+      find
+          .ancestor(
+            of: find.byType(AppBar, skipOffstage: false),
+            matching: find.byType(Opacity, skipOffstage: false),
+          )
+          .first,
+    )
+    .opacity;
+
+/// 顶栏底色（不参与渐隐，始终不透明）。
+Color barBackground(WidgetTester tester) => tester
+    .widget<ColoredBox>(
+      find
+          .descendant(
+            of: find.byType(TopBarOverlay, skipOffstage: false),
+            matching: find.byType(ColoredBox, skipOffstage: false),
+          )
+          .first,
+    )
+    .color;
+
+/// 复刻独立页面结构：TopBarOverlayScaffold + 长列表。
+class ScaffoldProbePage extends StatefulWidget {
+  const ScaffoldProbePage({super.key});
+
+  @override
+  State<ScaffoldProbePage> createState() => ScaffoldProbePageState();
+}
+
+class ScaffoldProbePageState extends State<ScaffoldProbePage> {
+  final ScrollController scroll = ScrollController();
+
+  @override
+  void dispose() {
+    scroll.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TopBarOverlayScaffold(
+      controller: scroll,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        title: const Text('BAR'),
+      ),
+      slivers: [
+        SliverList.builder(
+          itemCount: 40,
+          itemBuilder: (context, index) =>
+              SizedBox(height: 60, child: Text('row $index')),
+        ),
+      ],
+    );
+  }
+}
+
 void main() {
+  testWidgets('独立页面顶栏 1:1 跟随滚动：内容渐隐、底色不渐隐，不动外壳进度', (tester) async {
+    final app = AppController()..settings.hideTopBar = true;
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AppController>.value(
+        value: app,
+        child: const MaterialApp(home: ScaffoldProbePage()),
+      ),
+    );
+    final state = tester.state<ScaffoldProbePageState>(
+      find.byType(ScaffoldProbePage),
+    );
+    await tester.pumpAndSettle();
+    expect(barTop(tester), 0);
+    expect(barContentOpacity(tester), 1);
+
+    // 滑过半个顶栏高度：顶栏只上移一半，内容淡到一半，底色仍不透明
+    state.scroll.jumpTo(kToolbarHeight / 2);
+    await tester.pumpAndSettle();
+    expect(barTop(tester), -kToolbarHeight / 2);
+    expect(barContentOpacity(tester), closeTo(0.5, 0.01));
+    expect(barBackground(tester).a, 1);
+
+    // 滑过一个顶栏高度：内容完全淡出
+    state.scroll.jumpTo(kToolbarHeight);
+    await tester.pumpAndSettle();
+    expect(barTop(tester), -kToolbarHeight);
+    expect(barContentOpacity(tester), closeTo(0, 0.01));
+    // 独立页面用自己的收起进度，不污染标签页共用的外壳进度
+    expect(app.topBarHide.value, 0);
+    expect(app.barsHide.value, 0);
+
+    // 回到顶部恢复显示
+    state.scroll.jumpTo(0);
+    await tester.pumpAndSettle();
+    expect(barTop(tester), greaterThan(-0.5));
+    expect(barContentOpacity(tester), 1);
+    app.dispose();
+  });
+
   testWidgets('顶栏与手指 1:1 跟随：滑动多少就上移多少，且不影响列表位置', (tester) async {
     final app = AppController()..settings.hideTopBar = true;
     await tester.pumpWidget(

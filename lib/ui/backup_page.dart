@@ -13,7 +13,6 @@ import '../core/system_share.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
-import 'scroll_tint.dart';
 
 /// 备份与恢复：本地 JSON 文件 + WebDAV 云端。
 class BackupPage extends StatefulWidget {
@@ -316,161 +315,146 @@ class _BackupPageState extends State<BackupPage> {
 
   @override
   Widget build(BuildContext context) {
-    final app = context.watch<AppController>();
     final l10n = context.l10n;
     final store = _service.webdav;
     final scheme = Theme.of(context).colorScheme;
-    return ScrollTint(
-      child: Builder(
-        builder: (context) => Scaffold(
-          body: CustomScrollView(
-            slivers: [
-              SliverAppBar(
-                floating: app.settings.hideTopBar,
-                snap: false,
-                pinned: !app.settings.hideTopBar,
-                leading: IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-                backgroundColor: Color.lerp(
-                  scheme.surface,
-                  scheme.surfaceContainer,
-                  ScrollTint.of(context),
-                ),
-                scrolledUnderElevation: 0,
-                title: Text(l10n.backupAndRestore),
-                bottom: _busy
-                    ? const PreferredSize(
-                        preferredSize: Size.fromHeight(2),
-                        child: LinearProgressIndicator(minHeight: 2),
-                      )
-                    : null,
+    return TopBarOverlayScaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(l10n.backupAndRestore),
+        bottom: _busy
+            ? const PreferredSize(
+                preferredSize: Size.fromHeight(2),
+                child: LinearProgressIndicator(minHeight: 2),
+              )
+            : null,
+      ),
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          sliver: SliverList(
+            delegate: SliverChildListDelegate([
+              _section(context, l10n.localBackup),
+              SegmentedList(
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.upload_file_outlined),
+                    title: Text(l10n.backupNow),
+                    subtitle: Text(l10n.backupNowSubtitle),
+                    onTap: _backupToFile,
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.settings_backup_restore),
+                    title: Text(l10n.restoreFromFile),
+                    subtitle: Text(l10n.restoreFromFileSubtitle),
+                    onTap: _restoreFromFile,
+                  ),
+                  SwitchListTile(
+                    secondary: const Icon(Icons.password),
+                    title: Text(l10n.includeCookies),
+                    subtitle: Text(l10n.includeCookiesSubtitle),
+                    value: store.includeCookies,
+                    onChanged: _setIncludeCookies,
+                  ),
+                  SwitchListTile(
+                    secondary: const Icon(Icons.dns_outlined),
+                    title: Text(l10n.includeWebdavAccount),
+                    subtitle: Text(l10n.includeWebdavAccountSubtitle),
+                    value: store.includeAccount,
+                    onChanged: _setIncludeWebdavAccount,
+                  ),
+                ],
               ),
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                sliver: SliverList(
-                  delegate: SliverChildListDelegate([
-                    _section(context, l10n.localBackup),
-                    SegmentedList(
-                      children: [
-                        ListTile(
-                          leading: const Icon(Icons.upload_file_outlined),
-                          title: Text(l10n.backupNow),
-                          subtitle: Text(l10n.backupNowSubtitle),
-                          onTap: _backupToFile,
-                        ),
-                        ListTile(
-                          leading:
-                              const Icon(Icons.settings_backup_restore),
-                          title: Text(l10n.restoreFromFile),
-                          subtitle: Text(l10n.restoreFromFileSubtitle),
-                          onTap: _restoreFromFile,
-                        ),
-                        SwitchListTile(
-                          secondary: const Icon(Icons.password),
-                          title: Text(l10n.includeCookies),
-                          subtitle: Text(l10n.includeCookiesSubtitle),
-                          value: store.includeCookies,
-                          onChanged: _setIncludeCookies,
-                        ),
-                        SwitchListTile(
-                          secondary: const Icon(Icons.dns_outlined),
-                          title: Text(l10n.includeWebdavAccount),
-                          subtitle: Text(l10n.includeWebdavAccountSubtitle),
-                          value: store.includeAccount,
-                          onChanged: _setIncludeWebdavAccount,
-                        ),
-                      ],
+              _section(context, l10n.webdavSection),
+              SegmentedList(
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.dns_outlined),
+                    title: Text(l10n.webdavAccount),
+                    subtitle: Text(
+                      store.url.isEmpty ? l10n.webdavNotSet : store.url,
                     ),
-                    _section(context, l10n.webdavSection),
-                    SegmentedList(
-                      children: [
-                        ListTile(
-                          leading: const Icon(Icons.dns_outlined),
-                          title: Text(l10n.webdavAccount),
-                          subtitle: Text(
-                            store.url.isEmpty ? l10n.webdavNotSet : store.url,
-                          ),
-                          onTap: _editServer,
-                        ),
-                        ListTile(
-                          leading: const Icon(Icons.link_outlined),
-                          title: Text(l10n.webdavTest),
-                          enabled: store.configured,
-                          onTap: _testConnection,
-                        ),
-                        ListTile(
-                          leading: const Icon(Icons.cloud_upload_outlined),
-                          title: Text(l10n.webdavUpload),
-                          enabled: store.configured && !_busy,
-                          onTap: _uploadNow,
-                        ),
-                        ListTile(
-                          leading: const Icon(Icons.cloud_outlined),
-                          title: Text(l10n.webdavRestore),
-                          enabled: store.configured && !_busy,
-                          onTap: _restoreFromCloud,
-                        ),
-                        SwitchListTile(
-                          secondary: const Icon(Icons.cached_outlined),
-                          title: Text(l10n.webdavAutoBackup),
-                          subtitle: Text(l10n.webdavAutoBackupSubtitle),
-                          value: store.autoBackup,
-                          onChanged: store.configured
-                              ? (value) async {
-                                  await store.setAutoBackup(value);
-                                  if (mounted) setState(() {});
-                                }
-                              : null,
-                        ),
-                        if (store.autoBackup)
-                          ListTile(
-                            leading: const Icon(Icons.timer_outlined),
-                            title: Text(l10n.webdavInterval),
-                            subtitle: Text(
-                              store.interval == 'weekly'
-                                  ? l10n.webdavWeekly
-                                  : l10n.webdavDaily,
-                            ),
-                            onTap: _pickInterval,
-                          ),
-                      ],
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(4, 12, 4, 0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            l10n.lastBackupAt(
-                              store.lastBackupAt == 0
-                                  ? l10n.neverBackedUp
-                                  : formatDateShort(store.lastBackupAt),
-                            ),
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                          if (store.lastBackupError.isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 4),
-                              child: Text(
-                                l10n.backupFailed(store.lastBackupError),
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
-                                    ?.copyWith(color: scheme.error),
-                              ),
-                            ),
-                        ],
+                    onTap: _editServer,
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.link_outlined),
+                    title: Text(l10n.webdavTest),
+                    enabled: store.configured,
+                    onTap: _testConnection,
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.cloud_upload_outlined),
+                    title: Text(l10n.webdavUpload),
+                    enabled: store.configured && !_busy,
+                    onTap: _uploadNow,
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.cloud_outlined),
+                    title: Text(l10n.webdavRestore),
+                    enabled: store.configured && !_busy,
+                    onTap: _restoreFromCloud,
+                  ),
+                  SwitchListTile(
+                    secondary: const Icon(Icons.cached_outlined),
+                    title: Text(l10n.webdavAutoBackup),
+                    subtitle: Text(l10n.webdavAutoBackupSubtitle),
+                    value: store.autoBackup,
+                    onChanged: store.configured
+                        ? (value) async {
+                            await store.setAutoBackup(value);
+                            if (mounted) setState(() {});
+                          }
+                        : null,
+                  ),
+                  if (store.autoBackup)
+                    ListTile(
+                      leading: const Icon(Icons.timer_outlined),
+                      title: Text(l10n.webdavInterval),
+                      subtitle: Text(
+                        store.interval == 'weekly'
+                            ? l10n.webdavWeekly
+                            : l10n.webdavDaily,
                       ),
+                      onTap: _pickInterval,
                     ),
-                  ]),
+                ],
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(4, 12, 4, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.lastBackupAt(
+                        store.lastBackupAt == 0
+                            ? l10n.neverBackedUp
+                            : formatDateShort(store.lastBackupAt),
+                      ),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    if (store.lastBackupError.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          l10n.backupFailed(store.lastBackupError),
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(color: scheme.error),
+                        ),
+                      ),
+                  ],
                 ),
               ),
-            ],
+            ]),
           ),
         ),
-      ),
+      ],
     );
   }
 

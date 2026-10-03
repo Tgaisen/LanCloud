@@ -199,40 +199,61 @@ class LoginPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
-    return Scaffold(
-      appBar: firstRun
-          ? null
-          : AppBar(
-              title: Text(l10n.addAccount),
-              leading: IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ),
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: Image.asset(
-                    'assets/app_icon.png',
-                    width: 72,
-                    height: 72,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Text(l10n.login, style: theme.textTheme.headlineSmall),
-                const SizedBox(height: 24),
-                const LoginEntries(),
-              ],
+    final form = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: Image.asset(
+            'assets/app_icon.png',
+            width: 72,
+            height: 72,
+          ),
+        ),
+        const SizedBox(height: 20),
+        Text(l10n.login, style: theme.textTheme.headlineSmall),
+        const SizedBox(height: 24),
+        const LoginEntries(),
+      ],
+    );
+    // 首次启动（欢迎页同意后）没有顶栏；其余场景与其它页面一致：
+    // 顶栏上滑随手指渐隐，底色不渐隐。
+    if (firstRun) {
+      return Scaffold(
+        body: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: form,
             ),
           ),
         ),
+      );
+    }
+    return TopBarOverlayScaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        scrolledUnderElevation: 0,
+        title: Text(l10n.addAccount),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
       ),
+      slivers: [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: SafeArea(
+            top: false,
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: form,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

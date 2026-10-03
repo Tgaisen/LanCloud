@@ -13,7 +13,6 @@ import 'app_icons.dart';
 import 'backup_page.dart';
 import 'common.dart';
 import 'cookie_sheet.dart';
-import 'scroll_tint.dart';
 
 /// 独立设置页：分类卡片 + 高级覆盖项二级页 + 全量搜索。
 class SettingsPage extends StatefulWidget {
@@ -781,66 +780,50 @@ class _SettingsPageState extends State<SettingsPage>
             e.keywords.any((k) => k.toLowerCase().contains(query)))
         .toList();
 
-    return ScrollTint(
-      child: Builder(
-        builder: (context) {
-          final scheme = Theme.of(context).colorScheme;
-          return Scaffold(
-            body: CustomScrollView(
-              slivers: [
-                SliverAppBar(
-                  floating: app.settings.hideTopBar,
-                  snap: false,
-                  pinned: !app.settings.hideTopBar,
-                  leading: IconButton(
-                    icon: const Icon(Icons.arrow_back),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                  backgroundColor: Color.lerp(
-                    scheme.surface,
-                    scheme.surfaceContainer,
-                    ScrollTint.of(context),
-                  ),
-                  scrolledUnderElevation: 0,
-                  title: _searching
-                      ? TextField(
-                          controller: _search,
-                          autofocus: true,
-                          decoration: InputDecoration(
-                            hintText: l10n.searchSettings,
-                            border: InputBorder.none,
-                          ),
-                          onChanged: (_) => setState(() {}),
-                        )
-                      : Text(l10n.settings),
-                  actions: [
-                    IconButton(
-                      tooltip: _searching ? l10n.closeSearch : l10n.searchSettings,
-                      icon: Icon(_searching ? Icons.close : Icons.search),
-                      onPressed: () {
-                        setState(() {
-                          _searching = !_searching;
-                          if (!_searching) _search.clear();
-                        });
-                      },
-                    ),
-                  ],
+    return TopBarOverlayScaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: _searching
+            ? TextField(
+                controller: _search,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: l10n.searchSettings,
+                  border: InputBorder.none,
                 ),
-                SliverPadding(
-                  padding: const EdgeInsets.all(16),
-                  sliver: SliverList(
-                    delegate: SliverChildListDelegate(
-                      _searching
-                          ? _buildSearchResults(context, app, matching)
-                          : _buildCategories(context, app, entries),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
+                onChanged: (_) => setState(() {}),
+              )
+            : Text(l10n.settings),
+        actions: [
+          IconButton(
+            tooltip: _searching ? l10n.closeSearch : l10n.searchSettings,
+            icon: Icon(_searching ? Icons.close : Icons.search),
+            onPressed: () {
+              setState(() {
+                _searching = !_searching;
+                if (!_searching) _search.clear();
+              });
+            },
+          ),
+        ],
       ),
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.all(16),
+          sliver: SliverList(
+            delegate: SliverChildListDelegate(
+              _searching
+                  ? _buildSearchResults(context, app, matching)
+                  : _buildCategories(context, app, entries),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -1469,102 +1452,84 @@ class _AdvancedPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final app = context.watch<AppController>();
     final l10n = context.l10n;
-    return ScrollTint(
-      child: Builder(
-        builder: (context) {
-          final scheme = Theme.of(context).colorScheme;
-          return Scaffold(
-            body: CustomScrollView(
-              slivers: [
-                SliverAppBar(
-                  floating: app.settings.hideTopBar,
-                  snap: false,
-                  pinned: !app.settings.hideTopBar,
-                  leading: IconButton(
-                    icon: const Icon(Icons.arrow_back),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                  backgroundColor: Color.lerp(
-                    scheme.surface,
-                    scheme.surfaceContainer,
-                    ScrollTint.of(context),
-                  ),
-                  scrolledUnderElevation: 0,
-                  title: Text(l10n.advanced),
-                ),
-                SliverPadding(
-                  padding: const EdgeInsets.all(16),
-                  sliver: SliverList(
-                    delegate: SliverChildListDelegate([
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
-                        child: Text(
-                          l10n.advancedHint,
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ),
-                      SegmentedList(
-                        children: [
-                          ListTile(
-                            leading: const Icon(Icons.dns_outlined),
-                            title: Text(l10n.apiHost),
-                            subtitle: Text(
-                              app.settings.apiHost == 'up'
-                                  ? 'up.woozooo.com'
-                                  : 'pc.woozooo.com',
-                            ),
-                            onTap: () =>
-                                _SettingsPageState._pickApiHost(context),
-                          ),
-                          ListTile(
-                            leading: const Icon(Icons.cloud_upload_outlined),
-                            title: Text(l10n.uploadDomain),
-                            subtitle: Text(
-                              app.settings.uploadDomain.isEmpty
-                                  ? l10n.defaultUploadDomain
-                                  : app.settings.uploadDomain,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            onTap: () => _SettingsPageState
-                                ._editUploadDomain(context),
-                          ),
-                          ListTile(
-                            leading: const Icon(Icons.link_outlined),
-                            title: Text(l10n.shareDomain),
-                            subtitle: Text(
-                              app.settings.shareDomain.isEmpty
-                                  ? l10n.defaultShareDomain
-                                  : app.settings.shareDomain,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            onTap: () =>
-                                _SettingsPageState._editShareDomain(context),
-                          ),
-                          ListTile(
-                            leading: const Icon(Icons.badge_outlined),
-                            title: Text(l10n.userAgent),
-                            subtitle: Text(
-                              app.settings.userAgent.isEmpty
-                                  ? l10n.defaultUserAgent
-                                  : app.settings.userAgent,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            onTap: () =>
-                                _SettingsPageState._editUserAgent(context),
-                          ),
-                        ],
-                      ),
-                    ]),
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
+    return TopBarOverlayScaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(l10n.advanced),
       ),
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.all(16),
+          sliver: SliverList(
+            delegate: SliverChildListDelegate([
+              Padding(
+                padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+                child: Text(
+                  l10n.advancedHint,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+              SegmentedList(
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.dns_outlined),
+                    title: Text(l10n.apiHost),
+                    subtitle: Text(
+                      app.settings.apiHost == 'up'
+                          ? 'up.woozooo.com'
+                          : 'pc.woozooo.com',
+                    ),
+                    onTap: () => _SettingsPageState._pickApiHost(context),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.cloud_upload_outlined),
+                    title: Text(l10n.uploadDomain),
+                    subtitle: Text(
+                      app.settings.uploadDomain.isEmpty
+                          ? l10n.defaultUploadDomain
+                          : app.settings.uploadDomain,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    onTap: () =>
+                        _SettingsPageState._editUploadDomain(context),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.link_outlined),
+                    title: Text(l10n.shareDomain),
+                    subtitle: Text(
+                      app.settings.shareDomain.isEmpty
+                          ? l10n.defaultShareDomain
+                          : app.settings.shareDomain,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    onTap: () =>
+                        _SettingsPageState._editShareDomain(context),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.badge_outlined),
+                    title: Text(l10n.userAgent),
+                    subtitle: Text(
+                      app.settings.userAgent.isEmpty
+                          ? l10n.defaultUserAgent
+                          : app.settings.userAgent,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    onTap: () => _SettingsPageState._editUserAgent(context),
+                  ),
+                ],
+              ),
+            ]),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -262,166 +262,163 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
           _exitSearch();
         }
       },
-      child: Scaffold(
-      appBar: AppBar(
-        leading: _selecting
-            ? IconButton(
-                tooltip: l10n.exitSelection,
-                icon: const Icon(Icons.close),
-                onPressed: _toggleSelecting,
-              )
-            : (_searching
-                ? IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: _exitSearch,
-                  )
-                : IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () => Navigator.of(context).pop(),
-              )),
-        title: _selecting
-            ? Text(l10n.selectedCount(_selected.length))
-            : (_searching
-                ? TextField(
-                    controller: _search,
-                    autofocus: true,
-                    decoration: InputDecoration(
-                      hintText: l10n.searchCurrentFolder,
-                      border: InputBorder.none,
-                    ),
-                    onChanged: (value) => setState(() => _filter = value),
-                  )
-                : Text(folder.name)),
-        actions: _selecting
-            ? [
-                IconButton(
-                  tooltip: l10n.selectAll,
-                  icon: const Icon(Icons.select_all),
-                  onPressed: _selectAll,
-                ),
-                IconButton(
-                  tooltip: l10n.invertSelection,
-                  icon: const Icon(Icons.flip),
-                  onPressed: _invertSelection,
-                ),
-              ]
-            : (_searching
-                ? const <Widget>[]
-                : [
-                    IconButton(
-                      tooltip: l10n.search,
-                      icon: const Icon(Icons.search),
-                      onPressed: () => setState(() => _searching = true),
-                    ),
-                    IconButton(
-                      tooltip: l10n.moreActions,
-                      icon: const Icon(Icons.more_vert),
-                      onPressed: _showMenu,
-                    ),
-                  ]),
-      ),
-      body: Stack(
-        children: [
-          ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-          if (folder.desc.isNotEmpty) ...[
-            _SectionTitle(text: l10n.shareMessage),
-            SegmentedList(
-              margin: const EdgeInsets.only(bottom: 12),
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Text(folder.desc),
-                ),
-              ],
-            ),
-          ],
-          if (folders.isNotEmpty) ...[
-            _SectionTitle(text: l10n.folder),
-            SegmentedList(
-              children: [
-                for (final sub in folders)
-                  Md3ListItem(
-                    icon: Icons.folder_outlined,
-                    title: sub.name,
-                    subtitle: sub.desc,
-                    onTap: () => _openSubfolder(sub),
+      child: TopBarOverlayScaffold(
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          scrolledUnderElevation: 0,
+          leading: _selecting
+              ? IconButton(
+                  tooltip: l10n.exitSelection,
+                  icon: const Icon(Icons.close),
+                  onPressed: _toggleSelecting,
+                )
+              : (_searching
+                  ? IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: _exitSearch,
+                    )
+                  : IconButton(
+                      icon: const Icon(Icons.arrow_back),
+                      onPressed: () => Navigator.of(context).pop(),
+                    )),
+          title: _selecting
+              ? Text(l10n.selectedCount(_selected.length))
+              : (_searching
+                  ? TextField(
+                      controller: _search,
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        hintText: l10n.searchCurrentFolder,
+                        border: InputBorder.none,
+                      ),
+                      onChanged: (value) => setState(() => _filter = value),
+                    )
+                  : Text(folder.name)),
+          actions: _selecting
+              ? [
+                  IconButton(
+                    tooltip: l10n.selectAll,
+                    icon: const Icon(Icons.select_all),
+                    onPressed: _selectAll,
                   ),
-              ],
-            ),
-          ],
-          if (files.isNotEmpty) ...[
-            _SectionTitle(text: l10n.files),
-            SegmentedList(
-              children: [
-                for (final file in files)
-                  Md3ListItem(
-                    icon: iconForFile(file.name),
-                    title: file.name,
-                    subtitle: [
-                      prettyLzSize(file.size),
-                      if (file.time.isNotEmpty) file.time,
-                    ].where((e) => e.isNotEmpty).join(' · '),
-                    selected: _selecting && _selected.contains(file.url),
-                    onLongPress: () => _enterSelection(file.url),
-                    onTap: () {
-                      if (_selecting) {
-                        _toggleFile(file.url);
-                      } else {
-                        showAppSheet<void>(
-                          context,
-                          child: ShareFileInfoSheet(
-                            name: file.name,
-                            url: file.url,
-                            pwd: widget.pwd,
-                            size: file.size,
-                            time: file.time,
-                          ),
-                        );
-                      }
-                    },
+                  IconButton(
+                    tooltip: l10n.invertSelection,
+                    icon: const Icon(Icons.flip),
+                    onPressed: _invertSelection,
                   ),
-              ],
-            ),
-          ],
-              ],
-            ),
-          // 空分享：提示整体居中显示（带淡入）
+                ]
+              : (_searching
+                  ? const <Widget>[]
+                  : [
+                      IconButton(
+                        tooltip: l10n.search,
+                        icon: const Icon(Icons.search),
+                        onPressed: () => setState(() => _searching = true),
+                      ),
+                      IconButton(
+                        tooltip: l10n.moreActions,
+                        icon: const Icon(Icons.more_vert),
+                        onPressed: _showMenu,
+                      ),
+                    ]),
+        ),
+        slivers: [
           if (isEmpty)
-            Positioned.fill(
-              child: IgnorePointer(
-                child: Center(
-                  child: EmptyHint(
-                    icon: Icons.folder_open,
-                    text: l10n.shareEmpty,
-                  ),
-                ),
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: EmptyHint(icon: Icons.folder_open, text: l10n.shareEmpty),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.all(16),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  if (folder.desc.isNotEmpty) ...[
+                    _SectionTitle(text: l10n.shareMessage),
+                    SegmentedList(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Text(folder.desc),
+                        ),
+                      ],
+                    ),
+                  ],
+                  if (folders.isNotEmpty) ...[
+                    _SectionTitle(text: l10n.folder),
+                    SegmentedList(
+                      children: [
+                        for (final sub in folders)
+                          Md3ListItem(
+                            icon: Icons.folder_outlined,
+                            title: sub.name,
+                            subtitle: sub.desc,
+                            onTap: () => _openSubfolder(sub),
+                          ),
+                      ],
+                    ),
+                  ],
+                  if (files.isNotEmpty) ...[
+                    _SectionTitle(text: l10n.files),
+                    SegmentedList(
+                      children: [
+                        for (final file in files)
+                          Md3ListItem(
+                            icon: iconForFile(file.name),
+                            title: file.name,
+                            subtitle: [
+                              prettyLzSize(file.size),
+                              if (file.time.isNotEmpty) file.time,
+                            ].where((e) => e.isNotEmpty).join(' · '),
+                            selected:
+                                _selecting && _selected.contains(file.url),
+                            onLongPress: () => _enterSelection(file.url),
+                            onTap: () {
+                              if (_selecting) {
+                                _toggleFile(file.url);
+                              } else {
+                                showAppSheet<void>(
+                                  context,
+                                  child: ShareFileInfoSheet(
+                                    name: file.name,
+                                    url: file.url,
+                                    pwd: widget.pwd,
+                                    size: file.size,
+                                    time: file.time,
+                                  ),
+                                );
+                              }
+                            },
+                          ),
+                      ],
+                    ),
+                  ],
+                ]),
               ),
             ),
         ],
-      ),
-      bottomNavigationBar: _selecting
-          ? BatchActionBar(
-              children: [
-                BatchAction(
-                  icon: Icons.download,
-                  label: l10n.download,
-                  onPressed: _selected.isEmpty ? null : _downloadSelected,
-                ),
-                BatchAction(
-                  icon: Icons.copy,
-                  label: l10n.copyLink,
-                  onPressed: _selected.isEmpty ? null : _copySelectedLinks,
-                ),
-                BatchAction(
-                  icon: Icons.star_outline,
-                  label: l10n.favorite,
-                  onPressed: _selected.isEmpty ? null : _favoriteSelected,
-                ),
-              ],
-            )
-          : null,
+        bottomNavigationBar: _selecting
+            ? BatchActionBar(
+                children: [
+                  BatchAction(
+                    icon: Icons.download,
+                    label: l10n.download,
+                    onPressed: _selected.isEmpty ? null : _downloadSelected,
+                  ),
+                  BatchAction(
+                    icon: Icons.copy,
+                    label: l10n.copyLink,
+                    onPressed: _selected.isEmpty ? null : _copySelectedLinks,
+                  ),
+                  BatchAction(
+                    icon: Icons.star_outline,
+                    label: l10n.favorite,
+                    onPressed: _selected.isEmpty ? null : _favoriteSelected,
+                  ),
+                ],
+              )
+            : null,
       ),
     );
   }
