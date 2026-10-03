@@ -443,6 +443,7 @@
   "includeCookies": "Include cookies",
   "includeCookiesSubtitle": "Danger! Once enabled, the backup file is equivalent to your login credential — keep it safe",
   "webdavSection": "WebDAV",
+  "webdavAccount": "WebDAV account",
   "webdavServer": "WebDAV URL",
   "webdavServerHint": "https://example.com/dav/",
   "webdavUsername": "Username",

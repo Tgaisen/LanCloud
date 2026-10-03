@@ -382,37 +382,12 @@ class _BackupPageState extends State<BackupPage> {
                       children: [
                         ListTile(
                           leading: const Icon(Icons.dns_outlined),
-                          title: Text(l10n.webdavServer),
+                          title: Text(l10n.webdavAccount),
                           subtitle: Text(
                             store.url.isEmpty ? l10n.webdavNotSet : store.url,
                           ),
                           onTap: _editServer,
                         ),
-                        ListTile(
-                          leading: const Icon(Icons.person_outline),
-                          title: Text(l10n.webdavUsername),
-                          subtitle: Text(
-                            store.username.isEmpty
-                                ? l10n.webdavNotSet
-                                : store.username,
-                          ),
-                          onTap: _editServer,
-                        ),
-                        ListTile(
-                          leading: const Icon(Icons.lock_outline),
-                          title: Text(l10n.webdavPassword),
-                          subtitle: Text(
-                            store.password.isEmpty
-                                ? l10n.webdavNotSet
-                                : '••••••',
-                          ),
-                          onTap: _editServer,
-                        ),
-                      ],
-                    ),
-                    _section(context, l10n.webdavBackup),
-                    SegmentedList(
-                      children: [
                         ListTile(
                           leading: const Icon(Icons.link_outlined),
                           title: Text(l10n.webdavTest),

@@ -107,9 +107,11 @@ void main() {
     expect(find.text('立即备份'), findsOneWidget);
     expect(find.text('从文件恢复'), findsOneWidget);
     expect(find.text('备份包含 Cookie'), findsOneWidget);
-    expect(find.text('WebDAV 地址'), findsOneWidget);
+    expect(find.text('WebDAV 账号'), findsOneWidget);
     expect(find.text('自动备份'), findsOneWidget);
     expect(find.textContaining('尚未备份'), findsOneWidget);
+    // 云端备份已并入 WebDAV 分组，不再单独显示小标题
+    expect(find.text('云端备份'), findsNothing);
   });
 
   testWidgets('立即备份写入本地文件并提示路径', (tester) async {

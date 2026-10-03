@@ -2450,6 +2450,12 @@ abstract class AppLocalizations {
   /// **'WebDAV'**
   String get webdavSection;
 
+  /// No description provided for @webdavAccount.
+  ///
+  /// In zh, this message translates to:
+  /// **'WebDAV 账号'**
+  String get webdavAccount;
+
   /// No description provided for @webdavServer.
   ///
   /// In zh, this message translates to:

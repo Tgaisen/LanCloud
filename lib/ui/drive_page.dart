@@ -426,10 +426,14 @@ class _DrivePageState extends State<DrivePage>
     }
   }
 
-  /// 返回键：多选 > 上一级目录 > 交给外壳处理
+  /// 返回键：多选 > 搜索栏 > 上一级目录 > 交给外壳处理
   Future<bool> _handleDriveBack() async {
     if (_selecting) {
       _exitSelection();
+      return true;
+    }
+    if (_searching) {
+      _closeSearch();
       return true;
     }
     if (_path.isNotEmpty) {
@@ -437,6 +441,16 @@ class _DrivePageState extends State<DrivePage>
       return true;
     }
     return false;
+  }
+
+  /// 关闭搜索栏并清空过滤条件。
+  void _closeSearch() {
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() {
+      _searching = false;
+      _filter = '';
+      _searchController.clear();
+    });
   }
 
   void _onScroll() {
@@ -2467,11 +2481,7 @@ class _DrivePageState extends State<DrivePage>
               IconButton(
                 tooltip: context.l10n.closeSearch,
                 icon: const Icon(Icons.close),
-                onPressed: () => setState(() {
-                  _searching = false;
-                  _filter = '';
-                  _searchController.clear();
-                }),
+                onPressed: _closeSearch,
               ),
             ]
           : [

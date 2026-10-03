@@ -1273,6 +1273,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get webdavSection => 'WebDAV';
 
   @override
+  String get webdavAccount => 'WebDAV 账号';
+
+  @override
   String get webdavServer => 'WebDAV 地址';
 
   @override

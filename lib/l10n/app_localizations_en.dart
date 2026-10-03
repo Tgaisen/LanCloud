@@ -1312,6 +1312,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get webdavSection => 'WebDAV';
 
   @override
+  String get webdavAccount => 'WebDAV account';
+
+  @override
   String get webdavServer => 'WebDAV URL';
 
   @override

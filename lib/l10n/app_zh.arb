@@ -605,6 +605,7 @@
   "includeCookies": "备份包含 Cookie",
   "includeCookiesSubtitle": "危险！启用后，备份文件等同于登录凭据，请注意信息安全",
   "webdavSection": "WebDAV",
+  "webdavAccount": "WebDAV 账号",
   "webdavServer": "WebDAV 地址",
   "webdavServerHint": "https://example.com/dav/",
   "webdavUsername": "用户名",

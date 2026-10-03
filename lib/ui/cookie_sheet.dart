@@ -106,12 +106,12 @@ Future<void> showCookieDialog(BuildContext context, Account account) {
         ),
       ),
       actions: [
-        // 消极 / 中立 / 积极：关闭、复制、导出
+        // 原版风格（同 WebDAV 配置弹窗）：消极 / 中立无背景，积极用填充按钮
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(),
           child: Text(l10n.close),
         ),
-        FilledButton.tonal(
+        TextButton(
           onPressed: () => copyText(context, account.cookie),
           child: Text(l10n.copy),
         ),
