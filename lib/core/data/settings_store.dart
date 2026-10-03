@@ -76,7 +76,9 @@ class SettingsStore {
   /// 最近使用最多保留多少条，0 表示不记录。
   int recentLimit = 50;
   /// 复制到蓝奏云分享链接时提示打开。
-  bool clipboardLinkPrompt = true;
+  /// 默认关闭：只要读取剪贴板，系统就会弹出「已读取剪贴板」提醒，
+  /// 有需要的人在设置-通知里自己打开。
+  bool clipboardLinkPrompt = false;
   /// 「传输」「收藏」是否显示在底栏（默认隐藏，仍可从快捷操作栏打开）。
   bool navShowTransfers = false;
   bool navShowFavorites = false;
@@ -121,7 +123,7 @@ class SettingsStore {
     quickExpanded = prefs.getBool(_keyQuickExpanded) ?? true;
     recentsExpanded = prefs.getBool(_keyRecentsExpanded) ?? true;
     recentLimit = prefs.getInt(_keyRecentLimit) ?? 50;
-    clipboardLinkPrompt = prefs.getBool(_keyClipboardLink) ?? true;
+    clipboardLinkPrompt = prefs.getBool(_keyClipboardLink) ?? false;
     navShowTransfers = prefs.getBool(_keyNavTransfers) ?? false;
     navShowFavorites = prefs.getBool(_keyNavFavorites) ?? false;
   }

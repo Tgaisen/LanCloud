@@ -23,7 +23,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('蓝云'), findsOneWidget);
-    expect(find.text('版本 $appVersion（构建 $appBuild）'), findsOneWidget);
+    // 中文文案已精简为「0.8.9 (56)」形式（与开源许可页里的版本号一致）
+    expect(find.text('$appVersion ($appBuild)'), findsOneWidget);
     expect(find.text('用户协议'), findsOneWidget);
     expect(find.text('隐私政策'), findsOneWidget);
     expect(find.text('开源许可'), findsOneWidget);
