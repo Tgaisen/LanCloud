@@ -2246,6 +2246,24 @@ abstract class AppLocalizations {
   /// **'手电筒'**
   String get scanTorch;
 
+  /// No description provided for @scanFromGallery.
+  ///
+  /// In zh, this message translates to:
+  /// **'从相册选取图片'**
+  String get scanFromGallery;
+
+  /// No description provided for @scanNoQrFound.
+  ///
+  /// In zh, this message translates to:
+  /// **'图片里没有识别到二维码'**
+  String get scanNoQrFound;
+
+  /// No description provided for @scanImageFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'图片识别失败'**
+  String get scanImageFailed;
+
   /// No description provided for @scanHint.
   ///
   /// In zh, this message translates to:

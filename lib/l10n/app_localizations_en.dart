@@ -1201,6 +1201,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get scanTorch => 'Torch';
 
   @override
+  String get scanFromGallery => 'Pick from gallery';
+
+  @override
+  String get scanNoQrFound => 'No QR code found in the image';
+
+  @override
+  String get scanImageFailed => 'Failed to read the image';
+
+  @override
   String get scanHint => 'Place the QR code inside the frame';
 
   @override

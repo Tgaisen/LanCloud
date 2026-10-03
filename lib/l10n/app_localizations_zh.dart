@@ -1169,6 +1169,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get scanTorch => '手电筒';
 
   @override
+  String get scanFromGallery => '从相册选取图片';
+
+  @override
+  String get scanNoQrFound => '图片里没有识别到二维码';
+
+  @override
+  String get scanImageFailed => '图片识别失败';
+
+  @override
   String get scanHint => '将二维码放入取景框内';
 
   @override
