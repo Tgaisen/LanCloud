@@ -29,6 +29,7 @@ class Icons {
   static const IconData cloud_off = Symbols.cloud_off;
   static const IconData cloud_outlined = Symbols.cloud;
   static const IconData cloud_upload_outlined = Symbols.cloud_upload;
+  static const IconData content_paste_go = Symbols.content_paste_go;
   static const IconData contrast = Symbols.contrast;
   static const IconData copy = Symbols.content_copy;
   static const IconData create_new_folder_outlined = Symbols.create_new_folder;
@@ -48,6 +49,7 @@ class Icons {
   static const IconData edit_note = Symbols.edit_note;
   static const IconData error_outline = Symbols.error_outline;
   static const IconData file_open = Symbols.file_open;
+  static const IconData flashlight_on_outlined = Symbols.flashlight_on;
   static const IconData flip = Symbols.flip;
   static const IconData folder = Symbols.folder;
   static const IconData folder_open = Symbols.folder_open;
@@ -64,6 +66,7 @@ class Icons {
   static const IconData key_outlined = Symbols.key;
   static const IconData link = Symbols.link;
   static const IconData link_outlined = Symbols.link;
+  static const IconData wallpaper_outlined = Symbols.wallpaper;
   static const IconData lock_outline = Symbols.lock;
   static const IconData notifications_outlined = Symbols.notifications;
   static const IconData login = Symbols.login;

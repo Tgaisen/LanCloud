@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart' hide Icons;
 import 'package:flutter/services.dart';
+import 'package:dynamic_color/dynamic_color.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 
 import 'core/app_controller.dart';
 import 'core/agreements.dart';
+import 'core/incoming_links.dart';
+import 'core/lanzou_link.dart';
 import 'core/notifications.dart';
 import 'core/share_inbox.dart';
 import 'core/transfer/transfer_manager.dart';
@@ -30,33 +33,44 @@ class LanCloudApp extends StatelessWidget {
     final app = context.watch<AppController>();
     final seed = Color(app.settings.themeSeed);
     final oledDark = app.settings.oledBlack;
-    ThemeData buildTheme(Brightness brightness) => buildLanCloudTheme(
-          brightness: brightness,
-          seed: seed,
-          oledDark: oledDark,
-        );
+    final useDynamicColor = app.settings.dynamicColor;
     final mode = app.settings.themeMode;
     final language = app.settings.language;
-    return MaterialApp(
-      title: 'LanCloud',
-      debugShowCheckedModeBanner: false,
-      locale: language == 'zh'
-          ? const Locale('zh')
-          : language == 'en'
-              ? const Locale('en')
-              : null,
-      supportedLocales: AppLocalizations.supportedLocales,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      theme: buildTheme(Brightness.light),
-      darkTheme: buildTheme(Brightness.dark),
-      themeMode: mode == 'light'
-          ? ThemeMode.light
-          : mode == 'dark'
-              ? ThemeMode.dark
-              : ThemeMode.system,
-      // 全局 BouncingScrollPhysics（网盘页同款）
-      scrollBehavior: const AppScrollBehavior(),
-      home: const AgreementGate(),
+    // MD3 动态取色：系统壁纸取色（Android 12+），不支持时返回 null。
+    return DynamicColorBuilder(
+      builder: (lightDynamic, darkDynamic) {
+        ThemeData buildTheme(Brightness brightness) => buildLanCloudTheme(
+              brightness: brightness,
+              seed: seed,
+              oledDark: oledDark,
+              dynamicScheme: useDynamicColor
+                  ? (brightness == Brightness.dark
+                      ? darkDynamic
+                      : lightDynamic)
+                  : null,
+            );
+        return MaterialApp(
+          title: 'LanCloud',
+          debugShowCheckedModeBanner: false,
+          locale: language == 'zh'
+              ? const Locale('zh')
+              : language == 'en'
+                  ? const Locale('en')
+                  : null,
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          theme: buildTheme(Brightness.light),
+          darkTheme: buildTheme(Brightness.dark),
+          themeMode: mode == 'light'
+              ? ThemeMode.light
+              : mode == 'dark'
+                  ? ThemeMode.dark
+                  : ThemeMode.system,
+          // 全局 BouncingScrollPhysics（网盘页同款）
+          scrollBehavior: const AppScrollBehavior(),
+          home: const AgreementGate(),
+        );
+      },
     );
   }
 }
@@ -70,11 +84,14 @@ ThemeData buildLanCloudTheme({
   required Brightness brightness,
   required Color seed,
   required bool oledDark,
+  ColorScheme? dynamicScheme,
 }) {
-  final scheme = ColorScheme.fromSeed(
-    seedColor: seed,
-    brightness: brightness,
-  );
+  // 动态取色（Android 12+）优先，取不到时回退到主题色。
+  final scheme = dynamicScheme ??
+      ColorScheme.fromSeed(
+        seedColor: seed,
+        brightness: brightness,
+      );
   final theme = ThemeData(
           colorScheme: scheme,
           scaffoldBackgroundColor:
@@ -179,7 +196,7 @@ class RootShell extends StatefulWidget {
   State<RootShell> createState() => _RootShellState();
 }
 
-class _RootShellState extends State<RootShell> {
+class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
   static const _destinations = [
     (icon: Icons.dashboard_outlined, selected: Icons.dashboard),
     (icon: Icons.folder_outlined, selected: Icons.folder),
@@ -220,11 +237,14 @@ class _RootShellState extends State<RootShell> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     context.read<AppController>().onSwitchTab = null;
     NotificationService.onOpenTransfers = null;
     SharedInbox.instance.onText = null;
     SharedInbox.instance.onFiles = null;
     SharedInbox.instance.dispose();
+    IncomingLinks.instance.onLink = null;
+    IncomingLinks.instance.dispose();
     _pageController.dispose();
     super.dispose();
   }
@@ -259,12 +279,21 @@ class _RootShellState extends State<RootShell> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     context.read<AppController>().onSwitchTab = _goTo;
     NotificationService.onOpenTransfers = () => _goTo(2);
     SharedInbox.instance.onText = _handleSharedText;
     SharedInbox.instance.onFiles = _handleSharedFiles;
     SharedInbox.instance.attach();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _processPendingShare());
+    IncomingLinks.instance.onLink = _handleIncomingLink;
+    IncomingLinks.instance.attach();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _processPendingShare();
+      final url = IncomingLinks.instance.pending;
+      IncomingLinks.instance.pending = null;
+      if (url != null) _handleIncomingLink(url);
+      _checkClipboard();
+    });
     if (NotificationService.pendingTransfers) {
       NotificationService.pendingTransfers = false;
       _index = 2;
@@ -277,23 +306,72 @@ class _RootShellState extends State<RootShell> {
     context.read<AppController>().activeTab.value = _index;
   }
 
-  String? _extractShareLink(String text) {
-    final match = RegExp(
-      r'https?://[^\s]*lanzou[a-z]*\.(com|cn)[^\s]*',
-    ).firstMatch(text);
-    if (match == null) return null;
-    return match.group(0)!.replaceAll(RegExp(r'[),。，;；]+$'), '');
-  }
-
   void _handleSharedText(String text) {
-    final link = _extractShareLink(text);
-    if (link == null || link.isEmpty) {
+    final link = LanzouLink.parse(text);
+    if (link == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.l10n.shareTargetUnsupported)),
       );
       return;
     }
-    openShareSheet(context, initialLink: link);
+    openShareSheet(context, initialLink: link.url, initialPwd: link.pwd);
+  }
+
+  /// 外部链接（点开蓝奏云分享链接默认交给本应用）。
+  void _handleIncomingLink(String url) {
+    final link = LanzouLink.parse(url);
+    if (link == null) return;
+    _lastClipboardText = url;
+    openShareSheet(context, initialLink: link.url, initialPwd: link.pwd);
+  }
+
+  /// 已处理过的剪贴板内容，避免同一条链接反复提示。
+  String? _lastClipboardText;
+
+  /// 回到前台时看看剪贴板里有没有蓝奏云分享链接（类似淘口令）。
+  Future<void> _checkClipboard() async {
+    if (!mounted) return;
+    final app = context.read<AppController>();
+    if (!app.settings.clipboardLinkPrompt) return;
+    // 没有账号时（首次启动 / 登录页）不打扰
+    if (app.activeUid == null) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final l10n = context.l10n;
+    // 回到前台的一瞬间剪贴板可能还读不到，稍等一下再取
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    if (!mounted) return;
+    String? text;
+    try {
+      final data = await Clipboard.getData(Clipboard.kTextPlain);
+      text = data?.text?.trim();
+    } catch (_) {
+      return;
+    }
+    if (text == null || text.isEmpty || text == _lastClipboardText) return;
+    _lastClipboardText = text;
+    final link = LanzouLink.parse(text);
+    if (link == null) return;
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(l10n.clipboardLinkFound),
+        action: SnackBarAction(
+          label: l10n.open,
+          onPressed: () {
+            if (!mounted) return;
+            openShareSheet(
+              context,
+              initialLink: link.url,
+              initialPwd: link.pwd,
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _checkClipboard();
   }
 
   Future<void> _handleSharedFiles(List<String> files) async {

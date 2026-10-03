@@ -10,6 +10,7 @@ class SettingsStore {
   static const _keyLoadAllPages = 'load_all_pages';
   static const _keyThemeMode = 'theme_mode';
   static const _keyOled = 'oled_black';
+  static const _keyDynamicColor = 'dynamic_color';
   static const _keySeed = 'theme_seed';
   static const _keyInterval = 'request_interval';
   static const _keyMaxUp = 'max_uploads';
@@ -31,6 +32,7 @@ class SettingsStore {
   static const _keyQuickExpanded = 'quick_access_expanded';
   static const _keyRecentsExpanded = 'recents_expanded';
   static const _keyRecentLimit = 'recent_limit';
+  static const _keyClipboardLink = 'clipboard_link_prompt';
 
   String? downloadDir;
   String language = 'system';
@@ -42,6 +44,8 @@ class SettingsStore {
   bool loadAllPages = false;
   String themeMode = 'system';
   bool oledBlack = false;
+  /// 动态取色：跟随系统壁纸（Android 12+）。
+  bool dynamicColor = false;
   int themeSeed = 0xFF2E6BE6;
   int requestInterval = 100;
   int maxUploads = 1;
@@ -69,6 +73,8 @@ class SettingsStore {
   bool recentsExpanded = true;
   /// 最近使用最多保留多少条，0 表示不记录。
   int recentLimit = 50;
+  /// 复制到蓝奏云分享链接时提示打开。
+  bool clipboardLinkPrompt = true;
 
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -81,6 +87,7 @@ class SettingsStore {
     loadAllPages = prefs.getBool(_keyLoadAllPages) ?? false;
     themeMode = prefs.getString(_keyThemeMode) ?? 'system';
     oledBlack = prefs.getBool(_keyOled) ?? false;
+    dynamicColor = prefs.getBool(_keyDynamicColor) ?? false;
     themeSeed = prefs.getInt(_keySeed) ?? 0xFF2E6BE6;
     requestInterval = prefs.getInt(_keyInterval) ?? 100;
     maxUploads = prefs.getInt(_keyMaxUp) ?? 1;
@@ -109,6 +116,7 @@ class SettingsStore {
     quickExpanded = prefs.getBool(_keyQuickExpanded) ?? true;
     recentsExpanded = prefs.getBool(_keyRecentsExpanded) ?? true;
     recentLimit = prefs.getInt(_keyRecentLimit) ?? 50;
+    clipboardLinkPrompt = prefs.getBool(_keyClipboardLink) ?? true;
   }
 
   Future<void> setNotifyProgress(bool value) async {
@@ -239,6 +247,18 @@ class SettingsStore {
     await prefs.setBool(_keyOled, value);
   }
 
+  Future<void> setDynamicColor(bool value) async {
+    dynamicColor = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyDynamicColor, value);
+  }
+
+  Future<void> setClipboardLinkPrompt(bool value) async {
+    clipboardLinkPrompt = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyClipboardLink, value);
+  }
+
   Future<void> setThemeSeed(int value) async {
     themeSeed = value;
     final prefs = await SharedPreferences.getInstance();
@@ -304,6 +324,7 @@ class SettingsStore {
         _keyLoadAllPages: loadAllPages,
         _keyThemeMode: themeMode,
         _keyOled: oledBlack,
+        _keyDynamicColor: dynamicColor,
         _keySeed: themeSeed,
         _keyInterval: requestInterval,
         _keyMaxUp: maxUploads,
@@ -323,6 +344,7 @@ class SettingsStore {
         _keyQuickExpanded: quickExpanded,
         _keyRecentsExpanded: recentsExpanded,
         _keyRecentLimit: recentLimit,
+        _keyClipboardLink: clipboardLinkPrompt,
       };
 
   /// 恢复备份里的设置：只接受已知键，空值表示恢复为未设置，最后重新读取一次。

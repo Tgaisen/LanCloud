@@ -21,12 +21,17 @@ import java.io.File
 class MainActivity : FlutterFragmentActivity() {
     private var pickFilesResult: MethodChannel.Result? = null
     private var cameraPermissionResult: MethodChannel.Result? = null
+    private var linksChannel: MethodChannel? = null
+    private var pendingLink: String? = null
 
     companion object {
         private const val PICK_FILES_REQUEST = 2001
         private const val CAMERA_PERMISSION_REQUEST = 2003
         private const val PERMISSION_PREFS = "lancloud_permissions"
         private const val KEY_CAMERA_REQUESTED = "camera_requested"
+        /// 蓝奏云分享链接域名：lanzoua.com ~ lanzouz.com（含 *.cn 与子域名）
+        private val LANZOU_HOST =
+            Regex("(^|\\.)lanzou[a-z]*\\.(com|cn)$", RegexOption.IGNORE_CASE)
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -204,9 +209,51 @@ class MainActivity : FlutterFragmentActivity() {
                 "openInstallSettings" -> result.success(openInstallSettings())
                 "requestBattery" -> result.success(requestBatteryOptimization())
                 "openAppSettings" -> result.success(openAppSettings())
+                "openDefaultLinksSettings" ->
+                    result.success(openDefaultLinksSettings())
                 else -> result.notImplemented()
             }
         }
+        // 外部用蓝奏云分享链接打开本应用（intent-filter）。
+        val links = MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "lancloud/links",
+        )
+        links.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "getInitialLink" -> {
+                    val link = pendingLink ?: linkFromIntent(intent)
+                    pendingLink = null
+                    result.success(link)
+                }
+                else -> result.notImplemented()
+            }
+        }
+        linksChannel = links
+        linkFromIntent(intent)?.let { pendingLink = it }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        val link = linkFromIntent(intent) ?: return
+        val channel = linksChannel
+        if (channel == null) {
+            pendingLink = link
+        } else {
+            channel.invokeMethod("link", link)
+        }
+    }
+
+    /// 只接受 http(s) 的蓝奏云分享链接。
+    private fun linkFromIntent(intent: Intent?): String? {
+        if (intent?.action != Intent.ACTION_VIEW) return null
+        val uri = intent.data ?: return null
+        val scheme = uri.scheme?.lowercase() ?: return null
+        if (scheme != "http" && scheme != "https") return null
+        val host = uri.host?.lowercase() ?: return null
+        if (!LANZOU_HOST.containsMatchIn(host)) return null
+        return uri.toString()
     }
 
     override fun onRequestPermissionsResult(
@@ -301,6 +348,16 @@ class MainActivity : FlutterFragmentActivity() {
             Uri.parse("package:$packageName"),
         ),
     )
+
+  /// 默认打开链接设置：Android 12+ 有独立入口，低版本退到应用详情页。
+    /// 默认打开链接设置：Android 12+ 有独立入口，低版本退到应用详情页。
+    private fun openDefaultLinksSettings(): Boolean {
+        val intent = Intent(
+            Settings.ACTION_APP_OPEN_BY_DEFAULT_SETTINGS,
+            Uri.parse("package:$packageName"),
+        )
+        return startSafely(intent) || openAppSettings()
+    }
 
     private fun startSafely(intent: Intent): Boolean {
         return try {

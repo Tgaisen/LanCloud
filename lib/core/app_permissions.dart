@@ -79,6 +79,10 @@ class AppPermissions {
   /// 打开应用详情设置页。
   Future<bool> openAppSettings() => _invokeBool('openAppSettings');
 
+  /// 打开系统的「默认打开链接」设置页（把蓝奏云分享链接交给本应用）。
+  Future<bool> openDefaultLinkSettings() =>
+      _invokeBool('openDefaultLinksSettings');
+
   Future<bool> _invokeBool(String method) async {
     try {
       return await _channel.invokeMethod<bool>(method) ?? false;

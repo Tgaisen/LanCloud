@@ -389,6 +389,18 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 动态取色（跟随系统壁纸，Android 12+）。
+  Future<void> setDynamicColor(bool value) async {
+    await settings.setDynamicColor(value);
+    notifyListeners();
+  }
+
+  /// 复制到蓝奏云分享链接时是否提示打开。
+  Future<void> setClipboardLinkPrompt(bool value) async {
+    await settings.setClipboardLinkPrompt(value);
+    notifyListeners();
+  }
+
   Future<void> setThemeSeed(int value) async {
     await settings.setThemeSeed(value);
     notifyListeners();

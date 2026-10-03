@@ -212,18 +212,6 @@ abstract class AppLocalizations {
   /// **'打开分享链接'**
   String get openShareLink;
 
-  /// No description provided for @scanComingSoonTooltip.
-  ///
-  /// In zh, this message translates to:
-  /// **'扫码（后续版本）'**
-  String get scanComingSoonTooltip;
-
-  /// No description provided for @scanComingSoon.
-  ///
-  /// In zh, this message translates to:
-  /// **'扫码功能将在后续版本加入'**
-  String get scanComingSoon;
-
   /// No description provided for @transferringCount.
   ///
   /// In zh, this message translates to:
@@ -2252,6 +2240,102 @@ abstract class AppLocalizations {
   /// **'扫码'**
   String get scan;
 
+  /// No description provided for @scanTorch.
+  ///
+  /// In zh, this message translates to:
+  /// **'手电筒'**
+  String get scanTorch;
+
+  /// No description provided for @scanHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'将二维码放入取景框内'**
+  String get scanHint;
+
+  /// No description provided for @scanCameraFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法启动相机'**
+  String get scanCameraFailed;
+
+  /// No description provided for @scanNoCameraPermission.
+  ///
+  /// In zh, this message translates to:
+  /// **'需要相机权限才能扫码，请在系统设置中开启'**
+  String get scanNoCameraPermission;
+
+  /// No description provided for @scanNotLanzou.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有识别到蓝奏云分享链接'**
+  String get scanNotLanzou;
+
+  /// No description provided for @dynamicColor.
+  ///
+  /// In zh, this message translates to:
+  /// **'动态取色'**
+  String get dynamicColor;
+
+  /// No description provided for @dynamicColorSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'跟随系统壁纸取色（Android 12+）'**
+  String get dynamicColorSubtitle;
+
+  /// No description provided for @dynamicColorUnsupported.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前系统不支持动态取色'**
+  String get dynamicColorUnsupported;
+
+  /// No description provided for @dynamicColorKeywords.
+  ///
+  /// In zh, this message translates to:
+  /// **'dynamic color monet 动态 取色 壁纸 主题'**
+  String get dynamicColorKeywords;
+
+  /// No description provided for @clipboardLinkPrompt.
+  ///
+  /// In zh, this message translates to:
+  /// **'识别剪贴板链接'**
+  String get clipboardLinkPrompt;
+
+  /// No description provided for @clipboardLinkPromptSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'复制蓝奏云分享链接后提示打开'**
+  String get clipboardLinkPromptSubtitle;
+
+  /// No description provided for @clipboardLinkPromptKeywords.
+  ///
+  /// In zh, this message translates to:
+  /// **'clipboard 剪贴板 复制 链接 提示'**
+  String get clipboardLinkPromptKeywords;
+
+  /// No description provided for @clipboardLinkFound.
+  ///
+  /// In zh, this message translates to:
+  /// **'检测到蓝奏云分享链接'**
+  String get clipboardLinkFound;
+
+  /// No description provided for @manageDefaultLinks.
+  ///
+  /// In zh, this message translates to:
+  /// **'管理应用默认链接'**
+  String get manageDefaultLinks;
+
+  /// No description provided for @manageDefaultLinksSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'在系统设置中把蓝奏云分享链接交给我打开'**
+  String get manageDefaultLinksSubtitle;
+
+  /// No description provided for @manageDefaultLinksKeywords.
+  ///
+  /// In zh, this message translates to:
+  /// **'default links 默认 链接 打开方式 权限'**
+  String get manageDefaultLinksKeywords;
+
   /// No description provided for @deleteFilesToo.
   ///
   /// In zh, this message translates to:
@@ -2699,7 +2783,7 @@ abstract class AppLocalizations {
   /// No description provided for @privacyBody.
   ///
   /// In zh, this message translates to:
-  /// **'《隐私政策》\n\n1. 本应用不收集、不上传任何个人信息，没有账号系统，也没有统计、广告或崩溃上报 SDK。\n\n2. 你的蓝奏云账号（Cookie）、昵称、收藏、最近使用、传输记录与设置只保存在本机。Cookie 保存在系统加密存储中；查看 Cookie 需要先通过生物识别或锁屏验证。\n\n3. 应用运行时直接与蓝奏云官方接口通信（pc.woozooo.com、up.woozooo.com 等），请求内容仅用于完成你发起的登录、列表、上传、下载等操作。\n\n4. 分享由系统分享面板完成：只有你主动点击分享时，选中的内容或文件才会交给你选择的应用；剪贴板仅在你主动点击「复制」时写入。\n\n5. 如果你在「备份与恢复」中配置了 WebDAV，备份文件会上传到你自己填写的服务器；备份默认不包含 Cookie，是否开启与上传到哪台服务器完全由你决定。\n\n6. 相机权限仅用于扫码（当前版本尚未启用），安装应用权限仅用于打开你下载的 APK，忽略电池优化仅用于让后台传输更稳定；这些权限都可以随时在系统设置中撤销。\n\n7. 卸载应用会一并删除本机保存的账号与数据，删除前请自行备份。'**
+  /// **'《隐私政策》\n\n1. 本应用不收集、不上传任何个人信息，没有账号系统，也没有统计、广告或崩溃上报 SDK。\n\n2. 你的蓝奏云账号（Cookie）、昵称、收藏、最近使用、传输记录与设置只保存在本机。Cookie 保存在系统加密存储中；查看 Cookie 需要先通过生物识别或锁屏验证。\n\n3. 应用运行时直接与蓝奏云官方接口通信（pc.woozooo.com、up.woozooo.com 等），请求内容仅用于完成你发起的登录、列表、上传、下载等操作。\n\n4. 分享由系统分享面板完成：只有你主动点击分享时，选中的内容或文件才会交给你选择的应用；剪贴板仅在你主动点击「复制」时写入；回到应用前台时会读取剪贴板里是否有蓝奏云分享链接（可在设置-通知中关闭），仅用于提示打开，不会上传。\n\n5. 如果你在「备份与恢复」中配置了 WebDAV，备份文件会上传到你自己填写的服务器；备份默认不包含 Cookie，是否开启与上传到哪台服务器完全由你决定。\n\n6. 相机权限仅用于扫码，安装应用权限仅用于打开你下载的 APK，忽略电池优化仅用于让后台传输更稳定；这些权限都可以随时在系统设置中撤销。\n\n7. 卸载应用会一并删除本机保存的账号与数据，删除前请自行备份。'**
   String get privacyBody;
 }
 

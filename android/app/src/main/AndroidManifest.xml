@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
@@ -8,6 +9,21 @@
     <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
+    <!-- open_filex 会合并进来「媒体和文件」权限，但本应用用不到：
+         下载默认放在应用专属目录（Android/data/<包名>/files/LanCloud），
+         选文件 / 选目录都走系统 SAF 选择器，读外部存储不需要也不应申请。 -->
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        tools:node="remove"/>
+    <uses-permission
+        android:name="android.permission.READ_MEDIA_IMAGES"
+        tools:node="remove"/>
+    <uses-permission
+        android:name="android.permission.READ_MEDIA_VIDEO"
+        tools:node="remove"/>
+    <uses-permission
+        android:name="android.permission.READ_MEDIA_AUDIO"
+        tools:node="remove"/>
     <application
         android:label="@string/app_name"
         android:name="${applicationName}"
@@ -47,6 +63,64 @@
                 <action android:name="android.intent.action.SEND_MULTIPLE"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <data android:mimeType="*/*"/>
+            </intent-filter>
+            <!-- 蓝奏云分享链接：支持设置为默认打开方式（lanzoua.com ~ lanzouz.com） -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https" android:host="*.lanzoua.com"/>
+                <data android:scheme="https" android:host="lanzoua.com"/>
+                <data android:scheme="https" android:host="*.lanzoub.com"/>
+                <data android:scheme="https" android:host="lanzoub.com"/>
+                <data android:scheme="https" android:host="*.lanzouc.com"/>
+                <data android:scheme="https" android:host="lanzouc.com"/>
+                <data android:scheme="https" android:host="*.lanzoud.com"/>
+                <data android:scheme="https" android:host="lanzoud.com"/>
+                <data android:scheme="https" android:host="*.lanzoue.com"/>
+                <data android:scheme="https" android:host="lanzoue.com"/>
+                <data android:scheme="https" android:host="*.lanzouf.com"/>
+                <data android:scheme="https" android:host="lanzouf.com"/>
+                <data android:scheme="https" android:host="*.lanzoug.com"/>
+                <data android:scheme="https" android:host="lanzoug.com"/>
+                <data android:scheme="https" android:host="*.lanzouh.com"/>
+                <data android:scheme="https" android:host="lanzouh.com"/>
+                <data android:scheme="https" android:host="*.lanzoui.com"/>
+                <data android:scheme="https" android:host="lanzoui.com"/>
+                <data android:scheme="https" android:host="*.lanzouj.com"/>
+                <data android:scheme="https" android:host="lanzouj.com"/>
+                <data android:scheme="https" android:host="*.lanzouk.com"/>
+                <data android:scheme="https" android:host="lanzouk.com"/>
+                <data android:scheme="https" android:host="*.lanzoul.com"/>
+                <data android:scheme="https" android:host="lanzoul.com"/>
+                <data android:scheme="https" android:host="*.lanzoum.com"/>
+                <data android:scheme="https" android:host="lanzoum.com"/>
+                <data android:scheme="https" android:host="*.lanzoun.com"/>
+                <data android:scheme="https" android:host="lanzoun.com"/>
+                <data android:scheme="https" android:host="*.lanzouo.com"/>
+                <data android:scheme="https" android:host="lanzouo.com"/>
+                <data android:scheme="https" android:host="*.lanzoup.com"/>
+                <data android:scheme="https" android:host="lanzoup.com"/>
+                <data android:scheme="https" android:host="*.lanzouq.com"/>
+                <data android:scheme="https" android:host="lanzouq.com"/>
+                <data android:scheme="https" android:host="*.lanzour.com"/>
+                <data android:scheme="https" android:host="lanzour.com"/>
+                <data android:scheme="https" android:host="*.lanzous.com"/>
+                <data android:scheme="https" android:host="lanzous.com"/>
+                <data android:scheme="https" android:host="*.lanzout.com"/>
+                <data android:scheme="https" android:host="lanzout.com"/>
+                <data android:scheme="https" android:host="*.lanzouu.com"/>
+                <data android:scheme="https" android:host="lanzouu.com"/>
+                <data android:scheme="https" android:host="*.lanzouv.com"/>
+                <data android:scheme="https" android:host="lanzouv.com"/>
+                <data android:scheme="https" android:host="*.lanzouw.com"/>
+                <data android:scheme="https" android:host="lanzouw.com"/>
+                <data android:scheme="https" android:host="*.lanzoux.com"/>
+                <data android:scheme="https" android:host="lanzoux.com"/>
+                <data android:scheme="https" android:host="*.lanzouy.com"/>
+                <data android:scheme="https" android:host="lanzouy.com"/>
+                <data android:scheme="https" android:host="*.lanzouz.com"/>
+                <data android:scheme="https" android:host="lanzouz.com"/>
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

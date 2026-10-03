@@ -1,5 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart' hide Icons;
+import 'package:dynamic_color/dynamic_color.dart';
 import 'package:provider/provider.dart';
 
 import '../core/app_controller.dart';
@@ -167,6 +168,31 @@ class _SettingsPageState extends State<SettingsPage>
             backgroundColor: Color(app.settings.themeSeed),
           ),
           onTap: () => _pickThemeSeed(context),
+        ),
+      ),
+      _Entry(
+        id: 'dynamic_color',
+        title: l10n.dynamicColor,
+        subtitle: l10n.dynamicColorSubtitle,
+        keywords: l10n.dynamicColorKeywords.split(' '),
+        category: 'appearance',
+        // Android 12+ 才有系统取色，取不到时开关置灰
+        build: (context, app) => DynamicColorBuilder(
+          builder: (light, dark) {
+            final supported = light != null || dark != null;
+            return SwitchListTile(
+              secondary: const Icon(Icons.wallpaper_outlined),
+              title: Text(context.l10n.dynamicColor),
+              subtitle: Text(
+                supported
+                    ? context.l10n.dynamicColorSubtitle
+                    : context.l10n.dynamicColorUnsupported,
+              ),
+              value: supported && app.settings.dynamicColor,
+              onChanged:
+                  supported ? (value) => app.setDynamicColor(value) : null,
+            );
+          },
         ),
       ),
       _Entry(
@@ -349,6 +375,20 @@ class _SettingsPageState extends State<SettingsPage>
         ),
       ),
       _Entry(
+        id: 'clipboard_link',
+        title: l10n.clipboardLinkPrompt,
+        subtitle: l10n.clipboardLinkPromptSubtitle,
+        keywords: l10n.clipboardLinkPromptKeywords.split(' '),
+        category: 'notifications',
+        build: (context, app) => SwitchListTile(
+          secondary: const Icon(Icons.content_paste_go),
+          title: Text(context.l10n.clipboardLinkPrompt),
+          subtitle: Text(context.l10n.clipboardLinkPromptSubtitle),
+          value: app.settings.clipboardLinkPrompt,
+          onChanged: (value) => app.setClipboardLinkPrompt(value),
+        ),
+      ),
+      _Entry(
         id: 'notify_permission',
         title: l10n.notifPermission,
         subtitle: _notifGranted == null
@@ -408,6 +448,19 @@ class _SettingsPageState extends State<SettingsPage>
           title: Text(context.l10n.permissionBattery),
           subtitle: Text(_batteryStatusText()),
           onTap: _requestBatteryOptimization,
+        ),
+      ),
+      _Entry(
+        id: 'default_links',
+        title: l10n.manageDefaultLinks,
+        subtitle: l10n.manageDefaultLinksSubtitle,
+        keywords: l10n.manageDefaultLinksKeywords.split(' '),
+        category: 'permissions',
+        build: (context, app) => ListTile(
+          leading: const Icon(Icons.link_outlined),
+          title: Text(context.l10n.manageDefaultLinks),
+          subtitle: Text(context.l10n.manageDefaultLinksSubtitle),
+          onTap: _openDefaultLinkSettings,
         ),
       ),
       _Entry(
@@ -816,6 +869,17 @@ class _SettingsPageState extends State<SettingsPage>
   Future<void> _openInstallSettings() async {
     final l10n = context.l10n;
     final ok = await AppPermissions.instance.openInstallSettings();
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.permissionOpenFailed)),
+      );
+    }
+  }
+
+  /// 打开系统的「默认打开链接」设置页（Android 12+）。
+  Future<void> _openDefaultLinkSettings() async {
+    final l10n = context.l10n;
+    final ok = await AppPermissions.instance.openDefaultLinkSettings();
     if (!ok && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l10n.permissionOpenFailed)),
