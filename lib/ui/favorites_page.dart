@@ -337,16 +337,25 @@ class _FavoritesPageState extends State<FavoritesPage>
                 // 顶栏不占布局，这里留出等高占位
                 SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
                 if (_loading)
-                  const SliverFillRemaining(
+                  SliverFillRemaining(
                     hasScrollBody: false,
-                    child: Center(child: CircularProgressIndicator()),
+                    child: Padding(
+                      // 底栏盖在正文上方时，空状态保持在可见区域居中
+                      padding:
+                          EdgeInsets.only(bottom: shellBottomBarInset(context)),
+                      child: const Center(child: CircularProgressIndicator()),
+                    ),
                   )
                 else if (_folders.isEmpty && _files.isEmpty)
                   SliverFillRemaining(
                     hasScrollBody: false,
-                    child: EmptyHint(
-                      icon: Icons.star_border,
-                      text: l10n.favoritesHint,
+                    child: Padding(
+                      padding:
+                          EdgeInsets.only(bottom: shellBottomBarInset(context)),
+                      child: EmptyHint(
+                        icon: Icons.star_border,
+                        text: l10n.favoritesHint,
+                      ),
                     ),
                   )
                 else
@@ -379,6 +388,10 @@ class _FavoritesPageState extends State<FavoritesPage>
                       ]),
                     ),
                   ),
+                // 底栏盖在正文上方（extendBody）时，补足列表末尾留白
+                SliverToBoxAdapter(
+                  child: SizedBox(height: shellBottomBarInset(context)),
+                ),
               ],
             ),
           ),

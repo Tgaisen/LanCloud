@@ -46,6 +46,26 @@ Color topBarBackgroundColor(BuildContext context, ColorScheme scheme) {
       scheme.surface;
 }
 
+/// 外壳底栏的完整高度（内容 + 系统手势区）：外壳正文里的
+/// [MediaQuery.paddingOf] 底部值就是它；push 出来的独立页面没有外壳底栏，
+/// 返回 0。
+///
+/// 注意要在页面自己的上下文里读：Scaffold 会给 FAB 等槽位清掉底部内边距。
+double shellBottomBarHeight(BuildContext context) {
+  if (!(ModalRoute.of(context)?.isFirst ?? true)) return 0;
+  return MediaQuery.paddingOf(context).bottom;
+}
+
+/// 标签外壳的底栏盖在正文上方时（外壳 Scaffold 开了 extendBody），
+/// 滚动列表末尾需要补的留白：等于底栏的完整高度，补上它最后一条内容
+/// 才能完全滚到用户眼前，而不是永久压在底栏下面。
+///
+/// 悬浮底栏按设计浮在正文上方、内容从它后面穿过，不补。
+double shellBottomBarInset(BuildContext context) {
+  final app = context.watch<AppController>();
+  return app.settings.floatingNavBar ? 0 : shellBottomBarHeight(context);
+}
+
 String formatBytes(int bytes) {
   if (bytes <= 0) return '0 B';
   const units = ['B', 'KB', 'MB', 'GB', 'TB'];

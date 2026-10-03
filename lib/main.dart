@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:provider/provider.dart';
 
@@ -16,6 +17,10 @@ import 'core/transfer/transfer_manager.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // 导航栏沉浸：Android 15+（API 35）系统强制 edge-to-edge，14 及以下
+  // 需要显式开启，否则系统导航栏/状态栏会不透明地占掉一条（内容被顶开）。
+  // 非 edgeToEdge 模式在 API 36 上会被系统忽略，这里保持与系统一致。
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   // 运行日志：把异常与 debugPrint 写进本机文件，用户可在设置-隐私里导出
   await AppLog.instance.init();
   final defaultOnError = FlutterError.onError;

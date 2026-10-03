@@ -445,6 +445,10 @@ class _HomePageState extends State<HomePage>
               ]),
             ),
           ),
+          // 底栏盖在正文上方（extendBody）时，补足列表末尾留白
+          SliverToBoxAdapter(
+            child: SizedBox(height: shellBottomBarInset(context)),
+          ),
               ],
             ),
           ),

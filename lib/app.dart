@@ -71,11 +71,32 @@ class LanCloudApp extends StatelessWidget {
                   : ThemeMode.system,
           // 全局 BouncingScrollPhysics（网盘页同款）
           scrollBehavior: const AppScrollBehavior(),
+          // 系统栏（状态栏 / 导航栏）样式跟随主题明暗：
+          // Android 15+ 导航栏强制透明，能调的只有图标明暗与是否加系统遮罩。
+          builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
+            value: systemUiOverlayStyleFor(Theme.of(context).brightness),
+            child: child ?? const SizedBox.shrink(),
+          ),
           home: const AgreementGate(),
         );
       },
     );
   }
+}
+
+/// 全局系统栏样式：状态栏、导航栏都透明，图标明暗随主题，
+/// 并关掉系统给透明导航栏垫的半透明遮罩（否则看着不是真透明）。
+SystemUiOverlayStyle systemUiOverlayStyleFor(Brightness brightness) {
+  final dark = brightness == Brightness.dark;
+  return SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: dark ? Brightness.light : Brightness.dark,
+    statusBarBrightness: dark ? Brightness.dark : Brightness.light,
+    systemNavigationBarColor: Colors.transparent,
+    systemNavigationBarDividerColor: Colors.transparent,
+    systemNavigationBarIconBrightness: dark ? Brightness.light : Brightness.dark,
+    systemNavigationBarContrastEnforced: false,
+  );
 }
 
 /// 应用主题（Material 3 + MD3E 细节）。抽出来便于测试。
@@ -651,8 +672,14 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
             t.status == TransferStatus.running || t.status == TransferStatus.queued)
         .length;
 
-    // 底栏整体高度：悬浮样式含上下留白，用于 1:1 跟随滚动的收起距离
-    final barHeight = app.settings.floatingNavBar ? 108.0 : 80.0;
+    // 底栏整体高度：悬浮样式含上下留白，用于 1:1 跟随滚动的收起距离，
+    // 再加上系统手势区（导航栏）的高度。普通底栏由 NavigationBar 自己
+    // 用 SafeArea 把这份内边距垫在内容下方；悬浮样式则算进下留白，
+    // 让 80dp 高的胶囊浮在系统导航栏上方。两种样式外层都不能把高度写死，
+    // 否则这份内边距会从内容里扣，图标和文字被压扁。
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
+    final barHeight =
+        (app.settings.floatingNavBar ? 108.0 : 80.0) + bottomInset;
     final keyed = KeyedSubtree(
       key: ValueKey('shell-${app.activeUid}'),
       // 横向滑动切换视图；设置里可关闭手势（只能点底栏切换）
@@ -698,6 +725,24 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
     final scheme = Theme.of(context).colorScheme;
     // 大屏（MD3E）：侧栏等导航区用 surfaceContainer，主视图是圆角的 surface 卡片
     final bodyColor = Theme.of(context).scaffoldBackgroundColor;
+    final floatingNav = app.settings.floatingNavBar;
+    final navBar = NavigationBar(
+      selectedIndex: _index,
+      onDestinationSelected: (pos) {
+        if (app.selectionMode) {
+          app.onRequestExitSelection?.call();
+        }
+        _goTo(_ids[pos]);
+      },
+      destinations: [
+        for (final id in _ids)
+          NavigationDestination(
+            icon: iconFor(id, selected: false),
+            selectedIcon: iconFor(id, selected: true),
+            label: _labelFor(id, l10n),
+          ),
+      ],
+    );
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
@@ -767,7 +812,9 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
             )
           : Scaffold(
               body: keyed,
-              extendBody: app.settings.floatingNavBar,
+              // 正文绘制到底栏下方：滑动时内容从底栏后穿过，
+              // 底栏跟随滚动下沉 / 收起时正文也不会跟着重排。
+              extendBody: true,
               // 底栏跟随滚动按比例下沉；完全收起后腾出布局空间
               bottomNavigationBar: ValueListenableBuilder<double>(
                 valueListenable: app.barsHide,
@@ -786,38 +833,34 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
                   ),
                 ),
                 child: Padding(
-                  padding: app.settings.floatingNavBar
+                  padding: floatingNav
                       ? const EdgeInsets.only(top: 16)
                       : EdgeInsets.zero,
                   child: Container(
-                    margin: app.settings.floatingNavBar
-                        ? const EdgeInsets.fromLTRB(12, 0, 12, 12)
+                    margin: floatingNav
+                        // 底部留白要加上系统导航栏的高度：胶囊本身保持
+                        // 80dp 浮在导航栏上方，而不是把导航栏那段也算进胶囊
+                        // （否则胶囊下沿会拖出一截空白色）。
+                        ? EdgeInsets.fromLTRB(12, 0, 12, 12 + bottomInset)
                         : EdgeInsets.zero,
-                    decoration: app.settings.floatingNavBar
+                    decoration: floatingNav
                         ? BoxDecoration(
                             borderRadius: BorderRadius.circular(28),
                           )
                         : null,
-                    clipBehavior: app.settings.floatingNavBar
-                        ? Clip.antiAlias
-                        : Clip.none,
-                    child: NavigationBar(
-                      selectedIndex: _index,
-                      onDestinationSelected: (pos) {
-                        if (app.selectionMode) {
-                          app.onRequestExitSelection?.call();
-                        }
-                        _goTo(_ids[pos]);
-                      },
-                      destinations: [
-                        for (final id in _ids)
-                          NavigationDestination(
-                            icon: iconFor(id, selected: false),
-                            selectedIcon: iconFor(id, selected: true),
-                            label: _labelFor(id, l10n),
-                          ),
-                      ],
-                    ),
+                    clipBehavior: floatingNav ? Clip.antiAlias : Clip.none,
+                    // 悬浮样式把系统手势区的内边距从胶囊里摘掉，改由上面
+                    // 的下留白承担；普通底栏仍由 NavigationBar 自己垫在内容下方。
+                    // top 也要去掉：这里不再经过 Scaffold 的底栏槽位（槽位会
+                    // 去掉顶部内边距），否则状态栏高度会被 SafeArea 垫进胶囊。
+                    child: floatingNav
+                        ? MediaQuery.removePadding(
+                            context: context,
+                            removeTop: true,
+                            removeBottom: true,
+                            child: navBar,
+                          )
+                        : navBar,
                   ),
                 ),
               ),

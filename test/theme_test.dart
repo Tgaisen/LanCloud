@@ -56,4 +56,18 @@ void main() {
     // 仍然跟随动态取色的色相（蓝色系主色）
     expect(scheme.primary, isNot(const Color(0xFF3B5F90)));
   });
+
+  test('系统栏样式：导航栏透明 + 不加系统遮罩，图标明暗随主题', () {
+    final light = systemUiOverlayStyleFor(Brightness.light);
+    expect(light.statusBarColor, Colors.transparent);
+    expect(light.systemNavigationBarColor, Colors.transparent);
+    // Android 15+ 导航栏强制透明，垫在后面的系统遮罩必须关掉
+    expect(light.systemNavigationBarContrastEnforced, isFalse);
+    // 浅色底 → 深色图标；深色底 → 浅色图标
+    expect(light.systemNavigationBarIconBrightness, Brightness.dark);
+    expect(light.statusBarIconBrightness, Brightness.dark);
+    final dark = systemUiOverlayStyleFor(Brightness.dark);
+    expect(dark.systemNavigationBarIconBrightness, Brightness.light);
+    expect(dark.statusBarIconBrightness, Brightness.light);
+  });
 }

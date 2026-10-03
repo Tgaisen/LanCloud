@@ -113,7 +113,11 @@ class _DrivePageState extends State<DrivePage>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _keyboardUp.value = View.of(context).viewInsets.bottom > 0;
+    // initState 里不能做 InheritedWidget 查询（View.of 会触发 debug 断言），
+    // 这里直接读窗口指标；didChangeMetrics 之后照旧用 View.of。
+    _keyboardUp.value =
+        WidgetsBinding.instance.platformDispatcher.views.first.viewInsets.bottom >
+            0;
     final app = context.read<AppController>();
     _sortMode = app.settings.sortMode;
     context.read<TransferManager>().addTaskListener(_onTaskDone);
@@ -2318,6 +2322,9 @@ class _DrivePageState extends State<DrivePage>
     final grid = app.settings.gridView;
     final selectedCount = _selectedFiles.length + _selectedFolders.length;
     final headerHeight = MediaQuery.paddingOf(context).top + kToolbarHeight + 46;
+    // 外壳底栏的完整高度，用来把 FAB 抬到底栏上面。必须在页面上下文里读：
+    // FAB 槽位的 MediaQuery 已经把底部内边距清掉了。
+    final shellBarHeight = shellBottomBarHeight(context);
 
     return AnimatedBuilder(
       animation: Listenable.merge([_selAnim, _exitAnim]),
@@ -2434,8 +2441,17 @@ class _DrivePageState extends State<DrivePage>
               // 悬浮底栏留白：键盘弹出时底栏沉在键盘下方、屏幕上看不见，
               // 此时页面已被外层 Scaffold 压到键盘上沿，FAB 停在键盘上方即可，
               // 不能再叠加底栏高度，否则会高出约一个底栏的距离。
-              final lift =
-                  app.settings.floatingNavBar && !keyboardUp ? 88.0 : 0.0;
+              // 普通底栏同理：外壳开了 extendBody 后，FAB 按系统手势区
+              // 算出来的位置会落到底栏下面，这里按底栏总高度把它抬回去。
+              // 悬浮样式的胶囊自带上下留白（16 / 12），减 20 后落在胶囊上沿之上。
+              final lift = keyboardUp
+                  ? 0.0
+                  : math.max(
+                      0.0,
+                      app.settings.floatingNavBar
+                          ? shellBarHeight - 20.0
+                          : shellBarHeight,
+                    );
               return AnimatedPadding(
                 padding: EdgeInsets.only(bottom: lift),
                 duration: _anim,
@@ -2599,11 +2615,17 @@ class _DrivePageState extends State<DrivePage>
 
   /// 顶栏与路径栏之外的剩余 slivers，按加载状态切换。
   List<Widget> _contentSlivers(bool grid) {
+    // 底栏盖在正文上方（extendBody）时，各种占满高度的空状态
+    // 要靠这份留白保持在可见区域居中，而不是被底栏压住。
+    final cover = shellBottomBarInset(context);
     if (_loading) {
-      return const [
+      return [
         SliverFillRemaining(
           hasScrollBody: false,
-          child: Center(child: CircularProgressIndicator()),
+          child: Padding(
+            padding: EdgeInsets.only(bottom: cover),
+            child: const Center(child: CircularProgressIndicator()),
+          ),
         ),
       ];
     }
@@ -2611,29 +2633,32 @@ class _DrivePageState extends State<DrivePage>
       return [
         SliverFillRemaining(
           hasScrollBody: false,
-          child: FadeIn(
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.cloud_off,
-                      size: 40,
-                      color: Theme.of(context).colorScheme.outline,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      context.l10n.loadFailed(_error!),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 12),
-                    FilledButton(
-                      onPressed: () => _load(force: true),
-                      child: Text(context.l10n.retry),
-                    ),
-                  ],
+          child: Padding(
+            padding: EdgeInsets.only(bottom: cover),
+            child: FadeIn(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.cloud_off,
+                        size: 40,
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        context.l10n.loadFailed(_error!),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 12),
+                      FilledButton(
+                        onPressed: () => _load(force: true),
+                        child: Text(context.l10n.retry),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -2647,7 +2672,10 @@ class _DrivePageState extends State<DrivePage>
       return [
         SliverFillRemaining(
           hasScrollBody: false,
-          child: _EmptyFolderView(filter: _filter),
+          child: Padding(
+            padding: EdgeInsets.only(bottom: cover),
+            child: _EmptyFolderView(filter: _filter),
+          ),
         ),
       ];
     }
@@ -2734,6 +2762,10 @@ class _DrivePageState extends State<DrivePage>
                   ),
           ),
         ),
+      ),
+      // 底栏盖在正文上方（extendBody）时，补足列表末尾留白
+      SliverToBoxAdapter(
+        child: SizedBox(height: shellBottomBarInset(context)),
       ),
     ];
   }

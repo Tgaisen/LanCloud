@@ -241,6 +241,10 @@ class _TransfersPageState extends State<TransfersPage>
                   onLongPress: _enterSelection,
                 ),
               ),
+              // 底栏盖在正文上方（extendBody）时，补足列表末尾留白
+              SliverToBoxAdapter(
+                child: SizedBox(height: shellBottomBarInset(context)),
+              ),
               ],
             ),
           ),
@@ -412,12 +416,17 @@ class _TransferListSliver extends StatelessWidget {
     if (tasks.isEmpty) {
       return SliverFillRemaining(
         hasScrollBody: false,
-        child: Center(
-          child: EmptyHint(
-            icon: kind == TransferKind.upload
-                ? Icons.upload_file
-                : Icons.download,
-            text: kind == TransferKind.upload ? l10n.noUploads : l10n.noDownloads,
+        child: Padding(
+          // 底栏盖在正文上方时，空状态保持在可见区域居中
+          padding: EdgeInsets.only(bottom: shellBottomBarInset(context)),
+          child: Center(
+            child: EmptyHint(
+              icon: kind == TransferKind.upload
+                  ? Icons.upload_file
+                  : Icons.download,
+              text:
+                  kind == TransferKind.upload ? l10n.noUploads : l10n.noDownloads,
+            ),
           ),
         ),
       );
