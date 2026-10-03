@@ -240,6 +240,8 @@ class LoginPage extends StatelessWidget {
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
+      // 内容自带 SafeArea 让开导航栏，末尾不用再补一段留白
+      bottomSafeInset: false,
       slivers: [
         SliverFillRemaining(
           hasScrollBody: false,

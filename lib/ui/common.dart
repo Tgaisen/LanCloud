@@ -46,24 +46,27 @@ Color topBarBackgroundColor(BuildContext context, ColorScheme scheme) {
       scheme.surface;
 }
 
-/// 外壳底栏的完整高度（内容 + 系统手势区）：外壳正文里的
-/// [MediaQuery.paddingOf] 底部值就是它；push 出来的独立页面没有外壳底栏，
-/// 返回 0。
-///
-/// 注意要在页面自己的上下文里读：Scaffold 会给 FAB 等槽位清掉底部内边距。
-double shellBottomBarHeight(BuildContext context) {
-  if (!(ModalRoute.of(context)?.isFirst ?? true)) return 0;
-  return MediaQuery.paddingOf(context).bottom;
-}
+/// 是否在标签外壳（第一个路由）里；push 出来的独立页面返回 false。
+bool inRootShell(BuildContext context) =>
+    ModalRoute.of(context)?.isFirst ?? true;
 
-/// 标签外壳的底栏盖在正文上方时（外壳 Scaffold 开了 extendBody），
-/// 滚动列表末尾需要补的留白：等于底栏的完整高度，补上它最后一条内容
-/// 才能完全滚到用户眼前，而不是永久压在底栏下面。
+/// 页面底部被占住的高度：外壳里等于底栏的完整高度（内容 + 系统手势区），
+/// 独立页面等于系统导航栏高度。滚动列表末尾留白、FAB 避让都用它。
 ///
-/// 悬浮底栏按设计浮在正文上方、内容从它后面穿过，不补。
+/// 必须在页面自己的上下文里读：Scaffold 会给正文、FAB 等槽位清掉底部内边距。
+double bottomObstructionHeight(BuildContext context) =>
+    MediaQuery.paddingOf(context).bottom;
+
+/// 外壳底栏盖在正文上方时（外壳 Scaffold 开了 extendBody），滚动列表末尾
+/// 需要补的留白＝底栏完整高度，最后一条内容才能完全滚到用户眼前，
+/// 而不是永久压在底栏下面。
+///
+/// 悬浮底栏按设计浮在正文上方、内容从它后面穿过，外壳里不补；
+/// push 出来的独立页面没有外壳底栏，按系统导航栏高度补。
 double shellBottomBarInset(BuildContext context) {
   final app = context.watch<AppController>();
-  return app.settings.floatingNavBar ? 0 : shellBottomBarHeight(context);
+  if (inRootShell(context) && app.settings.floatingNavBar) return 0;
+  return bottomObstructionHeight(context);
 }
 
 String formatBytes(int bytes) {
@@ -381,6 +384,8 @@ class TopBarOverlay extends StatelessWidget {
 ///   1:1 收起；效果与设置里的「顶栏收起」开关联动，关闭时顶栏固定不收起；
 /// - 若内容滚动发生在原生侧（WebView、相机预览等拿不到 ScrollNotification），
 ///   本脚手架暂时接不了，需要用 [TopBarOverlay] 加 `progress` 自行驱动；
+/// - 末尾会自动补一段等于系统导航栏高度的留白（[bottomSafeInset]），
+///   页面内容自己用 SafeArea 让开导航栏时可关掉，避免多出一截滚动范围；
 /// - 本组件用页面自己的收起进度，不会影响标签页共用的外壳进度。
 class TopBarOverlayScaffold extends StatefulWidget {
   const TopBarOverlayScaffold({
@@ -391,6 +396,7 @@ class TopBarOverlayScaffold extends StatefulWidget {
     this.bottomNavigationBar,
     this.backgroundColor,
     this.resizeToAvoidBottomInset,
+    this.bottomSafeInset = true,
   });
 
   /// 顶栏内容：请使用透明底色的 AppBar；高度（含 bottom）由本组件计算。
@@ -403,6 +409,11 @@ class TopBarOverlayScaffold extends StatefulWidget {
   final Widget? bottomNavigationBar;
   final Color? backgroundColor;
   final bool? resizeToAvoidBottomInset;
+
+  /// 是否在 slivers 末尾补一段等于系统导航栏（手势区）高度的留白，
+  /// 让最后一条内容能滚到导航栏上方。默认开；页面自己用 SafeArea
+  /// 让开导航栏时（如登录页）关掉，否则会多出一截可滚动的空白。
+  final bool bottomSafeInset;
 
   @override
   State<TopBarOverlayScaffold> createState() => _TopBarOverlayScaffoldState();
@@ -446,6 +457,8 @@ class _TopBarOverlayScaffoldState extends State<TopBarOverlayScaffold> {
                 slivers: [
                   SliverToBoxAdapter(child: SizedBox(height: topInset)),
                   ...widget.slivers,
+                  if (widget.bottomSafeInset)
+                    const SliverToBoxAdapter(child: _BottomSystemInset()),
                 ],
               ),
               Positioned(
@@ -466,6 +479,19 @@ class _TopBarOverlayScaffoldState extends State<TopBarOverlayScaffold> {
       ),
     );
   }
+}
+
+/// 滚动内容末尾的系统导航栏（手势区）占位。
+///
+/// 只在 Scaffold 的 body 里构建：页面自带 [Scaffold.bottomNavigationBar] 时
+/// 系统已经把它算进布局，Scaffold 会把 body 的底部 padding 清成 0，
+/// 这里就自然不补；没有底栏的页面则按导航栏高度补足。
+class _BottomSystemInset extends StatelessWidget {
+  const _BottomSystemInset();
+
+  @override
+  Widget build(BuildContext context) =>
+      SizedBox(height: MediaQuery.paddingOf(context).bottom);
 }
 
 /// 本地生成二维码弹窗（不经过任何服务器）。

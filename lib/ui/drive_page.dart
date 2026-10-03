@@ -2322,9 +2322,12 @@ class _DrivePageState extends State<DrivePage>
     final grid = app.settings.gridView;
     final selectedCount = _selectedFiles.length + _selectedFolders.length;
     final headerHeight = MediaQuery.paddingOf(context).top + kToolbarHeight + 46;
-    // 外壳底栏的完整高度，用来把 FAB 抬到底栏上面。必须在页面上下文里读：
-    // FAB 槽位的 MediaQuery 已经把底部内边距清掉了。
-    final shellBarHeight = shellBottomBarHeight(context);
+    // 底部被占住的高度（外壳底栏 / 系统导航栏），用来把 FAB 抬到它上面。
+    // 必须在页面上下文里读：FAB 槽位的 MediaQuery 已经把底部内边距清掉了。
+    final bottomObstruction = bottomObstructionHeight(context);
+    // 悬浮胶囊只在外壳里有；独立页面按系统导航栏避让即可。
+    final floatingNavInShell =
+        inRootShell(context) && app.settings.floatingNavBar;
 
     return AnimatedBuilder(
       animation: Listenable.merge([_selAnim, _exitAnim]),
@@ -2448,9 +2451,9 @@ class _DrivePageState extends State<DrivePage>
                   ? 0.0
                   : math.max(
                       0.0,
-                      app.settings.floatingNavBar
-                          ? shellBarHeight - 20.0
-                          : shellBarHeight,
+                      floatingNavInShell
+                          ? bottomObstruction - 20.0
+                          : bottomObstruction,
                     );
               return AnimatedPadding(
                 padding: EdgeInsets.only(bottom: lift),
