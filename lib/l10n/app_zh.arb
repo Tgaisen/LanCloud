@@ -198,7 +198,8 @@
   "loadAllPagesSubtitle": "关闭时按页加载，滑到底部再加载下一页",
   "loadAllPagesKeywords": "分页 加载 目录",
   "requestInterval": "网络请求间隔",
-  "requestIntervalSubtitle": "{ms} ms（默认 300，过小可能触发限流）",
+  "requestIntervalSubtitle": "{ms} ms",
+  "requestIntervalHint": "默认 100 ms；间隔过小可能触发服务端限流，请谨慎调整。",
   "@requestIntervalSubtitle": {
     "placeholders": {
       "ms": {"type": "int"}

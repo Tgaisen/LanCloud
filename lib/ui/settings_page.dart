@@ -1110,6 +1110,15 @@ class _SettingsPageState extends State<SettingsPage>
       builder: (dialogContext) => SimpleDialog(
         title: Text(l10n.requestInterval),
         children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+            child: Text(
+              l10n.requestIntervalHint,
+              style: Theme.of(dialogContext).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(dialogContext).colorScheme.outline,
+                  ),
+            ),
+          ),
           // 不提供「不间隔」：过小间隔容易触发服务端限流
           for (final ms in const [25, 50, 75, 100, 150, 200, 300, 500, 1000])
             ListTile(

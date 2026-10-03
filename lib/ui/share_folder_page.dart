@@ -61,6 +61,14 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
     });
   }
 
+  /// 长按条目进入多选并选中它。
+  void _enterSelection(String url) {
+    setState(() {
+      _selecting = true;
+      _selected.add(url);
+    });
+  }
+
   void _selectAll() {
     setState(() {
       if (_selected.length == widget.folder.files.length) {
@@ -334,15 +342,10 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
             SegmentedList(
               children: [
                 for (final sub in folders)
-                  ListTile(
-                    leading: const Icon(Icons.folder_outlined),
-                    title: Text(
-                      sub.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    subtitle: sub.desc.isEmpty ? null : Text(sub.desc),
-                    trailing: const Icon(Icons.chevron_right),
+                  Md3ListItem(
+                    icon: Icons.folder_outlined,
+                    title: sub.name,
+                    subtitle: sub.desc,
                     onTap: () => _openSubfolder(sub),
                   ),
               ],
@@ -353,28 +356,15 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
             SegmentedList(
               children: [
                 for (final file in files)
-                  ListTile(
-                    leading: _selecting
-                        ? Checkbox(
-                            value: _selected.contains(file.url),
-                            onChanged: (_) => _toggleFile(file.url),
-                          )
-                        : Icon(iconForFile(file.name)),
-                    title: Text(
-                      file.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    subtitle: Text(
-                      [
-                        prettyLzSize(file.size),
-                        if (file.time.isNotEmpty) file.time,
-                      ].where((e) => e.isNotEmpty).join(' · '),
-                    ),
+                  Md3ListItem(
+                    icon: iconForFile(file.name),
+                    title: file.name,
+                    subtitle: [
+                      prettyLzSize(file.size),
+                      if (file.time.isNotEmpty) file.time,
+                    ].where((e) => e.isNotEmpty).join(' · '),
                     selected: _selecting && _selected.contains(file.url),
-                    trailing: _selecting
-                        ? null
-                        : const Icon(Icons.chevron_right),
+                    onLongPress: () => _enterSelection(file.url),
                     onTap: () {
                       if (_selecting) {
                         _toggleFile(file.url);

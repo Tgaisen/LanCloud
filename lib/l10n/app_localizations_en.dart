@@ -486,8 +486,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String requestIntervalSubtitle(int ms) {
-    return '$ms ms (default 300; too small may trigger rate limiting)';
+    return '$ms ms';
   }
+
+  @override
+  String get requestIntervalHint =>
+      'Default 100 ms. A smaller interval may trigger server rate limiting.';
 
   @override
   String get requestIntervalKeywords =>

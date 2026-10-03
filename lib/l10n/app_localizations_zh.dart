@@ -473,8 +473,11 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String requestIntervalSubtitle(int ms) {
-    return '$ms ms（默认 300，过小可能触发限流）';
+    return '$ms ms';
   }
+
+  @override
+  String get requestIntervalHint => '默认 100 ms；间隔过小可能触发服务端限流，请谨慎调整。';
 
   @override
   String get requestIntervalKeywords => '间隔 限流 风控 请求';

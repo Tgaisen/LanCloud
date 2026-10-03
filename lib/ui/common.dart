@@ -909,9 +909,15 @@ class SectionCard extends StatelessWidget {
               duration: const Duration(milliseconds: 240),
               curve: Curves.easeOutCubic,
               alignment: Alignment.topCenter,
-              child: expanded
-                  ? child
-                  : const SizedBox(width: double.infinity, height: 0),
+              // 展开时内容淡入 + 高度过渡，收起时高度收拢
+              child: AnimatedOpacity(
+                opacity: expanded ? 1 : 0,
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOut,
+                child: expanded
+                    ? child
+                    : const SizedBox(width: double.infinity, height: 0),
+              ),
             ),
           ),
         ],

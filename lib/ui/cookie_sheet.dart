@@ -106,19 +106,18 @@ Future<void> showCookieDialog(BuildContext context, Account account) {
         ),
       ),
       actions: [
+        // 消极 / 中立 / 积极：关闭、复制、导出
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(),
           child: Text(l10n.close),
         ),
-        TextButton.icon(
+        FilledButton.tonal(
           onPressed: () => copyText(context, account.cookie),
-          icon: const Icon(Icons.copy, size: 18),
-          label: Text(l10n.copy),
+          child: Text(l10n.copy),
         ),
-        FilledButton.icon(
+        FilledButton(
           onPressed: () => _exportCookie(context, account),
-          icon: const Icon(Icons.share_outlined, size: 18),
-          label: Text(l10n.cookieExport),
+          child: Text(l10n.cookieExport),
         ),
       ],
     ),

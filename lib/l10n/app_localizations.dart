@@ -983,8 +983,14 @@ abstract class AppLocalizations {
   /// No description provided for @requestIntervalSubtitle.
   ///
   /// In zh, this message translates to:
-  /// **'{ms} ms（默认 300，过小可能触发限流）'**
+  /// **'{ms} ms'**
   String requestIntervalSubtitle(int ms);
+
+  /// No description provided for @requestIntervalHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'默认 100 ms；间隔过小可能触发服务端限流，请谨慎调整。'**
+  String get requestIntervalHint;
 
   /// No description provided for @requestIntervalKeywords.
   ///
