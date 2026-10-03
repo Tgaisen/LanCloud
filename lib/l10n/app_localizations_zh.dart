@@ -80,7 +80,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get transferCenter => '传输中心';
+  String get transferCenter => '传输';
 
   @override
   String get quickAccess => '快速访问';
@@ -1163,7 +1163,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get showCookieKeywords => 'cookie 显示 隐私 凭据 key';
 
   @override
-  String get scan => '扫码';
+  String get scan => '扫描二维码';
 
   @override
   String get scanTorch => '手电筒';
@@ -1232,20 +1232,20 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cookieLogin => 'Cookie 登录';
 
   @override
-  String get permissionCamera => '相机（扫码）';
+  String get permissionCamera => '相机（用于扫描二维码）';
 
   @override
   String get permissionCameraKeywords => 'camera qr scan 相机 扫码 权限';
 
   @override
-  String get permissionInstall => '安装应用（打开 APK）';
+  String get permissionInstall => '安装应用（用于打开 APK）';
 
   @override
   String get permissionInstallKeywords =>
       'install apk unknown sources 安装 未知来源 权限';
 
   @override
-  String get permissionBattery => '电池优化';
+  String get permissionBattery => '电池优化（用于后台传输）';
 
   @override
   String get permissionBatteryKeywords =>

@@ -221,7 +221,7 @@ abstract class AppLocalizations {
   /// No description provided for @transferCenter.
   ///
   /// In zh, this message translates to:
-  /// **'传输中心'**
+  /// **'传输'**
   String get transferCenter;
 
   /// No description provided for @quickAccess.
@@ -2237,7 +2237,7 @@ abstract class AppLocalizations {
   /// No description provided for @scan.
   ///
   /// In zh, this message translates to:
-  /// **'扫码'**
+  /// **'扫描二维码'**
   String get scan;
 
   /// No description provided for @scanTorch.
@@ -2375,7 +2375,7 @@ abstract class AppLocalizations {
   /// No description provided for @permissionCamera.
   ///
   /// In zh, this message translates to:
-  /// **'相机（扫码）'**
+  /// **'相机（用于扫描二维码）'**
   String get permissionCamera;
 
   /// No description provided for @permissionCameraKeywords.
@@ -2387,7 +2387,7 @@ abstract class AppLocalizations {
   /// No description provided for @permissionInstall.
   ///
   /// In zh, this message translates to:
-  /// **'安装应用（打开 APK）'**
+  /// **'安装应用（用于打开 APK）'**
   String get permissionInstall;
 
   /// No description provided for @permissionInstallKeywords.
@@ -2399,7 +2399,7 @@ abstract class AppLocalizations {
   /// No description provided for @permissionBattery.
   ///
   /// In zh, this message translates to:
-  /// **'电池优化'**
+  /// **'电池优化（用于后台传输）'**
   String get permissionBattery;
 
   /// No description provided for @permissionBatteryKeywords.

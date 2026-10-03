@@ -3,8 +3,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/app_permissions.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
+import 'package:lancloud/l10n/app_localizations_zh.dart';
 import 'package:lancloud/ui/settings_page.dart';
 import 'package:provider/provider.dart';
+
+/// 文案以中文本地化为准，避免改文案就要改测试。
+final _zh = AppLocalizationsZh();
 
 class _FakePermissions extends AppPermissions {
   PermissionSnapshot snapshot = const PermissionSnapshot(
@@ -96,62 +100,62 @@ void main() {
 
   testWidgets('权限分组显示相机/安装应用/电池优化三项状态', (tester) async {
     await pumpSettings(tester);
-    await scrollToSetting(tester, '相机（扫码）');
+    await scrollToSetting(tester, _zh.permissionCamera);
 
-    expect(find.text('权限'), findsOneWidget);
-    expect(find.text('相机（扫码）'), findsOneWidget);
-    expect(find.text('安装应用（打开 APK）'), findsOneWidget);
-    expect(find.text('电池优化'), findsOneWidget);
-    expect(find.text('未授权，点击授权'), findsOneWidget);
-    expect(find.text('未允许，打开 APK 安装包前需授权'), findsOneWidget);
-    expect(find.text('受电池优化限制，后台传输可能被中断'), findsOneWidget);
+    expect(find.text(_zh.categoryPermissions), findsOneWidget);
+    expect(find.text(_zh.permissionCamera), findsOneWidget);
+    expect(find.text(_zh.permissionInstall), findsOneWidget);
+    expect(find.text(_zh.permissionBattery), findsOneWidget);
+    expect(find.text(_zh.permissionDenied), findsOneWidget);
+    expect(find.text(_zh.permissionInstallDenied), findsOneWidget);
+    expect(find.text(_zh.permissionBatteryRestricted), findsOneWidget);
   });
 
   testWidgets('点击相机发起请求，授权后状态刷新', (tester) async {
     await pumpSettings(tester);
-    await scrollToSetting(tester, '相机（扫码）');
+    await scrollToSetting(tester, _zh.permissionCamera);
 
-    await tester.tap(find.text('相机（扫码）'));
+    await tester.tap(find.text(_zh.permissionCamera));
     await tester.pumpAndSettle();
 
     expect(_fake.cameraRequests, 1);
-    expect(tileStatus('相机（扫码）', '已授权'), findsOneWidget);
+    expect(tileStatus(_zh.permissionCamera, _zh.permissionGranted), findsOneWidget);
   });
 
   testWidgets('相机被系统拒绝时引导去系统设置', (tester) async {
     _fake.cameraResult = PermissionState.blocked;
 
     await pumpSettings(tester);
-    await scrollToSetting(tester, '相机（扫码）');
-    await tester.tap(find.text('相机（扫码）'));
+    await scrollToSetting(tester, _zh.permissionCamera);
+    await tester.tap(find.text(_zh.permissionCamera));
     await tester.pumpAndSettle();
 
-    expect(find.text('需要到系统设置开启'), findsOneWidget);
-    await tester.tap(find.text('打开系统设置'));
+    expect(find.text(_zh.permissionBlockedTitle), findsOneWidget);
+    await tester.tap(find.text(_zh.permissionOpenSystemSettings));
     await tester.pumpAndSettle();
     expect(_fake.appSettingsOpens, 1);
   });
 
   testWidgets('安装应用与电池优化分别走各自通道', (tester) async {
     await pumpSettings(tester);
-    await scrollToSetting(tester, '安装应用（打开 APK）');
+    await scrollToSetting(tester, _zh.permissionInstall);
 
-    await tester.tap(find.text('安装应用（打开 APK）'));
+    await tester.tap(find.text(_zh.permissionInstall));
     await tester.pumpAndSettle();
     expect(_fake.installOpens, 1);
 
-    await scrollToSetting(tester, '电池优化');
-    await tester.tap(find.text('电池优化'));
+    await scrollToSetting(tester, _zh.permissionBattery);
+    await tester.tap(find.text(_zh.permissionBattery));
     await tester.pumpAndSettle();
     expect(_fake.batteryRequests, 1);
   });
 
   testWidgets('设置底部新增隐私分组，包含显示 Cookie', (tester) async {
     await pumpSettings(tester);
-    await scrollToSetting(tester, '显示 Cookie');
+    await scrollToSetting(tester, _zh.showCookie);
 
-    expect(find.text('隐私'), findsOneWidget);
-    expect(find.text('显示 Cookie'), findsOneWidget);
-    expect(find.text('需通过生物识别 / 锁屏验证'), findsOneWidget);
+    expect(find.text(_zh.categoryPrivacy), findsOneWidget);
+    expect(find.text(_zh.showCookie), findsOneWidget);
+    expect(find.text(_zh.showCookieSubtitle), findsOneWidget);
   });
 }

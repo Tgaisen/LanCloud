@@ -346,6 +346,12 @@ class _HomePageState extends State<HomePage>
                       ),
                       const SizedBox(width: 20),
                       ExpressiveIconButton(
+                        icon: Icons.qr_code,
+                        label: l10n.scan,
+                        onPressed: _scanQr,
+                      ),
+                      const SizedBox(width: 20),
+                      ExpressiveIconButton(
                         icon: Icons.cloud_upload_outlined,
                         label: l10n.transferCenter,
                         badge: running > 0 ? '$running' : null,
@@ -353,9 +359,9 @@ class _HomePageState extends State<HomePage>
                       ),
                       const SizedBox(width: 20),
                       ExpressiveIconButton(
-                        icon: Icons.qr_code,
-                        label: l10n.scan,
-                        onPressed: _scanQr,
+                        icon: Icons.star_border,
+                        label: l10n.favorite,
+                        onPressed: () => app.switchTab(3),
                       ),
                     ],
                   ),
