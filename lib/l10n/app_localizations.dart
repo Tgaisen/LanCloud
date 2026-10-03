@@ -731,7 +731,7 @@ abstract class AppLocalizations {
   /// No description provided for @oled.
   ///
   /// In zh, this message translates to:
-  /// **'OLED 纯黑'**
+  /// **'纯黑主题'**
   String get oled;
 
   /// No description provided for @oledSubtitle.
@@ -2222,6 +2222,24 @@ abstract class AppLocalizations {
   /// **'扫码'**
   String get scan;
 
+  /// No description provided for @deleteFilesToo.
+  ///
+  /// In zh, this message translates to:
+  /// **'同时删除文件'**
+  String get deleteFilesToo;
+
+  /// No description provided for @login.
+  ///
+  /// In zh, this message translates to:
+  /// **'登录'**
+  String get login;
+
+  /// No description provided for @cookieLogin.
+  ///
+  /// In zh, this message translates to:
+  /// **'Cookie 登录'**
+  String get cookieLogin;
+
   /// No description provided for @permissionCamera.
   ///
   /// In zh, this message translates to:
@@ -2597,7 +2615,7 @@ abstract class AppLocalizations {
   /// No description provided for @firstRunMessage.
   ///
   /// In zh, this message translates to:
-  /// **'使用前请阅读并同意《用户协议》与《隐私政策》。应用不收集个人信息，账号与数据只保存在本机。'**
+  /// **'使用前请先阅读并同意《用户协议》与《隐私政策》。'**
   String get firstRunMessage;
 
   /// No description provided for @agreeAndContinue.

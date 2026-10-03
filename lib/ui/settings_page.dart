@@ -121,13 +121,12 @@ class _SettingsPageState extends State<SettingsPage>
       _Entry(
         id: 'oled',
         title: l10n.oled,
-        subtitle: l10n.oledSubtitle,
+        subtitle: '',
         keywords: l10n.oledKeywords.split(' '),
         category: 'appearance',
         build: (context, app) => SwitchListTile(
           secondary: const Icon(Icons.contrast),
           title: Text(context.l10n.oled),
-          subtitle: Text(context.l10n.oledSubtitle),
           value: app.settings.oledBlack,
           onChanged: (value) => app.setOledBlack(value),
         ),

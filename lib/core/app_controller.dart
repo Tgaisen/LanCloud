@@ -339,7 +339,10 @@ class AppController extends ChangeNotifier {
     if (custom != null && custom.isNotEmpty) {
       dir = Directory(custom);
     } else {
-      final base = await getApplicationDocumentsDirectory();
+      // 默认放在应用专属外部目录：Android/data/<包名>/files/LanCloud
+      // （文件管理器可见；拿不到时退回应用私有文档目录）
+      final base = await getExternalStorageDirectory() ??
+          await getApplicationDocumentsDirectory();
       dir = Directory(p.join(base.path, 'LanCloud'));
     }
     if (!await dir.exists()) await dir.create(recursive: true);

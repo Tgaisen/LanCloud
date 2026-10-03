@@ -16,7 +16,18 @@ class FirstRunTerms extends StatelessWidget {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    return Scaffold(
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      // 状态栏透明，和页面背景保持一致
+      value: SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: theme.brightness == Brightness.dark
+            ? Brightness.light
+            : Brightness.dark,
+        statusBarBrightness: theme.brightness == Brightness.dark
+            ? Brightness.dark
+            : Brightness.light,
+      ),
+      child: Scaffold(
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
@@ -53,10 +64,29 @@ class FirstRunTerms extends StatelessWidget {
                 children: [
                   TextButton(
                     onPressed: () => _openLegal(context, LegalDoc.terms),
+                    style: TextButton.styleFrom(
+                      backgroundColor: scheme.surfaceContainerLow,
+                      foregroundColor: scheme.onSurfaceVariant,
+                      shape: const StadiumBorder(),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                    ),
                     child: Text(l10n.aboutTerms),
                   ),
+                  const SizedBox(width: 12),
                   TextButton(
                     onPressed: () => _openLegal(context, LegalDoc.privacy),
+                    style: TextButton.styleFrom(
+                      backgroundColor: scheme.surfaceContainerLow,
+                      foregroundColor: scheme.onSurfaceVariant,
+                      shape: const StadiumBorder(),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                    ),
                     child: Text(l10n.aboutPrivacy),
                   ),
                 ],
@@ -77,6 +107,7 @@ class FirstRunTerms extends StatelessWidget {
             ],
           ),
         ),
+      ),
       ),
     );
   }

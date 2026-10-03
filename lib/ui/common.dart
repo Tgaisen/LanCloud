@@ -825,9 +825,8 @@ class BatchActionBar extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
         child: Material(
-          // 浮在列表卡片之上：用最浅的容器色 + 轻微投影区分开
-          elevation: 3,
-          shadowColor: scheme.shadow.withValues(alpha: 0.28),
+          // 与列表卡片区分：用最浅的容器色，不加阴影
+          elevation: 0,
           color: scheme.surfaceContainerLowest,
           borderRadius: BorderRadius.circular(16),
           clipBehavior: Clip.antiAlias,

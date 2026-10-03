@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart' hide Icons;
 import 'package:open_filex/open_filex.dart';
 import 'package:provider/provider.dart';
@@ -126,29 +128,60 @@ class _TransfersPageState extends State<TransfersPage>
     if (_selected.isEmpty) return;
     final l10n = context.l10n;
     final count = _selected.length;
+    var deleteFiles = false;
     final ok = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(l10n.transferDeleteConfirmTitle),
-        content: Text(l10n.transferDeleteConfirmMessage(count)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(l10n.cancel),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: Text(l10n.transferDeleteConfirmTitle),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(l10n.transferDeleteConfirmMessage(count)),
+              const SizedBox(height: 8),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                value: deleteFiles,
+                onChanged: (value) =>
+                    setDialogState(() => deleteFiles = value ?? false),
+                title: Text(l10n.deleteFilesToo),
+              ),
+            ],
           ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(l10n.delete),
-          ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(l10n.cancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(l10n.delete),
+            ),
+          ],
+        ),
       ),
     );
     if (ok != true || !mounted) return;
     final manager = context.read<TransferManager>();
+    final tasks =
+        manager.tasks.where((t) => _selected.contains(t.id)).toList();
     final ids = _selected.toList();
     _exitSelection();
     for (final id in ids) {
       manager.removeTask(id);
+    }
+    // 下载到本地的文件由本应用写入，删除属于正常操作（不需要额外权限）
+    if (deleteFiles) {
+      for (final task in tasks) {
+        final path = task.savedPath;
+        if (path == null || path.isEmpty) continue;
+        try {
+          final file = File(path);
+          if (await file.exists()) await file.delete();
+        } catch (_) {}
+      }
     }
   }
 

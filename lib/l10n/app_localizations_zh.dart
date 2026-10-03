@@ -346,7 +346,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get themeModeKeywords => '主题 夜间 深色 浅色';
 
   @override
-  String get oled => 'OLED 纯黑';
+  String get oled => '纯黑主题';
 
   @override
   String get oledSubtitle => '深色模式下用纯黑背景，更省电';
@@ -1154,6 +1154,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get scan => '扫码';
 
   @override
+  String get deleteFilesToo => '同时删除文件';
+
+  @override
+  String get login => '登录';
+
+  @override
+  String get cookieLogin => 'Cookie 登录';
+
+  @override
   String get permissionCamera => '相机（扫码）';
 
   @override
@@ -1353,7 +1362,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get firstRunWelcome => '欢迎使用蓝云';
 
   @override
-  String get firstRunMessage => '使用前请阅读并同意《用户协议》与《隐私政策》。应用不收集个人信息，账号与数据只保存在本机。';
+  String get firstRunMessage => '使用前请先阅读并同意《用户协议》与《隐私政策》。';
 
   @override
   String get agreeAndContinue => '同意并继续';

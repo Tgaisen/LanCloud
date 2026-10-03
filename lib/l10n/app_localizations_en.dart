@@ -353,7 +353,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get themeModeKeywords => 'theme night dark light';
 
   @override
-  String get oled => 'OLED black';
+  String get oled => 'Pure black theme';
 
   @override
   String get oledSubtitle =>
@@ -1187,6 +1187,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get scan => 'Scan';
 
   @override
+  String get deleteFilesToo => 'Also delete the downloaded files';
+
+  @override
+  String get login => 'Sign in';
+
+  @override
+  String get cookieLogin => 'Cookie login';
+
+  @override
   String get permissionCamera => 'Camera (QR scan)';
 
   @override
@@ -1394,7 +1403,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get firstRunMessage =>
-      'Please read and accept the Terms of Service and Privacy Policy first. The app collects no personal data; accounts and data stay on this device.';
+      'Please read and accept the Terms of Service and Privacy Policy before continuing.';
 
   @override
   String get agreeAndContinue => 'Agree and continue';
