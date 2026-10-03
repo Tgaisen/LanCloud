@@ -833,7 +833,7 @@ abstract class AppLocalizations {
   /// No description provided for @floatingNav.
   ///
   /// In zh, this message translates to:
-  /// **'MD3 悬浮底栏'**
+  /// **'悬浮底栏'**
   String get floatingNav;
 
   /// No description provided for @floatingNavSubtitle.
@@ -1219,6 +1219,24 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'保存'**
   String get save;
+
+  /// No description provided for @reset.
+  ///
+  /// In zh, this message translates to:
+  /// **'重置'**
+  String get reset;
+
+  /// No description provided for @includeWebdavAccount.
+  ///
+  /// In zh, this message translates to:
+  /// **'备份包含 WebDAV 账号'**
+  String get includeWebdavAccount;
+
+  /// No description provided for @includeWebdavAccountSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'危险！启用后，备份文件包含 WebDAV 地址与密码，请注意信息安全'**
+  String get includeWebdavAccountSubtitle;
 
   /// No description provided for @uploadDomainHint.
   ///

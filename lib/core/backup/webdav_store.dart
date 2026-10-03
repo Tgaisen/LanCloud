@@ -8,6 +8,7 @@ class WebdavStore {
   static const _keyAuto = 'webdav_auto';
   static const _keyInterval = 'webdav_interval';
   static const _keyIncludeCookies = 'webdav_include_cookies';
+  static const _keyIncludeAccount = 'webdav_include_account';
   static const _keyLastAt = 'webdav_last_backup_at';
   static const _keyLastError = 'webdav_last_backup_error';
   static const _securePassword = 'lancloud_webdav_password';
@@ -21,6 +22,8 @@ class WebdavStore {
   /// daily | weekly
   String interval = 'daily';
   bool includeCookies = false;
+  /// 备份时是否包含 WebDAV 地址 / 用户名 / 密码（默认关闭）。
+  bool includeAccount = false;
   int lastBackupAt = 0;
   String lastBackupError = '';
 
@@ -33,6 +36,7 @@ class WebdavStore {
     autoBackup = prefs.getBool(_keyAuto) ?? false;
     interval = prefs.getString(_keyInterval) ?? 'daily';
     includeCookies = prefs.getBool(_keyIncludeCookies) ?? false;
+    includeAccount = prefs.getBool(_keyIncludeAccount) ?? false;
     lastBackupAt = prefs.getInt(_keyLastAt) ?? 0;
     lastBackupError = prefs.getString(_keyLastError) ?? '';
     password = await readPassword();
@@ -91,6 +95,12 @@ class WebdavStore {
     includeCookies = value;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyIncludeCookies, value);
+  }
+
+  Future<void> setIncludeAccount(bool value) async {
+    includeAccount = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyIncludeAccount, value);
   }
 
   /// 记录一次备份结果（[error] 为空表示成功）。

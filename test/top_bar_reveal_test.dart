@@ -56,7 +56,10 @@ class ProbePageState extends State<ProbePage> {
             top: 0,
             child: TopBarOverlay(
               height: headerHeight,
-              child: AppBar(title: const Text('BAR')),
+              builder: (context, opacity) => AppBar(
+                title: const Text('BAR'),
+                toolbarOpacity: opacity,
+              ),
             ),
           ),
         ],

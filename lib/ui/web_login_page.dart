@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart' hide Icons;
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:provider/provider.dart';
@@ -5,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../core/api/lanzou_client.dart';
 import '../core/app_controller.dart';
 import 'app_icons.dart';
+import 'common.dart';
 import '../l10n/l10n.dart';
 
 /// 用内嵌浏览器完成登录，登录成功后读取系统 Cookie 并保存账号。
@@ -30,6 +33,9 @@ class _WebLoginPageState extends State<WebLoginPage> {
       _checking = true;
       _error = null;
     });
+    // 检测登录时显示与「解析中」同款的进度弹窗
+    unawaited(showLoadingDialog(context, context.l10n.checking));
+    var success = false;
     try {
       final cookies = await CookieManager.instance().getCookies(
         url: WebUri(_loginUrl),
@@ -55,7 +61,7 @@ class _WebLoginPageState extends State<WebLoginPage> {
         _done = true;
         _checking = false;
       });
-      Navigator.of(context).pop(true);
+      success = true;
     } on CookieFormatException {
       setState(() {
         _checking = false;
@@ -76,7 +82,11 @@ class _WebLoginPageState extends State<WebLoginPage> {
         _checking = false;
         _error = '$e';
       });
+    } finally {
+      // 先关掉进度弹窗，再决定是否关闭本页
+      if (mounted) Navigator.of(context, rootNavigator: true).pop();
     }
+    if (success && mounted) Navigator.of(context).pop(true);
   }
 
   @override

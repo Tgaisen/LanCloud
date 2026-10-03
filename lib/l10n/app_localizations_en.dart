@@ -405,7 +405,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hideBottomBarKeywords => 'bottom bar hide on scroll collapse';
 
   @override
-  String get floatingNav => 'Floating MD3 bottom bar';
+  String get floatingNav => 'Floating nav bar';
 
   @override
   String get floatingNavSubtitle =>
@@ -615,6 +615,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get save => 'Save';
+
+  @override
+  String get reset => 'Reset';
+
+  @override
+  String get includeWebdavAccount => 'Include WebDAV account';
+
+  @override
+  String get includeWebdavAccountSubtitle =>
+      'Danger! Once enabled, the backup contains your WebDAV address and password — keep it safe';
 
   @override
   String get uploadDomainHint =>

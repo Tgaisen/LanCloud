@@ -214,12 +214,15 @@ class TopBarOverlay extends StatelessWidget {
   const TopBarOverlay({
     super.key,
     required this.height,
-    required this.child,
+    required this.builder,
   });
 
   /// 顶栏完整高度（状态栏 + 工具栏 + bottom），用于计算滑出距离。
   final double height;
-  final Widget child;
+
+  /// 构建顶栏；[opacity] 随收起进度变化（0 = 完全收起），
+  /// 传给 AppBar 的 toolbarOpacity / bottomOpacity 让顶栏元素渐隐。
+  final Widget Function(BuildContext context, double opacity) builder;
 
   @override
   Widget build(BuildContext context) {
@@ -227,15 +230,17 @@ class TopBarOverlay extends StatelessWidget {
     return ValueListenableBuilder<double>(
       // 顶栏用独立的收起进度（距离 = 顶栏自身高度，才能 1:1 跟手）
       valueListenable: app.topBarHide,
-      child: child,
-      builder: (context, hide, child) {
+      builder: (context, hide, _) {
         // 只有开启「顶栏收起」时才跟随收起进度
         final t = app.settings.hideTopBar ? hide.clamp(0.0, 1.0) : 0.0;
+        // 前 1/3 行程保持不透明，之后随滑动渐隐
+        final opacity =
+            (1 - (t - 0.3).clamp(0.0, 1.0) / 0.7).clamp(0.0, 1.0);
         return IgnorePointer(
           ignoring: t >= 0.999,
           child: Transform.translate(
             offset: Offset(0, -height * t),
-            child: child,
+            child: builder(context, opacity),
           ),
         );
       },
@@ -1546,7 +1551,6 @@ class _BatchProgressDialog extends StatelessWidget {
 
 Future<void> showLoadingDialog(BuildContext context, String text) {
   final theme = Theme.of(context);
-  final scheme = theme.colorScheme;
   return showDialog<void>(
     context: context,
     barrierDismissible: false,
@@ -1557,22 +1561,12 @@ Future<void> showLoadingDialog(BuildContext context, String text) {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: scheme.primaryContainer,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: CircularProgressIndicator(
-                  strokeWidth: 3,
-                  color: scheme.onPrimaryContainer,
-                ),
-              ),
+            const SizedBox(
+              width: 28,
+              height: 28,
+              child: CircularProgressIndicator(strokeWidth: 3),
             ),
-            const SizedBox(width: 18),
+            const SizedBox(width: 20),
             Flexible(child: Text(text, style: theme.textTheme.bodyLarge)),
           ],
         ),

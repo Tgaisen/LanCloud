@@ -386,7 +386,8 @@ class _FavoritesPageState extends State<FavoritesPage>
             top: 0,
             child: TopBarOverlay(
               height: headerHeight,
-              child: AppBar(
+              builder: (context, opacity) => AppBar(
+                toolbarOpacity: opacity,
                 backgroundColor: Color.lerp(
                   scheme.surface,
                   scheme.surfaceContainer,

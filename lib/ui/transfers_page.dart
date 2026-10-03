@@ -249,9 +249,11 @@ class _TransfersPageState extends State<TransfersPage>
             child: TopBarOverlay(
               height: headerHeight,
               // 显式高度：带 bottom 的 AppBar 需要有限高度约束
-              child: SizedBox(
+              builder: (context, opacity) => SizedBox(
                 height: headerHeight,
                 child: AppBar(
+                toolbarOpacity: opacity,
+                bottomOpacity: opacity,
                 backgroundColor: Color.lerp(
                   scheme.surface,
                   scheme.surfaceContainer,

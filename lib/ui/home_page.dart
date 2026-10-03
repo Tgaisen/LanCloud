@@ -397,7 +397,8 @@ class _HomePageState extends State<HomePage>
             top: 0,
             child: TopBarOverlay(
               height: headerHeight,
-              child: AppBar(
+              builder: (context, opacity) => AppBar(
+                toolbarOpacity: opacity,
                 backgroundColor: Color.lerp(
                   Theme.of(context).colorScheme.surface,
                   Theme.of(context).colorScheme.surfaceContainer,

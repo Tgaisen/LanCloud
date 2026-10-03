@@ -397,7 +397,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get hideBottomBarKeywords => '底栏 滑动隐藏 收起';
 
   @override
-  String get floatingNav => 'MD3 悬浮底栏';
+  String get floatingNav => '悬浮底栏';
 
   @override
   String get floatingNavSubtitle => '带圆角和阴影，浮在内容之上';
@@ -596,6 +596,16 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get save => '保存';
+
+  @override
+  String get reset => '重置';
+
+  @override
+  String get includeWebdavAccount => '备份包含 WebDAV 账号';
+
+  @override
+  String get includeWebdavAccountSubtitle =>
+      '危险！启用后，备份文件包含 WebDAV 地址与密码，请注意信息安全';
 
   @override
   String get uploadDomainHint => '留空使用默认 up.woozooo.com，可带 https://';

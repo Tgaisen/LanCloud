@@ -179,13 +179,12 @@ class _SettingsPageState extends State<SettingsPage>
       _Entry(
         id: 'floating_nav',
         title: l10n.floatingNav,
-        subtitle: l10n.floatingNavSubtitle,
+        subtitle: '',
         keywords: l10n.floatingNavKeywords.split(' '),
         category: 'appearance',
         build: (context, app) => SwitchListTile(
           secondary: const Icon(Icons.smart_button),
           title: Text(context.l10n.floatingNav),
-          subtitle: Text(context.l10n.floatingNavSubtitle),
           value: app.settings.floatingNavBar,
           onChanged: (value) => app.setFloatingNavBar(value),
         ),

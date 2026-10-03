@@ -80,6 +80,30 @@ class _BackupPageState extends State<BackupPage> {
     }
   }
 
+  /// 备份包含 WebDAV 账号（含密码）同样先做身份验证。
+  Future<void> _setIncludeWebdavAccount(bool value) async {
+    final store = _service.webdav;
+    final l10n = context.l10n;
+    if (!value) {
+      await store.setIncludeAccount(false);
+      if (mounted) setState(() {});
+      return;
+    }
+    final result = await CookieAuth.instance.verify(l10n.cookieAuthReason);
+    if (!mounted) return;
+    switch (result) {
+      case CookieAuthResult.ok:
+        await store.setIncludeAccount(true);
+        if (mounted) setState(() {});
+      case CookieAuthResult.canceled:
+        break;
+      case CookieAuthResult.unavailable:
+        _snack(l10n.cookieAuthUnavailable);
+      case CookieAuthResult.failed:
+        _snack(l10n.cookieAuthFailed);
+    }
+  }
+
   Future<void> _backupToFile() => _run(() async {
         final l10n = context.l10n;
         final file = await _service.saveLocal(
@@ -150,61 +174,86 @@ class _BackupPageState extends State<BackupPage> {
   Future<void> _editServer() async {
     final l10n = context.l10n;
     final store = _service.webdav;
-    final url = await _promptText(
-      title: l10n.webdavServer,
-      hint: l10n.webdavServerHint,
-      value: store.url,
-    );
-    if (url == null) return;
-    final user = await _promptText(
-      title: l10n.webdavUsername,
-      value: store.username,
-    );
-    if (user == null) return;
-    final password = await _promptText(
-      title: l10n.webdavPassword,
-      value: store.password,
-      obscure: true,
-    );
-    if (password == null) return;
-    await _run(() async {
-      await store.saveServer(url: url, username: user, password: password);
-      if (mounted) setState(() {});
-    });
-  }
-
-  Future<String?> _promptText({
-    required String title,
-    String hint = '',
-    String value = '',
-    bool obscure = false,
-  }) async {
-    final controller = TextEditingController(text: value);
-    final result = await showDialog<String>(
+    final urlController = TextEditingController(text: store.url);
+    final userController = TextEditingController(text: store.username);
+    final pwdController = TextEditingController(text: store.password);
+    final result = await showDialog<List<String>>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(title),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          obscureText: obscure,
-          decoration: InputDecoration(hintText: hint),
-          onSubmitted: (text) => Navigator.of(dialogContext).pop(text),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(28),
+          ),
+          title: Text(l10n.webdavSection),
+          content: SizedBox(
+            width: 420,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: urlController,
+                    keyboardType: TextInputType.url,
+                    decoration: InputDecoration(
+                      labelText: l10n.webdavServer,
+                      hintText: l10n.webdavServerHint,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: userController,
+                    decoration:
+                        InputDecoration(labelText: l10n.webdavUsername),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: pwdController,
+                    obscureText: true,
+                    decoration:
+                        InputDecoration(labelText: l10n.webdavPassword),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(l10n.cancel),
+            ),
+            // 中立：清空三项，保存后即恢复到未配置状态
+            TextButton(
+              onPressed: () => setDialogState(() {
+                urlController.clear();
+                userController.clear();
+                pwdController.clear();
+              }),
+              child: Text(l10n.reset),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop([
+                urlController.text,
+                userController.text,
+                pwdController.text,
+              ]),
+              child: Text(l10n.save),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text(context.l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(controller.text),
-            child: Text(context.l10n.confirm),
-          ),
-        ],
       ),
     );
-    controller.dispose();
-    return result;
+    urlController.dispose();
+    userController.dispose();
+    pwdController.dispose();
+    if (result == null) return;
+    await _run(() async {
+      await store.saveServer(
+        url: result[0],
+        username: result[1],
+        password: result[2],
+      );
+      if (mounted) setState(() {});
+    });
   }
 
   Future<void> _testConnection() => _run(() async {
@@ -306,7 +355,8 @@ class _BackupPageState extends State<BackupPage> {
                           onTap: _backupToFile,
                         ),
                         ListTile(
-                          leading: const Icon(Icons.restore_from_trash_outlined),
+                          leading:
+                              const Icon(Icons.settings_backup_restore),
                           title: Text(l10n.restoreFromFile),
                           subtitle: Text(l10n.restoreFromFileSubtitle),
                           onTap: _restoreFromFile,
@@ -317,6 +367,13 @@ class _BackupPageState extends State<BackupPage> {
                           subtitle: Text(l10n.includeCookiesSubtitle),
                           value: store.includeCookies,
                           onChanged: _setIncludeCookies,
+                        ),
+                        SwitchListTile(
+                          secondary: const Icon(Icons.dns_outlined),
+                          title: Text(l10n.includeWebdavAccount),
+                          subtitle: Text(l10n.includeWebdavAccountSubtitle),
+                          value: store.includeAccount,
+                          onChanged: _setIncludeWebdavAccount,
                         ),
                       ],
                     ),

@@ -2269,6 +2269,10 @@ class _DrivePageState extends State<DrivePage>
       animation: Listenable.merge([_selAnim, _appBarAnim, _exitAnim]),
       builder: (context, _) {
         return Scaffold(
+          floatingActionButtonLocation: _DriveFabLocation(
+            // 悬浮底栏时抬到药丸上方，留出间距
+            lift: app.settings.floatingNavBar ? 88 : 0,
+          ),
           body: Stack(
             children: [
               _buildBody(grid),
@@ -2280,9 +2284,9 @@ class _DrivePageState extends State<DrivePage>
                 child: TopBarOverlay(
                   height: headerHeight,
                   // 显式高度：带 bottom（路径栏）的 AppBar 需要有限高度约束
-                  child: SizedBox(
+                  builder: (context, opacity) => SizedBox(
                     height: headerHeight,
-                    child: _topBar(context),
+                    child: _topBar(context, opacity),
                   ),
                 ),
               ),
@@ -2365,9 +2369,7 @@ class _DrivePageState extends State<DrivePage>
               ? hide.clamp(0.0, 1.0)
               : 0.0;
           return Padding(
-            padding: EdgeInsets.only(
-              bottom: app.settings.floatingNavBar ? 76 : 0,
-            ),
+            padding: EdgeInsets.zero,
             child: TweenAnimationBuilder<double>(
               tween: Tween(begin: 0, end: _selecting ? 1.0 : 0.0),
               duration: _anim,
@@ -2401,12 +2403,14 @@ class _DrivePageState extends State<DrivePage>
   }
 
   /// 顶栏（含路径栏）：作为浮层显示，与底栏共用收起进度。
-  Widget _topBar(BuildContext context) {
+  Widget _topBar(BuildContext context, double opacity) {
     // 点顶栏空白处回到列表顶部（子级按钮 / 路径胶囊自行响应，不会误触）
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
       onTap: _scrollToTop,
       child: AppBar(
+      toolbarOpacity: opacity,
+      bottomOpacity: opacity,
       backgroundColor: Color.lerp(
         Theme.of(context).colorScheme.surface,
         Theme.of(context).colorScheme.surfaceContainer,
@@ -3487,6 +3491,29 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
         ],
       ),
     );
+  }
+}
+
+/// 网盘 FAB 位置：不受软键盘影响；开启悬浮底栏时整体抬高，和底栏药丸留出间距。
+class _DriveFabLocation extends FloatingActionButtonLocation {
+  const _DriveFabLocation({required this.lift});
+
+  /// 额外抬高距离（悬浮底栏的留白）。
+  final double lift;
+
+  @override
+  Offset getOffset(ScaffoldPrelayoutGeometry geometry) {
+    const endOffset = 16.0;
+    final fab = geometry.floatingActionButtonSize;
+    final bottom = geometry.scaffoldSize.height -
+        geometry.minInsets.bottom -
+        endOffset -
+        lift;
+    final right = geometry.scaffoldSize.width -
+        geometry.minInsets.right -
+        endOffset -
+        fab.width;
+    return Offset(right, bottom - fab.height);
   }
 }
 

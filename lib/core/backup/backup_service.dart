@@ -46,6 +46,14 @@ class BackupService {
       'settings': app.settings.toJson(),
       'tables': await app.db.exportTables(),
     };
+    // 可选：把 WebDAV 服务器配置（含密码）一起备份
+    if (webdav.includeAccount) {
+      payload['webdav'] = {
+        'url': webdav.url,
+        'username': webdav.username,
+        'password': webdav.password,
+      };
+    }
     return const JsonEncoder.withIndent('  ').convert(payload);
   }
 
@@ -79,6 +87,15 @@ class BackupService {
     final tables = decoded['tables'];
     if (tables is Map) {
       await app.db.importTables(tables.cast<String, dynamic>());
+    }
+    final webdavData = decoded['webdav'];
+    if (webdavData is Map) {
+      await webdav.saveServer(
+        url: '${webdavData['url'] ?? ''}',
+        username: '${webdavData['username'] ?? ''}',
+        password: '${webdavData['password'] ?? ''}',
+      );
+      await webdav.setIncludeAccount(true);
     }
     await app.reloadFromStorage();
   }

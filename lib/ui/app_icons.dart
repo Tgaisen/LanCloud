@@ -89,6 +89,8 @@ class Icons {
   static const IconData search = Symbols.search;
   static const IconData select_all = Symbols.select_all;
   static const IconData settings_outlined = Symbols.settings;
+  static const IconData settings_backup_restore =
+      Symbols.settings_backup_restore;
   static const IconData share_outlined = Symbols.share;
   static const IconData slideshow_outlined = Symbols.slideshow;
   static const IconData smart_button = Symbols.smart_button;
