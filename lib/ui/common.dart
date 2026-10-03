@@ -314,6 +314,54 @@ class TopBarOverlay extends StatelessWidget {
 /// 收藏、我的五个视图完全一致。
 ///
 /// [slivers] 不需要自己留顶栏占位，本组件会在最前面插入等高的 spacer。
+///
+/// 新页面模板（可滚动内容 + 顶栏，复制后按需增删）：
+///
+/// ```dart
+/// class FooPage extends StatelessWidget {
+///   const FooPage({super.key});
+///
+///   @override
+///   Widget build(BuildContext context) {
+///     final l10n = context.l10n;
+///     return TopBarOverlayScaffold(
+///       // 顶栏：必须是透明底，底色由本组件统一绘制（含滚动过渡）
+///       appBar: AppBar(
+///         backgroundColor: Colors.transparent,
+///         scrolledUnderElevation: 0,
+///         leading: IconButton(
+///           icon: const Icon(Icons.arrow_back),
+///           onPressed: () => Navigator.of(context).pop(),
+///         ),
+///         title: Text(l10n.fooTitle),
+///         actions: const [/* IconButton... */],
+///       ),
+///       // 内容：直接给 slivers，顶部不用自己留顶栏占位
+///       slivers: [
+///         SliverPadding(
+///           padding: const EdgeInsets.all(16),
+///           sliver: SliverList(
+///             delegate: SliverChildListDelegate([
+///               // ListTile / SegmentedList / Md3ListItem ...
+///             ]),
+///           ),
+///         ),
+///       ],
+///     );
+///   }
+/// }
+/// ```
+///
+/// 使用要点：
+/// - 页面骨架就是本组件，不要再自己套 Scaffold；顶栏高度（含 AppBar.bottom）
+///   由本组件按 `状态栏 + appBar.preferredSize.height` 自动计算；
+/// - 需要底部操作栏（如多选栏）时传 [bottomNavigationBar]，需要自带滚动控制器
+///   （如回到顶部按钮）时传 [controller]；
+/// - 滚动驱动是自动的：内部 ScrollTint 监听滚动通知，滑动距离 = 顶栏高度时为
+///   1:1 收起；效果与设置里的「顶栏收起」开关联动，关闭时顶栏固定不收起；
+/// - 若内容滚动发生在原生侧（WebView、相机预览等拿不到 ScrollNotification），
+///   本脚手架暂时接不了，需要用 [TopBarOverlay] 加 `progress` 自行驱动；
+/// - 本组件用页面自己的收起进度，不会影响标签页共用的外壳进度。
 class TopBarOverlayScaffold extends StatefulWidget {
   const TopBarOverlayScaffold({
     super.key,
