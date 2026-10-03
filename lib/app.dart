@@ -234,6 +234,8 @@ class _RootShellState extends State<RootShell> {
     // 切换视图（含底栏、侧栏、程序化跳转）时退出多选
     final app = context.read<AppController>();
     if (app.selectionMode) app.onRequestExitSelection?.call();
+    // 切换视图时收起输入法，避免返回该页时键盘又弹出来
+    FocusManager.instance.primaryFocus?.unfocus();
     // 切换视图时把被收起的顶/底栏带动画调出来
     app.animateBarsHide(0);
     setState(() => _index = i);
@@ -439,6 +441,7 @@ class _RootShellState extends State<RootShell> {
           if (_programmaticJump && i != _index) return;
           // 横滑切换视图时同样退出多选
           if (app.selectionMode) app.onRequestExitSelection?.call();
+          FocusManager.instance.primaryFocus?.unfocus();
           // 视图真正切换后：恢复底栏并通知页面把折叠的顶栏调出来
           app.animateBarsHide(0);
           app.activeTab.value = i;

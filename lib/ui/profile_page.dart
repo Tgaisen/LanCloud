@@ -13,6 +13,8 @@ import 'web_page.dart';
 
 /// 打开「我的」底部弹窗（原底栏视图内容整体搬到这里）。
 Future<void> showProfileSheet(BuildContext context) {
+  // 打开前收起输入法：否则关闭弹窗时焦点回到搜索框，键盘又会弹出来
+  FocusManager.instance.primaryFocus?.unfocus();
   return showAppSheet<void>(context, child: const ProfileSheet());
 }
 

@@ -2269,6 +2269,8 @@ class _DrivePageState extends State<DrivePage>
       animation: Listenable.merge([_selAnim, _appBarAnim, _exitAnim]),
       builder: (context, _) {
         return Scaffold(
+          // 键盘弹出时不压缩页面：搜索框在顶栏，FAB 位置也保持不动
+          resizeToAvoidBottomInset: false,
           // 悬浮底栏时抬到药丸上方留出间距；用常量实例，避免 Scaffold
           // 因为位置对象每帧变化而反复播放「移动 FAB」的缩放动画
           floatingActionButtonLocation: app.settings.floatingNavBar
