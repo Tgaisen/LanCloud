@@ -679,7 +679,8 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
     // 用 SafeArea 把这份内边距垫在内容下方；悬浮样式则算进下留白，
     // 让 80dp 高的胶囊浮在系统导航栏上方。两种样式外层都不能把高度写死，
     // 否则这份内边距会从内容里扣，图标和文字被压扁。
-    final bottomInset = MediaQuery.paddingOf(context).bottom;
+    final systemPadding = MediaQuery.paddingOf(context);
+    final bottomInset = systemPadding.bottom;
     final barHeight =
         (app.settings.floatingNavBar ? 108.0 : 80.0) + bottomInset;
     final keyed = KeyedSubtree(
@@ -790,8 +791,11 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
                             Positioned(
                               left: 0,
                               top: _topBarHeightFor(_ids[_index]) * (1 - t),
-                              right: 8,
-                              bottom: 8,
+                              // 卡片四周的 8dp 留白之外，再让开系统导航栏：
+                              // 横屏时它可能在底部（手势导航）或在右侧（三键导航），
+                              // 否则卡片底部/右侧会被系统栏压住
+                              right: 8 + systemPadding.right,
+                              bottom: 8 + systemPadding.bottom,
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(16),
                                 child: ColoredBox(color: bodyColor),
@@ -800,8 +804,8 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
                             Positioned(
                               left: 0,
                               top: 0,
-                              right: 8,
-                              bottom: 8,
+                              right: 8 + systemPadding.right,
+                              bottom: 8 + systemPadding.bottom,
                               child: keyed,
                             ),
                           ],

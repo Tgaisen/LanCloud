@@ -53,9 +53,14 @@ bool inRootShell(BuildContext context) =>
 /// 页面底部被占住的高度：外壳里等于底栏的完整高度（内容 + 系统手势区），
 /// 独立页面等于系统导航栏高度。滚动列表末尾留白、FAB 避让都用它。
 ///
+/// 大屏外壳（横屏 / 平板）里正文卡片已经由外壳让开了系统导航栏，
+/// 页面里不再重复补，返回 0。
+///
 /// 必须在页面自己的上下文里读：Scaffold 会给正文、FAB 等槽位清掉底部内边距。
-double bottomObstructionHeight(BuildContext context) =>
-    MediaQuery.paddingOf(context).bottom;
+double bottomObstructionHeight(BuildContext context) {
+  if (inRootShell(context) && isLargeLayout(context)) return 0;
+  return MediaQuery.paddingOf(context).bottom;
+}
 
 /// 外壳底栏盖在正文上方时（外壳 Scaffold 开了 extendBody），滚动列表末尾
 /// 需要补的留白＝底栏完整高度，最后一条内容才能完全滚到用户眼前，
