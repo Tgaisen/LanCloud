@@ -260,6 +260,12 @@ class _TransfersPageState extends State<TransfersPage>
                   ScrollTint.of(context),
                 ),
                 scrolledUnderElevation: 0,
+                leading: (ModalRoute.of(context)?.isFirst ?? true)
+                    ? null
+                    : IconButton(
+                        icon: const Icon(Icons.arrow_back),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
                 title: Text(l10n.transfers),
                 actions: [
                   IconButton(

@@ -75,6 +75,75 @@ class _SettingsPageState extends State<SettingsPage>
     return l10n.defaultDownloadDir(path ?? '…');
   }
 
+  /// 底栏显示项文案：首页 · 网盘 [· 传输] [· 收藏] · 我的。
+  String _navItemsLabel(BuildContext context, AppController app) {
+    final l10n = context.l10n;
+    return [
+      l10n.tabHome,
+      l10n.tabDrive,
+      if (app.settings.navShowTransfers) l10n.tabTransfers,
+      if (app.settings.navShowFavorites) l10n.favorite,
+      l10n.tabProfile,
+    ].join(' · ');
+  }
+
+  /// 多选对话框：控制「传输」「收藏」是否显示在底栏。
+  Future<void> _pickNavBarItems(BuildContext context) async {
+    final app = context.read<AppController>();
+    final l10n = context.l10n;
+    var transfers = app.settings.navShowTransfers;
+    var favorites = app.settings.navShowFavorites;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: Text(l10n.navBarItems),
+          // 左右不留内边距：选项整行显示，波纹不会被截断
+          contentPadding: const EdgeInsets.only(top: 8, bottom: 4),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CheckboxListTile(
+                secondary: const Icon(Icons.swap_vert),
+                title: Text(l10n.tabTransfers),
+                value: transfers,
+                onChanged: (value) =>
+                    setDialogState(() => transfers = value ?? false),
+              ),
+              CheckboxListTile(
+                secondary: const Icon(Icons.star_border),
+                title: Text(l10n.favorite),
+                value: favorites,
+                onChanged: (value) =>
+                    setDialogState(() => favorites = value ?? false),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+                child: Text(
+                  l10n.navBarItemsHint,
+                  style: Theme.of(dialogContext).textTheme.bodySmall,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(l10n.cancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(l10n.confirm),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (ok != true) return;
+    await app.setNavShowTransfers(transfers);
+    await app.setNavShowFavorites(favorites);
+  }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
@@ -234,6 +303,19 @@ class _SettingsPageState extends State<SettingsPage>
           title: Text(context.l10n.floatingNav),
           value: app.settings.floatingNavBar,
           onChanged: (value) => app.setFloatingNavBar(value),
+        ),
+      ),
+      _Entry(
+        id: 'nav_items',
+        title: l10n.navBarItems,
+        subtitle: _navItemsLabel(context, app),
+        keywords: l10n.navBarItemsKeywords.split(' '),
+        category: 'appearance',
+        build: (context, app) => ListTile(
+          leading: const Icon(Icons.bottom_navigation),
+          title: Text(context.l10n.navBarItems),
+          subtitle: Text(_navItemsLabel(context, app)),
+          onTap: () => _pickNavBarItems(context),
         ),
       ),
       _Entry(

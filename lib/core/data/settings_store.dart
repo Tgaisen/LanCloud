@@ -33,6 +33,8 @@ class SettingsStore {
   static const _keyRecentsExpanded = 'recents_expanded';
   static const _keyRecentLimit = 'recent_limit';
   static const _keyClipboardLink = 'clipboard_link_prompt';
+  static const _keyNavTransfers = 'nav_show_transfers';
+  static const _keyNavFavorites = 'nav_show_favorites';
 
   String? downloadDir;
   String language = 'system';
@@ -75,6 +77,9 @@ class SettingsStore {
   int recentLimit = 50;
   /// 复制到蓝奏云分享链接时提示打开。
   bool clipboardLinkPrompt = true;
+  /// 「传输」「收藏」是否显示在底栏（默认隐藏，仍可从快捷操作栏打开）。
+  bool navShowTransfers = false;
+  bool navShowFavorites = false;
 
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -117,6 +122,20 @@ class SettingsStore {
     recentsExpanded = prefs.getBool(_keyRecentsExpanded) ?? true;
     recentLimit = prefs.getInt(_keyRecentLimit) ?? 50;
     clipboardLinkPrompt = prefs.getBool(_keyClipboardLink) ?? true;
+    navShowTransfers = prefs.getBool(_keyNavTransfers) ?? false;
+    navShowFavorites = prefs.getBool(_keyNavFavorites) ?? false;
+  }
+
+  Future<void> setNavShowTransfers(bool value) async {
+    navShowTransfers = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyNavTransfers, value);
+  }
+
+  Future<void> setNavShowFavorites(bool value) async {
+    navShowFavorites = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyNavFavorites, value);
   }
 
   Future<void> setNotifyProgress(bool value) async {
@@ -345,6 +364,8 @@ class SettingsStore {
         _keyRecentsExpanded: recentsExpanded,
         _keyRecentLimit: recentLimit,
         _keyClipboardLink: clipboardLinkPrompt,
+        _keyNavTransfers: navShowTransfers,
+        _keyNavFavorites: navShowFavorites,
       };
 
   /// 恢复备份里的设置：只接受已知键，空值表示恢复为未设置，最后重新读取一次。

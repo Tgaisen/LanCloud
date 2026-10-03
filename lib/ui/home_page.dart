@@ -10,7 +10,6 @@ import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
 import 'drive_page.dart';
-import 'profile_page.dart';
 import 'scan_page.dart';
 import 'scroll_tint.dart';
 import 'share_file_sheet.dart';
@@ -352,7 +351,7 @@ class _HomePageState extends State<HomePage>
                       ),
                       const SizedBox(width: 20),
                       ExpressiveIconButton(
-                        icon: Icons.cloud_upload_outlined,
+                        icon: Icons.swap_vert,
                         label: l10n.transferCenter,
                         badge: running > 0 ? '$running' : null,
                         onPressed: () => app.switchTab(2),
@@ -462,7 +461,7 @@ class _HomePageState extends State<HomePage>
                 scrolledUnderElevation: 0,
                 title: Text(l10n.appName),
                 actions: [
-                  // MD3 trailing avatar：圆形头像按钮，打开「我的」弹窗
+                  // MD3 trailing avatar：圆形头像按钮，切到「我的」视图
                   Padding(
                     padding: const EdgeInsets.only(left: 4, right: 10),
                     child: Material(
@@ -470,7 +469,7 @@ class _HomePageState extends State<HomePage>
                       shape: const CircleBorder(),
                       clipBehavior: Clip.antiAlias,
                       child: InkWell(
-                        onTap: () => showProfileSheet(context),
+                        onTap: () => app.switchTab(4),
                         child: Tooltip(
                           message: l10n.my,
                           child: SizedBox(

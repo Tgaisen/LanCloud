@@ -19,6 +19,7 @@ class Icons {
   static const IconData article_outlined = Symbols.article;
   static const IconData badge_outlined = Symbols.badge;
   static const IconData battery_alert_outlined = Symbols.battery_alert;
+  static const IconData bottom_navigation = Symbols.bottom_navigation;
   static const IconData cached_outlined = Symbols.cached;
   static const IconData cancel = Symbols.cancel;
   static const IconData check = Symbols.check;

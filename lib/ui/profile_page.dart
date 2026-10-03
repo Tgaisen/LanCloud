@@ -4,23 +4,21 @@ import 'package:provider/provider.dart';
 import '../core/app_controller.dart';
 import '../core/data/account_store.dart';
 import '../l10n/l10n.dart';
-import 'app_icons.dart';
 import 'about_page.dart';
+import 'app_icons.dart';
 import 'common.dart';
 import 'login_page.dart';
+import 'scroll_tint.dart';
 import 'settings_page.dart';
 import 'web_page.dart';
 
-/// 打开「我的」底部弹窗（原底栏视图内容整体搬到这里）。
-Future<void> showProfileSheet(BuildContext context) {
-  // 打开前收起输入法：否则关闭弹窗时焦点回到搜索框，键盘又会弹出来
-  FocusManager.instance.primaryFocus?.unfocus();
-  return showAppSheet<void>(context, child: const ProfileSheet());
-}
+/// 「我的」视图：账号卡片 + 网页版/回收站 + 设置/关于。
+/// 既作为底栏视图，也可作为独立路由打开。
+class ProfilePage extends StatelessWidget {
+  const ProfilePage({super.key, this.tabIndex});
 
-/// 「我的」弹窗内容：账号卡片 + 网页版/回收站 + 设置/关于。
-class ProfileSheet extends StatelessWidget {
-  const ProfileSheet({super.key});
+  /// 外壳中的 page 视图下标；作为独立路由打开时为 null。
+  final int? tabIndex;
 
   void _openWeb(BuildContext context, String url, String title) {
     final app = context.read<AppController>();
@@ -41,76 +39,129 @@ class ProfileSheet extends StatelessWidget {
     final account = app.activeAccount;
     final uid = app.activeUid ?? '';
     final l10n = context.l10n;
+    final scheme = Theme.of(context).colorScheme;
+    final headerHeight = MediaQuery.paddingOf(context).top + kToolbarHeight;
+    final standalone = !(ModalRoute.of(context)?.isFirst ?? true);
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+    return Scaffold(
+      body: Stack(
         children: [
-          SegmentedList(
-            children: [
-              ListTile(
-                leading: CircleAvatar(child: Text(_avatarInitial(account, uid))),
-                title: Text(
-                  account == null
-                      ? l10n.notLoggedIn
-                      : account.nickname.isEmpty
-                          ? l10n.accountUid(uid)
-                          : account.nickname,
+          ScrollTint(
+            hideDistance: headerHeight,
+            readBarsHidden: () => app.topBarHide.value,
+            onBarsHidden:
+                app.settings.hideTopBar ? app.setTopBarHideFromScroll : null,
+            child: CustomScrollView(
+              slivers: [
+                // 顶栏不占布局，这里留出等高占位
+                SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate([
+                      SegmentedList(
+                        children: [
+                          ListTile(
+                            leading: CircleAvatar(
+                              child: Text(_avatarInitial(account, uid)),
+                            ),
+                            title: Text(
+                              account == null
+                                  ? l10n.notLoggedIn
+                                  : account.nickname.isEmpty
+                                      ? l10n.accountUid(uid)
+                                      : account.nickname,
+                            ),
+                            subtitle: Text(l10n.uidLabel(uid)),
+                            trailing: FilledButton.tonal(
+                              onPressed: () => _showAccountSwitcher(context),
+                              child: Text(l10n.manage),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      SegmentedList(
+                        children: [
+                          ListTile(
+                            leading: const Icon(Icons.public),
+                            title: Text(l10n.webManagement),
+                            trailing: const Icon(Icons.open_in_new),
+                            onTap: () => _openWeb(
+                              context,
+                              'https://pc.woozooo.com/mydisk.php',
+                              l10n.webManagement,
+                            ),
+                          ),
+                          ListTile(
+                            leading:
+                                const Icon(Icons.restore_from_trash_outlined),
+                            title: Text(l10n.recycleBin),
+                            trailing: const Icon(Icons.open_in_new),
+                            onTap: () => _openWeb(
+                              context,
+                              'https://pc.woozooo.com/mydisk.php?item=recycle',
+                              l10n.recycleBin,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      SegmentedList(
+                        children: [
+                          ListTile(
+                            leading: const Icon(Icons.settings_outlined),
+                            title: Text(l10n.settings),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const SettingsPage(),
+                              ),
+                            ),
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.info_outline),
+                            title: Text(l10n.about),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const AboutPage(),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 96),
+                    ]),
+                  ),
                 ),
-                subtitle: Text(l10n.uidLabel(uid)),
-                trailing: FilledButton.tonal(
-                  onPressed: () => _showAccountSwitcher(context),
-                  child: Text(l10n.manage),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-          const SizedBox(height: 8),
-          SegmentedList(
-            children: [
-              ListTile(
-                leading: const Icon(Icons.public),
-                title: Text(l10n.webManagement),
-                trailing: const Icon(Icons.open_in_new),
-                onTap: () => _openWeb(
-                  context,
-                  'https://pc.woozooo.com/mydisk.php',
-                  l10n.webManagement,
+          // 顶栏浮层：与底栏共用收起进度
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            child: TopBarOverlay(
+              height: headerHeight,
+              builder: (context, opacity) => AppBar(
+                toolbarOpacity: opacity,
+                backgroundColor: Color.lerp(
+                  scheme.surface,
+                  scheme.surfaceContainer,
+                  ScrollTint.of(context),
                 ),
+                scrolledUnderElevation: 0,
+                leading: standalone
+                    ? IconButton(
+                        icon: const Icon(Icons.arrow_back),
+                        onPressed: () => Navigator.of(context).pop(),
+                      )
+                    : null,
+                title: Text(l10n.tabProfile),
               ),
-              ListTile(
-                leading: const Icon(Icons.restore_from_trash_outlined),
-                title: Text(l10n.recycleBin),
-                trailing: const Icon(Icons.open_in_new),
-                onTap: () => _openWeb(
-                  context,
-                  'https://pc.woozooo.com/mydisk.php?item=recycle',
-                  l10n.recycleBin,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          SegmentedList(
-            children: [
-              ListTile(
-                leading: const Icon(Icons.settings_outlined),
-                title: Text(l10n.settings),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const SettingsPage()),
-                ),
-              ),
-              ListTile(
-                leading: const Icon(Icons.info_outline),
-                title: Text(l10n.about),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const AboutPage()),
-                ),
-              ),
-            ],
+            ),
           ),
         ],
       ),

@@ -836,6 +836,24 @@ abstract class AppLocalizations {
   /// **'底栏 悬浮 md3'**
   String get floatingNavKeywords;
 
+  /// No description provided for @navBarItems.
+  ///
+  /// In zh, this message translates to:
+  /// **'底栏显示项'**
+  String get navBarItems;
+
+  /// No description provided for @navBarItemsHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'未勾选的视图不显示在底栏，仍可从首页快捷操作栏打开'**
+  String get navBarItemsHint;
+
+  /// No description provided for @navBarItemsKeywords.
+  ///
+  /// In zh, this message translates to:
+  /// **'底栏 显示项 传输 收藏 自定义'**
+  String get navBarItemsKeywords;
+
   /// No description provided for @swipeTabs.
   ///
   /// In zh, this message translates to:

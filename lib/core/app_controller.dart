@@ -401,6 +401,17 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 「传输」「收藏」是否显示在底栏。
+  Future<void> setNavShowTransfers(bool value) async {
+    await settings.setNavShowTransfers(value);
+    notifyListeners();
+  }
+
+  Future<void> setNavShowFavorites(bool value) async {
+    await settings.setNavShowFavorites(value);
+    notifyListeners();
+  }
+
   Future<void> setThemeSeed(int value) async {
     await settings.setThemeSeed(value);
     notifyListeners();

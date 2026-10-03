@@ -400,6 +400,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get floatingNavKeywords => '底栏 悬浮 md3';
 
   @override
+  String get navBarItems => '底栏显示项';
+
+  @override
+  String get navBarItemsHint => '未勾选的视图不显示在底栏，仍可从首页快捷操作栏打开';
+
+  @override
+  String get navBarItemsKeywords => '底栏 显示项 传输 收藏 自定义';
+
+  @override
   String get swipeTabs => '横滑切换视图';
 
   @override

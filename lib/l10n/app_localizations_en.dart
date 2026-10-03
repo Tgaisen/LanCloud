@@ -409,6 +409,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get floatingNavKeywords => 'bottom bar floating md3';
 
   @override
+  String get navBarItems => 'Bottom bar items';
+
+  @override
+  String get navBarItemsHint =>
+      'Unchecked views stay hidden from the bottom bar and remain reachable from the home quick actions';
+
+  @override
+  String get navBarItemsKeywords =>
+      'bottom bar items transfers favorites customize';
+
+  @override
   String get swipeTabs => 'Swipe to switch views';
 
   @override

@@ -6,7 +6,7 @@ import 'package:lancloud/ui/profile_page.dart';
 import 'package:provider/provider.dart';
 
 void main() {
-  testWidgets('「我的」底部弹窗：显示账号、网页版、设置与关于', (tester) async {
+  testWidgets('「我的」视图：显示账号、网页版、设置与关于', (tester) async {
     final app = AppController();
     await tester.pumpWidget(
       ChangeNotifierProvider<AppController>.value(
@@ -15,21 +15,10 @@ void main() {
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           locale: const Locale('zh'),
-          home: Scaffold(
-            body: Builder(
-              builder: (context) => Center(
-                child: ElevatedButton(
-                  onPressed: () => showProfileSheet(context),
-                  child: const Text('open'),
-                ),
-              ),
-            ),
-          ),
+          home: const ProfilePage(),
         ),
       ),
     );
-
-    await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
 
     expect(find.text('未登录'), findsOneWidget);

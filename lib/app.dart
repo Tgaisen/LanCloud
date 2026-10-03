@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart' hide Icons;
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/services.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:path/path.dart' as p;
@@ -17,6 +18,7 @@ import 'ui/first_run_terms.dart';
 import 'ui/favorites_page.dart';
 import 'ui/home_page.dart';
 import 'ui/login_page.dart';
+import 'ui/profile_page.dart';
 import 'ui/app_scroll.dart';
 import 'ui/scroll_tint.dart';
 import 'ui/share_page.dart';
@@ -197,15 +199,17 @@ class RootShell extends StatefulWidget {
 }
 
 class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
-  static const _destinations = [
-    (icon: Icons.dashboard_outlined, selected: Icons.dashboard),
-    (icon: Icons.folder_outlined, selected: Icons.folder),
-    (
-      icon: Icons.swap_vert_outlined,
-      selected: Icons.swap_vert,
-    ),
-    (icon: Icons.star_border, selected: Icons.star_outline),
-  ];
+  /// 视图 id：0 首页 / 1 网盘 / 2 传输 / 3 收藏 / 4 我的。
+  /// id 固定不变，底栏顺序由 [_ids] 决定（传输、收藏可隐藏）。
+  static const _viewHome = 0;
+  static const _viewDrive = 1;
+  static const _viewTransfers = 2;
+  static const _viewFavorites = 3;
+  static const _viewProfile = 4;
+
+  /// 当前底栏包含的视图 id（顺序即底栏顺序）。
+  List<int> _ids = const <int>[];
+  bool _navConfigPending = false;
 
   int _index = 0;
   bool _programmaticJump = false;
@@ -216,8 +220,10 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
   // 移动、不重建。切换账号时更换 key，以保留重新挂载刷新页面的语义。
   String? _pageViewUid;
   late GlobalKey _pageViewKey = GlobalKey();
-  late final PageController _pageController =
-      PageController(initialPage: _index);
+  late PageController _pageController = PageController(initialPage: _index);
+  bool _pagerSyncPending = false;
+  /// 连续重建分页器的次数：一直连不上就放弃，避免每帧重建。
+  int _pagerRebuilds = 0;
 
   @override
   void didChangeDependencies() {
@@ -249,7 +255,46 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
     super.dispose();
   }
 
-  void _goTo(int i) {
+  /// 当前底栏显示项：首页 / 网盘 + （可选的）传输 / 收藏 + 我的。
+  List<int> _enabledIds(AppController app) => <int>[
+        _viewHome,
+        _viewDrive,
+        if (app.settings.navShowTransfers) _viewTransfers,
+        if (app.settings.navShowFavorites) _viewFavorites,
+        _viewProfile,
+      ];
+
+  Widget _pageFor(int id) => switch (id) {
+        _viewHome => const HomePage(tabIndex: _viewHome),
+        _viewDrive => const DrivePage(tabIndex: _viewDrive),
+        _viewTransfers => const TransfersPage(tabIndex: _viewTransfers),
+        _viewFavorites => const FavoritesPage(tabIndex: _viewFavorites),
+        _ => const ProfilePage(tabIndex: _viewProfile),
+      };
+
+  IconData _iconFor(int id, {required bool selected}) => switch (id) {
+        _viewHome => selected ? Icons.dashboard : Icons.dashboard_outlined,
+        _viewDrive => selected ? Icons.folder : Icons.folder_outlined,
+        _viewTransfers => selected ? Icons.swap_vert : Icons.swap_vert_outlined,
+        _viewFavorites => selected ? Icons.star_outline : Icons.star_border,
+        _ => selected ? Icons.person : Icons.person_outline,
+      };
+
+  String _labelFor(int id, AppLocalizations l10n) => switch (id) {
+        _viewHome => l10n.tabHome,
+        _viewDrive => l10n.tabDrive,
+        _viewTransfers => l10n.tabTransfers,
+        _viewFavorites => l10n.favorite,
+        _ => l10n.tabProfile,
+      };
+
+  /// 打开某个视图：在底栏显示时切换到对应页，否则作为新页面打开。
+  void _goTo(int viewId) {
+    final i = _ids.indexOf(viewId);
+    if (i < 0) {
+      _openView(viewId);
+      return;
+    }
     if (i == _index) return;
     // 切换视图（含底栏、侧栏、程序化跳转）时退出多选
     final app = context.read<AppController>();
@@ -266,22 +311,94 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
         duration: const Duration(milliseconds: 220),
         curve: Curves.easeOutCubic,
       ).whenComplete(() {
-        if (mounted) _programmaticJump = false;
+        if (!mounted) return;
+        _programmaticJump = false;
+        // 若分页器因为重新挂载而没有真正翻页，这里把它拉回来
+        _schedulePagerSync();
       });
     } else {
       _programmaticJump = false;
+      _schedulePagerSync();
     }
   }
 
-  int get _defaultIndex =>
-      context.read<AppController>().settings.launchPage == 'drive' ? 1 : 0;
+  /// 未显示在底栏的视图：以独立页面打开同样的界面。
+  void _openView(int viewId) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => _pageFor(viewId)),
+    );
+  }
+
+  /// 底栏显示项变化：下一帧按新页序重建，尽量停留在当前视图。
+  void _syncNavConfig(List<int> ids) {
+    if (_navConfigPending) return;
+    _navConfigPending = true;
+    final target = List<int>.unmodifiable(ids);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _navConfigPending = false;
+      if (!mounted) return;
+      final app = context.read<AppController>();
+      final current =
+          _ids.isEmpty ? target.first : _ids[_index.clamp(0, _ids.length - 1)];
+      final next = target.contains(current) ? target.indexOf(current) : 0;
+      setState(() {
+        _ids = target;
+        _index = next;
+      });
+      app.activeTab.value = target[next];
+      if (_pageController.hasClients) _pageController.jumpToPage(next);
+    });
+  }
+
+  /// 兜底：分页器被重新挂载（换账号、切换 loading 页）后可能停在初始页，
+  /// 与底栏高亮错位时把它拉回当前视图，避免「内容不动、底栏点了没反应」。
+  void _schedulePagerSync() {
+    if (_pagerSyncPending) return;
+    _pagerSyncPending = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _pagerSyncPending = false;
+      if (!mounted || _programmaticJump) return;
+      // 控制器没连上分页器（换账号 / 重新挂载后失效）：整体重建一次
+      if (!_pageController.hasClients) {
+        if (_pagerRebuilds >= 3) return;
+        _pagerRebuilds++;
+        _rebuildPager();
+        return;
+      }
+      _pagerRebuilds = 0;
+      final position = _pageController.position;
+      // 用户滑动 / 补间动画进行中不打断
+      if (position.isScrollingNotifier.value) return;
+      final page = _pageController.page?.round();
+      if (page != null && page != _index) {
+        _pageController.jumpToPage(_index);
+      }
+    });
+  }
+
+  /// 兜底：用新的控制器重建分页器，并直接停在当前视图。
+  void _rebuildPager() {
+    final previous = _pageController;
+    setState(() {
+      _pageController = PageController(initialPage: _index);
+      _pageViewKey = GlobalKey();
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => previous.dispose());
+  }
+
+  int get _defaultViewId =>
+      context.read<AppController>().settings.launchPage == 'drive'
+          ? _viewDrive
+          : _viewHome;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    context.read<AppController>().onSwitchTab = _goTo;
-    NotificationService.onOpenTransfers = () => _goTo(2);
+    final app = context.read<AppController>();
+    _ids = _enabledIds(app);
+    app.onSwitchTab = _goTo;
+    NotificationService.onOpenTransfers = () => _goTo(_viewTransfers);
     SharedInbox.instance.onText = _handleSharedText;
     SharedInbox.instance.onFiles = _handleSharedFiles;
     SharedInbox.instance.attach();
@@ -293,18 +410,23 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
       IncomingLinks.instance.pending = null;
       if (url != null) _handleIncomingLink(url);
       _checkClipboard();
+      if (_pendingStartView != null) {
+        final view = _pendingStartView!;
+        _pendingStartView = null;
+        _goTo(view);
+      }
     });
     if (NotificationService.pendingTransfers) {
       NotificationService.pendingTransfers = false;
-      _index = 2;
-    } else {
-      _index = context.read<AppController>().settings.launchPage == 'drive'
-          ? 1
-          : 0;
+      _pendingStartView = _viewTransfers;
     }
+    _index = _ids.indexOf(_defaultViewId).clamp(0, _ids.length - 1);
     // 记录初始视图，便于页面判断自己是否被激活
-    context.read<AppController>().activeTab.value = _index;
+    app.activeTab.value = _ids[_index];
   }
+
+  /// 冷启动时要额外打开的视图（例如从传输通知进来），可能在底栏外。
+  int? _pendingStartView;
 
   void _handleSharedText(String text) {
     final link = LanzouLink.parse(text);
@@ -433,20 +555,21 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
 
   Future<bool> _handleBack() async {
     final app = context.read<AppController>();
-    final defaultIndex = _defaultIndex;
+    final defaultView = _defaultViewId;
     final transfers = context.read<TransferManager>();
     final active = _activeTasks;
     if (app.selectionMode) {
       app.onRequestExitSelection?.call();
       return false;
     }
+    final currentView = _ids.isEmpty ? _viewHome : _ids[_index];
     // 网盘视图：先让页面处理（返回上一级目录）
-    if (_index == 1 && app.onDriveBack != null) {
+    if (currentView == _viewDrive && app.onDriveBack != null) {
       final handled = await app.onDriveBack!();
       if (handled) return false;
     }
-    if (_index != defaultIndex) {
-      _goTo(defaultIndex);
+    if (currentView != defaultView) {
+      _goTo(defaultView);
       return false;
     }
     if (active.isEmpty) return true;
@@ -484,6 +607,11 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
     if (app.activeUid != _pageViewUid) {
       _pageViewUid = app.activeUid;
       _pageViewKey = GlobalKey();
+      // 换账号会重建分页器：新控制器直接以当前视图为初始页，
+      // 否则会回到首页并与底栏高亮错位（点当前的底栏项没反应）。
+      final previous = _pageController;
+      _pageController = PageController(initialPage: _index);
+      WidgetsBinding.instance.addPostFrameCallback((_) => previous.dispose());
     }
     if (!app.ready) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -491,18 +619,23 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
     if (app.activeUid == null) {
       return const LoginPage(firstRun: true);
     }
+    // 底栏显示项变化时，下一帧按新页序重建
+    if (_ids.isEmpty) {
+      _ids = _enabledIds(app);
+    } else {
+      final ids = _enabledIds(app);
+      if (!listEquals(ids, _ids)) {
+        _syncNavConfig(ids);
+      } else {
+        _schedulePagerSync();
+      }
+    }
 
     final running = transfers.tasks
         .where((t) =>
             t.status == TransferStatus.running || t.status == TransferStatus.queued)
         .length;
 
-    final pages = <Widget>[
-      const HomePage(tabIndex: 0),
-      const DrivePage(tabIndex: 1),
-      const TransfersPage(tabIndex: 2),
-      const FavoritesPage(tabIndex: 3),
-    ];
     // 底栏整体高度：悬浮样式含上下留白，用于 1:1 跟随滚动的收起距离
     final barHeight = app.settings.floatingNavBar ? 108.0 : 80.0;
     final keyed = KeyedSubtree(
@@ -522,37 +655,29 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
           FocusManager.instance.primaryFocus?.unfocus();
           // 视图真正切换后：恢复底栏并通知页面把折叠的顶栏调出来
           app.animateBarsHide(0);
-          app.activeTab.value = i;
+          app.activeTab.value = _ids[i];
           setState(() => _index = i);
         },
         children: [
-          for (final page in pages)
+          for (final id in _ids)
             ScrollTint(
+              key: ValueKey('view-$id'),
               hideDistance: barHeight,
               readBarsHidden: () => app.barsHide.value,
               onBarsHidden: (app.settings.hideTopBar || app.settings.hideBottomBar)
                   ? app.setBarsHideFromScroll
                   : null,
-              child: page,
+              child: _pageFor(id),
             ),
         ],
       ),
     );
 
-    Widget iconFor(int i, {required bool selected}) {
-      final d = _destinations[i];
-      final icon = Icon(selected ? d.selected : d.icon);
-      if (i != 2 || running == 0) return icon;
+    Widget iconFor(int viewId, {required bool selected}) {
+      final icon = Icon(_iconFor(viewId, selected: selected));
+      if (viewId != _viewTransfers || running == 0) return icon;
       return Badge(label: Text('$running'), child: icon);
     }
-
-    String labelFor(int i) => switch (i) {
-          0 => l10n.tabHome,
-          1 => l10n.tabDrive,
-          2 => l10n.tabTransfers,
-          3 => l10n.favorite,
-          _ => l10n.tabHome,
-        };
 
     final width = MediaQuery.sizeOf(context).width;
     return PopScope(
@@ -573,13 +698,13 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
                     extended: width >= 1080,
                     labelType:
                         width >= 1080 ? null : NavigationRailLabelType.all,
-                    onDestinationSelected: _goTo,
+                    onDestinationSelected: (i) => _goTo(_ids[i]),
                     destinations: [
-                      for (var i = 0; i < _destinations.length; i++)
+                      for (final id in _ids)
                         NavigationRailDestination(
-                          icon: iconFor(i, selected: false),
-                          selectedIcon: iconFor(i, selected: true),
-                          label: Text(labelFor(i)),
+                          icon: iconFor(id, selected: false),
+                          selectedIcon: iconFor(id, selected: true),
+                          label: Text(_labelFor(id, l10n)),
                         ),
                     ],
                   ),
@@ -626,18 +751,18 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
                         : Clip.none,
                     child: NavigationBar(
                       selectedIndex: _index,
-                      onDestinationSelected: (i) {
+                      onDestinationSelected: (pos) {
                         if (app.selectionMode) {
                           app.onRequestExitSelection?.call();
                         }
-                        _goTo(i);
+                        _goTo(_ids[pos]);
                       },
                       destinations: [
-                        for (var i = 0; i < _destinations.length; i++)
+                        for (final id in _ids)
                           NavigationDestination(
-                            icon: iconFor(i, selected: false),
-                            selectedIcon: iconFor(i, selected: true),
-                            label: labelFor(i),
+                            icon: iconFor(id, selected: false),
+                            selectedIcon: iconFor(id, selected: true),
+                            label: _labelFor(id, l10n),
                           ),
                       ],
                     ),
