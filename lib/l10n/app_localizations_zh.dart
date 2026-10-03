@@ -1148,6 +1148,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get showCookieKeywords => 'cookie 显示 隐私 凭据 key';
 
   @override
+  String get scan => '扫码';
+
+  @override
   String get permissionCamera => '相机（扫码）';
 
   @override
@@ -1242,7 +1245,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get includeCookies => '备份包含 Cookie';
 
   @override
-  String get includeCookiesSubtitle => '默认不含；包含后备份文件等同于账号凭据';
+  String get includeCookiesSubtitle => '危险！启用后，备份文件等同于登录凭据，请注意信息安全';
 
   @override
   String get webdavSection => 'WebDAV';

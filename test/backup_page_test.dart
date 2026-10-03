@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/backup/backup_service.dart';
 import 'package:lancloud/core/backup/webdav_store.dart';
+import 'package:lancloud/core/cookie_auth.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/backup_page.dart';
 import 'package:provider/provider.dart';
@@ -56,16 +57,28 @@ class _FakeWebdavStore extends WebdavStore {
   }
 }
 
+class _FakeCookieAuth extends CookieAuth {
+  _FakeCookieAuth(this.result);
+
+  final CookieAuthResult result;
+
+  @override
+  Future<CookieAuthResult> verify(String reason) async => result;
+}
+
 void main() {
   late _FakeBackupService fake;
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
     fake = _FakeBackupService(AppController());
+    // 备份包含 Cookie 需要生物验证，测试里直接放行
+    CookieAuth.instance = _FakeCookieAuth(CookieAuthResult.ok);
   });
 
   tearDown(() {
     BackupService.instance = null;
+    CookieAuth.instance = CookieAuth();
   });
 
   Future<void> pumpPage(WidgetTester tester) async {

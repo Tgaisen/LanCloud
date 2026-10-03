@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../core/app_controller.dart';
 import '../core/backup/backup_service.dart';
 import '../core/backup/webdav_client.dart';
+import '../core/cookie_auth.dart';
 import '../core/system_share.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
@@ -54,6 +55,30 @@ class _BackupPageState extends State<BackupPage> {
   }
 
   // -------------------------------------------------------------- 本地备份
+
+  /// 备份包含 Cookie 属于敏感操作，开启前先做生物识别 / 锁屏验证。
+  Future<void> _setIncludeCookies(bool value) async {
+    final store = _service.webdav;
+    final l10n = context.l10n;
+    if (!value) {
+      await store.setIncludeCookies(false);
+      if (mounted) setState(() {});
+      return;
+    }
+    final result = await CookieAuth.instance.verify(l10n.cookieAuthReason);
+    if (!mounted) return;
+    switch (result) {
+      case CookieAuthResult.ok:
+        await store.setIncludeCookies(true);
+        if (mounted) setState(() {});
+      case CookieAuthResult.canceled:
+        break;
+      case CookieAuthResult.unavailable:
+        _snack(l10n.cookieAuthUnavailable);
+      case CookieAuthResult.failed:
+        _snack(l10n.cookieAuthFailed);
+    }
+  }
 
   Future<void> _backupToFile() => _run(() async {
         final l10n = context.l10n;
@@ -291,10 +316,7 @@ class _BackupPageState extends State<BackupPage> {
                           title: Text(l10n.includeCookies),
                           subtitle: Text(l10n.includeCookiesSubtitle),
                           value: store.includeCookies,
-                          onChanged: (value) async {
-                            await store.setIncludeCookies(value);
-                            if (mounted) setState(() {});
-                          },
+                          onChanged: _setIncludeCookies,
                         ),
                       ],
                     ),

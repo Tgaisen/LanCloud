@@ -71,7 +71,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(fake.calls, 0);
-    expect(find.byType(SelectableText), findsNothing);
+    expect(find.text(_cookie), findsNothing);
   });
 
   testWidgets('确认并验证通过后展示 Cookie，复制写入剪贴板', (tester) async {
@@ -91,8 +91,7 @@ void main() {
 
     expect(fake.calls, 1);
     expect(find.text('账号 Cookie'), findsOneWidget);
-    final text = tester.widget<SelectableText>(find.byType(SelectableText));
-    expect(text.data, _cookie);
+    expect(find.text(_cookie), findsOneWidget);
 
     await tester.tap(find.text('复制'));
     await tester.pumpAndSettle();
@@ -117,7 +116,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('身份验证未通过，已取消显示'), findsOneWidget);
-    expect(find.byType(SelectableText), findsNothing);
+    expect(find.text(_cookie), findsNothing);
   });
 
   testWidgets('设备未设置锁屏时提示不可用', (tester) async {

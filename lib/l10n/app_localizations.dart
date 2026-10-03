@@ -2210,6 +2210,12 @@ abstract class AppLocalizations {
   /// **'cookie 显示 隐私 凭据 key'**
   String get showCookieKeywords;
 
+  /// No description provided for @scan.
+  ///
+  /// In zh, this message translates to:
+  /// **'扫码'**
+  String get scan;
+
   /// No description provided for @permissionCamera.
   ///
   /// In zh, this message translates to:
@@ -2393,7 +2399,7 @@ abstract class AppLocalizations {
   /// No description provided for @includeCookiesSubtitle.
   ///
   /// In zh, this message translates to:
-  /// **'默认不含；包含后备份文件等同于账号凭据'**
+  /// **'危险！启用后，备份文件等同于登录凭据，请注意信息安全'**
   String get includeCookiesSubtitle;
 
   /// No description provided for @webdavSection.

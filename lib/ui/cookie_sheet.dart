@@ -33,7 +33,7 @@ Future<void> showCookieFlow(BuildContext context, Account account) async {
   if (!context.mounted) return;
   switch (result) {
     case CookieAuthResult.ok:
-      await showAppSheet<void>(context, child: CookieSheet(account: account));
+      await showCookieDialog(context, account);
     case CookieAuthResult.canceled:
       break;
     case CookieAuthResult.unavailable:
@@ -59,95 +59,80 @@ Future<void> _showTip(BuildContext context, IconData icon, String message) {
   );
 }
 
-/// Cookie 展示弹窗：等宽字体、可选中，提供复制与导出。
-class CookieSheet extends StatelessWidget {
-  const CookieSheet({super.key, required this.account});
-
-  final Account account;
-
-  Future<void> _export(BuildContext context) async {
-    final ok = await SystemShare.shareText(
-      account.cookie,
-      subject: '${context.l10n.appName} · UID ${account.uid}',
-    );
-    if (!ok && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.cookieExportFailed)),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.key_outlined, color: scheme.primary),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  l10n.cookieSheetTitle,
-                  style: theme.textTheme.titleMedium,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            l10n.uidLabel(account.uid),
-            style: theme.textTheme.bodySmall?.copyWith(color: scheme.outline),
-          ),
-          const SizedBox(height: 12),
-          DecoratedBox(
-            decoration: BoxDecoration(
-              color: scheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(16),
+/// Cookie 展示弹窗（MD3E 默认风格）：标题 + UID + 可滑动的等宽内容 + 操作按钮。
+/// Cookie 很长，内容区单独滚动，小屏也不会显示不全。
+Future<void> showCookieDialog(BuildContext context, Account account) {
+  final l10n = context.l10n;
+  final theme = Theme.of(context);
+  final scheme = theme.colorScheme;
+  return showDialog<void>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      title: Text(l10n.cookieSheetTitle),
+      content: SizedBox(
+        width: 420,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l10n.uidLabel(account.uid),
+              style: theme.textTheme.bodySmall?.copyWith(color: scheme.outline),
             ),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 200),
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(12),
-                child: SelectableText(
-                  account.cookie,
-                  style: const TextStyle(
-                    fontFamily: 'monospace',
-                    fontSize: 12,
-                    height: 1.5,
+            const SizedBox(height: 12),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: scheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 220),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(12),
+                  // 普通 Text：SelectableText 会吃掉竖向拖动手势导致滚不动
+                  child: Text(
+                    account.cookie,
+                    style: const TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 12,
+                      height: 1.5,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: FilledButton.tonalIcon(
-                  onPressed: () => copyText(context, account.cookie),
-                  icon: const Icon(Icons.copy),
-                  label: Text(l10n.copy),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: () => _export(context),
-                  icon: const Icon(Icons.share_outlined),
-                  label: Text(l10n.cookieExport),
-                ),
-              ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(),
+          child: Text(l10n.close),
+        ),
+        TextButton.icon(
+          onPressed: () => copyText(context, account.cookie),
+          icon: const Icon(Icons.copy, size: 18),
+          label: Text(l10n.copy),
+        ),
+        FilledButton.icon(
+          onPressed: () => _exportCookie(context, account),
+          icon: const Icon(Icons.share_outlined, size: 18),
+          label: Text(l10n.cookieExport),
+        ),
+      ],
+    ),
+  );
+}
+
+Future<void> _exportCookie(BuildContext context, Account account) async {
+  final ok = await SystemShare.shareText(
+    account.cookie,
+    subject: '${context.l10n.appName} · UID ${account.uid}',
+  );
+  if (!ok && context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(context.l10n.cookieExportFailed)),
     );
   }
 }

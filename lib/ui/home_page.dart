@@ -278,36 +278,45 @@ class _HomePageState extends State<HomePage>
               slivers: [
               // 顶栏不占布局，这里留出等高占位
               SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
+              // 入口按钮：横向滚动，左右边距用 padding 实现，
+              // 这样滑到头也不会被裁掉；按钮间距 = 卡片边距（20dp）
+              SliverToBoxAdapter(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ExpressiveIconButton(
+                        icon: Icons.open_in_new,
+                        label: l10n.openLink,
+                        onPressed: () => openShareSheet(context),
+                      ),
+                      const SizedBox(width: 20),
+                      ExpressiveIconButton(
+                        icon: Icons.cloud_upload_outlined,
+                        label: l10n.transferCenter,
+                        badge: running > 0 ? '$running' : null,
+                        onPressed: () => app.switchTab(2),
+                      ),
+                      const SizedBox(width: 20),
+                      ExpressiveIconButton(
+                        icon: Icons.qr_code,
+                        label: l10n.scan,
+                        onPressed: () => ScaffoldMessenger.of(context)
+                            .showSnackBar(
+                          SnackBar(content: Text(l10n.scanComingSoon)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SliverToBoxAdapter(child: SizedBox(height: 16)),
           SliverPadding(
             padding: const EdgeInsets.all(16),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                // 入口按钮：左边距与 Md3ListItem 卡片一致（16 + 4），
-                // 按钮间距为其两倍；按钮多了 / 小屏时横向滑动
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ExpressiveIconButton(
-                          icon: Icons.open_in_new,
-                          label: l10n.openLink,
-                          onPressed: () => openShareSheet(context),
-                        ),
-                        const SizedBox(width: 30),
-                        ExpressiveIconButton(
-                          icon: Icons.cloud_upload_outlined,
-                          label: l10n.transferCenter,
-                          badge: running > 0 ? '$running' : null,
-                          onPressed: () => app.switchTab(2),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
                 SectionCard(
                   title: l10n.quickAccess,
                   expanded: _quickExpanded,
@@ -397,13 +406,6 @@ class _HomePageState extends State<HomePage>
                 scrolledUnderElevation: 0,
                 title: Text(l10n.appName),
                 actions: [
-                  IconButton(
-                    tooltip: l10n.scanComingSoonTooltip,
-                    icon: const Icon(Icons.qr_code),
-                    onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(l10n.scanComingSoon)),
-                    ),
-                  ),
                   // MD3 trailing avatar：圆形头像按钮，打开「我的」弹窗
                   Padding(
                     padding: const EdgeInsets.only(left: 4, right: 10),

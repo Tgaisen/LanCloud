@@ -43,7 +43,7 @@ class SettingsStore {
   String themeMode = 'system';
   bool oledBlack = false;
   int themeSeed = 0xFF2E6BE6;
-  int requestInterval = 300;
+  int requestInterval = 100;
   int maxUploads = 1;
   int maxDownloads = 3;
   String apiHost = 'pc';
@@ -82,7 +82,7 @@ class SettingsStore {
     themeMode = prefs.getString(_keyThemeMode) ?? 'system';
     oledBlack = prefs.getBool(_keyOled) ?? false;
     themeSeed = prefs.getInt(_keySeed) ?? 0xFF2E6BE6;
-    requestInterval = prefs.getInt(_keyInterval) ?? 300;
+    requestInterval = prefs.getInt(_keyInterval) ?? 100;
     maxUploads = prefs.getInt(_keyMaxUp) ?? 1;
     maxDownloads = prefs.getInt(_keyMaxDown) ?? 3;
     apiHost = prefs.getString(_keyApiHost) ?? 'pc';

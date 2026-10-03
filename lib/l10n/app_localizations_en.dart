@@ -1180,6 +1180,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get showCookieKeywords => 'cookie show privacy credential key';
 
   @override
+  String get scan => 'Scan';
+
+  @override
   String get permissionCamera => 'Camera (QR scan)';
 
   @override
@@ -1280,7 +1283,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get includeCookiesSubtitle =>
-      'Off by default; a backup with cookies is an account credential';
+      'Danger! Once enabled, the backup file is equivalent to your login credential — keep it safe';
 
   @override
   String get webdavSection => 'WebDAV';

@@ -29,7 +29,24 @@ class ShareFolderPage extends StatefulWidget {
 
 class _ShareFolderPageState extends State<ShareFolderPage> {
   bool _selecting = false;
+  bool _searching = false;
   final Set<String> _selected = {};
+  final TextEditingController _search = TextEditingController();
+  String _filter = '';
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  void _exitSearch() {
+    setState(() {
+      _searching = false;
+      _filter = '';
+      _search.clear();
+    });
+  }
 
   void _toggleSelecting() {
     setState(() {
@@ -133,6 +150,15 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+            // 原顶栏的多选入口移到这里
+            ListTile(
+              leading: const Icon(Icons.done_all),
+              title: Text(context.l10n.multiSelect),
+              onTap: () {
+                Navigator.of(context).pop();
+                _toggleSelecting();
+              },
+            ),
             ListTile(
               leading: const Icon(Icons.star_outline),
               title: Text(context.l10n.favorite),
@@ -204,9 +230,31 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final folder = widget.folder;
+    final query = _filter.trim().toLowerCase();
+    final folders = query.isEmpty
+        ? folder.folders
+        : folder.folders
+            .where((f) => f.name.toLowerCase().contains(query))
+            .toList();
+    final files = query.isEmpty
+        ? folder.files
+        : folder.files
+            .where((f) => f.name.toLowerCase().contains(query))
+            .toList();
     final isEmpty =
         folder.files.isEmpty && folder.folders.isEmpty && folder.desc.isEmpty;
-    return Scaffold(
+    return PopScope(
+      // 多选 / 搜索状态下先退出，再退出页面
+      canPop: !_selecting && !_searching,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (_selecting) {
+          _toggleSelecting();
+        } else if (_searching) {
+          _exitSearch();
+        }
+      },
+      child: Scaffold(
       appBar: AppBar(
         leading: _selecting
             ? IconButton(
@@ -214,13 +262,28 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
                 icon: const Icon(Icons.close),
                 onPressed: _toggleSelecting,
               )
-            : IconButton(
+            : (_searching
+                ? IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: _exitSearch,
+                  )
+                : IconButton(
                 icon: const Icon(Icons.arrow_back),
                 onPressed: () => Navigator.of(context).pop(),
-              ),
+              )),
         title: _selecting
             ? Text(l10n.selectedCount(_selected.length))
-            : Text(folder.name),
+            : (_searching
+                ? TextField(
+                    controller: _search,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      hintText: l10n.searchCurrentFolder,
+                      border: InputBorder.none,
+                    ),
+                    onChanged: (value) => setState(() => _filter = value),
+                  )
+                : Text(folder.name)),
         actions: _selecting
             ? [
                 IconButton(
@@ -234,18 +297,20 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
                   onPressed: _invertSelection,
                 ),
               ]
-            : [
-                IconButton(
-                  tooltip: l10n.multiSelect,
-                  icon: const Icon(Icons.done_all),
-                  onPressed: _toggleSelecting,
-                ),
-                IconButton(
-                  tooltip: l10n.moreActions,
-                  icon: const Icon(Icons.more_vert),
-                  onPressed: _showMenu,
-                ),
-              ],
+            : (_searching
+                ? const <Widget>[]
+                : [
+                    IconButton(
+                      tooltip: l10n.search,
+                      icon: const Icon(Icons.search),
+                      onPressed: () => setState(() => _searching = true),
+                    ),
+                    IconButton(
+                      tooltip: l10n.moreActions,
+                      icon: const Icon(Icons.more_vert),
+                      onPressed: _showMenu,
+                    ),
+                  ]),
       ),
       body: Stack(
         children: [
@@ -264,11 +329,11 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
               ],
             ),
           ],
-          if (folder.folders.isNotEmpty) ...[
+          if (folders.isNotEmpty) ...[
             _SectionTitle(text: l10n.folder),
             SegmentedList(
               children: [
-                for (final sub in folder.folders)
+                for (final sub in folders)
                   ListTile(
                     leading: const Icon(Icons.folder_outlined),
                     title: Text(
@@ -283,11 +348,11 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
               ],
             ),
           ],
-          if (folder.files.isNotEmpty) ...[
+          if (files.isNotEmpty) ...[
             _SectionTitle(text: l10n.files),
             SegmentedList(
               children: [
-                for (final file in folder.files)
+                for (final file in files)
                   ListTile(
                     leading: _selecting
                         ? Checkbox(
@@ -367,6 +432,7 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
               ],
             )
           : null,
+      ),
     );
   }
 }

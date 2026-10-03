@@ -1110,9 +1110,10 @@ class _SettingsPageState extends State<SettingsPage>
       builder: (dialogContext) => SimpleDialog(
         title: Text(l10n.requestInterval),
         children: [
-          for (final ms in const [0, 100, 300, 500, 1000])
+          // 不提供「不间隔」：过小间隔容易触发服务端限流
+          for (final ms in const [25, 50, 75, 100, 150, 200, 300, 500, 1000])
             ListTile(
-              title: Text(ms == 0 ? l10n.noInterval : '$ms ms'),
+              title: Text('$ms ms'),
               trailing: app.settings.requestInterval == ms
                   ? const Icon(Icons.check)
                   : null,
