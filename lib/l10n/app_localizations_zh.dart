@@ -1190,6 +1190,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get scan => '识别二维码方式';
 
   @override
+  String get scanButton => '识别二维码';
+
+  @override
   String get scanTakePhoto => '拍照获取';
 
   @override

@@ -2288,6 +2288,12 @@ abstract class AppLocalizations {
   /// **'识别二维码方式'**
   String get scan;
 
+  /// No description provided for @scanButton.
+  ///
+  /// In zh, this message translates to:
+  /// **'识别二维码'**
+  String get scanButton;
+
   /// No description provided for @scanTakePhoto.
   ///
   /// In zh, this message translates to:

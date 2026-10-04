@@ -336,7 +336,7 @@ class _HomePageState extends State<HomePage>
                         const SizedBox(width: 20),
                         ExpressiveIconButton(
                           icon: Icons.qr_code,
-                          label: l10n.scan,
+                          label: l10n.scanButton,
                           onPressed: _scanQr,
                         ),
                         const SizedBox(width: 20),

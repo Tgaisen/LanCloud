@@ -416,6 +416,7 @@
   "exportLogsEmpty": "No logs to export yet",
   "exportLogsFailed": "Failed to export logs",
   "scan": "Scan QR code",
+  "scanButton": "Scan QR",
   "scanTakePhoto": "Take a photo",
   "scanTakePhotoSubtitle": "Use the system camera (no permission needed)",
   "scanFromGallery": "Choose from gallery",

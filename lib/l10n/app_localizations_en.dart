@@ -1225,6 +1225,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get scan => 'Scan QR code';
 
   @override
+  String get scanButton => 'Scan QR';
+
+  @override
   String get scanTakePhoto => 'Take a photo';
 
   @override

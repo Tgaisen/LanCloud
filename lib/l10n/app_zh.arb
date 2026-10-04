@@ -578,6 +578,7 @@
   "exportLogsEmpty": "暂时没有可导出的日志",
   "exportLogsFailed": "日志导出失败",
   "scan": "识别二维码方式",
+  "scanButton": "识别二维码",
   "scanTakePhoto": "拍照获取",
   "scanTakePhotoSubtitle": "用系统相机拍摄二维码图片",
   "scanFromGallery": "从相册选取",
