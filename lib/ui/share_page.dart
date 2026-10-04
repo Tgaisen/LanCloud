@@ -102,6 +102,9 @@ class _ShareSheetState extends State<ShareSheet> {
           if (!mounted) return;
           setState(() => _file = file);
           await _saveRecent('shareFile', file.name, link, pwd);
+          if (!mounted) return;
+          // 识别为文件后直接打开属性弹窗，免去用户再点一次卡片。
+          _openFileInfo(file, link, pwd);
         } on LanzouException {
           final folder = await client.resolveFolderShare(link, pwd: pwd);
           if (!mounted) return;
@@ -146,6 +149,25 @@ class _ShareSheetState extends State<ShareSheet> {
       name: name,
       ref: link,
       pwd: pwd,
+    );
+  }
+
+  /// 打开分享文件属性弹窗（解析成功自动弹出、点击文件卡片共用）。
+  ///
+  /// 先关掉「打开链接」弹窗，避免两层弹窗叠在一起；弹窗关闭后原 context
+  /// 失效，所以用 Navigator 自己的 context 作为宿主。
+  void _openFileInfo(DirectFile file, String link, String pwd) {
+    final navigator = Navigator.of(context);
+    final hostContext = navigator.context;
+    if (navigator.canPop()) navigator.pop();
+    showAppSheet<void>(
+      hostContext,
+      child: ShareFileInfoSheet(
+        name: file.name,
+        url: link,
+        pwd: pwd,
+        size: file.size,
+      ),
     );
   }
 
@@ -220,8 +242,11 @@ class _ShareSheetState extends State<ShareSheet> {
                 const SizedBox(height: 16),
                 _FileResultCard(
                   file: _file!,
-                  link: _linkController.text.trim(),
-                  pwd: _pwdController.text.trim(),
+                  onTap: () => _openFileInfo(
+                    _file!,
+                    _linkController.text.trim(),
+                    _pwdController.text.trim(),
+                  ),
                 ),
               ],
             ],
@@ -233,13 +258,11 @@ class _ShareSheetState extends State<ShareSheet> {
 class _FileResultCard extends StatelessWidget {
   const _FileResultCard({
     required this.file,
-    required this.link,
-    required this.pwd,
+    required this.onTap,
   });
 
   final DirectFile file;
-  final String link;
-  final String pwd;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -258,15 +281,7 @@ class _FileResultCard extends StatelessWidget {
             ? null
             : Text(l10n.sizeLabel(prettyLzSize(file.size))),
         trailing: const Icon(Icons.chevron_right),
-        onTap: () => showAppSheet<void>(
-          context,
-          child: ShareFileInfoSheet(
-            name: file.name,
-            url: link,
-            pwd: pwd,
-            size: file.size,
-          ),
-        ),
+        onTap: onTap,
       ),
     );
   }
