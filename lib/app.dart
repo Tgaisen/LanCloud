@@ -818,6 +818,9 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
                     // 统一用非展开样式：图标在上、文字在下，栏宽 72dp。
                     // 展开样式（extended）要 256dp，对这几个短标题太宽了。
                     extended: false,
+                    // 手机横屏 / 平板等侧栏形态下按钮组在栏内垂直居中；
+                    // NavigationRail 默认 -1 贴顶，高屏上会离屏幕上半部太远。
+                    groupAlignment: 0,
                     labelType: NavigationRailLabelType.all,
                     onDestinationSelected: (i) => _goTo(_ids[i]),
                     destinations: [
