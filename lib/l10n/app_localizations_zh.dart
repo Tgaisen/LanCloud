@@ -1108,9 +1108,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get removeFromQuickAccess => '从快速访问移除';
 
   @override
-  String get unpin => '取消固定';
-
-  @override
   String get moveToTop => '移到顶部';
 
   @override

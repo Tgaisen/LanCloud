@@ -1139,9 +1139,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get removeFromQuickAccess => 'Remove from quick access';
 
   @override
-  String get unpin => 'Unpin';
-
-  @override
   String get moveToTop => 'Move to top';
 
   @override

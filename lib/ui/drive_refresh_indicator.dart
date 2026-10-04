@@ -131,6 +131,7 @@ class LanRefreshIndicator extends StatefulWidget {
     this.semanticsValue,
     this.strokeWidth = RefreshProgressIndicator.defaultStrokeWidth,
     this.elevation = 2.0,
+    this.enabled = true,
     required this.child,
   }) : assert(elevation >= 0.0);
 
@@ -206,6 +207,10 @@ class LanRefreshIndicator extends StatefulWidget {
   /// Defaults to 2.0.
   final double elevation;
 
+  /// 是否响应下拉刷新。页面本身正在加载（例如网盘切换目录时居中转圈）时置 false，
+  /// 避免两个进度指示同时出现；已经拉出来的小球会被收起。
+  final bool enabled;
+
   @override
   LanRefreshIndicatorState createState() => LanRefreshIndicatorState();
 }
@@ -271,6 +276,10 @@ class LanRefreshIndicatorState extends State<LanRefreshIndicator>
     if (oldWidget.color != widget.color) {
       _setupColorTween();
     }
+    // 页面开始加载（enabled 变 false）时，把已经拉出来但还没提交刷新的小球收回去
+    if (!widget.enabled && _status == RefreshIndicatorStatus.drag) {
+      _dismiss(RefreshIndicatorStatus.canceled);
+    }
   }
 
   @protected
@@ -307,7 +316,8 @@ class LanRefreshIndicatorState extends State<LanRefreshIndicator>
     // If the notification.dragDetails is null, this scroll is not triggered by
     // user dragging. It may be a result of ScrollController.jumpTo or ballistic scroll.
     // In this case, we don't want to trigger the refresh indicator.
-    return _status == null &&
+    return widget.enabled &&
+        _status == null &&
         ((notification is ScrollStartNotification &&
                 notification.dragDetails != null) ||
             (notification is ScrollUpdateNotification &&
@@ -476,13 +486,22 @@ class LanRefreshIndicatorState extends State<LanRefreshIndicator>
               _status = RefreshIndicatorStatus.refresh;
             });
 
-            final Future<void> refreshResult = widget.onRefresh();
-            refreshResult.whenComplete(() {
-              if (mounted && _status == RefreshIndicatorStatus.refresh) {
-                completer.complete();
-                _dismiss(RefreshIndicatorStatus.done);
-              }
-            });
+            // onRefresh 同步抛错或异步失败（例如网络异常导致加载失败）时，
+            // 也必须把小球收起来，否则会一直转圈；错误本身由页面提示。
+            Future<void> refreshResult;
+            try {
+              refreshResult = widget.onRefresh();
+            } on Object {
+              refreshResult = Future<void>.value();
+            }
+            refreshResult
+                .whenComplete(() {
+                  if (mounted && _status == RefreshIndicatorStatus.refresh) {
+                    completer.complete();
+                    _dismiss(RefreshIndicatorStatus.done);
+                  }
+                })
+                .ignore();
           }
         });
   }

@@ -108,7 +108,7 @@ class _HomePageState extends State<HomePage>
     return Md3ListItem(
       icon: Icons.folder_outlined,
       title: item.name,
-      subtitle: item.path,
+      subtitle: quickAccessPathLabel(l10n, item),
       trailing: IconButton(
         tooltip: l10n.moreActions,
         icon: const Icon(Icons.more_vert),
@@ -128,8 +128,8 @@ class _HomePageState extends State<HomePage>
         mainAxisSize: MainAxisSize.min,
         children: [
           ListTile(
-            leading: const Icon(Icons.push_pin_outlined),
-            title: Text(l10n.unpin),
+            leading: const Icon(Icons.keep_off),
+            title: Text(l10n.removeFromQuickAccess),
             onTap: () async {
               Navigator.of(context).pop();
               await app.db.removePin(item.ref);
@@ -461,3 +461,25 @@ class _HomePageState extends State<HomePage>
     );
   }
 }
+
+/// 快速访问副标题：显示该文件夹「所在目录」的路径（不含文件夹自身），
+/// 例如 根目录/abc/示例 → 根目录/abc；「根目录」按当前语言显示。
+///
+/// 兼容早期数据：那时 path 存的是「根目录 + 完整路径 + 文件夹自身」，
+/// 且「根目录」是固定时语言写死的，这里会识别任意支持语言的写法后剥掉。
+String quickAccessPathLabel(AppLocalizations l10n, PinItem item) {
+  var segments = item.path.split('/').where((s) => s.isNotEmpty).toList();
+  if (segments.isNotEmpty && isRootLabelSegment(segments.first)) {
+    segments = segments.sublist(1);
+    if (segments.isNotEmpty && segments.last == item.name) {
+      segments = segments.sublist(0, segments.length - 1);
+    }
+  }
+  return [l10n.root, ...segments].join('/');
+}
+
+/// 是否是「根目录」在任一支持语言下的写法（旧数据固定的是固定时的语言）。
+bool isRootLabelSegment(String segment) =>
+    AppLocalizations.supportedLocales.any(
+      (locale) => lookupAppLocalizations(locale).root == segment,
+    );

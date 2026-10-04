@@ -721,6 +721,9 @@ class _DrivePageState extends State<DrivePage>
 
   PreferredSizeWidget _selectionAppBar(int count) => AppBar(
     key: const ValueKey('selection-appbar'),
+    // 底色由外层 Material（topBarBackgroundColor）提供，与普通顶栏一致
+    backgroundColor: Colors.transparent,
+    scrolledUnderElevation: 0,
     leading: IconButton(
       tooltip: context.l10n.exitSelection,
       icon: const Icon(Icons.close),
@@ -2410,7 +2413,12 @@ class _DrivePageState extends State<DrivePage>
                     opacity: _selAnim.value,
                     child: Material(
                       elevation: 0,
-                      color: Theme.of(context).colorScheme.surface,
+                      // 与顶栏同一底色：小屏跟随滚动渐变色，大屏（侧栏布局）
+                      // 固定 surfaceContainer，多选条不会和 AppBar 出现色差
+                      color: topBarBackgroundColor(
+                        context,
+                        Theme.of(context).colorScheme,
+                      ),
                       // 显式高度：Stack 的 Positioned 不提供高度约束
                       child: SizedBox(
                         height:
@@ -2602,6 +2610,8 @@ class _DrivePageState extends State<DrivePage>
           app.settings.hideTopBar ? app.setTopBarHideFromScroll : null,
       child: drive_refresh.LanRefreshIndicator(
         onRefresh: _reloadAfterChange,
+        // 页面自己在加载（居中转圈）时不响应下拉刷新，避免两个指示同时出现
+        enabled: !_loading,
         edgeOffset: headerInset,
         child: CustomScrollView(
         controller: _scroll,
@@ -2720,6 +2730,12 @@ class _DrivePageState extends State<DrivePage>
     }
     final showFolders = _filter.isEmpty || folders.isNotEmpty;
     final animate = _animationsEnabled;
+    // 列表模式：首行顶部留白与左右内边距一致（12dp）；
+    // 行自带 12dp 横向内边距，列间距靠它即可，纵向沿用原来的 3+3
+    const listTopPadding = EdgeInsets.only(top: 12);
+    final filesTopPadding = showFolders && folders.isNotEmpty
+        ? EdgeInsets.zero
+        : listTopPadding;
     return [
       if (showFolders && folders.isNotEmpty)
         if (grid)
@@ -2742,15 +2758,17 @@ class _DrivePageState extends State<DrivePage>
             ),
           )
         else
-          AdaptiveSliverRows(
-            itemCount: folders.length,
-            // 行自带 12dp 横向内边距，列间距靠它即可；纵向沿用原来的 3+3
-            spacing: 0,
-            itemBuilder: (context, index) => _folderItem(
-              folders[index],
-              index,
-              grid: false,
-              animate: animate,
+          SliverPadding(
+            padding: listTopPadding,
+            sliver: AdaptiveSliverRows(
+              itemCount: folders.length,
+              spacing: 0,
+              itemBuilder: (context, index) => _folderItem(
+                folders[index],
+                index,
+                grid: false,
+                animate: animate,
+              ),
             ),
           ),
       if (files.isNotEmpty)
@@ -2774,14 +2792,17 @@ class _DrivePageState extends State<DrivePage>
             ),
           )
         else
-          AdaptiveSliverRows(
-            itemCount: files.length,
-            spacing: 0,
-            itemBuilder: (context, index) => _fileItem(
-              files[index],
-              index,
-              grid: false,
-              animate: animate,
+          SliverPadding(
+            padding: filesTopPadding,
+            sliver: AdaptiveSliverRows(
+              itemCount: files.length,
+              spacing: 0,
+              itemBuilder: (context, index) => _fileItem(
+                files[index],
+                index,
+                grid: false,
+                animate: animate,
+              ),
             ),
           ),
       SliverToBoxAdapter(
@@ -3445,24 +3466,23 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
 
   Future<void> _toggleQuickAccess() async {
     final app = context.read<AppController>();
-    final l10n = context.l10n;
     if (_pinned) {
       await app.db.removePin(widget.folder.id);
       if (mounted) setState(() => _pinned = false);
     } else {
-      // 当前目录查看属性时，自身的名字已经在路径里，避免重复拼一次
+      // 只存「所在目录」的相对路径：不含根目录前缀，也不含文件夹自身。
+      // 副标题展示时再按当前语言拼上根目录，这样切换语言后也能跟着变。
       final ancestors = widget.page._path;
       final isCurrent = ancestors.isNotEmpty &&
           ancestors.last.id == widget.folder.id;
+      final parents = isCurrent
+          ? ancestors.sublist(0, ancestors.length - 1)
+          : ancestors;
       await app.db.addPin(
         account: app.activeUid ?? '',
         name: widget.folder.name,
         ref: widget.folder.id,
-        path: [
-          l10n.root,
-          ...ancestors.map((node) => node.name),
-          if (!isCurrent) widget.folder.name,
-        ].join('/'),
+        path: parents.map((node) => node.name).join('/'),
       );
       if (mounted) setState(() => _pinned = true);
     }
@@ -3605,7 +3625,7 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
           ),
           ListTile(
             leading: Icon(
-              _pinned ? Icons.push_pin : Icons.push_pin_outlined,
+              _pinned ? Icons.keep_off : Icons.push_pin,
             ),
             title: Text(
               _pinned
