@@ -105,6 +105,12 @@ class _ShareLinkDialogState extends State<ShareLinkDialog> {
           await _saveRecent('shareFile', file.name, link, pwd);
           if (!mounted) return;
           _openFileInfo(file, link, pwd);
+        } on NeedPasswordException {
+          // 需要提取码 / 提取码错误要原样抛给弹窗标在输入框上，
+          // 不能落进下面的"按文件夹再试一次"
+          rethrow;
+        } on WrongPasswordException {
+          rethrow;
         } on LanzouException {
           final folder = await client.resolveFolderShare(link, pwd: pwd);
           if (!mounted) return;
@@ -123,6 +129,12 @@ class _ShareLinkDialogState extends State<ShareLinkDialog> {
         }
       }
     } on NeedPasswordException catch (e) {
+      setState(() {
+        _error = null;
+        _pwdError = e.message;
+      });
+    } on WrongPasswordException catch (e) {
+      // 与「该分享需要提取码」相同的样式：标在提取码输入框上
       setState(() {
         _error = null;
         _pwdError = e.message;

@@ -23,6 +23,11 @@ class NeedPasswordException extends LanzouException {
   const NeedPasswordException() : super('该分享需要提取码');
 }
 
+/// 提取码错误：分享需要密码，但填的密码不对。
+class WrongPasswordException extends LanzouException {
+  const WrongPasswordException() : super('提取码错误');
+}
+
 /// Cookie 缺少 ylogin 字段。
 class CookieFormatException extends LanzouException {
   const CookieFormatException() : super('未找到 ylogin，请确认复制的是完整 Cookie');
@@ -887,8 +892,12 @@ class LanzouClient {
     );
     final link = _asMap(linkResp.data);
     if ('${link['zt']}' != '1') {
+      final info = '${link['inf'] ?? link['info'] ?? ''}';
+      if (info.contains('密码') || info.contains('提取码')) {
+        throw const WrongPasswordException();
+      }
       throw LanzouException(
-        '获取下载地址失败：${link['inf'] ?? link['info'] ?? link}',
+        '获取下载地址失败：${info.isEmpty ? link : info}',
       );
     }
     final dom = '${link['dom'] ?? ''}';
@@ -955,6 +964,12 @@ class LanzouClient {
     final map = _asMap(resp.data);
     if ('${map['zt']}' != '1') {
       final info = '${map['inf'] ?? map['info'] ?? ''}';
+      // 提取码错误单独成类：弹窗会像「该分享需要提取码」一样标在输入框上
+      if ('${map['zt']}' == '3' ||
+          info.contains('密码') ||
+          info.contains('提取码')) {
+        throw const WrongPasswordException();
+      }
       throw LanzouException(info.isNotEmpty ? info : '提取码错误或获取下载地址失败');
     }
     final dom = '${map['dom'] ?? ''}';
@@ -1063,7 +1078,7 @@ class LanzouClient {
         continue;
       }
       if (zt == '2') break;
-      if (zt == '3') throw const LanzouException('提取码错误');
+      if (zt == '3') throw const WrongPasswordException();
       if (zt == '4') continue;
       final info = '${map['info'] ?? ''}';
       if (info.isNotEmpty) throw LanzouException(info);
