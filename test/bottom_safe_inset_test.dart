@@ -142,4 +142,108 @@ void main() {
     final title = tester.getRect(find.text('item'));
     expect(title.left, inInclusiveRange(130, 160));
   });
+
+  testWidgets('小屏：正文区整体让开左右挖孔，顶栏铺满整屏', (tester) async {
+    /// 返回 (正文内容, 顶栏 AppBar, 顶栏搜索按钮) 的矩形
+    Future<(Rect, Rect, Rect)> pumpSmallPage({
+      double left = 0,
+      double right = 0,
+    }) async {
+      final app = AppController();
+      addTearDown(app.dispose);
+      tester.view.physicalSize = const Size(400, 600);
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.padding = FakeViewPadding(left: left, right: right);
+      tester.view.viewPadding = FakeViewPadding(left: left, right: right);
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        ChangeNotifierProvider<AppController>.value(
+          value: app,
+          child: MaterialApp(
+            home: TopBarOverlayScaffold(
+              appBar: AppBar(
+                title: const Text('设置'),
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.search),
+                    onPressed: () {},
+                  ),
+                ],
+              ),
+              slivers: const [
+                SliverToBoxAdapter(
+                  child: SizedBox(key: Key('content'), height: 200),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      return (
+        tester.getRect(find.byKey(const Key('content'))),
+        tester.getRect(find.byType(AppBar)),
+        tester.getRect(find.byIcon(Icons.search)),
+      );
+    }
+
+    final (plainContent, plainBar, plainSearch) = await pumpSmallPage();
+    final (insetContent, insetBar, insetSearch) =
+        await pumpSmallPage(left: 30, right: 40);
+    // 正文区整体让开两侧：左 30、右 40
+    expect(insetContent.left - plainContent.left, 30);
+    expect(plainContent.right - insetContent.right, 40);
+    // 顶栏保持铺满整屏（背景不会被挖孔截断）
+    expect(insetBar.width, plainBar.width);
+    expect(insetBar.left, plainBar.left);
+    // 顶栏里的控件由 AppBar 自己让一次；再让一次右侧就会多缩 40
+    expect(plainSearch.right - insetSearch.right, 40);
+  });
+
+  testWidgets('小屏通铺弹窗：弹窗窗体整体避开左右挖孔，内容不再缩进', (tester) async {
+    final app = AppController();
+    addTearDown(app.dispose);
+    // 440dp 宽的窗口：弹窗通铺整屏，左右各有挖孔
+    tester.view.physicalSize = const Size(440, 600);
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.padding = const FakeViewPadding(left: 30, right: 40);
+    tester.view.viewPadding = const FakeViewPadding(left: 30, right: 40);
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AppController>.value(
+        value: app,
+        child: MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => Center(
+                child: ElevatedButton(
+                  onPressed: () => showAppSheet<void>(
+                    context,
+                    child: const SizedBox(
+                      height: 48,
+                      child: Align(
+                        alignment: Alignment.center,
+                        child: Text('item'),
+                      ),
+                    ),
+                  ),
+                  child: const Text('open'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    // 弹窗窗体（面板）整体避开左右挖孔，而不是让面板压住挖孔、内容缩进
+    final panel = tester.getRect(find.byType(MeasuredSheet));
+    expect(panel.left, 30);
+    expect(panel.right, 400);
+    // 内容在面板里居中：面板若照旧压住挖孔、只让内容单边缩进，这里就会偏
+    final title = tester.getRect(find.text('item'));
+    expect(title.center.dx, moreOrLessEquals(panel.center.dx, epsilon: 0.5));
+  });
 }

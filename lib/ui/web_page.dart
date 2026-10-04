@@ -86,29 +86,33 @@ class _WebPageState extends State<WebPage> {
       body: Md3eBodyCard(
         // WebView 是不透明内容，裁到卡片圆角里
         clipContent: true,
-        child: Stack(
-          children: [
-            InAppWebView(
-              initialUrlRequest: URLRequest(url: WebUri(widget.url)),
-              initialSettings: InAppWebViewSettings(
-                javaScriptEnabled: true,
-                supportZoom: true,
-                useHybridComposition: true,
-              ),
-              onWebViewCreated: (controller) => _controller = controller,
-              onProgressChanged: (controller, progress) {
-                if (mounted) setState(() => _progress = progress / 100);
-              },
-            ),
-            if (_progress < 1)
-              Align(
-                alignment: Alignment.topCenter,
-                child: LinearProgressIndicator(
-                  value: _progress,
-                  minHeight: 2,
+        // 小屏：正文区整体让开左右挖孔 / 侧边导航栏（大屏时卡片已经让过，
+        // 这里的 inset 会被卡片清成 0，不会二次让位）
+        child: BodySideInset(
+          child: Stack(
+            children: [
+              InAppWebView(
+                initialUrlRequest: URLRequest(url: WebUri(widget.url)),
+                initialSettings: InAppWebViewSettings(
+                  javaScriptEnabled: true,
+                  supportZoom: true,
+                  useHybridComposition: true,
                 ),
+                onWebViewCreated: (controller) => _controller = controller,
+                onProgressChanged: (controller, progress) {
+                  if (mounted) setState(() => _progress = progress / 100);
+                },
               ),
-          ],
+              if (_progress < 1)
+                Align(
+                  alignment: Alignment.topCenter,
+                  child: LinearProgressIndicator(
+                    value: _progress,
+                    minHeight: 2,
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );

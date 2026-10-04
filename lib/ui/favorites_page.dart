@@ -326,75 +326,78 @@ class _FavoritesPageState extends State<FavoritesPage>
           transparentPageBackground(context) ? Colors.transparent : null,
       body: Stack(
         children: [
-          ScrollTint(
-            hideDistance: headerHeight,
-            readBarsHidden: () => app.topBarHide.value,
-            onBarsHidden:
-                app.settings.hideTopBar ? app.setTopBarHideFromScroll : null,
-            child: CustomScrollView(
-              controller: _scroll,
-              slivers: [
-                // 顶栏不占布局，这里留出等高占位
-                SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
-                if (_loading)
-                  SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: Padding(
-                      // 底栏盖在正文上方时，空状态保持在可见区域居中
-                      padding:
-                          EdgeInsets.only(bottom: shellBottomBarInset(context)),
-                      child: const Center(child: CircularProgressIndicator()),
-                    ),
-                  )
-                else if (_folders.isEmpty && _files.isEmpty)
-                  SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: Padding(
-                      padding:
-                          EdgeInsets.only(bottom: shellBottomBarInset(context)),
-                      child: EmptyHint(
-                        icon: Icons.star_border,
-                        text: l10n.favoritesHint,
+          // 小屏：正文区整体让开左右挖孔 / 侧边导航栏；顶栏（浮层）保持原样
+          BodySideInset(
+            child: ScrollTint(
+              hideDistance: headerHeight,
+              readBarsHidden: () => app.topBarHide.value,
+              onBarsHidden:
+                  app.settings.hideTopBar ? app.setTopBarHideFromScroll : null,
+              child: CustomScrollView(
+                controller: _scroll,
+                slivers: [
+                  // 顶栏不占布局，这里留出等高占位
+                  SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
+                  if (_loading)
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: Padding(
+                        // 底栏盖在正文上方时，空状态保持在可见区域居中
+                        padding:
+                            EdgeInsets.only(bottom: shellBottomBarInset(context)),
+                        child: const Center(child: CircularProgressIndicator()),
+                      ),
+                    )
+                  else if (_folders.isEmpty && _files.isEmpty)
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: Padding(
+                        padding:
+                            EdgeInsets.only(bottom: shellBottomBarInset(context)),
+                        child: EmptyHint(
+                          icon: Icons.star_border,
+                          text: l10n.favoritesHint,
+                        ),
+                      ),
+                    )
+                  else
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+                      sliver: SliverList(
+                        delegate: SliverChildListDelegate([
+                          if (_folders.isNotEmpty) ...[
+                            SectionHeader(
+                              title: l10n.favoriteFolders,
+                              count: _folders.length,
+                            ),
+                            SegmentedList(
+                              children: [
+                                for (final item in _folders) _tile(item),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+                          ],
+                          if (_files.isNotEmpty) ...[
+                            SectionHeader(
+                              title: l10n.favoriteFiles,
+                              count: _files.length,
+                            ),
+                            SegmentedList(
+                              children: [for (final item in _files) _tile(item)],
+                            ),
+                          ],
+                          // 外壳里给悬浮 / 收起的底栏让位；作为独立页面打开时
+                          // 末尾由 shellBottomBarInset 按系统导航栏补，这里不重复
+                          if (inRootShell(context)) const SizedBox(height: 96),
+                        ]),
                       ),
                     ),
-                  )
-                else
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-                    sliver: SliverList(
-                      delegate: SliverChildListDelegate([
-                        if (_folders.isNotEmpty) ...[
-                          SectionHeader(
-                            title: l10n.favoriteFolders,
-                            count: _folders.length,
-                          ),
-                          SegmentedList(
-                            children: [
-                              for (final item in _folders) _tile(item),
-                            ],
-                          ),
-                          const SizedBox(height: 20),
-                        ],
-                        if (_files.isNotEmpty) ...[
-                          SectionHeader(
-                            title: l10n.favoriteFiles,
-                            count: _files.length,
-                          ),
-                          SegmentedList(
-                            children: [for (final item in _files) _tile(item)],
-                          ),
-                        ],
-                        // 外壳里给悬浮 / 收起的底栏让位；作为独立页面打开时
-                        // 末尾由 shellBottomBarInset 按系统导航栏补，这里不重复
-                        if (inRootShell(context)) const SizedBox(height: 96),
-                      ]),
-                    ),
+                  // 底栏盖在正文上方（extendBody）时，补足列表末尾留白
+                  SliverToBoxAdapter(
+                    child: SizedBox(height: shellBottomBarInset(context)),
                   ),
-                // 底栏盖在正文上方（extendBody）时，补足列表末尾留白
-                SliverToBoxAdapter(
-                  child: SizedBox(height: shellBottomBarInset(context)),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           // 顶栏浮层：与底栏共用收起进度，切换视图时会下滑出现

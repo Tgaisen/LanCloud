@@ -70,103 +70,106 @@ class _ProfilePageState extends State<ProfilePage>
           transparentPageBackground(context) ? Colors.transparent : null,
       body: Stack(
         children: [
-          ScrollTint(
-            hideDistance: headerHeight,
-            readBarsHidden: () => app.topBarHide.value,
-            onBarsHidden:
-                app.settings.hideTopBar ? app.setTopBarHideFromScroll : null,
-            child: CustomScrollView(
-              controller: _scroll,
-              slivers: [
-                // 顶栏不占布局，这里留出等高占位
-                SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
-                SliverPadding(
-                  // 顶部留白与左右一致
-                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
-                  sliver: SliverList(
-                    delegate: SliverChildListDelegate([
-                      SegmentedList(
-                        children: [
-                          ListTile(
-                            leading: CircleAvatar(
-                              child: Text(_avatarInitial(account, uid)),
-                            ),
-                            title: Text(
-                              account == null
-                                  ? l10n.notLoggedIn
-                                  : account.nickname.isEmpty
-                                      ? l10n.accountUid(uid)
-                                      : account.nickname,
-                            ),
-                            subtitle: Text(l10n.uidLabel(uid)),
-                            trailing: FilledButton.tonal(
-                              onPressed: () => _showAccountSwitcher(context),
-                              child: Text(l10n.manage),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      SegmentedList(
-                        children: [
-                          ListTile(
-                            leading: const Icon(Icons.public),
-                            title: Text(l10n.webManagement),
-                            trailing: const Icon(Icons.open_in_new),
-                            onTap: () => _openWeb(
-                              context,
-                              'https://pc.woozooo.com/mydisk.php',
-                              l10n.webManagement,
-                            ),
-                          ),
-                          ListTile(
-                            leading:
-                                const Icon(Icons.restore_from_trash_outlined),
-                            title: Text(l10n.recycleBin),
-                            trailing: const Icon(Icons.open_in_new),
-                            onTap: () => _openWeb(
-                              context,
-                              'https://pc.woozooo.com/mydisk.php?item=recycle',
-                              l10n.recycleBin,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      SegmentedList(
-                        children: [
-                          ListTile(
-                            leading: const Icon(Icons.settings_outlined),
-                            title: Text(l10n.settings),
-                            trailing: const Icon(Icons.chevron_right),
-                            onTap: () => Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => const SettingsPage(),
+          // 小屏：正文区整体让开左右挖孔 / 侧边导航栏；顶栏（浮层）保持原样
+          BodySideInset(
+            child: ScrollTint(
+              hideDistance: headerHeight,
+              readBarsHidden: () => app.topBarHide.value,
+              onBarsHidden:
+                  app.settings.hideTopBar ? app.setTopBarHideFromScroll : null,
+              child: CustomScrollView(
+                controller: _scroll,
+                slivers: [
+                  // 顶栏不占布局，这里留出等高占位
+                  SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
+                  SliverPadding(
+                    // 顶部留白与左右一致
+                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
+                    sliver: SliverList(
+                      delegate: SliverChildListDelegate([
+                        SegmentedList(
+                          children: [
+                            ListTile(
+                              leading: CircleAvatar(
+                                child: Text(_avatarInitial(account, uid)),
+                              ),
+                              title: Text(
+                                account == null
+                                    ? l10n.notLoggedIn
+                                    : account.nickname.isEmpty
+                                        ? l10n.accountUid(uid)
+                                        : account.nickname,
+                              ),
+                              subtitle: Text(l10n.uidLabel(uid)),
+                              trailing: FilledButton.tonal(
+                                onPressed: () => _showAccountSwitcher(context),
+                                child: Text(l10n.manage),
                               ),
                             ),
-                          ),
-                          ListTile(
-                            leading: const Icon(Icons.info_outline),
-                            title: Text(l10n.about),
-                            trailing: const Icon(Icons.chevron_right),
-                            onTap: () => Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => const AboutPage(),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        SegmentedList(
+                          children: [
+                            ListTile(
+                              leading: const Icon(Icons.public),
+                              title: Text(l10n.webManagement),
+                              trailing: const Icon(Icons.open_in_new),
+                              onTap: () => _openWeb(
+                                context,
+                                'https://pc.woozooo.com/mydisk.php',
+                                l10n.webManagement,
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                      // 悬浮底栏时给胶囊让位；普通底栏 / 大屏不需要
-                      SizedBox(height: floatingNavTailInset(context)),
-                    ]),
+                            ListTile(
+                              leading:
+                                  const Icon(Icons.restore_from_trash_outlined),
+                              title: Text(l10n.recycleBin),
+                              trailing: const Icon(Icons.open_in_new),
+                              onTap: () => _openWeb(
+                                context,
+                                'https://pc.woozooo.com/mydisk.php?item=recycle',
+                                l10n.recycleBin,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        SegmentedList(
+                          children: [
+                            ListTile(
+                              leading: const Icon(Icons.settings_outlined),
+                              title: Text(l10n.settings),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const SettingsPage(),
+                                ),
+                              ),
+                            ),
+                            ListTile(
+                              leading: const Icon(Icons.info_outline),
+                              title: Text(l10n.about),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const AboutPage(),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        // 悬浮底栏时给胶囊让位；普通底栏 / 大屏不需要
+                        SizedBox(height: floatingNavTailInset(context)),
+                      ]),
+                    ),
                   ),
-                ),
-                // 底栏盖在正文上方（extendBody）时，补足列表末尾留白
-                SliverToBoxAdapter(
-                  child: SizedBox(height: shellBottomBarInset(context)),
-                ),
-              ],
+                  // 底栏盖在正文上方（extendBody）时，补足列表末尾留白
+                  SliverToBoxAdapter(
+                    child: SizedBox(height: shellBottomBarInset(context)),
+                  ),
+                ],
+              ),
             ),
           ),
           // 顶栏浮层：与底栏共用收起进度

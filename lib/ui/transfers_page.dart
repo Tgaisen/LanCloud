@@ -221,31 +221,34 @@ class _TransfersPageState extends State<TransfersPage>
           transparentPageBackground(context) ? Colors.transparent : null,
       body: Stack(
         children: [
-          ScrollTint(
-            hideDistance: headerHeight,
-            readBarsHidden: () => app.topBarHide.value,
-            onBarsHidden:
-                app.settings.hideTopBar ? app.setTopBarHideFromScroll : null,
-            child: CustomScrollView(
-              controller: _scroll,
-              slivers: [
-              // 顶栏不占布局，这里留出等高占位
-              SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
-              SliverFadeTransition(
-                opacity: _tabFade,
-                sliver: _TransferListSliver(
-                  kind: _kind,
-                  selecting: _selecting,
-                  selected: _selected,
-                  onToggle: _toggleSelected,
-                  onLongPress: _enterSelection,
+          // 小屏：正文区整体让开左右挖孔 / 侧边导航栏；顶栏（浮层）保持原样
+          BodySideInset(
+            child: ScrollTint(
+              hideDistance: headerHeight,
+              readBarsHidden: () => app.topBarHide.value,
+              onBarsHidden:
+                  app.settings.hideTopBar ? app.setTopBarHideFromScroll : null,
+              child: CustomScrollView(
+                controller: _scroll,
+                slivers: [
+                // 顶栏不占布局，这里留出等高占位
+                SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
+                SliverFadeTransition(
+                  opacity: _tabFade,
+                  sliver: _TransferListSliver(
+                    kind: _kind,
+                    selecting: _selecting,
+                    selected: _selected,
+                    onToggle: _toggleSelected,
+                    onLongPress: _enterSelection,
+                  ),
                 ),
+                // 底栏盖在正文上方（extendBody）时，补足列表末尾留白
+                SliverToBoxAdapter(
+                  child: SizedBox(height: shellBottomBarInset(context)),
+                ),
+                ],
               ),
-              // 底栏盖在正文上方（extendBody）时，补足列表末尾留白
-              SliverToBoxAdapter(
-                child: SizedBox(height: shellBottomBarInset(context)),
-              ),
-              ],
             ),
           ),
           // 顶栏浮层：与底栏共用收起进度，切换视图时会下滑出现

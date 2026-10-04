@@ -98,7 +98,10 @@ double floatingNavTailInset(BuildContext context) {
 /// 由页面 Scaffold 的 surfaceContainer 底色负责。
 ///
 /// 卡片顶边跟随顶栏一起收起（[hide] 是 0..1 的收起进度，[topBarHeight]
-/// 含状态栏高度），和外壳里标签页的处理一致。小屏直接返回 [child]。
+/// 含状态栏高度），和外壳里标签页的处理一致。
+///
+/// 小屏（手机竖屏 / 小尺寸窗口）没有卡片：正文区由页面自己用
+/// [BodySideInset] 整体让开左右系统 inset，顶栏仍铺满整屏。
 class Md3eBodyCard extends StatelessWidget {
   const Md3eBodyCard({
     super.key,
@@ -173,6 +176,37 @@ class Md3eBodyCard extends StatelessWidget {
   }
 }
 
+/// 小屏（手机竖屏 / 小尺寸窗口）正文区的左右让位：把系统在屏幕左右两侧的
+/// inset（挖孔 / 三键导航）交给正文区整体承担，页面里的控件不用再各自避让。
+///
+/// 与横屏大屏的 [Md3eBodyCard] 一致的是"整体让位"，不同的是小屏空间紧张：
+/// 正文区直接铺满，不加 8dp 边距、也没有圆角，只把两侧的 inset 让出来。
+class BodySideInset extends StatelessWidget {
+  const BodySideInset({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final padding = MediaQuery.paddingOf(context);
+    if (padding.left == 0 && padding.right == 0) return child;
+    return ColoredBox(
+      // 让位后露出的窄条用页面底色填上，避免透出底层的黑边
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: Padding(
+        padding: EdgeInsets.only(left: padding.left, right: padding.right),
+        // 正文区已经让过位了，里面的控件不要再读这两个 inset（会二次留白）
+        child: MediaQuery.removePadding(
+          context: context,
+          removeLeft: true,
+          removeRight: true,
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
 /// 标记：本页面外面已经有 MD3E 卡片（[Md3ePageFrame]），
 /// 页面自己不要再铺底色，见 [transparentPageBackground]。
 class Md3eFramedScope extends InheritedWidget {
@@ -187,7 +221,13 @@ class Md3eFramedScope extends InheritedWidget {
 
 /// 大屏（横屏 / 平板）下把"独立打开的页面"（例如没进底栏的标签页）
 /// 套成 MD3E 外壳：navigation area 用 surfaceContainer 底色，正文是
-/// 圆角 surface 卡片；顶栏仍由页面自己画在卡片上方。小屏直接返回 [child]。
+/// 圆角 surface 卡片；顶栏仍由页面自己画在卡片上方。
+///
+/// 小屏（手机竖屏 / 小尺寸窗口）没有卡片，正文区由被套的页面自己让位。
+///
+/// 独立打开的页面不在外壳里，没有外壳的 [ScrollTint] 提供滚动进度，
+/// 顶栏就会一直是初始底色；这里补一层只负责进度的 [ScrollTint]，
+/// 让顶栏的上滑变色和标签页里一致（收起底栏仍由页面自己的进度驱动）。
 class Md3ePageFrame extends StatelessWidget {
   const Md3ePageFrame({
     super.key,
@@ -206,14 +246,14 @@ class Md3ePageFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!isLargeLayout(context)) return child;
+    if (!isLargeLayout(context)) return ScrollTint(child: child);
     return Md3eFramedScope(
       child: Scaffold(
         backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
         body: Md3eBodyCard(
           topBarHeight: topBarHeight,
           hide: hide,
-          child: child,
+          child: ScrollTint(child: child),
         ),
       ),
     );
@@ -639,14 +679,18 @@ class _TopBarOverlayScaffoldState extends State<TopBarOverlayScaffold> {
             hide: _hide,
             child: Stack(
               children: [
-                CustomScrollView(
-                  controller: widget.controller,
-                  slivers: [
-                    SliverToBoxAdapter(child: SizedBox(height: topInset)),
-                    ...widget.slivers,
-                    if (widget.bottomSafeInset)
-                      const SliverToBoxAdapter(child: _BottomSystemInset()),
-                  ],
+                // 小屏：正文区整体让开左右挖孔 / 侧边导航栏；
+                // 顶栏保持原样（铺满整屏，自己用 SafeArea 让位）
+                BodySideInset(
+                  child: CustomScrollView(
+                    controller: widget.controller,
+                    slivers: [
+                      SliverToBoxAdapter(child: SizedBox(height: topInset)),
+                      ...widget.slivers,
+                      if (widget.bottomSafeInset)
+                        const SliverToBoxAdapter(child: _BottomSystemInset()),
+                    ],
+                  ),
                 ),
                 Positioned(
                   left: 0,
@@ -751,20 +795,24 @@ Future<T?> showAppSheet<T>(
   final size = MediaQuery.sizeOf(context);
   final maxHeight = size.height * maxHeightRatio;
   // MD3 给模态底部弹窗 640dp 宽度上限：窗口更宽时弹窗居中、离屏幕两侧
-  // 还有很远，这时内容不该再按挖孔 / 导航栏加左右内边距（会多一条留白）；
-  // 只有弹窗真的通铺整屏（窗口不超过上限）时才需要左右让位。
+  // 还有很远，这时不需要左右让位；只有弹窗真的通铺整屏（窗口不超过上限）
+  // 时才要避开两侧的挖孔 / 导航栏。
   final fullWidthSheet = size.width <= kModalSheetMaxWidth;
   return showModalBottomSheet<T>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
-    // 弹窗自己让开系统栏（只让底部/左右，不重复让状态栏）；
-    // 内容里若还有 SafeArea（不少弹窗内容自带）就读不到 padding 了，
-    // 不会再二次避让多留一截空白。
+    // 通铺整屏时让「弹窗窗体」整体避开左右挖孔：useSafeArea 作用在弹窗
+    // 面板外侧（路由层），弹窗被收窄，而不是面板照旧压住挖孔、只让内容
+    // 缩进一截（那样有挖孔的一侧会多出留白）。
+    useSafeArea: fullWidthSheet,
+    // 面板内部只再让开底部导航栏；内容里若还有 SafeArea（不少弹窗内容
+    // 自带）读不到 padding，不会再二次避让多留一截空白。
+    // 左右由上面 useSafeArea 统一处理，这里不要默认值（默认 left/right 为 true）。
     builder: (_) => SafeArea(
       top: false,
-      left: fullWidthSheet,
-      right: fullWidthSheet,
+      left: false,
+      right: false,
       child: Builder(
         builder: (context) => MediaQuery.removePadding(
           context: context,

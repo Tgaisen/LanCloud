@@ -135,7 +135,64 @@ class ScaffoldProbePageState extends State<ScaffoldProbePage> {
   }
 }
 
+/// 复刻独立打开的标签页（传输 / 收藏 / 网盘）：页面自绘顶栏，
+/// 底色取 [topBarBackgroundColor]（读外层 ScrollTint 的滚动进度）。
+class FramedTabProbePage extends StatelessWidget {
+  const FramedTabProbePage({super.key});
+
+  static const double headerHeight = kToolbarHeight;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Scaffold(
+      body: Stack(
+        children: [
+          ListView.builder(
+            padding: const EdgeInsets.only(top: headerHeight),
+            itemCount: 40,
+            itemBuilder: (context, index) =>
+                SizedBox(height: 60, child: Text('row $index')),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            child: TopBarOverlay(
+              height: headerHeight,
+              background: topBarBackgroundColor(context, scheme),
+              builder: (context) => AppBar(title: const Text('BAR')),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 void main() {
+  testWidgets('独立打开的标签页：顶栏底色随滚动变色（与外壳里一致）', (tester) async {
+    final app = AppController();
+    addTearDown(app.dispose);
+    tester.view.physicalSize = const Size(400, 600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AppController>.value(
+        value: app,
+        child: const MaterialApp(
+          home: Md3ePageFrame(child: FramedTabProbePage()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final initial = barBackground(tester);
+    // 上滑一段：顶栏底色应当从 surface 过渡到 surfaceContainer
+    await tester.drag(find.byType(ListView), const Offset(0, -240));
+    await tester.pumpAndSettle();
+    expect(barBackground(tester), isNot(initial));
+  });
+
   testWidgets('独立页面顶栏 1:1 跟随滚动：内容渐隐、底色不渐隐，不动外壳进度', (tester) async {
     final app = AppController()..settings.hideTopBar = true;
     await tester.pumpWidget(

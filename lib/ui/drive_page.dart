@@ -2379,7 +2379,8 @@ class _DrivePageState extends State<DrivePage>
           resizeToAvoidBottomInset: false,
           body: Stack(
             children: [
-              _buildBody(grid),
+              // 小屏：正文区整体让开左右挖孔 / 侧边导航栏；顶栏（浮层）保持原样
+              BodySideInset(child: _buildBody(grid)),
               // 顶栏浮层：与底栏共用收起进度，切换视图时会下滑出现
               Positioned(
                 left: 0,
