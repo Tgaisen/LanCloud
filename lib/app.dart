@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart' hide Icons;
-import 'package:flutter/foundation.dart' show listEquals;
+import 'package:flutter/foundation.dart' show listEquals, visibleForTesting;
 import 'package:flutter/services.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:path/path.dart' as p;
@@ -219,6 +219,26 @@ class _AgreementGateState extends State<AgreementGate> {
   }
 }
 
+/// 返回手势能否交给系统处理（系统才会播放退回桌面的预测性返回动画）。
+///
+/// 只有「默认视图 + 非多选 + 没有进行中的传输 + 网盘页没有可返回的层级」时
+/// 才交给系统；其余情况必须由 Flutter 拦下来做应用内导航（切默认视图 /
+/// 返回上级目录 / 退出多选）或传输中的退出确认，此时按官方语义不做预测动画。
+///
+/// [selectionMode] 由 AppController 统一维护：网盘 / 传输 / 收藏页的多选
+/// 都会把它置为 true，所以这三页（在底栏显示时）的多选都会被拦下来。
+@visibleForTesting
+bool canHandBackToSystem({
+  required bool selectionMode,
+  required bool hasActiveTransfers,
+  required bool atDefaultView,
+  required bool driveCanHandleBack,
+}) =>
+    !selectionMode &&
+    !hasActiveTransfers &&
+    atDefaultView &&
+    !driveCanHandleBack;
+
 class RootShell extends StatefulWidget {
   const RootShell({super.key});
 
@@ -437,6 +457,9 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
           ? _viewDrive
           : _viewHome;
 
+  /// 当前视图 id（底栏配置还没就绪时按首页算）。
+  int get _currentViewId => _ids.isEmpty ? _viewHome : _ids[_index];
+
   @override
   void initState() {
     super.initState();
@@ -608,7 +631,7 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
       app.onRequestExitSelection?.call();
       return false;
     }
-    final currentView = _ids.isEmpty ? _viewHome : _ids[_index];
+    final currentView = _currentViewId;
     // 网盘视图：先让页面处理（返回上一级目录）
     if (currentView == _viewDrive && app.onDriveBack != null) {
       final handled = await app.onDriveBack!();
@@ -754,14 +777,31 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
           ),
       ],
     );
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) async {
-        if (didPop) return;
-        final shouldExit = await _handleBack();
-        if (shouldExit && mounted) {
-          await SystemNavigator.pop();
-        }
+    // 返回手势何时交给系统：只有「默认视图 + 没有要拦截的目标」才置
+    // canPop=true，系统才会播放退回桌面的预测性返回动画（官方语义：
+    // PopScope.canPop=false 时不做预测动画）。其余情况（多选 / 网盘
+    // 子目录或搜索 / 非默认视图 / 传输中的退出确认）交给 _handleBack 处理。
+    final currentView = _currentViewId;
+    return ValueListenableBuilder<bool>(
+      valueListenable: app.driveCanHandleBack,
+      builder: (context, driveCanHandleBack, child) {
+        final canPop = canHandBackToSystem(
+          selectionMode: app.selectionMode,
+          hasActiveTransfers: running > 0,
+          atDefaultView: currentView == _defaultViewId,
+          driveCanHandleBack: currentView == _viewDrive && driveCanHandleBack,
+        );
+        return PopScope(
+          canPop: canPop,
+          onPopInvokedWithResult: (didPop, result) async {
+            if (didPop) return;
+            final shouldExit = await _handleBack();
+            if (shouldExit && mounted) {
+              await SystemNavigator.pop();
+            }
+          },
+          child: child!,
+        );
       },
       child: width >= kLargeLayoutBreakpoint
           ? Scaffold(

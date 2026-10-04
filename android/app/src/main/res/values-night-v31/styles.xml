@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 深色模式 + Android 12+ 的启动屏幕，内容与 values-v31/styles.xml 一致。
+         必须同时存在 values-night-v31：夜间（night）限定符优先级高于版本（v31），
+         只有 values-night 的话，系统会选它而丢掉 SplashScreen API 的 item。 -->
+    <style name="LaunchTheme" parent="@android:style/Theme.Black.NoTitleBar">
+        <item name="android:windowBackground">@drawable/launch_background</item>
+        <item name="android:windowSplashScreenBackground">?android:colorBackground</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@color/ic_launcher_background</item>
+    </style>
+</resources>

@@ -108,6 +108,9 @@ class _DrivePageState extends State<DrivePage>
   /// 键盘是否弹出（悬浮底栏的 FAB 留白跟随它，见 didChangeMetrics）。
   final ValueNotifier<bool> _keyboardUp = ValueNotifier(false);
   late AppController _app;
+  /// didChangeDependencies 之前（例如 initState 里同步命中的目录缓存）
+  /// 还不能访问 _app，用这个标记兜底。
+  bool _appReady = false;
 
   @override
   void initState() {
@@ -140,8 +143,10 @@ class _DrivePageState extends State<DrivePage>
     _keyboardUp.dispose();
     _app.driveFolderRequest.removeListener(_onDriveFolderRequest);
     context.read<TransferManager>().removeTaskListener(_onTaskDone);
-    if (widget.initialFolderId == '-1' && widget.initialName == null) {
+    if (_isShellPage) {
       _app.onDriveBack = null;
+      // 外壳里的网盘页卸载后不再拦截返回，交回系统（预测性返回桌面）。
+      _app.driveCanHandleBack.value = false;
     }
     if (_selecting) {
       _app.setSelectionMode(false);
@@ -418,9 +423,16 @@ class _DrivePageState extends State<DrivePage>
   void didChangeDependencies() {
     super.didChangeDependencies();
     _app = context.read<AppController>();
-    if (widget.initialFolderId == '-1' && widget.initialName == null) {
+    _appReady = true;
+    if (_isShellPage) {
       _app.onDriveBack = _handleDriveBack;
     }
+    // 首次挂载后同步一次返回能力（例如 initState 里同步命中的目录缓存）。
+    // didChangeDependencies 发生在 build 期间，直接改 notifier 会让 RootShell
+    // 在 build 中重建，所以放到当前帧结束之后。
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _publishCanHandleBack();
+    });
     // 换账号兜底：页面状态如果被保留下来，也要丢掉上一个账号的目录内容
     final uid = _app.activeUid;
     if (_loadedUid == null) {
@@ -429,6 +441,14 @@ class _DrivePageState extends State<DrivePage>
       _loadedUid = uid;
       WidgetsBinding.instance.addPostFrameCallback((_) => _resetForAccount());
     }
+  }
+
+  /// 路径 / 搜索 / 多选都通过 [setState] 改动，统一在改动后同步返回能力，
+  /// 避免漏掉某个状态点导致返回手势被错误地交给系统（那一按就会退出应用）。
+  @override
+  void setState(VoidCallback fn) {
+    super.setState(fn);
+    _publishCanHandleBack();
   }
 
   /// 当前已加载数据的账号，用于换账号时重置页面。
@@ -455,6 +475,24 @@ class _DrivePageState extends State<DrivePage>
       _error = null;
     });
     _load(force: true);
+  }
+
+  /// 是否是外壳底栏里的网盘页：只有它参与 RootShell 的返回决策，
+  /// 独立路由打开的网盘页（首页 → 目录）由路由自己维护返回栈。
+  bool get _isShellPage =>
+      widget.initialFolderId == '-1' && widget.initialName == null;
+
+  /// 当前网盘页是否要自己消费返回手势：多选 > 搜索栏 > 上一级目录。
+  bool get _canHandleBack => _selecting || _searching || _path.isNotEmpty;
+
+  /// 上报给 RootShell（见 AppController.driveCanHandleBack）：需要消费返回时
+  /// 置 true，由 Flutter 拦截手势；false 时交给系统，系统才会播放
+  /// 「退回桌面」的预测性返回动画。
+  void _publishCanHandleBack() {
+    if (!_appReady || !_isShellPage) return;
+    final notifier = _app.driveCanHandleBack;
+    final value = _canHandleBack;
+    if (notifier.value != value) notifier.value = value;
   }
 
   /// 返回键：多选 > 搜索栏 > 上一级目录 > 交给外壳处理

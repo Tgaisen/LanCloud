@@ -25,6 +25,10 @@ class AppController extends ChangeNotifier {
   VoidCallback? onRequestExitSelection;
   /// 网盘页注册的返回处理：返回 true 表示已消费（例如返回上一级目录）。
   Future<bool> Function()? onDriveBack;
+  /// 网盘页当前是否需要自己消费返回手势（多选 / 搜索 / 已在子目录），
+  /// 由外壳里的 [DrivePage] 实时上报。RootShell 用它决定返回手势交给系统
+  /// （系统才会播放退回桌面的预测性返回动画）还是由 Flutter 拦截。
+  final ValueNotifier<bool> driveCanHandleBack = ValueNotifier<bool>(false);
 
   void setSelectionMode(bool value) {
     if (selectionMode == value) return;

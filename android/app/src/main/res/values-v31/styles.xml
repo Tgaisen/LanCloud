@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 12+（API 31+）启动屏幕：走官方 SplashScreen API。
+         系统按规范生成「背景色 + 居中图标（圆形遮罩）」的启动屏幕，
+         并负责退出动画；应用不需要（也不应该）再自己画一张全屏图。
+
+         注意：style 是整体资源，不会与 values/styles.xml 的同名 style
+         按 item 合并，所以这里要重复声明 LaunchTheme 原有的 item。
+         低版本（API < 31）仍使用 values/styles.xml + @drawable/launch_background。 -->
+    <style name="LaunchTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:windowBackground">@drawable/launch_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+
+        <!-- SplashScreen API：背景默认取主题的 ?android:colorBackground，
+             这里显式写出，保证和 windowBackground 颜色一致、无跳色。 -->
+        <item name="android:windowSplashScreenBackground">?android:colorBackground</item>
+        <!-- 自适应图标的前景图自带 108dp 画布留白，系统会按规范把内容
+             放进 2/3 直径的圆形安全区；底色复用启动图标背景色
+             （浅色 = 品牌青，深色见 values-night/colors.xml）。 -->
+        <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@color/ic_launcher_background</item>
+    </style>
+</resources>
