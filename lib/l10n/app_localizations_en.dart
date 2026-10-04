@@ -1222,29 +1222,32 @@ class AppLocalizationsEn extends AppLocalizations {
   String get exportLogsFailed => 'Failed to export logs';
 
   @override
-  String get scan => 'Scan';
+  String get scan => 'Scan QR code';
 
   @override
-  String get scanTorch => 'Torch';
+  String get scanTakePhoto => 'Take a photo';
 
   @override
-  String get scanFromGallery => 'Pick from gallery';
+  String get scanTakePhotoSubtitle =>
+      'Use the system camera (no permission needed)';
+
+  @override
+  String get scanFromGallery => 'Choose from gallery';
+
+  @override
+  String get scanFromGallerySubtitle => 'Pick a QR image from the gallery';
+
+  @override
+  String get scanDecoding => 'Recognizing…';
+
+  @override
+  String get scanNoCameraApp => 'No camera app found';
 
   @override
   String get scanNoQrFound => 'No QR code found in the image';
 
   @override
   String get scanImageFailed => 'Failed to read the image';
-
-  @override
-  String get scanHint => 'Place the QR code inside the frame';
-
-  @override
-  String get scanCameraFailed => 'Unable to start the camera';
-
-  @override
-  String get scanNoCameraPermission =>
-      'Camera permission is required to scan. Enable it in system settings.';
 
   @override
   String get scanNotLanzou => 'No LanCloud share link found';
@@ -1296,12 +1299,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cookieLogin => 'Cookie login';
 
   @override
-  String get permissionCamera => 'Camera (QR scan)';
-
-  @override
-  String get permissionCameraKeywords => 'camera qr scan permission';
-
-  @override
   String get permissionInstall => 'Install apps (open APK)';
 
   @override
@@ -1314,16 +1311,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get permissionBatteryKeywords =>
       'battery optimization background permission';
-
-  @override
-  String get permissionGranted => 'Granted';
-
-  @override
-  String get permissionDenied => 'Not granted; tap to allow';
-
-  @override
-  String get permissionBlocked =>
-      'Blocked by the system; enable it in system settings';
 
   @override
   String get permissionChecking => 'Checking…';
@@ -1342,19 +1329,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get permissionBatteryRestricted =>
       'Restricted by battery optimization; background transfers may be interrupted';
-
-  @override
-  String get permissionBlockedTitle => 'Enable it in system settings';
-
-  @override
-  String get permissionBlockedMessage =>
-      'Camera permission was denied by the system. Enable it in system settings, then come back.';
-
-  @override
-  String get permissionOpenSystemSettings => 'Open system settings';
-
-  @override
-  String get permissionCameraGranted => 'Camera permission granted';
 
   @override
   String get permissionOpenFailed => 'Unable to open system settings';

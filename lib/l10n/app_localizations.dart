@@ -2285,25 +2285,49 @@ abstract class AppLocalizations {
   /// No description provided for @scan.
   ///
   /// In zh, this message translates to:
-  /// **'扫描二维码'**
+  /// **'识别二维码方式'**
   String get scan;
 
-  /// No description provided for @scanTorch.
+  /// No description provided for @scanTakePhoto.
   ///
   /// In zh, this message translates to:
-  /// **'手电筒'**
-  String get scanTorch;
+  /// **'拍照获取'**
+  String get scanTakePhoto;
+
+  /// No description provided for @scanTakePhotoSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'用系统相机拍摄二维码图片'**
+  String get scanTakePhotoSubtitle;
 
   /// No description provided for @scanFromGallery.
   ///
   /// In zh, this message translates to:
-  /// **'从相册选取图片'**
+  /// **'从相册选取'**
   String get scanFromGallery;
+
+  /// No description provided for @scanFromGallerySubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'从系统相册选择二维码图片'**
+  String get scanFromGallerySubtitle;
+
+  /// No description provided for @scanDecoding.
+  ///
+  /// In zh, this message translates to:
+  /// **'识别中…'**
+  String get scanDecoding;
+
+  /// No description provided for @scanNoCameraApp.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有找到可用的相机应用'**
+  String get scanNoCameraApp;
 
   /// No description provided for @scanNoQrFound.
   ///
   /// In zh, this message translates to:
-  /// **'图片里没有识别到二维码'**
+  /// **'未在图片中识别到二维码'**
   String get scanNoQrFound;
 
   /// No description provided for @scanImageFailed.
@@ -2311,24 +2335,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'图片识别失败'**
   String get scanImageFailed;
-
-  /// No description provided for @scanHint.
-  ///
-  /// In zh, this message translates to:
-  /// **'将二维码放入取景框内'**
-  String get scanHint;
-
-  /// No description provided for @scanCameraFailed.
-  ///
-  /// In zh, this message translates to:
-  /// **'无法启动相机'**
-  String get scanCameraFailed;
-
-  /// No description provided for @scanNoCameraPermission.
-  ///
-  /// In zh, this message translates to:
-  /// **'需要相机权限才能扫码，请在系统设置中开启'**
-  String get scanNoCameraPermission;
 
   /// No description provided for @scanNotLanzou.
   ///
@@ -2420,18 +2426,6 @@ abstract class AppLocalizations {
   /// **'Cookie 登录'**
   String get cookieLogin;
 
-  /// No description provided for @permissionCamera.
-  ///
-  /// In zh, this message translates to:
-  /// **'相机（用于扫描二维码）'**
-  String get permissionCamera;
-
-  /// No description provided for @permissionCameraKeywords.
-  ///
-  /// In zh, this message translates to:
-  /// **'camera qr scan 相机 扫码 权限'**
-  String get permissionCameraKeywords;
-
   /// No description provided for @permissionInstall.
   ///
   /// In zh, this message translates to:
@@ -2455,24 +2449,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'battery optimization background 电池 优化 后台 权限'**
   String get permissionBatteryKeywords;
-
-  /// No description provided for @permissionGranted.
-  ///
-  /// In zh, this message translates to:
-  /// **'已授权'**
-  String get permissionGranted;
-
-  /// No description provided for @permissionDenied.
-  ///
-  /// In zh, this message translates to:
-  /// **'未授权，点击授权'**
-  String get permissionDenied;
-
-  /// No description provided for @permissionBlocked.
-  ///
-  /// In zh, this message translates to:
-  /// **'已被系统拒绝，需到系统设置开启'**
-  String get permissionBlocked;
 
   /// No description provided for @permissionChecking.
   ///
@@ -2503,30 +2479,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'受电池优化限制，后台传输可能被中断'**
   String get permissionBatteryRestricted;
-
-  /// No description provided for @permissionBlockedTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'需要到系统设置开启'**
-  String get permissionBlockedTitle;
-
-  /// No description provided for @permissionBlockedMessage.
-  ///
-  /// In zh, this message translates to:
-  /// **'相机权限已被系统拒绝，请到系统设置中手动开启，然后回到应用。'**
-  String get permissionBlockedMessage;
-
-  /// No description provided for @permissionOpenSystemSettings.
-  ///
-  /// In zh, this message translates to:
-  /// **'打开系统设置'**
-  String get permissionOpenSystemSettings;
-
-  /// No description provided for @permissionCameraGranted.
-  ///
-  /// In zh, this message translates to:
-  /// **'相机权限已授权'**
-  String get permissionCameraGranted;
 
   /// No description provided for @permissionOpenFailed.
   ///

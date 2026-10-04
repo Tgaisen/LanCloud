@@ -58,8 +58,9 @@ dependencies:
   # 直接依赖平台实现包，用于传入系统验证弹窗的本地化文案
   local_auth_android: 2.2.0
   local_auth_darwin: 2.0.4
-  mobile_scanner: ^7.4.2
   dynamic_color: 1.7.0
+  zxing2: ^0.2.4
+  image: ^4.10.1
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -71,6 +72,7 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
   sqflite_common_ffi: ^2.4.3
+  qr: ^3.0.2
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

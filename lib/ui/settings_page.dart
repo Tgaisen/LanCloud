@@ -495,19 +495,6 @@ class _SettingsPageState extends State<SettingsPage>
         ),
       ),
       _Entry(
-        id: 'camera_permission',
-        title: l10n.permissionCamera,
-        subtitle: _cameraStatusText(),
-        keywords: l10n.permissionCameraKeywords.split(' '),
-        category: 'permissions',
-        build: (context, app) => ListTile(
-          leading: const Icon(Icons.qr_code),
-          title: Text(context.l10n.permissionCamera),
-          subtitle: Text(_cameraStatusText()),
-          onTap: _requestCameraPermission,
-        ),
-      ),
-      _Entry(
         id: 'install_permission',
         title: l10n.permissionInstall,
         subtitle: _installStatusText(),
@@ -881,13 +868,6 @@ class _SettingsPageState extends State<SettingsPage>
         _ => id,
       };
 
-  String _cameraStatusText() => switch (_permissions?.camera) {
-        PermissionState.granted => context.l10n.permissionGranted,
-        PermissionState.denied => context.l10n.permissionDenied,
-        PermissionState.blocked => context.l10n.permissionBlocked,
-        _ => context.l10n.permissionChecking,
-      };
-
   String _installStatusText() => switch (_permissions?.install) {
         PermissionState.granted => context.l10n.permissionInstallGranted,
         PermissionState.denied => context.l10n.permissionInstallDenied,
@@ -899,49 +879,6 @@ class _SettingsPageState extends State<SettingsPage>
         PermissionState.denied => context.l10n.permissionBatteryRestricted,
         _ => context.l10n.permissionChecking,
       };
-
-  Future<void> _requestCameraPermission() async {
-    final messenger = ScaffoldMessenger.of(context);
-    final l10n = context.l10n;
-    final state = await AppPermissions.instance.requestCamera();
-    if (!mounted) return;
-    await _refreshPermissions();
-    if (!mounted) return;
-    if (state == PermissionState.blocked) {
-      final open = await showDialog<bool>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          icon: const Icon(Icons.lock_outline),
-          title: Text(l10n.permissionBlockedTitle),
-          content: Text(l10n.permissionBlockedMessage),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: Text(l10n.cancel),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: Text(l10n.permissionOpenSystemSettings),
-            ),
-          ],
-        ),
-      );
-      if (open == true) {
-        final ok = await AppPermissions.instance.openAppSettings();
-        if (!ok && mounted) {
-          messenger.showSnackBar(
-            SnackBar(content: Text(l10n.permissionOpenFailed)),
-          );
-        }
-      }
-      return;
-    }
-    if (state == PermissionState.granted) {
-      messenger.showSnackBar(
-        SnackBar(content: Text(l10n.permissionCameraGranted)),
-      );
-    }
-  }
 
   Future<void> _openInstallSettings() async {
     final l10n = context.l10n;

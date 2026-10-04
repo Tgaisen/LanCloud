@@ -79,6 +79,7 @@ class Icons {
   static const IconData open_in_new = Symbols.open_in_new;
   static const IconData palette_outlined = Symbols.palette;
   static const IconData photo_library_outlined = Symbols.photo_library;
+  static const IconData photo_camera_outlined = Symbols.photo_camera;
   static const IconData password = Symbols.password;
   static const IconData person = Symbols.person;
   static const IconData person_outline = Symbols.person;

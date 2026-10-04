@@ -15,20 +15,19 @@ enum PermissionState {
   unknown,
 }
 
-/// 相机 / 安装应用 / 电池优化三项权限的状态快照。
+/// 安装应用 / 电池优化两项权限的状态快照。
+///
+/// 相机权限已不再需要：扫码改为从相册选图识别（见 ui/scan_page.dart）。
 class PermissionSnapshot {
   const PermissionSnapshot({
-    required this.camera,
     required this.install,
     required this.battery,
   });
 
-  final PermissionState camera;
   final PermissionState install;
   final PermissionState battery;
 
   static const unknown = PermissionSnapshot(
-    camera: PermissionState.unknown,
     install: PermissionState.unknown,
     battery: PermissionState.unknown,
   );
@@ -48,7 +47,6 @@ class AppPermissions {
       final raw = await _channel.invokeMethod<Map<Object?, Object?>>('status');
       if (raw == null) return PermissionSnapshot.unknown;
       return PermissionSnapshot(
-        camera: _parse(raw['camera']),
         install: _parse(raw['install']),
         battery: _parse(raw['battery']),
       );
@@ -56,17 +54,6 @@ class AppPermissions {
       return PermissionSnapshot.unknown;
     } on MissingPluginException {
       return PermissionSnapshot.unknown;
-    }
-  }
-
-  /// 请求相机权限，返回请求后的状态。
-  Future<PermissionState> requestCamera() async {
-    try {
-      return _parse(await _channel.invokeMethod<Object?>('requestCamera'));
-    } on PlatformException {
-      return PermissionState.unknown;
-    } on MissingPluginException {
-      return PermissionState.unknown;
     }
   }
 

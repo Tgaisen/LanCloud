@@ -1,6 +1,5 @@
 package com.lancloud.lancloud
 
-import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -8,9 +7,9 @@ import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
 import android.provider.DocumentsContract
+import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.provider.Settings
-import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -20,15 +19,13 @@ import java.io.File
 // local_auth（生物识别）要求宿主 Activity 必须是 FragmentActivity。
 class MainActivity : FlutterFragmentActivity() {
     private var pickFilesResult: MethodChannel.Result? = null
-    private var cameraPermissionResult: MethodChannel.Result? = null
+    /// 拍照识别的输出文件（用 ACTION_IMAGE_CAPTURE 时由本应用创建）。
+    private var photoOutputPath: String? = null
     private var linksChannel: MethodChannel? = null
     private var pendingLink: String? = null
 
     companion object {
         private const val PICK_FILES_REQUEST = 2001
-        private const val CAMERA_PERMISSION_REQUEST = 2003
-        private const val PERMISSION_PREFS = "lancloud_permissions"
-        private const val KEY_CAMERA_REQUESTED = "camera_requested"
         /// 蓝奏云分享链接域名：lanzoua.com ~ lanzouz.com（含 *.cn 与子域名）
         private val LANZOU_HOST =
             Regex("(^|\\.)lanzou[a-z]*\\.(com|cn)$", RegexOption.IGNORE_CASE)
@@ -119,6 +116,37 @@ class MainActivity : FlutterFragmentActivity() {
                         result.error("pick_failed", e.message, null)
                     }
                 }
+                // 拍照识别二维码：ACTION_IMAGE_CAPTURE（本应用不声明 CAMERA 权限，
+                // 由系统相机 App 完成拍摄，因此无需申请任何权限）。
+                "takePhoto" -> {
+                    val dir = File(cacheDir, "photo").apply { mkdirs() }
+                    val file = File(dir, "qr_${System.currentTimeMillis()}.jpg")
+                    val uri = FileProvider.getUriForFile(
+                        this,
+                        "$packageName.fileProvider",
+                        file,
+                    )
+                    val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
+                        putExtra(MediaStore.EXTRA_OUTPUT, uri)
+                        addFlags(
+                            Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
+                                Intent.FLAG_GRANT_READ_URI_PERMISSION,
+                        )
+                    }
+                    if (intent.resolveActivity(packageManager) == null) {
+                        result.error("no_camera", "no camera app", null)
+                        return@setMethodCallHandler
+                    }
+                    pickFilesResult = result
+                    photoOutputPath = file.absolutePath
+                    try {
+                        startActivityForResult(intent, PICK_FILES_REQUEST)
+                    } catch (e: Exception) {
+                        pickFilesResult = null
+                        photoOutputPath = null
+                        result.error("photo_failed", e.message, null)
+                    }
+                }
                 else -> result.notImplemented()
             }
         }
@@ -200,12 +228,10 @@ class MainActivity : FlutterFragmentActivity() {
             when (call.method) {
                 "status" -> result.success(
                     mapOf(
-                        "camera" to cameraPermissionStatus(),
                         "install" to installPermissionStatus(),
                         "battery" to batteryPermissionStatus(),
                     ),
                 )
-                "requestCamera" -> requestCameraPermission(result)
                 "openInstallSettings" -> result.success(openInstallSettings())
                 "requestBattery" -> result.success(requestBatteryOptimization())
                 "openAppSettings" -> result.success(openAppSettings())
@@ -254,54 +280,6 @@ class MainActivity : FlutterFragmentActivity() {
         val host = uri.host?.lowercase() ?: return null
         if (!LANZOU_HOST.containsMatchIn(host)) return null
         return uri.toString()
-    }
-
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray,
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode != CAMERA_PERMISSION_REQUEST) return
-        val result = cameraPermissionResult
-        cameraPermissionResult = null
-        result?.success(cameraPermissionStatus())
-    }
-
-    private fun hasCameraPermission(): Boolean =
-        ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) ==
-            PackageManager.PERMISSION_GRANTED
-
-    /// granted / denied / blocked（blocked = 已被系统记住拒绝，只能去系统设置开）
-    private fun cameraPermissionStatus(): String {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return "granted"
-        if (hasCameraPermission()) return "granted"
-        val requested = getSharedPreferences(PERMISSION_PREFS, Context.MODE_PRIVATE)
-            .getBoolean(KEY_CAMERA_REQUESTED, false)
-        if (requested && !shouldShowRequestPermissionRationale(Manifest.permission.CAMERA)) {
-            return "blocked"
-        }
-        return "denied"
-    }
-
-    private fun requestCameraPermission(result: MethodChannel.Result) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || hasCameraPermission()) {
-            result.success("granted")
-            return
-        }
-        if (cameraPermissionResult != null) {
-            result.error("in_progress", "camera permission request in progress", null)
-            return
-        }
-        cameraPermissionResult = result
-        getSharedPreferences(PERMISSION_PREFS, Context.MODE_PRIVATE)
-            .edit()
-            .putBoolean(KEY_CAMERA_REQUESTED, true)
-            .apply()
-        requestPermissions(
-            arrayOf(Manifest.permission.CAMERA),
-            CAMERA_PERMISSION_REQUEST,
-        )
     }
 
     /// granted / denied（Android 8 以下默认允许）
@@ -374,6 +352,18 @@ class MainActivity : FlutterFragmentActivity() {
         val result = pickFilesResult
         pickFilesResult = null
         if (result == null) return
+        // 拍照：输出文件是本应用创建的，成功即返回该路径；取消则删掉空文件。
+        val photoPath = photoOutputPath
+        photoOutputPath = null
+        if (photoPath != null) {
+            if (resultCode == RESULT_OK) {
+                result.success(listOf(photoPath))
+            } else {
+                File(photoPath).delete()
+                result.success(emptyList<String>())
+            }
+            return
+        }
         if (resultCode != RESULT_OK || data == null) {
             result.success(emptyList<String>())
             return

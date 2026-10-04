@@ -2,7 +2,6 @@ import 'package:flutter/material.dart' hide Icons;
 import 'package:provider/provider.dart';
 
 import '../core/app_controller.dart';
-import '../core/app_permissions.dart';
 import '../core/data/app_db.dart';
 import '../core/lanzou_link.dart';
 import '../core/transfer/transfer_manager.dart';
@@ -10,7 +9,7 @@ import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
 import 'drive_page.dart';
-import 'scan_page.dart';
+import 'qr_scan.dart';
 import 'scroll_tint.dart';
 import 'share_file_sheet.dart';
 import 'share_page.dart';
@@ -67,44 +66,13 @@ class _HomePageState extends State<HomePage>
     }
   }
 
-  /// 扫码：先要相机权限，识别到蓝奏云分享链接后直接打开解析弹窗。
+  /// 识别二维码：底部弹窗选择「拍照获取 / 从相册选取」（都不需要相机权限），
+  /// 识别到蓝奏云分享链接后直接打开解析弹窗。
   Future<void> _scanQr() async {
     final l10n = context.l10n;
-    final state = await AppPermissions.instance.requestCamera();
-    if (!mounted) return;
-    if (state != PermissionState.granted) {
-      final messenger = ScaffoldMessenger.of(context);
-      if (state == PermissionState.blocked) {
-        // 已被系统记住拒绝：给一个直接跳系统设置的入口
-        final open = await showDialog<bool>(
-          context: context,
-          builder: (dialogContext) => AlertDialog(
-            icon: const Icon(Icons.lock_outline),
-            title: Text(l10n.permissionBlockedTitle),
-            content: Text(l10n.permissionBlockedMessage),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(false),
-                child: Text(l10n.cancel),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.of(dialogContext).pop(true),
-                child: Text(l10n.permissionOpenSystemSettings),
-              ),
-            ],
-          ),
-        );
-        if (open == true) await AppPermissions.instance.openAppSettings();
-      } else {
-        messenger.showSnackBar(
-          SnackBar(content: Text(l10n.scanNoCameraPermission)),
-        );
-      }
-      return;
-    }
-    final raw = await Navigator.of(context).push<String>(
-      MaterialPageRoute(builder: (_) => const ScanPage()),
-    );
+    final source = await showQrSourceSheet(context);
+    if (source == null || !mounted) return;
+    final raw = await scanQrFromImage(context, source);
     if (!mounted || raw == null) return;
     final link = LanzouLink.parse(raw);
     if (link == null) {

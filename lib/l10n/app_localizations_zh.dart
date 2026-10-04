@@ -1187,28 +1187,31 @@ class AppLocalizationsZh extends AppLocalizations {
   String get exportLogsFailed => '日志导出失败';
 
   @override
-  String get scan => '扫描二维码';
+  String get scan => '识别二维码方式';
 
   @override
-  String get scanTorch => '手电筒';
+  String get scanTakePhoto => '拍照获取';
 
   @override
-  String get scanFromGallery => '从相册选取图片';
+  String get scanTakePhotoSubtitle => '用系统相机拍摄二维码图片';
 
   @override
-  String get scanNoQrFound => '图片里没有识别到二维码';
+  String get scanFromGallery => '从相册选取';
+
+  @override
+  String get scanFromGallerySubtitle => '从系统相册选择二维码图片';
+
+  @override
+  String get scanDecoding => '识别中…';
+
+  @override
+  String get scanNoCameraApp => '没有找到可用的相机应用';
+
+  @override
+  String get scanNoQrFound => '未在图片中识别到二维码';
 
   @override
   String get scanImageFailed => '图片识别失败';
-
-  @override
-  String get scanHint => '将二维码放入取景框内';
-
-  @override
-  String get scanCameraFailed => '无法启动相机';
-
-  @override
-  String get scanNoCameraPermission => '需要相机权限才能扫码，请在系统设置中开启';
 
   @override
   String get scanNotLanzou => '没有识别到蓝奏云分享链接';
@@ -1256,12 +1259,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cookieLogin => 'Cookie 登录';
 
   @override
-  String get permissionCamera => '相机（用于扫描二维码）';
-
-  @override
-  String get permissionCameraKeywords => 'camera qr scan 相机 扫码 权限';
-
-  @override
   String get permissionInstall => '安装应用（用于打开 APK）';
 
   @override
@@ -1274,15 +1271,6 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get permissionBatteryKeywords =>
       'battery optimization background 电池 优化 后台 权限';
-
-  @override
-  String get permissionGranted => '已授权';
-
-  @override
-  String get permissionDenied => '未授权，点击授权';
-
-  @override
-  String get permissionBlocked => '已被系统拒绝，需到系统设置开启';
 
   @override
   String get permissionChecking => '检查中…';
@@ -1298,18 +1286,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get permissionBatteryRestricted => '受电池优化限制，后台传输可能被中断';
-
-  @override
-  String get permissionBlockedTitle => '需要到系统设置开启';
-
-  @override
-  String get permissionBlockedMessage => '相机权限已被系统拒绝，请到系统设置中手动开启，然后回到应用。';
-
-  @override
-  String get permissionOpenSystemSettings => '打开系统设置';
-
-  @override
-  String get permissionCameraGranted => '相机权限已授权';
 
   @override
   String get permissionOpenFailed => '无法打开系统设置';
