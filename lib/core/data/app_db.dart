@@ -548,6 +548,20 @@ class AppDb {
     _touch();
   }
 
+  /// 删除某条最近使用记录（首页条目菜单的「删除此条记录」）。
+  Future<void> removeRecent({
+    required String account,
+    required String ref,
+  }) async {
+    final database = await db;
+    await database.delete(
+      'recents',
+      where: 'account = ? AND ref = ?',
+      whereArgs: [account, ref],
+    );
+    _touch();
+  }
+
   // ------------------------------------------------------------------- backup
 
   /// 备份：导出会随备份迁移的本地表。

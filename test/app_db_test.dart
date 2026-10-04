@@ -137,6 +137,33 @@ void main() {
     expect(await db.recents(account), isEmpty);
   });
 
+  test('删除某条最近使用记录：只删该账号的该条', () async {
+    final db = AppDb.instance;
+    const account = 'remove-recent-test';
+    for (final name in ['A', 'B', 'C']) {
+      await db.addRecent(account: account, kind: 'folder', name: name, ref: name);
+      await Future<void>.delayed(const Duration(milliseconds: 3));
+    }
+    // 另一个账号下的同 ref 记录不应受影响
+    await db.addRecent(
+      account: 'remove-recent-other',
+      kind: 'folder',
+      name: 'B',
+      ref: 'B',
+    );
+
+    await db.removeRecent(account: account, ref: 'B');
+
+    expect(
+      (await db.recents(account)).map((r) => r.ref),
+      ['C', 'A'],
+    );
+    expect(
+      (await db.recents('remove-recent-other')).map((r) => r.ref),
+      ['B'],
+    );
+  });
+
   test('快速访问记录目录路径，并支持移到顶部', () async {
     final db = AppDb.instance;
     const account = 'pin-path-test';

@@ -16,6 +16,16 @@
 - **备份与恢复**：本地备份 + WebDAV 自动备份
 - **Android 系统集成**：可接收其他应用分享的链接 / 文件；适配 Android 12 启动屏与预测性返回手势
 
+## 平台
+
+多平台适配目前为非优先处理事项。
+
+- [x] Android
+- [ ] Windows
+- [ ] HarmonyOS NEXT
+- [ ] iOS / iPadOS / MacOS (无相关设备，暂无计划)
+- [ ] 其余平台暂无计划
+
 ## 构建
 
 ```powershell

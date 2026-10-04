@@ -1132,27 +1132,36 @@ class _DrivePageState extends State<DrivePage>
     }
   }
 
-  Future<void> _deleteSelected() async {
-    final count = _selectedFiles.length + _selectedFolders.length;
-    if (count == 0) return;
+  /// 删除前的确认弹窗：默认 MD3 弹窗 + 消极（取消）/ 积极（删除）按钮，
+  /// 与设置里的弹窗同款；单条与批量删除共用。
+  Future<bool> _confirmDelete(String message) async {
+    final l10n = context.l10n;
     final ok = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text(context.l10n.deleteConfirmTitle),
-        content: Text(context.l10n.deleteConfirmMessage(count)),
+        title: Text(l10n.deleteConfirmTitle),
+        content: Text(message),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(context.l10n.cancel),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(context.l10n.delete),
+            child: Text(l10n.delete),
           ),
         ],
       ),
     );
-    if (ok != true || !mounted) return;
+    return ok == true;
+  }
+
+  Future<void> _deleteSelected() async {
+    final count = _selectedFiles.length + _selectedFolders.length;
+    if (count == 0) return;
+    final l10n = context.l10n;
+    if (!await _confirmDelete(l10n.deleteConfirmMessage(count))) return;
+    if (!mounted) return;
     final app = context.read<AppController>();
     final client = app.client;
     if (client == null) return;
@@ -2282,6 +2291,9 @@ class _DrivePageState extends State<DrivePage>
   }
 
   Future<void> _deleteFile(LzFile file) async {
+    final l10n = context.l10n;
+    if (!await _confirmDelete(l10n.deleteConfirmSingle(file.name))) return;
+    if (!mounted) return;
     final app = context.read<AppController>();
     final client = app.client;
     if (client == null) return;
@@ -2298,6 +2310,9 @@ class _DrivePageState extends State<DrivePage>
   }
 
   Future<void> _deleteFolder(LzFolder folder) async {
+    final l10n = context.l10n;
+    if (!await _confirmDelete(l10n.deleteConfirmSingle(folder.name))) return;
+    if (!mounted) return;
     final app = context.read<AppController>();
     final client = app.client;
     if (client == null) return;
@@ -3593,7 +3608,12 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
                   ? context.l10n.removeFromQuickAccess
                   : context.l10n.addToQuickAccess,
             ),
-            onTap: _toggleQuickAccess,
+            // 切换后直接关掉属性弹窗，与「复制链接 / 显示二维码」等操作一致
+            onTap: () async {
+              final navigator = Navigator.of(context);
+              await _toggleQuickAccess();
+              navigator.pop();
+            },
           ),
           ListTile(
             leading: const Icon(Icons.star_outline),

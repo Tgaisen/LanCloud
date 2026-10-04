@@ -128,6 +128,14 @@ class _HomePageState extends State<HomePage>
         mainAxisSize: MainAxisSize.min,
         children: [
           ListTile(
+            leading: const Icon(Icons.open_in_new),
+            title: Text(l10n.open),
+            onTap: () {
+              Navigator.of(context).pop();
+              _openItem(context, 'folder', item.ref, item.name, '');
+            },
+          ),
+          ListTile(
             leading: const Icon(Icons.keep_off),
             title: Text(l10n.removeFromQuickAccess),
             onTap: () async {
@@ -144,6 +152,39 @@ class _HomePageState extends State<HomePage>
                 await app.db.movePinToTop(item.ref);
               },
             ),
+        ],
+      ),
+    );
+  }
+
+  /// 最近使用菜单：打开 / 删除此条记录（与快速访问菜单同款底部弹窗）。
+  Future<void> _showRecentMenu(RecentItem item) async {
+    final app = context.read<AppController>();
+    final l10n = context.l10n;
+    await showAppSheet<void>(
+      context,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.open_in_new),
+            title: Text(l10n.open),
+            onTap: () {
+              Navigator.of(context).pop();
+              _openItem(context, item.kind, item.ref, item.name, item.pwd);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.delete_outline),
+            title: Text(l10n.deleteRecord),
+            onTap: () async {
+              Navigator.of(context).pop();
+              await app.db.removeRecent(
+                account: app.activeUid ?? '',
+                ref: item.ref,
+              );
+            },
+          ),
         ],
       ),
     );
@@ -419,6 +460,11 @@ class _HomePageState extends State<HomePage>
                                       subtitle: item.kind.startsWith('share')
                                           ? l10n.sharedContent
                                           : l10n.myDrive,
+                                      trailing: IconButton(
+                                        tooltip: l10n.moreActions,
+                                        icon: const Icon(Icons.more_vert),
+                                        onPressed: () => _showRecentMenu(item),
+                                      ),
                                       onTap: () => _openItem(
                                         context,
                                         item.kind,

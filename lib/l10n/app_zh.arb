@@ -306,6 +306,13 @@
       "count": {"type": "int"}
     }
   },
+  "deleteConfirmSingle": "将把「{name}」移入回收站，继续吗？",
+  "@deleteConfirmSingle": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "deleteRecord": "删除此条记录",
   "delete": "删除",
   "folderInfo": "修改信息",
   "folderInfoSubtitle": "修改名称与简介",

@@ -690,6 +690,14 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String deleteConfirmSingle(String name) {
+    return '将把「$name」移入回收站，继续吗？';
+  }
+
+  @override
+  String get deleteRecord => '删除此条记录';
+
+  @override
   String get delete => '删除';
 
   @override

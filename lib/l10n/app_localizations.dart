@@ -1382,6 +1382,18 @@ abstract class AppLocalizations {
   /// **'将把选中的 {count} 个条目移入回收站，继续吗？'**
   String deleteConfirmMessage(int count);
 
+  /// No description provided for @deleteConfirmSingle.
+  ///
+  /// In zh, this message translates to:
+  /// **'将把「{name}」移入回收站，继续吗？'**
+  String deleteConfirmSingle(String name);
+
+  /// No description provided for @deleteRecord.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除此条记录'**
+  String get deleteRecord;
+
   /// No description provided for @delete.
   ///
   /// In zh, this message translates to:

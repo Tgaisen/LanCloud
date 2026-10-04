@@ -712,6 +712,14 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String deleteConfirmSingle(String name) {
+    return 'Move \"$name\" to the recycle bin?';
+  }
+
+  @override
+  String get deleteRecord => 'Remove this record';
+
+  @override
   String get delete => 'Delete';
 
   @override

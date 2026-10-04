@@ -224,6 +224,8 @@
   "folderNameRequired": "Folder name cannot be empty",
   "deleteConfirmTitle": "Confirm deletion",
   "deleteConfirmMessage": "Move {count} selected items to the recycle bin?",
+  "deleteConfirmSingle": "Move \"{name}\" to the recycle bin?",
+  "deleteRecord": "Remove this record",
   "delete": "Delete",
   "folderInfo": "Edit info",
   "folderInfoSubtitle": "Change name and description",
