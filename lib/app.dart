@@ -18,6 +18,7 @@ import 'ui/first_run_terms.dart';
 import 'ui/favorites_page.dart';
 import 'ui/home_page.dart';
 import 'ui/login_page.dart';
+import 'ui/predictive_back_transitions.dart';
 import 'ui/profile_page.dart';
 import 'ui/app_scroll.dart';
 import 'ui/common.dart';
@@ -124,6 +125,9 @@ ThemeData buildLanCloudTheme({
   );
   final theme = ThemeData(
           colorScheme: scheme,
+          // 预测性返回：沿用 Flutter 的跟手转场，并在被露出的上一页上
+          // 叠加一层随手势淡出的黑色遮罩（AOSP 设置同款）。
+          pageTransitionsTheme: kLanCloudPageTransitionsTheme,
           scaffoldBackgroundColor:
               (brightness == Brightness.dark && oledDark) ? Colors.black : null,
           appBarTheme: AppBarTheme(
