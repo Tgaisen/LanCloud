@@ -2724,7 +2724,8 @@ class _DrivePageState extends State<DrivePage>
       if (showFolders && folders.isNotEmpty)
         if (grid)
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            // 网格视图：顶部留白与左右一致（12dp）
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
             sliver: SliverGrid.builder(
               gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                 maxCrossAxisExtent: 150,
@@ -2758,7 +2759,7 @@ class _DrivePageState extends State<DrivePage>
       if (files.isNotEmpty)
         if (grid)
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
             sliver: SliverGrid.builder(
               gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                 maxCrossAxisExtent: 150,
