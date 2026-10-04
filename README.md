@@ -1,12 +1,9 @@
 # LanCloud（蓝云）
 
-蓝奏云第三方客户端（Flutter / Android），个人自用并开源。
+蓝奏云第三方客户端，使用 Flutter 开发。
 
 - 不收集个人信息，账号与数据只保存在本机
 - 运行时直连蓝奏云官方接口，没有中间服务器
-- 以 [Apache License 2.0](LICENSE) 开源
-
-> 非官方客户端，与蓝奏云官方无任何关联。使用前请阅读应用内「关于 → 用户协议 / 隐私政策」。
 
 ## 功能
 
@@ -50,10 +47,6 @@ flutter pub get
 flutter build apk --release --split-per-abi
 ```
 
-产物在 `build/app/outputs/flutter-apk/`：`app-arm64-v8a-release.apk`（推荐，绝大多数手机）、
-`app-armeabi-v7a-release.apk`（老旧 32 位机型）、`app-x86_64-release.apk`。
-分架构包体积约为通用包的一半，按手机架构选择即可。
-
 ### 版本号规范
 
 从第一个正式版开始，版本号采用「年份.内容更新序号.热修号」：`26.1.0` 表示 2026 年第 1 次内容更新，
@@ -81,48 +74,15 @@ arm64-v8a +2000、x86_64 +4000），arm64 包实际是 `260100 + 2000 = 262100`�
 
 ### 签名
 
-release 包由 `android/key.properties` 指定的密钥签名，密钥文件为
-`android/app/lancloud-release.keystore`（别名 `lancloud`）；两个文件都在 `.gitignore` 里，
-**不要提交、不要公开**，请和密码一起另存一份私密备份（密码丢了无法找回，应用也就无法再更新）：
-
-```properties
-storePassword=***
-keyPassword=***
-keyAlias=lancloud
-storeFile=lancloud-release.keystore
-```
-
-换机器时把这两个文件恢复到原位即可。没有 `key.properties` 时 release 会退回 debug 签名并打印
-警告（方便本地和 CI 出包），这种包不能对外发布。发布前可以用
-`apksigner verify --print-certs <apk>` 核对签名，当前发布证书的 SHA-256 指纹：
-
-release 包同时写入 v2 + v3 两种签名方案（Android 9+ 走 v3，将来换签名密钥时老用户不必卸载
-重装；Android 7/8 走 v2）。`minSdk 24` 起 v1 已无必要，v4 只服务 `adb` 增量安装，都未启用。
+本仓库 Android 产物的签名公钥信息如下：
 
 ```
 70:BD:4A:A8:53:22:FE:26:E6:72:02:FA:C3:17:29:BD:E1:F8:54:FA:1B:D2:FD:52:C8:8F:FC:AA:02:ED:B5:BB
 ```
 
-## 安装
-
-1. 按手机架构选一个 APK 安装（不确定就选 arm64）
-2. 遇到提示时允许「安装未知来源应用」
-3. 首次启动阅读并同意用户协议与隐私政策，然后登录（推荐应用内网页登录）
-
-早期 `0.8.x` 预览包用的是 debug 签名，换成正式签名后首次安装需要先卸载旧版（本地数据会清空，
-建议先在应用内「设置 → 备份与恢复」导出备份）。
-
-## 隐私
-
-- 不收集、不上传任何个人信息；没有统计、广告、崩溃上报 SDK
-- 蓝奏云账号（Cookie）、昵称、收藏、最近使用、传输记录与设置只保存在本机
-- 运行时直接与蓝奏云官方接口通信（pc.woozooo.com、up.woozooo.com 等）
-- 如启用 WebDAV 备份，备份文件只会上传到你填写的服务器，且默认不含 Cookie
-- 完整条款见应用内「关于 → 隐私政策」
-
 ## 开源与致谢
 
-本项目以 Apache License 2.0 开源，可自行修改与分发（请保留许可与版权声明）。
+本项目以 Apache License 2.0 开源。
 
 接口协议参考了以下开源实现（仅作协议研究，未直接复用其代码）：
 
@@ -143,7 +103,7 @@ release 包同时写入 v2 + v3 两种签名方案（Android 9+ 走 v3，将来�
 - 开发路线图：[docs/ROADMAP.md](docs/ROADMAP.md)
 - 接口协议笔记：[docs/PROTOCOL.md](docs/PROTOCOL.md)
 
-## 本机开发环境
+## 开发环境
 
 | 组件 | 位置 |
 | --- | --- |

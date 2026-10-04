@@ -49,5 +49,17 @@ app.*.map.json
 /android/app/release
 /android/build/
 
+# 密钥与敏感信息：签名私钥、密码、Play 签名导出文件等一律不入库
+key.properties
+signing.properties
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pepk
+*.pem
+*.key
+*.bks
+
 # Widget Preview related
 .widget_preview/
