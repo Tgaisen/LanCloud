@@ -136,12 +136,21 @@ class Md3eBodyCard extends StatelessWidget {
       top: 0,
       right: 8 + systemPadding.right,
       bottom: 8 + systemPadding.bottom,
-      child: clipContent
-          ? ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: child,
-            )
-          : child,
+      // 卡片已经按 left/right/bottom inset 让过位了，内容里不要再让一次：
+      // AppBar / SafeArea / Scrollbar 都会读这些 padding，否则会二次留白。
+      // 顶部保留：状态栏高度仍由页面自己的顶栏使用。
+      child: MediaQuery.removePadding(
+        context: context,
+        removeLeft: true,
+        removeRight: true,
+        removeBottom: true,
+        child: clipContent
+            ? ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: child,
+              )
+            : child,
+      ),
     );
     return Stack(children: [card, content]);
   }

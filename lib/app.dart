@@ -814,7 +814,15 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
                               top: 0,
                               right: 8 + systemPadding.right,
                               bottom: 8 + systemPadding.bottom,
-                              child: keyed,
+                              // 卡片已经按 left/right/bottom inset 让过位了，
+                              // 页面内（AppBar / SafeArea / Scrollbar）不要再让一次
+                              child: MediaQuery.removePadding(
+                                context: context,
+                                removeLeft: true,
+                                removeRight: true,
+                                removeBottom: true,
+                                child: keyed,
+                              ),
                             ),
                           ],
                         );

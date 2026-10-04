@@ -63,4 +63,45 @@ void main() {
     await pumpOverlayPage(tester, bottomInset: 40);
     expect(maxScrollExtent(tester) - withoutTail, 40);
   });
+
+  testWidgets('大屏卡片内的 AppBar 不会再让一次系统 inset', (tester) async {
+    /// 返回 AppBar 右侧搜索按钮右边缘的 x（大屏下页面被套进 MD3E 卡片）
+    Future<double> searchRight(double rightInset) async {
+      final app = AppController();
+      addTearDown(app.dispose);
+      tester.view.physicalSize = const Size(800, 600);
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.padding = FakeViewPadding(right: rightInset);
+      tester.view.viewPadding = FakeViewPadding(right: rightInset);
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        ChangeNotifierProvider<AppController>.value(
+          value: app,
+          child: MaterialApp(
+            home: Md3ePageFrame(
+              child: Scaffold(
+                appBar: AppBar(
+                  title: const Text('设置'),
+                  actions: [
+                    IconButton(
+                      icon: const Icon(Icons.search),
+                      onPressed: () {},
+                    ),
+                  ],
+                ),
+                body: const SizedBox.expand(),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      return tester.getRect(find.byIcon(Icons.search)).right;
+    }
+
+    final without = await searchRight(0);
+    final with40 = await searchRight(40);
+    // 卡片让出 40；AppBar 若再让一次就会少 80，这里必须只差 40
+    expect(without - with40, 40);
+  });
 }
