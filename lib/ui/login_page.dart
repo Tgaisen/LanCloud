@@ -235,10 +235,7 @@ class LoginPage extends StatelessWidget {
         backgroundColor: Colors.transparent,
         scrolledUnderElevation: 0,
         title: Text(l10n.addAccount),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        leading: const AppBarBackButton(),
       ),
       // 内容自带 SafeArea 让开导航栏，末尾不用再补一段留白
       bottomSafeInset: false,

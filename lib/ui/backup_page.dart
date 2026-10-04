@@ -322,10 +322,7 @@ class _BackupPageState extends State<BackupPage> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         scrolledUnderElevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        leading: const AppBarBackButton(),
         title: Text(l10n.backupAndRestore),
         bottom: _busy
             ? const PreferredSize(

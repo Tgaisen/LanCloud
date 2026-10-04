@@ -220,6 +220,33 @@ class Md3ePageFrame extends StatelessWidget {
   }
 }
 
+/// 页面 AppBar 左侧的「返回」按钮：位置、间距、水波纹区域都与原来的
+/// IconButton 一致，只把按钮表面（Material，40dp 圆形）换成 tonal 底色。
+/// 不传 [onPressed] 时按返回处理。
+class AppBarBackButton extends StatelessWidget {
+  const AppBarBackButton({super.key, this.onPressed});
+
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    // Center：AppBar 的 leading 会给 56dp 的紧约束，不居中就会被拉伸成
+    // 整块 56dp 的底色（贴左边、圆底过大）；居中后按钮保持自身 48dp
+    // 点击区，Material（含波纹）仍是 40dp。
+    return Center(
+      child: IconButton(
+        onPressed: onPressed ?? () => Navigator.of(context).maybePop(),
+        style: IconButton.styleFrom(
+          backgroundColor: scheme.secondaryContainer,
+          foregroundColor: scheme.onSecondaryContainer,
+        ),
+        icon: const Icon(Icons.arrow_back),
+      ),
+    );
+  }
+}
+
 String formatBytes(int bytes) {
   if (bytes <= 0) return '0 B';
   const units = ['B', 'KB', 'MB', 'GB', 'TB'];

@@ -784,10 +784,7 @@ class _SettingsPageState extends State<SettingsPage>
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         scrolledUnderElevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        leading: const AppBarBackButton(),
         title: _searching
             ? TextField(
                 controller: _search,
@@ -1456,10 +1453,7 @@ class _AdvancedPage extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         scrolledUnderElevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        leading: const AppBarBackButton(),
         title: Text(l10n.advanced),
       ),
       slivers: [

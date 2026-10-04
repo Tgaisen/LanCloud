@@ -277,10 +277,7 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
                       icon: const Icon(Icons.close),
                       onPressed: _exitSearch,
                     )
-                  : IconButton(
-                      icon: const Icon(Icons.arrow_back),
-                      onPressed: () => Navigator.of(context).pop(),
-                    )),
+                  : const AppBarBackButton()),
           title: _selecting
               ? Text(l10n.selectedCount(_selected.length))
               : (_searching

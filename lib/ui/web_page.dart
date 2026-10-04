@@ -66,10 +66,7 @@ class _WebPageState extends State<WebPage> {
         backgroundColor: large ? Colors.transparent : null,
         scrolledUnderElevation: 0,
         title: Text(widget.title),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        leading: const AppBarBackButton(),
         actions: [
           IconButton(
             tooltip: l10n.refresh,

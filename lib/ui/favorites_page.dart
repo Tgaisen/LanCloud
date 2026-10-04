@@ -410,10 +410,7 @@ class _FavoritesPageState extends State<FavoritesPage>
                 scrolledUnderElevation: 0,
                 leading: (ModalRoute.of(context)?.isFirst ?? true)
                     ? null
-                    : IconButton(
-                        icon: const Icon(Icons.arrow_back),
-                        onPressed: () => Navigator.of(context).pop(),
-                      ),
+                    : const AppBarBackButton(),
                 title: Text(l10n.myFavorites),
               ),
             ),

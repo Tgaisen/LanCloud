@@ -180,12 +180,7 @@ class _ProfilePageState extends State<ProfilePage>
               builder: (context) => AppBar(
                 backgroundColor: Colors.transparent,
                 scrolledUnderElevation: 0,
-                leading: standalone
-                    ? IconButton(
-                        icon: const Icon(Icons.arrow_back),
-                        onPressed: () => Navigator.of(context).pop(),
-                      )
-                    : null,
+                leading: standalone ? const AppBarBackButton() : null,
                 title: Text(l10n.tabProfile),
               ),
             ),
