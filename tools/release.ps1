@@ -46,10 +46,19 @@ function Invoke-Tool {
     Write-Host ("[dry-run] {0} {1}" -f $Exe, ($Arguments -join ' ')) -ForegroundColor DarkGray
     return @()
   }
-  $output = & $Exe @Arguments 2>&1
-  if ($LASTEXITCODE -ne 0) {
+  # 工具（flutter/gradle）会把进度、镜像提示写到 stderr；Stop 模式下
+  # PowerShell 会把它们当成终止错误，这里临时放宽，只按退出码判断成败。
+  $previous = $ErrorActionPreference
+  $ErrorActionPreference = 'Continue'
+  try {
+    $output = & $Exe @Arguments 2>&1
+    $exitCode = $LASTEXITCODE
+  } finally {
+    $ErrorActionPreference = $previous
+  }
+  if ($exitCode -ne 0) {
     $output | Select-Object -Last 20 | ForEach-Object { Write-Host $_ }
-    Fail("命令失败（exit $LASTEXITCODE）：$Exe $($Arguments -join ' ')")
+    Fail("命令失败（exit $exitCode）：$Exe $($Arguments -join ' ')")
   }
   return $output
 }
