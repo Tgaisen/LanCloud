@@ -177,79 +177,15 @@ class _BackupPageState extends State<BackupPage> {
   // ---------------------------------------------------------------- WebDAV
 
   Future<void> _editServer() async {
-    final l10n = context.l10n;
     final store = _service.webdav;
-    final urlController = TextEditingController(text: store.url);
-    final userController = TextEditingController(text: store.username);
-    final pwdController = TextEditingController(text: store.password);
     final result = await showDialog<List<String>>(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (dialogContext, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(28),
-          ),
-          title: Text(l10n.webdavSection),
-          content: SizedBox(
-            width: 420,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: urlController,
-                    keyboardType: TextInputType.url,
-                    decoration: InputDecoration(
-                      labelText: l10n.webdavServer,
-                      hintText: l10n.webdavServerHint,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: userController,
-                    decoration:
-                        InputDecoration(labelText: l10n.webdavUsername),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: pwdController,
-                    obscureText: true,
-                    decoration:
-                        InputDecoration(labelText: l10n.webdavPassword),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: Text(l10n.cancel),
-            ),
-            // 中立：清空三项，保存后即恢复到未配置状态
-            TextButton(
-              onPressed: () => setDialogState(() {
-                urlController.clear();
-                userController.clear();
-                pwdController.clear();
-              }),
-              child: Text(l10n.reset),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop([
-                urlController.text,
-                userController.text,
-                pwdController.text,
-              ]),
-              child: Text(l10n.save),
-            ),
-          ],
-        ),
+      builder: (dialogContext) => WebdavAccountDialog(
+        url: store.url,
+        username: store.username,
+        password: store.password,
       ),
     );
-    urlController.dispose();
-    userController.dispose();
-    pwdController.dispose();
     if (result == null) return;
     await _run(() async {
       await store.saveServer(
@@ -501,4 +437,104 @@ class _BackupPageState extends State<BackupPage> {
               ?.copyWith(color: Theme.of(context).colorScheme.primary),
         ),
       );
+}
+
+/// WebDAV 账号编辑弹窗：自己持有输入控制器，并在弹窗销毁时释放。
+///
+/// 不能像以前那样在 `showDialog` 返回后立刻 dispose：弹窗退场动画期间输入框
+/// 仍会重建，会触发 "A TextEditingController was used after being disposed"。
+class WebdavAccountDialog extends StatefulWidget {
+  const WebdavAccountDialog({
+    super.key,
+    required this.url,
+    required this.username,
+    required this.password,
+  });
+
+  final String url;
+  final String username;
+  final String password;
+
+  @override
+  State<WebdavAccountDialog> createState() => _WebdavAccountDialogState();
+}
+
+class _WebdavAccountDialogState extends State<WebdavAccountDialog> {
+  late final TextEditingController _url = TextEditingController(
+    text: widget.url,
+  );
+  late final TextEditingController _user = TextEditingController(
+    text: widget.username,
+  );
+  late final TextEditingController _pwd = TextEditingController(
+    text: widget.password,
+  );
+
+  @override
+  void dispose() {
+    _url.dispose();
+    _user.dispose();
+    _pwd.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      // 键盘弹出时弹窗被压缩，内容/按钮区会拿到无界高度（debug 下报
+      // "RenderFlex children have non-zero flex but incoming height
+      // constraints are unbounded"）；交给 AlertDialog 自己滚动即可。
+      scrollable: true,
+      title: Text(l10n.webdavSection),
+      content: SizedBox(
+        width: 420,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _url,
+              keyboardType: TextInputType.url,
+              decoration: InputDecoration(
+                labelText: l10n.webdavServer,
+                hintText: l10n.webdavServerHint,
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _user,
+              decoration: InputDecoration(labelText: l10n.webdavUsername),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _pwd,
+              obscureText: true,
+              decoration: InputDecoration(labelText: l10n.webdavPassword),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l10n.cancel),
+        ),
+        // 中立：清空三项，保存后即恢复到未配置状态
+        TextButton(
+          onPressed: () => setState(() {
+            _url.clear();
+            _user.clear();
+            _pwd.clear();
+          }),
+          child: Text(l10n.reset),
+        ),
+        FilledButton(
+          onPressed: () =>
+              Navigator.of(context).pop([_url.text, _user.text, _pwd.text]),
+          child: Text(l10n.save),
+        ),
+      ],
+    );
+  }
 }

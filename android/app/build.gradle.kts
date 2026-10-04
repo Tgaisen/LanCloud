@@ -18,7 +18,8 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "com.lancloud.lancloud"
-    compileSdk = flutter.compileSdkVersion
+    // 适配 Android 17（API 37）：Flutter 3.47 默认还是 36，这里显式跟上最新
+    compileSdk = 37
 
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
@@ -32,7 +33,7 @@ android {
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = 37
         // Uses the version code from pubspec.yaml. When using split APKs, 1000 * ABI_VERSION
         // is added automatically by Flutter. (https://developer.android.com/studio/build/configure-apk-splits#configure-APK-versions)
         // You can force using the value of versionCode by specifying the `-Pforce-version-code-ignoring-abi=true`
@@ -85,3 +86,4 @@ flutter {
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
+

@@ -63,6 +63,18 @@ class AppPermissions {
   /// 请求忽略电池优化（系统弹窗）。
   Future<bool> requestBattery() => _invokeBool('requestBattery');
 
+  /// 请求「本地网络」权限：Android 17（API 37）/ targetSdk 37 起访问局域网必需。
+  /// 低版本 Android 与桌面平台没有这个限制，视为已授权。
+  Future<bool> requestLocalNetwork() async {
+    try {
+      return await _channel.invokeMethod<bool>('requestLocalNetwork') ?? true;
+    } on PlatformException {
+      return false;
+    } on MissingPluginException {
+      return true;
+    }
+  }
+
   /// 打开应用详情设置页。
   Future<bool> openAppSettings() => _invokeBool('openAppSettings');
 

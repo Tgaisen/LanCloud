@@ -1,5 +1,6 @@
 package com.lancloud.lancloud
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -23,9 +24,12 @@ class MainActivity : FlutterFragmentActivity() {
     private var photoOutputPath: String? = null
     private var linksChannel: MethodChannel? = null
     private var pendingLink: String? = null
+    /// 等待结果的「本地网络」权限请求（Android 17 起局域网访问需要）。
+    private var localNetworkResult: MethodChannel.Result? = null
 
     companion object {
         private const val PICK_FILES_REQUEST = 2001
+        private const val LOCAL_NETWORK_REQUEST = 2002
         /// 蓝奏云分享链接域名：lanzoua.com ~ lanzouz.com（含 *.cn 与子域名）
         private val LANZOU_HOST =
             Regex("(^|\\.)lanzou[a-z]*\\.(com|cn)$", RegexOption.IGNORE_CASE)
@@ -234,6 +238,7 @@ class MainActivity : FlutterFragmentActivity() {
                 )
                 "openInstallSettings" -> result.success(openInstallSettings())
                 "requestBattery" -> result.success(requestBatteryOptimization())
+                "requestLocalNetwork" -> requestLocalNetworkPermission(result)
                 "openAppSettings" -> result.success(openAppSettings())
                 "openDefaultLinksSettings" ->
                     result.success(openDefaultLinksSettings())
@@ -344,6 +349,41 @@ class MainActivity : FlutterFragmentActivity() {
         } catch (_: Exception) {
             false
         }
+    }
+
+    /// 请求「本地网络」权限：Android 17（API 37）起 targetSdk 37 的应用
+    /// 默认无法访问局域网，需要在访问前拿到该权限；低版本直接视为已授权。
+    private fun requestLocalNetworkPermission(result: MethodChannel.Result) {
+        if (Build.VERSION.SDK_INT < 37) {
+            result.success(true)
+            return
+        }
+        val granted = checkSelfPermission(Manifest.permission.ACCESS_LOCAL_NETWORK) ==
+            PackageManager.PERMISSION_GRANTED
+        if (granted) {
+            result.success(true)
+            return
+        }
+        // 同一时间只处理一个请求，重复调用直接返回上一次的结果
+        localNetworkResult?.success(false)
+        localNetworkResult = result
+        requestPermissions(
+            arrayOf(Manifest.permission.ACCESS_LOCAL_NETWORK),
+            LOCAL_NETWORK_REQUEST,
+        )
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode != LOCAL_NETWORK_REQUEST) return
+        val granted = grantResults.isNotEmpty() &&
+            grantResults[0] == PackageManager.PERMISSION_GRANTED
+        localNetworkResult?.success(granted)
+        localNetworkResult = null
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {

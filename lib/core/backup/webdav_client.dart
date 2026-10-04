@@ -3,6 +3,35 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 
+import '../app_permissions.dart';
+
+/// 是否是局域网 / 链路本地地址：这些地址在 Android 17（targetSdk 37）起
+/// 需要「本地网络」运行时权限，公网地址不受影响。
+///
+/// 只按字面判断，不做 DNS 解析：`.local` 之类的名字按局域网处理，
+/// 其余主机名（域名）交给系统按公网处理。
+bool isLocalNetworkHost(String host) {
+  final value = host.trim().toLowerCase();
+  if (value.isEmpty) return false;
+  if (value == 'localhost' || value.endsWith('.local')) return true;
+  final address = InternetAddress.tryParse(value);
+  if (address == null) return false;
+  final bytes = address.rawAddress;
+  if (address.type == InternetAddressType.IPv6) {
+    if (bytes.length != 16) return false;
+    // fe80::/10 链路本地；fc00::/7 唯一本地地址
+    return (bytes[0] == 0xfe && (bytes[1] & 0xc0) == 0x80) ||
+        (bytes[0] & 0xfe) == 0xfc;
+  }
+  if (bytes.length != 4) return false;
+  final a = bytes[0];
+  final b = bytes[1];
+  return a == 10 || // 10.0.0.0/8
+      (a == 172 && b >= 16 && b <= 31) || // 172.16.0.0/12
+      (a == 192 && b == 168) || // 192.168.0.0/16
+      (a == 169 && b == 254); // 169.254.0.0/16 链路本地
+}
+
 /// 备份/恢复失败：message 可以直接展示给用户。
 class BackupException implements Exception {
   const BackupException(this.message);
@@ -65,6 +94,19 @@ class WebdavClient {
           'Authorization':
               'Basic ${base64Encode(utf8.encode('$username:$password'))}',
       };
+
+  /// Android 17（targetSdk 37）起访问局域网需要「本地网络」权限：
+  /// 只对局域网地址请求，公网 WebDAV 保持原样。
+  Future<void> ensureLocalNetworkPermission() async {
+    if (!isLocalNetworkHost(baseUri.host)) return;
+    final granted = await AppPermissions.instance.requestLocalNetwork();
+    if (!granted) {
+      throw const BackupException(
+        '访问局域网内的 WebDAV 需要「本地网络」权限：'
+        '请在系统弹窗中允许，或到系统设置 → 应用 → 蓝云 → 权限 中开启后重试',
+      );
+    }
+  }
 
   Uri _fileUri(String name) => baseUri.resolve(name);
 
@@ -147,6 +189,7 @@ class WebdavClient {
 
   Future<T> _guard<T>(Future<T> Function() run) async {
     try {
+      await ensureLocalNetworkPermission();
       return await run();
     } on BackupException {
       rethrow;
