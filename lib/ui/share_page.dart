@@ -10,32 +10,35 @@ import 'common.dart';
 import 'share_file_sheet.dart';
 import 'share_folder_page.dart';
 
-/// 打开分享链接：以底部弹窗形式呈现。
+/// 打开分享链接：普通弹窗（取消 / 解析），与「修改文件夹信息」弹窗一致。
+///
+/// 解析成功后关闭弹窗：文件直接打开文件属性弹窗，文件夹进入浏览页；
+/// 需要密码或解析失败时弹窗保留，在弹窗内提示。
 Future<void> openShareSheet(
   BuildContext context, {
   String? initialLink,
   String? initialPwd,
 }) {
-  // 复用统一弹窗外壳：滚到顶部后继续下拉可带动弹窗收起。
-  // 上限取整屏，保证弹出键盘时表单仍能完整显示（与改造前一致）。
-  return showAppSheet<void>(
-    context,
-    maxHeightRatio: 1,
-    child: ShareSheet(initialLink: initialLink, initialPwd: initialPwd),
+  return showDialog<void>(
+    context: context,
+    builder: (_) => ShareLinkDialog(
+      initialLink: initialLink,
+      initialPwd: initialPwd,
+    ),
   );
 }
 
-class ShareSheet extends StatefulWidget {
-  const ShareSheet({super.key, this.initialLink, this.initialPwd});
+class ShareLinkDialog extends StatefulWidget {
+  const ShareLinkDialog({super.key, this.initialLink, this.initialPwd});
 
   final String? initialLink;
   final String? initialPwd;
 
   @override
-  State<ShareSheet> createState() => _ShareSheetState();
+  State<ShareLinkDialog> createState() => _ShareLinkDialogState();
 }
 
-class _ShareSheetState extends State<ShareSheet> {
+class _ShareLinkDialogState extends State<ShareLinkDialog> {
   late final TextEditingController _linkController =
       TextEditingController(text: widget.initialLink ?? '');
   late final TextEditingController _pwdController =
@@ -43,12 +46,12 @@ class _ShareSheetState extends State<ShareSheet> {
   bool _loading = false;
   String? _error;
   String? _pwdError;
-  DirectFile? _file;
 
   @override
   void initState() {
     super.initState();
     if (widget.initialLink != null) {
+      // 带链接进来（分享 / 二维码 / 最近使用）：直接解析，不用再点一次。
       WidgetsBinding.instance.addPostFrameCallback((_) => _parse());
     }
   }
@@ -76,7 +79,6 @@ class _ShareSheetState extends State<ShareSheet> {
       _loading = true;
       _error = null;
       _pwdError = null;
-      _file = null;
     });
     final client = context.read<AppController>().publicClient;
     final navigator = Navigator.of(context);
@@ -100,10 +102,8 @@ class _ShareSheetState extends State<ShareSheet> {
         try {
           final file = await client.resolveFileShare(link, pwd: pwd);
           if (!mounted) return;
-          setState(() => _file = file);
           await _saveRecent('shareFile', file.name, link, pwd);
           if (!mounted) return;
-          // 识别为文件后直接打开属性弹窗，免去用户再点一次卡片。
           _openFileInfo(file, link, pwd);
         } on LanzouException {
           final folder = await client.resolveFolderShare(link, pwd: pwd);
@@ -152,10 +152,9 @@ class _ShareSheetState extends State<ShareSheet> {
     );
   }
 
-  /// 打开分享文件属性弹窗（解析成功自动弹出、点击文件卡片共用）。
+  /// 解析出文件：关掉弹窗，再打开文件属性弹窗。
   ///
-  /// 先关掉「打开链接」弹窗，避免两层弹窗叠在一起；弹窗关闭后原 context
-  /// 失效，所以用 Navigator 自己的 context 作为宿主。
+  /// 弹窗关闭后原 context 失效，用 Navigator 自己的 context 作为新弹窗宿主。
   void _openFileInfo(DirectFile file, String link, String pwd) {
     final navigator = Navigator.of(context);
     final hostContext = navigator.context;
@@ -174,115 +173,69 @@ class _ShareSheetState extends State<ShareSheet> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(20, 0, 20, 20 + bottomInset),
-      child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                l10n.openShare,
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _linkController,
-                decoration: InputDecoration(
-                  border: const OutlineInputBorder(),
-                  labelText: l10n.shareLink,
-                  hintText: l10n.shareLinkHint,
-                  prefixIcon: const Icon(Icons.link),
+    final scheme = Theme.of(context).colorScheme;
+    return AlertDialog(
+      title: Text(l10n.openShare),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _linkController,
+            // 手动打开时直接聚焦链接框；带链接进来会立即解析，不弹键盘。
+            autofocus: widget.initialLink == null,
+            decoration: InputDecoration(
+              border: const OutlineInputBorder(),
+              labelText: l10n.shareLink,
+              hintText: l10n.shareLinkHint,
+              prefixIcon: const Icon(Icons.link),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _pwdController,
+            decoration: InputDecoration(
+              border: const OutlineInputBorder(),
+              labelText: l10n.passwordOptional,
+              prefixIcon: const Icon(Icons.password),
+              errorText: _pwdError,
+              suffixIcon: _pwdError == null
+                  ? null
+                  : Icon(Icons.cancel, color: scheme.error),
+            ),
+            onChanged: (_) {
+              if (_pwdError != null) {
+                setState(() => _pwdError = null);
+              }
+            },
+            onSubmitted: (_) {
+              if (!_loading) _parse();
+            },
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 12),
+            Card(
+              color: scheme.errorContainer,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Text(
+                  _error!,
+                  style: TextStyle(color: scheme.onErrorContainer),
                 ),
               ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _pwdController,
-                decoration: InputDecoration(
-                  border: const OutlineInputBorder(),
-                  labelText: l10n.passwordOptional,
-                  prefixIcon: const Icon(Icons.password),
-                  errorText: _pwdError,
-                  suffixIcon: _pwdError == null
-                      ? null
-                      : Icon(
-                          Icons.cancel,
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                ),
-                onChanged: (_) {
-                  if (_pwdError != null) {
-                    setState(() => _pwdError = null);
-                  }
-                },
-              ),
-              const SizedBox(height: 16),
-              FilledButton.icon(
-                onPressed: _loading ? null : _parse,
-                icon: _loading
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.search),
-                label: Text(_loading ? l10n.resolving : l10n.resolve),
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: 16),
-                Card(
-                  color: Theme.of(context).colorScheme.errorContainer,
-                  child: Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: Text(_error!),
-                  ),
-                ),
-              ],
-              if (_file != null) ...[
-                const SizedBox(height: 16),
-                _FileResultCard(
-                  file: _file!,
-                  onTap: () => _openFileInfo(
-                    _file!,
-                    _linkController.text.trim(),
-                    _pwdController.text.trim(),
-                  ),
-                ),
-              ],
-            ],
-        ),
-    );
-  }
-}
-
-class _FileResultCard extends StatelessWidget {
-  const _FileResultCard({
-    required this.file,
-    required this.onTap,
-  });
-
-  final DirectFile file;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    return Card(
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(16),
-        leading: Icon(iconForFile(file.name), size: 30),
-        title: Text(
-          file.name,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        subtitle: file.size.isEmpty
-            ? null
-            : Text(l10n.sizeLabel(prettyLzSize(file.size))),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: onTap,
+            ),
+          ],
+        ],
       ),
+      actions: [
+        TextButton(
+          onPressed: _loading ? null : () => Navigator.of(context).pop(),
+          child: Text(l10n.cancel),
+        ),
+        FilledButton(
+          onPressed: _loading ? null : _parse,
+          child: Text(_loading ? l10n.resolving : l10n.resolve),
+        ),
+      ],
     );
   }
 }
