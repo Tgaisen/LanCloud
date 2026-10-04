@@ -218,6 +218,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Official features like changing your password or avatar';
 
   @override
+  String get userCenter => 'Personal center';
+
+  @override
   String get recycleBin => 'Recycle bin';
 
   @override

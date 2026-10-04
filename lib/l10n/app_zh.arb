@@ -98,6 +98,7 @@
   "settingsSubtitle": "外观、行为、连接与高级覆盖项",
   "webManagement": "网页版",
   "webManagementSubtitle": "修改密码、头像等官方功能",
+  "userCenter": "个人中心",
   "recycleBin": "回收站",
   "removeAccountTitle": "移除账号",
   "removeAccountMessage": "将从本机移除账号 {uid} 及其登录信息，云端文件不受影响。",

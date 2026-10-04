@@ -2,6 +2,7 @@ import 'package:flutter/material.dart' hide Icons;
 import 'package:provider/provider.dart';
 
 import '../core/app_controller.dart';
+import '../core/api/lanzou_client.dart';
 import '../core/data/account_store.dart';
 import '../l10n/l10n.dart';
 import 'about_page.dart';
@@ -119,6 +120,18 @@ class _ProfilePageState extends State<ProfilePage>
                                 context,
                                 'https://pc.woozooo.com/mydisk.php',
                                 l10n.webManagement,
+                              ),
+                            ),
+                            // 个人中心：用设置里的网盘接口域名拼地址
+                            ListTile(
+                              leading: const Icon(Icons.user_attributes),
+                              title: Text(l10n.userCenter),
+                              trailing: const Icon(Icons.open_in_new),
+                              onTap: () => _openWeb(
+                                context,
+                                '${LanzouClient.apiBase}'
+                                '/mydisk.php?item=profile&action=mypower',
+                                l10n.userCenter,
                               ),
                             ),
                             ListTile(

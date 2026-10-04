@@ -1116,7 +1116,12 @@ class BatchAction extends StatelessWidget {
 /// MD3E 标准列表项：圆角图标块 + 标题 / 副标题 + 尾部操作。
 /// 首页（快速访问、最近使用）、传输、收藏共用，参数与网盘列表项一致：
 /// 内边距 10/8、图标块 42dp（圆角 12）、标题 bodyLarge、副标题 bodyMedium。
-class Md3ListItem extends StatelessWidget {
+///
+/// 动画与网盘列表同款：
+/// - 挂载时淡入 + 轻微上移（[index] 控制错峰，只取前 8 项）；
+/// - [removing] 置 true 时淡出并收起高度，播完再由外部真正删除；
+/// - [pulse] 递增时做一次高亮闪烁（修改信息 / 密码后）。
+class Md3ListItem extends StatefulWidget {
   const Md3ListItem({
     super.key,
     required this.icon,
@@ -1130,6 +1135,10 @@ class Md3ListItem extends StatelessWidget {
     this.bottom,
     this.titleMaxLines = 1,
     this.subtitleMaxLines = 1,
+    this.index = 0,
+    this.animateIn = true,
+    this.removing = false,
+    this.pulse = 0,
   });
 
   final IconData icon;
@@ -1153,17 +1162,99 @@ class Md3ListItem extends StatelessWidget {
   final int titleMaxLines;
   final int subtitleMaxLines;
 
+  /// 出现动画的错峰下标（列表里传当前下标即可）。
+  final int index;
+
+  /// 是否播放挂载时的淡入动画。
+  final bool animateIn;
+
+  /// 删除前置 true：淡出 + 收起高度，动画结束后外部再真正移除。
+  final bool removing;
+
+  /// 修改后 +1：触发一次高亮闪烁。
+  final int pulse;
+
+  @override
+  State<Md3ListItem> createState() => _Md3ListItemState();
+}
+
+class _Md3ListItemState extends State<Md3ListItem>
+    with TickerProviderStateMixin {
+  static const _enterDuration = Duration(milliseconds: 260);
+  static const _removeDuration = Duration(milliseconds: 200);
+  static const _pulseDuration = Duration(milliseconds: 700);
+  /// 与网盘列表一致的错峰步长（毫秒）。
+  static const _enterStep = 26;
+
+  late final AnimationController _enter = AnimationController(
+    vsync: this,
+    duration: _enterDuration,
+  );
+  late final AnimationController _remove = AnimationController(
+    vsync: this,
+    duration: _removeDuration,
+    value: widget.removing ? 1 : 0,
+  );
+  late final AnimationController _pulseCtrl = AnimationController(
+    vsync: this,
+    duration: _pulseDuration,
+    // 1 表示这次高亮已经播完（透明度为 0）
+    value: 1,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    if (!widget.animateIn) {
+      _enter.value = 1;
+    } else {
+      final delay = widget.index.clamp(0, 8) * _enterStep;
+      if (delay == 0) {
+        _enter.forward();
+      } else {
+        Future<void>.delayed(Duration(milliseconds: delay), () {
+          if (mounted) _enter.forward();
+        });
+      }
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant Md3ListItem oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.removing != oldWidget.removing) {
+      if (widget.removing) {
+        _remove.forward();
+      } else {
+        _remove.reverse();
+      }
+    }
+    if (widget.pulse > oldWidget.pulse) {
+      _pulseCtrl.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _enter.dispose();
+    _remove.dispose();
+    _pulseCtrl.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    return Material(
+    final item = Material(
       type: MaterialType.transparency,
       child: InkWell(
-        onTap: onTap,
-        onLongPress: onLongPress,
+        onTap: widget.onTap,
+        onLongPress: widget.onLongPress,
         child: ColoredBox(
-          color: selected ? scheme.primaryContainer : Colors.transparent,
+          color: widget.selected
+              ? scheme.primaryContainer
+              : Colors.transparent,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(10, 8, 2, 8),
             child: Column(
@@ -1177,15 +1268,16 @@ class Md3ListItem extends StatelessWidget {
                       width: 42,
                       height: 42,
                       decoration: BoxDecoration(
-                        color: selected
+                        color: widget.selected
                             ? scheme.surface
-                            : iconBoxColor ?? scheme.secondaryContainer,
+                            : widget.iconBoxColor ??
+                                scheme.secondaryContainer,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
-                        selected ? Icons.check_circle : icon,
+                        widget.selected ? Icons.check_circle : widget.icon,
                         size: 22,
-                        color: selected
+                        color: widget.selected
                             ? scheme.primary
                             : scheme.onSecondaryContainer,
                       ),
@@ -1196,17 +1288,17 @@ class Md3ListItem extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            title,
-                            maxLines: titleMaxLines,
+                            widget.title,
+                            maxLines: widget.titleMaxLines,
                             overflow: TextOverflow.ellipsis,
                             style: theme.textTheme.bodyLarge,
                           ),
-                          if (subtitle.isNotEmpty)
+                          if (widget.subtitle.isNotEmpty)
                             Padding(
                               padding: const EdgeInsets.only(top: 2),
                               child: Text(
-                                subtitle,
-                                maxLines: subtitleMaxLines,
+                                widget.subtitle,
+                                maxLines: widget.subtitleMaxLines,
                                 overflow: TextOverflow.ellipsis,
                                 style: theme.textTheme.bodyMedium
                                     ?.copyWith(color: scheme.onSurfaceVariant),
@@ -1215,21 +1307,71 @@ class Md3ListItem extends StatelessWidget {
                         ],
                       ),
                     ),
-                    if (trailing != null) ...[
+                    if (widget.trailing != null) ...[
                       const SizedBox(width: 4),
-                      trailing!,
+                      widget.trailing!,
                     ],
                   ],
                 ),
-                if (bottom != null) ...[
+                if (widget.bottom != null) ...[
                   const SizedBox(height: 10),
-                  bottom!,
+                  widget.bottom!,
                 ],
               ],
             ),
           ),
         ),
       ),
+    );
+
+    return AnimatedBuilder(
+      animation: Listenable.merge([_enter, _remove, _pulseCtrl]),
+      builder: (context, child) {
+        final enterT = Curves.easeOutCubic.transform(_enter.value);
+        final removeT = Curves.easeInCubic.transform(_remove.value);
+        final pulseT = _pulseCtrl.value;
+        // 多列（网格）时不收起高度：行高由同行其它条目决定，硬收会让卡片
+        // 被压扁得很奇怪；与网盘网格一致，只做淡出 + 轻微缩小。
+        final collapse = adaptiveColumns(context) <= 1;
+        var result = child!;
+        // 修改后的高亮闪烁（与网盘列表一致：主色 16% → 0）
+        if (pulseT > 0 && pulseT < 1) {
+          result = Stack(
+            children: [
+              result,
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: ColoredBox(
+                    color: scheme.primary.withValues(
+                      alpha: 0.16 * (1 - pulseT),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        }
+        result = Opacity(
+          opacity: (enterT * (1 - removeT)).clamp(0.0, 1.0),
+          child: Transform.scale(
+            scale: 1 - 0.06 * removeT,
+            child: Transform.translate(
+              offset: Offset(0, 10 * (1 - enterT)),
+              child: result,
+            ),
+          ),
+        );
+        // 删除时收起高度，让后面的条目平滑补位
+        if (removeT > 0 && collapse) {
+          result = Align(
+            heightFactor: (1 - removeT).clamp(0.0, 1.0),
+            alignment: Alignment.topCenter,
+            child: result,
+          );
+        }
+        return result;
+      },
+      child: item,
     );
   }
 }
@@ -1692,6 +1834,11 @@ class AdaptiveListRows extends StatelessWidget {
           children: [
             for (var i = 0; i < columns; i++)
               Expanded(
+                // 把条目的 key 提到格子这一层：数据增删时按 key 匹配元素，
+                // 动画状态跟着条目走，而不是被同位置的下一条目复用
+                key: start + i < children.length
+                    ? children[start + i].key
+                    : null,
                 child: start + i < children.length
                     ? children[start + i]
                     : const SizedBox.shrink(),
@@ -1823,6 +1970,9 @@ class _SegmentedListState extends State<SegmentedList> {
     bool standalone = false,
   }) {
     return AnimatedContainer(
+      // 把条目的 key 提到外层：单列时 Column 直接按 key 匹配，
+      // 避免数据增删后元素（以及出现动画状态）被同位置的下一条目复用
+      key: widget.children[index].key,
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOutCubic,
       decoration: BoxDecoration(

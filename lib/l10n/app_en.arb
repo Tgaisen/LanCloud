@@ -67,6 +67,7 @@
   "settingsSubtitle": "Appearance, behavior, connections and advanced overrides",
   "webManagement": "Web version",
   "webManagementSubtitle": "Official features like changing your password or avatar",
+  "userCenter": "Personal center",
   "recycleBin": "Recycle bin",
   "removeAccountTitle": "Remove account",
   "removeAccountMessage": "This removes account {uid} and its login info from this device. Files in the cloud are unaffected.",

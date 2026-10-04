@@ -28,6 +28,9 @@ class _HomePageState extends State<HomePage>
     with AutomaticKeepAliveClientMixin {
   List<RecentItem> _recents = [];
   List<PinItem> _quick = [];
+  /// 正在播放删除动画的条目（动画播完再真正删库）
+  final Set<String> _removingQuick = {};
+  final Set<String> _removingRecents = {};
   bool _loading = true;
   bool _quickExpanded = true;
   bool _recentsExpanded = true;
@@ -103,9 +106,14 @@ class _HomePageState extends State<HomePage>
     AppController app,
     PinItem item, {
     required bool first,
+    required int index,
   }) {
     final l10n = context.l10n;
+    final removing = _removingQuick.contains(item.ref);
     return Md3ListItem(
+      key: ValueKey('quick-${item.ref}'),
+      index: index,
+      removing: removing,
       icon: Icons.folder_outlined,
       title: item.name,
       subtitle: quickAccessPathLabel(l10n, item),
@@ -140,6 +148,10 @@ class _HomePageState extends State<HomePage>
             title: Text(l10n.removeFromQuickAccess),
             onTap: () async {
               Navigator.of(context).pop();
+              // 先播放删除动画，再真正删库（列表由 db.revision 通知刷新）
+              setState(() => _removingQuick.add(item.ref));
+              await Future<void>.delayed(const Duration(milliseconds: 220));
+              if (!mounted) return;
               await app.db.removePin(item.ref);
             },
           ),
@@ -179,6 +191,9 @@ class _HomePageState extends State<HomePage>
             title: Text(l10n.deleteRecord),
             onTap: () async {
               Navigator.of(context).pop();
+              setState(() => _removingRecents.add(item.ref));
+              await Future<void>.delayed(const Duration(milliseconds: 220));
+              if (!mounted) return;
               await app.db.removeRecent(
                 account: app.activeUid ?? '',
                 ref: item.ref,
@@ -201,6 +216,10 @@ class _HomePageState extends State<HomePage>
         _recents = recents;
         _quick = pins;
         _loading = false;
+        // 数据已刷新：清理删除动画标记。清早了会让还没从列表消失的条目
+        // 反向展开（先上移再下移），所以统一放在这里。
+        _removingQuick.clear();
+        _removingRecents.clear();
       });
     } catch (_) {
       if (mounted) setState(() => _loading = false);
@@ -424,6 +443,7 @@ class _HomePageState extends State<HomePage>
                                   app,
                                   _quick[i],
                                   first: i == 0,
+                                  index: i,
                                 ),
                             ],
                           ),
@@ -449,28 +469,35 @@ class _HomePageState extends State<HomePage>
                             : SegmentedList(
                                 adaptive: true,
                                 children: [
-                                  for (final item in _recents)
+                                  for (var i = 0; i < _recents.length; i++)
                                     Md3ListItem(
-                                      icon: item.kind
+                                      key: ValueKey('recent-${_recents[i].ref}'),
+                                      index: i,
+                                      removing: _removingRecents
+                                          .contains(_recents[i].ref),
+                                      icon: _recents[i].kind
                                               .toLowerCase()
                                               .contains('folder')
                                           ? Icons.folder_outlined
-                                          : iconForFile(item.name),
-                                      title: item.name,
-                                      subtitle: item.kind.startsWith('share')
+                                          : iconForFile(_recents[i].name),
+                                      title: _recents[i].name,
+                                      subtitle: _recents[i]
+                                              .kind
+                                              .startsWith('share')
                                           ? l10n.sharedContent
                                           : l10n.myDrive,
                                       trailing: IconButton(
                                         tooltip: l10n.moreActions,
                                         icon: const Icon(Icons.more_vert),
-                                        onPressed: () => _showRecentMenu(item),
+                                        onPressed: () =>
+                                            _showRecentMenu(_recents[i]),
                                       ),
                                       onTap: () => _openItem(
                                         context,
-                                        item.kind,
-                                        item.ref,
-                                        item.name,
-                                        item.pwd,
+                                        _recents[i].kind,
+                                        _recents[i].ref,
+                                        _recents[i].name,
+                                        _recents[i].pwd,
                                       ),
                                     ),
                                 ],

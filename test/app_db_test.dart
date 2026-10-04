@@ -164,6 +164,26 @@ void main() {
     );
   });
 
+  test('批量移除快速访问条目（删除文件夹时同步清理）', () async {
+    final db = AppDb.instance;
+    const account = 'remove-pins-test';
+    List<PinItem> mine(List<PinItem> all) =>
+        all.where((p) => p.account == account).toList();
+    for (final ref in ['p-a', 'p-b', 'p-c']) {
+      await db.addPin(account: account, name: ref, ref: ref);
+    }
+
+    await db.removePins(['p-a', 'p-c']);
+    expect(
+      mine(await db.pins(account)).map((p) => p.ref).toList(),
+      ['p-b'],
+    );
+
+    // 空列表直接返回，不影响其它条目
+    await db.removePins(const <String>[]);
+    expect(mine(await db.pins(account)).length, 1);
+  });
+
   test('快速访问记录目录路径，并支持移到顶部', () async {
     final db = AppDb.instance;
     const account = 'pin-path-test';

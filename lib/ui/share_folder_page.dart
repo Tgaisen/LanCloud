@@ -349,6 +349,7 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
                       children: [
                         for (final sub in folders)
                           Md3ListItem(
+                            key: ValueKey('share-folder-${sub.url}'),
                             icon: Icons.folder_outlined,
                             title: sub.name,
                             subtitle: sub.desc,
@@ -364,6 +365,7 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
                       children: [
                         for (final file in files)
                           Md3ListItem(
+                            key: ValueKey('share-file-${file.url}'),
                             icon: iconForFile(file.name),
                             title: file.name,
                             subtitle: [

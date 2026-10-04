@@ -211,6 +211,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get webManagementSubtitle => '修改密码、头像等官方功能';
 
   @override
+  String get userCenter => '个人中心';
+
+  @override
   String get recycleBin => '回收站';
 
   @override

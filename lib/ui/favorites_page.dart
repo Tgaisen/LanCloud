@@ -30,6 +30,10 @@ class _FavoritesPageState extends State<FavoritesPage>
   bool _loading = true;
   bool _selecting = false;
   final Set<int> _selected = {};
+  /// 正在播放删除动画的条目（动画播完再真正删库）
+  final Set<int> _removing = {};
+  /// 修改后的高亮闪烁计数（值变化触发一次）
+  final Map<int, int> _pulse = {};
   final ScrollController _scroll = ScrollController();
   late final AppDb _db;
   AppController? _app;
@@ -83,6 +87,8 @@ class _FavoritesPageState extends State<FavoritesPage>
         _folders = all.where((f) => f.kind == 'shareFolder').toList();
         _files = all.where((f) => f.kind == 'shareFile').toList();
         _loading = false;
+        // 数据已刷新：清掉删除动画标记（清早了会让还没消失的条目反向展开）
+        _removing.clear();
       });
     } catch (_) {
       // 读取失败时保持已有内容
@@ -165,6 +171,10 @@ class _FavoritesPageState extends State<FavoritesPage>
     if (ok != true || !mounted) return;
     final ids = _selected.toList();
     _exitSelection();
+    // 先播放删除动画，再真正删库
+    setState(() => _removing.addAll(ids));
+    await Future<void>.delayed(const Duration(milliseconds: 220));
+    if (!mounted) return;
     for (final id in ids) {
       await _db.removeFavoriteById(id);
     }
@@ -224,6 +234,9 @@ class _FavoritesPageState extends State<FavoritesPage>
     if (action == 'edit') {
       await _editFavorite(item);
     } else if (action == 'delete') {
+      setState(() => _removing.add(item.id));
+      await Future<void>.delayed(const Duration(milliseconds: 220));
+      if (!mounted) return;
       await app.db.removeFavoriteById(item.id);
     }
   }
@@ -279,6 +292,8 @@ class _FavoritesPageState extends State<FavoritesPage>
                 ref: link,
                 pwd: pwdController.text.trim(),
               );
+              // 修改后闪一下，和网盘列表一致
+              setState(() => _pulse[item.id] = (_pulse[item.id] ?? 0) + 1);
             },
             child: Text(context.l10n.save),
           ),
@@ -287,11 +302,15 @@ class _FavoritesPageState extends State<FavoritesPage>
     );
   }
 
-  Widget _tile(FavoriteItem item) {
+  Widget _tile(FavoriteItem item, {required int index}) {
     final l10n = context.l10n;
     final selected = _selected.contains(item.id);
     final isFolder = item.kind == 'shareFolder';
     return Md3ListItem(
+      key: ValueKey('favorite-${item.id}'),
+      index: index,
+      removing: _removing.contains(item.id),
+      pulse: _pulse[item.id] ?? 0,
       icon: isFolder ? Icons.folder_outlined : iconForFile(item.name),
       title: item.title.isEmpty ? item.name : item.title,
       subtitle: _subtitle(item),
@@ -373,7 +392,8 @@ class _FavoritesPageState extends State<FavoritesPage>
                             SegmentedList(
                               adaptive: true,
                               children: [
-                                for (final item in _folders) _tile(item),
+                                for (var i = 0; i < _folders.length; i++)
+                                  _tile(_folders[i], index: i),
                               ],
                             ),
                             const SizedBox(height: 20),
@@ -385,7 +405,10 @@ class _FavoritesPageState extends State<FavoritesPage>
                             ),
                             SegmentedList(
                               adaptive: true,
-                              children: [for (final item in _files) _tile(item)],
+                              children: [
+                                for (var i = 0; i < _files.length; i++)
+                                  _tile(_files[i], index: i),
+                              ],
                             ),
                           ],
                           // 外壳里给悬浮 / 收起的底栏让位；作为独立页面打开时

@@ -40,6 +40,8 @@ class _TransfersPageState extends State<TransfersPage>
   final ScrollController _scroll = ScrollController();
   bool _selecting = false;
   final Set<String> _selected = {};
+  /// 正在播放删除动画的记录（动画播完再真正移除）
+  final Set<String> _removing = {};
   AppController? _app;
 
   @override
@@ -169,9 +171,14 @@ class _TransfersPageState extends State<TransfersPage>
         manager.tasks.where((t) => _selected.contains(t.id)).toList();
     final ids = _selected.toList();
     _exitSelection();
+    // 先播放删除动画，再真正移除记录
+    setState(() => _removing.addAll(ids));
+    await Future<void>.delayed(const Duration(milliseconds: 220));
+    if (!mounted) return;
     for (final id in ids) {
       manager.removeTask(id);
     }
+    if (mounted) setState(() => _removing.removeAll(ids));
     // 下载到本地的文件由本应用写入，删除属于正常操作（不需要额外权限）
     if (deleteFiles) {
       for (final task in tasks) {
@@ -239,6 +246,7 @@ class _TransfersPageState extends State<TransfersPage>
                     kind: _kind,
                     selecting: _selecting,
                     selected: _selected,
+                    removing: _removing,
                     onToggle: _toggleSelected,
                     onLongPress: _enterSelection,
                   ),
@@ -398,6 +406,7 @@ class _TransferListSliver extends StatelessWidget {
     required this.kind,
     required this.selecting,
     required this.selected,
+    required this.removing,
     required this.onToggle,
     required this.onLongPress,
   });
@@ -405,6 +414,8 @@ class _TransferListSliver extends StatelessWidget {
   final TransferKind kind;
   final bool selecting;
   final Set<String> selected;
+  /// 正在播放删除动画的记录 id。
+  final Set<String> removing;
   final void Function(String id) onToggle;
   final void Function({String? taskId}) onLongPress;
 
@@ -448,13 +459,15 @@ class _TransferListSliver extends StatelessWidget {
             SegmentedList(
               adaptive: true,
               children: [
-                for (final task in active)
+                for (var i = 0; i < active.length; i++)
                   _TransferTile(
-                    task: task,
+                    task: active[i],
+                    index: i,
+                    removing: removing.contains(active[i].id),
                     selecting: selecting,
-                    selected: selected.contains(task.id),
-                    onTap: () => onToggle(task.id),
-                    onLongPress: () => onLongPress(taskId: task.id),
+                    selected: selected.contains(active[i].id),
+                    onTap: () => onToggle(active[i].id),
+                    onLongPress: () => onLongPress(taskId: active[i].id),
                   ),
               ],
             ),
@@ -466,13 +479,15 @@ class _TransferListSliver extends StatelessWidget {
               adaptive: true,
               // 与收藏页同色（SegmentedList 默认 surfaceContainerLow）
               children: [
-                for (final task in finished)
+                for (var i = 0; i < finished.length; i++)
                   _TransferTile(
-                    task: task,
+                    task: finished[i],
+                    index: i,
+                    removing: removing.contains(finished[i].id),
                     selecting: selecting,
-                    selected: selected.contains(task.id),
-                    onTap: () => onToggle(task.id),
-                    onLongPress: () => onLongPress(taskId: task.id),
+                    selected: selected.contains(finished[i].id),
+                    onTap: () => onToggle(finished[i].id),
+                    onLongPress: () => onLongPress(taskId: finished[i].id),
                   ),
               ],
             ),
@@ -494,6 +509,8 @@ class _TransferTile extends StatelessWidget {
     required this.selected,
     required this.onTap,
     required this.onLongPress,
+    this.index = 0,
+    this.removing = false,
   });
 
   final TransferTask task;
@@ -501,6 +518,8 @@ class _TransferTile extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
+  final int index;
+  final bool removing;
 
   String _statusText(AppLocalizations l10n) {
     switch (task.status) {
@@ -541,6 +560,9 @@ class _TransferTile extends StatelessWidget {
     final done = task.status == TransferStatus.done && task.savedPath != null;
     // 与首页 / 收藏共用同一套列表项布局，圆角由外层 SegmentedList 控制
     return Md3ListItem(
+      key: ValueKey('transfer-${task.id}'),
+      index: index,
+      removing: removing,
       icon: iconForFile(task.name),
       title: task.name,
       subtitle: _statusLine(l10n),

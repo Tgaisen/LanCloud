@@ -470,6 +470,12 @@ abstract class AppLocalizations {
   /// **'修改密码、头像等官方功能'**
   String get webManagementSubtitle;
 
+  /// No description provided for @userCenter.
+  ///
+  /// In zh, this message translates to:
+  /// **'个人中心'**
+  String get userCenter;
+
   /// No description provided for @recycleBin.
   ///
   /// In zh, this message translates to:

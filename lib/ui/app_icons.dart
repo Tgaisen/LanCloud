@@ -117,6 +117,7 @@ class Icons {
   static const IconData upload_file = Symbols.upload_file;
   static const IconData upload_file_outlined = Symbols.upload_file;
   static const IconData upload_outlined = Symbols.upload;
+  static const IconData user_attributes = Symbols.user_attributes;
   static const IconData warning_outlined = Symbols.warning;
   static const IconData vertical_align_bottom = Symbols.vertical_align_bottom;
   static const IconData vertical_align_top = Symbols.vertical_align_top;

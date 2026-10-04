@@ -1189,6 +1189,8 @@ class _DrivePageState extends State<DrivePage>
       await app.db.removeDownloaded([
         for (final id in fileIds) '${app.activeUid ?? ''}:$id',
       ]);
+      // 删掉的目录若固定在快速访问里，一并移除
+      if (folderIds.isNotEmpty) await app.db.removePins(folderIds);
       if (!mounted) return;
       _exitSelection();
       await _removeItemsWithAnimation(
@@ -2316,11 +2318,21 @@ class _DrivePageState extends State<DrivePage>
     final app = context.read<AppController>();
     final client = app.client;
     if (client == null) return;
+    // 删的是当前所在目录：删除成功后这个目录已经不存在了，要退回上一级
+    final deletingCurrent = folder.id == _folderId;
     try {
       await client.deleteItem(id: folder.id, isFile: false);
       if (!mounted) return;
+      // 删除的目录如果固定在快速访问里，一并移除
+      await app.db.removePin(folder.id);
       _folderDescCache.remove(folder.id);
       _folderSizeCache.remove(folder.id);
+      if (deletingCurrent) {
+        // 不清缓存的话，退回父目录会读到仍包含这一项的旧快照
+        app.driveCache.clear();
+        await _jumpTo(_path.length - 2);
+        return;
+      }
       await _removeItemsWithAnimation(folderIds: {folder.id});
     } catch (e) {
       if (!mounted) return;

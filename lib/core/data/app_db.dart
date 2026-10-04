@@ -451,6 +451,20 @@ class AppDb {
     _touch();
   }
 
+  /// 批量移除快速访问条目（删除文件夹时同步清理，一次通知）。
+  Future<void> removePins(Iterable<String> refs) async {
+    final list = refs.toList();
+    if (list.isEmpty) return;
+    final database = await db;
+    final placeholders = List.filled(list.length, '?').join(', ');
+    await database.delete(
+      'pins',
+      where: 'ref IN ($placeholders)',
+      whereArgs: list,
+    );
+    _touch();
+  }
+
   /// 把某个固定目录移到最前（刷新创建时间即可，列表按创建时间倒序）。
   Future<void> movePinToTop(String ref) async {
     final database = await db;
