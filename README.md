@@ -66,6 +66,20 @@ versionCode = YY * 10_000_000 + Drop * 100_000 + Hotfix * 10_000 + Stage * 1_000
 70:BD:4A:A8:53:22:FE:26:E6:72:02:FA:C3:17:29:BD:E1:F8:54:FA:1B:D2:FD:52:C8:8F:FC:AA:02:ED:B5:BB
 ```
 
+#### 发布
+
+`tools/release.ps1` 一条命令完成发版：读 `pubspec.yaml` 校验版本号与 versionCode 公式 → 跑
+analyze / test → 构建 `--split-per-abi` → 核对签名指纹 → 打 tag 并用 `gh` 创建 Release（阶段版本带
+`-` 时自动勾选 Pre-release），上传 arm64 / v7a 两个包：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/release.ps1            # 正式 / 预发布
+powershell -ExecutionPolicy Bypass -File tools/release.ps1 -Draft     # 先建草稿
+powershell -ExecutionPolicy Bypass -File tools/release.ps1 -DryRun    # 只走检查与打印
+```
+
+首次使用需装并登录 GitHub CLI：`winget install GitHub.cli` → `gh auth login`。
+
 ## 开源与致谢
 
 本项目使用 DeepSeek + Codex 辅助开发与验证。
