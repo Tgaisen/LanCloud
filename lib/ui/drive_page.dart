@@ -6,7 +6,6 @@ import 'package:flutter/material.dart' hide Icons;
 import 'package:lpinyin/lpinyin.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 
 import '../core/api/lanzou_client.dart';
 import '../core/api/models.dart';
@@ -1697,50 +1696,8 @@ class _DrivePageState extends State<DrivePage>
   /// 本地生成二维码（不经过任何服务器）。
   Future<void> _showQr(String title, String url, String pwd) async {
     if (!mounted) return;
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: ColoredBox(
-                color: Colors.white,
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: QrImageView(
-                    data: url,
-                    size: 200,
-                    backgroundColor: Colors.white,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            SelectableText(url, style: Theme.of(context).textTheme.bodySmall),
-            if (pwd.isNotEmpty) ...[
-              const SizedBox(height: 6),
-              Text(context.l10n.passwordLabel(pwd)),
-            ],
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text(context.l10n.close),
-          ),
-          FilledButton(
-            onPressed: () {
-              Navigator.of(dialogContext).pop();
-              copyText(context, url);
-            },
-            child: Text(context.l10n.copyLink),
-          ),
-        ],
-      ),
-    );
+    // 与分享链接里的「显示二维码」共用同一个弹窗（QrPainter 版本）
+    await showQrDialog(context, title: title, url: url, pwd: pwd);
   }
 
   Future<void> _showFileQr(LzFile file) async {
@@ -3507,7 +3464,6 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
   Future<void> _editPassword() => widget.page._setFolderPasswd(_folder);
 
   Future<void> _fetch() async {
-    final l10n = context.l10n;
     final id = widget.folder.id;
     final needDesc = !widget.page._folderDescCache.containsKey(id);
     final needStats = !widget.page._folderSizeCache.containsKey(id);
@@ -3525,6 +3481,11 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
     if (needStats) {
       try {
         final stats = await client?.folderStats(id);
+        // 这个方法是 initState 里同步调用的：initState 结束前读 context.l10n 在
+        // debug 下会抛 "called before ...initState() completed"，导致 _fetch 中断、
+        // _loading 永远为 true（属性弹窗一直转圈）。放到首次 await 之后再取。
+        if (!mounted) return;
+        final l10n = context.l10n;
         if (stats != null) {
           if (stats.desc.isNotEmpty) {
             widget.page._folderDescCache[id] = stats.desc;

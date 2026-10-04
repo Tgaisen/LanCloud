@@ -763,10 +763,19 @@ Future<void> showQrDialog(
               color: Colors.white,
               child: Padding(
                 padding: const EdgeInsets.all(12),
-                child: QrImageView(
-                  data: url,
-                  size: 200,
-                  backgroundColor: Colors.white,
+                // 用 QrPainter + CustomPaint 而不是 QrImageView：后者内部是
+                // LayoutBuilder，放进 AlertDialog（用 IntrinsicWidth 量内容）会在
+                // debug 下抛 "LayoutBuilder does not support returning intrinsic
+                // dimensions"，弹窗只剩遮罩；CustomPaint 没有这个问题。
+                child: SizedBox(
+                  width: 200,
+                  height: 200,
+                  child: CustomPaint(
+                    painter: QrPainter(
+                      data: url,
+                      version: QrVersions.auto,
+                    ),
+                  ),
                 ),
               ),
             ),

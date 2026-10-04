@@ -152,7 +152,8 @@ class _ShareFileInfoSheetState extends State<ShareFileInfoSheet> {
             onTap: () {
               navigator.pop();
               showQrDialog(
-                context,
+                // 用 navigator 的 context：弹窗刚被 pop，原 context 已失效
+                navigator.context,
                 title: _name,
                 url: widget.url,
                 pwd: widget.pwd,
