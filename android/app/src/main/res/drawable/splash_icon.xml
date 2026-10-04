@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+ 启动屏幕图标：自适应图标的「底板 + 前景」合成版。
+
+     有的 ROM 不按规范给 windowSplashScreenIconBackgroundColor 加圆形遮罩，
+     直接画成正方形；这里把圆角底板和云朵前景合成一张图，系统是否遮罩都
+     是圆角。底板取 72dp（云朵约占底板 2/3，和改动前的启动屏观感一致），
+     圆角 17dp ≈ 平台图标遮罩的比例。
+     深色模式复用 values-night/colors.xml 里的 ic_launcher_background。 -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:width="72dp"
+        android:height="72dp"
+        android:gravity="center">
+        <shape android:shape="rectangle">
+            <size android:width="72dp" android:height="72dp" />
+            <corners android:radius="17dp" />
+            <solid android:color="@color/ic_launcher_background" />
+        </shape>
+    </item>
+    <!-- 自适应图标前景图（108dp 画布，内容在中心 2/3 安全区） -->
+    <item
+        android:drawable="@mipmap/ic_launcher_foreground"
+        android:gravity="center" />
+</layer-list>

@@ -15,10 +15,9 @@
         <!-- SplashScreen API：背景默认取主题的 ?android:colorBackground，
              这里显式写出，保证和 windowBackground 颜色一致、无跳色。 -->
         <item name="android:windowSplashScreenBackground">?android:colorBackground</item>
-        <!-- 自适应图标的前景图自带 108dp 画布留白，系统会按规范把内容
-             放进 2/3 直径的圆形安全区；底色复用启动图标背景色
-             （浅色 = 品牌青，深色见 values-night/colors.xml）。 -->
-        <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
-        <item name="android:windowSplashScreenIconBackgroundColor">@color/ic_launcher_background</item>
+        <!-- 图标用自带圆角底板的合成图（drawable/splash_icon.xml）：
+             部分 ROM 不会给 iconBackgroundColor 加圆形遮罩，会画成正方形；
+             自带圆角后无论系统是否遮罩都是圆角。 -->
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_icon</item>
     </style>
 </resources>
