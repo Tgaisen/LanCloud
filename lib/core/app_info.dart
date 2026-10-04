@@ -1,4 +1,4 @@
-/// 应用信息：发版时与 pubspec.yaml 的 version 一起更新。
+/// 应用信息：发版时与 pubspec.yaml 的 version 一起更新（版本号规范见 README）。
 const String appVersion = '0.8.9';
 const int appBuild = 56;
 

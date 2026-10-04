@@ -54,14 +54,63 @@ flutter build apk --release --split-per-abi
 `app-armeabi-v7a-release.apk`（老旧 32 位机型）、`app-x86_64-release.apk`。
 分架构包体积约为通用包的一半，按手机架构选择即可。
 
-发版时同步更新两处版本号：`pubspec.yaml` 的 `version:`，以及 `lib/core/app_info.dart`
-中的 `appVersion` / `appBuild`（关于页与备份文件名会用到）。
+### 版本号规范
+
+从第一个正式版开始，版本号采用「年份.内容更新序号.热修号」：`26.1.0` 表示 2026 年第 1 次内容更新，
+`26.1.1` 表示对该版本的首次热修，`26.2.0` 表示同年下一次内容更新。
+
+Android 的 `versionCode` 由前两段推导：`YY * 10000 + 内容更新序号 * 100 + 热修号`。
+
+| 版本号 | versionCode |
+| --- | --- |
+| `26.1.0` | `260100` |
+| `26.1.1` | `260101` |
+| `26.2.3` | `260203` |
+
+发版时同步更新两处（`test/version_test.dart` 会校验两者一致、且符合上面的公式）：
+
+- `pubspec.yaml` 的 `version:`，如 `26.1.0+260100`（`+` 后面就是 versionCode）
+- `lib/core/app_info.dart` 的 `appVersion` / `appBuild`（关于页与备份文件名会用到）
+
+`flutter build apk --split-per-abi` 时 Flutter 会按 ABI 给 versionCode 加偏移（armeabi-v7a +1000、
+arm64-v8a +2000、x86_64 +4000），arm64 包实际是 `260100 + 2000 = 262100`；对外描述版本仍用
+`26.1.0`。需要 APK 的 versionCode 与公式完全一致时可以加 `-Pforce-version-code-ignoring-abi=true`，
+或改用通用包。
+
+当前 `0.8.x` 是正式版之前的过渡版本；首个正式版计划为 `26.1.0+260100`。
+
+### 签名
+
+release 包由 `android/key.properties` 指定的密钥签名，密钥文件为
+`android/app/lancloud-release.keystore`（别名 `lancloud`）；两个文件都在 `.gitignore` 里，
+**不要提交、不要公开**，请和密码一起另存一份私密备份（密码丢了无法找回，应用也就无法再更新）：
+
+```properties
+storePassword=***
+keyPassword=***
+keyAlias=lancloud
+storeFile=lancloud-release.keystore
+```
+
+换机器时把这两个文件恢复到原位即可。没有 `key.properties` 时 release 会退回 debug 签名并打印
+警告（方便本地和 CI 出包），这种包不能对外发布。发布前可以用
+`apksigner verify --print-certs <apk>` 核对签名，当前发布证书的 SHA-256 指纹：
+
+release 包同时写入 v2 + v3 两种签名方案（Android 9+ 走 v3，将来换签名密钥时老用户不必卸载
+重装；Android 7/8 走 v2）。`minSdk 24` 起 v1 已无必要，v4 只服务 `adb` 增量安装，都未启用。
+
+```
+70:BD:4A:A8:53:22:FE:26:E6:72:02:FA:C3:17:29:BD:E1:F8:54:FA:1B:D2:FD:52:C8:8F:FC:AA:02:ED:B5:BB
+```
 
 ## 安装
 
 1. 按手机架构选一个 APK 安装（不确定就选 arm64）
 2. 遇到提示时允许「安装未知来源应用」
 3. 首次启动阅读并同意用户协议与隐私政策，然后登录（推荐应用内网页登录）
+
+早期 `0.8.x` 预览包用的是 debug 签名，换成正式签名后首次安装需要先卸载旧版（本地数据会清空，
+建议先在应用内「设置 → 备份与恢复」导出备份）。
 
 ## 隐私
 
