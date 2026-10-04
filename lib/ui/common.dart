@@ -25,6 +25,10 @@ const double kDrivePathBarHeight = 46;
 /// 传输页上传 / 下载切换栏高度（顶栏的 bottom 部分）。
 const double kTransfersTabBarHeight = 58;
 
+/// MD3 模态底部弹窗的默认宽度上限：窗口比它宽时弹窗居中显示，
+/// 两侧不会贴到屏幕边缘（也就用不到挖孔 / 导航栏的左右让位）。
+const double kModalSheetMaxWidth = 640;
+
 /// 是否是大屏布局（侧栏 + 圆角主视图）。
 bool isLargeLayout(BuildContext context) =>
     MediaQuery.sizeOf(context).width >= kLargeLayoutBreakpoint;
@@ -74,6 +78,19 @@ double shellBottomBarInset(BuildContext context) {
   final app = context.watch<AppController>();
   if (inRootShell(context) && app.settings.floatingNavBar) return 0;
   return bottomObstructionHeight(context);
+}
+
+/// 悬浮底栏（胶囊浮在内容上方）时，列表末尾额外给胶囊留出的高度。
+///
+/// 只有"外壳 + 悬浮底栏"需要：普通底栏由 [shellBottomBarInset] 按底栏高度
+/// 让位、独立页面按系统导航栏让位、大屏没有底栏，这几类都不该再叠这段留白
+/// （否则「我的」等页面选项下方会多出一大截空白）。
+double floatingNavTailInset(BuildContext context) {
+  // 大屏（侧栏布局）没有底栏，不需要给胶囊留位
+  if (isLargeLayout(context)) return 0;
+  final app = context.watch<AppController>();
+  if (!inRootShell(context) || !app.settings.floatingNavBar) return 0;
+  return 96;
 }
 
 /// 大屏（横屏 / 平板）下的 MD3E 正文卡片：body area 用 surface 底色、
@@ -704,13 +721,33 @@ Future<T?> showAppSheet<T>(
   required Widget child,
   double maxHeightRatio = 0.8,
 }) {
-  final maxHeight = MediaQuery.sizeOf(context).height * maxHeightRatio;
+  final size = MediaQuery.sizeOf(context);
+  final maxHeight = size.height * maxHeightRatio;
+  // MD3 给模态底部弹窗 640dp 宽度上限：窗口更宽时弹窗居中、离屏幕两侧
+  // 还有很远，这时内容不该再按挖孔 / 导航栏加左右内边距（会多一条留白）；
+  // 只有弹窗真的通铺整屏（窗口不超过上限）时才需要左右让位。
+  final fullWidthSheet = size.width <= kModalSheetMaxWidth;
   return showModalBottomSheet<T>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
+    // 弹窗自己让开系统栏（只让底部/左右，不重复让状态栏）；
+    // 内容里若还有 SafeArea（不少弹窗内容自带）就读不到 padding 了，
+    // 不会再二次避让多留一截空白。
     builder: (_) => SafeArea(
-      child: MeasuredSheet(maxHeight: maxHeight, child: child),
+      top: false,
+      left: fullWidthSheet,
+      right: fullWidthSheet,
+      child: Builder(
+        builder: (context) => MediaQuery.removePadding(
+          context: context,
+          removeTop: true,
+          removeLeft: true,
+          removeRight: true,
+          removeBottom: true,
+          child: MeasuredSheet(maxHeight: maxHeight, child: child),
+        ),
+      ),
     ),
   );
 }

@@ -104,4 +104,42 @@ void main() {
     // 卡片让出 40；AppBar 若再让一次就会少 80，这里必须只差 40
     expect(without - with40, 40);
   });
+
+  testWidgets('弹窗被 640dp 上限居中时，内容不再按挖孔 / 导航栏缩进', (tester) async {
+    final app = AppController();
+    addTearDown(app.dispose);
+    // 900dp 宽的窗口：弹窗按 MD3 上限 640dp 居中，离两侧系统栏很远
+    tester.view.physicalSize = const Size(900, 600);
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.padding = const FakeViewPadding(left: 40, right: 40);
+    tester.view.viewPadding = const FakeViewPadding(left: 40, right: 40);
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AppController>.value(
+        value: app,
+        child: MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => Center(
+                child: ElevatedButton(
+                  onPressed: () => showAppSheet<void>(
+                    context,
+                    child: const ListTile(title: Text('item')),
+                  ),
+                  child: const Text('open'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    // 弹窗按 MD3 上限 640dp 居中：两侧各留 (900-640)/2 = 130dp，
+    // 再加上 ListTile 自身的 16dp；若内容又按 40dp 挖孔让位会变成 ~186
+    final title = tester.getRect(find.text('item'));
+    expect(title.left, inInclusiveRange(130, 160));
+  });
 }

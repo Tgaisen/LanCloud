@@ -14,11 +14,31 @@ import 'web_page.dart';
 
 /// 「我的」视图：账号卡片 + 网页版/回收站 + 设置/关于。
 /// 既作为底栏视图，也可作为独立路由打开。
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key, this.tabIndex});
 
   /// 外壳中的 page 视图下标；作为独立路由打开时为 null。
   final int? tabIndex;
+
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage>
+    with AutomaticKeepAliveClientMixin {
+  /// 切到别的视图再切回来时保留本页状态（含列表滚动位置）。
+  /// 「我的」在底栏最边上，PageView 只会保活相邻页，不声明就每次都会重建。
+  @override
+  bool get wantKeepAlive => true;
+
+  /// 列表滚动位置：切到别的视图再切回来时保留（和首页 / 网盘等页面一致）。
+  final ScrollController _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
 
   void _openWeb(BuildContext context, String url, String title) {
     final app = context.read<AppController>();
@@ -35,6 +55,7 @@ class ProfilePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // AutomaticKeepAliveClientMixin 要求
     final app = context.watch<AppController>();
     final account = app.activeAccount;
     final uid = app.activeUid ?? '';
@@ -55,6 +76,7 @@ class ProfilePage extends StatelessWidget {
             onBarsHidden:
                 app.settings.hideTopBar ? app.setTopBarHideFromScroll : null,
             child: CustomScrollView(
+              controller: _scroll,
               slivers: [
                 // 顶栏不占布局，这里留出等高占位
                 SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
@@ -135,7 +157,8 @@ class ProfilePage extends StatelessWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 96),
+                      // 悬浮底栏时给胶囊让位；普通底栏 / 大屏不需要
+                      SizedBox(height: floatingNavTailInset(context)),
                     ]),
                   ),
                 ),

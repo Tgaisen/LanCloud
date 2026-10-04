@@ -248,10 +248,17 @@ class _HomePageState extends State<HomePage>
     String name,
   ) async {
     final app = context.read<AppController>();
+    // 窗口比 MD3 弹窗宽度上限还宽时弹窗会居中，两侧用不到系统栏让位
+    final fullWidthSheet =
+        MediaQuery.sizeOf(context).width <= kModalSheetMaxWidth;
     await showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
+      // 只让开底部/左右系统栏；不要把状态栏高度也算进弹窗内容
       builder: (sheetContext) => SafeArea(
+        top: false,
+        left: fullWidthSheet,
+        right: fullWidthSheet,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
