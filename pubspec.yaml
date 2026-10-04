@@ -16,10 +16,11 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-# 正式版起版本号规范：version: 年份.内容更新序号.热修号+versionCode，
-# versionCode = YY * 10000 + 内容更新序号 * 100 + 热修号（26.1.0 → 26.1.0+260100）。
+# 版本号规范：version: 年份.内容更新序号.热修号[-阶段.序号]+versionCode，
+# versionCode = YY*10_000_000 + 内容更新序号*100_000 + 热修号*10_000 + Stage*1_000 + Seq
+# （snapshot=1 / pre=2 / rc=3 / 正式版=9 且 Seq=999；如 26.1.0-snapshot.1 → 260101001）。
 # 详见 README「版本号规范」；改完记得同步 lib/core/app_info.dart（有测试校验）。
-version: 0.8.9+56
+version: 26.1.0-snapshot.1+260101001
 
 environment:
   sdk: ^3.13.4
