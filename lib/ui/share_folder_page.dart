@@ -345,6 +345,7 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
                   if (folders.isNotEmpty) ...[
                     _SectionTitle(text: l10n.folder),
                     SegmentedList(
+                      adaptive: true,
                       children: [
                         for (final sub in folders)
                           Md3ListItem(
@@ -359,6 +360,7 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
                   if (files.isNotEmpty) ...[
                     _SectionTitle(text: l10n.files),
                     SegmentedList(
+                      adaptive: true,
                       children: [
                         for (final file in files)
                           Md3ListItem(

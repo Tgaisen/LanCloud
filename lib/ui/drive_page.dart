@@ -2742,8 +2742,10 @@ class _DrivePageState extends State<DrivePage>
             ),
           )
         else
-          SliverList.builder(
+          AdaptiveSliverRows(
             itemCount: folders.length,
+            // 行自带 12dp 横向内边距，列间距靠它即可；纵向沿用原来的 3+3
+            spacing: 0,
             itemBuilder: (context, index) => _folderItem(
               folders[index],
               index,
@@ -2772,8 +2774,9 @@ class _DrivePageState extends State<DrivePage>
             ),
           )
         else
-          SliverList.builder(
+          AdaptiveSliverRows(
             itemCount: files.length,
+            spacing: 0,
             itemBuilder: (context, index) => _fileItem(
               files[index],
               index,

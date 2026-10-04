@@ -375,6 +375,7 @@ class _HomePageState extends State<HomePage>
                             ],
                           )
                         : SegmentedList(
+                            adaptive: true,
                             children: [
                               for (var i = 0; i < _quick.length; i++)
                                 _quickItem(
@@ -405,6 +406,7 @@ class _HomePageState extends State<HomePage>
                                 ],
                               )
                             : SegmentedList(
+                                adaptive: true,
                                 children: [
                                   for (final item in _recents)
                                     Md3ListItem(

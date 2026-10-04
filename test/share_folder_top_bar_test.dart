@@ -11,6 +11,10 @@ Future<AppController> pumpShareFolder(
   WidgetTester tester,
   FolderShareDetail folder,
 ) async {
+  // 本文件校验顶栏浮层的滚动渐隐：固定 Compact 窗口（<600dp）保持单列列表
+  tester.view.devicePixelRatio = 1.0;
+  tester.view.physicalSize = const Size(400, 600);
+  addTearDown(tester.view.reset);
   final app = AppController()..settings.hideTopBar = true;
   addTearDown(app.dispose);
   await tester.pumpWidget(

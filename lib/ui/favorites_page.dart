@@ -371,6 +371,7 @@ class _FavoritesPageState extends State<FavoritesPage>
                               count: _folders.length,
                             ),
                             SegmentedList(
+                              adaptive: true,
                               children: [
                                 for (final item in _folders) _tile(item),
                               ],
@@ -383,6 +384,7 @@ class _FavoritesPageState extends State<FavoritesPage>
                               count: _files.length,
                             ),
                             SegmentedList(
+                              adaptive: true,
                               children: [for (final item in _files) _tile(item)],
                             ),
                           ],

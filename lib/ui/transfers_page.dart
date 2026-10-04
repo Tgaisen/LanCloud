@@ -446,6 +446,7 @@ class _TransferListSliver extends StatelessWidget {
             SectionHeader(title: l10n.inProgress, count: active.length),
             // MD3E 连接式列表：组外侧 16dp / 组内相邻 4dp，和收藏页同款
             SegmentedList(
+              adaptive: true,
               children: [
                 for (final task in active)
                   _TransferTile(
@@ -462,6 +463,7 @@ class _TransferListSliver extends StatelessWidget {
           if (finished.isNotEmpty) ...[
             SectionHeader(title: l10n.finished, count: finished.length),
             SegmentedList(
+              adaptive: true,
               // 与收藏页同色（SegmentedList 默认 surfaceContainerLow）
               children: [
                 for (final task in finished)

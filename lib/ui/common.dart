@@ -33,6 +33,18 @@ const double kModalSheetMaxWidth = 640;
 bool isLargeLayout(BuildContext context) =>
     MediaQuery.sizeOf(context).width >= kLargeLayoutBreakpoint;
 
+/// M3 窗口宽度档位（Window size classes）对应的列表列数：
+/// Compact（<600dp）1 列、Medium（600–839dp）2 列、Expanded / Extra-large（≥840dp）3 列。
+int adaptiveColumnsForWidth(double width) {
+  if (width >= 840) return 3;
+  if (width >= 600) return 2;
+  return 1;
+}
+
+/// 当前窗口宽度对应的列表列数（[adaptiveColumnsForWidth] 的 BuildContext 版本）。
+int adaptiveColumns(BuildContext context) =>
+    adaptiveColumnsForWidth(MediaQuery.sizeOf(context).width);
+
 /// 大屏外壳里的页面（侧栏布局的第一个路由），或外面套了 [Md3ePageFrame]
 /// 的独立页面：背景由圆角卡片绘制，页面自己必须透明，否则会盖住卡片。
 bool transparentPageBackground(BuildContext context) =>
@@ -1639,6 +1651,94 @@ BorderRadius connectedItemRadius({
   );
 }
 
+/// 行优先把 [children] 铺成自适应多列（列数见 [adaptiveColumns]）：
+/// 行内等宽、顶部对齐，行间距 / 列间距为 [spacing]；单列时不额外包装，保持原样。
+class AdaptiveListRows extends StatelessWidget {
+  const AdaptiveListRows({
+    super.key,
+    required this.children,
+    this.spacing = 8,
+  });
+
+  final List<Widget> children;
+  final double spacing;
+
+  @override
+  Widget build(BuildContext context) {
+    final columns = adaptiveColumns(context);
+    if (columns <= 1 || children.isEmpty) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: children,
+      );
+    }
+    final rows = <Widget>[];
+    for (var start = 0; start < children.length; start += columns) {
+      if (rows.isNotEmpty) rows.add(SizedBox(height: spacing));
+      rows.add(
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: spacing,
+          children: [
+            for (var i = 0; i < columns; i++)
+              Expanded(
+                child: start + i < children.length
+                    ? children[start + i]
+                    : const SizedBox.shrink(),
+              ),
+          ],
+        ),
+      );
+    }
+    return Column(mainAxisSize: MainAxisSize.min, children: rows);
+  }
+}
+
+/// [AdaptiveListRows] 的 sliver 版本：按行懒构建，只构建可见行。
+class AdaptiveSliverRows extends StatelessWidget {
+  const AdaptiveSliverRows({
+    super.key,
+    required this.itemCount,
+    required this.itemBuilder,
+    this.spacing = 8,
+  });
+
+  final int itemCount;
+  final Widget Function(BuildContext context, int index) itemBuilder;
+  final double spacing;
+
+  @override
+  Widget build(BuildContext context) {
+    final columns = adaptiveColumns(context);
+    if (columns <= 1) {
+      return SliverList.builder(
+        itemCount: itemCount,
+        itemBuilder: itemBuilder,
+      );
+    }
+    final rowCount = (itemCount + columns - 1) ~/ columns;
+    return SliverList.builder(
+      itemCount: rowCount,
+      itemBuilder: (context, row) => Padding(
+        padding: EdgeInsets.only(bottom: row == rowCount - 1 ? 0 : spacing),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: spacing,
+          children: [
+            for (var i = 0; i < columns; i++)
+              Expanded(
+                child: row * columns + i < itemCount
+                    ? itemBuilder(context, row * columns + i)
+                    : const SizedBox.shrink(),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// MD3 Expressive 连接式列表（Connected）：
 /// - 组外侧圆角 [outerRadius]（默认 16dp），组内相邻处圆角 [innerRadius]（默认 4dp）
 /// - 条目之间用空白间隔（[gap]）而不是分割线
@@ -1654,6 +1754,8 @@ class SegmentedList extends StatefulWidget {
     this.innerRadius = 4,
     this.pressedRadius = 28,
     this.gap = 2,
+    this.adaptive = false,
+    this.adaptiveSpacing = 8,
   });
 
   final List<Widget> children;
@@ -1668,6 +1770,11 @@ class SegmentedList extends StatefulWidget {
   final double pressedRadius;
   /// 条目之间的空白间隔（替代分割线）。
   final double gap;
+  /// 大窗口（≥600dp）时按 [adaptiveColumns] 把条目铺成 2–3 列，
+  /// 每个条目独立成卡（组外侧圆角）；单列时保持原来的连接式整组样式。
+  final bool adaptive;
+  /// 多列时的行 / 列间距。
+  final double adaptiveSpacing;
 
   @override
   State<SegmentedList> createState() => _SegmentedListState();
@@ -1691,13 +1798,29 @@ class _SegmentedListState extends State<SegmentedList> {
     pressedRadius: widget.pressedRadius,
   );
 
-  Widget _item(BuildContext context, ColorScheme scheme, int index, int count) {
+  /// 独立成卡（多列）时的圆角：四周都是外侧圆角，按下时才整体放大到
+  /// [SegmentedList.pressedRadius]。这里不能复用 [_radiusFor]：多列下每个条目
+  /// 自成一组，但下标仍是列表里的真实下标，用整组的 index/count 去算会把
+  /// 除第一个以外的条目当成“组内中间项”而给出内圆角。
+  BorderRadius _standaloneRadius(int index) => BorderRadius.circular(
+    _pressedIndex == index ? widget.pressedRadius : widget.outerRadius,
+  );
+
+  Widget _item(
+    BuildContext context,
+    ColorScheme scheme,
+    int index,
+    int count, {
+    bool standalone = false,
+  }) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOutCubic,
       decoration: BoxDecoration(
         color: widget.color ?? scheme.surfaceContainerLow,
-        borderRadius: _radiusFor(index, count),
+        borderRadius: standalone
+            ? _standaloneRadius(index)
+            : _radiusFor(index, count),
       ),
       clipBehavior: Clip.antiAlias,
       child: Material(
@@ -1719,6 +1842,20 @@ class _SegmentedListState extends State<SegmentedList> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final count = widget.children.length;
+    if (widget.adaptive && adaptiveColumns(context) > 1) {
+      // 多列：每个条目独立成卡（四周都是外侧圆角，按下时整体放大），
+      // 行优先铺开；条目自带的底色已经负责区分，不需要再套分组容器。
+      return Padding(
+        padding: widget.margin,
+        child: AdaptiveListRows(
+          spacing: widget.adaptiveSpacing,
+          children: [
+            for (var i = 0; i < count; i++)
+              _item(context, scheme, i, 1, standalone: true),
+          ],
+        ),
+      );
+    }
     return Padding(
       padding: widget.margin,
       child: Column(

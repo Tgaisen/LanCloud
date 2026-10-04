@@ -124,6 +124,10 @@ void main() {
   });
 
   testWidgets('独立页面打开时不再保留底栏专用的尾部留白（96）', (tester) async {
+    // 这条用例量的是单列列表的末尾留白：固定 Compact 窗口（<600dp），避免多列改变布局
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(400, 600);
+    addTearDown(tester.view.reset);
     final app = AppController();
     final manager = TransferManager(app);
     manager.tasks.addAll([
