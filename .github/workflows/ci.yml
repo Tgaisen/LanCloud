@@ -1,0 +1,24 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.5
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: 代码格式检查（dart format）
+        run: dart format --output=none --set-exit-if-changed lib test tool
+      - name: 静态分析（flutter analyze）
+        run: flutter analyze
+      - name: 单元测试（flutter test）
+        run: flutter test

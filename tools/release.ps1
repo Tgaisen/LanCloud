@@ -25,7 +25,7 @@ param(
   [string]$NotesFile = '',
   # 先建草稿，确认无误再到网页里发布
   [switch]$Draft,
-  # 跳过 flutter analyze / test
+  # 跳过 dart format 检查与 flutter analyze / test
   [switch]$SkipTests,
   # 只做检查与打印，不构建、不打 tag、不发 Release
   [switch]$DryRun,
@@ -150,6 +150,8 @@ $flutter = if ($flutterSdk) {
   (Get-Command flutter -ErrorAction SilentlyContinue).Source
 }
 if (-not $flutter -or -not (Test-Path $flutter)) { Fail '找不到 flutter 命令' }
+$dart = Join-Path (Split-Path -Parent $flutter) 'dart.bat'
+if (-not (Test-Path $dart)) { $dart = 'dart' }
 
 $buildTools = Get-ChildItem (Join-Path $sdkDir 'build-tools') -Directory |
   Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1
@@ -168,6 +170,10 @@ if (-not $DryRun) {
 
 # ---------------------------------------------------------------- 检查与构建
 if (-not $SkipTests) {
+  Info 'dart format 检查'
+  Invoke-Tool $dart @(
+    'format', '--output=none', '--set-exit-if-changed', 'lib', 'test', 'tool'
+  ) | Out-Null
   Info 'flutter analyze'
   Invoke-Tool $flutter @('analyze') | Out-Null
   Info 'flutter test'

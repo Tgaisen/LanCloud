@@ -35,6 +35,9 @@ flutter pub get
 flutter build apk --release --split-per-abi
 ```
 
+代码风格：`dart format lib test tool`。仓库已配置保存自动格式化（`.vscode/settings.json`），
+CI 会强制检查格式、静态分析与测试（`.github/workflows/ci.yml`）。
+
 #### 版本号规范
 
 版本号为 `年份.内容更新序号.热修号[-阶段.序号]`：
