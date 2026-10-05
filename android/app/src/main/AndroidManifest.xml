@@ -34,10 +34,13 @@
              预测性返回手势（Android 15+ 默认开启，这里显式声明以覆盖 13/14）。
              Dart 侧的返回拦截统一用 PopScope，配合 Flutter 默认的
              PredictiveBackPageTransitionsBuilder 做跟手转场。 -->
+        <!-- singleTask：分享 / 打开链接进来时复用已有实例（走 onNewIntent），
+             避免每次分享都新建实例，在最近任务里留下多个「蓝云」。
+             receive_sharing_intent 会通过 onNewIntent 把新分享推给 Dart 侧。 -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:launchMode="singleTop"
+            android:launchMode="singleTask"
             android:taskAffinity=""
             android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"

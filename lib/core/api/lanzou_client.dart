@@ -1036,54 +1036,20 @@ class LanzouClient {
           r'class="user-name"[^>]*>([^<]+)<',
         ]) ??
         '';
-    final files = <ShareFileItem>[];
-    var page = 1;
-    while (page <= 50) {
-      if (page >= 2) await Future.delayed(const Duration(milliseconds: 600));
-      final resp = await dio.post<String>(
-        '$base/filemoreajax.php?file=$fid',
-        data: <String, dynamic>{
-          'lx': lx,
-          'fid': fid,
-          'uid': ?uid,
-          'puid': ?puid,
-          'pg': page,
-          'rep': '0',
-          't': t,
-          'k': k,
-          'up': 1,
-          if (pwd.isNotEmpty) 'pwd': pwd,
-        },
-        options: _options(referer: url),
-      );
-      final map = _asMap(resp.data);
-      final zt = '${map['zt']}';
-      if (zt == '1') {
-        final text = map['text'];
-        if (text is List) {
-          for (final item in text) {
-            if (item is Map) {
-              final id = '${item['id'] ?? ''}';
-              if (id.isEmpty || id == '-1') continue;
-              files.add(ShareFileItem(
-                name: '${item['name_all'] ?? ''}',
-                time: '${item['time'] ?? ''}',
-                size: '${item['size'] ?? ''}',
-                url: id.startsWith('http') ? id : '$base/$id',
-              ));
-            }
-          }
-        }
-        page += 1;
-        continue;
-      }
-      if (zt == '2') break;
-      if (zt == '3') throw const WrongPasswordException();
-      if (zt == '4') continue;
-      final info = '${map['info'] ?? ''}';
-      if (info.isNotEmpty) throw LanzouException(info);
-      throw const LanzouException('获取分享文件列表失败');
-    }
+    final paging = ShareFolderPaging(
+      base: base,
+      referer: url,
+      fid: fid,
+      lx: lx,
+      t: t,
+      k: k,
+      uid: uid,
+      puid: puid,
+      pwd: pwd,
+    );
+    // 只取第一页：文件夹里文件很多时不再等全部加载完才进浏览页，
+    // 后续分页由浏览页按「自动加载全部目录内容」设置与滚动位置继续拉取。
+    final first = await fetchShareFolderFiles(paging, 1);
     final folders = <SubFolder>[];
     for (final m in RegExp(
       r'mbxfolder"><a href="(.+?)".+class="filename">(.+?)<div class="filesize">(.*?)</div>',
@@ -1100,8 +1066,69 @@ class LanzouClient {
       name: name,
       desc: desc,
       sharer: sharer,
-      files: files,
+      files: first.files,
       folders: folders,
+      paging: paging,
+      hasMore: first.hasMore,
     );
+  }
+
+  /// 拉取分享文件夹的某一页文件（与网盘页一致：滑到底再加载下一页）。
+  /// 返回该页文件与是否可能还有下一页；zt=2 表示已到底。
+  Future<({List<ShareFileItem> files, bool hasMore})> fetchShareFolderFiles(
+    ShareFolderPaging paging,
+    int page,
+  ) async {
+    for (var attempt = 0; attempt < 3; attempt++) {
+      final resp = await dio.post<String>(
+        '${paging.base}/filemoreajax.php?file=${paging.fid}',
+        data: <String, dynamic>{
+          'lx': paging.lx,
+          'fid': paging.fid,
+          'uid': ?paging.uid,
+          'puid': ?paging.puid,
+          'pg': page,
+          'rep': '0',
+          't': paging.t,
+          'k': paging.k,
+          'up': 1,
+          if (paging.pwd.isNotEmpty) 'pwd': paging.pwd,
+        },
+        options: _options(referer: paging.referer),
+      );
+      final map = _asMap(resp.data);
+      final zt = '${map['zt']}';
+      if (zt == '1') {
+        final files = <ShareFileItem>[];
+        final text = map['text'];
+        if (text is List) {
+          for (final item in text) {
+            if (item is Map) {
+              final id = '${item['id'] ?? ''}';
+              if (id.isEmpty || id == '-1') continue;
+              files.add(ShareFileItem(
+                name: '${item['name_all'] ?? ''}',
+                time: '${item['time'] ?? ''}',
+                size: '${item['size'] ?? ''}',
+                url: id.startsWith('http') ? id : '${paging.base}/$id',
+              ));
+            }
+          }
+        }
+        // 本页有数据就认为可能还有下一页；下一页返回 zt=2 时自然结束
+        return (files: files, hasMore: files.isNotEmpty);
+      }
+      if (zt == '2') return (files: const <ShareFileItem>[], hasMore: false);
+      if (zt == '3') throw const WrongPasswordException();
+      if (zt == '4') {
+        // 服务器要求重试：稍等后重试同一页
+        await Future.delayed(const Duration(milliseconds: 400));
+        continue;
+      }
+      final info = '${map['info'] ?? ''}';
+      if (info.isNotEmpty) throw LanzouException(info);
+      throw const LanzouException('获取分享文件列表失败');
+    }
+    throw const LanzouException('获取分享文件列表失败');
   }
 }

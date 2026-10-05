@@ -7,7 +7,7 @@ import 'app_icons.dart';
 import 'common.dart';
 import 'legal_dialog.dart';
 
-/// 关于页：版本、协议与隐私、开源许可、项目主页与免责声明。
+/// 关于页：版本、协议与隐私、开源许可、项目主页、提交 Issue 与免责声明。
 class AboutPage extends StatelessWidget {
   const AboutPage({super.key});
 
@@ -88,6 +88,15 @@ class AboutPage extends StatelessWidget {
                     trailing: const Icon(Icons.open_in_new),
                     onTap: () => launchUrl(
                       Uri.parse(projectUrl),
+                      mode: LaunchMode.externalApplication,
+                    ),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.bug_report_outlined),
+                    title: Text(l10n.aboutSubmitIssue),
+                    trailing: const Icon(Icons.open_in_new),
+                    onTap: () => launchUrl(
+                      Uri.parse('$projectUrl/issues'),
                       mode: LaunchMode.externalApplication,
                     ),
                   ),

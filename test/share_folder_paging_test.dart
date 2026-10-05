@@ -1,0 +1,125 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:lancloud/core/api/lanzou_client.dart';
+import 'package:lancloud/core/api/models.dart';
+import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/l10n/app_localizations.dart';
+import 'package:lancloud/ui/share_folder_page.dart';
+import 'package:provider/provider.dart';
+
+/// 记录分页请求的假客户端：第二页固定返回一个文件并到底。
+class _FakeClient extends LanzouClient {
+  _FakeClient() : super(uid: '0');
+
+  final List<int> calls = [];
+
+  @override
+  Future<({List<ShareFileItem> files, bool hasMore})> fetchShareFolderFiles(
+    ShareFolderPaging paging,
+    int page,
+  ) async {
+    calls.add(page);
+    if (page == 2) {
+      return (
+        files: [
+          ShareFileItem(
+            name: 'second-page.txt',
+            time: '',
+            size: '1 M',
+            url: 'https://example.com/b',
+          ),
+        ],
+        hasMore: false,
+      );
+    }
+    return (files: const <ShareFileItem>[], hasMore: false);
+  }
+}
+
+class _FakeApp extends AppController {
+  _FakeApp(this._client);
+
+  final LanzouClient _client;
+
+  @override
+  LanzouClient get publicClient => _client;
+}
+
+ShareFolderPaging _paging() => ShareFolderPaging(
+      base: 'https://example.com',
+      referer: 'https://example.com/s/abc',
+      fid: '123',
+      lx: '2',
+      t: '1700000000',
+      k: 'abcdefghijklmnop',
+    );
+
+FolderShareDetail _folder({int firstPageFiles = 20}) => FolderShareDetail(
+      name: '测试分享',
+      files: [
+        for (var i = 0; i < firstPageFiles; i++)
+          ShareFileItem(
+            name: 'file$i.txt',
+            time: '2026-10-01',
+            size: '1 M',
+            url: 'https://example.com/f$i',
+          ),
+      ],
+      paging: _paging(),
+      hasMore: true,
+    );
+
+Future<void> pumpPage(
+  WidgetTester tester, {
+  required AppController app,
+  required FolderShareDetail folder,
+}) async {
+  tester.view.devicePixelRatio = 1.0;
+  tester.view.physicalSize = const Size(400, 700);
+  addTearDown(tester.view.reset);
+  await tester.pumpWidget(
+    ChangeNotifierProvider<AppController>.value(
+      value: app,
+      child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('zh'),
+        home: ShareFolderPage(
+          folder: folder,
+          link: 'https://example.com/s/abc',
+          pwd: '',
+        ),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
+void main() {
+  testWidgets('分享文件夹：解析后只进页面，滑到底才加载下一页', (tester) async {
+    final client = _FakeClient();
+    final app = _FakeApp(client);
+    addTearDown(app.dispose);
+    await pumpPage(tester, app: app, folder: _folder());
+
+    // 首屏已经填满：不应该提前请求下一页
+    expect(client.calls, isEmpty);
+    expect(find.text('second-page.txt'), findsNothing);
+
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -1200));
+    await tester.pumpAndSettle();
+
+    expect(client.calls, contains(2));
+    expect(find.text('second-page.txt'), findsOneWidget);
+  });
+
+  testWidgets('分享文件夹：开启「自动加载全部目录内容」后后台补齐全部分页', (tester) async {
+    final client = _FakeClient();
+    final app = _FakeApp(client)..settings.loadAllPages = true;
+    addTearDown(app.dispose);
+    await pumpPage(tester, app: app, folder: _folder());
+
+    expect(client.calls, contains(2));
+    expect(find.text('second-page.txt'), findsOneWidget);
+  });
+}

@@ -33,11 +33,95 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
   final Set<String> _selected = {};
   final TextEditingController _search = TextEditingController();
   String _filter = '';
+  /// 文件分页：解析时只取第一页，进页面后按「自动加载全部目录内容」
+  /// 设置与滚动位置继续加载（与网盘页一致）。
+  final ScrollController _scroll = ScrollController();
+  late List<ShareFileItem> _files = List.of(widget.folder.files);
+  int _page = 1;
+  late bool _hasMore = widget.folder.hasMore;
+  bool _loadingMore = false;
+  /// 「自动加载全部目录内容」打开时后台把剩余分页补完。
+  bool _autoLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(_onScroll);
+    if (widget.folder.hasMore) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (context.read<AppController>().settings.loadAllPages) {
+          _autoLoadAll();
+        } else {
+          _fillViewportIfNeeded();
+        }
+      });
+    }
+  }
 
   @override
   void dispose() {
+    _scroll.dispose();
     _search.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scroll.hasClients) return;
+    if (_scroll.position.pixels >= _scroll.position.maxScrollExtent - 320) {
+      _loadMore();
+    }
+  }
+
+  /// 加载下一页文件；没有分页上下文 / 搜索过滤 / 已到底时直接返回。
+  Future<void> _loadMore() async {
+    final paging = widget.folder.paging;
+    if (paging == null || _loadingMore || !_hasMore) return;
+    if (_filter.isNotEmpty) return;
+    setState(() => _loadingMore = true);
+    try {
+      final next = await context
+          .read<AppController>()
+          .publicClient
+          .fetchShareFolderFiles(paging, _page + 1);
+      if (!mounted) return;
+      setState(() {
+        _files = [..._files, ...next.files];
+        _page += 1;
+        _hasMore = next.hasMore && next.files.isNotEmpty;
+        _loadingMore = false;
+      });
+      // 第一页没填满屏幕时继续补页，避免出现「没有滚动条就再也加载不了」
+      _fillViewportIfNeeded();
+    } catch (_) {
+      if (mounted) setState(() => _loadingMore = false);
+    }
+  }
+
+  /// 内容不足一屏时继续加载下一页（最多到填满或加载完为止）。
+  void _fillViewportIfNeeded() {
+    if (!mounted || !_hasMore || _loadingMore || _autoLoading) return;
+    if (_filter.isNotEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_hasMore || _loadingMore || _autoLoading) return;
+      if (!_scroll.hasClients) return;
+      if (_scroll.position.maxScrollExtent <= 0) _loadMore();
+    });
+  }
+
+  /// 「自动加载全部目录内容」：按页把剩余文件补完（页间隔与原来的解析逻辑一致）。
+  Future<void> _autoLoadAll() async {
+    if (_autoLoading) return;
+    _autoLoading = true;
+    while (mounted && _hasMore) {
+      final before = _page;
+      await _loadMore();
+      if (!mounted) break;
+      // 本轮没有进展（失败 / 已到底）：结束，避免死循环
+      if (_page == before) break;
+      if (_hasMore) await Future.delayed(const Duration(milliseconds: 600));
+    }
+    _autoLoading = false;
   }
 
   void _exitSearch() {
@@ -71,26 +155,26 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
 
   void _selectAll() {
     setState(() {
-      if (_selected.length == widget.folder.files.length) {
+      if (_selected.length == _files.length) {
         _selected.clear();
       } else {
         _selected
           ..clear()
-          ..addAll(widget.folder.files.map((f) => f.url));
+          ..addAll(_files.map((f) => f.url));
       }
     });
   }
 
   void _invertSelection() {
     setState(() {
-      for (final file in widget.folder.files) {
+      for (final file in _files) {
         if (!_selected.remove(file.url)) _selected.add(file.url);
       }
     });
   }
 
   Future<void> _downloadSelected() async {
-    final files = widget.folder.files
+    final files = _files
         .where((f) => _selected.contains(f.url))
         .toList();
     if (files.isEmpty) return;
@@ -104,7 +188,7 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
   }
 
   Future<void> _copySelectedLinks() async {
-    final files = widget.folder.files
+    final files = _files
         .where((f) => _selected.contains(f.url))
         .toList();
     if (files.isEmpty) return;
@@ -116,7 +200,7 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
 
   Future<void> _favoriteSelected() async {
     final app = context.read<AppController>();
-    final files = widget.folder.files
+    final files = _files
         .where((f) => _selected.contains(f.url))
         .toList();
     for (final file in files) {
@@ -245,12 +329,12 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
             .where((f) => f.name.toLowerCase().contains(query))
             .toList();
     final files = query.isEmpty
-        ? folder.files
-        : folder.files
+        ? _files
+        : _files
             .where((f) => f.name.toLowerCase().contains(query))
             .toList();
     final isEmpty =
-        folder.files.isEmpty && folder.folders.isEmpty && folder.desc.isEmpty;
+        _files.isEmpty && folder.folders.isEmpty && folder.desc.isEmpty;
     return PopScope(
       // 多选 / 搜索状态下先退出，再退出页面
       canPop: !_selecting && !_searching,
@@ -263,6 +347,7 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
         }
       },
       child: TopBarOverlayScaffold(
+        controller: _scroll,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           scrolledUnderElevation: 0,
@@ -395,6 +480,28 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
                       ],
                     ),
                   ],
+                  // 分页尾部：加载下一页时转圈，全部加载完提示到底
+                  if (_hasMore || _loadingMore)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: Center(
+                        child: SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                    )
+                  else if (_files.isNotEmpty && query.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      child: Center(
+                        child: Text(
+                          l10n.reachedEnd,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                    ),
                 ]),
               ),
             ),

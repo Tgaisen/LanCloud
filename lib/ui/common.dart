@@ -1492,26 +1492,39 @@ class BatchActionBar extends StatelessWidget {
 
   final List<Widget> children;
 
+  /// 悬浮底栏槽位里的上留白：胶囊本身 80dp 高，槽位另有 16dp 顶留白，
+  /// 多选条按整槽避让就会比贴着胶囊多出一截空白。
+  static const double _floatingNavTopGap = 16;
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-        child: Material(
-          // 与列表卡片区分：用最浅的容器色，不加阴影
-          elevation: 0,
-          color: scheme.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(16),
-          clipBehavior: Clip.antiAlias,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-            child: Row(
-              children: [
-                for (final child in children) Expanded(child: child),
-              ],
-            ),
+    // 外壳开了 extendBody 后，底栏槽位高度会写进正文的 padding.bottom：
+    // 普通底栏 = 80 + 系统手势区，悬浮底栏 = 108 + 系统手势区（含 16dp 顶留白）。
+    // 按整槽避让时悬浮样式的多选条会离胶囊多出 16dp，这里回退成胶囊实际高度，
+    // 两种样式的间距保持一致（都是 12dp）。
+    final app = context.watch<AppController>();
+    final floatingNavInShell =
+        inRootShell(context) && app.settings.floatingNavBar;
+    final bottomInset = math.max(
+      0.0,
+      MediaQuery.paddingOf(context).bottom -
+          (floatingNavInShell ? _floatingNavTopGap : 0.0),
+    );
+    return Padding(
+      padding: EdgeInsets.fromLTRB(12, 4, 12, 12 + bottomInset),
+      child: Material(
+        // 与列表卡片区分：用最浅的容器色，不加阴影
+        elevation: 0,
+        color: scheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(16),
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          child: Row(
+            children: [
+              for (final child in children) Expanded(child: child),
+            ],
           ),
         ),
       ),

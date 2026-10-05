@@ -132,13 +132,46 @@ class FolderShareDetail {
     this.sharer = '',
     this.files = const [],
     this.folders = const [],
+    this.paging,
+    this.hasMore = false,
   });
 
   final String name;
   final String desc;
   final String sharer;
+  /// 当前已加载的文件（默认只有第一页）。
   final List<ShareFileItem> files;
   final List<SubFolder> folders;
+  /// 继续分页所需的上下文；为 null 表示这份数据不支持继续加载。
+  final ShareFolderPaging? paging;
+  /// 是否还有下一页文件（浏览页滑到底再加载）。
+  final bool hasMore;
+}
+
+/// 分享文件夹的分页上下文：解析分享页后得到，后续页由
+/// `LanzouClient.fetchShareFolderFiles` 拉取（与网盘页一致，滑到底再加载）。
+class ShareFolderPaging {
+  ShareFolderPaging({
+    required this.base,
+    required this.referer,
+    required this.fid,
+    required this.lx,
+    required this.t,
+    required this.k,
+    this.uid,
+    this.puid,
+    this.pwd = '',
+  });
+
+  final String base;
+  final String referer;
+  final String fid;
+  final String lx;
+  final String t;
+  final String k;
+  final String? uid;
+  final String? puid;
+  final String pwd;
 }
 
 class DirectFile {

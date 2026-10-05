@@ -101,9 +101,6 @@ class _DrivePageState extends State<DrivePage>
   bool _selecting = false;
   final Set<String> _selectedFiles = {};
   final Set<String> _selectedFolders = {};
-  final Map<String, String> _fileDescCache = {};
-  final Map<String, String> _folderDescCache = {};
-  final Map<String, String> _folderSizeCache = {};
   /// 键盘是否弹出（悬浮底栏的 FAB 留白跟随它，见 didChangeMetrics）。
   final ValueNotifier<bool> _keyboardUp = ValueNotifier(false);
   late AppController _app;
@@ -457,9 +454,6 @@ class _DrivePageState extends State<DrivePage>
   void _resetForAccount() {
     if (!mounted) return;
     _folderOffsets.clear();
-    _fileDescCache.clear();
-    _folderDescCache.clear();
-    _folderSizeCache.clear();
     _searchController.clear();
     setState(() {
       _folderId = '-1';
@@ -1094,6 +1088,10 @@ class _DrivePageState extends State<DrivePage>
             const SizedBox(height: 12),
             TextField(
               controller: descController,
+              // 蓝奏云的文件夹简介本身支持换行，输入框也要能录入多行
+              minLines: 2,
+              maxLines: 6,
+              keyboardType: TextInputType.multiline,
               decoration: InputDecoration(labelText: context.l10n.descOptional),
             ),
           ],
@@ -1524,8 +1522,6 @@ class _DrivePageState extends State<DrivePage>
     if (!mounted) return;
     final count = fileIds.length + folderIds.length;
     _exitSelection();
-    _fileDescCache.clear();
-    _folderDescCache.clear();
     final desc = controller.text.trim();
     setState(() {
       _files = [
@@ -1742,17 +1738,10 @@ class _DrivePageState extends State<DrivePage>
   }
 
   /// 点文件本身：属性弹窗（属性、链接、二维码、下载、收藏）
+  ///
+  /// 简介与下载数变动快，不做缓存：弹窗先展示列表里的现有信息，
+  /// 打开后由 [_FileInfoSheet] 拉取最新简介与所在分页的最新条目渐入更新。
   Future<void> _showFileProperties(LzFile file) async {
-    if (file.hasDes && !_fileDescCache.containsKey(file.id)) {
-      try {
-        final client = context.read<AppController>().client;
-        if (client != null) {
-          final desc = await client.fileDesc(file.id);
-          if (desc.isNotEmpty) _fileDescCache[file.id] = desc;
-        }
-      } catch (_) {}
-      if (!mounted) return;
-    }
     if (_selecting) {
       setState(() {
         if (!_selectedFiles.remove(file.id)) _selectedFiles.add(file.id);
@@ -1763,79 +1752,40 @@ class _DrivePageState extends State<DrivePage>
     // 到顶后继续下拉带走弹窗的手感）
     await showAppSheet<void>(
       context,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-            PropertyHeaderCard(
-              icon: iconForFile(file.name),
-              title: file.name,
-              subtitle: [
-                if (file.size.isNotEmpty) prettyLzSize(file.size),
-                if (file.time.isNotEmpty) file.time,
-                if (file.downs > 0) context.l10n.downloadsCount(file.downs),
-                if (file.hasPwd) context.l10n.hasPassword,
-              ].join(' · '),
-              desc: _fileDescCache[file.id] ?? '',
-            ),
-            ListTile(
-              leading: const Icon(Icons.download_outlined),
-              title: Text(context.l10n.download),
-              onTap: () {
-                Navigator.of(context).pop();
-                _downloadOwnFile(file);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.link_outlined),
-              title: Text(context.l10n.copyLink),
-              onTap: () {
-                Navigator.of(context).pop();
-                _copyShareLink(file);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.open_in_new),
-              title: Text(context.l10n.openLink),
-              onTap: () {
-                Navigator.of(context).pop();
-                _openShareInBrowser(file);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.qr_code),
-              title: Text(context.l10n.showQr),
-              onTap: () {
-                Navigator.of(context).pop();
-                _showFileQr(file);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.star_outline),
-              title: Text(context.l10n.addFavorite),
-              onTap: () {
-                Navigator.of(context).pop();
-                _favoriteFile(file);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.delete_outline),
-              title: Text(context.l10n.delete),
-              onTap: () {
-                Navigator.of(context).pop();
-                _deleteFile(file);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.more_horiz),
-              title: Text(context.l10n.moreActions),
-              onTap: () {
-                Navigator.of(context).pop();
-                _fileMenuSheet(file);
-              },
-            ),
-        ],
-      ),
+      child: _FileInfoSheet(file: file, page: this),
     );
+  }
+
+  /// 取文件所在分页的最新条目（下载数等字段变化快，不做缓存）。
+  ///
+  /// 只扫描已经加载的前几页；找不到或出错时返回 null，由调用方沿用现有信息。
+  Future<LzFile?> _freshFileEntry(String fileId) async {
+    final client = context.read<AppController>().client;
+    if (client == null) return null;
+    final maxPage = math.max(1, math.min(_page, 3));
+    for (var page = 1; page <= maxPage; page++) {
+      try {
+        final result = await client.listFilesPage(_folderId, page);
+        for (final item in result.files) {
+          if (item.id == fileId) return item;
+        }
+        if (!result.hasMore) break;
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  /// 把最新条目合并回当前列表（顺序不变、不播放动画），
+  /// 用于文件属性弹窗里刷新下载数等易变字段。
+  void _replaceFileEntry(LzFile fresh) {
+    if (!mounted) return;
+    setState(() {
+      _files = [
+        for (final f in _files) f.id == fresh.id ? fresh : f,
+      ];
+    });
   }
 
   /// 点 ⋯：操作弹窗（常用操作）
@@ -1944,7 +1894,6 @@ class _DrivePageState extends State<DrivePage>
           .client
           ?.setDesc(file.id, controller.text.trim());
       if (!mounted) return;
-      _fileDescCache.remove(file.id);
       setState(() {
         _files = [
           for (final f in _files)
@@ -2055,7 +2004,6 @@ class _DrivePageState extends State<DrivePage>
         ];
       }
     });
-    if (desc != null) _folderDescCache[folderId] = desc;
     _pulseItems(folderIds: {folderId});
     _updateCacheSnapshot();
   }
@@ -2107,48 +2055,16 @@ class _DrivePageState extends State<DrivePage>
   ) async {
     final client = context.read<AppController>().client;
     if (client == null) return null;
-    final nameController = TextEditingController(text: folder.name);
-    final descController = TextEditingController(text: folder.desc);
-    final ok = await showDialog<bool>(
+    // 控制器由弹窗自己持有：退场动画期间 TextField 仍会重建，
+    // 在 showDialog 返回后立刻 dispose 会触发
+    // 「A TextEditingController was used after being disposed」。
+    final result = await showDialog<({String name, String desc})>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(context.l10n.folderInfo),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              autofocus: true,
-              decoration: InputDecoration(
-                labelText: context.l10n.nameRequired,
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: descController,
-              decoration: InputDecoration(
-                labelText: context.l10n.descOptional,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(context.l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(context.l10n.confirm),
-          ),
-        ],
-      ),
+      builder: (_) => _FolderInfoDialog(name: folder.name, desc: folder.desc),
     );
-    final name = nameController.text.trim();
-    final desc = descController.text.trim();
-    nameController.dispose();
-    descController.dispose();
-    if (ok != true || !mounted) return null;
+    if (result == null || !mounted) return null;
+    final name = result.name;
+    final desc = result.desc;
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.l10n.folderNameRequired)),
@@ -2303,7 +2219,6 @@ class _DrivePageState extends State<DrivePage>
       await client.deleteItem(id: file.id, isFile: true);
       await app.db.removeDownloaded(['${app.activeUid ?? ''}:${file.id}']);
       if (!mounted) return;
-      _fileDescCache.remove(file.id);
       await _removeItemsWithAnimation(fileIds: {file.id});
     } catch (e) {
       if (!mounted) return;
@@ -2325,8 +2240,6 @@ class _DrivePageState extends State<DrivePage>
       if (!mounted) return;
       // 删除的目录如果固定在快速访问里，一并移除
       await app.db.removePin(folder.id);
-      _folderDescCache.remove(folder.id);
-      _folderSizeCache.remove(folder.id);
       if (deletingCurrent) {
         // 不清缓存的话，退回父目录会读到仍包含这一项的旧快照
         app.driveCache.clear();
@@ -3406,7 +3319,202 @@ class _FileRow extends StatelessWidget {
   }
 }
 
-/// 文件夹属性弹窗：先展示缓存/占位内容，后台拉取完整简介与统计后渐入更新。
+/// 修改文件夹信息弹窗（名称 + 简介）：输入控制器随弹窗 State 一起释放，
+/// 避免弹窗退场动画期间 TextField 重建时用到已 dispose 的控制器。
+class _FolderInfoDialog extends StatefulWidget {
+  const _FolderInfoDialog({required this.name, required this.desc});
+
+  final String name;
+  final String desc;
+
+  @override
+  State<_FolderInfoDialog> createState() => _FolderInfoDialogState();
+}
+
+class _FolderInfoDialogState extends State<_FolderInfoDialog> {
+  late final TextEditingController _name =
+      TextEditingController(text: widget.name);
+  late final TextEditingController _desc =
+      TextEditingController(text: widget.desc);
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _desc.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    Navigator.of(context).pop((
+      name: _name.text.trim(),
+      desc: _desc.text.trim(),
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(context.l10n.folderInfo),
+      // 简介是多行输入：键盘弹出时内容可能超高，允许滚动避免溢出
+      scrollable: true,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _name,
+            autofocus: true,
+            decoration: InputDecoration(labelText: context.l10n.nameRequired),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _desc,
+            // 蓝奏云的文件夹简介支持换行，输入框也要能录入多行
+            minLines: 2,
+            maxLines: 6,
+            keyboardType: TextInputType.multiline,
+            decoration: InputDecoration(labelText: context.l10n.descOptional),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(context.l10n.cancel),
+        ),
+        FilledButton(
+          onPressed: _submit,
+          child: Text(context.l10n.confirm),
+        ),
+      ],
+    );
+  }
+}
+
+/// 文件属性弹窗：简介与下载数变动快，不读缓存——打开时先展示列表里的
+/// 现有信息，随后重新拉取最新简介与所在分页的最新条目渐入更新。
+class _FileInfoSheet extends StatefulWidget {
+  const _FileInfoSheet({required this.file, required this.page});
+
+  final LzFile file;
+  final _DrivePageState page;
+
+  @override
+  State<_FileInfoSheet> createState() => _FileInfoSheetState();
+}
+
+class _FileInfoSheetState extends State<_FileInfoSheet> {
+  late LzFile _file = widget.file;
+  String _desc = '';
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _refresh();
+  }
+
+  Future<void> _refresh() async {
+    final client = context.read<AppController>().client;
+    // 下载数：重新取文件所在分页的条目，命中后同步列表（找不到就沿用现值）
+    final fresh = await widget.page._freshFileEntry(widget.file.id);
+    if (!mounted) return;
+    if (fresh != null) {
+      setState(() => _file = fresh);
+      widget.page._replaceFileEntry(fresh);
+    }
+    // 简介：每次都现取，不做缓存
+    if (client != null) {
+      try {
+        final desc = await client.fileDesc(widget.file.id);
+        if (mounted) setState(() => _desc = desc);
+      } catch (_) {}
+    }
+    if (mounted) setState(() => _loading = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final page = widget.page;
+    final file = _file;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        PropertyHeaderCard(
+          icon: iconForFile(file.name),
+          title: file.name,
+          subtitle: [
+            if (file.size.isNotEmpty) prettyLzSize(file.size),
+            if (file.time.isNotEmpty) file.time,
+            if (file.downs > 0) l10n.downloadsCount(file.downs),
+            if (file.hasPwd) l10n.hasPassword,
+          ].join(' · '),
+          desc: _desc,
+          loading: _loading,
+        ),
+        ListTile(
+          leading: const Icon(Icons.download_outlined),
+          title: Text(l10n.download),
+          onTap: () {
+            Navigator.of(context).pop();
+            page._downloadOwnFile(file);
+          },
+        ),
+        ListTile(
+          leading: const Icon(Icons.link_outlined),
+          title: Text(l10n.copyLink),
+          onTap: () {
+            Navigator.of(context).pop();
+            page._copyShareLink(file);
+          },
+        ),
+        ListTile(
+          leading: const Icon(Icons.open_in_new),
+          title: Text(l10n.openLink),
+          onTap: () {
+            Navigator.of(context).pop();
+            page._openShareInBrowser(file);
+          },
+        ),
+        ListTile(
+          leading: const Icon(Icons.qr_code),
+          title: Text(l10n.showQr),
+          onTap: () {
+            Navigator.of(context).pop();
+            page._showFileQr(file);
+          },
+        ),
+        ListTile(
+          leading: const Icon(Icons.star_outline),
+          title: Text(l10n.addFavorite),
+          onTap: () {
+            Navigator.of(context).pop();
+            page._favoriteFile(file);
+          },
+        ),
+        ListTile(
+          leading: const Icon(Icons.delete_outline),
+          title: Text(l10n.delete),
+          onTap: () {
+            Navigator.of(context).pop();
+            page._deleteFile(file);
+          },
+        ),
+        ListTile(
+          leading: const Icon(Icons.more_horiz),
+          title: Text(l10n.moreActions),
+          onTap: () {
+            Navigator.of(context).pop();
+            page._fileMenuSheet(file);
+          },
+        ),
+      ],
+    );
+  }
+}
+
+/// 文件夹属性弹窗：简介与统计信息变动快，不读缓存——每次打开都重新拉取，
+/// 拉取期间先展示列表里的现有简介并显示加载指示。
 class _FolderInfoSheet extends StatefulWidget {
   const _FolderInfoSheet({
     required this.folder,
@@ -3424,18 +3532,13 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
   late String _name = widget.folder.name;
   String? _desc;
   String? _stats;
-  bool _loading = false;
+  /// 简介与统计信息都不再缓存：打开弹窗时总会重新拉取。
+  bool _loading = true;
   bool _pinned = false;
 
   @override
   void initState() {
     super.initState();
-    _desc = widget.page._folderDescCache[widget.folder.id];
-    _stats = widget.page._folderSizeCache[widget.folder.id];
-    final needDesc = !widget.page._folderDescCache.containsKey(widget.folder.id);
-    final needStats =
-        !widget.page._folderSizeCache.containsKey(widget.folder.id);
-    _loading = needDesc || needStats;
     context
         .read<AppController>()
         .db
@@ -3493,59 +3596,49 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
 
   Future<void> _fetch() async {
     final id = widget.folder.id;
-    final needDesc = !widget.page._folderDescCache.containsKey(id);
-    final needStats = !widget.page._folderSizeCache.containsKey(id);
-    if (!needDesc && !needStats) return;
     final client = context.read<AppController>().client;
-    if (needDesc) {
-      try {
-        final info = await client?.shareInfoOfFolder(id);
-        if (info != null && info.desc.isNotEmpty) {
-          widget.page._folderDescCache[id] = info.desc;
-          if (mounted) setState(() => _desc = info.desc);
+    // 简介：每次打开都现取，不做缓存
+    try {
+      final info = await client?.shareInfoOfFolder(id);
+      if (info != null && info.desc.isNotEmpty && mounted) {
+        setState(() => _desc = info.desc);
+      }
+    } catch (_) {}
+    // 统计信息：同样现取；接口取不到时回退到遍历目录统计
+    try {
+      final stats = await client?.folderStats(id);
+      // 这个方法是 initState 里同步调用的：initState 结束前读 context.l10n 在
+      // debug 下会抛 "called before ...initState() completed"，导致 _fetch 中断、
+      // _loading 永远为 true（属性弹窗一直转圈）。放到首次 await 之后再取。
+      if (!mounted) return;
+      final l10n = context.l10n;
+      if (stats != null) {
+        if (stats.desc.isNotEmpty) {
+          setState(() => _desc = stats.desc);
         }
-      } catch (_) {}
-    }
-    if (needStats) {
-      try {
-        final stats = await client?.folderStats(id);
-        // 这个方法是 initState 里同步调用的：initState 结束前读 context.l10n 在
-        // debug 下会抛 "called before ...initState() completed"，导致 _fetch 中断、
-        // _loading 永远为 true（属性弹窗一直转圈）。放到首次 await 之后再取。
-        if (!mounted) return;
-        final l10n = context.l10n;
-        if (stats != null) {
-          if (stats.desc.isNotEmpty) {
-            widget.page._folderDescCache[id] = stats.desc;
-            if (mounted) setState(() => _desc = stats.desc);
-          }
-          if (stats.size.isNotEmpty || stats.count > 0) {
-            final text = [
-              if (stats.size.isNotEmpty) stats.size,
-              if (stats.count > 0) l10n.fileCount(stats.count),
-            ].join(' · ');
-            widget.page._folderSizeCache[id] = text;
-            if (mounted) setState(() => _stats = text);
-          }
-        } else {
-          final files = client == null
-              ? const <LzFile>[]
-              : await client.listFiles(id);
-          if (files.isNotEmpty) {
-            final total = files.fold<int>(
-              0,
-              (sum, file) => sum + lzSizeToBytes(file.size),
-            );
-            final text = [
-              formatBytes(total),
-              l10n.fileCount(files.length),
-            ].join(' · ');
-            widget.page._folderSizeCache[id] = text;
-            if (mounted) setState(() => _stats = text);
-          }
+        if (stats.size.isNotEmpty || stats.count > 0) {
+          final text = [
+            if (stats.size.isNotEmpty) stats.size,
+            if (stats.count > 0) l10n.fileCount(stats.count),
+          ].join(' · ');
+          setState(() => _stats = text);
         }
-      } catch (_) {}
-    }
+      } else {
+        final files =
+            client == null ? const <LzFile>[] : await client.listFiles(id);
+        if (files.isNotEmpty && mounted) {
+          final total = files.fold<int>(
+            0,
+            (sum, file) => sum + lzSizeToBytes(file.size),
+          );
+          final text = [
+            formatBytes(total),
+            l10n.fileCount(files.length),
+          ].join(' · ');
+          setState(() => _stats = text);
+        }
+      }
+    } catch (_) {}
     if (mounted) setState(() => _loading = false);
   }
 

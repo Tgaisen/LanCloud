@@ -1483,6 +1483,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutProjectHome => 'Project home';
 
   @override
+  String get aboutSubmitIssue => 'Report an issue';
+
+  @override
   String get termsDisclaimer =>
       '7. Disclaimer: this is an unofficial third-party LanZou Cloud client, not affiliated with or endorsed by LanZou. It is provided \"as is\"; account risks, data loss or service interruptions are at your own risk.';
 

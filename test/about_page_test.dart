@@ -29,6 +29,7 @@ void main() {
     expect(find.text('隐私政策'), findsOneWidget);
     expect(find.text('开源许可'), findsOneWidget);
     expect(find.text('项目主页'), findsOneWidget);
+    expect(find.text('提交 Issue'), findsOneWidget);
     app.dispose();
   });
 

@@ -2756,6 +2756,12 @@ abstract class AppLocalizations {
   /// **'项目主页'**
   String get aboutProjectHome;
 
+  /// No description provided for @aboutSubmitIssue.
+  ///
+  /// In zh, this message translates to:
+  /// **'提交 Issue'**
+  String get aboutSubmitIssue;
+
   /// No description provided for @termsDisclaimer.
   ///
   /// In zh, this message translates to:
