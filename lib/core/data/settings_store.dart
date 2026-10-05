@@ -17,8 +17,7 @@ class SettingsStore {
   static const _keyMaxDown = 'max_downloads';
   static const _keyApiHost = 'api_host';
   static const _keyUserAgent = 'user_agent';
-  static const _keyUploadDomain = 'upload_domain';
-  static const _keyShareDomain = 'share_domain';
+  static const _keyUploadPath = 'upload_path';
   static const _keySwipeTabs = 'swipe_tabs';
   static const _keyHideBars = 'hide_bars_on_scroll';
   static const _keyHideBarsMode = 'hide_bars_mode';
@@ -57,11 +56,8 @@ class SettingsStore {
   String apiHost = 'pc';
   String userAgent = '';
 
-  /// 自定义上传域名，留空使用默认 up.woozooo.com。
-  String uploadDomain = '';
-
-  /// 自定义分享链接域名，留空使用内置镜像回退列表。
-  String shareDomain = '';
+  /// 上传接口路径（HTML5 上传接口名），主机跟随「网盘接口域名」。
+  String uploadPath = 'html5up.php';
   bool swipeTabs = false;
   bool hideTopBar = false;
   bool hideBottomBar = false;
@@ -113,8 +109,7 @@ class SettingsStore {
     maxDownloads = prefs.getInt(_keyMaxDown) ?? 3;
     apiHost = prefs.getString(_keyApiHost) ?? 'pc';
     userAgent = prefs.getString(_keyUserAgent) ?? '';
-    uploadDomain = prefs.getString(_keyUploadDomain) ?? '';
-    shareDomain = prefs.getString(_keyShareDomain) ?? '';
+    uploadPath = prefs.getString(_keyUploadPath) ?? 'html5up.php';
     swipeTabs = prefs.getBool(_keySwipeTabs) ?? false;
     final legacyMode = prefs.getString(_keyHideBarsMode);
     if (legacyMode != null) {
@@ -230,24 +225,10 @@ class SettingsStore {
     await prefs.setString(_keyUserAgent, value);
   }
 
-  Future<void> setUploadDomain(String value) async {
-    uploadDomain = value.trim();
+  Future<void> setUploadPath(String value) async {
+    uploadPath = value.trim().isEmpty ? 'html5up.php' : value.trim();
     final prefs = await SharedPreferences.getInstance();
-    if (uploadDomain.isEmpty) {
-      await prefs.remove(_keyUploadDomain);
-    } else {
-      await prefs.setString(_keyUploadDomain, uploadDomain);
-    }
-  }
-
-  Future<void> setShareDomain(String value) async {
-    shareDomain = value.trim();
-    final prefs = await SharedPreferences.getInstance();
-    if (shareDomain.isEmpty) {
-      await prefs.remove(_keyShareDomain);
-    } else {
-      await prefs.setString(_keyShareDomain, shareDomain);
-    }
+    await prefs.setString(_keyUploadPath, uploadPath);
   }
 
   Future<void> setRequestInterval(int value) async {
@@ -364,8 +345,7 @@ class SettingsStore {
     _keyMaxDown: maxDownloads,
     _keyApiHost: apiHost,
     _keyUserAgent: userAgent,
-    _keyUploadDomain: uploadDomain,
-    _keyShareDomain: shareDomain,
+    _keyUploadPath: uploadPath,
     _keySwipeTabs: swipeTabs,
     _keyHideTopBar: hideTopBar,
     _keyHideBottomBar: hideBottomBar,

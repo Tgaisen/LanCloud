@@ -223,101 +223,111 @@ class _TransfersPageState extends State<TransfersPage>
           (t) => _selected.contains(t.id) && t.status == TransferStatus.failed,
         )
         .length;
-    return Scaffold(
-      // 大屏外壳里的页面：背景交给外壳的圆角卡片
-      backgroundColor: transparentPageBackground(context)
-          ? Colors.transparent
-          : null,
-      body: Stack(
-        children: [
-          // 小屏：正文区整体让开左右挖孔 / 侧边导航栏；顶栏（浮层）保持原样
-          BodySideInset(
-            child: ScrollTint(
-              hideDistance: headerHeight,
-              readBarsHidden: () => app.topBarHide.value,
-              onBarsHidden: app.settings.hideTopBar
-                  ? app.setTopBarHideFromScroll
-                  : null,
-              child: CustomScrollView(
-                controller: _scroll,
-                slivers: [
-                  // 顶栏不占布局，这里留出等高占位
-                  SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
-                  SliverFadeTransition(
-                    opacity: _tabFade,
-                    sliver: _TransferListSliver(
-                      kind: _kind,
-                      selecting: _selecting,
-                      selected: _selected,
-                      removing: _removing,
-                      onToggle: _toggleSelected,
-                      onLongPress: _enterSelection,
+    return PopScope(
+      // 独立页面（_openView 打开的二级路由）没有外壳的返回处理：
+      // 多选状态下返回先退出多选；位于底栏（首个路由）时交给外壳统一处理。
+      // 注意不能用 tabIndex 判断：独立打开时它也带着同一个值。
+      canPop: inRootShell(context) || !_selecting,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (_selecting) _exitSelection();
+      },
+      child: Scaffold(
+        // 大屏外壳里的页面：背景交给外壳的圆角卡片
+        backgroundColor: transparentPageBackground(context)
+            ? Colors.transparent
+            : null,
+        body: Stack(
+          children: [
+            // 小屏：正文区整体让开左右挖孔 / 侧边导航栏；顶栏（浮层）保持原样
+            BodySideInset(
+              child: ScrollTint(
+                hideDistance: headerHeight,
+                readBarsHidden: () => app.topBarHide.value,
+                onBarsHidden: app.settings.hideTopBar
+                    ? app.setTopBarHideFromScroll
+                    : null,
+                child: CustomScrollView(
+                  controller: _scroll,
+                  slivers: [
+                    // 顶栏不占布局，这里留出等高占位
+                    SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
+                    SliverFadeTransition(
+                      opacity: _tabFade,
+                      sliver: _TransferListSliver(
+                        kind: _kind,
+                        selecting: _selecting,
+                        selected: _selected,
+                        removing: _removing,
+                        onToggle: _toggleSelected,
+                        onLongPress: _enterSelection,
+                      ),
                     ),
-                  ),
-                  // 底栏盖在正文上方（extendBody）时，补足列表末尾留白
-                  SliverToBoxAdapter(
-                    child: SizedBox(height: shellBottomBarInset(context)),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          // 顶栏浮层：与底栏共用收起进度，切换视图时会下滑出现
-          Positioned(
-            left: 0,
-            right: 0,
-            top: 0,
-            child: TopBarOverlay(
-              height: headerHeight,
-              background: topBarBackgroundColor(context, scheme),
-              // 显式高度：带 bottom 的 AppBar 需要有限高度约束
-              builder: (context) => SizedBox(
-                height: headerHeight,
-                child: AppBar(
-                  backgroundColor: Colors.transparent,
-                  scrolledUnderElevation: 0,
-                  leading: (ModalRoute.of(context)?.isFirst ?? true)
-                      ? null
-                      : const AppBarBackButton(),
-                  title: Text(l10n.transfers),
-                  actions: [
-                    IconButton(
-                      tooltip: l10n.clearFinished,
-                      icon: const Icon(Icons.delete_sweep_outlined),
-                      onPressed: () =>
-                          context.read<TransferManager>().clearFinished(),
+                    // 底栏盖在正文上方（extendBody）时，补足列表末尾留白
+                    SliverToBoxAdapter(
+                      child: SizedBox(height: shellBottomBarInset(context)),
                     ),
                   ],
-                  bottom: PreferredSize(
-                    preferredSize: const Size.fromHeight(
-                      kTransfersTabBarHeight,
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-                      // 多选期间禁用切换上传/下载
-                      child: IgnorePointer(
-                        ignoring: _selecting,
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: ConnectedSegmentedButton<int>(
-                            segments: [
-                              ButtonSegment(
-                                value: 0,
-                                label: Text(l10n.upload),
-                                icon: const Icon(Icons.upload),
-                              ),
-                              ButtonSegment(
-                                value: 1,
-                                label: Text(l10n.download),
-                                icon: const Icon(Icons.download),
-                              ),
-                            ],
-                            selected: {_tab},
-                            onSelectionChanged: (values) {
-                              if (values.first == _tab) return;
-                              setState(() => _tab = values.first);
-                              _tabAnim.forward(from: 0);
-                            },
+                ),
+              ),
+            ),
+            // 顶栏浮层：与底栏共用收起进度，切换视图时会下滑出现
+            Positioned(
+              left: 0,
+              right: 0,
+              top: 0,
+              child: TopBarOverlay(
+                height: headerHeight,
+                background: topBarBackgroundColor(context, scheme),
+                // 显式高度：带 bottom 的 AppBar 需要有限高度约束
+                builder: (context) => SizedBox(
+                  height: headerHeight,
+                  child: AppBar(
+                    backgroundColor: Colors.transparent,
+                    scrolledUnderElevation: 0,
+                    leading: (ModalRoute.of(context)?.isFirst ?? true)
+                        ? null
+                        : const AppBarBackButton(),
+                    title: Text(l10n.transfers),
+                    actions: [
+                      IconButton(
+                        tooltip: l10n.clearFinished,
+                        icon: const Icon(Icons.delete_sweep_outlined),
+                        onPressed: () =>
+                            context.read<TransferManager>().clearFinished(),
+                      ),
+                    ],
+                    bottom: PreferredSize(
+                      preferredSize: const Size.fromHeight(
+                        kTransfersTabBarHeight,
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                        // 多选期间禁用切换上传/下载
+                        child: IgnorePointer(
+                          ignoring: _selecting,
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: ConnectedSegmentedButton<int>(
+                              segments: [
+                                ButtonSegment(
+                                  value: 0,
+                                  label: Text(l10n.upload),
+                                  icon: const Icon(Icons.upload),
+                                ),
+                                ButtonSegment(
+                                  value: 1,
+                                  label: Text(l10n.download),
+                                  icon: const Icon(Icons.download),
+                                ),
+                              ],
+                              selected: {_tab},
+                              onSelectionChanged: (values) {
+                                if (values.first == _tab) return;
+                                setState(() => _tab = values.first);
+                                _tabAnim.forward(from: 0);
+                              },
+                            ),
                           ),
                         ),
                       ),
@@ -326,79 +336,80 @@ class _TransfersPageState extends State<TransfersPage>
                 ),
               ),
             ),
-          ),
-          // 多选顶栏：覆盖标题行（上传/下载切换保留在下方）
-          Positioned(
-            left: 0,
-            right: 0,
-            top: 0,
-            child: IgnorePointer(
-              ignoring: !_selecting,
-              child: AnimatedOpacity(
-                opacity: _selecting ? 1 : 0,
-                duration: _anim,
-                curve: Curves.easeInOut,
-                child: Material(
-                  elevation: 0,
-                  color: scheme.surface,
-                  // 显式高度：Stack 的 Positioned 不提供高度约束
-                  child: SizedBox(
-                    height: MediaQuery.paddingOf(context).top + kToolbarHeight,
-                    child: AppBar(
-                      key: const ValueKey('transfers-selection-appbar'),
-                      leading: IconButton(
-                        tooltip: l10n.exitSelection,
-                        icon: const Icon(Icons.close),
-                        onPressed: _exitSelection,
+            // 多选顶栏：覆盖标题行（上传/下载切换保留在下方）
+            Positioned(
+              left: 0,
+              right: 0,
+              top: 0,
+              child: IgnorePointer(
+                ignoring: !_selecting,
+                child: AnimatedOpacity(
+                  opacity: _selecting ? 1 : 0,
+                  duration: _anim,
+                  curve: Curves.easeInOut,
+                  child: Material(
+                    elevation: 0,
+                    color: scheme.surface,
+                    // 显式高度：Stack 的 Positioned 不提供高度约束
+                    child: SizedBox(
+                      height:
+                          MediaQuery.paddingOf(context).top + kToolbarHeight,
+                      child: AppBar(
+                        key: const ValueKey('transfers-selection-appbar'),
+                        leading: IconButton(
+                          tooltip: l10n.exitSelection,
+                          icon: const Icon(Icons.close),
+                          onPressed: _exitSelection,
+                        ),
+                        title: Text(l10n.selectedCount(selectedCount)),
+                        actions: [
+                          IconButton(
+                            tooltip: l10n.selectAll,
+                            icon: const Icon(Icons.select_all),
+                            onPressed: _selectAll,
+                          ),
+                          IconButton(
+                            tooltip: l10n.invertSelection,
+                            icon: const Icon(Icons.flip),
+                            onPressed: _invertSelection,
+                          ),
+                        ],
                       ),
-                      title: Text(l10n.selectedCount(selectedCount)),
-                      actions: [
-                        IconButton(
-                          tooltip: l10n.selectAll,
-                          icon: const Icon(Icons.select_all),
-                          onPressed: _selectAll,
-                        ),
-                        IconButton(
-                          tooltip: l10n.invertSelection,
-                          icon: const Icon(Icons.flip),
-                          onPressed: _invertSelection,
-                        ),
-                      ],
                     ),
                   ),
                 ),
               ),
             ),
-          ),
-          // 多选操作栏
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: IgnorePointer(
-              ignoring: !_selecting,
-              child: AnimatedOpacity(
-                opacity: _selecting ? 1 : 0,
-                duration: _anim,
-                curve: Curves.easeInOut,
-                child: BatchActionBar(
-                  children: [
-                    BatchAction(
-                      icon: Icons.delete_outline,
-                      label: l10n.delete,
-                      onPressed: selectedCount == 0 ? null : _deleteSelected,
-                    ),
-                    BatchAction(
-                      icon: Icons.refresh,
-                      label: l10n.retry,
-                      onPressed: retryCount == 0 ? null : _retrySelected,
-                    ),
-                  ],
+            // 多选操作栏
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: IgnorePointer(
+                ignoring: !_selecting,
+                child: AnimatedOpacity(
+                  opacity: _selecting ? 1 : 0,
+                  duration: _anim,
+                  curve: Curves.easeInOut,
+                  child: BatchActionBar(
+                    children: [
+                      BatchAction(
+                        icon: Icons.delete_outline,
+                        label: l10n.delete,
+                        onPressed: selectedCount == 0 ? null : _deleteSelected,
+                      ),
+                      BatchAction(
+                        icon: Icons.refresh,
+                        label: l10n.retry,
+                        onPressed: retryCount == 0 ? null : _retrySelected,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

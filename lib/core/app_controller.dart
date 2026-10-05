@@ -52,14 +52,15 @@ class AppController extends ChangeNotifier {
     LanzouClient.requestInterval = Duration(
       milliseconds: settings.requestInterval,
     );
-    LanzouClient.apiBase = settings.apiHost == 'up'
-        ? 'https://up.woozooo.com'
-        : 'https://pc.woozooo.com';
+    LanzouClient.apiBase = _apiBaseFor(settings.apiHost);
     LanzouClient.userAgent = settings.userAgent;
-    LanzouClient.uploadBase =
-        _withScheme(settings.uploadDomain) ?? 'https://up.woozooo.com';
-    LanzouClient.shareDomain = settings.shareDomain;
+    LanzouClient.uploadBase = _apiBaseFor(settings.apiHost);
+    LanzouClient.uploadPath = settings.uploadPath;
   }
+
+  /// 网盘接口域名（pc / up）。
+  String _apiBaseFor(String host) =>
+      host == 'up' ? 'https://up.woozooo.com' : 'https://pc.woozooo.com';
 
   /// 备份恢复后重新读取账号与设置，并重建网盘客户端。
   Future<void> reloadFromStorage() async {
@@ -73,14 +74,6 @@ class AppController extends ChangeNotifier {
     _refreshActiveNickname();
   }
 
-  String? _withScheme(String domain) {
-    if (domain.isEmpty) return null;
-    if (domain.startsWith('http://') || domain.startsWith('https://')) {
-      return domain.replaceAll(RegExp(r'/$'), '');
-    }
-    return 'https://$domain'.replaceAll(RegExp(r'/$'), '');
-  }
-
   Future<void> setRequestInterval(int ms) async {
     await settings.setRequestInterval(ms);
     LanzouClient.requestInterval = Duration(milliseconds: ms);
@@ -89,9 +82,9 @@ class AppController extends ChangeNotifier {
 
   Future<void> setApiHost(String host) async {
     await settings.setApiHost(host);
-    LanzouClient.apiBase = host == 'up'
-        ? 'https://up.woozooo.com'
-        : 'https://pc.woozooo.com';
+    // 上传接口域名跟随网盘接口域名，改这里要一起更新
+    LanzouClient.apiBase = _apiBaseFor(host);
+    LanzouClient.uploadBase = _apiBaseFor(host);
     notifyListeners();
   }
 
@@ -101,16 +94,9 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setUploadDomain(String value) async {
-    await settings.setUploadDomain(value);
-    LanzouClient.uploadBase =
-        _withScheme(settings.uploadDomain) ?? 'https://up.woozooo.com';
-    notifyListeners();
-  }
-
-  Future<void> setShareDomain(String value) async {
-    await settings.setShareDomain(value);
-    LanzouClient.shareDomain = settings.shareDomain;
+  Future<void> setUploadPath(String value) async {
+    await settings.setUploadPath(value);
+    LanzouClient.uploadPath = settings.uploadPath;
     notifyListeners();
   }
 

@@ -30,7 +30,11 @@ class NotificationService {
   DateTime _lastProgress = DateTime.fromMillisecondsSinceEpoch(0);
 
   static const progressChannelId = 'transfers_progress';
-  static const doneChannelId = 'transfers_done';
+
+  /// 传输完成 / 失败通知渠道。v2：默认不响铃、不振动（渠道建好后
+  /// 系统不允许改声音，所以换新 id 让老安装也生效；用户仍可在
+  /// 系统设置里自行改回响铃）。
+  static const doneChannelId = 'transfers_done_v2';
 
   Future<void> init(Locale? locale) async {
     try {
@@ -67,6 +71,9 @@ class NotificationService {
           i18n?.notifChannelDone ?? '传输完成',
           description: i18n?.notifChannelDoneDesc ?? '下载与上传完成或失败的提醒',
           importance: Importance.defaultImportance,
+          playSound: false,
+          enableVibration: false,
+          showBadge: false,
         ),
       );
       _ready = true;
@@ -178,6 +185,8 @@ class NotificationService {
           strings?.notifChannelDone ?? '传输完成',
           importance: Importance.defaultImportance,
           priority: Priority.high,
+          playSound: false,
+          enableVibration: false,
           autoCancel: true,
         ),
       ),
@@ -198,6 +207,8 @@ class NotificationService {
           strings?.notifChannelDone ?? '传输完成',
           importance: Importance.defaultImportance,
           priority: Priority.high,
+          playSound: false,
+          enableVibration: false,
           autoCancel: true,
         ),
       ),

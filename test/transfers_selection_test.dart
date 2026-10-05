@@ -50,7 +50,63 @@ bool retryEnabled(WidgetTester tester) {
   return action.onPressed != null;
 }
 
+/// 把传输页作为独立页面（二级路由）打开，用于验证返回行为。
+Future<AppController> pushTransfers(WidgetTester tester) async {
+  final app = AppController();
+  final manager = TransferManager(app);
+  manager.tasks.addAll([task('t1', 'a.zip', status: TransferStatus.failed)]);
+  await tester.pumpWidget(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider<AppController>.value(value: app),
+        ChangeNotifierProvider<TransferManager>.value(value: manager),
+      ],
+      child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('zh'),
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: TextButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    // 独立打开时外壳传的就是同一个 tabIndex（见 app.dart
+                    // 的 _openView），这里保持一致，避免判断错页面形态
+                    builder: (_) => const TransfersPage(tabIndex: 2),
+                  ),
+                ),
+                child: const Text('打开传输'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+  await tester.tap(find.text('打开传输'));
+  await tester.pumpAndSettle();
+  return app;
+}
+
 void main() {
+  testWidgets('独立页面：多选时返回只退出多选，不退出页面', (tester) async {
+    final app = await pushTransfers(tester);
+
+    await tester.tap(find.text('a.zip'));
+    await tester.pumpAndSettle();
+    expect(app.selectionMode, isTrue);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(app.selectionMode, isFalse);
+    expect(find.byType(TransfersPage), findsOneWidget);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.byType(TransfersPage), findsNothing);
+  });
+
   testWidgets('直接点击条目进入多选并选中它（多选栏一起出现）', (tester) async {
     final (app, _) = await host(tester);
 

@@ -25,4 +25,55 @@ void main() {
     expect(find.text('收藏的文件和分享会出现在这里'), findsOneWidget);
     app.dispose();
   });
+
+  testWidgets('独立页面：多选时返回只退出多选，不退出页面', (tester) async {
+    final app = AppController();
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AppController>.value(
+        value: app,
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: Center(
+                child: TextButton(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      // 独立打开时外壳传的就是同一个 tabIndex（见 app.dart
+                      // 的 _openView），这里保持一致，避免判断错页面形态
+                      builder: (_) => const FavoritesPage(tabIndex: 3),
+                    ),
+                  ),
+                  child: const Text('打开收藏'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('打开收藏'));
+    await tester.pumpAndSettle();
+
+    // 空收藏也能进多选：菜单里的「多选」
+    await tester.tap(find.byTooltip('菜单'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('多选'));
+    await tester.pumpAndSettle();
+    expect(app.selectionMode, isTrue);
+
+    // 第一次返回：退出多选，页面还在
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(app.selectionMode, isFalse);
+    expect(find.byType(FavoritesPage), findsOneWidget);
+
+    // 再返回一次才退出页面
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.byType(FavoritesPage), findsNothing);
+    app.dispose();
+  });
 }

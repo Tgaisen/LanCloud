@@ -18,19 +18,31 @@ Future<void> openShareSheet(
   BuildContext context, {
   String? initialLink,
   String? initialPwd,
+  bool addFavoriteOnResolve = false,
 }) {
   return showDialog<void>(
     context: context,
-    builder: (_) =>
-        ShareLinkDialog(initialLink: initialLink, initialPwd: initialPwd),
+    builder: (_) => ShareLinkDialog(
+      initialLink: initialLink,
+      initialPwd: initialPwd,
+      addFavoriteOnResolve: addFavoriteOnResolve,
+    ),
   );
 }
 
 class ShareLinkDialog extends StatefulWidget {
-  const ShareLinkDialog({super.key, this.initialLink, this.initialPwd});
+  const ShareLinkDialog({
+    super.key,
+    this.initialLink,
+    this.initialPwd,
+    this.addFavoriteOnResolve = false,
+  });
 
   final String? initialLink;
   final String? initialPwd;
+
+  /// 解析成功后不打开，而是直接加入收藏（收藏页「添加收藏」用）。
+  final bool addFavoriteOnResolve;
 
   @override
   State<ShareLinkDialog> createState() => _ShareLinkDialogState();
@@ -88,6 +100,16 @@ class _ShareLinkDialogState extends State<ShareLinkDialog> {
         if (!mounted) return;
         await _saveRecent('shareFolder', folder.name, link, pwd);
         if (!mounted) return;
+        if (widget.addFavoriteOnResolve) {
+          await _addFavorite(
+            kind: 'shareFolder',
+            name: folder.name,
+            link: link,
+            pwd: pwd,
+            sharer: folder.sharer,
+          );
+          return;
+        }
         navigator.pop();
         await navigator.push(
           MaterialPageRoute(
@@ -101,6 +123,16 @@ class _ShareLinkDialogState extends State<ShareLinkDialog> {
           if (!mounted) return;
           await _saveRecent('shareFile', file.name, link, pwd);
           if (!mounted) return;
+          if (widget.addFavoriteOnResolve) {
+            await _addFavorite(
+              kind: 'shareFile',
+              name: file.name,
+              link: link,
+              pwd: pwd,
+              size: file.size,
+            );
+            return;
+          }
           _openFileInfo(file, link, pwd);
         } on NeedPasswordException {
           // 需要提取码 / 提取码错误要原样抛给弹窗标在输入框上，
@@ -113,6 +145,16 @@ class _ShareLinkDialogState extends State<ShareLinkDialog> {
           if (!mounted) return;
           await _saveRecent('shareFolder', folder.name, link, pwd);
           if (!mounted) return;
+          if (widget.addFavoriteOnResolve) {
+            await _addFavorite(
+              kind: 'shareFolder',
+              name: folder.name,
+              link: link,
+              pwd: pwd,
+              sharer: folder.sharer,
+            );
+            return;
+          }
           navigator.pop();
           await navigator.push(
             MaterialPageRoute(
@@ -156,6 +198,33 @@ class _ShareLinkDialogState extends State<ShareLinkDialog> {
       ref: link,
       pwd: pwd,
     );
+  }
+
+  /// 收藏模式：写入收藏、关闭弹窗并提示。
+  Future<void> _addFavorite({
+    required String kind,
+    required String name,
+    required String link,
+    required String pwd,
+    String sharer = '',
+    String size = '',
+  }) async {
+    final l10n = context.l10n;
+    final app = context.read<AppController>();
+    final navigator = Navigator.of(context);
+    // 弹窗关闭后原 context 失效，关弹窗与提示改用 Navigator 自己的宿主
+    final messenger = ScaffoldMessenger.of(navigator.context);
+    await app.db.addFavorite(
+      kind: kind,
+      name: name,
+      ref: link,
+      pwd: pwd,
+      sharer: sharer,
+      size: size,
+    );
+    if (!mounted) return;
+    if (navigator.canPop()) navigator.pop();
+    messenger.showSnackBar(SnackBar(content: Text(l10n.addedToFavorites)));
   }
 
   /// 解析出文件：关掉弹窗，再打开文件属性弹窗。

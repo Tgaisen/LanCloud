@@ -37,6 +37,15 @@ class _FavoritesPageState extends State<FavoritesPage>
   /// 修改后的高亮闪烁计数（值变化触发一次）
   final Map<int, int> _pulse = {};
   final ScrollController _scroll = ScrollController();
+
+  /// 顶栏搜索：与网盘页一致，在当前收藏里按名称过滤。
+  final TextEditingController _search = TextEditingController();
+  bool _searching = false;
+  String _filter = '';
+
+  /// 排序方式：time（收藏时间新到旧，默认）/ name / size。
+  String _sort = 'time';
+
   late final AppDb _db;
   AppController? _app;
 
@@ -77,6 +86,7 @@ class _FavoritesPageState extends State<FavoritesPage>
       }
     }
     _scroll.dispose();
+    _search.dispose();
     _enter.dispose();
     super.dispose();
   }
@@ -106,7 +116,117 @@ class _FavoritesPageState extends State<FavoritesPage>
     }
   }
 
-  List<FavoriteItem> get _items => [..._folders, ..._files];
+  /// 当前可见（过滤 + 排序后）的收藏：全选 / 反选只作用于可见项。
+  List<FavoriteItem> get _items => [..._visible(_folders), ..._visible(_files)];
+
+  // -------------------------------------------------------------- 搜索 / 排序
+
+  void _exitSearch() {
+    setState(() {
+      _searching = false;
+      _filter = '';
+      _search.clear();
+    });
+  }
+
+  /// 过滤 + 排序：默认按收藏时间新到旧（数据库本身就是这个顺序）。
+  List<FavoriteItem> _visible(List<FavoriteItem> source) {
+    final query = _filter.trim().toLowerCase();
+    final items = query.isEmpty
+        ? List<FavoriteItem>.of(source)
+        : source
+              .where(
+                (item) =>
+                    item.name.toLowerCase().contains(query) ||
+                    item.title.toLowerCase().contains(query),
+              )
+              .toList();
+    switch (_sort) {
+      case 'name':
+        items.sort(
+          (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+        );
+      case 'size':
+        items.sort(
+          (a, b) => lzSizeToBytes(b.size).compareTo(lzSizeToBytes(a.size)),
+        );
+      default:
+        items.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    }
+    return items;
+  }
+
+  /// 顶栏 ⋯ 菜单：排序（时间 / 名称 / 大小）、多选、添加收藏。
+  Future<void> _showMenu() async {
+    final l10n = context.l10n;
+    var sort = _sort;
+    await showAppSheet<void>(
+      context,
+      child: StatefulBuilder(
+        builder: (sheetContext, setSheetState) => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l10n.sort,
+                    style: Theme.of(context).textTheme.labelLarge,
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ConnectedSegmentedButton<String>(
+                      segments: [
+                        ButtonSegment(
+                          value: 'time',
+                          label: Text(l10n.sortTime),
+                        ),
+                        ButtonSegment(
+                          value: 'name',
+                          label: Text(l10n.sortName),
+                        ),
+                        ButtonSegment(
+                          value: 'size',
+                          label: Text(l10n.sortSize),
+                        ),
+                      ],
+                      selected: {sort},
+                      onSelectionChanged: (values) {
+                        setSheetState(() => sort = values.first);
+                        setState(() => _sort = values.first);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            ListTile(
+              leading: const Icon(Icons.done_all),
+              title: Text(l10n.multiSelect),
+              onTap: () {
+                Navigator.of(context).pop();
+                _enterSelection();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.star_outline),
+              title: Text(l10n.addFavorite),
+              onTap: () {
+                Navigator.of(context).pop();
+                // 打开「打开链接」弹窗，识别出文件（夹）后直接加入收藏
+                openShareSheet(context, addFavoriteOnResolve: true);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   // ------------------------------------------------------------------ 多选
 
@@ -355,196 +475,245 @@ class _FavoritesPageState extends State<FavoritesPage>
     final l10n = context.l10n;
     final headerHeight = MediaQuery.paddingOf(context).top + kToolbarHeight;
     final selectedCount = _selected.length;
-    return Scaffold(
-      // 大屏外壳里的页面：背景交给外壳的圆角卡片
-      backgroundColor: transparentPageBackground(context)
-          ? Colors.transparent
-          : null,
-      body: Stack(
-        children: [
-          // 小屏：正文区整体让开左右挖孔 / 侧边导航栏；顶栏（浮层）保持原样
-          BodySideInset(
-            child: ScrollTint(
-              hideDistance: headerHeight,
-              readBarsHidden: () => app.topBarHide.value,
-              onBarsHidden: app.settings.hideTopBar
-                  ? app.setTopBarHideFromScroll
-                  : null,
-              child: CustomScrollView(
-                controller: _scroll,
-                slivers: [
-                  // 顶栏不占布局，这里留出等高占位
-                  SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
-                  if (_loading)
-                    SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: Padding(
-                        // 底栏盖在正文上方时，空状态保持在可见区域居中
-                        padding: EdgeInsets.only(
-                          bottom: shellBottomBarInset(context),
+    final folders = _visible(_folders);
+    final files = _visible(_files);
+    return PopScope(
+      // 独立页面（_openView 打开的二级路由）没有外壳的返回处理：
+      // 多选状态下返回先退出多选；位于底栏（首个路由）时交给外壳统一处理。
+      // 注意不能用 tabIndex 判断：独立打开时它也带着同一个值。
+      canPop: inRootShell(context) || !_selecting,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (_selecting) _exitSelection();
+      },
+      child: Scaffold(
+        // 大屏外壳里的页面：背景交给外壳的圆角卡片
+        backgroundColor: transparentPageBackground(context)
+            ? Colors.transparent
+            : null,
+        body: Stack(
+          children: [
+            // 小屏：正文区整体让开左右挖孔 / 侧边导航栏；顶栏（浮层）保持原样
+            BodySideInset(
+              child: ScrollTint(
+                hideDistance: headerHeight,
+                readBarsHidden: () => app.topBarHide.value,
+                onBarsHidden: app.settings.hideTopBar
+                    ? app.setTopBarHideFromScroll
+                    : null,
+                child: CustomScrollView(
+                  controller: _scroll,
+                  slivers: [
+                    // 顶栏不占布局，这里留出等高占位
+                    SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
+                    if (_loading)
+                      SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: Padding(
+                          // 底栏盖在正文上方时，空状态保持在可见区域居中
+                          padding: EdgeInsets.only(
+                            bottom: shellBottomBarInset(context),
+                          ),
+                          child: const Center(
+                            child: CircularProgressIndicator(),
+                          ),
                         ),
-                        child: const Center(child: CircularProgressIndicator()),
-                      ),
-                    )
-                  else if (_folders.isEmpty && _files.isEmpty)
-                    SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: Padding(
-                        padding: EdgeInsets.only(
-                          bottom: shellBottomBarInset(context),
+                      )
+                    else if (folders.isEmpty && files.isEmpty)
+                      SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                            bottom: shellBottomBarInset(context),
+                          ),
+                          child: EmptyHint(
+                            icon: Icons.star_border,
+                            text: _filter.trim().isEmpty
+                                ? l10n.favoritesHint
+                                : l10n.filterResult,
+                          ),
                         ),
-                        child: EmptyHint(
-                          icon: Icons.star_border,
-                          text: l10n.favoritesHint,
-                        ),
-                      ),
-                    )
-                  else
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-                      sliver: SliverMainAxisGroup(
-                        slivers: [
-                          if (_folders.isNotEmpty) ...[
-                            SliverToBoxAdapter(
-                              child: SectionHeader(
-                                title: l10n.favoriteFolders,
-                                count: _folders.length,
+                      )
+                    else
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+                        sliver: SliverMainAxisGroup(
+                          slivers: [
+                            if (folders.isNotEmpty) ...[
+                              SliverToBoxAdapter(
+                                child: SectionHeader(
+                                  title: l10n.favoriteFolders,
+                                  count: folders.length,
+                                ),
                               ),
-                            ),
-                            // 懒加载：收藏多了也只构建可见部分
-                            SegmentedSliverList(
-                              adaptive: true,
-                              itemCount: _folders.length,
-                              itemBuilder: (context, index) =>
-                                  ListEnterAnimation(
-                                    progress: _enter,
-                                    index: index,
-                                    child: _tile(_folders[index], index: index),
-                                  ),
-                            ),
-                            const SliverToBoxAdapter(
-                              child: SizedBox(height: 20),
-                            ),
-                          ],
-                          if (_files.isNotEmpty) ...[
-                            SliverToBoxAdapter(
-                              child: SectionHeader(
-                                title: l10n.favoriteFiles,
-                                count: _files.length,
+                              // 懒加载：收藏多了也只构建可见部分
+                              SegmentedSliverList(
+                                adaptive: true,
+                                itemCount: folders.length,
+                                itemBuilder: (context, index) =>
+                                    ListEnterAnimation(
+                                      progress: _enter,
+                                      index: index,
+                                      child: _tile(
+                                        folders[index],
+                                        index: index,
+                                      ),
+                                    ),
                               ),
-                            ),
-                            SegmentedSliverList(
-                              adaptive: true,
-                              itemCount: _files.length,
-                              itemBuilder: (context, index) =>
-                                  ListEnterAnimation(
-                                    progress: _enter,
-                                    index: index,
-                                    child: _tile(_files[index], index: index),
-                                  ),
-                            ),
+                              const SliverToBoxAdapter(
+                                child: SizedBox(height: 20),
+                              ),
+                            ],
+                            if (files.isNotEmpty) ...[
+                              SliverToBoxAdapter(
+                                child: SectionHeader(
+                                  title: l10n.favoriteFiles,
+                                  count: files.length,
+                                ),
+                              ),
+                              SegmentedSliverList(
+                                adaptive: true,
+                                itemCount: files.length,
+                                itemBuilder: (context, index) =>
+                                    ListEnterAnimation(
+                                      progress: _enter,
+                                      index: index,
+                                      child: _tile(files[index], index: index),
+                                    ),
+                              ),
+                            ],
+                            // 外壳里给悬浮 / 收起的底栏让位；作为独立页面打开时
+                            // 末尾由 shellBottomBarInset 按系统导航栏补，这里不重复
+                            if (inRootShell(context))
+                              const SliverToBoxAdapter(
+                                child: SizedBox(height: 96),
+                              ),
                           ],
-                          // 外壳里给悬浮 / 收起的底栏让位；作为独立页面打开时
-                          // 末尾由 shellBottomBarInset 按系统导航栏补，这里不重复
-                          if (inRootShell(context))
-                            const SliverToBoxAdapter(
-                              child: SizedBox(height: 96),
-                            ),
-                        ],
-                      ),
-                    ),
-                  // 底栏盖在正文上方（extendBody）时，补足列表末尾留白
-                  SliverToBoxAdapter(
-                    child: SizedBox(height: shellBottomBarInset(context)),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          // 顶栏浮层：与底栏共用收起进度，切换视图时会下滑出现
-          Positioned(
-            left: 0,
-            right: 0,
-            top: 0,
-            child: TopBarOverlay(
-              height: headerHeight,
-              background: topBarBackgroundColor(context, scheme),
-              builder: (context) => AppBar(
-                backgroundColor: Colors.transparent,
-                scrolledUnderElevation: 0,
-                leading: (ModalRoute.of(context)?.isFirst ?? true)
-                    ? null
-                    : const AppBarBackButton(),
-                title: Text(l10n.myFavorites),
-              ),
-            ),
-          ),
-          // 多选顶栏
-          Positioned(
-            left: 0,
-            right: 0,
-            top: 0,
-            child: IgnorePointer(
-              ignoring: !_selecting,
-              child: AnimatedOpacity(
-                opacity: _selecting ? 1 : 0,
-                duration: _anim,
-                curve: Curves.easeInOut,
-                child: Material(
-                  elevation: 0,
-                  color: scheme.surface,
-                  child: SizedBox(
-                    height: headerHeight,
-                    child: AppBar(
-                      key: const ValueKey('favorites-selection-appbar'),
-                      leading: IconButton(
-                        tooltip: l10n.exitSelection,
-                        icon: const Icon(Icons.close),
-                        onPressed: _exitSelection,
-                      ),
-                      title: Text(l10n.selectedCount(selectedCount)),
-                      actions: [
-                        IconButton(
-                          tooltip: l10n.selectAll,
-                          icon: const Icon(Icons.select_all),
-                          onPressed: _selectAll,
                         ),
-                        IconButton(
-                          tooltip: l10n.invertSelection,
-                          icon: const Icon(Icons.flip),
-                          onPressed: _invertSelection,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          // 多选操作栏
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: IgnorePointer(
-              ignoring: !_selecting,
-              child: AnimatedOpacity(
-                opacity: _selecting ? 1 : 0,
-                duration: _anim,
-                curve: Curves.easeInOut,
-                child: BatchActionBar(
-                  children: [
-                    BatchAction(
-                      icon: Icons.delete_outline,
-                      label: l10n.delete,
-                      onPressed: selectedCount == 0 ? null : _deleteSelected,
+                      ),
+                    // 底栏盖在正文上方（extendBody）时，补足列表末尾留白
+                    SliverToBoxAdapter(
+                      child: SizedBox(height: shellBottomBarInset(context)),
                     ),
                   ],
                 ),
               ),
             ),
-          ),
-        ],
+            // 顶栏浮层：与底栏共用收起进度，切换视图时会下滑出现
+            Positioned(
+              left: 0,
+              right: 0,
+              top: 0,
+              child: TopBarOverlay(
+                height: headerHeight,
+                background: topBarBackgroundColor(context, scheme),
+                builder: (context) => AppBar(
+                  backgroundColor: Colors.transparent,
+                  scrolledUnderElevation: 0,
+                  leading: _searching
+                      ? IconButton(
+                          tooltip: l10n.closeSearch,
+                          icon: const Icon(Icons.close),
+                          onPressed: _exitSearch,
+                        )
+                      : ((ModalRoute.of(context)?.isFirst ?? true)
+                            ? null
+                            : const AppBarBackButton()),
+                  title: _searching
+                      ? TextField(
+                          controller: _search,
+                          autofocus: true,
+                          decoration: InputDecoration(
+                            hintText: l10n.searchFavorites,
+                            border: InputBorder.none,
+                          ),
+                          onChanged: (value) => setState(() => _filter = value),
+                        )
+                      : Text(l10n.myFavorites),
+                  actions: _searching
+                      ? const <Widget>[]
+                      : [
+                          IconButton(
+                            tooltip: l10n.search,
+                            icon: const Icon(Icons.search),
+                            onPressed: () => setState(() => _searching = true),
+                          ),
+                          IconButton(
+                            tooltip: l10n.menu,
+                            icon: const Icon(Icons.more_vert),
+                            onPressed: _showMenu,
+                          ),
+                        ],
+                ),
+              ),
+            ),
+            // 多选顶栏
+            Positioned(
+              left: 0,
+              right: 0,
+              top: 0,
+              child: IgnorePointer(
+                ignoring: !_selecting,
+                child: AnimatedOpacity(
+                  opacity: _selecting ? 1 : 0,
+                  duration: _anim,
+                  curve: Curves.easeInOut,
+                  child: Material(
+                    elevation: 0,
+                    color: scheme.surface,
+                    child: SizedBox(
+                      height: headerHeight,
+                      child: AppBar(
+                        key: const ValueKey('favorites-selection-appbar'),
+                        leading: IconButton(
+                          tooltip: l10n.exitSelection,
+                          icon: const Icon(Icons.close),
+                          onPressed: _exitSelection,
+                        ),
+                        title: Text(l10n.selectedCount(selectedCount)),
+                        actions: [
+                          IconButton(
+                            tooltip: l10n.selectAll,
+                            icon: const Icon(Icons.select_all),
+                            onPressed: _selectAll,
+                          ),
+                          IconButton(
+                            tooltip: l10n.invertSelection,
+                            icon: const Icon(Icons.flip),
+                            onPressed: _invertSelection,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            // 多选操作栏
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: IgnorePointer(
+                ignoring: !_selecting,
+                child: AnimatedOpacity(
+                  opacity: _selecting ? 1 : 0,
+                  duration: _anim,
+                  curve: Curves.easeInOut,
+                  child: BatchActionBar(
+                    children: [
+                      BatchAction(
+                        icon: Icons.delete_outline,
+                        label: l10n.delete,
+                        onPressed: selectedCount == 0 ? null : _deleteSelected,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

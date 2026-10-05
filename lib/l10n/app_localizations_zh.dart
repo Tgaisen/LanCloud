@@ -509,22 +509,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get apiHostKeywords => '域名 接口 连接异常 pc up';
 
   @override
-  String get uploadDomain => '上传域名';
+  String get uploadPath => '上传接口路径';
 
   @override
-  String get defaultUploadDomain => '默认（up.woozooo.com）';
+  String get uploadPathKeywords => '上传 接口 路径 域名 up html5up fileup';
 
   @override
-  String get uploadDomainKeywords => '上传 域名 up';
-
-  @override
-  String get shareDomain => '分享链接域名';
-
-  @override
-  String get defaultShareDomain => '默认（自动尝试内置镜像）';
-
-  @override
-  String get shareDomainKeywords => '分享 域名 镜像 链接';
+  String get uploadPathHint => '请仅在无法上传文件时尝试修改';
 
   @override
   String get userAgent => '自定义 User-Agent';
@@ -539,10 +530,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get advanced => '高级覆盖项';
 
   @override
-  String get advancedSubtitle => '接口/上传/分享域名与自定义 UA';
+  String get advancedSubtitle => '接口/上传路径与自定义 UA';
 
   @override
-  String get advancedHint => '仅在连接异常或域名被墙时修改，留空恢复默认';
+  String get advancedHint => '请仅在连接异常时修改';
 
   @override
   String get clearRecents => '清空最近使用记录';
@@ -614,12 +605,6 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get includeWebdavAccountSubtitle =>
       '危险！启用后，备份文件包含 WebDAV 地址与密码，请注意信息安全';
-
-  @override
-  String get uploadDomainHint => '留空使用默认 up.woozooo.com，可带 https://';
-
-  @override
-  String get shareDomainHint => '留空自动尝试内置镜像，可带 https://';
 
   @override
   String get userAgentHint => '留空表示使用默认值';
@@ -874,6 +859,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get searchCurrentFolder => '搜索当前目录';
+
+  @override
+  String get searchFavorites => '搜索收藏';
 
   @override
   String get search => '搜索';

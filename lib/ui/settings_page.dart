@@ -603,45 +603,20 @@ class _SettingsPageState extends State<SettingsPage>
         ),
       ),
       _Entry(
-        id: 'upload_domain',
-        title: l10n.uploadDomain,
-        subtitle: app.settings.uploadDomain.isEmpty
-            ? l10n.defaultUploadDomain
-            : app.settings.uploadDomain,
-        keywords: l10n.uploadDomainKeywords.split(' '),
+        id: 'upload_path',
+        title: l10n.uploadPath,
+        subtitle: app.settings.uploadPath,
+        keywords: l10n.uploadPathKeywords.split(' '),
         category: 'advanced',
         build: (context, app) => ListTile(
           leading: const Icon(Icons.cloud_upload_outlined),
-          title: Text(context.l10n.uploadDomain),
+          title: Text(context.l10n.uploadPath),
           subtitle: Text(
-            app.settings.uploadDomain.isEmpty
-                ? context.l10n.defaultUploadDomain
-                : app.settings.uploadDomain,
+            app.settings.uploadPath,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
-          onTap: () => _editUploadDomain(context),
-        ),
-      ),
-      _Entry(
-        id: 'share_domain',
-        title: l10n.shareDomain,
-        subtitle: app.settings.shareDomain.isEmpty
-            ? l10n.defaultShareDomain
-            : app.settings.shareDomain,
-        keywords: l10n.shareDomainKeywords.split(' '),
-        category: 'advanced',
-        build: (context, app) => ListTile(
-          leading: const Icon(Icons.link_outlined),
-          title: Text(context.l10n.shareDomain),
-          subtitle: Text(
-            app.settings.shareDomain.isEmpty
-                ? context.l10n.defaultShareDomain
-                : app.settings.shareDomain,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          onTap: () => _editShareDomain(context),
+          onTap: () => _pickUploadPath(context),
         ),
       ),
       _Entry(
@@ -1090,12 +1065,23 @@ class _SettingsPageState extends State<SettingsPage>
     required List<(T, String)> options,
     required T current,
     required Future<void> Function(T) onSelect,
+    String? message,
   }) async {
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => SimpleDialog(
         title: Text(title),
         children: [
+          if (message != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+              child: Text(
+                message,
+                style: Theme.of(dialogContext).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(dialogContext).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
           for (final entry in options)
             ListTile(
               leading: Icon(
@@ -1340,27 +1326,18 @@ class _SettingsPageState extends State<SettingsPage>
     );
   }
 
-  static Future<void> _editUploadDomain(BuildContext context) {
+  static Future<void> _pickUploadPath(BuildContext context) {
     final app = context.read<AppController>();
-    final l10n = context.l10n;
-    return _editText(
+    return _pickRadio(
       context,
-      title: l10n.uploadDomain,
-      hint: l10n.uploadDomainHint,
-      current: app.settings.uploadDomain,
-      onSave: (value) => app.setUploadDomain(value),
-    );
-  }
-
-  static Future<void> _editShareDomain(BuildContext context) {
-    final app = context.read<AppController>();
-    final l10n = context.l10n;
-    return _editText(
-      context,
-      title: l10n.shareDomain,
-      hint: l10n.shareDomainHint,
-      current: app.settings.shareDomain,
-      onSave: (value) => app.setShareDomain(value),
+      title: context.l10n.uploadPath,
+      message: context.l10n.uploadPathHint,
+      options: const [
+        ('html5up.php', 'html5up.php'),
+        ('fileup.php', 'fileup.php'),
+      ],
+      current: app.settings.uploadPath,
+      onSelect: (value) => app.setUploadPath(value),
     );
   }
 
@@ -1418,27 +1395,13 @@ class _AdvancedPage extends StatelessWidget {
                   ),
                   ListTile(
                     leading: const Icon(Icons.cloud_upload_outlined),
-                    title: Text(l10n.uploadDomain),
+                    title: Text(l10n.uploadPath),
                     subtitle: Text(
-                      app.settings.uploadDomain.isEmpty
-                          ? l10n.defaultUploadDomain
-                          : app.settings.uploadDomain,
+                      app.settings.uploadPath,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    onTap: () => _SettingsPageState._editUploadDomain(context),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.link_outlined),
-                    title: Text(l10n.shareDomain),
-                    subtitle: Text(
-                      app.settings.shareDomain.isEmpty
-                          ? l10n.defaultShareDomain
-                          : app.settings.shareDomain,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    onTap: () => _SettingsPageState._editShareDomain(context),
+                    onTap: () => _SettingsPageState._pickUploadPath(context),
                   ),
                   ListTile(
                     leading: const Icon(Icons.badge_outlined),

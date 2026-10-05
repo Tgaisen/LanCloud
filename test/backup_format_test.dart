@@ -96,14 +96,15 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final store = SettingsStore();
     await store.load();
-    await store.setUploadDomain('up.example.com');
+    await store.setUploadPath('fileup.php');
 
     final payload = store.toJson()
       ..['unknown_key'] = 'should-be-ignored'
-      ..['upload_domain'] = '';
+      ..['upload_path'] = '';
     await store.applyJson(payload);
 
-    expect(store.uploadDomain, '');
+    // 清空后回落到默认接口路径
+    expect(store.uploadPath, 'html5up.php');
     final prefs = await SharedPreferences.getInstance();
     expect(prefs.getString('unknown_key'), isNull);
   });

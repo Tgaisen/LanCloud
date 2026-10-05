@@ -81,11 +81,11 @@ class LanzouClient {
   /// 自定义 User-Agent，留空表示使用内置默认值。
   static String userAgent = '';
 
-  /// 上传接口域名，默认 up.woozooo.com，可在设置里覆盖。
+  /// 上传接口域名：跟随「网盘接口域名」设置（pc / up）。
   static String uploadBase = 'https://up.woozooo.com';
 
-  /// 自定义分享链接域名，留空时使用内置镜像回退列表。
-  static String shareDomain = '';
+  /// 上传接口路径（接口名）：html5up.php（默认）/ fileup.php。
+  static String uploadPath = 'html5up.php';
 
   final String uid;
   late final Dio dio;
@@ -515,7 +515,7 @@ class LanzouClient {
       'upload_file': part,
     });
     final resp = await dio.post<String>(
-      '$uploadBase/html5up.php',
+      '$uploadBase/$uploadPath',
       data: form,
       cancelToken: cancelToken,
       onSendProgress: (sent, total) => onProgress?.call(sent, total),
@@ -776,16 +776,6 @@ class LanzouClient {
     final list = <String>[url];
     final path = uri.path.isEmpty ? '/' : uri.path;
     final query = uri.query.isEmpty ? '' : '?${uri.query}';
-    if (shareDomain.isNotEmpty) {
-      var host = shareDomain;
-      if (host.startsWith('http://') || host.startsWith('https://')) {
-        host = Uri.parse(host).host;
-      }
-      host = host.replaceAll(RegExp(r'/$'), '');
-      if (host.isNotEmpty && host != uri.host) {
-        list.add('${uri.scheme}://$host$path$query');
-      }
-    }
     final family = RegExp(r'\.lanzou([a-z])\.com$').firstMatch(uri.host);
     final candidates = <String>[
       if (family != null) 'www.lanzou${family.group(1)}.com',

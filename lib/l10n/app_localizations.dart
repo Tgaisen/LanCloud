@@ -1046,41 +1046,23 @@ abstract class AppLocalizations {
   /// **'域名 接口 连接异常 pc up'**
   String get apiHostKeywords;
 
-  /// No description provided for @uploadDomain.
+  /// No description provided for @uploadPath.
   ///
   /// In zh, this message translates to:
-  /// **'上传域名'**
-  String get uploadDomain;
+  /// **'上传接口路径'**
+  String get uploadPath;
 
-  /// No description provided for @defaultUploadDomain.
+  /// No description provided for @uploadPathKeywords.
   ///
   /// In zh, this message translates to:
-  /// **'默认（up.woozooo.com）'**
-  String get defaultUploadDomain;
+  /// **'上传 接口 路径 域名 up html5up fileup'**
+  String get uploadPathKeywords;
 
-  /// No description provided for @uploadDomainKeywords.
+  /// No description provided for @uploadPathHint.
   ///
   /// In zh, this message translates to:
-  /// **'上传 域名 up'**
-  String get uploadDomainKeywords;
-
-  /// No description provided for @shareDomain.
-  ///
-  /// In zh, this message translates to:
-  /// **'分享链接域名'**
-  String get shareDomain;
-
-  /// No description provided for @defaultShareDomain.
-  ///
-  /// In zh, this message translates to:
-  /// **'默认（自动尝试内置镜像）'**
-  String get defaultShareDomain;
-
-  /// No description provided for @shareDomainKeywords.
-  ///
-  /// In zh, this message translates to:
-  /// **'分享 域名 镜像 链接'**
-  String get shareDomainKeywords;
+  /// **'请仅在无法上传文件时尝试修改'**
+  String get uploadPathHint;
 
   /// No description provided for @userAgent.
   ///
@@ -1109,13 +1091,13 @@ abstract class AppLocalizations {
   /// No description provided for @advancedSubtitle.
   ///
   /// In zh, this message translates to:
-  /// **'接口/上传/分享域名与自定义 UA'**
+  /// **'接口/上传路径与自定义 UA'**
   String get advancedSubtitle;
 
   /// No description provided for @advancedHint.
   ///
   /// In zh, this message translates to:
-  /// **'仅在连接异常或域名被墙时修改，留空恢复默认'**
+  /// **'请仅在连接异常时修改'**
   String get advancedHint;
 
   /// No description provided for @clearRecents.
@@ -1249,18 +1231,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'危险！启用后，备份文件包含 WebDAV 地址与密码，请注意信息安全'**
   String get includeWebdavAccountSubtitle;
-
-  /// No description provided for @uploadDomainHint.
-  ///
-  /// In zh, this message translates to:
-  /// **'留空使用默认 up.woozooo.com，可带 https://'**
-  String get uploadDomainHint;
-
-  /// No description provided for @shareDomainHint.
-  ///
-  /// In zh, this message translates to:
-  /// **'留空自动尝试内置镜像，可带 https://'**
-  String get shareDomainHint;
 
   /// No description provided for @userAgentHint.
   ///
@@ -1693,6 +1663,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'搜索当前目录'**
   String get searchCurrentFolder;
+
+  /// No description provided for @searchFavorites.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索收藏'**
+  String get searchFavorites;
 
   /// No description provided for @search.
   ///

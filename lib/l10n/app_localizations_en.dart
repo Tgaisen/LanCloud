@@ -525,23 +525,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get apiHostKeywords => 'domain api connection error pc up';
 
   @override
-  String get uploadDomain => 'Upload domain';
+  String get uploadPath => 'Upload endpoint path';
 
   @override
-  String get defaultUploadDomain => 'Default (up.woozooo.com)';
+  String get uploadPathKeywords =>
+      'upload endpoint path domain up html5up fileup';
 
   @override
-  String get uploadDomainKeywords => 'upload domain up';
-
-  @override
-  String get shareDomain => 'Share link domain';
-
-  @override
-  String get defaultShareDomain =>
-      'Default (try built-in mirrors automatically)';
-
-  @override
-  String get shareDomainKeywords => 'share domain mirror link';
+  String get uploadPathHint => 'Only change this when uploading files fails';
 
   @override
   String get userAgent => 'Custom User-Agent';
@@ -556,11 +547,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get advanced => 'Advanced overrides';
 
   @override
-  String get advancedSubtitle => 'API/upload/share domains and custom UA';
+  String get advancedSubtitle => 'API/upload endpoint paths and custom UA';
 
   @override
   String get advancedHint =>
-      'Change only when connections fail or domains are blocked; leave empty for defaults';
+      'Change only when connections fail or endpoints are blocked; defaults are fine';
 
   @override
   String get clearRecents => 'Clear recent items';
@@ -634,14 +625,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get includeWebdavAccountSubtitle =>
       'Danger! Once enabled, the backup contains your WebDAV address and password — keep it safe';
-
-  @override
-  String get uploadDomainHint =>
-      'Leave empty for the default up.woozooo.com; may include https://';
-
-  @override
-  String get shareDomainHint =>
-      'Leave empty to try built-in mirrors automatically; may include https://';
 
   @override
   String get userAgentHint => 'Leave empty to use the default value';
@@ -899,6 +882,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get searchCurrentFolder => 'Search this folder';
+
+  @override
+  String get searchFavorites => 'Search favorites';
 
   @override
   String get search => 'Search';
