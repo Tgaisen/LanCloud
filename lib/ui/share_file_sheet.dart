@@ -45,12 +45,17 @@ class _ShareFileInfoSheetState extends State<ShareFileInfoSheet> {
   Future<void> _fetch() async {
     final client = context.read<AppController>().publicClient;
     try {
-      final resolved =
-          await client.resolveFileShare(widget.url, pwd: widget.pwd);
+      final resolved = await client.resolveFileShare(
+        widget.url,
+        pwd: widget.pwd,
+      );
       if (mounted) setState(() => _resolved = resolved);
     } on LanzouException catch (e) {
       if (mounted) {
-        setState(() => _invalid = e.message.contains('不存在') || e.message.contains('取消'));
+        setState(
+          () =>
+              _invalid = e.message.contains('不存在') || e.message.contains('取消'),
+        );
       }
     } catch (_) {
       // 网络异常不视为失效，下载时会有明确提示。

@@ -5,7 +5,9 @@
 library;
 
 import 'dart:async';
-import 'package:flutter/foundation.dart' show clampDouble, defaultTargetPlatform;
+
+import 'package:flutter/foundation.dart'
+    show clampDouble, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 
 // How much the scroll's drag gesture can overshoot the RefreshIndicator's
@@ -494,14 +496,12 @@ class LanRefreshIndicatorState extends State<LanRefreshIndicator>
             } on Object {
               refreshResult = Future<void>.value();
             }
-            refreshResult
-                .whenComplete(() {
-                  if (mounted && _status == RefreshIndicatorStatus.refresh) {
-                    completer.complete();
-                    _dismiss(RefreshIndicatorStatus.done);
-                  }
-                })
-                .ignore();
+            refreshResult.whenComplete(() {
+              if (mounted && _status == RefreshIndicatorStatus.refresh) {
+                completer.complete();
+                _dismiss(RefreshIndicatorStatus.done);
+              }
+            }).ignore();
           }
         });
   }
@@ -566,10 +566,7 @@ class LanRefreshIndicatorState extends State<LanRefreshIndicator>
             left: 0.0,
             right: 0.0,
             child: SizeTransition(
-              alignment: AlignmentDirectional(
-                -1.0,
-                1.0,
-              ),
+              alignment: AlignmentDirectional(-1.0, 1.0),
               sizeFactor: _positionFactor, // This is what brings it down.
               child: Padding(
                 padding: EdgeInsets.only(top: widget.displacement),
@@ -611,7 +608,8 @@ class LanRefreshIndicatorState extends State<LanRefreshIndicator>
     return ScrollConfiguration(
       behavior: _RefreshScrollBehavior(
         physics: switch (defaultTargetPlatform) {
-          TargetPlatform.iOS || TargetPlatform.macOS => _RefreshBouncingClampedPhysics(
+          TargetPlatform.iOS ||
+          TargetPlatform.macOS => _RefreshBouncingClampedPhysics(
             parent: const AlwaysScrollableScrollPhysics(),
             onDrag: _onDrag,
           ),
@@ -663,10 +661,7 @@ class _RefreshBouncingPhysics extends BouncingScrollPhysics
 /// iOS/macOS 使用 PiliPlus 的 Bouncing 物理，并把边界行为改回 Clamping。
 class _RefreshBouncingClampedPhysics extends BouncingScrollPhysics
     with _RefreshScrollPhysicsMixin, ClampingBoundaryMixin {
-  const _RefreshBouncingClampedPhysics({
-    super.parent,
-    required this.onDrag,
-  });
+  const _RefreshBouncingClampedPhysics({super.parent, required this.onDrag});
 
   @override
   final _RefreshOnDrag onDrag;

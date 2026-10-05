@@ -110,42 +110,42 @@ class _BackupPageState extends State<BackupPage> {
   }
 
   Future<void> _backupToFile() => _run(() async {
-        final l10n = context.l10n;
-        final file = await _service.saveLocal(
-          includeCookies: _service.webdav.includeCookies,
-        );
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(l10n.backupSaved(file.path)),
-            action: SnackBarAction(
-              label: l10n.cookieExport,
-              onPressed: () => SystemShare.shareFile(
-                file.path,
-                subject: '${l10n.appName} ${l10n.backupAndRestore}',
-              ),
-            ),
+    final l10n = context.l10n;
+    final file = await _service.saveLocal(
+      includeCookies: _service.webdav.includeCookies,
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(l10n.backupSaved(file.path)),
+        action: SnackBarAction(
+          label: l10n.cookieExport,
+          onPressed: () => SystemShare.shareFile(
+            file.path,
+            subject: '${l10n.appName} ${l10n.backupAndRestore}',
           ),
-        );
-      });
+        ),
+      ),
+    );
+  });
 
   Future<void> _restoreFromFile() => _run(() async {
-        final l10n = context.l10n;
-        final picked = await FilePicker.platform.pickFiles(
-          dialogTitle: l10n.chooseBackupFile,
-          type: FileType.custom,
-          allowedExtensions: const ['json'],
-          withData: true,
-        );
-        final file = picked?.files.single;
-        if (file == null) return;
-        final bytes = file.bytes;
-        final content = bytes != null
-            ? utf8.decode(bytes)
-            : await File(file.path!).readAsString();
-        if (!mounted) return;
-        await _confirmAndRestore(content, file.name);
-      });
+    final l10n = context.l10n;
+    final picked = await FilePicker.platform.pickFiles(
+      dialogTitle: l10n.chooseBackupFile,
+      type: FileType.custom,
+      allowedExtensions: const ['json'],
+      withData: true,
+    );
+    final file = picked?.files.single;
+    if (file == null) return;
+    final bytes = file.bytes;
+    final content = bytes != null
+        ? utf8.decode(bytes)
+        : await File(file.path!).readAsString();
+    if (!mounted) return;
+    await _confirmAndRestore(content, file.name);
+  });
 
   Future<void> _confirmAndRestore(String content, String label) async {
     final l10n = context.l10n;
@@ -198,54 +198,54 @@ class _BackupPageState extends State<BackupPage> {
   }
 
   Future<void> _testConnection() => _run(() async {
-        await _service.testConnection();
-        if (mounted) _snack(context.l10n.webdavTestOk);
-      });
+    await _service.testConnection();
+    if (mounted) _snack(context.l10n.webdavTestOk);
+  });
 
   Future<void> _uploadNow() => _run(() async {
-        final name = await _service.uploadNow();
-        if (mounted) {
-          setState(() {});
-          _snack(context.l10n.webdavUploadDone(name));
-        }
-      });
+    final name = await _service.uploadNow();
+    if (mounted) {
+      setState(() {});
+      _snack(context.l10n.webdavUploadDone(name));
+    }
+  });
 
   Future<void> _restoreFromCloud() => _run(() async {
-        final l10n = context.l10n;
-        final entries = await _service.remoteBackups();
-        if (!mounted) return;
-        if (entries.isEmpty) {
-          _snack(l10n.webdavNoBackups);
-          return;
-        }
-        final picked = await showAppSheet<WebdavEntry>(
-          context,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              for (final entry in entries)
-                ListTile(
-                  leading: Icon(
-                    entry.name == BackupService.latestName
-                        ? Icons.cached_outlined
-                        : Icons.cloud_outlined,
-                  ),
-                  title: Text(entry.name),
-                  subtitle: Text(
-                    '${entry.modified == null ? '' : formatDateShort(entry.modified!.millisecondsSinceEpoch)}'
-                    '${entry.size > 0 ? ' · ${formatBytes(entry.size)}' : ''}',
-                  ),
-                  onTap: () => Navigator.of(context).pop(entry),
-                ),
-            ],
-          ),
-        );
-        if (picked == null || !mounted) return;
-        final content = await _service.webdavDownload(picked.name);
-        if (!mounted) return;
-        await _confirmAndRestore(content, picked.name);
-      });
+    final l10n = context.l10n;
+    final entries = await _service.remoteBackups();
+    if (!mounted) return;
+    if (entries.isEmpty) {
+      _snack(l10n.webdavNoBackups);
+      return;
+    }
+    final picked = await showAppSheet<WebdavEntry>(
+      context,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final entry in entries)
+            ListTile(
+              leading: Icon(
+                entry.name == BackupService.latestName
+                    ? Icons.cached_outlined
+                    : Icons.cloud_outlined,
+              ),
+              title: Text(entry.name),
+              subtitle: Text(
+                '${entry.modified == null ? '' : formatDateShort(entry.modified!.millisecondsSinceEpoch)}'
+                '${entry.size > 0 ? ' · ${formatBytes(entry.size)}' : ''}',
+              ),
+              onTap: () => Navigator.of(context).pop(entry),
+            ),
+        ],
+      ),
+    );
+    if (picked == null || !mounted) return;
+    final content = await _service.webdavDownload(picked.name);
+    if (!mounted) return;
+    await _confirmAndRestore(content, picked.name);
+  });
 
   // ------------------------------------------------------------------ build
 
@@ -375,9 +375,7 @@ class _BackupPageState extends State<BackupPage> {
                         padding: const EdgeInsets.only(top: 4),
                         child: Text(
                           l10n.backupFailed(store.lastBackupError),
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodySmall
+                          style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(color: scheme.error),
                         ),
                       ),
@@ -406,9 +404,7 @@ class _BackupPageState extends State<BackupPage> {
                 children: [
                   Expanded(
                     child: Text(
-                      option == 'weekly'
-                          ? l10n.webdavWeekly
-                          : l10n.webdavDaily,
+                      option == 'weekly' ? l10n.webdavWeekly : l10n.webdavDaily,
                     ),
                   ),
                   if (option == current)
@@ -428,15 +424,13 @@ class _BackupPageState extends State<BackupPage> {
   }
 
   Widget _section(BuildContext context, String name) => Padding(
-        padding: const EdgeInsets.fromLTRB(4, 12, 4, 8),
-        child: Text(
-          name,
-          style: Theme.of(context)
-              .textTheme
-              .titleSmall
-              ?.copyWith(color: Theme.of(context).colorScheme.primary),
-        ),
-      );
+    padding: const EdgeInsets.fromLTRB(4, 12, 4, 8),
+    child: Text(
+      name,
+      style: Theme.of(context).textTheme.titleSmall
+          ?.copyWith(color: Theme.of(context).colorScheme.primary),
+    ),
+  );
 }
 
 /// WebDAV 账号编辑弹窗：自己持有输入控制器，并在弹窗销毁时释放。

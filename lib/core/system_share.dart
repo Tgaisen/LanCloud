@@ -28,10 +28,7 @@ class SystemShare {
     Map<String, Object?> arguments,
   ) async {
     try {
-      final ok = await _channel.invokeMethod<bool>(
-        method,
-        arguments,
-      );
+      final ok = await _channel.invokeMethod<bool>(method, arguments);
       return ok ?? false;
     } on PlatformException {
       return false;

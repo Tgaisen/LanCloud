@@ -43,32 +43,36 @@ class LanzouClient {
   static Duration requestInterval = const Duration(milliseconds: 300);
 
   LanzouClient({required this.uid}) {
-    dio = Dio(BaseOptions(
-      headers: {
-        'User-Agent': userAgent.isEmpty ? kUserAgent : userAgent,
-        'Accept-Language': 'zh-CN,zh;q=0.9',
-        'Referer': 'https://pc.woozooo.com/mydisk.php',
-      },
-      validateStatus: (s) => s != null && s < 500,
-      // 连接阶段也必须限时：否则网络异常（丢包 / 半开连接）时请求会一直挂着，
-      // 页面停在加载中、下拉刷新小球也收不回来
-      connectTimeout: const Duration(seconds: 20),
-      receiveTimeout: const Duration(seconds: 60),
-    ));
-    dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        if (requestInterval > Duration.zero) {
-          await Future.delayed(requestInterval);
-        }
-        final cookie = _cookieHeaderFor(options.uri.host);
-        if (cookie.isNotEmpty) options.headers['Cookie'] = cookie;
-        handler.next(options);
-      },
-      onResponse: (response, handler) {
-        _storeCookies(response.requestOptions.uri.host, response.headers);
-        handler.next(response);
-      },
-    ));
+    dio = Dio(
+      BaseOptions(
+        headers: {
+          'User-Agent': userAgent.isEmpty ? kUserAgent : userAgent,
+          'Accept-Language': 'zh-CN,zh;q=0.9',
+          'Referer': 'https://pc.woozooo.com/mydisk.php',
+        },
+        validateStatus: (s) => s != null && s < 500,
+        // 连接阶段也必须限时：否则网络异常（丢包 / 半开连接）时请求会一直挂着，
+        // 页面停在加载中、下拉刷新小球也收不回来
+        connectTimeout: const Duration(seconds: 20),
+        receiveTimeout: const Duration(seconds: 60),
+      ),
+    );
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) async {
+          if (requestInterval > Duration.zero) {
+            await Future.delayed(requestInterval);
+          }
+          final cookie = _cookieHeaderFor(options.uri.host);
+          if (cookie.isNotEmpty) options.headers['Cookie'] = cookie;
+          handler.next(options);
+        },
+        onResponse: (response, handler) {
+          _storeCookies(response.requestOptions.uri.host, response.headers);
+          handler.next(response);
+        },
+      ),
+    );
   }
 
   /// 网盘接口域名，可在设置里临时切换（连接异常时尝试另一个）。
@@ -76,6 +80,7 @@ class LanzouClient {
 
   /// 自定义 User-Agent，留空表示使用内置默认值。
   static String userAgent = '';
+
   /// 上传接口域名，默认 up.woozooo.com，可在设置里覆盖。
   static String uploadBase = 'https://up.woozooo.com';
 
@@ -124,18 +129,20 @@ class LanzouClient {
     for (final c in list) {
       final first = c.split(';').first;
       final i = first.indexOf('=');
-      if (i > 0) jar[first.substring(0, i).trim()] = first.substring(i + 1).trim();
+      if (i > 0) {
+        jar[first.substring(0, i).trim()] = first.substring(i + 1).trim();
+      }
     }
   }
 
   Options _options({bool followRedirects = true, String? referer}) => Options(
-        responseType: ResponseType.plain,
-        contentType: 'application/x-www-form-urlencoded',
-        receiveTimeout: const Duration(seconds: 25),
-        followRedirects: followRedirects,
-        validateStatus: (s) => s != null && s < 500,
-        headers: referer == null ? null : {'Referer': referer},
-      );
+    responseType: ResponseType.plain,
+    contentType: 'application/x-www-form-urlencoded',
+    receiveTimeout: const Duration(seconds: 25),
+    followRedirects: followRedirects,
+    validateStatus: (s) => s != null && s < 500,
+    headers: referer == null ? null : {'Referer': referer},
+  );
 
   Map<String, dynamic> _asMap(dynamic data) {
     if (data is Map) return data.cast<String, dynamic>();
@@ -191,7 +198,9 @@ class LanzouClient {
     final text = map['text'];
     if (text is List) {
       for (final item in text) {
-        if (item is Map) files.add(LzFile.fromJson(item.cast<String, dynamic>()));
+        if (item is Map) {
+          files.add(LzFile.fromJson(item.cast<String, dynamic>()));
+        }
       }
     }
     final info = int.tryParse('${map['info']}') ?? 0;
@@ -224,7 +233,9 @@ class LanzouClient {
     final text = map['text'];
     if (text is List) {
       for (final item in text) {
-        if (item is Map) folders.add(LzFolder.fromJson(item.cast<String, dynamic>()));
+        if (item is Map) {
+          folders.add(LzFolder.fromJson(item.cast<String, dynamic>()));
+        }
       }
     }
     final path = <PathNode>[];
@@ -232,7 +243,9 @@ class LanzouClient {
     if (info is List) {
       for (final item in info) {
         if (item is Map && item['folderid'] != null && item['name'] != null) {
-          path.add(PathNode(id: '${item['folderid']}', name: '${item['name']}'));
+          path.add(
+            PathNode(id: '${item['folderid']}', name: '${item['name']}'),
+          );
         }
       }
     }
@@ -263,8 +276,9 @@ class LanzouClient {
     }
     final beforeIds = existing.folders.map((f) => f.id).toSet();
     final after = await listFolders(parentId);
-    final added =
-        after.folders.where((f) => !beforeIds.contains(f.id)).toList();
+    final added = after.folders
+        .where((f) => !beforeIds.contains(f.id))
+        .toList();
     if (added.isEmpty) {
       throw const LanzouException('新建文件夹失败');
     }
@@ -326,14 +340,8 @@ class LanzouClient {
   /// 修改文件简介（task 11）。
   /// 网页版文件夹信息页：直接读取该文件夹的统计信息。
   /// 解析失败返回 null，由调用方回退到遍历统计。
-  Future<
-      ({
-        String size,
-        int count,
-        String name,
-        String desc,
-        String url,
-      })?> folderStats(String folderId) async {
+  Future<({String size, int count, String name, String desc, String url})?>
+  folderStats(String folderId) async {
     try {
       final resp = await dio.get<String>(
         'https://up.woozooo.com/myfile.php?item=3&folder_id=$folderId&v2',
@@ -343,28 +351,34 @@ class LanzouClient {
       if (html.isEmpty || html.contains('网盘用户登录')) {
         return null;
       }
-      final size = RegExp(
-        r'<div class="folsha2">大小<div class="folsha3">([^<]*)</div>',
-      ).firstMatch(html)?.group(1)?.trim() ??
+      final size =
+          RegExp(r'<div class="folsha2">大小<div class="folsha3">([^<]*)</div>')
+              .firstMatch(html)
+              ?.group(1)
+              ?.trim() ??
           '';
-      final count = int.tryParse(
+      final count =
+          int.tryParse(
             RegExp(r'<div class="folsha2">文件数<div class="folsha3">(\d+)</div>')
                     .firstMatch(html)
                     ?.group(1) ??
                 '',
           ) ??
           0;
-      final name = RegExp(r'id="foldertxt"[^>]*value="([^"]*)"')
+      final name =
+          RegExp(r'id="foldertxt"[^>]*value="([^"]*)"')
               .firstMatch(html)
               ?.group(1)
               ?.trim() ??
           '';
-      final desc = RegExp(r'id="folderinfo"[^>]*value="([^"]*)"')
+      final desc =
+          RegExp(r'id="folderinfo"[^>]*value="([^"]*)"')
               .firstMatch(html)
               ?.group(1)
               ?.trim() ??
           '';
-      final url = RegExp(r'class="f_pwdurl"[^>]*>(https?://[^<]+)</div>')
+      final url =
+          RegExp(r'class="f_pwdurl"[^>]*>(https?://[^<]+)</div>')
               .firstMatch(html)
               ?.group(1)
               ?.trim() ??
@@ -559,12 +573,13 @@ class LanzouClient {
     var name = '${info['name'] ?? ''}';
     var desc = '';
     try {
-      final extra = _asMap((await dio.post<String>(
-        '$apiBase/doupload.php',
-        data: {'task': 12, 'file_id': fileId},
-        options: _options(),
-      ))
-          .data);
+      final extra = _asMap(
+        (await dio.post<String>(
+          '$apiBase/doupload.php',
+          data: {'task': 12, 'file_id': fileId},
+          options: _options(),
+        )).data,
+      );
       name = '${extra['text'] ?? name}';
       desc = '${extra['info'] ?? ''}';
     } catch (_) {}
@@ -625,7 +640,8 @@ class LanzouClient {
     final literal = RegExp(r'''^['"](.*)['"]$''', dotAll: true).firstMatch(t);
     if (literal != null) return literal.group(1)!;
     if (!RegExp(r'^[A-Za-z_$][\w$]*$').hasMatch(t)) return '';
-    final def = RegExp('var\\s+${RegExp.escape(t)}\\s*=\\s*([^;]+);').firstMatch(html);
+    final def = RegExp('var\\s+${RegExp.escape(t)}\\s*=\\s*([^;]+);')
+        .firstMatch(html);
     if (def == null) return '';
     return def.group(1)!.trim().replaceAll(RegExp(r'''^['"]|['"]$'''), '');
   }
@@ -655,7 +671,8 @@ class LanzouClient {
     String referer,
     String pwd,
   ) async {
-    final endpointRaw = _match(pageHtml, [
+    final endpointRaw =
+        _match(pageHtml, [
           r'''url\s*:\s*['"]([^'"]*ajaxfile\.php[^'"]*)['"]''',
           r'''var\s+domain1\s*=\s*['"]([^'"]+)['"]''',
         ]) ??
@@ -669,11 +686,15 @@ class LanzouClient {
     );
 
     final block =
-        RegExp(r'data\s*:\s*\{([^}]*)\}', dotAll: true).firstMatch(pageHtml)?.group(1) ??
-            '';
+        RegExp(
+          r'data\s*:\s*\{([^}]*)\}',
+          dotAll: true,
+        ).firstMatch(pageHtml)?.group(1) ??
+        '';
     final fields = <String, String>{};
-    for (final m
-        in RegExp(r"""['"]?(\w+)['"]?\s*:\s*([^,}]+)""").allMatches(block)) {
+    for (final m in RegExp(
+      r"""['"]?(\w+)['"]?\s*:\s*([^,}]+)""",
+    ).allMatches(block)) {
       fields[m.group(1)!] = _resolveJsValue(pageHtml, m.group(2)!);
     }
     final sign = fields['sign'] ?? '';
@@ -781,7 +802,10 @@ class LanzouClient {
     return list;
   }
 
-  Future<DirectFile> resolveFileShare(String shareUrl, {String pwd = ''}) async {
+  Future<DirectFile> resolveFileShare(
+    String shareUrl, {
+    String pwd = '',
+  }) async {
     Object? lastError;
     for (final candidate in _shareUrlCandidates(shareUrl)) {
       try {
@@ -804,27 +828,32 @@ class LanzouClient {
     if (html.contains('文件不存') || html.contains('文件取消')) {
       throw const LanzouException('文件不存在或已取消分享');
     }
-    final needPwd = html.contains('id="pwdload"') || html.contains('id="passwddiv"');
+    final needPwd =
+        html.contains('id="pwdload"') || html.contains('id="passwddiv"');
     if (needPwd && pwd.isEmpty) throw const NeedPasswordException();
 
-    var name = _match(html, [
+    var name =
+        _match(html, [
           r'<title>(.+?) - 蓝奏云</title>',
           r'<div class="filethetext".+?>([^<>]+?)</div>',
         ]) ??
         url.split('/').last;
-    final size =
-        (_match(html, [r'大小.+?(\d[\d.,]+\s?[BKM]?)<']) ?? '').replaceAll(',', '');
+    final size = (_match(html, [r'大小.+?(\d[\d.,]+\s?[BKM]?)<']) ?? '')
+        .replaceAll(',', '');
     final sharer =
         _match(html, [
           r'<span class="user-name">([^<]+)</span>',
           r'class="user-name"[^>]*>([^<]+)<',
         ]) ??
         '';
-    var desc =
-        _cleanDesc(_match(html, [r'class="n_box_des">(.*?)</div>']) ?? '');
+    var desc = _cleanDesc(
+      _match(html, [r'class="n_box_des">(.*?)</div>']) ?? '',
+    );
 
     // 新版流程：分享页 -> iframe -> ajaxfile.php
-    final iframeRaw = RegExp(r'<iframe.*?src="(.+?)"').firstMatch(html)?.group(1);
+    final iframeRaw = RegExp(r'<iframe.*?src="(.+?)"')
+        .firstMatch(html)
+        ?.group(1);
     var legacyHtml = html;
     String? iframeUrl;
     if (iframeRaw != null) {
@@ -851,8 +880,13 @@ class LanzouClient {
 
     // 新版密码流程：首页 JS 自带 isngis(sign)/kdns(kd)，直接 POST ajaxfile.php
     if (needPwd) {
-      final passwordDirect =
-          await _resolvePasswordShare(html, url, uri, base, pwd);
+      final passwordDirect = await _resolvePasswordShare(
+        html,
+        url,
+        uri,
+        base,
+        pwd,
+      );
       if (passwordDirect != null) {
         return DirectFile(
           name: passwordDirect.name.isEmpty ? name : passwordDirect.name,
@@ -871,7 +905,8 @@ class LanzouClient {
       if (pwdSign == null) throw const LanzouException('提取码参数解析失败');
       sign = pwdSign;
     } else {
-      var rawSign = RegExp(r"'sign':(.+?),").firstMatch(legacyHtml)?.group(1) ?? '';
+      var rawSign =
+          RegExp(r"'sign':(.+?),").firstMatch(legacyHtml)?.group(1) ?? '';
       rawSign = rawSign.replaceAll("'", '').trim();
       if (rawSign.isNotEmpty && rawSign.length < 20) {
         final resolved = _resolveJsValue(legacyHtml, rawSign);
@@ -896,9 +931,7 @@ class LanzouClient {
       if (info.contains('密码') || info.contains('提取码')) {
         throw const WrongPasswordException();
       }
-      throw LanzouException(
-        '获取下载地址失败：${info.isEmpty ? link : info}',
-      );
+      throw LanzouException('获取下载地址失败：${info.isEmpty ? link : info}');
     }
     final dom = '${link['dom'] ?? ''}';
     final path = '${link['url'] ?? ''}';
@@ -943,13 +976,15 @@ class LanzouClient {
         .firstMatch(html)
         ?.group(1);
     if (signCandidates.isEmpty || endpointRaw == null) return null;
-    final kd = RegExp(r'var\s+kdns\s*=\s*([^;]+);')
+    final kd =
+        RegExp(r'var\s+kdns\s*=\s*([^;]+);')
             .firstMatch(html)
             ?.group(1)
             ?.trim() ??
         '1';
     final lanosso =
-        RegExp(r"var\s+lanosso\s*=\s*'([^']*)'").firstMatch(html)?.group(1) ?? '';
+        RegExp(r"var\s+lanosso\s*=\s*'([^']*)'").firstMatch(html)?.group(1) ??
+        '';
     final endpoint = _absoluteUrl(base, uri.scheme, endpointRaw);
     final resp = await dio.post<String>(
       endpoint,
@@ -1005,7 +1040,8 @@ class LanzouClient {
     if (html.contains('文件不存') || html.contains('文件取消')) {
       throw const LanzouException('文件夹不存在或已取消分享');
     }
-    final needPwd = html.contains('id="pwdload"') || html.contains('id="passwddiv"');
+    final needPwd =
+        html.contains('id="pwdload"') || html.contains('id="passwddiv"');
     if (needPwd && pwd.isEmpty) throw const NeedPasswordException();
     final lx = _match(html, [r"'lx':'?(\d)'?,"]);
     final t = _match(html, [r"var [0-9a-z_]{6} = '(\d{10})';"]);
@@ -1019,13 +1055,15 @@ class LanzouClient {
     if (lx == null || t == null || k == null || fid == null) {
       throw const LanzouException('分享页结构解析失败');
     }
-    final name = _match(html, [
+    final name =
+        _match(html, [
           r'<title>([^<]*)</title>',
           r"var.+?='(.+?)';\n.+document.title",
           r'<div class="user-title">(.+?)</div>',
         ]) ??
         '';
-    final desc = _match(html, [
+    final desc =
+        _match(html, [
           r'id="filename">(.+?)</span>',
           r'<div class="user-radio-\d"></div>(.+?)</div>',
         ]) ??
@@ -1056,11 +1094,13 @@ class LanzouClient {
       dotAll: true,
     ).allMatches(html)) {
       final href = m.group(1)!;
-      folders.add(SubFolder(
-        name: m.group(2)!,
-        desc: m.group(3)!,
-        url: href.startsWith('http') ? href : '$base$href',
-      ));
+      folders.add(
+        SubFolder(
+          name: m.group(2)!,
+          desc: m.group(3)!,
+          url: href.startsWith('http') ? href : '$base$href',
+        ),
+      );
     }
     return FolderShareDetail(
       name: name,
@@ -1106,12 +1146,14 @@ class LanzouClient {
             if (item is Map) {
               final id = '${item['id'] ?? ''}';
               if (id.isEmpty || id == '-1') continue;
-              files.add(ShareFileItem(
-                name: '${item['name_all'] ?? ''}',
-                time: '${item['time'] ?? ''}',
-                size: '${item['size'] ?? ''}',
-                url: id.startsWith('http') ? id : '${paging.base}/$id',
-              ));
+              files.add(
+                ShareFileItem(
+                  name: '${item['name_all'] ?? ''}',
+                  time: '${item['time'] ?? ''}',
+                  size: '${item['size'] ?? ''}',
+                  url: id.startsWith('http') ? id : '${paging.base}/$id',
+                ),
+              );
             }
           }
         }

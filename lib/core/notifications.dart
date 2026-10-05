@@ -48,7 +48,8 @@ class NotificationService {
       );
       final androidImpl = _plugin
           .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>();
+            AndroidFlutterLocalNotificationsPlugin
+          >();
       await androidImpl?.createNotificationChannel(
         AndroidNotificationChannel(
           progressChannelId,
@@ -78,7 +79,8 @@ class NotificationService {
   Future<void> consumeLaunchDetails() async {
     try {
       final details = await _plugin.getNotificationAppLaunchDetails();
-      pendingTransfers = (details?.didNotificationLaunchApp ?? false) &&
+      pendingTransfers =
+          (details?.didNotificationLaunchApp ?? false) &&
           details?.notificationResponse?.payload == 'transfers';
     } catch (_) {
       pendingTransfers = false;
@@ -89,7 +91,8 @@ class NotificationService {
     try {
       final enabled = await _plugin
           .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
+            AndroidFlutterLocalNotificationsPlugin
+          >()
           ?.areNotificationsEnabled();
       return enabled ?? true;
     } catch (_) {
@@ -101,7 +104,8 @@ class NotificationService {
     try {
       final granted = await _plugin
           .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
+            AndroidFlutterLocalNotificationsPlugin
+          >()
           ?.requestNotificationsPermission();
       return granted ?? true;
     } catch (_) {

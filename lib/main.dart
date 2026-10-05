@@ -65,8 +65,8 @@ Future<void> main() async {
   final locale = language == 'zh'
       ? const Locale('zh')
       : language == 'en'
-          ? const Locale('en')
-          : null;
+      ? const Locale('en')
+      : null;
   await NotificationService.instance.init(locale);
   await NotificationService.instance.consumeLaunchDetails();
   await SharedInbox.instance.init();

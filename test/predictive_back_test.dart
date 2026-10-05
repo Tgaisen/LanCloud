@@ -8,13 +8,12 @@ void main() {
       bool hasActiveTransfers = false,
       bool atDefaultView = true,
       bool driveCanHandleBack = false,
-    }) =>
-        canHandBackToSystem(
-          selectionMode: selectionMode,
-          hasActiveTransfers: hasActiveTransfers,
-          atDefaultView: atDefaultView,
-          driveCanHandleBack: driveCanHandleBack,
-        );
+    }) => canHandBackToSystem(
+      selectionMode: selectionMode,
+      hasActiveTransfers: hasActiveTransfers,
+      atDefaultView: atDefaultView,
+      driveCanHandleBack: driveCanHandleBack,
+    );
 
     test('默认视图且没有要拦截的目标：交给系统（播放退回桌面动画）', () {
       expect(canPop(), isTrue);

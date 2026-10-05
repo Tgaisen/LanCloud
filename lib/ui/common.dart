@@ -177,10 +177,7 @@ class Md3eBodyCard extends StatelessWidget {
         removeRight: true,
         removeBottom: true,
         child: clipContent
-            ? ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: child,
-              )
+            ? ClipRRect(borderRadius: BorderRadius.circular(16), child: child)
             : child,
       ),
     );
@@ -360,22 +357,21 @@ int lzSizeToBytes(String raw) {
 Future<void> copyText(BuildContext context, String text) async {
   await Clipboard.setData(ClipboardData(text: text));
   if (context.mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(context.l10n.copiedToClipboard)),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(context.l10n.copiedToClipboard)));
   }
 }
 
 /// 系统身份验证弹窗（生物识别 / 锁屏密码）的本地化文案。
 /// Android 取标题 + 副标题 + 取消按钮，iOS 只有取消按钮（其余用系统文案）。
 List<AuthMessages> authMessagesFor(AppLocalizations l10n) => [
-      AndroidAuthMessages(
-        signInTitle: l10n.authVerifyTitle,
-        signInHint: l10n.authVerifyHint,
-        cancelButton: l10n.cancel,
-      ),
-      IOSAuthMessages(cancelButton: l10n.cancel),
-    ];
+  AndroidAuthMessages(
+    signInTitle: l10n.authVerifyTitle,
+    signInHint: l10n.authVerifyHint,
+    cancelButton: l10n.cancel,
+  ),
+  IOSAuthMessages(cancelButton: l10n.cancel),
+];
 
 IconData iconForFile(String name) {
   final ext = name.contains('.') ? name.split('.').last.toLowerCase() : '';
@@ -444,6 +440,7 @@ class EmptyHint extends StatelessWidget {
 
   final IconData icon;
   final String text;
+
   /// 出现时是否淡入（提示类空状态的显隐渐变）。
   final bool animate;
 
@@ -480,6 +477,7 @@ class FadeIn extends StatelessWidget {
 
   final Widget child;
   final Duration duration;
+
   /// 相对位移（px），会随淡入一起归位。
   final double offset;
 
@@ -679,12 +677,13 @@ class _TopBarOverlayScaffoldState extends State<TopBarOverlayScaffold> {
           // 大屏外壳里的第一个路由：背景交给外壳的圆角卡片；
           // 其余大屏页面（横屏 / 平板的二级页）自己铺 navigation area 的
           // surfaceContainer 底色，正文再套一层圆角 surface 卡片
-          backgroundColor: widget.backgroundColor ??
+          backgroundColor:
+              widget.backgroundColor ??
               (transparentPageBackground(context)
                   ? Colors.transparent
                   : isLargeLayout(context)
-                      ? scheme.surfaceContainer
-                      : null),
+                  ? scheme.surfaceContainer
+                  : null),
           resizeToAvoidBottomInset: widget.resizeToAvoidBottomInset,
           body: Md3eBodyCard(
             topBarHeight: topInset,
@@ -737,10 +736,8 @@ class _BottomSystemInset extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-        height: isLargeLayout(context)
-            ? 0
-            : MediaQuery.paddingOf(context).bottom,
-      );
+    height: isLargeLayout(context) ? 0 : MediaQuery.paddingOf(context).bottom,
+  );
 }
 
 /// 本地生成二维码弹窗（不经过任何服务器）。
@@ -771,10 +768,7 @@ Future<void> showQrDialog(
                   width: 200,
                   height: 200,
                   child: CustomPaint(
-                    painter: QrPainter(
-                      data: url,
-                      version: QrVersions.auto,
-                    ),
+                    painter: QrPainter(data: url, version: QrVersions.auto),
                   ),
                 ),
               ),
@@ -927,9 +921,10 @@ class _MeasuredSheetState extends State<MeasuredSheet>
 
   void _springBack() {
     if (_pull <= 0) return;
-    _settleTween = Tween<double>(begin: _pull, end: 0).animate(
-      CurvedAnimation(parent: _settle, curve: Curves.easeOutCubic),
-    );
+    _settleTween = Tween<double>(
+      begin: _pull,
+      end: 0,
+    ).animate(CurvedAnimation(parent: _settle, curve: Curves.easeOutCubic));
     _settle.forward(from: 0);
   }
 
@@ -978,8 +973,8 @@ class _MeasuredSheetState extends State<MeasuredSheet>
     _tracker = null;
     if (pull <= 0) return;
     // 快速下滑，或拖过弹窗高度的 35%：关闭弹窗，否则弹回
-    final shouldClose = velocity > 700 ||
-        (velocity > -700 && pull > _expandedHeight * 0.35);
+    final shouldClose =
+        velocity > 700 || (velocity > -700 && pull > _expandedHeight * 0.35);
     if (shouldClose) {
       Navigator.of(context).pop();
     } else {
@@ -1011,10 +1006,7 @@ class _MeasuredSheetState extends State<MeasuredSheet>
                 return false;
               },
               child: SizeChangedLayoutNotifier(
-                child: SizedBox(
-                  key: _contentKey,
-                  child: widget.child,
-                ),
+                child: SizedBox(key: _contentKey, child: widget.child),
               ),
             ),
           ),
@@ -1183,6 +1175,7 @@ class _Md3ListItemState extends State<Md3ListItem>
   static const _enterDuration = Duration(milliseconds: 260);
   static const _removeDuration = Duration(milliseconds: 200);
   static const _pulseDuration = Duration(milliseconds: 700);
+
   /// 与网盘列表一致的错峰步长（毫秒）。
   static const _enterStep = 26;
 
@@ -1252,9 +1245,7 @@ class _Md3ListItemState extends State<Md3ListItem>
         onTap: widget.onTap,
         onLongPress: widget.onLongPress,
         child: ColoredBox(
-          color: widget.selected
-              ? scheme.primaryContainer
-              : Colors.transparent,
+          color: widget.selected ? scheme.primaryContainer : Colors.transparent,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(10, 8, 2, 8),
             child: Column(
@@ -1270,8 +1261,7 @@ class _Md3ListItemState extends State<Md3ListItem>
                       decoration: BoxDecoration(
                         color: widget.selected
                             ? scheme.surface
-                            : widget.iconBoxColor ??
-                                scheme.secondaryContainer,
+                            : widget.iconBoxColor ?? scheme.secondaryContainer,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
@@ -1300,8 +1290,9 @@ class _Md3ListItemState extends State<Md3ListItem>
                                 widget.subtitle,
                                 maxLines: widget.subtitleMaxLines,
                                 overflow: TextOverflow.ellipsis,
-                                style: theme.textTheme.bodyMedium
-                                    ?.copyWith(color: scheme.onSurfaceVariant),
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: scheme.onSurfaceVariant,
+                                ),
                               ),
                             ),
                         ],
@@ -1428,8 +1419,9 @@ class ExpressiveIconButton extends StatelessWidget {
           label,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.labelLarge
-              ?.copyWith(color: scheme.onSurfaceVariant),
+          style: theme.textTheme.labelLarge?.copyWith(
+            color: scheme.onSurfaceVariant,
+          ),
         ),
       ],
     );
@@ -1522,9 +1514,7 @@ class BatchActionBar extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
           child: Row(
-            children: [
-              for (final child in children) Expanded(child: child),
-            ],
+            children: [for (final child in children) Expanded(child: child)],
           ),
         ),
       ),
@@ -1679,8 +1669,7 @@ class PropertyHeaderCard extends StatelessWidget {
                             const SizedBox(
                               width: 16,
                               height: 16,
-                              child:
-                                  CircularProgressIndicator(strokeWidth: 2),
+                              child: CircularProgressIndicator(strokeWidth: 2),
                             ),
                           ],
                         ],
@@ -1696,8 +1685,9 @@ class PropertyHeaderCard extends StatelessWidget {
                           child: Text(
                             subtitle,
                             key: ValueKey(subtitle),
-                            style: theme.textTheme.bodySmall
-                                ?.copyWith(color: scheme.outline),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: scheme.outline,
+                            ),
                           ),
                         ),
                       ],
@@ -1818,11 +1808,7 @@ BorderRadius connectedItemRadius({
 /// 行优先把 [children] 铺成自适应多列（列数见 [adaptiveColumns]）：
 /// 行内等宽、顶部对齐，行间距 / 列间距为 [spacing]；单列时不额外包装，保持原样。
 class AdaptiveListRows extends StatelessWidget {
-  const AdaptiveListRows({
-    super.key,
-    required this.children,
-    this.spacing = 8,
-  });
+  const AdaptiveListRows({super.key, required this.children, this.spacing = 8});
 
   final List<Widget> children;
   final double spacing;
@@ -1881,10 +1867,7 @@ class AdaptiveSliverRows extends StatelessWidget {
   Widget build(BuildContext context) {
     final columns = adaptiveColumns(context);
     if (columns <= 1) {
-      return SliverList.builder(
-        itemCount: itemCount,
-        itemBuilder: itemBuilder,
-      );
+      return SliverList.builder(itemCount: itemCount, itemBuilder: itemBuilder);
     }
     final rowCount = (itemCount + columns - 1) ~/ columns;
     return SliverList.builder(
@@ -1931,17 +1914,23 @@ class SegmentedList extends StatefulWidget {
   final EdgeInsetsGeometry margin;
   final EdgeInsetsGeometry padding;
   final Color? color;
+
   /// 组两端（外侧）圆角。
   final double outerRadius;
+
   /// 组内相邻处的圆角。
   final double innerRadius;
+
   /// 按下时该条目的圆角。
   final double pressedRadius;
+
   /// 条目之间的空白间隔（替代分割线）。
   final double gap;
+
   /// 大窗口（≥600dp）时按 [adaptiveColumns] 把条目铺成 2–3 列，
   /// 每个条目独立成卡（组外侧圆角）；单列时保持原来的连接式整组样式。
   final bool adaptive;
+
   /// 多列时的行 / 列间距。
   final double adaptiveSpacing;
 
@@ -1953,7 +1942,9 @@ class _SegmentedListState extends State<SegmentedList> {
   int? _pressedIndex;
 
   void _setPressed(int? index) {
-    if (_pressedIndex != index && mounted) setState(() => _pressedIndex = index);
+    if (_pressedIndex != index && mounted) {
+      setState(() => _pressedIndex = index);
+    }
   }
 
   /// 计算单个条目的圆角：组外侧 16dp、组内相邻处 4dp；
@@ -2086,7 +2077,9 @@ class _ConnectedSegmentedButtonState<T>
   int? _pressedIndex;
 
   void _setPressed(int? index) {
-    if (_pressedIndex != index && mounted) setState(() => _pressedIndex = index);
+    if (_pressedIndex != index && mounted) {
+      setState(() => _pressedIndex = index);
+    }
   }
 
   void _select(T value) {
@@ -2136,8 +2129,8 @@ class _ConnectedSegmentedButtonState<T>
     final Color foreground = !enabled
         ? scheme.onSurface.withValues(alpha: 0.38)
         : selected
-            ? scheme.onSecondaryContainer
-            : scheme.onSurfaceVariant;
+        ? scheme.onSecondaryContainer
+        : scheme.onSurfaceVariant;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
@@ -2249,9 +2242,8 @@ Future<PasswordEditResult?> showPasswordDialog(
                   setDialogState(() => error = l10n.pwdTooShort);
                   return;
                 }
-                Navigator.of(dialogContext).pop(
-                  (enabled: isEnabled, pwd: isEnabled ? value : ''),
-                );
+                Navigator.of(dialogContext)
+                    .pop((enabled: isEnabled, pwd: isEnabled ? value : ''));
               },
               child: Text(l10n.confirm),
             ),
@@ -2413,15 +2405,11 @@ Future<bool> downloadShareFile(
       referer: url,
       via: app.publicClient,
     );
-    messenger.showSnackBar(
-      SnackBar(content: Text(l10n.addedToQueue)),
-    );
+    messenger.showSnackBar(SnackBar(content: Text(l10n.addedToQueue)));
     return true;
   } on NeedPasswordException {
     navigator.pop();
-    messenger.showSnackBar(
-      SnackBar(content: Text(l10n.shareNeedsPassword)),
-    );
+    messenger.showSnackBar(SnackBar(content: Text(l10n.shareNeedsPassword)));
     return false;
   } on LanzouException catch (e) {
     navigator.pop();
@@ -2429,9 +2417,7 @@ Future<bool> downloadShareFile(
     return false;
   } catch (e) {
     navigator.pop();
-    messenger.showSnackBar(
-      SnackBar(content: Text(l10n.resolveFailed('$e'))),
-    );
+    messenger.showSnackBar(SnackBar(content: Text(l10n.resolveFailed('$e'))));
     return false;
   }
 }

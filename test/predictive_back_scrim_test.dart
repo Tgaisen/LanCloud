@@ -35,7 +35,8 @@ void main() {
         theme: ThemeData(
           pageTransitionsTheme: const PageTransitionsTheme(
             builders: <TargetPlatform, PageTransitionsBuilder>{
-              TargetPlatform.android: AospPredictiveBackPageTransitionsBuilder(),
+              TargetPlatform.android:
+                  AospPredictiveBackPageTransitionsBuilder(),
             },
           ),
         ),
@@ -87,7 +88,8 @@ void main() {
         theme: ThemeData(
           pageTransitionsTheme: const PageTransitionsTheme(
             builders: <TargetPlatform, PageTransitionsBuilder>{
-              TargetPlatform.android: AospPredictiveBackPageTransitionsBuilder(),
+              TargetPlatform.android:
+                  AospPredictiveBackPageTransitionsBuilder(),
             },
           ),
         ),
@@ -116,7 +118,8 @@ void main() {
         theme: ThemeData(
           pageTransitionsTheme: const PageTransitionsTheme(
             builders: <TargetPlatform, PageTransitionsBuilder>{
-              TargetPlatform.android: AospPredictiveBackPageTransitionsBuilder(),
+              TargetPlatform.android:
+                  AospPredictiveBackPageTransitionsBuilder(),
             },
           ),
         ),

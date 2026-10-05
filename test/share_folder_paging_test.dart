@@ -46,28 +46,28 @@ class _FakeApp extends AppController {
 }
 
 ShareFolderPaging _paging() => ShareFolderPaging(
-      base: 'https://example.com',
-      referer: 'https://example.com/s/abc',
-      fid: '123',
-      lx: '2',
-      t: '1700000000',
-      k: 'abcdefghijklmnop',
-    );
+  base: 'https://example.com',
+  referer: 'https://example.com/s/abc',
+  fid: '123',
+  lx: '2',
+  t: '1700000000',
+  k: 'abcdefghijklmnop',
+);
 
 FolderShareDetail _folder({int firstPageFiles = 20}) => FolderShareDetail(
-      name: '测试分享',
-      files: [
-        for (var i = 0; i < firstPageFiles; i++)
-          ShareFileItem(
-            name: 'file$i.txt',
-            time: '2026-10-01',
-            size: '1 M',
-            url: 'https://example.com/f$i',
-          ),
-      ],
-      paging: _paging(),
-      hasMore: true,
-    );
+  name: '测试分享',
+  files: [
+    for (var i = 0; i < firstPageFiles; i++)
+      ShareFileItem(
+        name: 'file$i.txt',
+        time: '2026-10-01',
+        size: '1 M',
+        url: 'https://example.com/f$i',
+      ),
+  ],
+  paging: _paging(),
+  hasMore: true,
+);
 
 Future<void> pumpPage(
   WidgetTester tester, {

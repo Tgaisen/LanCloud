@@ -86,7 +86,10 @@ class AppLog {
     if (buffer.isEmpty) return null;
     final dir = await getTemporaryDirectory();
     final out = File(
-      p.join(dir.path, 'lancloud-log-${DateTime.now().millisecondsSinceEpoch}.txt'),
+      p.join(
+        dir.path,
+        'lancloud-log-${DateTime.now().millisecondsSinceEpoch}.txt',
+      ),
     );
     await out.writeAsString(buffer.toString(), flush: true);
     return out;

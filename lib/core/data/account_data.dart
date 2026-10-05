@@ -16,10 +16,7 @@ Map<String, Object?> groupByAccount(List<Map<String, Object?>> rows) {
     'data_version': accountDataVersion,
     'data': [
       for (final account in accounts)
-        {
-          'account': account,
-          'data': groups[account],
-        },
+        {'account': account, 'data': groups[account]},
     ],
   };
 }

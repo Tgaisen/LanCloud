@@ -23,8 +23,10 @@ class AppController extends ChangeNotifier {
   bool ready = false;
   bool selectionMode = false;
   VoidCallback? onRequestExitSelection;
+
   /// 网盘页注册的返回处理：返回 true 表示已消费（例如返回上一级目录）。
   Future<bool> Function()? onDriveBack;
+
   /// 网盘页当前是否需要自己消费返回手势（多选 / 搜索 / 已在子目录），
   /// 由外壳里的 [DrivePage] 实时上报。RootShell 用它决定返回手势交给系统
   /// （系统才会播放退回桌面的预测性返回动画）还是由 Flutter 拦截。
@@ -47,14 +49,15 @@ class AppController extends ChangeNotifier {
   }
 
   void _applyRuntimeSettings() {
-    LanzouClient.requestInterval =
-        Duration(milliseconds: settings.requestInterval);
+    LanzouClient.requestInterval = Duration(
+      milliseconds: settings.requestInterval,
+    );
     LanzouClient.apiBase = settings.apiHost == 'up'
         ? 'https://up.woozooo.com'
         : 'https://pc.woozooo.com';
     LanzouClient.userAgent = settings.userAgent;
-    LanzouClient.uploadBase = _withScheme(settings.uploadDomain) ??
-        'https://up.woozooo.com';
+    LanzouClient.uploadBase =
+        _withScheme(settings.uploadDomain) ?? 'https://up.woozooo.com';
     LanzouClient.shareDomain = settings.shareDomain;
   }
 
@@ -191,11 +194,15 @@ class AppController extends ChangeNotifier {
         ? 1.0
         : (elapsed.inMicroseconds / total).clamp(0.0, 1.0);
     barsHide.value =
-        (_barsFrom + (_barsTo - _barsFrom) * _barsCurve.transform(t))
-            .clamp(0.0, 1.0);
+        (_barsFrom + (_barsTo - _barsFrom) * _barsCurve.transform(t)).clamp(
+          0.0,
+          1.0,
+        );
     topBarHide.value =
-        (_topBarFrom + (_barsTo - _topBarFrom) * _barsCurve.transform(t))
-            .clamp(0.0, 1.0);
+        (_topBarFrom + (_barsTo - _topBarFrom) * _barsCurve.transform(t)).clamp(
+          0.0,
+          1.0,
+        );
     if (t >= 1) _barsTicker.stop();
   }
 
@@ -284,11 +291,11 @@ class AppController extends ChangeNotifier {
   }
 
   LanzouClient clientFor(String uid) => _clients.putIfAbsent(uid, () {
-        final account = accounts.byUid(uid);
-        final c = LanzouClient(uid: uid);
-        if (account != null) c.setCookieHeader(account.cookie);
-        return c;
-      });
+    final account = accounts.byUid(uid);
+    final c = LanzouClient(uid: uid);
+    if (account != null) c.setCookieHeader(account.cookie);
+    return c;
+  });
 
   /// 用于解析公开分享链接（不依赖登录态）。
   LanzouClient get publicClient => _publicClient ??= LanzouClient(uid: '0');
@@ -346,7 +353,8 @@ class AppController extends ChangeNotifier {
   /// 默认下载目录路径：Android/data/<包名>/files/LanCloud
   /// （取不到外部专属目录时退回应用私有文档目录）。
   Future<String> defaultDownloadDirPath() async {
-    final base = await getExternalStorageDirectory() ??
+    final base =
+        await getExternalStorageDirectory() ??
         await getApplicationDocumentsDirectory();
     return p.join(base.path, 'LanCloud');
   }

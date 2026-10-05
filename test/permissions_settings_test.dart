@@ -33,7 +33,6 @@ class _FakePermissions extends AppPermissions {
     batteryRequests += 1;
     return true;
   }
-
 }
 
 late _FakePermissions _fake;
@@ -62,11 +61,7 @@ Future<AppController> pumpSettings(
 
 Future<void> scrollToSetting(WidgetTester tester, String text) async {
   final scrollable = find.byType(Scrollable).first;
-  await tester.scrollUntilVisible(
-    find.text(text),
-    400,
-    scrollable: scrollable,
-  );
+  await tester.scrollUntilVisible(find.text(text), 400, scrollable: scrollable);
   // 顶栏是浮层、不占布局：ensureVisible 会把目标顶到屏幕上沿，
   // 正好被顶栏盖住（点不到），这里往回拖一段让它落在顶栏下方。
   await tester.drag(scrollable, const Offset(0, 120));

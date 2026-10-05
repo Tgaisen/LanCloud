@@ -10,13 +10,17 @@ void main() {
   });
 
   test('识别链接里的访问密码', () {
-    final link = LanzouLink.parse('这里有个文件 https://www.lanzoue.com/ix1234 密码: 8zb9');
+    final link = LanzouLink.parse(
+      '这里有个文件 https://www.lanzoue.com/ix1234 密码: 8zb9',
+    );
     expect(link?.url, 'https://www.lanzoue.com/ix1234');
     expect(link?.pwd, '8zb9');
   });
 
   test('去掉链接结尾的中文标点', () {
-    final link = LanzouLink.parse('看看这个（https://www.lanzoub.com/iQ7w8e），提取码：abcd');
+    final link = LanzouLink.parse(
+      '看看这个（https://www.lanzoub.com/iQ7w8e），提取码：abcd',
+    );
     expect(link?.url, 'https://www.lanzoub.com/iQ7w8e');
     expect(link?.pwd, 'abcd');
   });

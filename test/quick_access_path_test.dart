@@ -19,24 +19,15 @@ void main() {
   });
 
   test('兼容旧数据：剥掉「根目录」前缀与文件夹自身', () {
-    expect(
-      quickAccessPathLabel(zh, pin('示例', '根目录/abc/示例')),
-      '根目录/abc',
-    );
+    expect(quickAccessPathLabel(zh, pin('示例', '根目录/abc/示例')), '根目录/abc');
     expect(quickAccessPathLabel(zh, pin('示例', '根目录/示例')), '根目录');
     // 旧数据可能是英文界面下固定下来的
-    expect(
-      quickAccessPathLabel(zh, pin('示例', 'Root/abc/示例')),
-      '根目录/abc',
-    );
+    expect(quickAccessPathLabel(zh, pin('示例', 'Root/abc/示例')), '根目录/abc');
     expect(quickAccessPathLabel(en, pin('Sample', 'Root/Sample')), 'Root');
   });
 
   test('「根目录」按当前语言显示，切换语言后跟着变', () {
     expect(quickAccessPathLabel(en, pin('示例', 'abc')), 'Root/abc');
-    expect(
-      quickAccessPathLabel(en, pin('示例', '根目录/abc/示例')),
-      'Root/abc',
-    );
+    expect(quickAccessPathLabel(en, pin('示例', '根目录/abc/示例')), 'Root/abc');
   });
 }

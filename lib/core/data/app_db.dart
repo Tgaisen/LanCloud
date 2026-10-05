@@ -199,8 +199,8 @@ class AppDb {
               'account': '',
               'name': '${row['name']}',
               'ref': '${row['ref']}',
-              'created_at': row['created_at'] ??
-                  DateTime.now().millisecondsSinceEpoch,
+              'created_at':
+                  row['created_at'] ?? DateTime.now().millisecondsSinceEpoch,
             });
           }
           await db.delete(
@@ -211,9 +211,7 @@ class AppDb {
         }
         if (oldVersion < 6) {
           // 快速访问记录所在路径，用于首页副标题
-          await db.execute(
-            'ALTER TABLE pins ADD COLUMN path TEXT DEFAULT ""',
-          );
+          await db.execute('ALTER TABLE pins ADD COLUMN path TEXT DEFAULT ""');
         }
       },
     );
@@ -278,16 +276,12 @@ class AppDb {
     String path = '',
   }) async {
     final database = await db;
-    await database.insert(
-      'downloads',
-      {
-        'ref': ref,
-        'name': name,
-        'path': path,
-        'created_at': DateTime.now().millisecondsSinceEpoch,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await database.insert('downloads', {
+      'ref': ref,
+      'name': name,
+      'path': path,
+      'created_at': DateTime.now().millisecondsSinceEpoch,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<void> removeDownloaded(List<String> refs) async {
@@ -342,11 +336,7 @@ class AppDb {
     final database = await db;
     await database.update(
       'favorites',
-      {
-        'title': ?title,
-        'ref': ?ref,
-        'pwd': ?pwd,
-      },
+      {'title': ?title, 'ref': ?ref, 'pwd': ?pwd},
       where: 'id = ?',
       whereArgs: [id],
     );
@@ -367,7 +357,11 @@ class AppDb {
 
   Future<bool> isFavorite(String ref) async {
     final database = await db;
-    final rows = await database.query('favorites', where: 'ref = ?', whereArgs: [ref]);
+    final rows = await database.query(
+      'favorites',
+      where: 'ref = ?',
+      whereArgs: [ref],
+    );
     return rows.isNotEmpty;
   }
 
@@ -380,17 +374,19 @@ class AppDb {
       orderBy: 'created_at DESC',
     );
     return rows
-        .map((r) => FavoriteItem(
-              id: r['id'] as int,
-              kind: '${r['kind']}',
-              name: '${r['name']}',
-              ref: '${r['ref']}',
-              pwd: '${r['pwd']}',
-              size: '${r['size']}',
-              title: '${r['title'] ?? ''}',
-              sharer: '${r['sharer'] ?? ''}',
-              createdAt: r['created_at'] as int,
-            ))
+        .map(
+          (r) => FavoriteItem(
+            id: r['id'] as int,
+            kind: '${r['kind']}',
+            name: '${r['name']}',
+            ref: '${r['ref']}',
+            pwd: '${r['pwd']}',
+            size: '${r['size']}',
+            title: '${r['title'] ?? ''}',
+            sharer: '${r['sharer'] ?? ''}',
+            createdAt: r['created_at'] as int,
+          ),
+        )
         .toList();
   }
 
@@ -406,14 +402,16 @@ class AppDb {
       orderBy: 'created_at DESC',
     );
     return rows
-        .map((r) => PinItem(
-              id: r['id'] as int,
-              account: '${r['account']}',
-              name: '${r['name']}',
-              ref: '${r['ref']}',
-              path: '${r['path'] ?? ''}',
-              createdAt: r['created_at'] as int,
-            ))
+        .map(
+          (r) => PinItem(
+            id: r['id'] as int,
+            account: '${r['account']}',
+            name: '${r['name']}',
+            ref: '${r['ref']}',
+            path: '${r['path'] ?? ''}',
+            createdAt: r['created_at'] as int,
+          ),
+        )
         .toList();
   }
 
@@ -544,21 +542,27 @@ class AppDb {
       limit: limit,
     );
     return rows
-        .map((r) => RecentItem(
-              id: r['id'] as int,
-              account: '${r['account']}',
-              kind: '${r['kind']}',
-              name: '${r['name']}',
-              ref: '${r['ref']}',
-              pwd: '${r['pwd']}',
-              openedAt: r['opened_at'] as int,
-            ))
+        .map(
+          (r) => RecentItem(
+            id: r['id'] as int,
+            account: '${r['account']}',
+            kind: '${r['kind']}',
+            name: '${r['name']}',
+            ref: '${r['ref']}',
+            pwd: '${r['pwd']}',
+            openedAt: r['opened_at'] as int,
+          ),
+        )
         .toList();
   }
 
   Future<void> clearRecents(String account) async {
     final database = await db;
-    await database.delete('recents', where: 'account = ?', whereArgs: [account]);
+    await database.delete(
+      'recents',
+      where: 'account = ?',
+      whereArgs: [account],
+    );
     _touch();
   }
 
@@ -624,17 +628,13 @@ class AppDb {
               .toList();
           rows = rows.where((row) => '${row['kind']}' != 'pinFolder').toList();
           for (final pin in legacyPins) {
-            await txn.insert(
-              'pins',
-              {
-                'account': '${pin['account'] ?? ''}',
-                'name': '${pin['name'] ?? ''}',
-                'ref': '${pin['ref'] ?? ''}',
-                'created_at': pin['created_at'] ??
-                    DateTime.now().millisecondsSinceEpoch,
-              },
-              conflictAlgorithm: ConflictAlgorithm.replace,
-            );
+            await txn.insert('pins', {
+              'account': '${pin['account'] ?? ''}',
+              'name': '${pin['name'] ?? ''}',
+              'ref': '${pin['ref'] ?? ''}',
+              'created_at':
+                  pin['created_at'] ?? DateTime.now().millisecondsSinceEpoch,
+            }, conflictAlgorithm: ConflictAlgorithm.replace);
           }
         }
         final columns = _tableColumns[table]!;

@@ -64,15 +64,16 @@ class WebdavClient {
     this.username = '',
     this.password = '',
     Dio? dio,
-  })  : baseUri = normalizeBase(url),
-        _dio = dio ??
-            Dio(
-              BaseOptions(
-                connectTimeout: const Duration(seconds: 15),
-                receiveTimeout: const Duration(seconds: 60),
-                sendTimeout: const Duration(seconds: 60),
-              ),
-            );
+  }) : baseUri = normalizeBase(url),
+       _dio =
+           dio ??
+           Dio(
+             BaseOptions(
+               connectTimeout: const Duration(seconds: 15),
+               receiveTimeout: const Duration(seconds: 60),
+               sendTimeout: const Duration(seconds: 60),
+             ),
+           );
 
   final Uri baseUri;
   final String username;
@@ -90,10 +91,10 @@ class WebdavClient {
   }
 
   Map<String, String> get _headers => {
-        if (username.isNotEmpty)
-          'Authorization':
-              'Basic ${base64Encode(utf8.encode('$username:$password'))}',
-      };
+    if (username.isNotEmpty)
+      'Authorization':
+          'Basic ${base64Encode(utf8.encode('$username:$password'))}',
+  };
 
   /// Android 17（targetSdk 37）起访问局域网需要「本地网络」权限：
   /// 只对局域网地址请求，公网 WebDAV 保持原样。
@@ -111,59 +112,56 @@ class WebdavClient {
   Uri _fileUri(String name) => baseUri.resolve(name);
 
   Future<void> check() => _guard(() async {
-        final response = await _request(
-          'PROPFIND',
-          baseUri,
-          headers: const {'Depth': '0'},
-          plain: true,
-        );
-        _ensureOk(response, '连接失败');
-      });
+    final response = await _request(
+      'PROPFIND',
+      baseUri,
+      headers: const {'Depth': '0'},
+      plain: true,
+    );
+    _ensureOk(response, '连接失败');
+  });
 
   Future<List<WebdavEntry>> list() => _guard(() async {
-        final response = await _request(
-          'PROPFIND',
-          baseUri,
-          headers: const {'Depth': '1'},
-          plain: true,
-        );
-        _ensureOk(response, '读取云端目录失败');
-        return parsePropfind('${response.data}', baseUri);
-      });
+    final response = await _request(
+      'PROPFIND',
+      baseUri,
+      headers: const {'Depth': '1'},
+      plain: true,
+    );
+    _ensureOk(response, '读取云端目录失败');
+    return parsePropfind('${response.data}', baseUri);
+  });
 
   Future<void> upload(String name, String content) => _guard(() async {
-        final response = await _dio.putUri(
-          _fileUri(name),
-          data: content,
-          options: Options(
-            headers: {
-              ..._headers,
-              'Content-Type': 'application/json; charset=utf-8',
-            },
-          ),
-        );
-        _ensureOk(response, '上传失败');
-      });
+    final response = await _dio.putUri(
+      _fileUri(name),
+      data: content,
+      options: Options(
+        headers: {
+          ..._headers,
+          'Content-Type': 'application/json; charset=utf-8',
+        },
+      ),
+    );
+    _ensureOk(response, '上传失败');
+  });
 
   Future<String> download(String name) => _guard(() async {
-        final response = await _dio.getUri<String>(
-          _fileUri(name),
-          options: Options(
-            headers: _headers,
-            responseType: ResponseType.plain,
-          ),
-        );
-        _ensureOk(response, '下载失败');
-        return '${response.data}';
-      });
+    final response = await _dio.getUri<String>(
+      _fileUri(name),
+      options: Options(headers: _headers, responseType: ResponseType.plain),
+    );
+    _ensureOk(response, '下载失败');
+    return '${response.data}';
+  });
 
   Future<void> delete(String name) => _guard(() async {
-        final response = await _dio.deleteUri(
-          _fileUri(name),
-          options: Options(headers: _headers),
-        );
-        _ensureOk(response, '删除失败');
-      });
+    final response = await _dio.deleteUri(
+      _fileUri(name),
+      options: Options(headers: _headers),
+    );
+    _ensureOk(response, '删除失败');
+  });
 
   Future<Response<dynamic>> _request(
     String method,

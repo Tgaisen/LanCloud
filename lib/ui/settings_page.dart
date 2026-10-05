@@ -44,10 +44,12 @@ class _SettingsPageState extends State<SettingsPage>
     with WidgetsBindingObserver {
   bool _searching = false;
   bool? _notifGranted;
+
   /// 动态取色支持情况：进入设置页探测一次（带缓存），不放在会随
   /// 搜索 / 滚动重建的 tile 里反复查询。
   bool? _dynamicColorSupported;
   PermissionSnapshot? _permissions;
+
   /// 默认下载目录的真实路径（副标题里显示，进入设置时读一次）。
   String? _defaultDownloadDir;
   final TextEditingController _search = TextEditingController();
@@ -69,8 +71,7 @@ class _SettingsPageState extends State<SettingsPage>
 
   Future<void> _loadDefaultDownloadDir() async {
     try {
-      final path =
-          await context.read<AppController>().defaultDownloadDirPath();
+      final path = await context.read<AppController>().defaultDownloadDirPath();
       if (mounted) setState(() => _defaultDownloadDir = path);
     } catch (_) {
       // 取不到路径时保持占位符，不影响设置页其余内容
@@ -183,15 +184,15 @@ class _SettingsPageState extends State<SettingsPage>
   List<_Entry> _entries(AppController app) {
     final l10n = context.l10n;
     String themeModeName() => switch (app.settings.themeMode) {
-          'light' => l10n.light,
-          'dark' => l10n.dark,
-          _ => l10n.followSystem,
-        };
+      'light' => l10n.light,
+      'dark' => l10n.dark,
+      _ => l10n.followSystem,
+    };
     String languageName() => switch (app.settings.language) {
-          'zh' => l10n.chinese,
-          'en' => l10n.english,
-          _ => l10n.followSystem,
-        };
+      'zh' => l10n.chinese,
+      'en' => l10n.english,
+      _ => l10n.followSystem,
+    };
     return [
       _Entry(
         id: 'language',
@@ -268,8 +269,7 @@ class _SettingsPageState extends State<SettingsPage>
                   : context.l10n.dynamicColorUnsupported,
             ),
             value: supported && app.settings.dynamicColor,
-            onChanged:
-                supported ? (value) => app.setDynamicColor(value) : null,
+            onChanged: supported ? (value) => app.setDynamicColor(value) : null,
           );
         },
       ),
@@ -376,7 +376,9 @@ class _SettingsPageState extends State<SettingsPage>
       _Entry(
         id: 'launch_page',
         title: l10n.launchPage,
-        subtitle: app.settings.launchPage == 'drive' ? l10n.tabDrive : l10n.tabHome,
+        subtitle: app.settings.launchPage == 'drive'
+            ? l10n.tabDrive
+            : l10n.tabHome,
         keywords: l10n.launchPageKeywords.split(' '),
         category: 'behavior',
         build: (context, app) => ListTile(
@@ -485,8 +487,8 @@ class _SettingsPageState extends State<SettingsPage>
         subtitle: _notifGranted == null
             ? l10n.notifPermissionChecking
             : (_notifGranted!
-                ? l10n.notifPermissionGranted
-                : l10n.notifPermissionDenied),
+                  ? l10n.notifPermissionGranted
+                  : l10n.notifPermissionDenied),
         keywords: l10n.notifPermissionKeywords.split(' '),
         category: 'notifications',
         build: (context, app) => ListTile(
@@ -496,8 +498,8 @@ class _SettingsPageState extends State<SettingsPage>
             _notifGranted == null
                 ? context.l10n.notifPermissionChecking
                 : (_notifGranted!
-                    ? context.l10n.notifPermissionGranted
-                    : context.l10n.notifPermissionDenied),
+                      ? context.l10n.notifPermissionGranted
+                      : context.l10n.notifPermissionDenied),
           ),
           onTap: _requestNotifPermission,
         ),
@@ -585,8 +587,9 @@ class _SettingsPageState extends State<SettingsPage>
       _Entry(
         id: 'api_host',
         title: l10n.apiHost,
-        subtitle:
-            app.settings.apiHost == 'up' ? 'up.woozooo.com' : 'pc.woozooo.com',
+        subtitle: app.settings.apiHost == 'up'
+            ? 'up.woozooo.com'
+            : 'pc.woozooo.com',
         keywords: l10n.apiHostKeywords.split(' '),
         category: 'advanced',
         build: (context, app) => ListTile(
@@ -672,9 +675,9 @@ class _SettingsPageState extends State<SettingsPage>
           title: Text(context.l10n.backupAndRestore),
           subtitle: Text(context.l10n.backupAndRestoreSubtitle),
           trailing: const Icon(Icons.chevron_right),
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const BackupPage()),
-          ),
+          onTap: () =>
+              Navigator.of(context)
+                  .push(MaterialPageRoute(builder: (_) => const BackupPage())),
         ),
       ),
       _Entry(
@@ -709,9 +712,8 @@ class _SettingsPageState extends State<SettingsPage>
           onTap: () async {
             await app.db.clearRecents(app.activeUid ?? '');
             if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(context.l10n.cleared)),
-              );
+              ScaffoldMessenger.of(context)
+                  .showSnackBar(SnackBar(content: Text(context.l10n.cleared)));
             }
           },
         ),
@@ -752,13 +754,13 @@ class _SettingsPageState extends State<SettingsPage>
   }
 
   String _seedName(BuildContext context, int seed) => switch (seed) {
-        0xFF2E6BE6 => context.l10n.classicBlue,
-        0xFF00897B => context.l10n.teal,
-        0xFF7B4DFF => context.l10n.violet,
-        0xFFE5533D => context.l10n.vermilion,
-        0xFF3F7D20 => context.l10n.olive,
-        _ => context.l10n.custom,
-      };
+    0xFF2E6BE6 => context.l10n.classicBlue,
+    0xFF00897B => context.l10n.teal,
+    0xFF7B4DFF => context.l10n.violet,
+    0xFFE5533D => context.l10n.vermilion,
+    0xFF3F7D20 => context.l10n.olive,
+    _ => context.l10n.custom,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -768,11 +770,13 @@ class _SettingsPageState extends State<SettingsPage>
     final query = _search.text.trim().toLowerCase();
 
     final matching = entries
-        .where((e) =>
-            e.title.toLowerCase().contains(query) ||
-            e.subtitle.toLowerCase().contains(query) ||
-            _categoryName(e.category).toLowerCase().contains(query) ||
-            e.keywords.any((k) => k.toLowerCase().contains(query)))
+        .where(
+          (e) =>
+              e.title.toLowerCase().contains(query) ||
+              e.subtitle.toLowerCase().contains(query) ||
+              _categoryName(e.category).toLowerCase().contains(query) ||
+              e.keywords.any((k) => k.toLowerCase().contains(query)),
+        )
         .toList();
 
     return TopBarOverlayScaffold(
@@ -865,36 +869,35 @@ class _SettingsPageState extends State<SettingsPage>
   }
 
   String _categoryName(String id) => switch (id) {
-        'appearance' => context.l10n.categoryAppearance,
-        'behavior' => context.l10n.categoryBehavior,
-        'notifications' => context.l10n.notifications,
-        'permissions' => context.l10n.categoryPermissions,
-        'privacy' => context.l10n.categoryPrivacy,
-        'connection' => context.l10n.categoryConnection,
-        'advanced' => context.l10n.categoryAdvanced,
-        'data' => context.l10n.categoryData,
-        _ => id,
-      };
+    'appearance' => context.l10n.categoryAppearance,
+    'behavior' => context.l10n.categoryBehavior,
+    'notifications' => context.l10n.notifications,
+    'permissions' => context.l10n.categoryPermissions,
+    'privacy' => context.l10n.categoryPrivacy,
+    'connection' => context.l10n.categoryConnection,
+    'advanced' => context.l10n.categoryAdvanced,
+    'data' => context.l10n.categoryData,
+    _ => id,
+  };
 
   String _installStatusText() => switch (_permissions?.install) {
-        PermissionState.granted => context.l10n.permissionInstallGranted,
-        PermissionState.denied => context.l10n.permissionInstallDenied,
-        _ => context.l10n.permissionChecking,
-      };
+    PermissionState.granted => context.l10n.permissionInstallGranted,
+    PermissionState.denied => context.l10n.permissionInstallDenied,
+    _ => context.l10n.permissionChecking,
+  };
 
   String _batteryStatusText() => switch (_permissions?.battery) {
-        PermissionState.granted => context.l10n.permissionBatteryGranted,
-        PermissionState.denied => context.l10n.permissionBatteryRestricted,
-        _ => context.l10n.permissionChecking,
-      };
+    PermissionState.granted => context.l10n.permissionBatteryGranted,
+    PermissionState.denied => context.l10n.permissionBatteryRestricted,
+    _ => context.l10n.permissionChecking,
+  };
 
   Future<void> _openInstallSettings() async {
     final l10n = context.l10n;
     final ok = await AppPermissions.instance.openInstallSettings();
     if (!ok && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.permissionOpenFailed)),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(l10n.permissionOpenFailed)));
     }
   }
 
@@ -903,9 +906,8 @@ class _SettingsPageState extends State<SettingsPage>
     final l10n = context.l10n;
     final ok = await AppPermissions.instance.openDefaultLinkSettings();
     if (!ok && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.permissionOpenFailed)),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(l10n.permissionOpenFailed)));
     }
   }
 
@@ -917,9 +919,7 @@ class _SettingsPageState extends State<SettingsPage>
       final file = await AppLog.instance.exportBundle();
       if (!mounted) return;
       if (file == null) {
-        messenger.showSnackBar(
-          SnackBar(content: Text(l10n.exportLogsEmpty)),
-        );
+        messenger.showSnackBar(SnackBar(content: Text(l10n.exportLogsEmpty)));
         return;
       }
       final ok = await SystemShare.shareFile(
@@ -928,15 +928,11 @@ class _SettingsPageState extends State<SettingsPage>
         mime: 'text/plain',
       );
       if (!ok && mounted) {
-        messenger.showSnackBar(
-          SnackBar(content: Text(l10n.exportLogsFailed)),
-        );
+        messenger.showSnackBar(SnackBar(content: Text(l10n.exportLogsFailed)));
       }
     } catch (_) {
       if (mounted) {
-        messenger.showSnackBar(
-          SnackBar(content: Text(l10n.exportLogsFailed)),
-        );
+        messenger.showSnackBar(SnackBar(content: Text(l10n.exportLogsFailed)));
       }
     }
   }
@@ -945,9 +941,8 @@ class _SettingsPageState extends State<SettingsPage>
     final l10n = context.l10n;
     final ok = await AppPermissions.instance.requestBattery();
     if (!ok && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.permissionOpenFailed)),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(l10n.permissionOpenFailed)));
     }
   }
 
@@ -1018,23 +1013,19 @@ class _SettingsPageState extends State<SettingsPage>
     }
     return [
       SegmentedList(
-        children: [
-          for (final entry in matching) entry.build(context, app),
-        ],
+        children: [for (final entry in matching) entry.build(context, app)],
       ),
     ];
   }
 
   Widget _sectionTitle(BuildContext context, String name) => Padding(
-        padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
-        child: Text(
-          name,
-          style: Theme.of(context)
-              .textTheme
-              .titleSmall
-              ?.copyWith(color: Theme.of(context).colorScheme.primary),
-        ),
-      );
+    padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
+    child: Text(
+      name,
+      style: Theme.of(context).textTheme.titleSmall
+          ?.copyWith(color: Theme.of(context).colorScheme.primary),
+    ),
+  );
 
   static Future<void> _changeDownloadDir(BuildContext context) async {
     final app = context.read<AppController>();
@@ -1139,10 +1130,7 @@ class _SettingsPageState extends State<SettingsPage>
     return _pickRadio(
       context,
       title: l10n.homeFolderOpen,
-      options: [
-        ('page', l10n.openInNewPage),
-        ('drive', l10n.openInDriveTab),
-      ],
+      options: [('page', l10n.openInNewPage), ('drive', l10n.openInDriveTab)],
       current: app.settings.homeFolderOpenMode,
       onSelect: (value) => app.setHomeFolderOpenMode(value),
     );
@@ -1202,10 +1190,7 @@ class _SettingsPageState extends State<SettingsPage>
     return _pickRadio(
       context,
       title: context.l10n.apiHost,
-      options: const [
-        ('pc', 'pc.woozooo.com'),
-        ('up', 'up.woozooo.com'),
-      ],
+      options: const [('pc', 'pc.woozooo.com'), ('up', 'up.woozooo.com')],
       current: app.settings.apiHost,
       onSelect: (value) => app.setApiHost(value),
     );
@@ -1259,8 +1244,8 @@ class _SettingsPageState extends State<SettingsPage>
             child: Text(
               l10n.requestIntervalHint,
               style: Theme.of(dialogContext).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(dialogContext).colorScheme.outline,
-                  ),
+                color: Theme.of(dialogContext).colorScheme.outline,
+              ),
             ),
           ),
           // 不提供「不间隔」：过小间隔容易触发服务端限流
@@ -1280,12 +1265,16 @@ class _SettingsPageState extends State<SettingsPage>
     );
   }
 
-  static Future<void> _pickConcurrency(BuildContext context, bool upload) async {
+  static Future<void> _pickConcurrency(
+    BuildContext context,
+    bool upload,
+  ) async {
     final app = context.read<AppController>();
     final l10n = context.l10n;
     final max = upload ? 3 : 5;
-    final current =
-        upload ? app.settings.maxUploads : app.settings.maxDownloads;
+    final current = upload
+        ? app.settings.maxUploads
+        : app.settings.maxDownloads;
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => SimpleDialog(
@@ -1435,8 +1424,7 @@ class _AdvancedPage extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    onTap: () =>
-                        _SettingsPageState._editUploadDomain(context),
+                    onTap: () => _SettingsPageState._editUploadDomain(context),
                   ),
                   ListTile(
                     leading: const Icon(Icons.link_outlined),
@@ -1448,8 +1436,7 @@ class _AdvancedPage extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    onTap: () =>
-                        _SettingsPageState._editShareDomain(context),
+                    onTap: () => _SettingsPageState._editShareDomain(context),
                   ),
                   ListTile(
                     leading: const Icon(Icons.badge_outlined),

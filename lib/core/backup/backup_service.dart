@@ -16,11 +16,12 @@ const String backupAppTag = 'lancloud';
 /// 备份与恢复：本地 JSON 文件 + WebDAV 云端。
 class BackupService {
   BackupService(this.app, {WebdavStore? webdav})
-      : webdav = webdav ?? WebdavStore();
+    : webdav = webdav ?? WebdavStore();
 
   static BackupService? _instance;
 
-  static BackupService of(AppController app) => _instance ??= BackupService(app);
+  static BackupService of(AppController app) =>
+      _instance ??= BackupService(app);
 
   /// 测试注入用。
   static set instance(BackupService? value) => _instance = value;
@@ -142,17 +143,22 @@ class BackupService {
     await webdav.load();
     if (!webdav.configured) throw const BackupException('请先填写 WebDAV 地址');
     final entries = await _client().list();
-    final backups = entries
-        .where((e) =>
-            e.name == latestName ||
-            (e.name.startsWith(filePrefix) && e.name.endsWith('.json')))
-        .toList()
-      ..sort((a, b) {
-        if (a.name == latestName) return -1;
-        if (b.name == latestName) return 1;
-        return (b.modified ?? DateTime.fromMillisecondsSinceEpoch(0))
-            .compareTo(a.modified ?? DateTime.fromMillisecondsSinceEpoch(0));
-      });
+    final backups =
+        entries
+            .where(
+              (e) =>
+                  e.name == latestName ||
+                  (e.name.startsWith(filePrefix) && e.name.endsWith('.json')),
+            )
+            .toList()
+          ..sort((a, b) {
+            if (a.name == latestName) return -1;
+            if (b.name == latestName) return 1;
+            return (b.modified ?? DateTime.fromMillisecondsSinceEpoch(0))
+                .compareTo(
+                  a.modified ?? DateTime.fromMillisecondsSinceEpoch(0),
+                );
+          });
     return backups;
   }
 
@@ -176,8 +182,7 @@ class BackupService {
         ? const Duration(days: 7)
         : const Duration(days: 1);
     final last = DateTime.fromMillisecondsSinceEpoch(webdav.lastBackupAt);
-    if (webdav.lastBackupAt > 0 &&
-        DateTime.now().difference(last) < period) {
+    if (webdav.lastBackupAt > 0 && DateTime.now().difference(last) < period) {
       return;
     }
     try {
@@ -188,10 +193,10 @@ class BackupService {
   }
 
   WebdavClient _client() => WebdavClient(
-        url: webdav.url,
-        username: webdav.username,
-        password: webdav.password,
-      );
+    url: webdav.url,
+    username: webdav.username,
+    password: webdav.password,
+  );
 
   /// 云端只保留最新的 maxRemoteFiles 份带时间戳的备份。
   Future<void> _prune(WebdavClient client) async {
@@ -201,11 +206,18 @@ class BackupService {
     } catch (_) {
       return;
     }
-    final backups = entries
-        .where((e) => e.name.startsWith(filePrefix) && e.name.endsWith('.json'))
-        .toList()
-      ..sort((a, b) => (b.modified ?? DateTime.fromMillisecondsSinceEpoch(0))
-          .compareTo(a.modified ?? DateTime.fromMillisecondsSinceEpoch(0)));
+    final backups =
+        entries
+            .where(
+              (e) => e.name.startsWith(filePrefix) && e.name.endsWith('.json'),
+            )
+            .toList()
+          ..sort(
+            (a, b) => (b.modified ?? DateTime.fromMillisecondsSinceEpoch(0))
+                .compareTo(
+                  a.modified ?? DateTime.fromMillisecondsSinceEpoch(0),
+                ),
+          );
     for (final entry in backups.skip(maxRemoteFiles)) {
       try {
         await client.delete(entry.name);

@@ -33,6 +33,7 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
   final Set<String> _selected = {};
   final TextEditingController _search = TextEditingController();
   String _filter = '';
+
   /// 文件分页：解析时只取第一页，进页面后按「自动加载全部目录内容」
   /// 设置与滚动位置继续加载（与网盘页一致）。
   final ScrollController _scroll = ScrollController();
@@ -40,6 +41,7 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
   int _page = 1;
   late bool _hasMore = widget.folder.hasMore;
   bool _loadingMore = false;
+
   /// 「自动加载全部目录内容」打开时后台把剩余分页补完。
   bool _autoLoading = false;
 
@@ -174,9 +176,7 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
   }
 
   Future<void> _downloadSelected() async {
-    final files = _files
-        .where((f) => _selected.contains(f.url))
-        .toList();
+    final files = _files.where((f) => _selected.contains(f.url)).toList();
     if (files.isEmpty) return;
     await downloadShareFiles(
       context,
@@ -188,21 +188,14 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
   }
 
   Future<void> _copySelectedLinks() async {
-    final files = _files
-        .where((f) => _selected.contains(f.url))
-        .toList();
+    final files = _files.where((f) => _selected.contains(f.url)).toList();
     if (files.isEmpty) return;
-    await copyText(
-      context,
-      files.map((f) => '${f.name} ${f.url}').join('\n'),
-    );
+    await copyText(context, files.map((f) => '${f.name} ${f.url}').join('\n'));
   }
 
   Future<void> _favoriteSelected() async {
     final app = context.read<AppController>();
-    final files = _files
-        .where((f) => _selected.contains(f.url))
-        .toList();
+    final files = _files.where((f) => _selected.contains(f.url)).toList();
     for (final file in files) {
       await app.db.addFavorite(
         kind: 'shareFile',
@@ -229,9 +222,8 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
       sharer: widget.folder.sharer,
     );
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.addedToFavorites)),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(context.l10n.addedToFavorites)));
     }
   }
 
@@ -242,47 +234,47 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-            // 原顶栏的多选入口移到这里
-            ListTile(
-              leading: const Icon(Icons.done_all),
-              title: Text(context.l10n.multiSelect),
-              onTap: () {
-                Navigator.of(context).pop();
-                _toggleSelecting();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.star_outline),
-              title: Text(context.l10n.favorite),
-              onTap: () {
-                Navigator.of(context).pop();
-                _favoriteFolder();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.copy),
-              title: Text(context.l10n.copyLink),
-              onTap: () {
-                Navigator.of(context).pop();
-                copyText(context, widget.link);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.open_in_new),
-              title: Text(context.l10n.openLink),
-              onTap: () {
-                Navigator.of(context).pop();
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => WebPage(
-                      title: widget.folder.name,
-                      url: widget.link,
-                      cookie: app.activeAccount?.cookie,
-                    ),
+          // 原顶栏的多选入口移到这里
+          ListTile(
+            leading: const Icon(Icons.done_all),
+            title: Text(context.l10n.multiSelect),
+            onTap: () {
+              Navigator.of(context).pop();
+              _toggleSelecting();
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.star_outline),
+            title: Text(context.l10n.favorite),
+            onTap: () {
+              Navigator.of(context).pop();
+              _favoriteFolder();
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.copy),
+            title: Text(context.l10n.copyLink),
+            onTap: () {
+              Navigator.of(context).pop();
+              copyText(context, widget.link);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.open_in_new),
+            title: Text(context.l10n.openLink),
+            onTap: () {
+              Navigator.of(context).pop();
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => WebPage(
+                    title: widget.folder.name,
+                    url: widget.link,
+                    cookie: app.activeAccount?.cookie,
                   ),
-                );
-              },
-            ),
+                ),
+              );
+            },
+          ),
         ],
       ),
     );
@@ -293,25 +285,23 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
     final l10n = context.l10n;
     showLoadingDialog(context, l10n.resolving);
     try {
-      final detail =
-          await app.publicClient.resolveFolderShare(sub.url, pwd: widget.pwd);
+      final detail = await app.publicClient.resolveFolderShare(
+        sub.url,
+        pwd: widget.pwd,
+      );
       if (!mounted) return;
       Navigator.of(context).pop();
       await Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => ShareFolderPage(
-            folder: detail,
-            link: sub.url,
-            pwd: widget.pwd,
-          ),
+          builder: (_) =>
+              ShareFolderPage(folder: detail, link: sub.url, pwd: widget.pwd),
         ),
       );
     } on LanzouException catch (e) {
       if (!mounted) return;
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message)),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.message)));
     } catch (_) {
       if (!mounted) return;
       Navigator.of(context).pop();
@@ -326,13 +316,11 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
     final folders = query.isEmpty
         ? folder.folders
         : folder.folders
-            .where((f) => f.name.toLowerCase().contains(query))
-            .toList();
+              .where((f) => f.name.toLowerCase().contains(query))
+              .toList();
     final files = query.isEmpty
         ? _files
-        : _files
-            .where((f) => f.name.toLowerCase().contains(query))
-            .toList();
+        : _files.where((f) => f.name.toLowerCase().contains(query)).toList();
     final isEmpty =
         _files.isEmpty && folder.folders.isEmpty && folder.desc.isEmpty;
     return PopScope(
@@ -358,24 +346,24 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
                   onPressed: _toggleSelecting,
                 )
               : (_searching
-                  ? IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: _exitSearch,
-                    )
-                  : const AppBarBackButton()),
+                    ? IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: _exitSearch,
+                      )
+                    : const AppBarBackButton()),
           title: _selecting
               ? Text(l10n.selectedCount(_selected.length))
               : (_searching
-                  ? TextField(
-                      controller: _search,
-                      autofocus: true,
-                      decoration: InputDecoration(
-                        hintText: l10n.searchCurrentFolder,
-                        border: InputBorder.none,
-                      ),
-                      onChanged: (value) => setState(() => _filter = value),
-                    )
-                  : Text(folder.name)),
+                    ? TextField(
+                        controller: _search,
+                        autofocus: true,
+                        decoration: InputDecoration(
+                          hintText: l10n.searchCurrentFolder,
+                          border: InputBorder.none,
+                        ),
+                        onChanged: (value) => setState(() => _filter = value),
+                      )
+                    : Text(folder.name)),
           actions: _selecting
               ? [
                   IconButton(
@@ -390,19 +378,19 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
                   ),
                 ]
               : (_searching
-                  ? const <Widget>[]
-                  : [
-                      IconButton(
-                        tooltip: l10n.search,
-                        icon: const Icon(Icons.search),
-                        onPressed: () => setState(() => _searching = true),
-                      ),
-                      IconButton(
-                        tooltip: l10n.moreActions,
-                        icon: const Icon(Icons.more_vert),
-                        onPressed: _showMenu,
-                      ),
-                    ]),
+                    ? const <Widget>[]
+                    : [
+                        IconButton(
+                          tooltip: l10n.search,
+                          icon: const Icon(Icons.search),
+                          onPressed: () => setState(() => _searching = true),
+                        ),
+                        IconButton(
+                          tooltip: l10n.moreActions,
+                          icon: const Icon(Icons.more_vert),
+                          onPressed: _showMenu,
+                        ),
+                      ]),
         ),
         slivers: [
           if (isEmpty)
@@ -543,12 +531,9 @@ class _SectionTitle extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
       child: Text(
         text,
-        style: Theme.of(context)
-            .textTheme
-            .titleSmall
+        style: Theme.of(context).textTheme.titleSmall
             ?.copyWith(color: Theme.of(context).colorScheme.primary),
       ),
     );
   }
 }
-

@@ -46,9 +46,9 @@ class _WebLoginPageState extends State<WebLoginPage> {
           map[cookie.name] = cookie.value!;
         }
       }
-      final header =
-          map.entries.map((e) => '${e.key}=${e.value}').join('; ');
-      if ((map['ylogin'] ?? '').isEmpty || (map['phpdisk_info'] ?? '').isEmpty) {
+      final header = map.entries.map((e) => '${e.key}=${e.value}').join('; ');
+      if ((map['ylogin'] ?? '').isEmpty ||
+          (map['phpdisk_info'] ?? '').isEmpty) {
         setState(() {
           _checking = false;
           _error = context.l10n.noLoginDetected;
@@ -148,7 +148,11 @@ class _WebLoginPageState extends State<WebLoginPage> {
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
               child: Row(
                 children: [
-                  Icon(Icons.info_outline, size: 18, color: scheme.onErrorContainer),
+                  Icon(
+                    Icons.info_outline,
+                    size: 18,
+                    color: scheme.onErrorContainer,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(

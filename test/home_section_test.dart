@@ -14,12 +14,12 @@ void main() {
         home: Scaffold(
           body: SingleChildScrollView(
             child: StatefulBuilder(
-            builder: (context, setState) => SectionCard(
-              title: '快速访问',
-              expanded: expanded,
-              onToggle: () => setState(() => expanded = !expanded),
-              child: const Text('内容'),
-            ),
+              builder: (context, setState) => SectionCard(
+                title: '快速访问',
+                expanded: expanded,
+                onToggle: () => setState(() => expanded = !expanded),
+                child: const Text('内容'),
+              ),
             ),
           ),
         ),
@@ -56,12 +56,12 @@ void main() {
         home: Scaffold(
           body: SingleChildScrollView(
             child: StatefulBuilder(
-            builder: (context, setState) => SectionCard(
-              title: '最近使用',
-              expanded: expanded,
-              onToggle: () => setState(() => expanded = !expanded),
-              child: const SizedBox(height: 200, width: 200),
-            ),
+              builder: (context, setState) => SectionCard(
+                title: '最近使用',
+                expanded: expanded,
+                onToggle: () => setState(() => expanded = !expanded),
+                child: const SizedBox(height: 200, width: 200),
+              ),
             ),
           ),
         ),

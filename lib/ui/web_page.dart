@@ -60,8 +60,9 @@ class _WebPageState extends State<WebPage> {
     return Scaffold(
       // 大屏（横屏 / 平板）：顶栏留在 navigation area 的 surfaceContainer 上，
       // 内容套 MD3E 圆角 surface 卡片；小屏保持整页铺满
-      backgroundColor:
-          large ? Theme.of(context).colorScheme.surfaceContainer : null,
+      backgroundColor: large
+          ? Theme.of(context).colorScheme.surfaceContainer
+          : null,
       appBar: AppBar(
         backgroundColor: large ? Colors.transparent : null,
         scrolledUnderElevation: 0,

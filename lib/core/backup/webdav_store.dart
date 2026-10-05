@@ -22,6 +22,7 @@ class WebdavStore {
   /// daily | weekly
   String interval = 'daily';
   bool includeCookies = false;
+
   /// 备份时是否包含 WebDAV 地址 / 用户名 / 密码（默认关闭）。
   bool includeAccount = false;
   int lastBackupAt = 0;

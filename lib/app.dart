@@ -44,15 +44,13 @@ class LanCloudApp extends StatelessWidget {
     return DynamicColorBuilder(
       builder: (lightDynamic, darkDynamic) {
         ThemeData buildTheme(Brightness brightness) => buildLanCloudTheme(
-              brightness: brightness,
-              seed: seed,
-              oledDark: oledDark,
-              dynamicScheme: useDynamicColor
-                  ? (brightness == Brightness.dark
-                      ? darkDynamic
-                      : lightDynamic)
-                  : null,
-            );
+          brightness: brightness,
+          seed: seed,
+          oledDark: oledDark,
+          dynamicScheme: useDynamicColor
+              ? (brightness == Brightness.dark ? darkDynamic : lightDynamic)
+              : null,
+        );
         return MaterialApp(
           // 系统「最近任务」里的应用名（桌面图标名由 Android 资源 app_name 决定，
           // 任务卡片这里是 Flutter 的 Title 设置的，要跟着语言走）
@@ -61,8 +59,8 @@ class LanCloudApp extends StatelessWidget {
           locale: language == 'zh'
               ? const Locale('zh')
               : language == 'en'
-                  ? const Locale('en')
-                  : null,
+              ? const Locale('en')
+              : null,
           supportedLocales: AppLocalizations.supportedLocales,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           theme: buildTheme(Brightness.light),
@@ -70,8 +68,8 @@ class LanCloudApp extends StatelessWidget {
           themeMode: mode == 'light'
               ? ThemeMode.light
               : mode == 'dark'
-                  ? ThemeMode.dark
-                  : ThemeMode.system,
+              ? ThemeMode.dark
+              : ThemeMode.system,
           // 全局 BouncingScrollPhysics（网盘页同款）
           scrollBehavior: const AppScrollBehavior(),
           // 系统栏（状态栏 / 导航栏）样式跟随主题明暗：
@@ -97,7 +95,9 @@ SystemUiOverlayStyle systemUiOverlayStyleFor(Brightness brightness) {
     statusBarBrightness: dark ? Brightness.dark : Brightness.light,
     systemNavigationBarColor: Colors.transparent,
     systemNavigationBarDividerColor: Colors.transparent,
-    systemNavigationBarIconBrightness: dark ? Brightness.light : Brightness.dark,
+    systemNavigationBarIconBrightness: dark
+        ? Brightness.light
+        : Brightness.dark,
     systemNavigationBarContrastEnforced: false,
   );
 }
@@ -124,62 +124,62 @@ ThemeData buildLanCloudTheme({
     brightness: brightness,
   );
   final theme = ThemeData(
-          colorScheme: scheme,
-          // 预测性返回：沿用 Flutter 的跟手转场，并在被露出的上一页上
-          // 叠加一层随手势淡出的黑色遮罩（AOSP 设置同款）。
-          pageTransitionsTheme: kLanCloudPageTransitionsTheme,
-          // MD3E 进度条：year2023=false 会切到 2024 外观（Motion: new motion
-          // + Shape: 圆角/停靠点/trackGap；这些属性在 year2023 为 true 时会被
-          // 忽略，所以必须显式关掉）。Flutter 没有波浪实现，即非波浪的平直样式。
-          // 该标记已废弃、官方说明未来会默认 false，届时删掉这一行即可。
-          progressIndicatorTheme: const ProgressIndicatorThemeData(
-            // ignore: deprecated_member_use
-            year2023: false,
-          ),
-          scaffoldBackgroundColor:
-              (brightness == Brightness.dark && oledDark) ? Colors.black : null,
-          appBarTheme: AppBarTheme(
-            scrolledUnderElevation: 0,
-            backgroundColor:
-                (brightness == Brightness.dark && oledDark) ? Colors.black : null,
-            systemOverlayStyle: SystemUiOverlayStyle(
-              statusBarColor: Colors.transparent,
-              statusBarIconBrightness: brightness == Brightness.dark
-                  ? Brightness.light
-                  : Brightness.dark,
-              statusBarBrightness: brightness == Brightness.dark
-                  ? Brightness.dark
-                  : Brightness.light,
-            ),
-          ),
-          snackBarTheme: const SnackBarThemeData(
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.all(Radius.circular(12)),
-            ),
-          ),
-          // MD3 扁平化：控件统一去阴影
-          cardTheme: const CardThemeData(elevation: 0),
-          navigationBarTheme: const NavigationBarThemeData(elevation: 0),
-          floatingActionButtonTheme: const FloatingActionButtonThemeData(
-            elevation: 0,
-            focusElevation: 0,
-            hoverElevation: 0,
-            highlightElevation: 0,
-            disabledElevation: 0,
-          ),
-          // MD3 Expressive 按钮组（connected）：细描边 + 圆角容器 + 选中勾选
-          segmentedButtonTheme: SegmentedButtonThemeData(
-            style: ButtonStyle(
-              side: WidgetStatePropertyAll(
-                BorderSide(color: scheme.outlineVariant),
-              ),
-              visualDensity: VisualDensity.standard,
-              tapTargetSize: MaterialTapTargetSize.padded,
-              animationDuration: const Duration(milliseconds: 240),
-            ),
-          ),
-        );
+    colorScheme: scheme,
+    // 预测性返回：沿用 Flutter 的跟手转场，并在被露出的上一页上
+    // 叠加一层随手势淡出的黑色遮罩（AOSP 设置同款）。
+    pageTransitionsTheme: kLanCloudPageTransitionsTheme,
+    // MD3E 进度条：year2023=false 会切到 2024 外观（Motion: new motion
+    // + Shape: 圆角/停靠点/trackGap；这些属性在 year2023 为 true 时会被
+    // 忽略，所以必须显式关掉）。Flutter 没有波浪实现，即非波浪的平直样式。
+    // 该标记已废弃、官方说明未来会默认 false，届时删掉这一行即可。
+    progressIndicatorTheme: const ProgressIndicatorThemeData(
+      // ignore: deprecated_member_use
+      year2023: false,
+    ),
+    scaffoldBackgroundColor: (brightness == Brightness.dark && oledDark)
+        ? Colors.black
+        : null,
+    appBarTheme: AppBarTheme(
+      scrolledUnderElevation: 0,
+      backgroundColor: (brightness == Brightness.dark && oledDark)
+          ? Colors.black
+          : null,
+      systemOverlayStyle: SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: brightness == Brightness.dark
+            ? Brightness.light
+            : Brightness.dark,
+        statusBarBrightness: brightness == Brightness.dark
+            ? Brightness.dark
+            : Brightness.light,
+      ),
+    ),
+    snackBarTheme: const SnackBarThemeData(
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(12)),
+      ),
+    ),
+    // MD3 扁平化：控件统一去阴影
+    cardTheme: const CardThemeData(elevation: 0),
+    navigationBarTheme: const NavigationBarThemeData(elevation: 0),
+    floatingActionButtonTheme: const FloatingActionButtonThemeData(
+      elevation: 0,
+      focusElevation: 0,
+      hoverElevation: 0,
+      highlightElevation: 0,
+      disabledElevation: 0,
+    ),
+    // MD3 Expressive 按钮组（connected）：细描边 + 圆角容器 + 选中勾选
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: ButtonStyle(
+        side: WidgetStatePropertyAll(BorderSide(color: scheme.outlineVariant)),
+        visualDensity: VisualDensity.standard,
+        tapTargetSize: MaterialTapTargetSize.padded,
+        animationDuration: const Duration(milliseconds: 240),
+      ),
+    ),
+  );
   // Material Symbols 可变轴：weight 400 / grade 0 / optical size 24（fill 0）。
   // 必须用 copyWith 保留主题默认图标颜色——直接传一个"只有轴、没有颜色"的
   // IconThemeData 会让 IconButton 前景色变成 null，深色模式下图标画成黑色。
@@ -223,9 +223,7 @@ class _AgreementGateState extends State<AgreementGate> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     if (!_accepted) {
-      return FirstRunTerms(
-        onAccepted: () => setState(() => _accepted = true),
-      );
+      return FirstRunTerms(onAccepted: () => setState(() => _accepted = true));
     }
     return const RootShell();
   }
@@ -274,6 +272,7 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
   int _index = 0;
   bool _programmaticJump = false;
   Size? _lastSize;
+
   /// dispose 里不能再读 context（元素正在卸载），控制器在这里存一份。
   AppController? _app;
   // 横竖屏切换跨越 640px 布局阈值时，PageView 会在 Scaffold.body 与
@@ -284,6 +283,7 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
   late GlobalKey _pageViewKey = GlobalKey();
   late PageController _pageController = PageController(initialPage: _index);
   bool _pagerSyncPending = false;
+
   /// 连续重建分页器的次数：一直连不上就放弃，避免每帧重建。
   int _pagerRebuilds = 0;
 
@@ -320,12 +320,12 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
 
   /// 当前底栏显示项：首页 / 网盘 + （可选的）传输 / 收藏 + 我的。
   List<int> _enabledIds(AppController app) => <int>[
-        _viewHome,
-        _viewDrive,
-        if (app.settings.navShowTransfers) _viewTransfers,
-        if (app.settings.navShowFavorites) _viewFavorites,
-        _viewProfile,
-      ];
+    _viewHome,
+    _viewDrive,
+    if (app.settings.navShowTransfers) _viewTransfers,
+    if (app.settings.navShowFavorites) _viewFavorites,
+    _viewProfile,
+  ];
 
   /// 各视图顶栏高度：大屏布局用它决定圆角内容卡片的起点。
   double _topBarHeightFor(int viewId) {
@@ -338,28 +338,28 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
   }
 
   Widget _pageFor(int id) => switch (id) {
-        _viewHome => const HomePage(tabIndex: _viewHome),
-        _viewDrive => const DrivePage(tabIndex: _viewDrive),
-        _viewTransfers => const TransfersPage(tabIndex: _viewTransfers),
-        _viewFavorites => const FavoritesPage(tabIndex: _viewFavorites),
-        _ => const ProfilePage(tabIndex: _viewProfile),
-      };
+    _viewHome => const HomePage(tabIndex: _viewHome),
+    _viewDrive => const DrivePage(tabIndex: _viewDrive),
+    _viewTransfers => const TransfersPage(tabIndex: _viewTransfers),
+    _viewFavorites => const FavoritesPage(tabIndex: _viewFavorites),
+    _ => const ProfilePage(tabIndex: _viewProfile),
+  };
 
   IconData _iconFor(int id, {required bool selected}) => switch (id) {
-        _viewHome => selected ? Icons.dashboard : Icons.dashboard_outlined,
-        _viewDrive => selected ? Icons.folder : Icons.folder_outlined,
-        _viewTransfers => selected ? Icons.swap_vert : Icons.swap_vert_outlined,
-        _viewFavorites => selected ? Icons.star_outline : Icons.star_border,
-        _ => selected ? Icons.person : Icons.person_outline,
-      };
+    _viewHome => selected ? Icons.dashboard : Icons.dashboard_outlined,
+    _viewDrive => selected ? Icons.folder : Icons.folder_outlined,
+    _viewTransfers => selected ? Icons.swap_vert : Icons.swap_vert_outlined,
+    _viewFavorites => selected ? Icons.star_outline : Icons.star_border,
+    _ => selected ? Icons.person : Icons.person_outline,
+  };
 
   String _labelFor(int id, AppLocalizations l10n) => switch (id) {
-        _viewHome => l10n.tabHome,
-        _viewDrive => l10n.tabDrive,
-        _viewTransfers => l10n.tabTransfers,
-        _viewFavorites => l10n.favorite,
-        _ => l10n.tabProfile,
-      };
+    _viewHome => l10n.tabHome,
+    _viewDrive => l10n.tabDrive,
+    _viewTransfers => l10n.tabTransfers,
+    _viewFavorites => l10n.favorite,
+    _ => l10n.tabProfile,
+  };
 
   /// 打开某个视图：在底栏显示时切换到对应页，否则作为新页面打开。
   void _goTo(int viewId) {
@@ -379,16 +379,18 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
     setState(() => _index = i);
     _programmaticJump = true;
     if (_pageController.hasClients) {
-      _pageController.animateToPage(
-        i,
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOutCubic,
-      ).whenComplete(() {
-        if (!mounted) return;
-        _programmaticJump = false;
-        // 若分页器因为重新挂载而没有真正翻页，这里把它拉回来
-        _schedulePagerSync();
-      });
+      _pageController
+          .animateToPage(
+            i,
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+          )
+          .whenComplete(() {
+            if (!mounted) return;
+            _programmaticJump = false;
+            // 若分页器因为重新挂载而没有真正翻页，这里把它拉回来
+            _schedulePagerSync();
+          });
     } else {
       _programmaticJump = false;
       _schedulePagerSync();
@@ -419,8 +421,9 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
       _navConfigPending = false;
       if (!mounted) return;
       final app = context.read<AppController>();
-      final current =
-          _ids.isEmpty ? target.first : _ids[_index.clamp(0, _ids.length - 1)];
+      final current = _ids.isEmpty
+          ? target.first
+          : _ids[_index.clamp(0, _ids.length - 1)];
       final next = target.contains(current) ? target.indexOf(current) : 0;
       setState(() {
         _ids = target;
@@ -469,8 +472,8 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
 
   int get _defaultViewId =>
       context.read<AppController>().settings.launchPage == 'drive'
-          ? _viewDrive
-          : _viewHome;
+      ? _viewDrive
+      : _viewHome;
 
   /// 当前视图 id（底栏配置还没就绪时按首页算）。
   int get _currentViewId => _ids.isEmpty ? _viewHome : _ids[_index];
@@ -584,9 +587,8 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
     final app = context.read<AppController>();
     final client = app.client;
     if (client == null || app.activeUid == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.notLoggedIn)),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(context.l10n.notLoggedIn)));
       return;
     }
     final target = await showFolderPicker(
@@ -600,16 +602,11 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
     var added = 0;
     for (final path in files) {
       final editedName = target.fileName;
-      final name = files.length == 1 &&
-              editedName != null &&
-              editedName.isNotEmpty
+      final name =
+          files.length == 1 && editedName != null && editedName.isNotEmpty
           ? editedName
           : p.basename(path);
-      transfers.addUpload(
-        name: name,
-        folderId: target.folderId,
-        path: path,
-      );
+      transfers.addUpload(name: name, folderId: target.folderId, path: path);
       added += 1;
     }
     ScaffoldMessenger.of(context).showSnackBar(
@@ -633,8 +630,11 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
   List<TransferTask> get _activeTasks => context
       .read<TransferManager>()
       .tasks
-      .where((t) =>
-          t.status == TransferStatus.running || t.status == TransferStatus.queued)
+      .where(
+        (t) =>
+            t.status == TransferStatus.running ||
+            t.status == TransferStatus.queued,
+      )
       .toList();
 
   Future<bool> _handleBack() async {
@@ -716,8 +716,11 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
     }
 
     final running = transfers.tasks
-        .where((t) =>
-            t.status == TransferStatus.running || t.status == TransferStatus.queued)
+        .where(
+          (t) =>
+              t.status == TransferStatus.running ||
+              t.status == TransferStatus.queued,
+        )
         .length;
 
     // 底栏整体高度：悬浮样式含上下留白，用于 1:1 跟随滚动的收起距离，
@@ -755,7 +758,8 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
               key: ValueKey('view-$id'),
               hideDistance: barHeight,
               readBarsHidden: () => app.barsHide.value,
-              onBarsHidden: (app.settings.hideTopBar || app.settings.hideBottomBar)
+              onBarsHidden:
+                  (app.settings.hideTopBar || app.settings.hideBottomBar)
                   ? app.setBarsHideFromScroll
                   : null,
               child: _pageFor(id),
@@ -850,8 +854,9 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
                     child: ValueListenableBuilder<double>(
                       valueListenable: app.topBarHide,
                       builder: (context, hide, _) {
-                        final t =
-                            app.settings.hideTopBar ? hide.clamp(0.0, 1.0) : 0.0;
+                        final t = app.settings.hideTopBar
+                            ? hide.clamp(0.0, 1.0)
+                            : 0.0;
                         return Stack(
                           children: [
                             Positioned(
@@ -924,9 +929,7 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
                         ? EdgeInsets.fromLTRB(12, 0, 12, 12 + bottomInset)
                         : EdgeInsets.zero,
                     decoration: floatingNav
-                        ? BoxDecoration(
-                            borderRadius: BorderRadius.circular(28),
-                          )
+                        ? BoxDecoration(borderRadius: BorderRadius.circular(28))
                         : null,
                     clipBehavior: floatingNav ? Clip.antiAlias : Clip.none,
                     // 悬浮样式把系统手势区的内边距从胶囊里摘掉，改由上面
@@ -944,7 +947,7 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
                   ),
                 ),
               ),
-          ),
+            ),
     );
   }
 }

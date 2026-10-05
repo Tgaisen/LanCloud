@@ -8,8 +8,16 @@ Widget host({Set<String> selected = const {'b'}}) => MaterialApp(
   home: Scaffold(
     body: ConnectedSegmentedButton<String>(
       segments: const [
-        ButtonSegment(value: 'a', icon: Icon(Icons.grid_view), label: Text('A')),
-        ButtonSegment(value: 'b', icon: Icon(Icons.view_list), label: Text('B')),
+        ButtonSegment(
+          value: 'a',
+          icon: Icon(Icons.grid_view),
+          label: Text('A'),
+        ),
+        ButtonSegment(
+          value: 'b',
+          icon: Icon(Icons.view_list),
+          label: Text('B'),
+        ),
         ButtonSegment(value: 'c', icon: Icon(Icons.sort), label: Text('C')),
       ],
       selected: selected,

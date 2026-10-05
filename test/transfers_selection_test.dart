@@ -7,11 +7,7 @@ import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/transfers_page.dart';
 import 'package:provider/provider.dart';
 
-TransferTask task(
-  String id,
-  String name, {
-  required TransferStatus status,
-}) {
+TransferTask task(String id, String name, {required TransferStatus status}) {
   return TransferTask(
     id: id,
     kind: TransferKind.upload,
@@ -49,10 +45,7 @@ Future<(AppController, TransferManager)> host(WidgetTester tester) async {
 
 bool retryEnabled(WidgetTester tester) {
   final action = tester.widget<BatchAction>(
-    find.ancestor(
-      of: find.text('重试'),
-      matching: find.byType(BatchAction),
-    ),
+    find.ancestor(of: find.text('重试'), matching: find.byType(BatchAction)),
   );
   return action.onPressed != null;
 }
@@ -77,7 +70,10 @@ void main() {
 
     await tester.longPress(find.text('a.zip'));
     await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('transfers-selection-appbar')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('transfers-selection-appbar')),
+      findsOneWidget,
+    );
     expect(find.text('已选择 1 项'), findsOneWidget);
     // 选中的是失败项 → 重试可用
     expect(retryEnabled(tester), isTrue);
@@ -135,7 +131,8 @@ void main() {
         task('t$i', 'file$i.zip', status: TransferStatus.done),
     ]);
 
-    Widget host(Widget home, {GlobalKey<NavigatorState>? navKey}) => MultiProvider(
+    Widget host(Widget home, {GlobalKey<NavigatorState>? navKey}) =>
+        MultiProvider(
           providers: [
             ChangeNotifierProvider<AppController>.value(value: app),
             ChangeNotifierProvider<TransferManager>.value(value: manager),

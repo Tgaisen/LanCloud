@@ -17,15 +17,13 @@ class _FakeClient extends LanzouClient {
   Future<DirectFile> resolveFileShare(
     String shareUrl, {
     String pwd = '',
-  }) async =>
-      throw error;
+  }) async => throw error;
 
   @override
   Future<FolderShareDetail> resolveFolderShare(
     String shareUrl, {
     String pwd = '',
-  }) async =>
-      throw error;
+  }) async => throw error;
 }
 
 class _FakeApp extends AppController {

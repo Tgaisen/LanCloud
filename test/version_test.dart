@@ -13,8 +13,7 @@ int _code({
   required int hotfix,
   required int stage,
   required int seq,
-}) =>
-    yy * 10000000 + drop * 100000 + hotfix * 10000 + stage * 1000 + seq;
+}) => yy * 10000000 + drop * 100000 + hotfix * 10000 + stage * 1000 + seq;
 
 /// 按规范换算 versionCode；不符合规范时返回 null。
 int? versionCodeFor(String version) {
@@ -28,9 +27,8 @@ int? versionCodeFor(String version) {
       seq: 999,
     );
   }
-  final pre = RegExp(
-    r'^(\d{2})\.(\d+)\.(\d+)-(snapshot|pre|beta|rc)\.(\d+)$',
-  ).firstMatch(version);
+  final pre = RegExp(r'^(\d{2})\.(\d+)\.(\d+)-(snapshot|pre|beta|rc)\.(\d+)$')
+      .firstMatch(version);
   if (pre == null) return null;
   final stage = switch (pre.group(4)!) {
     'snapshot' => 1,
@@ -53,8 +51,13 @@ void main() {
         .readAsLinesSync()
         .map((l) => l.trim())
         .firstWhere((l) => l.startsWith('version:'));
-    final match = RegExp(r'^version:\s*([0-9][^+\s]*)\+(\d+)$').firstMatch(line);
-    expect(match, isNotNull, reason: 'pubspec.yaml 的 version 需要写成 版本号+versionCode');
+    final match = RegExp(r'^version:\s*([0-9][^+\s]*)\+(\d+)$')
+        .firstMatch(line);
+    expect(
+      match,
+      isNotNull,
+      reason: 'pubspec.yaml 的 version 需要写成 版本号+versionCode',
+    );
     expect(match!.group(1), appVersion);
     expect(int.parse(match.group(2)!), appBuild);
   });

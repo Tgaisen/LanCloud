@@ -4,12 +4,12 @@ import 'package:lancloud/core/drive_cache.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 CachedFolder _sample(String folderName) => CachedFolder(
-      folders: [LzFolder(id: '1', name: folderName, desc: '')],
-      files: const [],
-      path: const [],
-      page: 1,
-      hasMore: false,
-    );
+  folders: [LzFolder(id: '1', name: folderName, desc: '')],
+  files: const [],
+  path: const [],
+  page: 1,
+  hasMore: false,
+);
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));

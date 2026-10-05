@@ -21,10 +21,8 @@ Future<void> openShareSheet(
 }) {
   return showDialog<void>(
     context: context,
-    builder: (_) => ShareLinkDialog(
-      initialLink: initialLink,
-      initialPwd: initialPwd,
-    ),
+    builder: (_) =>
+        ShareLinkDialog(initialLink: initialLink, initialPwd: initialPwd),
   );
 }
 
@@ -39,10 +37,12 @@ class ShareLinkDialog extends StatefulWidget {
 }
 
 class _ShareLinkDialogState extends State<ShareLinkDialog> {
-  late final TextEditingController _linkController =
-      TextEditingController(text: widget.initialLink ?? '');
-  late final TextEditingController _pwdController =
-      TextEditingController(text: widget.initialPwd ?? '');
+  late final TextEditingController _linkController = TextEditingController(
+    text: widget.initialLink ?? '',
+  );
+  late final TextEditingController _pwdController = TextEditingController(
+    text: widget.initialPwd ?? '',
+  );
   bool _loading = false;
   String? _error;
   String? _pwdError;
@@ -91,11 +91,8 @@ class _ShareLinkDialogState extends State<ShareLinkDialog> {
         navigator.pop();
         await navigator.push(
           MaterialPageRoute(
-            builder: (_) => ShareFolderPage(
-              folder: folder,
-              link: link,
-              pwd: pwd,
-            ),
+            builder: (_) =>
+                ShareFolderPage(folder: folder, link: link, pwd: pwd),
           ),
         );
       } else {
@@ -119,11 +116,8 @@ class _ShareLinkDialogState extends State<ShareLinkDialog> {
           navigator.pop();
           await navigator.push(
             MaterialPageRoute(
-              builder: (_) => ShareFolderPage(
-                folder: folder,
-                link: link,
-                pwd: pwd,
-              ),
+              builder: (_) =>
+                  ShareFolderPage(folder: folder, link: link, pwd: pwd),
             ),
           );
         }

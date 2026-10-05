@@ -65,6 +65,9 @@ void main() {
     // 悬浮底栏槽位 = 108 + 手势区（胶囊 80 + 顶留白 16 + 底留白 12）
     await pumpBar(tester, app: app, shellBarHeight: 108 + _gestureInset);
     // 期望值：108 + 手势区 - 16（槽位顶留白）+ 12（自身间距）
-    expect(barPadding(tester).bottom, closeTo(108 + _gestureInset - 16 + 12, 0.01));
+    expect(
+      barPadding(tester).bottom,
+      closeTo(108 + _gestureInset - 16 + 12, 0.01),
+    );
   });
 }

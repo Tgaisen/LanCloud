@@ -20,29 +20,29 @@ class CachedFolder {
   final bool hasMore;
 
   Map<String, dynamic> toJson() => {
-        'folders': folders.map((f) => f.toJson()).toList(),
-        'files': files.map((f) => f.toJson()).toList(),
-        'path': path.map((p) => p.toJson()).toList(),
-        'page': page,
-        'hasMore': hasMore,
-      };
+    'folders': folders.map((f) => f.toJson()).toList(),
+    'files': files.map((f) => f.toJson()).toList(),
+    'path': path.map((p) => p.toJson()).toList(),
+    'page': page,
+    'hasMore': hasMore,
+  };
 
   factory CachedFolder.fromJson(Map<String, dynamic> j) => CachedFolder(
-        folders: (j['folders'] as List? ?? const [])
-            .whereType<Map>()
-            .map((e) => LzFolder.fromJson(e.cast<String, dynamic>()))
-            .toList(),
-        files: (j['files'] as List? ?? const [])
-            .whereType<Map>()
-            .map((e) => LzFile.fromJson(e.cast<String, dynamic>()))
-            .toList(),
-        path: (j['path'] as List? ?? const [])
-            .whereType<Map>()
-            .map((e) => PathNode.fromJson(e.cast<String, dynamic>()))
-            .toList(),
-        page: (j['page'] as num?)?.toInt() ?? 1,
-        hasMore: j['hasMore'] as bool? ?? false,
-      );
+    folders: (j['folders'] as List? ?? const [])
+        .whereType<Map>()
+        .map((e) => LzFolder.fromJson(e.cast<String, dynamic>()))
+        .toList(),
+    files: (j['files'] as List? ?? const [])
+        .whereType<Map>()
+        .map((e) => LzFile.fromJson(e.cast<String, dynamic>()))
+        .toList(),
+    path: (j['path'] as List? ?? const [])
+        .whereType<Map>()
+        .map((e) => PathNode.fromJson(e.cast<String, dynamic>()))
+        .toList(),
+    page: (j['page'] as num?)?.toInt() ?? 1,
+    hasMore: j['hasMore'] as bool? ?? false,
+  );
 }
 
 /// 网盘目录的内存缓存：返回上一级时直接命中，避免重复请求。
@@ -50,6 +50,7 @@ class CachedFolder {
 /// 缓存按账号隔离：换账号时会整体清空，根快照也按账号分开存。
 class DriveCache {
   static const _prefsPrefix = 'drive_cache_root';
+
   /// 旧版本只有一个全局快照，无法判断属于哪个账号，绑定账号时直接丢弃。
   static const _legacyPrefsKey = 'drive_cache_root';
 

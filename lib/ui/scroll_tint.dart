@@ -12,11 +12,14 @@ class ScrollTint extends StatefulWidget {
   });
 
   final Widget child;
+
   /// 滚动时按距离通知底栏隐藏进度 0..1（0 显示，1 完全隐藏）。
   final void Function(double progress)? onBarsHidden;
+
   /// 读取外部真实的收起进度：每次开始拖动时对齐，
   /// 避免程序化显示/隐藏之后累计值漂移导致下一次滑动瞬间跳变。
   final double Function()? readBarsHidden;
+
   /// 完全收起所需的滚动距离，与底栏高度一致可实现 1:1 跟随。
   final double hideDistance;
 
@@ -141,9 +144,9 @@ class _CollapsibleTopBarHostState extends State<CollapsibleTopBarHost>
 
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
-        animation: _controller,
-        builder: (context, _) => widget.builder(context, _controller.value),
-      );
+    animation: _controller,
+    builder: (context, _) => widget.builder(context, _controller.value),
+  );
 }
 
 /// 高度可动画的顶栏包装：t=0 完全展开，t=1 完全收起且不占空间。

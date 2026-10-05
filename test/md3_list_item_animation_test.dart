@@ -3,23 +3,18 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/ui/common.dart';
 
 /// 用一个可切换的状态包住列表项，模拟"外部数据变化"。
-Widget hostWith(Widget Function(StateSetter setState) builder) =>
-    MaterialApp(
-      home: Scaffold(
-        body: StatefulBuilder(
-          builder: (context, setState) => builder(setState),
-        ),
-      ),
-    );
+Widget hostWith(Widget Function(StateSetter setState) builder) => MaterialApp(
+  home: Scaffold(
+    body: StatefulBuilder(builder: (context, setState) => builder(setState)),
+  ),
+);
 
 void main() {
   testWidgets('挂载时淡入：透明度从 0 过渡到 1', (tester) async {
     await tester.pumpWidget(
       hostWith(
         (_) => const Column(
-          children: [
-            Md3ListItem(icon: Icons.folder_outlined, title: '条目'),
-          ],
+          children: [Md3ListItem(icon: Icons.folder_outlined, title: '条目')],
         ),
       ),
     );
@@ -71,26 +66,24 @@ void main() {
     var removing = false;
     late StateSetter setHost;
     await tester.pumpWidget(
-      hostWith(
-        (setState) {
-          setHost = setState;
-          return Column(
-            children: [
-              Md3ListItem(
-                icon: Icons.folder_outlined,
-                title: 'A',
-                animateIn: false,
-                removing: removing,
-              ),
-              const Md3ListItem(
-                icon: Icons.folder_outlined,
-                title: 'B',
-                animateIn: false,
-              ),
-            ],
-          );
-        },
-      ),
+      hostWith((setState) {
+        setHost = setState;
+        return Column(
+          children: [
+            Md3ListItem(
+              icon: Icons.folder_outlined,
+              title: 'A',
+              animateIn: false,
+              removing: removing,
+            ),
+            const Md3ListItem(
+              icon: Icons.folder_outlined,
+              title: 'B',
+              animateIn: false,
+            ),
+          ],
+        );
+      }),
     );
     await tester.pumpAndSettle();
 
@@ -117,21 +110,19 @@ void main() {
     var pulse = 0;
     late StateSetter setHost;
     await tester.pumpWidget(
-      hostWith(
-        (setState) {
-          setHost = setState;
-          return Column(
-            children: [
-              Md3ListItem(
-                icon: Icons.folder_outlined,
-                title: '条目',
-                animateIn: false,
-                pulse: pulse,
-              ),
-            ],
-          );
-        },
-      ),
+      hostWith((setState) {
+        setHost = setState;
+        return Column(
+          children: [
+            Md3ListItem(
+              icon: Icons.folder_outlined,
+              title: '条目',
+              animateIn: false,
+              pulse: pulse,
+            ),
+          ],
+        );
+      }),
     );
     await tester.pumpAndSettle();
 
@@ -163,23 +154,21 @@ void main() {
     var removing = false;
     late StateSetter setHost;
     await tester.pumpWidget(
-      hostWith(
-        (setState) {
-          setHost = setState;
-          return Row(
-            children: [
-              Expanded(
-                child: Md3ListItem(
-                  icon: Icons.folder_outlined,
-                  title: 'A',
-                  animateIn: false,
-                  removing: removing,
-                ),
+      hostWith((setState) {
+        setHost = setState;
+        return Row(
+          children: [
+            Expanded(
+              child: Md3ListItem(
+                icon: Icons.folder_outlined,
+                title: 'A',
+                animateIn: false,
+                removing: removing,
               ),
-            ],
-          );
-        },
-      ),
+            ),
+          ],
+        );
+      }),
     );
     await tester.pumpAndSettle();
     final heightBefore = tester.getSize(find.byType(Md3ListItem)).height;
@@ -190,7 +179,9 @@ void main() {
 
     final opacity = tester
         .widget<Opacity>(
-          find.ancestor(of: find.text('A'), matching: find.byType(Opacity)).first,
+          find
+              .ancestor(of: find.text('A'), matching: find.byType(Opacity))
+              .first,
         )
         .opacity;
     expect(opacity, lessThan(1));
@@ -251,7 +242,9 @@ void main() {
     // 也不应重播出现动画（元素状态跟着 key 走，而不是按下标复用）
     final bOpacity = tester
         .widget<Opacity>(
-          find.ancestor(of: find.text('B'), matching: find.byType(Opacity)).first,
+          find
+              .ancestor(of: find.text('B'), matching: find.byType(Opacity))
+              .first,
         )
         .opacity;
     expect(bOpacity, 1);

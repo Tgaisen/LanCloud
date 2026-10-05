@@ -30,8 +30,10 @@ class _FavoritesPageState extends State<FavoritesPage>
   bool _loading = true;
   bool _selecting = false;
   final Set<int> _selected = {};
+
   /// 正在播放删除动画的条目（动画播完再真正删库）
   final Set<int> _removing = {};
+
   /// 修改后的高亮闪烁计数（值变化触发一次）
   final Map<int, int> _pulse = {};
   final ScrollController _scroll = ScrollController();
@@ -206,7 +208,11 @@ class _FavoritesPageState extends State<FavoritesPage>
         ),
       );
     } else {
-      await openShareSheet(context, initialLink: item.ref, initialPwd: item.pwd);
+      await openShareSheet(
+        context,
+        initialLink: item.ref,
+        initialPwd: item.pwd,
+      );
     }
   }
 
@@ -341,8 +347,9 @@ class _FavoritesPageState extends State<FavoritesPage>
     final selectedCount = _selected.length;
     return Scaffold(
       // 大屏外壳里的页面：背景交给外壳的圆角卡片
-      backgroundColor:
-          transparentPageBackground(context) ? Colors.transparent : null,
+      backgroundColor: transparentPageBackground(context)
+          ? Colors.transparent
+          : null,
       body: Stack(
         children: [
           // 小屏：正文区整体让开左右挖孔 / 侧边导航栏；顶栏（浮层）保持原样
@@ -350,8 +357,9 @@ class _FavoritesPageState extends State<FavoritesPage>
             child: ScrollTint(
               hideDistance: headerHeight,
               readBarsHidden: () => app.topBarHide.value,
-              onBarsHidden:
-                  app.settings.hideTopBar ? app.setTopBarHideFromScroll : null,
+              onBarsHidden: app.settings.hideTopBar
+                  ? app.setTopBarHideFromScroll
+                  : null,
               child: CustomScrollView(
                 controller: _scroll,
                 slivers: [
@@ -362,8 +370,9 @@ class _FavoritesPageState extends State<FavoritesPage>
                       hasScrollBody: false,
                       child: Padding(
                         // 底栏盖在正文上方时，空状态保持在可见区域居中
-                        padding:
-                            EdgeInsets.only(bottom: shellBottomBarInset(context)),
+                        padding: EdgeInsets.only(
+                          bottom: shellBottomBarInset(context),
+                        ),
                         child: const Center(child: CircularProgressIndicator()),
                       ),
                     )
@@ -371,8 +380,9 @@ class _FavoritesPageState extends State<FavoritesPage>
                     SliverFillRemaining(
                       hasScrollBody: false,
                       child: Padding(
-                        padding:
-                            EdgeInsets.only(bottom: shellBottomBarInset(context)),
+                        padding: EdgeInsets.only(
+                          bottom: shellBottomBarInset(context),
+                        ),
                         child: EmptyHint(
                           icon: Icons.star_border,
                           text: l10n.favoritesHint,
@@ -501,8 +511,7 @@ class _FavoritesPageState extends State<FavoritesPage>
                     BatchAction(
                       icon: Icons.delete_outline,
                       label: l10n.delete,
-                      onPressed:
-                          selectedCount == 0 ? null : _deleteSelected,
+                      onPressed: selectedCount == 0 ? null : _deleteSelected,
                     ),
                   ],
                 ),

@@ -29,90 +29,92 @@ class FirstRunTerms extends StatelessWidget {
             : Brightness.light,
       ),
       child: Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Spacer(),
-              Center(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: Image.asset(
-                    'assets/app_icon.png',
-                    width: 72,
-                    height: 72,
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Spacer(),
+                Center(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: Image.asset(
+                      'assets/app_icon.png',
+                      width: 72,
+                      height: 72,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                l10n.firstRunWelcome,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.headlineSmall,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                l10n.firstRunMessage,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(color: scheme.outline, height: 1.6),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  TextButton(
-                    onPressed: () => _openLegal(context, LegalDoc.terms),
-                    style: TextButton.styleFrom(
-                      backgroundColor: scheme.surfaceContainerLow,
-                      foregroundColor: scheme.onSurfaceVariant,
-                      shape: const StadiumBorder(),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                    ),
-                    child: Text(l10n.aboutTerms),
+                const SizedBox(height: 20),
+                Text(
+                  l10n.firstRunWelcome,
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.headlineSmall,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  l10n.firstRunMessage,
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: scheme.outline,
+                    height: 1.6,
                   ),
-                  const SizedBox(width: 12),
-                  TextButton(
-                    onPressed: () => _openLegal(context, LegalDoc.privacy),
-                    style: TextButton.styleFrom(
-                      backgroundColor: scheme.surfaceContainerLow,
-                      foregroundColor: scheme.onSurfaceVariant,
-                      shape: const StadiumBorder(),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    TextButton(
+                      onPressed: () => _openLegal(context, LegalDoc.terms),
+                      style: TextButton.styleFrom(
+                        backgroundColor: scheme.surfaceContainerLow,
+                        foregroundColor: scheme.onSurfaceVariant,
+                        shape: const StadiumBorder(),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
                       ),
+                      child: Text(l10n.aboutTerms),
                     ),
-                    child: Text(l10n.aboutPrivacy),
-                  ),
-                ],
-              ),
-              const Spacer(),
-              FilledButton(
-                onPressed: () async {
-                  await Agreements.accept();
-                  if (!context.mounted) return;
-                  // 同意后弹出登录弹窗；关掉弹窗则留在欢迎页
-                  final ok = await showLoginSheet(context);
-                  if (!ok) return;
-                  onAccepted();
-                },
-                child: Text(l10n.agreeAndContinue),
-              ),
-              const SizedBox(height: 4),
-              TextButton(
-                onPressed: () => SystemNavigator.pop(),
-                child: Text(l10n.disagreeAndExit),
-              ),
-            ],
+                    const SizedBox(width: 12),
+                    TextButton(
+                      onPressed: () => _openLegal(context, LegalDoc.privacy),
+                      style: TextButton.styleFrom(
+                        backgroundColor: scheme.surfaceContainerLow,
+                        foregroundColor: scheme.onSurfaceVariant,
+                        shape: const StadiumBorder(),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                      ),
+                      child: Text(l10n.aboutPrivacy),
+                    ),
+                  ],
+                ),
+                const Spacer(),
+                FilledButton(
+                  onPressed: () async {
+                    await Agreements.accept();
+                    if (!context.mounted) return;
+                    // 同意后弹出登录弹窗；关掉弹窗则留在欢迎页
+                    final ok = await showLoginSheet(context);
+                    if (!ok) return;
+                    onAccepted();
+                  },
+                  child: Text(l10n.agreeAndContinue),
+                ),
+                const SizedBox(height: 4),
+                TextButton(
+                  onPressed: () => SystemNavigator.pop(),
+                  child: Text(l10n.disagreeAndExit),
+                ),
+              ],
+            ),
           ),
         ),
-      ),
       ),
     );
   }

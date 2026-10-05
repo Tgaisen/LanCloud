@@ -67,8 +67,7 @@ class _FakeCookieAuth extends CookieAuth {
   Future<CookieAuthResult> verify(
     String reason, {
     Iterable<AuthMessages> messages = const <AuthMessages>[],
-  }) async =>
-      result;
+  }) async => result;
 }
 
 void main() {
@@ -126,10 +125,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(fake.saveCount, 1);
-    expect(
-      find.textContaining('lancloud-backup-test.json'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('lancloud-backup-test.json'), findsOneWidget);
   });
 
   testWidgets('备份包含 Cookie 开关会持久化到配置', (tester) async {
@@ -151,7 +147,9 @@ void main() {
       isFalse,
     );
     expect(
-      tester.widget<SwitchListTile>(find.widgetWithText(SwitchListTile, '自动备份')).onChanged,
+      tester
+          .widget<SwitchListTile>(find.widgetWithText(SwitchListTile, '自动备份'))
+          .onChanged,
       isNull,
     );
   });
@@ -190,6 +188,9 @@ void main() {
     await tester.tap(find.text('上传备份'));
     await tester.pumpAndSettle();
     expect(fake.uploadCount, 1);
-    expect(find.text('已上传 lancloud-backup-20261002-181500.json'), findsOneWidget);
+    expect(
+      find.text('已上传 lancloud-backup-20261002-181500.json'),
+      findsOneWidget,
+    );
   });
 }

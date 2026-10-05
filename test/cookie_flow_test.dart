@@ -132,10 +132,7 @@ void main() {
     await tester.tap(find.text('继续'));
     await tester.pumpAndSettle();
 
-    expect(
-      find.text('当前设备未设置锁屏密码或生物识别，无法验证身份'),
-      findsOneWidget,
-    );
+    expect(find.text('当前设备未设置锁屏密码或生物识别，无法验证身份'), findsOneWidget);
   });
 
   testWidgets('导出把 Cookie 交给系统分享通道', (tester) async {

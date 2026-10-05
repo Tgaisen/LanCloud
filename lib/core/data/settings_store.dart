@@ -40,12 +40,14 @@ class SettingsStore {
   String language = 'system';
   bool gridView = true;
   String launchPage = 'home';
+
   /// 首页目录打开方式：page = 新页面，drive = 跳转网盘页。
   String homeFolderOpenMode = 'page';
   bool cacheFolders = true;
   bool loadAllPages = false;
   String themeMode = 'system';
   bool oledBlack = false;
+
   /// 动态取色：跟随系统壁纸（Android 12+）。
   bool dynamicColor = false;
   int themeSeed = 0xFF2E6BE6;
@@ -54,31 +56,41 @@ class SettingsStore {
   int maxDownloads = 3;
   String apiHost = 'pc';
   String userAgent = '';
+
   /// 自定义上传域名，留空使用默认 up.woozooo.com。
   String uploadDomain = '';
+
   /// 自定义分享链接域名，留空使用内置镜像回退列表。
   String shareDomain = '';
   bool swipeTabs = false;
   bool hideTopBar = false;
   bool hideBottomBar = false;
   bool floatingNavBar = false;
+
   /// 目录切换与列表出现动画，关闭可减少低端设备掉帧。
   bool transitionAnimations = true;
+
   /// 传输进行中在通知栏显示进度。
   bool notifyProgress = true;
+
   /// 下载或上传完成时提醒。
   bool notifyDone = true;
+
   /// 网盘文件排序方式：default / name / size / time。
   String sortMode = 'default';
+
   /// 首页「快速访问」/「最近使用」是否展开（重启后保持）。
   bool quickExpanded = true;
   bool recentsExpanded = true;
+
   /// 最近使用最多保留多少条，0 表示不记录。
   int recentLimit = 50;
+
   /// 复制到蓝奏云分享链接时提示打开。
   /// 默认关闭：只要读取剪贴板，系统就会弹出「已读取剪贴板」提醒，
   /// 有需要的人在设置-通知里自己打开。
   bool clipboardLinkPrompt = false;
+
   /// 「传输」「收藏」是否显示在底栏（默认隐藏，仍可从快捷操作栏打开）。
   bool navShowTransfers = false;
   bool navShowFavorites = false;
@@ -336,39 +348,39 @@ class SettingsStore {
 
   /// 备份用：导出全部设置项（键名与存储键一致）。
   Map<String, Object?> toJson() => {
-        _keyLanguage: language,
-        _keyDownloadDir: downloadDir,
-        _keyGridView: gridView,
-        _keyLaunchPage: launchPage,
-        _keyHomeFolderOpen: homeFolderOpenMode,
-        _keyCacheFolders: cacheFolders,
-        _keyLoadAllPages: loadAllPages,
-        _keyThemeMode: themeMode,
-        _keyOled: oledBlack,
-        _keyDynamicColor: dynamicColor,
-        _keySeed: themeSeed,
-        _keyInterval: requestInterval,
-        _keyMaxUp: maxUploads,
-        _keyMaxDown: maxDownloads,
-        _keyApiHost: apiHost,
-        _keyUserAgent: userAgent,
-        _keyUploadDomain: uploadDomain,
-        _keyShareDomain: shareDomain,
-        _keySwipeTabs: swipeTabs,
-        _keyHideTopBar: hideTopBar,
-        _keyHideBottomBar: hideBottomBar,
-        _keyFloatingNav: floatingNavBar,
-        _keyTransitions: transitionAnimations,
-        _keyNotifyProgress: notifyProgress,
-        _keyNotifyDone: notifyDone,
-        _keySortMode: sortMode,
-        _keyQuickExpanded: quickExpanded,
-        _keyRecentsExpanded: recentsExpanded,
-        _keyRecentLimit: recentLimit,
-        _keyClipboardLink: clipboardLinkPrompt,
-        _keyNavTransfers: navShowTransfers,
-        _keyNavFavorites: navShowFavorites,
-      };
+    _keyLanguage: language,
+    _keyDownloadDir: downloadDir,
+    _keyGridView: gridView,
+    _keyLaunchPage: launchPage,
+    _keyHomeFolderOpen: homeFolderOpenMode,
+    _keyCacheFolders: cacheFolders,
+    _keyLoadAllPages: loadAllPages,
+    _keyThemeMode: themeMode,
+    _keyOled: oledBlack,
+    _keyDynamicColor: dynamicColor,
+    _keySeed: themeSeed,
+    _keyInterval: requestInterval,
+    _keyMaxUp: maxUploads,
+    _keyMaxDown: maxDownloads,
+    _keyApiHost: apiHost,
+    _keyUserAgent: userAgent,
+    _keyUploadDomain: uploadDomain,
+    _keyShareDomain: shareDomain,
+    _keySwipeTabs: swipeTabs,
+    _keyHideTopBar: hideTopBar,
+    _keyHideBottomBar: hideBottomBar,
+    _keyFloatingNav: floatingNavBar,
+    _keyTransitions: transitionAnimations,
+    _keyNotifyProgress: notifyProgress,
+    _keyNotifyDone: notifyDone,
+    _keySortMode: sortMode,
+    _keyQuickExpanded: quickExpanded,
+    _keyRecentsExpanded: recentsExpanded,
+    _keyRecentLimit: recentLimit,
+    _keyClipboardLink: clipboardLinkPrompt,
+    _keyNavTransfers: navShowTransfers,
+    _keyNavFavorites: navShowFavorites,
+  };
 
   /// 恢复备份里的设置：只接受已知键，空值表示恢复为未设置，最后重新读取一次。
   Future<void> applyJson(Map<String, Object?> json) async {

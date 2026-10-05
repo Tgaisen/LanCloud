@@ -8,16 +8,15 @@ const ValueKey<String> kPredictiveBackScrimKey = ValueKey<String>(
 
 /// 与 Flutter 默认一致的全平台转场表，只把 Android 换成
 /// [AospPredictiveBackPageTransitionsBuilder]。
-const PageTransitionsTheme kLanCloudPageTransitionsTheme =
-    PageTransitionsTheme(
-      builders: <TargetPlatform, PageTransitionsBuilder>{
-        TargetPlatform.android: AospPredictiveBackPageTransitionsBuilder(),
-        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-        TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
-        TargetPlatform.windows: ZoomPageTransitionsBuilder(),
-        TargetPlatform.linux: ZoomPageTransitionsBuilder(),
-      },
-    );
+const PageTransitionsTheme kLanCloudPageTransitionsTheme = PageTransitionsTheme(
+  builders: <TargetPlatform, PageTransitionsBuilder>{
+    TargetPlatform.android: AospPredictiveBackPageTransitionsBuilder(),
+    TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+    TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+    TargetPlatform.windows: ZoomPageTransitionsBuilder(),
+    TargetPlatform.linux: ZoomPageTransitionsBuilder(),
+  },
+);
 
 /// 仿 AOSP 设置应用的预测性返回动效。
 ///

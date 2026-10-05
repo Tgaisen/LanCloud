@@ -19,10 +19,7 @@ enum PermissionState {
 ///
 /// 相机权限已不再需要：扫码改为从相册选图识别（见 ui/scan_page.dart）。
 class PermissionSnapshot {
-  const PermissionSnapshot({
-    required this.install,
-    required this.battery,
-  });
+  const PermissionSnapshot({required this.install, required this.battery});
 
   final PermissionState install;
   final PermissionState battery;
@@ -93,9 +90,9 @@ class AppPermissions {
   }
 
   static PermissionState _parse(Object? raw) => switch (raw) {
-        'granted' => PermissionState.granted,
-        'denied' => PermissionState.denied,
-        'blocked' => PermissionState.blocked,
-        _ => PermissionState.unknown,
-      };
+    'granted' => PermissionState.granted,
+    'denied' => PermissionState.denied,
+    'blocked' => PermissionState.blocked,
+    _ => PermissionState.unknown,
+  };
 }

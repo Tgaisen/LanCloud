@@ -31,13 +31,22 @@ void main() {
 
     // 开关按当前状态预填为开启，密码框预填当前密码
     expect(find.text('启用访问密码'), findsOneWidget);
-    expect(tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value, isTrue);
-    expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, '1234');
+    expect(
+      tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
+      isTrue,
+    );
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller!.text,
+      '1234',
+    );
 
     // 关闭开关：密码框禁用
     await tester.tap(find.byType(SwitchListTile));
     await tester.pumpAndSettle();
-    expect(tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value, isFalse);
+    expect(
+      tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
+      isFalse,
+    );
     expect(tester.widget<TextField>(find.byType(TextField)).enabled, isFalse);
 
     await tester.tap(find.text('确定'));
@@ -50,7 +59,10 @@ void main() {
     final context = await host(tester);
     final result = showPasswordDialog(context, enabled: false, pwd: '');
     await tester.pumpAndSettle();
-    expect(tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value, isFalse);
+    expect(
+      tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
+      isFalse,
+    );
 
     // 打开开关后直接确定：提示密码过短，弹窗保持
     await tester.tap(find.byType(SwitchListTile));

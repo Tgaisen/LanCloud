@@ -45,7 +45,8 @@ class Icons {
   static const IconData done_all = Symbols.done_all;
   static const IconData download = Symbols.download;
   static const IconData download_done = Symbols.download_done;
-  static const IconData download_for_offline_outlined = Symbols.download_for_offline;
+  static const IconData download_for_offline_outlined =
+      Symbols.download_for_offline;
   static const IconData download_outlined = Symbols.download;
   static const IconData drive_file_move_outline = Symbols.drive_file_move;
   static const IconData edit_note = Symbols.edit_note;
@@ -93,7 +94,8 @@ class Icons {
   static const IconData radio_button_checked = Symbols.radio_button_checked;
   static const IconData radio_button_unchecked = Symbols.radio_button_unchecked;
   static const IconData refresh = Symbols.refresh;
-  static const IconData restore_from_trash_outlined = Symbols.restore_from_trash;
+  static const IconData restore_from_trash_outlined =
+      Symbols.restore_from_trash;
   static const IconData search = Symbols.search;
   static const IconData select_all = Symbols.select_all;
   static const IconData settings_outlined = Symbols.settings;

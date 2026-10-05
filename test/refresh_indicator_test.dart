@@ -2,10 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/ui/drive_refresh_indicator.dart';
 
-Widget host({
-  required bool enabled,
-  Future<void> Function()? onRefresh,
-}) =>
+Widget host({required bool enabled, Future<void> Function()? onRefresh}) =>
     MaterialApp(
       home: Scaffold(
         body: LanRefreshIndicator(
@@ -53,10 +50,7 @@ void main() {
 
   testWidgets('onRefresh 抛异常时小球也会收起', (tester) async {
     await tester.pumpWidget(
-      host(
-        enabled: true,
-        onRefresh: () async => throw StateError('boom'),
-      ),
+      host(enabled: true, onRefresh: () async => throw StateError('boom')),
     );
 
     await pullDown(tester);

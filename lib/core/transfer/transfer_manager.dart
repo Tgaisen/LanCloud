@@ -48,10 +48,12 @@ class TransferTask {
   TransferStatus status = TransferStatus.queued;
   String? error;
   String? savedPath;
+
   /// 已被用户删除：进行中的任务结束后不再写回记录。
   bool removed = false;
 
-  double get progress => total > 0 ? (received / total).clamp(0, 1).toDouble() : 0;
+  double get progress =>
+      total > 0 ? (received / total).clamp(0, 1).toDouble() : 0;
 }
 
 class TransferManager extends ChangeNotifier {
@@ -89,7 +91,8 @@ class TransferManager extends ChangeNotifier {
           orElse: () => TransferStatus.failed,
         );
         var error = '${row['error'] ?? ''}';
-        if (status == TransferStatus.running || status == TransferStatus.queued) {
+        if (status == TransferStatus.running ||
+            status == TransferStatus.queued) {
           status = TransferStatus.failed;
           error = '应用已退出，任务中断';
         }
@@ -223,14 +226,18 @@ class TransferManager extends ChangeNotifier {
 
   void clearFinished() {
     final removed = tasks
-        .where((t) =>
-            t.status == TransferStatus.done ||
-            t.status == TransferStatus.canceled)
+        .where(
+          (t) =>
+              t.status == TransferStatus.done ||
+              t.status == TransferStatus.canceled,
+        )
         .map((t) => t.id)
         .toList();
-    tasks.removeWhere((t) =>
-        t.status == TransferStatus.done ||
-        t.status == TransferStatus.canceled);
+    tasks.removeWhere(
+      (t) =>
+          t.status == TransferStatus.done ||
+          t.status == TransferStatus.canceled,
+    );
     for (final id in removed) {
       _app.db.deleteTransfer(id).catchError((_) {});
     }
@@ -260,10 +267,18 @@ class TransferManager extends ChangeNotifier {
 
   void _pump() {
     var runningUploads = tasks
-        .where((t) => t.kind == TransferKind.upload && t.status == TransferStatus.running)
+        .where(
+          (t) =>
+              t.kind == TransferKind.upload &&
+              t.status == TransferStatus.running,
+        )
         .length;
     var runningDownloads = tasks
-        .where((t) => t.kind == TransferKind.download && t.status == TransferStatus.running)
+        .where(
+          (t) =>
+              t.kind == TransferKind.download &&
+              t.status == TransferStatus.running,
+        )
         .length;
     for (final task in tasks) {
       if (task.status != TransferStatus.queued) continue;
@@ -314,7 +329,9 @@ class TransferManager extends ChangeNotifier {
       } else {
         await _runDownload(task);
       }
-      if (task.status != TransferStatus.canceled) task.status = TransferStatus.done;
+      if (task.status != TransferStatus.canceled) {
+        task.status = TransferStatus.done;
+      }
       if (task.kind == TransferKind.download &&
           task.refId != null &&
           task.status == TransferStatus.done) {
@@ -368,9 +385,7 @@ class TransferManager extends ChangeNotifier {
     var total = 0;
     var received = 0;
     var known = 0;
-    final done = tasks
-        .where((t) => t.status == TransferStatus.done)
-        .length;
+    final done = tasks.where((t) => t.status == TransferStatus.done).length;
     for (final t in running) {
       received += t.received;
       if (t.total > 0) {
@@ -390,10 +405,7 @@ class TransferManager extends ChangeNotifier {
     if (!_app.settings.notifyDone) return;
     final ns = NotificationService.instance;
     if (task.status == TransferStatus.done) {
-      ns.showDone(
-        upload: task.kind == TransferKind.upload,
-        name: task.name,
-      );
+      ns.showDone(upload: task.kind == TransferKind.upload, name: task.name);
     } else if (task.status == TransferStatus.failed) {
       ns.showFailed(name: task.name, error: task.error ?? '');
     }

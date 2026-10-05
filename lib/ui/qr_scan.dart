@@ -34,8 +34,7 @@ String? decodeQrFromImageBytes(Uint8List bytes) {
   final pixels = Int32List(image.width * image.height);
   for (var i = 0; i < pixels.length; i++) {
     final o = i * 4;
-    pixels[i] =
-        0xFF000000 | (rgba[o] << 16) | (rgba[o + 1] << 8) | rgba[o + 2];
+    pixels[i] = 0xFF000000 | (rgba[o] << 16) | (rgba[o + 1] << 8) | rgba[o + 2];
   }
   try {
     final source = RGBLuminanceSource(image.width, image.height, pixels);

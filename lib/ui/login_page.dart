@@ -46,9 +46,8 @@ class LoginEntries extends StatelessWidget {
   const LoginEntries({super.key});
 
   Future<void> _webLogin(BuildContext context) async {
-    final ok = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => const WebLoginPage()),
-    );
+    final ok = await Navigator.of(context)
+        .push<bool>(MaterialPageRoute(builder: (_) => const WebLoginPage()));
     if (!context.mounted || ok != true) return;
     // 弹窗场景：登录成功后关闭弹窗；页面场景：外壳会自动切到主界面
     if (Navigator.of(context).canPop()) Navigator.of(context).pop(true);
@@ -159,9 +158,9 @@ Future<bool> showCookieLoginDialog(BuildContext context) async {
                       error = null;
                     });
                     try {
-                      await context
-                          .read<AppController>()
-                          .addAccountFromCookie(cookie);
+                      await context.read<AppController>().addAccountFromCookie(
+                        cookie,
+                      );
                       if (dialogContext.mounted) {
                         Navigator.of(dialogContext).pop(true);
                       }
@@ -204,11 +203,7 @@ class LoginPage extends StatelessWidget {
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(20),
-          child: Image.asset(
-            'assets/app_icon.png',
-            width: 72,
-            height: 72,
-          ),
+          child: Image.asset('assets/app_icon.png', width: 72, height: 72),
         ),
         const SizedBox(height: 20),
         Text(l10n.login, style: theme.textTheme.headlineSmall),
@@ -245,10 +240,7 @@ class LoginPage extends StatelessWidget {
           child: SafeArea(
             top: false,
             child: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: form,
-              ),
+              child: Padding(padding: const EdgeInsets.all(24), child: form),
             ),
           ),
         ),

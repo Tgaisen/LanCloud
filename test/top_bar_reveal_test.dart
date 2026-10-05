@@ -34,14 +34,13 @@ class ProbePageState extends State<ProbePage> {
           ScrollTint(
             hideDistance: headerHeight,
             readBarsHidden: () => app.topBarHide.value,
-            onBarsHidden:
-                app.settings.hideTopBar ? app.setTopBarHideFromScroll : null,
+            onBarsHidden: app.settings.hideTopBar
+                ? app.setTopBarHideFromScroll
+                : null,
             child: CustomScrollView(
               controller: scroll,
               slivers: [
-                const SliverToBoxAdapter(
-                  child: SizedBox(height: headerHeight),
-                ),
+                const SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
                 SliverList.builder(
                   itemCount: 40,
                   itemBuilder: (context, index) =>
@@ -57,9 +56,7 @@ class ProbePageState extends State<ProbePage> {
             child: TopBarOverlay(
               height: headerHeight,
               background: Colors.white,
-              builder: (context) => AppBar(
-                title: const Text('BAR'),
-              ),
+              builder: (context) => AppBar(title: const Text('BAR')),
             ),
           ),
         ],

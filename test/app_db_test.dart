@@ -141,7 +141,12 @@ void main() {
     final db = AppDb.instance;
     const account = 'remove-recent-test';
     for (final name in ['A', 'B', 'C']) {
-      await db.addRecent(account: account, kind: 'folder', name: name, ref: name);
+      await db.addRecent(
+        account: account,
+        kind: 'folder',
+        name: name,
+        ref: name,
+      );
       await Future<void>.delayed(const Duration(milliseconds: 3));
     }
     // 另一个账号下的同 ref 记录不应受影响
@@ -154,14 +159,8 @@ void main() {
 
     await db.removeRecent(account: account, ref: 'B');
 
-    expect(
-      (await db.recents(account)).map((r) => r.ref),
-      ['C', 'A'],
-    );
-    expect(
-      (await db.recents('remove-recent-other')).map((r) => r.ref),
-      ['B'],
-    );
+    expect((await db.recents(account)).map((r) => r.ref), ['C', 'A']);
+    expect((await db.recents('remove-recent-other')).map((r) => r.ref), ['B']);
   });
 
   test('批量移除快速访问条目（删除文件夹时同步清理）', () async {
@@ -174,10 +173,7 @@ void main() {
     }
 
     await db.removePins(['p-a', 'p-c']);
-    expect(
-      mine(await db.pins(account)).map((p) => p.ref).toList(),
-      ['p-b'],
-    );
+    expect(mine(await db.pins(account)).map((p) => p.ref).toList(), ['p-b']);
 
     // 空列表直接返回，不影响其它条目
     await db.removePins(const <String>[]);
@@ -190,12 +186,7 @@ void main() {
     List<PinItem> mine(List<PinItem> all) =>
         all.where((p) => p.account == account).toList();
 
-    await db.addPin(
-      account: account,
-      name: 'A',
-      ref: 'pin-a',
-      path: '根目录/A',
-    );
+    await db.addPin(account: account, name: 'A', ref: 'pin-a', path: '根目录/A');
     await Future<void>.delayed(const Duration(milliseconds: 3));
     await db.addPin(
       account: account,

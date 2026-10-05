@@ -18,28 +18,28 @@ class LzFile {
   final bool hasDes;
 
   factory LzFile.fromJson(Map<String, dynamic> j) => LzFile(
-        id: '${j['id']}',
-        name: '${j['name_all'] ?? j['name'] ?? ''}'.replaceAll('&amp;', '&'),
-        time: '${j['time'] ?? ''}',
-        size: '${j['size'] ?? ''}'.replaceAll(',', ''),
-        downs: int.tryParse('${j['downs'] ?? 0}') ?? 0,
-        hasPwd: j['onof'] != null
-            ? '${j['onof']}' == '1'
-            : (j['hasPwd'] == true || '${j['hasPwd']}' == 'true'),
-        hasDes: j['is_des'] != null
-            ? '${j['is_des']}' == '1'
-            : (j['hasDes'] == true || '${j['hasDes']}' == 'true'),
-      );
+    id: '${j['id']}',
+    name: '${j['name_all'] ?? j['name'] ?? ''}'.replaceAll('&amp;', '&'),
+    time: '${j['time'] ?? ''}',
+    size: '${j['size'] ?? ''}'.replaceAll(',', ''),
+    downs: int.tryParse('${j['downs'] ?? 0}') ?? 0,
+    hasPwd: j['onof'] != null
+        ? '${j['onof']}' == '1'
+        : (j['hasPwd'] == true || '${j['hasPwd']}' == 'true'),
+    hasDes: j['is_des'] != null
+        ? '${j['is_des']}' == '1'
+        : (j['hasDes'] == true || '${j['hasDes']}' == 'true'),
+  );
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'time': time,
-        'size': size,
-        'downs': downs,
-        'hasPwd': hasPwd,
-        'hasDes': hasDes,
-      };
+    'id': id,
+    'name': name,
+    'time': time,
+    'size': size,
+    'downs': downs,
+    'hasPwd': hasPwd,
+    'hasDes': hasDes,
+  };
 }
 
 class LzFolder {
@@ -56,23 +56,23 @@ class LzFolder {
   final bool hasPwd;
 
   factory LzFolder.fromJson(Map<String, dynamic> j) => LzFolder(
-        id: '${j['fol_id'] ?? j['id'] ?? ''}',
-        name: '${j['name'] ?? ''}',
-        desc: '${j['folder_des'] ?? j['desc'] ?? ''}'
-            .replaceAll('[', '')
-            .replaceAll(']', '')
-            .trim(),
-        hasPwd: j['onof'] != null
-            ? '${j['onof']}' == '1'
-            : (j['hasPwd'] == true || '${j['hasPwd']}' == 'true'),
-      );
+    id: '${j['fol_id'] ?? j['id'] ?? ''}',
+    name: '${j['name'] ?? ''}',
+    desc: '${j['folder_des'] ?? j['desc'] ?? ''}'
+        .replaceAll('[', '')
+        .replaceAll(']', '')
+        .trim(),
+    hasPwd: j['onof'] != null
+        ? '${j['onof']}' == '1'
+        : (j['hasPwd'] == true || '${j['hasPwd']}' == 'true'),
+  );
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'desc': desc,
-        'hasPwd': hasPwd,
-      };
+    'id': id,
+    'name': name,
+    'desc': desc,
+    'hasPwd': hasPwd,
+  };
 }
 
 class PathNode {
@@ -139,11 +139,14 @@ class FolderShareDetail {
   final String name;
   final String desc;
   final String sharer;
+
   /// 当前已加载的文件（默认只有第一页）。
   final List<ShareFileItem> files;
   final List<SubFolder> folders;
+
   /// 继续分页所需的上下文；为 null 表示这份数据不支持继续加载。
   final ShareFolderPaging? paging;
+
   /// 是否还有下一页文件（浏览页滑到底再加载）。
   final bool hasMore;
 }

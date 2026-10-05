@@ -8,8 +8,9 @@ void useWindow(WidgetTester tester, double width) {
   tester.view.physicalSize = Size(width, 800);
 }
 
-Widget host(Widget child) =>
-    MaterialApp(home: Scaffold(body: SingleChildScrollView(child: child)));
+Widget host(Widget child) => MaterialApp(
+  home: Scaffold(body: SingleChildScrollView(child: child)),
+);
 
 void main() {
   test('列数按 M3 窗口档位：<600 → 1 列，600–839 → 2 列，≥840 → 3 列', () {
@@ -40,8 +41,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       return [
-        for (final text in ['甲', '乙', '丙'])
-          tester.getTopLeft(find.text(text)),
+        for (final text in ['甲', '乙', '丙']) tester.getTopLeft(find.text(text)),
       ];
     }
 
@@ -88,9 +88,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      return [
-        for (var i = 0; i < 5; i++) tester.getTopLeft(find.text('项目$i')),
-      ];
+      return [for (var i = 0; i < 5; i++) tester.getTopLeft(find.text('项目$i'))];
     }
 
     final compact = await pumpWidth(500);

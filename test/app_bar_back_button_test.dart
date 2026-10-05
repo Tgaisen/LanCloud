@@ -62,8 +62,8 @@ void main() {
     final icon = tester.getRect(find.byIcon(app_icons.Icons.arrow_back));
     expect(surface.center.dx, icon.center.dx);
 
-    final scheme =
-        Theme.of(tester.element(find.byType(AppBarBackButton))).colorScheme;
+    final scheme = Theme.of(tester.element(find.byType(AppBarBackButton)))
+        .colorScheme;
     final material = tester.widget<Material>(
       find
           .descendant(
@@ -72,10 +72,7 @@ void main() {
           )
           .first,
     );
-    expect(
-      material.color,
-      scheme.secondaryContainer,
-    );
+    expect(material.color, scheme.secondaryContainer);
   });
 
   testWidgets('返回按钮点击后返回', (tester) async {

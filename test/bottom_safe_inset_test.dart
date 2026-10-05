@@ -25,9 +25,7 @@ Future<void> pumpOverlayPage(
         home: TopBarOverlayScaffold(
           appBar: AppBar(title: const Text('设置')),
           bottomSafeInset: bottomSafeInset,
-          slivers: const [
-            SliverToBoxAdapter(child: SizedBox(height: 700)),
-          ],
+          slivers: const [SliverToBoxAdapter(child: SizedBox(height: 700))],
         ),
       ),
     ),
@@ -164,10 +162,7 @@ void main() {
               appBar: AppBar(
                 title: const Text('设置'),
                 actions: [
-                  IconButton(
-                    icon: const Icon(Icons.search),
-                    onPressed: () {},
-                  ),
+                  IconButton(icon: const Icon(Icons.search), onPressed: () {}),
                 ],
               ),
               slivers: const [
@@ -188,8 +183,10 @@ void main() {
     }
 
     final (plainContent, plainBar, plainSearch) = await pumpSmallPage();
-    final (insetContent, insetBar, insetSearch) =
-        await pumpSmallPage(left: 30, right: 40);
+    final (insetContent, insetBar, insetSearch) = await pumpSmallPage(
+      left: 30,
+      right: 40,
+    );
     // 正文区整体让开两侧：左 30、右 40
     expect(insetContent.left - plainContent.left, 30);
     expect(plainContent.right - insetContent.right, 40);

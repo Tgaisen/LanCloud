@@ -133,8 +133,7 @@ Future<void> _exportCookie(BuildContext context, Account account) async {
     subject: '${context.l10n.appName} · UID ${account.uid}',
   );
   if (!ok && context.mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(context.l10n.cookieExportFailed)),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(context.l10n.cookieExportFailed)));
   }
 }

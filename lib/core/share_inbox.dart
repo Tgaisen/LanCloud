@@ -30,22 +30,21 @@ class SharedInbox {
   }
 
   void attach() {
-    _mediaSub ??= ReceiveSharingIntent.instance
-        .getMediaStream()
-        .listen((files) {
-          final texts = <String>[];
-          final paths = <String>[];
-          for (final f in files) {
-            if (f.type == SharedMediaType.text ||
-                f.type == SharedMediaType.url) {
-              if (f.path.trim().isNotEmpty) texts.add(f.path.trim());
-            } else {
-              paths.add(f.path);
-            }
-          }
-          if (texts.isNotEmpty) onText?.call(texts.join(' '));
-          if (paths.isNotEmpty) onFiles?.call(paths);
-        });
+    _mediaSub ??= ReceiveSharingIntent.instance.getMediaStream().listen((
+      files,
+    ) {
+      final texts = <String>[];
+      final paths = <String>[];
+      for (final f in files) {
+        if (f.type == SharedMediaType.text || f.type == SharedMediaType.url) {
+          if (f.path.trim().isNotEmpty) texts.add(f.path.trim());
+        } else {
+          paths.add(f.path);
+        }
+      }
+      if (texts.isNotEmpty) onText?.call(texts.join(' '));
+      if (paths.isNotEmpty) onFiles?.call(paths);
+    });
   }
 
   void dispose() {

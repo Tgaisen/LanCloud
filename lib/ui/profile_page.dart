@@ -45,11 +45,8 @@ class _ProfilePageState extends State<ProfilePage>
     final app = context.read<AppController>();
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => WebPage(
-          title: title,
-          url: url,
-          cookie: app.activeAccount?.cookie,
-        ),
+        builder: (_) =>
+            WebPage(title: title, url: url, cookie: app.activeAccount?.cookie),
       ),
     );
   }
@@ -67,8 +64,9 @@ class _ProfilePageState extends State<ProfilePage>
 
     return Scaffold(
       // 大屏外壳里的页面：背景交给外壳的圆角卡片
-      backgroundColor:
-          transparentPageBackground(context) ? Colors.transparent : null,
+      backgroundColor: transparentPageBackground(context)
+          ? Colors.transparent
+          : null,
       body: Stack(
         children: [
           // 小屏：正文区整体让开左右挖孔 / 侧边导航栏；顶栏（浮层）保持原样
@@ -76,8 +74,9 @@ class _ProfilePageState extends State<ProfilePage>
             child: ScrollTint(
               hideDistance: headerHeight,
               readBarsHidden: () => app.topBarHide.value,
-              onBarsHidden:
-                  app.settings.hideTopBar ? app.setTopBarHideFromScroll : null,
+              onBarsHidden: app.settings.hideTopBar
+                  ? app.setTopBarHideFromScroll
+                  : null,
               child: CustomScrollView(
                 controller: _scroll,
                 slivers: [
@@ -98,8 +97,8 @@ class _ProfilePageState extends State<ProfilePage>
                                 account == null
                                     ? l10n.notLoggedIn
                                     : account.nickname.isEmpty
-                                        ? l10n.accountUid(uid)
-                                        : account.nickname,
+                                    ? l10n.accountUid(uid)
+                                    : account.nickname,
                               ),
                               subtitle: Text(l10n.uidLabel(uid)),
                               trailing: FilledButton.tonal(
@@ -135,8 +134,9 @@ class _ProfilePageState extends State<ProfilePage>
                               ),
                             ),
                             ListTile(
-                              leading:
-                                  const Icon(Icons.restore_from_trash_outlined),
+                              leading: const Icon(
+                                Icons.restore_from_trash_outlined,
+                              ),
                               title: Text(l10n.recycleBin),
                               trailing: const Icon(Icons.open_in_new),
                               onTap: () => _openWeb(
@@ -210,8 +210,8 @@ class _ProfilePageState extends State<ProfilePage>
     final name = account == null
         ? ''
         : account.nickname.isNotEmpty
-            ? account.nickname
-            : uid;
+        ? account.nickname
+        : uid;
     if (name.isEmpty) return '?';
     return name.substring(0, 1);
   }

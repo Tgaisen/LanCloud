@@ -27,6 +27,7 @@ class _TransfersPageState extends State<TransfersPage>
   static const _anim = Duration(milliseconds: 200);
 
   int _tab = 0;
+
   /// 上传 / 下载切换时列表淡入
   late final AnimationController _tabAnim = AnimationController(
     vsync: this,
@@ -40,6 +41,7 @@ class _TransfersPageState extends State<TransfersPage>
   final ScrollController _scroll = ScrollController();
   bool _selecting = false;
   final Set<String> _selected = {};
+
   /// 正在播放删除动画的记录（动画播完再真正移除）
   final Set<String> _removing = {};
   AppController? _app;
@@ -68,8 +70,7 @@ class _TransfersPageState extends State<TransfersPage>
   TransferKind get _kind =>
       _tab == 0 ? TransferKind.upload : TransferKind.download;
 
-  List<TransferTask> _tasksOf(TransferManager manager) =>
-      manager.byKind(_kind);
+  List<TransferTask> _tasksOf(TransferManager manager) => manager.byKind(_kind);
 
   void _enterSelection({String? taskId}) {
     if (!_selecting) {
@@ -167,8 +168,7 @@ class _TransfersPageState extends State<TransfersPage>
     );
     if (ok != true || !mounted) return;
     final manager = context.read<TransferManager>();
-    final tasks =
-        manager.tasks.where((t) => _selected.contains(t.id)).toList();
+    final tasks = manager.tasks.where((t) => _selected.contains(t.id)).toList();
     final ids = _selected.toList();
     _exitSelection();
     // 先播放删除动画，再真正移除记录
@@ -214,7 +214,8 @@ class _TransfersPageState extends State<TransfersPage>
     final manager = context.watch<TransferManager>();
     final scheme = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final headerHeight = MediaQuery.paddingOf(context).top + kToolbarHeight + 58;
+    final headerHeight =
+        MediaQuery.paddingOf(context).top + kToolbarHeight + 58;
     final tasks = _tasksOf(manager);
     final selectedCount = _selected.length;
     final retryCount = tasks
@@ -224,8 +225,9 @@ class _TransfersPageState extends State<TransfersPage>
         .length;
     return Scaffold(
       // 大屏外壳里的页面：背景交给外壳的圆角卡片
-      backgroundColor:
-          transparentPageBackground(context) ? Colors.transparent : null,
+      backgroundColor: transparentPageBackground(context)
+          ? Colors.transparent
+          : null,
       body: Stack(
         children: [
           // 小屏：正文区整体让开左右挖孔 / 侧边导航栏；顶栏（浮层）保持原样
@@ -233,28 +235,29 @@ class _TransfersPageState extends State<TransfersPage>
             child: ScrollTint(
               hideDistance: headerHeight,
               readBarsHidden: () => app.topBarHide.value,
-              onBarsHidden:
-                  app.settings.hideTopBar ? app.setTopBarHideFromScroll : null,
+              onBarsHidden: app.settings.hideTopBar
+                  ? app.setTopBarHideFromScroll
+                  : null,
               child: CustomScrollView(
                 controller: _scroll,
                 slivers: [
-                // 顶栏不占布局，这里留出等高占位
-                SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
-                SliverFadeTransition(
-                  opacity: _tabFade,
-                  sliver: _TransferListSliver(
-                    kind: _kind,
-                    selecting: _selecting,
-                    selected: _selected,
-                    removing: _removing,
-                    onToggle: _toggleSelected,
-                    onLongPress: _enterSelection,
+                  // 顶栏不占布局，这里留出等高占位
+                  SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
+                  SliverFadeTransition(
+                    opacity: _tabFade,
+                    sliver: _TransferListSliver(
+                      kind: _kind,
+                      selecting: _selecting,
+                      selected: _selected,
+                      removing: _removing,
+                      onToggle: _toggleSelected,
+                      onLongPress: _enterSelection,
+                    ),
                   ),
-                ),
-                // 底栏盖在正文上方（extendBody）时，补足列表末尾留白
-                SliverToBoxAdapter(
-                  child: SizedBox(height: shellBottomBarInset(context)),
-                ),
+                  // 底栏盖在正文上方（extendBody）时，补足列表末尾留白
+                  SliverToBoxAdapter(
+                    child: SizedBox(height: shellBottomBarInset(context)),
+                  ),
                 ],
               ),
             ),
@@ -271,53 +274,55 @@ class _TransfersPageState extends State<TransfersPage>
               builder: (context) => SizedBox(
                 height: headerHeight,
                 child: AppBar(
-                backgroundColor: Colors.transparent,
-                scrolledUnderElevation: 0,
-                leading: (ModalRoute.of(context)?.isFirst ?? true)
-                    ? null
-                    : const AppBarBackButton(),
-                title: Text(l10n.transfers),
-                actions: [
-                  IconButton(
-                    tooltip: l10n.clearFinished,
-                    icon: const Icon(Icons.delete_sweep_outlined),
-                    onPressed: () =>
-                        context.read<TransferManager>().clearFinished(),
-                  ),
-                ],
-                bottom: PreferredSize(
-                  preferredSize: const Size.fromHeight(kTransfersTabBarHeight),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-                    // 多选期间禁用切换上传/下载
-                    child: IgnorePointer(
-                      ignoring: _selecting,
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: ConnectedSegmentedButton<int>(
-                          segments: [
-                            ButtonSegment(
-                              value: 0,
-                              label: Text(l10n.upload),
-                              icon: const Icon(Icons.upload),
-                            ),
-                            ButtonSegment(
-                              value: 1,
-                              label: Text(l10n.download),
-                              icon: const Icon(Icons.download),
-                            ),
-                          ],
-                          selected: {_tab},
-                          onSelectionChanged: (values) {
-                            if (values.first == _tab) return;
-                            setState(() => _tab = values.first);
-                            _tabAnim.forward(from: 0);
-                          },
+                  backgroundColor: Colors.transparent,
+                  scrolledUnderElevation: 0,
+                  leading: (ModalRoute.of(context)?.isFirst ?? true)
+                      ? null
+                      : const AppBarBackButton(),
+                  title: Text(l10n.transfers),
+                  actions: [
+                    IconButton(
+                      tooltip: l10n.clearFinished,
+                      icon: const Icon(Icons.delete_sweep_outlined),
+                      onPressed: () =>
+                          context.read<TransferManager>().clearFinished(),
+                    ),
+                  ],
+                  bottom: PreferredSize(
+                    preferredSize: const Size.fromHeight(
+                      kTransfersTabBarHeight,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                      // 多选期间禁用切换上传/下载
+                      child: IgnorePointer(
+                        ignoring: _selecting,
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: ConnectedSegmentedButton<int>(
+                            segments: [
+                              ButtonSegment(
+                                value: 0,
+                                label: Text(l10n.upload),
+                                icon: const Icon(Icons.upload),
+                              ),
+                              ButtonSegment(
+                                value: 1,
+                                label: Text(l10n.download),
+                                icon: const Icon(Icons.download),
+                              ),
+                            ],
+                            selected: {_tab},
+                            onSelectionChanged: (values) {
+                              if (values.first == _tab) return;
+                              setState(() => _tab = values.first);
+                              _tabAnim.forward(from: 0);
+                            },
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
                 ),
               ),
             ),
@@ -338,8 +343,7 @@ class _TransfersPageState extends State<TransfersPage>
                   color: scheme.surface,
                   // 显式高度：Stack 的 Positioned 不提供高度约束
                   child: SizedBox(
-                    height:
-                        MediaQuery.paddingOf(context).top + kToolbarHeight,
+                    height: MediaQuery.paddingOf(context).top + kToolbarHeight,
                     child: AppBar(
                       key: const ValueKey('transfers-selection-appbar'),
                       leading: IconButton(
@@ -382,8 +386,7 @@ class _TransfersPageState extends State<TransfersPage>
                     BatchAction(
                       icon: Icons.delete_outline,
                       label: l10n.delete,
-                      onPressed:
-                          selectedCount == 0 ? null : _deleteSelected,
+                      onPressed: selectedCount == 0 ? null : _deleteSelected,
                     ),
                     BatchAction(
                       icon: Icons.refresh,
@@ -414,6 +417,7 @@ class _TransferListSliver extends StatelessWidget {
   final TransferKind kind;
   final bool selecting;
   final Set<String> selected;
+
   /// 正在播放删除动画的记录 id。
   final Set<String> removing;
   final void Function(String id) onToggle;
@@ -435,19 +439,22 @@ class _TransferListSliver extends StatelessWidget {
               icon: kind == TransferKind.upload
                   ? Icons.upload_file
                   : Icons.download,
-              text:
-                  kind == TransferKind.upload ? l10n.noUploads : l10n.noDownloads,
+              text: kind == TransferKind.upload
+                  ? l10n.noUploads
+                  : l10n.noDownloads,
             ),
           ),
         ),
       );
     }
     bool isActive(TransferTask t) =>
-        t.status == TransferStatus.queued ||
-        t.status == TransferStatus.running;
+        t.status == TransferStatus.queued || t.status == TransferStatus.running;
     final active = tasks.where(isActive).toList();
-    final finished =
-        tasks.where((t) => !isActive(t)).toList().reversed.toList();
+    final finished = tasks
+        .where((t) => !isActive(t))
+        .toList()
+        .reversed
+        .toList();
     return SliverPadding(
       // 与收藏页一致：外层 12 + SegmentedList 自带 4
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
@@ -500,6 +507,7 @@ class _TransferListSliver extends StatelessWidget {
     );
   }
 }
+
 /// 单条传输记录：MD3E 列表条目 —— 文件类型图标（圆角容器）+ 名称/状态 + 操作，
 /// 进行中在下方显示进度条。
 class _TransferTile extends StatelessWidget {
@@ -526,7 +534,9 @@ class _TransferTile extends StatelessWidget {
       case TransferStatus.queued:
         return l10n.queued;
       case TransferStatus.running:
-        return task.kind == TransferKind.upload ? l10n.uploading : l10n.downloading;
+        return task.kind == TransferKind.upload
+            ? l10n.uploading
+            : l10n.downloading;
       case TransferStatus.done:
         return l10n.completed;
       case TransferStatus.failed:
@@ -556,7 +566,9 @@ class _TransferTile extends StatelessWidget {
     final manager = context.read<TransferManager>();
     final scheme = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final active = task.status == TransferStatus.running || task.status == TransferStatus.queued;
+    final active =
+        task.status == TransferStatus.running ||
+        task.status == TransferStatus.queued;
     final done = task.status == TransferStatus.done && task.savedPath != null;
     // 与首页 / 收藏共用同一套列表项布局，圆角由外层 SegmentedList 控制
     return Md3ListItem(
@@ -605,9 +617,8 @@ class _TransferTile extends StatelessWidget {
                           await ApkInstaller.installApk(task.savedPath!);
                         } catch (e) {
                           if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('$e')),
-                            );
+                            ScaffoldMessenger.of(context)
+                                .showSnackBar(SnackBar(content: Text('$e')));
                           }
                         }
                       },

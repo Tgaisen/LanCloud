@@ -32,6 +32,7 @@ class DrivePage extends StatefulWidget {
 
   final String initialFolderId;
   final String? initialName;
+
   /// 外壳中的 page 视图下标；作为独立路由打开时为 null（不响应切换通知）。
   final int? tabIndex;
 
@@ -101,13 +102,16 @@ class _DrivePageState extends State<DrivePage>
   bool _selecting = false;
   final Set<String> _selectedFiles = {};
   final Set<String> _selectedFolders = {};
+
   /// 键盘是否弹出（悬浮底栏的 FAB 留白跟随它，见 didChangeMetrics）。
   final ValueNotifier<bool> _keyboardUp = ValueNotifier(false);
   late AppController _app;
+
   /// 传输管理器：注册与注销监听成对，dispose 时不能再读 context
   /// （元素正在卸载，InheritedWidget 查询会抛 "Null check operator used
   /// on a null value"），所以 initState 里存下来。
   late TransferManager _transfers;
+
   /// didChangeDependencies 之前（例如 initState 里同步命中的目录缓存）
   /// 还不能访问 _app，用这个标记兜底。
   bool _appReady = false;
@@ -119,8 +123,14 @@ class _DrivePageState extends State<DrivePage>
     // initState 里不能做 InheritedWidget 查询（View.of 会触发 debug 断言），
     // 这里直接读窗口指标；didChangeMetrics 之后照旧用 View.of。
     _keyboardUp.value =
-        WidgetsBinding.instance.platformDispatcher.views.first.viewInsets.bottom >
-            0;
+        WidgetsBinding
+            .instance
+            .platformDispatcher
+            .views
+            .first
+            .viewInsets
+            .bottom >
+        0;
     final app = context.read<AppController>();
     _sortMode = app.settings.sortMode;
     _transfers = context.read<TransferManager>()..addTaskListener(_onTaskDone);
@@ -131,7 +141,9 @@ class _DrivePageState extends State<DrivePage>
     app.driveFolderRequest.addListener(_onDriveFolderRequest);
     if (app.driveFolderRequest.value != null) {
       // 首页请求的目录：直接加载目标目录，不再先加载根目录
-      WidgetsBinding.instance.addPostFrameCallback((_) => _onDriveFolderRequest());
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _onDriveFolderRequest(),
+      );
     } else {
       _load();
     }
@@ -249,8 +261,9 @@ class _DrivePageState extends State<DrivePage>
     int? maxPages,
     bool withFolders = true,
   }) async {
-    final foldersResult =
-        withFolders ? await client.listFolders(_folderId) : null;
+    final foldersResult = withFolders
+        ? await client.listFolders(_folderId)
+        : null;
     final limit = maxPages ?? (app.settings.loadAllPages ? 60 : 1);
     final first = await client.listFilesPage(_folderId, 1);
     var files = first.files;
@@ -289,10 +302,12 @@ class _DrivePageState extends State<DrivePage>
     final fileIds = {for (final f in files) f.id};
     final addedFolders = folderIds.difference(oldFolderIds);
     final addedFiles = fileIds.difference(oldFileIds);
-    final goneFolders =
-        animate ? oldFolderIds.difference(folderIds) : const <String>{};
-    final goneFiles =
-        animate ? oldFileIds.difference(fileIds) : const <String>{};
+    final goneFolders = animate
+        ? oldFolderIds.difference(folderIds)
+        : const <String>{};
+    final goneFiles = animate
+        ? oldFileIds.difference(fileIds)
+        : const <String>{};
 
     setState(() {
       _removingFolders.addAll(goneFolders);
@@ -643,18 +658,16 @@ class _DrivePageState extends State<DrivePage>
         .where((f) => query.isEmpty || f.name.toLowerCase().contains(query))
         .toList();
     if (_sortMode == 'name') {
-      list.sort(
-        (a, b) => _nameSortKey(a.name).compareTo(_nameSortKey(b.name)),
-      );
+      list.sort((a, b) => _nameSortKey(a.name).compareTo(_nameSortKey(b.name)));
     }
     return list;
   }
 
   String _nameSortKey(String name) => PinyinHelper.getPinyinE(
-        name,
-        separator: '',
-        defPinyin: '~',
-      ).toLowerCase();
+    name,
+    separator: '',
+    defPinyin: '~',
+  ).toLowerCase();
 
   List<LzFile> get _visibleFiles {
     final query = _filter.toLowerCase();
@@ -744,7 +757,9 @@ class _DrivePageState extends State<DrivePage>
   Future<void> _openFolder(LzFolder folder) async {
     if (_selecting) {
       setState(() {
-        if (!_selectedFolders.remove(folder.id)) _selectedFolders.add(folder.id);
+        if (!_selectedFolders.remove(folder.id)) {
+          _selectedFolders.add(folder.id);
+        }
       });
       return;
     }
@@ -819,7 +834,8 @@ class _DrivePageState extends State<DrivePage>
         final from = _scroll.position.pixels;
         // 回到列表顶部时让悬浮顶栏顺势滑下来（下移显示），
         // 而不是 jumpTo 造成的瞬间出现。
-        final slideTopBar = _animationsEnabled &&
+        final slideTopBar =
+            _animationsEnabled &&
             context.read<AppController>().settings.hideTopBar;
         if (slideTopBar && to < from) {
           _scroll.animateTo(
@@ -973,30 +989,30 @@ class _DrivePageState extends State<DrivePage>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-            ListTile(
-              leading: const Icon(Icons.create_new_folder_outlined),
-              title: Text(context.l10n.newFolder),
-              onTap: () {
-                Navigator.of(context).pop();
-                _mkdir();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.upload_file_outlined),
-              title: Text(context.l10n.uploadFile),
-              onTap: () {
-                Navigator.of(context).pop();
-                _upload();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.file_open),
-              title: Text(context.l10n.uploadFromApp),
-              onTap: () {
-                Navigator.of(context).pop();
-                _uploadFromApp();
-              },
-            ),
+          ListTile(
+            leading: const Icon(Icons.create_new_folder_outlined),
+            title: Text(context.l10n.newFolder),
+            onTap: () {
+              Navigator.of(context).pop();
+              _mkdir();
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.upload_file_outlined),
+            title: Text(context.l10n.uploadFile),
+            onTap: () {
+              Navigator.of(context).pop();
+              _upload();
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.file_open),
+            title: Text(context.l10n.uploadFromApp),
+            onTap: () {
+              Navigator.of(context).pop();
+              _uploadFromApp();
+            },
+          ),
         ],
       ),
     );
@@ -1086,8 +1102,9 @@ class _DrivePageState extends State<DrivePage>
     if (result == null || !mounted) return;
     final name = result.name;
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(context.l10n.folderNameRequired)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.l10n.folderNameRequired)));
       return;
     }
     try {
@@ -1271,9 +1288,8 @@ class _DrivePageState extends State<DrivePage>
     if (!mounted) return;
     _exitSelection();
     if (lines.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.noLinksToCopy)),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(l10n.noLinksToCopy)));
       return;
     }
     await copyText(context, lines.join('\n'));
@@ -1353,24 +1369,24 @@ class _DrivePageState extends State<DrivePage>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-            ListTile(
-              leading: const Icon(Icons.drive_file_move_outline),
-              title: Text(context.l10n.move),
-              subtitle: Text(context.l10n.moveSubtitle),
-              onTap: () => Navigator.of(context).pop('move'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.edit_note),
-              title: Text(context.l10n.editDesc),
-              subtitle: Text(context.l10n.editDescBatchSubtitle),
-              onTap: () => Navigator.of(context).pop('desc'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.password),
-              title: Text(context.l10n.setPassword),
-              subtitle: Text(context.l10n.setPasswordSubtitle),
-              onTap: () => Navigator.of(context).pop('pwd'),
-            ),
+          ListTile(
+            leading: const Icon(Icons.drive_file_move_outline),
+            title: Text(context.l10n.move),
+            subtitle: Text(context.l10n.moveSubtitle),
+            onTap: () => Navigator.of(context).pop('move'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.edit_note),
+            title: Text(context.l10n.editDesc),
+            subtitle: Text(context.l10n.editDescBatchSubtitle),
+            onTap: () => Navigator.of(context).pop('desc'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.password),
+            title: Text(context.l10n.setPassword),
+            subtitle: Text(context.l10n.setPasswordSubtitle),
+            onTap: () => Navigator.of(context).pop('pwd'),
+          ),
         ],
       ),
     );
@@ -1506,10 +1522,7 @@ class _DrivePageState extends State<DrivePage>
               : fo,
       ];
     });
-    _pulseItems(
-      fileIds: fileIds.toSet(),
-      folderIds: folderIds.toSet(),
-    );
+    _pulseItems(fileIds: fileIds.toSet(), folderIds: folderIds.toSet());
     _updateCacheSnapshot();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -1525,11 +1538,7 @@ class _DrivePageState extends State<DrivePage>
 
   Future<void> _batchSetPasswd() async {
     // 批量不逐项取密码，默认按“启用”打开（留空即关闭）
-    final result = await showPasswordDialog(
-      context,
-      enabled: true,
-      pwd: '',
-    );
+    final result = await showPasswordDialog(context, enabled: true, pwd: '');
     if (result == null || !mounted) return;
     final pwd = result.enabled ? result.pwd : '';
     final client = context.read<AppController>().client;
@@ -1594,10 +1603,7 @@ class _DrivePageState extends State<DrivePage>
               : fo,
       ];
     });
-    _pulseItems(
-      fileIds: fileIds.toSet(),
-      folderIds: folderIds.toSet(),
-    );
+    _pulseItems(fileIds: fileIds.toSet(), folderIds: folderIds.toSet());
     _updateCacheSnapshot();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -1738,9 +1744,7 @@ class _DrivePageState extends State<DrivePage>
   void _replaceFileEntry(LzFile fresh) {
     if (!mounted) return;
     setState(() {
-      _files = [
-        for (final f in _files) f.id == fresh.id ? fresh : f,
-      ];
+      _files = [for (final f in _files) f.id == fresh.id ? fresh : f];
     });
   }
 
@@ -1757,38 +1761,38 @@ class _DrivePageState extends State<DrivePage>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-            ListTile(
-              leading: const Icon(Icons.drive_file_move_outline),
-              title: Text(context.l10n.move),
-              onTap: () {
-                Navigator.of(context).pop();
-                _moveSingleFile(file);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.edit_note),
-              title: Text(context.l10n.editDesc),
-              onTap: () {
-                Navigator.of(context).pop();
-                _singleSetDesc(file);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.password),
-              title: Text(context.l10n.setPassword),
-              onTap: () {
-                Navigator.of(context).pop();
-                _singleSetPasswd(file);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.delete_outline),
-              title: Text(context.l10n.delete),
-              onTap: () {
-                Navigator.of(context).pop();
-                _deleteFile(file);
-              },
-            ),
+          ListTile(
+            leading: const Icon(Icons.drive_file_move_outline),
+            title: Text(context.l10n.move),
+            onTap: () {
+              Navigator.of(context).pop();
+              _moveSingleFile(file);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.edit_note),
+            title: Text(context.l10n.editDesc),
+            onTap: () {
+              Navigator.of(context).pop();
+              _singleSetDesc(file);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.password),
+            title: Text(context.l10n.setPassword),
+            onTap: () {
+              Navigator.of(context).pop();
+              _singleSetPasswd(file);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.delete_outline),
+            title: Text(context.l10n.delete),
+            onTap: () {
+              Navigator.of(context).pop();
+              _deleteFile(file);
+            },
+          ),
         ],
       ),
     );
@@ -1848,9 +1852,8 @@ class _DrivePageState extends State<DrivePage>
       _pulseItems(fileIds: {file.id});
       _updateCacheSnapshot();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.descUpdated)),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(context.l10n.descUpdated)));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
@@ -1903,7 +1906,9 @@ class _DrivePageState extends State<DrivePage>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            pwd.isEmpty ? context.l10n.passwordCleared : context.l10n.passwordSet,
+            pwd.isEmpty
+                ? context.l10n.passwordCleared
+                : context.l10n.passwordSet,
           ),
         ),
       );
@@ -1985,9 +1990,7 @@ class _DrivePageState extends State<DrivePage>
   }
 
   /// 修改文件夹信息（名称 + 简介），成功后返回新值给调用方刷新弹窗。
-  Future<({String name, String desc})?> _editFolderInfo(
-    LzFolder folder,
-  ) async {
+  Future<({String name, String desc})?> _editFolderInfo(LzFolder folder) async {
     final client = context.read<AppController>().client;
     if (client == null) return null;
     // 控制器由弹窗自己持有：退场动画期间 TextField 仍会重建，
@@ -2006,18 +2009,17 @@ class _DrivePageState extends State<DrivePage>
     final name = result.name;
     final desc = result.desc;
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.folderNameRequired)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.l10n.folderNameRequired)));
       return null;
     }
     try {
       await client.setFolderInfo(folder.id, name: name, desc: desc);
       if (!mounted) return null;
       _applyFolderUpdate(folder.id, name: name, desc: desc);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.folderInfoSaved)),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(context.l10n.folderInfoSaved)));
       return (name: name, desc: desc);
     } catch (e) {
       if (!mounted) return null;
@@ -2029,7 +2031,9 @@ class _DrivePageState extends State<DrivePage>
   Future<void> _folderActions(LzFolder folder) async {
     if (_selecting) {
       setState(() {
-        if (!_selectedFolders.remove(folder.id)) _selectedFolders.add(folder.id);
+        if (!_selectedFolders.remove(folder.id)) {
+          _selectedFolders.add(folder.id);
+        }
       });
       return;
     }
@@ -2199,7 +2203,8 @@ class _DrivePageState extends State<DrivePage>
     final app = context.watch<AppController>();
     final grid = app.settings.gridView;
     final selectedCount = _selectedFiles.length + _selectedFolders.length;
-    final headerHeight = MediaQuery.paddingOf(context).top + kToolbarHeight + 46;
+    final headerHeight =
+        MediaQuery.paddingOf(context).top + kToolbarHeight + 46;
     // 底部被占住的高度（外壳底栏 / 系统导航栏），用来把 FAB 抬到它上面。
     // 必须在页面上下文里读：FAB 槽位的 MediaQuery 已经把底部内边距清掉了。
     final bottomObstruction = bottomObstructionHeight(context);
@@ -2212,8 +2217,9 @@ class _DrivePageState extends State<DrivePage>
       builder: (context, _) {
         return Scaffold(
           // 大屏外壳里的页面：背景交给外壳的圆角卡片
-          backgroundColor:
-              transparentPageBackground(context) ? Colors.transparent : null,
+          backgroundColor: transparentPageBackground(context)
+              ? Colors.transparent
+              : null,
           // 键盘弹出时不压缩页面：搜索框在顶栏，页面由外层底栏 Scaffold
           // 压到键盘上沿即可（FAB 的留白见 floatingActionButton）
           resizeToAvoidBottomInset: false,
@@ -2233,10 +2239,8 @@ class _DrivePageState extends State<DrivePage>
                     Theme.of(context).colorScheme,
                   ),
                   // 显式高度：带 bottom（路径栏）的 AppBar 需要有限高度约束
-                  builder: (context) => SizedBox(
-                    height: headerHeight,
-                    child: _topBar(context),
-                  ),
+                  builder: (context) =>
+                      SizedBox(height: headerHeight, child: _topBar(context)),
                 ),
               ),
               // 多选时只覆盖顶栏；路径栏保持可见，平时透明且不拦截点击
@@ -2281,8 +2285,9 @@ class _DrivePageState extends State<DrivePage>
                         BatchAction(
                           icon: Icons.delete_outline,
                           label: context.l10n.delete,
-                          onPressed:
-                              selectedCount == 0 ? null : _deleteSelected,
+                          onPressed: selectedCount == 0
+                              ? null
+                              : _deleteSelected,
                         ),
                         BatchAction(
                           icon: Icons.download_outlined,
@@ -2299,8 +2304,7 @@ class _DrivePageState extends State<DrivePage>
                         BatchAction(
                           icon: Icons.star_outline,
                           label: context.l10n.favorite,
-                          onPressed:
-                              selectedCount == 0 ? null : _batchFavorite,
+                          onPressed: selectedCount == 0 ? null : _batchFavorite,
                         ),
                         BatchAction(
                           icon: Icons.more_horiz,
@@ -2314,63 +2318,63 @@ class _DrivePageState extends State<DrivePage>
               ),
             ],
           ),
-      floatingActionButton: ValueListenableBuilder<double>(
-        valueListenable: app.barsHide,
-        builder: (context, hide, child) {
-          // 只跟随“底栏收起”设置：底栏跟随滚动时 FAB 也同步下滑，
-          // 多选等程序化隐藏则用补间动画，方向统一为上滑显示、下滑消失。
-          final follow = app.settings.hideBottomBar
-              ? hide.clamp(0.0, 1.0)
-              : 0.0;
-          return ValueListenableBuilder<bool>(
-            valueListenable: _keyboardUp,
-            builder: (context, keyboardUp, _) {
-              // 悬浮底栏留白：键盘弹出时底栏沉在键盘下方、屏幕上看不见，
-              // 此时页面已被外层 Scaffold 压到键盘上沿，FAB 停在键盘上方即可，
-              // 不能再叠加底栏高度，否则会高出约一个底栏的距离。
-              // 普通底栏同理：外壳开了 extendBody 后，FAB 按系统手势区
-              // 算出来的位置会落到底栏下面，这里按底栏总高度把它抬回去。
-              // 悬浮样式的胶囊自带上下留白（16 / 12），减 20 后落在胶囊上沿之上。
-              final lift = keyboardUp
-                  ? 0.0
-                  : math.max(
-                      0.0,
-                      floatingNavInShell
-                          ? bottomObstruction - 20.0
-                          : bottomObstruction,
-                    );
-              return AnimatedPadding(
-                padding: EdgeInsets.only(bottom: lift),
-                duration: _anim,
-                curve: Curves.easeOutCubic,
-                child: TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0, end: _selecting ? 1.0 : 0.0),
-                  duration: _anim,
-                  curve: Curves.easeOutCubic,
-                  builder: (context, selecting, child) {
-                    final t = math.max(selecting, follow);
-                    return IgnorePointer(
-                      ignoring: t > 0.85,
-                      child: Opacity(
-                        opacity: (1 - t).clamp(0.0, 1.0),
-                        child: Transform.translate(
-                          offset: Offset(0, 150 * t),
-                          child: child,
-                        ),
+          floatingActionButton: ValueListenableBuilder<double>(
+            valueListenable: app.barsHide,
+            builder: (context, hide, child) {
+              // 只跟随“底栏收起”设置：底栏跟随滚动时 FAB 也同步下滑，
+              // 多选等程序化隐藏则用补间动画，方向统一为上滑显示、下滑消失。
+              final follow = app.settings.hideBottomBar
+                  ? hide.clamp(0.0, 1.0)
+                  : 0.0;
+              return ValueListenableBuilder<bool>(
+                valueListenable: _keyboardUp,
+                builder: (context, keyboardUp, _) {
+                  // 悬浮底栏留白：键盘弹出时底栏沉在键盘下方、屏幕上看不见，
+                  // 此时页面已被外层 Scaffold 压到键盘上沿，FAB 停在键盘上方即可，
+                  // 不能再叠加底栏高度，否则会高出约一个底栏的距离。
+                  // 普通底栏同理：外壳开了 extendBody 后，FAB 按系统手势区
+                  // 算出来的位置会落到底栏下面，这里按底栏总高度把它抬回去。
+                  // 悬浮样式的胶囊自带上下留白（16 / 12），减 20 后落在胶囊上沿之上。
+                  final lift = keyboardUp
+                      ? 0.0
+                      : math.max(
+                          0.0,
+                          floatingNavInShell
+                              ? bottomObstruction - 20.0
+                              : bottomObstruction,
+                        );
+                  return AnimatedPadding(
+                    padding: EdgeInsets.only(bottom: lift),
+                    duration: _anim,
+                    curve: Curves.easeOutCubic,
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0, end: _selecting ? 1.0 : 0.0),
+                      duration: _anim,
+                      curve: Curves.easeOutCubic,
+                      builder: (context, selecting, child) {
+                        final t = math.max(selecting, follow);
+                        return IgnorePointer(
+                          ignoring: t > 0.85,
+                          child: Opacity(
+                            opacity: (1 - t).clamp(0.0, 1.0),
+                            child: Transform.translate(
+                              offset: Offset(0, 150 * t),
+                              child: child,
+                            ),
+                          ),
+                        );
+                      },
+                      child: FloatingActionButton.extended(
+                        onPressed: _showAddMenu,
+                        icon: const Icon(Icons.add),
+                        label: Text(context.l10n.add),
                       ),
-                    );
-                  },
-                  child: FloatingActionButton.extended(
-                    onPressed: _showAddMenu,
-                    icon: const Icon(Icons.add),
-                    label: Text(context.l10n.add),
-                  ),
-                ),
+                    ),
+                  );
+                },
               );
             },
-          );
-        },
-      ),
+          ),
         );
       },
     );
@@ -2383,54 +2387,51 @@ class _DrivePageState extends State<DrivePage>
       behavior: HitTestBehavior.translucent,
       onTap: _scrollToTop,
       child: AppBar(
-      backgroundColor: Colors.transparent,
-      scrolledUnderElevation: 0,
-      leading: (ModalRoute.of(context)?.isFirst ?? true)
-          ? null
-          : const AppBarBackButton(),
-      title: _searching
-          ? TextField(
-              controller: _searchController,
-              autofocus: true,
-              decoration: InputDecoration(
-                hintText: context.l10n.searchCurrentFolder,
-                border: InputBorder.none,
-              ),
-              onChanged: (value) => setState(() => _filter = value.trim()),
-            )
-          : Text(context.l10n.tabDrive),
-      actions: _searching
-          ? [
-              IconButton(
-                tooltip: context.l10n.closeSearch,
-                icon: const Icon(Icons.close),
-                onPressed: _closeSearch,
-              ),
-            ]
-          : [
-              IconButton(
-                tooltip: context.l10n.search,
-                icon: const Icon(Icons.search),
-                onPressed: () => setState(() => _searching = true),
-              ),
-              IconButton(
-                tooltip: context.l10n.menu,
-                icon: const Icon(Icons.more_vert),
-                onPressed: _showDriveMenu,
-              ),
-            ],
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(kDrivePathBarHeight),
-        // 多选期间禁用路径切换，但路径栏保持可见；
-        // bottom 拿到的是无界高度，必须自己声明固定高度，否则会把工具栏挤成 0
-        child: SizedBox(
-          height: 46,
-          child: IgnorePointer(
-            ignoring: _selecting,
-            child: _pathBar(),
+        backgroundColor: Colors.transparent,
+        scrolledUnderElevation: 0,
+        leading: (ModalRoute.of(context)?.isFirst ?? true)
+            ? null
+            : const AppBarBackButton(),
+        title: _searching
+            ? TextField(
+                controller: _searchController,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: context.l10n.searchCurrentFolder,
+                  border: InputBorder.none,
+                ),
+                onChanged: (value) => setState(() => _filter = value.trim()),
+              )
+            : Text(context.l10n.tabDrive),
+        actions: _searching
+            ? [
+                IconButton(
+                  tooltip: context.l10n.closeSearch,
+                  icon: const Icon(Icons.close),
+                  onPressed: _closeSearch,
+                ),
+              ]
+            : [
+                IconButton(
+                  tooltip: context.l10n.search,
+                  icon: const Icon(Icons.search),
+                  onPressed: () => setState(() => _searching = true),
+                ),
+                IconButton(
+                  tooltip: context.l10n.menu,
+                  icon: const Icon(Icons.more_vert),
+                  onPressed: _showDriveMenu,
+                ),
+              ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(kDrivePathBarHeight),
+          // 多选期间禁用路径切换，但路径栏保持可见；
+          // bottom 拿到的是无界高度，必须自己声明固定高度，否则会把工具栏挤成 0
+          child: SizedBox(
+            height: 46,
+            child: IgnorePointer(ignoring: _selecting, child: _pathBar()),
           ),
         ),
-      ),
       ),
     );
   }
@@ -2443,26 +2444,25 @@ class _DrivePageState extends State<DrivePage>
     return ScrollTint(
       hideDistance: headerInset,
       readBarsHidden: () => app.topBarHide.value,
-      onBarsHidden:
-          app.settings.hideTopBar ? app.setTopBarHideFromScroll : null,
+      onBarsHidden: app.settings.hideTopBar
+          ? app.setTopBarHideFromScroll
+          : null,
       child: drive_refresh.LanRefreshIndicator(
         onRefresh: _reloadAfterChange,
         // 页面自己在加载（居中转圈）时不响应下拉刷新，避免两个指示同时出现
         enabled: !_loading,
         edgeOffset: headerInset,
         child: CustomScrollView(
-        controller: _scroll,
-        slivers: [
-          SliverToBoxAdapter(child: SizedBox(height: headerInset)),
-          // 目录切换时内容整体淡出（顶栏与路径栏不受影响）
-          ..._contentSlivers(grid).map(
-            (sliver) => SliverFadeTransition(
-              opacity: _contentFade,
-              sliver: sliver,
+          controller: _scroll,
+          slivers: [
+            SliverToBoxAdapter(child: SizedBox(height: headerInset)),
+            // 目录切换时内容整体淡出（顶栏与路径栏不受影响）
+            ..._contentSlivers(grid).map(
+              (sliver) =>
+                  SliverFadeTransition(opacity: _contentFade, sliver: sliver),
             ),
-          ),
-            ],
-          ),
+          ],
+        ),
       ),
     );
   }
@@ -2489,9 +2489,8 @@ class _DrivePageState extends State<DrivePage>
               label: i < 0 ? context.l10n.root : _path[i].name,
               current: i == _path.length - 1,
               // 点当前目录 = 刷新；点上一级 = 返回该目录
-              onTap: () => i == _path.length - 1
-                  ? _reloadAfterChange()
-                  : _jumpTo(i),
+              onTap: () =>
+                  i == _path.length - 1 ? _reloadAfterChange() : _jumpTo(i),
             ),
           ],
         ],
@@ -2621,12 +2620,8 @@ class _DrivePageState extends State<DrivePage>
                 childAspectRatio: 0.86,
               ),
               itemCount: files.length,
-              itemBuilder: (context, index) => _fileItem(
-                files[index],
-                index,
-                grid: true,
-                animate: animate,
-              ),
+              itemBuilder: (context, index) =>
+                  _fileItem(files[index], index, grid: true, animate: animate),
             ),
           )
         else
@@ -2635,12 +2630,8 @@ class _DrivePageState extends State<DrivePage>
             sliver: AdaptiveSliverRows(
               itemCount: files.length,
               spacing: 0,
-              itemBuilder: (context, index) => _fileItem(
-                files[index],
-                index,
-                grid: false,
-                animate: animate,
-              ),
+              itemBuilder: (context, index) =>
+                  _fileItem(files[index], index, grid: false, animate: animate),
             ),
           ),
       SliverToBoxAdapter(
@@ -2664,17 +2655,15 @@ class _DrivePageState extends State<DrivePage>
                     _hasMore
                         ? ''
                         : (_filter.isEmpty
-                            ? context.l10n.reachedEnd
-                            : context.l10n.filterResult),
+                              ? context.l10n.reachedEnd
+                              : context.l10n.filterResult),
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
           ),
         ),
       ),
       // 底栏盖在正文上方（extendBody）时，补足列表末尾留白
-      SliverToBoxAdapter(
-        child: SizedBox(height: shellBottomBarInset(context)),
-      ),
+      SliverToBoxAdapter(child: SizedBox(height: shellBottomBarInset(context))),
     ];
   }
 
@@ -2767,6 +2756,7 @@ class _AnimatedListItem extends StatelessWidget {
   });
 
   final int index;
+
   /// 目录进入动画的共享进度（0..1，动画结束后为 1）。
   final Animation<double> enter;
   final bool enabled;
@@ -2851,8 +2841,10 @@ class _AnimatedListItem extends StatelessWidget {
       builder: (context, child) {
         final delay = index.clamp(0, 8) * _enterStep;
         final progress =
-            ((enter.value * _enterDuration - delay) / _enterItemDuration)
-                .clamp(0.0, 1.0);
+            ((enter.value * _enterDuration - delay) / _enterItemDuration).clamp(
+              0.0,
+              1.0,
+            );
         final t = Curves.easeOutCubic.transform(progress);
         return Opacity(
           opacity: t,
@@ -2920,8 +2912,7 @@ class _FolderTile extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Card(
       clipBehavior: Clip.antiAlias,
-      color:
-          selected ? scheme.primaryContainer : scheme.surfaceContainerHigh,
+      color: selected ? scheme.primaryContainer : scheme.surfaceContainerHigh,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: InkWell(
         onTap: onTap,
@@ -3000,8 +2991,7 @@ class _FileTile extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Card(
       clipBehavior: Clip.antiAlias,
-      color:
-          selected ? scheme.primaryContainer : scheme.surfaceContainerHigh,
+      color: selected ? scheme.primaryContainer : scheme.surfaceContainerHigh,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: InkWell(
         onTap: onTap,
@@ -3124,8 +3114,8 @@ class _DriveRow extends StatelessWidget {
                     color: selected
                         ? scheme.surface
                         : folder
-                            ? scheme.secondaryContainer
-                            : scheme.surfaceContainerHigh,
+                        ? scheme.secondaryContainer
+                        : scheme.surfaceContainerHigh,
                     borderRadius: BorderRadius.circular(selected ? 14 : 12),
                   ),
                   child: AnimatedSwitcher(
@@ -3137,8 +3127,8 @@ class _DriveRow extends StatelessWidget {
                       color: selected
                           ? scheme.primary
                           : folder
-                              ? scheme.onSecondaryContainer
-                              : scheme.onSurfaceVariant,
+                          ? scheme.onSecondaryContainer
+                          : scheme.onSurfaceVariant,
                     ),
                   ),
                 ),
@@ -3160,8 +3150,9 @@ class _DriveRow extends StatelessWidget {
                             subtitle,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodySmall
-                                ?.copyWith(color: scheme.outline),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: scheme.outline,
+                            ),
                           ),
                         ),
                     ],
@@ -3280,10 +3271,12 @@ class _FolderFormDialog extends StatefulWidget {
 }
 
 class _FolderFormDialogState extends State<_FolderFormDialog> {
-  late final TextEditingController _name =
-      TextEditingController(text: widget.name);
-  late final TextEditingController _desc =
-      TextEditingController(text: widget.desc);
+  late final TextEditingController _name = TextEditingController(
+    text: widget.name,
+  );
+  late final TextEditingController _desc = TextEditingController(
+    text: widget.desc,
+  );
 
   @override
   void dispose() {
@@ -3293,10 +3286,8 @@ class _FolderFormDialogState extends State<_FolderFormDialog> {
   }
 
   void _submit() {
-    Navigator.of(context).pop((
-      name: _name.text.trim(),
-      desc: _desc.text.trim(),
-    ));
+    Navigator.of(context)
+        .pop((name: _name.text.trim(), desc: _desc.text.trim()));
   }
 
   @override
@@ -3329,10 +3320,7 @@ class _FolderFormDialogState extends State<_FolderFormDialog> {
           onPressed: () => Navigator.of(context).pop(),
           child: Text(context.l10n.cancel),
         ),
-        FilledButton(
-          onPressed: _submit,
-          child: Text(widget.confirmLabel),
-        ),
+        FilledButton(onPressed: _submit, child: Text(widget.confirmLabel)),
       ],
     );
   }
@@ -3371,8 +3359,7 @@ class _EditDescDialogState extends State<_EditDescDialog> {
           child: Text(context.l10n.cancel),
         ),
         FilledButton(
-          onPressed: () =>
-              Navigator.of(context).pop(_controller.text.trim()),
+          onPressed: () => Navigator.of(context).pop(_controller.text.trim()),
           child: Text(context.l10n.confirm),
         ),
       ],
@@ -3412,8 +3399,7 @@ class _FolderNameDialogState extends State<_FolderNameDialog> {
           child: Text(context.l10n.cancel),
         ),
         FilledButton(
-          onPressed: () =>
-              Navigator.of(context).pop(_controller.text.trim()),
+          onPressed: () => Navigator.of(context).pop(_controller.text.trim()),
           child: Text(context.l10n.create),
         ),
       ],
@@ -3547,10 +3533,7 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
 /// 文件夹属性弹窗：简介与统计信息变动快，不读缓存——每次打开都重新拉取，
 /// 拉取期间先展示列表里的现有简介并显示加载指示。
 class _FolderInfoSheet extends StatefulWidget {
-  const _FolderInfoSheet({
-    required this.folder,
-    required this.page,
-  });
+  const _FolderInfoSheet({required this.folder, required this.page});
 
   final LzFolder folder;
   final _DrivePageState page;
@@ -3563,6 +3546,7 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
   late String _name = widget.folder.name;
   String? _desc;
   String? _stats;
+
   /// 简介与统计信息都不再缓存：打开弹窗时总会重新拉取。
   bool _loading = true;
   bool _pinned = false;
@@ -3578,8 +3562,8 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
           widget.folder.id,
         )
         .then((value) {
-      if (mounted) setState(() => _pinned = value);
-    });
+          if (mounted) setState(() => _pinned = value);
+        });
     _fetch();
   }
 
@@ -3592,8 +3576,8 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
       // 只存「所在目录」的相对路径：不含根目录前缀，也不含文件夹自身。
       // 副标题展示时再按当前语言拼上根目录，这样切换语言后也能跟着变。
       final ancestors = widget.page._path;
-      final isCurrent = ancestors.isNotEmpty &&
-          ancestors.last.id == widget.folder.id;
+      final isCurrent =
+          ancestors.isNotEmpty && ancestors.last.id == widget.folder.id;
       final parents = isCurrent
           ? ancestors.sublist(0, ancestors.length - 1)
           : ancestors;
@@ -3655,8 +3639,9 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
           setState(() => _stats = text);
         }
       } else {
-        final files =
-            client == null ? const <LzFile>[] : await client.listFiles(id);
+        final files = client == null
+            ? const <LzFile>[]
+            : await client.listFiles(id);
         if (files.isNotEmpty && mounted) {
           final total = files.fold<int>(
             0,
@@ -3684,10 +3669,7 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
           PropertyHeaderCard(
             icon: Icons.folder,
             title: _name,
-            subtitle: [
-              context.l10n.folder,
-              ?_stats,
-            ].join(' · '),
+            subtitle: [context.l10n.folder, ?_stats].join(' · '),
             desc: _desc ?? folder.desc,
             loading: _loading,
           ),
@@ -3737,9 +3719,7 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
                   },
           ),
           ListTile(
-            leading: Icon(
-              _pinned ? Icons.keep_off : Icons.push_pin,
-            ),
+            leading: Icon(_pinned ? Icons.keep_off : Icons.push_pin),
             title: Text(
               _pinned
                   ? context.l10n.removeFromQuickAccess
@@ -3831,8 +3811,9 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
   List<PathNode> _path = [];
   bool _loading = true;
   String? _error;
-  late final TextEditingController _nameController =
-      TextEditingController(text: widget.initialName ?? '');
+  late final TextEditingController _nameController = TextEditingController(
+    text: widget.initialName ?? '',
+  );
 
   @override
   void initState() {
@@ -3898,8 +3879,9 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final visible =
-        _folders.where((f) => !widget.excludeIds.contains(f.id)).toList();
+    final visible = _folders
+        .where((f) => !widget.excludeIds.contains(f.id))
+        .toList();
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       title: Text(l10n.chooseTargetFolder),
@@ -3930,8 +3912,9 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
                         for (var i = -1; i < _path.length; i++) ...[
                           if (i >= 0)
                             Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 2),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 2,
+                              ),
                               child: Icon(
                                 Icons.chevron_right,
                                 size: 16,
@@ -3962,28 +3945,28 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
                   : _error != null
-                      ? Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Text(
-                              l10n.loadFailed(_error!),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        )
-                      : visible.isEmpty
-                          ? Center(
-                              child: Text(
-                                l10n.noSubfolders,
-                                style: TextStyle(color: scheme.outline),
-                              ),
-                            )
-                          : ListView.builder(
-                              padding: EdgeInsets.zero,
-                              itemCount: visible.length,
-                              itemBuilder: (context, index) =>
-                                  _folderRow(visible[index]),
-                            ),
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Text(
+                          l10n.loadFailed(_error!),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    )
+                  : visible.isEmpty
+                  ? Center(
+                      child: Text(
+                        l10n.noSubfolders,
+                        style: TextStyle(color: scheme.outline),
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: EdgeInsets.zero,
+                      itemCount: visible.length,
+                      itemBuilder: (context, index) =>
+                          _folderRow(visible[index]),
+                    ),
             ),
           ],
         ),

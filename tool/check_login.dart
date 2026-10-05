@@ -69,8 +69,6 @@ Future<void> main(List<String> args) async {
   final head = await downloaded
       .openRead(0, 4)
       .fold<List<int>>(<int>[], (acc, chunk) => acc..addAll(chunk));
-  print(
-    'full download: $size bytes magic=${String.fromCharCodes(head)}',
-  );
+  print('full download: $size bytes magic=${String.fromCharCodes(head)}');
   await downloaded.delete();
 }
