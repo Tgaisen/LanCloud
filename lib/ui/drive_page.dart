@@ -1071,45 +1071,16 @@ class _DrivePageState extends State<DrivePage>
   }
 
   Future<void> _mkdir() async {
-    final nameController = TextEditingController();
-    final descController = TextEditingController();
-    final result = await showDialog<bool>(
+    // 控制器由弹窗自己持有（见 _FolderFormDialog）
+    final result = await showDialog<({String name, String desc})>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(context.l10n.newFolder),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              autofocus: true,
-              decoration: InputDecoration(labelText: context.l10n.nameRequired),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: descController,
-              // 蓝奏云的文件夹简介本身支持换行，输入框也要能录入多行
-              minLines: 2,
-              maxLines: 6,
-              keyboardType: TextInputType.multiline,
-              decoration: InputDecoration(labelText: context.l10n.descOptional),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(context.l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(context.l10n.create),
-          ),
-        ],
+      builder: (_) => _FolderFormDialog(
+        title: context.l10n.newFolder,
+        confirmLabel: context.l10n.create,
       ),
     );
-    if (result != true || !mounted) return;
-    final name = nameController.text.trim();
+    if (result == null || !mounted) return;
+    final name = result.name;
     if (name.isEmpty) {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(context.l10n.folderNameRequired)));
@@ -1119,7 +1090,7 @@ class _DrivePageState extends State<DrivePage>
       await context.read<AppController>().client?.mkdir(
         _folderId,
         name,
-        desc: descController.text.trim(),
+        desc: result.desc,
       );
       // 局部刷新：只重新拉取文件夹列表，新文件夹淡入出现
       final ok = await _refreshInPlace(refreshFolders: true);
@@ -1464,30 +1435,12 @@ class _DrivePageState extends State<DrivePage>
   }
 
   Future<void> _batchSetDesc() async {
-    final controller = TextEditingController();
-    final ok = await showDialog<bool>(
+    // 控制器由弹窗自己持有（见 _EditDescDialog）
+    final desc = await showDialog<String>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(context.l10n.editDesc),
-        content: TextField(
-          controller: controller,
-          maxLines: 3,
-          autofocus: true,
-          decoration: InputDecoration(hintText: context.l10n.newDescHint),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(context.l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(context.l10n.confirm),
-          ),
-        ],
-      ),
+      builder: (_) => const _EditDescDialog(),
     );
-    if (ok != true || !mounted) return;
+    if (desc == null || !mounted) return;
     final client = context.read<AppController>().client;
     if (client == null) return;
     final fileIds = _selectedFiles.toList();
@@ -1504,7 +1457,7 @@ class _DrivePageState extends State<DrivePage>
         for (final id in fileIds) {
           report(++done, fileNames[id] ?? '');
           try {
-            await client.setDesc(id, controller.text.trim());
+            await client.setDesc(id, desc);
           } catch (_) {
             failed += 1;
           }
@@ -1512,7 +1465,7 @@ class _DrivePageState extends State<DrivePage>
         for (final id in folderIds) {
           report(++done, folderNames[id] ?? '');
           try {
-            await client.setFolderDesc(id, controller.text.trim());
+            await client.setFolderDesc(id, desc);
           } catch (_) {
             failed += 1;
           }
@@ -1522,7 +1475,6 @@ class _DrivePageState extends State<DrivePage>
     if (!mounted) return;
     final count = fileIds.length + folderIds.length;
     _exitSelection();
-    final desc = controller.text.trim();
     setState(() {
       _files = [
         for (final f in _files)
@@ -1864,35 +1816,14 @@ class _DrivePageState extends State<DrivePage>
   }
 
   Future<void> _singleSetDesc(LzFile file) async {
-    final controller = TextEditingController();
-    final ok = await showDialog<bool>(
+    // 控制器由弹窗自己持有（见 _EditDescDialog）
+    final desc = await showDialog<String>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(context.l10n.editDesc),
-        content: TextField(
-          controller: controller,
-          maxLines: 3,
-          autofocus: true,
-          decoration: InputDecoration(hintText: context.l10n.newDescHint),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(context.l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(context.l10n.confirm),
-          ),
-        ],
-      ),
+      builder: (_) => const _EditDescDialog(),
     );
-    if (ok != true || !mounted) return;
+    if (desc == null || !mounted) return;
     try {
-      await context
-          .read<AppController>()
-          .client
-          ?.setDesc(file.id, controller.text.trim());
+      await context.read<AppController>().client?.setDesc(file.id, desc);
       if (!mounted) return;
       setState(() {
         _files = [
@@ -2060,7 +1991,12 @@ class _DrivePageState extends State<DrivePage>
     // 「A TextEditingController was used after being disposed」。
     final result = await showDialog<({String name, String desc})>(
       context: context,
-      builder: (_) => _FolderInfoDialog(name: folder.name, desc: folder.desc),
+      builder: (_) => _FolderFormDialog(
+        title: context.l10n.folderInfo,
+        confirmLabel: context.l10n.confirm,
+        name: folder.name,
+        desc: folder.desc,
+      ),
     );
     if (result == null || !mounted) return null;
     final name = result.name;
@@ -3319,19 +3255,27 @@ class _FileRow extends StatelessWidget {
   }
 }
 
-/// 修改文件夹信息弹窗（名称 + 简介）：输入控制器随弹窗 State 一起释放，
-/// 避免弹窗退场动画期间 TextField 重建时用到已 dispose 的控制器。
-class _FolderInfoDialog extends StatefulWidget {
-  const _FolderInfoDialog({required this.name, required this.desc});
+/// 文件夹「名称 + 简介」弹窗：新建文件夹与修改文件夹信息共用。
+/// 输入控制器随弹窗 State 一起释放，避免弹窗退场动画期间 TextField
+/// 重建时用到已 dispose 的控制器。
+class _FolderFormDialog extends StatefulWidget {
+  const _FolderFormDialog({
+    required this.title,
+    required this.confirmLabel,
+    this.name = '',
+    this.desc = '',
+  });
 
+  final String title;
+  final String confirmLabel;
   final String name;
   final String desc;
 
   @override
-  State<_FolderInfoDialog> createState() => _FolderInfoDialogState();
+  State<_FolderFormDialog> createState() => _FolderFormDialogState();
 }
 
-class _FolderInfoDialogState extends State<_FolderInfoDialog> {
+class _FolderFormDialogState extends State<_FolderFormDialog> {
   late final TextEditingController _name =
       TextEditingController(text: widget.name);
   late final TextEditingController _desc =
@@ -3354,7 +3298,7 @@ class _FolderInfoDialogState extends State<_FolderInfoDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(context.l10n.folderInfo),
+      title: Text(widget.title),
       // 简介是多行输入：键盘弹出时内容可能超高，允许滚动避免溢出
       scrollable: true,
       content: Column(
@@ -3383,7 +3327,90 @@ class _FolderInfoDialogState extends State<_FolderInfoDialog> {
         ),
         FilledButton(
           onPressed: _submit,
+          child: Text(widget.confirmLabel),
+        ),
+      ],
+    );
+  }
+}
+
+/// 修改简介弹窗（文件 / 文件夹批量共用）：控制器随弹窗 State 释放。
+class _EditDescDialog extends StatefulWidget {
+  const _EditDescDialog();
+
+  @override
+  State<_EditDescDialog> createState() => _EditDescDialogState();
+}
+
+class _EditDescDialogState extends State<_EditDescDialog> {
+  final TextEditingController _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(context.l10n.editDesc),
+      content: TextField(
+        controller: _controller,
+        maxLines: 3,
+        autofocus: true,
+        decoration: InputDecoration(hintText: context.l10n.newDescHint),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(context.l10n.cancel),
+        ),
+        FilledButton(
+          onPressed: () =>
+              Navigator.of(context).pop(_controller.text.trim()),
           child: Text(context.l10n.confirm),
+        ),
+      ],
+    );
+  }
+}
+
+/// 新建文件夹（只填名称）弹窗：控制器随弹窗 State 释放。
+class _FolderNameDialog extends StatefulWidget {
+  const _FolderNameDialog();
+
+  @override
+  State<_FolderNameDialog> createState() => _FolderNameDialogState();
+}
+
+class _FolderNameDialogState extends State<_FolderNameDialog> {
+  final TextEditingController _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(context.l10n.newFolder),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        decoration: InputDecoration(labelText: context.l10n.nameRequired),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(context.l10n.cancel),
+        ),
+        FilledButton(
+          onPressed: () =>
+              Navigator.of(context).pop(_controller.text.trim()),
+          child: Text(context.l10n.create),
         ),
       ],
     );
@@ -3844,28 +3871,10 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
   }
 
   Future<void> _mkdir() async {
-    final controller = TextEditingController();
+    // 控制器由弹窗自己持有（见 _FolderNameDialog）
     final name = await showDialog<String>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(context.l10n.newFolder),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: InputDecoration(labelText: context.l10n.nameRequired),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text(context.l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () =>
-                Navigator.of(dialogContext).pop(controller.text.trim()),
-            child: Text(context.l10n.create),
-          ),
-        ],
-      ),
+      builder: (_) => const _FolderNameDialog(),
     );
     if (name == null || name.isEmpty || !mounted) return;
     try {
