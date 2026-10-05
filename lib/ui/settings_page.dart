@@ -1,5 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart' hide Icons;
+import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 
 import '../core/app_controller.dart';
@@ -7,7 +8,7 @@ import '../core/app_log.dart';
 import '../core/app_permissions.dart';
 import '../core/dynamic_color_support.dart';
 import '../core/notifications.dart';
-import '../core/system_share.dart';
+import '../core/system_file_saver.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'backup_page.dart';
@@ -911,7 +912,7 @@ class _SettingsPageState extends State<SettingsPage>
     }
   }
 
-  /// 导出运行日志：合并本机日志交到系统分享面板。
+  /// 导出运行日志：合并本机日志，交给系统「保存文件」对话框。
   Future<void> _exportLogs(BuildContext context) async {
     final l10n = context.l10n;
     final messenger = ScaffoldMessenger.of(context);
@@ -922,14 +923,15 @@ class _SettingsPageState extends State<SettingsPage>
         messenger.showSnackBar(SnackBar(content: Text(l10n.exportLogsEmpty)));
         return;
       }
-      final ok = await SystemShare.shareFile(
-        file.path,
-        subject: '${l10n.appName} ${l10n.exportLogs}',
+      final saved = await SystemFileSaver.save(
+        sourcePath: file.path,
+        fileName: p.basename(file.path),
         mime: 'text/plain',
       );
-      if (!ok && mounted) {
-        messenger.showSnackBar(SnackBar(content: Text(l10n.exportLogsFailed)));
-      }
+      if (!mounted || saved == null) return; // 用户取消保存
+      messenger.showSnackBar(
+        SnackBar(content: Text(l10n.exportLogsSaved(saved))),
+      );
     } catch (_) {
       if (mounted) {
         messenger.showSnackBar(SnackBar(content: Text(l10n.exportLogsFailed)));

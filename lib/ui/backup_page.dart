@@ -3,13 +3,14 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart' hide Icons;
+import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 
 import '../core/app_controller.dart';
 import '../core/backup/backup_service.dart';
 import '../core/backup/webdav_client.dart';
 import '../core/cookie_auth.dart';
-import '../core/system_share.dart';
+import '../core/system_file_saver.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
@@ -111,22 +112,22 @@ class _BackupPageState extends State<BackupPage> {
 
   Future<void> _backupToFile() => _run(() async {
     final l10n = context.l10n;
-    final file = await _service.saveLocal(
+    final file = await _service.exportFile(
       includeCookies: _service.webdav.includeCookies,
     );
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(l10n.backupSaved(file.path)),
-        action: SnackBarAction(
-          label: l10n.cookieExport,
-          onPressed: () => SystemShare.shareFile(
-            file.path,
-            subject: '${l10n.appName} ${l10n.backupAndRestore}',
-          ),
-        ),
-      ),
-    );
+    final String? saved;
+    try {
+      saved = await SystemFileSaver.save(
+        sourcePath: file.path,
+        fileName: p.basename(file.path),
+        mime: 'application/json',
+      );
+    } catch (_) {
+      if (mounted) _snack(l10n.cookieExportFailed);
+      return;
+    }
+    if (!mounted || saved == null) return; // 用户取消保存
+    _snack(l10n.backupSaved(saved));
   });
 
   Future<void> _restoreFromFile() => _run(() async {

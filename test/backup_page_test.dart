@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/backup/backup_service.dart';
@@ -28,7 +29,7 @@ class _FakeBackupService extends BackupService {
   int testCount = 0;
 
   @override
-  Future<File> saveLocal({bool includeCookies = false, DateTime? now}) async {
+  Future<File> exportFile({bool includeCookies = false, DateTime? now}) async {
     saveCount += 1;
     return File('${Directory.systemTemp.path}/lancloud-backup-test.json');
   }
@@ -73,14 +74,30 @@ class _FakeCookieAuth extends CookieAuth {
 void main() {
   late _FakeBackupService fake;
 
+  /// 系统「保存文件」对话框收到的调用；返回 null 表示用户取消。
+  late List<MethodCall> savedCalls;
+  late String? saveResult;
+
+  const saveChannel = MethodChannel('lancloud/file_picker');
+
   setUp(() {
     SharedPreferences.setMockInitialValues({});
     fake = _FakeBackupService(AppController());
     // 备份包含 Cookie 需要生物验证，测试里直接放行
     CookieAuth.instance = _FakeCookieAuth(CookieAuthResult.ok);
+    savedCalls = [];
+    saveResult = 'lancloud-backup-test.json';
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(saveChannel, (call) async {
+          if (call.method != 'saveFile') return null;
+          savedCalls.add(call);
+          return saveResult;
+        });
   });
 
   tearDown(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(saveChannel, null);
     BackupService.instance = null;
     CookieAuth.instance = CookieAuth();
   });
@@ -118,14 +135,28 @@ void main() {
     expect(find.text('云端备份'), findsNothing);
   });
 
-  testWidgets('立即备份写入本地文件并提示路径', (tester) async {
+  testWidgets('立即备份交给系统保存对话框并提示文件名', (tester) async {
     await pumpPage(tester);
 
     await tester.tap(find.text('立即备份'));
     await tester.pumpAndSettle();
 
     expect(fake.saveCount, 1);
+    expect(savedCalls, hasLength(1));
+    expect('${savedCalls.single.arguments['mime']}', 'application/json');
+    expect('${savedCalls.single.arguments['fileName']}', endsWith('.json'));
     expect(find.textContaining('lancloud-backup-test.json'), findsOneWidget);
+  });
+
+  testWidgets('系统保存对话框取消时不提示', (tester) async {
+    saveResult = null;
+    await pumpPage(tester);
+
+    await tester.tap(find.text('立即备份'));
+    await tester.pumpAndSettle();
+
+    expect(savedCalls, hasLength(1));
+    expect(find.textContaining('已保存到'), findsNothing);
   });
 
   testWidgets('备份包含 Cookie 开关会持久化到配置', (tester) async {

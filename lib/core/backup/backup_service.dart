@@ -101,14 +101,12 @@ class BackupService {
     await app.reloadFromStorage();
   }
 
-  /// 本地备份：写入应用文档目录，返回生成的文件。
-  Future<File> saveLocal({bool includeCookies = false, DateTime? now}) async {
+  /// 本地备份：写入临时目录，交给系统「保存文件」对话框导出到用户选择的位置。
+  Future<File> exportFile({bool includeCookies = false, DateTime? now}) async {
     final content = await encode(includeCookies: includeCookies);
-    final base = await getApplicationDocumentsDirectory();
-    final dir = Directory(p.join(base.path, 'LanCloud', 'backups'));
-    if (!await dir.exists()) await dir.create(recursive: true);
+    final dir = await getTemporaryDirectory();
     final file = File(p.join(dir.path, '$filePrefix${stamp(now)}.json'));
-    await file.writeAsString(content);
+    await file.writeAsString(content, flush: true);
     return file;
   }
 

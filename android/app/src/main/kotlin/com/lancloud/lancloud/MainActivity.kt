@@ -22,6 +22,9 @@ class MainActivity : FlutterFragmentActivity() {
     private var pickFilesResult: MethodChannel.Result? = null
     /// 拍照识别的输出文件（用 ACTION_IMAGE_CAPTURE 时由本应用创建）。
     private var photoOutputPath: String? = null
+    /// 系统「保存文件」对话框（ACTION_CREATE_DOCUMENT）的等待结果与待写入文件。
+    private var saveFileResult: MethodChannel.Result? = null
+    private var saveSourcePath: String? = null
     private var linksChannel: MethodChannel? = null
     private var pendingLink: String? = null
     /// 等待结果的「本地网络」权限请求（Android 17 起局域网访问需要）。
@@ -30,6 +33,7 @@ class MainActivity : FlutterFragmentActivity() {
     companion object {
         private const val PICK_FILES_REQUEST = 2001
         private const val LOCAL_NETWORK_REQUEST = 2002
+        private const val SAVE_FILE_REQUEST = 2003
         /// 蓝奏云分享链接域名：lanzoua.com ~ lanzouz.com（含 *.cn 与子域名）
         private val LANZOU_HOST =
             Regex("(^|\\.)lanzou[a-z]*\\.(com|cn)$", RegexOption.IGNORE_CASE)
@@ -149,6 +153,48 @@ class MainActivity : FlutterFragmentActivity() {
                         pickFilesResult = null
                         photoOutputPath = null
                         result.error("photo_failed", e.message, null)
+                    }
+                }
+                // 系统「保存文件」对话框（ACTION_CREATE_DOCUMENT）：
+                // 把应用私有目录里的文件写到用户选择的位置，无需存储权限。
+                "saveFile" -> {
+                    val path = call.argument<String>("path")
+                    if (path.isNullOrEmpty()) {
+                        result.error("bad_args", "path required", null)
+                        return@setMethodCallHandler
+                    }
+                    val source = File(path)
+                    if (!source.exists()) {
+                        result.error("not_found", "file not found", null)
+                        return@setMethodCallHandler
+                    }
+                    val fileName = call.argument<String>("fileName")
+                    val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+                        addCategory(Intent.CATEGORY_OPENABLE)
+                        type = call.argument<String>("mime") ?: "application/octet-stream"
+                        if (!fileName.isNullOrEmpty()) {
+                            putExtra(Intent.EXTRA_TITLE, fileName)
+                        }
+                        try {
+                            putExtra(
+                                DocumentsContract.EXTRA_INITIAL_URI,
+                                DocumentsContract.buildDocumentUri(
+                                    "com.android.externalstorage.documents",
+                                    "primary:Download",
+                                ),
+                            )
+                        } catch (_: Exception) {
+                            // 部分设备不支持初始目录，忽略即可
+                        }
+                    }
+                    saveFileResult = result
+                    saveSourcePath = source.absolutePath
+                    try {
+                        startActivityForResult(intent, SAVE_FILE_REQUEST)
+                    } catch (e: Exception) {
+                        saveFileResult = null
+                        saveSourcePath = null
+                        result.error("save_failed", e.message, null)
                     }
                 }
                 else -> result.notImplemented()
@@ -388,7 +434,13 @@ class MainActivity : FlutterFragmentActivity() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode != PICK_FILES_REQUEST) return
+        when (requestCode) {
+            PICK_FILES_REQUEST -> handlePickFilesResult(resultCode, data)
+            SAVE_FILE_REQUEST -> handleSaveFileResult(resultCode, data)
+        }
+    }
+
+    private fun handlePickFilesResult(resultCode: Int, data: Intent?) {
         val result = pickFilesResult
         pickFilesResult = null
         if (result == null) return
@@ -416,6 +468,36 @@ class MainActivity : FlutterFragmentActivity() {
             }
         }
         result.success(uris.mapNotNull { copyToCache(it) })
+    }
+
+    /// 把待导出文件的内容写入用户在系统「保存文件」对话框里选中的位置。
+    private fun handleSaveFileResult(resultCode: Int, data: Intent?) {
+        val result = saveFileResult
+        saveFileResult = null
+        val sourcePath = saveSourcePath
+        saveSourcePath = null
+        if (result == null) return
+        val uri = data?.data
+        if (resultCode != RESULT_OK || uri == null || sourcePath == null) {
+            // 用户取消：不写入，Dart 侧收到 null
+            result.success(null)
+            return
+        }
+        try {
+            val out = contentResolver.openOutputStream(uri)
+            if (out == null) {
+                result.error("save_failed", "cannot open target", null)
+                return
+            }
+            out.use { output ->
+                File(sourcePath).inputStream().use { input ->
+                    input.copyTo(output)
+                }
+            }
+            result.success(queryDisplayName(uri) ?: File(sourcePath).name)
+        } catch (e: Exception) {
+            result.error("save_failed", e.message, null)
+        }
     }
 
     private fun copyToCache(uri: Uri): String? {
