@@ -4,6 +4,7 @@ import 'package:lancloud/core/api/lanzou_client.dart';
 import 'package:lancloud/core/api/models.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
+import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/share_folder_page.dart';
 import 'package:provider/provider.dart';
 
@@ -120,6 +121,20 @@ void main() {
     await pumpPage(tester, app: app, folder: _folder());
 
     expect(client.calls, contains(2));
+    // 列表是懒加载的：新一页在屏幕外，先滚到底再确认它已经渲染出来
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -2000));
+    await tester.pumpAndSettle();
     expect(find.text('second-page.txt'), findsOneWidget);
+  });
+
+  testWidgets('分享文件夹：长列表只构建可见条目（懒加载）', (tester) async {
+    final client = _FakeClient();
+    final app = _FakeApp(client);
+    addTearDown(app.dispose);
+    await pumpPage(tester, app: app, folder: _folder(firstPageFiles: 400));
+
+    // 400 条里只构建屏幕附近的少量条目，而不是全部常驻
+    expect(find.byType(Md3ListItem).evaluate().length, lessThan(40));
+    expect(client.calls, isEmpty);
   });
 }

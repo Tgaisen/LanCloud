@@ -458,51 +458,58 @@ class _TransferListSliver extends StatelessWidget {
     return SliverPadding(
       // 与收藏页一致：外层 12 + SegmentedList 自带 4
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-      sliver: SliverList(
-        delegate: SliverChildListDelegate([
+      sliver: SliverMainAxisGroup(
+        slivers: [
           if (active.isNotEmpty) ...[
-            SectionHeader(title: l10n.inProgress, count: active.length),
-            // MD3E 连接式列表：组外侧 16dp / 组内相邻 4dp，和收藏页同款
-            SegmentedList(
-              adaptive: true,
-              children: [
-                for (var i = 0; i < active.length; i++)
-                  _TransferTile(
-                    task: active[i],
-                    index: i,
-                    removing: removing.contains(active[i].id),
-                    selecting: selecting,
-                    selected: selected.contains(active[i].id),
-                    onTap: () => onToggle(active[i].id),
-                    onLongPress: () => onLongPress(taskId: active[i].id),
-                  ),
-              ],
+            SliverToBoxAdapter(
+              child: SectionHeader(
+                title: l10n.inProgress,
+                count: active.length,
+              ),
             ),
-            const SizedBox(height: 20),
+            // MD3E 连接式列表（懒加载）：组外侧 16dp / 组内相邻 4dp，和收藏页同款
+            SegmentedSliverList(
+              adaptive: true,
+              itemCount: active.length,
+              itemBuilder: (context, index) => _TransferTile(
+                task: active[index],
+                index: index,
+                removing: removing.contains(active[index].id),
+                selecting: selecting,
+                selected: selected.contains(active[index].id),
+                onTap: () => onToggle(active[index].id),
+                onLongPress: () => onLongPress(taskId: active[index].id),
+              ),
+            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 20)),
           ],
           if (finished.isNotEmpty) ...[
-            SectionHeader(title: l10n.finished, count: finished.length),
-            SegmentedList(
+            SliverToBoxAdapter(
+              child: SectionHeader(
+                title: l10n.finished,
+                count: finished.length,
+              ),
+            ),
+            SegmentedSliverList(
               adaptive: true,
               // 与收藏页同色（SegmentedList 默认 surfaceContainerLow）
-              children: [
-                for (var i = 0; i < finished.length; i++)
-                  _TransferTile(
-                    task: finished[i],
-                    index: i,
-                    removing: removing.contains(finished[i].id),
-                    selecting: selecting,
-                    selected: selected.contains(finished[i].id),
-                    onTap: () => onToggle(finished[i].id),
-                    onLongPress: () => onLongPress(taskId: finished[i].id),
-                  ),
-              ],
+              itemCount: finished.length,
+              itemBuilder: (context, index) => _TransferTile(
+                task: finished[index],
+                index: index,
+                removing: removing.contains(finished[index].id),
+                selecting: selecting,
+                selected: selected.contains(finished[index].id),
+                onTap: () => onToggle(finished[index].id),
+                onLongPress: () => onLongPress(taskId: finished[index].id),
+              ),
             ),
           ],
           // 外壳里给悬浮 / 收起的底栏让位；作为独立页面打开时
           // 末尾由 shellBottomBarInset 按系统导航栏补，这里不重复
-          if (inRootShell(context)) const SizedBox(height: 96),
-        ]),
+          if (inRootShell(context))
+            const SliverToBoxAdapter(child: SizedBox(height: 96)),
+        ],
       ),
     );
   }

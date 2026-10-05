@@ -27,12 +27,19 @@ class ShareFolderPage extends StatefulWidget {
   State<ShareFolderPage> createState() => _ShareFolderPageState();
 }
 
-class _ShareFolderPageState extends State<ShareFolderPage> {
+class _ShareFolderPageState extends State<ShareFolderPage>
+    with SingleTickerProviderStateMixin {
   bool _selecting = false;
   bool _searching = false;
   final Set<String> _selected = {};
   final TextEditingController _search = TextEditingController();
   String _filter = '';
+
+  /// 长列表的入场动画：只播一次，之后滑进来的条目直接显示。
+  late final AnimationController _enter = AnimationController(
+    vsync: this,
+    duration: ListEnterAnimation.duration,
+  )..forward();
 
   /// 文件分页：解析时只取第一页，进页面后按「自动加载全部目录内容」
   /// 设置与滚动位置继续加载（与网盘页一致）。
@@ -65,6 +72,7 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
   void dispose() {
     _scroll.dispose();
     _search.dispose();
+    _enter.dispose();
     super.dispose();
   }
 
@@ -323,6 +331,31 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
         : _files.where((f) => f.name.toLowerCase().contains(query)).toList();
     final isEmpty =
         _files.isEmpty && folder.folders.isEmpty && folder.desc.isEmpty;
+    // 分页尾部：加载下一页时转圈，全部加载完提示到底。
+    // 作为列表的 trailing 跟着条目一起懒构建（另起 sliver 的话，
+    // 即使整条在屏幕外也会构建第一个子节点，转圈会常驻重绘）
+    final footer = _hasMore || _loadingMore
+        ? const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Center(
+              child: SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          )
+        : _files.isNotEmpty && query.isEmpty
+        ? Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Center(
+              child: Text(
+                l10n.reachedEnd,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
+          )
+        : const SizedBox.shrink();
     return PopScope(
       // 多选 / 搜索状态下先退出，再退出页面
       canPop: !_selecting && !_searching,
@@ -401,43 +434,61 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
           else
             SliverPadding(
               padding: const EdgeInsets.all(16),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
+              sliver: SliverMainAxisGroup(
+                slivers: [
                   if (folder.desc.isNotEmpty) ...[
-                    _SectionTitle(text: l10n.shareMessage),
-                    SegmentedList(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Text(folder.desc),
-                        ),
-                      ],
+                    SliverToBoxAdapter(
+                      child: _SectionTitle(text: l10n.shareMessage),
+                    ),
+                    SliverToBoxAdapter(
+                      child: SegmentedList(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Text(folder.desc),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                   if (folders.isNotEmpty) ...[
-                    _SectionTitle(text: l10n.folder),
-                    SegmentedList(
+                    SliverToBoxAdapter(child: _SectionTitle(text: l10n.folder)),
+                    // 懒加载：条目多了也只构建可见部分
+                    SegmentedSliverList(
                       adaptive: true,
-                      children: [
-                        for (final sub in folders)
-                          Md3ListItem(
+                      itemCount: folders.length,
+                      // 只有文件夹（没有文件）时，尾部挂在文件夹列表上
+                      trailing: files.isEmpty ? footer : null,
+                      itemBuilder: (context, index) {
+                        final sub = folders[index];
+                        return ListEnterAnimation(
+                          progress: _enter,
+                          index: index,
+                          child: Md3ListItem(
                             key: ValueKey('share-folder-${sub.url}'),
                             icon: Icons.folder_outlined,
                             title: sub.name,
                             subtitle: sub.desc,
+                            animateIn: false,
                             onTap: () => _openSubfolder(sub),
                           ),
-                      ],
+                        );
+                      },
                     ),
                   ],
                   if (files.isNotEmpty) ...[
-                    _SectionTitle(text: l10n.files),
-                    SegmentedList(
+                    SliverToBoxAdapter(child: _SectionTitle(text: l10n.files)),
+                    SegmentedSliverList(
                       adaptive: true,
-                      children: [
-                        for (final file in files)
-                          Md3ListItem(
+                      itemCount: files.length,
+                      trailing: footer,
+                      itemBuilder: (context, index) {
+                        final file = files[index];
+                        return ListEnterAnimation(
+                          progress: _enter,
+                          index: index,
+                          child: Md3ListItem(
                             key: ValueKey('share-file-${file.url}'),
                             icon: iconForFile(file.name),
                             title: file.name,
@@ -447,6 +498,7 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
                             ].where((e) => e.isNotEmpty).join(' · '),
                             selected:
                                 _selecting && _selected.contains(file.url),
+                            animateIn: false,
                             onLongPress: () => _enterSelection(file.url),
                             onTap: () {
                               if (_selecting) {
@@ -465,32 +517,14 @@ class _ShareFolderPageState extends State<ShareFolderPage> {
                               }
                             },
                           ),
-                      ],
+                        );
+                      },
                     ),
                   ],
-                  // 分页尾部：加载下一页时转圈，全部加载完提示到底
-                  if (_hasMore || _loadingMore)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 16),
-                      child: Center(
-                        child: SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      ),
-                    )
-                  else if (_files.isNotEmpty && query.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      child: Center(
-                        child: Text(
-                          l10n.reachedEnd,
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ),
-                    ),
-                ]),
+                  // 既没有文件夹也没有文件（只有简介）时，尾部单独放
+                  if (folders.isEmpty && files.isEmpty)
+                    SliverToBoxAdapter(child: footer),
+                ],
               ),
             ),
         ],

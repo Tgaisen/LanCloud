@@ -22,7 +22,7 @@ class FavoritesPage extends StatefulWidget {
 }
 
 class _FavoritesPageState extends State<FavoritesPage>
-    with AutomaticKeepAliveClientMixin {
+    with AutomaticKeepAliveClientMixin, SingleTickerProviderStateMixin {
   static const _anim = Duration(milliseconds: 200);
 
   List<FavoriteItem> _folders = [];
@@ -39,6 +39,12 @@ class _FavoritesPageState extends State<FavoritesPage>
   final ScrollController _scroll = ScrollController();
   late final AppDb _db;
   AppController? _app;
+
+  /// 长列表的入场动画：首次载入后播一次，之后滑进来的条目直接显示。
+  late final AnimationController _enter = AnimationController(
+    vsync: this,
+    duration: ListEnterAnimation.duration,
+  );
 
   @override
   bool get wantKeepAlive => true;
@@ -71,6 +77,7 @@ class _FavoritesPageState extends State<FavoritesPage>
       }
     }
     _scroll.dispose();
+    _enter.dispose();
     super.dispose();
   }
 
@@ -92,6 +99,7 @@ class _FavoritesPageState extends State<FavoritesPage>
         // 数据已刷新：清掉删除动画标记（清早了会让还没消失的条目反向展开）
         _removing.clear();
       });
+      if (!_enter.isAnimating && _enter.value == 0) _enter.forward();
     } catch (_) {
       // 读取失败时保持已有内容
       if (mounted) setState(() => _loading = false);
@@ -315,6 +323,8 @@ class _FavoritesPageState extends State<FavoritesPage>
     return Md3ListItem(
       key: ValueKey('favorite-${item.id}'),
       index: index,
+      // 入场动画由外层 ListEnterAnimation 统一驱动（只播一次）
+      animateIn: false,
       removing: _removing.contains(item.id),
       pulse: _pulse[item.id] ?? 0,
       icon: isFolder ? Icons.folder_outlined : iconForFile(item.name),
@@ -392,39 +402,55 @@ class _FavoritesPageState extends State<FavoritesPage>
                   else
                     SliverPadding(
                       padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-                      sliver: SliverList(
-                        delegate: SliverChildListDelegate([
+                      sliver: SliverMainAxisGroup(
+                        slivers: [
                           if (_folders.isNotEmpty) ...[
-                            SectionHeader(
-                              title: l10n.favoriteFolders,
-                              count: _folders.length,
+                            SliverToBoxAdapter(
+                              child: SectionHeader(
+                                title: l10n.favoriteFolders,
+                                count: _folders.length,
+                              ),
                             ),
-                            SegmentedList(
+                            // 懒加载：收藏多了也只构建可见部分
+                            SegmentedSliverList(
                               adaptive: true,
-                              children: [
-                                for (var i = 0; i < _folders.length; i++)
-                                  _tile(_folders[i], index: i),
-                              ],
+                              itemCount: _folders.length,
+                              itemBuilder: (context, index) =>
+                                  ListEnterAnimation(
+                                    progress: _enter,
+                                    index: index,
+                                    child: _tile(_folders[index], index: index),
+                                  ),
                             ),
-                            const SizedBox(height: 20),
+                            const SliverToBoxAdapter(
+                              child: SizedBox(height: 20),
+                            ),
                           ],
                           if (_files.isNotEmpty) ...[
-                            SectionHeader(
-                              title: l10n.favoriteFiles,
-                              count: _files.length,
+                            SliverToBoxAdapter(
+                              child: SectionHeader(
+                                title: l10n.favoriteFiles,
+                                count: _files.length,
+                              ),
                             ),
-                            SegmentedList(
+                            SegmentedSliverList(
                               adaptive: true,
-                              children: [
-                                for (var i = 0; i < _files.length; i++)
-                                  _tile(_files[i], index: i),
-                              ],
+                              itemCount: _files.length,
+                              itemBuilder: (context, index) =>
+                                  ListEnterAnimation(
+                                    progress: _enter,
+                                    index: index,
+                                    child: _tile(_files[index], index: index),
+                                  ),
                             ),
                           ],
                           // 外壳里给悬浮 / 收起的底栏让位；作为独立页面打开时
                           // 末尾由 shellBottomBarInset 按系统导航栏补，这里不重复
-                          if (inRootShell(context)) const SizedBox(height: 96),
-                        ]),
+                          if (inRootShell(context))
+                            const SliverToBoxAdapter(
+                              child: SizedBox(height: 96),
+                            ),
+                        ],
                       ),
                     ),
                   // 底栏盖在正文上方（extendBody）时，补足列表末尾留白

@@ -2035,6 +2035,220 @@ class _SegmentedListState extends State<SegmentedList> {
   }
 }
 
+/// [SegmentedList] 的 sliver 版本：条目按需构建（懒加载），只构建 / 布局 /
+/// 绘制可见部分，适合可能很长的列表（分享浏览、收藏、传输）。
+///
+/// 单列时视觉与 [SegmentedList] 完全一致：组外侧 [outerRadius]、
+/// 组内相邻处 [innerRadius]、条目间隔 [gap]、按下时 shape morphing；
+/// 大窗口（≥600dp）时同样按 [adaptiveColumns] 铺成 2–3 列、每个条目独立成卡。
+class SegmentedSliverList extends StatefulWidget {
+  const SegmentedSliverList({
+    super.key,
+    required this.itemCount,
+    required this.itemBuilder,
+    this.trailing,
+    this.margin = const EdgeInsets.all(4),
+    this.color,
+    this.outerRadius = 16,
+    this.innerRadius = 4,
+    this.pressedRadius = 28,
+    this.gap = 2,
+    this.adaptive = false,
+    this.adaptiveSpacing = 8,
+  });
+
+  final int itemCount;
+
+  /// 条目构建器：只对可见区间调用，返回条目内容本身；
+  /// 背景、圆角与按下动效由本组件包在外层。
+  final Widget Function(BuildContext context, int index) itemBuilder;
+
+  /// 列表末尾的附加内容（例如分页转圈）：跟随条目一起懒构建。
+  /// 不要另起一条 sliver 承载常驻动画 —— sliver 即使整条在屏幕外
+  /// 也会构建它的第一个子节点，转圈会一直在屏幕外重绘。
+  final Widget? trailing;
+
+  final EdgeInsetsGeometry margin;
+  final Color? color;
+  final double outerRadius;
+  final double innerRadius;
+  final double pressedRadius;
+  final double gap;
+
+  /// 大窗口时是否按 [adaptiveColumns] 铺成多列（每个条目独立成卡）。
+  final bool adaptive;
+
+  /// 多列时的行 / 列间距。
+  final double adaptiveSpacing;
+
+  @override
+  State<SegmentedSliverList> createState() => _SegmentedSliverListState();
+}
+
+class _SegmentedSliverListState extends State<SegmentedSliverList> {
+  int? _pressedIndex;
+
+  void _setPressed(int? index) {
+    if (_pressedIndex != index && mounted) {
+      setState(() => _pressedIndex = index);
+    }
+  }
+
+  BorderRadius _radiusFor(int index, int count) => connectedItemRadius(
+    index: index,
+    count: count,
+    outer: widget.outerRadius,
+    inner: widget.innerRadius,
+    pressedIndex: _pressedIndex,
+    pressedRadius: widget.pressedRadius,
+  );
+
+  BorderRadius _standaloneRadius(int index) => BorderRadius.circular(
+    _pressedIndex == index ? widget.pressedRadius : widget.outerRadius,
+  );
+
+  Widget _item(
+    BuildContext context,
+    ColorScheme scheme,
+    int index,
+    int count, {
+    bool standalone = false,
+  }) {
+    final child = widget.itemBuilder(context, index);
+    return AnimatedContainer(
+      // 把条目的 key 提到外层容器：数据增删时按 key 匹配元素，
+      // 动画状态跟着条目走，而不是被同位置的下一条目复用
+      key: child.key,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+      decoration: BoxDecoration(
+        color: widget.color ?? scheme.surfaceContainerLow,
+        borderRadius: standalone
+            ? _standaloneRadius(index)
+            : _radiusFor(index, count),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Material(
+        type: MaterialType.transparency,
+        child: Listener(
+          onPointerDown: (_) => _setPressed(index),
+          onPointerUp: (_) => _setPressed(null),
+          onPointerCancel: (_) => _setPressed(null),
+          child: child,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final count = widget.itemCount;
+    final trailing = widget.trailing;
+    final extra = trailing == null ? 0 : 1;
+    if (widget.adaptive && adaptiveColumns(context) > 1) {
+      // 多列：每个条目独立成卡（四周都是外侧圆角），行优先铺开并逐行懒构建
+      final columns = adaptiveColumns(context);
+      final rows = (count + columns - 1) ~/ columns;
+      return SliverPadding(
+        padding: widget.margin,
+        sliver: SliverList.builder(
+          itemCount: rows + extra,
+          itemBuilder: (context, row) => Padding(
+            padding: EdgeInsets.only(
+              bottom: row >= rows - 1 ? 0 : widget.adaptiveSpacing,
+            ),
+            child: row == rows && trailing != null
+                ? trailing
+                : Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    spacing: widget.adaptiveSpacing,
+                    children: [
+                      for (var column = 0; column < columns; column++)
+                        Expanded(
+                          child: row * columns + column < count
+                              ? _item(
+                                  context,
+                                  scheme,
+                                  row * columns + column,
+                                  1,
+                                  standalone: true,
+                                )
+                              : const SizedBox.shrink(),
+                        ),
+                    ],
+                  ),
+          ),
+        ),
+      );
+    }
+    return SliverPadding(
+      padding: widget.margin,
+      sliver: SliverList.builder(
+        itemCount: count + extra,
+        itemBuilder: (context, index) {
+          if (index == count) return trailing!;
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: index == count - 1 ? 0 : widget.gap,
+            ),
+            child: _item(context, scheme, index, count),
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// 懒加载长列表的入场动画：页面加载后共享一条进度（[progress]），
+/// 按 [index] 错峰淡入 + 轻微上移；动画结束后才构建出来的条目
+/// （滑进来的）直接显示，不会重播 —— 与网盘列表的入场效果一致。
+///
+/// 页面用 [duration] 创建 AnimationController，进入列表时 forward 一次。
+class ListEnterAnimation extends StatelessWidget {
+  const ListEnterAnimation({
+    super.key,
+    required this.progress,
+    required this.index,
+    required this.child,
+  });
+
+  /// 页面持有的共享进度（0..1，动画结束后保持 1）。
+  final Animation<double> progress;
+
+  /// 错峰下标（列表里传当前下标即可）。
+  final int index;
+  final Widget child;
+
+  /// 整组动画时长，页面用它创建 AnimationController。
+  static const Duration duration = Duration(milliseconds: 440);
+
+  static const double _itemDuration = 232;
+  static const double _step = 26;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: progress,
+      child: child,
+      builder: (context, child) {
+        final delay = index.clamp(0, 8) * _step;
+        final value =
+            ((progress.value * duration.inMilliseconds - delay) / _itemDuration)
+                .clamp(0.0, 1.0);
+        final t = Curves.easeOutCubic.transform(value);
+        return Opacity(
+          opacity: t,
+          child: Transform.translate(
+            offset: Offset(0, 10 * (1 - t)),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+}
+
 /// MD3 Expressive 连接式按钮组（Connected button group）：
 /// 外侧 [outerRadius]（16dp）、组内相邻处 [innerRadius]（4dp），
 /// 条目之间是空白间隔；选中项用主题色（secondaryContainer）强调，
