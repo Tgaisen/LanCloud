@@ -16,7 +16,6 @@ Future<void> showLegalDialog(BuildContext context, LegalDoc doc) {
   return showDialog<void>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       // 让标题 + 正文整体可滚动，长文本在弹窗内可以滑到底
       scrollable: true,
       title: Text(title),
@@ -26,7 +25,7 @@ Future<void> showLegalDialog(BuildContext context, LegalDoc doc) {
         style: theme.textTheme.bodyMedium?.copyWith(height: 1.7),
       ),
       actions: [
-        TextButton(
+        FilledButton(
           onPressed: () => Navigator.of(dialogContext).pop(),
           child: Text(l10n.close),
         ),

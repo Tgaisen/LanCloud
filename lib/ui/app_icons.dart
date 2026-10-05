@@ -21,6 +21,7 @@ class Icons {
   static const IconData battery_alert_outlined = Symbols.battery_alert;
   static const IconData bottom_navigation = Symbols.bottom_navigation;
   static const IconData bug_report_outlined = Symbols.bug_report;
+  static const IconData build_outlined = Symbols.build;
   static const IconData cached_outlined = Symbols.cached;
   static const IconData cancel = Symbols.cancel;
   static const IconData check = Symbols.check;
@@ -120,6 +121,7 @@ class Icons {
   static const IconData upload_file = Symbols.upload_file;
   static const IconData upload_file_outlined = Symbols.upload_file;
   static const IconData upload_outlined = Symbols.upload;
+  static const IconData update = Symbols.update;
   static const IconData user_attributes = Symbols.user_attributes;
   static const IconData warning_outlined = Symbols.warning;
   static const IconData vertical_align_bottom = Symbols.vertical_align_bottom;

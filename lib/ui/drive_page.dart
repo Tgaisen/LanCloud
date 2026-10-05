@@ -1945,6 +1945,10 @@ class _DrivePageState extends State<DrivePage>
       }
     });
     _pulseItems(folderIds: {folderId});
+    // 缓存里也要改名，否则再进入该目录时路径栏会显示旧名称
+    if (name != null) {
+      context.read<AppController>().driveCache.renameFolder(folderId, name);
+    }
     _updateCacheSnapshot();
   }
 
@@ -2352,7 +2356,12 @@ class _DrivePageState extends State<DrivePage>
                       duration: _anim,
                       curve: Curves.easeOutCubic,
                       builder: (context, selecting, child) {
-                        final t = math.max(selecting, follow);
+                        // 搜索展开键盘时直接收起：FAB 浮到键盘上方没什么用，
+                        // 还会挡住列表内容
+                        final t = math.max(
+                          math.max(selecting, follow),
+                          keyboardUp ? 1.0 : 0.0,
+                        );
                         return IgnorePointer(
                           ignoring: t > 0.85,
                           child: Opacity(

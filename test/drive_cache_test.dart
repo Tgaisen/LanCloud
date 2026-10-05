@@ -43,4 +43,27 @@ void main() {
     await other.bindAccount('2');
     expect(other.get('-1')?.folders.first.name, '账号2的目录');
   });
+
+  test('文件夹改名后同步缓存里的条目与路径节点', () async {
+    final cache = DriveCache();
+    await cache.bindAccount('1');
+    cache.put(
+      '9',
+      CachedFolder(
+        folders: [LzFolder(id: '9', name: '旧名字', desc: '说明')],
+        files: const [],
+        // 子目录快照里带着自己那一级路径（改名前的旧名称）
+        path: [PathNode(id: '9', name: '旧名字')],
+        page: 1,
+        hasMore: false,
+      ),
+    );
+
+    cache.renameFolder('9', '新名字');
+
+    final cached = cache.get('9')!;
+    expect(cached.folders.single.name, '新名字');
+    expect(cached.folders.single.desc, '说明', reason: '其它字段不应被改掉');
+    expect(cached.path.single.name, '新名字');
+  });
 }

@@ -52,6 +52,27 @@ class AboutPage extends StatelessWidget {
                   ],
                 ),
               ),
+              // 构建信息 / 获取更新：放在最前，和版本号挨着
+              SegmentedList(
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.update),
+                    title: Text(l10n.aboutCheckUpdate),
+                    trailing: const Icon(Icons.open_in_new),
+                    onTap: () => launchUrl(
+                      Uri.parse('$projectUrl/releases'),
+                      mode: LaunchMode.externalApplication,
+                    ),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.build_outlined),
+                    title: Text(l10n.aboutBuildInfo),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => showBuildInfoDialog(context),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
               SegmentedList(
                 children: [
                   ListTile(
@@ -104,6 +125,69 @@ class AboutPage extends StatelessWidget {
               ),
             ]),
           ),
+        ),
+      ],
+    );
+  }
+}
+
+/// 构建信息弹窗：构建时间与提交号（打包时注入，原版 MD3 弹窗样式）。
+Future<void> showBuildInfoDialog(BuildContext context) {
+  final l10n = context.l10n;
+  final hasCommit = gitCommit.isNotEmpty;
+  return showDialog<void>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: Text(l10n.aboutBuildInfo),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _BuildInfoRow(label: l10n.buildTime, value: buildTime),
+          const SizedBox(height: 12),
+          _BuildInfoRow(label: l10n.commitHash, value: gitCommit),
+        ],
+      ),
+      actions: [
+        if (hasCommit)
+          TextButton(
+            onPressed: () => launchUrl(
+              Uri.parse('$projectUrl/commit/$gitCommit'),
+              mode: LaunchMode.externalApplication,
+            ),
+            child: Text(l10n.details),
+          ),
+        FilledButton(
+          onPressed: () => Navigator.of(dialogContext).pop(),
+          child: Text(l10n.confirm),
+        ),
+      ],
+    ),
+  );
+}
+
+class _BuildInfoRow extends StatelessWidget {
+  const _BuildInfoRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: theme.textTheme.labelMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 2),
+        SelectableText(
+          value.isEmpty ? '—' : value,
+          style: theme.textTheme.bodyMedium,
         ),
       ],
     );

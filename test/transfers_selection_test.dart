@@ -90,6 +90,40 @@ Future<AppController> pushTransfers(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets('进行中条目的进度条与标题同宽：避让左侧图标与右侧按钮', (tester) async {
+    final app = AppController();
+    final manager = TransferManager(app);
+    manager.tasks.add(
+      task('t1', 'a.zip', status: TransferStatus.running)
+        ..received = 1
+        ..total = 2,
+    );
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<AppController>.value(value: app),
+          ChangeNotifierProvider<TransferManager>.value(value: manager),
+        ],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const TransfersPage(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final title = tester.getRect(find.text('a.zip'));
+    final bar = tester.getRect(find.byType(LinearProgressIndicator));
+    final cancel = tester.getRect(find.byTooltip('取消'));
+    // 左边缘与标题对齐（在文字列里，自然避让 42dp 图标与 14dp 间距）
+    expect(bar.left, closeTo(title.left, 0.5));
+    // 右边缘不越过右侧按钮
+    expect(bar.right, lessThanOrEqualTo(cancel.left));
+    expect(bar.width, greaterThan(0));
+  });
+
   testWidgets('独立页面：多选时返回只退出多选，不退出页面', (tester) async {
     final app = await pushTransfers(tester);
 

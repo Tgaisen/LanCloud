@@ -1295,6 +1295,13 @@ class _Md3ListItemState extends State<Md3ListItem>
                                 ),
                               ),
                             ),
+                          // 附加上下文（例如传输进度条）跟标题同宽：
+                          // 放在文字列里而不是整行下方，自动避让左侧图标
+                          // 与右侧操作按钮
+                          if (widget.bottom != null) ...[
+                            const SizedBox(height: 10),
+                            widget.bottom!,
+                          ],
                         ],
                       ),
                     ),
@@ -1304,10 +1311,6 @@ class _Md3ListItemState extends State<Md3ListItem>
                     ],
                   ],
                 ),
-                if (widget.bottom != null) ...[
-                  const SizedBox(height: 10),
-                  widget.bottom!,
-                ],
               ],
             ),
           ),

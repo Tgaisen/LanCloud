@@ -75,6 +75,53 @@ class DriveCache {
     if (folderId == '-1') _persistRoot(value, _prefsKey);
   }
 
+  /// 文件夹改名后同步缓存：父目录快照里的条目、以及各快照路径里的节点。
+  /// 不做的话再进入该目录时，路径栏 / 列表会显示改名前的旧名称。
+  void renameFolder(String folderId, String newName) {
+    for (final entry in _folders.entries.toList()) {
+      final cached = entry.value;
+      var changed = false;
+
+      final folders = <LzFolder>[];
+      for (final folder in cached.folders) {
+        if (folder.id == folderId && folder.name != newName) {
+          folders.add(
+            LzFolder(
+              id: folder.id,
+              name: newName,
+              desc: folder.desc,
+              hasPwd: folder.hasPwd,
+            ),
+          );
+          changed = true;
+        } else {
+          folders.add(folder);
+        }
+      }
+
+      final path = <PathNode>[];
+      for (final node in cached.path) {
+        if (node.id == folderId && node.name != newName) {
+          path.add(PathNode(id: node.id, name: newName));
+          changed = true;
+        } else {
+          path.add(node);
+        }
+      }
+
+      if (!changed) continue;
+      final updated = CachedFolder(
+        folders: folders,
+        files: cached.files,
+        path: path,
+        page: cached.page,
+        hasMore: cached.hasMore,
+      );
+      _folders[entry.key] = updated;
+      if (entry.key == '-1') _persistRoot(updated, _prefsKey);
+    }
+  }
+
   /// 冷启动 / 换账号时读取该账号上次持久化的根目录快照。
   Future<void> loadFromDisk() async {
     try {

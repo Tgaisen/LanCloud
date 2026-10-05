@@ -1434,6 +1434,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutSubmitIssue => '提交 Issue';
 
   @override
+  String get aboutCheckUpdate => '获取更新';
+
+  @override
+  String get aboutBuildInfo => '构建信息';
+
+  @override
+  String get details => '详情';
+
+  @override
+  String get buildTime => '构建时间';
+
+  @override
+  String get commitHash => '提交';
+
+  @override
   String get termsDisclaimer =>
       '7. 免责声明：本应用是非官方的蓝奏云第三方客户端，与蓝奏云官方无任何关联，也未获得官方授权。应用按「现状」提供，因使用本应用造成的账号风险、数据丢失或服务中断由使用者自行承担。';
 

@@ -2744,6 +2744,36 @@ abstract class AppLocalizations {
   /// **'提交 Issue'**
   String get aboutSubmitIssue;
 
+  /// No description provided for @aboutCheckUpdate.
+  ///
+  /// In zh, this message translates to:
+  /// **'获取更新'**
+  String get aboutCheckUpdate;
+
+  /// No description provided for @aboutBuildInfo.
+  ///
+  /// In zh, this message translates to:
+  /// **'构建信息'**
+  String get aboutBuildInfo;
+
+  /// No description provided for @details.
+  ///
+  /// In zh, this message translates to:
+  /// **'详情'**
+  String get details;
+
+  /// No description provided for @buildTime.
+  ///
+  /// In zh, this message translates to:
+  /// **'构建时间'**
+  String get buildTime;
+
+  /// No description provided for @commitHash.
+  ///
+  /// In zh, this message translates to:
+  /// **'提交'**
+  String get commitHash;
+
   /// No description provided for @termsDisclaimer.
   ///
   /// In zh, this message translates to:

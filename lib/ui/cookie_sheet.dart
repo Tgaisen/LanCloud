@@ -13,7 +13,6 @@ Future<void> showCookieFlow(BuildContext context, Account account) async {
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      icon: const Icon(Icons.warning_outlined),
       title: Text(l10n.cookieRiskTitle),
       content: Text(l10n.cookieRiskMessage),
       actions: [

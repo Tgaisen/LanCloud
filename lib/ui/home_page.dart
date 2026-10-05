@@ -194,6 +194,14 @@ class _HomePageState extends State<HomePage>
             },
           ),
           ListTile(
+            leading: const Icon(Icons.star_outline),
+            title: Text(l10n.addFavorite),
+            onTap: () {
+              Navigator.of(context).pop();
+              _favoriteRecent(item);
+            },
+          ),
+          ListTile(
             leading: const Icon(Icons.delete_outline),
             title: Text(l10n.deleteRecord),
             onTap: () async {
@@ -210,6 +218,50 @@ class _HomePageState extends State<HomePage>
         ],
       ),
     );
+  }
+
+  /// 最近使用条目加入收藏：分享链接直接收藏；网盘文件 / 目录先取分享链接
+  /// 再按分享收藏（与网盘页的收藏行为一致）。
+  Future<void> _favoriteRecent(RecentItem item) async {
+    final app = context.read<AppController>();
+    final l10n = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      switch (item.kind) {
+        case 'shareFile':
+        case 'shareFolder':
+          await app.db.addFavorite(
+            kind: item.kind,
+            name: item.name,
+            ref: item.ref,
+            pwd: item.pwd,
+          );
+        case 'folder':
+          final client = app.client;
+          if (client == null) return;
+          final info = await client.shareInfoOfFolder(item.ref);
+          await app.db.addFavorite(
+            kind: 'shareFolder',
+            name: item.name,
+            ref: info.url,
+            pwd: info.pwd,
+          );
+        default:
+          final client = app.client;
+          if (client == null) return;
+          final info = await client.shareInfoOfFile(item.ref);
+          await app.db.addFavorite(
+            kind: 'shareFile',
+            name: item.name,
+            ref: info.url,
+            pwd: info.pwd,
+          );
+      }
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('$e')));
+      return;
+    }
+    messenger.showSnackBar(SnackBar(content: Text(l10n.addedToFavorites)));
   }
 
   Future<void> _load() async {

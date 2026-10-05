@@ -181,7 +181,15 @@ if (-not $SkipTests) {
 }
 
 Info 'flutter build apk --release --split-per-abi'
-Invoke-Tool $flutter @('build', 'apk', '--release', '--split-per-abi') | Out-Null
+# 构建信息注入「关于 - 构建信息」弹窗：构建时间 + 提交号
+$buildTime = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+$commitHash = (Invoke-Tool 'git' @('-C', $root, 'rev-parse', 'HEAD') | Select-Object -First 1).Trim()
+Info "构建信息：$buildTime · $commitHash"
+Invoke-Tool $flutter @(
+  'build', 'apk', '--release', '--split-per-abi',
+  "--dart-define=BUILD_TIME=$buildTime",
+  "--dart-define=GIT_COMMIT=$commitHash"
+) | Out-Null
 
 $apkDir = Join-Path $root 'build\app\outputs\flutter-apk'
 $assets = @()
