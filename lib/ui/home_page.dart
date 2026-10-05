@@ -35,6 +35,8 @@ class _HomePageState extends State<HomePage>
   bool _quickExpanded = true;
   bool _recentsExpanded = true;
   late final AppDb _db;
+  /// dispose 里不能再读 context（元素正在卸载），控制器在 initState 存下来。
+  late final AppController _app;
   final ScrollController _scroll = ScrollController();
 
   @override
@@ -44,6 +46,7 @@ class _HomePageState extends State<HomePage>
   void initState() {
     super.initState();
     final app = context.read<AppController>();
+    _app = app;
     _db = app.db;
     _quickExpanded = app.settings.quickExpanded;
     _recentsExpanded = app.settings.recentsExpanded;
@@ -55,7 +58,7 @@ class _HomePageState extends State<HomePage>
   @override
   void dispose() {
     _db.revision.removeListener(_load);
-    context.read<AppController>().activeTab.removeListener(_onActiveTabChanged);
+    _app.activeTab.removeListener(_onActiveTabChanged);
     _scroll.dispose();
     super.dispose();
   }

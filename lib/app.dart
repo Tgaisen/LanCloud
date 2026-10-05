@@ -274,6 +274,8 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
   int _index = 0;
   bool _programmaticJump = false;
   Size? _lastSize;
+  /// dispose 里不能再读 context（元素正在卸载），控制器在这里存一份。
+  AppController? _app;
   // 横竖屏切换跨越 640px 布局阈值时，PageView 会在 Scaffold.body 与
   // Row/NavigationRail 两个不同深度的父级之间移动；ValueKey 无法跨父级
   // 保留元素，重建后像素偏移会落到错误的页。GlobalKey 可让 PageView 只
@@ -288,6 +290,7 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _app = context.read<AppController>();
     // 旋转后视口尺寸变化，PageView 的像素偏移会对应到错误的页，
     // 这里在布局结束后校正回当前标签，避免“底栏指向原视图但内容回到首页”。
     final size = MediaQuery.sizeOf(context);
@@ -304,7 +307,7 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    context.read<AppController>().onSwitchTab = null;
+    _app?.onSwitchTab = null;
     NotificationService.onOpenTransfers = null;
     SharedInbox.instance.onText = null;
     SharedInbox.instance.onFiles = null;

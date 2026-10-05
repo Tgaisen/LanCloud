@@ -1,11 +1,11 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart' hide Icons;
-import 'package:dynamic_color/dynamic_color.dart';
 import 'package:provider/provider.dart';
 
 import '../core/app_controller.dart';
 import '../core/app_log.dart';
 import '../core/app_permissions.dart';
+import '../core/dynamic_color_support.dart';
 import '../core/notifications.dart';
 import '../core/system_share.dart';
 import '../l10n/l10n.dart';
@@ -44,6 +44,9 @@ class _SettingsPageState extends State<SettingsPage>
     with WidgetsBindingObserver {
   bool _searching = false;
   bool? _notifGranted;
+  /// 动态取色支持情况：进入设置页探测一次（带缓存），不放在会随
+  /// 搜索 / 滚动重建的 tile 里反复查询。
+  bool? _dynamicColorSupported;
   PermissionSnapshot? _permissions;
   /// 默认下载目录的真实路径（副标题里显示，进入设置时读一次）。
   String? _defaultDownloadDir;
@@ -56,6 +59,12 @@ class _SettingsPageState extends State<SettingsPage>
     _refreshNotifPermission();
     _refreshPermissions();
     _loadDefaultDownloadDir();
+    _probeDynamicColor();
+  }
+
+  Future<void> _probeDynamicColor() async {
+    final supported = await DynamicColorSupport.isSupported();
+    if (mounted) setState(() => _dynamicColorSupported = supported);
   }
 
   Future<void> _loadDefaultDownloadDir() async {
@@ -246,24 +255,23 @@ class _SettingsPageState extends State<SettingsPage>
         subtitle: l10n.dynamicColorSubtitle,
         keywords: l10n.dynamicColorKeywords.split(' '),
         category: 'appearance',
-        // Android 12+ 才有系统取色，取不到时开关置灰
-        build: (context, app) => DynamicColorBuilder(
-          builder: (light, dark) {
-            final supported = light != null || dark != null;
-            return SwitchListTile(
-              secondary: const Icon(Icons.wallpaper_outlined),
-              title: Text(context.l10n.dynamicColor),
-              subtitle: Text(
-                supported
-                    ? context.l10n.dynamicColorSubtitle
-                    : context.l10n.dynamicColorUnsupported,
-              ),
-              value: supported && app.settings.dynamicColor,
-              onChanged:
-                  supported ? (value) => app.setDynamicColor(value) : null,
-            );
-          },
-        ),
+        // Android 12+ 才有系统取色，取不到时开关置灰；支持情况在进入
+        // 设置页时探测一次（DynamicColorSupport 带缓存，见其注释）
+        build: (context, app) {
+          final supported = _dynamicColorSupported == true;
+          return SwitchListTile(
+            secondary: const Icon(Icons.wallpaper_outlined),
+            title: Text(context.l10n.dynamicColor),
+            subtitle: Text(
+              supported
+                  ? context.l10n.dynamicColorSubtitle
+                  : context.l10n.dynamicColorUnsupported,
+            ),
+            value: supported && app.settings.dynamicColor,
+            onChanged:
+                supported ? (value) => app.setDynamicColor(value) : null,
+          );
+        },
       ),
       _Entry(
         id: 'hide_top_bar',

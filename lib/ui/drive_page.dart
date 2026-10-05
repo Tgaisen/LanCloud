@@ -104,6 +104,10 @@ class _DrivePageState extends State<DrivePage>
   /// 键盘是否弹出（悬浮底栏的 FAB 留白跟随它，见 didChangeMetrics）。
   final ValueNotifier<bool> _keyboardUp = ValueNotifier(false);
   late AppController _app;
+  /// 传输管理器：注册与注销监听成对，dispose 时不能再读 context
+  /// （元素正在卸载，InheritedWidget 查询会抛 "Null check operator used
+  /// on a null value"），所以 initState 里存下来。
+  late TransferManager _transfers;
   /// didChangeDependencies 之前（例如 initState 里同步命中的目录缓存）
   /// 还不能访问 _app，用这个标记兜底。
   bool _appReady = false;
@@ -119,7 +123,7 @@ class _DrivePageState extends State<DrivePage>
             0;
     final app = context.read<AppController>();
     _sortMode = app.settings.sortMode;
-    context.read<TransferManager>().addTaskListener(_onTaskDone);
+    _transfers = context.read<TransferManager>()..addTaskListener(_onTaskDone);
     if (widget.initialName != null) {
       _path = [PathNode(id: widget.initialFolderId, name: widget.initialName!)];
     }
@@ -138,7 +142,7 @@ class _DrivePageState extends State<DrivePage>
     WidgetsBinding.instance.removeObserver(this);
     _keyboardUp.dispose();
     _app.driveFolderRequest.removeListener(_onDriveFolderRequest);
-    context.read<TransferManager>().removeTaskListener(_onTaskDone);
+    _transfers.removeTaskListener(_onTaskDone);
     if (_isShellPage) {
       _app.onDriveBack = null;
       // 外壳里的网盘页卸载后不再拦截返回，交回系统（预测性返回桌面）。

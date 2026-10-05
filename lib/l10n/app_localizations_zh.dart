@@ -1231,7 +1231,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get dynamicColor => '动态取色';
 
   @override
-  String get dynamicColorSubtitle => '跟随系统壁纸取色（Android 12+）';
+  String get dynamicColorSubtitle => '跟随系统壁纸取色';
 
   @override
   String get dynamicColorUnsupported => '当前系统不支持动态取色';

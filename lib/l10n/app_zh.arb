@@ -596,7 +596,7 @@
   "scanImageFailed": "图片识别失败",
   "scanNotLanzou": "没有识别到蓝奏云分享链接",
   "dynamicColor": "动态取色",
-  "dynamicColorSubtitle": "跟随系统壁纸取色（Android 12+）",
+  "dynamicColorSubtitle": "跟随系统壁纸取色",
   "dynamicColorUnsupported": "当前系统不支持动态取色",
   "dynamicColorKeywords": "dynamic color monet 动态 取色 壁纸 主题",
   "clipboardLinkPrompt": "识别剪贴板链接",

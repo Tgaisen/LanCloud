@@ -2369,7 +2369,7 @@ abstract class AppLocalizations {
   /// No description provided for @dynamicColorSubtitle.
   ///
   /// In zh, this message translates to:
-  /// **'跟随系统壁纸取色（Android 12+）'**
+  /// **'跟随系统壁纸取色'**
   String get dynamicColorSubtitle;
 
   /// No description provided for @dynamicColorUnsupported.

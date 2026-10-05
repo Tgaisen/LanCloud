@@ -37,7 +37,7 @@ flutter build apk --release --split-per-abi
 
 #### 版本号规范
 
-版本号为 `年份.内容更新序号.热修号[-阶段.序号]`，预发布与正式版共用一套：
+版本号为 `年份.内容更新序号.热修号[-阶段.序号]`：
 
 | 阶段 | Stage | Seq | 示例 |
 | --- | --- | --- | --- |
@@ -46,7 +46,7 @@ flutter build apk --release --split-per-abi
 | 候选 | `rc` = 3 | 1–999 | `26.1.0-rc.1` |
 | 正式 | 9 | 999 | `26.1.0` |
 
-Android `versionCode` 是纯数字分段码：
+Android `versionCode` 规则：
 
 ```text
 versionCode = YY * 10_000_000 + Drop * 100_000 + Hotfix * 10_000 + Stage * 1_000 + Seq
