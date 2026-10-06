@@ -209,7 +209,7 @@ void main() {
     app.dispose();
   });
 
-  testWidgets('独立页面打开时不再保留底栏专用的尾部留白（96）', (tester) async {
+  testWidgets('独立页面与外壳里的尾部留白一致（都由 shellBottomBarInset 决定）', (tester) async {
     // 这条用例量的是单列列表的末尾留白：固定 Compact 窗口（<600dp），避免多列改变布局
     tester.view.devicePixelRatio = 1.0;
     tester.view.physicalSize = const Size(400, 600);
@@ -254,12 +254,12 @@ void main() {
           tester.getRect(find.text('file0.zip')).bottom;
     }
 
-    // 作为外壳里的底栏项目：末尾保留给悬浮 / 收起底栏让位的 96
+    // 作为外壳里的底栏项目
     await tester.pumpWidget(host(const TransfersPage()));
     await tester.pumpAndSettle();
     final inShellGap = await tailGap();
 
-    // 作为独立页面（push）：末尾只留系统导航栏 + 常规留白，不再叠加 96
+    // 作为独立页面（push）
     final navKey = GlobalKey<NavigatorState>();
     await tester.pumpWidget(host(const Scaffold(), navKey: navKey));
     navKey.currentState!.push(
@@ -268,7 +268,9 @@ void main() {
     await tester.pumpAndSettle();
     final pushedGap = await tailGap();
 
-    expect(inShellGap - pushedGap, 96);
+    // 两者的底栏让位都由 shellBottomBarInset 统一给出（测试环境没有系统
+    // 导航栏 inset），因此只剩页面自己的常规留白，两处应完全一致
+    expect(inShellGap, closeTo(pushedGap, 0.5));
     app.dispose();
   });
 }

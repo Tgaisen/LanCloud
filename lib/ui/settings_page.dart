@@ -260,7 +260,10 @@ class _SettingsPageState extends State<SettingsPage>
         // Android 12+ 才有系统取色，取不到时开关置灰；支持情况在进入
         // 设置页时探测一次（DynamicColorSupport 带缓存，见其注释）
         build: (context, app) {
-          final supported = _dynamicColorSupported == true;
+          // 探测期间按「支持」处理：开关直接反映设置值，不会先显示关闭
+          // 再跳到打开（开着动态取色的设备打开设置页会闪一下）；
+          // 探测结果确实不支持时再置灰并显示不支持文案
+          final supported = _dynamicColorSupported ?? true;
           return SwitchListTile(
             secondary: const Icon(Icons.wallpaper_outlined),
             title: Text(context.l10n.dynamicColor),
@@ -691,13 +694,12 @@ class _SettingsPageState extends State<SettingsPage>
       _Entry(
         id: 'clear_recents',
         title: l10n.clearRecents,
-        subtitle: l10n.clearRecentsSubtitle,
+        subtitle: '',
         keywords: l10n.clearRecentsKeywords.split(' '),
         category: 'data',
         build: (context, app) => ListTile(
           leading: const Icon(Icons.cleaning_services_outlined),
           title: Text(context.l10n.clearRecents),
-          subtitle: Text(context.l10n.clearRecentsSubtitle),
           onTap: () async {
             await app.db.clearRecents(app.activeUid ?? '');
             if (context.mounted) {
@@ -1141,7 +1143,8 @@ class _SettingsPageState extends State<SettingsPage>
     return _pickRadio(
       context,
       title: l10n.homeFolderOpen,
-      options: [('page', l10n.openInNewPage), ('drive', l10n.openInDriveTab)],
+      // 网盘页作为首项与默认值
+      options: [('drive', l10n.openInDriveTab), ('page', l10n.openInNewPage)],
       current: app.settings.homeFolderOpenMode,
       onSelect: (value) => app.setHomeFolderOpenMode(value),
     );
@@ -1222,6 +1225,15 @@ class _SettingsPageState extends State<SettingsPage>
       builder: (dialogContext) => SimpleDialog(
         title: Text(l10n.themeColor),
         children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+            child: Text(
+              l10n.themeSeedDynamicHint,
+              style: Theme.of(dialogContext).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(dialogContext).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
           for (final entry in presets.entries)
             ListTile(
               leading: CircleAvatar(

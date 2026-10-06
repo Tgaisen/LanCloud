@@ -363,6 +363,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get themeColor => 'Theme color';
 
   @override
+  String get themeSeedDynamicHint => 'Has no effect while dynamic color is on';
+
+  @override
   String get themeColorKeywords => 'accent color theme';
 
   @override
@@ -555,9 +558,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get clearRecents => 'Clear recent items';
-
-  @override
-  String get clearRecentsSubtitle => 'Remove recent items from the home page';
 
   @override
   String get clearRecentsKeywords => 'recent clear history';
@@ -1285,8 +1285,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get manageDefaultLinks => 'Manage default links';
 
   @override
-  String get manageDefaultLinksSubtitle =>
-      'Let LanCloud open share links in system settings';
+  String get manageDefaultLinksSubtitle => 'Open share links with this app';
 
   @override
   String get manageDefaultLinksKeywords => 'default links open with permission';
@@ -1301,14 +1300,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cookieLogin => 'Cookie login';
 
   @override
-  String get permissionInstall => 'Install apps (open APK)';
+  String get permissionInstall => 'Install apps';
 
   @override
   String get permissionInstallKeywords =>
       'install apk unknown sources permission';
 
   @override
-  String get permissionBattery => 'Battery optimization';
+  String get permissionBattery => 'Ignore battery optimization';
 
   @override
   String get permissionBatteryKeywords =>
@@ -1318,19 +1317,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get permissionChecking => 'Checking…';
 
   @override
-  String get permissionInstallGranted => 'Installing apps is allowed';
+  String get permissionInstallGranted => 'Granted (for opening APKs)';
 
   @override
-  String get permissionInstallDenied =>
-      'Not allowed; required before opening APK installers';
+  String get permissionInstallDenied => 'Not granted (for opening APKs)';
 
   @override
-  String get permissionBatteryGranted =>
-      'Exempt from battery optimization; background transfers are stable';
+  String get permissionBatteryGranted => 'Granted (for background transfers)';
 
   @override
   String get permissionBatteryRestricted =>
-      'Restricted by battery optimization; background transfers may be interrupted';
+      'Not granted (for background transfers)';
 
   @override
   String get permissionOpenFailed => 'Unable to open system settings';

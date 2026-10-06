@@ -2627,14 +2627,10 @@ class _DrivePageState extends State<DrivePage>
           ),
       SliverToBoxAdapter(
         child: Padding(
-          // 外壳里给底栏（悬浮胶囊 / 收起）让位；作为独立页面打开时
-          // 末尾由 shellBottomBarInset 按系统导航栏补，只留常规留白
-          padding: EdgeInsets.fromLTRB(
-            16,
-            16,
-            16,
-            inRootShell(context) ? 96 : 16,
-          ),
+          // 底栏让位统一由 shellBottomBarInset 负责；这里额外给悬浮的
+          // 「添加」FAB 让位（FAB 高 56、距底栏上沿 16），
+          // 否则滚到底时最后一行会被它压住
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 72),
           child: Center(
             child: _loadingMore
                 ? const SizedBox(

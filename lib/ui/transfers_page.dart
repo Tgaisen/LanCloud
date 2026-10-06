@@ -468,7 +468,8 @@ class _TransferListSliver extends StatelessWidget {
         .toList();
     return SliverPadding(
       // 与收藏页一致：外层 12 + SegmentedList 自带 4
-      padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+      // 底部留白与首页 / 网盘 / 收藏保持一致
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
       sliver: SliverMainAxisGroup(
         slivers: [
           if (active.isNotEmpty) ...[
@@ -516,10 +517,6 @@ class _TransferListSliver extends StatelessWidget {
               ),
             ),
           ],
-          // 外壳里给悬浮 / 收起的底栏让位；作为独立页面打开时
-          // 末尾由 shellBottomBarInset 按系统导航栏补，这里不重复
-          if (inRootShell(context))
-            const SliverToBoxAdapter(child: SizedBox(height: 96)),
         ],
       ),
     );

@@ -4,16 +4,16 @@ import 'package:lancloud/core/data/settings_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  test('首页目录打开方式默认新页面，切换后可持久化', () async {
+  test('首页目录打开方式默认网盘页，切换后可持久化', () async {
     SharedPreferences.setMockInitialValues({});
     final store = SettingsStore();
     await store.load();
-    expect(store.homeFolderOpenMode, 'page');
+    expect(store.homeFolderOpenMode, 'drive');
 
-    await store.setHomeFolderOpenMode('drive');
+    await store.setHomeFolderOpenMode('page');
     final reloaded = SettingsStore();
     await reloaded.load();
-    expect(reloaded.homeFolderOpenMode, 'drive');
+    expect(reloaded.homeFolderOpenMode, 'page');
   });
 
   test('openFolderInDrive 记录目标目录并请求切到网盘视图', () {

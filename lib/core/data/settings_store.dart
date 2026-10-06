@@ -11,6 +11,7 @@ class SettingsStore {
   static const _keyThemeMode = 'theme_mode';
   static const _keyOled = 'oled_black';
   static const _keyDynamicColor = 'dynamic_color';
+  static const _keyDynamicColorChosen = 'dynamic_color_chosen';
   static const _keySeed = 'theme_seed';
   static const _keyInterval = 'request_interval';
   static const _keyMaxUp = 'max_uploads';
@@ -41,7 +42,7 @@ class SettingsStore {
   String launchPage = 'home';
 
   /// 首页目录打开方式：page = 新页面，drive = 跳转网盘页。
-  String homeFolderOpenMode = 'page';
+  String homeFolderOpenMode = 'drive';
   bool cacheFolders = true;
   bool loadAllPages = false;
   String themeMode = 'system';
@@ -49,6 +50,10 @@ class SettingsStore {
 
   /// 动态取色：跟随系统壁纸（Android 12+）。
   bool dynamicColor = false;
+
+  /// 用户是否手动设置过动态取色。false 表示还没选过：
+  /// 启动时若设备支持会自动开启（见 AppController.init）。
+  bool dynamicColorChosen = false;
   int themeSeed = 0xFF2E6BE6;
   int requestInterval = 100;
   int maxUploads = 1;
@@ -97,12 +102,13 @@ class SettingsStore {
     downloadDir = prefs.getString(_keyDownloadDir);
     gridView = prefs.getBool(_keyGridView) ?? true;
     launchPage = prefs.getString(_keyLaunchPage) ?? 'home';
-    homeFolderOpenMode = prefs.getString(_keyHomeFolderOpen) ?? 'page';
+    homeFolderOpenMode = prefs.getString(_keyHomeFolderOpen) ?? 'drive';
     cacheFolders = prefs.getBool(_keyCacheFolders) ?? true;
     loadAllPages = prefs.getBool(_keyLoadAllPages) ?? false;
     themeMode = prefs.getString(_keyThemeMode) ?? 'system';
     oledBlack = prefs.getBool(_keyOled) ?? false;
     dynamicColor = prefs.getBool(_keyDynamicColor) ?? false;
+    dynamicColorChosen = prefs.getBool(_keyDynamicColorChosen) ?? false;
     themeSeed = prefs.getInt(_keySeed) ?? 0xFF2E6BE6;
     requestInterval = prefs.getInt(_keyInterval) ?? 100;
     maxUploads = prefs.getInt(_keyMaxUp) ?? 1;
@@ -263,8 +269,10 @@ class SettingsStore {
 
   Future<void> setDynamicColor(bool value) async {
     dynamicColor = value;
+    dynamicColorChosen = true;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyDynamicColor, value);
+    await prefs.setBool(_keyDynamicColorChosen, true);
   }
 
   Future<void> setClipboardLinkPrompt(bool value) async {

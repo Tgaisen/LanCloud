@@ -87,22 +87,11 @@ double bottomObstructionHeight(BuildContext context) {
 /// 悬浮底栏按设计浮在正文上方、内容从它后面穿过，外壳里不补；
 /// push 出来的独立页面没有外壳底栏，按系统导航栏高度补。
 double shellBottomBarInset(BuildContext context) {
-  final app = context.watch<AppController>();
-  if (inRootShell(context) && app.settings.floatingNavBar) return 0;
+  // 悬浮底栏同样按底栏总高度留白：胶囊虽然浮在内容上方，但滚到最底时
+  // 最后一条也应该完整露出，而不是永久压在胶囊下面。
+  // 外壳因 extendBody 把底栏总高度（含系统导航栏）写进了 padding.bottom，
+  // 直接用这个值两种样式都合适。
   return bottomObstructionHeight(context);
-}
-
-/// 悬浮底栏（胶囊浮在内容上方）时，列表末尾额外给胶囊留出的高度。
-///
-/// 只有"外壳 + 悬浮底栏"需要：普通底栏由 [shellBottomBarInset] 按底栏高度
-/// 让位、独立页面按系统导航栏让位、大屏没有底栏，这几类都不该再叠这段留白
-/// （否则「我的」等页面选项下方会多出一大截空白）。
-double floatingNavTailInset(BuildContext context) {
-  // 大屏（侧栏布局）没有底栏，不需要给胶囊留位
-  if (isLargeLayout(context)) return 0;
-  final app = context.watch<AppController>();
-  if (!inRootShell(context) || !app.settings.floatingNavBar) return 0;
-  return 96;
 }
 
 /// 大屏（横屏 / 平板）下的 MD3E 正文卡片：body area 用 surface 底色、

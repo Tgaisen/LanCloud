@@ -84,7 +84,8 @@ class _ProfilePageState extends State<ProfilePage>
                   SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
                   SliverPadding(
                     // 顶部留白与左右一致
-                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
+                    // 底部留白与首页 / 网盘 / 收藏 / 传输保持一致
+                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
                     sliver: SliverList(
                       delegate: SliverChildListDelegate([
                         SegmentedList(
@@ -172,8 +173,6 @@ class _ProfilePageState extends State<ProfilePage>
                             ),
                           ],
                         ),
-                        // 悬浮底栏时给胶囊让位；普通底栏 / 大屏不需要
-                        SizedBox(height: floatingNavTailInset(context)),
                       ]),
                     ),
                   ),

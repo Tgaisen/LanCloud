@@ -31,7 +31,9 @@ void main() {
     app.dispose();
   });
 
-  testWidgets('「我的」末尾留白：只有悬浮底栏才给胶囊让位（96）', (tester) async {
+  testWidgets('「我的」末尾留白：不再自己叠加固定 96（由 shellBottomBarInset 统一补）', (
+    tester,
+  ) async {
     Future<int> tailSpacerCount({required bool floating}) async {
       final app = AppController()..settings.floatingNavBar = floating;
       tester.view.physicalSize = const Size(400, 600);
@@ -57,9 +59,9 @@ void main() {
       return count;
     }
 
-    // 悬浮底栏：末尾留出胶囊高度，避免最后一项被胶囊压住
-    expect(await tailSpacerCount(floating: true), 1);
-    // 普通底栏 / 大屏：底栏高度或卡片已经让过位，不该再多一截
+    // 两种底栏样式都不该再自己塞一段 96：底栏让位统一由
+    // shellBottomBarInset（= 外壳 extendBody 补进来的 padding.bottom）承担
+    expect(await tailSpacerCount(floating: true), 0);
     expect(await tailSpacerCount(floating: false), 0);
   });
 

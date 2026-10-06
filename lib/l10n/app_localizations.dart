@@ -725,7 +725,7 @@ abstract class AppLocalizations {
   /// No description provided for @oled.
   ///
   /// In zh, this message translates to:
-  /// **'纯黑主题'**
+  /// **'纯黑深色主题'**
   String get oled;
 
   /// No description provided for @oledSubtitle.
@@ -745,6 +745,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'主题色'**
   String get themeColor;
+
+  /// No description provided for @themeSeedDynamicHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'启用动态取色时不生效'**
+  String get themeSeedDynamicHint;
 
   /// No description provided for @themeColorKeywords.
   ///
@@ -1105,12 +1111,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'清空最近使用记录'**
   String get clearRecents;
-
-  /// No description provided for @clearRecentsSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'删除首页最近使用条目'**
-  String get clearRecentsSubtitle;
 
   /// No description provided for @clearRecentsKeywords.
   ///
@@ -2399,7 +2399,7 @@ abstract class AppLocalizations {
   /// No description provided for @manageDefaultLinksSubtitle.
   ///
   /// In zh, this message translates to:
-  /// **'在系统设置中把蓝奏云分享链接交给我打开'**
+  /// **'使用此应用打开分享链接'**
   String get manageDefaultLinksSubtitle;
 
   /// No description provided for @manageDefaultLinksKeywords.
@@ -2429,7 +2429,7 @@ abstract class AppLocalizations {
   /// No description provided for @permissionInstall.
   ///
   /// In zh, this message translates to:
-  /// **'安装应用（用于打开 APK）'**
+  /// **'安装应用'**
   String get permissionInstall;
 
   /// No description provided for @permissionInstallKeywords.
@@ -2441,7 +2441,7 @@ abstract class AppLocalizations {
   /// No description provided for @permissionBattery.
   ///
   /// In zh, this message translates to:
-  /// **'电池优化（用于后台传输）'**
+  /// **'忽略电池优化'**
   String get permissionBattery;
 
   /// No description provided for @permissionBatteryKeywords.
@@ -2459,25 +2459,25 @@ abstract class AppLocalizations {
   /// No description provided for @permissionInstallGranted.
   ///
   /// In zh, this message translates to:
-  /// **'已允许安装应用'**
+  /// **'已授权（用于打开 APK）'**
   String get permissionInstallGranted;
 
   /// No description provided for @permissionInstallDenied.
   ///
   /// In zh, this message translates to:
-  /// **'未允许，打开 APK 安装包前需授权'**
+  /// **'未授权（用于打开 APK）'**
   String get permissionInstallDenied;
 
   /// No description provided for @permissionBatteryGranted.
   ///
   /// In zh, this message translates to:
-  /// **'已忽略电池优化，后台传输更稳定'**
+  /// **'已授权（用于后台传输）'**
   String get permissionBatteryGranted;
 
   /// No description provided for @permissionBatteryRestricted.
   ///
   /// In zh, this message translates to:
-  /// **'受电池优化限制，后台传输可能被中断'**
+  /// **'未授权（用于后台传输）'**
   String get permissionBatteryRestricted;
 
   /// No description provided for @permissionOpenFailed.

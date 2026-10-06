@@ -343,7 +343,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get themeModeKeywords => '主题 夜间 深色 浅色';
 
   @override
-  String get oled => '纯黑主题';
+  String get oled => '纯黑深色主题';
 
   @override
   String get oledSubtitle => '深色模式下用纯黑背景，更省电';
@@ -353,6 +353,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get themeColor => '主题色';
+
+  @override
+  String get themeSeedDynamicHint => '启用动态取色时不生效';
 
   @override
   String get themeColorKeywords => '配色 颜色 主题';
@@ -537,9 +540,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get clearRecents => '清空最近使用记录';
-
-  @override
-  String get clearRecentsSubtitle => '删除首页最近使用条目';
 
   @override
   String get clearRecentsKeywords => '最近 清空 记录';
@@ -1248,7 +1248,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get manageDefaultLinks => '管理应用默认链接';
 
   @override
-  String get manageDefaultLinksSubtitle => '在系统设置中把蓝奏云分享链接交给我打开';
+  String get manageDefaultLinksSubtitle => '使用此应用打开分享链接';
 
   @override
   String get manageDefaultLinksKeywords => 'default links 默认 链接 打开方式 权限';
@@ -1263,14 +1263,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cookieLogin => 'Cookie 登录';
 
   @override
-  String get permissionInstall => '安装应用（用于打开 APK）';
+  String get permissionInstall => '安装应用';
 
   @override
   String get permissionInstallKeywords =>
       'install apk unknown sources 安装 未知来源 权限';
 
   @override
-  String get permissionBattery => '电池优化（用于后台传输）';
+  String get permissionBattery => '忽略电池优化';
 
   @override
   String get permissionBatteryKeywords =>
@@ -1280,16 +1280,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get permissionChecking => '检查中…';
 
   @override
-  String get permissionInstallGranted => '已允许安装应用';
+  String get permissionInstallGranted => '已授权（用于打开 APK）';
 
   @override
-  String get permissionInstallDenied => '未允许，打开 APK 安装包前需授权';
+  String get permissionInstallDenied => '未授权（用于打开 APK）';
 
   @override
-  String get permissionBatteryGranted => '已忽略电池优化，后台传输更稳定';
+  String get permissionBatteryGranted => '已授权（用于后台传输）';
 
   @override
-  String get permissionBatteryRestricted => '受电池优化限制，后台传输可能被中断';
+  String get permissionBatteryRestricted => '未授权（用于后台传输）';
 
   @override
   String get permissionOpenFailed => '无法打开系统设置';

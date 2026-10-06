@@ -478,7 +478,9 @@ class _HomePageState extends State<HomePage>
                   ),
                   const SliverToBoxAdapter(child: SizedBox(height: 16)),
                   SliverPadding(
-                    padding: const EdgeInsets.all(16),
+                    // 底部留白交给最后一个 SectionCard 自带的 16dp
+                    //（它内部还带 4dp 分组外边距），与其他页面保持一致
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                     sliver: SliverList(
                       delegate: SliverChildListDelegate([
                         SectionCard(
