@@ -1455,7 +1455,8 @@ class PathChip extends StatelessWidget {
       child: Material(
         // 只有当前目录带底色，上级目录保持透明
         color: current ? scheme.secondaryContainer : Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
+        // 大圆角 = 胶囊：高度不足时 Skia 会把半径收到一半，左右看是半圆
+        borderRadius: BorderRadius.circular(999),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
@@ -1474,6 +1475,223 @@ class PathChip extends StatelessWidget {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 路径栏里的一段路径（根目录固定用 id `'-1'`，其余用文件夹 id）。
+class PathSegment {
+  const PathSegment({required this.id, required this.label});
+
+  final String id;
+  final String label;
+}
+
+/// 横向路径栏：进入新目录时新卡片横向展开 + 淡入、返回上级时旧卡片
+/// 收缩淡出（类似 RecyclerView 的增删动画）；路径变化后自动滚到末尾，
+/// 保证当前目录（最后一段）完整可见。网盘页与文件选择弹窗共用。
+class PathBar extends StatefulWidget {
+  const PathBar({
+    super.key,
+    required this.segments,
+    required this.onTap,
+    this.currentIndex,
+    this.verticalPadding = 8,
+  });
+
+  final List<PathSegment> segments;
+
+  /// 点击某一段：回传它在 [segments] 里的下标。
+  final ValueChanged<int> onTap;
+
+  /// 高亮哪一段；默认最后一段（当前目录）。
+  final int? currentIndex;
+
+  /// 卡片上下留白：网盘页 8，弹窗里 4。
+  final double verticalPadding;
+
+  @override
+  State<PathBar> createState() => _PathBarState();
+}
+
+const Duration _pathBarDuration = Duration(milliseconds: 220);
+
+class _PathBarEntry {
+  _PathBarEntry(
+    this.segment, {
+    required TickerProvider vsync,
+    bool visible = true,
+  }) : animation = AnimationController(
+         duration: _pathBarDuration,
+         vsync: vsync,
+         value: visible ? 1 : 0,
+       );
+
+  PathSegment segment;
+  final AnimationController animation;
+  bool removing = false;
+}
+
+class _PathBarState extends State<PathBar> with TickerProviderStateMixin {
+  final ScrollController _scroll = ScrollController();
+  final List<_PathBarEntry> _entries = [];
+
+  @override
+  void initState() {
+    super.initState();
+    for (final segment in widget.segments) {
+      _entries.add(_PathBarEntry(segment, vsync: this));
+    }
+    _scrollToEnd(animate: false);
+  }
+
+  @override
+  void dispose() {
+    for (final entry in _entries) {
+      entry.animation.dispose();
+    }
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant PathBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _sync();
+  }
+
+  /// 与新路径求公共前缀：前缀之后的旧段淡出、新段淡入。
+  void _sync() {
+    final target = widget.segments;
+    var common = 0;
+    while (common < _entries.length &&
+        common < target.length &&
+        _entries[common].segment.id == target[common].id) {
+      common++;
+    }
+    // 前缀内的名称可能变了（改名）：直接更新，不播动画
+    for (var i = 0; i < common; i++) {
+      if (_entries[i].segment.label != target[i].label) {
+        _entries[i].segment = target[i];
+      }
+    }
+    // 返回上级：前缀之后的旧段收缩淡出，动画结束后再移出列表
+    for (final entry in _entries.sublist(common).toList()) {
+      if (entry.removing) continue;
+      entry.removing = true;
+      entry.animation.reverse();
+      Future<void>.delayed(_pathBarDuration, () {
+        if (!mounted) return;
+        setState(() => _entries.remove(entry));
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => entry.animation.dispose(),
+        );
+      });
+    }
+    // 进入新目录：追加新段并播放展开 + 淡入
+    for (final segment in target.sublist(common)) {
+      final entry = _PathBarEntry(segment, vsync: this, visible: false);
+      _entries.add(entry);
+      // 新卡片从 0 宽度展开，展开过程中 maxScrollExtent 还在变，
+      // 所以等展开播完再滚一次，保证最后一张卡片完整可见
+      entry.animation.addStatusListener((status) {
+        if (status == AnimationStatus.completed && !entry.removing) {
+          _scrollToEnd();
+        }
+      });
+      entry.animation.forward();
+    }
+    if (target.length > common) _scrollToEnd();
+  }
+
+  void _scrollToEnd({bool animate = true}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scroll.hasClients) return;
+      final target = _scroll.position.maxScrollExtent;
+      if (!animate) {
+        _scroll.jumpTo(target);
+        return;
+      }
+      if ((target - _scroll.offset).abs() < 1) return;
+      _scroll.animateTo(
+        target,
+        duration: _pathBarDuration,
+        curve: Curves.easeOutCubic,
+      );
+    });
+  }
+
+  bool _isCurrent(_PathBarEntry entry) {
+    if (entry.removing) return false;
+    final segments = widget.segments;
+    if (segments.isEmpty) return false;
+    var index = widget.currentIndex ?? segments.length - 1;
+    if (index < 0) index = 0;
+    if (index >= segments.length) index = segments.length - 1;
+    return segments[index].id == entry.segment.id;
+  }
+
+  void _handleTap(_PathBarEntry entry) {
+    if (entry.removing) return;
+    final index = widget.segments.indexWhere(
+      (segment) => segment.id == entry.segment.id,
+    );
+    if (index >= 0) widget.onTap(index);
+  }
+
+  Widget _buildEntry(BuildContext context, ColorScheme scheme, int index) {
+    final entry = _entries[index];
+    final curve = CurvedAnimation(
+      parent: entry.animation,
+      curve: Curves.easeOutCubic,
+    );
+    return SizeTransition(
+      axis: Axis.horizontal,
+      sizeFactor: curve,
+      child: FadeTransition(
+        opacity: curve,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (index > 0)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                child: Icon(
+                  Icons.chevron_right,
+                  size: 16,
+                  color: scheme.outline,
+                ),
+              ),
+            PathChip(
+              label: entry.segment.label,
+              current: _isCurrent(entry),
+              verticalPadding: widget.verticalPadding,
+              onTap: () => _handleTap(entry),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    // Align：路径栏放进 AppBar 的 bottom 槽位时拿到的是松约束，
+    // 不套一层就会整条缩到中间/右边去
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: SingleChildScrollView(
+        controller: _scroll,
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Row(
+          children: [
+            for (var i = 0; i < _entries.length; i++)
+              _buildEntry(context, scheme, i),
+          ],
         ),
       ),
     );

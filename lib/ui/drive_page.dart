@@ -2477,33 +2477,15 @@ class _DrivePageState extends State<DrivePage>
   }
 
   Widget _pathBar() {
-    final scheme = Theme.of(context).colorScheme;
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        children: [
-          for (var i = -1; i < _path.length; i++) ...[
-            if (i >= 0)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 2),
-                child: Icon(
-                  Icons.chevron_right,
-                  size: 16,
-                  color: scheme.outline,
-                ),
-              ),
-            PathChip(
-              label: i < 0 ? context.l10n.root : _path[i].name,
-              current: i == _path.length - 1,
-              // 点当前目录 = 刷新；点上一级 = 返回该目录
-              onTap: () =>
-                  i == _path.length - 1 ? _reloadAfterChange() : _jumpTo(i),
-            ),
-          ],
-        ],
-      ),
+    return PathBar(
+      segments: [
+        PathSegment(id: '-1', label: context.l10n.root),
+        for (final node in _path) PathSegment(id: node.id, label: node.name),
+      ],
+      // 点当前目录 = 刷新；点上一级 = 返回该目录
+      onTap: (index) =>
+          index == _path.length ? _reloadAfterChange() : _jumpTo(index - 1),
+      verticalPadding: 8,
     );
   }
 
@@ -3914,31 +3896,14 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
             Row(
               children: [
                 Expanded(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        for (var i = -1; i < _path.length; i++) ...[
-                          if (i >= 0)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 2,
-                              ),
-                              child: Icon(
-                                Icons.chevron_right,
-                                size: 16,
-                                color: scheme.outline,
-                              ),
-                            ),
-                          PathChip(
-                            label: i < 0 ? l10n.root : _path[i].name,
-                            current: i == _path.length - 1,
-                            onTap: () => _jumpTo(i),
-                            verticalPadding: 4,
-                          ),
-                        ],
-                      ],
-                    ),
+                  child: PathBar(
+                    segments: [
+                      PathSegment(id: '-1', label: l10n.root),
+                      for (final node in _path)
+                        PathSegment(id: node.id, label: node.name),
+                    ],
+                    onTap: (index) => _jumpTo(index - 1),
+                    verticalPadding: 4,
                   ),
                 ),
                 const SizedBox(width: 4),
