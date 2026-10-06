@@ -27,6 +27,15 @@ class _BackupPageState extends State<BackupPage> {
   late final BackupService _service;
   bool _busy = false;
 
+  /// 页面列表；传给 TopBarOverlayScaffold 后点顶栏空白即可回到顶部。
+  final ScrollController _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -256,6 +265,7 @@ class _BackupPageState extends State<BackupPage> {
     final store = _service.webdav;
     final scheme = Theme.of(context).colorScheme;
     return TopBarOverlayScaffold(
+      controller: _scroll,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         scrolledUnderElevation: 0,

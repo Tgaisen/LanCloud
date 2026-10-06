@@ -369,6 +369,7 @@ class _ShareFolderPageState extends State<ShareFolderPage>
       },
       child: TopBarOverlayScaffold(
         controller: _scroll,
+        // 顶栏空白处点按回到顶部由 TopBarOverlayScaffold 统一处理
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           scrolledUnderElevation: 0,

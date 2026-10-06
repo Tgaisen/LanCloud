@@ -202,10 +202,120 @@ void main() {
     // 确认弹窗
     expect(find.text('删除传输记录'), findsOneWidget);
     await tester.tap(find.text('删除').last);
+    // 批量删除不逐条播删除动画：确认后立即移除记录，不需要等动画
+    await tester.pump();
+    await tester.pump();
+    expect(manager.tasks.map((t) => t.id).toList(), ['t2']);
     await tester.pumpAndSettle();
 
     expect(manager.tasks.map((t) => t.id).toList(), ['t2']);
+    // 列表一次刷新到位：被删的两条都不再渲染
+    expect(find.text('a.zip'), findsNothing);
+    expect(find.text('c.zip'), findsNothing);
+    expect(find.text('b.zip'), findsOneWidget);
     expect(app.selectionMode, isFalse);
+    app.dispose();
+  });
+
+  testWidgets('下载完成的项目：APK 只保留「打开」，不再显示「安装」', (tester) async {
+    final app = AppController();
+    final manager = TransferManager(app);
+    manager.tasks.add(
+      TransferTask(
+          id: 'd1',
+          kind: TransferKind.download,
+          name: 'tool.apk',
+          accountUid: '',
+        )
+        ..status = TransferStatus.done
+        ..savedPath = '/tmp/tool.apk',
+    );
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<AppController>.value(value: app),
+          ChangeNotifierProvider<TransferManager>.value(value: manager),
+        ],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const TransfersPage(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('下载'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('tool.apk'), findsOneWidget);
+    expect(find.byTooltip('安装'), findsNothing);
+    expect(find.byTooltip('打开'), findsOneWidget);
+    app.dispose();
+  });
+
+  testWidgets('批量删除：幸存条目复用元素，不重播出现动画', (tester) async {
+    final app = AppController();
+    final manager = TransferManager(app);
+    for (var i = 1; i <= 5; i++) {
+      manager.tasks.add(
+        TransferTask(
+            id: 'd$i',
+            kind: TransferKind.download,
+            name: 'f$i.zip',
+            accountUid: '',
+          )
+          ..status = TransferStatus.done
+          ..savedPath = '/tmp/f$i.zip',
+      );
+    }
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<AppController>.value(value: app),
+          ChangeNotifierProvider<TransferManager>.value(value: manager),
+        ],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const TransfersPage(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('下载'));
+    await tester.pumpAndSettle();
+
+    // 下载列表按时间倒序：f5 f4 f3 f2 f1；删掉 f4、f2，剩下 f5 f3 f1
+    await tester.longPress(find.text('f4.zip'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('f2.zip'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('删除'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('删除').last);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 40));
+
+    expect(find.text('f4.zip'), findsNothing);
+    expect(find.text('f2.zip'), findsNothing);
+    expect(manager.tasks.length, 3);
+    // 下标变了（f3: 2→1、f1: 4→2）但元素复用，不会淡入一次
+    for (final id in ['d3', 'd1', 'd5']) {
+      final opacity = tester
+          .widgetList<Opacity>(
+            find.descendant(
+              of: find.byKey(ValueKey('transfer-$id')),
+              matching: find.byType(Opacity),
+            ),
+          )
+          .map((o) => o.opacity)
+          .reduce((a, b) => a < b ? a : b);
+      expect(opacity, 1.0);
+    }
+    await tester.pumpAndSettle();
     app.dispose();
   });
 

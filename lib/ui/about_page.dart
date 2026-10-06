@@ -8,8 +8,22 @@ import 'common.dart';
 import 'legal_dialog.dart';
 
 /// 关于页：版本、协议与隐私、开源许可、项目主页、提交 Issue 与免责声明。
-class AboutPage extends StatelessWidget {
+class AboutPage extends StatefulWidget {
   const AboutPage({super.key});
+
+  @override
+  State<AboutPage> createState() => _AboutPageState();
+}
+
+class _AboutPageState extends State<AboutPage> {
+  /// 页面列表；传给 TopBarOverlayScaffold 后点顶栏空白即可回到顶部。
+  final ScrollController _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -17,6 +31,7 @@ class AboutPage extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     return TopBarOverlayScaffold(
+      controller: _scroll,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         scrolledUnderElevation: 0,

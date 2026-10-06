@@ -261,6 +261,16 @@ class _FavoritesPageState extends State<FavoritesPage>
     });
   }
 
+  /// 点顶栏空白处回到列表顶部（与网盘页一致）。
+  void _scrollToTop() {
+    if (!_scroll.hasClients) return;
+    _scroll.animateTo(
+      0,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
+  }
+
   void _selectAll() {
     setState(() {
       _selected
@@ -301,13 +311,8 @@ class _FavoritesPageState extends State<FavoritesPage>
     if (ok != true || !mounted) return;
     final ids = _selected.toList();
     _exitSelection();
-    // 先播放删除动画，再真正删库
-    setState(() => _removing.addAll(ids));
-    await Future<void>.delayed(const Duration(milliseconds: 220));
-    if (!mounted) return;
-    for (final id in ids) {
-      await _db.removeFavoriteById(id);
-    }
+    // 批量删除不逐条播动画：一次落库、一次 revision，列表整体刷新一遍
+    await _db.removeFavoritesByIds(ids);
   }
 
   // ------------------------------------------------------------------ 条目
@@ -550,9 +555,18 @@ class _FavoritesPageState extends State<FavoritesPage>
                               // 懒加载：收藏多了也只构建可见部分
                               SegmentedSliverList(
                                 adaptive: true,
+                                // 幸存条目按 key 复用元素，删除后不重建
+                                findChildIndexCallback: childIndexLookup(
+                                  folders,
+                                  (item) =>
+                                      ValueKey('favorite-entry-${item.id}'),
+                                ),
                                 itemCount: folders.length,
                                 itemBuilder: (context, index) =>
                                     ListEnterAnimation(
+                                      key: ValueKey(
+                                        'favorite-entry-${folders[index].id}',
+                                      ),
                                       progress: _enter,
                                       index: index,
                                       child: _tile(
@@ -574,9 +588,17 @@ class _FavoritesPageState extends State<FavoritesPage>
                               ),
                               SegmentedSliverList(
                                 adaptive: true,
+                                findChildIndexCallback: childIndexLookup(
+                                  files,
+                                  (item) =>
+                                      ValueKey('favorite-entry-${item.id}'),
+                                ),
                                 itemCount: files.length,
                                 itemBuilder: (context, index) =>
                                     ListEnterAnimation(
+                                      key: ValueKey(
+                                        'favorite-entry-${files[index].id}',
+                                      ),
                                       progress: _enter,
                                       index: index,
                                       child: _tile(files[index], index: index),
@@ -602,43 +624,50 @@ class _FavoritesPageState extends State<FavoritesPage>
               child: TopBarOverlay(
                 height: headerHeight,
                 background: topBarBackgroundColor(context, scheme),
-                builder: (context) => AppBar(
-                  backgroundColor: Colors.transparent,
-                  scrolledUnderElevation: 0,
-                  leading: _searching
-                      ? IconButton(
-                          tooltip: l10n.closeSearch,
-                          icon: const Icon(Icons.close),
-                          onPressed: _exitSearch,
-                        )
-                      : ((ModalRoute.of(context)?.isFirst ?? true)
-                            ? null
-                            : const AppBarBackButton()),
-                  title: _searching
-                      ? TextField(
-                          controller: _search,
-                          autofocus: true,
-                          decoration: InputDecoration(
-                            hintText: l10n.searchFavorites,
-                            border: InputBorder.none,
-                          ),
-                          onChanged: (value) => setState(() => _filter = value),
-                        )
-                      : Text(l10n.myFavorites),
-                  actions: _searching
-                      ? const <Widget>[]
-                      : [
-                          IconButton(
-                            tooltip: l10n.search,
-                            icon: const Icon(Icons.search),
-                            onPressed: () => setState(() => _searching = true),
-                          ),
-                          IconButton(
-                            tooltip: l10n.menu,
-                            icon: const Icon(Icons.more_vert),
-                            onPressed: _showMenu,
-                          ),
-                        ],
+                // 点顶栏空白处回到列表顶部（按钮 / 输入框自行响应，不会误触）
+                builder: (context) => GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onTap: _scrollToTop,
+                  child: AppBar(
+                    backgroundColor: Colors.transparent,
+                    scrolledUnderElevation: 0,
+                    leading: _searching
+                        ? IconButton(
+                            tooltip: l10n.closeSearch,
+                            icon: const Icon(Icons.close),
+                            onPressed: _exitSearch,
+                          )
+                        : ((ModalRoute.of(context)?.isFirst ?? true)
+                              ? null
+                              : const AppBarBackButton()),
+                    title: _searching
+                        ? TextField(
+                            controller: _search,
+                            autofocus: true,
+                            decoration: InputDecoration(
+                              hintText: l10n.searchFavorites,
+                              border: InputBorder.none,
+                            ),
+                            onChanged: (value) =>
+                                setState(() => _filter = value),
+                          )
+                        : Text(l10n.myFavorites),
+                    actions: _searching
+                        ? const <Widget>[]
+                        : [
+                            IconButton(
+                              tooltip: l10n.search,
+                              icon: const Icon(Icons.search),
+                              onPressed: () =>
+                                  setState(() => _searching = true),
+                            ),
+                            IconButton(
+                              tooltip: l10n.menu,
+                              icon: const Icon(Icons.more_vert),
+                              onPressed: _showMenu,
+                            ),
+                          ],
+                  ),
                 ),
               ),
             ),

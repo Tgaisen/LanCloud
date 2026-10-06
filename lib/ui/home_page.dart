@@ -104,6 +104,16 @@ class _HomePageState extends State<HomePage>
     await app.setRecentsExpanded(_recentsExpanded);
   }
 
+  /// 点顶栏空白处回到列表顶部（与网盘页一致）。
+  void _scrollToTop() {
+    if (!_scroll.hasClients) return;
+    _scroll.animateTo(
+      0,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
+  }
+
   /// 快速访问条目：名称 + 该目录路径，右侧 ⋯ 打开菜单。
   Widget _quickItem(
     BuildContext context,
@@ -603,10 +613,15 @@ class _HomePageState extends State<HomePage>
             child: TopBarOverlay(
               height: headerHeight,
               background: topBarBackgroundColor(context, scheme),
-              builder: (context) => AppBar(
-                backgroundColor: Colors.transparent,
-                scrolledUnderElevation: 0,
-                title: Text(l10n.appName),
+              // 点顶栏空白处回到列表顶部（按钮自行响应，不会误触）
+              builder: (context) => GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onTap: _scrollToTop,
+                child: AppBar(
+                  backgroundColor: Colors.transparent,
+                  scrolledUnderElevation: 0,
+                  title: Text(l10n.appName),
+                ),
               ),
             ),
           ),

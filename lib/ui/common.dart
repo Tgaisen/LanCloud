@@ -596,7 +596,8 @@ class TopBarOverlay extends StatelessWidget {
 /// - 页面骨架就是本组件，不要再自己套 Scaffold；顶栏高度（含 AppBar.bottom）
 ///   由本组件按 `状态栏 + appBar.preferredSize.height` 自动计算；
 /// - 需要底部操作栏（如多选栏）时传 [bottomNavigationBar]，需要自带滚动控制器
-///   （如回到顶部按钮）时传 [controller]；
+///   （如回到顶部按钮）时传 [controller]；传了 [controller] 后，点顶栏
+///   空白处会回到列表顶部（按钮 / 输入框自行响应，不会误触）；
 /// - 滚动驱动是自动的：内部 ScrollTint 监听滚动通知，滑动距离 = 顶栏高度时为
 ///   1:1 收起；效果与设置里的「顶栏收起」开关联动，关闭时顶栏固定不收起；
 /// - 若内容滚动发生在原生侧（WebView、相机预览等拿不到 ScrollNotification），
@@ -700,7 +701,7 @@ class _TopBarOverlayScaffoldState extends State<TopBarOverlayScaffold> {
                     height: topInset,
                     progress: _hide,
                     background: topBarBackgroundColor(context, scheme),
-                    builder: (context) => widget.appBar,
+                    builder: (context) => _appBarTapToTop(widget.appBar),
                   ),
                 ),
               ],
@@ -709,6 +710,25 @@ class _TopBarOverlayScaffoldState extends State<TopBarOverlayScaffold> {
           bottomNavigationBar: widget.bottomNavigationBar,
         ),
       ),
+    );
+  }
+
+  /// 点顶栏空白处回到列表顶部；页面传入 [TopBarOverlayScaffold.controller]
+  /// 时启用（与网盘页一致），没有 controller 的短页面保持原样。
+  Widget _appBarTapToTop(Widget child) {
+    final controller = widget.controller;
+    if (controller == null) return child;
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: () {
+        if (!controller.hasClients) return;
+        controller.animateTo(
+          0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      },
+      child: child,
     );
   }
 }
@@ -1184,20 +1204,26 @@ class _Md3ListItemState extends State<Md3ListItem>
     value: 1,
   );
 
+  bool _enterStarted = false;
+
   @override
-  void initState() {
-    super.initState();
-    if (!widget.animateIn) {
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_enterStarted) return;
+    _enterStarted = true;
+    // 页面要求不播、或列表刚删过条目（[ListEnterGate]）时直接显示，
+    // 避免数据增删时条目一个个淡入
+    if (!widget.animateIn || ListEnterGate.suppressIn(context)) {
       _enter.value = 1;
+      return;
+    }
+    final delay = widget.index.clamp(0, 8) * _enterStep;
+    if (delay == 0) {
+      _enter.forward();
     } else {
-      final delay = widget.index.clamp(0, 8) * _enterStep;
-      if (delay == 0) {
-        _enter.forward();
-      } else {
-        Future<void>.delayed(Duration(milliseconds: delay), () {
-          if (mounted) _enter.forward();
-        });
-      }
+      Future<void>.delayed(Duration(milliseconds: delay), () {
+        if (mounted) _enter.forward();
+      });
     }
   }
 
@@ -1734,7 +1760,11 @@ class BatchActionBar extends StatelessWidget {
 
 /// MD3E 分区标题：标题文字 + 右侧展开/折叠按钮（IconButton，带旋转动画），
 /// 下方内容用 SegmentedList 分组承载。
-class SectionCard extends StatelessWidget {
+///
+/// 展开 / 收起做的是**整个列表组**的高度过渡（同 ExpansionTile 的
+/// SizeTransition）：内容常驻在树里，只按进度裁剪显示，条目不重建，
+/// 因此不会重播各自的出现动画，收起方向也是内容被逐步裁掉而不是瞬间消失。
+class SectionCard extends StatefulWidget {
   const SectionCard({
     super.key,
     required this.title,
@@ -1753,6 +1783,40 @@ class SectionCard extends StatelessWidget {
   final VoidCallback? onToggle;
 
   @override
+  State<SectionCard> createState() => _SectionCardState();
+}
+
+class _SectionCardState extends State<SectionCard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _expand = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 280),
+    value: widget.expanded ? 1 : 0,
+  );
+  late final Animation<double> _factor = CurvedAnimation(
+    parent: _expand,
+    curve: Curves.easeOutCubic,
+  );
+
+  @override
+  void didUpdateWidget(covariant SectionCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.expanded != oldWidget.expanded) {
+      if (widget.expanded) {
+        _expand.forward();
+      } else {
+        _expand.reverse();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _expand.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final header = Padding(
@@ -1761,20 +1825,25 @@ class SectionCard extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Text(title, style: Theme.of(context).textTheme.titleMedium),
+            child: Text(
+              widget.title,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
           ),
-          ?trailing,
-          if (onToggle != null)
+          ?widget.trailing,
+          if (widget.onToggle != null)
             IconButton(
-              tooltip: expanded ? context.l10n.collapse : context.l10n.expand,
+              tooltip: widget.expanded
+                  ? context.l10n.collapse
+                  : context.l10n.expand,
               style: IconButton.styleFrom(
                 // 与分组卡片同底色，展开 / 收起按钮浮在标题行右侧
                 backgroundColor: scheme.surfaceContainerLow,
                 foregroundColor: scheme.onSurfaceVariant,
               ),
-              onPressed: onToggle,
+              onPressed: widget.onToggle,
               icon: AnimatedRotation(
-                turns: expanded ? 0.25 : 0,
+                turns: widget.expanded ? 0.25 : 0,
                 duration: const Duration(milliseconds: 220),
                 curve: Curves.easeOutCubic,
                 child: const Icon(Icons.chevron_right),
@@ -1791,19 +1860,16 @@ class SectionCard extends StatelessWidget {
         children: [
           // 只有右侧 IconButton 能展开 / 收起，标题行本身不响应点击
           header,
-          ClipRect(
-            child: AnimatedSize(
-              duration: const Duration(milliseconds: 240),
-              curve: Curves.easeOutCubic,
-              alignment: Alignment.topCenter,
-              // 展开时内容淡入 + 高度过渡，收起时高度收拢
-              child: AnimatedOpacity(
-                opacity: expanded ? 1 : 0,
-                duration: const Duration(milliseconds: 180),
-                curve: Curves.easeOut,
-                child: expanded
-                    ? child
-                    : const SizedBox(width: double.infinity, height: 0),
+          // 整组高度过渡：内容常驻，收起时被裁掉；对折叠内容禁用交互与读屏
+          IgnorePointer(
+            ignoring: !widget.expanded,
+            child: ExcludeSemantics(
+              excluding: !widget.expanded,
+              child: SizeTransition(
+                sizeFactor: _factor,
+                // 收起时贴着顶边裁（等价于旧的 axisAlignment: -1）
+                alignment: Alignment.topCenter,
+                child: widget.child,
               ),
             ),
           ),
@@ -2218,28 +2284,34 @@ class _SegmentedListState extends State<SegmentedList> {
     if (widget.adaptive && adaptiveColumns(context) > 1) {
       // 多列：每个条目独立成卡（四周都是外侧圆角，按下时整体放大），
       // 行优先铺开；条目自带的底色已经负责区分，不需要再套分组容器。
-      return Padding(
-        padding: widget.margin,
-        child: AdaptiveListRows(
-          spacing: widget.adaptiveSpacing,
-          children: [
-            for (var i = 0; i < count; i++)
-              _item(context, scheme, i, 1, standalone: true),
-          ],
+      return ListEnterGate(
+        itemCount: count,
+        child: Padding(
+          padding: widget.margin,
+          child: AdaptiveListRows(
+            spacing: widget.adaptiveSpacing,
+            children: [
+              for (var i = 0; i < count; i++)
+                _item(context, scheme, i, 1, standalone: true),
+            ],
+          ),
         ),
       );
     }
-    return Padding(
-      padding: widget.margin,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (var i = 0; i < count; i++) ...[
-            if (i > 0) SizedBox(height: widget.gap),
-            _item(context, scheme, i, count),
+    return ListEnterGate(
+      itemCount: count,
+      child: Padding(
+        padding: widget.margin,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var i = 0; i < count; i++) ...[
+              if (i > 0) SizedBox(height: widget.gap),
+              _item(context, scheme, i, count),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -2256,6 +2328,7 @@ class SegmentedSliverList extends StatefulWidget {
     super.key,
     required this.itemCount,
     required this.itemBuilder,
+    this.findChildIndexCallback,
     this.trailing,
     this.margin = const EdgeInsets.all(4),
     this.color,
@@ -2272,6 +2345,11 @@ class SegmentedSliverList extends StatefulWidget {
   /// 条目构建器：只对可见区间调用，返回条目内容本身；
   /// 背景、圆角与按下动效由本组件包在外层。
   final Widget Function(BuildContext context, int index) itemBuilder;
+
+  /// 数据增删后按 key 找条目的新下标（[SliverChildBuilderDelegate.findChildIndexCallback]）。
+  /// 传了它，幸存的条目会复用原来的元素而不是被重建，
+  /// 删除一批条目时不会重播各自的出现动画（列表一次刷新到位）。
+  final int? Function(Key key)? findChildIndexCallback;
 
   /// 列表末尾的附加内容（例如分页转圈）：跟随条目一起懒构建。
   /// 不要另起一条 sliver 承载常驻动画 —— sliver 即使整条在屏幕外
@@ -2317,18 +2395,33 @@ class _SegmentedSliverListState extends State<SegmentedSliverList> {
     _pressedIndex == index ? widget.pressedRadius : widget.outerRadius,
   );
 
-  Widget _item(
+  /// 多列时的一格：key 挂在行内直接子节点上，同一行内的条目能按 key 复用。
+  Widget _adaptiveCell(BuildContext context, ColorScheme scheme, int index) {
+    final child = widget.itemBuilder(context, index);
+    return Expanded(
+      key: child.key,
+      child: _itemBox(
+        context,
+        scheme,
+        index,
+        1,
+        standalone: true,
+        child: child,
+      ),
+    );
+  }
+
+  /// 条目外框：底色、圆角与按下动效。key 由调用方挂在最外层容器上
+  /// （sliver 只认直接子节点的 key，挂在里面等于没挂）。
+  Widget _itemBox(
     BuildContext context,
     ColorScheme scheme,
     int index,
     int count, {
     bool standalone = false,
+    required Widget child,
   }) {
-    final child = widget.itemBuilder(context, index);
     return AnimatedContainer(
-      // 把条目的 key 提到外层容器：数据增删时按 key 匹配元素，
-      // 动画状态跟着条目走，而不是被同位置的下一条目复用
-      key: child.key,
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOutCubic,
       decoration: BoxDecoration(
@@ -2360,54 +2453,133 @@ class _SegmentedSliverListState extends State<SegmentedSliverList> {
       // 多列：每个条目独立成卡（四周都是外侧圆角），行优先铺开并逐行懒构建
       final columns = adaptiveColumns(context);
       final rows = (count + columns - 1) ~/ columns;
-      return SliverPadding(
-        padding: widget.margin,
-        sliver: SliverList.builder(
-          itemCount: rows + extra,
-          itemBuilder: (context, row) => Padding(
-            padding: EdgeInsets.only(
-              bottom: row >= rows - 1 ? 0 : widget.adaptiveSpacing,
+      return ListEnterGate(
+        itemCount: count,
+        child: SliverPadding(
+          padding: widget.margin,
+          sliver: SliverList.builder(
+            itemCount: rows + extra,
+            findChildIndexCallback: widget.findChildIndexCallback,
+            itemBuilder: (context, row) => Padding(
+              padding: EdgeInsets.only(
+                bottom: row >= rows - 1 ? 0 : widget.adaptiveSpacing,
+              ),
+              child: row == rows && trailing != null
+                  ? trailing
+                  : Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      spacing: widget.adaptiveSpacing,
+                      children: [
+                        for (var column = 0; column < columns; column++)
+                          if (row * columns + column < count)
+                            _adaptiveCell(
+                              context,
+                              scheme,
+                              row * columns + column,
+                            )
+                          else
+                            const Expanded(child: SizedBox.shrink()),
+                      ],
+                    ),
             ),
-            child: row == rows && trailing != null
-                ? trailing
-                : Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    spacing: widget.adaptiveSpacing,
-                    children: [
-                      for (var column = 0; column < columns; column++)
-                        Expanded(
-                          child: row * columns + column < count
-                              ? _item(
-                                  context,
-                                  scheme,
-                                  row * columns + column,
-                                  1,
-                                  standalone: true,
-                                )
-                              : const SizedBox.shrink(),
-                        ),
-                    ],
-                  ),
           ),
         ),
       );
     }
-    return SliverPadding(
-      padding: widget.margin,
-      sliver: SliverList.builder(
-        itemCount: count + extra,
-        itemBuilder: (context, index) {
-          if (index == count) return trailing!;
-          return Padding(
-            padding: EdgeInsets.only(
-              bottom: index == count - 1 ? 0 : widget.gap,
-            ),
-            child: _item(context, scheme, index, count),
-          );
-        },
+    return ListEnterGate(
+      itemCount: count,
+      child: SliverPadding(
+        padding: widget.margin,
+        sliver: SliverList.builder(
+          itemCount: count + extra,
+          findChildIndexCallback: widget.findChildIndexCallback,
+          itemBuilder: (context, index) {
+            if (index == count) return trailing!;
+            final child = widget.itemBuilder(context, index);
+            return Padding(
+              // 直接子节点的 key：findChildIndexCallback 靠它把条目认回来
+              key: child.key,
+              padding: EdgeInsets.only(
+                bottom: index == count - 1 ? 0 : widget.gap,
+              ),
+              child: _itemBox(context, scheme, index, count, child: child),
+            );
+          },
+        ),
       ),
     );
   }
+}
+
+/// 给 [SegmentedSliverList.findChildIndexCallback] 用的查找表：
+/// 按条目 key 反查它在最新列表里的下标。传进列表后，数据增删时幸存的
+/// 条目会连同自己的元素状态一起"搬家"，不会被重建。
+int? Function(Key key) childIndexLookup<T>(
+  List<T> items,
+  Key Function(T item) keyOf,
+) {
+  final indexByKey = <Key, int>{
+    for (var i = 0; i < items.length; i++) keyOf(items[i]): i,
+  };
+  return (key) => indexByKey[key];
+}
+
+/// 列表增删的"入场闸门"：包裹分组列表后，**条目变少的那一帧**里被构建出来
+/// 的条目直接显示，不重播出现动画 —— 批量删除后整体刷新一遍，而不是条目
+/// 一个个闪；新增条目（数量没变少）照常播出现动画。
+///
+/// 多列（adaptive）时每一行会被整体重建，单靠 key 复用救不回来，
+/// 因此这层闸门是必需的。
+class ListEnterGate extends StatefulWidget {
+  const ListEnterGate({
+    super.key,
+    required this.itemCount,
+    required this.child,
+  });
+
+  /// 当前条目数量（不含 trailing）。
+  final int itemCount;
+  final Widget child;
+
+  /// 当前是否处于"列表刚删过条目"的那一帧。
+  static bool suppressIn(BuildContext context) =>
+      context
+          .dependOnInheritedWidgetOfExactType<_ListEnterGateScope>()
+          ?.suppress ??
+      false;
+
+  @override
+  State<ListEnterGate> createState() => _ListEnterGateState();
+}
+
+class _ListEnterGateState extends State<ListEnterGate> {
+  bool _suppress = false;
+
+  @override
+  void didUpdateWidget(covariant ListEnterGate oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.itemCount < oldWidget.itemCount) {
+      _suppress = true;
+      // 帧末复位；期间构建出来的条目已经读到 true
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _suppress) setState(() => _suppress = false);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      _ListEnterGateScope(suppress: _suppress, child: widget.child);
+}
+
+class _ListEnterGateScope extends InheritedWidget {
+  const _ListEnterGateScope({required this.suppress, required super.child});
+
+  final bool suppress;
+
+  @override
+  bool updateShouldNotify(_ListEnterGateScope oldWidget) =>
+      suppress != oldWidget.suppress;
 }
 
 /// 懒加载长列表的入场动画：页面加载后共享一条进度（[progress]），

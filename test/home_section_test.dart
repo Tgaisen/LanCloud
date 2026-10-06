@@ -35,7 +35,9 @@ void main() {
     // 折叠按钮是标题行右侧的 IconButton（点标题文字不再触发）
     await tester.tap(find.byType(IconButton));
     await tester.pumpAndSettle();
-    expect(find.text('内容'), findsNothing);
+    // 内容常驻在树里（整组高度过渡，条目不会重建），但被裁到 0 高
+    expect(find.text('内容'), findsOneWidget);
+    expect(tester.getSize(find.byType(SizeTransition)).height, 0);
     expect(
       tester.widget<AnimatedRotation>(find.byType(AnimatedRotation)).turns,
       0,
@@ -44,6 +46,7 @@ void main() {
     await tester.tap(find.byType(IconButton));
     await tester.pumpAndSettle();
     expect(find.text('内容'), findsOneWidget);
+    expect(tester.getSize(find.byType(SizeTransition)).height, greaterThan(0));
   });
 
   testWidgets('SectionCard 出现/隐藏内容时高度动画过渡', (tester) async {

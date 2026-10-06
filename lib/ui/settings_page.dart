@@ -55,6 +55,9 @@ class _SettingsPageState extends State<SettingsPage>
   String? _defaultDownloadDir;
   final TextEditingController _search = TextEditingController();
 
+  /// 设置页列表；传给 TopBarOverlayScaffold 后点顶栏空白即可回到顶部。
+  final ScrollController _list = ScrollController();
+
   @override
   void initState() {
     super.initState();
@@ -160,6 +163,7 @@ class _SettingsPageState extends State<SettingsPage>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _search.dispose();
+    _list.dispose();
     super.dispose();
   }
 
@@ -771,6 +775,7 @@ class _SettingsPageState extends State<SettingsPage>
         .toList();
 
     return TopBarOverlayScaffold(
+      controller: _list,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         scrolledUnderElevation: 0,

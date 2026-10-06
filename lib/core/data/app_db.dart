@@ -268,6 +268,18 @@ class AppDb {
     await database.delete('transfers', where: 'id = ?', whereArgs: [id]);
   }
 
+  /// 批量删除传输记录：一条 SQL 落库，避免逐条删除带来的多次写盘。
+  Future<void> deleteTransfers(List<String> ids) async {
+    if (ids.isEmpty) return;
+    final database = await db;
+    final placeholders = List.filled(ids.length, '?').join(',');
+    await database.delete(
+      'transfers',
+      where: 'id IN ($placeholders)',
+      whereArgs: ids,
+    );
+  }
+
   // ---------------------------------------------------------------- downloads
 
   Future<void> markDownloaded({
@@ -352,6 +364,20 @@ class AppDb {
   Future<void> removeFavoriteById(int id) async {
     final database = await db;
     await database.delete('favorites', where: 'id = ?', whereArgs: [id]);
+    _touch();
+  }
+
+  /// 批量删除收藏：一次落库、一次通知，列表整体刷新一遍
+  /// （逐条删会触发多次 revision，界面看起来是条目一个个消失）。
+  Future<void> removeFavoritesByIds(List<int> ids) async {
+    if (ids.isEmpty) return;
+    final database = await db;
+    final placeholders = List.filled(ids.length, '?').join(',');
+    await database.delete(
+      'favorites',
+      where: 'id IN ($placeholders)',
+      whereArgs: ids,
+    );
     _touch();
   }
 

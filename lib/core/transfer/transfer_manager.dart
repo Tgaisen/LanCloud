@@ -258,6 +258,26 @@ class TransferManager extends ChangeNotifier {
     _pump();
   }
 
+  /// 批量删除传输记录：一次通知、一次落库，列表整体刷新一遍
+  /// （逐条删时每条都会重播一次列表动画，条目多时又卡又乱）。
+  void removeTasks(List<String> ids) {
+    final removed = <String>[];
+    for (final id in ids) {
+      final task = _find(id);
+      if (task == null) continue;
+      task.removed = true;
+      if (task.status == TransferStatus.running) {
+        task.cancelToken.cancel('removed');
+      }
+      tasks.remove(task);
+      removed.add(id);
+    }
+    if (removed.isEmpty) return;
+    _app.db.deleteTransfers(removed).catchError((_) {});
+    notifyListeners();
+    _pump();
+  }
+
   TransferTask? _find(String id) {
     for (final t in tasks) {
       if (t.id == id) return t;

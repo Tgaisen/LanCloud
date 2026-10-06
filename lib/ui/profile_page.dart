@@ -51,6 +51,16 @@ class _ProfilePageState extends State<ProfilePage>
     );
   }
 
+  /// 点顶栏空白处回到列表顶部（与网盘页一致）。
+  void _scrollToTop() {
+    if (!_scroll.hasClients) return;
+    _scroll.animateTo(
+      0,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context); // AutomaticKeepAliveClientMixin 要求
@@ -192,11 +202,16 @@ class _ProfilePageState extends State<ProfilePage>
             child: TopBarOverlay(
               height: headerHeight,
               background: topBarBackgroundColor(context, scheme),
-              builder: (context) => AppBar(
-                backgroundColor: Colors.transparent,
-                scrolledUnderElevation: 0,
-                leading: standalone ? const AppBarBackButton() : null,
-                title: Text(l10n.tabProfile),
+              // 点顶栏空白处回到列表顶部（按钮自行响应，不会误触）
+              builder: (context) => GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onTap: _scrollToTop,
+                child: AppBar(
+                  backgroundColor: Colors.transparent,
+                  scrolledUnderElevation: 0,
+                  leading: standalone ? const AppBarBackButton() : null,
+                  title: Text(l10n.tabProfile),
+                ),
               ),
             ),
           ),

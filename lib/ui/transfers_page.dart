@@ -5,7 +5,6 @@ import 'package:open_filex/open_filex.dart';
 import 'package:provider/provider.dart';
 
 import '../core/app_controller.dart';
-import '../core/apk_installer.dart';
 import '../core/transfer/transfer_manager.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
@@ -117,6 +116,16 @@ class _TransfersPageState extends State<TransfersPage>
     });
   }
 
+  /// 点顶栏空白处回到列表顶部（与网盘页一致）。
+  void _scrollToTop() {
+    if (!_scroll.hasClients) return;
+    _scroll.animateTo(
+      0,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
+  }
+
   void _invertSelection() {
     final manager = context.read<TransferManager>();
     setState(() {
@@ -171,14 +180,8 @@ class _TransfersPageState extends State<TransfersPage>
     final tasks = manager.tasks.where((t) => _selected.contains(t.id)).toList();
     final ids = _selected.toList();
     _exitSelection();
-    // 先播放删除动画，再真正移除记录
-    setState(() => _removing.addAll(ids));
-    await Future<void>.delayed(const Duration(milliseconds: 220));
-    if (!mounted) return;
-    for (final id in ids) {
-      manager.removeTask(id);
-    }
-    if (mounted) setState(() => _removing.removeAll(ids));
+    // 批量删除不逐条播动画：一次落库、一次通知，列表整体刷新一遍
+    manager.removeTasks(ids);
     // 下载到本地的文件由本应用写入，删除属于正常操作（不需要额外权限）
     if (deleteFiles) {
       for (final task in tasks) {
@@ -282,51 +285,56 @@ class _TransfersPageState extends State<TransfersPage>
                 // 显式高度：带 bottom 的 AppBar 需要有限高度约束
                 builder: (context) => SizedBox(
                   height: headerHeight,
-                  child: AppBar(
-                    backgroundColor: Colors.transparent,
-                    scrolledUnderElevation: 0,
-                    leading: (ModalRoute.of(context)?.isFirst ?? true)
-                        ? null
-                        : const AppBarBackButton(),
-                    title: Text(l10n.transfers),
-                    actions: [
-                      IconButton(
-                        tooltip: l10n.clearFinished,
-                        icon: const Icon(Icons.delete_sweep_outlined),
-                        onPressed: () =>
-                            context.read<TransferManager>().clearFinished(),
-                      ),
-                    ],
-                    bottom: PreferredSize(
-                      preferredSize: const Size.fromHeight(
-                        kTransfersTabBarHeight,
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-                        // 多选期间禁用切换上传/下载
-                        child: IgnorePointer(
-                          ignoring: _selecting,
-                          child: SizedBox(
-                            width: double.infinity,
-                            child: ConnectedSegmentedButton<int>(
-                              segments: [
-                                ButtonSegment(
-                                  value: 0,
-                                  label: Text(l10n.upload),
-                                  icon: const Icon(Icons.upload),
-                                ),
-                                ButtonSegment(
-                                  value: 1,
-                                  label: Text(l10n.download),
-                                  icon: const Icon(Icons.download),
-                                ),
-                              ],
-                              selected: {_tab},
-                              onSelectionChanged: (values) {
-                                if (values.first == _tab) return;
-                                setState(() => _tab = values.first);
-                                _tabAnim.forward(from: 0);
-                              },
+                  // 点顶栏空白处回到列表顶部（按钮 / 分段按钮自行响应）
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTap: _scrollToTop,
+                    child: AppBar(
+                      backgroundColor: Colors.transparent,
+                      scrolledUnderElevation: 0,
+                      leading: (ModalRoute.of(context)?.isFirst ?? true)
+                          ? null
+                          : const AppBarBackButton(),
+                      title: Text(l10n.transfers),
+                      actions: [
+                        IconButton(
+                          tooltip: l10n.clearFinished,
+                          icon: const Icon(Icons.delete_sweep_outlined),
+                          onPressed: () =>
+                              context.read<TransferManager>().clearFinished(),
+                        ),
+                      ],
+                      bottom: PreferredSize(
+                        preferredSize: const Size.fromHeight(
+                          kTransfersTabBarHeight,
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                          // 多选期间禁用切换上传/下载
+                          child: IgnorePointer(
+                            ignoring: _selecting,
+                            child: SizedBox(
+                              width: double.infinity,
+                              child: ConnectedSegmentedButton<int>(
+                                segments: [
+                                  ButtonSegment(
+                                    value: 0,
+                                    label: Text(l10n.upload),
+                                    icon: const Icon(Icons.upload),
+                                  ),
+                                  ButtonSegment(
+                                    value: 1,
+                                    label: Text(l10n.download),
+                                    icon: const Icon(Icons.download),
+                                  ),
+                                ],
+                                selected: {_tab},
+                                onSelectionChanged: (values) {
+                                  if (values.first == _tab) return;
+                                  setState(() => _tab = values.first);
+                                  _tabAnim.forward(from: 0);
+                                },
+                              ),
                             ),
                           ),
                         ),
@@ -482,8 +490,15 @@ class _TransferListSliver extends StatelessWidget {
             // MD3E 连接式列表（懒加载）：组外侧 16dp / 组内相邻 4dp，和收藏页同款
             SegmentedSliverList(
               adaptive: true,
+              // 幸存条目按 key 复用元素，删除后不重播出现动画
+              findChildIndexCallback: childIndexLookup(
+                active,
+                (t) => ValueKey('transfer-${t.id}'),
+              ),
               itemCount: active.length,
               itemBuilder: (context, index) => _TransferTile(
+                // key 挂在最外层：sliver 靠它把条目认回来（见 findChildIndexCallback）
+                key: ValueKey('transfer-${active[index].id}'),
                 task: active[index],
                 index: index,
                 removing: removing.contains(active[index].id),
@@ -504,9 +519,14 @@ class _TransferListSliver extends StatelessWidget {
             ),
             SegmentedSliverList(
               adaptive: true,
+              findChildIndexCallback: childIndexLookup(
+                finished,
+                (t) => ValueKey('transfer-${t.id}'),
+              ),
               // 与收藏页同色（SegmentedList 默认 surfaceContainerLow）
               itemCount: finished.length,
               itemBuilder: (context, index) => _TransferTile(
+                key: ValueKey('transfer-${finished[index].id}'),
                 task: finished[index],
                 index: index,
                 removing: removing.contains(finished[index].id),
@@ -527,6 +547,7 @@ class _TransferListSliver extends StatelessWidget {
 /// 进行中在下方显示进度条。
 class _TransferTile extends StatelessWidget {
   const _TransferTile({
+    super.key,
     required this.task,
     required this.selecting,
     required this.selected,
@@ -621,23 +642,7 @@ class _TransferTile extends StatelessWidget {
                     onPressed: () => manager.retry(task.id),
                   ),
                 if (done) ...[
-                  if (task.name.toLowerCase().endsWith('.apk'))
-                    IconButton(
-                      visualDensity: VisualDensity.compact,
-                      iconSize: 20,
-                      tooltip: l10n.install,
-                      icon: const Icon(Icons.install_mobile),
-                      onPressed: () async {
-                        try {
-                          await ApkInstaller.installApk(task.savedPath!);
-                        } catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context)
-                                .showSnackBar(SnackBar(content: Text('$e')));
-                          }
-                        }
-                      },
-                    ),
+                  // APK 不再单独给「安装」按钮：系统对 APK 的「打开」就是安装
                   IconButton(
                     visualDensity: VisualDensity.compact,
                     iconSize: 20,
