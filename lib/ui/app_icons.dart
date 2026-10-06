@@ -19,6 +19,7 @@ class Icons {
   static const IconData article_outlined = Symbols.article;
   static const IconData badge_outlined = Symbols.badge;
   static const IconData battery_alert_outlined = Symbols.battery_alert;
+  static const IconData battery_0_bar = Symbols.battery_0_bar;
   static const IconData bottom_navigation = Symbols.bottom_navigation;
   static const IconData bug_report_outlined = Symbols.bug_report;
   static const IconData build_outlined = Symbols.build;
@@ -85,6 +86,7 @@ class Icons {
   static const IconData photo_library_outlined = Symbols.photo_library;
   static const IconData photo_camera_outlined = Symbols.photo_camera;
   static const IconData password = Symbols.password;
+  static const IconData page_info = Symbols.page_info;
   static const IconData person = Symbols.person;
   static const IconData person_outline = Symbols.person;
   static const IconData picture_as_pdf_outlined = Symbols.picture_as_pdf;

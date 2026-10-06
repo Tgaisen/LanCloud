@@ -1336,6 +1336,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get permissionOpenFailed => 'Unable to open system settings';
 
   @override
+  String get openSystemSettings => 'Open system settings';
+
+  @override
+  String get openSystemSettingsKeywords => 'system settings app info manage';
+
+  @override
   String get backupAndRestore => 'Backup & restore';
 
   @override

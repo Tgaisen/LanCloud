@@ -482,6 +482,7 @@ class _SettingsPageState extends State<SettingsPage>
           onChanged: (value) => app.setClipboardLinkPrompt(value),
         ),
       ),
+      // 通知权限属于权限类，放在「权限」组第一位
       _Entry(
         id: 'notify_permission',
         title: l10n.notifPermission,
@@ -491,7 +492,7 @@ class _SettingsPageState extends State<SettingsPage>
                   ? l10n.notifPermissionGranted
                   : l10n.notifPermissionDenied),
         keywords: l10n.notifPermissionKeywords.split(' '),
-        category: 'notifications',
+        category: 'permissions',
         build: (context, app) => ListTile(
           leading: const Icon(Icons.notifications_outlined),
           title: Text(context.l10n.notifPermission),
@@ -525,7 +526,7 @@ class _SettingsPageState extends State<SettingsPage>
         keywords: l10n.permissionBatteryKeywords.split(' '),
         category: 'permissions',
         build: (context, app) => ListTile(
-          leading: const Icon(Icons.battery_alert_outlined),
+          leading: const Icon(Icons.battery_0_bar),
           title: Text(context.l10n.permissionBattery),
           subtitle: Text(_batteryStatusText()),
           onTap: _requestBatteryOptimization,
@@ -542,6 +543,18 @@ class _SettingsPageState extends State<SettingsPage>
           title: Text(context.l10n.manageDefaultLinks),
           subtitle: Text(context.l10n.manageDefaultLinksSubtitle),
           onTap: _openDefaultLinkSettings,
+        ),
+      ),
+      _Entry(
+        id: 'app_settings',
+        title: l10n.openSystemSettings,
+        subtitle: '',
+        keywords: l10n.openSystemSettingsKeywords.split(' '),
+        category: 'permissions',
+        build: (context, app) => ListTile(
+          leading: const Icon(Icons.page_info),
+          title: Text(context.l10n.openSystemSettings),
+          onTap: _openAppSettings,
         ),
       ),
       _Entry(
@@ -881,6 +894,16 @@ class _SettingsPageState extends State<SettingsPage>
   Future<void> _openDefaultLinkSettings() async {
     final l10n = context.l10n;
     final ok = await AppPermissions.instance.openDefaultLinkSettings();
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(l10n.permissionOpenFailed)));
+    }
+  }
+
+  /// 打开系统设置里的本应用信息页。
+  Future<void> _openAppSettings() async {
+    final l10n = context.l10n;
+    final ok = await AppPermissions.instance.openAppSettings();
     if (!ok && mounted) {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(l10n.permissionOpenFailed)));

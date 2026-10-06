@@ -1125,7 +1125,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get showCookie => '显示 Cookie';
 
   @override
-  String get showCookieSubtitle => '需通过生物识别 / 锁屏验证';
+  String get showCookieSubtitle => 'Cookie 等同于账号登录凭据';
 
   @override
   String get cookieRiskTitle => '显示 Cookie？';
@@ -1168,10 +1168,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get showCookieKeywords => 'cookie 显示 隐私 凭据 key';
 
   @override
-  String get exportLogs => '导出运行日志';
+  String get exportLogs => '导出近期运行日志';
 
   @override
-  String get exportLogsSubtitle => '近期的运行日志，请在反馈问题时附带此文件';
+  String get exportLogsSubtitle => '请在反馈问题时附带日志';
 
   @override
   String get exportLogsKeywords => '日志 log 反馈 排错 导出';
@@ -1293,6 +1293,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get permissionOpenFailed => '无法打开系统设置';
+
+  @override
+  String get openSystemSettings => '前往系统管理';
+
+  @override
+  String get openSystemSettingsKeywords => '系统 设置 应用 信息 管理 app settings';
 
   @override
   String get backupAndRestore => '备份与恢复';

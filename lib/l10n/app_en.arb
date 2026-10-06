@@ -454,6 +454,8 @@
   "permissionBatteryGranted": "Exempt from battery optimization; background transfers are stable",
   "permissionBatteryRestricted": "Restricted by battery optimization; background transfers may be interrupted",
   "permissionOpenFailed": "Unable to open system settings",
+  "openSystemSettings": "Open system settings",
+  "openSystemSettingsKeywords": "system settings app info manage",
   "backupAndRestore": "Backup & restore",
   "backupAndRestoreSubtitle": "Local files and WebDAV",
   "backupKeywords": "backup restore webdav cookie export",

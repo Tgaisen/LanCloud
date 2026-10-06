@@ -2159,7 +2159,7 @@ abstract class AppLocalizations {
   /// No description provided for @showCookieSubtitle.
   ///
   /// In zh, this message translates to:
-  /// **'需通过生物识别 / 锁屏验证'**
+  /// **'Cookie 等同于账号登录凭据'**
   String get showCookieSubtitle;
 
   /// No description provided for @cookieRiskTitle.
@@ -2243,13 +2243,13 @@ abstract class AppLocalizations {
   /// No description provided for @exportLogs.
   ///
   /// In zh, this message translates to:
-  /// **'导出运行日志'**
+  /// **'导出近期运行日志'**
   String get exportLogs;
 
   /// No description provided for @exportLogsSubtitle.
   ///
   /// In zh, this message translates to:
-  /// **'近期的运行日志，请在反馈问题时附带此文件'**
+  /// **'请在反馈问题时附带日志'**
   String get exportLogsSubtitle;
 
   /// No description provided for @exportLogsKeywords.
@@ -2485,6 +2485,18 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'无法打开系统设置'**
   String get permissionOpenFailed;
+
+  /// No description provided for @openSystemSettings.
+  ///
+  /// In zh, this message translates to:
+  /// **'前往系统管理'**
+  String get openSystemSettings;
+
+  /// No description provided for @openSystemSettingsKeywords.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统 设置 应用 信息 管理 app settings'**
+  String get openSystemSettingsKeywords;
 
   /// No description provided for @backupAndRestore.
   ///
