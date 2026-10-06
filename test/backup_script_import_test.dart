@@ -2,6 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/backup/backup_service.dart';
 import 'package:lancloud/core/backup/webdav_client.dart';
+import 'package:lancloud/l10n/app_localizations_zh.dart';
+import 'package:lancloud/ui/home_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -57,5 +59,28 @@ void main() {
         ),
       ),
     );
+  });
+
+  test('外部脚本生成的快速访问备份可以恢复（平铺写法 + 目录 id）', () async {
+    SharedPreferences.setMockInitialValues({});
+    final app = AppController();
+    const pinsBackup =
+        '{"app":"lancloud","format":2,"tables":{"pins":['
+        // 根目录下的目录：path 写所在目录（也可以是旧的「含自身」写法）
+        '{"account":"556911","name":"我的工具","ref":"1234567","path":"根目录","created_at":1791288947000},'
+        // 旧写法：根目录 + 完整路径 + 目录自身，应用会剥掉最后一段
+        '{"account":"556911","name":"示例","ref":"7654321","path":"根目录/abc/示例","created_at":1791288948000}'
+        ']}}';
+
+    await BackupService(app).restoreFromString(pinsBackup);
+
+    final pins = await app.db.pins('556911');
+    // created_at 大的排前面
+    expect(pins.map((p) => p.name), ['示例', '我的工具']);
+    expect(pins.first.ref, '7654321');
+    // 副标题显示"所在目录"：两种 path 写法都能正确显示
+    final l10n = AppLocalizationsZh();
+    expect(quickAccessPathLabel(l10n, pins.first), '根目录/abc');
+    expect(quickAccessPathLabel(l10n, pins.last), '根目录');
   });
 }
