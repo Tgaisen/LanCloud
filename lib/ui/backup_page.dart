@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 
 import '../core/app_controller.dart';
+import '../core/backup/backup_sections.dart';
 import '../core/backup/backup_service.dart';
 import '../core/backup/webdav_client.dart';
 import '../core/cookie_auth.dart';
@@ -14,6 +15,88 @@ import '../core/system_file_saver.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
+
+/// 恢复前确认弹窗的结果：nil 表示取消。
+class RestoreDecision {
+  const RestoreDecision({required this.keepFavorites});
+
+  /// 勾选「保留原收藏夹内容」：增量合并并按 ref 去重。
+  final bool keepFavorites;
+}
+
+/// 恢复前确认弹窗：无图标的默认文本标题；备份里含收藏夹时多一个
+/// 「保留原收藏夹内容」复选（默认勾选）。
+Future<RestoreDecision?> showRestoreConfirmDialog(
+  BuildContext context, {
+  required String label,
+  required bool hasFavorites,
+}) {
+  final l10n = context.l10n;
+  var keepFavorites = true;
+  return showDialog<RestoreDecision>(
+    context: context,
+    builder: (dialogContext) => StatefulBuilder(
+      builder: (dialogContext, setDialogState) => AlertDialog(
+        title: Text(l10n.restoreConfirmTitle),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('${l10n.restoreConfirmMessage}\n\n$label'),
+            if (hasFavorites) ...[
+              const SizedBox(height: 8),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                value: keepFavorites,
+                onChanged: (value) =>
+                    setDialogState(() => keepFavorites = value ?? true),
+                title: Text(l10n.restoreKeepFavorites),
+                subtitle: Text(l10n.restoreKeepFavoritesHint),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(null),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.of(dialogContext)
+                    .pop(RestoreDecision(keepFavorites: keepFavorites)),
+            child: Text(l10n.confirm),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+/// 「确认 → 恢复」流程：从文件恢复与从云端恢复共用。
+///
+/// 调用方负责忙碌状态与错误提示：这里**不能**再自己包一层 `_run`，
+/// 调用方已经在 `_run` 里了，重入会被忙碌保护直接吞掉——历史 bug 就是
+/// 因此"弹窗确认后什么都没发生"。
+Future<bool> confirmAndRestore(
+  BuildContext context,
+  BackupService service,
+  String content,
+  String label,
+) async {
+  final decision = await showRestoreConfirmDialog(
+    context,
+    label: label,
+    hasFavorites: BackupService.containsFavorites(content),
+  );
+  if (decision == null) return false;
+  await service.restoreFromString(
+    content,
+    mergeFavorites: decision.keepFavorites,
+  );
+  return true;
+}
 
 /// 备份与恢复：本地 JSON 文件 + WebDAV 云端。
 class BackupPage extends StatefulWidget {
@@ -26,6 +109,9 @@ class BackupPage extends StatefulWidget {
 class _BackupPageState extends State<BackupPage> {
   late final BackupService _service;
   bool _busy = false;
+
+  /// 顶栏那条线是否显示：只在 WebDAV 的网络操作上开（见 [_run]）。
+  bool _progress = false;
 
   /// 页面列表；传给 TopBarOverlayScaffold 后点顶栏空白即可回到顶部。
   final ScrollController _scroll = ScrollController();
@@ -49,9 +135,19 @@ class _BackupPageState extends State<BackupPage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
 
-  Future<void> _run(Future<void> Function() body) async {
+  /// 跑一个可能失败的操作：统一处理忙碌标记与错误提示。
+  ///
+  /// [showProgress] 只在 WebDAV 这类要等网络的操作上开：本地备份 / 恢复花在
+  /// 系统弹窗和本地写盘上，顶栏那条线既不是上传百分比也没参考价值。
+  Future<void> _run(
+    Future<void> Function() body, {
+    bool showProgress = false,
+  }) async {
     if (_busy) return;
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _progress = showProgress;
+    });
     try {
       await body();
     } on BackupException catch (e) {
@@ -59,85 +155,198 @@ class _BackupPageState extends State<BackupPage> {
     } catch (e) {
       if (mounted) _snack('$e');
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _progress = false;
+        });
+      }
     }
   }
 
   // -------------------------------------------------------------- 本地备份
 
-  /// 备份包含 Cookie 属于敏感操作，开启前先做生物识别 / 锁屏验证。
-  Future<void> _setIncludeCookies(bool value) async {
-    final store = _service.webdav;
+  /// 「备份内容」弹窗：三个分组 + 复选，默认都不勾。
+  ///
+  /// 敏感项（Cookie / WebDav 账号）勾选前先做身份验证；本次运行验证通过过
+  /// 就不再重复验证。返回 null 表示取消，返回空集合表示一项都没选。
+  Future<Set<BackupSection>?> _pickBackupContent({
+    required Set<BackupSection> initial,
+    required String title,
+  }) {
     final l10n = context.l10n;
-    if (!value) {
-      await store.setIncludeCookies(false);
-      if (mounted) setState(() {});
-      return;
-    }
+    final selected = <BackupSection>{...initial};
+    return showDialog<Set<BackupSection>>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          Future<void> toggle(BackupSection section, bool value) async {
+            if (!value) {
+              setDialogState(() => selected.remove(section));
+              return;
+            }
+            if (section.sensitive && !await _ensureSensitiveVerified()) return;
+            if (!mounted || !dialogContext.mounted) return;
+            setDialogState(() => selected.add(section));
+          }
+
+          final theme = Theme.of(dialogContext);
+          Widget group(String name) => Padding(
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+            child: Text(
+              name,
+              style: theme.textTheme.titleSmall?.copyWith(
+                color: theme.colorScheme.primary,
+              ),
+            ),
+          );
+          Widget item(BackupSection section, IconData icon, String label) =>
+              CheckboxListTile(
+                secondary: Icon(icon),
+                title: Text(label),
+                value: selected.contains(section),
+                onChanged: (value) => toggle(section, value ?? false),
+              );
+
+          return AlertDialog(
+            title: Text(title),
+            // 左右不留内边距：选项整行显示，波纹不会被截断
+            contentPadding: const EdgeInsets.only(top: 4, bottom: 4),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  group(l10n.backupGroupGeneral),
+                  item(
+                    BackupSection.settings,
+                    Icons.settings_outlined,
+                    l10n.backupSectionSettings,
+                  ),
+                  item(
+                    BackupSection.favorites,
+                    Icons.star_border,
+                    l10n.backupSectionFavorites,
+                  ),
+                  group(l10n.backupGroupAccount),
+                  item(
+                    BackupSection.quick,
+                    Icons.push_pin_outlined,
+                    l10n.backupSectionQuick,
+                  ),
+                  item(
+                    BackupSection.recents,
+                    Icons.history,
+                    l10n.backupSectionRecents,
+                  ),
+                  group(l10n.backupGroupSensitive),
+                  item(
+                    BackupSection.cookies,
+                    Icons.password,
+                    l10n.backupSectionCookies,
+                  ),
+                  item(
+                    BackupSection.webdavAccount,
+                    Icons.dns_outlined,
+                    l10n.webdavAccount,
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+                    child: Text(
+                      l10n.backupContentHint,
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(null),
+                child: Text(l10n.cancel),
+              ),
+              FilledButton(
+                // 一项都没选就没有可导出的内容
+                onPressed: selected.isEmpty
+                    ? null
+                    : () => Navigator.of(dialogContext).pop({...selected}),
+                child: Text(l10n.confirm),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  /// 敏感内容需要身份验证：本次运行验证通过一次后不再重复验证。
+  /// 返回 true 表示可以继续。
+  Future<bool> _ensureSensitiveVerified() async {
+    if (_service.sensitiveVerified) return true;
+    final l10n = context.l10n;
     final result = await CookieAuth.instance.verify(
       l10n.cookieAuthReason,
       messages: authMessagesFor(l10n),
     );
-    if (!mounted) return;
+    if (!mounted) return false;
     switch (result) {
       case CookieAuthResult.ok:
-        await store.setIncludeCookies(true);
-        if (mounted) setState(() {});
+        _service.sensitiveVerified = true;
+        return true;
       case CookieAuthResult.canceled:
-        break;
+        return false;
       case CookieAuthResult.unavailable:
         _snack(l10n.cookieAuthUnavailable);
+        return false;
       case CookieAuthResult.failed:
         _snack(l10n.cookieAuthFailed);
+        return false;
     }
   }
 
-  /// 备份包含 WebDAV 账号（含密码）同样先做身份验证。
-  Future<void> _setIncludeWebdavAccount(bool value) async {
-    final store = _service.webdav;
+  /// 勾选内容的文字摘要：设置项 · 收藏夹，空集合显示「未选择」。
+  String _sectionsLabel(Set<BackupSection> sections) {
     final l10n = context.l10n;
-    if (!value) {
-      await store.setIncludeAccount(false);
-      if (mounted) setState(() {});
-      return;
-    }
-    final result = await CookieAuth.instance.verify(
-      l10n.cookieAuthReason,
-      messages: authMessagesFor(l10n),
-    );
-    if (!mounted) return;
-    switch (result) {
-      case CookieAuthResult.ok:
-        await store.setIncludeAccount(true);
-        if (mounted) setState(() {});
-      case CookieAuthResult.canceled:
-        break;
-      case CookieAuthResult.unavailable:
-        _snack(l10n.cookieAuthUnavailable);
-      case CookieAuthResult.failed:
-        _snack(l10n.cookieAuthFailed);
-    }
+    if (sections.isEmpty) return l10n.backupSectionEmpty;
+    return [
+      for (final section in BackupSection.values)
+        if (sections.contains(section))
+          switch (section) {
+            BackupSection.settings => l10n.backupSectionSettings,
+            BackupSection.favorites => l10n.backupSectionFavorites,
+            BackupSection.quick => l10n.backupSectionQuick,
+            BackupSection.recents => l10n.backupSectionRecents,
+            BackupSection.cookies => l10n.backupSectionCookies,
+            BackupSection.webdavAccount => l10n.webdavAccount,
+          },
+    ].join(' · ');
   }
 
-  Future<void> _backupToFile() => _run(() async {
+  /// 立即备份：每次都在弹窗里重新勾选要写进本次备份的内容。
+  Future<void> _backupToFile() async {
     final l10n = context.l10n;
-    final file = await _service.exportFile(
-      includeCookies: _service.webdav.includeCookies,
+    final sections = await _pickBackupContent(
+      initial: const <BackupSection>{},
+      title: l10n.backupContent,
     );
-    final String? saved;
-    try {
-      saved = await SystemFileSaver.save(
-        sourcePath: file.path,
-        fileName: p.basename(file.path),
-        mime: 'application/json',
-      );
-    } catch (_) {
-      if (mounted) _snack(l10n.cookieExportFailed);
-      return;
-    }
-    if (!mounted || saved == null) return; // 用户取消保存
-    _snack(l10n.backupSaved(saved));
-  });
+    if (sections == null || sections.isEmpty || !mounted) return;
+    await _run(() async {
+      final file = await _service.exportFile(sections: sections);
+      final String? saved;
+      try {
+        saved = await SystemFileSaver.save(
+          sourcePath: file.path,
+          fileName: p.basename(file.path),
+          mime: 'application/json',
+        );
+      } catch (_) {
+        if (mounted) _snack(l10n.cookieExportFailed);
+        return;
+      }
+      if (!mounted || saved == null) return; // 用户取消保存
+      _snack(l10n.backupSaved(saved));
+    });
+  }
 
   Future<void> _restoreFromFile() => _run(() async {
     final l10n = context.l10n;
@@ -158,30 +367,8 @@ class _BackupPageState extends State<BackupPage> {
   });
 
   Future<void> _confirmAndRestore(String content, String label) async {
-    final l10n = context.l10n;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        icon: const Icon(Icons.restore_from_trash_outlined),
-        title: Text(l10n.restoreConfirmTitle),
-        content: Text('${l10n.restoreConfirmMessage}\n\n$label'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(l10n.confirm),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !mounted) return;
-    await _run(() async {
-      await _service.restoreFromString(content);
-      if (mounted) _snack(context.l10n.restoreDone);
-    });
+    final restored = await confirmAndRestore(context, _service, content, label);
+    if (restored && mounted) _snack(context.l10n.restoreDone);
   }
 
   // ---------------------------------------------------------------- WebDAV
@@ -210,15 +397,33 @@ class _BackupPageState extends State<BackupPage> {
   Future<void> _testConnection() => _run(() async {
     await _service.testConnection();
     if (mounted) _snack(context.l10n.webdavTestOk);
-  });
+  }, showProgress: true);
+
+  /// WebDAV 的「备份内容」：勾选结果保存下来，只影响云端上传。
+  Future<void> _editBackupSections() async {
+    final l10n = context.l10n;
+    final picked = await _pickBackupContent(
+      initial: _service.webdav.backupSections,
+      title: l10n.backupContent,
+    );
+    if (picked == null || !mounted) return;
+    await _service.webdav.setBackupSections(picked);
+    if (mounted) setState(() {});
+  }
 
   Future<void> _uploadNow() => _run(() async {
+    // 备份内容含敏感项（Cookie / WebDav 账号）时，本次运行至少验证过一次身份
+    if (_service.webdav.backupSections.any((s) => s.sensitive) &&
+        !await _ensureSensitiveVerified()) {
+      return;
+    }
+    if (!mounted) return;
     final name = await _service.uploadNow();
     if (mounted) {
       setState(() {});
       _snack(context.l10n.webdavUploadDone(name));
     }
-  });
+  }, showProgress: true);
 
   Future<void> _restoreFromCloud() => _run(() async {
     final l10n = context.l10n;
@@ -255,7 +460,7 @@ class _BackupPageState extends State<BackupPage> {
     final content = await _service.webdavDownload(picked.name);
     if (!mounted) return;
     await _confirmAndRestore(content, picked.name);
-  });
+  }, showProgress: true);
 
   // ------------------------------------------------------------------ build
 
@@ -271,7 +476,7 @@ class _BackupPageState extends State<BackupPage> {
         scrolledUnderElevation: 0,
         leading: const AppBarBackButton(),
         title: Text(l10n.backupAndRestore),
-        bottom: _busy
+        bottom: _progress
             ? const PreferredSize(
                 preferredSize: Size.fromHeight(2),
                 child: LinearProgressIndicator(minHeight: 2),
@@ -298,20 +503,6 @@ class _BackupPageState extends State<BackupPage> {
                     subtitle: Text(l10n.restoreFromFileSubtitle),
                     onTap: _restoreFromFile,
                   ),
-                  SwitchListTile(
-                    secondary: const Icon(Icons.password),
-                    title: Text(l10n.includeCookies),
-                    subtitle: Text(l10n.includeCookiesSubtitle),
-                    value: store.includeCookies,
-                    onChanged: _setIncludeCookies,
-                  ),
-                  SwitchListTile(
-                    secondary: const Icon(Icons.dns_outlined),
-                    title: Text(l10n.includeWebdavAccount),
-                    subtitle: Text(l10n.includeWebdavAccountSubtitle),
-                    value: store.includeAccount,
-                    onChanged: _setIncludeWebdavAccount,
-                  ),
                 ],
               ),
               _section(context, l10n.webdavSection),
@@ -330,6 +521,13 @@ class _BackupPageState extends State<BackupPage> {
                     title: Text(l10n.webdavTest),
                     enabled: store.configured,
                     onTap: _testConnection,
+                  ),
+                  // WebDAV 的备份内容会保存下来，只影响云端上传
+                  ListTile(
+                    leading: const Icon(Icons.checklist),
+                    title: Text(l10n.backupContent),
+                    subtitle: Text(_sectionsLabel(store.backupSections)),
+                    onTap: _editBackupSections,
                   ),
                   ListTile(
                     leading: const Icon(Icons.cloud_upload_outlined),

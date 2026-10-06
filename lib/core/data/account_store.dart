@@ -23,7 +23,12 @@ class Account {
 }
 
 class AccountStore {
-  static const _storage = FlutterSecureStorage();
+  /// [storage] 只用于测试注入内存实现，默认走系统安全存储。
+  AccountStore([this._storage = const FlutterSecureStorage()]);
+
+  /// 登录凭据放安全存储；测试里注入内存实现。
+  final FlutterSecureStorage _storage;
+
   static const _keyAccounts = 'lancloud_accounts';
   static const _keyActive = 'lancloud_active_uid';
 
@@ -105,8 +110,11 @@ class AccountStore {
       },
   ];
 
-  /// 恢复账号：按 uid 合并，备份里没有 Cookie 时保留本地已登录的 Cookie；
-  /// 本地不存在的账号只有在备份带了 Cookie 时才会新增（否则无法登录）。
+  /// 恢复账号：按 uid 合并，本地账号不会被删除。
+  ///
+  /// Cookie 只做"补空"：本机已有登录态（Cookie 非空）时保留本机的不动，
+  /// 避免拿旧备份把当前可能已刷新的会话换掉；本机没有的账号只有在备份带了
+  /// Cookie 时才会新增（否则没有凭据，加了也登录不了）。
   /// 返回受影响的账号数量。
   Future<int> importAccounts(
     List<dynamic> raw, {
@@ -130,7 +138,7 @@ class AccountStore {
         existing.nickname = nickname;
         changed += 1;
       }
-      if (cookie.isNotEmpty && cookie != existing.cookie) {
+      if (cookie.isNotEmpty && existing.cookie.isEmpty) {
         existing.cookie = cookie;
         changed += 1;
       }

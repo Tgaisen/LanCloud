@@ -1220,18 +1220,6 @@ abstract class AppLocalizations {
   /// **'重置'**
   String get reset;
 
-  /// No description provided for @includeWebdavAccount.
-  ///
-  /// In zh, this message translates to:
-  /// **'备份包含 WebDAV 账号'**
-  String get includeWebdavAccount;
-
-  /// No description provided for @includeWebdavAccountSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'危险！启用后，备份文件包含 WebDAV 地址与密码，请注意信息安全'**
-  String get includeWebdavAccountSubtitle;
-
   /// No description provided for @userAgentHint.
   ///
   /// In zh, this message translates to:
@@ -2531,7 +2519,7 @@ abstract class AppLocalizations {
   /// No description provided for @backupNowSubtitle.
   ///
   /// In zh, this message translates to:
-  /// **'导出为 JSON 备份文件'**
+  /// **'导出为备份文件'**
   String get backupNowSubtitle;
 
   /// No description provided for @backupSaved.
@@ -2558,17 +2546,71 @@ abstract class AppLocalizations {
   /// **'选择备份文件'**
   String get chooseBackupFile;
 
-  /// No description provided for @includeCookies.
+  /// No description provided for @backupContent.
   ///
   /// In zh, this message translates to:
-  /// **'备份包含 Cookie'**
-  String get includeCookies;
+  /// **'备份内容'**
+  String get backupContent;
 
-  /// No description provided for @includeCookiesSubtitle.
+  /// No description provided for @backupGroupGeneral.
   ///
   /// In zh, this message translates to:
-  /// **'危险！启用后，备份文件等同于登录凭据，请注意信息安全'**
-  String get includeCookiesSubtitle;
+  /// **'常规'**
+  String get backupGroupGeneral;
+
+  /// No description provided for @backupGroupAccount.
+  ///
+  /// In zh, this message translates to:
+  /// **'账号信息'**
+  String get backupGroupAccount;
+
+  /// No description provided for @backupGroupSensitive.
+  ///
+  /// In zh, this message translates to:
+  /// **'敏感信息'**
+  String get backupGroupSensitive;
+
+  /// No description provided for @backupSectionSettings.
+  ///
+  /// In zh, this message translates to:
+  /// **'设置项'**
+  String get backupSectionSettings;
+
+  /// No description provided for @backupSectionFavorites.
+  ///
+  /// In zh, this message translates to:
+  /// **'收藏夹'**
+  String get backupSectionFavorites;
+
+  /// No description provided for @backupSectionQuick.
+  ///
+  /// In zh, this message translates to:
+  /// **'快速访问'**
+  String get backupSectionQuick;
+
+  /// No description provided for @backupSectionRecents.
+  ///
+  /// In zh, this message translates to:
+  /// **'最近使用'**
+  String get backupSectionRecents;
+
+  /// No description provided for @backupSectionCookies.
+  ///
+  /// In zh, this message translates to:
+  /// **'账号列表与 Cookie'**
+  String get backupSectionCookies;
+
+  /// No description provided for @backupSectionEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'未选择'**
+  String get backupSectionEmpty;
+
+  /// No description provided for @backupContentHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择备份敏感信息需要验证身份'**
+  String get backupContentHint;
 
   /// No description provided for @webdavSection.
   ///
@@ -2711,8 +2753,20 @@ abstract class AppLocalizations {
   /// No description provided for @restoreConfirmMessage.
   ///
   /// In zh, this message translates to:
-  /// **'将覆盖当前设置、收藏、最近使用与快速访问；账号登录态与传输记录会保留。'**
+  /// **'将用备份里的内容覆盖本机对应数据；备份里没有的部分保持不动，账号登录态会保留。'**
   String get restoreConfirmMessage;
+
+  /// No description provided for @restoreKeepFavorites.
+  ///
+  /// In zh, this message translates to:
+  /// **'保留原收藏夹内容'**
+  String get restoreKeepFavorites;
+
+  /// No description provided for @restoreKeepFavoritesHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'勾选：原收藏保留，备份里的收藏去重后追加；取消：用备份里的收藏覆盖'**
+  String get restoreKeepFavoritesHint;
 
   /// No description provided for @restoreDone.
   ///

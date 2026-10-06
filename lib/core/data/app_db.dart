@@ -611,13 +611,19 @@ class AppDb {
   /// 备份：导出会随备份迁移的本地表。
   /// 快速访问（pins）与最近使用（recents）按账号分组，其余表平铺。
   /// 传输列表不参与备份（迁移意义不大）。
-  Future<Map<String, Object?>> exportTables() async {
+  /// 导出本地表；按备份内容裁剪。
+  /// 已下载标记属于使用记录，跟着「最近使用」一起。
+  Future<Map<String, Object?>> exportTables({
+    bool favorites = true,
+    bool pins = true,
+    bool recents = true,
+  }) async {
     final database = await db;
     return {
-      'favorites': await database.query('favorites'),
-      'pins': groupByAccount(await database.query('pins')),
-      'recents': groupByAccount(await database.query('recents')),
-      'downloads': await database.query('downloads'),
+      if (favorites) 'favorites': await database.query('favorites'),
+      if (pins) 'pins': groupByAccount(await database.query('pins')),
+      if (recents) 'recents': groupByAccount(await database.query('recents')),
+      if (recents) 'downloads': await database.query('downloads'),
     };
   }
 
@@ -641,7 +647,13 @@ class AppDb {
   /// 恢复：整表替换备份里的数据，忽略未知列与非 Map 行。
   /// 兼容两种格式：按账号分组的 `{data_version, data}`，以及早期的平铺数组；
   /// 早期把快速访问混在 favorites 里的备份会自动恢复到 pins 表。
-  Future<void> importTables(Map<String, dynamic> data) async {
+  ///
+  /// [mergeFavorites] 为真时收藏夹做增量合并（按 ref 去重，保留原收藏），
+  /// 不再整表覆盖。
+  Future<void> importTables(
+    Map<String, dynamic> data, {
+    bool mergeFavorites = false,
+  }) async {
     final database = await db;
     await database.transaction((txn) async {
       for (final table in _tableColumns.keys) {
@@ -664,6 +676,27 @@ class AppDb {
           }
         }
         final columns = _tableColumns[table]!;
+        // 收藏夹增量合并：按 ref 去重后追加，原收藏保持不动
+        if (table == 'favorites' && mergeFavorites) {
+          final existing = await txn.query('favorites', columns: ['ref']);
+          final refs = existing.map((row) => '${row['ref']}').toSet();
+          for (final row in rows) {
+            final ref = '${row['ref']}';
+            if (ref.isEmpty || !refs.add(ref)) continue;
+            final values = <String, Object?>{
+              for (final key in columns)
+                // id 交给数据库重新分配，避免和原收藏的主键撞车
+                if (key != 'id' && row.containsKey(key)) key: row[key],
+            };
+            if (values.isEmpty) continue;
+            await txn.insert(
+              'favorites',
+              values,
+              conflictAlgorithm: ConflictAlgorithm.replace,
+            );
+          }
+          continue;
+        }
         await txn.delete(table);
         for (final row in rows) {
           final values = <String, Object?>{

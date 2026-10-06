@@ -600,13 +600,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get reset => '重置';
 
   @override
-  String get includeWebdavAccount => '备份包含 WebDAV 账号';
-
-  @override
-  String get includeWebdavAccountSubtitle =>
-      '危险！启用后，备份文件包含 WebDAV 地址与密码，请注意信息安全';
-
-  @override
   String get userAgentHint => '留空表示使用默认值';
 
   @override
@@ -1316,7 +1309,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get backupNow => '立即备份';
 
   @override
-  String get backupNowSubtitle => '导出为 JSON 备份文件';
+  String get backupNowSubtitle => '导出为备份文件';
 
   @override
   String backupSaved(String path) {
@@ -1333,10 +1326,37 @@ class AppLocalizationsZh extends AppLocalizations {
   String get chooseBackupFile => '选择备份文件';
 
   @override
-  String get includeCookies => '备份包含 Cookie';
+  String get backupContent => '备份内容';
 
   @override
-  String get includeCookiesSubtitle => '危险！启用后，备份文件等同于登录凭据，请注意信息安全';
+  String get backupGroupGeneral => '常规';
+
+  @override
+  String get backupGroupAccount => '账号信息';
+
+  @override
+  String get backupGroupSensitive => '敏感信息';
+
+  @override
+  String get backupSectionSettings => '设置项';
+
+  @override
+  String get backupSectionFavorites => '收藏夹';
+
+  @override
+  String get backupSectionQuick => '快速访问';
+
+  @override
+  String get backupSectionRecents => '最近使用';
+
+  @override
+  String get backupSectionCookies => '账号列表与 Cookie';
+
+  @override
+  String get backupSectionEmpty => '未选择';
+
+  @override
+  String get backupContentHint => '选择备份敏感信息需要验证身份';
 
   @override
   String get webdavSection => 'WebDAV';
@@ -1414,7 +1434,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get restoreConfirmTitle => '从备份恢复？';
 
   @override
-  String get restoreConfirmMessage => '将覆盖当前设置、收藏、最近使用与快速访问；账号登录态与传输记录会保留。';
+  String get restoreConfirmMessage => '将用备份里的内容覆盖本机对应数据；备份里没有的部分保持不动，账号登录态会保留。';
+
+  @override
+  String get restoreKeepFavorites => '保留原收藏夹内容';
+
+  @override
+  String get restoreKeepFavoritesHint => '勾选：原收藏保留，备份里的收藏去重后追加；取消：用备份里的收藏覆盖';
 
   @override
   String get restoreDone => '已从备份恢复';

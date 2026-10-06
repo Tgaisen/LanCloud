@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../app_controller.dart';
+import 'backup_sections.dart';
 import 'webdav_client.dart';
 import 'webdav_store.dart';
 
@@ -33,22 +34,37 @@ class BackupService {
   final AppController app;
   final WebdavStore webdav;
 
+  /// 本次运行是否已通过敏感内容备份验证：首次通过后不再重复验证。
+  bool sensitiveVerified = false;
+
   Future<void> init() => webdav.load();
 
-  /// 生成备份 JSON。includeCookies 默认关闭：Cookie 等同于账号凭据。
-  Future<String> encode({bool includeCookies = false}) async {
+  /// 生成备份 JSON：只写入 [sections] 里勾选的内容。
+  ///
+  /// 账号条目（`activeUid` + `accounts`）只在勾了 Cookie 时写入：Cookie 就存在
+  /// 账号条目里，不勾 Cookie 时账号列表只剩昵称可带、恢复端也新建不了账号
+  /// （没有凭据），所以不单独占一个分项。
+  Future<String> encode({Set<BackupSection> sections = const {}}) async {
+    final includeCookies = sections.contains(BackupSection.cookies);
     final payload = <String, Object?>{
       'app': backupAppTag,
       'format': backupFormatVersion,
       'createdAt': DateTime.now().millisecondsSinceEpoch,
       'includeCookies': includeCookies,
-      'activeUid': app.accounts.activeUid,
-      'accounts': app.accounts.exportAccounts(includeCookies: includeCookies),
-      'settings': app.settings.toJson(),
-      'tables': await app.db.exportTables(),
+      'sections': [for (final section in sections) section.id]..sort(),
+      if (includeCookies) 'activeUid': app.accounts.activeUid,
+      if (includeCookies)
+        'accounts': app.accounts.exportAccounts(includeCookies: includeCookies),
+      if (sections.contains(BackupSection.settings))
+        'settings': app.settings.toJson(),
+      'tables': await app.db.exportTables(
+        favorites: sections.contains(BackupSection.favorites),
+        pins: sections.contains(BackupSection.quick),
+        recents: sections.contains(BackupSection.recents),
+      ),
     };
     // 可选：把 WebDAV 服务器配置（含密码）一起备份
-    if (webdav.includeAccount) {
+    if (sections.contains(BackupSection.webdavAccount)) {
       payload['webdav'] = {
         'url': webdav.url,
         'username': webdav.username,
@@ -58,9 +74,15 @@ class BackupService {
     return const JsonEncoder.withIndent('  ').convert(payload);
   }
 
-  /// 从备份内容恢复：设置与本地表整表覆盖，账号按 uid 合并
+  /// 从备份内容恢复：备份里有的部分才覆盖，账号按 uid 合并
   /// （备份不含 Cookie 时保留本地登录态，不会把已登录账号清掉）。
-  Future<void> restoreFromString(String content) async {
+  ///
+  /// [mergeFavorites] 为真且备份含收藏夹时做增量合并（按 ref 去重），
+  /// 原收藏保留；为假时整表覆盖。
+  Future<void> restoreFromString(
+    String content, {
+    bool mergeFavorites = false,
+  }) async {
     Object? decoded;
     try {
       decoded = jsonDecode(content);
@@ -87,7 +109,10 @@ class BackupService {
     }
     final tables = decoded['tables'];
     if (tables is Map) {
-      await app.db.importTables(tables.cast<String, dynamic>());
+      await app.db.importTables(
+        tables.cast<String, dynamic>(),
+        mergeFavorites: mergeFavorites,
+      );
     }
     final webdavData = decoded['webdav'];
     if (webdavData is Map) {
@@ -96,14 +121,31 @@ class BackupService {
         username: '${webdavData['username'] ?? ''}',
         password: '${webdavData['password'] ?? ''}',
       );
-      await webdav.setIncludeAccount(true);
+      await webdav.addBackupSection(BackupSection.webdavAccount);
     }
     await app.reloadFromStorage();
   }
 
+  /// 备份内容里是否含收藏夹数据（恢复前决定要不要给「保留原收藏夹内容」）。
+  static bool containsFavorites(String content) {
+    try {
+      final decoded = jsonDecode(content);
+      if (decoded is! Map) return false;
+      final tables = decoded['tables'];
+      if (tables is! Map) return false;
+      final favorites = tables['favorites'];
+      return favorites is List && favorites.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// 本地备份：写入临时目录，交给系统「保存文件」对话框导出到用户选择的位置。
-  Future<File> exportFile({bool includeCookies = false, DateTime? now}) async {
-    final content = await encode(includeCookies: includeCookies);
+  Future<File> exportFile({
+    Set<BackupSection> sections = const {},
+    DateTime? now,
+  }) async {
+    final content = await encode(sections: sections);
     final dir = await getTemporaryDirectory();
     final file = File(p.join(dir.path, '$filePrefix${stamp(now)}.json'));
     await file.writeAsString(content, flush: true);
@@ -117,11 +159,18 @@ class BackupService {
   }
 
   /// 立即上传备份，返回文件名。成功后同时更新 latest 文件并清理旧备份。
-  Future<String> uploadNow({bool? includeCookies, DateTime? now}) async {
+  /// 备份内容用「备份内容」里保存的勾选结果（只影响 WebDAV）。
+  Future<String> uploadNow({
+    Set<BackupSection>? sections,
+    DateTime? now,
+  }) async {
     await webdav.load();
     if (!webdav.configured) throw const BackupException('请先填写 WebDAV 地址');
-    final withCookies = includeCookies ?? webdav.includeCookies;
-    final content = await encode(includeCookies: withCookies);
+    final picked = sections ?? webdav.backupSections;
+    if (picked.isEmpty) {
+      throw const BackupException('请先在「备份内容」里选择要备份的数据');
+    }
+    final content = await encode(sections: picked);
     final name = '$filePrefix${stamp(now)}.json';
     final client = _client();
     try {
@@ -176,6 +225,8 @@ class BackupService {
   Future<void> maybeAutoBackup() async {
     await webdav.load();
     if (!webdav.autoBackup || !webdav.configured) return;
+    // 没选备份内容就跳过，不记失败
+    if (webdav.backupSections.isEmpty) return;
     final period = webdav.interval == 'weekly'
         ? const Duration(days: 7)
         : const Duration(days: 1);

@@ -620,13 +620,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reset => 'Reset';
 
   @override
-  String get includeWebdavAccount => 'Include WebDAV account';
-
-  @override
-  String get includeWebdavAccountSubtitle =>
-      'Danger! Once enabled, the backup contains your WebDAV address and password — keep it safe';
-
-  @override
   String get userAgentHint => 'Leave empty to use the default value';
 
   @override
@@ -1371,11 +1364,38 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chooseBackupFile => 'Choose backup file';
 
   @override
-  String get includeCookies => 'Include cookies';
+  String get backupContent => 'Backup content';
 
   @override
-  String get includeCookiesSubtitle =>
-      'Danger! Once enabled, the backup file is equivalent to your login credential — keep it safe';
+  String get backupGroupGeneral => 'General';
+
+  @override
+  String get backupGroupAccount => 'Account';
+
+  @override
+  String get backupGroupSensitive => 'Sensitive';
+
+  @override
+  String get backupSectionSettings => 'Settings';
+
+  @override
+  String get backupSectionFavorites => 'Favorites';
+
+  @override
+  String get backupSectionQuick => 'Quick access';
+
+  @override
+  String get backupSectionRecents => 'Recents';
+
+  @override
+  String get backupSectionCookies => 'Cookies';
+
+  @override
+  String get backupSectionEmpty => 'Nothing selected';
+
+  @override
+  String get backupContentHint =>
+      'Unchecked items are not written to the backup; sensitive items require identity verification';
 
   @override
   String get webdavSection => 'WebDAV';
@@ -1454,7 +1474,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get restoreConfirmMessage =>
-      'This overwrites settings, favorites, recents and quick access; your sign-in and transfer history are kept.';
+      'Content in the backup overwrites the matching data on this device; anything not in the backup is left untouched, and your sign-in is kept.';
+
+  @override
+  String get restoreKeepFavorites => 'Keep current favorites';
+
+  @override
+  String get restoreKeepFavoritesHint =>
+      'Checked: keep existing favorites and append new ones (deduplicated). Unchecked: replace them with the backup.';
 
   @override
   String get restoreDone => 'Restored from backup';

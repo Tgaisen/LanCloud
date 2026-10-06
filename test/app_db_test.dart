@@ -205,4 +205,55 @@ void main() {
     expect(list.map((p) => p.name), ['A', 'B']);
     expect(list.first.path, '根目录/A');
   });
+
+  test('恢复收藏夹：mergeFavorites 增量合并并按 ref 去重', () async {
+    final db = AppDb.instance;
+    // 先铺一个已知状态：只有 old
+    await db.importTables({
+      'favorites': [
+        {'kind': 'shareFile', 'name': '旧的', 'ref': 'old', 'created_at': 1},
+      ],
+    });
+    expect((await db.favorites()).map((f) => f.ref).toList(), ['old']);
+
+    // 增量合并：old 重复（跳过）+ new 新增
+    await db.importTables({
+      'favorites': [
+        {'kind': 'shareFile', 'name': '旧的', 'ref': 'old', 'created_at': 1},
+        {'kind': 'shareFile', 'name': '新的', 'ref': 'new', 'created_at': 2},
+      ],
+    }, mergeFavorites: true);
+    final merged = (await db.favorites()).map((f) => f.ref).toList();
+    expect(merged, containsAll(<String>['old', 'new']));
+    expect(merged.length, 2);
+
+    // 不勾选保留时整表覆盖
+    await db.importTables({
+      'favorites': [
+        {'kind': 'shareFile', 'name': '覆盖', 'ref': 'only', 'created_at': 3},
+      ],
+    });
+    expect((await db.favorites()).map((f) => f.ref).toList(), ['only']);
+  });
+
+  test('导出表：按备份内容裁剪', () async {
+    final db = AppDb.instance;
+    expect(
+      await db.exportTables(favorites: false, pins: false, recents: false),
+      isEmpty,
+    );
+    expect(
+      (await db.exportTables()).keys,
+      containsAll(<String>['favorites', 'pins', 'recents', 'downloads']),
+    );
+    // 已下载标记跟着「最近使用」，单独备份收藏时不导出
+    expect(
+      (await db.exportTables(
+        favorites: true,
+        pins: false,
+        recents: false,
+      )).keys,
+      ['favorites'],
+    );
+  });
 }
