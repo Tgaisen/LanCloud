@@ -8,7 +8,7 @@
   - 校验工作区干净、HEAD 已推送到 origin/main、tag 不存在
   - flutter analyze / flutter test / flutter build apk --release --split-per-abi
   - 用 apksigner 校验签名证书指纹（防止漏配 key.properties 时发出 debug 签名包）
-  - 打 tag 并推送，再用 gh 创建 Release，上传 arm64 / v7a 两个 APK
+  - 打 tag 并推送，再用 gh 创建 Release，上传 arm64 / v7a / x86_64 三个 APK
 
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File tools/release.ps1
@@ -193,7 +193,7 @@ Invoke-Tool $flutter @(
 
 $apkDir = Join-Path $root 'build\app\outputs\flutter-apk'
 $assets = @()
-foreach ($abi in @('arm64-v8a', 'armeabi-v7a')) {
+foreach ($abi in @('arm64-v8a', 'armeabi-v7a', 'x86_64')) {
   $src = Join-Path $apkDir "app-$abi-release.apk"
   $dst = Join-Path $apkDir "LanCloud-$versionName-$abi.apk"
   if (-not $DryRun) {
