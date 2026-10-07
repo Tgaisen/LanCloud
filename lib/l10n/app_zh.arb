@@ -689,6 +689,71 @@
   "restoreKeepFavorites": "保留原收藏夹内容",
   "restoreKeepFavoritesHint": "勾选：原收藏保留，备份里的收藏去重后追加；取消：用备份里的收藏覆盖",
   "restoreDone": "已从备份恢复",
+  "dropFilesCount": "{count} 个文件",
+  "@dropFilesCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "dropLinksCount": "{count} 个链接",
+  "@dropLinksCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "dropUploadConfirm": "是否上传到当前目录：{path}？",
+  "@dropUploadConfirm": {
+    "placeholders": {
+      "path": {"type": "String"}
+    }
+  },
+  "dropPickAnotherFolder": "更换目录",
+  "dropAddFavorites": "添加收藏",
+  "dropAddFavoritesHint": "解析成功后直接加入收藏",
+  "dropOpenLinks": "依次打开",
+  "dropOpenLinksHint": "将逐个打开「打开链接」弹窗",
+  "dropMixedTitle": "当前拖拽内容包含多种类型，需分开处理",
+  "dropContinue": "继续",
+  "dropHoverUpload": "松开即可上传到 {path}",
+  "@dropHoverUpload": {
+    "placeholders": {
+      "path": {"type": "String"}
+    }
+  },
+  "dropHoverPickFolder": "松开后上传所选文件",
+  "dropHoverFavorite": "松开后收藏所选链接",
+  "dropHoverOpenLink": "松开后打开所选链接",
+  "dropHoverMixed": "松开后处理所选内容",
+  "dropUploaded": "已上传 {count} 个文件",
+  "@dropUploaded": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "dropFavorited": "已收藏 {count} 条",
+  "@dropFavorited": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "dropNeedsPassword": "{count} 条需要提取码",
+  "@dropNeedsPassword": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "dropDuplicated": "{count} 条已在收藏中",
+  "@dropDuplicated": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "dropFailed": "{count} 条处理失败",
+  "@dropFailed": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
   "aboutVersion": "{version} ({build})",
   "@aboutVersion": {
     "placeholders": {

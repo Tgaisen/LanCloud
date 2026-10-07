@@ -1758,6 +1758,13 @@ class BatchActionBar extends StatelessWidget {
   }
 }
 
+/// 拖拽上传确认条里的目标路径文案：`根目录` 或 `根目录/abc/def`
+/// （"根目录"按当前语言显示，「网盘页当前目录」由 DrivePage 发布）。
+String drivePathLabel(AppLocalizations l10n, DriveLocation location) => [
+  l10n.root,
+  ...location.path.split('/').where((s) => s.isNotEmpty),
+].join('/');
+
 /// MD3E 分区标题：标题文字 + 右侧展开/折叠按钮（IconButton，带旋转动画），
 /// 下方内容用 SegmentedList 分组承载。
 ///

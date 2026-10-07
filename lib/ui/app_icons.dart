@@ -120,6 +120,7 @@ class Icons {
   static const IconData timer_outlined = Symbols.timer;
   static const IconData translate = Symbols.translate;
   static const IconData tune = Symbols.tune;
+  static const IconData trackpad_input = Symbols.trackpad_input;
   static const IconData upload = Symbols.upload;
   static const IconData upload_file = Symbols.upload_file;
   static const IconData upload_file_outlined = Symbols.upload_file;

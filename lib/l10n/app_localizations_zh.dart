@@ -1446,6 +1446,84 @@ class AppLocalizationsZh extends AppLocalizations {
   String get restoreDone => '已从备份恢复';
 
   @override
+  String dropFilesCount(int count) {
+    return '$count 个文件';
+  }
+
+  @override
+  String dropLinksCount(int count) {
+    return '$count 个链接';
+  }
+
+  @override
+  String dropUploadConfirm(String path) {
+    return '是否上传到当前目录：$path？';
+  }
+
+  @override
+  String get dropPickAnotherFolder => '更换目录';
+
+  @override
+  String get dropAddFavorites => '添加收藏';
+
+  @override
+  String get dropAddFavoritesHint => '解析成功后直接加入收藏';
+
+  @override
+  String get dropOpenLinks => '依次打开';
+
+  @override
+  String get dropOpenLinksHint => '将逐个打开「打开链接」弹窗';
+
+  @override
+  String get dropMixedTitle => '当前拖拽内容包含多种类型，需分开处理';
+
+  @override
+  String get dropContinue => '继续';
+
+  @override
+  String dropHoverUpload(String path) {
+    return '松开即可上传到 $path';
+  }
+
+  @override
+  String get dropHoverPickFolder => '松开后上传所选文件';
+
+  @override
+  String get dropHoverFavorite => '松开后收藏所选链接';
+
+  @override
+  String get dropHoverOpenLink => '松开后打开所选链接';
+
+  @override
+  String get dropHoverMixed => '松开后处理所选内容';
+
+  @override
+  String dropUploaded(int count) {
+    return '已上传 $count 个文件';
+  }
+
+  @override
+  String dropFavorited(int count) {
+    return '已收藏 $count 条';
+  }
+
+  @override
+  String dropNeedsPassword(int count) {
+    return '$count 条需要提取码';
+  }
+
+  @override
+  String dropDuplicated(int count) {
+    return '$count 条已在收藏中';
+  }
+
+  @override
+  String dropFailed(int count) {
+    return '$count 条处理失败';
+  }
+
+  @override
   String aboutVersion(String version, int build) {
     return '$version ($build)';
   }

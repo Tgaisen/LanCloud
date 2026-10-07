@@ -14,6 +14,24 @@ import 'data/settings_store.dart';
 import 'drive_cache.dart';
 import 'dynamic_color_support.dart';
 
+/// 网盘页当前所在目录：id + 相对根目录的路径（不含"根目录"这几个字，
+/// 显示时按当前语言拼）。拖拽上传的确认条用它显示目标位置。
+class DriveLocation {
+  const DriveLocation({this.id = '-1', this.path = ''});
+
+  final String id;
+
+  /// 例如 'abc/def'；根目录时为空串。
+  final String path;
+
+  @override
+  bool operator ==(Object other) =>
+      other is DriveLocation && other.id == id && other.path == path;
+
+  @override
+  int get hashCode => Object.hash(id, path);
+}
+
 class AppController extends ChangeNotifier {
   final AccountStore accounts = AccountStore();
   final SettingsStore settings = SettingsStore();
@@ -138,6 +156,43 @@ class AppController extends ChangeNotifier {
   /// 首页“目录打开方式 = 网盘页”时请求打开的目录 id（消费后置空）。
   final ValueNotifier<String?> driveFolderRequest = ValueNotifier(null);
 
+  /// 网盘页当前所在目录（拖拽上传的确认条要显示目标路径）。
+  final ValueNotifier<DriveLocation> driveLocation = ValueNotifier(
+    const DriveLocation(),
+  );
+
+  /// 拖拽判定：当前是否"可见地"处于收藏页。收藏页有底栏 tab 与独立路由
+  /// 两种形态，各自注册一个探针（被别的页面盖住时探针返回 false）。
+  final List<bool Function()> _favoritesProbes = [];
+
+  void addFavoritesProbe(bool Function() probe) => _favoritesProbes.add(probe);
+
+  void removeFavoritesProbe(bool Function() probe) =>
+      _favoritesProbes.remove(probe);
+
+  bool get favoritesVisible => _favoritesProbes.any((probe) {
+    try {
+      return probe();
+    } catch (_) {
+      return false;
+    }
+  });
+
+  /// 拖拽判定：当前是否"可见地"处于网盘页（底栏 tab 或独立路由）。
+  final List<bool Function()> _driveProbes = [];
+
+  void addDriveProbe(bool Function() probe) => _driveProbes.add(probe);
+
+  void removeDriveProbe(bool Function() probe) => _driveProbes.remove(probe);
+
+  bool get driveVisible => _driveProbes.any((probe) {
+    try {
+      return probe();
+    } catch (_) {
+      return false;
+    }
+  });
+
   /// 由外壳注册：切换到指定 page 视图。
   void Function(int index)? onSwitchTab;
 
@@ -214,6 +269,7 @@ class AppController extends ChangeNotifier {
     topBarHide.dispose();
     activeTab.dispose();
     driveFolderRequest.dispose();
+    driveLocation.dispose();
     super.dispose();
   }
 

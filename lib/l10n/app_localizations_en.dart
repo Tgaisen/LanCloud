@@ -1487,6 +1487,98 @@ class AppLocalizationsEn extends AppLocalizations {
   String get restoreDone => 'Restored from backup';
 
   @override
+  String dropFilesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count files',
+      one: '1 file',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dropLinksCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count links',
+      one: '1 link',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dropUploadConfirm(String path) {
+    return 'Upload to the current folder: $path?';
+  }
+
+  @override
+  String get dropPickAnotherFolder => 'Change folder';
+
+  @override
+  String get dropAddFavorites => 'Add to favorites';
+
+  @override
+  String get dropAddFavoritesHint =>
+      'Resolved shares are added to favorites directly';
+
+  @override
+  String get dropOpenLinks => 'Open one by one';
+
+  @override
+  String get dropOpenLinksHint => 'The “Open link” dialog opens for each link';
+
+  @override
+  String get dropMixedTitle =>
+      'This drop contains multiple content types and must be handled separately';
+
+  @override
+  String get dropContinue => 'Continue';
+
+  @override
+  String dropHoverUpload(String path) {
+    return 'Drop to upload to $path';
+  }
+
+  @override
+  String get dropHoverPickFolder => 'Drop to choose a target folder';
+
+  @override
+  String get dropHoverFavorite => 'Drop to add to favorites';
+
+  @override
+  String get dropHoverOpenLink => 'Drop to open the link';
+
+  @override
+  String get dropHoverMixed => 'Drop to handle the types separately';
+
+  @override
+  String dropUploaded(int count) {
+    return 'Uploaded $count file(s)';
+  }
+
+  @override
+  String dropFavorited(int count) {
+    return 'Added $count to favorites';
+  }
+
+  @override
+  String dropNeedsPassword(int count) {
+    return '$count need an access code';
+  }
+
+  @override
+  String dropDuplicated(int count) {
+    return '$count already in favorites';
+  }
+
+  @override
+  String dropFailed(int count) {
+    return '$count failed';
+  }
+
+  @override
   String aboutVersion(String version, int build) {
     return 'Version $version (build $build)';
   }

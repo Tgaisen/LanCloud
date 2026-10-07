@@ -112,6 +112,22 @@ class _DrivePageState extends State<DrivePage>
   /// on a null value"），所以 initState 里存下来。
   late TransferManager _transfers;
 
+  /// 拖拽判定用的探针：当前是否"可见地"处于网盘页（底栏 tab 或独立路由）。
+  late final bool Function() _dropProbe = _visibleAsDropTarget;
+
+  bool _visibleAsDropTarget() {
+    if (!mounted) return false;
+    final route = ModalRoute.of(context);
+    if (route != null && !route.isCurrent) return false;
+    // 底栏形态：只有当前激活的 tab 才算；独立页面：在最上层就算
+    if (route == null || route.isFirst) {
+      return widget.tabIndex != null &&
+          _appReady &&
+          _app.activeTab.value == widget.tabIndex;
+    }
+    return true;
+  }
+
   /// didChangeDependencies 之前（例如 initState 里同步命中的目录缓存）
   /// 还不能访问 _app，用这个标记兜底。
   bool _appReady = false;
@@ -152,6 +168,7 @@ class _DrivePageState extends State<DrivePage>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _app.removeDriveProbe(_dropProbe);
     _keyboardUp.dispose();
     _app.driveFolderRequest.removeListener(_onDriveFolderRequest);
     _transfers.removeTaskListener(_onTaskDone);
@@ -439,6 +456,7 @@ class _DrivePageState extends State<DrivePage>
     super.didChangeDependencies();
     _app = context.read<AppController>();
     _appReady = true;
+    _app.addDriveProbe(_dropProbe); // 拖拽判定：当前网盘页是否可见
     if (_isShellPage) {
       _app.onDriveBack = _handleDriveBack;
     }
@@ -2205,6 +2223,11 @@ class _DrivePageState extends State<DrivePage>
   Widget build(BuildContext context) {
     super.build(context);
     final app = context.watch<AppController>();
+    // 发布当前目录：拖拽文件落下来时的确认条要显示"上传到 根目录/abc"
+    app.driveLocation.value = DriveLocation(
+      id: _folderId,
+      path: [for (final node in _path) node.name].join('/'),
+    );
     final grid = app.settings.gridView;
     final selectedCount = _selectedFiles.length + _selectedFolders.length;
     final headerHeight =

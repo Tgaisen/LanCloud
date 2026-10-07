@@ -2774,6 +2774,126 @@ abstract class AppLocalizations {
   /// **'已从备份恢复'**
   String get restoreDone;
 
+  /// No description provided for @dropFilesCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 个文件'**
+  String dropFilesCount(int count);
+
+  /// No description provided for @dropLinksCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 个链接'**
+  String dropLinksCount(int count);
+
+  /// No description provided for @dropUploadConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'是否上传到当前目录：{path}？'**
+  String dropUploadConfirm(String path);
+
+  /// No description provided for @dropPickAnotherFolder.
+  ///
+  /// In zh, this message translates to:
+  /// **'更换目录'**
+  String get dropPickAnotherFolder;
+
+  /// No description provided for @dropAddFavorites.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加收藏'**
+  String get dropAddFavorites;
+
+  /// No description provided for @dropAddFavoritesHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'解析成功后直接加入收藏'**
+  String get dropAddFavoritesHint;
+
+  /// No description provided for @dropOpenLinks.
+  ///
+  /// In zh, this message translates to:
+  /// **'依次打开'**
+  String get dropOpenLinks;
+
+  /// No description provided for @dropOpenLinksHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'将逐个打开「打开链接」弹窗'**
+  String get dropOpenLinksHint;
+
+  /// No description provided for @dropMixedTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前拖拽内容包含多种类型，需分开处理'**
+  String get dropMixedTitle;
+
+  /// No description provided for @dropContinue.
+  ///
+  /// In zh, this message translates to:
+  /// **'继续'**
+  String get dropContinue;
+
+  /// No description provided for @dropHoverUpload.
+  ///
+  /// In zh, this message translates to:
+  /// **'松开即可上传到 {path}'**
+  String dropHoverUpload(String path);
+
+  /// No description provided for @dropHoverPickFolder.
+  ///
+  /// In zh, this message translates to:
+  /// **'松开后上传所选文件'**
+  String get dropHoverPickFolder;
+
+  /// No description provided for @dropHoverFavorite.
+  ///
+  /// In zh, this message translates to:
+  /// **'松开后收藏所选链接'**
+  String get dropHoverFavorite;
+
+  /// No description provided for @dropHoverOpenLink.
+  ///
+  /// In zh, this message translates to:
+  /// **'松开后打开所选链接'**
+  String get dropHoverOpenLink;
+
+  /// No description provided for @dropHoverMixed.
+  ///
+  /// In zh, this message translates to:
+  /// **'松开后处理所选内容'**
+  String get dropHoverMixed;
+
+  /// No description provided for @dropUploaded.
+  ///
+  /// In zh, this message translates to:
+  /// **'已上传 {count} 个文件'**
+  String dropUploaded(int count);
+
+  /// No description provided for @dropFavorited.
+  ///
+  /// In zh, this message translates to:
+  /// **'已收藏 {count} 条'**
+  String dropFavorited(int count);
+
+  /// No description provided for @dropNeedsPassword.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 条需要提取码'**
+  String dropNeedsPassword(int count);
+
+  /// No description provided for @dropDuplicated.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 条已在收藏中'**
+  String dropDuplicated(int count);
+
+  /// No description provided for @dropFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 条处理失败'**
+  String dropFailed(int count);
+
   /// No description provided for @aboutVersion.
   ///
   /// In zh, this message translates to:

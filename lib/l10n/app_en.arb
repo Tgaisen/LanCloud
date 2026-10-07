@@ -522,6 +522,71 @@
   "restoreKeepFavorites": "Keep current favorites",
   "restoreKeepFavoritesHint": "Checked: keep existing favorites and append new ones (deduplicated). Unchecked: replace them with the backup.",
   "restoreDone": "Restored from backup",
+  "dropFilesCount": "{count, plural, =1{1 file} other{{count} files}}",
+  "@dropFilesCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "dropLinksCount": "{count, plural, =1{1 link} other{{count} links}}",
+  "@dropLinksCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "dropUploadConfirm": "Upload to the current folder: {path}?",
+  "@dropUploadConfirm": {
+    "placeholders": {
+      "path": {"type": "String"}
+    }
+  },
+  "dropPickAnotherFolder": "Change folder",
+  "dropAddFavorites": "Add to favorites",
+  "dropAddFavoritesHint": "Resolved shares are added to favorites directly",
+  "dropOpenLinks": "Open one by one",
+  "dropOpenLinksHint": "The “Open link” dialog opens for each link",
+  "dropMixedTitle": "This drop contains multiple content types and must be handled separately",
+  "dropContinue": "Continue",
+  "dropHoverUpload": "Drop to upload to {path}",
+  "@dropHoverUpload": {
+    "placeholders": {
+      "path": {"type": "String"}
+    }
+  },
+  "dropHoverPickFolder": "Drop to choose a target folder",
+  "dropHoverFavorite": "Drop to add to favorites",
+  "dropHoverOpenLink": "Drop to open the link",
+  "dropHoverMixed": "Drop to handle the types separately",
+  "dropUploaded": "Uploaded {count} file(s)",
+  "@dropUploaded": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "dropFavorited": "Added {count} to favorites",
+  "@dropFavorited": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "dropNeedsPassword": "{count} need an access code",
+  "@dropNeedsPassword": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "dropDuplicated": "{count} already in favorites",
+  "@dropDuplicated": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "dropFailed": "{count} failed",
+  "@dropFailed": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
   "aboutVersion": "Version {version} (build {build})",
   "@aboutVersion": {
     "placeholders": {

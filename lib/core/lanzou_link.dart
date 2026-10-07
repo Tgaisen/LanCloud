@@ -57,4 +57,43 @@ class LanzouLink {
     final pwd = match?.group(1)?.trim();
     return (pwd == null || pwd.isEmpty) ? null : pwd;
   }
+
+  /// 从一段文本（例如多选拖拽 / 多条剪贴板内容）里提取**所有**分享链接，
+  /// 按出现顺序去重；没有蓝奏云链接时返回空列表。
+  ///
+  /// 密码按「就近原则」：出现在某条链接之后、下一条链接之前的密码归它所有，
+  /// 否则退回整段文本里的第一个密码。
+  static List<LanzouLink> parseAll(String? text) {
+    final raw = text?.trim();
+    if (raw == null || raw.isEmpty) return const [];
+
+    final matches = <RegExpMatch>[
+      ..._withScheme.allMatches(raw),
+      ..._withoutScheme.allMatches(raw),
+    ]..sort((a, b) => a.start.compareTo(b.start));
+
+    final out = <LanzouLink>[];
+    final seen = <String>{};
+    // 只有一条链接时才允许"整段文本里找密码"兜底，多条时按就近原则，
+    // 否则第二条链接会错误地继承第一条的密码
+    final fallbackPwd = matches.length == 1 ? extractPwd(raw) : null;
+    for (var i = 0; i < matches.length; i++) {
+      final match = matches[i];
+      final matched = match.group(0)!;
+      // 带协议头的写法直接用匹配结果；「www.lanzoua.com/…」这种要先补协议
+      var url = matched.toLowerCase().startsWith('http')
+          ? matched
+          : 'https://${match.group(1)}';
+      while (url.isNotEmpty && _trailing.contains(url[url.length - 1])) {
+        url = url.substring(0, url.length - 1);
+      }
+      if (url.isEmpty || !seen.add(url)) continue;
+
+      final end = i + 1 < matches.length ? matches[i + 1].start : raw.length;
+      final segment = raw.substring(match.end, end);
+      final pwd = extractPwd(segment) ?? fallbackPwd;
+      out.add(LanzouLink(url, pwd: pwd));
+    }
+    return out;
+  }
 }

@@ -49,6 +49,23 @@ class _FavoritesPageState extends State<FavoritesPage>
   late final AppDb _db;
   AppController? _app;
 
+  /// 拖拽判定用的探针：当前是否"可见地"处于收藏页（底栏 tab 或独立路由）。
+  late final bool Function() _dropProbe = _visibleAsDropTarget;
+
+  bool _visibleAsDropTarget() {
+    if (!mounted) return false;
+    final app = _app;
+    if (app == null) return false;
+    final route = ModalRoute.of(context);
+    // 被别的页面（例如从收藏打开的子目录）盖住时不算
+    if (route != null && !route.isCurrent) return false;
+    // 底栏形态：只有当前激活的 tab 才算；独立页面：在最上层就算
+    if (route == null || route.isFirst) {
+      return widget.tabIndex != null && app.activeTab.value == widget.tabIndex;
+    }
+    return true;
+  }
+
   /// 长列表的入场动画：首次载入后播一次，之后滑进来的条目直接显示。
   late final AnimationController _enter = AnimationController(
     vsync: this,
@@ -65,6 +82,7 @@ class _FavoritesPageState extends State<FavoritesPage>
     _db = app.db;
     _db.revision.addListener(_load);
     app.activeTab.addListener(_onActiveTabChanged);
+    app.addFavoritesProbe(_dropProbe);
     _load();
   }
 
@@ -79,6 +97,7 @@ class _FavoritesPageState extends State<FavoritesPage>
     _db.revision.removeListener(_load);
     final app = _app;
     if (app != null) {
+      app.removeFavoritesProbe(_dropProbe);
       app.activeTab.removeListener(_onActiveTabChanged);
       if (_selecting) {
         app.setSelectionMode(false);
