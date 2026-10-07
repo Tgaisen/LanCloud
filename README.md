@@ -19,50 +19,15 @@
 
 ## 平台
 
-- [x] Android `v7a` `v8a` `amd64`
-- [x] Windows `x64`
+- [x] **Android** 7+ `v7a` `v8a` `amd64`
+- [x] **Windows** 10 1809+ `x64`
 - [ ] HarmonyOS NEXT
 - [ ] iOS / iPadOS / MacOS（无相关设备，暂无计划）
 - [ ] 其余平台暂无计划
 
 ## 构建
 
-### Android
-
-```powershell
-flutter pub get
-flutter build apk --release --split-per-abi
-```
-
-### Windows
-
-前置条件（缺一不可）：
-
-| 组件 | 说明 |
-| --- | --- |
-| Visual Studio（生成工具即可） | 勾选「使用 C++ 的桌面开发」工作负载（含 Windows SDK 与 CMake），并额外勾选 **「C++ ATL for x64/x86 (最新 MSVC)」**：`flutter_secure_storage` / `flutter_local_notifications` 的 Windows 实现需要 ATL 头文件 |
-| 开发者模式 | 设置 → 系统 → 开发者选项 → 开发人员模式：Flutter 构建插件时需要创建符号链接 |
-| NuGet CLI | 在 PATH 中：`flutter_inappwebview` 的 Windows 构建用它拉 WebView2 SDK |
-
-```powershell
-powershell -ExecutionPolicy Bypass -File tools/build_windows.ps1
-```
-
-脚本会先检查前置条件，再跑格式检查 / 静态分析 / 单元测试，然后构建
-`build\windows\x64\runner\Release`，把整包复制到 `outputs\`（默认再打一个 zip）。
-只要构建不跑检查加 `-SkipTests`，不打包 zip 加 `-SkipZip`。
-
-发布形式是**绿色便携版**：`outputs\LanCloud-<版本>-windows-x64\`（或同名 zip）。
-zip 里带一层同名目录，解压出来就是一个完整文件夹，直接跑 `lancloud.exe`；
-已内置 VC++ 运行时可再分发副本（`msvcp140.dll` 等），没装过 Visual Studio 的机器也能用。
-
-> 运行需要 WebView2 运行时（Windows 11 自带；Windows 10 需装 Evergreen Runtime）——
-> 缺它应用能启动，但网页登录 / 分享浏览这类内嵌网页打不开。
-
-代码风格：`dart format lib test tool`。仓库已配置保存自动格式化（`.vscode/settings.json`），
-CI 会强制检查格式、静态分析与测试（`.github/workflows/ci.yml`）。
-
-#### 版本号规范
+### 版本号规范
 
 版本号为 `年份.内容更新序号.热修号[-阶段.序号]`：
 
@@ -72,6 +37,13 @@ CI 会强制检查格式、静态分析与测试（`.github/workflows/ci.yml`）
 | 预览 | `pre` = 2 | 1–999 | `26.1.0-pre.1` |
 | 候选 | `rc` = 3 | 1–999 | `26.1.0-rc.1` |
 | 正式 | 9 | 999 | `26.1.0` |
+
+### Android
+
+```powershell
+flutter pub get
+flutter build apk --release --split-per-abi
+```
 
 Android `versionCode` 规则：
 
@@ -92,6 +64,21 @@ versionCode = YY * 10_000_000 + Drop * 100_000 + Hotfix * 10_000 + Stage * 1_000
 ```
 70:BD:4A:A8:53:22:FE:26:E6:72:02:FA:C3:17:29:BD:E1:F8:54:FA:1B:D2:FD:52:C8:8F:FC:AA:02:ED:B5:BB
 ```
+
+### Windows
+
+前置条件：
+
+| 组件 | 说明 |
+| --- | --- |
+| Visual Studio BuildTools | 勾选「使用 C++ 的桌面开发」工作负载（含 Windows SDK 与 CMake），并额外勾选「C++ ATL for x64/x86 (最新 MSVC)」 |
+| NuGet CLI | 用于拉取 WebView2 SDK |
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/build_windows.ps1
+```
+
+> 运行需要 WebView2 运行时，如缺乏，则无法打开网页登录 / 分享浏览等内嵌网页。
 
 ## 开源与致谢
 

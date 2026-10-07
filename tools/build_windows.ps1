@@ -89,7 +89,8 @@ PATH 里找不到 nuget.exe（flutter_inappwebview 的 Windows 构建会用它�
 }
 
 # ---------------------------------------------------------------- 版本与检查
-$version = (Select-String -Path (Join-Path $root 'pubspec.yaml') -Pattern '^version:\s*([0-9]+\.[0-9]+\.[0-9]+)').Matches[0].Groups[1].Value
+# 版本名含预发布后缀（如 26.1.0-pre.2）；'+' 后面是 versionCode，不要
+$version = (Select-String -Path (Join-Path $root 'pubspec.yaml') -Pattern '^version:\s*([^+\s]+)\+').Matches[0].Groups[1].Value
 Info "LanCloud $version（windows-x64）"
 
 if (!(Get-Command flutter -ErrorAction SilentlyContinue)) { Fail '找不到 flutter 命令' }
