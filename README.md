@@ -52,7 +52,12 @@ powershell -ExecutionPolicy Bypass -File tools/build_windows.ps1
 `build\windows\x64\runner\Release`，把整包复制到 `outputs\`（默认再打一个 zip）。
 只要构建不跑检查加 `-SkipTests`，不打包 zip 加 `-SkipZip`。
 
-> 运行需要 WebView2 运行时（Windows 11 自带；Windows 10 需装 Evergreen Runtime）。
+发布形式是**绿色便携版**：`outputs\LanCloud-<版本>-windows-x64\`（或同名 zip）。
+zip 里带一层同名目录，解压出来就是一个完整文件夹，直接跑 `lancloud.exe`；
+已内置 VC++ 运行时可再分发副本（`msvcp140.dll` 等），没装过 Visual Studio 的机器也能用。
+
+> 运行需要 WebView2 运行时（Windows 11 自带；Windows 10 需装 Evergreen Runtime）——
+> 缺它应用能启动，但网页登录 / 分享浏览这类内嵌网页打不开。
 
 #### Windows 与 Android 的差异
 

@@ -133,12 +133,36 @@ if (Test-Path -LiteralPath $pkgDir) {
 }
 New-Item -ItemType Directory -Force -Path $pkgDir | Out-Null
 Copy-Item -Path (Join-Path $bundleDir '*') -Destination $pkgDir -Recurse -Force
+
+# VC++ 运行时（app-local 部署）：目标机器不一定装过 VC++ Redistributable，
+# 而 exe 依赖 VCRUNTIME140 / MSVCP140，缺了会直接起不来。这里把 VS 里
+# 可再分发的那套 DLL 拷到 exe 同目录，便携版才能"解压即用"。
+$crtRoot = Join-Path $vsPath 'VC\Redist\MSVC'
+$crtFiles = @(
+  Get-ChildItem -Path (Join-Path $crtRoot '*\x64\Microsoft.VC*.CRT\*.dll') -ErrorAction SilentlyContinue
+)
+if ($crtFiles.Count -eq 0) {
+  Warn '没找到 VC++ 运行时可再分发副本，产物在没装 Redistributable 的机器上可能无法启动'
+} else {
+  # v145 / 14.51 等目录可能指向同一套，按文件名去重
+  $copied = 0
+  $bytes = 0
+  foreach ($group in ($crtFiles | Group-Object Name)) {
+    $file = $group.Group | Select-Object -First 1
+    Copy-Item -LiteralPath $file.FullName -Destination (Join-Path $pkgDir $file.Name) -Force
+    $copied += 1
+    $bytes += $file.Length
+  }
+  Info ("已内置 VC++ 运行时：{0} 个 DLL（{1:N1} MB）" -f $copied, ($bytes / 1MB))
+}
 Info "产物已复制：$pkgDir"
 
 if (!$SkipZip) {
   $zip = Join-Path $outDir "LanCloud-$version-windows-x64.zip"
   if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
-  Compress-Archive -Path (Join-Path $pkgDir '*') -DestinationPath $zip -CompressionLevel Optimal
+  # 连带目录一起压缩：解压出来是 LanCloud-<版本>-windows-x64\ 一个文件夹，
+  # 不会把 exe 和 data\ 散落到当前目录
+  Compress-Archive -Path $pkgDir -DestinationPath $zip -CompressionLevel Optimal
   Info "已打包：$zip"
 }
 
