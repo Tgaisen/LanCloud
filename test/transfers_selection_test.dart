@@ -383,4 +383,49 @@ void main() {
     expect(inShellGap, closeTo(pushedGap, 0.5));
     app.dispose();
   });
+
+  testWidgets('滑动时懒加载出来的条目不重播入场动画（与收藏页一致）', (tester) async {
+    final app = AppController();
+    final manager = TransferManager(app);
+    for (var i = 0; i < 40; i++) {
+      manager.tasks.add(task('t$i', 'file$i.zip', status: TransferStatus.done));
+    }
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<AppController>.value(value: app),
+          ChangeNotifierProvider<TransferManager>.value(value: manager),
+        ],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const TransfersPage(),
+        ),
+      ),
+    );
+    // 等首次入场动画播完（共享进度到 1）
+    await tester.pumpAndSettle();
+
+    // 滑到列表后段：这些条目是懒构建出来的
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -2500));
+    await tester.pumpAndSettle();
+
+    // 新构建出来的条目直接显示，不重播动画
+    final items = tester.widgetList<Md3ListItem>(find.byType(Md3ListItem));
+    expect(items, isNotEmpty);
+    for (final item in items) {
+      final opacity = tester
+          .widgetList<Opacity>(
+            find.descendant(
+              of: find.byKey(item.key!),
+              matching: find.byType(Opacity),
+            ),
+          )
+          .map((o) => o.opacity)
+          .reduce((a, b) => a < b ? a : b);
+      expect(opacity, 1.0, reason: '${item.key} 不应重播入场动画');
+    }
+    app.dispose();
+  });
 }

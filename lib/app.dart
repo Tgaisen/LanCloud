@@ -264,7 +264,8 @@ class RootShell extends StatefulWidget {
   State<RootShell> createState() => _RootShellState();
 }
 
-class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
+class _RootShellState extends State<RootShell>
+    with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   /// 视图 id：0 首页 / 1 网盘 / 2 传输 / 3 收藏 / 4 我的。
   /// id 固定不变，底栏顺序由 [_ids] 决定（传输、收藏可隐藏）。
   static const _viewHome = 0;
@@ -295,6 +296,34 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
   /// 连续重建分页器的次数：一直连不上就放弃，避免每帧重建。
   int _pagerRebuilds = 0;
 
+  /// 大屏正文卡片顶边的高度过渡：不同视图的顶栏高度不一样（网盘有路径栏、
+  /// 传输有分段条），切换视图时平滑移动；滚动收起仍按 [AppController.topBarHide]
+  /// 1:1 跟手，不参与这段动画。
+  late final AnimationController _cardTopAnim = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 280),
+  );
+  double _cardTopFrom = 0;
+  double _cardTopTo = 0;
+
+  double get _animatedCardTop {
+    final t = Curves.easeOutCubic.transform(_cardTopAnim.value);
+    return _cardTopFrom + (_cardTopTo - _cardTopFrom) * t;
+  }
+
+  /// 目标顶栏高度变化时启动过渡（首次直接定位，不播动画）。
+  void _syncCardTop(double target) {
+    if (_cardTopTo == 0) {
+      _cardTopFrom = target;
+      _cardTopTo = target;
+      return;
+    }
+    if (target == _cardTopTo) return;
+    _cardTopFrom = _animatedCardTop;
+    _cardTopTo = target;
+    _cardTopAnim.forward(from: 0);
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -324,6 +353,7 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
     IncomingLinks.instance.onLink = null;
     IncomingLinks.instance.dispose();
     _pageController.dispose();
+    _cardTopAnim.dispose();
     super.dispose();
   }
 
@@ -801,6 +831,10 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
 
     final width = MediaQuery.sizeOf(context).width;
     final scheme = Theme.of(context).colorScheme;
+    // 大屏卡片顶边跟着当前视图的顶栏高度走，切换视图时平滑过渡
+    if (width >= kLargeLayoutBreakpoint && _ids.isNotEmpty) {
+      _syncCardTop(_topBarHeightFor(_ids[_index]));
+    }
     // 大屏（MD3E）：侧栏等导航区用 surfaceContainer，主视图是圆角的 surface 卡片
     final bodyColor = Theme.of(context).scaffoldBackgroundColor;
     final floatingNav = app.settings.floatingNavBar;
@@ -876,9 +910,14 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
                   // 圆角的 surface 卡片从顶栏下方开始，页面背景透明；
                   // 顶栏收起时卡片顶边跟着上移，内容始终被顶栏或卡片盖住
                   Expanded(
-                    child: ValueListenableBuilder<double>(
-                      valueListenable: app.topBarHide,
-                      builder: (context, hide, _) {
+                    child: AnimatedBuilder(
+                      // 滚动收起进度 + 切换视图时卡片顶边的高度过渡
+                      animation: Listenable.merge([
+                        app.topBarHide,
+                        _cardTopAnim,
+                      ]),
+                      builder: (context, _) {
+                        final hide = app.topBarHide.value;
                         final t = app.settings.hideTopBar
                             ? hide.clamp(0.0, 1.0)
                             : 0.0;
@@ -886,7 +925,7 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
                           children: [
                             Positioned(
                               left: 0,
-                              top: _topBarHeightFor(_ids[_index]) * (1 - t),
+                              top: _animatedCardTop * (1 - t),
                               // 卡片四周的 8dp 留白之外，再让开系统导航栏：
                               // 横屏时它可能在底部（手势导航）或在右侧（三键导航），
                               // 否则卡片底部/右侧会被系统栏压住

@@ -87,110 +87,119 @@ class _ProfilePageState extends State<ProfilePage>
               onBarsHidden: app.settings.hideTopBar
                   ? app.setTopBarHideFromScroll
                   : null,
-              child: CustomScrollView(
+              // 列表快速滑动条（可拖拽）
+              child: FastScrollbar(
                 controller: _scroll,
-                slivers: [
-                  // 顶栏不占布局，这里留出等高占位
-                  SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
-                  SliverPadding(
-                    // 顶部留白与左右一致
-                    // 底部留白与首页 / 网盘 / 收藏 / 传输保持一致
-                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
-                    sliver: SliverList(
-                      delegate: SliverChildListDelegate([
-                        SegmentedList(
-                          children: [
-                            ListTile(
-                              leading: CircleAvatar(
-                                child: Text(_avatarInitial(account, uid)),
-                              ),
-                              title: Text(
-                                account == null
-                                    ? l10n.notLoggedIn
-                                    : account.nickname.isEmpty
-                                    ? l10n.accountUid(uid)
-                                    : account.nickname,
-                              ),
-                              subtitle: Text(l10n.uidLabel(uid)),
-                              trailing: FilledButton.tonal(
-                                onPressed: () => _showAccountSwitcher(context),
-                                child: Text(l10n.manage),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        SegmentedList(
-                          children: [
-                            ListTile(
-                              leading: const Icon(Icons.public),
-                              title: Text(l10n.webManagement),
-                              trailing: const Icon(Icons.open_in_new),
-                              onTap: () => _openWeb(
-                                context,
-                                'https://pc.woozooo.com/mydisk.php',
-                                l10n.webManagement,
-                              ),
-                            ),
-                            // 个人中心：用设置里的网盘接口域名拼地址
-                            ListTile(
-                              leading: const Icon(Icons.user_attributes),
-                              title: Text(l10n.userCenter),
-                              trailing: const Icon(Icons.open_in_new),
-                              onTap: () => _openWeb(
-                                context,
-                                '${LanzouClient.apiBase}'
-                                '/mydisk.php?item=profile&action=mypower',
-                                l10n.userCenter,
-                              ),
-                            ),
-                            ListTile(
-                              leading: const Icon(
-                                Icons.restore_from_trash_outlined,
-                              ),
-                              title: Text(l10n.recycleBin),
-                              trailing: const Icon(Icons.open_in_new),
-                              onTap: () => _openWeb(
-                                context,
-                                'https://pc.woozooo.com/mydisk.php?item=recycle',
-                                l10n.recycleBin,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        SegmentedList(
-                          children: [
-                            ListTile(
-                              leading: const Icon(Icons.settings_outlined),
-                              title: Text(l10n.settings),
-                              trailing: const Icon(Icons.chevron_right),
-                              onTap: () => Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => const SettingsPage(),
+                padding: EdgeInsets.only(
+                  top: headerHeight,
+                  bottom: shellBottomBarInset(context),
+                ),
+                child: CustomScrollView(
+                  controller: _scroll,
+                  slivers: [
+                    // 顶栏不占布局，这里留出等高占位
+                    SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
+                    SliverPadding(
+                      // 顶部留白与左右一致
+                      // 底部留白与首页 / 网盘 / 收藏 / 传输保持一致
+                      padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
+                      sliver: SliverList(
+                        delegate: SliverChildListDelegate([
+                          SegmentedList(
+                            children: [
+                              ListTile(
+                                leading: CircleAvatar(
+                                  child: Text(_avatarInitial(account, uid)),
+                                ),
+                                title: Text(
+                                  account == null
+                                      ? l10n.notLoggedIn
+                                      : account.nickname.isEmpty
+                                      ? l10n.accountUid(uid)
+                                      : account.nickname,
+                                ),
+                                subtitle: Text(l10n.uidLabel(uid)),
+                                trailing: FilledButton.tonal(
+                                  onPressed: () =>
+                                      _showAccountSwitcher(context),
+                                  child: Text(l10n.manage),
                                 ),
                               ),
-                            ),
-                            ListTile(
-                              leading: const Icon(Icons.info_outline),
-                              title: Text(l10n.about),
-                              trailing: const Icon(Icons.chevron_right),
-                              onTap: () => Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => const AboutPage(),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          SegmentedList(
+                            children: [
+                              ListTile(
+                                leading: const Icon(Icons.public),
+                                title: Text(l10n.webManagement),
+                                trailing: const Icon(Icons.open_in_new),
+                                onTap: () => _openWeb(
+                                  context,
+                                  'https://pc.woozooo.com/mydisk.php',
+                                  l10n.webManagement,
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ]),
+                              // 个人中心：用设置里的网盘接口域名拼地址
+                              ListTile(
+                                leading: const Icon(Icons.user_attributes),
+                                title: Text(l10n.userCenter),
+                                trailing: const Icon(Icons.open_in_new),
+                                onTap: () => _openWeb(
+                                  context,
+                                  '${LanzouClient.apiBase}'
+                                  '/mydisk.php?item=profile&action=mypower',
+                                  l10n.userCenter,
+                                ),
+                              ),
+                              ListTile(
+                                leading: const Icon(
+                                  Icons.restore_from_trash_outlined,
+                                ),
+                                title: Text(l10n.recycleBin),
+                                trailing: const Icon(Icons.open_in_new),
+                                onTap: () => _openWeb(
+                                  context,
+                                  'https://pc.woozooo.com/mydisk.php?item=recycle',
+                                  l10n.recycleBin,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          SegmentedList(
+                            children: [
+                              ListTile(
+                                leading: const Icon(Icons.settings_outlined),
+                                title: Text(l10n.settings),
+                                trailing: const Icon(Icons.chevron_right),
+                                onTap: () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => const SettingsPage(),
+                                  ),
+                                ),
+                              ),
+                              ListTile(
+                                leading: const Icon(Icons.info_outline),
+                                title: Text(l10n.about),
+                                trailing: const Icon(Icons.chevron_right),
+                                onTap: () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => const AboutPage(),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ]),
+                      ),
                     ),
-                  ),
-                  // 底栏盖在正文上方（extendBody）时，补足列表末尾留白
-                  SliverToBoxAdapter(
-                    child: SizedBox(height: shellBottomBarInset(context)),
-                  ),
-                ],
+                    // 底栏盖在正文上方（extendBody）时，补足列表末尾留白
+                    SliverToBoxAdapter(
+                      child: SizedBox(height: shellBottomBarInset(context)),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

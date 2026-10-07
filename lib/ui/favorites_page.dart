@@ -525,113 +525,125 @@ class _FavoritesPageState extends State<FavoritesPage>
                 onBarsHidden: app.settings.hideTopBar
                     ? app.setTopBarHideFromScroll
                     : null,
-                child: CustomScrollView(
+                // 列表快速滑动条（可拖拽）
+                child: FastScrollbar(
                   controller: _scroll,
-                  slivers: [
-                    // 顶栏不占布局，这里留出等高占位
-                    SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
-                    if (_loading)
-                      SliverFillRemaining(
-                        hasScrollBody: false,
-                        child: Padding(
-                          // 底栏盖在正文上方时，空状态保持在可见区域居中
-                          padding: EdgeInsets.only(
-                            bottom: shellBottomBarInset(context),
+                  // 顶栏是浮层：滑块从顶栏下方开始，底部让开底栏
+                  padding: EdgeInsets.only(
+                    top: headerHeight,
+                    bottom: shellBottomBarInset(context),
+                  ),
+                  child: CustomScrollView(
+                    controller: _scroll,
+                    slivers: [
+                      // 顶栏不占布局，这里留出等高占位
+                      SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
+                      if (_loading)
+                        SliverFillRemaining(
+                          hasScrollBody: false,
+                          child: Padding(
+                            // 底栏盖在正文上方时，空状态保持在可见区域居中
+                            padding: EdgeInsets.only(
+                              bottom: shellBottomBarInset(context),
+                            ),
+                            child: const Center(
+                              child: CircularProgressIndicator(),
+                            ),
                           ),
-                          child: const Center(
-                            child: CircularProgressIndicator(),
+                        )
+                      else if (folders.isEmpty && files.isEmpty)
+                        SliverFillRemaining(
+                          hasScrollBody: false,
+                          child: Padding(
+                            padding: EdgeInsets.only(
+                              bottom: shellBottomBarInset(context),
+                            ),
+                            child: EmptyHint(
+                              icon: Icons.star_border,
+                              text: _filter.trim().isEmpty
+                                  ? l10n.favoritesHint
+                                  : l10n.filterResult,
+                            ),
                           ),
-                        ),
-                      )
-                    else if (folders.isEmpty && files.isEmpty)
-                      SliverFillRemaining(
-                        hasScrollBody: false,
-                        child: Padding(
-                          padding: EdgeInsets.only(
-                            bottom: shellBottomBarInset(context),
-                          ),
-                          child: EmptyHint(
-                            icon: Icons.star_border,
-                            text: _filter.trim().isEmpty
-                                ? l10n.favoritesHint
-                                : l10n.filterResult,
-                          ),
-                        ),
-                      )
-                    else
-                      SliverPadding(
-                        // 底部留白与首页 / 网盘 / 传输保持一致
-                        padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
-                        sliver: SliverMainAxisGroup(
-                          slivers: [
-                            if (folders.isNotEmpty) ...[
-                              SliverToBoxAdapter(
-                                child: SectionHeader(
-                                  title: l10n.favoriteFolders,
-                                  count: folders.length,
+                        )
+                      else
+                        SliverPadding(
+                          // 底部留白与首页 / 网盘 / 传输保持一致
+                          padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
+                          sliver: SliverMainAxisGroup(
+                            slivers: [
+                              if (folders.isNotEmpty) ...[
+                                SliverToBoxAdapter(
+                                  child: SectionHeader(
+                                    title: l10n.favoriteFolders,
+                                    count: folders.length,
+                                  ),
                                 ),
-                              ),
-                              // 懒加载：收藏多了也只构建可见部分
-                              SegmentedSliverList(
-                                adaptive: true,
-                                // 幸存条目按 key 复用元素，删除后不重建
-                                findChildIndexCallback: childIndexLookup(
-                                  folders,
-                                  (item) =>
-                                      ValueKey('favorite-entry-${item.id}'),
-                                ),
-                                itemCount: folders.length,
-                                itemBuilder: (context, index) =>
-                                    ListEnterAnimation(
-                                      key: ValueKey(
-                                        'favorite-entry-${folders[index].id}',
-                                      ),
-                                      progress: _enter,
-                                      index: index,
-                                      child: _tile(
-                                        folders[index],
+                                // 懒加载：收藏多了也只构建可见部分
+                                SegmentedSliverList(
+                                  adaptive: true,
+                                  // 幸存条目按 key 复用元素，删除后不重建
+                                  findChildIndexCallback: childIndexLookup(
+                                    folders,
+                                    (item) =>
+                                        ValueKey('favorite-entry-${item.id}'),
+                                  ),
+                                  itemCount: folders.length,
+                                  itemBuilder: (context, index) =>
+                                      ListEnterAnimation(
+                                        key: ValueKey(
+                                          'favorite-entry-${folders[index].id}',
+                                        ),
+                                        progress: _enter,
                                         index: index,
+                                        child: _tile(
+                                          folders[index],
+                                          index: index,
+                                        ),
                                       ),
-                                    ),
-                              ),
-                              const SliverToBoxAdapter(
-                                child: SizedBox(height: 20),
-                              ),
-                            ],
-                            if (files.isNotEmpty) ...[
-                              SliverToBoxAdapter(
-                                child: SectionHeader(
-                                  title: l10n.favoriteFiles,
-                                  count: files.length,
                                 ),
-                              ),
-                              SegmentedSliverList(
-                                adaptive: true,
-                                findChildIndexCallback: childIndexLookup(
-                                  files,
-                                  (item) =>
-                                      ValueKey('favorite-entry-${item.id}'),
+                                const SliverToBoxAdapter(
+                                  child: SizedBox(height: 20),
                                 ),
-                                itemCount: files.length,
-                                itemBuilder: (context, index) =>
-                                    ListEnterAnimation(
-                                      key: ValueKey(
-                                        'favorite-entry-${files[index].id}',
+                              ],
+                              if (files.isNotEmpty) ...[
+                                SliverToBoxAdapter(
+                                  child: SectionHeader(
+                                    title: l10n.favoriteFiles,
+                                    count: files.length,
+                                  ),
+                                ),
+                                SegmentedSliverList(
+                                  adaptive: true,
+                                  findChildIndexCallback: childIndexLookup(
+                                    files,
+                                    (item) =>
+                                        ValueKey('favorite-entry-${item.id}'),
+                                  ),
+                                  itemCount: files.length,
+                                  itemBuilder: (context, index) =>
+                                      ListEnterAnimation(
+                                        key: ValueKey(
+                                          'favorite-entry-${files[index].id}',
+                                        ),
+                                        progress: _enter,
+                                        index: index,
+                                        child: _tile(
+                                          files[index],
+                                          index: index,
+                                        ),
                                       ),
-                                      progress: _enter,
-                                      index: index,
-                                      child: _tile(files[index], index: index),
-                                    ),
-                              ),
+                                ),
+                              ],
                             ],
-                          ],
+                          ),
                         ),
+                      // 底栏盖在正文上方（extendBody）时，补足列表末尾留白
+                      SliverToBoxAdapter(
+                        child: SizedBox(height: shellBottomBarInset(context)),
                       ),
-                    // 底栏盖在正文上方（extendBody）时，补足列表末尾留白
-                    SliverToBoxAdapter(
-                      child: SizedBox(height: shellBottomBarInset(context)),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

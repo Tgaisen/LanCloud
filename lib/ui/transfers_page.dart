@@ -22,7 +22,7 @@ class TransfersPage extends StatefulWidget {
 }
 
 class _TransfersPageState extends State<TransfersPage>
-    with AutomaticKeepAliveClientMixin, SingleTickerProviderStateMixin {
+    with AutomaticKeepAliveClientMixin, TickerProviderStateMixin {
   static const _anim = Duration(milliseconds: 200);
 
   int _tab = 0;
@@ -37,6 +37,13 @@ class _TransfersPageState extends State<TransfersPage>
     parent: _tabAnim,
     curve: Curves.easeOutCubic,
   );
+
+  /// 列表入场动画：只在首次加载 / 切到本视图 / 切换上传下载时整组播一次，
+  /// 滑动时懒构建出来的条目不再重播（与收藏页一致，改用共享进度驱动）。
+  late final AnimationController _enter = AnimationController(
+    vsync: this,
+    duration: ListEnterAnimation.duration,
+  );
   final ScrollController _scroll = ScrollController();
   bool _selecting = false;
   final Set<String> _selected = {};
@@ -48,11 +55,34 @@ class _TransfersPageState extends State<TransfersPage>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _app = context.read<AppController>();
+    final app = context.read<AppController>();
+    if (!identical(app, _app)) {
+      _app?.activeTab.removeListener(_onActiveTabChanged);
+      _app = app;
+      app.activeTab.addListener(_onActiveTabChanged);
+    }
+  }
+
+  /// 切到本视图时重播一次入场动画（与收藏页同款）。
+  void _onActiveTabChanged() {
+    final app = _app;
+    if (app == null || widget.tabIndex == null) return;
+    if (app.activeTab.value == widget.tabIndex) {
+      _enter.forward(from: 0);
+    }
   }
 
   @override
   bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    // 首次加载：整组播一次入场动画（之后靠切视图 / 切 tab 重播）
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _enter.forward();
+    });
+  }
 
   @override
   void dispose() {
@@ -61,7 +91,9 @@ class _TransfersPageState extends State<TransfersPage>
       app.setSelectionMode(false);
       app.onRequestExitSelection = null;
     }
+    _app?.activeTab.removeListener(_onActiveTabChanged);
     _tabAnim.dispose();
+    _enter.dispose();
     _scroll.dispose();
     super.dispose();
   }
@@ -250,27 +282,37 @@ class _TransfersPageState extends State<TransfersPage>
                 onBarsHidden: app.settings.hideTopBar
                     ? app.setTopBarHideFromScroll
                     : null,
-                child: CustomScrollView(
+                // 列表快速滑动条（可拖拽）
+                child: FastScrollbar(
                   controller: _scroll,
-                  slivers: [
-                    // 顶栏不占布局，这里留出等高占位
-                    SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
-                    SliverFadeTransition(
-                      opacity: _tabFade,
-                      sliver: _TransferListSliver(
-                        kind: _kind,
-                        selecting: _selecting,
-                        selected: _selected,
-                        removing: _removing,
-                        onToggle: _toggleSelected,
-                        onLongPress: _enterSelection,
+                  // 顶栏（含上传/下载分段条）是浮层：滑块从它下方开始
+                  padding: EdgeInsets.only(
+                    top: headerHeight,
+                    bottom: shellBottomBarInset(context),
+                  ),
+                  child: CustomScrollView(
+                    controller: _scroll,
+                    slivers: [
+                      // 顶栏不占布局，这里留出等高占位
+                      SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
+                      SliverFadeTransition(
+                        opacity: _tabFade,
+                        sliver: _TransferListSliver(
+                          kind: _kind,
+                          selecting: _selecting,
+                          selected: _selected,
+                          removing: _removing,
+                          enter: _enter,
+                          onToggle: _toggleSelected,
+                          onLongPress: _enterSelection,
+                        ),
                       ),
-                    ),
-                    // 底栏盖在正文上方（extendBody）时，补足列表末尾留白
-                    SliverToBoxAdapter(
-                      child: SizedBox(height: shellBottomBarInset(context)),
-                    ),
-                  ],
+                      // 底栏盖在正文上方（extendBody）时，补足列表末尾留白
+                      SliverToBoxAdapter(
+                        child: SizedBox(height: shellBottomBarInset(context)),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -333,6 +375,8 @@ class _TransfersPageState extends State<TransfersPage>
                                   if (values.first == _tab) return;
                                   setState(() => _tab = values.first);
                                   _tabAnim.forward(from: 0);
+                                  // 切换上传 / 下载：整组重播一次入场动画
+                                  _enter.forward(from: 0);
                                 },
                               ),
                             ),
@@ -429,6 +473,7 @@ class _TransferListSliver extends StatelessWidget {
     required this.selecting,
     required this.selected,
     required this.removing,
+    required this.enter,
     required this.onToggle,
     required this.onLongPress,
   });
@@ -439,6 +484,9 @@ class _TransferListSliver extends StatelessWidget {
 
   /// 正在播放删除动画的记录 id。
   final Set<String> removing;
+
+  /// 列表入场动画的共享进度（只播一次，懒加载进来的条目不重播）。
+  final Animation<double> enter;
   final void Function(String id) onToggle;
   final void Function({String? taskId}) onLongPress;
 
@@ -496,16 +544,20 @@ class _TransferListSliver extends StatelessWidget {
                 (t) => ValueKey('transfer-${t.id}'),
               ),
               itemCount: active.length,
-              itemBuilder: (context, index) => _TransferTile(
+              itemBuilder: (context, index) => ListEnterAnimation(
                 // key 挂在最外层：sliver 靠它把条目认回来（见 findChildIndexCallback）
                 key: ValueKey('transfer-${active[index].id}'),
-                task: active[index],
+                progress: enter,
                 index: index,
-                removing: removing.contains(active[index].id),
-                selecting: selecting,
-                selected: selected.contains(active[index].id),
-                onTap: () => onToggle(active[index].id),
-                onLongPress: () => onLongPress(taskId: active[index].id),
+                child: _TransferTile(
+                  task: active[index],
+                  index: index,
+                  removing: removing.contains(active[index].id),
+                  selecting: selecting,
+                  selected: selected.contains(active[index].id),
+                  onTap: () => onToggle(active[index].id),
+                  onLongPress: () => onLongPress(taskId: active[index].id),
+                ),
               ),
             ),
             const SliverToBoxAdapter(child: SizedBox(height: 20)),
@@ -525,15 +577,19 @@ class _TransferListSliver extends StatelessWidget {
               ),
               // 与收藏页同色（SegmentedList 默认 surfaceContainerLow）
               itemCount: finished.length,
-              itemBuilder: (context, index) => _TransferTile(
+              itemBuilder: (context, index) => ListEnterAnimation(
                 key: ValueKey('transfer-${finished[index].id}'),
-                task: finished[index],
+                progress: enter,
                 index: index,
-                removing: removing.contains(finished[index].id),
-                selecting: selecting,
-                selected: selected.contains(finished[index].id),
-                onTap: () => onToggle(finished[index].id),
-                onLongPress: () => onLongPress(taskId: finished[index].id),
+                child: _TransferTile(
+                  task: finished[index],
+                  index: index,
+                  removing: removing.contains(finished[index].id),
+                  selecting: selecting,
+                  selected: selected.contains(finished[index].id),
+                  onTap: () => onToggle(finished[index].id),
+                  onLongPress: () => onLongPress(taskId: finished[index].id),
+                ),
               ),
             ),
           ],
@@ -547,7 +603,6 @@ class _TransferListSliver extends StatelessWidget {
 /// 进行中在下方显示进度条。
 class _TransferTile extends StatelessWidget {
   const _TransferTile({
-    super.key,
     required this.task,
     required this.selecting,
     required this.selected,
@@ -610,6 +665,8 @@ class _TransferTile extends StatelessWidget {
     return Md3ListItem(
       key: ValueKey('transfer-${task.id}'),
       index: index,
+      // 入场动画由外层 ListEnterAnimation 统一驱动（只播一次）
+      animateIn: false,
       removing: removing,
       icon: iconForFile(task.name),
       title: task.name,

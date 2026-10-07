@@ -443,165 +443,174 @@ class _HomePageState extends State<HomePage>
               onBarsHidden: app.settings.hideTopBar
                   ? app.setTopBarHideFromScroll
                   : null,
-              child: CustomScrollView(
+              // 列表快速滑动条（可拖拽）
+              child: FastScrollbar(
                 controller: _scroll,
-                slivers: [
-                  // 顶栏不占布局，这里留出等高占位
-                  SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
-                  // 入口按钮：横向滚动，左右边距用 padding 实现，
-                  // 这样滑到头也不会被裁掉；按钮间距 = 卡片边距（20dp），
-                  // 顶部留白与左右一致
-                  SliverToBoxAdapter(
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          ExpressiveIconButton(
-                            icon: Icons.open_in_new,
-                            label: l10n.openLink,
-                            onPressed: () => openShareSheet(context),
-                          ),
-                          const SizedBox(width: 20),
-                          ExpressiveIconButton(
-                            icon: Icons.qr_code,
-                            label: l10n.scanButton,
-                            onPressed: _scanQr,
-                          ),
-                          const SizedBox(width: 20),
-                          ExpressiveIconButton(
-                            icon: Icons.swap_vert,
-                            label: l10n.transferCenter,
-                            badge: running > 0 ? '$running' : null,
-                            onPressed: () => app.switchTab(2),
-                          ),
-                          const SizedBox(width: 20),
-                          ExpressiveIconButton(
-                            icon: Icons.star_border,
-                            label: l10n.favorite,
-                            onPressed: () => app.switchTab(3),
-                          ),
-                        ],
+                // 顶栏是浮层：滑块从顶栏下方开始，底部让开底栏
+                padding: EdgeInsets.only(
+                  top: headerHeight,
+                  bottom: shellBottomBarInset(context),
+                ),
+                child: CustomScrollView(
+                  controller: _scroll,
+                  slivers: [
+                    // 顶栏不占布局，这里留出等高占位
+                    SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
+                    // 入口按钮：横向滚动，左右边距用 padding 实现，
+                    // 这样滑到头也不会被裁掉；按钮间距 = 卡片边距（20dp），
+                    // 顶部留白与左右一致
+                    SliverToBoxAdapter(
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ExpressiveIconButton(
+                              icon: Icons.open_in_new,
+                              label: l10n.openLink,
+                              onPressed: () => openShareSheet(context),
+                            ),
+                            const SizedBox(width: 20),
+                            ExpressiveIconButton(
+                              icon: Icons.qr_code,
+                              label: l10n.scanButton,
+                              onPressed: _scanQr,
+                            ),
+                            const SizedBox(width: 20),
+                            ExpressiveIconButton(
+                              icon: Icons.swap_vert,
+                              label: l10n.transferCenter,
+                              badge: running > 0 ? '$running' : null,
+                              onPressed: () => app.switchTab(2),
+                            ),
+                            const SizedBox(width: 20),
+                            ExpressiveIconButton(
+                              icon: Icons.star_border,
+                              label: l10n.favorite,
+                              onPressed: () => app.switchTab(3),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                  const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                  SliverPadding(
-                    // 底部留白交给最后一个 SectionCard 自带的 16dp
-                    //（它内部还带 4dp 分组外边距），与其他页面保持一致
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                    sliver: SliverList(
-                      delegate: SliverChildListDelegate([
-                        SectionCard(
-                          title: l10n.quickAccess,
-                          expanded: _quickExpanded,
-                          onToggle: _toggleQuickExpanded,
-                          child: _quick.isEmpty
-                              ? SegmentedList(
-                                  children: [
-                                    EmptyHint(
-                                      icon: Icons.push_pin_outlined,
-                                      text: l10n.quickAccessHint,
-                                    ),
-                                  ],
-                                )
-                              : SegmentedList(
-                                  adaptive: true,
-                                  children: [
-                                    for (var i = 0; i < _quick.length; i++)
-                                      _quickItem(
-                                        context,
-                                        app,
-                                        _quick[i],
-                                        first: i == 0,
-                                        index: i,
+                    const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                    SliverPadding(
+                      // 底部留白交给最后一个 SectionCard 自带的 16dp
+                      //（它内部还带 4dp 分组外边距），与其他页面保持一致
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                      sliver: SliverList(
+                        delegate: SliverChildListDelegate([
+                          SectionCard(
+                            title: l10n.quickAccess,
+                            expanded: _quickExpanded,
+                            onToggle: _toggleQuickExpanded,
+                            child: _quick.isEmpty
+                                ? SegmentedList(
+                                    children: [
+                                      EmptyHint(
+                                        icon: Icons.push_pin_outlined,
+                                        text: l10n.quickAccessHint,
                                       ),
-                                  ],
-                                ),
-                        ),
-                        SectionCard(
-                          title: l10n.recent,
-                          expanded: _recentsExpanded,
-                          onToggle: _toggleRecentsExpanded,
-                          child: _loading
-                              ? const Padding(
-                                  padding: EdgeInsets.all(16),
-                                  child: Center(
-                                    child: CircularProgressIndicator(),
+                                    ],
+                                  )
+                                : SegmentedList(
+                                    adaptive: true,
+                                    children: [
+                                      for (var i = 0; i < _quick.length; i++)
+                                        _quickItem(
+                                          context,
+                                          app,
+                                          _quick[i],
+                                          first: i == 0,
+                                          index: i,
+                                        ),
+                                    ],
                                   ),
-                                )
-                              : (_recents.isEmpty
-                                    ? SegmentedList(
-                                        children: [
-                                          EmptyHint(
-                                            icon: Icons.history,
-                                            text: l10n.noRecent,
-                                          ),
-                                        ],
-                                      )
-                                    : SegmentedList(
-                                        adaptive: true,
-                                        children: [
-                                          for (
-                                            var i = 0;
-                                            i < _recents.length;
-                                            i++
-                                          )
-                                            Md3ListItem(
-                                              key: ValueKey(
-                                                'recent-${_recents[i].ref}',
-                                              ),
-                                              index: i,
-                                              removing: _removingRecents
-                                                  .contains(_recents[i].ref),
-                                              icon:
-                                                  _recents[i].kind
-                                                      .toLowerCase()
-                                                      .contains('folder')
-                                                  ? Icons.folder_outlined
-                                                  : iconForFile(
-                                                      _recents[i].name,
-                                                    ),
-                                              title: _recents[i].name,
-                                              subtitle:
-                                                  _recents[i].kind.startsWith(
-                                                    'share',
-                                                  )
-                                                  ? l10n.sharedContent
-                                                  : l10n.myDrive,
-                                              trailing: IconButton(
-                                                visualDensity:
-                                                    VisualDensity.compact,
-                                                iconSize: 20,
-                                                tooltip: l10n.moreActions,
-                                                icon: const Icon(
-                                                  Icons.more_vert,
-                                                ),
-                                                onPressed: () =>
-                                                    _showRecentMenu(
-                                                      _recents[i],
-                                                    ),
-                                              ),
-                                              onTap: () => _openItem(
-                                                context,
-                                                _recents[i].kind,
-                                                _recents[i].ref,
-                                                _recents[i].name,
-                                                _recents[i].pwd,
-                                              ),
+                          ),
+                          SectionCard(
+                            title: l10n.recent,
+                            expanded: _recentsExpanded,
+                            onToggle: _toggleRecentsExpanded,
+                            child: _loading
+                                ? const Padding(
+                                    padding: EdgeInsets.all(16),
+                                    child: Center(
+                                      child: CircularProgressIndicator(),
+                                    ),
+                                  )
+                                : (_recents.isEmpty
+                                      ? SegmentedList(
+                                          children: [
+                                            EmptyHint(
+                                              icon: Icons.history,
+                                              text: l10n.noRecent,
                                             ),
-                                        ],
-                                      )),
-                        ),
-                      ]),
+                                          ],
+                                        )
+                                      : SegmentedList(
+                                          adaptive: true,
+                                          children: [
+                                            for (
+                                              var i = 0;
+                                              i < _recents.length;
+                                              i++
+                                            )
+                                              Md3ListItem(
+                                                key: ValueKey(
+                                                  'recent-${_recents[i].ref}',
+                                                ),
+                                                index: i,
+                                                removing: _removingRecents
+                                                    .contains(_recents[i].ref),
+                                                icon:
+                                                    _recents[i].kind
+                                                        .toLowerCase()
+                                                        .contains('folder')
+                                                    ? Icons.folder_outlined
+                                                    : iconForFile(
+                                                        _recents[i].name,
+                                                      ),
+                                                title: _recents[i].name,
+                                                subtitle:
+                                                    _recents[i].kind.startsWith(
+                                                      'share',
+                                                    )
+                                                    ? l10n.sharedContent
+                                                    : l10n.myDrive,
+                                                trailing: IconButton(
+                                                  visualDensity:
+                                                      VisualDensity.compact,
+                                                  iconSize: 20,
+                                                  tooltip: l10n.moreActions,
+                                                  icon: const Icon(
+                                                    Icons.more_vert,
+                                                  ),
+                                                  onPressed: () =>
+                                                      _showRecentMenu(
+                                                        _recents[i],
+                                                      ),
+                                                ),
+                                                onTap: () => _openItem(
+                                                  context,
+                                                  _recents[i].kind,
+                                                  _recents[i].ref,
+                                                  _recents[i].name,
+                                                  _recents[i].pwd,
+                                                ),
+                                              ),
+                                          ],
+                                        )),
+                          ),
+                        ]),
+                      ),
                     ),
-                  ),
-                  // 底栏盖在正文上方（extendBody）时，补足列表末尾留白
-                  SliverToBoxAdapter(
-                    child: SizedBox(height: shellBottomBarInset(context)),
-                  ),
-                ],
+                    // 底栏盖在正文上方（extendBody）时，补足列表末尾留白
+                    SliverToBoxAdapter(
+                      child: SizedBox(height: shellBottomBarInset(context)),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

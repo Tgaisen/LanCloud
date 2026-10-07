@@ -2479,21 +2479,30 @@ class _DrivePageState extends State<DrivePage>
       onBarsHidden: app.settings.hideTopBar
           ? app.setTopBarHideFromScroll
           : null,
-      child: drive_refresh.LanRefreshIndicator(
-        onRefresh: _reloadAfterChange,
-        // 页面自己在加载（居中转圈）时不响应下拉刷新，避免两个指示同时出现
-        enabled: !_loading,
-        edgeOffset: headerInset,
-        child: CustomScrollView(
-          controller: _scroll,
-          slivers: [
-            SliverToBoxAdapter(child: SizedBox(height: headerInset)),
-            // 目录切换时内容整体淡出（顶栏与路径栏不受影响）
-            ..._contentSlivers(grid).map(
-              (sliver) =>
-                  SliverFadeTransition(opacity: _contentFade, sliver: sliver),
-            ),
-          ],
+      // 列表快速滑动条（可拖拽）
+      child: FastScrollbar(
+        controller: _scroll,
+        // 顶栏 + 路径栏是浮层：滑块从它们下方开始，底部让开底栏 / FAB 区域
+        padding: EdgeInsets.only(
+          top: headerInset,
+          bottom: shellBottomBarInset(context),
+        ),
+        child: drive_refresh.LanRefreshIndicator(
+          onRefresh: _reloadAfterChange,
+          // 页面自己在加载（居中转圈）时不响应下拉刷新，避免两个指示同时出现
+          enabled: !_loading,
+          edgeOffset: headerInset,
+          child: CustomScrollView(
+            controller: _scroll,
+            slivers: [
+              SliverToBoxAdapter(child: SizedBox(height: headerInset)),
+              // 目录切换时内容整体淡出（顶栏与路径栏不受影响）
+              ..._contentSlivers(grid).map(
+                (sliver) =>
+                    SliverFadeTransition(opacity: _contentFade, sliver: sliver),
+              ),
+            ],
+          ),
         ),
       ),
     );

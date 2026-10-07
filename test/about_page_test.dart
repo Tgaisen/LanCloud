@@ -4,6 +4,7 @@ import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/app_info.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/about_page.dart';
+import 'package:lancloud/ui/common.dart';
 import 'package:provider/provider.dart';
 
 void main() {
@@ -30,6 +31,8 @@ void main() {
     expect(find.text('开源许可'), findsOneWidget);
     expect(find.text('项目主页'), findsOneWidget);
     expect(find.text('提交 Issue'), findsOneWidget);
+    // 用 TopBarOverlayScaffold 的页面都带快速滑动条
+    expect(find.byType(FastScrollbar), findsOneWidget);
     app.dispose();
   });
 

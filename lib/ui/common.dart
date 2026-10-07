@@ -642,9 +642,16 @@ class _TopBarOverlayScaffoldState extends State<TopBarOverlayScaffold> {
   /// 否则返回标签页时会把它们的顶栏一起带走。
   final ValueNotifier<double> _hide = ValueNotifier<double>(0);
 
+  /// 页面没传 [TopBarOverlayScaffold.controller] 时兜一个：快速滑动条
+  /// 必须和滚动视图共用同一个 controller 才能拖拽。
+  final ScrollController _fallbackScroll = ScrollController();
+
+  ScrollController get _scroll => widget.controller ?? _fallbackScroll;
+
   @override
   void dispose() {
     _hide.dispose();
+    _fallbackScroll.dispose();
     super.dispose();
   }
 
@@ -683,14 +690,26 @@ class _TopBarOverlayScaffoldState extends State<TopBarOverlayScaffold> {
                 // 小屏：正文区整体让开左右挖孔 / 侧边导航栏；
                 // 顶栏保持原样（铺满整屏，自己用 SafeArea 让位）
                 BodySideInset(
-                  child: CustomScrollView(
-                    controller: widget.controller,
-                    slivers: [
-                      SliverToBoxAdapter(child: SizedBox(height: topInset)),
-                      ...widget.slivers,
-                      if (widget.bottomSafeInset)
-                        const SliverToBoxAdapter(child: _BottomSystemInset()),
-                    ],
+                  // 快速滑动条：顶栏是浮层，滑块从它下方开始；底部让开导航栏留白
+                  child: FastScrollbar(
+                    controller: _scroll,
+                    padding: EdgeInsets.only(
+                      top: topInset,
+                      bottom: widget.bottomSafeInset
+                          ? (isLargeLayout(context)
+                                ? 0
+                                : MediaQuery.paddingOf(context).bottom)
+                          : 0,
+                    ),
+                    child: CustomScrollView(
+                      controller: _scroll,
+                      slivers: [
+                        SliverToBoxAdapter(child: SizedBox(height: topInset)),
+                        ...widget.slivers,
+                        if (widget.bottomSafeInset)
+                          const SliverToBoxAdapter(child: _BottomSystemInset()),
+                      ],
+                    ),
                   ),
                 ),
                 Positioned(
@@ -1764,6 +1783,52 @@ String drivePathLabel(AppLocalizations l10n, DriveLocation location) => [
   l10n.root,
   ...location.path.split('/').where((s) => s.isNotEmpty),
 ].join('/');
+
+/// 列表快速滑动条（fast scroll）。
+///
+/// 行为跟原生 Android 一致：滚动时滑块淡入、停止后淡出；只要滑块还在
+/// （滚动刚停下或正在滚动），就能按住拖动快速跳转。Flutter 在 Android 上
+/// 默认不响应滚动条拖拽，必须显式 `interactive: true` 并传入与滚动视图
+/// 同一个 [controller]。
+class FastScrollbar extends StatelessWidget {
+  const FastScrollbar({
+    super.key,
+    required this.controller,
+    required this.child,
+    this.padding,
+  });
+
+  final ScrollController controller;
+  final Widget child;
+
+  /// 轨道内边距。默认用 MediaQuery 的 padding（状态栏 + 系统导航栏），
+  /// 但页面顶栏是浮层：不额外让位的话滑块顶端会被顶栏挡住，
+  /// 所以页面要把「顶栏高度 + 底部占位」传进来。
+  ///
+  /// Material 的 [Scrollbar] 没有 padding 参数（只有 [RawScrollbar] 有），
+  /// 它内部取的是 `MediaQuery.padding`，因此这里只替换滚动条自己的
+  /// MediaQuery，内容仍用原来的 padding。
+  final EdgeInsetsGeometry? padding;
+
+  @override
+  Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
+    final trackPadding = padding?.resolve(Directionality.of(context));
+    return MediaQuery(
+      data: trackPadding == null
+          ? media
+          : media.copyWith(padding: trackPadding),
+      child: Scrollbar(
+        controller: controller,
+        interactive: true,
+        thickness: 6,
+        radius: const Radius.circular(3),
+        // 内容恢复原 padding：MediaQuery 覆盖只给滚动条用
+        child: MediaQuery(data: media, child: child),
+      ),
+    );
+  }
+}
 
 /// MD3E 分区标题：标题文字 + 右侧展开/折叠按钮（IconButton，带旋转动画），
 /// 下方内容用 SegmentedList 分组承载。
