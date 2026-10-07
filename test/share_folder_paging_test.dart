@@ -152,4 +152,29 @@ void main() {
     expect(find.byType(CircularProgressIndicator), findsNothing);
     expect(find.text(AppLocalizationsZh().reachedEnd), findsOneWidget);
   });
+
+  testWidgets('分享文件夹：搜索时不显示加载转圈，改为提示结果可能不全', (tester) async {
+    final client = _FakeClient();
+    final app = _FakeApp(client);
+    addTearDown(app.dispose);
+    // 首页有 20 个文件、还有下一页没加载：搜索只在已加载内容里过滤
+    await pumpPage(tester, app: app, folder: _folder());
+    expect(client.calls, isEmpty);
+
+    await tester.tap(find.byTooltip('搜索'));
+    await tester.pumpAndSettle();
+    // 只匹配 file0 一条：尾部提示会渲染在可见区域内
+    await tester.enterText(find.byType(TextField), 'file0');
+    await tester.pumpAndSettle();
+
+    // 未全部加载 → 提示可能不全，而不是「加载下一页」的转圈
+    expect(find.text(AppLocalizationsZh().searchIncomplete), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+
+    // 搜索期间不会继续补页（滑动到搜索结果的底部也不会请求下一页）
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -1200));
+    await tester.pumpAndSettle();
+    expect(client.calls, isEmpty);
+    expect(find.text(AppLocalizationsZh().searchIncomplete), findsOneWidget);
+  });
 }

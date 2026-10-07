@@ -924,6 +924,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get reachedEnd => '已经到底了';
 
   @override
+  String get searchIncomplete => '未全部加载内容，搜索结果可能不全';
+
+  @override
   String get filterResult => '筛选结果';
 
   @override
@@ -1560,10 +1563,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get commitHash => '提交';
-
-  @override
-  String get termsDisclaimer =>
-      '7. 免责声明：本应用是非官方的蓝奏云第三方客户端，与蓝奏云官方无任何关联，也未获得官方授权。应用按「现状」提供，因使用本应用造成的账号风险、数据丢失或服务中断由使用者自行承担。';
 
   @override
   String get firstRunWelcome => '欢迎使用蓝云';

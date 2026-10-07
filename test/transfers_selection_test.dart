@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
@@ -49,6 +50,16 @@ bool retryEnabled(WidgetTester tester) {
   );
   return action.onPressed != null;
 }
+
+/// 多选顶栏常驻在树里（靠透明度切换显示），用它判断多选是否真的打开。
+double selectionBarOpacity(WidgetTester tester) => tester
+    .widget<AnimatedOpacity>(
+      find.ancestor(
+        of: find.byKey(const ValueKey('transfers-selection-appbar')),
+        matching: find.byType(AnimatedOpacity),
+      ),
+    )
+    .opacity;
 
 /// 把传输页作为独立页面（二级路由）打开，用于验证返回行为。
 Future<AppController> pushTransfers(WidgetTester tester) async {
@@ -127,7 +138,7 @@ void main() {
   testWidgets('独立页面：多选时返回只退出多选，不退出页面', (tester) async {
     final app = await pushTransfers(tester);
 
-    await tester.tap(find.text('a.zip'));
+    await tester.longPress(find.text('a.zip'));
     await tester.pumpAndSettle();
     expect(app.selectionMode, isTrue);
 
@@ -141,16 +152,18 @@ void main() {
     expect(find.byType(TransfersPage), findsNothing);
   });
 
-  testWidgets('直接点击条目进入多选并选中它（多选栏一起出现）', (tester) async {
+  testWidgets('点击上传条目不做任何反应：长按才进入多选', (tester) async {
     final (app, _) = await host(tester);
 
+    // 上传条目点不开，点击不做任何反应，也不会进入多选
     await tester.tap(find.text('a.zip'));
     await tester.pumpAndSettle();
+    expect(app.selectionMode, isFalse);
+    expect(selectionBarOpacity(tester), 0);
 
-    expect(
-      find.byKey(const ValueKey('transfers-selection-appbar')),
-      findsOneWidget,
-    );
+    await tester.longPress(find.text('a.zip'));
+    await tester.pumpAndSettle();
+    expect(selectionBarOpacity(tester), 1);
     expect(find.text('已选择 1 项'), findsOneWidget);
     expect(app.selectionMode, isTrue);
   });
@@ -217,7 +230,7 @@ void main() {
     app.dispose();
   });
 
-  testWidgets('下载完成的项目：APK 只保留「打开」，不再显示「安装」', (tester) async {
+  testWidgets('下载完成的项目：点击条目打开文件，按钮改为分享', (tester) async {
     final app = AppController();
     final manager = TransferManager(app);
     manager.tasks.add(
@@ -230,6 +243,18 @@ void main() {
         ..status = TransferStatus.done
         ..savedPath = '/tmp/tool.apk',
     );
+    final opened = <String>[];
+    final shared = <MethodCall>[];
+    const shareChannel = MethodChannel('lancloud/share');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(shareChannel, (call) async {
+          shared.add(call);
+          return true;
+        });
+    addTearDown(
+      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(shareChannel, null),
+    );
     await tester.pumpWidget(
       MultiProvider(
         providers: [
@@ -240,7 +265,7 @@ void main() {
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           locale: const Locale('zh'),
-          home: const TransfersPage(),
+          home: TransfersPage(openFile: (path) async => opened.add(path)),
         ),
       ),
     );
@@ -251,7 +276,26 @@ void main() {
 
     expect(find.text('tool.apk'), findsOneWidget);
     expect(find.byTooltip('安装'), findsNothing);
-    expect(find.byTooltip('打开'), findsOneWidget);
+    // 点击条目就是「打开」，行内不再单独给「打开」按钮
+    expect(find.byTooltip('打开'), findsNothing);
+    expect(find.byTooltip('分享'), findsOneWidget);
+
+    await tester.tap(find.text('tool.apk'));
+    await tester.pumpAndSettle();
+    expect(opened, ['/tmp/tool.apk']);
+    // 点击条目只打开文件，不会进入多选
+    expect(selectionBarOpacity(tester), 0);
+
+    await tester.tap(find.byTooltip('分享'));
+    await tester.pumpAndSettle();
+    expect(shared, hasLength(1));
+    expect(shared.single.method, 'shareFile');
+    expect(shared.single.arguments['path'], '/tmp/tool.apk');
+    // APK 用包安装类型，分享到系统面板后才能被识别
+    expect(
+      shared.single.arguments['mime'],
+      'application/vnd.android.package-archive',
+    );
     app.dispose();
   });
 

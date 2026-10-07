@@ -68,7 +68,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(AlertDialog), findsOneWidget);
     expect(find.textContaining('非官方第三方客户端'), findsOneWidget);
-    expect(find.textContaining('免责声明'), findsOneWidget);
+    // 原第 7 条免责声明与前文（第 1、3 条）重复，已删去
+    expect(find.textContaining('免责声明'), findsNothing);
 
     await tester.tap(find.text('关闭'));
     await tester.pumpAndSettle();

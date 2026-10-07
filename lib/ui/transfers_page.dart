@@ -5,6 +5,7 @@ import 'package:open_filex/open_filex.dart';
 import 'package:provider/provider.dart';
 
 import '../core/app_controller.dart';
+import '../core/system_share.dart';
 import '../core/transfer/transfer_manager.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
@@ -12,10 +13,13 @@ import 'common.dart';
 import 'scroll_tint.dart';
 
 class TransfersPage extends StatefulWidget {
-  const TransfersPage({super.key, this.tabIndex});
+  const TransfersPage({super.key, this.tabIndex, this.openFile});
 
   /// 外壳中的 page 视图下标；作为独立路由打开时为 null（不响应切换通知）。
   final int? tabIndex;
+
+  /// 打开已下载文件；默认交给系统「打开」，测试注入以免真的调起系统应用。
+  final Future<void> Function(String path)? openFile;
 
   @override
   State<TransfersPage> createState() => _TransfersPageState();
@@ -129,11 +133,6 @@ class _TransfersPageState extends State<TransfersPage>
   }
 
   void _toggleSelected(String id) {
-    // 不在多选时点击条目：直接进入多选并选中它（否则只会亮起却看不到多选栏）
-    if (!_selecting) {
-      _enterSelection(taskId: id);
-      return;
-    }
     setState(() {
       if (!_selected.remove(id)) _selected.add(id);
     });
@@ -305,6 +304,7 @@ class _TransfersPageState extends State<TransfersPage>
                           enter: _enter,
                           onToggle: _toggleSelected,
                           onLongPress: _enterSelection,
+                          openFile: widget.openFile ?? OpenFilex.open,
                         ),
                       ),
                       // 底栏盖在正文上方（extendBody）时，补足列表末尾留白
@@ -476,6 +476,7 @@ class _TransferListSliver extends StatelessWidget {
     required this.enter,
     required this.onToggle,
     required this.onLongPress,
+    required this.openFile,
   });
 
   final TransferKind kind;
@@ -489,6 +490,24 @@ class _TransferListSliver extends StatelessWidget {
   final Animation<double> enter;
   final void Function(String id) onToggle;
   final void Function({String? taskId}) onLongPress;
+
+  /// 打开已下载的文件（外壳注入，默认 OpenFilex）。
+  final Future<void> Function(String path) openFile;
+
+  /// 点击条目：多选中切换选中；否则只有「下载完成」的条目能打开文件，
+  /// 上传条目（以及进行中 / 失败的下载）点击不做任何反应。
+  void _handleTap(TransferTask task) {
+    if (selecting) {
+      onToggle(task.id);
+      return;
+    }
+    final path = task.savedPath;
+    if (task.kind == TransferKind.download &&
+        task.status == TransferStatus.done &&
+        path != null) {
+      openFile(path);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -555,7 +574,7 @@ class _TransferListSliver extends StatelessWidget {
                   removing: removing.contains(active[index].id),
                   selecting: selecting,
                   selected: selected.contains(active[index].id),
-                  onTap: () => onToggle(active[index].id),
+                  onTap: () => _handleTap(active[index]),
                   onLongPress: () => onLongPress(taskId: active[index].id),
                 ),
               ),
@@ -587,7 +606,7 @@ class _TransferListSliver extends StatelessWidget {
                   removing: removing.contains(finished[index].id),
                   selecting: selecting,
                   selected: selected.contains(finished[index].id),
-                  onTap: () => onToggle(finished[index].id),
+                  onTap: () => _handleTap(finished[index]),
                   onLongPress: () => onLongPress(taskId: finished[index].id),
                 ),
               ),
@@ -699,13 +718,17 @@ class _TransferTile extends StatelessWidget {
                     onPressed: () => manager.retry(task.id),
                   ),
                 if (done) ...[
-                  // APK 不再单独给「安装」按钮：系统对 APK 的「打开」就是安装
+                  // 点击条目即打开文件，这里只留分享（走系统分享面板）
                   IconButton(
                     visualDensity: VisualDensity.compact,
                     iconSize: 20,
-                    tooltip: l10n.open,
-                    icon: const Icon(Icons.open_in_new),
-                    onPressed: () => OpenFilex.open(task.savedPath!),
+                    tooltip: l10n.share,
+                    icon: const Icon(Icons.share_outlined),
+                    onPressed: () => SystemShare.shareFile(
+                      task.savedPath!,
+                      subject: task.name,
+                      mime: _shareMimeFor(task.name),
+                    ),
                   ),
                 ],
               ],
@@ -723,3 +746,9 @@ class _TransferTile extends StatelessWidget {
     );
   }
 }
+
+/// 分享下载文件时用的 MIME：APK 单独识别（其它应用按包安装），
+/// 其余交给系统按扩展名兜底。
+String _shareMimeFor(String name) => name.toLowerCase().endsWith('.apk')
+    ? 'application/vnd.android.package-archive'
+    : 'application/octet-stream';

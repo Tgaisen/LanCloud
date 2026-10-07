@@ -947,6 +947,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reachedEnd => 'You\'ve reached the end';
 
   @override
+  String get searchIncomplete =>
+      'Not all content is loaded; results may be incomplete';
+
+  @override
   String get filterResult => 'Filtered results';
 
   @override
@@ -1615,10 +1619,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get commitHash => 'Commit';
-
-  @override
-  String get termsDisclaimer =>
-      '7. Disclaimer: this is an unofficial third-party LanZou Cloud client, not affiliated with or endorsed by LanZou. It is provided \"as is\"; account risks, data loss or service interruptions are at your own risk.';
 
   @override
   String get firstRunWelcome => 'Welcome to LanCloud';

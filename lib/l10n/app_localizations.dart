@@ -1784,6 +1784,12 @@ abstract class AppLocalizations {
   /// **'已经到底了'**
   String get reachedEnd;
 
+  /// No description provided for @searchIncomplete.
+  ///
+  /// In zh, this message translates to:
+  /// **'未全部加载内容，搜索结果可能不全'**
+  String get searchIncomplete;
+
   /// No description provided for @filterResult.
   ///
   /// In zh, this message translates to:
@@ -2965,12 +2971,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'提交'**
   String get commitHash;
-
-  /// No description provided for @termsDisclaimer.
-  ///
-  /// In zh, this message translates to:
-  /// **'7. 免责声明：本应用是非官方的蓝奏云第三方客户端，与蓝奏云官方无任何关联，也未获得官方授权。应用按「现状」提供，因使用本应用造成的账号风险、数据丢失或服务中断由使用者自行承担。'**
-  String get termsDisclaimer;
 
   /// No description provided for @firstRunWelcome.
   ///

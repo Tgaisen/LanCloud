@@ -9,10 +9,8 @@ Future<void> showLegalDialog(BuildContext context, LegalDoc doc) {
   final l10n = context.l10n;
   final theme = Theme.of(context);
   final title = doc == LegalDoc.terms ? l10n.aboutTerms : l10n.aboutPrivacy;
-  // 免责声明并入用户协议
-  final body = doc == LegalDoc.terms
-      ? '${l10n.termsBody}\n\n${l10n.termsDisclaimer}'
-      : l10n.privacyBody;
+  // 免责声明已并入用户协议正文（第 1、3 条），不再单列一条
+  final body = doc == LegalDoc.terms ? l10n.termsBody : l10n.privacyBody;
   return showDialog<void>(
     context: context,
     builder: (dialogContext) => AlertDialog(

@@ -146,6 +146,14 @@ class _ShareFolderPageState extends State<ShareFolderPage>
     });
   }
 
+  /// 分页尾部的文字提示（与「已经到底了」同款样式）。
+  Widget _footerText(String text) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 16),
+    child: Center(
+      child: Text(text, style: Theme.of(context).textTheme.bodySmall),
+    ),
+  );
+
   void _toggleSelecting() {
     setState(() {
       _selecting = !_selecting;
@@ -337,8 +345,13 @@ class _ShareFolderPageState extends State<ShareFolderPage>
         _files.isEmpty && folder.folders.isEmpty && folder.desc.isEmpty;
     // 分页尾部：加载下一页时转圈，全部加载完提示到底。
     // 作为列表的 trailing 跟着条目一起懒构建（另起 sliver 的话，
-    // 即使整条在屏幕外也会构建第一个子节点，转圈会常驻重绘）
-    final footer = _hasMore || _loadingMore
+    // 即使整条在屏幕外也会构建第一个子节点，转圈会常驻重绘）。
+    //
+    // 搜索只在「已加载的页面」里过滤（_loadMore 会跳过），不会继续补页，
+    // 所以搜索时不能显示加载转圈（会让人以为在自动加载），改为提示可能不全。
+    final footer = query.isNotEmpty && (_hasMore || _loadingMore)
+        ? _footerText(l10n.searchIncomplete)
+        : _hasMore || _loadingMore
         ? const Padding(
             padding: EdgeInsets.symmetric(vertical: 16),
             child: Center(
@@ -350,15 +363,7 @@ class _ShareFolderPageState extends State<ShareFolderPage>
             ),
           )
         : _files.isNotEmpty && query.isEmpty
-        ? Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            child: Center(
-              child: Text(
-                l10n.reachedEnd,
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ),
-          )
+        ? _footerText(l10n.reachedEnd)
         : const SizedBox.shrink();
     return PopScope(
       // 多选 / 搜索状态下先退出，再退出页面
