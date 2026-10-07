@@ -868,6 +868,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get share => 'Share';
 
   @override
+  String get openContainingFolder => 'Open containing folder';
+
+  @override
   String get more => 'More';
 
   @override
@@ -1026,6 +1029,17 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get notifPermissionDeniedHint =>
       'Notifications are disabled. Enable them in system settings.';
+
+  @override
+  String get managePermissions => 'Manage permissions';
+
+  @override
+  String get managePermissionsSubtitle =>
+      'Notifications, app installs, battery optimization';
+
+  @override
+  String get managePermissionsKeywords =>
+      'permission manage notifications install battery';
 
   @override
   String get notifProgressTitle => 'Transferring';

@@ -13,6 +13,7 @@ import '../core/api/lanzou_client.dart';
 import '../core/app_controller.dart';
 import '../core/transfer/transfer_manager.dart';
 import '../l10n/l10n.dart';
+import 'app_scroll.dart';
 import 'app_icons.dart';
 import 'scroll_tint.dart';
 
@@ -580,10 +581,12 @@ class TopBarOverlay extends StatelessWidget {
 ///       slivers: [
 ///         SliverPadding(
 ///           padding: const EdgeInsets.all(16),
-///           sliver: SliverList(
-///             delegate: SliverChildListDelegate([
+///           // 内容块数量有限时用 SliverColumn：滚动范围一次算准，
+///           // 滚动条滑块长度不会因为懒布局估算而抖动
+///           sliver: SliverColumn(
+///             children: [
 ///               // ListTile / SegmentedList / Md3ListItem ...
-///             ]),
+///             ],
 ///           ),
 ///         ),
 ///       ],
@@ -1149,6 +1152,7 @@ class Md3ListItem extends StatefulWidget {
     this.subtitle = '',
     this.onTap,
     this.onLongPress,
+    this.onSecondaryTap,
     this.trailing,
     this.selected = false,
     this.iconBoxColor,
@@ -1166,6 +1170,9 @@ class Md3ListItem extends StatefulWidget {
   final String subtitle;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
+
+  /// 次要点击（桌面端右键）：一般与尾部 ⋯ 菜单一致。
+  final VoidCallback? onSecondaryTap;
 
   /// 尾部操作（⋯、重试、打开等）。
   final Widget? trailing;
@@ -1278,6 +1285,8 @@ class _Md3ListItemState extends State<Md3ListItem>
       child: InkWell(
         onTap: widget.onTap,
         onLongPress: widget.onLongPress,
+        // 桌面端右键 = 点 ⋯ 菜单（同一套操作）
+        onSecondaryTap: widget.onSecondaryTap,
         child: ColoredBox(
           color: widget.selected ? scheme.primaryContainer : Colors.transparent,
           child: Padding(
@@ -1814,17 +1823,28 @@ class FastScrollbar extends StatelessWidget {
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
     final trackPadding = padding?.resolve(Directionality.of(context));
-    return MediaQuery(
-      data: trackPadding == null
-          ? media
-          : media.copyWith(padding: trackPadding),
-      child: Scrollbar(
-        controller: controller,
-        interactive: true,
-        thickness: 6,
-        radius: const Radius.circular(3),
-        // 内容恢复原 padding：MediaQuery 覆盖只给滚动条用
-        child: MediaQuery(data: media, child: child),
+    return ScrollConfiguration(
+      // 这一层自己画滑块，同时屏蔽框架在桌面端自动追加的系统滚动条：
+      // 否则同一次滚动会出现两条（而且自动那条不带顶栏留白，会被截断）。
+      behavior: const NoAutoScrollbarBehavior(),
+      child: MediaQuery(
+        data: trackPadding == null
+            ? media
+            : media.copyWith(padding: trackPadding),
+        child: ScrollbarTheme(
+          // 不画轨道：只剩一条圆角滑块，避免和窗口边框 / 卡片边缘混在一起像两条
+          data: const ScrollbarThemeData(
+            trackColor: WidgetStatePropertyAll(Colors.transparent),
+          ),
+          child: Scrollbar(
+            controller: controller,
+            interactive: true,
+            thickness: 6,
+            radius: const Radius.circular(3),
+            // 内容恢复原 padding：MediaQuery 覆盖只给滚动条用
+            child: MediaQuery(data: media, child: child),
+          ),
+        ),
       ),
     );
   }
@@ -2389,8 +2409,37 @@ class _SegmentedListState extends State<SegmentedList> {
   }
 }
 
+/// 把「固定的若干块内容」放进滚动视图，且**不做懒加载估算**。
+///
+/// `SliverList` + `SliverChildListDelegate` 的 maxScrollExtent 取的是已布局
+/// 子项的平均高度 × 子项数：设置页这种分组高度差异很大的页面，滑动过程中
+/// 平均值不断被修正，`maxScrollExtent` 随之变化，滚动条滑块长度就会一抖一抖。
+/// 内容块数量有限时（设置 / 关于 / 备份 / 首页 / 我的…）用整块布局，滚动范围
+/// 一次算准，滑块长度全程稳定；条目本身在页面 build 里就已经构造好了，
+/// 这里只是不再懒布局，开销可以忽略。
+class SliverColumn extends StatelessWidget {
+  const SliverColumn({super.key, required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return SliverToBoxAdapter(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: children,
+      ),
+    );
+  }
+}
+
 /// [SegmentedList] 的 sliver 版本：条目按需构建（懒加载），只构建 / 布局 /
 /// 绘制可见部分，适合可能很长的列表（分享浏览、收藏、传输）。
+///
+/// 注意：`SliverList` 的 maxScrollExtent 是按已布局子项的平均高度**估算**的，
+/// 子项高度差异大时滑动过程中会不断修正，滚动条滑块长度会跟着抖。
+/// 内容块数量有限（设置、关于这类页面）时改用 [SliverColumn]，滚动范围一次
+/// 算准，滑块长度保持稳定。
 ///
 /// 单列时视觉与 [SegmentedList] 完全一致：组外侧 [outerRadius]、
 /// 组内相邻处 [innerRadius]、条目间隔 [gap]、按下时 shape morphing；

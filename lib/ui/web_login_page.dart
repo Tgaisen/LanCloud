@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../core/api/lanzou_client.dart';
 import '../core/app_controller.dart';
+import '../core/platform_support.dart';
 import 'app_icons.dart';
 import 'common.dart';
 import '../l10n/l10n.dart';
@@ -125,10 +126,13 @@ class _WebLoginPageState extends State<WebLoginPage> {
                 domStorageEnabled: true,
                 thirdPartyCookiesEnabled: true,
                 useHybridComposition: true,
-                userAgent:
-                    'Mozilla/5.0 (Linux; Android 13; Pixel 7) '
-                    'AppleWebKit/537.36 (KHTML, like Gecko) '
-                    'Chrome/124.0.0.0 Mobile Safari/537.36',
+                // 移动端伪装成手机浏览器，拿到的是移动版登录页；
+                // 桌面端（WebView2）用默认 UA，避免被当成手机渲染。
+                userAgent: PlatformSupport.isMobile
+                    ? 'Mozilla/5.0 (Linux; Android 13; Pixel 7) '
+                          'AppleWebKit/537.36 (KHTML, like Gecko) '
+                          'Chrome/124.0.0.0 Mobile Safari/537.36'
+                    : null,
               ),
               onProgressChanged: (controller, progress) {
                 setState(() => _progress = progress / 100);

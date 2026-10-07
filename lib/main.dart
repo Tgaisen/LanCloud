@@ -12,6 +12,7 @@ import 'core/app_log.dart';
 import 'core/backup/backup_service.dart';
 import 'core/incoming_links.dart';
 import 'core/notifications.dart';
+import 'core/platform_support.dart';
 import 'core/share_inbox.dart';
 import 'core/transfer/transfer_manager.dart';
 
@@ -20,12 +21,17 @@ Future<void> main() async {
   // 导航栏沉浸：Android 15+（API 35）系统强制 edge-to-edge，14 及以下
   // 需要显式开启，否则系统导航栏/状态栏会不透明地占掉一条（内容被顶开）。
   // 非 edgeToEdge 模式在 API 36 上会被系统忽略，这里保持与系统一致。
-  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  // 桌面端没有系统栏，跳过。
+  if (PlatformSupport.isMobile) {
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  }
   // 运行日志：把异常与 debugPrint 写进本机文件，用户可在设置-隐私里导出
   await AppLog.instance.init();
   final defaultOnError = FlutterError.onError;
   FlutterError.onError = (details) {
-    AppLog.instance.error('flutter', details.exception, details.stack);
+    // 记 details 而不是 exception：布局溢出这类报错没有堆栈，
+    // 只有 details 里才带「出问题的组件」和上下文，否则日志定位不到界面。
+    AppLog.instance.error('flutter', details.toString(), details.stack);
     defaultOnError?.call(details);
   };
   PlatformDispatcher.instance.onError = (error, stack) {
@@ -39,26 +45,30 @@ Future<void> main() async {
     }
     defaultDebugPrint(message, wrapWidth: wrapWidth);
   };
-  FlutterForegroundTask.initCommunicationPort();
-  FlutterForegroundTask.init(
-    androidNotificationOptions: AndroidNotificationOptions(
-      channelId: 'foreground_service',
-      channelName: '蓝云',
-      channelDescription: '传输进行中时保持后台运行',
-      channelImportance: NotificationChannelImportance.LOW,
-      priority: NotificationPriority.LOW,
-      onlyAlertOnce: true,
-      playSound: false,
-      showBadge: false,
-      showWhen: false,
-    ),
-    iosNotificationOptions: const IOSNotificationOptions(),
-    foregroundTaskOptions: ForegroundTaskOptions(
-      eventAction: ForegroundTaskEventAction.nothing(),
-      allowWakeLock: true,
-      allowWifiLock: true,
-    ),
-  );
+  // 前台服务只有 Android / iOS 需要（也是只有它们才有的插件）。
+  // 桌面端窗口关掉 = 进程结束，不存在后台保活问题。
+  if (PlatformSupport.isMobile) {
+    FlutterForegroundTask.initCommunicationPort();
+    FlutterForegroundTask.init(
+      androidNotificationOptions: AndroidNotificationOptions(
+        channelId: 'foreground_service',
+        channelName: '蓝云',
+        channelDescription: '传输进行中时保持后台运行',
+        channelImportance: NotificationChannelImportance.LOW,
+        priority: NotificationPriority.LOW,
+        onlyAlertOnce: true,
+        playSound: false,
+        showBadge: false,
+        showWhen: false,
+      ),
+      iosNotificationOptions: const IOSNotificationOptions(),
+      foregroundTaskOptions: ForegroundTaskOptions(
+        eventAction: ForegroundTaskEventAction.nothing(),
+        allowWakeLock: true,
+        allowWifiLock: true,
+      ),
+    );
+  }
   final app = AppController();
   await app.init();
   final language = app.settings.language;

@@ -8,6 +8,7 @@ import 'package:image/image.dart' as img;
 import 'package:zxing2/qrcode.dart';
 
 import '../core/file_picker_channel.dart';
+import '../core/platform_support.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
@@ -62,6 +63,8 @@ img.Image _limitDecodeSize(img.Image image, {int maxSide = 2000}) {
 
 /// 「识别二维码」来源选择弹窗：拍照获取 / 从相册选取。
 /// 样式与「选择登录方式」弹窗保持一致。
+///
+/// 桌面端（Windows）没有相机入口，只保留「选图片」一项。
 Future<QrImageSource?> showQrSourceSheet(BuildContext context) {
   final l10n = context.l10n;
   return showAppSheet<QrImageSource>(
@@ -81,13 +84,14 @@ Future<QrImageSource?> showQrSourceSheet(BuildContext context) {
           ),
           SegmentedList(
             children: [
-              ListTile(
-                leading: const Icon(Icons.photo_camera_outlined),
-                title: Text(l10n.scanTakePhoto),
-                subtitle: Text(l10n.scanTakePhotoSubtitle),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.of(context).pop(QrImageSource.camera),
-              ),
+              if (PlatformSupport.hasCameraCapture)
+                ListTile(
+                  leading: const Icon(Icons.photo_camera_outlined),
+                  title: Text(l10n.scanTakePhoto),
+                  subtitle: Text(l10n.scanTakePhotoSubtitle),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).pop(QrImageSource.camera),
+                ),
               ListTile(
                 leading: const Icon(Icons.photo_library_outlined),
                 title: Text(l10n.scanFromGallery),

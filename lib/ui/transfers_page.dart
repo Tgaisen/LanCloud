@@ -1,10 +1,11 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart' hide Icons;
-import 'package:open_filex/open_filex.dart';
 import 'package:provider/provider.dart';
 
 import '../core/app_controller.dart';
+import '../core/platform_support.dart';
+import '../core/system_open.dart';
 import '../core/system_share.dart';
 import '../core/transfer/transfer_manager.dart';
 import '../l10n/l10n.dart';
@@ -304,7 +305,7 @@ class _TransfersPageState extends State<TransfersPage>
                           enter: _enter,
                           onToggle: _toggleSelected,
                           onLongPress: _enterSelection,
-                          openFile: widget.openFile ?? OpenFilex.open,
+                          openFile: widget.openFile ?? openFileWithSystem,
                         ),
                       ),
                       // 底栏盖在正文上方（extendBody）时，补足列表末尾留白
@@ -491,7 +492,7 @@ class _TransferListSliver extends StatelessWidget {
   final void Function(String id) onToggle;
   final void Function({String? taskId}) onLongPress;
 
-  /// 打开已下载的文件（外壳注入，默认 OpenFilex）。
+  /// 打开已下载的文件（外壳注入，默认交给系统默认程序）。
   final Future<void> Function(String path) openFile;
 
   /// 点击条目：多选中切换选中；否则只有「下载完成」的条目能打开文件，
@@ -718,12 +719,20 @@ class _TransferTile extends StatelessWidget {
                     onPressed: () => manager.retry(task.id),
                   ),
                 if (done) ...[
-                  // 点击条目即打开文件，这里只留分享（走系统分享面板）
+                  // 点击条目即打开文件；这个按钮移动端走系统分享面板，
+                  // 桌面端没有分享面板，改为「打开所在文件夹」
+                  //（SystemShare.shareFile 在桌面端就是资源管理器定位）
                   IconButton(
                     visualDensity: VisualDensity.compact,
                     iconSize: 20,
-                    tooltip: l10n.share,
-                    icon: const Icon(Icons.share_outlined),
+                    tooltip: PlatformSupport.isDesktop
+                        ? l10n.openContainingFolder
+                        : l10n.share,
+                    icon: Icon(
+                      PlatformSupport.isDesktop
+                          ? Icons.folder_open
+                          : Icons.share_outlined,
+                    ),
                     onPressed: () => SystemShare.shareFile(
                       task.savedPath!,
                       subject: task.name,

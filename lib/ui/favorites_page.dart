@@ -479,6 +479,8 @@ class _FavoritesPageState extends State<FavoritesPage>
       selected: selected,
       onTap: () => _open(item),
       onLongPress: () => _enterSelection(id: item.id),
+      // 桌面端右键：与 ⋯ 菜单同一套操作（多选时不响应，和 ⋯ 一起隐藏）
+      onSecondaryTap: _selecting ? null : () => _itemOptions(item),
       trailing: _selecting
           ? null
           : IconButton(

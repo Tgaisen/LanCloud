@@ -12,6 +12,7 @@ import '../core/api/models.dart';
 import '../core/app_controller.dart';
 import '../core/drive_cache.dart';
 import '../core/file_picker_channel.dart';
+import '../core/platform_support.dart';
 import '../core/transfer/transfer_manager.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
@@ -1023,14 +1024,17 @@ class _DrivePageState extends State<DrivePage>
               _upload();
             },
           ),
-          ListTile(
-            leading: const Icon(Icons.file_open),
-            title: Text(context.l10n.uploadFromApp),
-            onTap: () {
-              Navigator.of(context).pop();
-              _uploadFromApp();
-            },
-          ),
+          // 桌面端没有 ACTION_OPEN_DOCUMENT 那套「从其他应用/文档提供器选取」，
+          // 系统选择器与「上传文件」完全一样，这里不重复给入口。
+          if (PlatformSupport.isMobile)
+            ListTile(
+              leading: const Icon(Icons.file_open),
+              title: Text(context.l10n.uploadFromApp),
+              onTap: () {
+                Navigator.of(context).pop();
+                _uploadFromApp();
+              },
+            ),
         ],
       ),
     );
@@ -2936,6 +2940,8 @@ class _FolderTile extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         onLongPress: onLongPress,
+        // 桌面端右键 = 点 ⋯ 菜单（同一套操作）
+        onSecondaryTap: onMenu,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(10, 8, 4, 10),
           child: Column(
@@ -3015,6 +3021,8 @@ class _FileTile extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         onLongPress: onLongPress,
+        // 桌面端右键 = 点 ⋯ 菜单（同一套操作）
+        onSecondaryTap: onMenu,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(10, 8, 4, 10),
           child: Column(
@@ -3120,6 +3128,8 @@ class _DriveRow extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           onLongPress: onLongPress,
+          // 桌面端右键 = 点 ⋯ 菜单（同一套操作）
+          onSecondaryTap: onMenu,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(10, 8, 2, 8),
             child: Row(

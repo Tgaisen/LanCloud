@@ -7,6 +7,7 @@ import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import '../api/lanzou_client.dart';
 import '../app_controller.dart';
 import '../notifications.dart';
+import '../platform_support.dart';
 
 enum TransferKind { upload, download }
 
@@ -317,6 +318,8 @@ class TransferManager extends ChangeNotifier {
 
   /// 有进行中任务时启动前台服务保持后台传输；全部结束则停止服务。
   void _syncForegroundService() {
+    // 前台服务是 Android / iOS 的能力，桌面端不需要（也没有这个插件）。
+    if (!PlatformSupport.isMobile) return;
     final active = tasks.any(
       (t) =>
           t.status == TransferStatus.running ||

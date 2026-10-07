@@ -276,6 +276,7 @@
   "passwordSet": "Password set",
   "favorited": "Favorited",
   "share": "Share",
+  "openContainingFolder": "Open containing folder",
   "more": "More",
   "add": "Add",
   "searchCurrentFolder": "Search this folder",
@@ -326,6 +327,9 @@
   "notifPermissionGranted": "Granted",
   "notifPermissionDenied": "Not granted",
   "notifPermissionDeniedHint": "Notifications are disabled. Enable them in system settings.",
+  "managePermissions": "Manage permissions",
+  "managePermissionsSubtitle": "Notifications, app installs, battery optimization",
+  "managePermissionsKeywords": "permission manage notifications install battery",
   "notifProgressTitle": "Transferring",
   "notifProgressBody": "{count} tasks in progress",
   "@notifProgressBody": {

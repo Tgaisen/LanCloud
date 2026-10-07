@@ -38,15 +38,22 @@ Future<RestoreDecision?> showRestoreConfirmDialog(
     builder: (dialogContext) => StatefulBuilder(
       builder: (dialogContext, setDialogState) => AlertDialog(
         title: Text(l10n.restoreConfirmTitle),
+        // 内容不加左右内边距：复选行自己铺满弹窗宽度，
+        // 点按波纹/悬停高亮和「默认启动页」弹窗一样是整个宽度
+        contentPadding: const EdgeInsets.symmetric(vertical: 8),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('${l10n.restoreConfirmMessage}\n\n$label'),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 4),
+              child: Text('${l10n.restoreConfirmMessage}\n\n$label'),
+            ),
             if (hasFavorites) ...[
               const SizedBox(height: 8),
               CheckboxListTile(
-                contentPadding: EdgeInsets.zero,
+                // 文字与弹窗内其它内容左对齐，但墨水区域是整行
+                contentPadding: const EdgeInsets.symmetric(horizontal: 24),
                 controlAffinity: ListTileControlAffinity.leading,
                 value: keepFavorites,
                 onChanged: (value) =>
@@ -486,8 +493,9 @@ class _BackupPageState extends State<BackupPage> {
       slivers: [
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-          sliver: SliverList(
-            delegate: SliverChildListDelegate([
+          // 整块布局：避免懒布局估算导致滚动条滑块抖动（见 SliverColumn）
+          sliver: SliverColumn(
+            children: [
               _section(context, l10n.localBackup),
               SegmentedList(
                 children: [
@@ -591,7 +599,7 @@ class _BackupPageState extends State<BackupPage> {
                   ],
                 ),
               ),
-            ]),
+            ],
           ),
         ),
       ],

@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../l10n/l10n.dart';
+import 'platform_support.dart';
 
 /// 通知服务：传输进度与完成提醒。
 ///
@@ -31,6 +32,13 @@ class NotificationService {
 
   static const progressChannelId = 'transfers_progress';
 
+  /// Windows 通知在 HKCU\Software\Classes\AppUserModelId 下注册的标识，
+  /// 决定通知里显示的应用名。
+  static const _windowsAppUserModelId = 'com.lancloud.lancloud';
+
+  /// 通知点击回调的 CLSID（Windows 要求固定 GUID，随便生成一个后不再改）。
+  static const _windowsCallbackGuid = '6f2d1c8a-0b7e-4a53-9e21-7c4f0d9b2a11';
+
   /// 传输完成 / 失败通知渠道。v2：默认不响铃、不振动（渠道建好后
   /// 系统不允许改声音，所以换新 id 让老安装也生效；用户仍可在
   /// 系统设置里自行改回响铃）。
@@ -44,8 +52,15 @@ class NotificationService {
         i18n = await AppLocalizations.delegate.load(resolved);
       } catch (_) {}
       const android = AndroidInitializationSettings('@mipmap/ic_launcher');
+      // Windows 端必须显式给初始化参数，否则 initialize 直接抛 ArgumentError
+      final windows = WindowsInitializationSettings(
+        // 通知里显示的应用名跟随界面语言（与 Android 的 app_name 一致）
+        appName: i18n?.appName ?? 'LanCloud',
+        appUserModelId: _windowsAppUserModelId,
+        guid: _windowsCallbackGuid,
+      );
       await _plugin.initialize(
-        settings: const InitializationSettings(android: android),
+        settings: InitializationSettings(android: android, windows: windows),
         onDidReceiveNotificationResponse: (response) {
           if (response.payload == 'transfers') onOpenTransfers?.call();
         },
@@ -128,6 +143,9 @@ class NotificationService {
     bool indeterminate = false,
   }) {
     if (!_ready || count <= 0) return;
+    // Windows 的 toast 没有「常驻进度」概念，每次刷新都会变成一条新通知，
+    // 桌面端只保留「完成 / 失败」提醒，不做进度通知。
+    if (PlatformSupport.isDesktop) return;
     if (!indeterminate) {
       final now = DateTime.now();
       if (now.difference(_lastProgress) < const Duration(seconds: 1)) return;

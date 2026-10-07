@@ -15,13 +15,12 @@
 - **传输中心**：上传、下载任务管理，支持多选批量操作
 - **备份与恢复**：本地备份 + WebDAV 自动备份
 - **Android 系统集成**：可接收其他应用分享的链接 / 文件；适配 Android 12 启动屏与预测性返回手势
+- **Windows 桌面端**：可把文件从资源管理器拖进窗口上传；导出走系统「另存为」对话框
 
 ## 平台
 
-多平台适配目前为非优先处理事项。
-
 - [x] Android
-- [ ] Windows
+- [x] Windows
 - [ ] HarmonyOS NEXT
 - [ ] iOS / iPadOS / MacOS（无相关设备，暂无计划）
 - [ ] 其余平台暂无计划
@@ -34,6 +33,43 @@
 flutter pub get
 flutter build apk --release --split-per-abi
 ```
+
+### Windows
+
+前置条件（缺一不可）：
+
+| 组件 | 说明 |
+| --- | --- |
+| Visual Studio（生成工具即可） | 勾选「使用 C++ 的桌面开发」工作负载（含 Windows SDK 与 CMake），并额外勾选 **「C++ ATL for x64/x86 (最新 MSVC)」**：`flutter_secure_storage` / `flutter_local_notifications` 的 Windows 实现需要 ATL 头文件 |
+| 开发者模式 | 设置 → 系统 → 开发者选项 → 开发人员模式：Flutter 构建插件时需要创建符号链接 |
+| NuGet CLI | 在 PATH 中：`flutter_inappwebview` 的 Windows 构建用它拉 WebView2 SDK |
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/build_windows.ps1
+```
+
+脚本会先检查前置条件，再跑格式检查 / 静态分析 / 单元测试，然后构建
+`build\windows\x64\runner\Release`，把整包复制到 `outputs\`（默认再打一个 zip）。
+只要构建不跑检查加 `-SkipTests`，不打包 zip 加 `-SkipZip`。
+
+> 运行需要 WebView2 运行时（Windows 11 自带；Windows 10 需装 Evergreen Runtime）。
+
+#### Windows 与 Android 的差异
+
+- **后台传输**：桌面端窗口即进程，没有前台服务（Android 用前台服务 + 常驻通知保活）
+- **通知**：只保留「传输完成 / 失败」提醒，不做常驻进度通知（Windows toast 无此形态）
+- **分享**：桌面端没有系统分享面板，文本走剪贴板、文件用资源管理器定位
+- **保存 / 导出**：走系统「另存为」对话框，导出 Cookie 退化为复制到剪贴板
+- **拖拽**：支持从资源管理器拖文件进窗口上传；Windows 平台拿不到拖拽文本，链接请粘贴
+- **二维码**：只能选图片识别，没有拍照入口
+- **设置**：「通知权限 / 安装应用 / 电池优化 / 默认打开链接」只在 Android 显示
+- **窗口**：默认 850×576、最小 425×445（逻辑像素），再小网盘条目等列表行会溢出
+- **显示名称**：跟随系统语言，中文「蓝云」/ 英文「LanCloud」（窗口标题、任务栏、任务管理器一致）
+- **图标**：exe 图标为圆角方形（与微信 / QQ 同款观感）
+- **字体**：中文兜底固定为微软雅黑，避免系统兜底挑到日文字形
+- **滚动条**：统一用应用内的快速滑动条（桌面端同样显示，并让开浮层顶栏不被截断）
+- **鼠标**：右键网盘条目 / 列表项 = 点该条的 ⋯ 菜单
+- **设置**：动态取色只在 Android 显示（Windows 取不到完整色板）
 
 代码风格：`dart format lib test tool`。仓库已配置保存自动格式化（`.vscode/settings.json`），
 CI 会强制检查格式、静态分析与测试（`.github/workflows/ci.yml`）。
@@ -94,3 +130,4 @@ versionCode = YY * 10_000_000 + Drop * 100_000 + Hotfix * 10_000 + Stage * 1_000
 | Flutter | `3.47.5` |
 | JDK | `17` |
 | Android SDK | `platform 37、build-tools、NDK 28.2、CMake` |
+| Visual Studio | Build Tools 2026（Windows SDK 10.0.28000）+ 开发者模式 |

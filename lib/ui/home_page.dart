@@ -139,6 +139,8 @@ class _HomePageState extends State<HomePage>
         icon: const Icon(Icons.more_vert),
         onPressed: () => _showPinMenu(item, first: first),
       ),
+      // 桌面端右键：与 ⋯ 菜单同一套操作
+      onSecondaryTap: () => _showPinMenu(item, first: first),
       onTap: () => _openItem(context, 'folder', item.ref, item.name, ''),
     );
   }
@@ -499,8 +501,9 @@ class _HomePageState extends State<HomePage>
                       // 底部留白交给最后一个 SectionCard 自带的 16dp
                       //（它内部还带 4dp 分组外边距），与其他页面保持一致
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                      sliver: SliverList(
-                        delegate: SliverChildListDelegate([
+                      // 整块布局：避免懒布局估算导致滚动条滑块抖动（见 SliverColumn）
+                      sliver: SliverColumn(
+                        children: [
                           SectionCard(
                             title: l10n.quickAccess,
                             expanded: _quickExpanded,
@@ -591,6 +594,11 @@ class _HomePageState extends State<HomePage>
                                                         _recents[i],
                                                       ),
                                                 ),
+                                                // 桌面端右键：与 ⋯ 菜单同一套操作
+                                                onSecondaryTap: () =>
+                                                    _showRecentMenu(
+                                                      _recents[i],
+                                                    ),
                                                 onTap: () => _openItem(
                                                   context,
                                                   _recents[i].kind,
@@ -602,7 +610,7 @@ class _HomePageState extends State<HomePage>
                                           ],
                                         )),
                           ),
-                        ]),
+                        ],
                       ),
                     ),
                     // 底栏盖在正文上方（extendBody）时，补足列表末尾留白

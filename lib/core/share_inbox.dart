@@ -2,8 +2,12 @@ import 'dart:async';
 
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
+import 'platform_support.dart';
+
 /// 其他应用分享进来的内容收件箱：
 /// 冷启动读取初始分享，运行中通过流接收新分享，交给 RootShell 处理。
+///
+/// receive_sharing_intent 只有 Android / iOS 实现，桌面端整个收件箱保持空。
 class SharedInbox {
   SharedInbox._();
 
@@ -17,6 +21,7 @@ class SharedInbox {
   StreamSubscription<List<SharedMediaFile>>? _mediaSub;
 
   Future<void> init() async {
+    if (!PlatformSupport.isMobile) return;
     try {
       final media = await ReceiveSharingIntent.instance.getInitialMedia();
       for (final m in media) {
@@ -30,6 +35,7 @@ class SharedInbox {
   }
 
   void attach() {
+    if (!PlatformSupport.isMobile) return;
     _mediaSub ??= ReceiveSharingIntent.instance.getMediaStream().listen((
       files,
     ) {

@@ -1,7 +1,11 @@
 import 'package:path/path.dart' as p;
 import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart'
+    show databaseFactoryFfi, sqfliteFfiInit;
 
+import '../platform_support.dart';
 import 'account_data.dart';
 
 /// 快速访问里固定的一个网盘目录（按账号区分）。
@@ -86,7 +90,7 @@ class AppDb {
   Future<Database> get db async => _db ??= await _open();
 
   Future<Database> _open() async {
-    final path = p.join(await getDatabasesPath(), 'lancloud.db');
+    final path = p.join(await _databaseDirectory(), 'lancloud.db');
     return openDatabase(
       path,
       version: 6,
@@ -215,6 +219,26 @@ class AppDb {
         }
       },
     );
+  }
+
+  /// 数据库目录。
+  ///
+  /// Android / iOS 沿用 sqflite 的原生实现（系统提供的 databases 目录）；
+  /// 桌面端（Windows）没有 sqflite 原生插件，切到 sqflite_common_ffi
+  /// 并把库文件放在应用支持目录（`%APPDATA%\<包名>\lancloud`），
+  /// 而不是跟着 exe 走，避免安装在 Program Files 时没有写权限。
+  Future<String> _databaseDirectory() async {
+    if (!PlatformSupport.isDesktop) return getDatabasesPath();
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+    try {
+      final dir = await getApplicationSupportDirectory();
+      await dir.create(recursive: true);
+      return dir.path;
+    } catch (_) {
+      // 兜底：单元测试等没有 path_provider 实现的环境
+      return databaseFactory.getDatabasesPath();
+    }
   }
 
   // ---------------------------------------------------------------- transfers

@@ -41,8 +41,9 @@ class _AboutPageState extends State<AboutPage> {
       slivers: [
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-          sliver: SliverList(
-            delegate: SliverChildListDelegate([
+          // 整块布局：避免懒布局估算导致滚动条滑块抖动（见 SliverColumn）
+          sliver: SliverColumn(
+            children: [
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 child: Column(
@@ -138,7 +139,7 @@ class _AboutPageState extends State<AboutPage> {
                   ),
                 ],
               ),
-            ]),
+            ],
           ),
         ),
       ],

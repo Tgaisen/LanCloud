@@ -78,11 +78,22 @@ void main() {
     AppPermissions.instance = AppPermissions();
   });
 
-  testWidgets('权限分组显示安装应用/电池优化两项状态', (tester) async {
+  testWidgets('权限分组只有「管理权限」一个入口，弹窗里是三项系统权限', (tester) async {
     await pumpSettings(tester);
-    await scrollToSetting(tester, _zh.permissionInstall);
+    await scrollToSetting(tester, _zh.managePermissions);
 
     expect(find.text(_zh.categoryPermissions), findsOneWidget);
+    expect(find.text(_zh.managePermissions), findsOneWidget);
+    expect(find.text(_zh.managePermissionsSubtitle), findsOneWidget);
+    // 三项不再各自占一行
+    expect(find.text(_zh.permissionInstall), findsNothing);
+    expect(find.text(_zh.permissionBattery), findsNothing);
+    expect(find.text(_zh.notifPermission), findsNothing);
+
+    await tester.tap(find.text(_zh.managePermissions));
+    await tester.pumpAndSettle();
+
+    expect(find.text(_zh.notifPermission), findsOneWidget);
     expect(find.text(_zh.permissionInstall), findsOneWidget);
     expect(find.text(_zh.permissionBattery), findsOneWidget);
     expect(find.text(_zh.permissionInstallDenied), findsOneWidget);
@@ -131,15 +142,19 @@ void main() {
     expect(contentOpacity(), 1);
   });
 
-  testWidgets('安装应用与电池优化分别走各自通道', (tester) async {
+  testWidgets('管理权限弹窗里安装应用与电池优化分别走各自通道', (tester) async {
     await pumpSettings(tester);
-    await scrollToSetting(tester, _zh.permissionInstall);
+    await scrollToSetting(tester, _zh.managePermissions);
 
+    await tester.tap(find.text(_zh.managePermissions));
+    await tester.pumpAndSettle();
     await tester.tap(find.text(_zh.permissionInstall));
     await tester.pumpAndSettle();
     expect(_fake.installOpens, 1);
 
-    await scrollToSetting(tester, _zh.permissionBattery);
+    await scrollToSetting(tester, _zh.managePermissions);
+    await tester.tap(find.text(_zh.managePermissions));
+    await tester.pumpAndSettle();
     await tester.tap(find.text(_zh.permissionBattery));
     await tester.pumpAndSettle();
     expect(_fake.batteryRequests, 1);

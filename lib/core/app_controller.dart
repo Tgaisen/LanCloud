@@ -13,6 +13,7 @@ import 'data/app_db.dart';
 import 'data/settings_store.dart';
 import 'drive_cache.dart';
 import 'dynamic_color_support.dart';
+import 'platform_support.dart';
 
 /// 网盘页当前所在目录：id + 相对根目录的路径（不含"根目录"这几个字，
 /// 显示时按当前语言拼）。拖拽上传的确认条用它显示目标位置。
@@ -407,12 +408,22 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 默认下载目录路径：Android/data/<包名>/files/LanCloud
-  /// （取不到外部专属目录时退回应用私有文档目录）。
+  /// 默认下载目录路径。
+  ///
+  /// Android：Android/data/<包名>/files/LanCloud（取不到外部专属目录时
+  /// 退回应用私有文档目录）；桌面端：系统「下载」目录下的 LanCloud
+  /// （取不到时退回应用文档目录）。
   Future<String> defaultDownloadDirPath() async {
-    final base =
-        await getExternalStorageDirectory() ??
-        await getApplicationDocumentsDirectory();
+    final Directory base;
+    if (PlatformSupport.isMobile) {
+      base =
+          await getExternalStorageDirectory() ??
+          await getApplicationDocumentsDirectory();
+    } else {
+      base =
+          await getDownloadsDirectory() ??
+          await getApplicationDocumentsDirectory();
+    }
     return p.join(base.path, 'LanCloud');
   }
 

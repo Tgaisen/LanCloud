@@ -10,6 +10,8 @@ import 'package:flutter/foundation.dart'
     show clampDouble, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 
+import 'app_scroll.dart';
+
 // How much the scroll's drag gesture can overshoot the RefreshIndicator's
 // displacement; max displacement = _kDragSizeFactorLimit * displacement.
 const double _kDragSizeFactorLimit = 1.5;
@@ -703,7 +705,12 @@ mixin ClampingBoundaryMixin on ScrollPhysics {
   }
 }
 
-class _RefreshScrollBehavior extends ScrollBehavior {
+/// 只覆盖物理与越界指示：滚动条由外层 FastScrollbar 统一提供。
+///
+/// 必须继承 [NoAutoScrollbarBehavior]（而不是 Flutter 基类 ScrollBehavior）：
+/// 基类在 Windows 上会再追加一条 RawScrollbar，网盘页就会出现两条样式不同的
+/// 滚动条（刷新指示器正好包在列表外面）。
+class _RefreshScrollBehavior extends NoAutoScrollbarBehavior {
   const _RefreshScrollBehavior({required this.physics});
 
   final ScrollPhysics physics;

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart' hide Icons;
 
 import '../core/cookie_auth.dart';
 import '../core/data/account_store.dart';
+import '../core/platform_support.dart';
 import '../core/system_share.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
@@ -127,12 +128,20 @@ Future<void> showCookieDialog(BuildContext context, Account account) {
 }
 
 Future<void> _exportCookie(BuildContext context, Account account) async {
+  final l10n = context.l10n;
   final ok = await SystemShare.shareText(
     account.cookie,
-    subject: '${context.l10n.appName} · UID ${account.uid}',
+    subject: '${l10n.appName} · UID ${account.uid}',
   );
-  if (!ok && context.mounted) {
+  if (!context.mounted) return;
+  if (!ok) {
     ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(context.l10n.cookieExportFailed)));
+        .showSnackBar(SnackBar(content: Text(l10n.cookieExportFailed)));
+    return;
+  }
+  // 桌面端没有系统分享面板，导出退化成复制到剪贴板，补一句提示
+  if (PlatformSupport.isDesktop) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(l10n.copiedToClipboard)));
   }
 }

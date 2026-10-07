@@ -845,6 +845,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get share => '分享';
 
   @override
+  String get openContainingFolder => '打开所在文件夹';
+
+  @override
   String get more => '更多';
 
   @override
@@ -999,6 +1002,15 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get notifPermissionDeniedHint => '通知权限未开启，请到系统设置中允许通知';
+
+  @override
+  String get managePermissions => '管理权限';
+
+  @override
+  String get managePermissionsSubtitle => '通知、安装应用、忽略电池优化';
+
+  @override
+  String get managePermissionsKeywords => 'permission manage 权限 管理 通知 安装 电池';
 
   @override
   String get notifProgressTitle => '传输中';
@@ -1196,10 +1208,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get scanTakePhotoSubtitle => '用系统相机拍摄二维码图片';
 
   @override
-  String get scanFromGallery => '从相册选取';
+  String get scanFromGallery => '从系统选取';
 
   @override
-  String get scanFromGallerySubtitle => '从系统相册选择二维码图片';
+  String get scanFromGallerySubtitle => '从系统选择二维码图片';
 
   @override
   String get scanDecoding => '识别中…';
@@ -1443,7 +1455,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get restoreKeepFavorites => '保留原收藏夹内容';
 
   @override
-  String get restoreKeepFavoritesHint => '勾选：原收藏保留，备份里的收藏去重后追加；取消：用备份里的收藏覆盖';
+  String get restoreKeepFavoritesHint => '取消勾选将丢失原收藏夹数据';
 
   @override
   String get restoreDone => '已从备份恢复';

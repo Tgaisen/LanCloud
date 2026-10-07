@@ -11,10 +11,13 @@ import 'core/drag_drop.dart';
 import 'core/incoming_links.dart';
 import 'core/lanzou_link.dart';
 import 'core/notifications.dart';
+import 'core/platform_support.dart';
 import 'core/share_inbox.dart';
 import 'core/transfer/transfer_manager.dart';
+import 'core/window_frame.dart';
 import 'l10n/l10n.dart';
 import 'ui/drive_page.dart';
+import 'ui/desktop_drop_target.dart';
 import 'ui/drop_actions.dart';
 import 'ui/first_run_terms.dart';
 import 'ui/favorites_page.dart';
@@ -78,12 +81,15 @@ class LanCloudApp extends StatelessWidget {
           // Android 15+ 导航栏强制透明，能调的只有图标明暗与是否加系统遮罩。
           builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
             value: systemUiOverlayStyleFor(Theme.of(context).brightness),
-            child: Stack(
-              children: [
-                child ?? const SizedBox.shrink(),
-                // 拖拽悬停提示条挂在 Navigator 之上：二级页面也能看到
-                const DropHoverBanner(),
-              ],
+            // 桌面端在窗口这一层接住拖拽（Android 走原生通道，这里原样透传）
+            child: DesktopDropTarget(
+              child: Stack(
+                children: [
+                  child ?? const SizedBox.shrink(),
+                  // 拖拽悬停提示条挂在 Navigator 之上：二级页面也能看到
+                  const DropHoverBanner(),
+                ],
+              ),
             ),
           ),
           home: const AgreementGate(),
@@ -133,6 +139,12 @@ ThemeData buildLanCloudTheme({
   );
   final theme = ThemeData(
     colorScheme: scheme,
+    // Windows 默认字体（Segoe UI）没有汉字，Flutter 的兜底字体会挑到日文字形，
+    // 部分部首看着像繁体/日文。这里把中文兜底固定成微软雅黑（简体字形），
+    // 拉丁字母与数字仍用系统默认字体。
+    fontFamilyFallback: PlatformSupport.isWindows
+        ? const ['Microsoft YaHei UI', 'Microsoft YaHei']
+        : null,
     // 预测性返回：沿用 Flutter 的跟手转场，并在被露出的上一页上
     // 叠加一层随手势淡出的黑色遮罩（AOSP 设置同款）。
     pageTransitionsTheme: kLanCloudPageTransitionsTheme,
@@ -328,6 +340,7 @@ class _RootShellState extends State<RootShell>
   void didChangeDependencies() {
     super.didChangeDependencies();
     _app = context.read<AppController>();
+    _syncWindowFrame();
     // 旋转后视口尺寸变化，PageView 的像素偏移会对应到错误的页，
     // 这里在布局结束后校正回当前标签，避免“底栏指向原视图但内容回到首页”。
     final size = MediaQuery.sizeOf(context);
@@ -637,6 +650,14 @@ class _RootShellState extends State<RootShell>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) _checkClipboard();
   }
+
+  /// 系统主题切换时同步窗口边框（应用内主题切换走 didChangeDependencies）。
+  @override
+  void didChangePlatformBrightness() => _syncWindowFrame();
+
+  /// 让 Windows 的窗口边框 / 标题栏跟随应用主题，而不是系统主题。
+  void _syncWindowFrame() =>
+      WindowFrame.setDark(Theme.of(context).brightness == Brightness.dark);
 
   Future<void> _handleSharedFiles(List<String> files) async {
     final app = context.read<AppController>();

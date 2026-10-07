@@ -1,6 +1,7 @@
 # Generates LanCloud app icons: Android adaptive icons (foreground/monochrome
-# layers plus night background color) and the iOS AppIcon set.
+# layers plus night background color), the iOS AppIcon set and the Windows .ico.
 # Usage: powershell -NoProfile -ExecutionPolicy Bypass -File tools\gen_app_icons.ps1
+#        powershell -NoProfile -ExecutionPolicy Bypass -File tools\gen_app_icons.ps1 -WindowsOnly
 #
 # Icon spec:
 #   - Foreground layer icon_foreground.png 432x432 (transparent)
@@ -11,7 +12,13 @@ param(
     [string]$ForegroundPath = 'C:\Users\Potato\Desktop\LanCloudDev\icon_foreground.png',
     [string]$MonochromePath = 'C:\Users\Potato\Desktop\LanCloudDev\icon_monochrome.png',
     [string]$LightBackground = '#0AC4E0',
-    [string]$ProjectRoot = (Join-Path $PSScriptRoot '..')
+    [string]$ProjectRoot = (Join-Path $PSScriptRoot '..'),
+    # Regenerate the Windows .ico only (leave Android / iOS assets untouched)
+    [switch]$WindowsOnly,
+    # Source artwork for the Windows .ico. Defaults to the 432x432 foreground
+    # layer already checked in under android/, so the exe icon matches the
+    # shipped app icon even when the external source above has moved on.
+    [string]$WindowsSourcePath = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -83,6 +90,83 @@ function New-Composite([System.Drawing.Image]$Src, [int]$Size, [System.Drawing.C
     return $bmp
 }
 
+function New-RoundedComposite([System.Drawing.Image]$Src, [int]$Size, [System.Drawing.Color]$Bg, [double]$ContentFraction, [hashtable]$Box, [double]$RadiusFraction) {
+    # Windows 11 icons are usually rounded squares (WeChat / QQ style): draw the
+    # tile as usual, then clip it to a rounded rectangle so the corners stay
+    # transparent instead of showing a hard square edge.
+    $bmp = New-Object System.Drawing.Bitmap($Size, $Size, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+    $g = New-Graphics $bmp
+    $g.Clear([System.Drawing.Color]::Transparent)
+    $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+    $radius = [Math]::Max(1.0, $Size * $RadiusFraction)
+    $d = $radius * 2
+    $path = New-Object System.Drawing.Drawing2D.GraphicsPath
+    $path.AddArc(0, 0, $d, $d, 180, 90)
+    $path.AddArc($Size - $d, 0, $d, $d, 270, 90)
+    $path.AddArc($Size - $d, $Size - $d, $d, $d, 0, 90)
+    $path.AddArc(0, $Size - $d, $d, $d, 90, 90)
+    $path.CloseFigure()
+    $g.SetClip($path)
+
+    $brush = New-Object System.Drawing.SolidBrush($Bg)
+    $g.FillRectangle($brush, 0, 0, $Size, $Size)
+    $scale = ($Size * $ContentFraction) / $Box.Width
+    $w = [int][Math]::Round($Src.Width * $scale)
+    $h = [int][Math]::Round($Src.Height * $scale)
+    $x = [int][Math]::Round(($Size - $w) / 2.0)
+    $y = [int][Math]::Round(($Size - $h) / 2.0)
+    $g.DrawImage($Src, $x, $y, $w, $h)
+
+    $brush.Dispose()
+    $path.Dispose()
+    $g.Dispose()
+    return $bmp
+}
+
+function Save-Ico([string]$Path, [System.Drawing.Image]$Src, [System.Drawing.Color]$Bg, [double]$ContentFraction, [hashtable]$Box, [int[]]$Sizes, [double]$RadiusFraction = 0) {
+    # ICO directory followed by one PNG frame per size (PNG frames need Vista+).
+    $frames = @()
+    foreach ($size in $Sizes) {
+        if ($RadiusFraction -gt 0) {
+            $b = New-RoundedComposite $Src $size $Bg $ContentFraction $Box $RadiusFraction
+        } else {
+            $b = New-Composite $Src $size $Bg $ContentFraction $Box
+        }
+        $ms = New-Object System.IO.MemoryStream
+        $b.Save($ms, [System.Drawing.Imaging.ImageFormat]::Png)
+        $frames += , @($size, $ms.ToArray())
+        $ms.Dispose()
+        $b.Dispose()
+    }
+    $dir = Split-Path -Parent $Path
+    if (!(Test-Path $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
+    $fs = [System.IO.File]::Create($Path)
+    $bw = New-Object System.IO.BinaryWriter($fs)
+    try {
+        $bw.Write([UInt16]0)          # reserved
+        $bw.Write([UInt16]1)          # type: 1 = icon
+        $bw.Write([UInt16]$frames.Count)
+        $offset = 6 + 16 * $frames.Count
+        foreach ($f in $frames) {
+            # width/height of 0 means 256px
+            $dim = if ($f[0] -ge 256) { 0 } else { $f[0] }
+            $bw.Write([Byte]$dim)
+            $bw.Write([Byte]$dim)
+            $bw.Write([Byte]0)        # color count
+            $bw.Write([Byte]0)        # reserved
+            $bw.Write([UInt16]1)      # color planes
+            $bw.Write([UInt16]32)     # bits per pixel
+            $bw.Write([UInt32]$f[1].Length)
+            $bw.Write([UInt32]$offset)
+            $offset += $f[1].Length
+        }
+        foreach ($f in $frames) { $bw.Write($f[1]) }
+    } finally {
+        $bw.Dispose()
+        $fs.Dispose()
+    }
+}
+
 $fg = [System.Drawing.Bitmap]::FromFile($ForegroundPath)
 $mono = [System.Drawing.Bitmap]::FromFile($MonochromePath)
 if ($fg.Width -ne 432 -or $fg.Height -ne 432) { throw "Foreground must be 432x432, got $($fg.Width)x$($fg.Height)" }
@@ -102,6 +186,7 @@ $densities = @(
     @{ Name = 'xxxhdpi'; Scale = 4.0 }
 )
 
+if (!$WindowsOnly) {
 # 1) Android: adaptive foreground/monochrome (108dp base) and legacy fallback (content 66%)
 foreach ($d in $densities) {
     $dir = Join-Path $resDir ("mipmap-" + $d.Name)
@@ -137,6 +222,24 @@ foreach ($entry in $contents.images) {
     $b.Dispose()
     Write-Host ("iOS {0,-28} {1}x{1}" -f $entry.filename, $size)
 }
+}
+
+# 3) Windows: exe / taskbar / notification icon (same framing as iOS: light background, 72% content)
+if (!$WindowsSourcePath) {
+    $WindowsSourcePath = Join-Path $ProjectRoot 'android\app\src\main\res\mipmap-xxxhdpi\ic_launcher_foreground.png'
+}
+if (!(Test-Path $WindowsSourcePath)) {
+    Write-Host "Windows source not found, falling back to the foreground path" -ForegroundColor DarkYellow
+    $WindowsSourcePath = $ForegroundPath
+}
+$winSource = [System.Drawing.Bitmap]::FromFile($WindowsSourcePath)
+$winBox = Get-ContentBox $winSource
+$icoPath = Join-Path $ProjectRoot 'windows\runner\resources\app_icon.ico'
+$icoSizes = @(16, 20, 24, 32, 40, 48, 64, 128, 256)
+# 22% 圆角：与微信 / QQ 图标观感一致，16px 下也还看得出圆角
+Save-Ico $icoPath $winSource $lightBg 0.72 $winBox $icoSizes -RadiusFraction 0.22
+$winSource.Dispose()
+Write-Host ("Windows  {0,-28} {1} sizes, up to {2}px" -f 'app_icon.ico', $icoSizes.Count, 256)
 
 $fg.Dispose(); $mono.Dispose()
 Write-Host 'Icon generation finished.'

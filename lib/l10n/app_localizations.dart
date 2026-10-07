@@ -1634,6 +1634,12 @@ abstract class AppLocalizations {
   /// **'分享'**
   String get share;
 
+  /// No description provided for @openContainingFolder.
+  ///
+  /// In zh, this message translates to:
+  /// **'打开所在文件夹'**
+  String get openContainingFolder;
+
   /// No description provided for @more.
   ///
   /// In zh, this message translates to:
@@ -1933,6 +1939,24 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'通知权限未开启，请到系统设置中允许通知'**
   String get notifPermissionDeniedHint;
+
+  /// No description provided for @managePermissions.
+  ///
+  /// In zh, this message translates to:
+  /// **'管理权限'**
+  String get managePermissions;
+
+  /// No description provided for @managePermissionsSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'通知、安装应用、忽略电池优化'**
+  String get managePermissionsSubtitle;
+
+  /// No description provided for @managePermissionsKeywords.
+  ///
+  /// In zh, this message translates to:
+  /// **'permission manage 权限 管理 通知 安装 电池'**
+  String get managePermissionsKeywords;
 
   /// No description provided for @notifProgressTitle.
   ///
@@ -2297,13 +2321,13 @@ abstract class AppLocalizations {
   /// No description provided for @scanFromGallery.
   ///
   /// In zh, this message translates to:
-  /// **'从相册选取'**
+  /// **'从系统选取'**
   String get scanFromGallery;
 
   /// No description provided for @scanFromGallerySubtitle.
   ///
   /// In zh, this message translates to:
-  /// **'从系统相册选择二维码图片'**
+  /// **'从系统选择二维码图片'**
   String get scanFromGallerySubtitle;
 
   /// No description provided for @scanDecoding.
@@ -2771,7 +2795,7 @@ abstract class AppLocalizations {
   /// No description provided for @restoreKeepFavoritesHint.
   ///
   /// In zh, this message translates to:
-  /// **'勾选：原收藏保留，备份里的收藏去重后追加；取消：用备份里的收藏覆盖'**
+  /// **'取消勾选将丢失原收藏夹数据'**
   String get restoreKeepFavoritesHint;
 
   /// No description provided for @restoreDone.

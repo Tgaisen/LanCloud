@@ -8,6 +8,7 @@ import '../core/app_log.dart';
 import '../core/app_permissions.dart';
 import '../core/dynamic_color_support.dart';
 import '../core/notifications.dart';
+import '../core/platform_support.dart';
 import '../core/system_file_saver.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
@@ -489,54 +490,24 @@ class _SettingsPageState extends State<SettingsPage>
           onChanged: (value) => app.setClipboardLinkPrompt(value),
         ),
       ),
-      // 通知权限属于权限类，放在「权限」组第一位
+      // 三项系统权限（通知 / 安装应用 / 忽略电池优化）收进一个弹窗，
+      // 设置页只留一个「管理权限」入口
       _Entry(
-        id: 'notify_permission',
-        title: l10n.notifPermission,
-        subtitle: _notifGranted == null
-            ? l10n.notifPermissionChecking
-            : (_notifGranted!
-                  ? l10n.notifPermissionGranted
-                  : l10n.notifPermissionDenied),
-        keywords: l10n.notifPermissionKeywords.split(' '),
+        id: 'manage_permissions',
+        title: l10n.managePermissions,
+        subtitle: l10n.managePermissionsSubtitle,
+        keywords: [
+          ...l10n.managePermissionsKeywords.split(' '),
+          ...l10n.permissionInstallKeywords.split(' '),
+          ...l10n.permissionBatteryKeywords.split(' '),
+          ...l10n.notifPermissionKeywords.split(' '),
+        ],
         category: 'permissions',
         build: (context, app) => ListTile(
-          leading: const Icon(Icons.notifications_outlined),
-          title: Text(context.l10n.notifPermission),
-          subtitle: Text(
-            _notifGranted == null
-                ? context.l10n.notifPermissionChecking
-                : (_notifGranted!
-                      ? context.l10n.notifPermissionGranted
-                      : context.l10n.notifPermissionDenied),
-          ),
-          onTap: _requestNotifPermission,
-        ),
-      ),
-      _Entry(
-        id: 'install_permission',
-        title: l10n.permissionInstall,
-        subtitle: _installStatusText(),
-        keywords: l10n.permissionInstallKeywords.split(' '),
-        category: 'permissions',
-        build: (context, app) => ListTile(
-          leading: const Icon(Icons.install_mobile),
-          title: Text(context.l10n.permissionInstall),
-          subtitle: Text(_installStatusText()),
-          onTap: _openInstallSettings,
-        ),
-      ),
-      _Entry(
-        id: 'battery_permission',
-        title: l10n.permissionBattery,
-        subtitle: _batteryStatusText(),
-        keywords: l10n.permissionBatteryKeywords.split(' '),
-        category: 'permissions',
-        build: (context, app) => ListTile(
-          leading: const Icon(Icons.battery_0_bar),
-          title: Text(context.l10n.permissionBattery),
-          subtitle: Text(_batteryStatusText()),
-          onTap: _requestBatteryOptimization,
+          leading: const Icon(Icons.security),
+          title: Text(context.l10n.managePermissions),
+          subtitle: Text(context.l10n.managePermissionsSubtitle),
+          onTap: () => _showManagePermissions(context),
         ),
       ),
       _Entry(
@@ -745,8 +716,21 @@ class _SettingsPageState extends State<SettingsPage>
           onTap: () => _exportLogs(context),
         ),
       ),
-    ];
+    ]..removeWhere(
+      // 权限 / 安装 / 默认链接是 Android 原生通道的能力，动态取色只有
+      // Android 12+ 有，这些在桌面端都直接不显示。
+      (entry) =>
+          !PlatformSupport.isMobile && _androidOnlyEntries.contains(entry.id),
+    );
   }
+
+  /// 只有 Android 才有对应实现的设置项。
+  static const _androidOnlyEntries = {
+    'dynamic_color',
+    'manage_permissions',
+    'default_links',
+    'app_settings',
+  };
 
   String _seedName(BuildContext context, int seed) => switch (seed) {
     0xFF2E6BE6 => context.l10n.classicBlue,
@@ -807,12 +791,14 @@ class _SettingsPageState extends State<SettingsPage>
       slivers: [
         SliverPadding(
           padding: const EdgeInsets.all(16),
-          sliver: SliverList(
-            delegate: SliverChildListDelegate(
-              _searching
-                  ? _buildSearchResults(context, app, matching)
-                  : _buildCategories(context, app, entries),
-            ),
+          // 整块布局：分组高度差异大，懒布局会让 maxScrollExtent 一直修正、
+          // 滚动条滑块长度抖动（见 SliverColumn 注释）
+          // 整块布局：分组高度差异大，懒布局会让 maxScrollExtent 一直修正、
+          // 滚动条滑块长度抖动（见 SliverColumn 注释）
+          sliver: SliverColumn(
+            children: _searching
+                ? _buildSearchResults(context, app, matching)
+                : _buildCategories(context, app, entries),
           ),
         ),
       ],
@@ -996,6 +982,70 @@ class _SettingsPageState extends State<SettingsPage>
           granted
               ? l10n.notifPermissionGranted
               : l10n.notifPermissionDeniedHint,
+        ),
+      ),
+    );
+  }
+
+  /// 「管理权限」弹窗：通知 / 安装应用 / 忽略电池优化三项系统权限。
+  /// 样式与「识别二维码」弹窗一致（标题 + 分组列表），只有 Android 会用到。
+  Future<void> _showManagePermissions(BuildContext context) {
+    final l10n = context.l10n;
+    final notifStatus = _notifGranted == null
+        ? l10n.notifPermissionChecking
+        : (_notifGranted!
+              ? l10n.notifPermissionGranted
+              : l10n.notifPermissionDenied);
+    return showAppSheet<void>(
+      context,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Text(
+                l10n.managePermissions,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+            ),
+            SegmentedList(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.notifications_outlined),
+                  title: Text(l10n.notifPermission),
+                  subtitle: Text(notifStatus),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _requestNotifPermission();
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.install_mobile),
+                  title: Text(l10n.permissionInstall),
+                  subtitle: Text(_installStatusText()),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _openInstallSettings();
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.battery_0_bar),
+                  title: Text(l10n.permissionBattery),
+                  subtitle: Text(_batteryStatusText()),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _requestBatteryOptimization();
+                  },
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -1412,8 +1462,8 @@ class _AdvancedPage extends StatelessWidget {
       slivers: [
         SliverPadding(
           padding: const EdgeInsets.all(16),
-          sliver: SliverList(
-            delegate: SliverChildListDelegate([
+          sliver: SliverColumn(
+            children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
                 child: Text(
@@ -1457,7 +1507,7 @@ class _AdvancedPage extends StatelessWidget {
                   ),
                 ],
               ),
-            ]),
+            ],
           ),
         ),
       ],

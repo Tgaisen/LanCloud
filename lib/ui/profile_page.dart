@@ -103,8 +103,9 @@ class _ProfilePageState extends State<ProfilePage>
                       // 顶部留白与左右一致
                       // 底部留白与首页 / 网盘 / 收藏 / 传输保持一致
                       padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
-                      sliver: SliverList(
-                        delegate: SliverChildListDelegate([
+                      // 整块布局：避免懒布局估算导致滚动条滑块抖动（见 SliverColumn）
+                      sliver: SliverColumn(
+                        children: [
                           SegmentedList(
                             children: [
                               ListTile(
@@ -191,7 +192,7 @@ class _ProfilePageState extends State<ProfilePage>
                               ),
                             ],
                           ),
-                        ]),
+                        ],
                       ),
                     ),
                     // 底栏盖在正文上方（extendBody）时，补足列表末尾留白
