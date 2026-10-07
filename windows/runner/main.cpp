@@ -13,6 +13,31 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
     CreateAndAttachConsole();
   }
 
+  // Single instance: only one window may run at a time.
+  //
+  // Two instances would read and write the same local data (SQLite database,
+  // settings, cache folder), so a named mutex blocks the second launch: when a
+  // window already exists, bring it to the foreground (restoring it first if
+  // minimized) and exit without creating another window.
+  //
+  // The mutex has no "Global\" prefix, so its scope is the current logon
+  // session: each user/session may run its own instance (separate %APPDATA%).
+  HANDLE single_instance_mutex =
+      ::CreateMutexW(nullptr, FALSE, L"LanCloud_SingleInstance_Mutex");
+  if (single_instance_mutex != nullptr &&
+      ::GetLastError() == ERROR_ALREADY_EXISTS) {
+    // Keep in sync with kWindowClassName in win32_window.cpp
+    if (HWND existing =
+            ::FindWindowW(L"FLUTTER_RUNNER_WIN32_WINDOW", nullptr)) {
+      if (::IsIconic(existing)) {
+        ::ShowWindow(existing, SW_RESTORE);
+      }
+      ::SetForegroundWindow(existing);
+    }
+    ::CloseHandle(single_instance_mutex);
+    return EXIT_SUCCESS;
+  }
+
   // Initialize COM, so that it is available for use in the library and/or
   // plugins.
   ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
