@@ -185,7 +185,8 @@ if (-not $SkipTests) {
 Info 'flutter build apk --release --split-per-abi'
 # 构建信息注入「关于 - 构建信息」弹窗：构建时间 + 提交号
 $buildTime = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
-$commitHash = (Invoke-Tool 'git' @('-C', $root, 'rev-parse', 'HEAD') | Select-Object -First 1).Trim()
+$commitRaw = Invoke-Tool 'git' @('-C', $root, 'rev-parse', 'HEAD')
+$commitHash = if ($commitRaw) { ($commitRaw | Select-Object -First 1).Trim() } else { '' }
 Info "构建信息：$buildTime · $commitHash"
 Invoke-Tool $flutter @(
   'build', 'apk', '--release', '--split-per-abi',
