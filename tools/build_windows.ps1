@@ -129,7 +129,17 @@ if (Test-Path -LiteralPath $pkgDir) {
   if (!$resolved.StartsWith($outDir, [StringComparison]::OrdinalIgnoreCase)) {
     Fail "拒绝删除 outputs 目录之外的路径：$resolved"
   }
-  Remove-Item -LiteralPath $resolved -Recurse -Force
+  # 正在运行的 LanCloud 会占着产物里的 DLL，清理会失败：先给一句人话提示
+  $running = Get-Process -Name 'lancloud' -ErrorAction SilentlyContinue
+  if ($running) {
+    $ids = ($running | ForEach-Object { $_.Id }) -join ', '
+    Fail "还有正在运行的 LanCloud（PID $ids），先关掉再重试：$resolved"
+  }
+  try {
+    Remove-Item -LiteralPath $resolved -Recurse -Force -ErrorAction Stop
+  } catch {
+    Fail "清理旧产物目录失败（可能仍被占用）：$resolved`n$_"
+  }
 }
 New-Item -ItemType Directory -Force -Path $pkgDir | Out-Null
 Copy-Item -Path (Join-Path $bundleDir '*') -Destination $pkgDir -Recurse -Force
