@@ -1524,10 +1524,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Resolved shares are added to favorites directly';
 
   @override
-  String get dropOpenLinks => 'Open one by one';
+  String get dropOpenLinks => 'Open';
 
   @override
-  String get dropOpenLinksHint => 'The “Open link” dialog opens for each link';
+  String get dropOpenLinksHint => 'Open these links one by one?';
+
+  @override
+  String get dropBatchFavorite => 'Favorite all';
 
   @override
   String get dropMixedTitle =>

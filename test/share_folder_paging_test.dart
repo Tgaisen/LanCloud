@@ -4,6 +4,7 @@ import 'package:lancloud/core/api/lanzou_client.dart';
 import 'package:lancloud/core/api/models.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
+import 'package:lancloud/l10n/app_localizations_zh.dart';
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/share_folder_page.dart';
 import 'package:provider/provider.dart';
@@ -136,5 +137,19 @@ void main() {
     // 400 条里只构建屏幕附近的少量条目，而不是全部常驻
     expect(find.byType(Md3ListItem).evaluate().length, lessThan(40));
     expect(client.calls, isEmpty);
+  });
+
+  testWidgets('分享文件夹：第一页不满一屏时自动补页，不留常驻的加载转圈', (tester) async {
+    final client = _FakeClient();
+    final app = _FakeApp(client);
+    addTearDown(app.dispose);
+    // 只有 3 个文件：内容明显不足一屏（修复前 maxScrollExtent > 0 时不会补页，
+    // 底部“加载下一页”的转圈会一直停着，直到用户滑动）
+    await pumpPage(tester, app: app, folder: _folder(firstPageFiles: 3));
+
+    expect(client.calls, contains(2));
+    expect(find.text('second-page.txt'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.text(AppLocalizationsZh().reachedEnd), findsOneWidget);
   });
 }

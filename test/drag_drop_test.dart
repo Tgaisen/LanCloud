@@ -172,8 +172,9 @@ void main() {
 
     await tester.tap(find.text('drop'));
     await tester.pumpAndSettle();
-    expect(find.text('2 个链接'), findsOneWidget);
-    expect(find.text('添加收藏'), findsOneWidget);
+    final l10n = AppLocalizationsZh();
+    expect(find.text(l10n.dropLinksCount(2)), findsOneWidget);
+    expect(find.text(l10n.dropAddFavorites), findsOneWidget);
 
     await tester.tap(find.text('取消'));
     await tester.pumpAndSettle();
@@ -261,6 +262,56 @@ void main() {
     expect(find.text(l10n.notLoggedIn), findsOneWidget);
     expect(find.text(l10n.dropLinksCount(1)), findsOneWidget);
     expect(find.text(l10n.dropAddFavorites), findsOneWidget);
+    app.dispose();
+  });
+
+  testWidgets('其它页面拖入多条链接：可在弹窗里选择批量收藏或逐个打开', (tester) async {
+    final app = AppController();
+    final l10n = AppLocalizationsZh();
+    DropOutcome? outcome;
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AppController>.value(
+        value: app,
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: Center(
+                child: TextButton(
+                  onPressed: () async {
+                    outcome = await handleExternalDrop(
+                      context,
+                      const DropPayload(
+                        texts: [
+                          'https://wwa.lanzoua.com/iabc123\n'
+                              'https://wwa.lanzoua.com/iabc456',
+                        ],
+                      ),
+                      onDrivePage: false,
+                      onFavoritesPage: false,
+                    );
+                  },
+                  child: const Text('drop'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('drop'));
+    await tester.pumpAndSettle();
+    expect(find.text(l10n.dropLinksCount(2)), findsOneWidget);
+    expect(find.text(l10n.dropOpenLinksHint), findsOneWidget);
+    expect(find.text(l10n.dropOpenLinks), findsOneWidget);
+    expect(find.text(l10n.dropBatchFavorite), findsOneWidget);
+
+    await tester.tap(find.text(l10n.cancel));
+    await tester.pumpAndSettle();
+    expect(outcome?.canceled, isTrue);
     app.dispose();
   });
 }

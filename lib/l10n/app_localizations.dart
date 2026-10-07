@@ -2777,19 +2777,19 @@ abstract class AppLocalizations {
   /// No description provided for @dropFilesCount.
   ///
   /// In zh, this message translates to:
-  /// **'{count} 个文件'**
+  /// **'收到 {count} 个文件'**
   String dropFilesCount(int count);
 
   /// No description provided for @dropLinksCount.
   ///
   /// In zh, this message translates to:
-  /// **'{count} 个链接'**
+  /// **'收到 {count} 个链接'**
   String dropLinksCount(int count);
 
   /// No description provided for @dropUploadConfirm.
   ///
   /// In zh, this message translates to:
-  /// **'是否上传到当前目录：{path}？'**
+  /// **'是否上传到当前目录（{path}）？'**
   String dropUploadConfirm(String path);
 
   /// No description provided for @dropPickAnotherFolder.
@@ -2813,14 +2813,20 @@ abstract class AppLocalizations {
   /// No description provided for @dropOpenLinks.
   ///
   /// In zh, this message translates to:
-  /// **'依次打开'**
+  /// **'打开'**
   String get dropOpenLinks;
 
   /// No description provided for @dropOpenLinksHint.
   ///
   /// In zh, this message translates to:
-  /// **'将逐个打开「打开链接」弹窗'**
+  /// **'是否逐个打开这些链接？'**
   String get dropOpenLinksHint;
+
+  /// No description provided for @dropBatchFavorite.
+  ///
+  /// In zh, this message translates to:
+  /// **'批量收藏'**
+  String get dropBatchFavorite;
 
   /// No description provided for @dropMixedTitle.
   ///
@@ -2837,7 +2843,7 @@ abstract class AppLocalizations {
   /// No description provided for @dropHoverUpload.
   ///
   /// In zh, this message translates to:
-  /// **'松开即可上传到 {path}'**
+  /// **'松开后上传所选文件到该目录'**
   String dropHoverUpload(String path);
 
   /// No description provided for @dropHoverPickFolder.

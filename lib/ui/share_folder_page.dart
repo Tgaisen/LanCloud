@@ -115,7 +115,11 @@ class _ShareFolderPageState extends State<ShareFolderPage>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_hasMore || _loadingMore || _autoLoading) return;
       if (!_scroll.hasClients) return;
-      if (_scroll.position.maxScrollExtent <= 0) _loadMore();
+      // 用和滚动加载同一个预加载阈值：只判 maxScrollExtent <= 0 的话，
+      // 文件数刚好比一屏多一点时不会补页，底部的"加载下一页"转圈会一直停着
+      if (_scroll.position.maxScrollExtent <= _scroll.position.pixels + 320) {
+        _loadMore();
+      }
     });
   }
 

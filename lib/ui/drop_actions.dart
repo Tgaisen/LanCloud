@@ -7,6 +7,7 @@ import '../core/drag_drop.dart';
 import '../core/lanzou_link.dart';
 import '../core/transfer/transfer_manager.dart';
 import '../l10n/l10n.dart';
+import 'app_icons.dart';
 import 'common.dart';
 import 'drive_page.dart';
 import 'share_page.dart';
@@ -146,6 +147,91 @@ void showDropSummary(BuildContext context, DropOutcome outcome) {
       .showSnackBar(SnackBar(content: Text(parts.join('，'))));
 }
 
+/// 拖拽悬停提示条。
+///
+/// 挂在 App 顶层（Navigator 之上），所以包括设置、分享浏览这些二级页面
+/// 在内的所有页面都能看到；内容常驻在树里，靠滑入 / 淡出过渡。
+class DropHoverBanner extends StatelessWidget {
+  const DropHoverBanner({super.key});
+
+  String _hintText(AppController app, AppLocalizations l10n, DropHover hover) {
+    if (hover.isMixed) return l10n.dropHoverMixed;
+    if (hover.hasFiles) {
+      return app.driveVisible
+          ? l10n.dropHoverUpload(drivePathLabel(l10n, app.driveLocation.value))
+          : l10n.dropHoverPickFolder;
+    }
+    return app.favoritesVisible
+        ? l10n.dropHoverFavorite
+        : l10n.dropHoverOpenLink;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final app = context.watch<AppController>();
+    final l10n = context.l10n;
+    final scheme = Theme.of(context).colorScheme;
+    return ValueListenableBuilder<DropHover?>(
+      valueListenable: DragDropChannel.instance.hover,
+      builder: (context, hover, _) {
+        final visible = hover != null && !hover.isEmpty;
+        return Align(
+          alignment: Alignment.topCenter,
+          child: SafeArea(
+            bottom: false,
+            child: IgnorePointer(
+              ignoring: !visible,
+              child: AnimatedSlide(
+                offset: visible ? Offset.zero : const Offset(0, -1.4),
+                duration: const Duration(milliseconds: 240),
+                curve: Curves.easeOutCubic,
+                child: AnimatedOpacity(
+                  opacity: visible ? 1 : 0,
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOut,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                    child: Material(
+                      elevation: 3,
+                      borderRadius: BorderRadius.circular(16),
+                      color: scheme.inverseSurface,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.trackpad_input,
+                              size: 20,
+                              color: scheme.onInverseSurface,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                hover == null
+                                    ? ''
+                                    : _hintText(app, l10n, hover),
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(color: scheme.onInverseSurface),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 // ---------------------------------------------------------------- 文件
 
 /// 返回 null 表示用户取消（未登录 / 取消选目录）。
@@ -269,11 +355,17 @@ Future<DropOutcome?> _handleDroppedLinks(
     return _addFavoritesFromLinks(context, links);
   }
 
-  // 其它页面：走「打开链接」弹窗
-  if (!context.mounted) return null;
+  // 其它页面：多条链接先问「打开 / 批量收藏」；单条直接打开「打开链接」弹窗
   if (links.length > 1) {
-    final go = await _confirmOpenLinks(context, links.length);
-    if (go != true) return DropOutcome.userCanceled;
+    if (!context.mounted) return null;
+    final action = await _confirmLinkActions(context, links.length);
+    if (action == null || action == _LinkAction.cancel) {
+      return DropOutcome.userCanceled;
+    }
+    if (action == _LinkAction.favorite) {
+      if (!context.mounted) return null;
+      return _addFavoritesFromLinks(context, links);
+    }
   }
   for (final link in links) {
     if (!context.mounted) return const DropOutcome();
@@ -408,9 +500,12 @@ Future<bool?> _confirmAddFavorites(BuildContext context, int count) {
   );
 }
 
-Future<bool?> _confirmOpenLinks(BuildContext context, int count) {
+enum _LinkAction { open, favorite, cancel }
+
+/// 非收藏页拖入多条链接：逐个打开，或者直接批量收藏。
+Future<_LinkAction?> _confirmLinkActions(BuildContext context, int count) {
   final l10n = context.l10n;
-  return showDialog<bool>(
+  return showDialog<_LinkAction>(
     context: context,
     builder: (dialogContext) => AlertDialog(
       title: Text(l10n.dropLinksCount(count)),
@@ -420,11 +515,16 @@ Future<bool?> _confirmOpenLinks(BuildContext context, int count) {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(dialogContext).pop(false),
+          onPressed: () => Navigator.of(dialogContext).pop(_LinkAction.cancel),
           child: Text(l10n.cancel),
         ),
+        TextButton(
+          onPressed: () =>
+              Navigator.of(dialogContext).pop(_LinkAction.favorite),
+          child: Text(l10n.dropBatchFavorite),
+        ),
         FilledButton(
-          onPressed: () => Navigator.of(dialogContext).pop(true),
+          onPressed: () => Navigator.of(dialogContext).pop(_LinkAction.open),
           child: Text(l10n.dropOpenLinks),
         ),
       ],

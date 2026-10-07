@@ -1447,17 +1447,17 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String dropFilesCount(int count) {
-    return '$count 个文件';
+    return '收到 $count 个文件';
   }
 
   @override
   String dropLinksCount(int count) {
-    return '$count 个链接';
+    return '收到 $count 个链接';
   }
 
   @override
   String dropUploadConfirm(String path) {
-    return '是否上传到当前目录：$path？';
+    return '是否上传到当前目录（$path）？';
   }
 
   @override
@@ -1470,10 +1470,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get dropAddFavoritesHint => '解析成功后直接加入收藏';
 
   @override
-  String get dropOpenLinks => '依次打开';
+  String get dropOpenLinks => '打开';
 
   @override
-  String get dropOpenLinksHint => '将逐个打开「打开链接」弹窗';
+  String get dropOpenLinksHint => '是否逐个打开这些链接？';
+
+  @override
+  String get dropBatchFavorite => '批量收藏';
 
   @override
   String get dropMixedTitle => '当前拖拽内容包含多种类型，需分开处理';
@@ -1483,7 +1486,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String dropHoverUpload(String path) {
-    return '松开即可上传到 $path';
+    return '松开后上传所选文件到该目录';
   }
 
   @override

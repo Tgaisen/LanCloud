@@ -78,7 +78,13 @@ class LanCloudApp extends StatelessWidget {
           // Android 15+ 导航栏强制透明，能调的只有图标明暗与是否加系统遮罩。
           builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
             value: systemUiOverlayStyleFor(Theme.of(context).brightness),
-            child: child ?? const SizedBox.shrink(),
+            child: Stack(
+              children: [
+                child ?? const SizedBox.shrink(),
+                // 拖拽悬停提示条挂在 Navigator 之上：二级页面也能看到
+                const DropHoverBanner(),
+              ],
+            ),
           ),
           home: const AgreementGate(),
         );
@@ -492,7 +498,6 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
     SharedInbox.instance.onText = _handleSharedText;
     SharedInbox.instance.onFiles = _handleSharedFiles;
     SharedInbox.instance.attach();
-    DragDropChannel.instance.onHover = _handleDropHover;
     DragDropChannel.instance.onDrop = _handleDrop;
     DragDropChannel.instance.attach();
     IncomingLinks.instance.onLink = _handleIncomingLink;
@@ -543,20 +548,9 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
   /// 已处理过的剪贴板内容，避免同一条链接反复提示。
   String? _lastClipboardText;
 
-  /// 拖拽悬停提示：别的应用把内容拖到窗口上方时置位，离开/落下后清空。
-  DropHover? _dropHover;
-
-  void _handleDropHover(DropHover hover) {
-    if (!mounted) return;
-    final next = hover.isEmpty ? null : hover;
-    if (_dropHover == next) return;
-    setState(() => _dropHover = next);
-  }
-
   /// 拖拽落下：按「内容类型 + 当前视图」交给统一的处理入口。
   Future<void> _handleDrop(DropPayload payload) async {
     if (!mounted) return;
-    setState(() => _dropHover = null);
     final app = context.read<AppController>();
     final outcome = await handleExternalDrop(
       context,
@@ -566,75 +560,6 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
     );
     if (!mounted || outcome == null) return;
     showDropSummary(context, outcome);
-  }
-
-  /// 悬停提示文案：告诉用户松手后会发生什么。
-  String _dropHintText(
-    AppController app,
-    AppLocalizations l10n,
-    DropHover hover,
-  ) {
-    if (hover.isMixed) return l10n.dropHoverMixed;
-    if (hover.hasFiles) {
-      return app.driveVisible
-          ? l10n.dropHoverUpload(drivePathLabel(l10n, app.driveLocation.value))
-          : l10n.dropHoverPickFolder;
-    }
-    return app.favoritesVisible
-        ? l10n.dropHoverFavorite
-        : l10n.dropHoverOpenLink;
-  }
-
-  /// 拖拽悬停提示条：浮在顶部，不拦截命中（真正处理在 drop 时）。
-  Widget _dropOverlay(
-    BuildContext context,
-    AppController app,
-    AppLocalizations l10n,
-    Widget child,
-  ) {
-    final hover = _dropHover;
-    if (hover == null || hover.isEmpty) return child;
-    final scheme = Theme.of(context).colorScheme;
-    return Stack(
-      children: [
-        child,
-        Positioned(
-          left: 12,
-          right: 12,
-          top: MediaQuery.paddingOf(context).top + 8,
-          child: IgnorePointer(
-            child: Material(
-              elevation: 3,
-              borderRadius: BorderRadius.circular(16),
-              color: scheme.inverseSurface,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.trackpad_input,
-                      size: 20,
-                      color: scheme.onInverseSurface,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        _dropHintText(app, l10n, hover),
-                        style: Theme.of(context).textTheme.bodyMedium
-                            ?.copyWith(color: scheme.onInverseSurface),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
   }
 
   /// 回到前台时看看剪贴板里有没有蓝奏云分享链接（类似淘口令）。
@@ -901,160 +826,153 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
     // PopScope.canPop=false 时不做预测动画）。其余情况（多选 / 网盘
     // 子目录或搜索 / 非默认视图 / 传输中的退出确认）交给 _handleBack 处理。
     final currentView = _currentViewId;
-    return _dropOverlay(
-      context,
-      app,
-      l10n,
-      ValueListenableBuilder<bool>(
-        valueListenable: app.driveCanHandleBack,
-        builder: (context, driveCanHandleBack, child) {
-          final canPop = canHandBackToSystem(
-            selectionMode: app.selectionMode,
-            hasActiveTransfers: running > 0,
-            atDefaultView: currentView == _defaultViewId,
-            driveCanHandleBack: currentView == _viewDrive && driveCanHandleBack,
-          );
-          return PopScope(
-            canPop: canPop,
-            onPopInvokedWithResult: (didPop, result) async {
-              if (didPop) return;
-              final shouldExit = await _handleBack();
-              if (shouldExit && mounted) {
-                await SystemNavigator.pop();
-              }
-            },
-            child: child!,
-          );
-        },
-        child: width >= kLargeLayoutBreakpoint
-            ? Scaffold(
-                backgroundColor: scheme.surfaceContainer,
-                body: Row(
-                  children: [
-                    NavigationRail(
-                      backgroundColor: Colors.transparent,
-                      selectedIndex: _index,
-                      // 统一用非展开样式：图标在上、文字在下，栏宽 72dp。
-                      // 展开样式（extended）要 256dp，对这几个短标题太宽了。
-                      extended: false,
-                      // 手机横屏 / 平板等侧栏形态下按钮组在栏内垂直居中；
-                      // NavigationRail 默认 -1 贴顶，高屏上会离屏幕上半部太远。
-                      groupAlignment: 0,
-                      labelType: NavigationRailLabelType.all,
-                      onDestinationSelected: (i) => _goTo(_ids[i]),
-                      destinations: [
-                        for (final id in _ids)
-                          NavigationRailDestination(
-                            icon: iconFor(id, selected: false),
-                            selectedIcon: iconFor(id, selected: true),
-                            label: Text(_labelFor(id, l10n)),
-                          ),
-                      ],
-                    ),
-                    // 主视图：顶栏留在导航区（surfaceContainer），
-                    // 圆角的 surface 卡片从顶栏下方开始，页面背景透明；
-                    // 顶栏收起时卡片顶边跟着上移，内容始终被顶栏或卡片盖住
-                    Expanded(
-                      child: ValueListenableBuilder<double>(
-                        valueListenable: app.topBarHide,
-                        builder: (context, hide, _) {
-                          final t = app.settings.hideTopBar
-                              ? hide.clamp(0.0, 1.0)
-                              : 0.0;
-                          return Stack(
-                            children: [
-                              Positioned(
-                                left: 0,
-                                top: _topBarHeightFor(_ids[_index]) * (1 - t),
-                                // 卡片四周的 8dp 留白之外，再让开系统导航栏：
-                                // 横屏时它可能在底部（手势导航）或在右侧（三键导航），
-                                // 否则卡片底部/右侧会被系统栏压住
-                                right: 8 + systemPadding.right,
-                                bottom: 8 + systemPadding.bottom,
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(16),
-                                  child: ColoredBox(color: bodyColor),
-                                ),
+    return ValueListenableBuilder<bool>(
+      valueListenable: app.driveCanHandleBack,
+      builder: (context, driveCanHandleBack, child) {
+        final canPop = canHandBackToSystem(
+          selectionMode: app.selectionMode,
+          hasActiveTransfers: running > 0,
+          atDefaultView: currentView == _defaultViewId,
+          driveCanHandleBack: currentView == _viewDrive && driveCanHandleBack,
+        );
+        return PopScope(
+          canPop: canPop,
+          onPopInvokedWithResult: (didPop, result) async {
+            if (didPop) return;
+            final shouldExit = await _handleBack();
+            if (shouldExit && mounted) {
+              await SystemNavigator.pop();
+            }
+          },
+          child: child!,
+        );
+      },
+      child: width >= kLargeLayoutBreakpoint
+          ? Scaffold(
+              backgroundColor: scheme.surfaceContainer,
+              body: Row(
+                children: [
+                  NavigationRail(
+                    backgroundColor: Colors.transparent,
+                    selectedIndex: _index,
+                    // 统一用非展开样式：图标在上、文字在下，栏宽 72dp。
+                    // 展开样式（extended）要 256dp，对这几个短标题太宽了。
+                    extended: false,
+                    // 手机横屏 / 平板等侧栏形态下按钮组在栏内垂直居中；
+                    // NavigationRail 默认 -1 贴顶，高屏上会离屏幕上半部太远。
+                    groupAlignment: 0,
+                    labelType: NavigationRailLabelType.all,
+                    onDestinationSelected: (i) => _goTo(_ids[i]),
+                    destinations: [
+                      for (final id in _ids)
+                        NavigationRailDestination(
+                          icon: iconFor(id, selected: false),
+                          selectedIcon: iconFor(id, selected: true),
+                          label: Text(_labelFor(id, l10n)),
+                        ),
+                    ],
+                  ),
+                  // 主视图：顶栏留在导航区（surfaceContainer），
+                  // 圆角的 surface 卡片从顶栏下方开始，页面背景透明；
+                  // 顶栏收起时卡片顶边跟着上移，内容始终被顶栏或卡片盖住
+                  Expanded(
+                    child: ValueListenableBuilder<double>(
+                      valueListenable: app.topBarHide,
+                      builder: (context, hide, _) {
+                        final t = app.settings.hideTopBar
+                            ? hide.clamp(0.0, 1.0)
+                            : 0.0;
+                        return Stack(
+                          children: [
+                            Positioned(
+                              left: 0,
+                              top: _topBarHeightFor(_ids[_index]) * (1 - t),
+                              // 卡片四周的 8dp 留白之外，再让开系统导航栏：
+                              // 横屏时它可能在底部（手势导航）或在右侧（三键导航），
+                              // 否则卡片底部/右侧会被系统栏压住
+                              right: 8 + systemPadding.right,
+                              bottom: 8 + systemPadding.bottom,
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(16),
+                                child: ColoredBox(color: bodyColor),
                               ),
-                              Positioned(
-                                left: 0,
-                                top: 0,
-                                right: 8 + systemPadding.right,
-                                bottom: 8 + systemPadding.bottom,
-                                // 卡片已经按 left/right/bottom inset 让过位了，
-                                // 页面内（AppBar / SafeArea / Scrollbar）不要再让一次
-                                child: MediaQuery.removePadding(
-                                  context: context,
-                                  removeLeft: true,
-                                  removeRight: true,
-                                  removeBottom: true,
-                                  child: keyed,
-                                ),
+                            ),
+                            Positioned(
+                              left: 0,
+                              top: 0,
+                              right: 8 + systemPadding.right,
+                              bottom: 8 + systemPadding.bottom,
+                              // 卡片已经按 left/right/bottom inset 让过位了，
+                              // 页面内（AppBar / SafeArea / Scrollbar）不要再让一次
+                              child: MediaQuery.removePadding(
+                                context: context,
+                                removeLeft: true,
+                                removeRight: true,
+                                removeBottom: true,
+                                child: keyed,
                               ),
-                            ],
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              )
-            : Scaffold(
-                body: keyed,
-                // 正文绘制到底栏下方：滑动时内容从底栏后穿过，
-                // 底栏跟随滚动下沉 / 收起时正文也不会跟着重排。
-                extendBody: true,
-                // 底栏跟随滚动按比例下沉；完全收起后腾出布局空间
-                bottomNavigationBar: ValueListenableBuilder<double>(
-                  valueListenable: app.barsHide,
-                  builder: (context, hide, child) => SizedBox(
-                    height: app.settings.hideBottomBar
-                        ? barHeight * (1 - hide)
-                        : barHeight,
-                    child: ClipRect(
-                      child: OverflowBox(
-                        alignment: Alignment.topCenter,
-                        // minHeight 必须等于完整高度：否则底栏会被压扁（内容缩放）而不是滑出
-                        minHeight: barHeight,
-                        maxHeight: barHeight,
-                        child: child,
-                      ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ),
-                  child: Padding(
-                    padding: floatingNav
-                        ? const EdgeInsets.only(top: 16)
-                        : EdgeInsets.zero,
-                    child: Container(
-                      margin: floatingNav
-                          // 底部留白要加上系统导航栏的高度：胶囊本身保持
-                          // 80dp 浮在导航栏上方，而不是把导航栏那段也算进胶囊
-                          // （否则胶囊下沿会拖出一截空白色）。
-                          ? EdgeInsets.fromLTRB(12, 0, 12, 12 + bottomInset)
-                          : EdgeInsets.zero,
-                      decoration: floatingNav
-                          ? BoxDecoration(
-                              borderRadius: BorderRadius.circular(28),
-                            )
-                          : null,
-                      clipBehavior: floatingNav ? Clip.antiAlias : Clip.none,
-                      // 悬浮样式把系统手势区的内边距从胶囊里摘掉，改由上面
-                      // 的下留白承担；普通底栏仍由 NavigationBar 自己垫在内容下方。
-                      // top 也要去掉：这里不再经过 Scaffold 的底栏槽位（槽位会
-                      // 去掉顶部内边距），否则状态栏高度会被 SafeArea 垫进胶囊。
-                      child: floatingNav
-                          ? MediaQuery.removePadding(
-                              context: context,
-                              removeTop: true,
-                              removeBottom: true,
-                              child: navBar,
-                            )
-                          : navBar,
+                ],
+              ),
+            )
+          : Scaffold(
+              body: keyed,
+              // 正文绘制到底栏下方：滑动时内容从底栏后穿过，
+              // 底栏跟随滚动下沉 / 收起时正文也不会跟着重排。
+              extendBody: true,
+              // 底栏跟随滚动按比例下沉；完全收起后腾出布局空间
+              bottomNavigationBar: ValueListenableBuilder<double>(
+                valueListenable: app.barsHide,
+                builder: (context, hide, child) => SizedBox(
+                  height: app.settings.hideBottomBar
+                      ? barHeight * (1 - hide)
+                      : barHeight,
+                  child: ClipRect(
+                    child: OverflowBox(
+                      alignment: Alignment.topCenter,
+                      // minHeight 必须等于完整高度：否则底栏会被压扁（内容缩放）而不是滑出
+                      minHeight: barHeight,
+                      maxHeight: barHeight,
+                      child: child,
                     ),
+                  ),
+                ),
+                child: Padding(
+                  padding: floatingNav
+                      ? const EdgeInsets.only(top: 16)
+                      : EdgeInsets.zero,
+                  child: Container(
+                    margin: floatingNav
+                        // 底部留白要加上系统导航栏的高度：胶囊本身保持
+                        // 80dp 浮在导航栏上方，而不是把导航栏那段也算进胶囊
+                        // （否则胶囊下沿会拖出一截空白色）。
+                        ? EdgeInsets.fromLTRB(12, 0, 12, 12 + bottomInset)
+                        : EdgeInsets.zero,
+                    decoration: floatingNav
+                        ? BoxDecoration(borderRadius: BorderRadius.circular(28))
+                        : null,
+                    clipBehavior: floatingNav ? Clip.antiAlias : Clip.none,
+                    // 悬浮样式把系统手势区的内边距从胶囊里摘掉，改由上面
+                    // 的下留白承担；普通底栏仍由 NavigationBar 自己垫在内容下方。
+                    // top 也要去掉：这里不再经过 Scaffold 的底栏槽位（槽位会
+                    // 去掉顶部内边距），否则状态栏高度会被 SafeArea 垫进胶囊。
+                    child: floatingNav
+                        ? MediaQuery.removePadding(
+                            context: context,
+                            removeTop: true,
+                            removeBottom: true,
+                            child: navBar,
+                          )
+                        : navBar,
                   ),
                 ),
               ),
-      ),
+            ),
     );
   }
 }

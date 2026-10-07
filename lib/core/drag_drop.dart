@@ -70,17 +70,21 @@ class DragDropChannel {
 
   static const MethodChannel _channel = MethodChannel('lancloud/drag_drop');
 
-  void Function(DropHover hover)? onHover;
+  /// 当前悬停内容（null = 没有拖拽悬停）：提示条挂在 App 顶层监听它，
+  /// 这样二级页面（设置、分享浏览等，压在路由栈上）也能看到提示。
+  final ValueNotifier<DropHover?> hover = ValueNotifier(null);
+
   void Function(DropPayload payload)? onDrop;
 
   void attach() {
     _channel.setMethodCallHandler((call) async {
       switch (call.method) {
         case 'dragEntered':
-          onHover?.call(_hoverFrom(call.arguments));
+          hover.value = _hoverFrom(call.arguments);
         case 'dragExited':
-          onHover?.call(DropHover.empty);
+          hover.value = null;
         case 'dropped':
+          hover.value = null;
           onDrop?.call(_payloadFrom(call.arguments));
       }
       return null;
@@ -89,7 +93,7 @@ class DragDropChannel {
 
   void dispose() {
     _channel.setMethodCallHandler(null);
-    onHover = null;
+    hover.value = null;
     onDrop = null;
   }
 
