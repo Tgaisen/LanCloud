@@ -27,6 +27,8 @@ param(
   [switch]$Draft,
   # 跳过 dart format 检查与 flutter analyze / test
   [switch]$SkipTests,
+  # 跳过 Windows 便携版（默认一起构建并挂到 Release）
+  [switch]$SkipWindows,
   # 只做检查与打印，不构建、不打 tag、不发 Release
   [switch]$DryRun,
   # 期望的签名证书 SHA-256 指纹（应与 README「签名」一致）
@@ -201,6 +203,26 @@ foreach ($abi in @('arm64-v8a', 'armeabi-v7a', 'x86_64')) {
     Copy-Item -LiteralPath $src -Destination $dst -Force
   }
   $assets += $dst
+}
+
+# ---------------------------------------------------------------- Windows 便携版
+if (-not $SkipWindows) {
+  Info 'tools/build_windows.ps1（Windows x64 绿色便携版）'
+  # 复用构建脚本：前置检查（VS / 开发者模式 / NuGet）、构建、内置 VC++ 运行时、
+  # 打成带顶层目录的 zip 都在里面；检查项上面刚跑过，这里 -SkipTests
+  $winScript = Join-Path $PSScriptRoot 'build_windows.ps1'
+  if (!(Test-Path $winScript)) { Fail "找不到构建脚本：$winScript" }
+  if ($DryRun) {
+    Write-Host ("[dry-run] powershell -File {0} -SkipTests" -f $winScript) `
+      -ForegroundColor DarkGray
+  } else {
+    Invoke-Tool 'powershell' @(
+      '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $winScript, '-SkipTests'
+    ) | Out-Null
+  }
+  $winZip = Join-Path $root "outputs\LanCloud-$versionName-windows-x64.zip"
+  if (-not $DryRun -and !(Test-Path $winZip)) { Fail "构建产物缺失：$winZip" }
+  $assets += $winZip
 }
 
 # ---------------------------------------------------------------- 签名校验

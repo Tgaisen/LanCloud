@@ -20,7 +20,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # versionCode = YY*10_000_000 + 内容更新序号*100_000 + 热修号*10_000 + Stage*1_000 + Seq
 # （snapshot=1 / pre=2 / rc=3 / 正式版=9 且 Seq=999；如 26.1.0-pre.1 → 260102001）。
 # 详见 README「版本号规范」；改完记得同步 lib/core/app_info.dart（有测试校验）。
-version: 26.1.0-pre.1+260102001
+version: 26.1.0-pre.2+260102002
 
 environment:
   sdk: ^3.13.4
