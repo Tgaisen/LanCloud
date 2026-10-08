@@ -9,6 +9,11 @@
         <item name="android:windowBackground">@drawable/launch_background</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">true</item>
+        <!-- Android 12 以下没有系统启动屏幕，启动窗口要自己把导航栏也铺满，
+             否则冷启动瞬间会闪一条系统默认色。Android 12+ 由 values-v31
+             的 SplashScreen API 接管（整份 style 覆盖，不受这里影响）。 -->
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightNavigationBar">true</item>
     </style>
     <!-- Theme applied to the Android Window as soon as the process has started.
          This theme determines the color of the Android Window while your
