@@ -379,6 +379,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get custom => '自定义';
 
   @override
+  String get colorMd3Purple => 'MD3 紫';
+
+  @override
+  String get colorRoyalBlue => '宝蓝';
+
+  @override
+  String get colorRose => '玫红';
+
+  @override
+  String get colorAmber => '琥珀';
+
+  @override
   String get hideTopBar => '顶栏收起';
 
   @override
@@ -543,6 +555,31 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get clearRecentsKeywords => '最近 清空 记录';
+
+  @override
+  String get clearCache => '清理缓存';
+
+  @override
+  String get clearCacheSubtitle => '删除临时文件与图片缓存，不影响账号和已下载的文件';
+
+  @override
+  String get clearCacheKeywords => '缓存 清理 空间 临时';
+
+  @override
+  String clearCacheBody(String size) {
+    return '当前占用 $size。将删除临时文件、图片缓存和目录列表缓存，账号、设置与已下载的文件不受影响。';
+  }
+
+  @override
+  String get clearCacheBodyUnknown => '将删除临时文件、图片缓存和目录列表缓存，账号、设置与已下载的文件不受影响。';
+
+  @override
+  String get clean => '清理';
+
+  @override
+  String cacheCleared(String size) {
+    return '已清理 $size';
+  }
 
   @override
   String get about => '关于';

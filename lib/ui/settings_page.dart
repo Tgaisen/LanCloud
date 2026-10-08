@@ -4,6 +4,7 @@ import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 
 import '../core/app_controller.dart';
+import '../core/app_cache.dart';
 import '../core/app_log.dart';
 import '../core/app_permissions.dart';
 import '../core/dynamic_color_support.dart';
@@ -504,7 +505,7 @@ class _SettingsPageState extends State<SettingsPage>
         ],
         category: 'permissions',
         build: (context, app) => ListTile(
-          leading: const Icon(Icons.security),
+          leading: const Icon(Icons.shield),
           title: Text(context.l10n.managePermissions),
           subtitle: Text(context.l10n.managePermissionsSubtitle),
           onTap: () => _showManagePermissions(context),
@@ -673,7 +674,7 @@ class _SettingsPageState extends State<SettingsPage>
         keywords: l10n.clearRecentsKeywords.split(' '),
         category: 'data',
         build: (context, app) => ListTile(
-          leading: const Icon(Icons.cleaning_services_outlined),
+          leading: const Icon(Icons.delete_sweep_outlined),
           title: Text(context.l10n.clearRecents),
           onTap: () async {
             await app.db.clearRecents(app.activeUid ?? '');
@@ -682,6 +683,19 @@ class _SettingsPageState extends State<SettingsPage>
                   .showSnackBar(SnackBar(content: Text(context.l10n.cleared)));
             }
           },
+        ),
+      ),
+      _Entry(
+        id: 'clear_cache',
+        title: l10n.clearCache,
+        subtitle: l10n.clearCacheSubtitle,
+        keywords: l10n.clearCacheKeywords.split(' '),
+        category: 'data',
+        build: (context, app) => ListTile(
+          leading: const Icon(Icons.cleaning_services_outlined),
+          title: Text(context.l10n.clearCache),
+          subtitle: Text(context.l10n.clearCacheSubtitle),
+          onTap: () => _clearCache(context),
         ),
       ),
       _Entry(
@@ -738,6 +752,10 @@ class _SettingsPageState extends State<SettingsPage>
     0xFF7B4DFF => context.l10n.violet,
     0xFFE5533D => context.l10n.vermilion,
     0xFF3F7D20 => context.l10n.olive,
+    0xFF6750A4 => context.l10n.colorMd3Purple,
+    0xFF0B57D0 => context.l10n.colorRoyalBlue,
+    0xFF984061 => context.l10n.colorRose,
+    0xFF8B5000 => context.l10n.colorAmber,
     _ => context.l10n.custom,
   };
 
@@ -815,8 +833,23 @@ class _SettingsPageState extends State<SettingsPage>
     for (final e in entries) {
       groups.putIfAbsent(e.category, () => []).add(e);
     }
+    // 分组显示顺序：与条目声明顺序无关。「权限」使用频率低，排在最后。
+    const order = [
+      'appearance',
+      'behavior',
+      'notifications',
+      'connection',
+      'advanced',
+      'data',
+      'privacy',
+      'permissions',
+    ];
+    final names = [
+      ...order.where(groups.containsKey),
+      ...groups.keys.where((name) => !order.contains(name)),
+    ];
     final widgets = <Widget>[];
-    for (final name in groups.keys) {
+    for (final name in names) {
       if (name == 'advanced') {
         widgets
           ..add(_sectionTitle(context, l10n.categoryAdvanced))
@@ -928,6 +961,48 @@ class _SettingsPageState extends State<SettingsPage>
         messenger.showSnackBar(SnackBar(content: Text(l10n.exportLogsFailed)));
       }
     }
+  }
+
+  /// 「清理缓存」：临时文件（拖拽 / 选文件 / 拍照副本、备份与日志导出残留、
+  /// 网页缓存）+ 图片缓存 + 网盘目录列表缓存。账号、设置和已下载的文件不受影响。
+  Future<void> _clearCache(BuildContext context) async {
+    final app = context.read<AppController>();
+    final size = await AppCache.size();
+    if (!context.mounted) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(dialogContext.l10n.clearCache),
+        content: Text(
+          size == null
+              ? dialogContext.l10n.clearCacheBodyUnknown
+              : dialogContext.l10n.clearCacheBody(formatBytes(size)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(dialogContext.l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(dialogContext.l10n.clean),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !context.mounted) return;
+    final freed = await AppCache.clear();
+    // 图片缓存（内存）与网盘目录列表缓存也一起清掉
+    PaintingBinding.instance.imageCache
+      ..clear()
+      ..clearLiveImages();
+    app.driveCache.clear();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(context.l10n.cacheCleared(formatBytes(freed ?? 0))),
+      ),
+    );
   }
 
   Future<void> _requestBatteryOptimization() async {
@@ -1274,6 +1349,11 @@ class _SettingsPageState extends State<SettingsPage>
       0xFF7B4DFF: l10n.violet,
       0xFFE5533D: l10n.vermilion,
       0xFF3F7D20: l10n.olive,
+      // MD3 官方基准色（Material 3 baseline）与经典 Material 色板补充
+      0xFF6750A4: l10n.colorMd3Purple,
+      0xFF0B57D0: l10n.colorRoyalBlue,
+      0xFF984061: l10n.colorRose,
+      0xFF8B5000: l10n.colorAmber,
     };
     await showDialog<void>(
       context: context,

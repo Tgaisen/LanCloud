@@ -167,6 +167,10 @@
   "vermilion": "朱红",
   "olive": "橄榄绿",
   "custom": "自定义",
+  "colorMd3Purple": "MD3 紫",
+  "colorRoyalBlue": "宝蓝",
+  "colorRose": "玫红",
+  "colorAmber": "琥珀",
   "hideTopBar": "顶栏收起",
   "hideTopBarSubtitle": "列表滑动时收起顶栏",
   "hideTopBarKeywords": "顶栏 滑动隐藏 收起",
@@ -231,6 +235,27 @@
   "advancedHint": "请仅在连接异常时修改",
   "clearRecents": "清空最近使用记录",
   "clearRecentsKeywords": "最近 清空 记录",
+  "clearCache": "清理缓存",
+  "clearCacheSubtitle": "删除临时文件与图片缓存，不影响账号和已下载的文件",
+  "clearCacheKeywords": "缓存 清理 空间 临时",
+  "clearCacheBody": "当前占用 {size}。将删除临时文件、图片缓存和目录列表缓存，账号、设置与已下载的文件不受影响。",
+  "@clearCacheBody": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "clearCacheBodyUnknown": "将删除临时文件、图片缓存和目录列表缓存，账号、设置与已下载的文件不受影响。",
+  "clean": "清理",
+  "cacheCleared": "已清理 {size}",
+  "@cacheCleared": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
   "about": "关于",
   "aboutSubtitle": "LanCloud · 蓝奏云第三方客户端",
   "aboutKeywords": "版本 关于 开源 协议",

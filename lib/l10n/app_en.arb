@@ -121,6 +121,10 @@
   "vermilion": "Vermilion",
   "olive": "Olive green",
   "custom": "Custom",
+  "colorMd3Purple": "MD3 purple",
+  "colorRoyalBlue": "Royal blue",
+  "colorRose": "Rose",
+  "colorAmber": "Amber",
   "hideTopBar": "Hide top bar",
   "hideTopBarSubtitle": "Collapse the top bar while scrolling",
   "hideTopBarKeywords": "top bar hide on scroll collapse",
@@ -180,6 +184,27 @@
   "advancedHint": "Change only when connections fail or endpoints are blocked; defaults are fine",
   "clearRecents": "Clear recent items",
   "clearRecentsKeywords": "recent clear history",
+  "clearCache": "Clear cache",
+  "clearCacheSubtitle": "Remove temporary files and image cache; account data and downloaded files are kept",
+  "clearCacheKeywords": "cache clear storage temporary",
+  "clearCacheBody": "Currently using {size}. Temporary files, the image cache and folder listings will be removed; account data, settings and downloaded files are kept.",
+  "@clearCacheBody": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "clearCacheBodyUnknown": "Temporary files, the image cache and folder listings will be removed; account data, settings and downloaded files are kept.",
+  "clean": "Clean",
+  "cacheCleared": "Freed {size}",
+  "@cacheCleared": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
   "about": "About",
   "aboutSubtitle": "LanCloud · Third-party LanZou Cloud client",
   "aboutKeywords": "version about open source license",

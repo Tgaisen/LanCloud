@@ -794,6 +794,30 @@ abstract class AppLocalizations {
   /// **'自定义'**
   String get custom;
 
+  /// No description provided for @colorMd3Purple.
+  ///
+  /// In zh, this message translates to:
+  /// **'MD3 紫'**
+  String get colorMd3Purple;
+
+  /// No description provided for @colorRoyalBlue.
+  ///
+  /// In zh, this message translates to:
+  /// **'宝蓝'**
+  String get colorRoyalBlue;
+
+  /// No description provided for @colorRose.
+  ///
+  /// In zh, this message translates to:
+  /// **'玫红'**
+  String get colorRose;
+
+  /// No description provided for @colorAmber.
+  ///
+  /// In zh, this message translates to:
+  /// **'琥珀'**
+  String get colorAmber;
+
   /// No description provided for @hideTopBar.
   ///
   /// In zh, this message translates to:
@@ -1117,6 +1141,48 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'最近 清空 记录'**
   String get clearRecentsKeywords;
+
+  /// No description provided for @clearCache.
+  ///
+  /// In zh, this message translates to:
+  /// **'清理缓存'**
+  String get clearCache;
+
+  /// No description provided for @clearCacheSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除临时文件与图片缓存，不影响账号和已下载的文件'**
+  String get clearCacheSubtitle;
+
+  /// No description provided for @clearCacheKeywords.
+  ///
+  /// In zh, this message translates to:
+  /// **'缓存 清理 空间 临时'**
+  String get clearCacheKeywords;
+
+  /// No description provided for @clearCacheBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前占用 {size}。将删除临时文件、图片缓存和目录列表缓存，账号、设置与已下载的文件不受影响。'**
+  String clearCacheBody(String size);
+
+  /// No description provided for @clearCacheBodyUnknown.
+  ///
+  /// In zh, this message translates to:
+  /// **'将删除临时文件、图片缓存和目录列表缓存，账号、设置与已下载的文件不受影响。'**
+  String get clearCacheBodyUnknown;
+
+  /// No description provided for @clean.
+  ///
+  /// In zh, this message translates to:
+  /// **'清理'**
+  String get clean;
+
+  /// No description provided for @cacheCleared.
+  ///
+  /// In zh, this message translates to:
+  /// **'已清理 {size}'**
+  String cacheCleared(String size);
 
   /// No description provided for @about.
   ///

@@ -104,6 +104,7 @@ class Icons {
   static const IconData security = Symbols.security;
   static const IconData select_all = Symbols.select_all;
   static const IconData settings_outlined = Symbols.settings;
+  static const IconData shield = Symbols.shield;
   static const IconData settings_backup_restore =
       Symbols.settings_backup_restore;
   static const IconData share_outlined = Symbols.share;

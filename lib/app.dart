@@ -868,7 +868,11 @@ class _RootShellState extends State<RootShell>
     );
 
     Widget iconFor(int viewId, {required bool selected}) {
-      final icon = Icon(_iconFor(viewId, selected: selected));
+      // 选中项用 Material Symbols 的 FILL 轴切成实心（未选中保持描边）
+      final icon = Icon(
+        _iconFor(viewId, selected: selected),
+        fill: selected ? 1 : 0,
+      );
       if (viewId != _viewTransfers || running == 0) return icon;
       // 角标数字单独读出来没有上下文，给读屏补一句「N 个任务进行中」
       return Semantics(

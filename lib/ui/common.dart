@@ -2096,6 +2096,77 @@ class _SectionCardState extends State<SectionCard>
   }
 }
 
+/// 出现时淡入 + 轻微上移。
+///
+/// 用在「内容从无到有」的地方（例如属性弹窗拉到简介后卡片才出现），
+/// 避免整块凭空“啪”地出现。系统要求少动效时直接显示。
+class RevealOnAppear extends StatefulWidget {
+  const RevealOnAppear({
+    super.key,
+    required this.child,
+    this.duration = const Duration(milliseconds: 260),
+    this.offset = 8,
+  });
+
+  final Widget child;
+  final Duration duration;
+
+  /// 起始位置（向下偏移多少像素），动画结束回到 0。
+  final double offset;
+
+  @override
+  State<RevealOnAppear> createState() => _RevealOnAppearState();
+}
+
+class _RevealOnAppearState extends State<RevealOnAppear>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: widget.duration,
+  );
+  late final Animation<double> _t = CurvedAnimation(
+    parent: _controller,
+    curve: Curves.easeOutCubic,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.forward();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // 系统要求少动效：直接到终态（横竖屏、切主题等依赖变化时会再走一次，
+    // 已经播完的动画不受影响）
+    if (reduceMotionOf(context)) {
+      _controller.value = 1;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _t,
+      child: widget.child,
+      builder: (context, child) => Opacity(
+        opacity: _t.value,
+        child: Transform.translate(
+          offset: Offset(0, widget.offset * (1 - _t.value)),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
 /// 属性弹窗顶部信息卡（MD3E）：圆角容器 + 主色图标块 + 标题/信息/简介。
 /// 文件、文件夹、分享文件属性弹窗共用。
 class PropertyHeaderCard extends StatelessWidget {
@@ -2191,23 +2262,27 @@ class PropertyHeaderCard extends StatelessWidget {
             ),
             if (desc.isNotEmpty) ...[
               const SizedBox(height: 14),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: scheme.surface,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 220),
-                  switchInCurve: Curves.easeOut,
-                  switchOutCurve: Curves.easeIn,
-                  transitionBuilder: (child, animation) =>
-                      FadeTransition(opacity: animation, child: child),
-                  child: Text(
-                    desc,
-                    key: ValueKey(desc),
-                    style: theme.textTheme.bodyMedium?.copyWith(height: 1.5),
+              // 简介是拉取到之后才出现的：整块淡入 + 轻微上移，不要凭空跳出
+              RevealOnAppear(
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: scheme.surface,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 220),
+                    switchInCurve: Curves.easeOut,
+                    switchOutCurve: Curves.easeIn,
+                    transitionBuilder: (child, animation) =>
+                        FadeTransition(opacity: animation, child: child),
+                    // 简介可以被选中复制（长按 / 拖选）
+                    child: SelectableText(
+                      desc,
+                      key: ValueKey(desc),
+                      style: theme.textTheme.bodyMedium?.copyWith(height: 1.5),
+                    ),
                   ),
                 ),
               ),

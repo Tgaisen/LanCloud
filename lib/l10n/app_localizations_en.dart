@@ -387,6 +387,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get custom => 'Custom';
 
   @override
+  String get colorMd3Purple => 'MD3 purple';
+
+  @override
+  String get colorRoyalBlue => 'Royal blue';
+
+  @override
+  String get colorRose => 'Rose';
+
+  @override
+  String get colorAmber => 'Amber';
+
+  @override
   String get hideTopBar => 'Hide top bar';
 
   @override
@@ -561,6 +573,33 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get clearRecentsKeywords => 'recent clear history';
+
+  @override
+  String get clearCache => 'Clear cache';
+
+  @override
+  String get clearCacheSubtitle =>
+      'Remove temporary files and image cache; account data and downloaded files are kept';
+
+  @override
+  String get clearCacheKeywords => 'cache clear storage temporary';
+
+  @override
+  String clearCacheBody(String size) {
+    return 'Currently using $size. Temporary files, the image cache and folder listings will be removed; account data, settings and downloaded files are kept.';
+  }
+
+  @override
+  String get clearCacheBodyUnknown =>
+      'Temporary files, the image cache and folder listings will be removed; account data, settings and downloaded files are kept.';
+
+  @override
+  String get clean => 'Clean';
+
+  @override
+  String cacheCleared(String size) {
+    return 'Freed $size';
+  }
 
   @override
   String get about => 'About';
