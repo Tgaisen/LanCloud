@@ -387,7 +387,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get custom => 'Custom';
 
   @override
-  String get colorMd3Purple => 'MD3 purple';
+  String get colorMd3Purple => 'Classic purple';
 
   @override
   String get colorRoyalBlue => 'Royal blue';

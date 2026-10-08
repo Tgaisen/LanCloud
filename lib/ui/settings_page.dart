@@ -694,7 +694,6 @@ class _SettingsPageState extends State<SettingsPage>
         build: (context, app) => ListTile(
           leading: const Icon(Icons.cleaning_services_outlined),
           title: Text(context.l10n.clearCache),
-          subtitle: Text(context.l10n.clearCacheSubtitle),
           onTap: () => _clearCache(context),
         ),
       ),

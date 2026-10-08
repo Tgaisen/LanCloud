@@ -83,8 +83,8 @@ void main() {
     expect(find.text('清理'), findsNothing);
   });
 
-  // MD3 官方基准色等新增预设：主题色弹窗里能选到，并能写入设置
-  testWidgets('主题色新增预设可选（MD3 紫 / 宝蓝 / 玫红 / 琥珀）', (tester) async {
+  // MD3 基准色等新增预设：主题色弹窗里能选到，并能写入设置
+  testWidgets('主题色新增预设可选（经典紫 / 宝蓝 / 玫红 / 琥珀）', (tester) async {
     final app = await pumpSettings(tester);
 
     // 主题色在第一组（外观）里，初始就在屏幕内；不要再 ensureVisible，
@@ -93,12 +93,12 @@ void main() {
     await tester.tap(entry);
     await tester.pumpAndSettle();
 
-    expect(find.text('MD3 紫'), findsOneWidget);
+    expect(find.text('经典紫'), findsOneWidget);
     expect(find.text('宝蓝'), findsOneWidget);
     expect(find.text('玫红'), findsOneWidget);
     expect(find.text('琥珀'), findsOneWidget);
 
-    await tester.tap(find.text('MD3 紫'));
+    await tester.tap(find.text('经典紫'));
     await tester.pumpAndSettle();
     expect(app.settings.themeSeed, 0xFF6750A4);
   });

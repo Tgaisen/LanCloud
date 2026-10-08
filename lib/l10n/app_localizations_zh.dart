@@ -379,7 +379,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get custom => '自定义';
 
   @override
-  String get colorMd3Purple => 'MD3 紫';
+  String get colorMd3Purple => '经典紫';
 
   @override
   String get colorRoyalBlue => '宝蓝';

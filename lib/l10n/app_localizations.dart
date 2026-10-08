@@ -797,7 +797,7 @@ abstract class AppLocalizations {
   /// No description provided for @colorMd3Purple.
   ///
   /// In zh, this message translates to:
-  /// **'MD3 紫'**
+  /// **'经典紫'**
   String get colorMd3Purple;
 
   /// No description provided for @colorRoyalBlue.
