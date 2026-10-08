@@ -1,7 +1,8 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Icons;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
+import 'package:lancloud/ui/app_icons.dart';
 import 'package:lancloud/ui/favorites_page.dart';
 import 'package:provider/provider.dart';
 
@@ -60,6 +61,18 @@ void main() {
     // 空收藏也能进多选：菜单里的「多选」
     await tester.tap(find.byTooltip('菜单'));
     await tester.pumpAndSettle();
+    // 图标与传输页顶栏的多选入口一致（Checklist）
+    expect(
+      tester
+          .widget<Icon>(
+            find.descendant(
+              of: find.widgetWithText(ListTile, '多选'),
+              matching: find.byType(Icon),
+            ),
+          )
+          .icon,
+      Icons.checklist,
+    );
     await tester.tap(find.text('多选'));
     await tester.pumpAndSettle();
     expect(app.selectionMode, isTrue);

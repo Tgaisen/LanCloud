@@ -971,7 +971,7 @@ class _DrivePageState extends State<DrivePage>
             ),
             const SizedBox(height: 12),
             ListTile(
-              leading: const Icon(Icons.done_all),
+              leading: const Icon(Icons.checklist),
               title: Text(context.l10n.multiSelect),
               onTap: () {
                 Navigator.of(context).pop();

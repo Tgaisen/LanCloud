@@ -315,7 +315,7 @@ class _ShareFolderPageState extends State<ShareFolderPage>
         children: [
           // 原顶栏的多选入口移到这里
           ListTile(
-            leading: const Icon(Icons.done_all),
+            leading: const Icon(Icons.checklist),
             title: Text(context.l10n.multiSelect),
             onTap: () {
               Navigator.of(context).pop();
