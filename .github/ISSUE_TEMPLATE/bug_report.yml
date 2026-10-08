@@ -21,7 +21,6 @@ body:
       label: 版本号
       description: 可在「设置 → 关于」中查看。
       placeholder: 26.1.0-pre.2
-      render: text
     validations:
       required: true
 
