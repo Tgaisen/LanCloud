@@ -100,6 +100,6 @@ powershell -ExecutionPolicy Bypass -File tools/build_windows.ps1
 | Flutter | 3.47.5 |
 | JDK | 17 |
 | Android SDK | platform 37、build-tools、NDK 28.2、CMake |
-| Visual Studio Build Tools | 2026（Windows SDK 10.0.28000）；勾选「使用 C++ 的桌面开发」工作负载（含 Windows SDK 与 CMake），并额外勾选「C++ ATL for x64/x86 (最新 MSVC)」 |
-| Windows 开发者模式 | 需开启（设置 → 系统 → 开发者选项）；Flutter 构建插件需创建符号链接 |
-| NuGet CLI | 用于拉取 WebView2 SDK |
+| Visual Studio Build Tools | 2026（Windows SDK 10.0.28000）；勾选「使用 C++ 的桌面开发」工作负载（含 Windows SDK 与 CMake），与「C++ ATL for x64/x86 (最新 MSVC)」 |
+| Windows 开发者模式 | Flutter 构建插件创建符号链接所需 |
+| NuGet CLI | 拉取 WebView2 SDK 所需 |
