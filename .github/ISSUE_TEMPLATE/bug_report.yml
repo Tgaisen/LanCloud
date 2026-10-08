@@ -1,0 +1,88 @@
+name: 问题反馈
+description: 描述你遇到的问题，以帮助定位并修复
+title: "[BUG] "
+labels: ["bug"]
+type: Bug
+body:
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: 检查清单
+      description: 提交前请确认以下事项，这能帮助我们更快定位问题。
+      options:
+        - label: "已搜索[历史 issue](https://github.com/Tgaisen/LanCloud/issues)，并未发现相同问题"
+          required: true
+        - label: "已使用[最新版本](https://github.com/Tgaisen/LanCloud/releases)，并在最新版本上仍能复现"
+          required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: 版本号
+      description: 可在「设置 → 关于」中查看，例如 26.1.0-pre.2 (260102002)
+      placeholder: 26.1.0-pre.2 (260102002)
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题描述
+      description: 请清晰简洁地描述你遇到的问题。
+      placeholder: 例如：下载大文件时进度长时间卡在 99%，最终提示失败。
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 请提供能稳定复现该问题的具体步骤。
+      placeholder: |-
+        1. 打开……
+        2. 点击……
+        3. 向下滚动到……
+        4. 出现……
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期行为
+      description: 请描述你期望发生的正确行为或结果。
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际行为
+      description: 请描述应用实际发生的行为或结果。
+    validations:
+      required: true
+
+  - type: textarea
+    id: log
+    attributes:
+      label: 错误日志
+      description: 可直接粘贴关键日志片段；如果日志较长，请在下方「附件」中上传完整日志文件。
+      render: shell
+
+  - type: upload
+    id: attachments
+    attributes:
+      label: 附件
+      description: 可上传「设置 → 隐私 → 导出近期运行日志」生成的文件（lancloud-log-*.txt），以及复现问题的截图或录屏。
+    validations:
+      accept: ".log,.txt,.zip,.png,.jpg,.jpeg,.gif,.webp,.mp4,.mov,.webm"
+
+  - type: textarea
+    id: info
+    attributes:
+      label: 相关信息
+      description: 请补充设备型号、系统版本，以及其他有助于定位问题的信息。
+      placeholder: |-
+        - 设备型号：
+        - 系统版本：
+        - 其他：
