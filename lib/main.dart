@@ -14,6 +14,7 @@ import 'core/incoming_links.dart';
 import 'core/notifications.dart';
 import 'core/platform_support.dart';
 import 'core/share_inbox.dart';
+import 'core/system_motion.dart';
 import 'core/transfer/transfer_manager.dart';
 
 Future<void> main() async {
@@ -71,6 +72,8 @@ Future<void> main() async {
   }
   final app = AppController();
   await app.init();
+  // 系统「移除动画」：读一次并监听原生推送（华为等 ROM 的开关引擎看不到）
+  SystemMotion.init();
   final language = app.settings.language;
   final locale = language == 'zh'
       ? const Locale('zh')

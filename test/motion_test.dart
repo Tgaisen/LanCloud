@@ -40,6 +40,23 @@ void main() {
     app.dispose();
   });
 
+  // 系统「移除动画 / 减弱动态效果」（或读屏接管交互）时不做下滑过渡：
+  // 顶栏 / 底栏直接到位，切换视图时不再有滑动观感。
+  testWidgets('系统要求少动效时顶栏底栏直接到位', (tester) async {
+    final app = AppController()..systemReduceMotion = true;
+    app.setBarsHideFromScroll(1);
+    app.animateBarsHide(0);
+    await tester.pump();
+    expect(app.barsHide.value, 0);
+    expect(app.topBarHide.value, 0);
+
+    app.animateBarsHide(1);
+    await tester.pump();
+    expect(app.barsHide.value, 1);
+    expect(app.topBarHide.value, 1);
+    app.dispose();
+  });
+
   testWidgets('全局滚动行为使用网盘页同款 BouncingScrollPhysics', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: Scaffold()));
     final context = tester.element(find.byType(Scaffold));

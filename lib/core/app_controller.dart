@@ -14,6 +14,7 @@ import 'data/settings_store.dart';
 import 'drive_cache.dart';
 import 'dynamic_color_support.dart';
 import 'platform_support.dart';
+import 'system_motion.dart';
 
 /// 网盘页当前所在目录：id + 相对根目录的路径（不含"根目录"这几个字，
 /// 显示时按当前语言拼）。拖拽上传的确认条用它显示目标位置。
@@ -147,6 +148,11 @@ class AppController extends ChangeNotifier {
   /// 顶栏/底栏滑动隐藏进度 0..1，由各页面的 ScrollTint 按滚动距离驱动。
   final ValueNotifier<double> barsHide = ValueNotifier(0);
 
+  /// 系统是否要求「少动效」（移除动画 / 减弱动态效果 / 读屏接管）。
+  /// 由外壳在 didChangeDependencies 里同步：控制器里拿不到 MediaQuery，
+  /// 但顶栏/底栏的滑出这类装饰性动画要跟着系统设置走。
+  bool systemReduceMotion = false;
+
   /// 当前激活的 page 视图下标：页面据此把折叠的顶栏动画调出来。
   final ValueNotifier<int> activeTab = ValueNotifier(0);
 
@@ -234,6 +240,15 @@ class AppController extends ChangeNotifier {
     Curve curve = Curves.easeOutCubic,
   }) {
     final to = target.clamp(0.0, 1.0);
+    // 系统要求少动效：顶栏/底栏直接到位，不做下滑
+    // （systemReduceMotion 由外壳从 MediaQuery 同步，SystemMotion 是原生读到的
+    //   动画缩放，覆盖华为等引擎看不到的 ROM）
+    if (systemReduceMotion || SystemMotion.reduceMotion.value) {
+      _barsTicker.stop();
+      if (barsHide.value != to) barsHide.value = to;
+      if (topBarHide.value != to) topBarHide.value = to;
+      return;
+    }
     if (to == barsHide.value && to == topBarHide.value) return;
     _barsFrom = barsHide.value;
     _topBarFrom = topBarHide.value;

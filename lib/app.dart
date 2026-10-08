@@ -13,6 +13,7 @@ import 'core/lanzou_link.dart';
 import 'core/notifications.dart';
 import 'core/platform_support.dart';
 import 'core/share_inbox.dart';
+import 'core/system_motion.dart';
 import 'core/transfer/transfer_manager.dart';
 import 'core/window_frame.dart';
 import 'l10n/l10n.dart';
@@ -47,55 +48,60 @@ class LanCloudApp extends StatelessWidget {
     final mode = app.settings.themeMode;
     final language = app.settings.language;
     // MD3 动态取色：系统壁纸取色（Android 12+），不支持时返回 null。
-    return DynamicColorBuilder(
-      builder: (lightDynamic, darkDynamic) {
-        ThemeData buildTheme(Brightness brightness) => buildLanCloudTheme(
-          brightness: brightness,
-          seed: seed,
-          oledDark: oledDark,
-          dynamicScheme: useDynamicColor
-              ? (brightness == Brightness.dark ? darkDynamic : lightDynamic)
-              : null,
-        );
-        return MaterialApp(
-          // 系统「最近任务」里的应用名（桌面图标名由 Android 资源 app_name 决定，
-          // 任务卡片这里是 Flutter 的 Title 设置的，要跟着语言走）
-          onGenerateTitle: (context) => context.l10n.appName,
-          debugShowCheckedModeBanner: false,
-          locale: language == 'zh'
-              ? const Locale('zh')
-              : language == 'en'
-              ? const Locale('en')
-              : null,
-          supportedLocales: AppLocalizations.supportedLocales,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          theme: buildTheme(Brightness.light),
-          darkTheme: buildTheme(Brightness.dark),
-          themeMode: mode == 'light'
-              ? ThemeMode.light
-              : mode == 'dark'
-              ? ThemeMode.dark
-              : ThemeMode.system,
-          // 全局 BouncingScrollPhysics（网盘页同款）
-          scrollBehavior: const AppScrollBehavior(),
-          // 系统栏（状态栏 / 导航栏）样式跟随主题明暗：
-          // Android 15+ 导航栏强制透明，能调的只有图标明暗与是否加系统遮罩。
-          builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
-            value: systemUiOverlayStyleFor(Theme.of(context).brightness),
-            // 桌面端在窗口这一层接住拖拽（Android 走原生通道，这里原样透传）
-            child: DesktopDropTarget(
-              child: Stack(
-                children: [
-                  child ?? const SizedBox.shrink(),
-                  // 拖拽悬停提示条挂在 Navigator 之上：二级页面也能看到
-                  const DropHoverBanner(),
-                ],
+    // 外面这层只在系统「移除动画」开关变化时重建整棵树，
+    // 让各处的 reduceMotionOf 立刻生效（其余时候不会重复构建）。
+    return ValueListenableBuilder<bool>(
+      valueListenable: SystemMotion.reduceMotion,
+      builder: (context, _, _) => DynamicColorBuilder(
+        builder: (lightDynamic, darkDynamic) {
+          ThemeData buildTheme(Brightness brightness) => buildLanCloudTheme(
+            brightness: brightness,
+            seed: seed,
+            oledDark: oledDark,
+            dynamicScheme: useDynamicColor
+                ? (brightness == Brightness.dark ? darkDynamic : lightDynamic)
+                : null,
+          );
+          return MaterialApp(
+            // 系统「最近任务」里的应用名（桌面图标名由 Android 资源 app_name 决定，
+            // 任务卡片这里是 Flutter 的 Title 设置的，要跟着语言走）
+            onGenerateTitle: (context) => context.l10n.appName,
+            debugShowCheckedModeBanner: false,
+            locale: language == 'zh'
+                ? const Locale('zh')
+                : language == 'en'
+                ? const Locale('en')
+                : null,
+            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            theme: buildTheme(Brightness.light),
+            darkTheme: buildTheme(Brightness.dark),
+            themeMode: mode == 'light'
+                ? ThemeMode.light
+                : mode == 'dark'
+                ? ThemeMode.dark
+                : ThemeMode.system,
+            // 全局 BouncingScrollPhysics（网盘页同款）
+            scrollBehavior: const AppScrollBehavior(),
+            // 系统栏（状态栏 / 导航栏）样式跟随主题明暗：
+            // Android 15+ 导航栏强制透明，能调的只有图标明暗与是否加系统遮罩。
+            builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
+              value: systemUiOverlayStyleFor(Theme.of(context).brightness),
+              // 桌面端在窗口这一层接住拖拽（Android 走原生通道，这里原样透传）
+              child: DesktopDropTarget(
+                child: Stack(
+                  children: [
+                    child ?? const SizedBox.shrink(),
+                    // 拖拽悬停提示条挂在 Navigator 之上：二级页面也能看到
+                    const DropHoverBanner(),
+                  ],
+                ),
               ),
             ),
-          ),
-          home: const AgreementGate(),
-        );
-      },
+            home: const AgreementGate(),
+          );
+        },
+      ),
     );
   }
 }
@@ -345,7 +351,11 @@ class _RootShellState extends State<RootShell>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _app = context.read<AppController>();
+    final app = context.read<AppController>();
+    _app = app;
+    // 系统「移除动画 / 减弱动态效果」：控制器里读不到 MediaQuery，
+    // 这里同步一份，供顶栏/底栏收起动画直接到位
+    app.systemReduceMotion = reduceMotionOf(context);
     _syncWindowFrame();
     // 旋转后视口尺寸变化，PageView 的像素偏移会对应到错误的页，
     // 这里在布局结束后校正回当前标签，避免“底栏指向原视图但内容回到首页”。
@@ -437,6 +447,13 @@ class _RootShellState extends State<RootShell>
     setState(() => _index = i);
     _programmaticJump = true;
     if (_pageController.hasClients) {
+      // 系统要求少动效：直接跳页，不做左右滑动的切页动画
+      if (reduceMotionOf(context)) {
+        _pageController.jumpToPage(i);
+        _programmaticJump = false;
+        _schedulePagerSync();
+        return;
+      }
       _pageController
           .animateToPage(
             i,

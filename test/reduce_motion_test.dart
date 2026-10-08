@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lancloud/core/system_motion.dart';
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/predictive_back_transitions.dart';
 
@@ -64,6 +65,46 @@ void main() {
 
   // 页面转场同理：开了「移除动画」后新页面第一帧就已经在最终位置，
   // 不做缩放 / 位移（对照：正常情况下第一帧会被转场挪走）。
+  // 原生侧读到的动画缩放（华为「移除动画」只改 window/animator，
+  // 引擎看不到）同样要生效。
+  testWidgets('原生报告「移除动画」时列表入场也直接到位', (tester) async {
+    final controller = AnimationController(
+      vsync: const TestVSync(),
+      duration: ListEnterAnimation.duration,
+    );
+    addTearDown(controller.dispose);
+
+    Widget host() => MaterialApp(
+      home: Scaffold(
+        body: ListEnterAnimation(
+          progress: controller,
+          index: 1,
+          child: const Text('条目'),
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(host());
+    expect(
+      find.descendant(
+        of: find.byType(ListEnterAnimation),
+        matching: find.byType(Opacity),
+      ),
+      findsOneWidget,
+    );
+
+    SystemMotion.reduceMotion.value = true;
+    addTearDown(() => SystemMotion.reduceMotion.value = false);
+    await tester.pumpWidget(host());
+    expect(
+      find.descendant(
+        of: find.byType(ListEnterAnimation),
+        matching: find.byType(Opacity),
+      ),
+      findsNothing,
+    );
+  });
+
   testWidgets('系统要求少动效时页面转场直接到位', (tester) async {
     await tester.pumpWidget(
       MaterialApp(

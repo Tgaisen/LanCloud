@@ -6,8 +6,11 @@ import android.content.ClipDescription
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.database.ContentObserver
 import android.net.Uri
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.os.Process
 import android.os.PowerManager
 import android.provider.DocumentsContract
@@ -45,6 +48,8 @@ class MainActivity : FlutterFragmentActivity() {
     private var dropCopying = false
     /// 拖拽 URI 的临时读权限；复制完（或下一次拖拽）时释放。
     private var dropPermissions: DragAndDropPermissions? = null
+    /// 监听系统动画缩放变化的观察者（要留引用，否则会被回收）。
+    private var animationScaleObserver: ContentObserver? = null
 
     companion object {
         private const val TAG = "LanCloudDrag"
@@ -325,7 +330,68 @@ class MainActivity : FlutterFragmentActivity() {
         }
         linksChannel = links
         linkFromIntent(intent)?.let { pendingLink = it }
+
+        // 系统「移除动画 / 减弱动态效果」：Flutter 引擎只读
+        // transition_animation_scale，而华为等 ROM 的无障碍开关只改
+        // window / animator 两个 scale，引擎那边读不到。这里自己把三项都读出来
+        // 报给 Dart 侧，并在开关变化时主动推送。
+        val systemChannel = MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "lancloud/system",
+        )
+        systemChannel.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "reduceMotion" -> result.success(systemReduceMotion())
+                else -> result.notImplemented()
+            }
+        }
+        observeAnimationScales(systemChannel)
         setupDragDrop(flutterEngine)
+    }
+
+    /// 三个动画缩放任一为 0 → 系统要求「移除动画」。
+    private fun systemReduceMotion(): Boolean {
+        return animationScaleKeys().any { key ->
+            try {
+                Settings.Global.getFloat(contentResolver, key, 1f) == 0f
+            } catch (_: Exception) {
+                false
+            }
+        }
+    }
+
+    private fun animationScaleKeys(): List<String> = listOf(
+        Settings.Global.TRANSITION_ANIMATION_SCALE,
+        Settings.Global.WINDOW_ANIMATION_SCALE,
+        Settings.Global.ANIMATOR_DURATION_SCALE,
+    )
+
+    /// 用户开关「移除动画」时立即通知 Dart 侧（不必重启应用）。
+    private fun observeAnimationScales(channel: MethodChannel) {
+        val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean) {
+                try {
+                    channel.invokeMethod(
+                        "reduceMotionChanged",
+                        systemReduceMotion(),
+                    )
+                } catch (_: Exception) {
+                    // Dart 侧还没准备好时忽略
+                }
+            }
+        }
+        for (key in animationScaleKeys()) {
+            try {
+                contentResolver.registerContentObserver(
+                    Settings.Global.getUriFor(key),
+                    false,
+                    observer,
+                )
+            } catch (_: Exception) {
+                // 个别 ROM 不允许注册，忽略即可（还有启动/回前台时的主动读取）
+            }
+        }
+        animationScaleObserver = observer
     }
 
     override fun onNewIntent(intent: Intent) {
