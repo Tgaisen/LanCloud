@@ -20,7 +20,7 @@
 ## 平台
 
 - [x] **Android** `7+`
-- [x] **Windows** `10 1809+`
+- [x] **Windows** `10 1809 17763+`
 - [ ] HarmonyOS NEXT
 - [ ] iOS / iPadOS / MacOS（无相关设备，暂无计划）
 - [ ] 其余平台暂无计划
@@ -67,12 +67,7 @@ versionCode = YY * 10_000_000 + Drop * 100_000 + Hotfix * 10_000 + Stage * 1_000
 
 ### Windows
 
-前置条件：
-
-| 组件 | 说明 |
-| --- | --- |
-| Visual Studio BuildTools | 勾选「使用 C++ 的桌面开发」工作负载（含 Windows SDK 与 CMake），并额外勾选「C++ ATL for x64/x86 (最新 MSVC)」 |
-| NuGet CLI | 用于拉取 WebView2 SDK |
+前置条件见 [开发环境](#开发环境)。
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File tools/build_windows.ps1
@@ -105,4 +100,5 @@ powershell -ExecutionPolicy Bypass -File tools/build_windows.ps1
 | Flutter | 3.47.5 |
 | JDK | 17 |
 | Android SDK | platform 37、build-tools、NDK 28.2、CMake |
-| Visual Studio | Build Tools 2026（Windows SDK 10.0.28000） |
+| Visual Studio Build Tools | 2026（Windows SDK 10.0.28000）；勾选「使用 C++ 的桌面开发」工作负载（含 Windows SDK 与 CMake），并额外勾选「C++ ATL for x64/x86 (最新 MSVC)」 |
+| NuGet CLI | 用于拉取 WebView2 SDK |
