@@ -19,10 +19,11 @@ body:
     id: version
     attributes:
       label: 版本号
-      description: 可在「设置 → 关于」中查看，例如 26.1.0-pre.2 (260102002)
-      placeholder: 26.1.0-pre.2 (260102002)
+      description: 可在「设置 → 关于」中查看。
+      placeholder: 26.1.0-pre.2
     validations:
       required: true
+      render: text
 
   - type: textarea
     id: description
@@ -32,6 +33,7 @@ body:
       placeholder: 例如：下载大文件时进度长时间卡在 99%，最终提示失败。
     validations:
       required: true
+      render: text
 
   - type: textarea
     id: steps
@@ -45,6 +47,7 @@ body:
         4. 出现……
     validations:
       required: true
+      render: text
 
   - type: textarea
     id: expected
@@ -53,6 +56,7 @@ body:
       description: 请描述你期望发生的正确行为或结果。
     validations:
       required: true
+      render: text
 
   - type: textarea
     id: actual
@@ -61,6 +65,7 @@ body:
       description: 请描述应用实际发生的行为或结果。
     validations:
       required: true
+      render: text
 
   - type: textarea
     id: log
@@ -73,7 +78,7 @@ body:
     id: attachments
     attributes:
       label: 附件
-      description: 可上传「设置 → 隐私 → 导出近期运行日志」生成的文件（lancloud-log-*.txt），以及复现问题的截图或录屏。
+      description: 可上传运行日志，以及复现问题的截图或录屏。
     validations:
       accept: ".log,.txt,.zip,.png,.jpg,.jpeg,.gif,.webp,.mp4,.mov,.webm"
 
@@ -86,3 +91,4 @@ body:
         - 设备型号：
         - 系统版本：
         - 其他：
+      render: text
