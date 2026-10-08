@@ -1124,6 +1124,19 @@ class AppLocalizationsZh extends AppLocalizations {
   String get collapse => '收起';
 
   @override
+  String expandSection(String title) {
+    return '展开$title';
+  }
+
+  @override
+  String collapseSection(String title) {
+    return '收起$title';
+  }
+
+  @override
+  String get enteredMultiSelect => '进入多选';
+
+  @override
   String get copy => '复制';
 
   @override

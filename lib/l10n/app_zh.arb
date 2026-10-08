@@ -561,6 +561,19 @@
   "moveToTop": "移到顶部",
   "expand": "展开",
   "collapse": "收起",
+  "expandSection": "展开{title}",
+  "@expandSection": {
+    "placeholders": {
+      "title": {"type": "String"}
+    }
+  },
+  "collapseSection": "收起{title}",
+  "@collapseSection": {
+    "placeholders": {
+      "title": {"type": "String"}
+    }
+  },
+  "enteredMultiSelect": "进入多选",
   "copy": "复制",
   "continueLabel": "继续",
   "showCookie": "显示 Cookie",

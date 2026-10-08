@@ -203,7 +203,13 @@ class LoginPage extends StatelessWidget {
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(20),
-          child: Image.asset('assets/app_icon.png', width: 72, height: 72),
+          // 装饰图：应用名就在下面，读屏不用再念一遍图片
+          child: Image.asset(
+            'assets/app_icon.png',
+            width: 72,
+            height: 72,
+            excludeFromSemantics: true,
+          ),
         ),
         const SizedBox(height: 20),
         Text(l10n.login, style: theme.textTheme.headlineSmall),

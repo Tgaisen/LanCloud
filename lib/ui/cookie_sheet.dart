@@ -81,7 +81,9 @@ Future<void> showCookieDialog(BuildContext context, Account account) {
           children: [
             Text(
               l10n.uidLabel(account.uid),
-              style: theme.textTheme.bodySmall?.copyWith(color: scheme.outline),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 12),
             DecoratedBox(

@@ -47,6 +47,27 @@ class _FakeApp extends AppController {
   LanzouClient get publicClient => _client;
 }
 
+/// 可配置失败次数的分页客户端：第二页先失败 [failures] 次再返回「到底」。
+class _FlakyClient extends LanzouClient {
+  _FlakyClient({this.failures = 0}) : super(uid: '0');
+
+  int failures;
+  final List<int> calls = [];
+
+  @override
+  Future<({List<ShareFileItem> files, bool hasMore})> fetchShareFolderFiles(
+    ShareFolderPaging paging,
+    int page,
+  ) async {
+    calls.add(page);
+    if (page == 2 && failures > 0) {
+      failures -= 1;
+      throw const LanzouException('网络抖动');
+    }
+    return (files: const <ShareFileItem>[], hasMore: false);
+  }
+}
+
 ShareFolderPaging _paging() => ShareFolderPaging(
   base: 'https://example.com',
   referer: 'https://example.com/s/abc',
@@ -176,5 +197,49 @@ void main() {
     await tester.pumpAndSettle();
     expect(client.calls, isEmpty);
     expect(find.text(AppLocalizationsZh().searchIncomplete), findsOneWidget);
+  });
+
+  // 回归：内容不满一屏时要自动补页才能知道「到底了」。补页请求失败时
+  // 以前会一直挂着转圈，要用户自己滑一下才恢复；现在会自动退避重试。
+  testWidgets('分享文件夹：自动补页失败会自己重试，不会停在转圈上', (tester) async {
+    final client = _FlakyClient(failures: 1);
+    final app = _FakeApp(client);
+    addTearDown(app.dispose);
+    await pumpPage(tester, app: app, folder: _folder(firstPageFiles: 3));
+
+    // 第一次补页失败：底部提示可以重试，且不再假装在加载
+    expect(client.calls, [2]);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.text(AppLocalizationsZh().retry), findsOneWidget);
+
+    // 700ms 后自动重试并成功：到底提示出现，全程不需要用户滑动
+    await tester.pump(const Duration(milliseconds: 800));
+    await tester.pumpAndSettle();
+    expect(client.calls, [2, 2]);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.text(AppLocalizationsZh().reachedEnd), findsOneWidget);
+  });
+
+  testWidgets('分享文件夹：补页一直失败时给「重试」入口，而不是常驻转圈', (tester) async {
+    final client = _FlakyClient(failures: 99);
+    final app = _FakeApp(client);
+    addTearDown(app.dispose);
+    await pumpPage(tester, app: app, folder: _folder(firstPageFiles: 3));
+
+    // 自动重试有限次（首次 + 3 次重试）后停下来
+    for (var i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 800));
+    }
+    await tester.pumpAndSettle();
+    expect(client.calls.length, 4);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.text(AppLocalizationsZh().retry), findsOneWidget);
+
+    // 网络恢复后点「重试」：继续把剩余分页拉完
+    client.failures = 0;
+    await tester.tap(find.text(AppLocalizationsZh().retry));
+    await tester.pumpAndSettle();
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.text(AppLocalizationsZh().reachedEnd), findsOneWidget);
   });
 }

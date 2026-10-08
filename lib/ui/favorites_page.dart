@@ -250,6 +250,7 @@ class _FavoritesPageState extends State<FavoritesPage>
   // ------------------------------------------------------------------ 多选
 
   void _enterSelection({int? id}) {
+    final wasSelecting = _selecting;
     if (!_selecting) {
       // 其它页面可能正处于多选：先退出，避免两处状态打架
       context.read<AppController>().onRequestExitSelection?.call();
@@ -261,6 +262,7 @@ class _FavoritesPageState extends State<FavoritesPage>
     final app = context.read<AppController>();
     app.onRequestExitSelection = _exitSelection;
     app.setSelectionMode(true);
+    if (!wasSelecting) announceEnteredMultiSelect(context);
   }
 
   void _exitSelection() {
@@ -481,15 +483,17 @@ class _FavoritesPageState extends State<FavoritesPage>
       onLongPress: () => _enterSelection(id: item.id),
       // 桌面端右键：与 ⋯ 菜单同一套操作（多选时不响应，和 ⋯ 一起隐藏）
       onSecondaryTap: _selecting ? null : () => _itemOptions(item),
-      trailing: _selecting
-          ? null
-          : IconButton(
-              visualDensity: VisualDensity.compact,
-              iconSize: 20,
-              tooltip: l10n.moreActions,
-              icon: const Icon(Icons.more_vert),
-              onPressed: () => _itemOptions(item),
-            ),
+      // 多选时隐藏 ⋯，但保留占位：条目高度不会跳
+      trailing: HideKeepingSpace(
+        hidden: _selecting,
+        child: IconButton(
+          visualDensity: VisualDensity.standard,
+          iconSize: 20,
+          tooltip: l10n.moreActions,
+          icon: const Icon(Icons.more_vert),
+          onPressed: () => _itemOptions(item),
+        ),
+      ),
     );
   }
 

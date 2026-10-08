@@ -43,6 +43,7 @@ class FirstRunTerms extends StatelessWidget {
                       'assets/app_icon.png',
                       width: 72,
                       height: 72,
+                      excludeFromSemantics: true,
                     ),
                   ),
                 ),
@@ -57,7 +58,7 @@ class FirstRunTerms extends StatelessWidget {
                   l10n.firstRunMessage,
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: scheme.outline,
+                    color: scheme.onSurfaceVariant,
                     height: 1.6,
                   ),
                 ),

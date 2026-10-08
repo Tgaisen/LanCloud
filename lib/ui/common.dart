@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart' hide Icons;
+import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:local_auth_android/local_auth_android.dart';
 import 'package:local_auth_darwin/local_auth_darwin.dart';
@@ -15,6 +17,7 @@ import '../core/transfer/transfer_manager.dart';
 import '../l10n/l10n.dart';
 import 'app_scroll.dart';
 import 'app_icons.dart';
+import 'reduce_motion.dart';
 import 'scroll_tint.dart';
 
 /// 大屏（平板 / 桌面）布局阈值：≥640dp 时用侧栏 + 圆角内容卡片。
@@ -275,6 +278,8 @@ class AppBarBackButton extends StatelessWidget {
     // 点击区，Material（含波纹）仍是 40dp。
     return Center(
       child: IconButton(
+        // 读屏要有名字：不加 tooltip 时它只读作「按钮」
+        tooltip: MaterialLocalizations.of(context).backButtonTooltip,
         onPressed: onPressed ?? () => Navigator.of(context).maybePop(),
         style: IconButton.styleFrom(
           backgroundColor: scheme.secondaryContainer,
@@ -442,12 +447,13 @@ class EmptyHint extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 36, color: scheme.outline),
+          // 浅色主题下 outline 当正文色只有 4.24:1（低于 4.5:1），改用 onSurfaceVariant
+          Icon(icon, size: 36, color: scheme.onSurfaceVariant),
           const SizedBox(height: 8),
           Text(
             text,
             textAlign: TextAlign.center,
-            style: TextStyle(color: scheme.outline),
+            style: TextStyle(color: scheme.onSurfaceVariant),
           ),
         ],
       ),
@@ -798,8 +804,11 @@ Future<void> showQrDialog(
                 child: SizedBox(
                   width: 200,
                   height: 200,
-                  child: CustomPaint(
-                    painter: QrPainter(data: url, version: QrVersions.auto),
+                  // 二维码本身是装饰：链接和提取码就在下面，读屏读文字即可
+                  child: ExcludeSemantics(
+                    child: CustomPaint(
+                      painter: QrPainter(data: url, version: QrVersions.auto),
+                    ),
                   ),
                 ),
               ),
@@ -1118,18 +1127,29 @@ class BatchAction extends StatelessWidget {
     final color = enabled
         ? scheme.onSurface
         : scheme.outline.withValues(alpha: 0.6);
-    return InkWell(
+    // 无障碍：整块合成一个语义节点，并带上 enabled 状态。
+    // 不加这一层时，置灰的按钮（onPressed == null）没有自己的语义节点，
+    // 它的文字会冒泡到上层 —— 读屏聚焦窗口最外层会念出「下载」。
+    // 显式标注后读作「下载，已停用」，既不会漏读也不会串节点。
+    return Semantics(
+      label: label,
+      button: true,
+      enabled: enabled,
       onTap: onPressed,
-      borderRadius: BorderRadius.circular(16),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 22, color: color),
-            const SizedBox(height: 2),
-            Text(label, style: TextStyle(fontSize: 12, color: color)),
-          ],
+      excludeSemantics: true,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 22, color: color),
+              const SizedBox(height: 2),
+              Text(label, style: TextStyle(fontSize: 12, color: color)),
+            ],
+          ),
         ),
       ),
     );
@@ -1256,14 +1276,20 @@ class _Md3ListItemState extends State<Md3ListItem>
   @override
   void didUpdateWidget(covariant Md3ListItem oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // 系统要求少动效：删除 / 高亮都直接到位，不做淡出与闪烁
+    final reduceMotion = reduceMotionOf(context);
     if (widget.removing != oldWidget.removing) {
       if (widget.removing) {
-        _remove.forward();
+        if (reduceMotion) {
+          _remove.value = 1;
+        } else {
+          _remove.forward();
+        }
       } else {
         _remove.reverse();
       }
     }
-    if (widget.pulse > oldWidget.pulse) {
+    if (widget.pulse > oldWidget.pulse && !reduceMotion) {
       _pulseCtrl.forward(from: 0);
     }
   }
@@ -1361,7 +1387,10 @@ class _Md3ListItemState extends State<Md3ListItem>
       ),
     );
 
-    return AnimatedBuilder(
+    // 无障碍：多选时把「已选中」告诉读屏（选中只换了图标，读屏看不出来）。
+    // selected 会合并到条目自身的节点上，不额外多一个焦点；只在选中时标注，
+    // 否则普通浏览状态下每一条都会多读一句「未选中」。
+    final built = AnimatedBuilder(
       animation: Listenable.merge([_enter, _remove, _pulseCtrl]),
       builder: (context, child) {
         final enterT = Curves.easeOutCubic.transform(_enter.value);
@@ -1410,6 +1439,7 @@ class _Md3ListItemState extends State<Md3ListItem>
       },
       child: item,
     );
+    return widget.selected ? Semantics(selected: true, child: built) : built;
   }
 }
 
@@ -1440,36 +1470,51 @@ class ExpressiveIconButton extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final iconWidget = Icon(icon, size: 24, color: scheme.onSurfaceVariant);
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Material(
-          color: scheme.surfaceContainerLow,
-          shape: const StadiumBorder(),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: onPressed,
-            child: SizedBox(
-              width: width,
-              height: height,
-              child: Center(
-                child: badge == null
-                    ? iconWidget
-                    : Badge(label: Text(badge!), child: iconWidget),
+    // 无障碍：标签文字在可点区域**下面**（不在 InkWell 里），按钮节点本身
+    // 因此没有名字 —— TalkBack 聚焦到它只会读「按钮」。这里把整块合成一个
+    // 语义节点：显式给 label + button，并接管 onTap（视觉点击仍走 InkWell）。
+    // 角标数字单独读没有意义，并进标签：如「传输 · 3 个任务进行中」。
+    final badgeCount = badge == null ? null : int.tryParse(badge!);
+    final semanticsLabel = badgeCount == null
+        ? label
+        : '$label · ${context.l10n.notifProgressBody(badgeCount)}';
+    return Semantics(
+      label: semanticsLabel,
+      button: true,
+      enabled: true,
+      onTap: onPressed,
+      excludeSemantics: true,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Material(
+            color: scheme.surfaceContainerLow,
+            shape: const StadiumBorder(),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: onPressed,
+              child: SizedBox(
+                width: width,
+                height: height,
+                child: Center(
+                  child: badge == null
+                      ? iconWidget
+                      : Badge(label: Text(badge!), child: iconWidget),
+                ),
               ),
             ),
           ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.labelLarge?.copyWith(
-            color: scheme.onSurfaceVariant,
+          const SizedBox(height: 6),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -1608,6 +1653,8 @@ class _PathBarState extends State<PathBar> with TickerProviderStateMixin {
   /// 与新路径求公共前缀：前缀之后的旧段淡出、新段淡入。
   void _sync() {
     final target = widget.segments;
+    // 系统要求少动效：路径卡片直接增删，不做收缩 / 展开
+    final reduceMotion = reduceMotionOf(context);
     var common = 0;
     while (common < _entries.length &&
         common < target.length &&
@@ -1624,6 +1671,13 @@ class _PathBarState extends State<PathBar> with TickerProviderStateMixin {
     for (final entry in _entries.sublist(common).toList()) {
       if (entry.removing) continue;
       entry.removing = true;
+      if (reduceMotion) {
+        setState(() => _entries.remove(entry));
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => entry.animation.dispose(),
+        );
+        continue;
+      }
       entry.animation.reverse();
       Future<void>.delayed(_pathBarDuration, () {
         if (!mounted) return;
@@ -1635,8 +1689,9 @@ class _PathBarState extends State<PathBar> with TickerProviderStateMixin {
     }
     // 进入新目录：追加新段并播放展开 + 淡入
     for (final segment in target.sublist(common)) {
-      final entry = _PathBarEntry(segment, vsync: this, visible: false);
+      final entry = _PathBarEntry(segment, vsync: this, visible: reduceMotion);
       _entries.add(entry);
+      if (reduceMotion) continue;
       // 新卡片从 0 宽度展开，展开过程中 maxScrollExtent 还在变，
       // 所以等展开播完再滚一次，保证最后一张卡片完整可见
       entry.animation.addStatusListener((status) {
@@ -1646,7 +1701,7 @@ class _PathBarState extends State<PathBar> with TickerProviderStateMixin {
       });
       entry.animation.forward();
     }
-    if (target.length > common) _scrollToEnd();
+    if (target.length > common) _scrollToEnd(animate: !reduceMotion);
   }
 
   void _scrollToEnd({bool animate = true}) {
@@ -1741,6 +1796,34 @@ class _PathBarState extends State<PathBar> with TickerProviderStateMixin {
   }
 }
 
+/// 隐藏内容但**保留它占的位置**。
+///
+/// 多选时行尾的 ⋯ / 取消 / 重试等操作要收起来，直接不构建会让条目高度
+/// （和文字可用的宽度）在进入多选的一瞬间跳一下。这里用
+/// [Visibility] 的 maintain 系列参数把位置留住：不可见、不可点、
+/// 不进读屏语义，桌面端 Tab 也跳不到它上面。
+class HideKeepingSpace extends StatelessWidget {
+  const HideKeepingSpace({
+    super.key,
+    required this.hidden,
+    required this.child,
+  });
+
+  final bool hidden;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Visibility(
+      visible: !hidden,
+      maintainSize: true,
+      maintainAnimation: true,
+      maintainState: true,
+      child: child,
+    );
+  }
+}
+
 /// 多选底部操作栏（MD3E）：悬浮圆角容器，操作项均分整行。
 /// 网盘、传输、收藏、分享浏览页共用，样式保持一致。
 class BatchActionBar extends StatelessWidget {
@@ -1765,7 +1848,7 @@ class BatchActionBar extends StatelessWidget {
     final bottomInset = math.max(
       0.0,
       MediaQuery.paddingOf(context).bottom -
-          (floatingNavInShell ? _floatingNavTopGap : 0.0),
+          (floatingNavInShell ? BatchActionBar._floatingNavTopGap : 0.0),
     );
     return Padding(
       padding: EdgeInsets.fromLTRB(12, 4, 12, 12 + bottomInset),
@@ -1784,6 +1867,27 @@ class BatchActionBar extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 进入多选时播报一句「进入多选」。
+///
+/// 注意要在「真正进入多选」的那一刻调用（各页面的 `_enterSelection`），
+/// 不能挂在多选操作栏的 initState 上：那条操作栏在页面里是常驻的
+/// （外面套 AnimatedOpacity + IgnorePointer），切页时就会误播报。
+///
+/// 播报还要等这一帧的语义树更新（顶栏切换、条目变「已选中」）落地之后再发：
+/// 读屏收到紧随其后的内容变化事件时，会把刚排队的播报冲掉（华为屏幕朗读上
+/// 表现为部分页面完全不读）。所以这里延后到下一帧之后再播。
+void announceEnteredMultiSelect(BuildContext context) {
+  final view = View.maybeOf(context);
+  if (view == null) return;
+  final message = context.l10n.enteredMultiSelect;
+  final direction = Directionality.of(context);
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    Future<void>.delayed(const Duration(milliseconds: 250), () {
+      unawaited(SemanticsService.sendAnnouncement(view, message, direction));
+    });
+  });
 }
 
 /// 拖拽上传确认条里的目标路径文案：`根目录` 或 `根目录/abc/def`
@@ -1894,7 +1998,10 @@ class _SectionCardState extends State<SectionCard>
   void didUpdateWidget(covariant SectionCard oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.expanded != oldWidget.expanded) {
-      if (widget.expanded) {
+      if (reduceMotionOf(context)) {
+        // 系统要求少动效：展开 / 收起直接到位
+        _expand.value = widget.expanded ? 1 : 0;
+      } else if (widget.expanded) {
         _expand.forward();
       } else {
         _expand.reverse();
@@ -1911,7 +2018,7 @@ class _SectionCardState extends State<SectionCard>
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final header = Padding(
+    final headerRow = Padding(
       // 与分组（SegmentedList 自带 4dp 外边距）左对齐
       padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
       child: Row(
@@ -1944,13 +2051,31 @@ class _SectionCardState extends State<SectionCard>
         ],
       ),
     );
+    // 标题与展开/收起按钮共用一个可点区域：整行点按都能展开/收起，
+    // 读屏也读成一个连贯的「收起快速访问」，而不是「快速访问」+「收起」两项。
+    // （当前没有页面传 [SectionCard.trailing]，所以 excludeSemantics 不会吞掉
+    // 其它交互控件；将来加 trailing 时要把它的语义放回来。）
+    final header = widget.onToggle == null
+        ? headerRow
+        : Semantics(
+            label: widget.expanded
+                ? context.l10n.collapseSection(widget.title)
+                : context.l10n.expandSection(widget.title),
+            button: true,
+            onTap: widget.onToggle,
+            excludeSemantics: true,
+            child: InkWell(
+              onTap: widget.onToggle,
+              borderRadius: BorderRadius.circular(12),
+              child: headerRow,
+            ),
+          );
     // 底色与圆角交给分组本身，标题行保持透明
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // 只有右侧 IconButton 能展开 / 收起，标题行本身不响应点击
           header,
           // 整组高度过渡：内容常驻，收起时被裁掉；对折叠内容禁用交互与读屏
           IgnorePointer(
@@ -2054,7 +2179,7 @@ class PropertyHeaderCard extends StatelessWidget {
                             subtitle,
                             key: ValueKey(subtitle),
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: scheme.outline,
+                              color: scheme.onSurfaceVariant,
                             ),
                           ),
                         ),
@@ -2664,10 +2789,11 @@ class ListEnterGate extends StatefulWidget {
 
   /// 当前是否处于"列表刚删过条目"的那一帧。
   static bool suppressIn(BuildContext context) =>
-      context
-          .dependOnInheritedWidgetOfExactType<_ListEnterGateScope>()
-          ?.suppress ??
-      false;
+      reduceMotionOf(context) ||
+      (context
+              .dependOnInheritedWidgetOfExactType<_ListEnterGateScope>()
+              ?.suppress ??
+          false);
 
   @override
   State<ListEnterGate> createState() => _ListEnterGateState();
@@ -2731,6 +2857,8 @@ class ListEnterAnimation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 系统要求少动效：条目直接显示，不做淡入 / 位移
+    if (reduceMotionOf(context)) return child;
     return AnimatedBuilder(
       animation: progress,
       child: child,

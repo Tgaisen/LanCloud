@@ -394,6 +394,19 @@
   "moveToTop": "Move to top",
   "expand": "Expand",
   "collapse": "Collapse",
+  "expandSection": "Expand {title}",
+  "@expandSection": {
+    "placeholders": {
+      "title": {"type": "String"}
+    }
+  },
+  "collapseSection": "Collapse {title}",
+  "@collapseSection": {
+    "placeholders": {
+      "title": {"type": "String"}
+    }
+  },
+  "enteredMultiSelect": "Multi-select mode",
   "copy": "Copy",
   "continueLabel": "Continue",
   "showCookie": "Show cookie",

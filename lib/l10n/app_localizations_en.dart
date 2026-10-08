@@ -1156,6 +1156,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get collapse => 'Collapse';
 
   @override
+  String expandSection(String title) {
+    return 'Expand $title';
+  }
+
+  @override
+  String collapseSection(String title) {
+    return 'Collapse $title';
+  }
+
+  @override
+  String get enteredMultiSelect => 'Multi-select mode';
+
+  @override
   String get copy => 'Copy';
 
   @override

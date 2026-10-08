@@ -133,7 +133,7 @@ class _HomePageState extends State<HomePage>
       subtitle: quickAccessPathLabel(l10n, item),
       trailing: IconButton(
         // 与收藏 / 传输页的 ⋯ 保持一致（紧凑尺寸）
-        visualDensity: VisualDensity.compact,
+        visualDensity: VisualDensity.standard,
         iconSize: 20,
         tooltip: l10n.moreActions,
         icon: const Icon(Icons.more_vert),

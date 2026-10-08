@@ -25,6 +25,7 @@ import 'ui/home_page.dart';
 import 'ui/login_page.dart';
 import 'ui/predictive_back_transitions.dart';
 import 'ui/profile_page.dart';
+import 'ui/reduce_motion.dart';
 import 'ui/app_scroll.dart';
 import 'ui/common.dart';
 import 'ui/scroll_tint.dart';
@@ -333,6 +334,11 @@ class _RootShellState extends State<RootShell>
     if (target == _cardTopTo) return;
     _cardTopFrom = _animatedCardTop;
     _cardTopTo = target;
+    // 系统要求少动效：顶边直接跳到新高度，不做过渡
+    if (reduceMotionOf(context)) {
+      _cardTopAnim.value = 1;
+      return;
+    }
     _cardTopAnim.forward(from: 0);
   }
 
@@ -847,7 +853,12 @@ class _RootShellState extends State<RootShell>
     Widget iconFor(int viewId, {required bool selected}) {
       final icon = Icon(_iconFor(viewId, selected: selected));
       if (viewId != _viewTransfers || running == 0) return icon;
-      return Badge(label: Text('$running'), child: icon);
+      // 角标数字单独读出来没有上下文，给读屏补一句「N 个任务进行中」
+      return Semantics(
+        label: context.l10n.notifProgressBody(running),
+        excludeSemantics: true,
+        child: Badge(label: Text('$running'), child: icon),
+      );
     }
 
     final width = MediaQuery.sizeOf(context).width;

@@ -2156,6 +2156,24 @@ abstract class AppLocalizations {
   /// **'收起'**
   String get collapse;
 
+  /// No description provided for @expandSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'展开{title}'**
+  String expandSection(String title);
+
+  /// No description provided for @collapseSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'收起{title}'**
+  String collapseSection(String title);
+
+  /// No description provided for @enteredMultiSelect.
+  ///
+  /// In zh, this message translates to:
+  /// **'进入多选'**
+  String get enteredMultiSelect;
+
   /// No description provided for @copy.
   ///
   /// In zh, this message translates to:

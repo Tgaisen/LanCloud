@@ -168,6 +168,129 @@ void main() {
     expect(app.selectionMode, isTrue);
   });
 
+  // 回归：播报必须挂在「真正进入多选」上。多选条在页面里常驻（透明度切换），
+  // 之前把播报放进多选条 initState，导致从首页打开传输页/收藏就误读「进入多选」，
+  // 而网盘页真正进入多选反而没提示。
+  testWidgets('页面打开不播报「进入多选」，长按进入时才播报一次', (tester) async {
+    final announcements = <String>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockDecodedMessageHandler<dynamic>(SystemChannels.accessibility, (
+          message,
+        ) async {
+          final event = message as Map<dynamic, dynamic>;
+          if (event['type'] == 'announce') {
+            announcements.add(
+              (event['data'] as Map<dynamic, dynamic>)['message'] as String,
+            );
+          }
+        });
+    addTearDown(
+      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockDecodedMessageHandler<dynamic>(
+            SystemChannels.accessibility,
+            null,
+          ),
+    );
+
+    // 打开传输页（多选条已经建在树里）不该播报
+    final app = await pushTransfers(tester);
+    // 等过播报的延迟窗口：页面构建本身不能产生任何播报
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(announcements, isEmpty);
+
+    // 长按进入多选：播报一次
+    await tester.longPress(find.text('a.zip'));
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(announcements, ['进入多选']);
+
+    // 已在多选里继续长按其它条目不再重复播报
+    await tester.longPress(find.text('a.zip'));
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(announcements, ['进入多选']);
+
+    // 退出多选后再收尾，避免页面 dispose 时去动已销毁的控制器
+    await tester.tap(find.byTooltip('退出多选'));
+    await tester.pumpAndSettle();
+    app.dispose();
+  });
+
+  // 行内操作（取消 / 重试 / 分享）多选时只隐藏不改变布局：条目高度不变。
+  testWidgets('多选隐藏行内操作但保留占位：条目高度不变', (tester) async {
+    final (app, _) = await host(tester);
+    final item = find.ancestor(
+      of: find.text('a.zip'),
+      matching: find.byType(Md3ListItem),
+    );
+    final height = tester.getSize(item).height;
+    final retry = find.descendant(of: item, matching: find.byTooltip('重试'));
+    expect(retry, findsOneWidget);
+
+    await tester.longPress(find.text('a.zip'));
+    await tester.pumpAndSettle();
+    expect(app.selectionMode, isTrue);
+    expect(tester.getSize(item).height, height);
+    expect(
+      tester
+          .widget<HideKeepingSpace>(
+            find.ancestor(of: retry, matching: find.byType(HideKeepingSpace)),
+          )
+          .hidden,
+      isTrue,
+    );
+
+    await tester.tap(find.byTooltip('退出多选'));
+    await tester.pumpAndSettle();
+    expect(tester.getSize(item).height, height);
+    expect(retry, findsOneWidget);
+    app.dispose();
+  });
+
+  // 顶栏入口：多选按钮排在「清除已完成」左侧，点一下直接进多选。
+  testWidgets('顶栏多选按钮在「清除已完成」左侧，点击进入多选并播报', (tester) async {
+    final announcements = <String>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockDecodedMessageHandler<dynamic>(SystemChannels.accessibility, (
+          message,
+        ) async {
+          final event = message as Map<dynamic, dynamic>;
+          if (event['type'] == 'announce') {
+            announcements.add(
+              (event['data'] as Map<dynamic, dynamic>)['message'] as String,
+            );
+          }
+        });
+    addTearDown(
+      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockDecodedMessageHandler<dynamic>(
+            SystemChannels.accessibility,
+            null,
+          ),
+    );
+
+    final (app, _) = await host(tester);
+
+    final multiSelect = find.byTooltip('多选');
+    expect(multiSelect, findsOneWidget);
+    expect(
+      tester.getCenter(multiSelect).dx,
+      lessThan(tester.getCenter(find.byTooltip('清除已完成')).dx),
+    );
+
+    await tester.tap(multiSelect);
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(app.selectionMode, isTrue);
+    // 先用顶栏进多选（未选中任何条目），也要有提示
+    expect(announcements, ['进入多选']);
+
+    await tester.tap(find.byTooltip('退出多选'));
+    await tester.pumpAndSettle();
+    expect(app.selectionMode, isFalse);
+    app.dispose();
+  });
+
   testWidgets('长按进入多选：显示已选数量，重试仅对失败项可用', (tester) async {
     final (app, manager) = await host(tester);
 

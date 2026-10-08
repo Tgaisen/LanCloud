@@ -18,6 +18,7 @@ import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
 import 'drive_refresh_indicator.dart' as drive_refresh;
+import 'reduce_motion.dart';
 import 'scroll_tint.dart';
 import 'web_page.dart';
 
@@ -199,8 +200,13 @@ class _DrivePageState extends State<DrivePage>
     _keyboardUp.value = View.of(context).viewInsets.bottom > 0;
   }
 
+  /// 系统「移除动画 / 减弱动态效果」：initState 里查不了 MediaQuery
+  /// （同步命中目录缓存时会走到那儿），在 didChangeDependencies 缓存一份。
+  bool _systemReduceMotion = false;
+
   bool get _animationsEnabled =>
-      context.read<AppController>().settings.transitionAnimations;
+      context.read<AppController>().settings.transitionAnimations &&
+      !_systemReduceMotion;
 
   /// 首页选择“网盘页打开”时：跳转到请求的目录。
   void _onDriveFolderRequest() {
@@ -455,6 +461,7 @@ class _DrivePageState extends State<DrivePage>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _systemReduceMotion = reduceMotionOf(context);
     _app = context.read<AppController>();
     _appReady = true;
     _app.addDriveProbe(_dropProbe); // 拖拽判定：当前网盘页是否可见
@@ -709,6 +716,7 @@ class _DrivePageState extends State<DrivePage>
   }
 
   void _enterSelection({String? fileId, String? folderId}) {
+    final wasSelecting = _selecting;
     setState(() {
       _selecting = true;
       if (fileId != null) _selectedFiles.add(fileId);
@@ -717,6 +725,8 @@ class _DrivePageState extends State<DrivePage>
     _selAnim.forward();
     _app.onRequestExitSelection = _exitSelection;
     _app.setSelectionMode(true);
+    // 只在「刚进入多选」时播报，继续长按其它条目不再重复
+    if (!wasSelecting) announceEnteredMultiSelect(context);
   }
 
   void _exitSelection() {
@@ -2697,7 +2707,8 @@ class _DrivePageState extends State<DrivePage>
     required bool grid,
     required bool animate,
   }) {
-    return _AnimatedListItem(
+    final selected = _selectedFolders.contains(folder.id);
+    final item = _AnimatedListItem(
       key: ValueKey('$_folderId-f-${folder.id}'),
       index: index,
       enter: _enterAnim,
@@ -2709,19 +2720,24 @@ class _DrivePageState extends State<DrivePage>
       child: grid
           ? _FolderTile(
               folder: folder,
-              selected: _selectedFolders.contains(folder.id),
+              selected: selected,
+              selecting: _selecting,
               onTap: () => _openFolder(folder),
               onMenu: () => _folderActions(folder),
               onLongPress: () => _enterSelection(folderId: folder.id),
             )
           : _FolderRow(
               folder: folder,
-              selected: _selectedFolders.contains(folder.id),
+              selected: selected,
+              selecting: _selecting,
               onTap: () => _openFolder(folder),
               onMenu: () => _folderActions(folder),
               onLongPress: () => _enterSelection(folderId: folder.id),
             ),
     );
+    // 无障碍：多选「已选中」状态告诉读屏（只换了图标读屏看不出来）；
+    // 只在选中时标注，普通浏览时不额外读「未选中」。
+    return selected ? Semantics(selected: true, child: item) : item;
   }
 
   /// 单个文件条目的动画包装。
@@ -2731,7 +2747,8 @@ class _DrivePageState extends State<DrivePage>
     required bool grid,
     required bool animate,
   }) {
-    return _AnimatedListItem(
+    final selected = _selectedFiles.contains(file.id);
+    final item = _AnimatedListItem(
       key: ValueKey('$_folderId-l-${file.id}'),
       index: index,
       enter: _enterAnim,
@@ -2743,19 +2760,22 @@ class _DrivePageState extends State<DrivePage>
       child: grid
           ? _FileTile(
               file: file,
-              selected: _selectedFiles.contains(file.id),
+              selected: selected,
+              selecting: _selecting,
               onTap: () => _fileActions(file),
               onMenu: () => _fileMenuSheet(file),
               onLongPress: () => _enterSelection(fileId: file.id),
             )
           : _FileRow(
               file: file,
-              selected: _selectedFiles.contains(file.id),
+              selected: selected,
+              selecting: _selecting,
               onTap: () => _fileActions(file),
               onMenu: () => _fileMenuSheet(file),
               onLongPress: () => _enterSelection(fileId: file.id),
             ),
     );
+    return selected ? Semantics(selected: true, child: item) : item;
   }
 }
 
@@ -2797,6 +2817,8 @@ class _AnimatedListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!enabled) return child;
+    // 系统要求少动效：出现 / 消失 / 高亮都直接到位，不做淡入淡出
+    if (reduceMotionOf(context)) return child;
     var item = child;
 
     if (removing) {
@@ -2919,6 +2941,7 @@ class _FolderTile extends StatelessWidget {
   const _FolderTile({
     required this.folder,
     required this.selected,
+    required this.selecting,
     required this.onTap,
     required this.onMenu,
     required this.onLongPress,
@@ -2926,6 +2949,9 @@ class _FolderTile extends StatelessWidget {
 
   final LzFolder folder;
   final bool selected;
+
+  /// 多选期间隐藏行内 ⋯ 菜单（和收藏 / 传输页一致），避免误触。
+  final bool selecting;
   final VoidCallback onTap;
   final VoidCallback onMenu;
   final VoidCallback onLongPress;
@@ -2940,8 +2966,8 @@ class _FolderTile extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         onLongPress: onLongPress,
-        // 桌面端右键 = 点 ⋯ 菜单（同一套操作）
-        onSecondaryTap: onMenu,
+        // 桌面端右键 = 点 ⋯ 菜单（同一套操作；多选时和 ⋯ 一起失效）
+        onSecondaryTap: selecting ? null : onMenu,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(10, 8, 4, 10),
           child: Column(
@@ -2967,12 +2993,16 @@ class _FolderTile extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
-                  IconButton(
-                    visualDensity: VisualDensity.compact,
-                    iconSize: 18,
-                    tooltip: context.l10n.folderActions,
-                    onPressed: onMenu,
-                    icon: const Icon(Icons.more_vert),
+                  // 多选时只隐藏不占位变化：条目高度 / 文字宽度保持一致
+                  HideKeepingSpace(
+                    hidden: selecting,
+                    child: IconButton(
+                      visualDensity: VisualDensity.standard,
+                      iconSize: 18,
+                      tooltip: context.l10n.folderActions,
+                      onPressed: onMenu,
+                      icon: const Icon(Icons.more_vert),
+                    ),
                   ),
                 ],
               ),
@@ -3000,6 +3030,7 @@ class _FileTile extends StatelessWidget {
   const _FileTile({
     required this.file,
     required this.selected,
+    required this.selecting,
     required this.onTap,
     required this.onMenu,
     required this.onLongPress,
@@ -3007,6 +3038,9 @@ class _FileTile extends StatelessWidget {
 
   final LzFile file;
   final bool selected;
+
+  /// 多选期间隐藏行内 ⋯ 菜单（和收藏 / 传输页一致），避免误触。
+  final bool selecting;
   final VoidCallback onTap;
   final VoidCallback onMenu;
   final VoidCallback onLongPress;
@@ -3021,8 +3055,8 @@ class _FileTile extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         onLongPress: onLongPress,
-        // 桌面端右键 = 点 ⋯ 菜单（同一套操作）
-        onSecondaryTap: onMenu,
+        // 桌面端右键 = 点 ⋯ 菜单（同一套操作；多选时和 ⋯ 一起失效）
+        onSecondaryTap: selecting ? null : onMenu,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(10, 8, 4, 10),
           child: Column(
@@ -3046,12 +3080,15 @@ class _FileTile extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
-                  IconButton(
-                    visualDensity: VisualDensity.compact,
-                    iconSize: 18,
-                    tooltip: context.l10n.fileActions,
-                    onPressed: onMenu,
-                    icon: const Icon(Icons.more_vert),
+                  HideKeepingSpace(
+                    hidden: selecting,
+                    child: IconButton(
+                      visualDensity: VisualDensity.standard,
+                      iconSize: 18,
+                      tooltip: context.l10n.fileActions,
+                      onPressed: onMenu,
+                      icon: const Icon(Icons.more_vert),
+                    ),
                   ),
                 ],
               ),
@@ -3085,6 +3122,7 @@ class _DriveRow extends StatelessWidget {
   const _DriveRow({
     required this.icon,
     required this.selected,
+    required this.selecting,
     required this.title,
     required this.subtitle,
     required this.menuTooltip,
@@ -3097,6 +3135,9 @@ class _DriveRow extends StatelessWidget {
 
   final IconData icon;
   final bool selected;
+
+  /// 多选期间隐藏行内 ⋯ 菜单（和收藏 / 传输页一致），避免误触。
+  final bool selecting;
   final String title;
   final String subtitle;
   final String menuTooltip;
@@ -3128,8 +3169,8 @@ class _DriveRow extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           onLongPress: onLongPress,
-          // 桌面端右键 = 点 ⋯ 菜单（同一套操作）
-          onSecondaryTap: onMenu,
+          // 桌面端右键 = 点 ⋯ 菜单（同一套操作；多选时和 ⋯ 一起失效）
+          onSecondaryTap: selecting ? null : onMenu,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(10, 8, 2, 8),
             child: Row(
@@ -3180,7 +3221,7 @@ class _DriveRow extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: scheme.outline,
+                              color: scheme.onSurfaceVariant,
                             ),
                           ),
                         ),
@@ -3193,16 +3234,19 @@ class _DriveRow extends StatelessWidget {
                     child: Icon(
                       Icons.lock_outline,
                       size: 16,
-                      color: scheme.outline,
+                      color: scheme.onSurfaceVariant,
                     ),
                   ),
-                IconButton(
-                  tooltip: menuTooltip,
-                  visualDensity: VisualDensity.compact,
-                  iconSize: 20,
-                  color: selected ? scheme.onPrimaryContainer : null,
-                  icon: const Icon(Icons.more_vert),
-                  onPressed: onMenu,
+                HideKeepingSpace(
+                  hidden: selecting,
+                  child: IconButton(
+                    tooltip: menuTooltip,
+                    visualDensity: VisualDensity.standard,
+                    iconSize: 20,
+                    color: selected ? scheme.onPrimaryContainer : null,
+                    icon: const Icon(Icons.more_vert),
+                    onPressed: onMenu,
+                  ),
                 ),
               ],
             ),
@@ -3217,6 +3261,7 @@ class _FolderRow extends StatelessWidget {
   const _FolderRow({
     required this.folder,
     required this.selected,
+    required this.selecting,
     required this.onTap,
     required this.onMenu,
     required this.onLongPress,
@@ -3224,6 +3269,7 @@ class _FolderRow extends StatelessWidget {
 
   final LzFolder folder;
   final bool selected;
+  final bool selecting;
   final VoidCallback onTap;
   final VoidCallback onMenu;
   final VoidCallback onLongPress;
@@ -3234,6 +3280,7 @@ class _FolderRow extends StatelessWidget {
       icon: Icons.folder_outlined,
       folder: true,
       selected: selected,
+      selecting: selecting,
       title: folder.name,
       subtitle: folder.desc,
       locked: folder.hasPwd,
@@ -3249,6 +3296,7 @@ class _FileRow extends StatelessWidget {
   const _FileRow({
     required this.file,
     required this.selected,
+    required this.selecting,
     required this.onTap,
     required this.onMenu,
     required this.onLongPress,
@@ -3256,6 +3304,7 @@ class _FileRow extends StatelessWidget {
 
   final LzFile file;
   final bool selected;
+  final bool selecting;
   final VoidCallback onTap;
   final VoidCallback onMenu;
   final VoidCallback onLongPress;
@@ -3265,6 +3314,7 @@ class _FileRow extends StatelessWidget {
     return _DriveRow(
       icon: iconForFile(file.name),
       selected: selected,
+      selecting: selecting,
       title: file.name,
       subtitle: [
         prettyLzSize(file.size),
@@ -3970,7 +4020,7 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
                   ? Center(
                       child: Text(
                         l10n.noSubfolders,
-                        style: TextStyle(color: scheme.outline),
+                        style: TextStyle(color: scheme.onSurfaceVariant),
                       ),
                     )
                   : ListView.builder(

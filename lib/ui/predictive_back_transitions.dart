@@ -1,22 +1,77 @@
 import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:flutter/material.dart';
 
+import 'reduce_motion.dart';
+
 /// 预测性返回时盖在「上一页」上的遮罩 key（便于测试定位）。
 const ValueKey<String> kPredictiveBackScrimKey = ValueKey<String>(
   'predictive-back-scrim',
 );
 
 /// 与 Flutter 默认一致的全平台转场表，只把 Android 换成
-/// [AospPredictiveBackPageTransitionsBuilder]。
+/// [AospPredictiveBackPageTransitionsBuilder]，并统一套一层「系统要求少动效
+/// 时直接跳过转场」的处理（见 [_ReduceMotionBuilder]）。
 const PageTransitionsTheme kLanCloudPageTransitionsTheme = PageTransitionsTheme(
   builders: <TargetPlatform, PageTransitionsBuilder>{
-    TargetPlatform.android: AospPredictiveBackPageTransitionsBuilder(),
-    TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-    TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
-    TargetPlatform.windows: ZoomPageTransitionsBuilder(),
-    TargetPlatform.linux: ZoomPageTransitionsBuilder(),
+    TargetPlatform.android: _ReduceMotionBuilder(
+      AospPredictiveBackPageTransitionsBuilder(),
+    ),
+    TargetPlatform.iOS: _ReduceMotionBuilder(CupertinoPageTransitionsBuilder()),
+    TargetPlatform.macOS: _ReduceMotionBuilder(
+      CupertinoPageTransitionsBuilder(),
+    ),
+    TargetPlatform.windows: _ReduceMotionBuilder(ZoomPageTransitionsBuilder()),
+    TargetPlatform.linux: _ReduceMotionBuilder(ZoomPageTransitionsBuilder()),
   },
 );
+
+/// 系统开了「移除动画」/「减弱动态效果」（或读屏接管交互）时，
+/// 页面转场直接返回原样的子树——新页面立即到位，不做位移 / 缩放 / 淡入。
+class _ReduceMotionBuilder extends PageTransitionsBuilder {
+  const _ReduceMotionBuilder(this.delegate);
+
+  final PageTransitionsBuilder delegate;
+
+  @override
+  Duration get transitionDuration => delegate.transitionDuration;
+
+  @override
+  Duration get reverseTransitionDuration => delegate.reverseTransitionDuration;
+
+  @override
+  DelegatedTransitionBuilder? get delegatedTransition {
+    final delegated = delegate.delegatedTransition;
+    if (delegated == null) return null;
+    return (context, animation, secondaryAnimation, allowSnapshotting, child) {
+      if (reduceMotionOf(context)) return child;
+      return delegated(
+        context,
+        animation,
+        secondaryAnimation,
+        allowSnapshotting,
+        child,
+      );
+    };
+  }
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    if (reduceMotionOf(context)) return child;
+    return delegate.buildTransitions<T>(
+      route,
+      context,
+      animation,
+      secondaryAnimation,
+      child,
+    );
+  }
+}
 
 /// 仿 AOSP 设置应用的预测性返回动效。
 ///

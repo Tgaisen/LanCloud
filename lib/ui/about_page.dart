@@ -54,6 +54,7 @@ class _AboutPageState extends State<AboutPage> {
                         'assets/app_icon.png',
                         width: 72,
                         height: 72,
+                        excludeFromSemantics: true,
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -62,7 +63,7 @@ class _AboutPageState extends State<AboutPage> {
                     Text(
                       l10n.aboutVersion(appVersion, appBuild),
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: scheme.outline,
+                        color: scheme.onSurfaceVariant,
                       ),
                     ),
                   ],

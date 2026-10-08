@@ -11,6 +11,7 @@ import '../core/transfer/transfer_manager.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
+import 'reduce_motion.dart';
 import 'scroll_tint.dart';
 
 class TransfersPage extends StatefulWidget {
@@ -73,8 +74,17 @@ class _TransfersPageState extends State<TransfersPage>
     final app = _app;
     if (app == null || widget.tabIndex == null) return;
     if (app.activeTab.value == widget.tabIndex) {
-      _enter.forward(from: 0);
+      _replayEnter();
     }
+  }
+
+  /// 整组入场动画：系统要求少动效时直接显示（不做错峰淡入 / 位移）。
+  void _replayEnter() {
+    if (reduceMotionOf(context)) {
+      _enter.value = 1;
+      return;
+    }
+    _enter.forward(from: 0);
   }
 
   @override
@@ -85,7 +95,7 @@ class _TransfersPageState extends State<TransfersPage>
     super.initState();
     // 首次加载：整组播一次入场动画（之后靠切视图 / 切 tab 重播）
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _enter.forward();
+      if (mounted) _replayEnter();
     });
   }
 
@@ -109,6 +119,7 @@ class _TransfersPageState extends State<TransfersPage>
   List<TransferTask> _tasksOf(TransferManager manager) => manager.byKind(_kind);
 
   void _enterSelection({String? taskId}) {
+    final wasSelecting = _selecting;
     if (!_selecting) {
       // 其它页面可能正处于多选：先退出，避免两处状态打架
       context.read<AppController>().onRequestExitSelection?.call();
@@ -120,6 +131,7 @@ class _TransfersPageState extends State<TransfersPage>
     final app = context.read<AppController>();
     app.onRequestExitSelection = _exitSelection;
     app.setSelectionMode(true);
+    if (!wasSelecting) announceEnteredMultiSelect(context);
   }
 
   void _exitSelection() {
@@ -341,6 +353,11 @@ class _TransfersPageState extends State<TransfersPage>
                       title: Text(l10n.transfers),
                       actions: [
                         IconButton(
+                          tooltip: l10n.multiSelect,
+                          icon: const Icon(Icons.checklist),
+                          onPressed: () => _enterSelection(),
+                        ),
+                        IconButton(
                           tooltip: l10n.clearFinished,
                           icon: const Icon(Icons.delete_sweep_outlined),
                           onPressed: () =>
@@ -375,9 +392,14 @@ class _TransfersPageState extends State<TransfersPage>
                                 onSelectionChanged: (values) {
                                   if (values.first == _tab) return;
                                   setState(() => _tab = values.first);
-                                  _tabAnim.forward(from: 0);
+                                  if (reduceMotionOf(context)) {
+                                    // 少动效：切上传 / 下载直接到位
+                                    _tabAnim.value = 1;
+                                  } else {
+                                    _tabAnim.forward(from: 0);
+                                  }
                                   // 切换上传 / 下载：整组重播一次入场动画
-                                  _enter.forward(from: 0);
+                                  _replayEnter();
                                 },
                               ),
                             ),
@@ -696,52 +718,53 @@ class _TransferTile extends StatelessWidget {
       selected: selected,
       onTap: onTap,
       onLongPress: onLongPress,
-      // 多选期间隐藏行内操作，避免误触
-      trailing: selecting
-          ? null
-          : Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (active)
-                  IconButton(
-                    visualDensity: VisualDensity.compact,
-                    iconSize: 20,
-                    tooltip: l10n.cancel,
-                    icon: const Icon(Icons.close),
-                    onPressed: () => manager.cancel(task.id),
-                  ),
-                if (task.status == TransferStatus.failed)
-                  IconButton(
-                    visualDensity: VisualDensity.compact,
-                    iconSize: 20,
-                    tooltip: l10n.retry,
-                    icon: const Icon(Icons.refresh),
-                    onPressed: () => manager.retry(task.id),
-                  ),
-                if (done) ...[
-                  // 点击条目即打开文件；这个按钮移动端走系统分享面板，
-                  // 桌面端没有分享面板，改为「打开所在文件夹」
-                  //（SystemShare.shareFile 在桌面端就是资源管理器定位）
-                  IconButton(
-                    visualDensity: VisualDensity.compact,
-                    iconSize: 20,
-                    tooltip: PlatformSupport.isDesktop
-                        ? l10n.openContainingFolder
-                        : l10n.share,
-                    icon: Icon(
-                      PlatformSupport.isDesktop
-                          ? Icons.folder_open
-                          : Icons.share_outlined,
-                    ),
-                    onPressed: () => SystemShare.shareFile(
-                      task.savedPath!,
-                      subject: task.name,
-                      mime: _shareMimeFor(task.name),
-                    ),
-                  ),
-                ],
-              ],
-            ),
+      // 多选期间隐藏行内操作（避免误触），但保留占位：条目高度不跳
+      trailing: HideKeepingSpace(
+        hidden: selecting,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (active)
+              IconButton(
+                visualDensity: VisualDensity.standard,
+                iconSize: 20,
+                tooltip: l10n.cancel,
+                icon: const Icon(Icons.close),
+                onPressed: () => manager.cancel(task.id),
+              ),
+            if (task.status == TransferStatus.failed)
+              IconButton(
+                visualDensity: VisualDensity.standard,
+                iconSize: 20,
+                tooltip: l10n.retry,
+                icon: const Icon(Icons.refresh),
+                onPressed: () => manager.retry(task.id),
+              ),
+            if (done) ...[
+              // 点击条目即打开文件；这个按钮移动端走系统分享面板，
+              // 桌面端没有分享面板，改为「打开所在文件夹」
+              //（SystemShare.shareFile 在桌面端就是资源管理器定位）
+              IconButton(
+                visualDensity: VisualDensity.standard,
+                iconSize: 20,
+                tooltip: PlatformSupport.isDesktop
+                    ? l10n.openContainingFolder
+                    : l10n.share,
+                icon: Icon(
+                  PlatformSupport.isDesktop
+                      ? Icons.folder_open
+                      : Icons.share_outlined,
+                ),
+                onPressed: () => SystemShare.shareFile(
+                  task.savedPath!,
+                  subject: task.name,
+                  mime: _shareMimeFor(task.name),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
       bottom: active
           ? ClipRRect(
               borderRadius: BorderRadius.circular(4),
