@@ -9,15 +9,17 @@ $adb = 'C:\dev\android-sdk\platform-tools\adb.exe'
 $apkDir = Join-Path $root 'build\app\outputs\flutter-apk'
 $outDir = Join-Path $root 'outputs'
 
-$version = (Select-String -Path (Join-Path $root 'pubspec.yaml') -Pattern '^version:\s*([0-9]+\.[0-9]+\.[0-9]+)').Matches[0].Groups[1].Value
+# 版本名含预发布后缀（如 26.1.0-pre.3）；'+' 后面是 versionCode，不要
+$version = (Select-String -Path (Join-Path $root 'pubspec.yaml') -Pattern '^version:\s*([^+\s]+)\+').Matches[0].Groups[1].Value
 Write-Output "==> Building LanCloud $version"
 & (Join-Path $PSScriptRoot 'flutter.cmd') build apk --release --split-per-abi
 
 New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+# 产物命名：lanCloud_平台_版本_架构
 $map = @{
-    'app-arm64-v8a-release.apk'   = "LanCloud-$version-arm64.apk"
-    'app-armeabi-v7a-release.apk' = "LanCloud-$version-arm32.apk"
-    'app-x86_64-release.apk'      = "LanCloud-$version-x86_64.apk"
+    'app-arm64-v8a-release.apk'   = "lanCloud_android_${version}_arm64-v8a.apk"
+    'app-armeabi-v7a-release.apk' = "lanCloud_android_${version}_armeabi-v7a.apk"
+    'app-x86_64-release.apk'      = "lanCloud_android_${version}_x86_64.apk"
 }
 foreach ($key in $map.Keys) {
     Copy-Item (Join-Path $apkDir $key) (Join-Path $outDir $map[$key]) -Force
@@ -36,11 +38,11 @@ if (-not $devices) {
 
 $abi = (& $adb shell getprop ro.product.cpu.abi).Trim()
 $apkName = if ($abi -like 'arm64*') {
-    "LanCloud-$version-arm64.apk"
+    "lanCloud_android_${version}_arm64-v8a.apk"
 } elseif ($abi -like 'x86*') {
-    "LanCloud-$version-x86_64.apk"
+    "lanCloud_android_${version}_x86_64.apk"
 } else {
-    "LanCloud-$version-arm32.apk"
+    "lanCloud_android_${version}_armeabi-v7a.apk"
 }
 Write-Output "==> Installing $apkName to device ($abi)"
 & $adb install -r (Join-Path $outDir $apkName)
