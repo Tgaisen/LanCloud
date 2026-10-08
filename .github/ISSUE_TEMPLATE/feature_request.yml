@@ -28,6 +28,7 @@ body:
       label: 期望的解决方案
       description: 请清晰简洁地描述你希望实现的功能。
       placeholder: 例如：希望支持……
+      render: text
     validations:
       required: true
 
@@ -37,6 +38,7 @@ body:
       label: 考虑过的替代方案
       description: 请描述你考虑过的其他解决方案或功能；没有可以留空。
       placeholder: 例如：目前只能通过……绕过，但……
+      render: text
 
   - type: textarea
     id: context

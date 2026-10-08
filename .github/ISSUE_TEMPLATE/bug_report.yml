@@ -20,7 +20,7 @@ body:
     attributes:
       label: 版本号
       description: 可在「设置 → 关于」中查看。
-      placeholder: 26.1.0-pre.2
+      placeholder: 26.1.0-pre.2 (260102002)
     validations:
       required: true
 
@@ -67,27 +67,11 @@ body:
       required: true
 
   - type: textarea
-    id: log
-    attributes:
-      label: 错误日志
-      description: 可直接粘贴关键日志片段；如果日志较长，请在下方「附件」中上传完整日志文件。
-      render: shell
-
-  - type: upload
-    id: attachments
-    attributes:
-      label: 附件
-      description: 可上传运行日志，以及复现问题的截图或录屏。
-    validations:
-      accept: ".log,.txt,.zip,.png,.jpg,.jpeg,.gif,.webp,.mp4,.mov,.webm"
-
-  - type: textarea
     id: info
     attributes:
       label: 相关信息
-      description: 请补充设备型号、系统版本，以及其他有助于定位问题的信息。
+      description: 请补充日志（设置 → 隐私 → 导出近期运行日志）、设备型号、系统版本，以及其他有助于定位问题的信息。
       placeholder: |-
         - 设备型号：
         - 系统版本：
         - 其他：
-      render: text
