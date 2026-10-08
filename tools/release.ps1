@@ -198,8 +198,8 @@ $apkDir = Join-Path $root 'build\app\outputs\flutter-apk'
 $assets = @()
 foreach ($abi in @('arm64-v8a', 'armeabi-v7a', 'x86_64')) {
   $src = Join-Path $apkDir "app-$abi-release.apk"
-  # 产物命名：lanCloud_平台_版本_架构
-  $dst = Join-Path $apkDir "lanCloud_android_${versionName}_$abi.apk"
+  # 产物命名：LanCloud_平台_版本_架构
+  $dst = Join-Path $apkDir "LanCloud_android_${versionName}_$abi.apk"
   if (-not $DryRun) {
     if (-not (Test-Path $src)) { Fail "构建产物缺失：$src" }
     Copy-Item -LiteralPath $src -Destination $dst -Force
@@ -222,7 +222,7 @@ if (-not $SkipWindows) {
       '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $winScript, '-SkipTests'
     ) | Out-Null
   }
-  $winZip = Join-Path $root "outputs\lanCloud_windows_${versionName}_x64.zip"
+  $winZip = Join-Path $root "outputs\LanCloud_windows_${versionName}_x64.zip"
   if (-not $DryRun -and !(Test-Path $winZip)) { Fail "构建产物缺失：$winZip" }
   $assets += $winZip
 }

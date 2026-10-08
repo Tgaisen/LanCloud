@@ -123,8 +123,8 @@ if (!(Test-Path $bundleDir)) { Fail "构建产物缺失：$bundleDir" }
 # ---------------------------------------------------------------- 复制 / 打包
 $outDir = Join-Path $root 'outputs'
 New-Item -ItemType Directory -Force -Path $outDir | Out-Null
-# 产物命名：lanCloud_平台_版本_架构
-$pkgDir = Join-Path $outDir "lanCloud_windows_${version}_x64"
+# 产物命名：LanCloud_平台_版本_架构
+$pkgDir = Join-Path $outDir "LanCloud_windows_${version}_x64"
 
 if (Test-Path -LiteralPath $pkgDir) {
   $resolved = (Resolve-Path -LiteralPath $pkgDir).Path
@@ -170,9 +170,9 @@ if ($crtFiles.Count -eq 0) {
 Info "产物已复制：$pkgDir"
 
 if (!$SkipZip) {
-  $zip = Join-Path $outDir "lanCloud_windows_${version}_x64.zip"
+  $zip = Join-Path $outDir "LanCloud_windows_${version}_x64.zip"
   if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
-  # 连带目录一起压缩：解压出来是 lanCloud_windows_<版本>_x64\ 一个文件夹，
+  # 连带目录一起压缩：解压出来是 LanCloud_windows_<版本>_x64\ 一个文件夹，
   # 不会把 exe 和 data\ 散落到当前目录
   Compress-Archive -Path $pkgDir -DestinationPath $zip -CompressionLevel Optimal
   Info "已打包：$zip"

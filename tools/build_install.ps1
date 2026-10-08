@@ -15,11 +15,11 @@ Write-Output "==> Building LanCloud $version"
 & (Join-Path $PSScriptRoot 'flutter.cmd') build apk --release --split-per-abi
 
 New-Item -ItemType Directory -Force -Path $outDir | Out-Null
-# 产物命名：lanCloud_平台_版本_架构
+# 产物命名：LanCloud_平台_版本_架构
 $map = @{
-    'app-arm64-v8a-release.apk'   = "lanCloud_android_${version}_arm64-v8a.apk"
-    'app-armeabi-v7a-release.apk' = "lanCloud_android_${version}_armeabi-v7a.apk"
-    'app-x86_64-release.apk'      = "lanCloud_android_${version}_x86_64.apk"
+    'app-arm64-v8a-release.apk'   = "LanCloud_android_${version}_arm64-v8a.apk"
+    'app-armeabi-v7a-release.apk' = "LanCloud_android_${version}_armeabi-v7a.apk"
+    'app-x86_64-release.apk'      = "LanCloud_android_${version}_x86_64.apk"
 }
 foreach ($key in $map.Keys) {
     Copy-Item (Join-Path $apkDir $key) (Join-Path $outDir $map[$key]) -Force
@@ -38,11 +38,11 @@ if (-not $devices) {
 
 $abi = (& $adb shell getprop ro.product.cpu.abi).Trim()
 $apkName = if ($abi -like 'arm64*') {
-    "lanCloud_android_${version}_arm64-v8a.apk"
+    "LanCloud_android_${version}_arm64-v8a.apk"
 } elseif ($abi -like 'x86*') {
-    "lanCloud_android_${version}_x86_64.apk"
+    "LanCloud_android_${version}_x86_64.apk"
 } else {
-    "lanCloud_android_${version}_armeabi-v7a.apk"
+    "LanCloud_android_${version}_armeabi-v7a.apk"
 }
 Write-Output "==> Installing $apkName to device ($abi)"
 & $adb install -r (Join-Path $outDir $apkName)
