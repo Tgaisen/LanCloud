@@ -16,8 +16,8 @@ body:
   - type: textarea
     id: problem
     attributes:
-      label: 需求背景
-      description: 这个功能请求是否与某个问题有关？请描述一下。
+      label: 需求描述（必填）
+      description: 请清晰简洁地描述你的需求。
       placeholder: 例如：每次……都需要手动……，非常不方便。
       render: text
     validations:
@@ -26,23 +26,15 @@ body:
   - type: textarea
     id: solution
     attributes:
-      label: 期望的解决方案
-      description: 请清晰简洁地描述你希望实现的功能。
+      label: 期望描述（必填）
+      description: 请清晰简洁地描述你希望实现的功能。（必填）
       placeholder: 例如：希望支持……
       render: text
     validations:
       required: true
 
   - type: textarea
-    id: alternatives
-    attributes:
-      label: 考虑过的替代方案
-      description: 请描述你考虑过的其他解决方案或功能；没有可以留空。
-      placeholder: 例如：目前只能通过……绕过，但……
-      render: text
-
-  - type: textarea
     id: context
     attributes:
-      label: 附加上下文
+      label: 附加内容
       description: 在此添加有关该功能请求的其他背景信息或截图。

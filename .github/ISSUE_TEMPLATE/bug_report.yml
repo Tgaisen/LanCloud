@@ -27,7 +27,7 @@ body:
   - type: textarea
     id: description
     attributes:
-      label: 问题描述
+      label: 问题描述（必填）
       description: 请清晰简洁地描述你遇到的问题。
       placeholder: 例如：下载大文件时进度长时间卡在 99%，最终提示失败。
       render: text
@@ -37,7 +37,7 @@ body:
   - type: textarea
     id: steps
     attributes:
-      label: 复现步骤
+      label: 复现步骤（必填）
       description: 请提供能稳定复现该问题的具体步骤。
       placeholder: |-
         1. 打开……
@@ -51,7 +51,7 @@ body:
   - type: textarea
     id: expected
     attributes:
-      label: 预期行为
+      label: 预期行为（必填）
       description: 请描述你期望发生的正确行为或结果。
       render: text
     validations:
@@ -60,7 +60,7 @@ body:
   - type: textarea
     id: actual
     attributes:
-      label: 实际行为
+      label: 实际行为（必填）
       description: 请描述应用实际发生的行为或结果。
       render: text
     validations:
@@ -69,7 +69,7 @@ body:
   - type: textarea
     id: info
     attributes:
-      label: 附加上下文
+      label: 附加内容
       description: 在此添加有助于定位该问题的其他内容，如设备型号、系统版本等信息，上传日志（可在应用设置中导出）、截屏、录屏等附件。
       placeholder: |-
         - 设备型号：
