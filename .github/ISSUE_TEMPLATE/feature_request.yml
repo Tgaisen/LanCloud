@@ -19,6 +19,7 @@ body:
       label: 需求背景
       description: 这个功能请求是否与某个问题有关？请描述一下。
       placeholder: 例如：每次……都需要手动……，非常不方便。
+      render: text
     validations:
       required: true
 
