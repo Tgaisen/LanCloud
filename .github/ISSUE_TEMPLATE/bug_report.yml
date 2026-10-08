@@ -69,8 +69,8 @@ body:
   - type: textarea
     id: info
     attributes:
-      label: 相关信息
-      description: 请补充日志（设置 → 隐私 → 导出近期运行日志）、设备型号、系统版本，以及其他有助于定位问题的信息。
+      label: 附加上下文
+      description: 在此添加有助于定位该问题的其他内容，如设备型号、系统版本等信息，上传日志（可在应用设置中导出）、截屏、录屏等附件。
       placeholder: |-
         - 设备型号：
         - 系统版本：
