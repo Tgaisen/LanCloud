@@ -18,7 +18,7 @@ body:
   - type: input
     id: version
     attributes:
-      label: 版本号
+      label: 版本号（必填）
       description: 可在「设置 → 关于」中查看。
       placeholder: 26.1.0-pre.2 (260102002)
     validations:
