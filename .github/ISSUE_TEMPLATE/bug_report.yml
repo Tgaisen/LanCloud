@@ -21,9 +21,9 @@ body:
       label: 版本号
       description: 可在「设置 → 关于」中查看。
       placeholder: 26.1.0-pre.2
+      render: text
     validations:
       required: true
-      render: text
 
   - type: textarea
     id: description
@@ -31,9 +31,9 @@ body:
       label: 问题描述
       description: 请清晰简洁地描述你遇到的问题。
       placeholder: 例如：下载大文件时进度长时间卡在 99%，最终提示失败。
+      render: text
     validations:
       required: true
-      render: text
 
   - type: textarea
     id: steps
@@ -45,27 +45,27 @@ body:
         2. 点击……
         3. 向下滚动到……
         4. 出现……
+      render: text
     validations:
       required: true
-      render: text
 
   - type: textarea
     id: expected
     attributes:
       label: 预期行为
       description: 请描述你期望发生的正确行为或结果。
+      render: text
     validations:
       required: true
-      render: text
 
   - type: textarea
     id: actual
     attributes:
       label: 实际行为
       description: 请描述应用实际发生的行为或结果。
+      render: text
     validations:
       required: true
-      render: text
 
   - type: textarea
     id: log
