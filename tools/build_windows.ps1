@@ -4,7 +4,7 @@
 
 .DESCRIPTION
   前置条件（缺一不可，脚本会先检查）：
-    1. Visual Studio 2022（社区版即可）或 Build Tools 2022，
+    1. Visual Studio 2022 或更新版本（含独立 Build Tools），
        勾选「使用 C++ 的桌面开发」工作负载（含 Windows SDK 与 CMake）
     2. 系统「开发者模式」已打开：Flutter 构建带插件的桌面应用需要创建符号链接
     3. NuGet CLI 在 PATH 中：flutter_inappwebview_windows 构建时用它拉 WebView2 SDK
@@ -55,8 +55,8 @@ function Invoke-Tool {
 $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
 if (!(Test-Path $vswhere)) {
   Fail @'
-找不到 Visual Studio。安装 Visual Studio 2022 社区版并在安装器里勾选
-「使用 C++ 的桌面开发」（Desktop development with C++）：
+找不到 Visual Studio。安装 Visual Studio 2022 或更新版本（社区版即可）并在安装器里勾选
+「使用 C++ 的桌面开发」（Desktop development with C++），例如：
   winget install --id Microsoft.VisualStudio.2022.Community --override "--wait --passive --add Microsoft.VisualStudio.Workload.NativeDesktop --includeRecommended"
 '@
 }
