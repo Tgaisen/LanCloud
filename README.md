@@ -19,8 +19,8 @@
 
 ## 平台
 
-- [x] **Android** 7+ `v7a` `v8a` `amd64`
-- [x] **Windows** 10 1809+ `x64`
+- [x] **Android** `7+`
+- [x] **Windows** `10 1809+`
 - [ ] HarmonyOS NEXT
 - [ ] iOS / iPadOS / MacOS（无相关设备，暂无计划）
 - [ ] 其余平台暂无计划
