@@ -2497,8 +2497,12 @@ class _DrivePageState extends State<DrivePage>
           onRefresh: _reloadAfterChange,
           // 页面自己在加载（居中转圈）时不响应下拉刷新，避免两个指示同时出现
           enabled: !_loading,
-          // 顶栏 / 路径栏是浮层：指示器从它们下缘出现（overlay 不参与列表布局）。
-          edgeOffset: headerInset,
+          // 顶栏 / 路径栏是浮层：指示器从它们下缘下方留一点空出现
+          // （overlay 不参与列表布局，不会顶列表）。
+          edgeOffset: headerInset + 16,
+          // 小球在拖动过程中的滑动行程：128 比默认 70 长，拉的时候能跟着走一段，
+          // 不会一露头就停住。
+          indicatorHeight: 128,
           semanticsLabel: MaterialLocalizations.of(context)
               .refreshIndicatorSemanticLabel,
           child: CustomScrollView(
