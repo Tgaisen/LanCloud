@@ -154,8 +154,8 @@ void main() {
     expect(sheetBottom(tester), moreOrLessEquals(logical.height, epsilon: 0.5));
   });
 
-  // 入场时长按框架默认（250ms）的 1.25 倍放宽到 312.5ms，节奏更和缓。
-  testWidgets('底部弹窗入场时长是框架默认的 1.25 倍', (tester) async {
+  // 入场时长定为 350ms（框架默认 250ms），节奏更和缓。
+  testWidgets('底部弹窗入场时长 350ms，比框架默认更和缓', (tester) async {
     await openSheet(tester);
     await tester.pump();
 
@@ -166,12 +166,12 @@ void main() {
       if ((sheetBottom(tester) - restBottom).abs() > 0.05) lastMovingMs = ms;
     }
 
-    // 默认 250ms 时这条会落在 ~240ms；放宽后应该到 ~304ms
+    // 默认 250ms 时这条会落在 ~240ms；312.5ms 时 ~304ms；350ms 时 ~336ms
     expect(
       lastMovingMs,
-      greaterThan(280),
+      greaterThan(320),
       reason: '入场应比默认 250ms 长（实测 $lastMovingMs ms）',
     );
-    expect(lastMovingMs, lessThan(360), reason: '别拖太长（实测 $lastMovingMs ms）');
+    expect(lastMovingMs, lessThan(380), reason: '别拖太长（实测 $lastMovingMs ms）');
   });
 }
