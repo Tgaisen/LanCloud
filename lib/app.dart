@@ -163,8 +163,11 @@ ThemeData buildLanCloudTheme({
     pageTransitionsTheme: kLanCloudPageTransitionsTheme,
     // MD3E 进度条：year2023=false 会切到 2024 外观（Motion: new motion
     // + Shape: 圆角/停靠点/trackGap；这些属性在 year2023 为 true 时会被
-    // 忽略，所以必须显式关掉）。Flutter 没有波浪实现，即非波浪的平直样式。
-    // 该标记已废弃、官方说明未来会默认 false，届时删掉这一行即可。
+    // 忽略，所以必须显式关掉）。
+    //
+    // 该标记 v3.26 起已废弃、官方说明未来会默认 false，但**目前默认仍是 true**，
+    // 删掉这行会让只剩的框架进度条（网盘页下拉刷新小球）退回 2023 外观，
+    // 所以要等 Flutter 把默认值翻过来之后再删。
     progressIndicatorTheme: const ProgressIndicatorThemeData(
       // ignore: deprecated_member_use
       year2023: false,
