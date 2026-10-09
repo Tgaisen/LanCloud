@@ -6,6 +6,8 @@ import 'package:lancloud/ui/app_icons.dart';
 import 'package:lancloud/ui/favorites_page.dart';
 import 'package:provider/provider.dart';
 
+import 'm3e_host.dart';
+
 void main() {
   testWidgets('收藏视图可独立打开，空收藏时显示提示', (tester) async {
     final app = AppController();
@@ -16,6 +18,7 @@ void main() {
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           locale: const Locale('zh'),
+          builder: m3eTestBuilder,
           home: const FavoritesPage(),
         ),
       ),
@@ -36,6 +39,7 @@ void main() {
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           locale: const Locale('zh'),
+          builder: m3eTestBuilder,
           home: Builder(
             builder: (context) => Scaffold(
               body: Center(

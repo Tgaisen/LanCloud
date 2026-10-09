@@ -5,6 +5,8 @@ import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/login_page.dart';
 import 'package:provider/provider.dart';
 
+import 'm3e_host.dart';
+
 Widget host(Widget home) {
   return ChangeNotifierProvider<AppController>.value(
     value: AppController(),
@@ -12,6 +14,7 @@ Widget host(Widget home) {
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       locale: const Locale('zh'),
+      builder: m3eTestBuilder,
       home: home,
     ),
   );

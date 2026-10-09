@@ -5,6 +5,7 @@ import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/common.dart';
+import 'package:lancloud/ui/m3e.dart';
 import 'package:lancloud/ui/transfers_page.dart';
 import 'package:provider/provider.dart';
 
@@ -123,10 +124,12 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    // 进行中的条目用 MD3E 波浪进度条（波浪持续滚动），不能等它 settle。
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
 
     final title = tester.getRect(find.text('a.zip'));
-    final bar = tester.getRect(find.byType(LinearProgressIndicator));
+    final bar = tester.getRect(find.byType(M3eLinearProgressIndicator));
     final cancel = tester.getRect(find.byTooltip('取消'));
     // 左边缘与标题对齐（在文字列里，自然避让 42dp 图标与 14dp 间距）
     expect(bar.left, closeTo(title.left, 0.5));

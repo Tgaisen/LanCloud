@@ -69,6 +69,11 @@ dependencies:
   image: ^4.10.1
   # Windows / macOS / Linux 的窗口级拖拽（拖文件或链接进来）
   desktop_drop: ^0.8.4
+  # MD3E（Material 3 Expressive）控件。material_ui 是 Flutter 3.47 起从框架
+  # 拆出去的 Material 库，m3e_core 建立在它之上；两者的桥接见 lib/ui/m3e.dart，
+  # 两边版本要配套升级。
+  m3e_core: ^1.1.4
+  material_ui: ^1.6.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

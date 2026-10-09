@@ -9,6 +9,8 @@ import 'package:lancloud/ui/login_page.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'm3e_host.dart';
+
 Future<void> pumpApp(WidgetTester tester, Widget child) async {
   final app = AppController();
   addTearDown(app.dispose);
@@ -19,6 +21,7 @@ Future<void> pumpApp(WidgetTester tester, Widget child) async {
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         locale: const Locale('zh'),
+        builder: m3eTestBuilder,
         home: child,
       ),
     ),

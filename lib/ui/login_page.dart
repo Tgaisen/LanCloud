@@ -6,6 +6,7 @@ import '../core/app_controller.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
+import 'm3e.dart';
 import 'web_login_page.dart';
 
 /// 打开登录弹窗（MD3E 底部弹窗）；返回 true 表示登录成功。
@@ -31,7 +32,7 @@ class LoginSheet extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
             child: Text(
               l10n.login,
-              style: Theme.of(context).textTheme.titleLarge,
+              style: context.m3eEmphasizedTheme.titleLarge,
             ),
           ),
           const LoginEntries(),

@@ -24,6 +24,7 @@ import 'ui/first_run_terms.dart';
 import 'ui/favorites_page.dart';
 import 'ui/home_page.dart';
 import 'ui/login_page.dart';
+import 'ui/m3e.dart';
 import 'ui/predictive_back_transitions.dart';
 import 'ui/profile_page.dart';
 import 'ui/reduce_motion.dart';
@@ -87,14 +88,18 @@ class LanCloudApp extends StatelessWidget {
             // Android 15+ 导航栏强制透明，能调的只有图标明暗与是否加系统遮罩。
             builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
               value: systemUiOverlayStyleFor(Theme.of(context).brightness),
-              // 桌面端在窗口这一层接住拖拽（Android 走原生通道，这里原样透传）
-              child: DesktopDropTarget(
-                child: Stack(
-                  children: [
-                    child ?? const SizedBox.shrink(),
-                    // 拖拽悬停提示条挂在 Navigator 之上：二级页面也能看到
-                    const DropHoverBanner(),
-                  ],
+              // M3E：强调排版的组件级样式 + MD3E 控件的主题 / 本地化桥接，
+              // 都挂在 Navigator 之上（弹窗、对话框同样能取到）。
+              child: M3eRoot(
+                // 桌面端在窗口这一层接住拖拽（Android 走原生通道，这里原样透传）
+                child: DesktopDropTarget(
+                  child: Stack(
+                    children: [
+                      child ?? const SizedBox.shrink(),
+                      // 拖拽悬停提示条挂在 Navigator 之上：二级页面也能看到
+                      const DropHoverBanner(),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -247,7 +252,7 @@ class _AgreementGateState extends State<AgreementGate> {
   @override
   Widget build(BuildContext context) {
     if (!_checked) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: Center(child: M3eLoadingIndicator(size: 48)));
     }
     if (!_accepted) {
       return FirstRunTerms(onAccepted: () => setState(() => _accepted = true));
@@ -797,7 +802,7 @@ class _RootShellState extends State<RootShell>
       WidgetsBinding.instance.addPostFrameCallback((_) => previous.dispose());
     }
     if (!app.ready) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: Center(child: M3eLoadingIndicator(size: 48)));
     }
     if (app.activeUid == null) {
       return const LoginPage(firstRun: true);

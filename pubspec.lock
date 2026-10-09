@@ -97,6 +97,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "1.0.9"
+  cupertino_ui:
+    dependency: transitive
+    description:
+      name: cupertino_ui
+      sha256: ea0b8170b40a86262b2fc21ac0625303f52df209dbf6fccc2b98b27eff44f6ce
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "1.1.2"
   dbus:
     dependency: transitive
     description:
@@ -137,6 +145,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "1.7.0"
+  equatable:
+    dependency: transitive
+    description:
+      name: equatable
+      sha256: "3bce007a596ff8b3119c45d68aaef631272537c03d30e5d4534dd24bf4c5eaa2"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "2.1.0"
   fake_async:
     dependency: transitive
     description:
@@ -549,6 +565,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "2.0.3"
+  m3e_core:
+    dependency: "direct main"
+    description:
+      name: m3e_core
+      sha256: e011e754920a63e842a969f46190d6a8a51cb73080aa5121ff88ff1f58845498
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "1.1.4"
   matcher:
     dependency: transitive
     description:
@@ -573,6 +597,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "4.2960.0"
+  material_ui:
+    dependency: "direct main"
+    description:
+      name: material_ui
+      sha256: "98ab9eda579ecae623e4b376c603035c5def78ce706f735f30bd632af5814695"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "1.6.0"
   meta:
     dependency: transitive
     description:
@@ -589,6 +621,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "2.1.0"
+  motor:
+    dependency: transitive
+    description:
+      name: motor
+      sha256: cbd49f21b00e568c2b1a55f134ed803614a107782f4fea7769693bca32940c58
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "1.1.0"
   native_toolchain_c:
     dependency: transitive
     description:
@@ -637,6 +677,22 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "1.9.1"
+  path_drawing:
+    dependency: transitive
+    description:
+      name: path_drawing
+      sha256: bbb1934c0cbb03091af082a6389ca2080345291ef07a5fa6d6e078ba8682f977
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "1.0.1"
+  path_parsing:
+    dependency: transitive
+    description:
+      name: path_parsing
+      sha256: "883402936929eac138ee0a45da5b0f2c80f89913e6dc3bf77eb65b84b409c6ca"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "1.1.0"
   path_provider:
     dependency: "direct main"
     description:
@@ -1100,4 +1156,4 @@ packages:
     version: "0.2.4"
 sdks:
   dart: ">=3.13.4 <4.0.0"
-  flutter: ">=3.44.0"
+  flutter: ">=3.47.0"

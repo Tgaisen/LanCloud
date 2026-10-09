@@ -18,6 +18,7 @@ import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
 import 'drive_refresh_indicator.dart' as drive_refresh;
+import 'm3e.dart';
 import 'reduce_motion.dart';
 import 'scroll_tint.dart';
 import 'web_page.dart';
@@ -2549,7 +2550,7 @@ class _DrivePageState extends State<DrivePage>
           hasScrollBody: false,
           child: Padding(
             padding: EdgeInsets.only(bottom: cover),
-            child: const Center(child: CircularProgressIndicator()),
+            child: const Center(child: M3eLoadingIndicator()),
           ),
         ),
       ];
@@ -2682,11 +2683,7 @@ class _DrivePageState extends State<DrivePage>
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 72),
           child: Center(
             child: _loadingMore
-                ? const SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
+                ? const M3eLoadingIndicator(size: 24)
                 : Text(
                     _hasMore
                         ? ''
@@ -4008,7 +4005,7 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
             const SizedBox(height: 8),
             Expanded(
               child: _loading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const Center(child: M3eLoadingIndicator())
                   : _error != null
                   ? Center(
                       child: Padding(

@@ -6,6 +6,7 @@ import '../core/data/app_db.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
+import 'm3e.dart';
 import 'scroll_tint.dart';
 import 'share_file_sheet.dart';
 import 'share_page.dart';
@@ -552,9 +553,7 @@ class _FavoritesPageState extends State<FavoritesPage>
                             padding: EdgeInsets.only(
                               bottom: shellBottomBarInset(context),
                             ),
-                            child: const Center(
-                              child: CircularProgressIndicator(),
-                            ),
+                            child: const Center(child: M3eLoadingIndicator()),
                           ),
                         )
                       else if (folders.isEmpty && files.isEmpty)

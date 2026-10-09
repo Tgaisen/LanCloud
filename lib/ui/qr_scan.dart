@@ -12,6 +12,7 @@ import '../core/platform_support.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
+import 'm3e.dart';
 
 /// 二维码图片从哪里来。
 enum QrImageSource {
@@ -79,7 +80,7 @@ Future<QrImageSource?> showQrSourceSheet(BuildContext context) {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
             child: Text(
               l10n.scan,
-              style: Theme.of(context).textTheme.titleLarge,
+              style: context.m3eEmphasizedTheme.titleLarge,
             ),
           ),
           SegmentedList(

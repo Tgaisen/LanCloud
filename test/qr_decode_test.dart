@@ -6,6 +6,8 @@ import 'package:lancloud/l10n/app_localizations_zh.dart';
 import 'package:lancloud/ui/qr_scan.dart';
 import 'package:qr/qr.dart';
 
+import 'm3e_host.dart';
+
 /// 用纯 Dart 画一张「白底 + 黑块 + 静区」的二维码 PNG，作为相册图片夹具。
 img.Image _qrImage(String data, {int scale = 8, int quiet = 4}) {
   final code = QrCode.fromData(
@@ -58,6 +60,7 @@ void main() {
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         locale: const Locale('zh'),
+        builder: m3eTestBuilder,
         home: Scaffold(
           body: Builder(
             builder: (context) => Center(

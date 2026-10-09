@@ -9,6 +9,7 @@ import '../core/app_controller.dart';
 import '../core/platform_support.dart';
 import 'app_icons.dart';
 import 'common.dart';
+import 'm3e.dart';
 import '../l10n/l10n.dart';
 
 /// 用内嵌浏览器完成登录，登录成功后读取系统 Cookie 并保存账号。
@@ -116,8 +117,7 @@ class _WebLoginPageState extends State<WebLoginPage> {
               style: TextStyle(color: scheme.onSecondaryContainer),
             ),
           ),
-          if (_progress < 1)
-            LinearProgressIndicator(value: _progress, minHeight: 2),
+          if (_progress < 1) M3eLinearProgressIndicator(value: _progress),
           Expanded(
             child: InAppWebView(
               initialUrlRequest: URLRequest(url: WebUri(_loginUrl)),

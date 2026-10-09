@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/ui/common.dart';
+import 'package:lancloud/ui/m3e.dart';
 
 void main() {
   testWidgets('批量进度弹窗：内容居中、显示进度条与 1/20 计数，完成后自动关闭', (tester) async {
@@ -38,13 +39,13 @@ void main() {
     // 标题居中
     expect(tester.widget<Text>(find.text('批量下载')).textAlign, TextAlign.center);
     // 进度条 + 计数 + 当前项
-    expect(find.byType(LinearProgressIndicator), findsOneWidget);
+    expect(find.byType(M3eLinearProgressIndicator), findsOneWidget);
     expect(find.text('1/20'), findsOneWidget);
     expect(find.text('a.zip'), findsOneWidget);
 
     // 进度条、计数、当前项在同一中轴线上
     final barCenter = tester
-        .getRect(find.byType(LinearProgressIndicator))
+        .getRect(find.byType(M3eLinearProgressIndicator))
         .center
         .dx;
     expect(
@@ -56,8 +57,8 @@ void main() {
       lessThan(1),
     );
     // 进度条是确定值（不是无限循环）
-    final indicator = tester.widget<LinearProgressIndicator>(
-      find.byType(LinearProgressIndicator),
+    final indicator = tester.widget<M3eLinearProgressIndicator>(
+      find.byType(M3eLinearProgressIndicator),
     );
     expect(indicator.value, isNotNull);
 

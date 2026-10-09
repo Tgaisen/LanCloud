@@ -5,6 +5,7 @@ import 'package:flutter/material.dart' hide Icons;
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
+import 'm3e.dart';
 
 /// 开源许可页。
 ///
@@ -67,7 +68,7 @@ class _LicensesPageState extends State<LicensesPage> {
             if (packages == null) {
               return const SliverFillRemaining(
                 hasScrollBody: false,
-                child: Center(child: CircularProgressIndicator()),
+                child: Center(child: M3eLoadingIndicator()),
               );
             }
             final detailText = MaterialLocalizations.of(context)
