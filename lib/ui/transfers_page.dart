@@ -191,14 +191,21 @@ class _TransfersPageState extends State<TransfersPage>
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) => AlertDialog(
           title: Text(l10n.transferDeleteConfirmTitle),
+          // 内容不加左右内边距：复选行自己铺满弹窗宽度，
+          // 点按波纹 / 悬停高亮和「恢复确认」弹窗一样覆盖整行
+          contentPadding: const EdgeInsets.symmetric(vertical: 8),
           content: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(l10n.transferDeleteConfirmMessage(count)),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 4),
+                child: Text(l10n.transferDeleteConfirmMessage(count)),
+              ),
               const SizedBox(height: 8),
               CheckboxListTile(
-                contentPadding: EdgeInsets.zero,
+                // 文字与弹窗内其它内容左对齐，但墨水区域是整行
+                contentPadding: const EdgeInsets.symmetric(horizontal: 24),
                 controlAffinity: ListTileControlAffinity.leading,
                 value: deleteFiles,
                 onChanged: (value) =>
