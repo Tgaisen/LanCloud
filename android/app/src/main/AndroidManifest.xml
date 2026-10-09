@@ -32,8 +32,9 @@
         android:enableOnBackInvokedCallback="true">
         <!-- android:enableOnBackInvokedCallback="true"：启用 Android 13+ 的
              预测性返回手势（Android 15+ 默认开启，这里显式声明以覆盖 13/14）。
-             Dart 侧的返回拦截统一用 PopScope，配合 Flutter 默认的
-             PredictiveBackPageTransitionsBuilder 做跟手转场。 -->
+             Dart 侧的返回拦截统一用 PopScope；二级页面转场见
+             lib/ui/predictive_back_transitions.dart：视觉换成 iOS 视差，
+             返回手势仍由那里的检测器驱动路由动画，保持跟手。 -->
         <!-- singleTask：分享 / 打开链接进来时复用已有实例（走 onNewIntent），
              避免每次分享都新建实例，在最近任务里留下多个「蓝云」。
              receive_sharing_intent 会通过 onNewIntent 把新分享推给 Dart 侧。 -->

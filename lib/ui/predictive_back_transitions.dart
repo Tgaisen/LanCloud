@@ -1,28 +1,36 @@
+import 'dart:math' as math;
+
 import 'package:cupertino_ui/cupertino_ui.dart'
     show CupertinoPageTransitionsBuilder;
+import 'package:flutter/services.dart' show PredictiveBackEvent;
 import 'package:material_ui/material_ui.dart';
 
 import 'reduce_motion.dart';
 
-/// 预测性返回时盖在「上一页」上的遮罩 key（便于测试定位）。
-const ValueKey<String> kPredictiveBackScrimKey = ValueKey<String>(
-  'predictive-back-scrim',
-);
+/// 各平台二级页面进出的转场（不含「系统要求少动效」包装，便于测试断言）：
+///
+/// * PC（Windows / Linux）：Flutter 默认的 [ZoomPageTransitionsBuilder]，
+///   淡入 + 轻微缩放，保持原样；
+/// * Android / iOS（以及 macOS）：[CupertinoPageTransitionsBuilder]，即 iOS 式
+///   视差——进入时新页面从右侧滑入、旧页面以约 1/3 的速度让位，返回时反向；
+///   Android 上额外保留「返回手势跟手」，见
+///   [CupertinoPredictiveBackPageTransitionsBuilder]。
+const Map<TargetPlatform, PageTransitionsBuilder>
+kLanCloudPageTransitionBuilders = <TargetPlatform, PageTransitionsBuilder>{
+  TargetPlatform.android: CupertinoPredictiveBackPageTransitionsBuilder(),
+  TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+  TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+  TargetPlatform.windows: ZoomPageTransitionsBuilder(),
+  TargetPlatform.linux: ZoomPageTransitionsBuilder(),
+};
 
-/// 与 Flutter 默认一致的全平台转场表，只把 Android 换成
-/// [AospPredictiveBackPageTransitionsBuilder]，并统一套一层「系统要求少动效
-/// 时直接跳过转场」的处理（见 [_ReduceMotionBuilder]）。
-const PageTransitionsTheme kLanCloudPageTransitionsTheme = PageTransitionsTheme(
+/// 应用统一的转场表：在 [kLanCloudPageTransitionBuilders] 外统一套一层
+/// 「系统要求少动效时直接跳过转场」的处理（见 [_ReduceMotionBuilder]）。
+final PageTransitionsTheme kLanCloudPageTransitionsTheme = PageTransitionsTheme(
   builders: <TargetPlatform, PageTransitionsBuilder>{
-    TargetPlatform.android: _ReduceMotionBuilder(
-      AospPredictiveBackPageTransitionsBuilder(),
-    ),
-    TargetPlatform.iOS: _ReduceMotionBuilder(CupertinoPageTransitionsBuilder()),
-    TargetPlatform.macOS: _ReduceMotionBuilder(
-      CupertinoPageTransitionsBuilder(),
-    ),
-    TargetPlatform.windows: _ReduceMotionBuilder(ZoomPageTransitionsBuilder()),
-    TargetPlatform.linux: _ReduceMotionBuilder(ZoomPageTransitionsBuilder()),
+    for (final MapEntry<TargetPlatform, PageTransitionsBuilder> entry
+        in kLanCloudPageTransitionBuilders.entries)
+      entry.key: _ReduceMotionBuilder(entry.value),
   },
 );
 
@@ -74,27 +82,32 @@ class _ReduceMotionBuilder extends PageTransitionsBuilder {
   }
 }
 
-/// 仿 AOSP 设置应用的预测性返回动效。
+/// iOS 视差转场 + Android 返回手势跟手。
 ///
-/// Flutter 自带的 [PredictiveBackPageTransitionsBuilder] 只让当前页跟手缩放 /
-/// 位移，被露出的上一页是原样显示的。这里在它的基础上给上一页盖一层黑色遮罩：
-/// 手势刚开始（上一页只露出一个边）时最深，随手指继续滑动逐渐透明，滑到底时
-/// 上一页完全清晰；中途松手取消，遮罩会随页面回位重新变深。
-class AospPredictiveBackPageTransitionsBuilder extends PageTransitionsBuilder {
-  const AospPredictiveBackPageTransitionsBuilder({
-    this.scrimColor = Colors.black,
-    this.scrimOpacity = 0.32,
-  });
+/// 框架自带的 [PredictiveBackPageTransitionsBuilder] 把「手势检测」和它的
+/// Android 共享元素转场写死在一起：直接换成 [CupertinoPageTransitionsBuilder]
+/// 的话，就没有人再处理 `flutter/backgesture` 事件、驱动路由动画，侧滑返回会
+/// 退化成「手指拖动时页面不动、松手才整页播放动画」。这里用公开的
+/// [PredictiveBackRoute] 接口复刻那份手势检测
+/// （见 [_CupertinoBackGestureDetector]），视觉仍然交给 Cupertino，
+/// 于是 Android 也能一边跟手一边播放 iOS 视差。
+class CupertinoPredictiveBackPageTransitionsBuilder
+    extends PageTransitionsBuilder {
+  const CupertinoPredictiveBackPageTransitionsBuilder();
 
-  /// 遮罩颜色，默认黑色。
-  final Color scrimColor;
-
-  /// 手势刚开始时遮罩的不透明度（0~1）；0.32 与 Material 的 scrim 一致。
-  final double scrimOpacity;
+  static const CupertinoPageTransitionsBuilder _cupertino =
+      CupertinoPageTransitionsBuilder();
 
   @override
-  Duration get transitionDuration =>
-      const PredictiveBackPageTransitionsBuilder().transitionDuration;
+  Duration get transitionDuration => _cupertino.transitionDuration;
+
+  @override
+  Duration get reverseTransitionDuration =>
+      _cupertino.reverseTransitionDuration;
+
+  @override
+  DelegatedTransitionBuilder? get delegatedTransition =>
+      _cupertino.delegatedTransition;
 
   @override
   Widget buildTransitions<T>(
@@ -104,83 +117,134 @@ class AospPredictiveBackPageTransitionsBuilder extends PageTransitionsBuilder {
     Animation<double> secondaryAnimation,
     Widget child,
   ) {
-    final Widget inner = const PredictiveBackPageTransitionsBuilder()
-        .buildTransitions<T>(
-          route,
-          context,
-          animation,
-          secondaryAnimation,
-          child,
-        );
-    // 注意：必须保持组件结构恒定——始终包一层 PredictiveBackScrim，只用
-    // enabled 控制画不画。预测性返回的 phase（start/update/commit/cancel）
-    // 记在 Flutter 的 _PredictiveBackGestureDetector State 里，如果手势开始
-    // 或提交时在这里增删包装层，它的 State 会被重建，commit 阶段丢失，
-    // 松手后页面就会「直接消失」而不是播放返回动画。
-    //
-    // 被露出的「上一页」用 secondaryAnimation 判定：它正是上方路由的动画值
-    // （手势开始 1 → 滑到底 0），被拖动的那一页自身 secondaryAnimation 是
-    // dismissed，所以只有上一页会画遮罩；非手势返回不加。
-    return PredictiveBackScrim(
-      progress: secondaryAnimation,
-      color: scrimColor,
-      maxOpacity: scrimOpacity,
-      enabled: route.popGestureInProgress && !secondaryAnimation.isDismissed,
-      child: inner,
+    return _CupertinoBackGestureDetector(
+      route: route,
+      routeDuration: transitionDuration,
+      child: _cupertino.buildTransitions<T>(
+        route,
+        context,
+        animation,
+        secondaryAnimation,
+        child,
+      ),
     );
   }
 }
 
-/// 盖在上一页上的遮罩：不透明度 = [maxOpacity] × [progress] × [enabled]。
+/// 把 Android 的预测性返回事件翻译成「驱动当前路由的动画」。
 ///
-/// 无论 [enabled] 与否，组件结构都保持不变（只增删最上层的 [ColoredBox]），
-/// 避免重建子树导致预测性返回的手势状态丢失。
-class PredictiveBackScrim extends StatelessWidget {
-  const PredictiveBackScrim({
-    super.key,
-    required this.progress,
-    required this.color,
-    required this.maxOpacity,
-    required this.enabled,
+/// 与框架内的同名实现保持一致：只有顶层、且允许返回手势
+/// （[PredictiveBackRoute.popGestureEnabled]）的路由才接管事件；返回 false 时
+/// 框架会按普通返回兜底——提交手势时走 `handlePopRoute`，一样能出栈。
+/// 硬件返回键（[PredictiveBackEvent.isButtonEvent]）不跟手，也交给框架兜底。
+///
+/// 这里只负责把事件翻译成路由动画（跟手、提交时补完剩余行程），
+/// 具体的位移 / 视差画面由 [CupertinoPageTransitionsBuilder] 按动画值渲染。
+class _CupertinoBackGestureDetector extends StatefulWidget {
+  const _CupertinoBackGestureDetector({
+    required this.route,
+    required this.routeDuration,
     required this.child,
   });
 
-  /// 手势剩余进度：手势开始 1 → 滑到底 0。
-  final Animation<double> progress;
+  final PageRoute<dynamic> route;
 
-  final Color color;
-  final double maxOpacity;
-
-  /// 当前是否处于「被预测性返回手势露出」的状态。
-  final bool enabled;
+  /// 转场总时长：松手后补完「剩余行程」按它等比缩放。
+  final Duration routeDuration;
 
   final Widget child;
 
   @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: progress,
-      builder: (BuildContext context, Widget? child) {
-        final double alpha = enabled
-            ? (maxOpacity * progress.value).clamp(0.0, 1.0)
-            : 0.0;
-        return Stack(
-          fit: StackFit.passthrough,
-          children: <Widget>[
-            child!,
-            if (alpha > 0.004)
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: ColoredBox(
-                    key: kPredictiveBackScrimKey,
-                    color: color.withValues(alpha: alpha),
-                  ),
-                ),
-              ),
-          ],
-        );
-      },
-      child: child,
+  State<_CupertinoBackGestureDetector> createState() =>
+      _CupertinoBackGestureDetectorState();
+}
+
+class _CupertinoBackGestureDetectorState
+    extends State<_CupertinoBackGestureDetector>
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+  /// 松手提交时补完剩余行程用的动画（见 [handleCommitBackGesture]）。
+  AnimationController? _finish;
+
+  bool get _isEnabled =>
+      widget.route.isCurrent && widget.route.popGestureEnabled;
+
+  /// 系统给的是「往回走了多远」（0 → 1），路由动画要的是「当前页还剩多少」
+  /// （1 → 0），所以要反过来。
+  double _routeProgress(PredictiveBackEvent event) => 1 - event.progress;
+
+  @override
+  bool handleStartBackGesture(PredictiveBackEvent backEvent) {
+    if (backEvent.isButtonEvent || !_isEnabled) {
+      return false;
+    }
+    _finish?.dispose();
+    _finish = null;
+    widget.route.handleStartBackGesture(progress: _routeProgress(backEvent));
+    return true;
+  }
+
+  @override
+  void handleUpdateBackGestureProgress(PredictiveBackEvent backEvent) {
+    widget.route.handleUpdateBackGestureProgress(
+      progress: _routeProgress(backEvent),
     );
   }
+
+  @override
+  void handleCancelBackGesture() => widget.route.handleCancelBackGesture();
+
+  /// 提交手势：先把没走完的那段行程补完，再交给框架出栈。
+  ///
+  /// 直接调 [PredictiveBackRoute.handleCommitBackGesture] 的话，框架会
+  /// pop（路由动画从当前值 reverse 到 0）之后又 `reverse(from: 1.0)` 把整段
+  /// 退场动画重播一遍——对只按动画值渲染的 Cupertino 转场来说，就是「手指
+  /// 拖出去大半、一松手先弹回原位再滑走」。这里先把路由动画线性推到 0
+  /// （速度 = 整屏行程 / 默认转场时长，与跟手时一致），框架随后 pop 时动画
+  /// 已经在终点，会跳过重播（源码注释：the popping may have finished inline
+  /// if already at the target destination），页面从松手的位置继续滑出。
+  @override
+  void handleCommitBackGesture() {
+    final double remaining = widget.route.animation?.value ?? 0;
+    if (remaining <= 0) {
+      widget.route.handleCommitBackGesture();
+      return;
+    }
+    _finish?.dispose();
+    final AnimationController finish = AnimationController(
+      vsync: this,
+      duration: Duration(
+        microseconds: math.max(
+          const Duration(milliseconds: 100).inMicroseconds,
+          (widget.routeDuration.inMicroseconds * remaining).round(),
+        ),
+      ),
+    );
+    _finish = finish;
+    finish.addListener(() {
+      widget.route.handleUpdateBackGestureProgress(
+        progress: remaining * (1 - finish.value),
+      );
+    });
+    finish.addStatusListener((AnimationStatus status) {
+      if (status != AnimationStatus.completed || !mounted) return;
+      widget.route.handleCommitBackGesture();
+    });
+    finish.forward();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    _finish?.dispose();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
