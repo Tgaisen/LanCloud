@@ -20,6 +20,9 @@ export 'package:m3e_core/m3e_core.dart'
         M3ELinearWavyProgressIndicator,
         M3ELoadingIndicator,
         M3EMotion,
+        M3EPullToRefreshController,
+        M3EPullToRefreshIndicator,
+        M3EPullToRefreshStyle,
         M3EToggleButton,
         M3EToggleButtonDecoration,
         M3EToggleButtonGroup,
@@ -271,6 +274,53 @@ class M3eCircularProgressIndicator extends StatelessWidget {
     strokeWidth: strokeWidth,
     color: color,
     backgroundColor: backgroundColor,
+  );
+}
+
+/// MD3E 下拉刷新：拖拽跟手、触发阈值、回弹与形状形变都由 m3e_core 内部处理。
+///
+/// 相比 m3e_core 原版补两件事：
+/// - [enabled]：原版没有开关，这里用 `notificationPredicate` 实现「不响应下拉」；
+/// - 语义文案用传入的本地化字符串（原版把 `semanticsLabel` 硬编码成英文）。
+class M3ePullToRefresh extends StatelessWidget {
+  const M3ePullToRefresh({
+    super.key,
+    required this.onRefresh,
+    required this.child,
+    this.enabled = true,
+    this.edgeOffset = 0,
+    this.semanticsLabel,
+  });
+
+  /// 刷新回调；Future 完成前指示器一直转。
+  final Future<void> Function() onRefresh;
+
+  /// 通常是 `CustomScrollView` / `ListView`。
+  final Widget child;
+
+  /// 为 false 时不响应下拉（页面自己正在加载时用，避免两个指示器同时出现）。
+  final bool enabled;
+
+  /// 顶部浮层（顶栏 / 路径栏）高度：指示器从它下缘开始出现。
+  final double edgeOffset;
+
+  /// 读屏名称，一般是 `MaterialLocalizations.refreshIndicatorSemanticLabel`。
+  final String? semanticsLabel;
+
+  @override
+  Widget build(BuildContext context) => M3EPullToRefreshIndicator(
+    onRefresh: onRefresh,
+    edgeOffset: edgeOffset,
+    notificationPredicate: (notification) =>
+        enabled && defaultScrollNotificationPredicate(notification),
+    // 默认实现把语义文案写死成英文，这里换成调用方给的本地化文案。
+    indicatorBuilder: (context, progress, isRefreshing) =>
+        M3EContainedLoadingIndicator(
+          // 跟手阶段给确定进度（弧长跟着手指长），松手后转形变循环。
+          progress: isRefreshing ? null : progress.clamp(0.0, 1.0),
+          semanticsLabel: semanticsLabel,
+        ),
+    child: child,
   );
 }
 

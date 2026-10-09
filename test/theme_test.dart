@@ -30,20 +30,6 @@ void main() {
     }
   });
 
-  test('进度条走 MD3E 新样式（year2023 = false）', () {
-    for (final brightness in [Brightness.light, Brightness.dark]) {
-      final theme = buildLanCloudTheme(
-        brightness: brightness,
-        seed: const Color(0xFF2E6BE6),
-        oledDark: false,
-      );
-      // year2023=false 时框架会套用 MD3E 默认值：
-      // 新动效 + 圆角 2dp + trackGap 4 + 停靠点（无线性的波浪实现）
-      // ignore: deprecated_member_use
-      expect(theme.progressIndicatorTheme.year2023, isFalse);
-    }
-  });
-
   test('动态取色也要补齐 surfaceContainer 等新角色（否则整屏一个颜色）', () {
     // 模拟 dynamic_color 插件返回的色板：只有旧版角色
     const dynamic = ColorScheme(

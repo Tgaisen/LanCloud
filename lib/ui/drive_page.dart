@@ -17,7 +17,6 @@ import '../core/transfer/transfer_manager.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
-import 'drive_refresh_indicator.dart' as drive_refresh;
 import 'm3e.dart';
 import 'reduce_motion.dart';
 import 'scroll_tint.dart';
@@ -2491,11 +2490,15 @@ class _DrivePageState extends State<DrivePage>
           top: headerInset,
           bottom: shellBottomBarInset(context),
         ),
-        child: drive_refresh.LanRefreshIndicator(
+        // MD3E 下拉刷新：拖拽 / 阈值 / 回弹 / 形状形变都由组件内部处理，
+        // 下拉时是跟着手指长的确定进度，松手过阈值后转成形变循环。
+        child: M3ePullToRefresh(
           onRefresh: _reloadAfterChange,
           // 页面自己在加载（居中转圈）时不响应下拉刷新，避免两个指示同时出现
           enabled: !_loading,
           edgeOffset: headerInset,
+          semanticsLabel: MaterialLocalizations.of(context)
+              .refreshIndicatorSemanticLabel,
           child: CustomScrollView(
             controller: _scroll,
             slivers: [
