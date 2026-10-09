@@ -473,17 +473,20 @@ class _ShareFolderPageState extends State<ShareFolderPage>
                       : const AppBarBackButton()),
             title: _selecting
                 ? Text(l10n.selectedCount(_selected.length))
-                : (_searching
-                      ? TextField(
-                          controller: _search,
-                          autofocus: true,
-                          decoration: InputDecoration(
-                            hintText: l10n.searchCurrentFolder,
-                            border: InputBorder.none,
-                          ),
-                          onChanged: (value) => setState(() => _filter = value),
-                        )
-                      : Text(folder.name)),
+                // 标题 ↔ 搜索框带显示 / 隐藏动画，不要直接闪出来
+                : AppBarSearchSwitcher(
+                    searching: _searching,
+                    title: Text(folder.name),
+                    searchField: TextField(
+                      controller: _search,
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        hintText: l10n.searchCurrentFolder,
+                        border: InputBorder.none,
+                      ),
+                      onChanged: (value) => setState(() => _filter = value),
+                    ),
+                  ),
             actions: _selecting
                 ? [
                     IconButton(

@@ -781,17 +781,20 @@ class _SettingsPageState extends State<SettingsPage>
         backgroundColor: Colors.transparent,
         scrolledUnderElevation: 0,
         leading: const AppBarBackButton(),
-        title: _searching
-            ? TextField(
-                controller: _search,
-                autofocus: true,
-                decoration: InputDecoration(
-                  hintText: l10n.searchSettings,
-                  border: InputBorder.none,
-                ),
-                onChanged: (_) => setState(() {}),
-              )
-            : Text(l10n.settings),
+        // 标题 ↔ 搜索框带显示 / 隐藏动画，不要直接闪出来
+        title: AppBarSearchSwitcher(
+          searching: _searching,
+          title: Text(l10n.settings),
+          searchField: TextField(
+            controller: _search,
+            autofocus: true,
+            decoration: InputDecoration(
+              hintText: l10n.searchSettings,
+              border: InputBorder.none,
+            ),
+            onChanged: (_) => setState(() {}),
+          ),
+        ),
         actions: [
           IconButton(
             tooltip: _searching ? l10n.closeSearch : l10n.searchSettings,

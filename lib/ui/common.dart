@@ -291,6 +291,56 @@ class AppBarBackButton extends StatelessWidget {
   }
 }
 
+/// 顶栏标题与搜索框之间的切换动画。
+///
+/// 搜索框淡入 + 从右侧轻轻滑入，退出时反向；直接替换会显得很生硬。
+/// 系统要求少动效时立即切换（不做位移 / 淡入）。
+class AppBarSearchSwitcher extends StatelessWidget {
+  const AppBarSearchSwitcher({
+    super.key,
+    required this.searching,
+    required this.title,
+    required this.searchField,
+  });
+
+  final bool searching;
+  final Widget title;
+  final Widget searchField;
+
+  @override
+  Widget build(BuildContext context) {
+    final duration = reduceMotionOf(context)
+        ? Duration.zero
+        : const Duration(milliseconds: 220);
+    return AnimatedSwitcher(
+      duration: duration,
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      // 默认布局会把进出两个子控件居中堆叠，这里保持左对齐（顶栏标题的位置）
+      layoutBuilder: (currentChild, previousChildren) => Stack(
+        alignment: Alignment.centerLeft,
+        children: [...previousChildren, ?currentChild],
+      ),
+      transitionBuilder: (child, animation) => FadeTransition(
+        opacity: animation,
+        child: SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0.08, 0),
+            end: Offset.zero,
+          ).animate(animation),
+          child: child,
+        ),
+      ),
+      child: searching
+          ? KeyedSubtree(
+              key: const ValueKey('appbar-search'),
+              child: searchField,
+            )
+          : KeyedSubtree(key: const ValueKey('appbar-title'), child: title),
+    );
+  }
+}
+
 String formatBytes(int bytes) {
   if (bytes <= 0) return '0 B';
   const units = ['B', 'KB', 'MB', 'GB', 'TB'];

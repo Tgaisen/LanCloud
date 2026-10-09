@@ -6,6 +6,7 @@ import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
 import 'legal_dialog.dart';
+import 'licenses_page.dart';
 
 /// 关于页：版本、协议与隐私、开源许可、项目主页、提交 Issue 与免责声明。
 class AboutPage extends StatefulWidget {
@@ -113,11 +114,12 @@ class _AboutPageState extends State<AboutPage> {
                     leading: const Icon(Icons.badge_outlined),
                     title: Text(l10n.aboutLicenses),
                     trailing: const Icon(Icons.chevron_right),
-                    onTap: () => showLicensePage(
-                      context: context,
-                      applicationName: l10n.appName,
-                      applicationVersion:
-                          '$appVersion (${appBuild.toString()})',
+                    // 用应用自己的许可页：顶栏风格一致，也没有
+                    // Flutter 默认那块「应用名 + 版本 + powered by Flutter」页头
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const LicensesPage(),
+                      ),
                     ),
                   ),
                   ListTile(

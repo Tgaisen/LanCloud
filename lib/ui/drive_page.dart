@@ -2438,17 +2438,20 @@ class _DrivePageState extends State<DrivePage>
         leading: (ModalRoute.of(context)?.isFirst ?? true)
             ? null
             : const AppBarBackButton(),
-        title: _searching
-            ? TextField(
-                controller: _searchController,
-                autofocus: true,
-                decoration: InputDecoration(
-                  hintText: context.l10n.searchCurrentFolder,
-                  border: InputBorder.none,
-                ),
-                onChanged: (value) => setState(() => _filter = value.trim()),
-              )
-            : Text(context.l10n.tabDrive),
+        // 标题 ↔ 搜索框带显示 / 隐藏动画，不要直接闪出来
+        title: AppBarSearchSwitcher(
+          searching: _searching,
+          title: Text(context.l10n.tabDrive),
+          searchField: TextField(
+            controller: _searchController,
+            autofocus: true,
+            decoration: InputDecoration(
+              hintText: context.l10n.searchCurrentFolder,
+              border: InputBorder.none,
+            ),
+            onChanged: (value) => setState(() => _filter = value.trim()),
+          ),
+        ),
         actions: _searching
             ? [
                 IconButton(
