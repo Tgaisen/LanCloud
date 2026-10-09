@@ -49,6 +49,41 @@ void main() {
     expect(tester.getSize(find.byType(SizeTransition)).height, greaterThan(0));
   });
 
+  // 读屏读成一项，但触摸只有右侧按钮生效：标题行整行不再可点（避免误触）
+  testWidgets('SectionCard 标题行不响应触摸，只有展开按钮可点', (tester) async {
+    var expanded = true;
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('zh'),
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: StatefulBuilder(
+              builder: (context, setState) => SectionCard(
+                title: '快速访问',
+                expanded: expanded,
+                onToggle: () => setState(() => expanded = !expanded),
+                child: const Text('内容'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // 点标题文字：不展开也不收起
+    await tester.tapAt(tester.getCenter(find.text('快速访问')));
+    await tester.pumpAndSettle();
+    expect(tester.getSize(find.byType(SizeTransition)).height, greaterThan(0));
+
+    // 点右侧按钮：正常收起
+    await tester.tap(find.byType(IconButton));
+    await tester.pumpAndSettle();
+    expect(tester.getSize(find.byType(SizeTransition)).height, 0);
+  });
+
   testWidgets('SectionCard 出现/隐藏内容时高度动画过渡', (tester) async {
     var expanded = true;
     await tester.pumpWidget(

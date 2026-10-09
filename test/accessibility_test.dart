@@ -37,6 +37,28 @@ bool hasLabel(WidgetTester tester, String target) {
   return found;
 }
 
+/// 语义树里第一个「label 或 tooltip 包含 [target]」的节点数据。
+SemanticsData? semanticsData(WidgetTester tester, String target) {
+  // ignore: deprecated_member_use
+  final owner = tester.binding.pipelineOwner.semanticsOwner!;
+  SemanticsData? found;
+  void walk(SemanticsNode node) {
+    if (found != null) return;
+    final data = node.getSemanticsData();
+    if (data.label.contains(target) || data.tooltip.contains(target)) {
+      found = data;
+      return;
+    }
+    node.visitChildren((child) {
+      walk(child);
+      return true;
+    });
+  }
+
+  walk(owner.rootSemanticsNode!);
+  return found;
+}
+
 void main() {
   // 首页快捷操作栏：图标按钮的文字标签在可点区域下面，必须显式合成语义节点，
   // 否则 TalkBack 聚焦到按钮上读不出名称（读屏用户反馈过的问题）。
@@ -118,7 +140,8 @@ void main() {
     handle.dispose();
   });
 
-  // 分区标题与展开/收起按钮共用一个可点区域，读屏读成连贯的一项。
+  // 分区标题与展开/收起按钮读屏读成连贯的一项，且语义节点自带切换动作
+  // （触摸仍然只有右侧按钮能点，见 home_section_test）。
   testWidgets('分区标题读作「收起/展开 + 标题」且可点', (tester) async {
     final handle = tester.ensureSemantics();
 
@@ -134,7 +157,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(hasLabel(tester, '收起快速访问'), isTrue);
+    final data = semanticsData(tester, '收起快速访问');
+    expect(data, isNotNull);
+    expect(data!.hasAction(SemanticsAction.tap), isTrue);
     handle.dispose();
   });
 

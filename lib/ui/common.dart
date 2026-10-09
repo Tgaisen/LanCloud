@@ -2051,8 +2051,9 @@ class _SectionCardState extends State<SectionCard>
         ],
       ),
     );
-    // 标题与展开/收起按钮共用一个可点区域：整行点按都能展开/收起，
-    // 读屏也读成一个连贯的「收起快速访问」，而不是「快速访问」+「收起」两项。
+    // 读屏读成一个连贯的「收起快速访问」，而不是「快速访问」+「收起」两项；
+    // 语义节点自带 tap action，读屏双击即可展开 / 收起。
+    // 触摸则只有右侧按钮生效：标题行不做 InkWell，避免整行可点导致误触。
     // （当前没有页面传 [SectionCard.trailing]，所以 excludeSemantics 不会吞掉
     // 其它交互控件；将来加 trailing 时要把它的语义放回来。）
     final header = widget.onToggle == null
@@ -2064,11 +2065,7 @@ class _SectionCardState extends State<SectionCard>
             button: true,
             onTap: widget.onToggle,
             excludeSemantics: true,
-            child: InkWell(
-              onTap: widget.onToggle,
-              borderRadius: BorderRadius.circular(12),
-              child: headerRow,
-            ),
+            child: headerRow,
           );
     // 底色与圆角交给分组本身，标题行保持透明
     return Padding(
