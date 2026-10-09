@@ -72,9 +72,11 @@ class _LicensesPageState extends State<LicensesPage> {
             }
             final detailText = MaterialLocalizations.of(context)
                 .licensesPackageDetailText;
+            // 与「关于」「传输」等页面同款 MD3E 连接式列表组：
+            // 外层 12 + 分组自身 4 = 16dp 视觉内边距，条目之间是空白而非分割线
             return SliverPadding(
-              padding: const EdgeInsets.all(16),
-              sliver: SliverList.builder(
+              padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
+              sliver: SegmentedSliverList(
                 itemCount: packages.length,
                 itemBuilder: (context, index) {
                   final package = packages[index];

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart' hide Icons;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
+import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/licenses_page.dart';
 import 'package:provider/provider.dart';
 
@@ -45,6 +46,8 @@ Copyright (c) 2026 LanCloud
     expect(find.text('蓝云'), findsNothing);
     // 依赖包列表（按包名）
     expect(find.text('fake_package'), findsOneWidget);
+    // 与「关于」页同款 MD3E 连接式列表组
+    expect(find.byType(SegmentedSliverList), findsOneWidget);
 
     // 打开包详情：同样是应用自己的顶栏，正文可选中复制
     await tester.tap(find.text('fake_package'));
