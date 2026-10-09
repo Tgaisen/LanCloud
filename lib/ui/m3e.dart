@@ -282,6 +282,9 @@ class M3eCircularProgressIndicator extends StatelessWidget {
 /// 相比 m3e_core 原版补两件事：
 /// - [enabled]：原版没有开关，这里用 `notificationPredicate` 实现「不响应下拉」；
 /// - 语义文案用传入的本地化字符串（原版把 `semanticsLabel` 硬编码成英文）。
+///
+/// 手感参数按网盘页调过（m3e 默认 80 / 0.55 要手指走约 180dp 才触发，偏费力；
+/// 现在 60 / 0.75 约 100dp）。`dragResistance` 越大越「轻」，说明见字段注释。
 class M3ePullToRefresh extends StatelessWidget {
   const M3ePullToRefresh({
     super.key,
@@ -290,6 +293,9 @@ class M3ePullToRefresh extends StatelessWidget {
     this.enabled = true,
     this.edgeOffset = 0,
     this.semanticsLabel,
+    this.triggerDistance = 60,
+    this.dragResistance = 0.75,
+    this.maxDragMultiplier,
   });
 
   /// 刷新回调；Future 完成前指示器一直转。
@@ -307,10 +313,23 @@ class M3ePullToRefresh extends StatelessWidget {
   /// 读屏名称，一般是 `MaterialLocalizations.refreshIndicatorSemanticLabel`。
   final String? semanticsLabel;
 
+  /// 触发刷新所需的「内部拖拽距离」（dp）：手指实际要走
+  /// `triggerDistance / dragResistance`。
+  final double triggerDistance;
+
+  /// 拖拽阻尼（0–1）：越小越沉、越大越轻（m3e 默认 0.55）。
+  final double dragResistance;
+
+  /// 最大拖拽距离 = triggerDistance × 该倍数，为空时用 m3e 默认的 1.8。
+  final double? maxDragMultiplier;
+
   @override
   Widget build(BuildContext context) => M3EPullToRefreshIndicator(
     onRefresh: onRefresh,
     edgeOffset: edgeOffset,
+    triggerDistance: triggerDistance,
+    dragResistance: dragResistance,
+    maxDragMultiplier: maxDragMultiplier,
     notificationPredicate: (notification) =>
         enabled && defaultScrollNotificationPredicate(notification),
     // 默认实现把语义文案写死成英文，这里换成调用方给的本地化文案。

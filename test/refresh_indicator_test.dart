@@ -122,4 +122,30 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
     expect(find.byType(M3EContainedLoadingIndicator), findsNothing);
   });
+
+  testWidgets('触发距离已调轻：110dp 够用、60dp 不会误触', (tester) async {
+    // 手感回归：m3e 默认 80 / 0.55 要手指走约 180dp 才触发（偏费力），
+    // 现在 60 / 0.75 约 100dp。这里钉住两端，避免以后被无意调回去。
+    var refreshed = 0;
+    await tester.pumpWidget(
+      host(enabled: true, onRefresh: () async => refreshed += 1),
+    );
+    await tester.drag(
+      find.byType(CustomScrollView),
+      const Offset(0, 60),
+      touchSlopY: 0,
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(refreshed, 0, reason: '轻拉不该触发');
+
+    await tester.drag(
+      find.byType(CustomScrollView),
+      const Offset(0, 110),
+      touchSlopY: 0,
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(refreshed, 1, reason: '110dp 应该够触发');
+  });
 }
