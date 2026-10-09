@@ -1,7 +1,7 @@
 import 'package:m3e_core/m3e_core.dart';
 import 'package:material_ui/material_ui.dart';
 
-import 'app_scroll.dart';
+export 'm3e_pull_refresh.dart';
 
 /// 应用只需要认这一个入口：把用到的 MD3E 组件从 m3e_core 透出来。
 export 'package:m3e_core/m3e_core.dart'
@@ -22,9 +22,6 @@ export 'package:m3e_core/m3e_core.dart'
         M3ELinearWavyProgressIndicator,
         M3ELoadingIndicator,
         M3EMotion,
-        M3EPullToRefreshController,
-        M3EPullToRefreshIndicator,
-        M3EPullToRefreshStyle,
         M3EToggleButton,
         M3EToggleButtonDecoration,
         M3EToggleButtonGroup,
@@ -276,117 +273,6 @@ class M3eCircularProgressIndicator extends StatelessWidget {
     strokeWidth: strokeWidth,
     color: color,
     backgroundColor: backgroundColor,
-  );
-}
-
-/// MD3E 下拉刷新：拖拽跟手、触发阈值、回弹与形状形变都由 m3e_core 内部处理。
-///
-/// 相比 m3e_core 原版补两件事：
-/// - [enabled]：原版没有开关，这里用 `notificationPredicate` 实现「不响应下拉」；
-/// - 语义文案用传入的本地化字符串（原版把 `semanticsLabel` 硬编码成英文）。
-///
-/// 手感参数按网盘页调过（m3e 默认 80 / 0.55 要手指走约 180dp 才触发，偏费力；
-/// 现在 60 / 0.75 约 100dp）。`dragResistance` 越大越「轻」，说明见字段注释。
-class M3ePullToRefresh extends StatelessWidget {
-  const M3ePullToRefresh({
-    super.key,
-    required this.onRefresh,
-    required this.child,
-    required this.gesture,
-    this.controller,
-    this.enabled = true,
-    this.edgeOffset = 0,
-    this.semanticsLabel,
-    this.triggerDistance = 60,
-    this.dragResistance = 0.75,
-    this.maxDragMultiplier,
-  });
-
-  /// 刷新回调；Future 完成前指示器一直转。
-  final Future<void> Function() onRefresh;
-
-  /// 通常是 `CustomScrollView` / `ListView`。
-  final Widget child;
-
-  /// 与滚动物理共享的手势记账（[PullToRefreshGesture]）：负责在手势开始 /
-  /// 结束时清零，并把回拉被吃掉的位移翻译成刷新组件认识的通知。
-  final PullToRefreshGesture gesture;
-
-  /// 可选控制器：物理层要靠它读「小球收没收完」
-  /// （见 `PullToRefreshScrollPhysics.holdsPull`）。
-  final M3EPullToRefreshController? controller;
-
-  /// 为 false 时不响应下拉（页面自己正在加载时用，避免两个指示器同时出现）。
-  final bool enabled;
-
-  /// 顶部浮层（顶栏 / 路径栏）高度：指示器从它下缘开始出现。
-  final double edgeOffset;
-
-  /// 读屏名称，一般是 `MaterialLocalizations.refreshIndicatorSemanticLabel`。
-  final String? semanticsLabel;
-
-  /// 触发刷新所需的「内部拖拽距离」（dp）：手指实际要走
-  /// `triggerDistance / dragResistance`。
-  final double triggerDistance;
-
-  /// 拖拽阻尼（0–1）：越小越沉、越大越轻（m3e 默认 0.55）。
-  final double dragResistance;
-
-  /// 最大拖拽距离 = triggerDistance × 该倍数，为空时用 m3e 默认的 1.8。
-  final double? maxDragMultiplier;
-
-  @override
-  Widget build(BuildContext context) => M3EPullToRefreshIndicator(
-    onRefresh: onRefresh,
-    controller: controller,
-    edgeOffset: edgeOffset,
-    triggerDistance: triggerDistance,
-    dragResistance: dragResistance,
-    maxDragMultiplier: maxDragMultiplier,
-    notificationPredicate: (notification) =>
-        enabled && defaultScrollNotificationPredicate(notification),
-    // 默认实现把语义文案写死成英文，这里换成调用方给的本地化文案。
-    indicatorBuilder: (context, progress, isRefreshing) =>
-        M3EContainedLoadingIndicator(
-          // 跟手阶段给确定进度（弧长跟着手指长），松手后转形变循环。
-          progress: isRefreshing ? null : progress.clamp(0.0, 1.0),
-          semanticsLabel: semanticsLabel,
-        ),
-    // m3e 组件只认「overscroll < 0」的下拉与「scrollDelta > 0」的列表滚动，
-    // 回拉产生的正 overscroll 它直接忽略。这里把回拉这段被夹住的位移翻译成
-    // 它认识的 ScrollUpdateNotification：小球先收回去，列表原地不动
-    // （对应的位移物理层已经吃掉了，见 PullToRefreshScrollPhysics）。
-    child: Builder(
-      builder: (notificationContext) =>
-          NotificationListener<ScrollNotification>(
-            onNotification: (notification) {
-              if (notification is ScrollStartNotification) {
-                // 手指按住的拖拽才开始记账；惯性甩动不参与。
-                if (notification.dragDetails != null) gesture.beginDrag();
-              } else if (notification is ScrollEndNotification) {
-                gesture.endDrag();
-              } else if (notification is ScrollUpdateNotification) {
-                // 惯性阶段（没有 dragDetails）：欠账清零，别把列表夹住。
-                if (notification.dragDetails == null) gesture.endDrag();
-              } else if (notification is OverscrollNotification) {
-                if (notification.dragDetails == null) {
-                  // 惯性甩动的过冲：拖拽已结束，先清账（否则回弹会被当还账吃掉）。
-                  gesture.endDrag();
-                } else if (notification.overscroll > 0) {
-                  // 回拉被夹住的位移：翻译成组件认识的通知，让它把小球收回去。
-                  ScrollUpdateNotification(
-                    metrics: notification.metrics,
-                    context: notificationContext,
-                    scrollDelta: notification.overscroll,
-                    dragDetails: notification.dragDetails,
-                  ).dispatch(notificationContext);
-                }
-              }
-              return false;
-            },
-            child: child,
-          ),
-    ),
   );
 }
 

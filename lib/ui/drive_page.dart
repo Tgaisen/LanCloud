@@ -16,7 +16,6 @@ import '../core/platform_support.dart';
 import '../core/transfer/transfer_manager.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
-import 'app_scroll.dart';
 import 'common.dart';
 import 'm3e.dart';
 import 'reduce_motion.dart';
@@ -117,17 +116,6 @@ class _DrivePageState extends State<DrivePage>
 
   /// 拖拽判定用的探针：当前是否"可见地"处于网盘页（底栏 tab 或独立路由）。
   late final bool Function() _dropProbe = _visibleAsDropTarget;
-
-  /// 下拉刷新的手势记账：物理层与刷新组件共用
-  /// （回拉时先收小球、收完列表再滚）。
-  final PullToRefreshGesture _pullGesture = PullToRefreshGesture();
-
-  /// 实例必须稳定：每帧新建 physics 不会生效（Scrollable 只在依赖变化时读它），
-  /// 所以这里建一次，内部通过共享的 [_pullGesture] 记账。
-  late final ScrollPhysics _pullPhysics = PullToRefreshScrollPhysics(
-    parent: AppScrollBehavior.physics,
-    gesture: _pullGesture,
-  );
 
   bool _visibleAsDropTarget() {
     if (!mounted) return false;
@@ -2502,25 +2490,23 @@ class _DrivePageState extends State<DrivePage>
           top: headerInset,
           bottom: shellBottomBarInset(context),
         ),
-        // MD3E 下拉刷新：拖拽 / 阈值 / 回弹 / 形状形变都由组件内部处理，
-        // 下拉时是跟着手指长的确定进度，松手过阈值后转成形变循环。
+        // MD3E 下拉刷新（overlay 版）：内容位移仍归滚动 physics（iOS 橡皮筋
+        // 原样保留），指示器固定在上边缘、只读滚动通知算进度，两者互不叠加，
+        // 所以不会再出现「小球 + 一层回弹留白」。
         child: M3ePullToRefresh(
           onRefresh: _reloadAfterChange,
-          gesture: _pullGesture,
           // 页面自己在加载（居中转圈）时不响应下拉刷新，避免两个指示同时出现
           enabled: !_loading,
-          // 顶栏 / 路径栏是浮层：指示器从它们下缘出现。m3e 的实现会在这段
-          // 偏移里**替滚动视图让出空间**（Column + SizedBox），所以列表里
-          // 不要再加等高占位 sliver，否则顶部留白翻倍。
+          // 顶栏 / 路径栏是浮层：指示器从它们下缘出现（overlay 不参与列表布局）。
           edgeOffset: headerInset,
           semanticsLabel: MaterialLocalizations.of(context)
               .refreshIndicatorSemanticLabel,
           child: CustomScrollView(
             controller: _scroll,
-            // 顶部下拉时列表自身不回弹（否则小球和第一条之间多一层留白）；
-            // 回拉时先收小球、收完列表才滚（见 _pullPhysics）。
-            physics: _pullPhysics,
             slivers: [
+              // 顶栏 / 路径栏是浮层：列表顶部留出等高占位，内容不从它下面穿过。
+              // （下拉刷新的 overlay 只是浮在上面，不替列表让位。）
+              SliverToBoxAdapter(child: SizedBox(height: headerInset)),
               // 目录切换时内容整体淡出（顶栏与路径栏不受影响）
               ..._contentSlivers(grid).map(
                 (sliver) =>
