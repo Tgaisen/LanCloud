@@ -2496,13 +2496,15 @@ class _DrivePageState extends State<DrivePage>
           onRefresh: _reloadAfterChange,
           // 页面自己在加载（居中转圈）时不响应下拉刷新，避免两个指示同时出现
           enabled: !_loading,
+          // 顶栏 / 路径栏是浮层：指示器从它们下缘出现。m3e 的实现会在这段
+          // 偏移里**替滚动视图让出空间**（Column + SizedBox），所以列表里
+          // 不要再加等高占位 sliver，否则顶部留白翻倍。
           edgeOffset: headerInset,
           semanticsLabel: MaterialLocalizations.of(context)
               .refreshIndicatorSemanticLabel,
           child: CustomScrollView(
             controller: _scroll,
             slivers: [
-              SliverToBoxAdapter(child: SizedBox(height: headerInset)),
               // 目录切换时内容整体淡出（顶栏与路径栏不受影响）
               ..._contentSlivers(grid).map(
                 (sliver) =>
