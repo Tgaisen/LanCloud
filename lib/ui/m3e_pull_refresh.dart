@@ -36,10 +36,11 @@ class M3ePullToRefresh extends StatefulWidget {
     required this.child,
     this.enabled = true,
     this.onError,
-    this.triggerDistance = 60.0,
+    this.triggerDistance = 80.0,
     this.indicatorHeight = 70.0,
     this.edgeOffset = 0.0,
     this.maxDragMultiplier = 1.8,
+    this.triggerMode = RefreshIndicatorTriggerMode.anywhere,
     this.springMotion = M3EMotion.expressiveSpatialDefault,
     this.cancelMotion = M3EMotion.expressiveEffectsFast,
     this.hapticFeedback = M3EHapticFeedback.medium,
@@ -65,7 +66,7 @@ class M3ePullToRefresh extends StatefulWidget {
   final void Function(Object error, StackTrace stackTrace)? onError;
 
   /// 触发刷新需要的内容位移（px）。数值是设计决策（M3 只要求「有阈值、
-  /// 反向超过阈值要取消」）；默认 60，按网盘页手感调过。
+  /// 反向超过阈值要取消」）；默认 80，和 m3e 组件一致。
   final double triggerDistance;
 
   /// 指示器完全露出后占用的高度（px），默认 70，和 m3e 组件一致。
@@ -76,6 +77,13 @@ class M3ePullToRefresh extends StatefulWidget {
 
   /// 过拉上限 = triggerDistance × maxDragMultiplier。
   final double maxDragMultiplier;
+
+  /// 什么时候接管手势（沿用 `RefreshIndicator` 的语义）：
+  /// - [RefreshIndicatorTriggerMode.anywhere]（默认）：手指按住时，只要这次
+  ///   拖动到达顶部（`extentBefore == 0`）就接管，列表不在顶部时一路拖回顶部
+  ///   并继续下拉也能出小球；
+  /// - [RefreshIndicatorTriggerMode.onEdge]：只有起手就在顶部才接管。
+  final RefreshIndicatorTriggerMode triggerMode;
 
   /// 松手吸附到「已就绪」位置的弹簧（位移，允许轻微 overshoot）。
   final M3EMotion springMotion;
@@ -140,13 +148,27 @@ class _M3ePullToRefreshState extends State<M3ePullToRefresh>
   }
 
   bool _startsPull(ScrollNotification notification) {
-    return widget.enabled &&
-        notification is ScrollStartNotification &&
-        notification.dragDetails != null &&
-        notification.metrics.axisDirection == AxisDirection.down &&
-        notification.metrics.extentBefore == 0.0 &&
-        _phase == _Phase.idle;
+    if (!widget.enabled || _phase != _Phase.idle) {
+      return false;
+    }
+    final ScrollMetrics metrics = notification.metrics;
+    if (metrics.axisDirection != AxisDirection.down ||
+        metrics.extentBefore != 0.0) {
+      return false;
+    }
+    if (notification is ScrollStartNotification) {
+      return notification.dragDetails != null;
+    }
+    // anywhere：起手不在顶部，但手指还按着，并且这次拖动已经到达顶部。
+    return widget.triggerMode == RefreshIndicatorTriggerMode.anywhere &&
+        notification is ScrollUpdateNotification &&
+        notification.dragDetails != null;
   }
+
+  /// Bouncing 下越界时 pixels 会小于 minScrollExtent：起手 / 接管的那一刻
+  /// 可能已经有越界位移（例如快速拖过顶部只报一帧），直接换算成初始拉力。
+  double _initialPull(ScrollMetrics metrics) =>
+      (metrics.minScrollExtent - metrics.pixels).clamp(0.0, _maxPull);
 
   bool _onScroll(ScrollNotification notification) {
     if (!_accepts(notification) || _isRefreshing) {
@@ -154,10 +176,8 @@ class _M3ePullToRefreshState extends State<M3ePullToRefresh>
     }
 
     if (_startsPull(notification)) {
-      _phase = _Phase.drag;
-      _pull = 0.0;
       _hapticFired = false;
-      _progress.value = 0.0;
+      _setPull(_initialPull(notification.metrics));
       return false;
     }
 
@@ -199,14 +219,17 @@ class _M3ePullToRefreshState extends State<M3ePullToRefresh>
     if (delta == 0.0) {
       return;
     }
-    final double next = (_pull + delta).clamp(0.0, _maxPull);
+    final double next = _pull + delta;
     if (next == _pull) {
       return;
     }
+    _setPull(next);
+  }
 
-    _pull = next;
+  void _setPull(double value) {
+    _pull = value.clamp(0.0, _maxPull);
     // 允许 >1（过拉），视觉层再 clamp；这样 settle 时会有 M3E 的轻微回弹。
-    _progress.value = next / widget.triggerDistance;
+    _progress.value = _pull / widget.triggerDistance;
 
     final bool armed = _pull >= widget.triggerDistance;
     if (armed && !_hapticFired) {

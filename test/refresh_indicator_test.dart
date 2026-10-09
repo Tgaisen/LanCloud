@@ -203,4 +203,61 @@ void main() {
     await tester.pump();
     expect(scroll.position.pixels, greaterThan(0), reason: '甩回顶部后应能继续滚动');
   });
+
+  testWidgets('起手不在顶部：一路拖到顶部并继续下拉也能触发（anywhere）', (tester) async {
+    final scroll = ScrollController();
+    addTearDown(scroll.dispose);
+    var refreshed = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        scrollBehavior: const AppScrollBehavior(),
+        home: Scaffold(
+          body: M3ePullToRefresh(
+            minimumDisplayDuration: Duration.zero,
+            onRefresh: () async => refreshed += 1,
+            child: CustomScrollView(
+              controller: scroll,
+              slivers: [
+                SliverList.builder(
+                  itemCount: 40,
+                  itemBuilder: (context, i) =>
+                      SizedBox(height: 60, child: Text('第 $i 行')),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    // 先滚到列表中间（起手显然不在顶部）
+    await tester.drag(
+      find.byType(CustomScrollView),
+      const Offset(0, -600),
+      touchSlopY: 0,
+    );
+    await tester.pump();
+    for (var i = 0; i < 30; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(scroll.position.pixels, greaterThan(0));
+
+    // 手指按住往下拖：先回到顶部，越过顶部后接管并出小球
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byType(CustomScrollView)),
+    );
+    await gesture.moveBy(const Offset(0, 700));
+    await tester.pump();
+    await gesture.moveBy(const Offset(0, 200));
+    await tester.pump();
+
+    expect(find.byType(M3EContainedLoadingIndicator), findsOneWidget);
+    expect(scroll.position.pixels, lessThanOrEqualTo(0), reason: '已越过顶部（回弹）');
+
+    await gesture.up();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(refreshed, 1, reason: '过阈值松手应触发刷新');
+  });
 }
