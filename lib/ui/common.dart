@@ -924,7 +924,10 @@ Future<T?> showAppSheet<T>(
     // 原本 spring（stiffness 380 / damping 0.8，过冲约 1.5%）相当），落位前
     // 轻轻一顿，不打扰——由路由统一播放，也不会像组件自带入场那样露出垫色。
     // 面板弹过头时，外壳垫在底部的 overshoot 垫色正好补住面板与屏幕底边的缝。
+    // 时长在框架默认 250ms 上放宽到 1.25 倍（312.5ms），节奏更和缓；
+    // 关闭方向不设，仍用框架默认的 200ms。
     sheetAnimationStyle: const AnimationStyle(
+      duration: Duration(microseconds: 312500),
       curve: Cubic(0.22, 1.15, 0.55, 1.02),
     ),
     // 通铺整屏时让「弹窗窗体」整体避开左右挖孔：useSafeArea 作用在弹窗
