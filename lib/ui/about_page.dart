@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart' hide Icons;
+import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../core/app_info.dart';

@@ -1,10 +1,11 @@
 import 'package:flutter/foundation.dart'
     show LicenseEntry, LicenseParagraph, LicenseRegistry;
-import 'package:flutter/material.dart' hide Icons;
+import 'package:material_ui/material_ui.dart' hide Icons;
 
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
+import 'm3e.dart';
 
 /// 开源许可页。
 ///
@@ -67,7 +68,7 @@ class _LicensesPageState extends State<LicensesPage> {
             if (packages == null) {
               return const SliverFillRemaining(
                 hasScrollBody: false,
-                child: Center(child: CircularProgressIndicator()),
+                child: Center(child: M3eLoadingIndicator()),
               );
             }
             final detailText = MaterialLocalizations.of(context)
@@ -139,47 +140,52 @@ class _PackageLicensePageState extends State<_PackageLicensePage> {
       slivers: [
         SliverPadding(
           padding: const EdgeInsets.all(16),
-          sliver: SliverList.builder(
-            itemCount: widget.package.entries.length,
-            itemBuilder: (context, index) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: scheme.surfaceContainerHigh,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                // 许可证正文允许选中复制
-                child: SelectionArea(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      for (final paragraph
-                          in widget.package.entries[index].paragraphs)
-                        if (paragraph.indent == LicenseParagraph.centeredIndent)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 16),
-                            child: Text(
-                              paragraph.text,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
+          // 整块布局：一个包里可能有好几条许可，且正文长短差得很大；
+          // 懒布局会按「已构建条目的平均高度」估算 maxScrollExtent，
+          // 滑动时不断被修正 -> 滚动条滑块长度抖动（与设置页同款问题，见 SliverColumn）
+          sliver: SliverColumn(
+            children: [
+              for (final entry in widget.package.entries)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: scheme.surfaceContainerHigh,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    // 许可证正文允许选中复制
+                    child: SelectionArea(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          for (final paragraph in entry.paragraphs)
+                            if (paragraph.indent ==
+                                LicenseParagraph.centeredIndent)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 16),
+                                child: Text(
+                                  paragraph.text,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              )
+                            else
+                              Padding(
+                                padding: EdgeInsetsDirectional.only(
+                                  top: 8,
+                                  start: 16.0 * paragraph.indent,
+                                ),
+                                child: Text(paragraph.text),
                               ),
-                              textAlign: TextAlign.center,
-                            ),
-                          )
-                        else
-                          Padding(
-                            padding: EdgeInsetsDirectional.only(
-                              top: 8,
-                              start: 16.0 * paragraph.indent,
-                            ),
-                            child: Text(paragraph.text),
-                          ),
-                    ],
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
+            ],
           ),
         ),
         SliverToBoxAdapter(

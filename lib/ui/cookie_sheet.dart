@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart' hide Icons;
+import 'package:material_ui/material_ui.dart' hide Icons;
 
 import '../core/cookie_auth.dart';
 import '../core/data/account_store.dart';

@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:flutter/material.dart' hide Icons;
+import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:provider/provider.dart';
 
 import '../core/app_controller.dart';
@@ -11,6 +11,7 @@ import '../core/transfer/transfer_manager.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
+import 'm3e.dart';
 import 'reduce_motion.dart';
 import 'scroll_tint.dart';
 
@@ -697,7 +698,6 @@ class _TransferTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final manager = context.read<TransferManager>();
-    final scheme = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     final active =
         task.status == TransferStatus.running ||
@@ -766,13 +766,12 @@ class _TransferTile extends StatelessWidget {
         ),
       ),
       bottom: active
-          ? ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: task.progress,
-                minHeight: 6,
-                backgroundColor: scheme.surfaceContainerLowest,
-              ),
+          ? M3eLinearProgressIndicator(
+              // 传输是长任务：用 MD3E 波浪进度条，等待时不那么呆板。
+              // 进度 / 轨道用 M3 的默认角色（primary / secondary container），
+              // 不再另外指定颜色。
+              value: task.progress,
+              wavy: true,
             )
           : null,
     );

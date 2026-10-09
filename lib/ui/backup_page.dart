@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/material.dart' hide Icons;
+import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 
@@ -15,6 +15,7 @@ import '../core/system_file_saver.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
+import 'm3e.dart';
 
 /// 恢复前确认弹窗的结果：nil 表示取消。
 class RestoreDecision {
@@ -486,7 +487,7 @@ class _BackupPageState extends State<BackupPage> {
         bottom: _progress
             ? const PreferredSize(
                 preferredSize: Size.fromHeight(2),
-                child: LinearProgressIndicator(minHeight: 2),
+                child: M3eLinearProgressIndicator(height: 2),
               )
             : null,
       ),

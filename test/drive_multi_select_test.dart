@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/api/models.dart';
@@ -10,6 +10,8 @@ import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/drive_page.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:lancloud/l10n/delegates.dart';
 
 /// 网盘页挂载在目录缓存上（不进网络）：给个账号让 `app.client` 非空，
 /// 再塞一份根目录快照，`_load()` 直接命中缓存。
@@ -37,7 +39,7 @@ Future<AppController> host(WidgetTester tester, {bool grid = true}) async {
         ChangeNotifierProvider<TransferManager>.value(value: manager),
       ],
       child: MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         locale: const Locale('zh'),
         home: const DrivePage(tabIndex: 0),
@@ -50,8 +52,8 @@ Future<AppController> host(WidgetTester tester, {bool grid = true}) async {
 
 /// 语义树里是否还有包含 [target] 的文字（label 或 tooltip）。
 bool hasSemanticsLabel(WidgetTester tester, String target) {
-  // ignore: deprecated_member_use
-  final owner = tester.binding.pipelineOwner.semanticsOwner!;
+  // 语义树挂在 RenderView 的 PipelineOwner 上（binding.pipelineOwner 已弃用）。
+  final owner = tester.binding.renderViews.first.owner!.semanticsOwner!;
   var found = false;
   void walk(SemanticsNode node) {
     final data = node.getSemanticsData();

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart' hide Icons;
+import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter/foundation.dart' show listEquals, visibleForTesting;
 import 'package:flutter/services.dart';
 import 'package:dynamic_color/dynamic_color.dart';
@@ -16,6 +16,7 @@ import 'core/share_inbox.dart';
 import 'core/system_motion.dart';
 import 'core/transfer/transfer_manager.dart';
 import 'core/window_frame.dart';
+import 'l10n/delegates.dart';
 import 'l10n/l10n.dart';
 import 'ui/drive_page.dart';
 import 'ui/desktop_drop_target.dart';
@@ -24,6 +25,7 @@ import 'ui/first_run_terms.dart';
 import 'ui/favorites_page.dart';
 import 'ui/home_page.dart';
 import 'ui/login_page.dart';
+import 'ui/m3e.dart';
 import 'ui/predictive_back_transitions.dart';
 import 'ui/profile_page.dart';
 import 'ui/reduce_motion.dart';
@@ -73,7 +75,7 @@ class LanCloudApp extends StatelessWidget {
                 ? const Locale('en')
                 : null,
             supportedLocales: AppLocalizations.supportedLocales,
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            localizationsDelegates: appLocalizationsDelegates,
             theme: buildTheme(Brightness.light),
             darkTheme: buildTheme(Brightness.dark),
             themeMode: mode == 'light'
@@ -87,14 +89,18 @@ class LanCloudApp extends StatelessWidget {
             // Android 15+ 导航栏强制透明，能调的只有图标明暗与是否加系统遮罩。
             builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
               value: systemUiOverlayStyleFor(Theme.of(context).brightness),
-              // 桌面端在窗口这一层接住拖拽（Android 走原生通道，这里原样透传）
-              child: DesktopDropTarget(
-                child: Stack(
-                  children: [
-                    child ?? const SizedBox.shrink(),
-                    // 拖拽悬停提示条挂在 Navigator 之上：二级页面也能看到
-                    const DropHoverBanner(),
-                  ],
+              // M3E：强调排版落到顶栏标题 / 弹窗标题 / 主要按钮 / 导航选中项，
+              // 挂在 Navigator 之上（弹窗、对话框同样能取到）。
+              child: M3eComponentStyles(
+                // 桌面端在窗口这一层接住拖拽（Android 走原生通道，这里原样透传）
+                child: DesktopDropTarget(
+                  child: Stack(
+                    children: [
+                      child ?? const SizedBox.shrink(),
+                      // 拖拽悬停提示条挂在 Navigator 之上：二级页面也能看到
+                      const DropHoverBanner(),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -157,8 +163,11 @@ ThemeData buildLanCloudTheme({
     pageTransitionsTheme: kLanCloudPageTransitionsTheme,
     // MD3E 进度条：year2023=false 会切到 2024 外观（Motion: new motion
     // + Shape: 圆角/停靠点/trackGap；这些属性在 year2023 为 true 时会被
-    // 忽略，所以必须显式关掉）。Flutter 没有波浪实现，即非波浪的平直样式。
-    // 该标记已废弃、官方说明未来会默认 false，届时删掉这一行即可。
+    // 忽略，所以必须显式关掉）。
+    //
+    // 该标记 v3.26 起已废弃、官方说明未来会默认 false，但**目前默认仍是 true**，
+    // 删掉这行会让只剩的框架进度条（网盘页下拉刷新小球）退回 2023 外观，
+    // 所以要等 Flutter 把默认值翻过来之后再删。
     progressIndicatorTheme: const ProgressIndicatorThemeData(
       // ignore: deprecated_member_use
       year2023: false,
@@ -247,7 +256,7 @@ class _AgreementGateState extends State<AgreementGate> {
   @override
   Widget build(BuildContext context) {
     if (!_checked) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: Center(child: M3eLoadingIndicator(size: 48)));
     }
     if (!_accepted) {
       return FirstRunTerms(onAccepted: () => setState(() => _accepted = true));
@@ -797,7 +806,7 @@ class _RootShellState extends State<RootShell>
       WidgetsBinding.instance.addPostFrameCallback((_) => previous.dispose());
     }
     if (!app.ready) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: Center(child: M3eLoadingIndicator(size: 48)));
     }
     if (app.activeUid == null) {
       return const LoginPage(firstRun: true);

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart' hide Icons;
+import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:provider/provider.dart';
 
 import '../core/api/lanzou_client.dart';
@@ -7,6 +7,7 @@ import '../core/app_controller.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
+import 'm3e.dart';
 import 'share_file_sheet.dart';
 import 'web_page.dart';
 
@@ -418,9 +419,9 @@ class _ShareFolderPageState extends State<ShareFolderPage>
             padding: EdgeInsets.symmetric(vertical: 16),
             child: Center(
               child: SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(strokeWidth: 2),
+                width: 24,
+                height: 24,
+                child: M3eLoadingIndicator(size: 24),
               ),
             ),
           )

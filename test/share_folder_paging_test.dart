@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/api/lanzou_client.dart';
 import 'package:lancloud/core/api/models.dart';
@@ -8,6 +8,8 @@ import 'package:lancloud/l10n/app_localizations_zh.dart';
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/share_folder_page.dart';
 import 'package:provider/provider.dart';
+
+import 'package:lancloud/l10n/delegates.dart';
 
 /// 记录分页请求的假客户端：第二页固定返回一个文件并到底。
 class _FakeClient extends LanzouClient {
@@ -104,7 +106,7 @@ Future<void> pumpPage(
     ChangeNotifierProvider<AppController>.value(
       value: app,
       child: MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         locale: const Locale('zh'),
         home: ShareFolderPage(

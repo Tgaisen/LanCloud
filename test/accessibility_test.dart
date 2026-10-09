@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart' hide Icons;
+import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -6,9 +6,11 @@ import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/app_icons.dart';
 import 'package:lancloud/ui/common.dart';
 
+import 'package:lancloud/l10n/delegates.dart';
+
 Widget host(Widget child) {
   return MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    localizationsDelegates: appLocalizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     locale: const Locale('zh'),
     home: Scaffold(body: Center(child: child)),
@@ -19,8 +21,8 @@ Widget host(Widget child) {
 /// IconButton 的 tooltip 走的是 SemanticsData.tooltip，TalkBack 会把它当
 /// 控件名称读出来，所以这里两种都要看。
 bool hasLabel(WidgetTester tester, String target) {
-  // ignore: deprecated_member_use
-  final owner = tester.binding.pipelineOwner.semanticsOwner!;
+  // 语义树挂在 RenderView 的 PipelineOwner 上（binding.pipelineOwner 已弃用）。
+  final owner = tester.binding.renderViews.first.owner!.semanticsOwner!;
   var found = false;
   void walk(SemanticsNode node) {
     final data = node.getSemanticsData();
@@ -39,8 +41,8 @@ bool hasLabel(WidgetTester tester, String target) {
 
 /// 语义树里第一个「label 或 tooltip 包含 [target]」的节点数据。
 SemanticsData? semanticsData(WidgetTester tester, String target) {
-  // ignore: deprecated_member_use
-  final owner = tester.binding.pipelineOwner.semanticsOwner!;
+  // 语义树挂在 RenderView 的 PipelineOwner 上（binding.pipelineOwner 已弃用）。
+  final owner = tester.binding.renderViews.first.owner!.semanticsOwner!;
   SemanticsData? found;
   void walk(SemanticsNode node) {
     if (found != null) return;
@@ -133,8 +135,8 @@ void main() {
     expect(data.flagsCollection.isEnabled.name, 'isFalse');
 
     // 根节点不应把「下载」吸上去（修复前正是这个症状）
-    // ignore: deprecated_member_use
-    final owner = tester.binding.pipelineOwner.semanticsOwner!;
+    // 语义树挂在 RenderView 的 PipelineOwner 上（binding.pipelineOwner 已弃用）。
+    final owner = tester.binding.renderViews.first.owner!.semanticsOwner!;
     final root = owner.rootSemanticsNode!;
     expect(root.getSemanticsData().label, isNot(contains('下载')));
     handle.dispose();

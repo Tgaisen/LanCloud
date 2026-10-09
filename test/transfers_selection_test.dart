@@ -1,12 +1,15 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/common.dart';
+import 'package:lancloud/ui/m3e.dart';
 import 'package:lancloud/ui/transfers_page.dart';
 import 'package:provider/provider.dart';
+
+import 'package:lancloud/l10n/delegates.dart';
 
 TransferTask task(String id, String name, {required TransferStatus status}) {
   return TransferTask(
@@ -33,7 +36,7 @@ Future<(AppController, TransferManager)> host(WidgetTester tester) async {
         ChangeNotifierProvider<TransferManager>.value(value: manager),
       ],
       child: MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         locale: const Locale('zh'),
         home: const TransfersPage(),
@@ -73,7 +76,7 @@ Future<AppController> pushTransfers(WidgetTester tester) async {
         ChangeNotifierProvider<TransferManager>.value(value: manager),
       ],
       child: MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         locale: const Locale('zh'),
         home: Builder(
@@ -116,17 +119,19 @@ void main() {
           ChangeNotifierProvider<TransferManager>.value(value: manager),
         ],
         child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           locale: const Locale('zh'),
           home: const TransfersPage(),
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    // 进行中的条目用 MD3E 波浪进度条（波浪持续滚动），不能等它 settle。
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
 
     final title = tester.getRect(find.text('a.zip'));
-    final bar = tester.getRect(find.byType(LinearProgressIndicator));
+    final bar = tester.getRect(find.byType(M3eLinearProgressIndicator));
     final cancel = tester.getRect(find.byTooltip('取消'));
     // 左边缘与标题对齐（在文字列里，自然避让 42dp 图标与 14dp 间距）
     expect(bar.left, closeTo(title.left, 0.5));
@@ -385,7 +390,7 @@ void main() {
           ChangeNotifierProvider<TransferManager>.value(value: manager),
         ],
         child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           locale: const Locale('zh'),
           home: TransfersPage(openFile: (path) async => opened.add(path)),
@@ -444,7 +449,7 @@ void main() {
           ChangeNotifierProvider<TransferManager>.value(value: manager),
         ],
         child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           locale: const Locale('zh'),
           home: const TransfersPage(),
@@ -506,7 +511,7 @@ void main() {
           ],
           child: MaterialApp(
             navigatorKey: navKey,
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            localizationsDelegates: appLocalizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
             locale: const Locale('zh'),
             home: home,
@@ -564,7 +569,7 @@ void main() {
           ChangeNotifierProvider<TransferManager>.value(value: manager),
         ],
         child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           locale: const Locale('zh'),
           home: const TransfersPage(),

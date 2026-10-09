@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/cookie_auth.dart';
@@ -7,6 +7,8 @@ import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/cookie_sheet.dart';
 import 'package:local_auth_android/local_auth_android.dart';
 import 'package:local_auth/local_auth.dart';
+
+import 'package:lancloud/l10n/delegates.dart';
 
 class _FakeAuth extends CookieAuth {
   _FakeAuth(this.result);
@@ -32,7 +34,7 @@ final _account = Account(uid: '1234567', cookie: _cookie, nickname: '测试账�
 Future<void> pumpHost(WidgetTester tester) async {
   await tester.pumpWidget(
     MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      localizationsDelegates: appLocalizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       locale: const Locale('zh'),
       home: Scaffold(

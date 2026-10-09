@@ -1,10 +1,11 @@
-import 'package:flutter/material.dart' hide Icons;
+import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
+import 'm3e.dart';
 
 /// 统一 WebView 页：个人中心与分享页在应用内打开，
 /// 通过 CookieManager 注入账号 Cookie 免二次登录。
@@ -107,10 +108,7 @@ class _WebPageState extends State<WebPage> {
               if (_progress < 1)
                 Align(
                   alignment: Alignment.topCenter,
-                  child: LinearProgressIndicator(
-                    value: _progress,
-                    minHeight: 2,
-                  ),
+                  child: M3eLinearProgressIndicator(value: _progress),
                 ),
             ],
           ),

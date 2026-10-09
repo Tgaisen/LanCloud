@@ -3,7 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart' hide Icons;
+import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:local_auth_android/local_auth_android.dart';
@@ -17,6 +17,7 @@ import '../core/transfer/transfer_manager.dart';
 import '../l10n/l10n.dart';
 import 'app_scroll.dart';
 import 'app_icons.dart';
+import 'm3e.dart';
 import 'reduce_motion.dart';
 import 'scroll_tint.dart';
 
@@ -892,6 +893,14 @@ Future<void> showQrDialog(
 /// 统一的底部弹窗：自适应内容高度，内容超过上限时内部滚动；
 /// 内容滚到顶部后继续下拉会带动整个弹窗下滑（等效 NestedScrolling），
 /// 松手按拖动距离/速度决定关闭或弹回。
+///
+/// 弹窗外壳用 MD3E 的 [M3EBottomSheet]：28dp 顶角、32×4dp 拖拽把手
+/// （按 M3 规范给 22dp 上下留白，凑满 48dp 触控高度）、spring 入场。
+///
+/// 路由仍走框架的 [showModalBottomSheet]：m3e_core 的
+/// `showM3EModalBottomSheet` 会在「builder 返回的不是 M3EBottomSheet」时再
+/// 套一层外壳，而弹窗在这里还要按窗口宽度决定安全区让位（见下），外壳外面
+/// 必须能再包一层 MediaQuery——自己拼装更可控，外观与动效仍是 MD3E 的。
 Future<T?> showAppSheet<T>(
   BuildContext context, {
   required Widget child,
@@ -899,6 +908,7 @@ Future<T?> showAppSheet<T>(
 }) {
   final size = MediaQuery.sizeOf(context);
   final maxHeight = size.height * maxHeightRatio;
+  final scheme = Theme.of(context).colorScheme;
   // MD3 给模态底部弹窗 640dp 宽度上限：窗口更宽时弹窗居中、离屏幕两侧
   // 还有很远，这时不需要左右让位；只有弹窗真的通铺整屏（窗口不超过上限）
   // 时才要避开两侧的挖孔 / 导航栏。
@@ -906,29 +916,57 @@ Future<T?> showAppSheet<T>(
   return showModalBottomSheet<T>(
     context: context,
     isScrollControlled: true,
-    showDragHandle: true,
+    // 背景与形状都由 MD3E 外壳自己画，路由层保持透明。
+    backgroundColor: Colors.transparent,
+    showDragHandle: false,
+    constraints: const BoxConstraints(maxWidth: kModalSheetMaxWidth),
     // 通铺整屏时让「弹窗窗体」整体避开左右挖孔：useSafeArea 作用在弹窗
     // 面板外侧（路由层），弹窗被收窄，而不是面板照旧压住挖孔、只让内容
     // 缩进一截（那样有挖孔的一侧会多出留白）。
     useSafeArea: fullWidthSheet,
-    // 面板内部只再让开底部导航栏；内容里若还有 SafeArea（不少弹窗内容
-    // 自带）读不到 padding，不会再二次避让多留一截空白。
-    // 左右由上面 useSafeArea 统一处理，这里不要默认值（默认 left/right 为 true）。
-    builder: (_) => SafeArea(
-      top: false,
-      left: false,
-      right: false,
-      child: Builder(
-        builder: (context) => MediaQuery.removePadding(
-          context: context,
-          removeTop: true,
-          removeLeft: true,
-          removeRight: true,
-          removeBottom: true,
-          child: MeasuredSheet(maxHeight: maxHeight, child: child),
+    builder: (sheetContext) {
+      final sheet = M3EBottomSheet(
+        showDragHandle: true,
+        // 内容自带内边距：外壳不再补 24dp，避免所有弹窗被多包一层。
+        padding: EdgeInsets.zero,
+        // M3 规范：底部弹窗容器用 surface container low。
+        backgroundColor: scheme.surfaceContainerLow,
+        style: M3EBottomSheetStyle(
+          backgroundColor: scheme.surfaceContainerLow,
+          // M3 规范：拖拽把手上下留白 22dp（把手 4dp → 48dp 触控高度）。
+          dragHandlePadding: const EdgeInsets.symmetric(vertical: 22),
         ),
-      ),
-    ),
+        // 面板内部只再让开底部导航栏；内容里若还有 SafeArea（不少弹窗内容
+        // 自带）读不到 padding，不会再二次避让多留一截空白。
+        // 左右由上面 useSafeArea 统一处理，这里不要默认值（默认 left/right 为 true）。
+        child: SafeArea(
+          top: false,
+          left: false,
+          right: false,
+          child: Builder(
+            builder: (context) => MediaQuery.removePadding(
+              context: context,
+              removeTop: true,
+              removeLeft: true,
+              removeRight: true,
+              removeBottom: true,
+              child: MeasuredSheet(maxHeight: maxHeight, child: child),
+            ),
+          ),
+        ),
+      );
+      // 弹窗被 640dp 上限居中时，两侧已经远离挖孔 / 导航栏；M3EBottomSheet
+      // 自带 SafeArea（左右默认 true），这里要去掉水平 padding，否则内容会
+      // 在已经居中让位的基础上再缩进一截。
+      return fullWidthSheet
+          ? sheet
+          : MediaQuery.removePadding(
+              context: sheetContext,
+              removeLeft: true,
+              removeRight: true,
+              child: sheet,
+            );
+    },
   );
 }
 
@@ -2076,7 +2114,8 @@ class _SectionCardState extends State<SectionCard>
           Expanded(
             child: Text(
               widget.title,
-              style: Theme.of(context).textTheme.titleMedium,
+              // 分区标题用 M3E 强调排版（标题 / 编辑性文字是强调字重的主场）。
+              style: context.m3eEmphasizedTheme.titleMedium,
             ),
           ),
           ?widget.trailing,
@@ -2288,13 +2327,8 @@ class PropertyHeaderCard extends StatelessWidget {
                             ),
                             if (loading) ...[
                               const SizedBox(width: 8),
-                              const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              ),
+                              // 标题右侧的小指示器：M3E 加载指示器最小 24dp。
+                              const M3eLoadingIndicator(size: 24),
                             ],
                           ],
                         ),
@@ -3307,15 +3341,14 @@ class _BatchProgressDialog extends StatelessWidget {
                 builder: (context, value, _) => Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: total <= 0
-                            ? null
-                            : (value / total).clamp(0.0, 1.0),
-                        minHeight: 8,
-                        backgroundColor: scheme.surfaceContainerHighest,
-                      ),
+                    // 批量操作往往要跑一会儿：MD3E 波浪进度条，长任务不显得呆板。
+                    M3eLinearProgressIndicator(
+                      value: total <= 0
+                          ? null
+                          : (value / total).clamp(0.0, 1.0),
+                      wavy: true,
+                      height: 12,
+                      backgroundColor: scheme.surfaceContainerHighest,
                     ),
                     const SizedBox(height: 10),
                     Text('$value/$total', style: textTheme.labelLarge),
@@ -3358,11 +3391,7 @@ Future<void> showLoadingDialog(BuildContext context, String text) {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const SizedBox(
-              width: 28,
-              height: 28,
-              child: CircularProgressIndicator(strokeWidth: 3),
-            ),
+            M3eLoadingIndicator(size: 28, semanticsLabel: text),
             const SizedBox(width: 20),
             Flexible(child: Text(text, style: theme.textTheme.bodyLarge)),
           ],

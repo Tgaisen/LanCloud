@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart' hide Icons;
+import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:provider/provider.dart';
 
 import '../core/app_controller.dart';
@@ -9,6 +9,7 @@ import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
 import 'drive_page.dart';
+import 'm3e.dart';
 import 'qr_scan.dart';
 import 'scroll_tint.dart';
 import 'share_file_sheet.dart';
@@ -344,73 +345,61 @@ class _HomePageState extends State<HomePage>
     String name,
   ) async {
     final app = context.read<AppController>();
-    // 窗口比 MD3 弹窗宽度上限还宽时弹窗会居中，两侧用不到系统栏让位
-    final fullWidthSheet =
-        MediaQuery.sizeOf(context).width <= kModalSheetMaxWidth;
-    await showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      // 通铺整屏时让弹窗窗体整体避开左右挖孔（作用在面板外侧）；
-      // 面板内部只再让开底部系统栏，不要把状态栏高度算进弹窗内容
-      useSafeArea: fullWidthSheet,
-      builder: (sheetContext) => SafeArea(
-        top: false,
-        // 左右由上面的 useSafeArea 统一处理（SafeArea 默认会带上左右）
-        left: false,
-        right: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.download_outlined),
-              title: Text(context.l10n.download),
-              onTap: () async {
-                Navigator.of(sheetContext).pop();
-                final client = app.client;
-                if (client == null) return;
-                try {
-                  final info = await client.shareInfoOfFile(fileId);
-                  if (!context.mounted) return;
-                  await downloadShareFile(
-                    context,
-                    url: info.url,
-                    pwd: info.pwd,
-                    fallbackName: name,
-                  );
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context)
-                        .showSnackBar(SnackBar(content: Text('$e')));
-                  }
+    // 与其它弹窗一致：走统一外壳（MD3E 底部弹窗 + 自适应高度）。
+    await showAppSheet<void>(
+      context,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.download_outlined),
+            title: Text(context.l10n.download),
+            onTap: () async {
+              Navigator.of(context).pop();
+              final client = app.client;
+              if (client == null) return;
+              try {
+                final info = await client.shareInfoOfFile(fileId);
+                if (!context.mounted) return;
+                await downloadShareFile(
+                  context,
+                  url: info.url,
+                  pwd: info.pwd,
+                  fallbackName: name,
+                );
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context)
+                      .showSnackBar(SnackBar(content: Text('$e')));
                 }
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.link_outlined),
-              title: Text(context.l10n.copyLink),
-              onTap: () async {
-                Navigator.of(sheetContext).pop();
-                final client = app.client;
-                if (client == null) return;
-                try {
-                  final info = await client.shareInfoOfFile(fileId);
-                  if (!context.mounted) return;
-                  await copyText(
-                    context,
-                    info.pwd.isEmpty
-                        ? info.url
-                        : context.l10n.linkWithPassword(info.url, info.pwd),
-                  );
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context)
-                        .showSnackBar(SnackBar(content: Text('$e')));
-                  }
+              }
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.link_outlined),
+            title: Text(context.l10n.copyLink),
+            onTap: () async {
+              Navigator.of(context).pop();
+              final client = app.client;
+              if (client == null) return;
+              try {
+                final info = await client.shareInfoOfFile(fileId);
+                if (!context.mounted) return;
+                await copyText(
+                  context,
+                  info.pwd.isEmpty
+                      ? info.url
+                      : context.l10n.linkWithPassword(info.url, info.pwd),
+                );
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context)
+                      .showSnackBar(SnackBar(content: Text('$e')));
                 }
-              },
-            ),
-          ],
-        ),
+              }
+            },
+          ),
+        ],
       ),
     );
   }
@@ -538,9 +527,7 @@ class _HomePageState extends State<HomePage>
                             child: _loading
                                 ? const Padding(
                                     padding: EdgeInsets.all(16),
-                                    child: Center(
-                                      child: CircularProgressIndicator(),
-                                    ),
+                                    child: Center(child: M3eLoadingIndicator()),
                                   )
                                 : (_recents.isEmpty
                                       ? SegmentedList(
