@@ -96,58 +96,61 @@ void main() {
     );
   });
 
-  // 入场弹性改由路由的入场曲线给出：整块面板滑入时越过落位点一点点再回弹
-  // （对应 m3e_core 原本 spring 的手感），幅度要小、且最终必须落准。
-  testWidgets('底部弹窗入场带一点过冲，落位前轻微回弹', (tester) async {
+  // 入场弹性改由路由的入场曲线给出：整块面板滑入时越过落位点一点点再回弹。
+  // 幅度按「和组件原本 spring 差不多」定：过冲约 1.4%（原 spring ≈1.5%），
+  // 能感觉到落位前轻轻一顿，但不会弹成跳一下；最终必须精确落位。
+  // 回弹抬离屏幕底边露出的那条缝，由外壳垫在底部的 overshoot 垫色补上
+  // （同色），不能露出后面的遮罩。
+  testWidgets('底部弹窗入场只回弹一点点，弹起露出的缝由垫色补住', (tester) async {
     await openSheet(tester);
     await tester.pump();
-
-    final double restBottom = tester.getSize(find.byType(MaterialApp)).height;
-    double highestBottom = restBottom;
-    for (int i = 0; i < 25; i++) {
-      await tester.pump(const Duration(milliseconds: 16));
-      highestBottom = math.min(highestBottom, sheetBottom(tester));
-    }
-
-    final double overshoot = restBottom - highestBottom;
-    expect(overshoot, greaterThan(4), reason: '应该有可见的回弹（过冲 $overshoot dp）');
-    expect(overshoot, lessThan(20), reason: '回弹不能过头（过冲 $overshoot dp）');
-
-    await tester.pumpAndSettle();
-    expect(sheetBottom(tester), moreOrLessEquals(restBottom, epsilon: 0.5));
-  });
-
-  // 回弹抬离屏幕底边时会露出面板与屏幕之间的缝，这条缝得由外壳垫在底部的
-  // overshoot 垫色补上（同色），不能露出后面的遮罩。
-  testWidgets('底部弹窗过冲露出的缝由垫色补住，不露遮罩', (tester) async {
-    await openSheet(tester);
-    await tester.pump();
-    // 入场曲线峰值在 61% 处：250ms 的进场 → 约 152ms
-    await tester.pump(const Duration(milliseconds: 152));
 
     final Size logical = tester.getSize(find.byType(MaterialApp));
-    final Rect sheet = tester.getRect(find.byType(M3EBottomSheet));
-    expect(
-      sheet.bottom,
-      lessThan(logical.height - 2),
-      reason: '此刻面板应该已经抬离屏幕底边（过冲）',
-    );
+    double highestBottom = logical.height;
+    Color? bodyAtPeak;
+    Color? gapAtPeak;
+    for (int i = 0; i < 25; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+      final Rect sheet = tester.getRect(find.byType(M3EBottomSheet));
+      if (sheet.bottom >= highestBottom - 0.01) continue;
+      // 记录（新的）最高点那一刻：面板底边上方是面板底色，
+      // 屏幕最底一条是过冲露出的缝
+      highestBottom = sheet.bottom;
+      bodyAtPeak = await renderedColor(
+        tester,
+        Offset(sheet.center.dx, sheet.bottom - 20),
+      );
+      gapAtPeak = await renderedColor(
+        tester,
+        Offset(sheet.center.dx, logical.height - 1),
+      );
+    }
 
-    final Color body = await renderedColor(
-      tester,
-      Offset(sheet.center.dx, sheet.bottom - 20),
-    );
-    final Color gap = await renderedColor(
-      tester,
-      Offset(sheet.center.dx, logical.height - 2),
+    final double sheetHeight = tester
+        .getRect(find.byType(M3EBottomSheet))
+        .height;
+    final double overshootRatio =
+        (logical.height - highestBottom) / sheetHeight;
+    expect(
+      overshootRatio,
+      greaterThan(0.005),
+      reason: '要有一点点回弹（过冲 ${(overshootRatio * 100).toStringAsFixed(2)}%）',
     );
     expect(
-      gap.toARGB32(),
-      body.toARGB32(),
+      overshootRatio,
+      lessThan(0.03),
+      reason: '回弹要克制、不打扰（过冲 ${(overshootRatio * 100).toStringAsFixed(2)}%）',
+    );
+    expect(
+      gapAtPeak!.toARGB32(),
+      bodyAtPeak!.toARGB32(),
       reason:
           '过冲露出的缝应当是面板底色（垫色补缝）：'
-          'body=${body.toARGB32().toRadixString(16)} '
-          'gap=${gap.toARGB32().toRadixString(16)}',
+          'body=${bodyAtPeak.toARGB32().toRadixString(16)} '
+          'gap=${gapAtPeak.toARGB32().toRadixString(16)}',
     );
+
+    await tester.pumpAndSettle();
+    expect(sheetBottom(tester), moreOrLessEquals(logical.height, epsilon: 0.5));
   });
 }
