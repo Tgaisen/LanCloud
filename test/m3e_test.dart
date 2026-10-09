@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/m3e.dart';
 
 /// m3e_core 与应用同处 material_ui 之上，这里守住「MD3E 控件能正常渲染 /
@@ -71,6 +74,42 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.byType(M3EBottomSheet), findsOneWidget);
     expect(find.text('测试弹窗'), findsOneWidget);
+  });
+
+  testWidgets('属性卡与加载对话框里的等待态用 M3E 环形进度条', (tester) async {
+    late BuildContext pageContext;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) {
+              pageContext = context;
+              return const PropertyHeaderCard(
+                icon: Icons.folder_outlined,
+                title: '测试文件夹',
+                loading: true,
+              );
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 32));
+
+    // 属性卡标题右侧的小圆环
+    expect(find.byType(M3eCircularProgressIndicator), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    // 加载对话框（访问密码 / 网页登录完成共用）：同样用 M3E 环形进度条
+    unawaited(showLoadingDialog(pageContext, '处理中'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 32));
+    expect(find.byType(M3eCircularProgressIndicator), findsNWidgets(2));
+
+    Navigator.of(pageContext).pop();
+    // 不确定进度的圆环会一直转，不能等它 settle。
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
   });
 
   test('M3E 强调排版：字号与基线一致、字重更重', () {

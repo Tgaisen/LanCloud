@@ -199,26 +199,18 @@ class _FavoritesPageState extends State<FavoritesPage>
                   const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
-                    child: ConnectedSegmentedButton<String>(
-                      segments: [
-                        ButtonSegment(
-                          value: 'time',
-                          label: Text(l10n.sortTime),
-                        ),
-                        ButtonSegment(
-                          value: 'name',
-                          label: Text(l10n.sortName),
-                        ),
-                        ButtonSegment(
-                          value: 'size',
-                          label: Text(l10n.sortSize),
-                        ),
-                      ],
-                      selected: {sort},
-                      onSelectionChanged: (values) {
-                        setSheetState(() => sort = values.first);
-                        setState(() => _sort = values.first);
+                    child: M3eConnectedButtonGroup<String>(
+                      values: const ['time', 'name', 'size'],
+                      selected: sort,
+                      onSelected: (value) {
+                        setSheetState(() => sort = value);
+                        setState(() => _sort = value);
                       },
+                      labelOf: (value) => Text(switch (value) {
+                        'name' => l10n.sortName,
+                        'size' => l10n.sortSize,
+                        _ => l10n.sortTime,
+                      }),
                     ),
                   ),
                 ],

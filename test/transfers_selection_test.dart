@@ -399,7 +399,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('下载'));
+    // MD3E 按钮组会额外渲染一份「离屏测量」副本（IgnorePointer 包着），
+    // 所以按文字找按钮时要排掉不可点击的那份。
+    await tester.tap(find.text('下载').hitTestable());
     await tester.pumpAndSettle();
 
     expect(find.text('tool.apk'), findsOneWidget);
@@ -457,7 +459,8 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('下载'));
+    // 同上：按钮组有离屏测量副本，取可点击的那份。
+    await tester.tap(find.text('下载').hitTestable());
     await tester.pumpAndSettle();
 
     // 下载列表按时间倒序：f5 f4 f3 f2 f1；删掉 f4、f2，剩下 f5 f3 f1

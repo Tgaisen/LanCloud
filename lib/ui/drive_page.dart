@@ -915,25 +915,19 @@ class _DrivePageState extends State<DrivePage>
                   const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
-                    child: ConnectedSegmentedButton<String>(
-                      segments: [
-                        ButtonSegment(
-                          value: 'grid',
-                          icon: const Icon(Icons.grid_view),
-                          label: Text(context.l10n.grid),
-                        ),
-                        ButtonSegment(
-                          value: 'list',
-                          icon: const Icon(Icons.view_list),
-                          label: Text(context.l10n.list),
-                        ),
-                      ],
-                      selected: {grid ? 'grid' : 'list'},
-                      onSelectionChanged: (values) {
-                        final value = values.first;
+                    child: M3eConnectedButtonGroup<String>(
+                      values: const ['grid', 'list'],
+                      selected: grid ? 'grid' : 'list',
+                      onSelected: (value) {
                         setSheetState(() => grid = value == 'grid');
                         app.setGridView(grid);
                       },
+                      labelOf: (value) => Text(
+                        value == 'grid' ? context.l10n.grid : context.l10n.list,
+                      ),
+                      iconOf: (value) => Icon(
+                        value == 'grid' ? Icons.grid_view : Icons.view_list,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -944,27 +938,19 @@ class _DrivePageState extends State<DrivePage>
                   const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
-                    child: ConnectedSegmentedButton<String>(
-                      segments: [
-                        ButtonSegment(
-                          value: 'default',
-                          label: Text(context.l10n.sortTime),
-                        ),
-                        ButtonSegment(
-                          value: 'name',
-                          label: Text(context.l10n.sortName),
-                        ),
-                        ButtonSegment(
-                          value: 'size',
-                          label: Text(context.l10n.sortSize),
-                        ),
-                      ],
-                      selected: {sort},
-                      onSelectionChanged: (values) {
-                        setSheetState(() => sort = values.first);
-                        setState(() => _sortMode = values.first);
-                        app.setSortMode(values.first);
+                    child: M3eConnectedButtonGroup<String>(
+                      values: const ['default', 'name', 'size'],
+                      selected: sort,
+                      onSelected: (value) {
+                        setSheetState(() => sort = value);
+                        setState(() => _sortMode = value);
+                        app.setSortMode(value);
                       },
+                      labelOf: (value) => Text(switch (value) {
+                        'name' => context.l10n.sortName,
+                        'size' => context.l10n.sortSize,
+                        _ => context.l10n.sortTime,
+                      }),
                     ),
                   ),
                 ],
@@ -2683,7 +2669,7 @@ class _DrivePageState extends State<DrivePage>
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 72),
           child: Center(
             child: _loadingMore
-                ? const M3eLoadingIndicator(size: 24)
+                ? const M3eCircularProgressIndicator(size: 24, strokeWidth: 3)
                 : Text(
                     _hasMore
                         ? ''

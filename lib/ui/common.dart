@@ -2327,8 +2327,11 @@ class PropertyHeaderCard extends StatelessWidget {
                             ),
                             if (loading) ...[
                               const SizedBox(width: 8),
-                              // 标题右侧的小指示器：M3E 加载指示器最小 24dp。
-                              const M3eLoadingIndicator(size: 24),
+                              // 标题右侧的小圆环：M3E 环形进度条（不确定进度）。
+                              const M3eCircularProgressIndicator(
+                                size: 24,
+                                strokeWidth: 3,
+                              ),
                             ],
                           ],
                         ),
@@ -3391,7 +3394,8 @@ Future<void> showLoadingDialog(BuildContext context, String text) {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            M3eLoadingIndicator(size: 28, semanticsLabel: text),
+            // 不确定进度的等待：M3E 环形进度条。
+            const M3eCircularProgressIndicator(size: 28, strokeWidth: 3),
             const SizedBox(width: 20),
             Flexible(child: Text(text, style: theme.textTheme.bodyLarge)),
           ],

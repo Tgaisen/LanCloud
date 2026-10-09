@@ -376,23 +376,12 @@ class _TransfersPageState extends State<TransfersPage>
                             ignoring: _selecting,
                             child: SizedBox(
                               width: double.infinity,
-                              child: ConnectedSegmentedButton<int>(
-                                segments: [
-                                  ButtonSegment(
-                                    value: 0,
-                                    label: Text(l10n.upload),
-                                    icon: const Icon(Icons.upload),
-                                  ),
-                                  ButtonSegment(
-                                    value: 1,
-                                    label: Text(l10n.download),
-                                    icon: const Icon(Icons.download),
-                                  ),
-                                ],
-                                selected: {_tab},
-                                onSelectionChanged: (values) {
-                                  if (values.first == _tab) return;
-                                  setState(() => _tab = values.first);
+                              child: M3eConnectedButtonGroup<int>(
+                                values: const [0, 1],
+                                selected: _tab,
+                                onSelected: (value) {
+                                  if (value == _tab) return;
+                                  setState(() => _tab = value);
                                   if (reduceMotionOf(context)) {
                                     // 少动效：切上传 / 下载直接到位
                                     _tabAnim.value = 1;
@@ -402,6 +391,14 @@ class _TransfersPageState extends State<TransfersPage>
                                   // 切换上传 / 下载：整组重播一次入场动画
                                   _replayEnter();
                                 },
+                                labelOf: (value) => Text(
+                                  value == 0 ? l10n.upload : l10n.download,
+                                ),
+                                iconOf: (value) => Icon(
+                                  value == 0 ? Icons.upload : Icons.download,
+                                ),
+                                semanticLabel:
+                                    '${l10n.upload} / ${l10n.download}',
                               ),
                             ),
                           ),
