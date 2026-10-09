@@ -22,6 +22,7 @@ import android.view.DragEvent
 import android.view.DragAndDropPermissions
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -51,11 +52,27 @@ class MainActivity : FlutterFragmentActivity() {
     /// 监听系统动画缩放变化的观察者（要留引用，否则会被回收）。
     private var animationScaleObserver: ContentObserver? = null
 
+    /// 系统「选择文件 / 拍照」与「保存文件」对话框的结果。
+    ///
+    /// Activity 的 startActivityForResult / onActivityResult 已被 Android 弃用，
+    /// 改用 Activity Result API；launcher 必须在 Activity 变成 STARTED 之前注册，
+    /// 因此放在字段初始化里（构造期注册），回调仍走原来的结果处理函数。
+    /// 选文件与拍照共用同一个 launcher —— 与原实现共用 requestCode 的语义一致，
+    /// 由 photoOutputPath 区分是不是拍照。
+    private val pickFilesLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { activityResult ->
+        handlePickFilesResult(activityResult.resultCode, activityResult.data)
+    }
+    private val saveFileLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { activityResult ->
+        handleSaveFileResult(activityResult.resultCode, activityResult.data)
+    }
+
     companion object {
         private const val TAG = "LanCloudDrag"
-        private const val PICK_FILES_REQUEST = 2001
         private const val LOCAL_NETWORK_REQUEST = 2002
-        private const val SAVE_FILE_REQUEST = 2003
         /// 蓝奏云分享链接域名：lanzoua.com ~ lanzouz.com（含 *.cn 与子域名）
         private val LANZOU_HOST =
             Regex("(^|\\.)lanzou[a-z]*\\.(com|cn)$", RegexOption.IGNORE_CASE)
@@ -140,7 +157,7 @@ class MainActivity : FlutterFragmentActivity() {
                         }
                     }
                     try {
-                        startActivityForResult(intent, PICK_FILES_REQUEST)
+                        pickFilesLauncher.launch(intent)
                     } catch (e: Exception) {
                         pickFilesResult = null
                         result.error("pick_failed", e.message, null)
@@ -170,7 +187,7 @@ class MainActivity : FlutterFragmentActivity() {
                     pickFilesResult = result
                     photoOutputPath = file.absolutePath
                     try {
-                        startActivityForResult(intent, PICK_FILES_REQUEST)
+                        pickFilesLauncher.launch(intent)
                     } catch (e: Exception) {
                         pickFilesResult = null
                         photoOutputPath = null
@@ -212,7 +229,7 @@ class MainActivity : FlutterFragmentActivity() {
                     saveFileResult = result
                     saveSourcePath = source.absolutePath
                     try {
-                        startActivityForResult(intent, SAVE_FILE_REQUEST)
+                        saveFileLauncher.launch(intent)
                     } catch (e: Exception) {
                         saveFileResult = null
                         saveSourcePath = null
@@ -516,14 +533,8 @@ class MainActivity : FlutterFragmentActivity() {
         localNetworkResult = null
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        when (requestCode) {
-            PICK_FILES_REQUEST -> handlePickFilesResult(resultCode, data)
-            SAVE_FILE_REQUEST -> handleSaveFileResult(resultCode, data)
-        }
-    }
-
+    // 不再覆写 onActivityResult：本应用自己的系统对话框走 Activity Result API，
+    // 插件的回调由 FlutterFragmentActivity 自己转发。
     private fun handlePickFilesResult(resultCode: Int, data: Intent?) {
         val result = pickFilesResult
         pickFilesResult = null
