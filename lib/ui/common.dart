@@ -895,7 +895,8 @@ Future<void> showQrDialog(
 /// 松手按拖动距离/速度决定关闭或弹回。
 ///
 /// 弹窗外壳用 MD3E 的 [M3EBottomSheet]：28dp 顶角、32×4dp 拖拽把手
-/// （按 M3 规范给 22dp 上下留白，凑满 48dp 触控高度）、spring 入场。
+/// （按 M3 规范给 22dp 上下留白，凑满 48dp 触控高度）；
+/// 入场动画由路由统一播放（不用组件自带的入场，原因见下）。
 ///
 /// 路由仍走框架的 [showModalBottomSheet]：m3e_core 的
 /// `showM3EModalBottomSheet` 会在「builder 返回的不是 M3EBottomSheet」时再
@@ -930,6 +931,13 @@ Future<T?> showAppSheet<T>(
       final scheme = Theme.of(sheetContext).colorScheme;
       final sheet = M3EBottomSheet(
         showDragHandle: true,
+        // 关掉组件自带的「下移 200dp + 淡入」入场动画：m3e_core 在面板下面
+        // 垫了一条 overshoot 垫色（Stack 里在内容之后、不参与这段动画的实色
+        // 色块，高度固定 50dp），入场时内容还在半透明 / 偏下，垫色就会从
+        // 弹窗底部露出来——观感上就是「弹窗底部先冒出一条和弹窗同宽的白色
+        // 矩形」，动画播完才消失。关掉后整块面板（含垫色）由路由的滑入动画
+        // 一起带着走，不会再露底，手柄 / 内容也随面板一起到位。
+        animateEntrance: false,
         // 内容自带内边距：外壳不再补 24dp，避免所有弹窗被多包一层。
         padding: EdgeInsets.zero,
         // M3 规范：底部弹窗容器用 surface container low。
