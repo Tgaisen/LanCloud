@@ -157,6 +157,7 @@ void main() {
         scrollBehavior: const AppScrollBehavior(),
         home: Scaffold(
           body: M3ePullToRefresh(
+            minimumDisplayDuration: Duration.zero,
             onRefresh: () async {},
             child: CustomScrollView(
               controller: scroll,
@@ -259,5 +260,65 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
     expect(refreshed, 1, reason: '过阈值松手应触发刷新');
+  });
+
+  testWidgets('全程不松手：回拉过头后二次下拉，小球不会提前出现', (tester) async {
+    final scroll = ScrollController();
+    addTearDown(scroll.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        scrollBehavior: const AppScrollBehavior(),
+        home: Scaffold(
+          body: M3ePullToRefresh(
+            minimumDisplayDuration: Duration.zero,
+            onRefresh: () async {},
+            child: CustomScrollView(
+              controller: scroll,
+              slivers: [
+                SliverList.builder(
+                  itemCount: 40,
+                  itemBuilder: (context, i) =>
+                      SizedBox(height: 60, child: Text('第 $i 行')),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byType(CustomScrollView)),
+    );
+    // 1) 第一次下拉：过阈值（不出错即可，这里不松手）
+    await gesture.moveBy(const Offset(0, 300));
+    await tester.pump();
+    expect(find.byType(M3EContainedLoadingIndicator), findsOneWidget);
+
+    // 2) 回拉过头：小球先消失，列表继续往下滚一段（pixels > 0）
+    await gesture.moveBy(const Offset(0, -420));
+    await tester.pump();
+    expect(find.byType(M3EContainedLoadingIndicator), findsNothing);
+    expect(scroll.position.pixels, greaterThan(0));
+    final double scrolled = scroll.position.pixels;
+
+    // 3) 二次下拉：还没滚回顶部时小球不该出现（否则触发距离会变短）
+    await gesture.moveBy(const Offset(0, 10));
+    await tester.pump();
+    expect(
+      find.byType(M3EContainedLoadingIndicator),
+      findsNothing,
+      reason: '回到顶部前不该开始计拉力',
+    );
+
+    // 4) 滚回顶部并继续下拉：这时才出小球（多走 120px 保证越过顶部）
+    await gesture.moveBy(Offset(0, scrolled + 120));
+    await tester.pump();
+    expect(find.byType(M3EContainedLoadingIndicator), findsOneWidget);
+
+    await gesture.up();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
   });
 }

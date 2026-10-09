@@ -191,9 +191,16 @@ class _M3ePullToRefreshState extends State<M3ePullToRefresh>
         _settleOnRelease();
         return false;
       }
+      final double delta = -notification.scrollDelta!;
+      if (delta > 0 && notification.metrics.extentBefore > 0) {
+        // 回拉过头后（手指还没松、列表已经真的往回滚了一段）再下拉：
+        // 「滚回顶部」这段位移不能算进拉力，否则小球会提前出现、
+        // 二次下拉比第一次更容易触发（手感变轻）。
+        return false;
+      }
       // Bouncing：越界拖动走 ScrollUpdate（scrollDelta < 0）；
       // clamping：反向拉回走 ScrollUpdate（scrollDelta > 0）。
-      _applyDelta(-notification.scrollDelta!);
+      _applyDelta(delta);
       return false;
     }
 
@@ -203,7 +210,12 @@ class _M3ePullToRefreshState extends State<M3ePullToRefresh>
         _settleOnRelease();
         return false;
       }
-      _applyDelta(-notification.overscroll);
+      final double delta = -notification.overscroll;
+      if (delta > 0 && notification.metrics.extentBefore > 0) {
+        // 同上：还没回到顶部，不算拉力。
+        return false;
+      }
+      _applyDelta(delta);
       return false;
     }
 
