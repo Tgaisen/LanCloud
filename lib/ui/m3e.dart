@@ -280,6 +280,9 @@ class M3eCircularProgressIndicator extends StatelessWidget {
 /// 把 [M3EToggleButtonGroup] 的索引选择映射回业务值。
 ///
 /// 按钮是否带图标由调用方决定（[iconOf] 传空即纯文字），沿用原来的图标设置。
+///
+/// 用 `filled` 配色：未选中是 surface container 底、选中是 primary 底
+/// （on primary 文字），M3 按钮组规范里 filled 的切换配色就是这个映射。
 class M3eConnectedButtonGroup<T> extends StatelessWidget {
   const M3eConnectedButtonGroup({
     super.key,
@@ -333,7 +336,7 @@ class M3eConnectedButtonGroup<T> extends StatelessWidget {
           type: M3EButtonGroupType.connected,
           shape: M3EButtonShape.round,
           size: size,
-          style: M3EButtonStyle.outlined,
+          style: M3EButtonStyle.filled,
           overflow: M3EButtonGroupOverflow.none,
           semanticLabel: semanticLabel,
           selectedIndex: selectedIndex < 0 ? null : selectedIndex,
