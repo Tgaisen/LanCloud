@@ -16,6 +16,7 @@ import '../core/platform_support.dart';
 import '../core/transfer/transfer_manager.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
+import 'app_scroll.dart';
 import 'common.dart';
 import 'm3e.dart';
 import 'reduce_motion.dart';
@@ -2504,6 +2505,11 @@ class _DrivePageState extends State<DrivePage>
               .refreshIndicatorSemanticLabel,
           child: CustomScrollView(
             controller: _scroll,
+            // 顶部下拉时列表自身不回弹：位移只由刷新组件表现，
+            // 否则「刷新小球」和第一条之间会多出一层回弹留白。
+            physics: const PullToRefreshScrollPhysics(
+              parent: AppScrollBehavior.physics,
+            ),
             slivers: [
               // 目录切换时内容整体淡出（顶栏与路径栏不受影响）
               ..._contentSlivers(grid).map(

@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lancloud/ui/app_scroll.dart';
 import 'package:lancloud/ui/m3e.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -147,5 +148,62 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
     expect(refreshed, 1, reason: '110dp 应该够触发');
+  });
+
+  testWidgets('下拉时列表自身不再回弹：位移只来自刷新组件', (tester) async {
+    /// 同一段下拉，分别用全局 Bouncing 物理与本页专用物理，
+    /// 看滚动位置有没有被「自己」拉走（拉走就会出现第二层留白）。
+    Future<double> pixelsAfterPull({required ScrollPhysics physics}) async {
+      final controller = ScrollController();
+      // 先清空再挂载：在同一个元素树上直接换 physics 不会生效，
+      // 两次对照必须各自是新树。
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpWidget(
+        MaterialApp(
+          scrollBehavior: const AppScrollBehavior(),
+          home: Scaffold(
+            body: M3ePullToRefresh(
+              onRefresh: () async {},
+              child: CustomScrollView(
+                controller: controller,
+                physics: physics,
+                slivers: const [
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Center(child: Text('内容')),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.byType(CustomScrollView)),
+      );
+      await gesture.moveBy(const Offset(0, 120));
+      await tester.pump();
+      final pixels = controller.position.pixels;
+      await gesture.up();
+      await tester.pump(const Duration(milliseconds: 400));
+      controller.dispose();
+      return pixels;
+    }
+
+    // 对照：全局 Bouncing 时列表自己也会被拉下去（这就是那层多余留白）
+    expect(
+      await pixelsAfterPull(physics: AppScrollBehavior.physics),
+      lessThan(0),
+    );
+    // 本页专用物理：顶部下拉整段被夹住，位移只由刷新组件表现
+    expect(
+      await pixelsAfterPull(
+        physics: const PullToRefreshScrollPhysics(
+          parent: AppScrollBehavior.physics,
+        ),
+      ),
+      0,
+    );
   });
 }
