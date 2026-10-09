@@ -6,8 +6,8 @@ import 'package:material_symbols_icons/material_symbols_icons.dart';
 /// 应用统一的图标集：使用新的 Material Symbols 字体。
 /// 沿用旧 Material Icons 的名称，内部映射到 [Symbols]。
 ///
-/// 使用处请通过 `import 'package:flutter/material.dart' hide Icons;` 隐藏
-/// 框架自带的 Icons，再引入本文件。
+/// 使用处请通过 `import 'package:material_ui/material_ui.dart' hide Icons;`
+/// 隐藏 material_ui 自带的 Icons，再引入本文件。
 class Icons {
   Icons._();
 
