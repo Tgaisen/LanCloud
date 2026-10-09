@@ -140,47 +140,52 @@ class _PackageLicensePageState extends State<_PackageLicensePage> {
       slivers: [
         SliverPadding(
           padding: const EdgeInsets.all(16),
-          sliver: SliverList.builder(
-            itemCount: widget.package.entries.length,
-            itemBuilder: (context, index) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: scheme.surfaceContainerHigh,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                // 许可证正文允许选中复制
-                child: SelectionArea(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      for (final paragraph
-                          in widget.package.entries[index].paragraphs)
-                        if (paragraph.indent == LicenseParagraph.centeredIndent)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 16),
-                            child: Text(
-                              paragraph.text,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
+          // 整块布局：一个包里可能有好几条许可，且正文长短差得很大；
+          // 懒布局会按「已构建条目的平均高度」估算 maxScrollExtent，
+          // 滑动时不断被修正 -> 滚动条滑块长度抖动（与设置页同款问题，见 SliverColumn）
+          sliver: SliverColumn(
+            children: [
+              for (final entry in widget.package.entries)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: scheme.surfaceContainerHigh,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    // 许可证正文允许选中复制
+                    child: SelectionArea(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          for (final paragraph in entry.paragraphs)
+                            if (paragraph.indent ==
+                                LicenseParagraph.centeredIndent)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 16),
+                                child: Text(
+                                  paragraph.text,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              )
+                            else
+                              Padding(
+                                padding: EdgeInsetsDirectional.only(
+                                  top: 8,
+                                  start: 16.0 * paragraph.indent,
+                                ),
+                                child: Text(paragraph.text),
                               ),
-                              textAlign: TextAlign.center,
-                            ),
-                          )
-                        else
-                          Padding(
-                            padding: EdgeInsetsDirectional.only(
-                              top: 8,
-                              start: 16.0 * paragraph.indent,
-                            ),
-                            child: Text(paragraph.text),
-                          ),
-                    ],
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
+            ],
           ),
         ),
         SliverToBoxAdapter(
