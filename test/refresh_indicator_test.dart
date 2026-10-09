@@ -206,4 +206,65 @@ void main() {
       0,
     );
   });
+
+  testWidgets('回拉时先收小球，收完列表才开始滚', (tester) async {
+    final scroll = ScrollController();
+    final pull = M3EPullToRefreshController();
+    addTearDown(scroll.dispose);
+    addTearDown(pull.dispose);
+    final physics = PullToRefreshScrollPhysics(
+      parent: AppScrollBehavior.physics,
+      holdsPull: () => !pull.isRefreshing && pull.distanceFraction > 0,
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        scrollBehavior: const AppScrollBehavior(),
+        home: Scaffold(
+          body: M3ePullToRefresh(
+            controller: pull,
+            onRefresh: () async {},
+            child: CustomScrollView(
+              controller: scroll,
+              physics: physics,
+              slivers: [
+                const SliverToBoxAdapter(child: SizedBox(height: 40)),
+                SliverList.builder(
+                  itemCount: 30,
+                  itemBuilder: (context, i) =>
+                      SizedBox(height: 60, child: Text('第 $i 行')),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byType(CustomScrollView)),
+    );
+    // 先往下拉出小球（不松手）
+    await gesture.moveBy(const Offset(0, 120));
+    await tester.pump();
+    expect(find.byType(M3EContainedLoadingIndicator), findsOneWidget);
+    expect(scroll.position.pixels, 0);
+
+    // 往回上拉一段：小球收回去，列表仍不动
+    await gesture.moveBy(const Offset(0, -40));
+    await tester.pump();
+    expect(scroll.position.pixels, 0, reason: '小球没收回前列表不该滚');
+
+    // 继续上拉（按真实手指粒度分步：一次挪几像素）：
+    // 小球收完后，后面的位移才开始滚列表
+    for (var i = 0; i < 20; i++) {
+      await gesture.moveBy(const Offset(0, -10));
+      await tester.pump();
+    }
+    expect(find.byType(M3EContainedLoadingIndicator), findsNothing);
+    expect(scroll.position.pixels, greaterThan(0), reason: '小球收完后列表开始滚');
+
+    await gesture.up();
+    await tester.pump(const Duration(milliseconds: 400));
+  });
 }

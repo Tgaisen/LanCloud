@@ -62,21 +62,40 @@ class AppScrollBehavior extends MaterialScrollBehavior {
 /// （返回非零 overscroll 交给 `OverscrollNotification`），位移只由刷新组件
 /// 表现；底部回弹、惯性、下滑手感仍是全局的 Bouncing。
 ///
-/// 用法：`CustomScrollView(physics: PullToRefreshScrollPhysics(parent: AppScrollBehavior.physics))`
+/// [holdsPull] 返回 true 时（下拉刷新组件还占着位移：小球没收回 / 正在刷新），
+/// **往回上拉的位移也先给刷新组件**——先让小球收回去，收完列表才开始滚动。
+/// 否则会出现「小球往上收、列表同时滚」的双向拉扯。
+///
+/// 用法：
+/// ```dart
+/// PullToRefreshScrollPhysics(
+///   parent: AppScrollBehavior.physics,
+///   holdsPull: () => !controller.isRefreshing && controller.distanceFraction > 0,
+/// )
+/// ```
 class PullToRefreshScrollPhysics extends ScrollPhysics {
-  const PullToRefreshScrollPhysics({super.parent});
+  const PullToRefreshScrollPhysics({this.holdsPull, super.parent});
+
+  /// 下拉刷新组件是否还占着位移（小球未收回 / 正在刷新）。
+  final bool Function()? holdsPull;
 
   @override
   PullToRefreshScrollPhysics applyTo(ScrollPhysics? ancestor) =>
-      PullToRefreshScrollPhysics(parent: buildParent(ancestor));
+      PullToRefreshScrollPhysics(
+        holdsPull: holdsPull,
+        parent: buildParent(ancestor),
+      );
 
   @override
   double applyBoundaryConditions(ScrollMetrics position, double value) {
-    // 已在顶部（或越过顶部）还要继续往下拉：整段位移都算 overscroll，
-    // 由下拉刷新组件消费，列表自身不动。
     if (position.pixels <= position.minScrollExtent &&
-        value <= position.pixels) {
-      return value - position.pixels;
+        value != position.pixels) {
+      final bool pullingDown = value < position.pixels;
+      // 顶部往下拉：位移给刷新组件长 header；
+      // 顶部往回上拉且小球还没收完：位移同样先给刷新组件（收小球）。
+      if (pullingDown || (holdsPull?.call() ?? false)) {
+        return value - position.pixels;
+      }
     }
     return super.applyBoundaryConditions(position, value);
   }

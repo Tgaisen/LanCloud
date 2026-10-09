@@ -290,6 +290,7 @@ class M3ePullToRefresh extends StatelessWidget {
     super.key,
     required this.onRefresh,
     required this.child,
+    this.controller,
     this.enabled = true,
     this.edgeOffset = 0,
     this.semanticsLabel,
@@ -303,6 +304,10 @@ class M3ePullToRefresh extends StatelessWidget {
 
   /// 通常是 `CustomScrollView` / `ListView`。
   final Widget child;
+
+  /// 可选控制器：物理层要靠它读「小球收没收完」
+  /// （见 `PullToRefreshScrollPhysics.holdsPull`）。
+  final M3EPullToRefreshController? controller;
 
   /// 为 false 时不响应下拉（页面自己正在加载时用，避免两个指示器同时出现）。
   final bool enabled;
@@ -326,6 +331,7 @@ class M3ePullToRefresh extends StatelessWidget {
   @override
   Widget build(BuildContext context) => M3EPullToRefreshIndicator(
     onRefresh: onRefresh,
+    controller: controller,
     edgeOffset: edgeOffset,
     triggerDistance: triggerDistance,
     dragResistance: dragResistance,
@@ -339,7 +345,28 @@ class M3ePullToRefresh extends StatelessWidget {
           progress: isRefreshing ? null : progress.clamp(0.0, 1.0),
           semanticsLabel: semanticsLabel,
         ),
-    child: child,
+    // m3e 组件只认「overscroll < 0」的下拉与「scrollDelta > 0」的列表滚动，
+    // 回拉产生的正 overscroll 它直接忽略。这里把回拉这段被夹住的位移翻译成
+    // 它认识的 ScrollUpdateNotification：小球先收回去，列表原地不动
+    // （对应的位移物理层已经吃掉了，见 PullToRefreshScrollPhysics）。
+    child: Builder(
+      builder: (notificationContext) =>
+          NotificationListener<ScrollNotification>(
+            onNotification: (notification) {
+              if (notification is OverscrollNotification &&
+                  notification.overscroll > 0) {
+                ScrollUpdateNotification(
+                  metrics: notification.metrics,
+                  context: notificationContext,
+                  scrollDelta: notification.overscroll,
+                  dragDetails: notification.dragDetails,
+                ).dispatch(notificationContext);
+              }
+              return false;
+            },
+            child: child,
+          ),
+    ),
   );
 }
 
