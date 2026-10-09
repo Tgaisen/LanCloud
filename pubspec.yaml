@@ -64,16 +64,18 @@ dependencies:
   # 直接依赖平台实现包，用于传入系统验证弹窗的本地化文案
   local_auth_android: 2.2.0
   local_auth_darwin: 2.0.4
-  dynamic_color: 1.7.0
+  # 2.x 起基于 material_ui（1.x 给的是框架版 ColorScheme，迁移后类型对不上）
+  dynamic_color: 2.1.0
   zxing2: ^0.2.4
   image: ^4.10.1
   # Windows / macOS / Linux 的窗口级拖拽（拖文件或链接进来）
   desktop_drop: ^0.8.4
-  # MD3E（Material 3 Expressive）控件。material_ui 是 Flutter 3.47 起从框架
-  # 拆出去的 Material 库，m3e_core 建立在它之上；两者的桥接见 lib/ui/m3e.dart，
-  # 两边版本要配套升级。
+  # Flutter 3.47 起 Material 从框架拆到了 material_ui，本项目已整体迁移过去
+  # （见 docs / 提交记录）；m3e_core 提供 MD3E 控件，cupertino_ui 承接
+  # Cupertino 组件。三者版本要配套升级。
   m3e_core: ^1.1.4
   material_ui: ^1.6.0
+  cupertino_ui: ^1.1.2
 dev_dependencies:
   flutter_test:
     sdk: flutter

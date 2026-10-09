@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// 顶栏滚动变色的公共实现：离开顶部即触发，50ms 过渡。
 /// 用法：页面外层包 [ScrollTint]，页面 AppBar 里读 [ScrollTint.of] 作为渐变进度。

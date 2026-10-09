@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart' hide Icons;
+import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
@@ -6,7 +6,7 @@ import 'package:lancloud/ui/app_icons.dart';
 import 'package:lancloud/ui/favorites_page.dart';
 import 'package:provider/provider.dart';
 
-import 'm3e_host.dart';
+import 'package:lancloud/l10n/delegates.dart';
 
 void main() {
   testWidgets('收藏视图可独立打开，空收藏时显示提示', (tester) async {
@@ -15,10 +15,9 @@ void main() {
       ChangeNotifierProvider<AppController>.value(
         value: app,
         child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           locale: const Locale('zh'),
-          builder: m3eTestBuilder,
           home: const FavoritesPage(),
         ),
       ),
@@ -36,10 +35,9 @@ void main() {
       ChangeNotifierProvider<AppController>.value(
         value: app,
         child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           locale: const Locale('zh'),
-          builder: m3eTestBuilder,
           home: Builder(
             builder: (context) => Scaffold(
               body: Center(

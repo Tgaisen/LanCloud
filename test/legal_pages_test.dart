@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/app.dart';
 import 'package:lancloud/core/agreements.dart';
@@ -9,7 +9,7 @@ import 'package:lancloud/ui/login_page.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'm3e_host.dart';
+import 'package:lancloud/l10n/delegates.dart';
 
 Future<void> pumpApp(WidgetTester tester, Widget child) async {
   final app = AppController();
@@ -18,10 +18,9 @@ Future<void> pumpApp(WidgetTester tester, Widget child) async {
     ChangeNotifierProvider<AppController>.value(
       value: app,
       child: MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         locale: const Locale('zh'),
-        builder: m3eTestBuilder,
         home: child,
       ),
     ),

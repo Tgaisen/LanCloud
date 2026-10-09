@@ -1,10 +1,8 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/ui/common.dart';
 import 'package:provider/provider.dart';
-
-import 'm3e_host.dart';
 
 /// 复刻「没有底栏、只有滚动内容」的页面：设置 / 关于 / 备份等都用这个骨架。
 Future<void> pumpOverlayPage(
@@ -24,7 +22,6 @@ Future<void> pumpOverlayPage(
     ChangeNotifierProvider<AppController>.value(
       value: app,
       child: MaterialApp(
-        builder: m3eTestBuilder,
         home: TopBarOverlayScaffold(
           appBar: AppBar(title: const Text('设置')),
           bottomSafeInset: bottomSafeInset,
@@ -79,7 +76,6 @@ void main() {
         ChangeNotifierProvider<AppController>.value(
           value: app,
           child: MaterialApp(
-            builder: m3eTestBuilder,
             home: Md3ePageFrame(
               child: Scaffold(
                 appBar: AppBar(
@@ -120,7 +116,6 @@ void main() {
       ChangeNotifierProvider<AppController>.value(
         value: app,
         child: MaterialApp(
-          builder: m3eTestBuilder,
           home: Scaffold(
             body: Builder(
               builder: (context) => Center(
@@ -163,7 +158,6 @@ void main() {
         ChangeNotifierProvider<AppController>.value(
           value: app,
           child: MaterialApp(
-            builder: m3eTestBuilder,
             home: TopBarOverlayScaffold(
               appBar: AppBar(
                 title: const Text('设置'),
@@ -216,7 +210,6 @@ void main() {
       ChangeNotifierProvider<AppController>.value(
         value: app,
         child: MaterialApp(
-          builder: m3eTestBuilder,
           home: Scaffold(
             body: Builder(
               builder: (context) => Center(

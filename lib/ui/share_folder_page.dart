@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart' hide Icons;
+import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:provider/provider.dart';
 
 import '../core/api/lanzou_client.dart';

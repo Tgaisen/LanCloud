@@ -98,7 +98,7 @@ packages:
     source: hosted
     version: "1.0.9"
   cupertino_ui:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: cupertino_ui
       sha256: ea0b8170b40a86262b2fc21ac0625303f52df209dbf6fccc2b98b27eff44f6ce
@@ -141,10 +141,10 @@ packages:
     dependency: "direct main"
     description:
       name: dynamic_color
-      sha256: eae98052fa6e2826bdac3dd2e921c6ce2903be15c6b7f8b6d8a5d49b5086298d
+      sha256: "869b3bce0100eb519768ecd71c0111f0b5ea679f5f62e1f59c49d80067e730c5"
       url: "https://pub.flutter-io.cn"
     source: hosted
-    version: "1.7.0"
+    version: "2.1.0"
   equatable:
     dependency: transitive
     description:

@@ -1,9 +1,11 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/settings_page.dart';
 import 'package:provider/provider.dart';
+
+import 'package:lancloud/l10n/delegates.dart';
 
 /// 设置页各分组的条目高度差异很大（开关 / 二级入口 / 图标），
 /// 如果用 SliverList 懒布局，maxScrollExtent 会随滑动不断被"平均高度"修正，
@@ -17,7 +19,7 @@ void main() {
       ChangeNotifierProvider<AppController>.value(
         value: app,
         child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           locale: const Locale('zh'),
           home: const SettingsPage(),

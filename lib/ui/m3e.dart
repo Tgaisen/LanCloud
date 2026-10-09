@@ -1,7 +1,5 @@
-import 'package:flutter/material.dart' as md;
-import 'package:flutter/widgets.dart';
 import 'package:m3e_core/m3e_core.dart';
-import 'package:material_ui/material_ui.dart' as mui;
+import 'package:material_ui/material_ui.dart';
 
 /// 应用只需要认这一个入口：把用到的 MD3E 组件从 m3e_core 透出来。
 export 'package:m3e_core/m3e_core.dart'
@@ -20,154 +18,6 @@ export 'package:m3e_core/m3e_core.dart'
         Shapes,
         showM3EModalBottomSheet;
 
-/// ────────────────────────────── M3 Expressive 接入层 ──────────────────────────────
-///
-/// 应用主体仍使用 Flutter 框架自带的 `package:flutter/material.dart`，而
-/// [m3e_core] 建立在拆分出来的 `package:material_ui` 之上：两套 ThemeData /
-/// ColorScheme / MaterialLocalizations 是**不同的类型**，不会自动互相继承。
-///
-/// [M3eHost] 负责把两者接起来：
-/// 1. 把当前页面的 ThemeData 映射成 material_ui 版本（色板、排版、字体兜底
-///    全量同步），让 MD3E 控件的取色、取字与应用其它部分完全一致；
-/// 2. 在子树里补上 material_ui 自己的 MaterialLocalizations
-///    （`showM3EModalBottomSheet` 等控件会断言它存在）。
-///
-/// 因为它同时要覆盖由根 Navigator 打开的模态底部弹窗，所以必须挂在
-/// `MaterialApp.builder` 上（Navigator 之上），而不是挂在某个页面里。
-
-/// 把应用主题映射为 material_ui 主题，并补齐 MD3E 控件需要的本地化。
-class M3eHost extends StatelessWidget {
-  const M3eHost({super.key, required this.child});
-
-  /// 子树（通常是 Navigator）。
-  final Widget child;
-
-  /// 把框架主题映射成 material_ui 主题（供测试与调试直接取用）。
-  static mui.ThemeData themeDataOf(md.ThemeData source) =>
-      _mapThemeData(source);
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = md.Theme.of(context);
-    return mui.Theme(
-      data: themeDataOf(theme),
-      child: mui.Localizations.override(
-        context: context,
-        delegates: mui.GlobalMaterialLocalizations.delegates,
-        child: child,
-      ),
-    );
-  }
-
-  static mui.ThemeData _mapThemeData(md.ThemeData source) {
-    final scheme = source.colorScheme;
-    final body = source.textTheme.bodyMedium;
-    return mui.ThemeData(
-      useMaterial3: true,
-      brightness: source.brightness,
-      platform: source.platform,
-      visualDensity: mui.VisualDensity(
-        horizontal: source.visualDensity.horizontal,
-        vertical: source.visualDensity.vertical,
-      ),
-      colorScheme: mui.ColorScheme(
-        brightness: scheme.brightness,
-        primary: scheme.primary,
-        onPrimary: scheme.onPrimary,
-        primaryContainer: scheme.primaryContainer,
-        onPrimaryContainer: scheme.onPrimaryContainer,
-        primaryFixed: scheme.primaryFixed,
-        primaryFixedDim: scheme.primaryFixedDim,
-        onPrimaryFixed: scheme.onPrimaryFixed,
-        onPrimaryFixedVariant: scheme.onPrimaryFixedVariant,
-        secondary: scheme.secondary,
-        onSecondary: scheme.onSecondary,
-        secondaryContainer: scheme.secondaryContainer,
-        onSecondaryContainer: scheme.onSecondaryContainer,
-        secondaryFixed: scheme.secondaryFixed,
-        secondaryFixedDim: scheme.secondaryFixedDim,
-        onSecondaryFixed: scheme.onSecondaryFixed,
-        onSecondaryFixedVariant: scheme.onSecondaryFixedVariant,
-        tertiary: scheme.tertiary,
-        onTertiary: scheme.onTertiary,
-        tertiaryContainer: scheme.tertiaryContainer,
-        onTertiaryContainer: scheme.onTertiaryContainer,
-        tertiaryFixed: scheme.tertiaryFixed,
-        tertiaryFixedDim: scheme.tertiaryFixedDim,
-        onTertiaryFixed: scheme.onTertiaryFixed,
-        onTertiaryFixedVariant: scheme.onTertiaryFixedVariant,
-        error: scheme.error,
-        onError: scheme.onError,
-        errorContainer: scheme.errorContainer,
-        onErrorContainer: scheme.onErrorContainer,
-        surface: scheme.surface,
-        onSurface: scheme.onSurface,
-        surfaceDim: scheme.surfaceDim,
-        surfaceBright: scheme.surfaceBright,
-        surfaceContainerLowest: scheme.surfaceContainerLowest,
-        surfaceContainerLow: scheme.surfaceContainerLow,
-        surfaceContainer: scheme.surfaceContainer,
-        surfaceContainerHigh: scheme.surfaceContainerHigh,
-        surfaceContainerHighest: scheme.surfaceContainerHighest,
-        onSurfaceVariant: scheme.onSurfaceVariant,
-        outline: scheme.outline,
-        outlineVariant: scheme.outlineVariant,
-        shadow: scheme.shadow,
-        scrim: scheme.scrim,
-        inverseSurface: scheme.inverseSurface,
-        onInverseSurface: scheme.onInverseSurface,
-        inversePrimary: scheme.inversePrimary,
-        surfaceTint: scheme.surfaceTint,
-      ),
-      textTheme: muiTextThemeOf(source.textTheme),
-      // Windows 上中文兜底字体（微软雅黑）也要跟着走，否则 MD3E 控件里的
-      // 中文会掉到日文字形。
-      fontFamily: body?.fontFamily,
-      fontFamilyFallback: body?.fontFamilyFallback,
-    );
-  }
-}
-
-/// 把框架的 [md.TextTheme] 映射成 material_ui 的同名排版。
-///
-/// 两边都用框架 `package:flutter/painting.dart` 的 TextStyle，逐项搬即可。
-mui.TextTheme muiTextThemeOf(md.TextTheme t) => mui.TextTheme(
-  displayLarge: t.displayLarge,
-  displayMedium: t.displayMedium,
-  displaySmall: t.displaySmall,
-  headlineLarge: t.headlineLarge,
-  headlineMedium: t.headlineMedium,
-  headlineSmall: t.headlineSmall,
-  titleLarge: t.titleLarge,
-  titleMedium: t.titleMedium,
-  titleSmall: t.titleSmall,
-  bodyLarge: t.bodyLarge,
-  bodyMedium: t.bodyMedium,
-  bodySmall: t.bodySmall,
-  labelLarge: t.labelLarge,
-  labelMedium: t.labelMedium,
-  labelSmall: t.labelSmall,
-);
-
-/// [muiTextThemeOf] 的反向映射。
-md.TextTheme frameworkTextThemeOf(mui.TextTheme t) => md.TextTheme(
-  displayLarge: t.displayLarge,
-  displayMedium: t.displayMedium,
-  displaySmall: t.displaySmall,
-  headlineLarge: t.headlineLarge,
-  headlineMedium: t.headlineMedium,
-  headlineSmall: t.headlineSmall,
-  titleLarge: t.titleLarge,
-  titleMedium: t.titleMedium,
-  titleSmall: t.titleSmall,
-  bodyLarge: t.bodyLarge,
-  bodyMedium: t.bodyMedium,
-  bodySmall: t.bodySmall,
-  labelLarge: t.labelLarge,
-  labelMedium: t.labelMedium,
-  labelSmall: t.labelSmall,
-);
-
 /// ────────────────────────────── M3E 排版 ──────────────────────────────
 
 /// 依据 M3E 规范计算「强调排版」：字号 / 行高与基线一致，只加粗字重。
@@ -184,21 +34,15 @@ md.TextTheme frameworkTextThemeOf(mui.TextTheme t) => md.TextTheme(
 ///
 /// 传入的 [base] 必须来自 `Theme.of(context).textTheme`（已合并脚本几何），
 /// 而不是 `ThemeData.textTheme`（可能只有字体、没有字号）。
-md.TextTheme m3eEmphasizedTextTheme(
-  md.TextTheme base, {
+TextTheme m3eEmphasizedTextTheme(
+  TextTheme base, {
   double rond = 0,
   double? bodyRond,
 }) {
-  final canon = frameworkTextThemeOf(
-    M3ETypography.emphasized(
-      muiTextThemeOf(base),
-      rond: rond,
-      bodyRond: bodyRond,
-    ),
-  );
-  md.TextStyle? weigh(md.TextStyle? b, md.TextStyle? c) =>
+  final canon = M3ETypography.emphasized(base, rond: rond, bodyRond: bodyRond);
+  TextStyle? weigh(TextStyle? b, TextStyle? c) =>
       b?.copyWith(fontWeight: c?.fontWeight, fontVariations: c?.fontVariations);
-  return md.TextTheme(
+  return TextTheme(
     displayLarge: weigh(base.displayLarge, canon.displayLarge),
     displayMedium: weigh(base.displayMedium, canon.displayMedium),
     displaySmall: weigh(base.displaySmall, canon.displaySmall),
@@ -219,19 +63,18 @@ md.TextTheme m3eEmphasizedTextTheme(
 
 /// 取 M3E 强调排版：`context.m3eEmphasizedTheme.titleLarge`。
 ///
-/// （不用 `emphasizedTextTheme` 这个名字：m3e_core 自带的同扩展成员返回的是
-/// material_ui 的 TextTheme，两边同时导入会撞名。）
-extension M3eThemeX on md.BuildContext {
+/// （不用 `emphasizedTextTheme` 这个名字：m3e_core 自带的同扩展成员会撞名。）
+extension M3eThemeX on BuildContext {
   /// 当前主题的强调排版（基于已合并脚本几何的基线排版派生）。
-  md.TextTheme get m3eEmphasizedTheme =>
-      m3eEmphasizedTextTheme(md.Theme.of(this).textTheme);
+  TextTheme get m3eEmphasizedTheme =>
+      m3eEmphasizedTextTheme(Theme.of(this).textTheme);
 }
 
 /// 把强调排版落到**组件级**样式上：顶栏标题、弹窗标题、主要按钮、
 /// 导航栏 / 导航轨的选中项。
 ///
 /// 这些主题字段必须是完整 TextStyle，而字号要等 `Theme.of` 合并脚本几何之后
-/// 才有，所以只能在拿到 context 之后再套一层 [md.Theme]（见 app.dart 的
+/// 才有，所以只能在拿到 context 之后再套一层 [Theme]（见 app.dart 的
 /// MaterialApp.builder）。没被点名的角色（正文、次要按钮、未选中项……）继续
 /// 用基线排版——M3E 强调排版是标记例外，不是整份替换。
 class M3eComponentStyles extends StatelessWidget {
@@ -241,10 +84,10 @@ class M3eComponentStyles extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = md.Theme.of(context);
+    final theme = Theme.of(context);
     final base = theme.textTheme;
     final emph = context.m3eEmphasizedTheme;
-    return md.Theme(
+    return Theme(
       data: theme.copyWith(
         // 顶栏标题 → title（M3 文档角色分配）；标题 / 头条属于强调排版主场。
         appBarTheme: theme.appBarTheme.copyWith(
@@ -255,24 +98,20 @@ class M3eComponentStyles extends StatelessWidget {
           titleTextStyle: emph.headlineSmall,
         ),
         // 主要操作按钮 → label large 的强调版本（次要按钮保持基线）。
-        filledButtonTheme: md.FilledButtonThemeData(
-          style: md.ButtonStyle(
-            textStyle: md.WidgetStatePropertyAll<md.TextStyle?>(
-              emph.labelLarge,
-            ),
+        filledButtonTheme: FilledButtonThemeData(
+          style: ButtonStyle(
+            textStyle: WidgetStatePropertyAll<TextStyle?>(emph.labelLarge),
           ),
         ),
-        elevatedButtonTheme: md.ElevatedButtonThemeData(
-          style: md.ButtonStyle(
-            textStyle: md.WidgetStatePropertyAll<md.TextStyle?>(
-              emph.labelLarge,
-            ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ButtonStyle(
+            textStyle: WidgetStatePropertyAll<TextStyle?>(emph.labelLarge),
           ),
         ),
         // 导航栏：只有选中项用强调排版（选中状态是 M3E 点名的用法）。
         navigationBarTheme: theme.navigationBarTheme.copyWith(
-          labelTextStyle: md.WidgetStateProperty.resolveWith<md.TextStyle?>(
-            (states) => states.contains(md.WidgetState.selected)
+          labelTextStyle: WidgetStateProperty.resolveWith<TextStyle?>(
+            (states) => states.contains(WidgetState.selected)
                 ? emph.labelMedium
                 : base.labelMedium,
           ),
@@ -285,20 +124,6 @@ class M3eComponentStyles extends StatelessWidget {
       child: child,
     );
   }
-}
-
-/// 应用（以及测试宿主）的 M3E 统一入口：强调排版的组件级样式 + material_ui 桥接。
-///
-/// 挂在 `MaterialApp.builder` 上，覆盖 Navigator 之上的整棵树——根 Navigator
-/// 打开的模态弹窗、对话框里的 MD3E 控件都能取到同一套主题与本地化。
-class M3eRoot extends StatelessWidget {
-  const M3eRoot({super.key, required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) =>
-      M3eComponentStyles(child: M3eHost(child: child));
 }
 
 /// ────────────────────────────── 进度 / 加载指示器 ──────────────────────────────

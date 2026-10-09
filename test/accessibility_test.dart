@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart' hide Icons;
+import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -6,9 +6,11 @@ import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/app_icons.dart';
 import 'package:lancloud/ui/common.dart';
 
+import 'package:lancloud/l10n/delegates.dart';
+
 Widget host(Widget child) {
   return MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    localizationsDelegates: appLocalizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     locale: const Locale('zh'),
     home: Scaffold(body: Center(child: child)),

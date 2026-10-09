@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart'
     show LicenseEntry, LicenseParagraph, LicenseRegistry;
-import 'package:flutter/material.dart' hide Icons;
+import 'package:material_ui/material_ui.dart' hide Icons;
 
 import '../l10n/l10n.dart';
 import 'app_icons.dart';

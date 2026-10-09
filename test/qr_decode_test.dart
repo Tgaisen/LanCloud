@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:lancloud/l10n/app_localizations.dart';
@@ -6,7 +6,7 @@ import 'package:lancloud/l10n/app_localizations_zh.dart';
 import 'package:lancloud/ui/qr_scan.dart';
 import 'package:qr/qr.dart';
 
-import 'm3e_host.dart';
+import 'package:lancloud/l10n/delegates.dart';
 
 /// 用纯 Dart 画一张「白底 + 黑块 + 静区」的二维码 PNG，作为相册图片夹具。
 img.Image _qrImage(String data, {int scale = 8, int quiet = 4}) {
@@ -57,10 +57,9 @@ void main() {
     QrImageSource? picked;
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         locale: const Locale('zh'),
-        builder: m3eTestBuilder,
         home: Scaffold(
           body: Builder(
             builder: (context) => Center(

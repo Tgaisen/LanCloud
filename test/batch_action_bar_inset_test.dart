@@ -1,9 +1,11 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/common.dart';
 import 'package:provider/provider.dart';
+
+import 'package:lancloud/l10n/delegates.dart';
 
 /// 外壳底栏高度（与 app.dart 保持一致）：悬浮 108 + 手势区，普通 80 + 手势区。
 const double _gestureInset = 24;
@@ -17,7 +19,7 @@ Future<void> pumpBar(
     ChangeNotifierProvider<AppController>.value(
       value: app,
       child: MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         locale: const Locale('zh'),
         home: MediaQuery(

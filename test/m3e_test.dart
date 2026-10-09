@@ -1,14 +1,13 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/ui/m3e.dart';
 
-/// m3e_core 建立在拆分出来的 material_ui 上，必须经 [M3eHost] 桥接；
-/// 这里守住的是「桥接后 MD3E 控件能正常渲染 / 打开」这条底线。
+/// m3e_core 与应用同处 material_ui 之上，这里守住「MD3E 控件能正常渲染 /
+/// 打开」这条底线（迁移前它们之间还需要一层主题桥，现已删除）。
 Widget host(Widget child) => MaterialApp(
   theme: ThemeData(
     colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF2E6BE6)),
   ),
-  builder: (context, appChild) => M3eHost(child: appChild!),
   home: Scaffold(body: Center(child: child)),
 );
 
@@ -47,7 +46,6 @@ void main() {
             brightness: Brightness.dark,
           ),
         ),
-        builder: (context, child) => M3eHost(child: child!),
         home: Scaffold(
           body: Builder(
             builder: (context) => Center(

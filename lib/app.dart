@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart' hide Icons;
+import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter/foundation.dart' show listEquals, visibleForTesting;
 import 'package:flutter/services.dart';
 import 'package:dynamic_color/dynamic_color.dart';
@@ -16,6 +16,7 @@ import 'core/share_inbox.dart';
 import 'core/system_motion.dart';
 import 'core/transfer/transfer_manager.dart';
 import 'core/window_frame.dart';
+import 'l10n/delegates.dart';
 import 'l10n/l10n.dart';
 import 'ui/drive_page.dart';
 import 'ui/desktop_drop_target.dart';
@@ -74,7 +75,7 @@ class LanCloudApp extends StatelessWidget {
                 ? const Locale('en')
                 : null,
             supportedLocales: AppLocalizations.supportedLocales,
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            localizationsDelegates: appLocalizationsDelegates,
             theme: buildTheme(Brightness.light),
             darkTheme: buildTheme(Brightness.dark),
             themeMode: mode == 'light'
@@ -88,9 +89,9 @@ class LanCloudApp extends StatelessWidget {
             // Android 15+ 导航栏强制透明，能调的只有图标明暗与是否加系统遮罩。
             builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
               value: systemUiOverlayStyleFor(Theme.of(context).brightness),
-              // M3E：强调排版的组件级样式 + MD3E 控件的主题 / 本地化桥接，
-              // 都挂在 Navigator 之上（弹窗、对话框同样能取到）。
-              child: M3eRoot(
+              // M3E：强调排版落到顶栏标题 / 弹窗标题 / 主要按钮 / 导航选中项，
+              // 挂在 Navigator 之上（弹窗、对话框同样能取到）。
+              child: M3eComponentStyles(
                 // 桌面端在窗口这一层接住拖拽（Android 走原生通道，这里原样透传）
                 child: DesktopDropTarget(
                   child: Stack(

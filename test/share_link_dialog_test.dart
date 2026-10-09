@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/api/lanzou_client.dart';
 import 'package:lancloud/core/api/models.dart';
@@ -6,6 +6,8 @@ import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/share_page.dart';
 import 'package:provider/provider.dart';
+
+import 'package:lancloud/l10n/delegates.dart';
 
 /// 解析分享时固定抛某个异常的假客户端。
 class _FakeClient extends LanzouClient {
@@ -42,7 +44,7 @@ Future<void> pumpDialog(WidgetTester tester, LanzouException error) async {
     ChangeNotifierProvider<AppController>.value(
       value: app,
       child: MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         locale: const Locale('zh'),
         home: const Scaffold(body: ShareLinkDialog()),

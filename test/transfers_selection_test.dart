@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
@@ -8,6 +8,8 @@ import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/m3e.dart';
 import 'package:lancloud/ui/transfers_page.dart';
 import 'package:provider/provider.dart';
+
+import 'package:lancloud/l10n/delegates.dart';
 
 TransferTask task(String id, String name, {required TransferStatus status}) {
   return TransferTask(
@@ -34,7 +36,7 @@ Future<(AppController, TransferManager)> host(WidgetTester tester) async {
         ChangeNotifierProvider<TransferManager>.value(value: manager),
       ],
       child: MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         locale: const Locale('zh'),
         home: const TransfersPage(),
@@ -74,7 +76,7 @@ Future<AppController> pushTransfers(WidgetTester tester) async {
         ChangeNotifierProvider<TransferManager>.value(value: manager),
       ],
       child: MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         locale: const Locale('zh'),
         home: Builder(
@@ -117,7 +119,7 @@ void main() {
           ChangeNotifierProvider<TransferManager>.value(value: manager),
         ],
         child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           locale: const Locale('zh'),
           home: const TransfersPage(),
@@ -388,7 +390,7 @@ void main() {
           ChangeNotifierProvider<TransferManager>.value(value: manager),
         ],
         child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           locale: const Locale('zh'),
           home: TransfersPage(openFile: (path) async => opened.add(path)),
@@ -447,7 +449,7 @@ void main() {
           ChangeNotifierProvider<TransferManager>.value(value: manager),
         ],
         child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           locale: const Locale('zh'),
           home: const TransfersPage(),
@@ -509,7 +511,7 @@ void main() {
           ],
           child: MaterialApp(
             navigatorKey: navKey,
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            localizationsDelegates: appLocalizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
             locale: const Locale('zh'),
             home: home,
@@ -567,7 +569,7 @@ void main() {
           ChangeNotifierProvider<TransferManager>.value(value: manager),
         ],
         child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           locale: const Locale('zh'),
           home: const TransfersPage(),

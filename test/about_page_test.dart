@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/app_info.dart';
@@ -7,6 +7,8 @@ import 'package:lancloud/ui/about_page.dart';
 import 'package:lancloud/ui/common.dart';
 import 'package:provider/provider.dart';
 
+import 'package:lancloud/l10n/delegates.dart';
+
 void main() {
   testWidgets('关于页显示版本、协议入口与免责声明', (tester) async {
     final app = AppController();
@@ -14,7 +16,7 @@ void main() {
       ChangeNotifierProvider<AppController>.value(
         value: app,
         child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           locale: const Locale('zh'),
           home: const AboutPage(),
@@ -42,7 +44,7 @@ void main() {
       ChangeNotifierProvider<AppController>.value(
         value: app,
         child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           locale: const Locale('zh'),
           home: const AboutPage(),

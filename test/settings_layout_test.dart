@@ -1,10 +1,12 @@
-import 'package:flutter/material.dart' hide Icons;
+import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/app_icons.dart';
 import 'package:lancloud/ui/settings_page.dart';
 import 'package:provider/provider.dart';
+
+import 'package:lancloud/l10n/delegates.dart';
 
 Future<AppController> pumpSettings(WidgetTester tester) async {
   final app = AppController();
@@ -16,7 +18,7 @@ Future<AppController> pumpSettings(WidgetTester tester) async {
     ChangeNotifierProvider<AppController>.value(
       value: app,
       child: MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         locale: const Locale('zh'),
         home: const SettingsPage(),

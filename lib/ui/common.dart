@@ -3,7 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart' hide Icons;
+import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:local_auth_android/local_auth_android.dart';
@@ -925,44 +925,32 @@ Future<T?> showAppSheet<T>(
     // 缩进一截（那样有挖孔的一侧会多出留白）。
     useSafeArea: fullWidthSheet,
     builder: (sheetContext) {
-      // 弹窗外壳跑在 material_ui 上：这里再挂一层桥接，弹窗内容就能取到
-      // 与应用一致的主题与本地化（应用级桥接在 Navigator 之外，够不着
-      // 单独构造 MaterialApp 的场景，例如测试宿主）。
-      Widget sheet = M3eHost(
-        child: M3EBottomSheet(
-          showDragHandle: true,
-          // 内容自带内边距：外壳不再补 24dp，避免所有弹窗被多包一层。
-          padding: EdgeInsets.zero,
-          // M3 规范：底部弹窗容器用 surface container low。
+      final sheet = M3EBottomSheet(
+        showDragHandle: true,
+        // 内容自带内边距：外壳不再补 24dp，避免所有弹窗被多包一层。
+        padding: EdgeInsets.zero,
+        // M3 规范：底部弹窗容器用 surface container low。
+        backgroundColor: scheme.surfaceContainerLow,
+        style: M3EBottomSheetStyle(
           backgroundColor: scheme.surfaceContainerLow,
-          style: M3EBottomSheetStyle(
-            backgroundColor: scheme.surfaceContainerLow,
-            // M3 规范：拖拽把手上下留白 22dp（把手 4dp → 48dp 触控高度）。
-            dragHandlePadding: const EdgeInsets.symmetric(vertical: 22),
-          ),
-          // 面板内部只再让开底部导航栏；内容里若还有 SafeArea（不少弹窗内容
-          // 自带）读不到 padding，不会再二次避让多留一截空白。
-          // 左右由上面 useSafeArea 统一处理，这里不要默认值（默认 left/right 为 true）。
-          //
-          // 外面的 M3EBottomSheet 用的是 material_ui 的 Material，框架自己的
-          // ListTile / InkWell 不认它：这里补一层透明的框架 Material，弹窗内容
-          // 才能正常渲染（背景与圆角仍由 M3EBottomSheet 提供）。
-          child: Material(
-            type: MaterialType.transparency,
-            child: SafeArea(
-              top: false,
-              left: false,
-              right: false,
-              child: Builder(
-                builder: (context) => MediaQuery.removePadding(
-                  context: context,
-                  removeTop: true,
-                  removeLeft: true,
-                  removeRight: true,
-                  removeBottom: true,
-                  child: MeasuredSheet(maxHeight: maxHeight, child: child),
-                ),
-              ),
+          // M3 规范：拖拽把手上下留白 22dp（把手 4dp → 48dp 触控高度）。
+          dragHandlePadding: const EdgeInsets.symmetric(vertical: 22),
+        ),
+        // 面板内部只再让开底部导航栏；内容里若还有 SafeArea（不少弹窗内容
+        // 自带）读不到 padding，不会再二次避让多留一截空白。
+        // 左右由上面 useSafeArea 统一处理，这里不要默认值（默认 left/right 为 true）。
+        child: SafeArea(
+          top: false,
+          left: false,
+          right: false,
+          child: Builder(
+            builder: (context) => MediaQuery.removePadding(
+              context: context,
+              removeTop: true,
+              removeLeft: true,
+              removeRight: true,
+              removeBottom: true,
+              child: MeasuredSheet(maxHeight: maxHeight, child: child),
             ),
           ),
         ),
