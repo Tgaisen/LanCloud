@@ -920,6 +920,13 @@ Future<T?> showAppSheet<T>(
     backgroundColor: Colors.transparent,
     showDragHandle: false,
     constraints: const BoxConstraints(maxWidth: kModalSheetMaxWidth),
+    // 入场手感：整块面板由路由滑入，曲线带一点过冲（峰值 +4% 左右，
+    // 落位前轻轻回弹一下），对应组件原本 spring（stiffness 380 / damping 0.8）
+    // 的弹性——但由路由统一播放，不会像组件自带入场那样在底部露出垫色。
+    // 面板弹过头时，外壳垫在底部的 overshoot 垫色正好补住面板与屏幕底边的缝。
+    sheetAnimationStyle: const AnimationStyle(
+      curve: Cubic(0.2, 1.25, 0.5, 1.05),
+    ),
     // 通铺整屏时让「弹窗窗体」整体避开左右挖孔：useSafeArea 作用在弹窗
     // 面板外侧（路由层），弹窗被收窄，而不是面板照旧压住挖孔、只让内容
     // 缩进一截（那样有挖孔的一侧会多出留白）。
