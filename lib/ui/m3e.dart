@@ -1,6 +1,8 @@
 import 'package:m3e_core/m3e_core.dart';
 import 'package:material_ui/material_ui.dart';
 
+import 'app_scroll.dart';
+
 /// 应用只需要认这一个入口：把用到的 MD3E 组件从 m3e_core 透出来。
 export 'package:m3e_core/m3e_core.dart'
     show
@@ -290,6 +292,7 @@ class M3ePullToRefresh extends StatelessWidget {
     super.key,
     required this.onRefresh,
     required this.child,
+    required this.gesture,
     this.controller,
     this.enabled = true,
     this.edgeOffset = 0,
@@ -304,6 +307,10 @@ class M3ePullToRefresh extends StatelessWidget {
 
   /// 通常是 `CustomScrollView` / `ListView`。
   final Widget child;
+
+  /// 与滚动物理共享的手势记账（[PullToRefreshGesture]）：负责在手势开始 /
+  /// 结束时清零，并把回拉被吃掉的位移翻译成刷新组件认识的通知。
+  final PullToRefreshGesture gesture;
 
   /// 可选控制器：物理层要靠它读「小球收没收完」
   /// （见 `PullToRefreshScrollPhysics.holdsPull`）。
@@ -353,14 +360,27 @@ class M3ePullToRefresh extends StatelessWidget {
       builder: (notificationContext) =>
           NotificationListener<ScrollNotification>(
             onNotification: (notification) {
-              if (notification is OverscrollNotification &&
-                  notification.overscroll > 0) {
-                ScrollUpdateNotification(
-                  metrics: notification.metrics,
-                  context: notificationContext,
-                  scrollDelta: notification.overscroll,
-                  dragDetails: notification.dragDetails,
-                ).dispatch(notificationContext);
+              if (notification is ScrollStartNotification) {
+                // 手指按住的拖拽才开始记账；惯性甩动不参与。
+                if (notification.dragDetails != null) gesture.beginDrag();
+              } else if (notification is ScrollEndNotification) {
+                gesture.endDrag();
+              } else if (notification is ScrollUpdateNotification) {
+                // 惯性阶段（没有 dragDetails）：欠账清零，别把列表夹住。
+                if (notification.dragDetails == null) gesture.endDrag();
+              } else if (notification is OverscrollNotification) {
+                if (notification.dragDetails == null) {
+                  // 惯性甩动的过冲：拖拽已结束，先清账（否则回弹会被当还账吃掉）。
+                  gesture.endDrag();
+                } else if (notification.overscroll > 0) {
+                  // 回拉被夹住的位移：翻译成组件认识的通知，让它把小球收回去。
+                  ScrollUpdateNotification(
+                    metrics: notification.metrics,
+                    context: notificationContext,
+                    scrollDelta: notification.overscroll,
+                    dragDetails: notification.dragDetails,
+                  ).dispatch(notificationContext);
+                }
               }
               return false;
             },

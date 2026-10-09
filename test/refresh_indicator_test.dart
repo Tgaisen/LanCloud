@@ -9,6 +9,7 @@ Widget host({required bool enabled, Future<void> Function()? onRefresh}) =>
     MaterialApp(
       home: Scaffold(
         body: M3ePullToRefresh(
+          gesture: PullToRefreshGesture(),
           enabled: enabled,
           edgeOffset: 56,
           semanticsLabel: '刷新',
@@ -83,6 +84,7 @@ void main() {
           body: ValueListenableBuilder<bool>(
             valueListenable: enabled,
             builder: (context, value, _) => M3ePullToRefresh(
+              gesture: PullToRefreshGesture(),
               enabled: value,
               onRefresh: () async => refreshed += 1,
               child: CustomScrollView(
@@ -153,7 +155,11 @@ void main() {
   testWidgets('下拉时列表自身不再回弹：位移只来自刷新组件', (tester) async {
     /// 同一段下拉，分别用全局 Bouncing 物理与本页专用物理，
     /// 看滚动位置有没有被「自己」拉走（拉走就会出现第二层留白）。
-    Future<double> pixelsAfterPull({required ScrollPhysics physics}) async {
+    /// [physics] 里带的 gesture 必须和弹窗组件用的是同一个实例。
+    Future<double> pixelsAfterPull({
+      required ScrollPhysics physics,
+      PullToRefreshGesture? pullGesture,
+    }) async {
       final controller = ScrollController();
       // 先清空再挂载：在同一个元素树上直接换 physics 不会生效，
       // 两次对照必须各自是新树。
@@ -163,6 +169,7 @@ void main() {
           scrollBehavior: const AppScrollBehavior(),
           home: Scaffold(
             body: M3ePullToRefresh(
+              gesture: pullGesture ?? PullToRefreshGesture(),
               onRefresh: () async {},
               child: CustomScrollView(
                 controller: controller,
@@ -197,9 +204,12 @@ void main() {
       lessThan(0),
     );
     // 本页专用物理：顶部下拉整段被夹住，位移只由刷新组件表现
+    final pullGesture = PullToRefreshGesture();
     expect(
       await pixelsAfterPull(
-        physics: const PullToRefreshScrollPhysics(
+        pullGesture: pullGesture,
+        physics: PullToRefreshScrollPhysics(
+          gesture: pullGesture,
           parent: AppScrollBehavior.physics,
         ),
       ),
@@ -209,19 +219,18 @@ void main() {
 
   testWidgets('回拉时先收小球，收完列表才开始滚', (tester) async {
     final scroll = ScrollController();
-    final pull = M3EPullToRefreshController();
+    final pullGesture = PullToRefreshGesture();
     addTearDown(scroll.dispose);
-    addTearDown(pull.dispose);
     final physics = PullToRefreshScrollPhysics(
       parent: AppScrollBehavior.physics,
-      holdsPull: () => !pull.isRefreshing && pull.distanceFraction > 0,
+      gesture: pullGesture,
     );
     await tester.pumpWidget(
       MaterialApp(
         scrollBehavior: const AppScrollBehavior(),
         home: Scaffold(
           body: M3ePullToRefresh(
-            controller: pull,
+            gesture: pullGesture,
             onRefresh: () async {},
             child: CustomScrollView(
               controller: scroll,
@@ -266,5 +275,70 @@ void main() {
 
     await gesture.up();
     await tester.pump(const Duration(milliseconds: 400));
+  });
+
+  testWidgets('用力甩回顶部后不会卡住、也不留空白层', (tester) async {
+    final scroll = ScrollController();
+    final pullGesture = PullToRefreshGesture();
+    addTearDown(scroll.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        scrollBehavior: const AppScrollBehavior(),
+        home: Scaffold(
+          body: M3ePullToRefresh(
+            gesture: pullGesture,
+            onRefresh: () async {},
+            child: CustomScrollView(
+              controller: scroll,
+              physics: PullToRefreshScrollPhysics(
+                parent: AppScrollBehavior.physics,
+                gesture: pullGesture,
+              ),
+              slivers: [
+                SliverList.builder(
+                  itemCount: 60,
+                  itemBuilder: (context, i) =>
+                      SizedBox(height: 60, child: Text('第 $i 行')),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    // 先滚到列表中间
+    await tester.drag(
+      find.byType(CustomScrollView),
+      const Offset(0, -800),
+      touchSlopY: 0,
+    );
+    await tester.pump();
+    for (var i = 0; i < 40; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(scroll.position.pixels, greaterThan(0));
+
+    // 用力甩回顶部（回弹到顶）
+    await tester.fling(
+      find.byType(CustomScrollView),
+      const Offset(0, 900),
+      4000,
+    );
+    // 等回弹彻底停稳（Bouncing 的过冲回弹需要一段时间）
+    await tester.pumpAndSettle();
+    expect(scroll.position.pixels, 0);
+    // 顶部不该残留小球 / 空白层
+    expect(find.byType(M3EContainedLoadingIndicator), findsNothing);
+
+    // 关键：还能正常往上滚（修复前这里会卡住不动）
+    await tester.drag(
+      find.byType(CustomScrollView),
+      const Offset(0, -200),
+      touchSlopY: 0,
+    );
+    await tester.pump();
+    expect(scroll.position.pixels, greaterThan(0), reason: '甩回顶部后应能继续滚动');
   });
 }

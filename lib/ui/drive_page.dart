@@ -118,16 +118,15 @@ class _DrivePageState extends State<DrivePage>
   /// 拖拽判定用的探针：当前是否"可见地"处于网盘页（底栏 tab 或独立路由）。
   late final bool Function() _dropProbe = _visibleAsDropTarget;
 
-  /// 下拉刷新控制器：滚动物理层要读它的拉出进度
+  /// 下拉刷新的手势记账：物理层与刷新组件共用
   /// （回拉时先收小球、收完列表再滚）。
-  final M3EPullToRefreshController _pull = M3EPullToRefreshController();
+  final PullToRefreshGesture _pullGesture = PullToRefreshGesture();
 
   /// 实例必须稳定：每帧新建 physics 不会生效（Scrollable 只在依赖变化时读它），
-  /// 所以这里建一次，内部通过闭包实时读控制器的状态。
+  /// 所以这里建一次，内部通过共享的 [_pullGesture] 记账。
   late final ScrollPhysics _pullPhysics = PullToRefreshScrollPhysics(
     parent: AppScrollBehavior.physics,
-    // 小球没收回、且不在刷新中时，反向拖动也先给刷新组件
-    holdsPull: () => !_pull.isRefreshing && _pull.distanceFraction > 0,
+    gesture: _pullGesture,
   );
 
   bool _visibleAsDropTarget() {
@@ -199,7 +198,6 @@ class _DrivePageState extends State<DrivePage>
     _selAnim.dispose();
     _enterAnim.dispose();
     _exitAnim.dispose();
-    _pull.dispose();
     _scroll.dispose();
     _searchController.dispose();
     super.dispose();
@@ -2508,7 +2506,7 @@ class _DrivePageState extends State<DrivePage>
         // 下拉时是跟着手指长的确定进度，松手过阈值后转成形变循环。
         child: M3ePullToRefresh(
           onRefresh: _reloadAfterChange,
-          controller: _pull,
+          gesture: _pullGesture,
           // 页面自己在加载（居中转圈）时不响应下拉刷新，避免两个指示同时出现
           enabled: !_loading,
           // 顶栏 / 路径栏是浮层：指示器从它们下缘出现。m3e 的实现会在这段
