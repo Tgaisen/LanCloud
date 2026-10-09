@@ -1,12 +1,20 @@
 import 'package:m3e_core/m3e_core.dart';
 import 'package:material_ui/material_ui.dart';
 
+export 'm3e_pull_refresh.dart';
+
 /// 应用只需要认这一个入口：把用到的 MD3E 组件从 m3e_core 透出来。
 export 'package:m3e_core/m3e_core.dart'
     show
         M3EBottomSheet,
         M3EBottomSheetStyle,
         M3EBottomSheetTheme,
+        M3EButtonGroupDensity,
+        M3EButtonGroupOverflow,
+        M3EButtonGroupType,
+        M3EButtonShape,
+        M3EButtonSize,
+        M3EButtonStyle,
         M3EContainedLoadingIndicator,
         M3ECircularProgressIndicator,
         M3ECircularWavyProgressIndicator,
@@ -14,6 +22,10 @@ export 'package:m3e_core/m3e_core.dart'
         M3ELinearWavyProgressIndicator,
         M3ELoadingIndicator,
         M3EMotion,
+        M3EToggleButton,
+        M3EToggleButtonDecoration,
+        M3EToggleButtonGroup,
+        M3EToggleButtonGroupAction,
         M3ETypography,
         Shapes,
         showM3EModalBottomSheet;
@@ -262,4 +274,89 @@ class M3eCircularProgressIndicator extends StatelessWidget {
     color: color,
     backgroundColor: backgroundColor,
   );
+}
+
+/// ────────────────────────────── 按钮组 ──────────────────────────────
+
+/// MD3E 连接式切换按钮组（Connected button group）：
+/// 把 [M3EToggleButtonGroup] 的索引选择映射回业务值。
+///
+/// 按钮是否带图标由调用方决定（[iconOf] 传空即纯文字），沿用原来的图标设置。
+///
+/// 用 `filled` 配色：未选中是 surface container 底、选中是 primary 底
+/// （on primary 文字），M3 按钮组规范里 filled 的切换配色就是这个映射。
+class M3eConnectedButtonGroup<T> extends StatelessWidget {
+  const M3eConnectedButtonGroup({
+    super.key,
+    required this.values,
+    required this.selected,
+    required this.onSelected,
+    required this.labelOf,
+    this.iconOf,
+    this.size = M3EButtonSize.sm,
+    this.expand = true,
+    this.semanticLabel,
+  });
+
+  /// 每个按钮对应的业务值，顺序即显示顺序。
+  final List<T> values;
+
+  /// 当前选中的业务值（必须在 [values] 里）。
+  final T selected;
+
+  /// 选中项变化时回调；重复点已选中项不会触发。
+  final ValueChanged<T> onSelected;
+
+  /// 按钮文字。
+  final Widget Function(T value) labelOf;
+
+  /// 按钮图标；为 null 时是纯文字按钮（与原实现保持一致）。
+  final Widget Function(T value)? iconOf;
+
+  /// 尺寸（sm=40dp、md=56dp）。默认 sm。
+  final M3EButtonSize size;
+
+  /// 是否让按钮等分整行宽度（整行切换条、弹窗里的一行选项）。
+  final bool expand;
+
+  /// 整组的读屏名称。
+  final String? semanticLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedIndex = values.indexOf(selected);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // 连接式按钮组在相邻按钮之间固定留 2dp 间隙（m3e_core 的
+        // ButtonGroupTokens.kConnectedGap），等分时要把它一起减掉，
+        // 否则整行会超出可用宽度。
+        final count = values.length;
+        final width = expand && constraints.maxWidth.isFinite && count > 0
+            ? (constraints.maxWidth - 2.0 * (count - 1)) / count
+            : null;
+        return M3EToggleButtonGroup(
+          type: M3EButtonGroupType.connected,
+          shape: M3EButtonShape.round,
+          size: size,
+          style: M3EButtonStyle.filled,
+          overflow: M3EButtonGroupOverflow.none,
+          semanticLabel: semanticLabel,
+          selectedIndex: selectedIndex < 0 ? null : selectedIndex,
+          onSelectedIndexChanged: (index) {
+            // 单选段不接受「再点一次取消选中」：忽略 null 即可保持原选中项。
+            if (index == null) return;
+            onSelected(values[index]);
+          },
+          actions: [
+            for (final value in values)
+              M3EToggleButtonGroupAction(
+                icon: iconOf?.call(value),
+                label: labelOf(value),
+                width: width,
+              ),
+          ],
+        );
+      },
+    );
+  }
 }

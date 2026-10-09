@@ -908,7 +908,6 @@ Future<T?> showAppSheet<T>(
 }) {
   final size = MediaQuery.sizeOf(context);
   final maxHeight = size.height * maxHeightRatio;
-  final scheme = Theme.of(context).colorScheme;
   // MD3 给模态底部弹窗 640dp 宽度上限：窗口更宽时弹窗居中、离屏幕两侧
   // 还有很远，这时不需要左右让位；只有弹窗真的通铺整屏（窗口不超过上限）
   // 时才要避开两侧的挖孔 / 导航栏。
@@ -925,6 +924,10 @@ Future<T?> showAppSheet<T>(
     // 缩进一截（那样有挖孔的一侧会多出留白）。
     useSafeArea: fullWidthSheet,
     builder: (sheetContext) {
+      // 颜色必须在弹窗自己的 context 里取：弹窗打开期间切换深浅色时，
+      // 主题是实时的，而这里若用调用方在打开时算好的颜色，就会把旧主题
+      // 烤进弹窗背景（控件却跟着新主题走，于是看不清）。
+      final scheme = Theme.of(sheetContext).colorScheme;
       final sheet = M3EBottomSheet(
         showDragHandle: true,
         // 内容自带内边距：外壳不再补 24dp，避免所有弹窗被多包一层。
@@ -2327,8 +2330,13 @@ class PropertyHeaderCard extends StatelessWidget {
                             ),
                             if (loading) ...[
                               const SizedBox(width: 8),
-                              // 标题右侧的小指示器：M3E 加载指示器最小 24dp。
-                              const M3eLoadingIndicator(size: 24),
+                              // 标题右侧的小圆环：尺寸跟着标题的字号走，
+                              // 和左侧文字视觉重量对齐（线宽同步收细）。
+                              M3eCircularProgressIndicator(
+                                size:
+                                    theme.textTheme.titleMedium?.fontSize ?? 16,
+                                strokeWidth: 2,
+                              ),
                             ],
                           ],
                         ),
@@ -3391,7 +3399,8 @@ Future<void> showLoadingDialog(BuildContext context, String text) {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            M3eLoadingIndicator(size: 28, semanticsLabel: text),
+            // 不确定进度的等待：M3E 环形进度条。
+            const M3eCircularProgressIndicator(size: 28, strokeWidth: 3),
             const SizedBox(width: 20),
             Flexible(child: Text(text, style: theme.textTheme.bodyLarge)),
           ],

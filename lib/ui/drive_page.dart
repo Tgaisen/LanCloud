@@ -17,7 +17,6 @@ import '../core/transfer/transfer_manager.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
-import 'drive_refresh_indicator.dart' as drive_refresh;
 import 'm3e.dart';
 import 'reduce_motion.dart';
 import 'scroll_tint.dart';
@@ -915,25 +914,19 @@ class _DrivePageState extends State<DrivePage>
                   const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
-                    child: ConnectedSegmentedButton<String>(
-                      segments: [
-                        ButtonSegment(
-                          value: 'grid',
-                          icon: const Icon(Icons.grid_view),
-                          label: Text(context.l10n.grid),
-                        ),
-                        ButtonSegment(
-                          value: 'list',
-                          icon: const Icon(Icons.view_list),
-                          label: Text(context.l10n.list),
-                        ),
-                      ],
-                      selected: {grid ? 'grid' : 'list'},
-                      onSelectionChanged: (values) {
-                        final value = values.first;
+                    child: M3eConnectedButtonGroup<String>(
+                      values: const ['grid', 'list'],
+                      selected: grid ? 'grid' : 'list',
+                      onSelected: (value) {
                         setSheetState(() => grid = value == 'grid');
                         app.setGridView(grid);
                       },
+                      labelOf: (value) => Text(
+                        value == 'grid' ? context.l10n.grid : context.l10n.list,
+                      ),
+                      iconOf: (value) => Icon(
+                        value == 'grid' ? Icons.grid_view : Icons.view_list,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -944,27 +937,19 @@ class _DrivePageState extends State<DrivePage>
                   const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
-                    child: ConnectedSegmentedButton<String>(
-                      segments: [
-                        ButtonSegment(
-                          value: 'default',
-                          label: Text(context.l10n.sortTime),
-                        ),
-                        ButtonSegment(
-                          value: 'name',
-                          label: Text(context.l10n.sortName),
-                        ),
-                        ButtonSegment(
-                          value: 'size',
-                          label: Text(context.l10n.sortSize),
-                        ),
-                      ],
-                      selected: {sort},
-                      onSelectionChanged: (values) {
-                        setSheetState(() => sort = values.first);
-                        setState(() => _sortMode = values.first);
-                        app.setSortMode(values.first);
+                    child: M3eConnectedButtonGroup<String>(
+                      values: const ['default', 'name', 'size'],
+                      selected: sort,
+                      onSelected: (value) {
+                        setSheetState(() => sort = value);
+                        setState(() => _sortMode = value);
+                        app.setSortMode(value);
                       },
+                      labelOf: (value) => Text(switch (value) {
+                        'name' => context.l10n.sortName,
+                        'size' => context.l10n.sortSize,
+                        _ => context.l10n.sortTime,
+                      }),
                     ),
                   ),
                 ],
@@ -2505,14 +2490,26 @@ class _DrivePageState extends State<DrivePage>
           top: headerInset,
           bottom: shellBottomBarInset(context),
         ),
-        child: drive_refresh.LanRefreshIndicator(
+        // MD3E 下拉刷新（overlay 版）：内容位移仍归滚动 physics（iOS 橡皮筋
+        // 原样保留），指示器固定在上边缘、只读滚动通知算进度，两者互不叠加，
+        // 所以不会再出现「小球 + 一层回弹留白」。
+        child: M3ePullToRefresh(
           onRefresh: _reloadAfterChange,
           // 页面自己在加载（居中转圈）时不响应下拉刷新，避免两个指示同时出现
           enabled: !_loading,
-          edgeOffset: headerInset,
+          // 顶栏 / 路径栏是浮层：指示器从它们下缘下方留一点空出现
+          // （overlay 不参与列表布局，不会顶列表）。
+          edgeOffset: headerInset + 16,
+          // 小球在拖动过程中的滑动行程：128 比默认 70 长，拉的时候能跟着走一段，
+          // 不会一露头就停住。
+          indicatorHeight: 128,
+          semanticsLabel: MaterialLocalizations.of(context)
+              .refreshIndicatorSemanticLabel,
           child: CustomScrollView(
             controller: _scroll,
             slivers: [
+              // 顶栏 / 路径栏是浮层：列表顶部留出等高占位，内容不从它下面穿过。
+              // （下拉刷新的 overlay 只是浮在上面，不替列表让位。）
               SliverToBoxAdapter(child: SizedBox(height: headerInset)),
               // 目录切换时内容整体淡出（顶栏与路径栏不受影响）
               ..._contentSlivers(grid).map(
@@ -2683,7 +2680,7 @@ class _DrivePageState extends State<DrivePage>
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 72),
           child: Center(
             child: _loadingMore
-                ? const M3eLoadingIndicator(size: 24)
+                ? const M3eCircularProgressIndicator(size: 24, strokeWidth: 3)
                 : Text(
                     _hasMore
                         ? ''
