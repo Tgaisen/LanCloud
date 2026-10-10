@@ -2765,7 +2765,11 @@ class _DrivePageState extends State<DrivePage>
           // 否则滚到底时最后一行会被它压住
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 72),
           child: Center(
-            child: _loadingMore
+            // 失败后的自动重试还在排队时继续显示转圈：马上会再试一次，
+            // 闪一下「重试」反而像是让用户去点
+            child:
+                (_loadingMore ||
+                    (_loadFailed && _hasMore && _autoRetriesLeft > 0))
                 ? const M3eCircularProgressIndicator(size: 24, strokeWidth: 3)
                 // 还有下一页但拉取失败：给一个手动重试入口，别只留空白
                 : (_loadFailed && _hasMore

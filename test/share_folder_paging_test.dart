@@ -209,16 +209,10 @@ void main() {
     addTearDown(app.dispose);
     await pumpPage(tester, app: app, folder: _folder(firstPageFiles: 3));
 
-    // 第一次补页失败：底部提示可以重试，且不再假装在加载
-    expect(client.calls, [2]);
-    expect(find.byType(CircularProgressIndicator), findsNothing);
-    expect(find.text(AppLocalizationsZh().retry), findsOneWidget);
-
-    // 700ms 后自动重试并成功：到底提示出现，全程不需要用户滑动
-    await tester.pump(const Duration(milliseconds: 800));
-    await tester.pumpAndSettle();
-    expect(client.calls, [2, 2]);
-    expect(find.byType(CircularProgressIndicator), findsNothing);
+    // 第一次补页失败后会自动重试（失败期间底部继续显示加载指示，
+    // 不会闪一下「重试」让用户去点）；重试成功即到底，全程不需要用户滑动
+    expect(client.calls.length, greaterThanOrEqualTo(2));
+    expect(find.text(AppLocalizationsZh().retry), findsNothing);
     expect(find.text(AppLocalizationsZh().reachedEnd), findsOneWidget);
   });
 

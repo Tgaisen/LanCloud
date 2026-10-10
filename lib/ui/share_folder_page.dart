@@ -414,7 +414,9 @@ class _ShareFolderPageState extends State<ShareFolderPage>
     // 否则内容不满一屏、自动补页又没跑起来时会一直停在转圈上。
     final footer = query.isNotEmpty && (_hasMore || _loadingMore)
         ? _footerText(l10n.searchIncomplete)
-        : _loadingMore
+        // 失败后的自动重试还在排队时继续显示转圈：这时候马上会再试一次，
+        // 闪一下「重试」反而像是让用户去点
+        : (_loadingMore || (_loadFailed && _autoRetriesLeft > 0))
         ? const Padding(
             padding: EdgeInsets.symmetric(vertical: 16),
             child: Center(

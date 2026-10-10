@@ -1105,28 +1105,45 @@ class LanzouClient {
 
   /// 拉取分享文件夹的某一页文件（与网盘页一致：滑到底再加载下一页）。
   /// 返回该页文件与是否可能还有下一页；zt=2 表示已到底。
+  ///
+  /// 服务端在「请求来得太频繁 / 一时拿不到数据」时可能回 zt=4、未知状态，
+  /// 或者干脆给个解析不出来的响应。这些都是「稍后再试」，不是真的失败：
+  /// 这里退避重试几次，避免偶发失败冒到界面上（真机上表现为底部闪「重试」）。
   Future<({List<ShareFileItem> files, bool hasMore})> fetchShareFolderFiles(
     ShareFolderPaging paging,
     int page,
   ) async {
-    for (var attempt = 0; attempt < 3; attempt++) {
-      final resp = await dio.post<String>(
-        '${paging.base}/filemoreajax.php?file=${paging.fid}',
-        data: <String, dynamic>{
-          'lx': paging.lx,
-          'fid': paging.fid,
-          'uid': ?paging.uid,
-          'puid': ?paging.puid,
-          'pg': page,
-          'rep': '0',
-          't': paging.t,
-          'k': paging.k,
-          'up': 1,
-          if (paging.pwd.isNotEmpty) 'pwd': paging.pwd,
-        },
-        options: _options(referer: paging.referer),
-      );
-      final map = _asMap(resp.data);
+    const maxAttempts = 4;
+    // 服务端忙时会回「请刷新，重试N」，要求把 N 填回 rep 再请求一次；
+    // 其它「稍后再试」的情况（zt=4 / 未知状态）就自己把 rep 加一。
+    var rep = 0;
+    for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+      final lastAttempt = attempt == maxAttempts;
+      final Map<String, dynamic> map;
+      try {
+        final resp = await dio.post<String>(
+          '${paging.base}/filemoreajax.php?file=${paging.fid}',
+          data: <String, dynamic>{
+            'lx': paging.lx,
+            'fid': paging.fid,
+            'uid': ?paging.uid,
+            'puid': ?paging.puid,
+            'pg': page,
+            'rep': '$rep',
+            't': paging.t,
+            'k': paging.k,
+            'up': 1,
+            if (paging.pwd.isNotEmpty) 'pwd': paging.pwd,
+          },
+          options: _options(referer: paging.referer),
+        );
+        map = _asMap(resp.data);
+      } catch (e) {
+        // 空响应 / 挑战页这类解析失败同样是「一时拿不到」
+        if (lastAttempt) rethrow;
+        await Future.delayed(Duration(milliseconds: 400 * attempt));
+        continue;
+      }
       final zt = '${map['zt']}';
       if (zt == '1') {
         final files = <ShareFileItem>[];
@@ -1152,14 +1169,15 @@ class LanzouClient {
       }
       if (zt == '2') return (files: const <ShareFileItem>[], hasMore: false);
       if (zt == '3') throw const WrongPasswordException();
-      if (zt == '4') {
-        // 服务器要求重试：稍等后重试同一页
-        await Future.delayed(const Duration(milliseconds: 400));
-        continue;
-      }
       final info = '${map['info'] ?? ''}';
-      if (info.isNotEmpty) throw LanzouException(info);
-      throw const LanzouException('获取分享文件列表失败');
+      // 「请刷新，重试N」是服务端的重试指令，不是真错误
+      final hint = RegExp(r'重试\s*(\d+)').firstMatch(info);
+      // 其它带信息的响应（文件不存在 / 提取码错误等）直接报错，不做无谓重试
+      if (info.isNotEmpty && hint == null) throw LanzouException(info);
+      rep = hint == null ? rep + 1 : (int.tryParse(hint.group(1)!) ?? rep + 1);
+      // zt=4 / 未知状态 / 「请刷新」：稍等后按新的 rep 重试同一页
+      if (lastAttempt) break;
+      await Future.delayed(Duration(milliseconds: 400 * attempt));
     }
     throw const LanzouException('获取分享文件列表失败');
   }
