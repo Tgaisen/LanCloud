@@ -42,6 +42,10 @@ class LanzouClient {
   /// 全局请求间隔，避免触发风控（可在设置里调整）。
   static Duration requestInterval = const Duration(milliseconds: 300);
 
+  /// 分享文件夹每页条数：分享页 JS 里是 `data.length < 50` 时隐藏「更多」，
+  /// 所以不足 50 条就是最后一页。
+  static const int _shareFilesPerPage = 50;
+
   LanzouClient({required this.uid}) {
     dio = Dio(
       BaseOptions(
@@ -1164,8 +1168,11 @@ class LanzouClient {
             }
           }
         }
-        // 本页有数据就认为可能还有下一页；下一页返回 zt=2 时自然结束
-        return (files: files, hasMore: files.isNotEmpty);
+        // 分享页自己的 JS 就是按「本页不足一页（50 条）→ 没有更多」判断的
+        // （data.length < 50 时把 filemore 藏起来），这里照抄同一条规则：
+        // 文件不满 50 个的文件夹第一页就判定到底，不用再发一次「下一页」请求
+        // （少一次请求，也就不会因为服务端偶发「请刷新」而闪重试）
+        return (files: files, hasMore: files.length >= _shareFilesPerPage);
       }
       if (zt == '2') return (files: const <ShareFileItem>[], hasMore: false);
       if (zt == '3') throw const WrongPasswordException();

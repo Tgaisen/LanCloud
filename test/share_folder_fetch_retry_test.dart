@@ -70,6 +70,23 @@ void main() {
     expect(adapter.requests.length, 3, reason: '前两次失败都要自动重试同一页');
     expect(adapter.requests.every((r) => '${r['pg']}' == '2'), isTrue);
     expect(result.files.single.name, 'a.zip');
+    // 本页只有 1 条（不足 50）→ 直接判定到底，不用再请求下一页
+    expect(result.hasMore, isFalse);
+  });
+
+  // 分享页 JS：data.length < 50 时隐藏「更多」→ 满 50 条才可能有下一页
+  test('本页满 50 条才认为可能还有下一页', () async {
+    final client = LanzouClient(uid: '0');
+    final files = [
+      for (var i = 0; i < 50; i++)
+        '{"id":"i$i","name_all":"f$i.zip","size":"1 M","time":"2024-01-01"}',
+    ].join(',');
+    final adapter = _ScriptedAdapter(['{"zt":1,"text":[$files]}']);
+    client.dio.httpClientAdapter = adapter;
+
+    final result = await client.fetchShareFolderFiles(_paging(), 1);
+
+    expect(result.files.length, 50);
     expect(result.hasMore, isTrue);
   });
 
