@@ -67,8 +67,6 @@ versionCode = YY * 10_000_000 + Drop * 100_000 + Hotfix * 10_000 + Stage * 1_000
 
 ### Windows
 
-前置条件见 [开发环境](#开发环境)。
-
 ```powershell
 powershell -ExecutionPolicy Bypass -File tools/build_windows.ps1
 ```
