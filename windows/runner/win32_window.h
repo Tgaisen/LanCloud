@@ -90,6 +90,12 @@ class Win32Window {
   // Update the window frame's theme to match the system theme.
   static void UpdateTheme(HWND const window);
 
+  // (Re)loads the app icon at the pixel sizes the shell asks for at |dpi| and
+  // applies them to the window (WM_SETICON). LoadIcon would only ever hand out
+  // the default 32px image, which the shell then rescales: the title bar and
+  // taskbar icon end up looking soft / pixelated at non-100% scaling.
+  void UpdateIconForDpi(UINT dpi);
+
   bool quit_on_close_ = false;
 
   // window handle for top level window.
@@ -97,6 +103,10 @@ class Win32Window {
 
   // window handle for hosted content.
   HWND child_content_ = nullptr;
+
+  // Icons owned by this window (destroyed when replaced or on Destroy).
+  HICON icon_big_ = nullptr;
+  HICON icon_small_ = nullptr;
 };
 
 #endif  // RUNNER_WIN32_WINDOW_H_

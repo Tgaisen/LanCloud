@@ -3,6 +3,8 @@
 #include <dwmapi.h>
 #include <flutter_windows.h>
 
+#include <algorithm>
+
 #include "resource.h"
 
 namespace {
@@ -35,6 +37,34 @@ constexpr int kMinClientHeight = 445;
 static int g_active_window_count = 0;
 
 using EnableNonClientDpiScaling = BOOL __stdcall(HWND hwnd);
+
+// System icon metrics: the title bar / taskbar ask for SM_CXSMICON (16px at
+// 100%) and the large icon for Alt+Tab / Explorer uses SM_CXICON (32px at
+// 100%). Both scale with the monitor DPI (125% -> 20 / 40, 150% -> 24 / 48).
+// Title bar / notification area icon: SM_CXSMICON (16 logical px).
+constexpr int kSmallIconBaseSize = 16;
+// Taskbar button icon: the Windows 11 taskbar draws the window's *large* icon
+// (verified by shrinking ICON_BIG: the taskbar followed it) at 24 logical px,
+// i.e. 30 physical px at 125% scaling. Handing it a 32-logical-px image (what
+// SM_CXICON says) makes the shell shrink it by 0.75 and the fine edges of the
+// artwork turn soft; 24 logical px lands on an exact frame in app_icon.ico.
+constexpr int kBigIconBaseSize = 24;
+
+// The app icon at an exact pixel size. LoadIcon only ever returns the default
+// (32px) image, so the shell has to rescale it for every other size, which is
+// what makes the icon look soft / pixelated. LoadImage picks the frame with the
+// requested size from app_icon.ico (it ships 16..256px frames) so no scaling is
+// needed.
+HICON LoadAppIconAtSize(int size) {
+  return reinterpret_cast<HICON>(
+      ::LoadImage(::GetModuleHandle(nullptr), MAKEINTRESOURCE(IDI_APP_ICON),
+                  IMAGE_ICON, size, size, LR_DEFAULTCOLOR));
+}
+
+int ScaledIconSize(int base_size, UINT dpi) {
+  const int size = ::MulDiv(base_size, static_cast<int>(dpi), 96);
+  return size > 0 ? size : base_size;
+}
 
 // Scale helper to convert logical scaler values to physical using passed in
 // scale factor
@@ -93,19 +123,30 @@ WindowClassRegistrar* WindowClassRegistrar::instance_ = nullptr;
 
 const wchar_t* WindowClassRegistrar::GetWindowClass() {
   if (!class_registered_) {
-    WNDCLASS window_class{};
+    // WNDCLASSEX (not the template's WNDCLASS): only it carries hIconSm, which
+    // is what lets the title bar use the 16/20/24px frame as-is instead of a
+    // rescaled copy.
+    WNDCLASSEXW window_class{};
+    window_class.cbSize = sizeof(WNDCLASSEXW);
     window_class.hCursor = LoadCursor(nullptr, IDC_ARROW);
     window_class.lpszClassName = kWindowClassName;
     window_class.style = CS_HREDRAW | CS_VREDRAW;
     window_class.cbClsExtra = 0;
     window_class.cbWndExtra = 0;
     window_class.hInstance = GetModuleHandle(nullptr);
+    // Register the class with icons already sized for the primary monitor's
+    // DPI; each window then re-applies its own icons for its own monitor.
+    const POINT primary_point{0, 0};
+    const UINT system_dpi = FlutterDesktopGetDpiForMonitor(
+        ::MonitorFromPoint(primary_point, MONITOR_DEFAULTTOPRIMARY));
     window_class.hIcon =
-        LoadIcon(window_class.hInstance, MAKEINTRESOURCE(IDI_APP_ICON));
+        LoadAppIconAtSize(ScaledIconSize(kBigIconBaseSize, system_dpi));
+    window_class.hIconSm =
+        LoadAppIconAtSize(ScaledIconSize(kSmallIconBaseSize, system_dpi));
     window_class.hbrBackground = 0;
     window_class.lpszMenuName = nullptr;
     window_class.lpfnWndProc = Win32Window::WndProc;
-    RegisterClass(&window_class);
+    RegisterClassExW(&window_class);
     class_registered_ = true;
   }
   return kWindowClassName;
@@ -149,9 +190,39 @@ bool Win32Window::Create(const std::wstring& title,
     return false;
   }
 
+  UpdateIconForDpi(dpi);
   UpdateTheme(window);
 
   return OnCreate();
+}
+
+void Win32Window::UpdateIconForDpi(UINT dpi) {
+  if (window_handle_ == nullptr) {
+    return;
+  }
+
+  // Don't name these locals `big` / `small`: rpcndr.h defines `small` as a
+  // macro (`#define small char`), which breaks the declaration.
+  HICON big_icon = LoadAppIconAtSize(ScaledIconSize(kBigIconBaseSize, dpi));
+  HICON small_icon =
+      LoadAppIconAtSize(ScaledIconSize(kSmallIconBaseSize, dpi));
+
+  if (big_icon != nullptr) {
+    ::SendMessage(window_handle_, WM_SETICON, ICON_BIG,
+                  reinterpret_cast<LPARAM>(big_icon));
+    if (icon_big_ != nullptr) {
+      ::DestroyIcon(icon_big_);
+    }
+    icon_big_ = big_icon;
+  }
+  if (small_icon != nullptr) {
+    ::SendMessage(window_handle_, WM_SETICON, ICON_SMALL,
+                  reinterpret_cast<LPARAM>(small_icon));
+    if (icon_small_ != nullptr) {
+      ::DestroyIcon(icon_small_);
+    }
+    icon_small_ = small_icon;
+  }
 }
 
 bool Win32Window::Show() {
@@ -199,6 +270,11 @@ Win32Window::MessageHandler(HWND hwnd,
 
       SetWindowPos(hwnd, nullptr, newRectSize->left, newRectSize->top, newWidth,
                    newHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+
+      // Moving to a monitor with a different scale factor needs the icons at
+      // the new DPI as well, otherwise the shell stretches the old bitmaps and
+      // the title bar / taskbar icon looks blurry.
+      UpdateIconForDpi(HIWORD(wparam));
 
       return 0;
     }
@@ -255,6 +331,14 @@ void Win32Window::Destroy() {
   if (window_handle_) {
     DestroyWindow(window_handle_);
     window_handle_ = nullptr;
+  }
+  if (icon_big_ != nullptr) {
+    ::DestroyIcon(icon_big_);
+    icon_big_ = nullptr;
+  }
+  if (icon_small_ != nullptr) {
+    ::DestroyIcon(icon_small_);
+    icon_small_ = nullptr;
   }
   if (g_active_window_count == 0) {
     WindowClassRegistrar::GetInstance()->UnregisterWindowClass();

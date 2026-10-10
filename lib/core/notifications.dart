@@ -1,5 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
+import 'package:flutter/services.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
 import '../l10n/l10n.dart';
 import 'platform_support.dart';
@@ -44,6 +50,28 @@ class NotificationService {
   /// 系统设置里自行改回响铃）。
   static const doneChannelId = 'transfers_done_v2';
 
+  /// 随包发布的 Windows 图标（和 exe 用的是同一份 app_icon.ico）。
+  static const _windowsIconAsset = 'windows/runner/resources/app_icon.ico';
+
+  /// Windows 通知图标的磁盘路径。
+  ///
+  /// 系统只认注册表里 AUMID → IconUri 指向的那个文件，所以先把随包的
+  /// app_icon.ico 落到应用数据目录（便携版所在目录会被搬走 / 删掉，数据
+  /// 目录更稳），每次初始化覆盖一份，图标换了也能跟着更新。
+  Future<String?> _windowsIconPath() async {
+    if (!PlatformSupport.isWindows) return null;
+    try {
+      final dir = await getApplicationSupportDirectory();
+      await dir.create(recursive: true);
+      final file = File(p.join(dir.path, 'app_icon.ico'));
+      final data = await rootBundle.load(_windowsIconAsset);
+      await file.writeAsBytes(data.buffer.asUint8List(), flush: true);
+      return file.path;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> init(Locale? locale) async {
     try {
       final resolved =
@@ -58,6 +86,8 @@ class NotificationService {
         appName: i18n?.appName ?? 'LanCloud',
         appUserModelId: _windowsAppUserModelId,
         guid: _windowsCallbackGuid,
+        // 没有这个路径，Windows 的 toast 就不显示应用图标
+        iconPath: await _windowsIconPath(),
       );
       await _plugin.initialize(
         settings: InitializationSettings(android: android, windows: windows),
