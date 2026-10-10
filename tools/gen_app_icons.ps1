@@ -267,6 +267,14 @@ $resDir = Join-Path $ProjectRoot 'android\app\src\main\res'
 # 矢量在目标尺寸上栅格化（最锐）；否则回退到 android 里那张 432px 前景层
 # 位图降采样。
 $masterSvg = Join-Path $ProjectRoot 'assets\icon_master.svg'
+# 只有云朵、没有圆角方块的一层（自适应图标的前景 / 单色层用）。
+# 方块的"背景色"由 Android 的 <background> 图层提供：浅色 #0AC4E0、
+# 深色 #3E3E75（values / values-night），所以前景不该再画一遍方块，
+# 否则深色模式会露出一块浅色的方块。
+$masterFgSvg = Join-Path $ProjectRoot 'assets\icon_master_foreground.svg'
+# 深色版整图（方块 #3E3E75 + 白云）：给需要"深色整图"的场合用
+# （例如文档 / 预览图），Android 侧靠背景色切换，不需要它。
+$masterDarkSvg = Join-Path $ProjectRoot 'assets\icon_master_dark.svg'
 $script:nodeRenderer = $null
 if ((Get-Command node -ErrorAction SilentlyContinue) -and (Test-Path $masterSvg)) {
     $candidate = Join-Path $PSScriptRoot 'render_icon_pngs.cjs'
@@ -294,10 +302,12 @@ foreach ($d in $densities) {
     $legacySize = [int](48 * $d.Scale)
 
     $tmp = New-SvgRenderDir
+    # 前景 / 单色层都用"只有云朵"的母版：方块背景由 <background> 图层给，
+    # 深浅色自动跟着 values(-night) 的背景色走
     $viaSvg =
-        (Invoke-SvgRender $masterSvg (Join-Path $tmp 'fg') @($fgSize) @('--fix-seams')) -and
-        (Invoke-SvgRender $masterSvg (Join-Path $tmp 'mono') @($fgSize) @('--fix-seams', '--cloud-only')) -and
-        (Invoke-SvgRender $masterSvg (Join-Path $tmp 'legacy') @($legacySize) @('--fix-seams', '--bg', $lightBgHex))
+        (Invoke-SvgRender $masterFgSvg (Join-Path $tmp 'fg') @($fgSize) @('--fix-seams')) -and
+        (Invoke-SvgRender $masterFgSvg (Join-Path $tmp 'mono') @($fgSize) @('--fix-seams')) -and
+        (Invoke-SvgRender $masterFgSvg (Join-Path $tmp 'legacy') @($legacySize) @('--fix-seams', '--bg', $lightBgHex))
     if ($viaSvg) {
         Copy-Item (Join-Path $tmp "fg\$fgSize.png") $fgTarget -Force
         Copy-Item (Join-Path $tmp "mono\$fgSize.png") $monoTarget -Force
@@ -328,7 +338,7 @@ foreach ($entry in $contents.images) {
     $px = [double]$parts[0] * [double]$entry.scale.TrimEnd('x')
     $size = [int][Math]::Round($px)
     $tmp = New-SvgRenderDir
-    if (Invoke-SvgRender $masterSvg $tmp @($size) @('--fix-seams', '--bg', $lightBgHex)) {
+    if (Invoke-SvgRender $masterFgSvg $tmp @($size) @('--fix-seams', '--bg', $lightBgHex)) {
         $target = Join-Path $appIconDir $entry.filename
         Copy-Item (Join-Path $tmp "$size.png") $target -Force
         # App Store 不接受带 alpha 通道的图标

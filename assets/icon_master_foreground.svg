@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="108" height="108" viewBox="0 0 108 108">
+  <defs>
+    <clipPath id="clip-SPRK_default_preset_name_custom_1">
+      <rect width="108" height="108"/>
+    </clipPath>
+  </defs>
+  <g id="SPRK_default_preset_name_custom_1" data-name="SPRK_default_preset_name_custom – 1" clip-path="url(#clip-SPRK_default_preset_name_custom_1)">
+    <rect width="108" height="108" fill="rgba(255,255,255,0)"/>
+    <g id="画板_1_1_" data-name="画板 1 (1)" transform="translate(1.5)">
+      <path id="路径_1" data-name="路径 1" d="M749.9,417.07H723.454a10,10,0,0,0,9.647-12.642,6.458,6.458,0,0,0,.655-.37,9.948,9.948,0,0,0,6.973,4.785A9.226,9.226,0,0,0,749.9,417.07Zm-16.8-12.642a10,10,0,0,0-9.57-7.357h-.077a9.994,9.994,0,1,0,9.647,7.358Zm19.191-5.5a9.952,9.952,0,1,0-11.563,9.912,9.952,9.952,0,0,0,11.564-9.821C752.293,398.991,752.293,398.962,752.292,398.931Zm-17.973-5.8a6.727,6.727,0,0,0-10.788,3.939,6.772,6.772,0,0,0-.13,1.322,6.728,6.728,0,0,0,9.7,6.035,6.458,6.458,0,0,0,.655-.37,6.728,6.728,0,0,0,.563-10.926Zm17.973,5.8a9.227,9.227,0,1,0,6.835,8.912A9.2,9.2,0,0,0,752.292,398.931Z" transform="translate(-683.791 -349.07)" fill="#fff"/>
+    </g>
+  </g>
+</svg>
