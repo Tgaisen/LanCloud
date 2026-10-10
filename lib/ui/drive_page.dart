@@ -96,6 +96,16 @@ class _DrivePageState extends State<DrivePage>
   bool _hasMore = false;
   bool _loading = true;
   bool _loadingMore = false;
+
+  /// 上一次拉取下一页失败（且还有下一页）：底部给出「重试」入口。
+  bool _loadFailed = false;
+
+  /// 自动补页失败后的剩余重试次数：网络抖一下也能自己恢复。
+  int _autoRetriesLeft = _maxAutoRetries;
+  static const int _maxAutoRetries = 3;
+
+  /// 已经排了下一帧的补页检查；同一帧里重复调用只排一次。
+  bool _fillCheckScheduled = false;
   String? _error;
   bool _searching = false;
   String _filter = '';
@@ -602,9 +612,13 @@ class _DrivePageState extends State<DrivePage>
         _page = cached.page;
         _hasMore = cached.hasMore;
         _loading = false;
+        _loadFailed = false;
+        _autoRetriesLeft = _maxAutoRetries;
         _error = null;
       });
       _playEnterAnimation();
+      // 缓存里也还留着「还有下一页」时，同样按需补页
+      _fillViewportIfNeeded();
       return;
     }
 
@@ -627,6 +641,8 @@ class _DrivePageState extends State<DrivePage>
         _page = listing.page;
         _hasMore = listing.hasMore;
         _loading = false;
+        _loadFailed = false;
+        _autoRetriesLeft = _maxAutoRetries;
         _selectedFiles.clear();
         _selectedFolders.clear();
         _removingFiles.clear();
@@ -637,6 +653,8 @@ class _DrivePageState extends State<DrivePage>
         _pulsingFolders.clear();
       });
       _playEnterAnimation();
+      // 目录内容不足一屏时继续补页，让「已经到底了」立刻可见
+      _fillViewportIfNeeded();
       if (app.settings.cacheFolders) {
         app.driveCache.put(_folderId, _snapshot());
       }
@@ -649,13 +667,17 @@ class _DrivePageState extends State<DrivePage>
     }
   }
 
-  Future<void> _loadMore() async {
+  /// 加载下一页文件；[auto] 表示这次是「内容不满一屏，自动补页」发起的。
+  Future<void> _loadMore({bool auto = false}) async {
     if (_loading || _directorySwitching || _loadingMore || !_hasMore) return;
     if (_filter.isNotEmpty) return;
     final app = context.read<AppController>();
     final client = app.client;
     if (client == null) return;
-    setState(() => _loadingMore = true);
+    setState(() {
+      _loadingMore = true;
+      _loadFailed = false;
+    });
     try {
       final next = await client.listFilesPage(_folderId, _page + 1);
       if (!mounted) return;
@@ -665,11 +687,52 @@ class _DrivePageState extends State<DrivePage>
         _hasMore = next.hasMore;
         _loadingMore = false;
       });
+      _autoRetriesLeft = _maxAutoRetries;
       if (app.settings.cacheFolders) {
         app.driveCache.put(_folderId, _snapshot());
       }
+      // 内容还不满一屏时继续补页：否则「已经到底了」要等用户滑一下才出现
+      _fillViewportIfNeeded();
     } catch (_) {
-      if (mounted) setState(() => _loadingMore = false);
+      if (!mounted) return;
+      setState(() {
+        _loadingMore = false;
+        _loadFailed = true;
+      });
+      // 自动补页失败：退避重试几次，别让短目录停在「什么都没有」的状态
+      if (auto && _autoRetriesLeft > 0) {
+        _autoRetriesLeft -= 1;
+        Future<void>.delayed(const Duration(milliseconds: 700), () {
+          if (!mounted) return;
+          // 定时器链路上没有帧在跑，直接查一次（不用等 post-frame）
+          _fillViewportIfNeeded(immediate: true);
+        });
+      }
+    }
+  }
+
+  /// 内容不足一屏时继续加载下一页（最多到填满或加载完为止）。
+  ///
+  /// 默认排到下一帧再判断（此时布局刚更新）；[immediate] 用于定时器重试这类
+  /// 没有帧在跑的场景，直接按当前布局判断。
+  void _fillViewportIfNeeded({bool immediate = false}) {
+    if (!mounted || !_hasMore || _loading || _loadingMore) return;
+    if (_directorySwitching || _filter.isNotEmpty) return;
+    if (!immediate) {
+      if (_fillCheckScheduled) return;
+      _fillCheckScheduled = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _fillCheckScheduled = false;
+        _fillViewportIfNeeded(immediate: true);
+      });
+      // post-frame 回调不会自己排帧：界面静止时它会一直悬着
+      WidgetsBinding.instance.scheduleFrame();
+      return;
+    }
+    if (!_scroll.hasClients) return;
+    // 与滚动加载共用同一个预加载阈值
+    if (_scroll.position.maxScrollExtent <= _scroll.position.pixels + 320) {
+      _loadMore(auto: true);
     }
   }
 
@@ -2505,18 +2568,31 @@ class _DrivePageState extends State<DrivePage>
           indicatorHeight: 128,
           semanticsLabel: MaterialLocalizations.of(context)
               .refreshIndicatorSemanticLabel,
-          child: CustomScrollView(
-            controller: _scroll,
-            slivers: [
-              // 顶栏 / 路径栏是浮层：列表顶部留出等高占位，内容不从它下面穿过。
-              // （下拉刷新的 overlay 只是浮在上面，不替列表让位。）
-              SliverToBoxAdapter(child: SizedBox(height: headerInset)),
-              // 目录切换时内容整体淡出（顶栏与路径栏不受影响）
-              ..._contentSlivers(grid).map(
-                (sliver) =>
-                    SliverFadeTransition(opacity: _contentFade, sliver: sliver),
-              ),
-            ],
+          // 列表尺寸一变化（进页面、补页、窗口大小变化）就重新评估要不要补页：
+          // 这条触发不依赖「下一帧还会不会有帧」，界面静止时也能自己补齐，
+          // 否则内容不满一屏时「已经到底了」要等用户滑一下才出现。
+          child: NotificationListener<ScrollMetricsNotification>(
+            onNotification: (notification) {
+              if (notification.metrics.hasContentDimensions) {
+                _fillViewportIfNeeded();
+              }
+              return false;
+            },
+            child: CustomScrollView(
+              controller: _scroll,
+              slivers: [
+                // 顶栏 / 路径栏是浮层：列表顶部留出等高占位，内容不从它下面穿过。
+                // （下拉刷新的 overlay 只是浮在上面，不替列表让位。）
+                SliverToBoxAdapter(child: SizedBox(height: headerInset)),
+                // 目录切换时内容整体淡出（顶栏与路径栏不受影响）
+                ..._contentSlivers(grid).map(
+                  (sliver) => SliverFadeTransition(
+                    opacity: _contentFade,
+                    sliver: sliver,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -2681,14 +2757,20 @@ class _DrivePageState extends State<DrivePage>
           child: Center(
             child: _loadingMore
                 ? const M3eCircularProgressIndicator(size: 24, strokeWidth: 3)
-                : Text(
-                    _hasMore
-                        ? ''
-                        : (_filter.isEmpty
-                              ? context.l10n.reachedEnd
-                              : context.l10n.filterResult),
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
+                // 还有下一页但拉取失败：给一个手动重试入口，别只留空白
+                : (_loadFailed && _hasMore
+                      ? TextButton(
+                          onPressed: () => _loadMore(),
+                          child: Text(context.l10n.retry),
+                        )
+                      : Text(
+                          _hasMore
+                              ? ''
+                              : (_filter.isEmpty
+                                    ? context.l10n.reachedEnd
+                                    : context.l10n.filterResult),
+                          style: Theme.of(context).textTheme.bodySmall,
+                        )),
           ),
         ),
       ),
