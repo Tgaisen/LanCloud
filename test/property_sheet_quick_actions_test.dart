@@ -254,6 +254,22 @@ void main() {
     await tester.tap(find.text('复制分享链接'));
     await _settleSheet(tester);
     expect(client.shareFileCalls, 1);
+    // 复制完属性弹窗还在（反馈走浮在最上层的轻提示）
+    expect(find.byType(M3EToggleButton), findsNWidgets(5));
+  });
+
+  testWidgets('文件属性弹窗：收藏就地切换，不关弹窗', (tester) async {
+    final app = _FakeApp(_FakeClient());
+    await _pumpDrive(tester, app);
+
+    await tester.tap(find.text('a.zip'));
+    await _settleSheet(tester);
+    await tester.tap(find.byTooltip('添加收藏'));
+    await _settleSheet(tester);
+
+    // 测试环境没有 sqflite：收藏会失败并回滚，但弹窗必须还在
+    expect(find.byType(M3EToggleButton), findsNWidgets(5));
+    expect(_toggleButton(tester, '添加收藏').checked, isFalse);
   });
 
   testWidgets('文件夹属性弹窗：一行 5 个图标按钮 + 低频列表', (tester) async {

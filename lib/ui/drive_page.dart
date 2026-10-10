@@ -2185,11 +2185,11 @@ class _DrivePageState extends State<DrivePage>
         refId: '${app.activeUid ?? ''}:${file.id}',
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(context.l10n.addedToQueue)));
+      // 属性弹窗不再关闭：反馈要走盖在弹窗之上的轻提示
+      showAppToast(context, context.l10n.addedToQueue);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      showAppToast(context, '$e');
     }
   }
 
@@ -2204,10 +2204,11 @@ class _DrivePageState extends State<DrivePage>
         info.pwd.isEmpty
             ? info.url
             : context.l10n.linkWithPassword(info.url, info.pwd),
+        asToast: true,
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      showAppToast(context, '$e');
     }
   }
 
@@ -2222,10 +2223,11 @@ class _DrivePageState extends State<DrivePage>
         info.pwd.isEmpty
             ? info.url
             : context.l10n.linkWithPassword(info.url, info.pwd),
+        asToast: true,
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      showAppToast(context, '$e');
     }
   }
 
@@ -2251,10 +2253,10 @@ class _DrivePageState extends State<DrivePage>
     try {
       final url = await _resolveFileDirectLink(file, share: share);
       if (!mounted || url == null) return;
-      await copyText(context, url);
+      await copyText(context, url, asToast: true);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      showAppToast(context, '$e');
     }
   }
 
@@ -2266,48 +2268,53 @@ class _DrivePageState extends State<DrivePage>
       await _showQr(file.name, url, '');
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      showAppToast(context, '$e');
     }
   }
 
   /// 取消收藏（收藏表按分享链接去重，所以要先取回分享信息）。
-  Future<void> _unfavoriteFile(LzFile file) async {
+  ///
+  /// 返回是否成功：调用方（属性弹窗）要按结果回滚按钮的选中态。
+  Future<bool> _unfavoriteFile(LzFile file) async {
     final app = context.read<AppController>();
     final client = app.client;
-    if (client == null) return;
+    if (client == null) return false;
     try {
       final info = await client.shareInfoOfFile(file.id);
       await app.db.removeFavorite(info.url);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(context.l10n.unfavorited)));
+      if (!mounted) return false;
+      showAppToast(context, context.l10n.unfavorited);
+      return true;
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      if (!mounted) return false;
+      showAppToast(context, '$e');
+      return false;
     }
   }
 
   /// 取消收藏文件夹。
-  Future<void> _unfavoriteFolder(LzFolder folder) async {
+  Future<bool> _unfavoriteFolder(LzFolder folder) async {
     final app = context.read<AppController>();
     final client = app.client;
-    if (client == null) return;
+    if (client == null) return false;
     try {
       final info = await client.shareInfoOfFolder(folder.id);
       await app.db.removeFavorite(info.url);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(context.l10n.unfavorited)));
+      if (!mounted) return false;
+      showAppToast(context, context.l10n.unfavorited);
+      return true;
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      if (!mounted) return false;
+      showAppToast(context, '$e');
+      return false;
     }
   }
 
-  Future<void> _favoriteFile(LzFile file) async {
+  /// 收藏文件。返回是否成功，供属性弹窗按结果回滚选中态。
+  Future<bool> _favoriteFile(LzFile file) async {
     final app = context.read<AppController>();
     final client = app.client;
-    if (client == null) return;
+    if (client == null) return false;
     try {
       final info = await client.shareInfoOfFile(file.id);
       await app.db.addFavorite(
@@ -2318,19 +2325,21 @@ class _DrivePageState extends State<DrivePage>
         size: file.size,
         sharer: app.activeAccount?.nickname ?? '',
       );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(context.l10n.favorited)));
+      if (!mounted) return false;
+      showAppToast(context, context.l10n.favorited);
+      return true;
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      if (!mounted) return false;
+      showAppToast(context, '$e');
+      return false;
     }
   }
 
-  Future<void> _favoriteFolder(LzFolder folder) async {
+  /// 收藏文件夹。返回是否成功，供属性弹窗按结果回滚选中态。
+  Future<bool> _favoriteFolder(LzFolder folder) async {
     final app = context.read<AppController>();
     final client = app.client;
-    if (client == null) return;
+    if (client == null) return false;
     try {
       final info = await client.shareInfoOfFolder(folder.id);
       await app.db.addFavorite(
@@ -2340,12 +2349,13 @@ class _DrivePageState extends State<DrivePage>
         pwd: info.pwd,
         sharer: app.activeAccount?.nickname ?? '',
       );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(context.l10n.favorited)));
+      if (!mounted) return false;
+      showAppToast(context, context.l10n.favorited);
+      return true;
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      if (!mounted) return false;
+      showAppToast(context, '$e');
+      return false;
     }
   }
 
@@ -3779,7 +3789,7 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
     final file = _currentFile;
     switch (action) {
       case _FileQuickAction.download:
-        Navigator.of(context).pop();
+        // 不关弹窗：反馈用 showAppToast，加入队列后还能接着做别的
         page._downloadOwnFile(file, share: _share);
       case _FileQuickAction.link:
       case _FileQuickAction.qr:
@@ -3808,7 +3818,6 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
     final page = widget.page;
     final file = _currentFile;
     final qr = _menuTarget == _FileQuickAction.qr;
-    Navigator.of(context).pop();
     if (qr) {
       if (direct) {
         page._showDirectLinkQr(file, share: _share);
@@ -3844,17 +3853,18 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
     });
   }
 
-  /// 收藏是开关型按钮：点开时先收起属性弹窗，再按新状态收藏 / 取消收藏
-  /// （提示条要能看见，弹窗在时会被盖住）。
+  /// 收藏是开关型按钮：就地切换选中态（乐观更新），失败再回滚。
+  ///
+  /// 不关弹窗——反馈走轻提示，按钮自己的选中态就是最直接的反馈。
   Future<void> _toggleFavorite(bool checked) async {
     final page = widget.page;
     final file = _currentFile;
-    Navigator.of(context).pop();
-    if (checked) {
-      await page._favoriteFile(file);
-    } else {
-      await page._unfavoriteFile(file);
-    }
+    setState(() => _favorite = checked);
+    final ok = checked
+        ? await page._favoriteFile(file)
+        : await page._unfavoriteFile(file);
+    if (!mounted || ok) return;
+    setState(() => _favorite = !checked);
   }
 
   @override
@@ -4120,10 +4130,9 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
     final folder = _folder;
     switch (action) {
       case _FolderQuickAction.link:
-        Navigator.of(context).pop();
+        // 不关弹窗：复制完弹轻提示，可以接着扫码 / 收藏
         page._copyFolderShareLink(folder, share: _share);
       case _FolderQuickAction.qr:
-        Navigator.of(context).pop();
         page._showFolderQr(folder, share: _share);
       case _FolderQuickAction.quickAccess:
         // 开关型留在弹窗里，选中态即时更新（提示条不参与）
@@ -4136,16 +4145,16 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
     }
   }
 
-  /// 收藏：与文件属性一致，先收起弹窗再收藏 / 取消收藏（提示条要能看见）。
+  /// 收藏：与文件属性一致，就地切换选中态（乐观更新），失败回滚。
   Future<void> _toggleFavorite(bool checked) async {
     final page = widget.page;
     final folder = _folder;
-    Navigator.of(context).pop();
-    if (checked) {
-      await page._favoriteFolder(folder);
-    } else {
-      await page._unfavoriteFolder(folder);
-    }
+    setState(() => _favorite = checked);
+    final ok = checked
+        ? await page._favoriteFolder(folder)
+        : await page._unfavoriteFolder(folder);
+    if (!mounted || ok) return;
+    setState(() => _favorite = !checked);
   }
 
   Future<void> _editInfo() async {

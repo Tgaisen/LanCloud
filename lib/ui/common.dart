@@ -400,11 +400,132 @@ int lzSizeToBytes(String raw) {
   }
 }
 
-Future<void> copyText(BuildContext context, String text) async {
+/// 复制文本并给出反馈。
+///
+/// [asToast] 为真时用 [showAppToast]：底部弹窗打开时 SnackBar 会被弹窗
+/// 挡住，这类「在弹窗里完成的动作」必须用浮在最上层的轻提示。
+Future<void> copyText(
+  BuildContext context,
+  String text, {
+  bool asToast = false,
+}) async {
   await Clipboard.setData(ClipboardData(text: text));
-  if (context.mounted) {
+  if (!context.mounted) return;
+  if (asToast) {
+    showAppToast(context, context.l10n.copiedToClipboard);
+  } else {
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(context.l10n.copiedToClipboard)));
+  }
+}
+
+/// 当前正在显示的轻提示（同一时间只留一个，避免叠在一起）。
+OverlayEntry? _activeToast;
+
+/// 应用内轻提示：盖在整个应用最上层（包括底部弹窗之上），约 2 秒后淡出。
+///
+/// 用在「弹窗里完成的动作」上——SnackBar 挂在 Scaffold 里，底部弹窗打开时
+/// 会被弹窗盖住，用户看不到反馈。位置放在顶部：弹窗占的是下半屏，顶部不会
+/// 和弹窗内容打架。
+void showAppToast(BuildContext context, String message) {
+  final overlay = Overlay.maybeOf(context, rootOverlay: true);
+  if (overlay == null) return;
+  _activeToast?.remove();
+  _activeToast = null;
+  late final OverlayEntry entry;
+  entry = OverlayEntry(
+    builder: (context) => _AppToast(
+      message: message,
+      onDone: () {
+        if (_activeToast == entry) _activeToast = null;
+        entry.remove();
+      },
+    ),
+  );
+  _activeToast = entry;
+  overlay.insert(entry);
+}
+
+/// 轻提示本体：淡入 + 轻微下滑，停留一会儿再淡出。
+class _AppToast extends StatefulWidget {
+  const _AppToast({required this.message, required this.onDone});
+
+  final String message;
+  final VoidCallback onDone;
+
+  @override
+  State<_AppToast> createState() => _AppToastState();
+}
+
+class _AppToastState extends State<_AppToast>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 180),
+  );
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.forward();
+    // 停留 1.6s 再淡出：和 SnackBar 的短提示时长接近
+    _timer = Timer(const Duration(milliseconds: 1600), () async {
+      if (!mounted) return;
+      await _controller.reverse();
+      if (mounted) widget.onDone();
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Positioned(
+      top: MediaQuery.paddingOf(context).top + 12,
+      left: 0,
+      right: 0,
+      child: IgnorePointer(
+        child: FadeTransition(
+          opacity: _controller,
+          child: SlideTransition(
+            position:
+                Tween<Offset>(
+                  begin: const Offset(0, -0.3),
+                  end: Offset.zero,
+                ).animate(
+                  CurvedAnimation(
+                    parent: _controller,
+                    curve: Curves.easeOutCubic,
+                  ),
+                ),
+            child: Center(
+              child: Material(
+                color: scheme.inverseSurface,
+                elevation: 3,
+                shape: const StadiumBorder(),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
+                  child: Text(
+                    widget.message,
+                    style: TextStyle(color: scheme.onInverseSurface),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -1095,33 +1216,37 @@ Future<void> showQrDialog(
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: ColoredBox(
-              color: Colors.white,
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                // 用 QrPainter + CustomPaint 而不是 QrImageView：后者内部是
-                // LayoutBuilder，放进 AlertDialog（用 IntrinsicWidth 量内容）会在
-                // debug 下抛 "LayoutBuilder does not support returning intrinsic
-                // dimensions"，弹窗只剩遮罩；CustomPaint 没有这个问题。
-                child: SizedBox(
-                  width: 200,
-                  height: 200,
-                  // 二维码本身是装饰：链接和提取码就在下面，读屏读文字即可
-                  child: ExcludeSemantics(
-                    child: CustomPaint(
-                      painter: QrPainter(data: url, version: QrVersions.auto),
+          // 二维码本身就是分享链接，弹窗里不再重复显示链接文本；读屏用户
+          // 通过这层语义标签拿到地址。
+          Semantics(
+            image: true,
+            label: url,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: ColoredBox(
+                color: Colors.white,
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  // 用 QrPainter + CustomPaint 而不是 QrImageView：后者内部是
+                  // LayoutBuilder，放进 AlertDialog（用 IntrinsicWidth 量内容）会在
+                  // debug 下抛 "LayoutBuilder does not support returning intrinsic
+                  // dimensions"，弹窗只剩遮罩；CustomPaint 没有这个问题。
+                  child: SizedBox(
+                    width: 200,
+                    height: 200,
+                    child: ExcludeSemantics(
+                      child: CustomPaint(
+                        painter: QrPainter(data: url, version: QrVersions.auto),
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
           ),
-          const SizedBox(height: 12),
-          SelectableText(url, style: Theme.of(context).textTheme.bodySmall),
+          // 有提取码时仍然提示一下：二维码里只有链接，不含提取码
           if (pwd.isNotEmpty) ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: 12),
             Text(context.l10n.passwordLabel(pwd)),
           ],
         ],
@@ -1130,13 +1255,6 @@ Future<void> showQrDialog(
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(),
           child: Text(context.l10n.close),
-        ),
-        FilledButton(
-          onPressed: () {
-            Navigator.of(dialogContext).pop();
-            copyText(context, url);
-          },
-          child: Text(context.l10n.copyLink),
         ),
       ],
     ),
