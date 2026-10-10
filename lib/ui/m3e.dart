@@ -367,6 +367,27 @@ class M3eConnectedButtonGroup<T> extends StatelessWidget {
 
 /// ──────────────────── 标准（spaced）图标按钮组 ────────────────────
 
+/// 标准图标按钮组的默认按钮间距。
+const double kM3EIconButtonSpacing = 6;
+
+/// 标准图标按钮组里单个按钮的宽度：按可用宽度均分，夹在 [minWidth] 与
+/// [maxWidth] 之间。
+///
+/// 调用方要算按钮几何时（例如把弹出菜单对准被点的那一段）用同一个函数，
+/// 保证和组件内部算出来的宽度一致。
+double m3eIconButtonWidth(
+  double available,
+  int count, {
+  double spacing = kM3EIconButtonSpacing,
+  double minWidth = 48,
+  double maxWidth = 80,
+}) {
+  assert(count > 0);
+  return ((available - spacing * (count - 1)) / count)
+      .clamp(minWidth, maxWidth)
+      .toDouble();
+}
+
 /// [M3EIconButtonGroup] 里的一个纯图标按钮。
 class M3EIconAction<T> {
   const M3EIconAction({
@@ -480,9 +501,13 @@ class M3EIconButtonGroup<T> extends StatelessWidget {
         final double available = constraints.maxWidth.isFinite
             ? constraints.maxWidth
             : maxWidth * count + gap;
-        final double width = ((available - gap) / count)
-            .clamp(minWidth, maxWidth)
-            .toDouble();
+        final double width = m3eIconButtonWidth(
+          available,
+          count,
+          spacing: spacing,
+          minWidth: minWidth,
+          maxWidth: maxWidth,
+        );
         // 窄窗口一行放不下时不换行，交给组横向滚动
         final bool scroll = width * count + gap > available + 0.5;
         return M3EToggleButtonGroup(

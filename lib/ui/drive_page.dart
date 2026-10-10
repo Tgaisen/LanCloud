@@ -2240,45 +2240,6 @@ class _DrivePageState extends State<DrivePage>
     }
   }
 
-  /// 文件属性弹窗里「复制链接 / 二维码」的二选一菜单：
-  /// 分享链接（带提取码）还是下载直链。
-  Future<void> _showFileLinkMenu(LzFile file, {required bool qr}) async {
-    final l10n = context.l10n;
-    final choice = await showAppSheet<String>(
-      context,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            leading: Icon(qr ? Icons.qr_code : Icons.link_outlined),
-            title: Text(qr ? l10n.shareLinkQr : l10n.copyShareLink),
-            onTap: () => Navigator.of(context).pop('share'),
-          ),
-          ListTile(
-            leading: Icon(qr ? Icons.qr_code : Icons.download_outlined),
-            title: Text(qr ? l10n.directLinkQr : l10n.copyDirectLink),
-            onTap: () => Navigator.of(context).pop('direct'),
-          ),
-        ],
-      ),
-    );
-    if (!mounted || choice == null) return;
-    final share = choice == 'share';
-    if (qr) {
-      if (share) {
-        await _showFileQr(file);
-      } else {
-        await _showDirectLinkQr(file);
-      }
-    } else {
-      if (share) {
-        await _copyShareLink(file);
-      } else {
-        await _copyDirectLink(file);
-      }
-    }
-  }
-
   /// 取消收藏（收藏表按分享链接去重，所以要先取回分享信息）。
   Future<void> _unfavoriteFile(LzFile file) async {
     final app = context.read<AppController>();
@@ -3719,6 +3680,10 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
   bool _loading = true;
   bool _favorite = false;
 
+  /// 「复制链接 / 二维码」二选一菜单：挂在按钮组上弹出（MD3E menu）。
+  final MenuController _linkMenu = MenuController();
+  _FileQuickAction? _menuTarget;
+
   @override
   void initState() {
     super.initState();
@@ -3760,16 +3725,45 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
         Navigator.of(context).pop();
         page._downloadOwnFile(file);
       case _FileQuickAction.link:
-        Navigator.of(context).pop();
-        page._showFileLinkMenu(file, qr: false);
       case _FileQuickAction.qr:
-        Navigator.of(context).pop();
-        page._showFileLinkMenu(file, qr: true);
+        _openLinkMenu(action);
       case _FileQuickAction.password:
         _editPassword();
       case _FileQuickAction.favorite:
         // 开关型按钮走 onToggled，这里不会命中
         break;
+    }
+  }
+
+  /// 打开二选一菜单。菜单内容依赖被点的是「复制链接」还是「二维码」，
+  /// 所以先重建那一帧，再真正弹出来。
+  void _openLinkMenu(_FileQuickAction target) {
+    if (_menuTarget != target) setState(() => _menuTarget = target);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _linkMenu.open();
+    });
+  }
+
+  /// 菜单里选了「分享链接」还是「下载直链」。
+  ///
+  /// 选完先收起属性弹窗再执行：复制提示条 / 二维码弹窗才不会被属性弹窗盖住。
+  void _pickLinkMenu({required bool direct}) {
+    final page = widget.page;
+    final file = _file;
+    final qr = _menuTarget == _FileQuickAction.qr;
+    Navigator.of(context).pop();
+    if (qr) {
+      if (direct) {
+        page._showDirectLinkQr(file);
+      } else {
+        page._showFileQr(file);
+      }
+    } else {
+      if (direct) {
+        page._copyDirectLink(file);
+      } else {
+        page._copyShareLink(file);
+      }
     }
   }
 
@@ -3819,50 +3813,94 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
         // 宽度自适应弹窗，最多 80dp）
         Padding(
           padding: const EdgeInsets.fromLTRB(24, 4, 24, 8),
-          child: M3EIconButtonGroup<_FileQuickAction>(
-            items: [
-              M3EIconAction(
-                value: _FileQuickAction.download,
-                icon: Icons.download_outlined,
-                checkedIcon: Icons.download,
-                tooltip: l10n.download,
-              ),
-              M3EIconAction(
-                value: _FileQuickAction.link,
-                icon: Icons.link_outlined,
-                checkedIcon: Icons.link,
-                tooltip: l10n.copyLink,
-              ),
-              M3EIconAction(
-                value: _FileQuickAction.qr,
-                icon: Icons.qr_code,
-                checkedIcon: Icons.qr_code,
-                tooltip: l10n.showQr,
-              ),
-              M3EIconAction(
-                value: _FileQuickAction.favorite,
-                icon: Icons.star_border,
-                checkedIcon: Icons.star_outline,
-                tooltip: _favorite ? l10n.unfavorite : l10n.addFavorite,
-                checked: _favorite,
-                isToggle: true,
-              ),
-              M3EIconAction(
-                value: _FileQuickAction.password,
-                icon: Icons.password,
-                checkedIcon: Icons.password,
-                tooltip: l10n.accessPassword,
-                checked: file.hasPwd,
-                isToggle: true,
-              ),
-            ],
-            onPressed: _runQuickAction,
-            onToggled: (action, checked) {
-              if (action == _FileQuickAction.favorite) {
-                _toggleFavorite(checked);
-              } else if (action == _FileQuickAction.password) {
-                _editPassword();
-              }
+          child: LayoutBuilder(
+            builder: (BuildContext context, BoxConstraints constraints) {
+              // 菜单要对准被点的那一段：用和组件同一个公式算段宽
+              final double segment = m3eIconButtonWidth(
+                constraints.maxWidth,
+                5,
+              );
+              final int targetIndex = switch (_menuTarget) {
+                _FileQuickAction.link => 1,
+                _FileQuickAction.qr => 2,
+                _ => 0,
+              };
+              return MenuAnchor(
+                controller: _linkMenu,
+                // 菜单顶边贴按钮底边，横向对准被点的那一段（余下的
+                // 颜色 / 圆角 / 高度 / 最大宽度都用 M3 菜单默认值）
+                style: const MenuStyle(alignment: Alignment.bottomLeft),
+                alignmentOffset: Offset(
+                  targetIndex * (segment + kM3EIconButtonSpacing),
+                  0,
+                ),
+                menuChildren: [
+                  MenuItemButton(
+                    leadingIcon: const Icon(Icons.link_outlined),
+                    onPressed: () => _pickLinkMenu(direct: false),
+                    child: Text(
+                      _menuTarget == _FileQuickAction.qr
+                          ? l10n.shareLinkQr
+                          : l10n.copyShareLink,
+                    ),
+                  ),
+                  MenuItemButton(
+                    leadingIcon: const Icon(Icons.download_outlined),
+                    onPressed: () => _pickLinkMenu(direct: true),
+                    child: Text(
+                      _menuTarget == _FileQuickAction.qr
+                          ? l10n.directLinkQr
+                          : l10n.copyDirectLink,
+                    ),
+                  ),
+                ],
+                child: M3EIconButtonGroup<_FileQuickAction>(
+                  items: [
+                    M3EIconAction(
+                      value: _FileQuickAction.download,
+                      icon: Icons.download_outlined,
+                      checkedIcon: Icons.download,
+                      tooltip: l10n.download,
+                    ),
+                    M3EIconAction(
+                      value: _FileQuickAction.link,
+                      icon: Icons.link_outlined,
+                      checkedIcon: Icons.link,
+                      tooltip: l10n.copyLink,
+                    ),
+                    M3EIconAction(
+                      value: _FileQuickAction.qr,
+                      icon: Icons.qr_code,
+                      checkedIcon: Icons.qr_code,
+                      tooltip: l10n.showQr,
+                    ),
+                    M3EIconAction(
+                      value: _FileQuickAction.favorite,
+                      icon: Icons.star_border,
+                      checkedIcon: Icons.star_outline,
+                      tooltip: _favorite ? l10n.unfavorite : l10n.addFavorite,
+                      checked: _favorite,
+                      isToggle: true,
+                    ),
+                    M3EIconAction(
+                      value: _FileQuickAction.password,
+                      icon: Icons.lock_outline,
+                      checkedIcon: Icons.lock_outline,
+                      tooltip: l10n.accessPassword,
+                      checked: file.hasPwd,
+                      isToggle: true,
+                    ),
+                  ],
+                  onPressed: _runQuickAction,
+                  onToggled: (action, checked) {
+                    if (action == _FileQuickAction.favorite) {
+                      _toggleFavorite(checked);
+                    } else if (action == _FileQuickAction.password) {
+                      _editPassword();
+                    }
+                  },
+                ),
+              );
             },
           ),
         ),
@@ -4140,8 +4178,8 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
                 ),
                 M3EIconAction(
                   value: _FolderQuickAction.password,
-                  icon: Icons.password,
-                  checkedIcon: Icons.password,
+                  icon: Icons.lock_outline,
+                  checkedIcon: Icons.lock_outline,
                   tooltip: context.l10n.accessPassword,
                   checked: _hasPwd,
                   isToggle: true,

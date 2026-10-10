@@ -5,9 +5,11 @@ import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/delegates.dart';
+import 'package:lancloud/ui/app_icons.dart';
 import 'package:lancloud/ui/drive_page.dart';
 import 'package:lancloud/ui/m3e.dart';
-import 'package:material_ui/material_ui.dart';
+// 应用用的是自己的 Symbols 图标集，和框架的 Icons 同名，按应用代码的习惯隐藏后者
+import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:provider/provider.dart';
 
 /// 固定返回一个文件 + 一个文件夹，并给出可预测的分享信息。
@@ -145,6 +147,14 @@ void main() {
     }
     // 提取码：文件本身带密码，按钮直接显示选中态
     expect(_toggleButton(tester, '访问密码').checked, isTrue);
+    // 访问密码用锁图标
+    expect(
+      find.descendant(
+        of: find.byType(M3EBottomSheet),
+        matching: find.byIcon(Icons.lock_outline),
+      ),
+      findsOneWidget,
+    );
 
     expect(_sheetText('修改简介'), findsOneWidget);
     expect(_sheetText('移动'), findsOneWidget);
@@ -154,7 +164,7 @@ void main() {
     expect(_sheetText('更多操作'), findsNothing);
   });
 
-  testWidgets('文件属性弹窗：复制链接点开是「分享链接 / 下载直链」二选一', (tester) async {
+  testWidgets('文件属性弹窗：复制链接弹出 MD3E 菜单（分享链接 / 下载直链）', (tester) async {
     final app = _FakeApp(_FakeClient());
     await _pumpDrive(tester, app);
 
@@ -163,8 +173,9 @@ void main() {
     await tester.tap(find.byTooltip('复制链接'));
     await _settleSheet(tester);
 
-    // 属性弹窗先收起，再弹出二选一菜单
-    expect(find.byType(M3EToggleButton), findsNothing);
+    // 菜单是挂在按钮组上的弹出菜单：属性弹窗还在，菜单在它上面
+    expect(find.byType(M3EToggleButton), findsNWidgets(5));
+    expect(find.byType(MenuItemButton), findsNWidgets(2));
     expect(find.text('复制分享链接'), findsOneWidget);
     expect(find.text('复制下载直链'), findsOneWidget);
   });
@@ -181,6 +192,13 @@ void main() {
       expect(_toggleButton(tester, tooltip), isNotNull, reason: tooltip);
     }
     expect(_toggleButton(tester, '访问密码').checked, isTrue);
+    expect(
+      find.descendant(
+        of: find.byType(M3EBottomSheet),
+        matching: find.byIcon(Icons.lock_outline),
+      ),
+      findsOneWidget,
+    );
 
     expect(_sheetText('修改信息'), findsOneWidget);
     expect(_sheetText('打开链接'), findsOneWidget);

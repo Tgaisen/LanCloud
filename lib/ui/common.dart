@@ -1404,7 +1404,9 @@ class _MeasuredSheetState extends State<MeasuredSheet>
             ),
             child: NotificationListener<SizeChangedLayoutNotification>(
               onNotification: (notification) {
-                _measure();
+                // 这个通知是在 layout 阶段发的，直接 setState 会触发
+                // 「Build scheduled during frame」；挪到帧末再量一次尺寸。
+                WidgetsBinding.instance.addPostFrameCallback((_) => _measure());
                 return false;
               },
               child: SizeChangedLayoutNotifier(
