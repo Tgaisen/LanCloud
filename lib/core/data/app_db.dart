@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:path/path.dart' as p;
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
@@ -228,6 +230,22 @@ class AppDb {
   /// 并把库文件放在应用支持目录（`%APPDATA%\<包名>\lancloud`），
   /// 而不是跟着 exe 走，避免安装在 Program Files 时没有写权限。
   Future<String> _databaseDirectory() async {
+    // 测试可以显式指定目录（例如要预置一个旧版本库来验迁移）；
+    // 没有指定时，测试环境给每个测试文件一个自己的临时目录。
+    final override = debugDatabaseDirectory;
+    if (override != null) {
+      final dir = Directory(override);
+      if (!dir.existsSync()) dir.createSync(recursive: true);
+      return override;
+    }
+    // 测试环境（flutter test）给每个测试文件（独立 isolate）一个自己的数据库目录：
+    // 并行跑的测试文件共用同一个 lancloud.db 时会互相污染、偶发 database is locked
+    // （表现为随机某个用例失败、重跑就过）。生产运行不会带上这个环境变量。
+    if (Platform.environment['FLUTTER_TEST'] == 'true') {
+      return _testDatabaseDir ??= Directory.systemTemp
+          .createTempSync('lancloud_test_db_')
+          .path;
+    }
     if (!PlatformSupport.isDesktop) return getDatabasesPath();
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
@@ -240,6 +258,13 @@ class AppDb {
       return databaseFactory.getDatabasesPath();
     }
   }
+
+  /// 测试环境下的数据库目录（每个测试文件只建一次）。
+  static String? _testDatabaseDir;
+
+  /// 测试用：显式指定数据库目录（例如迁移测试要预置旧版本库）。
+  @visibleForTesting
+  static String? debugDatabaseDirectory;
 
   // ---------------------------------------------------------------- transfers
 

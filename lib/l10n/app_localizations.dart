@@ -269,7 +269,7 @@ abstract class AppLocalizations {
   /// No description provided for @favoritesHint.
   ///
   /// In zh, this message translates to:
-  /// **'收藏的文件和分享会出现在这里'**
+  /// **'暂无收藏内容'**
   String get favoritesHint;
 
   /// No description provided for @favoriteFolders.
@@ -761,7 +761,7 @@ abstract class AppLocalizations {
   /// No description provided for @classicBlue.
   ///
   /// In zh, this message translates to:
-  /// **'经典蓝'**
+  /// **'默认蓝'**
   String get classicBlue;
 
   /// No description provided for @teal.

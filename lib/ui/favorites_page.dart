@@ -641,9 +641,12 @@ class _FavoritesPageState extends State<FavoritesPage>
                           ),
                         ),
                       // 底栏盖在正文上方（extendBody）时，补足列表末尾留白
-                      SliverToBoxAdapter(
-                        child: SizedBox(height: shellBottomBarInset(context)),
-                      ),
+                      // 空列表时不要加：占满高度的空状态 / 加载中占位已经算好
+                      // 可见区域，再加这份留白会让空白提示能往下滑
+                      if (folders.isNotEmpty || files.isNotEmpty)
+                        SliverToBoxAdapter(
+                          child: SizedBox(height: shellBottomBarInset(context)),
+                        ),
                     ],
                   ),
                 ),

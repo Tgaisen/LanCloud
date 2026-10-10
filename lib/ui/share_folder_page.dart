@@ -491,11 +491,8 @@ class _ShareFolderPageState extends State<ShareFolderPage>
         ? const Padding(
             padding: EdgeInsets.symmetric(vertical: 16),
             child: Center(
-              child: SizedBox(
-                width: 24,
-                height: 24,
-                child: M3eLoadingIndicator(size: 24),
-              ),
+              // 与网盘页「加载下一页」同款圆形指示条
+              child: M3eCircularProgressIndicator(size: 24, strokeWidth: 3),
             ),
           )
         : _hasMore
@@ -528,6 +525,9 @@ class _ShareFolderPageState extends State<ShareFolderPage>
         },
         child: TopBarOverlayScaffold(
           controller: _scroll,
+          // 空文件夹时不要再补系统导航栏留白：占满高度的空状态已经算好
+          // 可见区域，多出来的这一截会让「这里还没有文件」能往下滑
+          bottomSafeInset: !isEmpty,
           // 顶栏空白处点按回到顶部由 TopBarOverlayScaffold 统一处理。
           // 长按进入多选时整条顶栏淡入淡出（与网盘页同款），不要直接换掉。
           appBar: PreferredSize(

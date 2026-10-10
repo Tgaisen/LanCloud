@@ -104,7 +104,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get myFavorites => 'Favorites';
 
   @override
-  String get favoritesHint => 'Favorited files and shares will appear here';
+  String get favoritesHint => 'No favorites yet';
 
   @override
   String get favoriteFolders => 'Folders';
@@ -369,7 +369,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get themeColorKeywords => 'accent color theme';
 
   @override
-  String get classicBlue => 'Classic blue';
+  String get classicBlue => 'Default blue';
 
   @override
   String get teal => 'Teal';

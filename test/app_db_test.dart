@@ -22,9 +22,12 @@ const _v4Schema = [
 ];
 
 void main() {
-  setUpAll(() {
+  setUpAll(() async {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
+    // 迁移用例要预置旧版本库并让 AppDb 打开同一个文件：
+    // 显式指定目录（默认测试环境会给每个测试文件一个独立临时目录）
+    AppDb.debugDatabaseDirectory = await getDatabasesPath();
   });
 
   test('v4 → v5：快速访问独立成表并按账号区分，收藏不受影响', () async {

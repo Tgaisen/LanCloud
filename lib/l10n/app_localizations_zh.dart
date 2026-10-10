@@ -104,7 +104,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get myFavorites => '收藏';
 
   @override
-  String get favoritesHint => '收藏的文件和分享会出现在这里';
+  String get favoritesHint => '暂无收藏内容';
 
   @override
   String get favoriteFolders => '文件夹';
@@ -361,7 +361,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get themeColorKeywords => '配色 颜色 主题';
 
   @override
-  String get classicBlue => '经典蓝';
+  String get classicBlue => '默认蓝';
 
   @override
   String get teal => '青绿';

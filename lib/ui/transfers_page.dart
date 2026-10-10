@@ -329,9 +329,12 @@ class _TransfersPageState extends State<TransfersPage>
                         ),
                       ),
                       // 底栏盖在正文上方（extendBody）时，补足列表末尾留白
-                      SliverToBoxAdapter(
-                        child: SizedBox(height: shellBottomBarInset(context)),
-                      ),
+                      // 空列表时不要加：占满高度的空状态已经算好可见区域，
+                      // 再加这份留白会让「暂无上传任务」这类提示能往下滑
+                      if (tasks.isNotEmpty)
+                        SliverToBoxAdapter(
+                          child: SizedBox(height: shellBottomBarInset(context)),
+                        ),
                     ],
                   ),
                 ),
