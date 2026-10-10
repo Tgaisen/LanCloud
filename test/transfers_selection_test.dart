@@ -603,4 +603,63 @@ void main() {
     }
     app.dispose();
   });
+
+  // 大屏（宽度 ≥ 640dp，底栏变侧栏）时多选条要和网盘页同色（surfaceContainer）；
+  // 小屏维持 surface。AppBar 自己必须透明，否则它会把外层 Material 的颜色盖住。
+  testWidgets('多选条底色：大屏用 surfaceContainer、小屏用 surface', (tester) async {
+    Future<(AppController, Color?, Color?)> pumpAt(Size size) async {
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = size;
+      final (app, _) = await host(tester);
+      await tester.longPress(find.text('a.zip'));
+      await tester.pumpAndSettle();
+
+      final material = tester.widget<Material>(
+        find
+            .ancestor(
+              of: find.byKey(const ValueKey('transfers-selection-appbar')),
+              matching: find.byType(Material),
+            )
+            .first,
+      );
+      final scheme = Theme.of(
+        tester.element(
+          find.byKey(const ValueKey('transfers-selection-appbar')),
+        ),
+      ).colorScheme;
+      // 退出多选再收尾：页面 dispose 时会去改控制器，不能等到控制器释放之后
+      await tester.tap(find.byTooltip('退出多选'));
+      await tester.pumpAndSettle();
+      return (app, material.color, scheme.surfaceContainer);
+    }
+
+    addTearDown(tester.view.reset);
+
+    // 大屏：外层底色 = surfaceContainer，AppBar 透明（不盖色）
+    final (bigApp, bigColor, bigSurfaceContainer) = await pumpAt(
+      const Size(1200, 800),
+    );
+    expect(bigColor, bigSurfaceContainer);
+    expect(
+      tester
+          .widget<AppBar>(
+            find.byKey(const ValueKey('transfers-selection-appbar')),
+          )
+          .backgroundColor,
+      Colors.transparent,
+    );
+    bigApp.dispose();
+
+    // 小屏：维持原来的 surface
+    final (smallApp, smallColor, _) = await pumpAt(const Size(420, 900));
+    expect(
+      smallColor,
+      Theme.of(
+        tester.element(
+          find.byKey(const ValueKey('transfers-selection-appbar')),
+        ),
+      ).colorScheme.surface,
+    );
+    smallApp.dispose();
+  });
 }

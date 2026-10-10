@@ -442,6 +442,10 @@ class _TransfersPageState extends State<TransfersPage>
                           MediaQuery.paddingOf(context).top + kToolbarHeight,
                       child: AppBar(
                         key: const ValueKey('transfers-selection-appbar'),
+                        // 底色由外层 Material 提供（与网盘页多选条一致），
+                        // 否则 AppBar 会用自己的 surface 把外层颜色盖住
+                        backgroundColor: Colors.transparent,
+                        scrolledUnderElevation: 0,
                         leading: IconButton(
                           tooltip: l10n.exitSelection,
                           icon: const Icon(Icons.close),

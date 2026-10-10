@@ -34,6 +34,11 @@ void main() {
     // 只剩一个「关闭」按钮
     expect(find.text('关闭'), findsOneWidget);
     expect(find.text('复制链接'), findsNothing);
+    // 关闭按钮用原来的主操作样式（填充按钮）
+    expect(
+      find.ancestor(of: find.text('关闭'), matching: find.byType(FilledButton)),
+      findsOneWidget,
+    );
     // 提取码仍然提示（二维码里不含它）
     expect(find.textContaining('1234'), findsOneWidget);
   });

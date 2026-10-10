@@ -1252,7 +1252,8 @@ Future<void> showQrDialog(
         ],
       ),
       actions: [
-        TextButton(
+        // 和原来「复制链接」一致的主操作样式：填充按钮
+        FilledButton(
           onPressed: () => Navigator.of(dialogContext).pop(),
           child: Text(context.l10n.close),
         ),
