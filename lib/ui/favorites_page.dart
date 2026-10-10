@@ -331,12 +331,11 @@ class _FavoritesPageState extends State<FavoritesPage>
 
   // ------------------------------------------------------------------ 条目
 
+  /// 条目的副标题：列表已经按「文件夹 / 文件」分组，这里不再重复类型；
+  /// 文件保留体积信息。
   String _subtitle(FavoriteItem item) {
-    final l10n = context.l10n;
-    if (item.kind == 'shareFolder') return l10n.folder;
-    final parts = <String>[l10n.file];
-    if (item.size.isNotEmpty) parts.add(prettyLzSize(item.size));
-    return parts.join(' · ');
+    if (item.kind == 'shareFolder' || item.size.isEmpty) return '';
+    return prettyLzSize(item.size);
   }
 
   Future<void> _open(FavoriteItem item) async {

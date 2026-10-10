@@ -389,9 +389,6 @@ class _TransfersPageState extends State<TransfersPage>
                               child: M3eConnectedButtonGroup<int>(
                                 values: const [0, 1],
                                 selected: _tab,
-                                // 上传 / 下载是次要切换：用 tonal 配色，
-                                // 不与页面里的主要操作抢视觉焦点
-                                style: M3EButtonStyle.tonal,
                                 onSelected: (value) {
                                   if (value == _tab) return;
                                   setState(() => _tab = value);

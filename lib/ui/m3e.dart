@@ -283,9 +283,8 @@ class M3eCircularProgressIndicator extends StatelessWidget {
 ///
 /// 按钮是否带图标由调用方决定（[iconOf] 传空即纯文字），沿用原来的图标设置。
 ///
-/// 默认用 `filled` 配色：未选中是 surface container 底、选中是 primary 底
-/// （on primary 文字）；次要的切换条（如传输页上传/下载）可以传
-/// [M3EButtonStyle.tonal]，选中项改用 secondaryContainer。
+/// 默认用 `tonal` 配色：这是应用里切换条的统一观感——比 `filled` 低调，
+/// 不与页面里的主要操作抢焦点（要更强调时显式传 [M3EButtonStyle.filled]）。
 class M3eConnectedButtonGroup<T> extends StatelessWidget {
   const M3eConnectedButtonGroup({
     super.key,
@@ -296,7 +295,7 @@ class M3eConnectedButtonGroup<T> extends StatelessWidget {
     this.iconOf,
     this.size = M3EButtonSize.sm,
     this.expand = true,
-    this.style = M3EButtonStyle.filled,
+    this.style = M3EButtonStyle.tonal,
     this.semanticLabel,
   });
 
