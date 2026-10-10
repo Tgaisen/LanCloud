@@ -2202,6 +2202,117 @@ class _DrivePageState extends State<DrivePage>
     }
   }
 
+  /// 解析文件的下载直链（与 [_downloadOwnFile] 同一套：先取分享信息，
+  /// 再换出可直连下载的地址）。
+  Future<String?> _resolveFileDirectLink(LzFile file) async {
+    final app = context.read<AppController>();
+    final client = app.client;
+    if (client == null) return null;
+    final info = await client.shareInfoOfFile(file.id);
+    final direct = await app.publicClient.resolveFileShare(
+      info.url,
+      pwd: info.pwd,
+    );
+    return direct.url;
+  }
+
+  /// 复制下载直链。
+  Future<void> _copyDirectLink(LzFile file) async {
+    try {
+      final url = await _resolveFileDirectLink(file);
+      if (!mounted || url == null) return;
+      await copyText(context, url);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    }
+  }
+
+  /// 用二维码显示下载直链。
+  Future<void> _showDirectLinkQr(LzFile file) async {
+    try {
+      final url = await _resolveFileDirectLink(file);
+      if (!mounted || url == null) return;
+      await _showQr(file.name, url, '');
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    }
+  }
+
+  /// 文件属性弹窗里「复制链接 / 二维码」的二选一菜单：
+  /// 分享链接（带提取码）还是下载直链。
+  Future<void> _showFileLinkMenu(LzFile file, {required bool qr}) async {
+    final l10n = context.l10n;
+    final choice = await showAppSheet<String>(
+      context,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: Icon(qr ? Icons.qr_code : Icons.link_outlined),
+            title: Text(qr ? l10n.shareLinkQr : l10n.copyShareLink),
+            onTap: () => Navigator.of(context).pop('share'),
+          ),
+          ListTile(
+            leading: Icon(qr ? Icons.qr_code : Icons.download_outlined),
+            title: Text(qr ? l10n.directLinkQr : l10n.copyDirectLink),
+            onTap: () => Navigator.of(context).pop('direct'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || choice == null) return;
+    final share = choice == 'share';
+    if (qr) {
+      if (share) {
+        await _showFileQr(file);
+      } else {
+        await _showDirectLinkQr(file);
+      }
+    } else {
+      if (share) {
+        await _copyShareLink(file);
+      } else {
+        await _copyDirectLink(file);
+      }
+    }
+  }
+
+  /// 取消收藏（收藏表按分享链接去重，所以要先取回分享信息）。
+  Future<void> _unfavoriteFile(LzFile file) async {
+    final app = context.read<AppController>();
+    final client = app.client;
+    if (client == null) return;
+    try {
+      final info = await client.shareInfoOfFile(file.id);
+      await app.db.removeFavorite(info.url);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(context.l10n.unfavorited)));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    }
+  }
+
+  /// 取消收藏文件夹。
+  Future<void> _unfavoriteFolder(LzFolder folder) async {
+    final app = context.read<AppController>();
+    final client = app.client;
+    if (client == null) return;
+    try {
+      final info = await client.shareInfoOfFolder(folder.id);
+      await app.db.removeFavorite(info.url);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(context.l10n.unfavorited)));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    }
+  }
+
   Future<void> _favoriteFile(LzFile file) async {
     final app = context.read<AppController>();
     final client = app.client;
@@ -3599,10 +3710,14 @@ class _FileInfoSheet extends StatefulWidget {
   State<_FileInfoSheet> createState() => _FileInfoSheetState();
 }
 
+/// 文件属性弹窗顶部那一行常用操作（图标按钮组）。
+enum _FileQuickAction { download, link, qr, favorite, password }
+
 class _FileInfoSheetState extends State<_FileInfoSheet> {
   late LzFile _file = widget.file;
   String _desc = '';
   bool _loading = true;
+  bool _favorite = false;
 
   @override
   void initState() {
@@ -3611,7 +3726,8 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
   }
 
   Future<void> _refresh() async {
-    final client = context.read<AppController>().client;
+    final app = context.read<AppController>();
+    final client = app.client;
     // 下载数：重新取文件所在分页的条目，命中后同步列表（找不到就沿用现值）
     final fresh = await widget.page._freshFileEntry(widget.file.id);
     if (!mounted) return;
@@ -3619,14 +3735,62 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
       setState(() => _file = fresh);
       widget.page._replaceFileEntry(fresh);
     }
-    // 简介：每次都现取，不做缓存
     if (client != null) {
+      // 简介：每次都现取，不做缓存
       try {
         final desc = await client.fileDesc(widget.file.id);
         if (mounted) setState(() => _desc = desc);
       } catch (_) {}
+      // 收藏态：收藏表按分享链接去重，所以先取回分享信息再查
+      try {
+        final info = await client.shareInfoOfFile(widget.file.id);
+        final favorite = await app.db.isFavorite(info.url);
+        if (mounted) setState(() => _favorite = favorite);
+      } catch (_) {}
     }
     if (mounted) setState(() => _loading = false);
+  }
+
+  /// 普通动作按钮（下载 / 复制链接 / 二维码 / 访问密码）。
+  void _runQuickAction(_FileQuickAction action) {
+    final page = widget.page;
+    final file = _file;
+    switch (action) {
+      case _FileQuickAction.download:
+        Navigator.of(context).pop();
+        page._downloadOwnFile(file);
+      case _FileQuickAction.link:
+        Navigator.of(context).pop();
+        page._showFileLinkMenu(file, qr: false);
+      case _FileQuickAction.qr:
+        Navigator.of(context).pop();
+        page._showFileLinkMenu(file, qr: true);
+      case _FileQuickAction.password:
+        _editPassword();
+      case _FileQuickAction.favorite:
+        // 开关型按钮走 onToggled，这里不会命中
+        break;
+    }
+  }
+
+  /// 访问密码：弹窗盖在属性弹窗上（与文件夹属性一致），改完再刷新一次
+  /// 「有没有提取码」，让按钮的选中态跟上。
+  Future<void> _editPassword() async {
+    await widget.page._singleSetPasswd(_file);
+    if (mounted) await _refresh();
+  }
+
+  /// 收藏是开关型按钮：点开时先收起属性弹窗，再按新状态收藏 / 取消收藏
+  /// （提示条要能看见，弹窗在时会被盖住）。
+  Future<void> _toggleFavorite(bool checked) async {
+    final page = widget.page;
+    final file = _file;
+    Navigator.of(context).pop();
+    if (checked) {
+      await page._favoriteFile(file);
+    } else {
+      await page._unfavoriteFile(file);
+    }
   }
 
   @override
@@ -3651,20 +3815,71 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
           desc: _desc,
           loading: _loading,
         ),
+        // 常用操作：一行纯图标的标准按钮组（间距 6dp、md 尺寸、
+        // 宽度自适应弹窗，最多 80dp）
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 4, 24, 8),
+          child: M3EIconButtonGroup<_FileQuickAction>(
+            items: [
+              M3EIconAction(
+                value: _FileQuickAction.download,
+                icon: Icons.download_outlined,
+                checkedIcon: Icons.download,
+                tooltip: l10n.download,
+              ),
+              M3EIconAction(
+                value: _FileQuickAction.link,
+                icon: Icons.link_outlined,
+                checkedIcon: Icons.link,
+                tooltip: l10n.copyLink,
+              ),
+              M3EIconAction(
+                value: _FileQuickAction.qr,
+                icon: Icons.qr_code,
+                checkedIcon: Icons.qr_code,
+                tooltip: l10n.showQr,
+              ),
+              M3EIconAction(
+                value: _FileQuickAction.favorite,
+                icon: Icons.star_border,
+                checkedIcon: Icons.star_outline,
+                tooltip: _favorite ? l10n.unfavorite : l10n.addFavorite,
+                checked: _favorite,
+                isToggle: true,
+              ),
+              M3EIconAction(
+                value: _FileQuickAction.password,
+                icon: Icons.password,
+                checkedIcon: Icons.password,
+                tooltip: l10n.accessPassword,
+                checked: file.hasPwd,
+                isToggle: true,
+              ),
+            ],
+            onPressed: _runQuickAction,
+            onToggled: (action, checked) {
+              if (action == _FileQuickAction.favorite) {
+                _toggleFavorite(checked);
+              } else if (action == _FileQuickAction.password) {
+                _editPassword();
+              }
+            },
+          ),
+        ),
         ListTile(
-          leading: const Icon(Icons.download_outlined),
-          title: Text(l10n.download),
+          leading: const Icon(Icons.edit_note),
+          title: Text(l10n.editDesc),
           onTap: () {
             Navigator.of(context).pop();
-            page._downloadOwnFile(file);
+            page._singleSetDesc(file);
           },
         ),
         ListTile(
-          leading: const Icon(Icons.link_outlined),
-          title: Text(l10n.copyLink),
+          leading: const Icon(Icons.drive_file_move_outline),
+          title: Text(l10n.move),
           onTap: () {
             Navigator.of(context).pop();
-            page._copyShareLink(file);
+            page._moveSingleFile(file);
           },
         ),
         ListTile(
@@ -3676,35 +3891,11 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
           },
         ),
         ListTile(
-          leading: const Icon(Icons.qr_code),
-          title: Text(l10n.showQr),
-          onTap: () {
-            Navigator.of(context).pop();
-            page._showFileQr(file);
-          },
-        ),
-        ListTile(
-          leading: const Icon(Icons.star_outline),
-          title: Text(l10n.addFavorite),
-          onTap: () {
-            Navigator.of(context).pop();
-            page._favoriteFile(file);
-          },
-        ),
-        ListTile(
           leading: const Icon(Icons.delete_outline),
           title: Text(l10n.delete),
           onTap: () {
             Navigator.of(context).pop();
             page._deleteFile(file);
-          },
-        ),
-        ListTile(
-          leading: const Icon(Icons.more_horiz),
-          title: Text(l10n.moreActions),
-          onTap: () {
-            Navigator.of(context).pop();
-            page._fileMenuSheet(file);
           },
         ),
       ],
@@ -3714,6 +3905,9 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
 
 /// 文件夹属性弹窗：简介与统计信息变动快，不读缓存——每次打开都重新拉取，
 /// 拉取期间先展示列表里的现有简介并显示加载指示。
+/// 文件夹属性弹窗顶部那一行常用操作（图标按钮组）。
+enum _FolderQuickAction { link, qr, favorite, quickAccess, password }
+
 class _FolderInfoSheet extends StatefulWidget {
   const _FolderInfoSheet({required this.folder, required this.page});
 
@@ -3732,21 +3926,26 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
   /// 简介与统计信息都不再缓存：打开弹窗时总会重新拉取。
   bool _loading = true;
   bool _pinned = false;
+  bool _favorite = false;
+  late bool _hasPwd = widget.folder.hasPwd;
 
   @override
   void initState() {
     super.initState();
-    context
-        .read<AppController>()
-        .db
-        .isPinned(
-          context.read<AppController>().activeUid ?? '',
-          widget.folder.id,
-        )
-        .then((value) {
-          if (mounted) setState(() => _pinned = value);
-        });
+    _loadPinned();
     _fetch();
+  }
+
+  /// 读「是否已固定到快速访问」。读不到就按未固定显示——属性弹窗的其它
+  /// 内容不该被一次本地库读取失败拖下水。
+  Future<void> _loadPinned() async {
+    try {
+      final pinned = await context.read<AppController>().db.isPinned(
+        context.read<AppController>().activeUid ?? '',
+        widget.folder.id,
+      );
+      if (mounted) setState(() => _pinned = pinned);
+    } catch (_) {}
   }
 
   Future<void> _toggleQuickAccess() async {
@@ -3777,8 +3976,42 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
     id: widget.folder.id,
     name: _name,
     desc: _desc ?? widget.folder.desc,
-    hasPwd: widget.folder.hasPwd,
+    hasPwd: _hasPwd,
   );
+
+  /// 普通动作按钮（复制链接 / 二维码 / 快速访问 / 访问密码）。
+  void _runQuickAction(_FolderQuickAction action) {
+    final page = widget.page;
+    final folder = _folder;
+    switch (action) {
+      case _FolderQuickAction.link:
+        Navigator.of(context).pop();
+        page._copyFolderShareLink(folder);
+      case _FolderQuickAction.qr:
+        Navigator.of(context).pop();
+        page._showFolderQr(folder);
+      case _FolderQuickAction.quickAccess:
+        // 开关型留在弹窗里，选中态即时更新（提示条不参与）
+        _toggleQuickAccess();
+      case _FolderQuickAction.password:
+        _editPassword();
+      case _FolderQuickAction.favorite:
+        // 开关型按钮走 onToggled，这里不会命中
+        break;
+    }
+  }
+
+  /// 收藏：与文件属性一致，先收起弹窗再收藏 / 取消收藏（提示条要能看见）。
+  Future<void> _toggleFavorite(bool checked) async {
+    final page = widget.page;
+    final folder = _folder;
+    Navigator.of(context).pop();
+    if (checked) {
+      await page._favoriteFolder(folder);
+    } else {
+      await page._unfavoriteFolder(folder);
+    }
+  }
 
   Future<void> _editInfo() async {
     final updated = await widget.page._editFolderInfo(_folder);
@@ -3789,7 +4022,11 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
     });
   }
 
-  Future<void> _editPassword() => widget.page._setFolderPasswd(_folder);
+  Future<void> _editPassword() async {
+    await widget.page._setFolderPasswd(_folder);
+    // 改完刷新「有没有提取码」，让按钮的选中态跟上
+    if (mounted) await _fetch();
+  }
 
   Future<void> _fetch() async {
     final id = widget.folder.id;
@@ -3799,6 +4036,14 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
       final info = await client?.shareInfoOfFolder(id);
       if (info != null && info.desc.isNotEmpty && mounted) {
         setState(() => _desc = info.desc);
+      }
+      if (info != null && mounted) {
+        setState(() => _hasPwd = info.pwd.isNotEmpty);
+        // 收藏态：收藏表按分享链接去重，用刚取回的分享信息查
+        final favorite = await context.read<AppController>().db.isFavorite(
+          info.url,
+        );
+        if (mounted) setState(() => _favorite = favorite);
       }
     } catch (_) {}
     // 统计信息：同样现取；接口取不到时回退到遍历目录统计
@@ -3855,28 +4100,70 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
             desc: _desc ?? folder.desc,
             loading: _loading,
           ),
+          // 常用操作：一行纯图标的标准按钮组（间距 6dp、md 尺寸、
+          // 宽度自适应弹窗，最多 80dp）
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 4, 24, 8),
+            child: M3EIconButtonGroup<_FolderQuickAction>(
+              items: [
+                M3EIconAction(
+                  value: _FolderQuickAction.link,
+                  icon: Icons.link_outlined,
+                  checkedIcon: Icons.link,
+                  tooltip: context.l10n.copyLink,
+                ),
+                M3EIconAction(
+                  value: _FolderQuickAction.qr,
+                  icon: Icons.qr_code,
+                  checkedIcon: Icons.qr_code,
+                  tooltip: context.l10n.showQr,
+                ),
+                M3EIconAction(
+                  value: _FolderQuickAction.favorite,
+                  icon: Icons.star_border,
+                  checkedIcon: Icons.star_outline,
+                  tooltip: _favorite
+                      ? context.l10n.unfavorite
+                      : context.l10n.addFavorite,
+                  checked: _favorite,
+                  isToggle: true,
+                ),
+                M3EIconAction(
+                  value: _FolderQuickAction.quickAccess,
+                  icon: Icons.push_pin_outlined,
+                  checkedIcon: Icons.push_pin,
+                  tooltip: _pinned
+                      ? context.l10n.removeFromQuickAccess
+                      : context.l10n.addToQuickAccess,
+                  checked: _pinned,
+                  isToggle: true,
+                ),
+                M3EIconAction(
+                  value: _FolderQuickAction.password,
+                  icon: Icons.password,
+                  checkedIcon: Icons.password,
+                  tooltip: context.l10n.accessPassword,
+                  checked: _hasPwd,
+                  isToggle: true,
+                ),
+              ],
+              onPressed: _runQuickAction,
+              onToggled: (action, checked) {
+                if (action == _FolderQuickAction.favorite) {
+                  _toggleFavorite(checked);
+                } else if (action == _FolderQuickAction.quickAccess) {
+                  _toggleQuickAccess();
+                } else if (action == _FolderQuickAction.password) {
+                  _editPassword();
+                }
+              },
+            ),
+          ),
           ListTile(
             leading: const Icon(Icons.edit_note),
             title: Text(context.l10n.folderInfo),
             subtitle: Text(context.l10n.folderInfoSubtitle),
             onTap: _editInfo,
-          ),
-          ListTile(
-            leading: const Icon(Icons.password),
-            title: Text(context.l10n.accessPassword),
-            subtitle: Text(context.l10n.accessPasswordSubtitle),
-            onTap: _editPassword,
-          ),
-          ListTile(
-            enabled: !_loading,
-            leading: const Icon(Icons.link_outlined),
-            title: Text(context.l10n.copyLink),
-            onTap: _loading
-                ? null
-                : () {
-                    Navigator.of(context).pop();
-                    page._copyFolderShareLink(_folder);
-                  },
           ),
           ListTile(
             enabled: !_loading,
@@ -3888,39 +4175,6 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
                     Navigator.of(context).pop();
                     page._openFolderShareInBrowser(_folder);
                   },
-          ),
-          ListTile(
-            enabled: !_loading,
-            leading: const Icon(Icons.qr_code),
-            title: Text(context.l10n.showQr),
-            onTap: _loading
-                ? null
-                : () {
-                    Navigator.of(context).pop();
-                    page._showFolderQr(_folder);
-                  },
-          ),
-          ListTile(
-            leading: Icon(_pinned ? Icons.keep_off : Icons.push_pin),
-            title: Text(
-              _pinned
-                  ? context.l10n.removeFromQuickAccess
-                  : context.l10n.addToQuickAccess,
-            ),
-            // 切换后直接关掉属性弹窗，与「复制链接 / 显示二维码」等操作一致
-            onTap: () async {
-              final navigator = Navigator.of(context);
-              await _toggleQuickAccess();
-              navigator.pop();
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.star_outline),
-            title: Text(context.l10n.addFavorite),
-            onTap: () {
-              Navigator.of(context).pop();
-              page._favoriteFolder(_folder);
-            },
           ),
           ListTile(
             leading: const Icon(Icons.delete_outline),

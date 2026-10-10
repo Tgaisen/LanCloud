@@ -364,3 +364,151 @@ class M3eConnectedButtonGroup<T> extends StatelessWidget {
     );
   }
 }
+
+/// ──────────────────── 标准（spaced）图标按钮组 ────────────────────
+
+/// [M3EIconButtonGroup] 里的一个纯图标按钮。
+class M3EIconAction<T> {
+  const M3EIconAction({
+    required this.value,
+    required this.icon,
+    required this.checkedIcon,
+    required this.tooltip,
+    this.checked = false,
+    this.isToggle = false,
+  });
+
+  /// 业务值，点击时回传给组的回调。
+  final T value;
+
+  /// 未选中时的图标（通常用 outlined 线框版）。
+  final IconData icon;
+
+  /// 选中时的图标（通常用实心版）。
+  final IconData checkedIcon;
+
+  /// 图标按钮没有可见文字，tooltip 同时充当读屏名称。
+  final String tooltip;
+
+  /// 当前是否选中；只对开关型按钮有意义，由调用方持有。
+  final bool checked;
+
+  /// 是否开关型按钮：点一下切换选中态并走 [M3EIconButtonGroup.onToggled]；
+  /// 否则是普通动作按钮，点一下走 [M3EIconButtonGroup.onPressed]。
+  final bool isToggle;
+}
+
+/// MD3E 标准按钮组（standard / spaced）：一行纯图标按钮。
+///
+/// 与 [M3eConnectedButtonGroup]（连接式，用于单选切换）不同，标准组按 M3
+/// 规范在按钮之间留间距、不改变相邻按钮宽度，可以混放动作按钮和开关按钮，
+/// 适合「属性弹窗里一排常用操作」这种场景。
+///
+/// 宽度：每段按可用宽度均分，上限 [maxWidth]（默认 80dp）、下限 [minWidth]
+/// （默认 48dp，M3 要求组里每个按钮都有 48dp 触控目标）。一行放不下时交给组
+/// 自己横向滚动——按钮组不换行（M3）。
+class M3EIconButtonGroup<T> extends StatelessWidget {
+  const M3EIconButtonGroup({
+    super.key,
+    required this.items,
+    this.onPressed,
+    this.onToggled,
+    this.size = M3EButtonSize.md,
+    this.style = M3EButtonStyle.tonal,
+    this.spacing = 6,
+    this.maxWidth = 80,
+    this.minWidth = 48,
+    this.semanticLabel,
+  });
+
+  /// 从左到右的按钮项。
+  final List<M3EIconAction<T>> items;
+
+  /// 普通动作按钮的点击回调。
+  final ValueChanged<T>? onPressed;
+
+  /// 开关型按钮的切换回调，第二个参数是切换后的选中态。
+  final void Function(T value, bool checked)? onToggled;
+
+  /// 按钮尺寸：默认 md（56dp 高）。
+  final M3EButtonSize size;
+
+  /// 配色。M3 规定按钮组用 filled / tonal / outlined / elevated，
+  /// 不要用 standard 图标按钮或文字按钮（它们没有容器）；默认 tonal。
+  final M3EButtonStyle style;
+
+  /// 按钮之间的间距。
+  final double spacing;
+
+  /// 单个按钮的最大宽度。
+  final double maxWidth;
+
+  /// 单个按钮的最小宽度（触控目标下限）。
+  final double minWidth;
+
+  /// 整组的读屏名称。
+  final String? semanticLabel;
+
+  Set<int> get _checkedIndices => <int>{
+    for (int i = 0; i < items.length; i++)
+      if (items[i].checked) i,
+  };
+
+  void _handleSelectionChanged(Set<int> next) {
+    final current = _checkedIndices;
+    for (int i = 0; i < items.length; i++) {
+      if (next.contains(i) == current.contains(i)) continue;
+      final item = items[i];
+      if (item.isToggle) {
+        onToggled?.call(item.value, next.contains(i));
+      } else {
+        // 动作按钮：组是受控的，这里不回写 selectedIndices，
+        // 按钮点完仍然保持未选中（只是普通点击）。
+        onPressed?.call(item.value);
+      }
+      return;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final int count = items.length;
+        if (count == 0) return const SizedBox.shrink();
+        final double gap = spacing * (count - 1);
+        final double available = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : maxWidth * count + gap;
+        final double width = ((available - gap) / count)
+            .clamp(minWidth, maxWidth)
+            .toDouble();
+        // 窄窗口一行放不下时不换行，交给组横向滚动
+        final bool scroll = width * count + gap > available + 0.5;
+        return M3EToggleButtonGroup(
+          type: M3EButtonGroupType.standard,
+          shape: M3EButtonShape.round,
+          size: size,
+          style: style,
+          spacing: spacing,
+          overflow: scroll
+              ? M3EButtonGroupOverflow.scroll
+              : M3EButtonGroupOverflow.none,
+          semanticLabel: semanticLabel,
+          selectedIndices: _checkedIndices,
+          onSelectedIndicesChanged: _handleSelectionChanged,
+          actions: [
+            for (final item in items)
+              M3EToggleButtonGroupAction(
+                icon: Icon(item.icon),
+                checkedIcon: Icon(item.checkedIcon),
+                tooltip: item.tooltip,
+                semanticLabel: item.tooltip,
+                width: width,
+              ),
+          ],
+        );
+      },
+    );
+  }
+}

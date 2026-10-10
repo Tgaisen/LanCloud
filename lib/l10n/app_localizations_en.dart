@@ -885,6 +885,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get showQr => 'Show QR code';
 
   @override
+  String get copyShareLink => 'Copy share link';
+
+  @override
+  String get copyDirectLink => 'Copy direct link';
+
+  @override
+  String get shareLinkQr => 'Share link QR code';
+
+  @override
+  String get directLinkQr => 'Direct link QR code';
+
+  @override
   String get addFavorite => 'Add to favorites';
 
   @override
@@ -902,6 +914,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get favorited => 'Favorited';
+
+  @override
+  String get unfavorited => 'Removed from favorites';
 
   @override
   String get share => 'Share';

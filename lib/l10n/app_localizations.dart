@@ -1658,6 +1658,30 @@ abstract class AppLocalizations {
   /// **'显示二维码'**
   String get showQr;
 
+  /// No description provided for @copyShareLink.
+  ///
+  /// In zh, this message translates to:
+  /// **'复制分享链接'**
+  String get copyShareLink;
+
+  /// No description provided for @copyDirectLink.
+  ///
+  /// In zh, this message translates to:
+  /// **'复制下载直链'**
+  String get copyDirectLink;
+
+  /// No description provided for @shareLinkQr.
+  ///
+  /// In zh, this message translates to:
+  /// **'分享链接二维码'**
+  String get shareLinkQr;
+
+  /// No description provided for @directLinkQr.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载直链二维码'**
+  String get directLinkQr;
+
   /// No description provided for @addFavorite.
   ///
   /// In zh, this message translates to:
@@ -1693,6 +1717,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'已收藏'**
   String get favorited;
+
+  /// No description provided for @unfavorited.
+  ///
+  /// In zh, this message translates to:
+  /// **'已取消收藏'**
+  String get unfavorited;
 
   /// No description provided for @share.
   ///

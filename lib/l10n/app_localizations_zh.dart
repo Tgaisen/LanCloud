@@ -861,6 +861,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get showQr => '显示二维码';
 
   @override
+  String get copyShareLink => '复制分享链接';
+
+  @override
+  String get copyDirectLink => '复制下载直链';
+
+  @override
+  String get shareLinkQr => '分享链接二维码';
+
+  @override
+  String get directLinkQr => '下载直链二维码';
+
+  @override
   String get addFavorite => '添加收藏';
 
   @override
@@ -877,6 +889,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get favorited => '已收藏';
+
+  @override
+  String get unfavorited => '已取消收藏';
 
   @override
   String get share => '分享';
