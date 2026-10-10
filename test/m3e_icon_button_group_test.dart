@@ -127,4 +127,39 @@ void main() {
         .elementAt(2);
     expect(third.checked, isTrue);
   });
+
+  testWidgets('enabled: false 的按钮既不可点也不回调', (tester) async {
+    final pressed = <_Action>[];
+    final toggled = <(_Action, bool)>[];
+    await _pumpGroup(
+      tester,
+      width: 312,
+      groupItems: [
+        for (final action in _Action.values)
+          M3EIconAction(
+            value: action,
+            icon: Icons.star_border,
+            checkedIcon: Icons.star_outline,
+            tooltip: '按钮 ${action.name}',
+            enabled: action != _Action.a,
+            isToggle: action == _Action.c,
+          ),
+      ],
+      onPressed: pressed.add,
+      onToggled: (action, checked) => toggled.add((action, checked)),
+    );
+
+    expect(
+      tester
+          .widgetList<M3EToggleButton>(find.byType(M3EToggleButton))
+          .first
+          .enabled,
+      isFalse,
+    );
+
+    await tester.tap(find.byTooltip('按钮 a'), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    expect(pressed, isEmpty);
+    expect(toggled, isEmpty);
+  });
 }

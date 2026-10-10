@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/api/lanzou_client.dart';
 import 'package:lancloud/core/api/models.dart';
@@ -84,6 +86,14 @@ class _FakeApp extends AppController {
 
   @override
   LanzouClient get client => _client;
+}
+
+/// 分享信息卡住不返回的客户端：用来验「数据没回来时按钮置灰」。
+class _GatedClient extends _FakeClient {
+  final Completer<ShareInfo> share = Completer<ShareInfo>();
+
+  @override
+  Future<ShareInfo> shareInfoOfFile(String fileId) => share.future;
 }
 
 /// 弹窗里那一行图标按钮：按 tooltip 找到对应按钮。
@@ -180,6 +190,24 @@ void main() {
     expect(find.text('复制下载直链'), findsOneWidget);
   });
 
+  testWidgets('文件属性弹窗：收藏态没加载出来前，收藏按钮置灰', (tester) async {
+    final client = _GatedClient();
+    final app = _FakeApp(client);
+    await _pumpDrive(tester, app);
+
+    await tester.tap(find.text('a.zip'));
+    await _settleSheet(tester);
+
+    // 分享信息（收藏判定要用它的链接）还没回来：收藏按钮不可点，
+    // 否则会在状态未知时点出「重复收藏 / 错误取消收藏」
+    expect(_toggleButton(tester, '添加收藏').enabled, isFalse);
+    // 其它不依赖这次请求的按钮照常可点
+    expect(_toggleButton(tester, '下载').enabled, isTrue);
+    expect(_toggleButton(tester, '复制链接').enabled, isTrue);
+    expect(_toggleButton(tester, '显示二维码').enabled, isTrue);
+    expect(_toggleButton(tester, '访问密码').enabled, isTrue);
+  });
+
   testWidgets('文件夹属性弹窗：一行 5 个图标按钮 + 低频列表', (tester) async {
     final app = _FakeApp(_FakeClient());
     await _pumpDrive(tester, app);
@@ -199,6 +227,9 @@ void main() {
       ),
       findsOneWidget,
     );
+    // 测试环境没有 sqflite：读不到「是否已固定」，固定按钮保持置灰
+    // （真机上库可用，读回来即恢复可点）
+    expect(_toggleButton(tester, '添加到快速访问').enabled, isFalse);
 
     expect(_sheetText('修改信息'), findsOneWidget);
     expect(_sheetText('打开链接'), findsOneWidget);

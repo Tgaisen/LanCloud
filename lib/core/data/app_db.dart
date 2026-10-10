@@ -95,7 +95,7 @@ class AppDb {
     final path = p.join(await _databaseDirectory(), 'lancloud.db');
     return openDatabase(
       path,
-      version: 6,
+      version: 7,
       onCreate: (db, version) async {
         await db.execute(
           'CREATE TABLE favorites('
@@ -109,6 +109,8 @@ class AppDb {
           'sharer TEXT DEFAULT "",'
           'created_at INTEGER NOT NULL)',
         );
+        // 收藏判定按 ref（分享链接）查，加索引省得整表扫
+        await db.execute('CREATE INDEX idx_favorites_ref ON favorites(ref)');
         await db.execute(
           'CREATE TABLE recents('
           'id INTEGER PRIMARY KEY AUTOINCREMENT,'
@@ -218,6 +220,12 @@ class AppDb {
         if (oldVersion < 6) {
           // 快速访问记录所在路径，用于首页副标题
           await db.execute('ALTER TABLE pins ADD COLUMN path TEXT DEFAULT ""');
+        }
+        if (oldVersion < 7) {
+          // 收藏判定（属性弹窗的收藏选中态）按 ref 查：加索引，别整表扫
+          await db.execute(
+            'CREATE INDEX IF NOT EXISTS idx_favorites_ref ON favorites(ref)',
+          );
         }
       },
     );

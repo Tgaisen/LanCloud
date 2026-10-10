@@ -397,6 +397,7 @@ class M3EIconAction<T> {
     required this.tooltip,
     this.checked = false,
     this.isToggle = false,
+    this.enabled = true,
   });
 
   /// 业务值，点击时回传给组的回调。
@@ -417,6 +418,10 @@ class M3EIconAction<T> {
   /// 是否开关型按钮：点一下切换选中态并走 [M3EIconButtonGroup.onToggled]；
   /// 否则是普通动作按钮，点一下走 [M3EIconButtonGroup.onPressed]。
   final bool isToggle;
+
+  /// 是否可以点。选中态还没加载出来时（例如收藏态要等一次请求）先置灰，
+  /// 免得状态未知时点出错误的结果。
+  final bool enabled;
 }
 
 /// MD3E 标准按钮组（standard / spaced）：一行纯图标按钮。
@@ -480,6 +485,8 @@ class M3EIconButtonGroup<T> extends StatelessWidget {
     for (int i = 0; i < items.length; i++) {
       if (next.contains(i) == current.contains(i)) continue;
       final item = items[i];
+      // 置灰的按钮不回调（组内按钮自己也点不动，这里再挡一层）
+      if (!item.enabled) return;
       if (item.isToggle) {
         onToggled?.call(item.value, next.contains(i));
       } else {
@@ -530,6 +537,7 @@ class M3EIconButtonGroup<T> extends StatelessWidget {
                 tooltip: item.tooltip,
                 semanticLabel: item.tooltip,
                 width: width,
+                enabled: item.enabled,
               ),
           ],
         );

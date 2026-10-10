@@ -3678,7 +3678,9 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
   late LzFile _file = widget.file;
   String _desc = '';
   bool _loading = true;
-  bool _favorite = false;
+
+  /// 收藏态：null = 还没查到（分享信息 + 收藏表查完才有）。
+  bool? _favorite;
 
   /// 「复制链接 / 二维码」二选一菜单：挂在按钮组上弹出（MD3E menu）。
   final MenuController _linkMenu = MenuController();
@@ -3892,9 +3894,13 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
                       value: _FileQuickAction.favorite,
                       icon: Icons.star_border,
                       checkedIcon: Icons.star_outline,
-                      tooltip: _favorite ? l10n.unfavorite : l10n.addFavorite,
-                      checked: _favorite,
+                      tooltip: _favorite == true
+                          ? l10n.unfavorite
+                          : l10n.addFavorite,
+                      checked: _favorite == true,
                       isToggle: true,
+                      // 收藏态要等分享信息 + 收藏表回来才知道，之前先置灰
+                      enabled: _favorite != null,
                     ),
                     M3EIconAction(
                       value: _FileQuickAction.password,
@@ -3977,8 +3983,12 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
 
   /// 简介与统计信息都不再缓存：打开弹窗时总会重新拉取。
   bool _loading = true;
-  bool _pinned = false;
-  bool _favorite = false;
+
+  /// 是否已固定到快速访问：null = 还在读本地库。
+  bool? _pinned;
+
+  /// 收藏态：null = 还没查到（分享信息 + 收藏表查完才有）。
+  bool? _favorite;
   late bool _hasPwd = widget.folder.hasPwd;
 
   @override
@@ -4002,7 +4012,7 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
 
   Future<void> _toggleQuickAccess() async {
     final app = context.read<AppController>();
-    if (_pinned) {
+    if (_pinned == true) {
       await app.db.removePin(widget.folder.id);
       if (mounted) setState(() => _pinned = false);
     } else {
@@ -4174,21 +4184,25 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
                   value: _FolderQuickAction.favorite,
                   icon: Icons.star_border,
                   checkedIcon: Icons.star_outline,
-                  tooltip: _favorite
+                  tooltip: _favorite == true
                       ? context.l10n.unfavorite
                       : context.l10n.addFavorite,
-                  checked: _favorite,
+                  checked: _favorite == true,
                   isToggle: true,
+                  // 收藏态要等分享信息 + 收藏表回来才知道，之前先置灰
+                  enabled: _favorite != null,
                 ),
                 M3EIconAction(
                   value: _FolderQuickAction.quickAccess,
                   icon: Icons.push_pin_outlined,
                   checkedIcon: Icons.push_pin,
-                  tooltip: _pinned
+                  tooltip: _pinned == true
                       ? context.l10n.removeFromQuickAccess
                       : context.l10n.addToQuickAccess,
-                  checked: _pinned,
+                  checked: _pinned == true,
                   isToggle: true,
+                  // 固定态要读一次本地库，回来之前先置灰
+                  enabled: _pinned != null,
                 ),
                 M3EIconAction(
                   value: _FolderQuickAction.password,
