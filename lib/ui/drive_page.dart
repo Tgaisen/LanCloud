@@ -246,7 +246,7 @@ class _DrivePageState extends State<DrivePage>
       if (!mounted) return;
       _restoreFolderOffset(folderId);
     } finally {
-      _directorySwitching = false;
+      _endDirectorySwitch();
     }
   }
 
@@ -882,7 +882,7 @@ class _DrivePageState extends State<DrivePage>
       if (!mounted) return;
       _restoreFolderOffset(folder.id);
     } finally {
-      _directorySwitching = false;
+      _endDirectorySwitch();
     }
   }
 
@@ -907,8 +907,18 @@ class _DrivePageState extends State<DrivePage>
       if (!mounted) return;
       _restoreFolderOffset(targetId);
     } finally {
-      _directorySwitching = false;
+      _endDirectorySwitch();
     }
+  }
+
+  /// 目录切换（进文件夹 / 路径跳转 / 首页请求打开目录）收尾。
+  ///
+  /// 切换期间 `_load` 末尾那次补页检查会被 [_directorySwitching] 挡住，
+  /// 内容长度没变化时也不会有 ScrollMetricsNotification；这里再补一次，
+  /// 否则条目少的目录要等用户滑一下才出现「已经到底了」。
+  void _endDirectorySwitch() {
+    _directorySwitching = false;
+    _fillViewportIfNeeded();
   }
 
   void _rememberFolderOffset() {
