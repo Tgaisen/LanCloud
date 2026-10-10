@@ -318,6 +318,7 @@
   "descOptional": "简介（选填）",
   "create": "创建",
   "folderNameRequired": "文件夹名称不能为空",
+  "nameRequired": "名称不能为空",
   "deleteConfirmTitle": "删除确认",
   "deleteConfirmMessage": "将把选中的 {count} 个条目移入回收站，继续吗？",
   "@deleteConfirmMessage": {
@@ -339,6 +340,7 @@
   "accessPasswordSubtitle": "可设置或关闭访问密码",
   "enablePassword": "启用访问密码",
   "folderInfoSaved": "文件夹信息已更新",
+  "itemInfoSaved": "信息已更新",
   "passwordCleared": "已关闭访问密码",
   "passwordClearedCount": "已关闭 {count} 项的访问密码",
   "@passwordClearedCount": {

@@ -20,7 +20,6 @@ import 'common.dart';
 import 'm3e.dart';
 import 'reduce_motion.dart';
 import 'scroll_tint.dart';
-import 'web_page.dart';
 
 const int kFreeUploadLimit = 100 * 1024 * 1024;
 
@@ -1182,10 +1181,10 @@ class _DrivePageState extends State<DrivePage>
   }
 
   Future<void> _mkdir() async {
-    // 控制器由弹窗自己持有（见 _FolderFormDialog）
+    // 控制器由弹窗自己持有（见 _ItemFormDialog）
     final result = await showDialog<({String name, String desc})>(
       context: context,
-      builder: (_) => _FolderFormDialog(
+      builder: (_) => _ItemFormDialog(
         title: context.l10n.newFolder,
         confirmLabel: context.l10n.create,
       ),
@@ -1709,50 +1708,6 @@ class _DrivePageState extends State<DrivePage>
     );
   }
 
-  Future<void> _openShareInBrowser(LzFile file) async {
-    final app = context.read<AppController>();
-    final client = app.client;
-    if (client == null) return;
-    try {
-      final info = await client.shareInfoOfFile(file.id);
-      if (!mounted) return;
-      await Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => WebPage(
-            title: file.name,
-            url: info.url,
-            cookie: app.activeAccount?.cookie,
-          ),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
-    }
-  }
-
-  Future<void> _openFolderShareInBrowser(LzFolder folder) async {
-    final app = context.read<AppController>();
-    final client = app.client;
-    if (client == null) return;
-    try {
-      final info = await client.shareInfoOfFolder(folder.id);
-      if (!mounted) return;
-      await Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => WebPage(
-            title: folder.name,
-            url: info.url,
-            cookie: app.activeAccount?.cookie,
-          ),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
-    }
-  }
-
   /// 本地生成二维码（不经过任何服务器）。
   Future<void> _showQr(String title, String url, String pwd) async {
     if (!mounted) return;
@@ -2089,6 +2044,68 @@ class _DrivePageState extends State<DrivePage>
     }
   }
 
+  /// 修改文件信息（名称 + 简介），成功后返回新值给调用方刷新弹窗。
+  ///
+  /// 名称没改动时只保存简介：蓝奏云的重命名接口（task 46）只对会员开放，
+  /// 免费账号不该因为改名不可用而连简介也改不了。
+  Future<({String name, String desc})?> _editFileInfo(
+    LzFile file, {
+    required String desc,
+  }) async {
+    final client = context.read<AppController>().client;
+    if (client == null) return null;
+    final result = await showDialog<({String name, String desc})>(
+      context: context,
+      builder: (_) => _ItemFormDialog(
+        title: context.l10n.folderInfo,
+        confirmLabel: context.l10n.confirm,
+        name: file.name,
+        desc: desc,
+      ),
+    );
+    if (result == null || !mounted) return null;
+    final name = result.name;
+    final newDesc = result.desc;
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(context.l10n.nameRequired)));
+      return null;
+    }
+    try {
+      if (name != file.name) {
+        await client.setFileName(file.id, name);
+      }
+      await client.setDesc(file.id, newDesc);
+      if (!mounted) return null;
+      setState(() {
+        _files = [
+          for (final f in _files)
+            f.id == file.id
+                ? LzFile(
+                    id: f.id,
+                    name: name,
+                    time: f.time,
+                    size: f.size,
+                    downs: f.downs,
+                    hasPwd: f.hasPwd,
+                    hasDes: true,
+                  )
+                : f,
+        ];
+      });
+      _pulseItems(fileIds: {file.id});
+      _updateCacheSnapshot();
+      if (!mounted) return null;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(context.l10n.itemInfoSaved)));
+      return (name: name, desc: newDesc);
+    } catch (e) {
+      if (!mounted) return null;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      return null;
+    }
+  }
+
   /// 修改文件夹信息（名称 + 简介），成功后返回新值给调用方刷新弹窗。
   Future<({String name, String desc})?> _editFolderInfo(LzFolder folder) async {
     final client = context.read<AppController>().client;
@@ -2098,7 +2115,7 @@ class _DrivePageState extends State<DrivePage>
     // 「A TextEditingController was used after being disposed」。
     final result = await showDialog<({String name, String desc})>(
       context: context,
-      builder: (_) => _FolderFormDialog(
+      builder: (_) => _ItemFormDialog(
         title: context.l10n.folderInfo,
         confirmLabel: context.l10n.confirm,
         name: folder.name,
@@ -2139,7 +2156,8 @@ class _DrivePageState extends State<DrivePage>
     }
     await showAppSheet<void>(
       context,
-      child: _FolderInfoSheet(folder: folder, page: this),
+      // 从列表里某个文件夹的三点菜单进来：可以「打开」进这个目录
+      child: _FolderInfoSheet(folder: folder, page: this, showOpen: true),
     );
   }
 
@@ -3517,8 +3535,8 @@ class _FileRow extends StatelessWidget {
 /// 文件夹「名称 + 简介」弹窗：新建文件夹与修改文件夹信息共用。
 /// 输入控制器随弹窗 State 一起释放，避免弹窗退场动画期间 TextField
 /// 重建时用到已 dispose 的控制器。
-class _FolderFormDialog extends StatefulWidget {
-  const _FolderFormDialog({
+class _ItemFormDialog extends StatefulWidget {
+  const _ItemFormDialog({
     required this.title,
     required this.confirmLabel,
     this.name = '',
@@ -3531,10 +3549,10 @@ class _FolderFormDialog extends StatefulWidget {
   final String desc;
 
   @override
-  State<_FolderFormDialog> createState() => _FolderFormDialogState();
+  State<_ItemFormDialog> createState() => _ItemFormDialogState();
 }
 
-class _FolderFormDialogState extends State<_FolderFormDialog> {
+class _ItemFormDialogState extends State<_ItemFormDialog> {
   late final TextEditingController _name = TextEditingController(
     text: widget.name,
   );
@@ -3688,6 +3706,9 @@ enum _FileQuickAction { download, link, qr, favorite, password }
 
 class _FileInfoSheetState extends State<_FileInfoSheet> {
   late LzFile _file = widget.file;
+
+  /// 当前名称（「修改信息」里可以改名，改完头部和后续操作都用新的）。
+  late String _name = widget.file.name;
   String _desc = '';
   bool _loading = true;
 
@@ -3697,6 +3718,17 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
   /// 打开弹窗时取回的分享信息：收藏判定要用，也留给下载 / 复制链接 /
   /// 二维码复用（它们自己再取一次要 2 个请求）。null = 还没取回来。
   ShareInfo? _share;
+
+  /// 当前（可能已改过名称的）文件：后续动作都按这份走。
+  LzFile get _currentFile => LzFile(
+    id: _file.id,
+    name: _name,
+    time: _file.time,
+    size: _file.size,
+    downs: _file.downs,
+    hasPwd: _file.hasPwd,
+    hasDes: _file.hasDes,
+  );
 
   /// 「复制链接 / 二维码」二选一菜单：挂在按钮组上弹出（MD3E menu）。
   final MenuController _linkMenu = MenuController();
@@ -3715,7 +3747,10 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
     final fresh = await widget.page._freshFileEntry(widget.file.id);
     if (!mounted) return;
     if (fresh != null) {
-      setState(() => _file = fresh);
+      setState(() {
+        _file = fresh;
+        _name = fresh.name;
+      });
       widget.page._replaceFileEntry(fresh);
     }
     if (client != null) {
@@ -3741,7 +3776,7 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
   /// 普通动作按钮（下载 / 复制链接 / 二维码 / 访问密码）。
   void _runQuickAction(_FileQuickAction action) {
     final page = widget.page;
-    final file = _file;
+    final file = _currentFile;
     switch (action) {
       case _FileQuickAction.download:
         Navigator.of(context).pop();
@@ -3771,7 +3806,7 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
   /// 选完先收起属性弹窗再执行：复制提示条 / 二维码弹窗才不会被属性弹窗盖住。
   void _pickLinkMenu({required bool direct}) {
     final page = widget.page;
-    final file = _file;
+    final file = _currentFile;
     final qr = _menuTarget == _FileQuickAction.qr;
     Navigator.of(context).pop();
     if (qr) {
@@ -3792,15 +3827,28 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
   /// 访问密码：弹窗盖在属性弹窗上（与文件夹属性一致），改完再刷新一次
   /// 「有没有提取码」，让按钮的选中态跟上。
   Future<void> _editPassword() async {
-    await widget.page._singleSetPasswd(_file);
+    await widget.page._singleSetPasswd(_currentFile);
     if (mounted) await _refresh();
+  }
+
+  /// 修改文件信息（名称 + 简介）。
+  ///
+  /// 名称没改动时就只保存简介——蓝奏云的重命名接口只对会员开放，这样
+  /// 免费账号仍然可以照常改简介。
+  Future<void> _editInfo() async {
+    final updated = await widget.page._editFileInfo(_currentFile, desc: _desc);
+    if (updated == null || !mounted) return;
+    setState(() {
+      _name = updated.name;
+      _desc = updated.desc;
+    });
   }
 
   /// 收藏是开关型按钮：点开时先收起属性弹窗，再按新状态收藏 / 取消收藏
   /// （提示条要能看见，弹窗在时会被盖住）。
   Future<void> _toggleFavorite(bool checked) async {
     final page = widget.page;
-    final file = _file;
+    final file = _currentFile;
     Navigator.of(context).pop();
     if (checked) {
       await page._favoriteFile(file);
@@ -3821,7 +3869,7 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
         PropertyHeaderCard(
           icon: iconForFile(file.name),
           iconColor: fileIconColor(file.name, brightness: scheme.brightness),
-          title: file.name,
+          title: _name,
           subtitle: [
             if (file.size.isNotEmpty) prettyLzSize(file.size),
             if (file.time.isNotEmpty) file.time,
@@ -3950,11 +3998,8 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
         ),
         ListTile(
           leading: const Icon(Icons.edit_note),
-          title: Text(l10n.editDesc),
-          onTap: () {
-            Navigator.of(context).pop();
-            page._singleSetDesc(file);
-          },
+          title: Text(l10n.folderInfo),
+          onTap: _editInfo,
         ),
         ListTile(
           leading: const Icon(Icons.drive_file_move_outline),
@@ -3962,14 +4007,6 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
           onTap: () {
             Navigator.of(context).pop();
             page._moveSingleFile(file);
-          },
-        ),
-        ListTile(
-          leading: const Icon(Icons.open_in_new),
-          title: Text(l10n.openLink),
-          onTap: () {
-            Navigator.of(context).pop();
-            page._openShareInBrowser(file);
           },
         ),
         ListTile(
@@ -3991,10 +4028,19 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
 enum _FolderQuickAction { link, qr, favorite, quickAccess, password }
 
 class _FolderInfoSheet extends StatefulWidget {
-  const _FolderInfoSheet({required this.folder, required this.page});
+  const _FolderInfoSheet({
+    required this.folder,
+    required this.page,
+    this.showOpen = false,
+  });
 
   final LzFolder folder;
   final _DrivePageState page;
+
+  /// 是否显示「打开」（进入这个文件夹）。只有从列表里某个文件夹的三点菜单
+  /// 进来时才有意义；从网盘页顶栏「目录属性」进来时说的就是当前目录，
+  /// 不用再开一次。
+  final bool showOpen;
 
   @override
   State<_FolderInfoSheet> createState() => _FolderInfoSheetState();
@@ -4258,22 +4304,21 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
               },
             ),
           ),
+          if (widget.showOpen)
+            ListTile(
+              leading: const Icon(Icons.folder_open),
+              title: Text(context.l10n.open),
+              onTap: () {
+                final page = widget.page;
+                final folder = _folder;
+                Navigator.of(context).pop();
+                page._openFolder(folder);
+              },
+            ),
           ListTile(
             leading: const Icon(Icons.edit_note),
             title: Text(context.l10n.folderInfo),
-            subtitle: Text(context.l10n.folderInfoSubtitle),
             onTap: _editInfo,
-          ),
-          ListTile(
-            enabled: !_loading,
-            leading: const Icon(Icons.open_in_new),
-            title: Text(context.l10n.openLink),
-            onTap: _loading
-                ? null
-                : () {
-                    Navigator.of(context).pop();
-                    page._openFolderShareInBrowser(_folder);
-                  },
           ),
           ListTile(
             leading: const Icon(Icons.delete_outline),

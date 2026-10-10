@@ -241,6 +241,7 @@
   "descOptional": "Description (optional)",
   "create": "Create",
   "folderNameRequired": "Folder name cannot be empty",
+  "nameRequired": "Name cannot be empty",
   "deleteConfirmTitle": "Confirm deletion",
   "deleteConfirmMessage": "Move {count} selected items to the recycle bin?",
   "deleteConfirmSingle": "Move \"{name}\" to the recycle bin?",
@@ -252,6 +253,7 @@
   "accessPasswordSubtitle": "Set or disable the access password",
   "enablePassword": "Enable access password",
   "folderInfoSaved": "Folder info updated",
+  "itemInfoSaved": "Info updated",
   "passwordCleared": "Access password disabled",
   "passwordClearedCount": "Disabled access password for {count} items",
   "@passwordClearedCount": {

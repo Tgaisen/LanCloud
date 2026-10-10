@@ -10,7 +10,6 @@ import 'common.dart';
 import 'm3e.dart';
 import 'reduce_motion.dart';
 import 'share_file_sheet.dart';
-import 'web_page.dart';
 
 /// 分享文件夹浏览页：布局类似网盘页，支持子文件夹与多选批量操作。
 class ShareFolderPage extends StatefulWidget {
@@ -323,7 +322,6 @@ class _ShareFolderPageState extends State<ShareFolderPage>
   }
 
   Future<void> _showMenu() async {
-    final app = context.read<AppController>();
     await showAppSheet<void>(
       context,
       child: Column(
@@ -352,22 +350,6 @@ class _ShareFolderPageState extends State<ShareFolderPage>
             onTap: () {
               Navigator.of(context).pop();
               copyText(context, widget.link);
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.open_in_new),
-            title: Text(context.l10n.openLink),
-            onTap: () {
-              Navigator.of(context).pop();
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => WebPage(
-                    title: widget.folder.name,
-                    url: widget.link,
-                    cookie: app.activeAccount?.cookie,
-                  ),
-                ),
-              );
             },
           ),
         ],

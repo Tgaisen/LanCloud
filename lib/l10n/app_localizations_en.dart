@@ -710,7 +710,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get nameRequired => 'Name (required)';
+  String get nameRequired => 'Name cannot be empty';
 
   @override
   String get descOptional => 'Description (optional)';
@@ -757,6 +757,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get folderInfoSaved => 'Folder info updated';
+
+  @override
+  String get itemInfoSaved => 'Info updated';
 
   @override
   String get passwordCleared => 'Access password disabled';

@@ -1379,7 +1379,7 @@ abstract class AppLocalizations {
   /// No description provided for @nameRequired.
   ///
   /// In zh, this message translates to:
-  /// **'名称（必填）'**
+  /// **'名称不能为空'**
   String get nameRequired;
 
   /// No description provided for @descOptional.
@@ -1465,6 +1465,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'文件夹信息已更新'**
   String get folderInfoSaved;
+
+  /// No description provided for @itemInfoSaved.
+  ///
+  /// In zh, this message translates to:
+  /// **'信息已更新'**
+  String get itemInfoSaved;
 
   /// No description provided for @passwordCleared.
   ///

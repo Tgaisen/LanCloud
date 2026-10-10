@@ -30,6 +30,10 @@ class _FakeClient extends LanzouClient {
   int shareFileCalls = 0;
   int shareFolderCalls = 0;
 
+  /// 「修改信息」流程里实际调用的接口参数。
+  final List<String> renamedFiles = <String>[];
+  final List<String> savedDescs = <String>[];
+
   @override
   Future<({List<LzFolder> folders, List<PathNode> path})> listFolders(
     String folderId,
@@ -65,6 +69,14 @@ class _FakeClient extends LanzouClient {
 
   @override
   Future<String> fileDesc(String fileId) async => '文件简介';
+
+  @override
+  Future<void> setFileName(String fileId, String name) async =>
+      renamedFiles.add(name);
+
+  @override
+  Future<void> setDesc(String fileId, String desc) async =>
+      savedDescs.add(desc);
 
   @override
   Future<ShareInfo> shareInfoOfFile(String fileId) async {
@@ -115,7 +127,12 @@ M3EToggleButton _toggleButton(WidgetTester tester, String tooltip) => tester
 Finder _sheetText(String text) =>
     find.descendant(of: find.byType(M3EBottomSheet), matching: find.text(text));
 
-Future<void> _pumpDrive(WidgetTester tester, _FakeApp app) async {
+Future<void> _pumpDrive(
+  WidgetTester tester,
+  _FakeApp app, {
+  String folderId = '-1',
+  String folderName = '根目录',
+}) async {
   final manager = TransferManager(app);
   addTearDown(app.dispose);
   tester.view.devicePixelRatio = 1.0;
@@ -132,9 +149,9 @@ Future<void> _pumpDrive(WidgetTester tester, _FakeApp app) async {
         localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         locale: const Locale('zh'),
-        home: const DrivePage(
-          initialFolderId: '-1',
-          initialName: '根目录',
+        home: DrivePage(
+          initialFolderId: folderId,
+          initialName: folderName,
           tabIndex: 0,
         ),
       ),
@@ -176,10 +193,11 @@ void main() {
       findsOneWidget,
     );
 
-    expect(_sheetText('修改简介'), findsOneWidget);
+    expect(_sheetText('修改信息'), findsOneWidget);
     expect(_sheetText('移动'), findsOneWidget);
-    expect(_sheetText('打开链接'), findsOneWidget);
     expect(_sheetText('删除'), findsOneWidget);
+    // 「打开链接」入口已删（提示条里的复制链接等照旧）
+    expect(_sheetText('打开链接'), findsNothing);
     // 原来的「更多操作」入口被这行按钮组替代
     expect(_sheetText('更多操作'), findsNothing);
   });
@@ -262,8 +280,17 @@ void main() {
     // （真机上库可用，读回来即恢复可点）
     expect(_toggleButton(tester, '添加到快速访问').enabled, isFalse);
 
+    // 「打开」在「修改信息」上方（从列表里某个文件夹的三点菜单进来）
+    expect(_sheetText('打开'), findsOneWidget);
     expect(_sheetText('修改信息'), findsOneWidget);
-    expect(_sheetText('打开链接'), findsOneWidget);
+    expect(
+      tester.getTopLeft(_sheetText('打开')).dy,
+      lessThan(tester.getTopLeft(_sheetText('修改信息')).dy),
+    );
+    // 修改信息不再带副标题
+    expect(_sheetText('修改名称与简介'), findsNothing);
+    // 「打开链接」入口已删
+    expect(_sheetText('打开链接'), findsNothing);
     expect(_sheetText('删除'), findsOneWidget);
     // 文件夹没有「移动」
     expect(_sheetText('移动'), findsNothing);
@@ -274,5 +301,46 @@ void main() {
     await tester.tap(find.byTooltip('复制链接'));
     await _settleSheet(tester);
     expect(client.shareFolderCalls, 1);
+  });
+
+  testWidgets('文件属性弹窗：修改信息能改名称与简介', (tester) async {
+    final client = _FakeClient();
+    final app = _FakeApp(client);
+    await _pumpDrive(tester, app);
+
+    await tester.tap(find.text('a.zip'));
+    await _settleSheet(tester);
+    await tester.tap(_sheetText('修改信息'));
+    await _settleSheet(tester);
+
+    // 名称 + 简介两个输入框，预填当前值
+    expect(find.byType(TextField), findsNWidgets(2));
+    await tester.enterText(find.byType(TextField).first, 'b.zip');
+    await tester.enterText(find.byType(TextField).last, '新简介');
+    await tester.tap(find.text('确定'));
+    await _settleSheet(tester);
+
+    // 改名 + 简介都落到接口上，弹窗标题跟着更新
+    expect(client.renamedFiles, ['b.zip']);
+    expect(client.savedDescs, ['新简介']);
+    expect(_sheetText('b.zip'), findsOneWidget);
+
+    // 让「信息已更新」提示条走完（否则测试结束时还挂着它的定时器）
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pump(const Duration(seconds: 1));
+  });
+
+  testWidgets('文件夹属性弹窗：从网盘页「目录属性」进来不显示「打开」', (tester) async {
+    final app = _FakeApp(_FakeClient());
+    // 站在子目录里：顶栏菜单才会出现「目录属性」
+    await _pumpDrive(tester, app, folderId: 'fd1', folderName: '子文件夹');
+
+    await tester.tap(find.byTooltip('菜单'));
+    await _settleSheet(tester);
+    await tester.tap(find.text('目录属性'));
+    await _settleSheet(tester);
+
+    expect(_sheetText('修改信息'), findsOneWidget);
+    expect(_sheetText('打开'), findsNothing);
   });
 }

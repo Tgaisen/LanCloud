@@ -416,6 +416,30 @@ class LanzouClient {
     }
   }
 
+  /// 修改文件名（task 46）。
+  ///
+  /// 蓝奏云的重命名接口只对会员开放：免费账号服务端会返回失败，这里
+  /// 把失败原因写清楚，免得用户以为是网络问题。
+  Future<void> setFileName(String fileId, String name) async {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) {
+      throw const LanzouException('文件名不能为空');
+    }
+    final resp = await dio.post<String>(
+      '$apiBase/doupload.php',
+      data: {
+        'task': 46,
+        'file_id': int.tryParse(fileId) ?? fileId,
+        'file_name': trimmed,
+        'type': 2,
+      },
+      options: _options(),
+    );
+    if ('${_asMap(resp.data)['zt']}' != '1') {
+      throw const LanzouException('重命名失败：免费账号不支持重命名文件（需要会员）');
+    }
+  }
+
   /// 设置文件访问密码（task 23，免费账号只能设置不能关闭）。
   Future<void> setPasswd(String fileId, String pwd) async {
     final resp = await dio.post<String>(

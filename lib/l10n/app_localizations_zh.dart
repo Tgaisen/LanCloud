@@ -688,7 +688,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get nameRequired => '名称（必填）';
+  String get nameRequired => '名称不能为空';
 
   @override
   String get descOptional => '简介（选填）';
@@ -735,6 +735,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get folderInfoSaved => '文件夹信息已更新';
+
+  @override
+  String get itemInfoSaved => '信息已更新';
 
   @override
   String get passwordCleared => '已关闭访问密码';
