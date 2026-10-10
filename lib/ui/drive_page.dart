@@ -3825,11 +3825,25 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
                 _FileQuickAction.qr => 2,
                 _ => 0,
               };
+              final scheme = Theme.of(context).colorScheme;
               return MenuAnchor(
                 controller: _linkMenu,
-                // 菜单顶边贴按钮底边，横向对准被点的那一段（余下的
-                // 颜色 / 圆角 / 高度 / 最大宽度都用 M3 菜单默认值）
-                style: const MenuStyle(alignment: Alignment.bottomLeft),
+                // M3E vertical menu 观感：容器用 surfaceContainerLow、圆角加大；
+                // 菜单顶边贴按钮底边，横向对准被点的那一段。
+                // 项高 48dp / 左右内边距 12dp / 图标 24dp / 容器内边距 8dp /
+                // 112~280dp 宽度都沿用 M3 菜单默认值；16dp 圆角是这里取的
+                // （M3 只公开了 baseline 菜单的 4dp，vertical menu 没给数值）。
+                style: MenuStyle(
+                  alignment: Alignment.bottomLeft,
+                  backgroundColor: WidgetStatePropertyAll<Color?>(
+                    scheme.surfaceContainerLow,
+                  ),
+                  shape: const WidgetStatePropertyAll<OutlinedBorder?>(
+                    RoundedRectangleBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(16)),
+                    ),
+                  ),
+                ),
                 alignmentOffset: Offset(
                   targetIndex * (segment + kM3EIconButtonSpacing),
                   0,
