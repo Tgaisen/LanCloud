@@ -124,12 +124,14 @@ class _HomePageState extends State<HomePage>
     required int index,
   }) {
     final l10n = context.l10n;
+    final scheme = Theme.of(context).colorScheme;
     final removing = _removingQuick.contains(item.ref);
     return Md3ListItem(
       key: ValueKey('quick-${item.ref}'),
       index: index,
       removing: removing,
-      icon: Icons.folder_outlined,
+      icon: Icons.folder,
+      iconColor: scheme.primary,
       title: item.name,
       subtitle: quickAccessPathLabel(l10n, item),
       trailing: IconButton(
@@ -143,6 +145,36 @@ class _HomePageState extends State<HomePage>
       // 桌面端右键：与 ⋯ 菜单同一套操作
       onSecondaryTap: () => _showPinMenu(item, first: first),
       onTap: () => _openItem(context, 'folder', item.ref, item.name, ''),
+    );
+  }
+
+  /// 最近使用条目：文件夹用实心图标，文件图标按类型着色。
+  Widget _recentItem(BuildContext context, int i, AppLocalizations l10n) {
+    final item = _recents[i];
+    final isFolder = item.kind.toLowerCase().contains('folder');
+    final scheme = Theme.of(context).colorScheme;
+    return Md3ListItem(
+      key: ValueKey('recent-${item.ref}'),
+      index: i,
+      removing: _removingRecents.contains(item.ref),
+      icon: isFolder ? Icons.folder : iconForFile(item.name),
+      iconColor: isFolder
+          ? scheme.primary
+          : fileIconColor(item.name, brightness: scheme.brightness),
+      title: item.name,
+      subtitle: item.kind.startsWith('share')
+          ? l10n.sharedContent
+          : l10n.myDrive,
+      trailing: IconButton(
+        visualDensity: VisualDensity.compact,
+        iconSize: 20,
+        tooltip: l10n.moreActions,
+        icon: const Icon(Icons.more_vert),
+        onPressed: () => _showRecentMenu(item),
+      ),
+      // 桌面端右键：与 ⋯ 菜单同一套操作
+      onSecondaryTap: () => _showRecentMenu(item),
+      onTap: () => _openItem(context, item.kind, item.ref, item.name, item.pwd),
     );
   }
 
@@ -546,54 +578,7 @@ class _HomePageState extends State<HomePage>
                                               i < _recents.length;
                                               i++
                                             )
-                                              Md3ListItem(
-                                                key: ValueKey(
-                                                  'recent-${_recents[i].ref}',
-                                                ),
-                                                index: i,
-                                                removing: _removingRecents
-                                                    .contains(_recents[i].ref),
-                                                icon:
-                                                    _recents[i].kind
-                                                        .toLowerCase()
-                                                        .contains('folder')
-                                                    ? Icons.folder_outlined
-                                                    : iconForFile(
-                                                        _recents[i].name,
-                                                      ),
-                                                title: _recents[i].name,
-                                                subtitle:
-                                                    _recents[i].kind.startsWith(
-                                                      'share',
-                                                    )
-                                                    ? l10n.sharedContent
-                                                    : l10n.myDrive,
-                                                trailing: IconButton(
-                                                  visualDensity:
-                                                      VisualDensity.compact,
-                                                  iconSize: 20,
-                                                  tooltip: l10n.moreActions,
-                                                  icon: const Icon(
-                                                    Icons.more_vert,
-                                                  ),
-                                                  onPressed: () =>
-                                                      _showRecentMenu(
-                                                        _recents[i],
-                                                      ),
-                                                ),
-                                                // 桌面端右键：与 ⋯ 菜单同一套操作
-                                                onSecondaryTap: () =>
-                                                    _showRecentMenu(
-                                                      _recents[i],
-                                                    ),
-                                                onTap: () => _openItem(
-                                                  context,
-                                                  _recents[i].kind,
-                                                  _recents[i].ref,
-                                                  _recents[i].name,
-                                                  _recents[i].pwd,
-                                                ),
-                                              ),
+                                              _recentItem(context, i, l10n),
                                           ],
                                         )),
                           ),

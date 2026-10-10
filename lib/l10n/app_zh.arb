@@ -556,6 +556,7 @@
   "favoriteTitle": "自定义标题",
   "favoriteTitleHint": "留空则使用默认名称",
   "shareInvalid": "该分享已失效（已取消或删除）",
+  "fileInvalid": "文件已失效",
   "manage": "管理",
   "logout": "退出登录",
   "appName": "蓝云",

@@ -389,6 +389,7 @@
   "favoriteTitle": "Custom title",
   "favoriteTitleHint": "Leave empty to use the default name",
   "shareInvalid": "This share is no longer available (canceled or deleted)",
+  "fileInvalid": "This file is no longer available",
   "manage": "Manage",
   "logout": "Log out",
   "appName": "LanCloud",

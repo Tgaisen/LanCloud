@@ -288,16 +288,8 @@ class _ShareLinkDialogState extends State<ShareLinkDialog> {
           ),
           if (_error != null) ...[
             const SizedBox(height: 12),
-            Card(
-              color: scheme.errorContainer,
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Text(
-                  _error!,
-                  style: TextStyle(color: scheme.onErrorContainer),
-                ),
-              ),
-            ),
+            // 与「文件已失效」同一套 Error container 卡片
+            ErrorHintCard(message: _error!),
           ],
         ],
       ),

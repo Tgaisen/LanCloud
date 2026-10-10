@@ -1110,6 +1110,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get shareInvalid => '该分享已失效（已取消或删除）';
 
   @override
+  String get fileInvalid => '文件已失效';
+
+  @override
   String get manage => '管理';
 
   @override

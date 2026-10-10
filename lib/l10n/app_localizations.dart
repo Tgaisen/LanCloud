@@ -2132,6 +2132,12 @@ abstract class AppLocalizations {
   /// **'该分享已失效（已取消或删除）'**
   String get shareInvalid;
 
+  /// No description provided for @fileInvalid.
+  ///
+  /// In zh, this message translates to:
+  /// **'文件已失效'**
+  String get fileInvalid;
+
   /// No description provided for @manage.
   ///
   /// In zh, this message translates to:

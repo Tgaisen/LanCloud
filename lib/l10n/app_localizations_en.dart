@@ -1144,6 +1144,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'This share is no longer available (canceled or deleted)';
 
   @override
+  String get fileInvalid => 'This file is no longer available';
+
+  @override
   String get manage => 'Manage';
 
   @override

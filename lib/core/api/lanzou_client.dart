@@ -1152,17 +1152,28 @@ class LanzouClient {
       if (zt == '1') {
         final files = <ShareFileItem>[];
         final text = map['text'];
+        // 「本页不足一页（50 条）就没有下一页」这条规则要按服务端返回的
+        // 原始条数判断：文件夹里可能有 id 为 -1 的屏蔽文件（例如 ***.apk），
+        // 它们照样要展示，用过滤后的条数判断会把 49 条误判成最后一页。
+        var returned = 0;
         if (text is List) {
           for (final item in text) {
             if (item is Map) {
+              returned += 1;
               final id = '${item['id'] ?? ''}';
-              if (id.isEmpty || id == '-1') continue;
+              // 屏蔽 / 失效条目：保留下来占位，但标为不可用（下载等操作禁用）
+              final invalid = id.isEmpty || id == '-1';
               files.add(
                 ShareFileItem(
                   name: '${item['name_all'] ?? ''}',
                   time: '${item['time'] ?? ''}',
                   size: '${item['size'] ?? ''}',
-                  url: id.startsWith('http') ? id : '${paging.base}/$id',
+                  url: invalid
+                      ? ''
+                      : id.startsWith('http')
+                      ? id
+                      : '${paging.base}/$id',
+                  invalid: invalid,
                 ),
               );
             }
@@ -1172,7 +1183,7 @@ class LanzouClient {
         // （data.length < 50 时把 filemore 藏起来），这里照抄同一条规则：
         // 文件不满 50 个的文件夹第一页就判定到底，不用再发一次「下一页」请求
         // （少一次请求，也就不会因为服务端偶发「请刷新」而闪重试）
-        return (files: files, hasMore: files.length >= _shareFilesPerPage);
+        return (files: files, hasMore: returned >= _shareFilesPerPage);
       }
       if (zt == '2') return (files: const <ShareFileItem>[], hasMore: false);
       if (zt == '3') throw const WrongPasswordException();

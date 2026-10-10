@@ -176,6 +176,75 @@ void main() {
     expect(find.text(AppLocalizationsZh().reachedEnd), findsOneWidget);
   });
 
+  testWidgets('分享文件夹：id 为 -1 的失效文件照样显示，但不参与多选 / 下载', (tester) async {
+    final l10n = AppLocalizationsZh();
+    final client = _FakeClient();
+    final app = _FakeApp(client);
+    addTearDown(app.dispose);
+    await pumpPage(
+      tester,
+      app: app,
+      folder: FolderShareDetail(
+        name: '测试分享',
+        files: [
+          ShareFileItem(
+            name: 'a.apk',
+            time: '2026-10-01',
+            size: '1 M',
+            url: 'https://example.com/a',
+          ),
+          ShareFileItem(
+            name: '***.apk',
+            time: '2024-12-25',
+            size: '30.5 M',
+            url: '',
+            invalid: true,
+          ),
+        ],
+        paging: _paging(),
+        hasMore: false,
+      ),
+    );
+
+    // 失效文件照样列出来，并在副标题里标注
+    expect(find.text('***.apk'), findsOneWidget);
+    expect(find.textContaining(l10n.fileInvalid), findsOneWidget);
+
+    // 点开属性弹窗：提示「文件已失效」，操作项全部禁用
+    await tester.tap(find.text('***.apk'));
+    await tester.pumpAndSettle();
+    // 提示用 Error container 卡片（图标 + 文字都是 on error container）
+    expect(find.byType(ErrorHintCard), findsOneWidget);
+    expect(find.text(l10n.fileInvalid), findsOneWidget);
+    final downloadTile = tester.widget<ListTile>(
+      find
+          .ancestor(
+            of: find.text(l10n.download),
+            matching: find.byType(ListTile),
+          )
+          .first,
+    );
+    expect(downloadTile.enabled, isFalse);
+
+    // 关掉弹窗后长按有效条目进入多选：全选只包含可下载的条目
+    await tester.tapAt(const Offset(5, 5));
+    await tester.pumpAndSettle();
+    await tester.longPress(find.text('a.apk'));
+    await tester.pumpAndSettle();
+    expect(find.text(l10n.selectedCount(1)), findsOneWidget);
+    // 先取消选中，再点「全选」：只会选中可下载的那一条
+    await tester.tap(find.text('a.apk'));
+    await tester.pumpAndSettle();
+    expect(find.text(l10n.selectedCount(0)), findsOneWidget);
+    await tester.tap(find.byTooltip(l10n.selectAll));
+    await tester.pumpAndSettle();
+    expect(
+      find.text(l10n.selectedCount(1)),
+      findsOneWidget,
+      reason: '失效条目不参与批量操作',
+    );
+  });
+
   testWidgets('分享文件夹：搜索时不显示加载转圈，改为提示结果可能不全', (tester) async {
     final client = _FakeClient();
     final app = _FakeApp(client);

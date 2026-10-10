@@ -389,6 +389,9 @@ class _TransfersPageState extends State<TransfersPage>
                               child: M3eConnectedButtonGroup<int>(
                                 values: const [0, 1],
                                 selected: _tab,
+                                // 上传 / 下载是次要切换：用 tonal 配色，
+                                // 不与页面里的主要操作抢视觉焦点
+                                style: M3EButtonStyle.tonal,
                                 onSelected: (value) {
                                   if (value == _tab) return;
                                   setState(() => _tab = value);
@@ -706,6 +709,7 @@ class _TransferTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final manager = context.read<TransferManager>();
     final l10n = context.l10n;
+    final scheme = Theme.of(context).colorScheme;
     final active =
         task.status == TransferStatus.running ||
         task.status == TransferStatus.queued;
@@ -718,6 +722,7 @@ class _TransferTile extends StatelessWidget {
       animateIn: false,
       removing: removing,
       icon: iconForFile(task.name),
+      iconColor: fileIconColor(task.name, brightness: scheme.brightness),
       title: task.name,
       subtitle: _statusLine(l10n),
       titleMaxLines: 2,

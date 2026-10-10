@@ -4,6 +4,7 @@ import 'package:lancloud/core/api/lanzou_client.dart';
 import 'package:lancloud/core/api/models.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
+import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/share_page.dart';
 import 'package:provider/provider.dart';
 
@@ -69,7 +70,7 @@ void main() {
 
     expect(find.text('提取码错误'), findsOneWidget);
     // 与「该分享需要提取码」同一处（输入框 errorText），不是下面的错误卡片
-    expect(find.byType(Card), findsNothing);
+    expect(find.byType(ErrorHintCard), findsNothing);
   });
 
   testWidgets('打开链接：该分享需要提取码同样是输入框 errorText', (tester) async {
@@ -77,7 +78,7 @@ void main() {
     await parseWithWrongPwd(tester);
 
     expect(find.text('该分享需要提取码'), findsOneWidget);
-    expect(find.byType(Card), findsNothing);
+    expect(find.byType(ErrorHintCard), findsNothing);
   });
 
   testWidgets('打开链接：其它解析错误仍用错误卡片', (tester) async {
@@ -85,6 +86,20 @@ void main() {
     await parseWithWrongPwd(tester);
 
     expect(find.text('文件不存在或已取消分享'), findsOneWidget);
-    expect(find.byType(Card), findsOneWidget);
+    // 错误提示用 Error container 卡片（不再是裸文字 / 默认 Card）
+    expect(find.byType(ErrorHintCard), findsOneWidget);
+    final card = tester.widget<Container>(
+      find
+          .descendant(
+            of: find.byType(ErrorHintCard),
+            matching: find.byType(Container),
+          )
+          .first,
+    );
+    final scheme = Theme.of(tester.element(find.byType(ErrorHintCard)))
+        .colorScheme;
+    expect((card.decoration! as BoxDecoration).color, scheme.errorContainer);
+    final text = tester.widget<Text>(find.text('文件不存在或已取消分享'));
+    expect(text.style?.color, scheme.onErrorContainer);
   });
 }

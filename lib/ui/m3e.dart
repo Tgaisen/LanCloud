@@ -283,8 +283,9 @@ class M3eCircularProgressIndicator extends StatelessWidget {
 ///
 /// 按钮是否带图标由调用方决定（[iconOf] 传空即纯文字），沿用原来的图标设置。
 ///
-/// 用 `filled` 配色：未选中是 surface container 底、选中是 primary 底
-/// （on primary 文字），M3 按钮组规范里 filled 的切换配色就是这个映射。
+/// 默认用 `filled` 配色：未选中是 surface container 底、选中是 primary 底
+/// （on primary 文字）；次要的切换条（如传输页上传/下载）可以传
+/// [M3EButtonStyle.tonal]，选中项改用 secondaryContainer。
 class M3eConnectedButtonGroup<T> extends StatelessWidget {
   const M3eConnectedButtonGroup({
     super.key,
@@ -295,6 +296,7 @@ class M3eConnectedButtonGroup<T> extends StatelessWidget {
     this.iconOf,
     this.size = M3EButtonSize.sm,
     this.expand = true,
+    this.style = M3EButtonStyle.filled,
     this.semanticLabel,
   });
 
@@ -319,6 +321,9 @@ class M3eConnectedButtonGroup<T> extends StatelessWidget {
   /// 是否让按钮等分整行宽度（整行切换条、弹窗里的一行选项）。
   final bool expand;
 
+  /// 按钮配色。
+  final M3EButtonStyle style;
+
   /// 整组的读屏名称。
   final String? semanticLabel;
 
@@ -338,7 +343,7 @@ class M3eConnectedButtonGroup<T> extends StatelessWidget {
           type: M3EButtonGroupType.connected,
           shape: M3EButtonShape.round,
           size: size,
-          style: M3EButtonStyle.filled,
+          style: style,
           overflow: M3EButtonGroupOverflow.none,
           semanticLabel: semanticLabel,
           selectedIndex: selectedIndex < 0 ? null : selectedIndex,

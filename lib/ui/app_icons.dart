@@ -12,6 +12,7 @@ class Icons {
   Icons._();
 
   static const IconData add = Symbols.add;
+  static const IconData album_outlined = Symbols.album;
   static const IconData android_outlined = Symbols.android;
   static const IconData animation = Symbols.animation;
   static const IconData arrow_back = Symbols.arrow_back;
@@ -31,6 +32,7 @@ class Icons {
   static const IconData chevron_right = Symbols.chevron_right;
   static const IconData cleaning_services_outlined = Symbols.cleaning_services;
   static const IconData close = Symbols.close;
+  static const IconData code_outlined = Symbols.code;
   static const IconData cloud_off = Symbols.cloud_off;
   static const IconData cloud_outlined = Symbols.cloud;
   static const IconData cloud_upload_outlined = Symbols.cloud_upload;
@@ -62,6 +64,7 @@ class Icons {
   static const IconData folder_outlined = Symbols.folder;
   static const IconData folder_special_outlined = Symbols.folder_special;
   static const IconData folder_zip_outlined = Symbols.folder_zip;
+  static const IconData font_download_outlined = Symbols.font_download;
   static const IconData grid_view = Symbols.grid_view;
   static const IconData history = Symbols.history;
   static const IconData home_outlined = Symbols.home;
@@ -78,6 +81,7 @@ class Icons {
   static const IconData notifications_outlined = Symbols.notifications;
   static const IconData login = Symbols.login;
   static const IconData logout = Symbols.logout;
+  static const IconData menu_book_outlined = Symbols.menu_book;
   static const IconData more_horiz = Symbols.more_horiz;
   static const IconData more_vert = Symbols.more_vert;
   static const IconData movie_outlined = Symbols.movie;

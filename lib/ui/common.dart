@@ -419,62 +419,277 @@ List<AuthMessages> authMessagesFor(AppLocalizations l10n) => [
   IOSAuthMessages(cancelButton: l10n.cancel),
 ];
 
-IconData iconForFile(String name) {
-  final ext = name.contains('.') ? name.split('.').last.toLowerCase() : '';
+/// 文件类型分类：图标的形状与颜色都按分类区分
+/// （类似 Google Drive 的多彩文件类型图标）。
+enum FileKind {
+  pdf,
+  document,
+  ebook,
+  spreadsheet,
+  presentation,
+  text,
+  code,
+  image,
+  audio,
+  video,
+  archive,
+  disc,
+  android,
+  executable,
+  font,
+  other,
+}
+
+/// 扩展名 → 分类。覆盖蓝奏云允许上传的类型，其余归入 [FileKind.other]。
+FileKind fileKindFor(String name) {
+  final dot = name.lastIndexOf('.');
+  final ext = dot < 0 ? '' : name.substring(dot + 1).toLowerCase();
   switch (ext) {
+    case 'pdf':
+      return FileKind.pdf;
+
+    // 文档
+    case 'doc':
+    case 'docx':
+    case 'odt':
+    case 'rtf':
+    case 'wps':
+    case 'xmind':
+      return FileKind.document;
+
+    // 电子书
+    case 'epub':
+    case 'mobi':
+    case 'azw':
+    case 'azw3':
+      return FileKind.ebook;
+
+    // 表格 / 数据
+    case 'xls':
+    case 'xlsx':
+    case 'csv':
+    case 'ods':
+    case 'et':
+    case 'accdb':
+    case 'db':
+      return FileKind.spreadsheet;
+
+    // 演示
+    case 'ppt':
+    case 'pptx':
+    case 'odp':
+    case 'dps':
+      return FileKind.presentation;
+
+    // 纯文本 / 配置
+    case 'txt':
+    case 'md':
+    case 'log':
+    case 'ini':
+    case 'cfg':
+    case 'conf':
+      return FileKind.text;
+
+    // 代码 / 脚本
+    case 'dart':
+    case 'java':
+    case 'kt':
+    case 'cpp':
+    case 'c':
+    case 'h':
+    case 'py':
+    case 'js':
+    case 'ts':
+    case 'html':
+    case 'css':
+    case 'json':
+    case 'xml':
+    case 'yaml':
+    case 'yml':
+    case 'sh':
+    case 'bat':
+    case 'lua':
+    case 'jar':
+      return FileKind.code;
+
+    // 图片 / 设计稿
     case 'jpg':
     case 'jpeg':
     case 'png':
     case 'gif':
-    case 'webp':
     case 'bmp':
-      return Icons.image_outlined;
-    case 'mp4':
-    case 'mkv':
-    case 'avi':
-    case 'mov':
-      return Icons.movie_outlined;
+    case 'webp':
+    case 'svg':
+    case 'ico':
+    case 'heic':
+    case 'avif':
+    case 'psd':
+    case 'brushset':
+      return FileKind.image;
+
+    // 音频
     case 'mp3':
-    case 'flac':
     case 'wav':
+    case 'aac':
+    case 'ogg':
+    case 'flac':
     case 'm4a':
-      return Icons.music_note_outlined;
+    case 'ape':
+    case 'wma':
+      return FileKind.audio;
+
+    // 视频
+    case 'mp4':
+    case 'mov':
+    case 'avi':
+    case 'mkv':
+    case 'webm':
+    case 'flv':
+    case 'wmv':
+    case 'm4v':
+      return FileKind.video;
+
+    // 压缩包
     case 'zip':
     case 'rar':
     case '7z':
     case 'tar':
     case 'gz':
-      return Icons.folder_zip_outlined;
+    case 'bz2':
+    case 'xz':
+    case 'cab':
+    case 'osz':
+    case 'osk':
+    case 'rp':
+    case 'rplib':
+      return FileKind.archive;
+
+    // 光盘 / 磁盘镜像
+    case 'iso':
+    case 'img':
+    case 'gho':
+    case 'dmg':
+      return FileKind.disc;
+
+    // 安卓安装包
     case 'apk':
-      return Icons.android_outlined;
+    case 'xapk':
+      return FileKind.android;
+
+    // 可执行文件 / 安装包
     case 'exe':
     case 'msi':
-      return Icons.window_outlined;
-    case 'pdf':
-      return Icons.picture_as_pdf_outlined;
-    case 'doc':
-    case 'docx':
-      return Icons.description_outlined;
-    case 'xls':
-    case 'xlsx':
-      return Icons.table_chart_outlined;
-    case 'ppt':
-    case 'pptx':
-      return Icons.slideshow_outlined;
-    case 'txt':
-    case 'md':
-    case 'log':
-    case 'xml':
-    case 'json':
-    case 'yml':
-    case 'yaml':
-    case 'ini':
-    case 'conf':
-      return Icons.article_outlined;
+    case 'dll':
+    case 'deb':
+    case 'rpm':
+    case 'appimage':
+    case 'pkg':
+    case 'crx':
+    case 'imazingapp':
+      return FileKind.executable;
+
+    // 字体
+    case 'ttf':
+    case 'ttc':
+    case 'otf':
+    case 'txf':
+    case 'woff':
+    case 'woff2':
+      return FileKind.font;
+
     default:
+      return FileKind.other;
+  }
+}
+
+/// 分类 → 文件图标（描边样式）。
+IconData iconForFileKind(FileKind kind) {
+  switch (kind) {
+    case FileKind.pdf:
+      return Icons.picture_as_pdf_outlined;
+    case FileKind.document:
+      return Icons.description_outlined;
+    case FileKind.ebook:
+      return Icons.menu_book_outlined;
+    case FileKind.spreadsheet:
+      return Icons.table_chart_outlined;
+    case FileKind.presentation:
+      return Icons.slideshow_outlined;
+    case FileKind.text:
+      return Icons.article_outlined;
+    case FileKind.code:
+      return Icons.code_outlined;
+    case FileKind.image:
+      return Icons.image_outlined;
+    case FileKind.audio:
+      return Icons.music_note_outlined;
+    case FileKind.video:
+      return Icons.movie_outlined;
+    case FileKind.archive:
+      return Icons.folder_zip_outlined;
+    case FileKind.disc:
+      return Icons.album_outlined;
+    case FileKind.android:
+      return Icons.android_outlined;
+    case FileKind.executable:
+      return Icons.window_outlined;
+    case FileKind.font:
+      return Icons.font_download_outlined;
+    case FileKind.other:
       return Icons.insert_drive_file_outlined;
   }
 }
+
+IconData iconForFile(String name) => iconForFileKind(fileKindFor(name));
+
+/// 分类 → 图标配色。亮色主题用 600 档左右的深色；
+/// 深色主题整体提亮，保证在深色卡片上依旧清晰。
+Color fileKindColor(FileKind kind, {Brightness brightness = Brightness.light}) {
+  final base = _fileKindBaseColor(kind);
+  return brightness == Brightness.dark
+      ? Color.lerp(base, Colors.white, 0.28)!
+      : base;
+}
+
+Color _fileKindBaseColor(FileKind kind) {
+  switch (kind) {
+    case FileKind.pdf:
+      return const Color(0xFFD93025); // 红
+    case FileKind.document:
+    case FileKind.ebook:
+      return const Color(0xFF1A73E8); // 蓝
+    case FileKind.spreadsheet:
+      return const Color(0xFF7CB342); // 浅绿
+    case FileKind.presentation:
+      return const Color(0xFFE8710A); // 橙
+    case FileKind.text:
+      return const Color(0xFF616161); // 灰
+    case FileKind.code:
+      return const Color(0xFF3F51B5); // 靛蓝
+    case FileKind.image:
+      return const Color(0xFF43A047); // 绿
+    case FileKind.audio:
+      return const Color(0xFF8E24AA); // 紫
+    case FileKind.video:
+      return const Color(0xFF5E35B1); // 深紫
+    case FileKind.archive:
+      return const Color(0xFF6D4C41); // 棕
+    case FileKind.disc:
+      return const Color(0xFF607D8B); // 蓝灰
+    case FileKind.android:
+      return const Color(0xFF00897B); // 青绿
+    case FileKind.executable:
+      return const Color(0xFF0097A7); // 青
+    case FileKind.font:
+      return const Color(0xFFC2185B); // 玫红
+    case FileKind.other:
+      return const Color(0xFF757575); // 默认灰
+  }
+}
+
+/// 文件名 → 图标颜色（跟随主题明暗）。
+Color fileIconColor(String name, {Brightness brightness = Brightness.light}) =>
+    fileKindColor(fileKindFor(name), brightness: brightness);
 
 class EmptyHint extends StatelessWidget {
   const EmptyHint({
@@ -510,6 +725,44 @@ class EmptyHint extends StatelessWidget {
       ),
     );
     return Center(child: animate ? FadeIn(child: hint) : hint);
+  }
+}
+
+/// 就地错误提示卡片：Error container 底 + on error container 的图标 / 文字。
+///
+/// 用于「文件已失效」「解析失败」这类跟内容贴在一起的提示——比 SnackBar
+/// 更容易和出错的那一项对上号，也比一行裸文字更清楚这是一条状态。
+class ErrorHintCard extends StatelessWidget {
+  const ErrorHintCard({super.key, required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: scheme.errorContainer,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.error_outline, size: 20, color: scheme.onErrorContainer),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: scheme.onErrorContainer,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -1285,6 +1538,7 @@ class Md3ListItem extends StatefulWidget {
     this.trailing,
     this.selected = false,
     this.iconBoxColor,
+    this.iconColor,
     this.bottom,
     this.titleMaxLines = 1,
     this.subtitleMaxLines = 1,
@@ -1309,8 +1563,11 @@ class Md3ListItem extends StatefulWidget {
   /// 多选选中态：整行填主色容器，圆角由外层分组控制。
   final bool selected;
 
-  /// 图标块底色，默认 secondaryContainer。
+  /// 图标块底色，默认 surfaceContainerHigh（与网盘页列表项一致）。
   final Color? iconBoxColor;
+
+  /// 图标颜色，默认主题强调色（文件夹用主色，文件传类型色）。
+  final Color? iconColor;
 
   /// 标题行下方的附加内容（例如传输进度条）。
   final Widget? bottom;
@@ -1439,7 +1696,8 @@ class _Md3ListItemState extends State<Md3ListItem>
                       decoration: BoxDecoration(
                         color: widget.selected
                             ? scheme.surface
-                            : widget.iconBoxColor ?? scheme.secondaryContainer,
+                            : widget.iconBoxColor ??
+                                  scheme.surfaceContainerHigh,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
@@ -1447,7 +1705,7 @@ class _Md3ListItemState extends State<Md3ListItem>
                         size: 22,
                         color: widget.selected
                             ? scheme.primary
-                            : scheme.onSecondaryContainer,
+                            : widget.iconColor ?? scheme.primary,
                       ),
                     ),
                     const SizedBox(width: 14),
@@ -2284,6 +2542,8 @@ class PropertyHeaderCard extends StatelessWidget {
     this.subtitle = '',
     this.desc = '',
     this.loading = false,
+    this.iconColor,
+    this.iconBoxColor,
   });
 
   final IconData icon;
@@ -2291,6 +2551,12 @@ class PropertyHeaderCard extends StatelessWidget {
   final String subtitle;
   final String desc;
   final bool loading;
+
+  /// 图标颜色，默认用主题强调色（与文件夹图标一致）。
+  final Color? iconColor;
+
+  /// 图标块底色，默认 surfaceContainerLowest（与网盘页文件项目一致）。
+  final Color? iconBoxColor;
 
   @override
   Widget build(BuildContext context) {
@@ -2301,8 +2567,8 @@ class PropertyHeaderCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          // 比 surfaceContainerHighest 浅一档，弹窗里更轻盈
-          color: scheme.surfaceContainerHigh,
+          // 比弹窗底色（surfaceContainerLow）深一档，卡片才不会糊在弹窗上
+          color: scheme.surfaceContainer,
           borderRadius: BorderRadius.circular(24),
         ),
         // 简介是拉取到之后才补上的：整卡高度跟着内容平滑变化，不要瞬间变高
@@ -2319,16 +2585,18 @@ class PropertyHeaderCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    width: 52,
-                    height: 52,
+                    // 与 Md3ListItem 的图标块保持一致（尺寸 / 圆角 / 字号）
+                    width: 42,
+                    height: 42,
                     decoration: BoxDecoration(
-                      color: scheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(18),
+                      // 与列表项的图标块同底色
+                      color: iconBoxColor ?? scheme.surfaceContainerHigh,
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
                       icon,
-                      size: 28,
-                      color: scheme.onPrimaryContainer,
+                      size: 22,
+                      color: iconColor ?? scheme.primary,
                     ),
                   ),
                   const SizedBox(width: 14),

@@ -3055,7 +3055,8 @@ class _FolderTile extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Card(
       clipBehavior: Clip.antiAlias,
-      color: selected ? scheme.primaryContainer : scheme.surfaceContainerHigh,
+      // 与列表项（Md3ListItem）同底色
+      color: selected ? scheme.primaryContainer : scheme.surfaceContainerLow,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: InkWell(
         onTap: onTap,
@@ -3073,17 +3074,16 @@ class _FolderTile extends StatelessWidget {
                     width: 38,
                     height: 38,
                     decoration: BoxDecoration(
+                      // 与文件项同款的图标块底色（只有图标颜色不同）
                       color: selected
                           ? scheme.surface
-                          : scheme.surfaceContainerLowest,
+                          : scheme.surfaceContainerHigh,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
                       selected ? Icons.check_circle : Icons.folder,
                       size: 21,
-                      color: selected
-                          ? scheme.primary
-                          : scheme.primary.withValues(alpha: 0.9),
+                      color: scheme.primary,
                     ),
                   ),
                   const Spacer(),
@@ -3144,7 +3144,8 @@ class _FileTile extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Card(
       clipBehavior: Clip.antiAlias,
-      color: selected ? scheme.primaryContainer : scheme.surfaceContainerHigh,
+      // 与列表项（Md3ListItem）同底色
+      color: selected ? scheme.primaryContainer : scheme.surfaceContainerLow,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: InkWell(
         onTap: onTap,
@@ -3164,13 +3165,18 @@ class _FileTile extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: selected
                           ? scheme.surface
-                          : scheme.surfaceContainerLowest,
+                          : scheme.surfaceContainerHigh,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
                       selected ? Icons.check_circle : iconForFile(file.name),
                       size: 21,
-                      color: selected ? scheme.primary : scheme.secondary,
+                      color: selected
+                          ? scheme.primary
+                          : fileIconColor(
+                              file.name,
+                              brightness: scheme.brightness,
+                            ),
                     ),
                   ),
                   const Spacer(),
@@ -3223,8 +3229,8 @@ class _DriveRow extends StatelessWidget {
     required this.onTap,
     required this.onMenu,
     required this.onLongPress,
-    this.folder = false,
     this.locked = false,
+    this.iconColor,
   });
 
   final IconData icon;
@@ -3239,9 +3245,10 @@ class _DriveRow extends StatelessWidget {
   final VoidCallback onMenu;
   final VoidCallback onLongPress;
 
-  /// 文件夹用主色图标块，文件用中性色。
-  final bool folder;
   final bool locked;
+
+  /// 图标颜色：文件夹用主题强调色，文件按类型着色。
+  final Color? iconColor;
 
   @override
   Widget build(BuildContext context) {
@@ -3277,8 +3284,6 @@ class _DriveRow extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: selected
                         ? scheme.surface
-                        : folder
-                        ? scheme.secondaryContainer
                         : scheme.surfaceContainerHigh,
                     borderRadius: BorderRadius.circular(selected ? 14 : 12),
                   ),
@@ -3290,9 +3295,7 @@ class _DriveRow extends StatelessWidget {
                       size: 22,
                       color: selected
                           ? scheme.primary
-                          : folder
-                          ? scheme.onSecondaryContainer
-                          : scheme.onSurfaceVariant,
+                          : iconColor ?? scheme.onSurfaceVariant,
                     ),
                   ),
                 ),
@@ -3371,8 +3374,8 @@ class _FolderRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _DriveRow(
-      icon: Icons.folder_outlined,
-      folder: true,
+      icon: Icons.folder,
+      iconColor: Theme.of(context).colorScheme.primary,
       selected: selected,
       selecting: selecting,
       title: folder.name,
@@ -3407,6 +3410,10 @@ class _FileRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return _DriveRow(
       icon: iconForFile(file.name),
+      iconColor: fileIconColor(
+        file.name,
+        brightness: Theme.of(context).colorScheme.brightness,
+      ),
       selected: selected,
       selecting: selecting,
       title: file.name,
@@ -3627,11 +3634,13 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
     final l10n = context.l10n;
     final page = widget.page;
     final file = _file;
+    final scheme = Theme.of(context).colorScheme;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         PropertyHeaderCard(
           icon: iconForFile(file.name),
+          iconColor: fileIconColor(file.name, brightness: scheme.brightness),
           title: file.name,
           subtitle: [
             if (file.size.isNotEmpty) prettyLzSize(file.size),

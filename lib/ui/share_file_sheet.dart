@@ -19,6 +19,7 @@ class ShareFileInfoSheet extends StatefulWidget {
     required this.pwd,
     this.size = '',
     this.time = '',
+    this.invalid = false,
   });
 
   final String name;
@@ -26,6 +27,9 @@ class ShareFileInfoSheet extends StatefulWidget {
   final String pwd;
   final String size;
   final String time;
+
+  /// 已知失效的条目（服务端 id 为 -1）：不再去解析链接，直接提示「文件已失效」。
+  final bool invalid;
 
   @override
   State<ShareFileInfoSheet> createState() => _ShareFileInfoSheetState();
@@ -39,7 +43,13 @@ class _ShareFileInfoSheetState extends State<ShareFileInfoSheet> {
   @override
   void initState() {
     super.initState();
-    _fetch();
+    // 已知失效的文件不必再发请求：链接解析一定失败，只会白转一圈
+    if (widget.invalid) {
+      _loading = false;
+      _invalid = true;
+    } else {
+      _fetch();
+    }
   }
 
   Future<void> _fetch() async {
@@ -91,6 +101,7 @@ class _ShareFileInfoSheetState extends State<ShareFileInfoSheet> {
         children: [
           PropertyHeaderCard(
             icon: iconForFile(_name),
+            iconColor: fileIconColor(_name, brightness: scheme.brightness),
             title: _name,
             subtitle: [
               if (_size.isNotEmpty) prettyLzSize(_size),
@@ -102,12 +113,9 @@ class _ShareFileInfoSheetState extends State<ShareFileInfoSheet> {
           if (_invalid)
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
-              child: Row(
-                children: [
-                  Icon(Icons.error_outline, color: scheme.error),
-                  const SizedBox(width: 10),
-                  Expanded(child: Text(l10n.shareInvalid)),
-                ],
+              // 已知失效 / 链接解析失败：Error container 卡片提示
+              child: ErrorHintCard(
+                message: widget.invalid ? l10n.fileInvalid : l10n.shareInvalid,
               ),
             ),
           ListTile(

@@ -221,6 +221,7 @@ class _ShareFolderPageState extends State<ShareFolderPage>
   }
 
   void _toggleFile(String url) {
+    if (url.isEmpty) return;
     setState(() {
       if (!_selected.remove(url)) _selected.add(url);
     });
@@ -228,6 +229,7 @@ class _ShareFolderPageState extends State<ShareFolderPage>
 
   /// 长按条目进入多选并选中它。
   void _enterSelection(String url) {
+    if (url.isEmpty) return;
     final wasSelecting = _selecting;
     setState(() {
       _selecting = true;
@@ -237,13 +239,18 @@ class _ShareFolderPageState extends State<ShareFolderPage>
   }
 
   void _selectAll() {
+    // 失效条目没有地址，不能参与批量下载 / 复制
+    final selectable = [
+      for (final f in _files)
+        if (!f.invalid) f.url,
+    ];
     setState(() {
-      if (_selected.length == _files.length) {
+      if (_selected.length == selectable.length) {
         _selected.clear();
       } else {
         _selected
           ..clear()
-          ..addAll(_files.map((f) => f.url));
+          ..addAll(selectable);
       }
     });
   }
@@ -251,13 +258,16 @@ class _ShareFolderPageState extends State<ShareFolderPage>
   void _invertSelection() {
     setState(() {
       for (final file in _files) {
+        if (file.invalid) continue;
         if (!_selected.remove(file.url)) _selected.add(file.url);
       }
     });
   }
 
   Future<void> _downloadSelected() async {
-    final files = _files.where((f) => _selected.contains(f.url)).toList();
+    final files = _files
+        .where((f) => !f.invalid && _selected.contains(f.url))
+        .toList();
     if (files.isEmpty) return;
     await downloadShareFiles(
       context,
@@ -269,14 +279,18 @@ class _ShareFolderPageState extends State<ShareFolderPage>
   }
 
   Future<void> _copySelectedLinks() async {
-    final files = _files.where((f) => _selected.contains(f.url)).toList();
+    final files = _files
+        .where((f) => !f.invalid && _selected.contains(f.url))
+        .toList();
     if (files.isEmpty) return;
     await copyText(context, files.map((f) => '${f.name} ${f.url}').join('\n'));
   }
 
   Future<void> _favoriteSelected() async {
     final app = context.read<AppController>();
-    final files = _files.where((f) => _selected.contains(f.url)).toList();
+    final files = _files
+        .where((f) => !f.invalid && _selected.contains(f.url))
+        .toList();
     for (final file in files) {
       await app.db.addFavorite(
         kind: 'shareFile',
@@ -587,12 +601,14 @@ class _ShareFolderPageState extends State<ShareFolderPage>
                         trailing: files.isEmpty ? footer : null,
                         itemBuilder: (context, index) {
                           final sub = folders[index];
+                          final scheme = Theme.of(context).colorScheme;
                           return ListEnterAnimation(
                             progress: _enter,
                             index: index,
                             child: Md3ListItem(
                               key: ValueKey('share-folder-${sub.url}'),
-                              icon: Icons.folder_outlined,
+                              icon: Icons.folder,
+                              iconColor: scheme.primary,
                               title: sub.name,
                               subtitle: sub.desc,
                               animateIn: false,
@@ -612,21 +628,35 @@ class _ShareFolderPageState extends State<ShareFolderPage>
                         trailing: footer,
                         itemBuilder: (context, index) {
                           final file = files[index];
+                          final scheme = Theme.of(context).colorScheme;
                           return ListEnterAnimation(
                             progress: _enter,
                             index: index,
                             child: Md3ListItem(
-                              key: ValueKey('share-file-${file.url}'),
+                              // 失效条目没有 url，用下标保证 key 唯一
+                              key: ValueKey(
+                                'share-file-${file.url.isEmpty ? 'invalid-$index' : file.url}',
+                              ),
                               icon: iconForFile(file.name),
+                              iconColor: file.invalid
+                                  ? scheme.onSurfaceVariant
+                                  : fileIconColor(
+                                      file.name,
+                                      brightness: scheme.brightness,
+                                    ),
                               title: file.name,
                               subtitle: [
                                 prettyLzSize(file.size),
                                 if (file.time.isNotEmpty) file.time,
+                                if (file.invalid) l10n.fileInvalid,
                               ].where((e) => e.isNotEmpty).join(' · '),
                               selected:
                                   _selecting && _selected.contains(file.url),
                               animateIn: false,
-                              onLongPress: () => _enterSelection(file.url),
+                              // 失效条目不能下载 / 复制，也就不参与多选
+                              onLongPress: file.invalid
+                                  ? null
+                                  : () => _enterSelection(file.url),
                               onTap: () {
                                 if (_selecting) {
                                   _toggleFile(file.url);
@@ -639,6 +669,7 @@ class _ShareFolderPageState extends State<ShareFolderPage>
                                       pwd: widget.pwd,
                                       size: file.size,
                                       time: file.time,
+                                      invalid: file.invalid,
                                     ),
                                   );
                                 }

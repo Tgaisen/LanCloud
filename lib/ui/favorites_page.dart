@@ -457,6 +457,7 @@ class _FavoritesPageState extends State<FavoritesPage>
 
   Widget _tile(FavoriteItem item, {required int index}) {
     final l10n = context.l10n;
+    final scheme = Theme.of(context).colorScheme;
     final selected = _selected.contains(item.id);
     final isFolder = item.kind == 'shareFolder';
     return Md3ListItem(
@@ -466,7 +467,11 @@ class _FavoritesPageState extends State<FavoritesPage>
       animateIn: false,
       removing: _removing.contains(item.id),
       pulse: _pulse[item.id] ?? 0,
-      icon: isFolder ? Icons.folder_outlined : iconForFile(item.name),
+      icon: isFolder ? Icons.folder : iconForFile(item.name),
+      // 图标块底色与文件项一致，文件夹只换图标颜色
+      iconColor: isFolder
+          ? scheme.primary
+          : fileIconColor(item.name, brightness: scheme.brightness),
       title: item.title.isEmpty ? item.name : item.title,
       subtitle: _subtitle(item),
       titleMaxLines: 2,

@@ -109,12 +109,16 @@ class ShareFileItem {
     required this.time,
     required this.size,
     required this.url,
+    this.invalid = false,
   });
 
   final String name;
   final String time;
   final String size;
   final String url;
+
+  /// 服务端把 id 置为 -1 的屏蔽 / 失效文件：能列出来，但打不开也下载不了。
+  final bool invalid;
 }
 
 class SubFolder {

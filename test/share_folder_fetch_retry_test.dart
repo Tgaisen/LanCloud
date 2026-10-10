@@ -90,6 +90,29 @@ void main() {
     expect(result.hasMore, isTrue);
   });
 
+  // 真机：收藏的分享文件夹第一页 50 条里有 1 条被服务端屏蔽的文件
+  // （id 为 -1，名字只给 ***.apk）。以前这条被直接丢掉，剩下 49 条又被
+  // 「不满 50 条就没有下一页」的规则判成最后一页，页面再也翻不了页。
+  test('id 为 -1 的屏蔽文件照样返回，且不影响「还有下一页」的判断', () async {
+    final client = LanzouClient(uid: '0');
+    final files = [
+      for (var i = 0; i < 49; i++)
+        '{"id":"i$i","name_all":"f$i.apk","size":"1 M","time":"2024-12-25"}',
+      '{"id":"-1","name_all":"***.apk","size":"30.5 M","time":"2024-12-25"}',
+    ].join(',');
+    final adapter = _ScriptedAdapter(['{"zt":1,"text":[$files]}']);
+    client.dio.httpClientAdapter = adapter;
+
+    final result = await client.fetchShareFolderFiles(_paging(), 1);
+
+    expect(result.files.length, 50, reason: '屏蔽项要占位显示，不能丢');
+    expect(result.files.where((f) => f.invalid).length, 1);
+    expect(result.files.last.name, '***.apk');
+    expect(result.files.last.invalid, isTrue);
+    expect(result.files.last.url, isEmpty, reason: '失效条目没有可用的下载地址');
+    expect(result.hasMore, isTrue, reason: '按服务端返回的 50 条判断，还有下一页');
+  });
+
   test('分享分页拿到 zt=2 表示已到底', () async {
     final client = LanzouClient(uid: '0');
     final adapter = _ScriptedAdapter(['{"zt":2}']);
