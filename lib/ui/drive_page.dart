@@ -2494,9 +2494,16 @@ class _DrivePageState extends State<DrivePage>
       child: AppBar(
         backgroundColor: Colors.transparent,
         scrolledUnderElevation: 0,
-        leading: (ModalRoute.of(context)?.isFirst ?? true)
-            ? null
-            : const AppBarBackButton(),
+        // 搜索时关闭按钮放左侧（与收藏页一致），否则是返回按钮
+        leading: _searching
+            ? IconButton(
+                tooltip: context.l10n.closeSearch,
+                icon: const Icon(Icons.close),
+                onPressed: _closeSearch,
+              )
+            : ((ModalRoute.of(context)?.isFirst ?? true)
+                  ? null
+                  : const AppBarBackButton()),
         // 标题 ↔ 搜索框带显示 / 隐藏动画，不要直接闪出来
         title: AppBarSearchSwitcher(
           searching: _searching,
@@ -2512,13 +2519,7 @@ class _DrivePageState extends State<DrivePage>
           ),
         ),
         actions: _searching
-            ? [
-                IconButton(
-                  tooltip: context.l10n.closeSearch,
-                  icon: const Icon(Icons.close),
-                  onPressed: _closeSearch,
-                ),
-              ]
+            ? const <Widget>[]
             : [
                 IconButton(
                   tooltip: context.l10n.search,

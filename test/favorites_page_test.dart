@@ -91,4 +91,54 @@ void main() {
     expect(find.byType(FavoritesPage), findsNothing);
     app.dispose();
   });
+
+  // 搜索框打开时返回键先退出搜索（与分享浏览页一致），再退出页面
+  testWidgets('独立页面：搜索时返回只退出搜索，不退出页面', (tester) async {
+    final app = AppController();
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AppController>.value(
+        value: app,
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: Center(
+                child: TextButton(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const FavoritesPage(tabIndex: 3),
+                    ),
+                  ),
+                  child: const Text('打开收藏'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('打开收藏'));
+    await tester.pumpAndSettle();
+
+    // 打开搜索：搜索框是带过渡淡入的
+    await tester.tap(find.byTooltip('搜索'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 80));
+    expect(find.byType(TextField), findsOneWidget);
+    await tester.pumpAndSettle();
+
+    // 第一次返回：只退出搜索，页面还在
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.byType(TextField), findsNothing);
+    expect(find.byType(FavoritesPage), findsOneWidget);
+
+    // 再返回一次才退出页面
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.byType(FavoritesPage), findsNothing);
+    app.dispose();
+  });
 }

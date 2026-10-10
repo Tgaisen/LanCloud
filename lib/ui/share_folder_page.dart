@@ -8,6 +8,7 @@ import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
 import 'm3e.dart';
+import 'reduce_motion.dart';
 import 'share_file_sheet.dart';
 import 'web_page.dart';
 
@@ -388,6 +389,76 @@ class _ShareFolderPageState extends State<ShareFolderPage>
     }
   }
 
+  /// 普通顶栏：返回 / 关闭搜索 + 标题或搜索框 + 搜索 / 菜单。
+  PreferredSizeWidget _normalAppBar(
+    AppLocalizations l10n,
+    FolderShareDetail folder,
+  ) => AppBar(
+    key: const ValueKey('share-normal-appbar'),
+    backgroundColor: Colors.transparent,
+    scrolledUnderElevation: 0,
+    leading: _searching
+        ? IconButton(
+            tooltip: l10n.closeSearch,
+            icon: const Icon(Icons.close),
+            onPressed: _exitSearch,
+          )
+        : const AppBarBackButton(),
+    // 标题 ↔ 搜索框带显示 / 隐藏动画，不要直接闪出来
+    title: AppBarSearchSwitcher(
+      searching: _searching,
+      title: Text(folder.name),
+      searchField: TextField(
+        controller: _search,
+        autofocus: true,
+        decoration: InputDecoration(
+          hintText: l10n.searchCurrentFolder,
+          border: InputBorder.none,
+        ),
+        onChanged: (value) => setState(() => _filter = value),
+      ),
+    ),
+    actions: _searching
+        ? const <Widget>[]
+        : [
+            IconButton(
+              tooltip: l10n.search,
+              icon: const Icon(Icons.search),
+              onPressed: () => setState(() => _searching = true),
+            ),
+            IconButton(
+              tooltip: l10n.moreActions,
+              icon: const Icon(Icons.more_vert),
+              onPressed: _showMenu,
+            ),
+          ],
+  );
+
+  /// 多选顶栏：长按条目后淡入（与网盘页同款）。
+  PreferredSizeWidget _selectionAppBar(AppLocalizations l10n) => AppBar(
+    key: const ValueKey('share-selection-appbar'),
+    backgroundColor: Colors.transparent,
+    scrolledUnderElevation: 0,
+    leading: IconButton(
+      tooltip: l10n.exitSelection,
+      icon: const Icon(Icons.close),
+      onPressed: _toggleSelecting,
+    ),
+    title: Text(l10n.selectedCount(_selected.length)),
+    actions: [
+      IconButton(
+        tooltip: l10n.selectAll,
+        icon: const Icon(Icons.select_all),
+        onPressed: _selectAll,
+      ),
+      IconButton(
+        tooltip: l10n.invertSelection,
+        icon: const Icon(Icons.flip),
+        onPressed: _invertSelection,
+      ),
+    ],
+  );
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -457,66 +528,22 @@ class _ShareFolderPageState extends State<ShareFolderPage>
         },
         child: TopBarOverlayScaffold(
           controller: _scroll,
-          // 顶栏空白处点按回到顶部由 TopBarOverlayScaffold 统一处理
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            scrolledUnderElevation: 0,
-            leading: _selecting
-                ? IconButton(
-                    tooltip: l10n.exitSelection,
-                    icon: const Icon(Icons.close),
-                    onPressed: _toggleSelecting,
-                  )
-                : (_searching
-                      ? IconButton(
-                          tooltip: l10n.closeSearch,
-                          icon: const Icon(Icons.close),
-                          onPressed: _exitSearch,
-                        )
-                      : const AppBarBackButton()),
-            title: _selecting
-                ? Text(l10n.selectedCount(_selected.length))
-                // 标题 ↔ 搜索框带显示 / 隐藏动画，不要直接闪出来
-                : AppBarSearchSwitcher(
-                    searching: _searching,
-                    title: Text(folder.name),
-                    searchField: TextField(
-                      controller: _search,
-                      autofocus: true,
-                      decoration: InputDecoration(
-                        hintText: l10n.searchCurrentFolder,
-                        border: InputBorder.none,
-                      ),
-                      onChanged: (value) => setState(() => _filter = value),
-                    ),
-                  ),
-            actions: _selecting
-                ? [
-                    IconButton(
-                      tooltip: l10n.selectAll,
-                      icon: const Icon(Icons.select_all),
-                      onPressed: _selectAll,
-                    ),
-                    IconButton(
-                      tooltip: l10n.invertSelection,
-                      icon: const Icon(Icons.flip),
-                      onPressed: _invertSelection,
-                    ),
-                  ]
-                : (_searching
-                      ? const <Widget>[]
-                      : [
-                          IconButton(
-                            tooltip: l10n.search,
-                            icon: const Icon(Icons.search),
-                            onPressed: () => setState(() => _searching = true),
-                          ),
-                          IconButton(
-                            tooltip: l10n.moreActions,
-                            icon: const Icon(Icons.more_vert),
-                            onPressed: _showMenu,
-                          ),
-                        ]),
+          // 顶栏空白处点按回到顶部由 TopBarOverlayScaffold 统一处理。
+          // 长按进入多选时整条顶栏淡入淡出（与网盘页同款），不要直接换掉。
+          appBar: PreferredSize(
+            preferredSize: const Size.fromHeight(kToolbarHeight),
+            child: AnimatedSwitcher(
+              duration: reduceMotionOf(context)
+                  ? Duration.zero
+                  : const Duration(milliseconds: 200),
+              switchInCurve: Curves.easeOut,
+              switchOutCurve: Curves.easeIn,
+              transitionBuilder: (child, animation) =>
+                  FadeTransition(opacity: animation, child: child),
+              child: _selecting
+                  ? _selectionAppBar(l10n)
+                  : _normalAppBar(l10n, folder),
+            ),
           ),
           slivers: [
             if (isEmpty)

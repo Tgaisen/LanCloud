@@ -39,6 +39,44 @@ Future<AppController> pumpShareFolder(
 }
 
 void main() {
+  // 长按进入多选：整条顶栏淡入淡出（与网盘页同款），不是直接换掉
+  testWidgets('分享文件夹页：长按进多选时顶栏是淡入的', (tester) async {
+    await pumpShareFolder(
+      tester,
+      FolderShareDetail(
+        name: '测试分享',
+        files: [
+          ShareFileItem(
+            name: 'a.txt',
+            time: '2026-10-01',
+            size: '1 M',
+            url: 'https://example.com/a',
+          ),
+        ],
+      ),
+    );
+
+    await tester.longPress(find.text('a.txt'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 60));
+
+    // 多选顶栏已经在树里，但还在淡入（透明度介于 0~1）
+    final fade = tester.widget<FadeTransition>(
+      find
+          .ancestor(
+            of: find.byKey(const ValueKey('share-selection-appbar')),
+            matching: find.byType(FadeTransition),
+          )
+          .first,
+    );
+    expect(fade.opacity.value, greaterThan(0));
+    expect(fade.opacity.value, lessThan(1));
+
+    await tester.pumpAndSettle();
+    expect(fade.opacity.value, 1.0);
+    expect(find.text('已选择 1 项'), findsOneWidget);
+  });
+
   testWidgets('分享文件夹页：说明 / 子目录 / 文件正常渲染，顶栏为浮层', (tester) async {
     await pumpShareFolder(
       tester,

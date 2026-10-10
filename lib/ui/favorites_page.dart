@@ -502,12 +502,17 @@ class _FavoritesPageState extends State<FavoritesPage>
     final files = _visible(_files);
     return PopScope(
       // 独立页面（_openView 打开的二级路由）没有外壳的返回处理：
-      // 多选状态下返回先退出多选；位于底栏（首个路由）时交给外壳统一处理。
+      // 多选 / 搜索状态下返回先退出，再退出页面；
+      // 位于底栏（首个路由）时交给外壳统一处理。
       // 注意不能用 tabIndex 判断：独立打开时它也带着同一个值。
-      canPop: inRootShell(context) || !_selecting,
+      canPop: inRootShell(context) || (!_selecting && !_searching),
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
-        if (_selecting) _exitSelection();
+        if (_selecting) {
+          _exitSelection();
+        } else if (_searching) {
+          _exitSearch();
+        }
       },
       child: Scaffold(
         // 大屏外壳里的页面：背景交给外壳的圆角卡片
@@ -668,18 +673,20 @@ class _FavoritesPageState extends State<FavoritesPage>
                         : ((ModalRoute.of(context)?.isFirst ?? true)
                               ? null
                               : const AppBarBackButton()),
-                    title: _searching
-                        ? TextField(
-                            controller: _search,
-                            autofocus: true,
-                            decoration: InputDecoration(
-                              hintText: l10n.searchFavorites,
-                              border: InputBorder.none,
-                            ),
-                            onChanged: (value) =>
-                                setState(() => _filter = value),
-                          )
-                        : Text(l10n.myFavorites),
+                    // 标题 ↔ 搜索框带显示 / 隐藏动画（与分享浏览页一致）
+                    title: AppBarSearchSwitcher(
+                      searching: _searching,
+                      title: Text(l10n.myFavorites),
+                      searchField: TextField(
+                        controller: _search,
+                        autofocus: true,
+                        decoration: InputDecoration(
+                          hintText: l10n.searchFavorites,
+                          border: InputBorder.none,
+                        ),
+                        onChanged: (value) => setState(() => _filter = value),
+                      ),
+                    ),
                     actions: _searching
                         ? const <Widget>[]
                         : [

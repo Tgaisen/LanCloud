@@ -71,6 +71,25 @@ bool hasSemanticsLabel(WidgetTester tester, String target) {
 }
 
 void main() {
+  // 网盘页搜索：关闭按钮改到左侧（与收藏页一致）
+  testWidgets('网盘页搜索：关闭按钮在左侧，右侧不再有搜索按钮', (tester) async {
+    final app = await host(tester);
+
+    await tester.tap(find.byTooltip('搜索'));
+    await tester.pumpAndSettle();
+
+    final close = find.byTooltip('关闭搜索');
+    expect(close, findsOneWidget);
+    expect(find.byTooltip('搜索'), findsNothing);
+    // 位于搜索框左侧
+    expect(
+      tester.getCenter(close).dx,
+      lessThan(tester.getTopLeft(find.byType(TextField)).dx),
+    );
+
+    app.dispose();
+  });
+
   // 多选时行尾 ⋯ 菜单没有意义（操作都在底部多选条里），和收藏 / 传输页
   // 一样把它藏起来；但只是「看不见」而不是「不占位」，否则条目高度会跳。
   testWidgets('网盘页进入多选隐藏 ⋯ 但保留占位：高度不变、读屏读不到', (tester) async {
