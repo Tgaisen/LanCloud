@@ -25,6 +25,11 @@ class _FakeClient extends LanzouClient {
   static const String fileUrl = 'https://share.example/file-f1';
   static const String folderUrl = 'https://share.example/folder-fd1';
 
+  /// 分享信息请求次数：用来验「属性弹窗取过一次后，下载 / 复制链接 /
+  /// 二维码复用这份，不再各请求一次」。
+  int shareFileCalls = 0;
+  int shareFolderCalls = 0;
+
   @override
   Future<({List<LzFolder> folders, List<PathNode> path})> listFolders(
     String folderId,
@@ -62,17 +67,22 @@ class _FakeClient extends LanzouClient {
   Future<String> fileDesc(String fileId) async => '文件简介';
 
   @override
-  Future<ShareInfo> shareInfoOfFile(String fileId) async => ShareInfo(
-    url: fileUrl,
-    pwd: 'abcd',
-    isFile: true,
-    name: 'a.zip',
-    desc: '文件简介',
-  );
+  Future<ShareInfo> shareInfoOfFile(String fileId) async {
+    shareFileCalls += 1;
+    return ShareInfo(
+      url: fileUrl,
+      pwd: 'abcd',
+      isFile: true,
+      name: 'a.zip',
+      desc: '文件简介',
+    );
+  }
 
   @override
-  Future<ShareInfo> shareInfoOfFolder(String folderId) async =>
-      ShareInfo(url: folderUrl, pwd: 'efgh', isFile: false, name: '子文件夹');
+  Future<ShareInfo> shareInfoOfFolder(String folderId) async {
+    shareFolderCalls += 1;
+    return ShareInfo(url: folderUrl, pwd: 'efgh', isFile: false, name: '子文件夹');
+  }
 
   @override
   Future<({String size, int count, String name, String desc, String url})?>
@@ -201,15 +211,36 @@ void main() {
     // 分享信息（收藏判定要用它的链接）还没回来：收藏按钮不可点，
     // 否则会在状态未知时点出「重复收藏 / 错误取消收藏」
     expect(_toggleButton(tester, '添加收藏').enabled, isFalse);
-    // 其它不依赖这次请求的按钮照常可点
-    expect(_toggleButton(tester, '下载').enabled, isTrue);
-    expect(_toggleButton(tester, '复制链接').enabled, isTrue);
-    expect(_toggleButton(tester, '显示二维码').enabled, isTrue);
+    // 下载 / 复制链接 / 二维码都复用这份分享信息，等它回来再放开
+    expect(_toggleButton(tester, '下载').enabled, isFalse);
+    expect(_toggleButton(tester, '复制链接').enabled, isFalse);
+    expect(_toggleButton(tester, '显示二维码').enabled, isFalse);
+    // 访问密码用列表里的数据 / 自己的弹窗，不依赖这次请求
     expect(_toggleButton(tester, '访问密码').enabled, isTrue);
   });
 
+  testWidgets('文件属性弹窗：下载 / 复制链接 / 二维码复用弹窗取回的分享信息', (tester) async {
+    final client = _FakeClient();
+    final app = _FakeApp(client);
+    await _pumpDrive(tester, app);
+
+    await tester.tap(find.text('a.zip'));
+    await _settleSheet(tester);
+    // 打开弹窗时取过一次（收藏判定）
+    expect(client.shareFileCalls, 1);
+
+    // 弹菜单、选「复制分享链接」都不再请求分享信息
+    await tester.tap(find.byTooltip('复制链接'));
+    await _settleSheet(tester);
+    expect(client.shareFileCalls, 1);
+    await tester.tap(find.text('复制分享链接'));
+    await _settleSheet(tester);
+    expect(client.shareFileCalls, 1);
+  });
+
   testWidgets('文件夹属性弹窗：一行 5 个图标按钮 + 低频列表', (tester) async {
-    final app = _FakeApp(_FakeClient());
+    final client = _FakeClient();
+    final app = _FakeApp(client);
     await _pumpDrive(tester, app);
 
     await tester.tap(find.byTooltip('文件夹操作'));
@@ -236,5 +267,12 @@ void main() {
     expect(_sheetText('删除'), findsOneWidget);
     // 文件夹没有「移动」
     expect(_sheetText('移动'), findsNothing);
+
+    // 复制链接复用打开弹窗时取回的分享信息（不再请求一次）；
+    // 注意这一步会把弹窗收起来，所以放在弹窗内容断言之后。
+    expect(client.shareFolderCalls, 1);
+    await tester.tap(find.byTooltip('复制链接'));
+    await _settleSheet(tester);
+    expect(client.shareFolderCalls, 1);
   });
 }

@@ -1760,11 +1760,15 @@ class _DrivePageState extends State<DrivePage>
     await showQrDialog(context, title: title, url: url, pwd: pwd);
   }
 
-  Future<void> _showFileQr(LzFile file) async {
+  /// 显示文件的分享链接二维码。
+  ///
+  /// [share] 是属性弹窗已经取回来的分享信息（打开弹窗时为了收藏判定取过），
+  /// 传进来就不再重复请求。
+  Future<void> _showFileQr(LzFile file, {ShareInfo? share}) async {
     final client = context.read<AppController>().client;
     if (client == null) return;
     try {
-      final info = await client.shareInfoOfFile(file.id);
+      final info = share ?? await client.shareInfoOfFile(file.id);
       if (!mounted) return;
       await _showQr(file.name, info.url, info.pwd);
     } catch (e) {
@@ -1773,11 +1777,12 @@ class _DrivePageState extends State<DrivePage>
     }
   }
 
-  Future<void> _showFolderQr(LzFolder folder) async {
+  /// 显示文件夹的分享链接二维码；[share] 同上，属性弹窗取过就直接用。
+  Future<void> _showFolderQr(LzFolder folder, {ShareInfo? share}) async {
     final client = context.read<AppController>().client;
     if (client == null) return;
     try {
-      final info = await client.shareInfoOfFolder(folder.id);
+      final info = share ?? await client.shareInfoOfFolder(folder.id);
       if (!mounted) return;
       await _showQr(folder.name, info.url, info.pwd);
     } catch (e) {
@@ -2138,13 +2143,17 @@ class _DrivePageState extends State<DrivePage>
     );
   }
 
-  Future<void> _downloadOwnFile(LzFile file) async {
+  /// 下载自己网盘里的文件（先换分享信息，再解析直链入队）。
+  ///
+  /// [share] 由属性弹窗传入：打开弹窗时为了收藏判定已经取过分享信息，
+  /// 直接复用可以省掉 2 个请求。
+  Future<void> _downloadOwnFile(LzFile file, {ShareInfo? share}) async {
     final app = context.read<AppController>();
     final transfers = context.read<TransferManager>();
     final client = app.client;
     if (client == null) return;
     try {
-      final info = await client.shareInfoOfFile(file.id);
+      final info = share ?? await client.shareInfoOfFile(file.id);
       if (!mounted) return;
       final direct = await app.publicClient.resolveFileShare(
         info.url,
@@ -2166,11 +2175,11 @@ class _DrivePageState extends State<DrivePage>
     }
   }
 
-  Future<void> _copyShareLink(LzFile file) async {
+  Future<void> _copyShareLink(LzFile file, {ShareInfo? share}) async {
     final client = context.read<AppController>().client;
     if (client == null) return;
     try {
-      final info = await client.shareInfoOfFile(file.id);
+      final info = share ?? await client.shareInfoOfFile(file.id);
       if (!mounted) return;
       await copyText(
         context,
@@ -2184,11 +2193,11 @@ class _DrivePageState extends State<DrivePage>
     }
   }
 
-  Future<void> _copyFolderShareLink(LzFolder folder) async {
+  Future<void> _copyFolderShareLink(LzFolder folder, {ShareInfo? share}) async {
     final client = context.read<AppController>().client;
     if (client == null) return;
     try {
-      final info = await client.shareInfoOfFolder(folder.id);
+      final info = share ?? await client.shareInfoOfFolder(folder.id);
       if (!mounted) return;
       await copyText(
         context,
@@ -2204,11 +2213,14 @@ class _DrivePageState extends State<DrivePage>
 
   /// 解析文件的下载直链（与 [_downloadOwnFile] 同一套：先取分享信息，
   /// 再换出可直连下载的地址）。
-  Future<String?> _resolveFileDirectLink(LzFile file) async {
+  Future<String?> _resolveFileDirectLink(
+    LzFile file, {
+    ShareInfo? share,
+  }) async {
     final app = context.read<AppController>();
     final client = app.client;
     if (client == null) return null;
-    final info = await client.shareInfoOfFile(file.id);
+    final info = share ?? await client.shareInfoOfFile(file.id);
     final direct = await app.publicClient.resolveFileShare(
       info.url,
       pwd: info.pwd,
@@ -2217,9 +2229,9 @@ class _DrivePageState extends State<DrivePage>
   }
 
   /// 复制下载直链。
-  Future<void> _copyDirectLink(LzFile file) async {
+  Future<void> _copyDirectLink(LzFile file, {ShareInfo? share}) async {
     try {
-      final url = await _resolveFileDirectLink(file);
+      final url = await _resolveFileDirectLink(file, share: share);
       if (!mounted || url == null) return;
       await copyText(context, url);
     } catch (e) {
@@ -2229,9 +2241,9 @@ class _DrivePageState extends State<DrivePage>
   }
 
   /// 用二维码显示下载直链。
-  Future<void> _showDirectLinkQr(LzFile file) async {
+  Future<void> _showDirectLinkQr(LzFile file, {ShareInfo? share}) async {
     try {
-      final url = await _resolveFileDirectLink(file);
+      final url = await _resolveFileDirectLink(file, share: share);
       if (!mounted || url == null) return;
       await _showQr(file.name, url, '');
     } catch (e) {
@@ -3682,6 +3694,10 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
   /// 收藏态：null = 还没查到（分享信息 + 收藏表查完才有）。
   bool? _favorite;
 
+  /// 打开弹窗时取回的分享信息：收藏判定要用，也留给下载 / 复制链接 /
+  /// 二维码复用（它们自己再取一次要 2 个请求）。null = 还没取回来。
+  ShareInfo? _share;
+
   /// 「复制链接 / 二维码」二选一菜单：挂在按钮组上弹出（MD3E menu）。
   final MenuController _linkMenu = MenuController();
   _FileQuickAction? _menuTarget;
@@ -3708,9 +3724,13 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
         final desc = await client.fileDesc(widget.file.id);
         if (mounted) setState(() => _desc = desc);
       } catch (_) {}
-      // 收藏态：收藏表按分享链接去重，所以先取回分享信息再查
+      // 分享信息 + 收藏态：收藏表按分享链接去重，所以先取回分享信息再查；
+      // 取回的这份顺便给下载 / 复制链接 / 二维码用
       try {
         final info = await client.shareInfoOfFile(widget.file.id);
+        if (mounted) setState(() => _share = info);
+        // 收藏表查不到（例如库不可用）就保持未知：收藏按钮继续置灰，
+        // 但不影响已经拿到分享信息的几个按钮
         final favorite = await app.db.isFavorite(info.url);
         if (mounted) setState(() => _favorite = favorite);
       } catch (_) {}
@@ -3725,7 +3745,7 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
     switch (action) {
       case _FileQuickAction.download:
         Navigator.of(context).pop();
-        page._downloadOwnFile(file);
+        page._downloadOwnFile(file, share: _share);
       case _FileQuickAction.link:
       case _FileQuickAction.qr:
         _openLinkMenu(action);
@@ -3756,15 +3776,15 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
     Navigator.of(context).pop();
     if (qr) {
       if (direct) {
-        page._showDirectLinkQr(file);
+        page._showDirectLinkQr(file, share: _share);
       } else {
-        page._showFileQr(file);
+        page._showFileQr(file, share: _share);
       }
     } else {
       if (direct) {
-        page._copyDirectLink(file);
+        page._copyDirectLink(file, share: _share);
       } else {
-        page._copyShareLink(file);
+        page._copyShareLink(file, share: _share);
       }
     }
   }
@@ -3877,18 +3897,22 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
                       icon: Icons.download_outlined,
                       checkedIcon: Icons.download,
                       tooltip: l10n.download,
+                      // 复用弹窗打开时取的分享信息，等它回来再放开
+                      enabled: _share != null,
                     ),
                     M3EIconAction(
                       value: _FileQuickAction.link,
                       icon: Icons.link_outlined,
                       checkedIcon: Icons.link,
                       tooltip: l10n.copyLink,
+                      enabled: _share != null,
                     ),
                     M3EIconAction(
                       value: _FileQuickAction.qr,
                       icon: Icons.qr_code,
                       checkedIcon: Icons.qr_code,
                       tooltip: l10n.showQr,
+                      enabled: _share != null,
                     ),
                     M3EIconAction(
                       value: _FileQuickAction.favorite,
@@ -3989,6 +4013,9 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
 
   /// 收藏态：null = 还没查到（分享信息 + 收藏表查完才有）。
   bool? _favorite;
+
+  /// 打开弹窗时取回的分享信息：复制链接 / 二维码直接复用，不再各请求一次。
+  ShareInfo? _share;
   late bool _hasPwd = widget.folder.hasPwd;
 
   @override
@@ -4048,10 +4075,10 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
     switch (action) {
       case _FolderQuickAction.link:
         Navigator.of(context).pop();
-        page._copyFolderShareLink(folder);
+        page._copyFolderShareLink(folder, share: _share);
       case _FolderQuickAction.qr:
         Navigator.of(context).pop();
-        page._showFolderQr(folder);
+        page._showFolderQr(folder, share: _share);
       case _FolderQuickAction.quickAccess:
         // 开关型留在弹窗里，选中态即时更新（提示条不参与）
         _toggleQuickAccess();
@@ -4100,7 +4127,10 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
         setState(() => _desc = info.desc);
       }
       if (info != null && mounted) {
-        setState(() => _hasPwd = info.pwd.isNotEmpty);
+        setState(() {
+          _share = info;
+          _hasPwd = info.pwd.isNotEmpty;
+        });
         // 收藏态：收藏表按分享链接去重，用刚取回的分享信息查
         final favorite = await context.read<AppController>().db.isFavorite(
           info.url,
@@ -4173,12 +4203,15 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
                   icon: Icons.link_outlined,
                   checkedIcon: Icons.link,
                   tooltip: context.l10n.copyLink,
+                  // 复用弹窗打开时取的分享信息，等它回来再放开
+                  enabled: _share != null,
                 ),
                 M3EIconAction(
                   value: _FolderQuickAction.qr,
                   icon: Icons.qr_code,
                   checkedIcon: Icons.qr_code,
                   tooltip: context.l10n.showQr,
+                  enabled: _share != null,
                 ),
                 M3EIconAction(
                   value: _FolderQuickAction.favorite,
