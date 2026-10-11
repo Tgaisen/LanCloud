@@ -6,22 +6,14 @@ export 'm3e_pull_refresh.dart';
 
 /// 应用只需要认这一个入口：把用到的 MD3E 组件透出来。
 ///
-/// 迁移进行中（分支 codex/m3e-expressive-step1）：进度条 / 加载指示器已换成
-/// material_3_expressive；按钮组试过但留在 m3e_core——新包会把每段压成固定
-/// 宽度，我们「等分整行 + 上限 80 / 下限 48」的布局契约不成立。底部弹窗、
-/// 强调排版、下拉刷新也仍在 m3e_core，下一步再迁。
+/// 现状（分支 codex/m3e-expressive-step1）：进度条、按钮组、底部弹窗、强调
+/// 排版、下拉刷新都在 m3e_core；material_3_expressive 只负责加载指示器和
+/// 弹出菜单（`showM3eMenu`）——进度条试迁过，但新包多出来的参数每处调用都要
+/// 重新对齐语义，收益不划算，已退回。
 ///
-/// 两个包有 80+ 个同名类型，所以这里**逐个 show**，业务代码只认本文件导出的
-/// 名字，永远不要同时裸 import 这两个包。注意 `export` 不会让名字在本文件里
+/// 两个包有 80+ 个同名类型，所以：新包只在本文件内部用（`m3ex.` 前缀），不往
+/// 外透；业务代码只认本文件导出的名字。注意 `export` 不会让名字在本文件里
 /// 可见：本文件自己用到的 m3e_core 类型要写 `core.` 前缀。
-export 'package:material_3_expressive/material_3_expressive.dart'
-    show
-        M3EHapticFeedback,
-        M3ELoadingIndicator,
-        M3ELoadingIndicatorVariant,
-        M3EProgressIndicator,
-        M3EProgressIndicatorSize,
-        M3ESpring;
 export 'package:m3e_core/m3e_core.dart'
     show
         M3EButtonGroupDensity,
@@ -195,7 +187,7 @@ class M3eLinearProgressIndicator extends StatelessWidget {
     super.key,
     this.value,
     this.width = double.infinity,
-    this.strokeWidth,
+    this.height,
     this.color,
     this.backgroundColor,
     this.wavy = false,
@@ -205,12 +197,10 @@ class M3eLinearProgressIndicator extends StatelessWidget {
   final double? value;
   final double width;
 
-  /// 轨道粗细（dp）。留空用应用一直以来的 4dp。
+  /// 平直形态下是轨道粗细，波浪形态下是「容器高度」（波浪会抬高整体高度）。
   ///
-  /// 迁移注记：这个参数在 m3e_core 里叫 `height`——平直形态下就是线宽，波浪
-  /// 形态下却是「容器高度」；material_3_expressive 只有线宽、波浪的容器高度由
-  /// 包按波幅算（规范默认 10dp），所以迁移后统一按线宽传。
-  final double? strokeWidth;
+  /// 留空时用 m3e_core 的默认值：平直 4dp、波浪容器 10dp。
+  final double? height;
 
   final Color? color;
   final Color? backgroundColor;
@@ -218,25 +208,23 @@ class M3eLinearProgressIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 新包的 s/m 尺寸档把轨道定为 4dp / 8dp，比应用沿用的 m3e_core 观感（4dp）
-    // 粗，所以这里显式传 4dp，进度 / 轨道一起，保持迁移前后一致。
-    final double stroke = strokeWidth ?? 4;
-    final bar = wavy
-        ? m3ex.M3EProgressIndicator.linearWavy(
-            value: value,
-            strokeWidth: stroke,
-            trackStrokeWidth: stroke,
-            color: color,
-            trackColor: backgroundColor,
-          )
-        : m3ex.M3EProgressIndicator.linear(
-            value: value,
-            strokeWidth: stroke,
-            trackStrokeWidth: stroke,
-            color: color,
-            trackColor: backgroundColor,
-          );
-    return SizedBox(width: width, child: bar);
+    if (!wavy) {
+      return core.M3ELinearProgressIndicator(
+        value: value,
+        width: width,
+        minHeight: height ?? 4,
+        color: color,
+        backgroundColor: backgroundColor,
+      );
+    }
+    return core.M3ELinearWavyProgressIndicator(
+      value: value,
+      width: width,
+      // m3e_core 的默认容器高度：10dp（波浪会抬高整体高度）。
+      height: height ?? 10,
+      color: color,
+      backgroundColor: backgroundColor,
+    );
   }
 }
 
@@ -258,12 +246,12 @@ class M3eCircularProgressIndicator extends StatelessWidget {
   final Color? backgroundColor;
 
   @override
-  Widget build(BuildContext context) => m3ex.M3EProgressIndicator.circular(
+  Widget build(BuildContext context) => core.M3ECircularProgressIndicator(
     value: value,
     size: size,
     strokeWidth: strokeWidth,
     color: color,
-    trackColor: backgroundColor,
+    backgroundColor: backgroundColor,
   );
 }
 
@@ -559,9 +547,10 @@ class M3eMenuItem<T> {
 
 /// 贴在被点控件下方弹出的 MD3E 菜单（material_3_expressive 的 `M3EMenu`）。
 ///
-/// [anchor] 是被点控件的全局矩形：菜单贴它下方、左对齐（[items] 顺序即显示
-/// 顺序）。上下 / 左右空间不够时由包自己翻转并夹到屏幕边缘。选中返回那一项的
-/// [M3eMenuItem.value]，点别处收起返回 null。
+/// [anchor] 是被点控件的全局矩形：菜单贴它下方弹出（[items] 顺序即显示顺序），
+/// 默认左缘对齐；[alignEnd] 为真时右缘对齐——贴右侧的 ⋯ 按钮用这个，菜单不会
+/// 被屏幕右上角夹歪。上下 / 左右空间不够时由包自己翻转并夹到屏幕边缘。选中
+/// 返回那一项的 [M3eMenuItem.value]，点别处收起返回 null。
 ///
 /// 观感跟主题走：容器 surfaceContainerLow、16dp 圆角、项高 48dp、弹簧展开，
 /// 颜色由 ambient `ColorScheme` 推出，所以深浅色切换跟着变。
@@ -569,11 +558,14 @@ Future<T?> showM3eMenu<T>({
   required BuildContext context,
   required Rect anchor,
   required List<M3eMenuItem<T>> items,
+  bool alignEnd = false,
 }) {
   return m3ex.showM3EMenu<T>(
     context: context,
     anchor: anchor,
-    position: m3ex.M3EMenuAnchorPosition.bottomStart,
+    position: alignEnd
+        ? m3ex.M3EMenuAnchorPosition.bottomEnd
+        : m3ex.M3EMenuAnchorPosition.bottomStart,
     children: [
       for (final item in items)
         m3ex.M3EMenuEntry(

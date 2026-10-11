@@ -487,7 +487,7 @@ class _BackupPageState extends State<BackupPage> {
         bottom: _progress
             ? const PreferredSize(
                 preferredSize: Size.fromHeight(2),
-                child: M3eLinearProgressIndicator(strokeWidth: 2),
+                child: M3eLinearProgressIndicator(height: 2),
               )
             : null,
       ),

@@ -4,6 +4,15 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/m3e.dart';
+// 进度条在 m3e_core、加载指示器在 material_3_expressive：出口只透出自己的
+// wrapper，测试要断言具体控件就分别直连这两个包。
+import 'package:m3e_core/m3e_core.dart'
+    show
+        M3ECircularProgressIndicator,
+        M3ELinearProgressIndicator,
+        M3ELinearWavyProgressIndicator;
+import 'package:material_3_expressive/material_3_expressive.dart'
+    show M3ELoadingIndicator;
 
 /// m3e_core 与应用同处 material_ui 之上，这里守住「MD3E 控件能正常渲染 /
 /// 打开」这条底线（迁移前它们之间还需要一层主题桥，现已删除）。
@@ -32,14 +41,14 @@ void main() {
     await tester.pump(const Duration(milliseconds: 32));
 
     expect(tester.takeException(), isNull);
-    // 迁移后进度条统一是 M3EProgressIndicator（linear / linearWavy / circular
-    // 是它的具名构造），按类型分不出来，数个数即可。
     expect(find.byType(M3ELoadingIndicator), findsOneWidget);
-    expect(find.byType(M3EProgressIndicator), findsNWidgets(3));
+    expect(find.byType(M3ELinearProgressIndicator), findsOneWidget);
+    expect(find.byType(M3ELinearWavyProgressIndicator), findsOneWidget);
+    expect(find.byType(M3ECircularProgressIndicator), findsOneWidget);
     expect(find.bySemanticsLabel('加载中'), findsOneWidget);
   });
 
-  testWidgets('线性进度条：粗细按线宽传，波浪高度与迁移前一致', (tester) async {
+  testWidgets('线性进度条：平直按线宽传，波浪按容器高度传', (tester) async {
     Future<Size> measure(Widget child) async {
       final Key key = UniqueKey();
       await tester.pumpWidget(host(KeyedSubtree(key: key, child: child)));
@@ -49,10 +58,10 @@ void main() {
     // 平直：默认 4dp；显式值即线宽（备份页 AppBar 下那条 2dp 细线靠它）。
     expect((await measure(const M3eLinearProgressIndicator())).height, 4);
     expect(
-      (await measure(const M3eLinearProgressIndicator(strokeWidth: 2))).height,
+      (await measure(const M3eLinearProgressIndicator(height: 2))).height,
       2,
     );
-    // 波浪：容器高度由包按波幅算，默认 10dp——和 m3e_core 的默认容器一致。
+    // 波浪：这个参数是容器高度（波幅叠在 4dp 线宽上），默认 10dp。
     expect(
       (await measure(const M3eLinearProgressIndicator(wavy: true))).height,
       10,

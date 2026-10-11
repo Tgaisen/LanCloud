@@ -945,6 +945,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get folderProperties => '目录属性';
 
   @override
+  String get properties => '属性';
+
+  @override
   String get sortByName => '按名称排序';
 
   @override

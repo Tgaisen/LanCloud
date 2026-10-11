@@ -174,6 +174,40 @@ Future<void> _settleSheet(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets('网盘页文件 ⋯ 菜单：五项操作，属性打开属性弹窗', (tester) async {
+    final app = _FakeApp(_FakeClient());
+    await _pumpDrive(tester, app);
+
+    await tester.tap(find.byTooltip('文件操作'));
+    // ⋯ 菜单是弹簧展开的：pump 到它长出来（真机一两帧，测试里有界多给点）
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pump(const Duration(milliseconds: 600));
+
+    expect(find.byType(M3EMenuItem), findsNWidgets(5));
+    for (final label in ['属性', '移动', '修改信息', '访问密码', '删除']) {
+      // 页面本身也有「删除」这类文案，断言限定在菜单行里
+      expect(
+        find.descendant(
+          of: find.byType(M3EMenuItem),
+          matching: find.text(label),
+        ),
+        findsOneWidget,
+        reason: label,
+      );
+    }
+    // 原来那套「更多操作」弹窗（含修改简介）已经不在
+    expect(find.text('修改简介'), findsNothing);
+
+    // 点「属性」→ 打开文件属性弹窗（那一行 5 个图标按钮）
+    await tester.tap(
+      find.descendant(of: find.byType(M3EMenuItem), matching: find.text('属性')),
+    );
+    await _settleSheet(tester);
+    expect(find.byType(M3EToggleButton), findsNWidgets(5));
+    expect(_sheetText('修改信息'), findsOneWidget);
+  });
+
   testWidgets('文件属性弹窗：常用操作收成一行图标按钮，列表只剩低频项', (tester) async {
     final app = _FakeApp(_FakeClient());
     await _pumpDrive(tester, app);

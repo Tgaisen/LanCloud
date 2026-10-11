@@ -57,6 +57,7 @@ class Icons {
   static const IconData edit_note = Symbols.edit_note;
   static const IconData error_outline = Symbols.error_outline;
   static const IconData file_open = Symbols.file_open;
+  static const IconData file_present = Symbols.file_present;
   static const IconData flashlight_on_outlined = Symbols.flashlight_on;
   static const IconData flip = Symbols.flip;
   static const IconData folder = Symbols.folder;

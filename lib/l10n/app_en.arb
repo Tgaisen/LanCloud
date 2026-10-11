@@ -323,6 +323,7 @@
   "sortSize": "Size",
   "sortTime": "Time",
   "folderProperties": "Folder details",
+  "properties": "Properties",
   "sortByName": "Sort by name",
   "sortBySize": "Sort by size",
   "sortByTime": "Sort by time",

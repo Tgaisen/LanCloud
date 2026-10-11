@@ -37,18 +37,23 @@ void main() {
     );
   });
 
-  test('出口里的两个包都按名字逐个 show，不整包透出', () {
+  test('出口只透 m3e_core，且按名字逐个 show', () {
     final source = File('lib/ui/m3e.dart').readAsStringSync();
     final exports = RegExp(
       "export\\s+'package:$m3ePackages/[^']+'\\s*(show\\b)?",
     ).allMatches(source);
 
-    // 两个包各一条 export，且都必须带 show。
-    expect(exports, hasLength(2));
     expect(
       exports.where((m) => m.group(1) == null),
       isEmpty,
       reason: '整包 export 会把两个包的同名类型一起透给业务代码，必须逐个 show。',
+    );
+    // material_3_expressive 只在本文件内部用（加载指示器 / 弹出菜单都包了
+    // 一层自己的 wrapper），业务代码不该直接认得它的类型。
+    expect(
+      exports.where((m) => m.group(0)!.contains('material_3_expressive')),
+      isEmpty,
+      reason: '新包不往外透；要暴露什么先在 m3e.dart 里加一层 wrapper。',
     );
   });
 }

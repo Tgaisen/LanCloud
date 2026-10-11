@@ -475,6 +475,7 @@
   "sortSize": "大小",
   "sortTime": "时间",
   "folderProperties": "目录属性",
+  "properties": "属性",
   "sortByName": "按名称排序",
   "sortBySize": "按大小排序",
   "sortByTime": "按时间排序",
