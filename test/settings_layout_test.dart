@@ -70,11 +70,14 @@ void main() {
 
     await tester.tap(entry);
     await tester.pump();
+    // 先弹「加载中…」统计缓存大小（Windows 上这一步要几秒），统计完才弹确认框
+    expect(find.text('加载中…'), findsOneWidget);
     // 统计缓存大小要走真实文件系统：给它一点时间再等弹窗
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 150)),
     );
     await tester.pumpAndSettle();
+    expect(find.text('加载中…'), findsNothing);
     // 弹窗：标题 + 取消 / 清理 两个按钮
     expect(find.text('清理缓存'), findsNWidgets(2));
     expect(find.text('取消'), findsOneWidget);

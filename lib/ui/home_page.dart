@@ -289,7 +289,7 @@ class _HomePageState extends State<HomePage>
         M3eMenuItem(
           value: _RecentAction.deleteRecord,
           label: l10n.deleteRecord,
-          icon: Icons.delete_outline,
+          icon: Icons.playlist_remove,
         ),
       ],
     );

@@ -1742,6 +1742,12 @@ abstract class AppLocalizations {
   /// **'加载中…'**
   String get loading;
 
+  /// No description provided for @cleaning.
+  ///
+  /// In zh, this message translates to:
+  /// **'清理中…'**
+  String get cleaning;
+
   /// No description provided for @deleteRecordAndFile.
   ///
   /// In zh, this message translates to:

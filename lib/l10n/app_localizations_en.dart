@@ -928,6 +928,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loading => 'Loading…';
 
   @override
+  String get cleaning => 'Cleaning…';
+
+  @override
   String get deleteRecordAndFile => 'Delete record and file';
 
   @override

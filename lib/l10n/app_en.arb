@@ -309,6 +309,7 @@
   "favorited": "Favorited",
   "unfavorited": "Removed from favorites",
   "loading": "Loading…",
+  "cleaning": "Cleaning…",
   "deleteRecordAndFile": "Delete record and file",
   "shareInfoUnavailable": "Couldn't get share info",
   "share": "Share",

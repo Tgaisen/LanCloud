@@ -970,7 +970,16 @@ class _SettingsPageState extends State<SettingsPage>
   /// 网页缓存）+ 图片缓存 + 网盘目录列表缓存。账号、设置和已下载的文件不受影响。
   Future<void> _clearCache(BuildContext context) async {
     final app = context.read<AppController>();
-    final size = await AppCache.size();
+    final l10n = context.l10n;
+    final navigator = Navigator.of(context);
+    // 统计缓存大小要遍历整个缓存目录（Windows 上可能要好几秒）：先转圈再弹确认框
+    showLoadingDialog(context, l10n.loading);
+    int? size;
+    try {
+      size = await AppCache.size();
+    } finally {
+      navigator.pop();
+    }
     if (!context.mounted) return;
     final ok = await showDialog<bool>(
       context: context,
@@ -994,9 +1003,8 @@ class _SettingsPageState extends State<SettingsPage>
       ),
     );
     if (ok != true || !context.mounted) return;
-    // 清缓存的磁盘遍历 + 图片缓存清理也要一会儿：给个「加载中…」等待弹窗
-    final navigator = Navigator.of(context);
-    showLoadingDialog(context, context.l10n.loading);
+    // 清理同样要遍历目录：这段等待弹窗写「清理中…」
+    showLoadingDialog(context, l10n.cleaning);
     int? freed;
     try {
       freed = await AppCache.clear();

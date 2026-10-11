@@ -903,6 +903,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get loading => '加载中…';
 
   @override
+  String get cleaning => '清理中…';
+
+  @override
   String get deleteRecordAndFile => '删除记录与文件';
 
   @override

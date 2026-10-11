@@ -461,6 +461,7 @@
   "favorited": "已收藏",
   "unfavorited": "已取消收藏",
   "loading": "加载中…",
+  "cleaning": "清理中…",
   "deleteRecordAndFile": "删除记录与文件",
   "shareInfoUnavailable": "无法获取分享信息",
   "share": "分享",
