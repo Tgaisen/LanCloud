@@ -7,6 +7,7 @@ import 'package:lancloud/core/data/account_store.dart';
 import 'package:lancloud/core/drive_cache.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
+import 'package:lancloud/ui/app_icons.dart' as app_icons;
 import 'package:lancloud/ui/drive_page.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -15,7 +16,11 @@ import 'package:lancloud/l10n/delegates.dart';
 
 /// 网盘页挂载在目录缓存上（不进网络）：给个账号让 `app.client` 非空，
 /// 再塞一份根目录快照，`_load()` 直接命中缓存。
-Future<AppController> host(WidgetTester tester, {bool grid = true}) async {
+Future<AppController> host(
+  WidgetTester tester, {
+  bool grid = true,
+  List<LzFile>? files,
+}) async {
   SharedPreferences.setMockInitialValues({});
   final app = AppController();
   app.accounts.accounts = [Account(uid: '1', cookie: 'cookie')];
@@ -25,7 +30,8 @@ Future<AppController> host(WidgetTester tester, {bool grid = true}) async {
     '-1',
     CachedFolder(
       folders: [LzFolder(id: 'f1', name: '测试文件夹', desc: '')],
-      files: [LzFile(id: 'l1', name: '测试文件.zip', size: '1M', time: '')],
+      files:
+          files ?? [LzFile(id: 'l1', name: '测试文件.zip', size: '1M', time: '')],
       path: const [],
       page: 1,
       hasMore: false,
@@ -71,6 +77,40 @@ bool hasSemanticsLabel(WidgetTester tester, String target) {
 }
 
 void main() {
+  // 网格视图的卡片高度是固定的：长文件名（两行）+ 访问密码时，密码图标和大小
+  // 必须同处一行，否则两行分开写会把大小挤到卡片边缘（甚至溢出）
+  testWidgets('网格视图：长文件名 + 访问密码时，密码图标与大小同一行', (tester) async {
+    await host(
+      tester,
+      files: [
+        LzFile(
+          id: 'l1',
+          name: '蓝云_26.1.0-snapshot.1.apk',
+          size: '22.6M',
+          time: '',
+          hasPwd: true,
+        ),
+      ],
+    );
+
+    // 长名字要真的占满两行，才谈得上「挤」
+    expect(
+      tester.getSize(find.text('蓝云_26.1.0-snapshot.1.apk')).height,
+      greaterThan(30),
+    );
+
+    final lock = find.byIcon(app_icons.Icons.lock_outline);
+    expect(lock, findsOneWidget);
+    // 图标跟着 bodySmall 的字号走
+    expect(tester.widget<Icon>(lock).size, 12);
+    // 和大小文本同一行：中心线对齐
+    expect(
+      (tester.getCenter(lock).dy - tester.getCenter(find.text('22.6 MB')).dy)
+          .abs(),
+      lessThan(2),
+    );
+  });
+
   // 网盘页搜索：关闭按钮改到左侧（与收藏页一致）
   testWidgets('网盘页搜索：关闭按钮在左侧，右侧不再有搜索按钮', (tester) async {
     final app = await host(tester);

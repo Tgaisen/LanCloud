@@ -3397,14 +3397,23 @@ class _FileTile extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
-              if (file.hasPwd)
-                const Padding(
-                  padding: EdgeInsets.only(top: 2),
-                  child: Icon(Icons.lock_outline, size: 14),
-                ),
-              Text(
-                prettyLzSize(file.size),
-                style: Theme.of(context).textTheme.bodySmall,
+              // 密码图标和大小同一行：文件名占满两行时，两者各占一行会把大小顶到
+              // 卡片边缘。图标跟着 bodySmall 的字号走（12dp），和大小文本观感一致。
+              Row(
+                children: [
+                  if (file.hasPwd) ...[
+                    const Icon(Icons.lock_outline, size: 12),
+                    const SizedBox(width: 4),
+                  ],
+                  Flexible(
+                    child: Text(
+                      prettyLzSize(file.size),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
