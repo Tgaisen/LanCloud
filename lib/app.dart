@@ -826,7 +826,10 @@ class _RootShellState extends State<RootShell>
     // 让 80dp 高的胶囊浮在系统导航栏上方。两种样式外层都不能把高度写死，
     // 否则这份内边距会从内容里扣，图标和文字被压扁。
     final systemPadding = MediaQuery.paddingOf(context);
-    final bottomInset = systemPadding.bottom;
+    // 键盘弹出时 padding.bottom 会归零（导航栏那一段被输入法盖住），但底栏高度
+    // 不能跟着抽动一下——用 viewPadding（系统栏原始值，键盘弹出时保持不变）。
+    // 底栏此时本来就被输入法盖着，多留这一段不会露出空白。
+    final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
     final barHeight =
         (app.settings.floatingNavBar ? 108.0 : 80.0) + bottomInset;
     final keyed = KeyedSubtree(

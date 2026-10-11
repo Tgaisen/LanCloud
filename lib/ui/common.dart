@@ -3852,7 +3852,9 @@ class _FormDialogPanShellState extends State<_FormDialogPanShell> {
     _scheduleMeasure();
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(begin: 0, end: _target),
-      duration: const Duration(milliseconds: 180),
+      // 300ms：系统把输入法高度分两段上报（先键盘、约 100ms 后补上导航栏那一段），
+      // 动画要活到第二段到达，才能连成一次平移而不是「移一下、顿一下、再移一下」
+      duration: const Duration(milliseconds: 300),
       curve: Curves.easeOutCubic,
       builder: (BuildContext context, double value, Widget? child) {
         _applied = value;
