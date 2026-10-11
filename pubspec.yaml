@@ -73,21 +73,6 @@ dependencies:
   m3e_core: ^1.1.4
   material_ui: ^1.6.0
   cupertino_ui: ^1.1.2
-  # 迁移试验（分支 codex/m3e-expressive-step1）：进度条 / 加载指示器先换到
-  # material_3_expressive（按钮组试过，新包不满足等分整行的布局契约，留在
-  # m3e_core）。国内镜像（pub.flutter-io.cn）对这个包的版本列表一直 525，
-  # 所以单独指定走 pub.dev；其余依赖仍走镜像。
-  material_3_expressive:
-    hosted:
-      url: https://pub.dev
-    version: ^1.1.6
-
-# material_3_expressive 的传递依赖同样在镜像上 525，一并指定走 pub.dev。
-dependency_overrides:
-  material_new_shapes:
-    hosted:
-      url: https://pub.dev
-    version: ^1.0.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

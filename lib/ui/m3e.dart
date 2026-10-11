@@ -1,19 +1,17 @@
+import 'dart:math' as math;
+
 import 'package:m3e_core/m3e_core.dart' as core;
-import 'package:material_3_expressive/material_3_expressive.dart' as m3ex;
 import 'package:material_ui/material_ui.dart';
 
 export 'm3e_pull_refresh.dart';
 
 /// 应用只需要认这一个入口：把用到的 MD3E 组件透出来。
 ///
-/// 现状（分支 codex/m3e-expressive-step1）：除了弹出菜单（`showM3eMenu`，
-/// 用 material_3_expressive 的 M3EMenu），其余进度条 / 加载指示器 / 按钮组 /
-/// 底部弹窗 / 强调排版 / 下拉刷新都在 m3e_core——新包这两类控件试迁过，但它
-/// 多出来的参数每处调用都要重新对齐语义，收益不划算，已退回。
+/// 组件（进度条 / 加载指示器 / 按钮组 / 底部弹窗 / 强调排版 / 下拉刷新）都来自
+/// m3e_core；弹出菜单（`showM3eMenu`）是自己画的（见文件末尾的说明）。
 ///
-/// 两个包有 80+ 个同名类型，所以：新包只在本文件内部用（`m3ex.` 前缀），不往
-/// 外透；业务代码只认本文件导出的名字。注意 `export` 不会让名字在本文件里
-/// 可见：本文件自己用到的 m3e_core 类型要写 `core.` 前缀。
+/// 业务代码只认本文件导出的名字，不要直接 import m3e_core。注意 `export` 不会
+/// 让名字在本文件里可见：本文件自己用到的 m3e_core 类型要写 `core.` 前缀。
 export 'package:m3e_core/m3e_core.dart'
     show
         M3EButtonGroupDensity,
@@ -545,56 +543,206 @@ class M3eMenuItem<T> {
   final IconData icon;
 }
 
-/// 贴在被点控件下方弹出的 MD3E 菜单（material_3_expressive 的 `M3EMenu`）。
+/// 贴在被点控件下方弹出的 MD3E 菜单。
 ///
 /// [anchor] 是被点控件的全局矩形：菜单贴它下方弹出（[items] 顺序即显示顺序），
 /// 默认左缘对齐；[alignEnd] 为真时右缘对齐——贴右侧的 ⋯ 按钮用这个，菜单不会
-/// 被屏幕右上角夹歪。上下 / 左右空间不够时由包自己翻转并夹到屏幕边缘。选中
-/// 返回那一项的 [M3eMenuItem.value]，点别处收起返回 null。
+/// 被屏幕右上角夹歪。上下空间不够时翻到锚点上方；左右夹在屏幕边缘内。选中返回
+/// 那一项的 [M3eMenuItem.value]，点别处 / 按返回收起返回 null。
 ///
-/// 观感跟主题走：容器 surfaceContainerLow、16dp 圆角、项高 48dp、弹簧展开，
+/// 观感跟主题走：容器 surfaceContainerLow、16dp 圆角、项高 48dp、图标 24dp，
 /// 颜色由 ambient `ColorScheme` 推出，所以深浅色切换跟着变。
+///
+/// 实现说明：没有继续用 material_3_expressive 的 `M3EMenu`——它一旦要滚动，就会
+/// 把所有项并成**一张卡片**塞进 `ListView`：卡片跟着内容一起滚，圆角和阴影被视口
+/// 裁掉；滚动条也是包里硬编码的常显 `RawScrollbar`（和应用里的 FastScrollbar 不是
+/// 一套）。这里自绘弹层：卡片固定，超出高度只让里面的项目滚动，滚动条沿用应用同款
+/// （6dp 圆角滑块、无轨道、滚动时出现）。
 Future<T?> showM3eMenu<T>({
   required BuildContext context,
   required Rect anchor,
   required List<M3eMenuItem<T>> items,
   bool alignEnd = false,
-}) async {
-  _openMenuCount++;
-  m3eMenuOpen.value = true;
-  try {
-    return await m3ex.showM3EMenu<T>(
-      context: context,
-      anchor: anchor,
-      position: alignEnd
-          ? m3ex.M3EMenuAnchorPosition.bottomEnd
-          : m3ex.M3EMenuAnchorPosition.bottomStart,
-      children: [
-        for (final item in items)
-          m3ex.M3EMenuEntry(
-            label: item.label,
-            leading: Icon(item.icon),
-            value: item.value,
-          ),
-      ],
+}) {
+  return Navigator.of(
+    context,
+    rootNavigator: true,
+  ).push<T>(_M3eMenuRoute<T>(anchor: anchor, items: items, alignEnd: alignEnd));
+}
+
+/// 菜单里的一行：图标 + 文案。
+///
+/// 公开是为了让测试能断言「菜单里有哪些行」；业务代码不需要直接用。
+class M3eMenuRow extends StatelessWidget {
+  const M3eMenuRow({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  /// 行首图标。
+  final IconData icon;
+
+  /// 行文案。
+  final String label;
+
+  /// 点这一行。
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    // 用框架的 MenuItemButton 拿到它的默认度量（48dp 高、左右 12dp、图标 24dp、
+    // labelLarge）和桌面端的悬停 / 焦点 / 键盘行为
+    return MenuItemButton(
+      onPressed: onTap,
+      leadingIcon: Icon(icon, size: 24),
+      child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
     );
-  } finally {
-    _openMenuCount--;
-    m3eMenuOpen.value = _openMenuCount > 0;
   }
 }
 
-/// 当前是否有 MD3E 弹出菜单开着（可能有嵌套）。
-///
-/// 菜单的返回键收口用的是 Flutter 的 local history entry，而 `ModalRoute` 的
-/// `popDisposition` 只要遇到外层一个 `PopScope(canPop: false)` 就先判 doNotPop，
-/// 把这次返回交给外层（例如外壳：网盘标签页按返回切回首页），菜单反而留着。
-///
-/// 所以凡是可能拦截返回的页面，`canPop` 都要带上这个 notifier：菜单开着时置真，
-/// 返回键才会先走「吃掉 local history」这条路——菜单自己收起来，路由不会被弹掉。
-final ValueNotifier<bool> m3eMenuOpen = ValueNotifier<bool>(false);
+/// [showM3eMenu] 的弹层：固定卡片 + 内部滚动。
+class _M3eMenuRoute<T> extends PopupRoute<T> {
+  _M3eMenuRoute({
+    required this.anchor,
+    required this.items,
+    required this.alignEnd,
+  });
 
-int _openMenuCount = 0;
+  final Rect anchor;
+  final List<M3eMenuItem<T>> items;
+  final bool alignEnd;
+
+  /// M3 菜单：宽度 112–280、项高 48、上下内边距 8、离屏幕边缘 12。
+  static const double _minWidth = 112;
+  static const double _maxWidth = 280;
+  static const double _maxHeight = 320;
+  static const double _rowHeight = 48;
+  static const double _verticalPadding = 8;
+  static const double _screenPadding = 12;
+  static const double _anchorGap = 4;
+  static const double _radius = 16;
+
+  final ScrollController _scroll = ScrollController();
+
+  @override
+  Color? get barrierColor => null;
+
+  @override
+  bool get barrierDismissible => true;
+
+  @override
+  String get barrierLabel => 'Popup menu';
+
+  @override
+  Duration get transitionDuration => const Duration(milliseconds: 160);
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget buildPage(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+  ) {
+    final MediaQueryData media = MediaQuery.of(context);
+    final Size screen = media.size;
+    final EdgeInsets viewPadding = media.padding;
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+
+    final double topLimit = viewPadding.top + _screenPadding;
+    final double bottomLimit =
+        screen.height - viewPadding.bottom - _screenPadding;
+    final double contentHeight =
+        items.length * _rowHeight + _verticalPadding * 2;
+    final double below = bottomLimit - (anchor.bottom + _anchorGap);
+    final double above = (anchor.top - _anchorGap) - topLimit;
+    // 先试锚点下方；放不下且上方更宽敞时才翻到上方，避免菜单贴屏幕边
+    final bool opensAbove = below < contentHeight && above > below;
+    final double available = opensAbove ? above : below;
+    // 高度只受「可用空间」和 M3 上限约束：内容更少时卡片按内容收紧
+    final double height = math.min(
+      contentHeight,
+      available.clamp(0.0, _maxHeight),
+    );
+    final double width = (anchor.width + 176)
+        .clamp(_minWidth, _maxWidth)
+        .clamp(0.0, screen.width - _screenPadding * 2);
+    final double left = (alignEnd ? anchor.right - width : anchor.left).clamp(
+      _screenPadding,
+      screen.width - _screenPadding - width,
+    );
+    final double top = opensAbove
+        ? anchor.top - _anchorGap - height
+        : anchor.bottom + _anchorGap;
+
+    final CurvedAnimation expand = CurvedAnimation(
+      parent: animation,
+      curve: Curves.easeOutCubic,
+      reverseCurve: Curves.easeInCubic,
+    );
+    return Stack(
+      children: [
+        Positioned(
+          left: left,
+          top: top,
+          width: width,
+          child: FadeTransition(
+            opacity: expand,
+            child: ScaleTransition(
+              scale: Tween<double>(begin: 0.94, end: 1).animate(expand),
+              alignment: opensAbove
+                  ? (alignEnd ? Alignment.bottomRight : Alignment.bottomLeft)
+                  : (alignEnd ? Alignment.topRight : Alignment.topLeft),
+              child: Material(
+                color: scheme.surfaceContainerLow,
+                elevation: 6,
+                surfaceTintColor: Colors.transparent,
+                borderRadius: BorderRadius.circular(_radius),
+                clipBehavior: Clip.antiAlias,
+                child: SizedBox(
+                  height: height,
+                  // 卡片固定，超出高度的部分在卡片里面滚：滚动条沿用应用同款
+                  // （6dp 圆角滑块、无轨道、滚动时才出现）
+                  child: ScrollbarTheme(
+                    data: const ScrollbarThemeData(
+                      trackColor: WidgetStatePropertyAll(Colors.transparent),
+                    ),
+                    child: Scrollbar(
+                      controller: _scroll,
+                      thickness: 6,
+                      radius: const Radius.circular(3),
+                      child: ListView(
+                        controller: _scroll,
+                        padding: const EdgeInsets.symmetric(
+                          vertical: _verticalPadding,
+                        ),
+                        children: [
+                          for (final item in items)
+                            M3eMenuRow(
+                              icon: item.icon,
+                              label: item.label,
+                              onTap: () =>
+                                  Navigator.of(context).pop(item.value),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
 
 /// 取 [context] 对应渲染对象的全局矩形，给 [showM3eMenu] 当锚点。
 ///

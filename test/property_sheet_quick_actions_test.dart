@@ -10,10 +10,6 @@ import 'package:lancloud/l10n/delegates.dart';
 import 'package:lancloud/ui/app_icons.dart';
 import 'package:lancloud/ui/drive_page.dart';
 import 'package:lancloud/ui/m3e.dart';
-// 菜单本体是 material_3_expressive 的 M3EMenuItem（出口只透出 showM3eMenu 这层
-// wrapper），测试要单独引它的类型做断言。
-import 'package:material_3_expressive/material_3_expressive.dart'
-    show M3EMenuItem;
 // 应用用的是自己的 Symbols 图标集，和框架的 Icons 同名，按应用代码的习惯隐藏后者
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:provider/provider.dart';
@@ -184,13 +180,13 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
     await tester.pump(const Duration(milliseconds: 600));
 
-    expect(find.byType(M3EMenuItem), findsNWidgets(5));
+    expect(find.byType(M3eMenuRow), findsNWidgets(5));
     const order = ['属性', '访问密码', '修改信息', '移动', '删除'];
     for (final label in order) {
       // 页面本身也有「删除」这类文案，断言限定在菜单行里
       expect(
         find.descendant(
-          of: find.byType(M3EMenuItem),
+          of: find.byType(M3eMenuRow),
           matching: find.text(label),
         ),
         findsOneWidget,
@@ -203,7 +199,7 @@ void main() {
         tester
             .getTopLeft(
               find.descendant(
-                of: find.byType(M3EMenuItem),
+                of: find.byType(M3eMenuRow),
                 matching: find.text(label),
               ),
             )
@@ -221,7 +217,7 @@ void main() {
 
     // 点「属性」→ 打开文件属性弹窗（那一行 5 个图标按钮）
     await tester.tap(
-      find.descendant(of: find.byType(M3EMenuItem), matching: find.text('属性')),
+      find.descendant(of: find.byType(M3eMenuRow), matching: find.text('属性')),
     );
     await _settleSheet(tester);
     expect(find.byType(M3EToggleButton), findsNWidgets(5));
@@ -271,16 +267,15 @@ void main() {
     // 菜单是弹簧展开的：等它长出来再断言（真机上就是一两帧的事）
     await tester.pumpAndSettle();
 
-    // 菜单是贴在被点那一段下面的弹出菜单（material_3_expressive 的 M3EMenu）：
-    // 属性弹窗还在，菜单浮在它上面
+    // 菜单是贴在被点那一段下面的弹出菜单：属性弹窗还在，菜单浮在它上面
     expect(find.byType(M3EToggleButton), findsNWidgets(5));
-    expect(find.byType(M3EMenuItem), findsNWidgets(2));
+    expect(find.byType(M3eMenuRow), findsNWidgets(2));
     expect(find.text('复制分享链接'), findsOneWidget);
     expect(find.text('复制下载直链'), findsOneWidget);
 
     // 菜单左缘跟着被点的那一段（而不是整个按钮组），并且贴着它的下边缘
     final Rect button = tester.getRect(find.byTooltip('复制链接'));
-    final Rect item = tester.getRect(find.byType(M3EMenuItem).first);
+    final Rect item = tester.getRect(find.byType(M3eMenuRow).first);
     expect(
       (item.left - button.left).abs(),
       lessThan(24),

@@ -4,8 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/m3e.dart';
-// 进度条在 m3e_core、加载指示器在 material_3_expressive：出口只透出自己的
-// wrapper，测试要断言具体控件就分别直连这两个包。
+// 出口只透出自己的 wrapper；测试要断言 m3e_core 的具体控件就直连它。
 import 'package:m3e_core/m3e_core.dart'
     show
         M3ECircularProgressIndicator,
