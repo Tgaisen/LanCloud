@@ -1,33 +1,44 @@
-import 'package:m3e_core/m3e_core.dart';
+import 'package:m3e_core/m3e_core.dart' as core;
+import 'package:material_3_expressive/material_3_expressive.dart' as m3ex;
 import 'package:material_ui/material_ui.dart';
 
 export 'm3e_pull_refresh.dart';
 
-/// 应用只需要认这一个入口：把用到的 MD3E 组件从 m3e_core 透出来。
+/// 应用只需要认这一个入口：把用到的 MD3E 组件透出来。
+///
+/// 迁移进行中（分支 codex/m3e-expressive-step1）：进度条 / 加载指示器已换成
+/// material_3_expressive；按钮组试过但留在 m3e_core——新包会把每段压成固定
+/// 宽度，我们「等分整行 + 上限 80 / 下限 48」的布局契约不成立。底部弹窗、
+/// 强调排版、下拉刷新也仍在 m3e_core，下一步再迁。
+///
+/// 两个包有 80+ 个同名类型，所以这里**逐个 show**，业务代码只认本文件导出的
+/// 名字，永远不要同时裸 import 这两个包。注意 `export` 不会让名字在本文件里
+/// 可见：本文件自己用到的 m3e_core 类型要写 `core.` 前缀。
+export 'package:material_3_expressive/material_3_expressive.dart'
+    show
+        M3EHapticFeedback,
+        M3ELoadingIndicator,
+        M3ELoadingIndicatorVariant,
+        M3EProgressIndicator,
+        M3EProgressIndicatorSize,
+        M3ESpring;
 export 'package:m3e_core/m3e_core.dart'
     show
-        M3EBottomSheet,
-        M3EBottomSheetStyle,
-        M3EBottomSheetTheme,
         M3EButtonGroupDensity,
         M3EButtonGroupOverflow,
         M3EButtonGroupType,
+        M3EBottomSheet,
+        M3EBottomSheetStyle,
+        M3EBottomSheetTheme,
         M3EButtonShape,
         M3EButtonSize,
         M3EButtonStyle,
-        M3EContainedLoadingIndicator,
-        M3ECircularProgressIndicator,
-        M3ECircularWavyProgressIndicator,
-        M3ELinearProgressIndicator,
-        M3ELinearWavyProgressIndicator,
-        M3ELoadingIndicator,
         M3EMotion,
         M3EToggleButton,
         M3EToggleButtonDecoration,
         M3EToggleButtonGroup,
         M3EToggleButtonGroupAction,
         M3ETypography,
-        Shapes,
         showM3EModalBottomSheet;
 
 /// ────────────────────────────── M3E 排版 ──────────────────────────────
@@ -51,7 +62,11 @@ TextTheme m3eEmphasizedTextTheme(
   double rond = 0,
   double? bodyRond,
 }) {
-  final canon = M3ETypography.emphasized(base, rond: rond, bodyRond: bodyRond);
+  final canon = core.M3ETypography.emphasized(
+    base,
+    rond: rond,
+    bodyRond: bodyRond,
+  );
   TextStyle? weigh(TextStyle? b, TextStyle? c) =>
       b?.copyWith(fontWeight: c?.fontWeight, fontVariations: c?.fontVariations);
   return TextTheme(
@@ -152,7 +167,6 @@ class M3eLoadingIndicator extends StatelessWidget {
     this.color,
     this.semanticsLabel,
     this.semanticsValue,
-    this.shapes,
   });
 
   /// 边长（M3 允许 24–240dp，默认 48dp）。
@@ -161,50 +175,18 @@ class M3eLoadingIndicator extends StatelessWidget {
   final String? semanticsLabel;
   final String? semanticsValue;
 
-  /// 自定义形变序列（至少两个形状）；默认用 M3E 自带的七个形状。
-  final List<Shapes>? shapes;
-
   @override
-  Widget build(BuildContext context) => M3ELoadingIndicator(
+  Widget build(BuildContext context) => m3ex.M3ELoadingIndicator(
     color: color,
-    shapes: shapes,
     constraints: BoxConstraints.tightFor(width: size, height: size),
-    semanticsLabel: semanticsLabel,
-    semanticsValue: semanticsValue,
+    semanticLabel: semanticsLabel,
+    semanticValue: semanticsValue,
   );
 }
 
-/// 带容器的 MD3E Loading indicator：浮在内容之上时用，容器提供额外对比。
-class M3eContainedLoadingIndicator extends StatelessWidget {
-  const M3eContainedLoadingIndicator({
-    super.key,
-    this.size = 48,
-    this.padding = const EdgeInsets.all(8),
-    this.containerColor,
-    this.indicatorColor,
-    this.semanticsLabel,
-    this.shapes,
-  });
-
-  /// 指示器本体边长（不含外层 [padding]）。
-  final double size;
-  final EdgeInsetsGeometry padding;
-  final Color? containerColor;
-  final Color? indicatorColor;
-  final String? semanticsLabel;
-  final List<Shapes>? shapes;
-
-  @override
-  Widget build(BuildContext context) => M3EContainedLoadingIndicator(
-    padding: padding,
-    containerColor: containerColor,
-    indicatorColor: indicatorColor,
-    semanticsLabel: semanticsLabel,
-    shapes: shapes,
-    width: size + padding.horizontal,
-    height: size + padding.vertical,
-  );
-}
+// 注：原先的 M3eContainedLoadingIndicator 一直没人用（下拉刷新小球用的是
+// m3e_core 自带的那个），迁移时直接删掉；需要时用 m3ex.M3ELoadingIndicator(
+// variant: M3ELoadingIndicatorVariant.contained) 即可。
 
 /// MD3E 线性进度条。[wavy] 为真时使用波浪形态——适合「时间长、想少一点
 /// 静态感」的过程（例如文件传输），否则用标准平直形态。
@@ -213,7 +195,7 @@ class M3eLinearProgressIndicator extends StatelessWidget {
     super.key,
     this.value,
     this.width = double.infinity,
-    this.height,
+    this.strokeWidth,
     this.color,
     this.backgroundColor,
     this.wavy = false,
@@ -222,30 +204,39 @@ class M3eLinearProgressIndicator extends StatelessWidget {
   /// 0.0–1.0 的确定进度；为空表示不确定进度。
   final double? value;
   final double width;
-  final double? height;
+
+  /// 轨道粗细（dp）。留空用应用一直以来的 4dp。
+  ///
+  /// 迁移注记：这个参数在 m3e_core 里叫 `height`——平直形态下就是线宽，波浪
+  /// 形态下却是「容器高度」；material_3_expressive 只有线宽、波浪的容器高度由
+  /// 包按波幅算（规范默认 10dp），所以迁移后统一按线宽传。
+  final double? strokeWidth;
+
   final Color? color;
   final Color? backgroundColor;
   final bool wavy;
 
   @override
   Widget build(BuildContext context) {
-    if (!wavy) {
-      return M3ELinearProgressIndicator(
-        value: value,
-        width: width,
-        minHeight: height ?? 4,
-        color: color,
-        backgroundColor: backgroundColor,
-      );
-    }
-    return M3ELinearWavyProgressIndicator(
-      value: value,
-      width: width,
-      // m3e_core 的默认容器高度：10dp（波浪会抬高整体高度）。
-      height: height ?? 10,
-      color: color,
-      backgroundColor: backgroundColor,
-    );
+    // 新包的 s/m 尺寸档把轨道定为 4dp / 8dp，比应用沿用的 m3e_core 观感（4dp）
+    // 粗，所以这里显式传 4dp，进度 / 轨道一起，保持迁移前后一致。
+    final double stroke = strokeWidth ?? 4;
+    final bar = wavy
+        ? m3ex.M3EProgressIndicator.linearWavy(
+            value: value,
+            strokeWidth: stroke,
+            trackStrokeWidth: stroke,
+            color: color,
+            trackColor: backgroundColor,
+          )
+        : m3ex.M3EProgressIndicator.linear(
+            value: value,
+            strokeWidth: stroke,
+            trackStrokeWidth: stroke,
+            color: color,
+            trackColor: backgroundColor,
+          );
+    return SizedBox(width: width, child: bar);
   }
 }
 
@@ -267,12 +258,12 @@ class M3eCircularProgressIndicator extends StatelessWidget {
   final Color? backgroundColor;
 
   @override
-  Widget build(BuildContext context) => M3ECircularProgressIndicator(
+  Widget build(BuildContext context) => m3ex.M3EProgressIndicator.circular(
     value: value,
     size: size,
     strokeWidth: strokeWidth,
     color: color,
-    backgroundColor: backgroundColor,
+    trackColor: backgroundColor,
   );
 }
 
@@ -293,9 +284,9 @@ class M3eConnectedButtonGroup<T> extends StatelessWidget {
     required this.onSelected,
     required this.labelOf,
     this.iconOf,
-    this.size = M3EButtonSize.sm,
+    this.size = core.M3EButtonSize.sm,
     this.expand = true,
-    this.style = M3EButtonStyle.tonal,
+    this.style = core.M3EButtonStyle.tonal,
     this.semanticLabel,
   });
 
@@ -315,13 +306,13 @@ class M3eConnectedButtonGroup<T> extends StatelessWidget {
   final Widget Function(T value)? iconOf;
 
   /// 尺寸（sm=40dp、md=56dp）。默认 sm。
-  final M3EButtonSize size;
+  final core.M3EButtonSize size;
 
   /// 是否让按钮等分整行宽度（整行切换条、弹窗里的一行选项）。
   final bool expand;
 
   /// 按钮配色。
-  final M3EButtonStyle style;
+  final core.M3EButtonStyle style;
 
   /// 整组的读屏名称。
   final String? semanticLabel;
@@ -338,12 +329,12 @@ class M3eConnectedButtonGroup<T> extends StatelessWidget {
         final width = expand && constraints.maxWidth.isFinite && count > 0
             ? (constraints.maxWidth - 2.0 * (count - 1)) / count
             : null;
-        return M3EToggleButtonGroup(
-          type: M3EButtonGroupType.connected,
-          shape: M3EButtonShape.round,
+        return core.M3EToggleButtonGroup(
+          type: core.M3EButtonGroupType.connected,
+          shape: core.M3EButtonShape.round,
           size: size,
           style: style,
-          overflow: M3EButtonGroupOverflow.none,
+          overflow: core.M3EButtonGroupOverflow.none,
           semanticLabel: semanticLabel,
           selectedIndex: selectedIndex < 0 ? null : selectedIndex,
           onSelectedIndexChanged: (index) {
@@ -353,7 +344,7 @@ class M3eConnectedButtonGroup<T> extends StatelessWidget {
           },
           actions: [
             for (final value in values)
-              M3EToggleButtonGroupAction(
+              core.M3EToggleButtonGroupAction(
                 icon: iconOf?.call(value),
                 label: labelOf(value),
                 width: width,
@@ -439,8 +430,8 @@ class M3EIconButtonGroup<T> extends StatelessWidget {
     required this.items,
     this.onPressed,
     this.onToggled,
-    this.size = M3EButtonSize.md,
-    this.style = M3EButtonStyle.tonal,
+    this.size = core.M3EButtonSize.md,
+    this.style = core.M3EButtonStyle.tonal,
     this.spacing = 6,
     this.maxWidth = 80,
     this.minWidth = 48,
@@ -457,11 +448,11 @@ class M3EIconButtonGroup<T> extends StatelessWidget {
   final void Function(T value, bool checked)? onToggled;
 
   /// 按钮尺寸：默认 md（56dp 高）。
-  final M3EButtonSize size;
+  final core.M3EButtonSize size;
 
   /// 配色。M3 规定按钮组用 filled / tonal / outlined / elevated，
   /// 不要用 standard 图标按钮或文字按钮（它们没有容器）；默认 tonal。
-  final M3EButtonStyle style;
+  final core.M3EButtonStyle style;
 
   /// 按钮之间的间距。
   final double spacing;
@@ -517,21 +508,21 @@ class M3EIconButtonGroup<T> extends StatelessWidget {
         );
         // 窄窗口一行放不下时不换行，交给组横向滚动
         final bool scroll = width * count + gap > available + 0.5;
-        return M3EToggleButtonGroup(
-          type: M3EButtonGroupType.standard,
-          shape: M3EButtonShape.round,
+        return core.M3EToggleButtonGroup(
+          type: core.M3EButtonGroupType.standard,
+          shape: core.M3EButtonShape.round,
           size: size,
           style: style,
           spacing: spacing,
           overflow: scroll
-              ? M3EButtonGroupOverflow.scroll
-              : M3EButtonGroupOverflow.none,
+              ? core.M3EButtonGroupOverflow.scroll
+              : core.M3EButtonGroupOverflow.none,
           semanticLabel: semanticLabel,
           selectedIndices: _checkedIndices,
           onSelectedIndicesChanged: _handleSelectionChanged,
           actions: [
             for (final item in items)
-              M3EToggleButtonGroupAction(
+              core.M3EToggleButtonGroupAction(
                 icon: Icon(item.icon),
                 checkedIcon: Icon(item.checkedIcon),
                 tooltip: item.tooltip,

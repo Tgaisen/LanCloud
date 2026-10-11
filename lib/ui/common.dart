@@ -3762,7 +3762,6 @@ class _BatchProgressDialog extends StatelessWidget {
                           ? null
                           : (value / total).clamp(0.0, 1.0),
                       wavy: true,
-                      height: 12,
                       backgroundColor: scheme.surfaceContainerHighest,
                     ),
                     const SizedBox(height: 10),

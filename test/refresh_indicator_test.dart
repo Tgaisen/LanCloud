@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/ui/app_scroll.dart';
 import 'package:lancloud/ui/m3e.dart';
+// 下拉刷新小球还在用 m3e_core 自带的 contained loading indicator（迁移只覆盖
+// 了按钮组 / 进度条 / 加载指示器的通用包装），这里直接引它的类型做断言。
+import 'package:m3e_core/m3e_core.dart' show M3EContainedLoadingIndicator;
 import 'package:material_ui/material_ui.dart';
 
 /// MD3E 下拉刷新（M3ePullToRefresh，overlay 版）：
