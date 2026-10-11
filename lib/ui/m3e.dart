@@ -536,3 +536,51 @@ class M3EIconButtonGroup<T> extends StatelessWidget {
     );
   }
 }
+
+/// ────────────────────────────── 弹出菜单 ──────────────────────────────
+
+/// [showM3eMenu] 里的一项：图标 + 文案 + 选中后返回的值。
+class M3eMenuItem<T> {
+  const M3eMenuItem({
+    required this.value,
+    required this.label,
+    required this.icon,
+  });
+
+  /// 选中这一项时 [showM3eMenu] 返回的值。
+  final T value;
+
+  /// 菜单文案。
+  final String label;
+
+  /// 行首图标。
+  final IconData icon;
+}
+
+/// 贴在被点控件下方弹出的 MD3E 菜单（material_3_expressive 的 `M3EMenu`）。
+///
+/// [anchor] 是被点控件的全局矩形：菜单贴它下方、左对齐（[items] 顺序即显示
+/// 顺序）。上下 / 左右空间不够时由包自己翻转并夹到屏幕边缘。选中返回那一项的
+/// [M3eMenuItem.value]，点别处收起返回 null。
+///
+/// 观感跟主题走：容器 surfaceContainerLow、16dp 圆角、项高 48dp、弹簧展开，
+/// 颜色由 ambient `ColorScheme` 推出，所以深浅色切换跟着变。
+Future<T?> showM3eMenu<T>({
+  required BuildContext context,
+  required Rect anchor,
+  required List<M3eMenuItem<T>> items,
+}) {
+  return m3ex.showM3EMenu<T>(
+    context: context,
+    anchor: anchor,
+    position: m3ex.M3EMenuAnchorPosition.bottomStart,
+    children: [
+      for (final item in items)
+        m3ex.M3EMenuEntry(
+          label: item.label,
+          leading: Icon(item.icon),
+          value: item.value,
+        ),
+    ],
+  );
+}
