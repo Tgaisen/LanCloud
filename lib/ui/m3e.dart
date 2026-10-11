@@ -559,23 +559,42 @@ Future<T?> showM3eMenu<T>({
   required Rect anchor,
   required List<M3eMenuItem<T>> items,
   bool alignEnd = false,
-}) {
-  return m3ex.showM3EMenu<T>(
-    context: context,
-    anchor: anchor,
-    position: alignEnd
-        ? m3ex.M3EMenuAnchorPosition.bottomEnd
-        : m3ex.M3EMenuAnchorPosition.bottomStart,
-    children: [
-      for (final item in items)
-        m3ex.M3EMenuEntry(
-          label: item.label,
-          leading: Icon(item.icon),
-          value: item.value,
-        ),
-    ],
-  );
+}) async {
+  _openMenuCount++;
+  m3eMenuOpen.value = true;
+  try {
+    return await m3ex.showM3EMenu<T>(
+      context: context,
+      anchor: anchor,
+      position: alignEnd
+          ? m3ex.M3EMenuAnchorPosition.bottomEnd
+          : m3ex.M3EMenuAnchorPosition.bottomStart,
+      children: [
+        for (final item in items)
+          m3ex.M3EMenuEntry(
+            label: item.label,
+            leading: Icon(item.icon),
+            value: item.value,
+          ),
+      ],
+    );
+  } finally {
+    _openMenuCount--;
+    m3eMenuOpen.value = _openMenuCount > 0;
+  }
 }
+
+/// 当前是否有 MD3E 弹出菜单开着（可能有嵌套）。
+///
+/// 菜单的返回键收口用的是 Flutter 的 local history entry，而 `ModalRoute` 的
+/// `popDisposition` 只要遇到外层一个 `PopScope(canPop: false)` 就先判 doNotPop，
+/// 把这次返回交给外层（例如外壳：网盘标签页按返回切回首页），菜单反而留着。
+///
+/// 所以凡是可能拦截返回的页面，`canPop` 都要带上这个 notifier：菜单开着时置真，
+/// 返回键才会先走「吃掉 local history」这条路——菜单自己收起来，路由不会被弹掉。
+final ValueNotifier<bool> m3eMenuOpen = ValueNotifier<bool>(false);
+
+int _openMenuCount = 0;
 
 /// 取 [context] 对应渲染对象的全局矩形，给 [showM3eMenu] 当锚点。
 ///

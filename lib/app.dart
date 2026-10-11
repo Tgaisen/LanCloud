@@ -911,15 +911,24 @@ class _RootShellState extends State<RootShell>
     // PopScope.canPop=false 时不做预测动画）。其余情况（多选 / 网盘
     // 子目录或搜索 / 非默认视图 / 传输中的退出确认）交给 _handleBack 处理。
     final currentView = _currentViewId;
-    return ValueListenableBuilder<bool>(
-      valueListenable: app.driveCanHandleBack,
-      builder: (context, driveCanHandleBack, child) {
-        final canPop = canHandBackToSystem(
-          selectionMode: app.selectionMode,
-          hasActiveTransfers: running > 0,
-          atDefaultView: currentView == _defaultViewId,
-          driveCanHandleBack: currentView == _viewDrive && driveCanHandleBack,
-        );
+    return AnimatedBuilder(
+      animation: Listenable.merge(<Listenable>[
+        app.driveCanHandleBack,
+        m3eMenuOpen,
+      ]),
+      builder: (context, child) {
+        // MD3E 弹出菜单开着时交还给菜单自己收（它的 local history entry 会吃掉
+        // 这次返回）；否则外层 PopScope 会先判 doNotPop，把返回吞掉换成切标签页，
+        // 菜单反而留在屏幕上。
+        final canPop =
+            m3eMenuOpen.value ||
+            canHandBackToSystem(
+              selectionMode: app.selectionMode,
+              hasActiveTransfers: running > 0,
+              atDefaultView: currentView == _defaultViewId,
+              driveCanHandleBack:
+                  currentView == _viewDrive && app.driveCanHandleBack.value,
+            );
         return PopScope(
           canPop: canPop,
           onPopInvokedWithResult: (didPop, result) async {

@@ -87,6 +87,7 @@ class _FavoritesPageState extends State<FavoritesPage>
     _db.revision.addListener(_load);
     app.activeTab.addListener(_onActiveTabChanged);
     app.addFavoritesProbe(_dropProbe);
+    m3eMenuOpen.addListener(_onMenuOpenChanged);
     _load();
   }
 
@@ -98,6 +99,7 @@ class _FavoritesPageState extends State<FavoritesPage>
 
   @override
   void dispose() {
+    m3eMenuOpen.removeListener(_onMenuOpenChanged);
     _db.revision.removeListener(_load);
     final app = _app;
     if (app != null) {
@@ -112,6 +114,12 @@ class _FavoritesPageState extends State<FavoritesPage>
     _search.dispose();
     _enter.dispose();
     super.dispose();
+  }
+
+  /// 菜单开 / 收会改变 PopScope.canPop：重建一次，返回键才会先收菜单
+  /// （搜索 / 多选状态下本页自己也要拦返回）。
+  void _onMenuOpenChanged() {
+    if (mounted) setState(() {});
   }
 
   /// 切到本视图时重新读取收藏（可能在别处新增/删除了收藏）。
@@ -529,7 +537,11 @@ class _FavoritesPageState extends State<FavoritesPage>
       // 多选 / 搜索状态下返回先退出，再退出页面；
       // 位于底栏（首个路由）时交给外壳统一处理。
       // 注意不能用 tabIndex 判断：独立打开时它也带着同一个值。
-      canPop: inRootShell(context) || (!_selecting && !_searching),
+      // 菜单开着时也置真：把这次返回让给菜单自己的 local history entry。
+      canPop:
+          m3eMenuOpen.value ||
+          inRootShell(context) ||
+          (!_selecting && !_searching),
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
         if (_selecting) {
