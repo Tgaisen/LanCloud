@@ -592,10 +592,17 @@ class M3eMenuRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 用框架的 MenuItemButton 拿到它的默认度量（48dp 高、左右 12dp、图标 24dp、
-    // labelLarge）和桌面端的悬停 / 焦点 / 键盘行为
+    // 用框架的 MenuItemButton 拿到它的默认度量（48dp 高、左右内边距 12dp、
+    // 图标 24dp、labelLarge）和桌面端的悬停 / 焦点 / 键盘行为；圆角按 M3E 的
+    // vertical menu 规格改：项目是卡片里的一块圆角块，圆角 12dp——卡片圆角 16、
+    // 项目左右内缩 4dp，内圆角 = 16 − 4 = 12，符合嵌套规则。
     return MenuItemButton(
       onPressed: onTap,
+      style: MenuItemButton.styleFrom(
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(12)),
+        ),
+      ),
       leadingIcon: Icon(icon, size: 24),
       child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
     );
@@ -620,6 +627,13 @@ class _M3eMenuRoute<T> extends PopupRoute<T> {
   static const double _maxHeight = 320;
   static const double _rowHeight = 48;
   static const double _verticalPadding = 8;
+
+  /// 项目相对卡片的左右内缩；同时决定项目自己的圆角（16 − 4 = 12dp）。
+  static const double _itemInset = 4;
+
+  /// 项目之间的间隔：M3E vertical menu 里每一项是各自独立的圆角块。
+  static const double _itemGap = 4;
+
   static const double _screenPadding = 12;
   static const double _anchorGap = 4;
   static const double _radius = 16;
@@ -659,7 +673,9 @@ class _M3eMenuRoute<T> extends PopupRoute<T> {
     final double bottomLimit =
         screen.height - viewPadding.bottom - _screenPadding;
     final double contentHeight =
-        items.length * _rowHeight + _verticalPadding * 2;
+        items.length * _rowHeight +
+        (items.length - 1) * _itemGap +
+        _verticalPadding * 2;
     final double below = bottomLimit - (anchor.bottom + _anchorGap);
     final double above = (anchor.top - _anchorGap) - topLimit;
     // 先试锚点下方；放不下且上方更宽敞时才翻到上方，避免菜单贴屏幕边
@@ -701,7 +717,8 @@ class _M3eMenuRoute<T> extends PopupRoute<T> {
                   : (alignEnd ? Alignment.topRight : Alignment.topLeft),
               child: Material(
                 color: scheme.surfaceContainerLow,
-                elevation: 6,
+                // M3 给菜单的是 elevation level 2；这里按需求用 3
+                elevation: 3,
                 surfaceTintColor: Colors.transparent,
                 borderRadius: BorderRadius.circular(_radius),
                 clipBehavior: Clip.antiAlias,
@@ -728,15 +745,19 @@ class _M3eMenuRoute<T> extends PopupRoute<T> {
                           controller: _scroll,
                           padding: const EdgeInsets.symmetric(
                             vertical: _verticalPadding,
+                            horizontal: _itemInset,
                           ),
                           children: [
-                            for (final item in items)
+                            for (int i = 0; i < items.length; i++) ...[
+                              // 项目之间留间隔，头尾不额外留（M3E 的块状项目）
+                              if (i > 0) const SizedBox(height: _itemGap),
                               M3eMenuRow(
-                                icon: item.icon,
-                                label: item.label,
+                                icon: items[i].icon,
+                                label: items[i].label,
                                 onTap: () =>
-                                    Navigator.of(context).pop(item.value),
+                                    Navigator.of(context).pop(items[i].value),
                               ),
+                            ],
                           ],
                         ),
                       ),

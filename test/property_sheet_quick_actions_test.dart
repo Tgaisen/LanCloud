@@ -212,6 +212,28 @@ void main() {
         reason: '「${order[i]}」要排在「${order[i - 1]}」下面',
       );
     }
+    // M3E vertical menu：项目是各自独立的圆角块，之间留 4dp 间隔
+    final rows = find.byType(M3eMenuRow).evaluate().toList();
+    for (int i = 1; i < rows.length; i++) {
+      final above = tester.getRect(find.byType(M3eMenuRow).at(i - 1));
+      final below = tester.getRect(find.byType(M3eMenuRow).at(i));
+      expect(
+        below.top - above.bottom,
+        4,
+        reason: '第 ${i + 1} 项与上一项之间应是 4dp 间隔',
+      );
+    }
+    // 项目本身的圆角 12dp（卡片 16 − 左右内缩 4）
+    final item = tester.widget<MenuItemButton>(
+      find.byType(MenuItemButton).first,
+    );
+    final shape =
+        item.style?.shape?.resolve(<WidgetState>{}) as RoundedRectangleBorder?;
+    expect(
+      (shape?.borderRadius as BorderRadius?)?.topLeft.x,
+      12,
+      reason: '菜单项目圆角应为 12dp',
+    );
     // 原来那套「更多操作」弹窗（含修改简介）已经不在
     expect(find.text('修改简介'), findsNothing);
 
