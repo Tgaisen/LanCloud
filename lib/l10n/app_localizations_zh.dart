@@ -158,7 +158,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cookiePrivacy => 'Cookie 只保存在你手机本地（系统加密存储），不会上传到任何第三方服务器。';
 
   @override
-  String get pleasePasteCookie => '请先粘贴 Cookie';
+  String get pleasePasteCookie => '请输入 Cookie';
 
   @override
   String get cookieMissingYlogin => '未找到 ylogin，请确认复制的是完整 Cookie';
@@ -284,7 +284,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get open => '打开';
 
   @override
-  String get pleasePasteShareLink => '请先粘贴蓝奏云分享链接';
+  String get pleasePasteShareLink => '请输入分享链接';
 
   @override
   String get addedToFavorites => '已加入收藏';

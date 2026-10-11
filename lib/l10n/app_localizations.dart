@@ -371,7 +371,7 @@ abstract class AppLocalizations {
   /// No description provided for @pleasePasteCookie.
   ///
   /// In zh, this message translates to:
-  /// **'请先粘贴 Cookie'**
+  /// **'请输入 Cookie'**
   String get pleasePasteCookie;
 
   /// No description provided for @cookieMissingYlogin.
@@ -611,7 +611,7 @@ abstract class AppLocalizations {
   /// No description provided for @pleasePasteShareLink.
   ///
   /// In zh, this message translates to:
-  /// **'请先粘贴蓝奏云分享链接'**
+  /// **'请输入分享链接'**
   String get pleasePasteShareLink;
 
   /// No description provided for @addedToFavorites.

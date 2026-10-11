@@ -894,6 +894,10 @@ class _RootShellState extends State<RootShell>
     final floatingNav = app.settings.floatingNavBar;
     final navBar = NavigationBar(
       selectedIndex: _index,
+      // 底栏高度按 viewPadding 算（键盘弹出 / 收起时不变），NavigationBar 自己
+      // 也要跟着用 viewPadding 垫底部：默认用 padding，键盘弹出时那一段归零，
+      // 整条底栏的内容会缩掉导航栏的高度（外框不缩、里面按钮缩）。
+      maintainBottomViewPadding: true,
       onDestinationSelected: (pos) {
         if (app.selectionMode) {
           app.onRequestExitSelection?.call();
@@ -1054,11 +1058,17 @@ class _RootShellState extends State<RootShell>
                     // 的下留白承担；普通底栏仍由 NavigationBar 自己垫在内容下方。
                     // top 也要去掉：这里不再经过 Scaffold 的底栏槽位（槽位会
                     // 去掉顶部内边距），否则状态栏高度会被 SafeArea 垫进胶囊。
+                    // padding 和 viewPadding 都要清：NavigationBar 现在按
+                    // viewPadding 垫底部（maintainBottomViewPadding），只清
+                    // padding 的话胶囊里还会空出一段导航栏高度。
                     child: floatingNav
-                        ? MediaQuery.removePadding(
-                            context: context,
-                            removeTop: true,
-                            removeBottom: true,
+                        ? MediaQuery(
+                            data: MediaQuery.of(context).copyWith(
+                              padding: MediaQuery.of(context).padding
+                                  .copyWith(top: 0, bottom: 0),
+                              viewPadding: MediaQuery.of(context).viewPadding
+                                  .copyWith(top: 0, bottom: 0),
+                            ),
                             child: navBar,
                           )
                         : navBar,
