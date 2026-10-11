@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:material_ui/material_ui.dart' hide Icons;
@@ -14,6 +15,18 @@ import 'common.dart';
 import 'm3e.dart';
 import 'reduce_motion.dart';
 import 'scroll_tint.dart';
+
+/// 传输条目 ⋯ 菜单里的动作。
+///
+/// 「打开 / 分享」只对已下载完成的条目有意义，「重试」只对失败条目有意义，
+/// 「删除记录与文件」只对下载且文件已落盘、任务已停下（不在跑）的条目给出。
+enum _TransferMenuAction {
+  open,
+  share,
+  retry,
+  removeRecord,
+  removeRecordAndFile,
+}
 
 class TransfersPage extends StatefulWidget {
   const TransfersPage({super.key, this.tabIndex, this.openFile});
@@ -262,6 +275,110 @@ class _TransfersPageState extends State<TransfersPage>
     }
   }
 
+  /// 打开已下载的文件（与点击条目同一个入口，测试注入的 openFile 也走这里）。
+  Future<void> _openTaskFile(String path) =>
+      (widget.openFile ?? openFileWithSystem)(path);
+
+  /// 条目 ⋯ 菜单：按条目状态给出可用动作。
+  ///
+  /// [anchorContext] 是那颗 ⋯ 按钮（桌面端右键时是整行）的 context——
+  /// 菜单贴它下方右对齐弹出。
+  Future<void> _taskMenu(TransferTask task, BuildContext anchorContext) async {
+    final anchor = m3eMenuAnchorOf(anchorContext);
+    if (anchor == null) return;
+    final l10n = context.l10n;
+    final manager = context.read<TransferManager>();
+    final path = task.savedPath;
+    final done = task.status == TransferStatus.done && path != null;
+    final failed = task.status == TransferStatus.failed;
+    // 「删除记录与文件」只在任务停下之后给：正在写的半截文件删掉会打断下载器
+    final stopped =
+        task.status != TransferStatus.running &&
+        task.status != TransferStatus.queued;
+    final desktop = PlatformSupport.isDesktop;
+    final _TransferMenuAction? action = await showM3eMenu<_TransferMenuAction>(
+      context: context,
+      anchor: anchor,
+      // ⋯ 贴着右边缘：菜单右缘对齐，免得被屏幕右上角夹歪
+      alignEnd: true,
+      items: [
+        if (task.kind == TransferKind.download && done) ...[
+          M3eMenuItem(
+            value: _TransferMenuAction.open,
+            label: l10n.open,
+            icon: Icons.open_in_new,
+          ),
+          M3eMenuItem(
+            value: _TransferMenuAction.share,
+            // 桌面端没有分享面板：SystemShare.shareFile 在桌面端就是资源管理器定位
+            label: desktop ? l10n.openContainingFolder : l10n.share,
+            icon: desktop ? Icons.folder_open : Icons.share_outlined,
+          ),
+        ],
+        if (failed)
+          M3eMenuItem(
+            value: _TransferMenuAction.retry,
+            label: l10n.retry,
+            icon: Icons.refresh,
+          ),
+        M3eMenuItem(
+          value: _TransferMenuAction.removeRecord,
+          label: l10n.deleteRecord,
+          icon: Icons.playlist_remove,
+        ),
+        if (task.kind == TransferKind.download &&
+            stopped &&
+            path != null &&
+            path.isNotEmpty)
+          M3eMenuItem(
+            value: _TransferMenuAction.removeRecordAndFile,
+            label: l10n.deleteRecordAndFile,
+            icon: Icons.delete_outline,
+          ),
+      ],
+    );
+    if (!mounted || action == null) return;
+    switch (action) {
+      case _TransferMenuAction.open:
+        await _openTaskFile(path!);
+      case _TransferMenuAction.share:
+        await SystemShare.shareFile(
+          path!,
+          subject: task.name,
+          mime: _shareMimeFor(task.name),
+        );
+      case _TransferMenuAction.retry:
+        manager.retry(task.id);
+      case _TransferMenuAction.removeRecord:
+        await _removeTask(task);
+      case _TransferMenuAction.removeRecordAndFile:
+        await _removeTask(task, deleteFile: true);
+    }
+  }
+
+  /// 删除一条传输记录：先播删除动画（与收藏页一致），动画放完再真正移除；
+  /// [deleteFile] 为真时连同本地文件一起删。
+  Future<void> _removeTask(TransferTask task, {bool deleteFile = false}) async {
+    final manager = context.read<TransferManager>();
+    setState(() => _removing.add(task.id));
+    await Future<void>.delayed(const Duration(milliseconds: 220));
+    // 动画期间页面可能已经被移出树（比如返回了上一页）：记录照删
+    if (mounted) setState(() => _removing.remove(task.id));
+    manager.removeTasks([task.id]);
+    // 文件删除放最后、不挡动画，失败也静默（和批量删除同一个口径）
+    if (deleteFile) unawaited(_deleteTaskFile(task));
+  }
+
+  /// 删掉下载下来的本地文件（文件由本应用写入，删除属于正常操作）。
+  Future<void> _deleteTaskFile(TransferTask task) async {
+    final path = task.savedPath;
+    if (path == null || path.isEmpty) return;
+    try {
+      final file = File(path);
+      if (await file.exists()) await file.delete();
+    } catch (_) {}
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -325,6 +442,7 @@ class _TransfersPageState extends State<TransfersPage>
                           enter: _enter,
                           onToggle: _toggleSelected,
                           onLongPress: _enterSelection,
+                          onMenu: _taskMenu,
                           openFile: widget.openFile ?? openFileWithSystem,
                         ),
                       ),
@@ -514,6 +632,7 @@ class _TransferListSliver extends StatelessWidget {
     required this.enter,
     required this.onToggle,
     required this.onLongPress,
+    required this.onMenu,
     required this.openFile,
   });
 
@@ -528,6 +647,9 @@ class _TransferListSliver extends StatelessWidget {
   final Animation<double> enter;
   final void Function(String id) onToggle;
   final void Function({String? taskId}) onLongPress;
+
+  /// 点 ⋯ / 桌面端右键：打开条目菜单（锚点是行或⋯按钮的 context）。
+  final void Function(TransferTask task, BuildContext anchorContext) onMenu;
 
   /// 打开已下载的文件（外壳注入，默认交给系统默认程序）。
   final Future<void> Function(String path) openFile;
@@ -614,6 +736,8 @@ class _TransferListSliver extends StatelessWidget {
                   selected: selected.contains(active[index].id),
                   onTap: () => _handleTap(active[index]),
                   onLongPress: () => onLongPress(taskId: active[index].id),
+                  onMenu: (anchorContext) =>
+                      onMenu(active[index], anchorContext),
                 ),
               ),
             ),
@@ -646,6 +770,8 @@ class _TransferListSliver extends StatelessWidget {
                   selected: selected.contains(finished[index].id),
                   onTap: () => _handleTap(finished[index]),
                   onLongPress: () => onLongPress(taskId: finished[index].id),
+                  onMenu: (anchorContext) =>
+                      onMenu(finished[index], anchorContext),
                 ),
               ),
             ),
@@ -665,6 +791,7 @@ class _TransferTile extends StatelessWidget {
     required this.selected,
     required this.onTap,
     required this.onLongPress,
+    required this.onMenu,
     this.index = 0,
     this.removing = false,
   });
@@ -674,6 +801,9 @@ class _TransferTile extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
+
+  /// 点 ⋯ / 桌面端右键：打开条目菜单（锚点分别为按钮 / 整行）。
+  final void Function(BuildContext anchorContext) onMenu;
   final int index;
   final bool removing;
 
@@ -717,79 +847,64 @@ class _TransferTile extends StatelessWidget {
     final active =
         task.status == TransferStatus.running ||
         task.status == TransferStatus.queued;
-    final done = task.status == TransferStatus.done && task.savedPath != null;
     // 与首页 / 收藏共用同一套列表项布局，圆角由外层 SegmentedList 控制
-    return Md3ListItem(
-      key: ValueKey('transfer-${task.id}'),
-      index: index,
-      // 入场动画由外层 ListEnterAnimation 统一驱动（只播一次）
-      animateIn: false,
-      removing: removing,
-      icon: iconForFile(task.name),
-      iconColor: fileIconColor(task.name, brightness: scheme.brightness),
-      title: task.name,
-      subtitle: _statusLine(l10n),
-      titleMaxLines: 2,
-      subtitleMaxLines: 2,
-      selected: selected,
-      onTap: onTap,
-      onLongPress: onLongPress,
-      // 多选期间隐藏行内操作（避免误触），但保留占位：条目高度不跳
-      trailing: HideKeepingSpace(
-        hidden: selecting,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (active)
-              IconButton(
-                visualDensity: VisualDensity.standard,
-                iconSize: 20,
-                tooltip: l10n.cancel,
-                icon: const Icon(Icons.close),
-                onPressed: () => manager.cancel(task.id),
-              ),
-            if (task.status == TransferStatus.failed)
-              IconButton(
-                visualDensity: VisualDensity.standard,
-                iconSize: 20,
-                tooltip: l10n.retry,
-                icon: const Icon(Icons.refresh),
-                onPressed: () => manager.retry(task.id),
-              ),
-            if (done) ...[
-              // 点击条目即打开文件；这个按钮移动端走系统分享面板，
-              // 桌面端没有分享面板，改为「打开所在文件夹」
-              //（SystemShare.shareFile 在桌面端就是资源管理器定位）
-              IconButton(
-                visualDensity: VisualDensity.standard,
-                iconSize: 20,
-                tooltip: PlatformSupport.isDesktop
-                    ? l10n.openContainingFolder
-                    : l10n.share,
-                icon: Icon(
-                  PlatformSupport.isDesktop
-                      ? Icons.folder_open
-                      : Icons.share_outlined,
+    // 菜单要贴在被点的那颗 ⋯（桌面端右键时是整行）下方，所以这里得拿到两个 context
+    return Builder(
+      builder: (BuildContext rowContext) => Md3ListItem(
+        key: ValueKey('transfer-${task.id}'),
+        index: index,
+        // 入场动画由外层 ListEnterAnimation 统一驱动（只播一次）
+        animateIn: false,
+        removing: removing,
+        icon: iconForFile(task.name),
+        iconColor: fileIconColor(task.name, brightness: scheme.brightness),
+        title: task.name,
+        subtitle: _statusLine(l10n),
+        titleMaxLines: 2,
+        subtitleMaxLines: 2,
+        selected: selected,
+        onTap: onTap,
+        onLongPress: onLongPress,
+        // 桌面端右键：与 ⋯ 菜单同一套操作（多选时不响应，和 ⋯ 一起隐藏）
+        onSecondaryTap: selecting ? null : () => onMenu(rowContext),
+        // 多选期间隐藏行内操作（避免误触），但保留占位：条目高度不跳
+        trailing: HideKeepingSpace(
+          hidden: selecting,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (active)
+                IconButton(
+                  visualDensity: VisualDensity.standard,
+                  iconSize: 20,
+                  tooltip: l10n.cancel,
+                  icon: const Icon(Icons.close),
+                  onPressed: () => manager.cancel(task.id),
                 ),
-                onPressed: () => SystemShare.shareFile(
-                  task.savedPath!,
-                  subject: task.name,
-                  mime: _shareMimeFor(task.name),
+              // 完成 / 失败 / 删除这些操作都收进 ⋯ 菜单（菜单项按状态给出），
+              // 行里只留「取消」这颗抢时间的按钮
+              Builder(
+                builder: (BuildContext buttonContext) => IconButton(
+                  visualDensity: VisualDensity.standard,
+                  iconSize: 20,
+                  tooltip: l10n.moreActions,
+                  icon: const Icon(Icons.more_vert),
+                  onPressed: () => onMenu(buttonContext),
                 ),
               ),
             ],
-          ],
+          ),
         ),
+        bottom: active
+            ? M3eLinearProgressIndicator(
+                // 传输是长任务：用 MD3E 波浪进度条，等待时不那么呆板。
+                // 进度 / 轨道用 M3 的默认角色（primary / secondary container），
+                // 不再另外指定颜色。
+                value: task.progress,
+                wavy: true,
+              )
+            : null,
       ),
-      bottom: active
-          ? M3eLinearProgressIndicator(
-              // 传输是长任务：用 MD3E 波浪进度条，等待时不那么呆板。
-              // 进度 / 轨道用 M3 的默认角色（primary / secondary container），
-              // 不再另外指定颜色。
-              value: task.progress,
-              wavy: true,
-            )
-          : null,
     );
   }
 }

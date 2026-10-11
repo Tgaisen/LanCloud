@@ -19,7 +19,7 @@ import 'share_page.dart';
 enum _QuickPinAction { open, removePin, moveToTop }
 
 /// 最近使用条目 ⋯ 菜单里的动作。
-enum _RecentAction { open, addFavorite, deleteRecord }
+enum _RecentAction { open, toggleFavorite, deleteRecord }
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key, this.tabIndex});
@@ -249,7 +249,7 @@ class _HomePageState extends State<HomePage>
     }
   }
 
-  /// 最近使用菜单：打开 / 删除此条记录（与快速访问菜单同款底部弹窗）。
+  /// 最近使用菜单：打开 / 收藏（已收藏则显示取消收藏）/ 删除此条记录。
   ///
   /// [anchorContext] 是那颗 ⋯ 按钮（桌面端右键时是整行）的 context。
   Future<void> _showRecentMenu(
@@ -260,6 +260,14 @@ class _HomePageState extends State<HomePage>
     final l10n = context.l10n;
     final anchor = m3eMenuAnchorOf(anchorContext);
     if (anchor == null) return;
+    // 菜单项是静态的：先把收藏链接 / 收藏态查出来，避免出现「已收藏却显示收藏」
+    // 这种状态相反的项。分享条目查本地收藏表（很快）；网盘条目要先取一次分享
+    // 链接（与网盘页的收藏行为一致）。
+    final shareUrl = await _recentShareUrl(item);
+    if (!mounted) return;
+    final favorited =
+        shareUrl != null && await isFavoritedByRef(context, shareUrl);
+    if (!mounted) return;
     final _RecentAction? action = await showM3eMenu<_RecentAction>(
       context: context,
       anchor: anchor,
@@ -272,9 +280,11 @@ class _HomePageState extends State<HomePage>
           icon: Icons.open_in_new,
         ),
         M3eMenuItem(
-          value: _RecentAction.addFavorite,
-          label: l10n.addFavorite,
+          value: _RecentAction.toggleFavorite,
+          label: favorited ? l10n.unfavorite : l10n.favorite,
+          // 已收藏用实心星：Material Symbols 同一字形靠 FILL 轴切实心 / 描边
           icon: Icons.star_outline,
+          iconFill: favorited ? 1 : 0,
         ),
         M3eMenuItem(
           value: _RecentAction.deleteRecord,
@@ -287,8 +297,22 @@ class _HomePageState extends State<HomePage>
     switch (action) {
       case _RecentAction.open:
         _openItem(context, item.kind, item.ref, item.name, item.pwd);
-      case _RecentAction.addFavorite:
-        _favoriteRecent(item);
+      case _RecentAction.toggleFavorite:
+        // 用菜单打开时查到的链接；菜单打开期间状态可能变了（比如退出了登录），
+        // 那就再取一次，取不到给个提示而不是静默失败
+        final url = shareUrl ?? await _recentShareUrl(item);
+        if (!mounted) return;
+        if (url == null) {
+          showAppToast(context, l10n.shareInfoUnavailable);
+          return;
+        }
+        await toggleFavoriteByRef(
+          context,
+          kind: item.kind == 'folder' ? 'shareFolder' : 'shareFile',
+          name: item.name,
+          ref: url,
+          pwd: item.pwd,
+        );
       case _RecentAction.deleteRecord:
         setState(() => _removingRecents.add(item.ref));
         await Future<void>.delayed(const Duration(milliseconds: 220));
@@ -297,48 +321,22 @@ class _HomePageState extends State<HomePage>
     }
   }
 
-  /// 最近使用条目加入收藏：分享链接直接收藏；网盘文件 / 目录先取分享链接
-  /// 再按分享收藏（与网盘页的收藏行为一致）。
-  Future<void> _favoriteRecent(RecentItem item) async {
-    final app = context.read<AppController>();
-    final l10n = context.l10n;
-    final messenger = ScaffoldMessenger.of(context);
-    try {
-      switch (item.kind) {
-        case 'shareFile':
-        case 'shareFolder':
-          await app.db.addFavorite(
-            kind: item.kind,
-            name: item.name,
-            ref: item.ref,
-            pwd: item.pwd,
-          );
-        case 'folder':
-          final client = app.client;
-          if (client == null) return;
-          final info = await client.shareInfoOfFolder(item.ref);
-          await app.db.addFavorite(
-            kind: 'shareFolder',
-            name: item.name,
-            ref: info.url,
-            pwd: info.pwd,
-          );
-        default:
-          final client = app.client;
-          if (client == null) return;
-          final info = await client.shareInfoOfFile(item.ref);
-          await app.db.addFavorite(
-            kind: 'shareFile',
-            name: item.name,
-            ref: info.url,
-            pwd: info.pwd,
-          );
-      }
-    } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('$e')));
-      return;
+  /// 最近使用条目的分享链接：收藏表就是按分享链接存、按分享链接去重的，
+  /// 分享条目直接用 `ref`；网盘文件 / 目录要先取一次分享信息。
+  Future<String?> _recentShareUrl(RecentItem item) async {
+    if (item.kind == 'shareFile' || item.kind == 'shareFolder') {
+      return item.ref;
     }
-    messenger.showSnackBar(SnackBar(content: Text(l10n.addedToFavorites)));
+    final client = context.read<AppController>().client;
+    if (client == null) return null;
+    try {
+      final info = item.kind == 'folder'
+          ? await client.shareInfoOfFolder(item.ref)
+          : await client.shareInfoOfFile(item.ref);
+      return info.url;
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> _load() async {

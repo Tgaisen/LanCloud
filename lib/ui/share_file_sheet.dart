@@ -7,10 +7,9 @@ import '../core/app_controller.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
-import 'web_page.dart';
 
 /// 分享文件属性弹窗：加载时显示小圆环，加载完展示简介与文件信息，
-/// 提供下载、复制链接、浏览器打开、二维码与收藏。
+/// 提供下载、复制链接、二维码与收藏（「打开链接」已按需求去掉）。
 class ShareFileInfoSheet extends StatefulWidget {
   const ShareFileInfoSheet({
     super.key,
@@ -40,6 +39,9 @@ class _ShareFileInfoSheetState extends State<ShareFileInfoSheet> {
   bool _invalid = false;
   DirectFile? _resolved;
 
+  /// 收藏状态：null = 还没查出来（查完之前收藏项置灰，避免点出「重复收藏」）。
+  bool? _favorite;
+
   @override
   void initState() {
     super.initState();
@@ -50,6 +52,12 @@ class _ShareFileInfoSheetState extends State<ShareFileInfoSheet> {
     } else {
       _fetch();
     }
+    _loadFavorite();
+  }
+
+  Future<void> _loadFavorite() async {
+    final favorited = await isFavoritedByRef(context, widget.url);
+    if (mounted) setState(() => _favorite = favorited);
   }
 
   Future<void> _fetch() async {
@@ -91,10 +99,8 @@ class _ShareFileInfoSheetState extends State<ShareFileInfoSheet> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final app = context.read<AppController>();
     final scheme = Theme.of(context).colorScheme;
     final navigator = Navigator.of(context);
-    final messenger = ScaffoldMessenger.of(context);
     return SafeArea(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -143,23 +149,6 @@ class _ShareFileInfoSheetState extends State<ShareFileInfoSheet> {
           ),
           ListTile(
             enabled: !_invalid,
-            leading: const Icon(Icons.open_in_new),
-            title: Text(l10n.openLink),
-            onTap: () {
-              navigator.pop();
-              navigator.push(
-                MaterialPageRoute(
-                  builder: (_) => WebPage(
-                    title: _name,
-                    url: widget.url,
-                    cookie: app.activeAccount?.cookie,
-                  ),
-                ),
-              );
-            },
-          ),
-          ListTile(
-            enabled: !_invalid,
             leading: const Icon(Icons.qr_code),
             title: Text(l10n.showQr),
             onTap: () {
@@ -174,12 +163,18 @@ class _ShareFileInfoSheetState extends State<ShareFileInfoSheet> {
             },
           ),
           ListTile(
-            enabled: !_invalid,
-            leading: const Icon(Icons.star_outline),
-            title: Text(l10n.favorite),
+            // 收藏态查出来之前先置灰：否则会在状态未知时点出重复收藏 / 错误取消
+            enabled: !_invalid && _favorite != null,
+            leading: Icon(
+              Icons.star_outline,
+              // 已收藏切到实心星（FILL 轴），未收藏保持描边
+              fill: _favorite == true ? 1 : 0,
+            ),
+            title: Text(_favorite == true ? l10n.unfavorite : l10n.favorite),
             onTap: () async {
-              navigator.pop();
-              await app.db.addFavorite(
+              // 与网盘页属性弹窗一致：收藏就地切换，不关弹窗（反馈走轻提示）
+              final next = await toggleFavoriteByRef(
+                context,
                 kind: 'shareFile',
                 name: _name,
                 ref: widget.url,
@@ -187,9 +182,9 @@ class _ShareFileInfoSheetState extends State<ShareFileInfoSheet> {
                 size: _size,
                 sharer: _resolved?.sharer ?? '',
               );
-              messenger.showSnackBar(
-                SnackBar(content: Text(l10n.addedToFavorites)),
-              );
+              if (next != null && mounted) {
+                setState(() => _favorite = next);
+              }
             },
           ),
         ],

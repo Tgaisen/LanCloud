@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -221,7 +223,7 @@ void main() {
     app.dispose();
   });
 
-  // 行内操作（取消 / 重试 / 分享）多选时只隐藏不改变布局：条目高度不变。
+  // 行内操作（取消 / ⋯）多选时只隐藏不改变布局：条目高度不变。
   testWidgets('多选隐藏行内操作但保留占位：条目高度不变', (tester) async {
     final (app, _) = await host(tester);
     final item = find.ancestor(
@@ -229,8 +231,8 @@ void main() {
       matching: find.byType(Md3ListItem),
     );
     final height = tester.getSize(item).height;
-    final retry = find.descendant(of: item, matching: find.byTooltip('重试'));
-    expect(retry, findsOneWidget);
+    final more = find.descendant(of: item, matching: find.byTooltip('更多操作'));
+    expect(more, findsOneWidget);
 
     await tester.longPress(find.text('a.zip'));
     await tester.pumpAndSettle();
@@ -239,7 +241,7 @@ void main() {
     expect(
       tester
           .widget<HideKeepingSpace>(
-            find.ancestor(of: retry, matching: find.byType(HideKeepingSpace)),
+            find.ancestor(of: more, matching: find.byType(HideKeepingSpace)),
           )
           .hidden,
       isTrue,
@@ -248,7 +250,7 @@ void main() {
     await tester.tap(find.byTooltip('退出多选'));
     await tester.pumpAndSettle();
     expect(tester.getSize(item).height, height);
-    expect(retry, findsOneWidget);
+    expect(more, findsOneWidget);
     app.dispose();
   });
 
@@ -358,7 +360,29 @@ void main() {
     app.dispose();
   });
 
-  testWidgets('下载完成的项目：点击条目打开文件，按钮改为分享', (tester) async {
+  /// 打开某一行（按文件名定位）的 ⋯ 菜单。
+  Future<void> openRowMenu(WidgetTester tester, String name) async {
+    final row = find.ancestor(
+      of: find.text(name),
+      matching: find.byType(Md3ListItem),
+    );
+    await tester.tap(
+      find.descendant(of: row, matching: find.byTooltip('更多操作')),
+    );
+    await tester.pumpAndSettle();
+  }
+
+  /// 菜单里的项（按显示顺序）。多选操作栏里也有「重试 / 删除」同文案的按钮，
+  /// 所以这里只认菜单自己的行。
+  List<String> menuLabels(WidgetTester tester) => tester
+      .widgetList<M3eMenuRow>(find.byType(M3eMenuRow))
+      .map((row) => row.label)
+      .toList();
+
+  Finder menuItem(String label) =>
+      find.descendant(of: find.byType(M3eMenuRow), matching: find.text(label));
+
+  testWidgets('下载完成的项目：点击条目打开文件，⋯ 菜单给打开 / 分享 / 删除', (tester) async {
     final app = AppController();
     final manager = TransferManager(app);
     manager.tasks.add(
@@ -406,17 +430,15 @@ void main() {
 
     expect(find.text('tool.apk'), findsOneWidget);
     expect(find.byTooltip('安装'), findsNothing);
-    // 点击条目就是「打开」，行内不再单独给「打开」按钮
+    // 打开 / 分享都收进 ⋯ 菜单，行内不再单独给按钮
     expect(find.byTooltip('打开'), findsNothing);
-    expect(find.byTooltip('分享'), findsOneWidget);
+    expect(find.byTooltip('分享'), findsNothing);
 
-    await tester.tap(find.text('tool.apk'));
-    await tester.pumpAndSettle();
-    expect(opened, ['/tmp/tool.apk']);
-    // 点击条目只打开文件，不会进入多选
-    expect(selectionBarOpacity(tester), 0);
+    await openRowMenu(tester, 'tool.apk');
+    // 完成项：打开 / 分享 / 删除此条记录 / 删除记录与文件，且不给「重试」
+    expect(menuLabels(tester), ['打开', '分享', '删除此条记录', '删除记录与文件']);
 
-    await tester.tap(find.byTooltip('分享'));
+    await tester.tap(menuItem('分享'));
     await tester.pumpAndSettle();
     expect(shared, hasLength(1));
     expect(shared.single.method, 'shareFile');
@@ -426,6 +448,120 @@ void main() {
       shared.single.arguments['mime'],
       'application/vnd.android.package-archive',
     );
+
+    await tester.tap(find.text('tool.apk'));
+    await tester.pumpAndSettle();
+    expect(opened, ['/tmp/tool.apk']);
+    // 点击条目只打开文件，不会进入多选
+    expect(selectionBarOpacity(tester), 0);
+    app.dispose();
+  });
+
+  testWidgets('失败下载的 ⋯ 菜单：重试可用，删除记录与文件连带删掉本地文件', (tester) async {
+    final app = AppController();
+    final manager = TransferManager(app);
+    // widget 测试跑在 FakeAsync 里：测试体内的文件 I/O 必须走同步接口，
+    // 否则 await 永远等不到真实事件循环上的回调
+    final dir = Directory.systemTemp.createTempSync('lancloud-transfers');
+    addTearDown(() {
+      try {
+        dir.deleteSync(recursive: true);
+      } catch (_) {}
+    });
+    final file = File('${dir.path}/bad.zip');
+    file.writeAsStringSync('partial');
+    final failed =
+        TransferTask(
+            id: 'f1',
+            kind: TransferKind.download,
+            name: 'bad.zip',
+            accountUid: '',
+          )
+          ..status = TransferStatus.failed
+          ..error = '网络错误'
+          ..savedPath = file.path;
+    manager.tasks.add(failed);
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<AppController>.value(value: app),
+          ChangeNotifierProvider<TransferManager>.value(value: manager),
+        ],
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const TransfersPage(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('下载').hitTestable());
+    await tester.pumpAndSettle();
+
+    await openRowMenu(tester, 'bad.zip');
+    // 失败项：不给打开 / 分享，给重试
+    expect(menuLabels(tester), ['重试', '删除此条记录', '删除记录与文件']);
+
+    // 这个任务没有可用的直链（等价于重启后重启下载）：retry 会改成提示重新发起，
+    // 正好用来确认菜单确实调到了 TransferManager.retry
+    await tester.tap(menuItem('重试'));
+    await tester.pumpAndSettle();
+    expect(failed.error, '应用重启后请重新发起下载');
+
+    await openRowMenu(tester, 'bad.zip');
+    await tester.tap(menuItem('删除记录与文件'));
+    // 先播删除动画（220ms）再真正移除
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 260));
+    await tester.pumpAndSettle();
+    expect(manager.tasks, isEmpty);
+    expect(find.text('bad.zip'), findsNothing);
+    // 文件是后台真实 I/O 删的：让真实事件循环跑两轮再回假时钟刷新续体
+    for (var i = 0; i < 3 && file.existsSync(); i++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 50)),
+      );
+      await tester.pump();
+    }
+    expect(file.existsSync(), isFalse);
+    app.dispose();
+  });
+
+  testWidgets('上传条目的 ⋯ 菜单只有重试（失败时）与删除此条记录', (tester) async {
+    final app = AppController();
+    final manager = TransferManager(app);
+    manager.tasks.addAll([
+      task('u1', 'fail.zip', status: TransferStatus.failed),
+      task('u2', 'ok.zip', status: TransferStatus.done),
+    ]);
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<AppController>.value(value: app),
+          ChangeNotifierProvider<TransferManager>.value(value: manager),
+        ],
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const TransfersPage(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // 失败的上传项：重试 + 删除此条记录，没有打开 / 分享 / 删除记录与文件
+    await openRowMenu(tester, 'fail.zip');
+    expect(menuLabels(tester), ['重试', '删除此条记录']);
+    await tester.tapAt(const Offset(5, 5));
+    await tester.pumpAndSettle();
+
+    // 已完成的上传项：只剩删除此条记录（重试只给失败项）
+    await openRowMenu(tester, 'ok.zip');
+    expect(menuLabels(tester), ['删除此条记录']);
+    await tester.tapAt(const Offset(5, 5));
+    await tester.pumpAndSettle();
     app.dispose();
   });
 

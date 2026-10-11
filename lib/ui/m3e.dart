@@ -513,7 +513,9 @@ class M3EIconButtonGroup<T> extends StatelessWidget {
             for (final item in items)
               core.M3EToggleButtonGroupAction(
                 icon: Icon(item.icon),
-                checkedIcon: Icon(item.checkedIcon),
+                // Material Symbols 是可变字体：选中态默认切到 FILL=1 的实心版，
+                // 否则「已收藏 / 已设密码」这类开关图标和未选中长得一模一样。
+                checkedIcon: Icon(item.checkedIcon, fill: 1),
                 tooltip: item.tooltip,
                 semanticLabel: item.tooltip,
                 width: width,
@@ -534,6 +536,7 @@ class M3eMenuItem<T> {
     required this.value,
     required this.label,
     required this.icon,
+    this.iconFill = 0,
   });
 
   /// 选中这一项时 [showM3eMenu] 返回的值。
@@ -544,6 +547,12 @@ class M3eMenuItem<T> {
 
   /// 行首图标。
   final IconData icon;
+
+  /// 行首图标的 FILL 轴（0 = 描边、1 = 实心）。
+  ///
+  /// Material Symbols 只有一套字形，实心 / 描边靠这条可变字体轴切：例如
+  /// 「已收藏」用实心星、「收藏」用描边星。不支持的图标字体上无效果。
+  final double iconFill;
 }
 
 /// 贴在被点控件下方弹出的 MD3E 菜单。
@@ -588,10 +597,14 @@ class M3eMenuRow extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onTap,
+    this.iconFill = 0,
   });
 
   /// 行首图标。
   final IconData icon;
+
+  /// 行首图标的 FILL 轴（0 = 描边、1 = 实心），见 [M3eMenuItem.iconFill]。
+  final double iconFill;
 
   /// 行文案。
   final String label;
@@ -612,7 +625,7 @@ class M3eMenuRow extends StatelessWidget {
           borderRadius: BorderRadius.all(Radius.circular(12)),
         ),
       ),
-      leadingIcon: Icon(icon, size: 24),
+      leadingIcon: Icon(icon, size: 24, fill: iconFill),
       child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
     );
   }
@@ -825,6 +838,7 @@ class _M3eMenuRoute<T> extends PopupRoute<T> {
                               },
                               child: M3eMenuRow(
                                 icon: items[i].icon,
+                                iconFill: items[i].iconFill,
                                 label: items[i].label,
                                 onTap: () =>
                                     Navigator.of(context).pop(items[i].value),

@@ -994,12 +994,21 @@ class _SettingsPageState extends State<SettingsPage>
       ),
     );
     if (ok != true || !context.mounted) return;
-    final freed = await AppCache.clear();
-    // 图片缓存（内存）与网盘目录列表缓存也一起清掉
-    PaintingBinding.instance.imageCache
-      ..clear()
-      ..clearLiveImages();
-    app.driveCache.clear();
+    // 清缓存的磁盘遍历 + 图片缓存清理也要一会儿：给个「加载中…」等待弹窗
+    final navigator = Navigator.of(context);
+    showLoadingDialog(context, context.l10n.loading);
+    int? freed;
+    try {
+      freed = await AppCache.clear();
+      // 图片缓存（内存）与网盘目录列表缓存也一起清掉
+      PaintingBinding.instance.imageCache
+        ..clear()
+        ..clearLiveImages();
+      app.driveCache.clear();
+    } finally {
+      // 出啥岔子都要把等待弹窗收掉，别把用户卡在转圈里
+      navigator.pop();
+    }
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

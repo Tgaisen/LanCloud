@@ -903,6 +903,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addFavorite => 'Add to favorites';
 
   @override
+  String get newFavorite => 'New favorite';
+
+  @override
   String get moreActions => 'More actions';
 
   @override
@@ -920,6 +923,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get unfavorited => 'Removed from favorites';
+
+  @override
+  String get loading => 'Loading…';
+
+  @override
+  String get deleteRecordAndFile => 'Delete record and file';
+
+  @override
+  String get shareInfoUnavailable => 'Couldn\'t get share info';
 
   @override
   String get share => 'Share';

@@ -879,6 +879,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get addFavorite => '添加收藏';
 
   @override
+  String get newFavorite => '新增收藏';
+
+  @override
   String get moreActions => '更多操作';
 
   @override
@@ -895,6 +898,15 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get unfavorited => '已取消收藏';
+
+  @override
+  String get loading => '加载中…';
+
+  @override
+  String get deleteRecordAndFile => '删除记录与文件';
+
+  @override
+  String get shareInfoUnavailable => '无法获取分享信息';
 
   @override
   String get share => '分享';

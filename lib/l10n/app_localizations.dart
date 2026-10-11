@@ -1694,6 +1694,12 @@ abstract class AppLocalizations {
   /// **'添加收藏'**
   String get addFavorite;
 
+  /// No description provided for @newFavorite.
+  ///
+  /// In zh, this message translates to:
+  /// **'新增收藏'**
+  String get newFavorite;
+
   /// No description provided for @moreActions.
   ///
   /// In zh, this message translates to:
@@ -1729,6 +1735,24 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'已取消收藏'**
   String get unfavorited;
+
+  /// No description provided for @loading.
+  ///
+  /// In zh, this message translates to:
+  /// **'加载中…'**
+  String get loading;
+
+  /// No description provided for @deleteRecordAndFile.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除记录与文件'**
+  String get deleteRecordAndFile;
+
+  /// No description provided for @shareInfoUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法获取分享信息'**
+  String get shareInfoUnavailable;
 
   /// No description provided for @share.
   ///

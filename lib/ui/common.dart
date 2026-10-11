@@ -1029,9 +1029,10 @@ class TopBarOverlay extends StatelessWidget {
 /// 使用要点：
 /// - 页面骨架就是本组件，不要再自己套 Scaffold；顶栏高度（含 AppBar.bottom）
 ///   由本组件按 `状态栏 + appBar.preferredSize.height` 自动计算；
-/// - 需要底部操作栏（如多选栏）时传 [bottomNavigationBar]，需要自带滚动控制器
-///   （如回到顶部按钮）时传 [controller]；传了 [controller] 后，点顶栏
-///   空白处会回到列表顶部（按钮 / 输入框自行响应，不会误触）；
+/// - 需要悬浮在正文之上的底部操作栏（如多选栏）时传 [bottomOverlay]：它不占
+///   布局，正文一直铺到屏幕底部，卡片四周不会出现一条挡住内容的底板；需要
+///   自带滚动控制器（如回到顶部按钮）时传 [controller]；传了 [controller] 后，
+///   点顶栏空白处会回到列表顶部（按钮 / 输入框自行响应，不会误触）；
 /// - 滚动驱动是自动的：内部 ScrollTint 监听滚动通知，滑动距离 = 顶栏高度时为
 ///   1:1 收起；效果与设置里的「顶栏收起」开关联动，关闭时顶栏固定不收起；
 /// - 若内容滚动发生在原生侧（WebView、相机预览等拿不到 ScrollNotification），
@@ -1045,7 +1046,7 @@ class TopBarOverlayScaffold extends StatefulWidget {
     required this.appBar,
     required this.slivers,
     this.controller,
-    this.bottomNavigationBar,
+    this.bottomOverlay,
     this.backgroundColor,
     this.resizeToAvoidBottomInset,
     this.bottomSafeInset = true,
@@ -1058,7 +1059,13 @@ class TopBarOverlayScaffold extends StatefulWidget {
   final List<Widget> slivers;
 
   final ScrollController? controller;
-  final Widget? bottomNavigationBar;
+
+  /// 悬浮在正文之上的底部覆盖层（例如多选操作栏）。
+  ///
+  /// 与 [Scaffold.bottomNavigationBar] 不同：它走 body 里的 Stack，不参与布局，
+  /// 正文会一直铺到底部——卡片外那一圈能看到列表内容，而不是一条和页面同色的
+  /// 底板（观感与网盘 / 收藏 / 传输页的多选栏一致）。不需要时传 null。
+  final Widget? bottomOverlay;
   final Color? backgroundColor;
   final bool? resizeToAvoidBottomInset;
 
@@ -1157,10 +1164,17 @@ class _TopBarOverlayScaffoldState extends State<TopBarOverlayScaffold> {
                     builder: (context) => _appBarTapToTop(widget.appBar),
                   ),
                 ),
+                // 底部悬浮操作栏：同样盖在正文上（正文铺到底部，卡片外不遮内容）
+                if (widget.bottomOverlay != null)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: widget.bottomOverlay!,
+                  ),
               ],
             ),
           ),
-          bottomNavigationBar: widget.bottomNavigationBar,
         ),
       ),
     );
@@ -3993,6 +4007,50 @@ Future<void> showLoadingDialog(BuildContext context, String text) {
       ),
     ),
   );
+}
+
+/// 查一个分享条目（`ref` = 分享链接）是否已收藏。查不到（例如库不可用）按未收藏。
+Future<bool> isFavoritedByRef(BuildContext context, String ref) async {
+  try {
+    return await context.read<AppController>().db.isFavorite(ref);
+  } catch (_) {
+    return false;
+  }
+}
+
+/// 收藏 / 取消收藏一个分享条目（`ref` = 分享链接），两端都走这个入口，
+/// 保证「已收藏再点是取消」的语义一致。返回操作后的状态；出错返回 null。
+Future<bool?> toggleFavoriteByRef(
+  BuildContext context, {
+  required String kind,
+  required String name,
+  required String ref,
+  String pwd = '',
+  String size = '',
+  String sharer = '',
+}) async {
+  final app = context.read<AppController>();
+  final l10n = context.l10n;
+  try {
+    if (await app.db.isFavorite(ref)) {
+      await app.db.removeFavorite(ref);
+      if (context.mounted) showAppToast(context, l10n.unfavorited);
+      return false;
+    }
+    await app.db.addFavorite(
+      kind: kind,
+      name: name,
+      ref: ref,
+      pwd: pwd,
+      size: size,
+      sharer: sharer,
+    );
+    if (context.mounted) showAppToast(context, l10n.favorited);
+    return true;
+  } catch (e) {
+    if (context.mounted) showAppToast(context, '$e');
+    return null;
+  }
 }
 
 /// 解析分享链接并把文件加入下载队列。

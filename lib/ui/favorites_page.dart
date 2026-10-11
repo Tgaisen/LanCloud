@@ -12,7 +12,7 @@ import 'share_file_sheet.dart';
 import 'share_page.dart';
 
 /// 收藏条目 ⋯ 菜单里的动作。
-enum _FavoriteItemAction { edit, delete }
+enum _FavoriteItemAction { open, copyLink, edit, unfavorite }
 
 /// 收藏视图：独立底栏页，布局与传输页一致（分组 + 多选删除）。
 class FavoritesPage extends StatefulWidget {
@@ -229,8 +229,9 @@ class _FavoritesPageState extends State<FavoritesPage>
               },
             ),
             ListTile(
-              leading: const Icon(Icons.star_outline),
-              title: Text(l10n.addFavorite),
+              // 与项目菜单里的「取消收藏」（playlist_remove）成对
+              leading: const Icon(Icons.playlist_add),
+              title: Text(l10n.newFavorite),
               onTap: () {
                 Navigator.of(context).pop();
                 // 打开「打开链接」弹窗，识别出文件（夹）后直接加入收藏
@@ -365,7 +366,7 @@ class _FavoritesPageState extends State<FavoritesPage>
     }
   }
 
-  /// 条目 ⋯ 菜单（MD3E 弹出菜单）：修改信息 / 删除。
+  /// 条目 ⋯ 菜单（MD3E 弹出菜单）：打开 / 复制链接 / 修改信息 / 取消收藏。
   ///
   /// [anchorContext] 是那颗 ⋯ 按钮（桌面端右键时是整行）的 context——
   /// 菜单贴它下方右对齐弹出。
@@ -383,22 +384,41 @@ class _FavoritesPageState extends State<FavoritesPage>
       alignEnd: true,
       items: [
         M3eMenuItem(
+          value: _FavoriteItemAction.open,
+          label: context.l10n.open,
+          icon: Icons.open_in_new,
+        ),
+        M3eMenuItem(
+          value: _FavoriteItemAction.copyLink,
+          label: context.l10n.copyLink,
+          icon: Icons.link,
+        ),
+        M3eMenuItem(
           value: _FavoriteItemAction.edit,
           label: context.l10n.editInfo,
           icon: Icons.edit_note,
         ),
         M3eMenuItem(
-          value: _FavoriteItemAction.delete,
-          label: context.l10n.delete,
-          icon: Icons.delete_outline,
+          value: _FavoriteItemAction.unfavorite,
+          label: context.l10n.unfavorite,
+          icon: Icons.playlist_remove,
         ),
       ],
     );
     if (!mounted || action == null) return;
     switch (action) {
+      case _FavoriteItemAction.open:
+        await _open(item);
+      case _FavoriteItemAction.copyLink:
+        await copyText(
+          context,
+          item.pwd.isEmpty
+              ? item.ref
+              : context.l10n.linkWithPassword(item.ref, item.pwd),
+        );
       case _FavoriteItemAction.edit:
         await _editFavorite(item);
-      case _FavoriteItemAction.delete:
+      case _FavoriteItemAction.unfavorite:
         setState(() => _removing.add(item.id));
         await Future<void>.delayed(const Duration(milliseconds: 220));
         if (!mounted) return;

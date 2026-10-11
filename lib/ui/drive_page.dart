@@ -2241,26 +2241,37 @@ class _DrivePageState extends State<DrivePage>
 
   /// 复制下载直链。
   Future<void> _copyDirectLink(LzFile file, {ShareInfo? share}) async {
+    // 直链要现解析（分享信息 + 直链两次请求）：给个「解析中…」等待弹窗，
+    // 和设置访问密码同一个样式
+    final navigator = Navigator.of(context);
+    showLoadingDialog(context, context.l10n.resolving);
+    String? url;
     try {
-      final url = await _resolveFileDirectLink(file, share: share);
-      if (!mounted || url == null) return;
-      await copyText(context, url, asToast: true);
+      url = await _resolveFileDirectLink(file, share: share);
     } catch (e) {
-      if (!mounted) return;
-      showAppToast(context, '$e');
+      if (mounted) showAppToast(context, '$e');
+    } finally {
+      navigator.pop();
     }
+    if (!mounted || url == null) return;
+    await copyText(context, url, asToast: true);
   }
 
   /// 用二维码显示下载直链。
   Future<void> _showDirectLinkQr(LzFile file, {ShareInfo? share}) async {
+    // 同上：解析期间先转圈
+    final navigator = Navigator.of(context);
+    showLoadingDialog(context, context.l10n.resolving);
+    String? url;
     try {
-      final url = await _resolveFileDirectLink(file, share: share);
-      if (!mounted || url == null) return;
-      await _showQr(file.name, url, '');
+      url = await _resolveFileDirectLink(file, share: share);
     } catch (e) {
-      if (!mounted) return;
-      showAppToast(context, '$e');
+      if (mounted) showAppToast(context, '$e');
+    } finally {
+      navigator.pop();
     }
+    if (!mounted || url == null) return;
+    await _showQr(file.name, url, '');
   }
 
   /// 取消收藏（收藏表按分享链接去重，所以要先取回分享信息）。

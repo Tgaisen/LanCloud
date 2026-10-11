@@ -306,22 +306,10 @@ class _ShareFolderPageState extends State<ShareFolderPage>
     );
   }
 
-  Future<void> _favoriteFolder() async {
-    final app = context.read<AppController>();
-    await app.db.addFavorite(
-      kind: 'shareFolder',
-      name: widget.folder.name,
-      ref: widget.link,
-      pwd: widget.pwd,
-      sharer: widget.folder.sharer,
-    );
-    if (mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(context.l10n.addedToFavorites)));
-    }
-  }
-
   Future<void> _showMenu() async {
+    // 收藏项要显示「收藏 / 取消收藏」：分享文件夹的 ref 就是链接，先查本地收藏表
+    final favorited = await isFavoritedByRef(context, widget.link);
+    if (!mounted) return;
     await showAppSheet<void>(
       context,
       child: Column(
@@ -337,11 +325,21 @@ class _ShareFolderPageState extends State<ShareFolderPage>
             },
           ),
           ListTile(
-            leading: const Icon(Icons.star_outline),
-            title: Text(context.l10n.favorite),
+            // 已收藏切到实心星（FILL 轴），未收藏保持描边
+            leading: Icon(Icons.star_outline, fill: favorited ? 1 : 0),
+            title: Text(
+              favorited ? context.l10n.unfavorite : context.l10n.favorite,
+            ),
             onTap: () {
               Navigator.of(context).pop();
-              _favoriteFolder();
+              toggleFavoriteByRef(
+                context,
+                kind: 'shareFolder',
+                name: widget.folder.name,
+                ref: widget.link,
+                pwd: widget.pwd,
+                sharer: widget.folder.sharer,
+              );
             },
           ),
           ListTile(
@@ -668,27 +666,34 @@ class _ShareFolderPageState extends State<ShareFolderPage>
                 ),
               ),
           ],
-          bottomNavigationBar: _selecting
-              ? BatchActionBar(
-                  children: [
-                    BatchAction(
-                      icon: Icons.download,
-                      label: l10n.download,
-                      onPressed: _selected.isEmpty ? null : _downloadSelected,
-                    ),
-                    BatchAction(
-                      icon: Icons.copy,
-                      label: l10n.copyLink,
-                      onPressed: _selected.isEmpty ? null : _copySelectedLinks,
-                    ),
-                    BatchAction(
-                      icon: Icons.star_outline,
-                      label: l10n.favorite,
-                      onPressed: _selected.isEmpty ? null : _favoriteSelected,
-                    ),
-                  ],
-                )
-              : null,
+          // 多选操作栏：和收藏页一样悬浮在列表上（不占布局，卡片外不遮内容）
+          bottomOverlay: IgnorePointer(
+            ignoring: !_selecting,
+            child: AnimatedOpacity(
+              opacity: _selecting ? 1 : 0,
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeInOut,
+              child: BatchActionBar(
+                children: [
+                  BatchAction(
+                    icon: Icons.download,
+                    label: l10n.download,
+                    onPressed: _selected.isEmpty ? null : _downloadSelected,
+                  ),
+                  BatchAction(
+                    icon: Icons.copy,
+                    label: l10n.copyLink,
+                    onPressed: _selected.isEmpty ? null : _copySelectedLinks,
+                  ),
+                  BatchAction(
+                    icon: Icons.star_outline,
+                    label: l10n.favorite,
+                    onPressed: _selected.isEmpty ? null : _favoriteSelected,
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );

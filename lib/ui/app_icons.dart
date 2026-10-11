@@ -92,6 +92,8 @@ class Icons {
   static const IconData photo_library_outlined = Symbols.photo_library;
   static const IconData photo_camera_outlined = Symbols.photo_camera;
   static const IconData password = Symbols.password;
+  static const IconData playlist_add = Symbols.playlist_add;
+  static const IconData playlist_remove = Symbols.playlist_remove;
   static const IconData page_info = Symbols.page_info;
   static const IconData person = Symbols.person;
   static const IconData person_outline = Symbols.person;
