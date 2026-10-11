@@ -3639,7 +3639,9 @@ Future<PasswordEditResult?> showPasswordDialog(
     builder: (dialogContext) => StatefulBuilder(
       builder: (context, setDialogState) {
         final l10n = context.l10n;
-        return AlertDialog(
+        // 带开关 + 密码输入：走统一的表单弹窗骨架（宽度固定 + 上移聚焦）
+        return formDialog(
+          context,
           title: Text(l10n.accessPassword),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -3722,17 +3724,28 @@ Widget formDialog(
   required Widget content,
   required List<Widget> actions,
 }) {
+  return formDialogPan(
+    context,
+    child: AlertDialog(
+      scrollable: true,
+      title: title,
+      content: SizedBox(width: dialogFormWidth(context), child: content),
+      actions: actions,
+    ),
+  );
+}
+
+/// 给输入弹窗套上「不被输入法压扁 + 上移聚焦当前输入框」的外壳。
+///
+/// [formDialog] 已经内置；布局另有一套的输入弹窗（WebDAV 配置、Cookie 登录、
+/// 选择目标文件夹等）用这个包一层即可，不用改内部布局。
+Widget formDialogPan(BuildContext context, {required Widget child}) {
   return _FormDialogPanShell(
     // 去掉输入法下边距：Dialog 不再据此缩小 / 上推，交给外壳整体平移
     child: MediaQuery.removeViewInsets(
       context: context,
       removeBottom: true,
-      child: AlertDialog(
-        scrollable: true,
-        title: title,
-        content: SizedBox(width: dialogFormWidth(context), child: content),
-        actions: actions,
-      ),
+      child: child,
     ),
   );
 }
@@ -3790,6 +3803,9 @@ class _FormDialogPanShellState extends State<_FormDialogPanShell> {
       // field 已经是「平移过」的位置：加回动画当前值才是自然位置
       target = field.bottom + _applied + _margin - keyboardTop;
     }
+    // 键盘把可视区域压矮了：能放下时先在剩余区域里居中（上移半个键盘高度），
+    // 聚焦输入框还压在键盘下面时再多移一点
+    target = math.max(media.viewInsets.bottom / 2, target);
     if (target < 0) target = 0;
     if ((target - _target).abs() < 0.5) return;
     setState(() => _target = target);

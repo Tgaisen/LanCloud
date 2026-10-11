@@ -332,6 +332,34 @@ void main() {
     );
   });
 
+  testWidgets('竖屏 + 输入法：弹窗上移到剩余区域中间', (tester) async {
+    final app = _FakeApp(_FakeClient());
+    // 竖屏手机：393×852，输入法占 300dp → 剩余区域高 552dp，弹窗放得下
+    await _pumpDrive(tester, app, viewSize: const Size(393, 852));
+    tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+    addTearDown(tester.view.reset);
+
+    await tester.tap(find.text('添加'));
+    await _settleSheet(tester);
+    await tester.tap(find.text('新建文件夹'));
+    await _settleSheet(tester);
+    for (int i = 0; i < 4; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+
+    final Finder field = find.byType(TextField);
+    final Finder card = find
+        .ancestor(of: field.first, matching: find.byType(Material))
+        .first;
+    final Rect cardRect = tester.getRect(card);
+    // 自然居中位置（852/2）上移半个键盘高度（150）→ 落在剩余区域 (0..552) 中心
+    expect(
+      cardRect.center.dy,
+      closeTo((852 - 300) / 2, 1),
+      reason: '弹窗应在输入法上方的剩余区域里居中',
+    );
+  });
+
   testWidgets('宽屏：用户协议弹窗宽度也被 560 夹住', (tester) async {
     final app = _FakeApp(_FakeClient());
     await _pumpDrive(tester, app, viewSize: const Size(1200, 700));

@@ -693,60 +693,64 @@ class _WebdavAccountDialogState extends State<WebdavAccountDialog> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-      // 键盘弹出时弹窗被压缩，内容/按钮区会拿到无界高度（debug 下报
-      // "RenderFlex children have non-zero flex but incoming height
-      // constraints are unbounded"）；交给 AlertDialog 自己滚动即可。
-      scrollable: true,
-      title: Text(l10n.webdavSection),
-      content: SizedBox(
-        width: 420,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: _url,
-              keyboardType: TextInputType.url,
-              decoration: InputDecoration(
-                labelText: l10n.webdavServer,
-                hintText: l10n.webdavServerHint,
+    // 三个输入框的配置弹窗：套上「不被输入法压扁 + 上移聚焦」外壳
+    return formDialogPan(
+      context,
+      child: AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        // 键盘弹出时弹窗被压缩，内容/按钮区会拿到无界高度（debug 下报
+        // "RenderFlex children have non-zero flex but incoming height
+        // constraints are unbounded"）；交给 AlertDialog 自己滚动即可。
+        scrollable: true,
+        title: Text(l10n.webdavSection),
+        content: SizedBox(
+          width: 420,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _url,
+                keyboardType: TextInputType.url,
+                decoration: InputDecoration(
+                  labelText: l10n.webdavServer,
+                  hintText: l10n.webdavServerHint,
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _user,
-              decoration: InputDecoration(labelText: l10n.webdavUsername),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _pwd,
-              obscureText: true,
-              decoration: InputDecoration(labelText: l10n.webdavPassword),
-            ),
-          ],
+              const SizedBox(height: 12),
+              TextField(
+                controller: _user,
+                decoration: InputDecoration(labelText: l10n.webdavUsername),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _pwd,
+                obscureText: true,
+                decoration: InputDecoration(labelText: l10n.webdavPassword),
+              ),
+            ],
+          ),
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(l10n.cancel),
+          ),
+          // 中立：清空三项，保存后即恢复到未配置状态
+          TextButton(
+            onPressed: () => setState(() {
+              _url.clear();
+              _user.clear();
+              _pwd.clear();
+            }),
+            child: Text(l10n.reset),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.of(context).pop([_url.text, _user.text, _pwd.text]),
+            child: Text(l10n.save),
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(l10n.cancel),
-        ),
-        // 中立：清空三项，保存后即恢复到未配置状态
-        TextButton(
-          onPressed: () => setState(() {
-            _url.clear();
-            _user.clear();
-            _pwd.clear();
-          }),
-          child: Text(l10n.reset),
-        ),
-        FilledButton(
-          onPressed: () =>
-              Navigator.of(context).pop([_url.text, _user.text, _pwd.text]),
-          child: Text(l10n.save),
-        ),
-      ],
     );
   }
 }
