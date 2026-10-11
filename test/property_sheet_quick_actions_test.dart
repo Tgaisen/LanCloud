@@ -360,6 +360,33 @@ void main() {
     );
   });
 
+  testWidgets('底部弹窗：键盘弹出时面板高度不缩（底部安全区按 viewPadding 稳定）', (tester) async {
+    final app = _FakeApp(_FakeClient());
+    await _pumpDrive(tester, app, viewSize: const Size(393, 852));
+    // 系统导航栏 39dp：无键盘时 padding / viewPadding 都是 39
+    tester.view.viewPadding = const FakeViewPadding(bottom: 39);
+    tester.view.padding = const FakeViewPadding(bottom: 39);
+    addTearDown(tester.view.reset);
+
+    await tester.tap(find.text('添加'));
+    await _settleSheet(tester);
+    final double withoutKeyboard = tester
+        .getSize(find.byType(M3EBottomSheet))
+        .height;
+
+    // 键盘弹出：padding.bottom 归零（导航栏被输入法盖住），viewInsets 顶上
+    tester.view.padding = const FakeViewPadding();
+    tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(
+      tester.getSize(find.byType(M3EBottomSheet)).height,
+      withoutKeyboard,
+      reason: '键盘弹出时底部弹窗不应矮一截（切换账号 → Cookie 登录弹窗那个 bug）',
+    );
+  });
+
   testWidgets('宽屏：用户协议弹窗宽度也被 560 夹住', (tester) async {
     final app = _FakeApp(_FakeClient());
     await _pumpDrive(tester, app, viewSize: const Size(1200, 700));

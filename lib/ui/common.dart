@@ -1332,10 +1332,15 @@ Future<T?> showAppSheet<T>(
         // 面板内部只再让开底部导航栏；内容里若还有 SafeArea（不少弹窗内容
         // 自带）读不到 padding，不会再二次避让多留一截空白。
         // 左右由上面 useSafeArea 统一处理，这里不要默认值（默认 left/right 为 true）。
+        //
+        // 底部按 viewPadding 垫：键盘弹出时 padding.bottom 会归零（导航栏那段被
+        // 输入法盖住），但面板高度不能跟着缩一截——底栏、面板都统一用系统栏的
+        // 原始高度，键盘弹出 / 收起时不再抽动。
         child: SafeArea(
           top: false,
           left: false,
           right: false,
+          maintainBottomViewPadding: true,
           child: Builder(
             builder: (context) => MediaQuery.removePadding(
               context: context,
