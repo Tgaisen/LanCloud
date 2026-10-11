@@ -709,28 +709,36 @@ class _M3eMenuRoute<T> extends PopupRoute<T> {
                   height: height,
                   // 卡片固定，超出高度的部分在卡片里面滚：滚动条沿用应用同款
                   // （6dp 圆角滑块、无轨道、滚动时才出现）
-                  child: ScrollbarTheme(
-                    data: const ScrollbarThemeData(
-                      trackColor: WidgetStatePropertyAll(Colors.transparent),
-                    ),
-                    child: Scrollbar(
-                      controller: _scroll,
-                      thickness: 6,
-                      radius: const Radius.circular(3),
-                      child: ListView(
+                  //
+                  // 轨道默认会让开状态栏 / 挖孔（读 MediaQuery.padding），菜单是
+                  // 浮在屏幕中间的小卡片，用不上这些安全区——清零后滑块才贴着
+                  // 卡片的上边和右边（列表页 FastScrollbar 是反着用的：那里要把
+                  // 顶栏 / 底栏让出来）。
+                  child: MediaQuery(
+                    data: media.copyWith(padding: EdgeInsets.zero),
+                    child: ScrollbarTheme(
+                      data: const ScrollbarThemeData(
+                        trackColor: WidgetStatePropertyAll(Colors.transparent),
+                      ),
+                      child: Scrollbar(
                         controller: _scroll,
-                        padding: const EdgeInsets.symmetric(
-                          vertical: _verticalPadding,
+                        thickness: 6,
+                        radius: const Radius.circular(3),
+                        child: ListView(
+                          controller: _scroll,
+                          padding: const EdgeInsets.symmetric(
+                            vertical: _verticalPadding,
+                          ),
+                          children: [
+                            for (final item in items)
+                              M3eMenuRow(
+                                icon: item.icon,
+                                label: item.label,
+                                onTap: () =>
+                                    Navigator.of(context).pop(item.value),
+                              ),
+                          ],
                         ),
-                        children: [
-                          for (final item in items)
-                            M3eMenuRow(
-                              icon: item.icon,
-                              label: item.label,
-                              onTap: () =>
-                                  Navigator.of(context).pop(item.value),
-                            ),
-                        ],
                       ),
                     ),
                   ),
