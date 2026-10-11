@@ -291,6 +291,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get open => 'Open';
 
   @override
+  String get view => 'View';
+
+  @override
   String get pleasePasteShareLink => 'Paste a LanZou Cloud share link first';
 
   @override

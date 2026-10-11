@@ -11,6 +11,12 @@ import 'm3e.dart';
 import 'reduce_motion.dart';
 import 'share_file_sheet.dart';
 
+/// 分享浏览页条目 ⋯ 菜单里的动作。
+///
+/// 文件夹用「打开」（进这个子目录），文件用「查看」（打开属性弹窗），
+/// 两者共用同一个枚举值，菜单文案按条目类型区分。
+enum _ShareItemAction { open, download, copyLink, favorite }
+
 /// 分享文件夹浏览页：布局类似网盘页，支持子文件夹与多选批量操作。
 class ShareFolderPage extends StatefulWidget {
   const ShareFolderPage({
@@ -355,6 +361,121 @@ class _ShareFolderPageState extends State<ShareFolderPage>
     );
   }
 
+  /// 条目 ⋯ 菜单：文件夹「打开 / 复制链接 / 收藏」，
+  /// 文件「查看 / 下载 / 复制链接 / 收藏」。
+  ///
+  /// [anchorContext] 是那颗 ⋯ 按钮（桌面端右键时是整行）的 context——
+  /// 菜单贴它下方右对齐弹出。
+  Future<void> _showItemMenu({
+    required BuildContext anchorContext,
+    SubFolder? folder,
+    ShareFileItem? file,
+  }) async {
+    final anchor = m3eMenuAnchorOf(anchorContext);
+    if (anchor == null) return;
+    final l10n = context.l10n;
+    final url = folder?.url ?? file!.url;
+    final name = folder?.name ?? file!.name;
+    // 收藏项要显示「收藏 / 取消收藏」：ref 就是分享链接，先查本地收藏表
+    final favorited = await isFavoritedByRef(context, url);
+    if (!mounted) return;
+    final _ShareItemAction? action = await showM3eMenu<_ShareItemAction>(
+      context: context,
+      anchor: anchor,
+      // ⋯ 贴着右边缘：菜单右缘对齐，免得被屏幕右上角夹歪
+      alignEnd: true,
+      items: [
+        M3eMenuItem(
+          value: _ShareItemAction.open,
+          label: folder != null ? l10n.open : l10n.view,
+          icon: Icons.open_in_new,
+        ),
+        if (file != null)
+          M3eMenuItem(
+            value: _ShareItemAction.download,
+            label: l10n.download,
+            icon: Icons.download_outlined,
+          ),
+        M3eMenuItem(
+          value: _ShareItemAction.copyLink,
+          label: l10n.copyLink,
+          icon: Icons.copy,
+        ),
+        M3eMenuItem(
+          value: _ShareItemAction.favorite,
+          label: favorited ? l10n.unfavorite : l10n.favorite,
+          icon: Icons.star_outline,
+          // 已收藏用实心星（Material Symbols 的 FILL 轴）
+          iconFill: favorited ? 1 : 0,
+        ),
+      ],
+    );
+    if (!mounted || action == null) return;
+    switch (action) {
+      case _ShareItemAction.open:
+        if (folder != null) {
+          await _openSubfolder(folder);
+        } else {
+          _showFileInfo(file!);
+        }
+      case _ShareItemAction.download:
+        await downloadShareFile(
+          context,
+          url: file!.url,
+          pwd: widget.pwd,
+          fallbackName: file.name,
+        );
+      case _ShareItemAction.copyLink:
+        // 分享有提取码就一起复制，和网盘页 / 收藏页的复制链接同一口径
+        await copyText(
+          context,
+          widget.pwd.isEmpty ? url : l10n.linkWithPassword(url, widget.pwd),
+        );
+      case _ShareItemAction.favorite:
+        await toggleFavoriteByRef(
+          context,
+          kind: folder != null ? 'shareFolder' : 'shareFile',
+          name: name,
+          ref: url,
+          pwd: widget.pwd,
+        );
+    }
+  }
+
+  /// 文件属性弹窗：点条目本身 / 菜单里的「查看」都走这里。
+  void _showFileInfo(ShareFileItem file) {
+    showAppSheet<void>(
+      context,
+      child: ShareFileInfoSheet(
+        name: file.name,
+        url: file.url,
+        pwd: widget.pwd,
+        size: file.size,
+        time: file.time,
+        invalid: file.invalid,
+      ),
+    );
+  }
+
+  /// 条目右侧的 ⋯ 按钮：菜单得贴它弹出，所以这里单独取按钮自己的 context。
+  Widget _itemMenuButton({SubFolder? folder, ShareFileItem? file}) =>
+      HideKeepingSpace(
+        hidden: _selecting,
+        child: Builder(
+          builder: (BuildContext buttonContext) => IconButton(
+            visualDensity: VisualDensity.standard,
+            iconSize: 20,
+            tooltip: context.l10n.moreActions,
+            icon: const Icon(Icons.more_vert),
+            onPressed: () => _showItemMenu(
+              anchorContext: buttonContext,
+              folder: folder,
+              file: file,
+            ),
+          ),
+        ),
+      );
+
   Future<void> _openSubfolder(SubFolder sub) async {
     final app = context.read<AppController>();
     final l10n = context.l10n;
@@ -585,14 +706,25 @@ class _ShareFolderPageState extends State<ShareFolderPage>
                           return ListEnterAnimation(
                             progress: _enter,
                             index: index,
-                            child: Md3ListItem(
-                              key: ValueKey('share-folder-${sub.url}'),
-                              icon: Icons.folder,
-                              iconColor: scheme.primary,
-                              title: sub.name,
-                              subtitle: sub.desc,
-                              animateIn: false,
-                              onTap: () => _openSubfolder(sub),
+                            // 菜单要贴在被点的 ⋯（桌面端右键时是整行）下方，
+                            // 所以这里得拿到行 / 按钮各自的 context
+                            child: Builder(
+                              builder: (BuildContext rowContext) => Md3ListItem(
+                                key: ValueKey('share-folder-${sub.url}'),
+                                icon: Icons.folder,
+                                iconColor: scheme.primary,
+                                title: sub.name,
+                                subtitle: sub.desc,
+                                animateIn: false,
+                                onTap: () => _openSubfolder(sub),
+                                onSecondaryTap: _selecting
+                                    ? null
+                                    : () => _showItemMenu(
+                                        anchorContext: rowContext,
+                                        folder: sub,
+                                      ),
+                                trailing: _itemMenuButton(folder: sub),
+                              ),
                             ),
                           );
                         },
@@ -612,48 +744,51 @@ class _ShareFolderPageState extends State<ShareFolderPage>
                           return ListEnterAnimation(
                             progress: _enter,
                             index: index,
-                            child: Md3ListItem(
-                              // 失效条目没有 url，用下标保证 key 唯一
-                              key: ValueKey(
-                                'share-file-${file.url.isEmpty ? 'invalid-$index' : file.url}',
+                            // 同上：菜单要贴行 / 按钮
+                            child: Builder(
+                              builder: (BuildContext rowContext) => Md3ListItem(
+                                // 失效条目没有 url，用下标保证 key 唯一
+                                key: ValueKey(
+                                  'share-file-${file.url.isEmpty ? 'invalid-$index' : file.url}',
+                                ),
+                                icon: iconForFile(file.name),
+                                iconColor: file.invalid
+                                    ? scheme.onSurfaceVariant
+                                    : fileIconColor(
+                                        file.name,
+                                        brightness: scheme.brightness,
+                                      ),
+                                title: file.name,
+                                subtitle: [
+                                  prettyLzSize(file.size),
+                                  if (file.time.isNotEmpty) file.time,
+                                  if (file.invalid) l10n.fileInvalid,
+                                ].where((e) => e.isNotEmpty).join(' · '),
+                                selected:
+                                    _selecting && _selected.contains(file.url),
+                                animateIn: false,
+                                // 失效条目不能下载 / 复制，也就不参与多选
+                                onLongPress: file.invalid
+                                    ? null
+                                    : () => _enterSelection(file.url),
+                                onTap: () {
+                                  if (_selecting) {
+                                    _toggleFile(file.url);
+                                  } else {
+                                    _showFileInfo(file);
+                                  }
+                                },
+                                // 失效条目没有可用的链接，不给菜单
+                                trailing: file.invalid
+                                    ? null
+                                    : _itemMenuButton(file: file),
+                                onSecondaryTap: _selecting || file.invalid
+                                    ? null
+                                    : () => _showItemMenu(
+                                        anchorContext: rowContext,
+                                        file: file,
+                                      ),
                               ),
-                              icon: iconForFile(file.name),
-                              iconColor: file.invalid
-                                  ? scheme.onSurfaceVariant
-                                  : fileIconColor(
-                                      file.name,
-                                      brightness: scheme.brightness,
-                                    ),
-                              title: file.name,
-                              subtitle: [
-                                prettyLzSize(file.size),
-                                if (file.time.isNotEmpty) file.time,
-                                if (file.invalid) l10n.fileInvalid,
-                              ].where((e) => e.isNotEmpty).join(' · '),
-                              selected:
-                                  _selecting && _selected.contains(file.url),
-                              animateIn: false,
-                              // 失效条目不能下载 / 复制，也就不参与多选
-                              onLongPress: file.invalid
-                                  ? null
-                                  : () => _enterSelection(file.url),
-                              onTap: () {
-                                if (_selecting) {
-                                  _toggleFile(file.url);
-                                } else {
-                                  showAppSheet<void>(
-                                    context,
-                                    child: ShareFileInfoSheet(
-                                      name: file.name,
-                                      url: file.url,
-                                      pwd: widget.pwd,
-                                      size: file.size,
-                                      time: file.time,
-                                      invalid: file.invalid,
-                                    ),
-                                  );
-                                }
-                              },
                             ),
                           );
                         },

@@ -26,6 +26,9 @@ const int kFreeUploadLimit = 100 * 1024 * 1024;
 /// 网盘页文件条目 ⋯ 菜单里的动作。
 enum _FileMenuAction { properties, move, editInfo, password, delete }
 
+/// 网盘页文件夹条目 ⋯ 菜单里的动作。
+enum _FolderMenuAction { properties, password, editInfo, delete }
+
 class DrivePage extends StatefulWidget {
   const DrivePage({
     super.key,
@@ -2136,7 +2139,11 @@ class _DrivePageState extends State<DrivePage>
     }
   }
 
-  Future<void> _folderActions(LzFolder folder) async {
+  /// 点文件夹 ⋯：MD3E 弹出菜单（属性 / 访问密码 / 修改信息 / 删除）。
+  ///
+  /// [buttonContext] 是那颗 ⋯ 按钮的 context（桌面端右键时是整行）——
+  /// 菜单贴它下方右对齐弹出。
+  Future<void> _folderMenu(LzFolder folder, BuildContext buttonContext) async {
     if (_selecting) {
       setState(() {
         if (!_selectedFolders.remove(folder.id)) {
@@ -2145,10 +2152,79 @@ class _DrivePageState extends State<DrivePage>
       });
       return;
     }
+    final anchor = m3eMenuAnchorOf(buttonContext);
+    if (anchor == null) return;
+    final l10n = context.l10n;
+    final _FolderMenuAction? action = await showM3eMenu<_FolderMenuAction>(
+      context: context,
+      anchor: anchor,
+      // ⋯ 贴着右边缘：菜单右缘对齐，免得被屏幕右上角夹歪
+      alignEnd: true,
+      items: [
+        M3eMenuItem(
+          value: _FolderMenuAction.properties,
+          label: l10n.properties,
+          icon: Icons.info_outline,
+        ),
+        M3eMenuItem(
+          value: _FolderMenuAction.password,
+          label: l10n.accessPassword,
+          icon: Icons.lock_outline,
+        ),
+        M3eMenuItem(
+          value: _FolderMenuAction.editInfo,
+          label: l10n.folderInfo,
+          icon: Icons.edit_note,
+        ),
+        M3eMenuItem(
+          value: _FolderMenuAction.delete,
+          label: l10n.delete,
+          icon: Icons.delete_outline,
+        ),
+      ],
+    );
+    if (action == null || !mounted) return;
+    switch (action) {
+      case _FolderMenuAction.properties:
+        await _showFolderProperties(folder);
+      case _FolderMenuAction.password:
+        await _setFolderPasswd(folder);
+      case _FolderMenuAction.editInfo:
+        await _editFolderInfoFromMenu(folder);
+      case _FolderMenuAction.delete:
+        await _deleteFolder(folder);
+    }
+  }
+
+  /// ⋯ 菜单 / 顶栏「目录属性」进入的文件夹属性弹窗。
+  ///
+  /// 从 ⋯ 菜单进来时说的就是这个文件夹本身，不用再给一个「打开」。
+  Future<void> _showFolderProperties(LzFolder folder) async {
     await showAppSheet<void>(
       context,
-      // 从列表里某个文件夹的三点菜单进来：可以「打开」进这个目录
-      child: _FolderInfoSheet(folder: folder, page: this, showOpen: true),
+      child: _FolderInfoSheet(folder: folder, page: this),
+    );
+  }
+
+  /// ⋯ 菜单里的「修改信息」：列表项带的简介可能是截断过的，先取一次最新全文
+  /// （与文件的修改信息同一个口径），取不到就沿用列表里的值。
+  Future<void> _editFolderInfoFromMenu(LzFolder folder) async {
+    final client = context.read<AppController>().client;
+    var desc = folder.desc;
+    if (client != null) {
+      try {
+        final info = await client.shareInfoOfFolder(folder.id);
+        if (info.desc.isNotEmpty) desc = info.desc;
+      } catch (_) {}
+    }
+    if (!mounted) return;
+    await _editFolderInfo(
+      LzFolder(
+        id: folder.id,
+        name: folder.name,
+        desc: desc,
+        hasPwd: folder.hasPwd,
+      ),
     );
   }
 
@@ -2931,7 +3007,7 @@ class _DrivePageState extends State<DrivePage>
               selected: selected,
               selecting: _selecting,
               onTap: () => _openFolder(folder),
-              onMenu: (_) => _folderActions(folder),
+              onMenu: (buttonContext) => _folderMenu(folder, buttonContext),
               onLongPress: () => _enterSelection(folderId: folder.id),
             )
           : _FolderRow(
@@ -2939,7 +3015,7 @@ class _DrivePageState extends State<DrivePage>
               selected: selected,
               selecting: _selecting,
               onTap: () => _openFolder(folder),
-              onMenu: (_) => _folderActions(folder),
+              onMenu: (buttonContext) => _folderMenu(folder, buttonContext),
               onLongPress: () => _enterSelection(folderId: folder.id),
             ),
     );
@@ -4045,19 +4121,10 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
 enum _FolderQuickAction { link, qr, favorite, quickAccess, password }
 
 class _FolderInfoSheet extends StatefulWidget {
-  const _FolderInfoSheet({
-    required this.folder,
-    required this.page,
-    this.showOpen = false,
-  });
+  const _FolderInfoSheet({required this.folder, required this.page});
 
   final LzFolder folder;
   final _DrivePageState page;
-
-  /// 是否显示「打开」（进入这个文件夹）。只有从列表里某个文件夹的三点菜单
-  /// 进来时才有意义；从网盘页顶栏「目录属性」进来时说的就是当前目录，
-  /// 不用再开一次。
-  final bool showOpen;
 
   @override
   State<_FolderInfoSheet> createState() => _FolderInfoSheetState();
@@ -4320,17 +4387,6 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
               },
             ),
           ),
-          if (widget.showOpen)
-            ListTile(
-              leading: const Icon(Icons.folder_open),
-              title: Text(context.l10n.open),
-              onTap: () {
-                final page = widget.page;
-                final folder = _folder;
-                Navigator.of(context).pop();
-                page._openFolder(folder);
-              },
-            ),
           ListTile(
             leading: const Icon(Icons.edit_note),
             title: Text(context.l10n.folderInfo),

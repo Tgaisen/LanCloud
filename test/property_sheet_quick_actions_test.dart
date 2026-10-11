@@ -550,13 +550,47 @@ void main() {
     expect(_toggleButton(tester, '添加收藏').checked, isFalse);
   });
 
-  testWidgets('文件夹属性弹窗：一行 5 个图标按钮 + 低频列表', (tester) async {
+  testWidgets('网盘页文件夹 ⋯ 菜单：四项操作，属性打开属性弹窗', (tester) async {
     final client = _FakeClient();
     final app = _FakeApp(client);
     await _pumpDrive(tester, app);
 
     await tester.tap(find.byTooltip('文件夹操作'));
+    // ⋯ 菜单是弹簧展开的：pump 到它长出来
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pump(const Duration(milliseconds: 600));
+
+    // 文件夹菜单：属性 / 访问密码 / 修改信息 / 删除（文件夹没有「移动」）
+    const order = ['属性', '访问密码', '修改信息', '删除'];
+    expect(find.byType(M3eMenuRow), findsNWidgets(order.length));
+    final tops = [
+      for (final label in order)
+        tester
+            .getTopLeft(
+              find.descendant(
+                of: find.byType(M3eMenuRow),
+                matching: find.text(label),
+              ),
+            )
+            .dy,
+    ];
+    for (int i = 1; i < tops.length; i++) {
+      expect(
+        tops[i],
+        greaterThan(tops[i - 1]),
+        reason: '「${order[i]}」要排在「${order[i - 1]}」下面',
+      );
+    }
+
+    // 点「属性」→ 打开文件夹属性弹窗
+    await tester.tap(
+      find.descendant(of: find.byType(M3eMenuRow), matching: find.text('属性')),
+    );
     await _settleSheet(tester);
+    // 菜单 → 弹窗比原来多一次路由（先收菜单再开弹窗）：多给一帧，
+    // 让弹窗里「取分享信息 → 点亮访问密码按钮」的 await 也跑完
+    await tester.pump(const Duration(milliseconds: 200));
 
     expect(find.byType(M3EToggleButton), findsNWidgets(5));
     for (final tooltip in ['复制链接', '显示二维码', '添加收藏', '添加到快速访问', '访问密码']) {
@@ -574,13 +608,10 @@ void main() {
     // （真机上库可用，读回来即恢复可点）
     expect(_toggleButton(tester, '添加到快速访问').enabled, isFalse);
 
-    // 「打开」在「修改信息」上方（从列表里某个文件夹的三点菜单进来）
-    expect(_sheetText('打开'), findsOneWidget);
+    // 属性弹窗里只剩低频列表：修改信息 / 删除
+    //（「打开」已经在 ⋯ 菜单里，不再在弹窗里重复一个）
     expect(_sheetText('修改信息'), findsOneWidget);
-    expect(
-      tester.getTopLeft(_sheetText('打开')).dy,
-      lessThan(tester.getTopLeft(_sheetText('修改信息')).dy),
-    );
+    expect(_sheetText('打开'), findsNothing);
     // 修改信息不再带副标题
     expect(_sheetText('修改名称与简介'), findsNothing);
     // 「打开链接」入口已删

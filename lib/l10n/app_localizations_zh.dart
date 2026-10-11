@@ -284,6 +284,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get open => '打开';
 
   @override
+  String get view => '查看';
+
+  @override
   String get pleasePasteShareLink => '请输入分享链接';
 
   @override

@@ -4,6 +4,7 @@ import 'package:lancloud/core/api/models.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/common.dart';
+import 'package:lancloud/ui/m3e.dart';
 import 'package:lancloud/ui/share_folder_page.dart';
 import 'package:provider/provider.dart';
 
@@ -100,6 +101,56 @@ void main() {
     expect(find.text('分享说明'), findsOneWidget);
     expect(find.text('子目录'), findsOneWidget);
     expect(find.text('a.txt'), findsOneWidget);
+  });
+
+  // 条目 ⋯ 菜单：文件夹给「打开 / 复制链接 / 收藏」，文件多一个「下载」、
+  // 打开项叫「查看」（等于点条目本身，弹属性弹窗）
+  testWidgets('分享浏览页条目 ⋯ 菜单：文件夹三项、文件四项', (tester) async {
+    await pumpShareFolder(
+      tester,
+      FolderShareDetail(
+        name: '测试分享',
+        folders: [SubFolder(name: '子目录', url: 'https://example.com/f')],
+        files: [
+          ShareFileItem(
+            name: 'a.txt',
+            time: '2026-10-01',
+            size: '1 M',
+            url: 'https://example.com/a',
+          ),
+        ],
+      ),
+    );
+
+    List<String> menuLabels() => tester
+        .widgetList<M3eMenuRow>(find.byType(M3eMenuRow))
+        .map((row) => row.label)
+        .toList();
+
+    Future<void> openMenu(String name) async {
+      final row = find.ancestor(
+        of: find.text(name),
+        matching: find.byType(Md3ListItem),
+      );
+      await tester.tap(
+        find.descendant(of: row, matching: find.byTooltip('更多操作')),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+    }
+
+    // 子文件夹：打开 / 复制链接 / 收藏
+    await openMenu('子目录');
+    expect(menuLabels(), ['打开', '复制链接', '收藏']);
+    // 点菜单外收起（菜单有遮罩，点不到下面的列表）
+    await tester.tapAt(const Offset(5, 300));
+    await tester.pumpAndSettle();
+
+    // 文件：查看 / 下载 / 复制链接 / 收藏
+    await openMenu('a.txt');
+    expect(menuLabels(), ['查看', '下载', '复制链接', '收藏']);
+    await tester.tapAt(const Offset(5, 300));
+    await tester.pumpAndSettle();
   });
 
   testWidgets('空分享居中显示提示', (tester) async {

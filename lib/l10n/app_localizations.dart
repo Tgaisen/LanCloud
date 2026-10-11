@@ -608,6 +608,12 @@ abstract class AppLocalizations {
   /// **'打开'**
   String get open;
 
+  /// No description provided for @view.
+  ///
+  /// In zh, this message translates to:
+  /// **'查看'**
+  String get view;
+
   /// No description provided for @pleasePasteShareLink.
   ///
   /// In zh, this message translates to:
