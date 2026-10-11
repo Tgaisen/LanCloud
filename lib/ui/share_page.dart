@@ -249,7 +249,8 @@ class _ShareLinkDialogState extends State<ShareLinkDialog> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final scheme = Theme.of(context).colorScheme;
-    return AlertDialog(
+    return formDialog(
+      context,
       title: Text(l10n.openShare),
       content: Column(
         mainAxisSize: MainAxisSize.min,

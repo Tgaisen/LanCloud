@@ -413,33 +413,32 @@ class _FavoritesPageState extends State<FavoritesPage>
     final pwdController = TextEditingController(text: item.pwd);
     await showDialog<void>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
+      builder: (dialogContext) => formDialog(
+        dialogContext,
         title: Text(context.l10n.editInfo),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: titleController,
-                decoration: InputDecoration(
-                  labelText: context.l10n.favoriteTitle,
-                  hintText: context.l10n.favoriteTitleHint,
-                ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: titleController,
+              decoration: InputDecoration(
+                labelText: context.l10n.favoriteTitle,
+                hintText: context.l10n.favoriteTitleHint,
               ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: linkController,
-                decoration: InputDecoration(labelText: context.l10n.shareLink),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: linkController,
+              decoration: InputDecoration(labelText: context.l10n.shareLink),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: pwdController,
+              decoration: InputDecoration(
+                labelText: context.l10n.passwordOptional,
               ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: pwdController,
-                decoration: InputDecoration(
-                  labelText: context.l10n.passwordOptional,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
         actions: [
           TextButton(

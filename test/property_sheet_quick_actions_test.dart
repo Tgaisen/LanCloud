@@ -9,6 +9,7 @@ import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/delegates.dart';
 import 'package:lancloud/ui/app_icons.dart';
 import 'package:lancloud/ui/drive_page.dart';
+import 'package:lancloud/ui/legal_dialog.dart';
 import 'package:lancloud/ui/m3e.dart';
 // 应用用的是自己的 Symbols 图标集，和框架的 Icons 同名，按应用代码的习惯隐藏后者
 import 'package:material_ui/material_ui.dart' hide Icons;
@@ -133,11 +134,12 @@ Future<void> _pumpDrive(
   String folderId = '-1',
   String folderName = '根目录',
   VisualDensity density = VisualDensity.standard,
+  Size viewSize = const Size(420, 900),
 }) async {
   final manager = TransferManager(app);
   addTearDown(app.dispose);
   tester.view.devicePixelRatio = 1.0;
-  tester.view.physicalSize = const Size(420, 900);
+  tester.view.physicalSize = viewSize;
   addTearDown(tester.view.reset);
 
   await tester.pumpWidget(
@@ -151,6 +153,9 @@ Future<void> _pumpDrive(
         localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         locale: const Locale('zh'),
+        // 和应用一致：强调排版 / 弹窗宽度这些组件级样式挂在 builder 上
+        builder: (context, child) =>
+            M3eComponentStyles(child: child ?? const SizedBox.shrink()),
         home: DrivePage(
           initialFolderId: folderId,
           initialName: folderName,
@@ -246,6 +251,101 @@ void main() {
     await _settleSheet(tester);
     expect(find.byType(M3EToggleButton), findsNWidgets(5));
     expect(_sheetText('修改信息'), findsOneWidget);
+  });
+
+  testWidgets('宽屏：新建文件夹弹窗宽度固定，不超过 M3 上限 560', (tester) async {
+    final app = _FakeApp(_FakeClient());
+    // 宽屏（横屏 / 桌面）：以前弹窗会跟着输入内容一路变宽
+    await _pumpDrive(tester, app, viewSize: const Size(1200, 700));
+
+    await tester.tap(find.text('添加'));
+    await _settleSheet(tester);
+    await tester.tap(find.text('新建文件夹'));
+    await _settleSheet(tester);
+
+    expect(find.byType(AlertDialog), findsOneWidget);
+    // 页面顶栏还有搜索框，这里只看弹窗里的那个
+    final Finder field = find.descendant(
+      of: find.byType(AlertDialog),
+      matching: find.byType(TextField),
+    );
+    // 新建文件夹弹窗带「名称 + 简介」两个输入框
+    expect(field, findsNWidgets(2));
+    // AlertDialog 的 RenderObject 是外层全屏 padding，量对话框本体要看内容的
+    // 最近 Material 祖先（弹窗卡片）
+    final Finder dialogCard = find
+        .ancestor(of: field.first, matching: find.byType(Material))
+        .first;
+    final double width = tester.getSize(dialogCard).width;
+    expect(width, lessThanOrEqualTo(560), reason: 'M3 弹窗上限 560dp');
+    expect(width, greaterThan(400), reason: '宽屏下应贴近上限，而不是按内容缩着');
+
+    // 输入很长的名字：宽度不该抽动（TextField 的固有宽度会随文本变）
+    await tester.enterText(field.first, '这是一个很长很长的文件夹名字用来验证弹窗宽度不会抽动');
+    await tester.pump();
+    expect(tester.getSize(dialogCard).width, width);
+  });
+
+  testWidgets('横屏 + 输入法：新建文件夹弹窗里的输入框仍在弹窗内可见', (tester) async {
+    final app = _FakeApp(_FakeClient());
+    // 横屏手机真实尺寸：792×368（NOH-AN00），微信输入法实测占 251dp →
+    // 可用高度只剩 117dp，装不下「输入框 56 + 操作行 72」
+    await _pumpDrive(tester, app, viewSize: const Size(792, 368));
+    tester.view.viewInsets = const FakeViewPadding(bottom: 251);
+    addTearDown(tester.view.reset);
+
+    await tester.tap(find.text('添加'));
+    await _settleSheet(tester);
+    await tester.tap(find.text('新建文件夹'));
+    await _settleSheet(tester);
+
+    // 紧凑形态下不再是 AlertDialog（内容和操作在同一个滚动区里），
+    // 页面本身没有输入框，直接按类型找即可
+    final Finder field = find.byType(TextField);
+    expect(field, findsNWidgets(2), reason: '名称 + 简介两个输入框');
+    final Finder card = find
+        .ancestor(of: field.first, matching: find.byType(Material))
+        .first;
+    final Rect cardRect = tester.getRect(card);
+    final Rect fieldRect = tester.getRect(field.first);
+
+    expect(cardRect.height, greaterThan(0), reason: '弹窗本体不能被压没');
+    expect(fieldRect.height, greaterThan(0), reason: '输入框要有高度');
+    expect(
+      cardRect.contains(fieldRect.center),
+      isTrue,
+      reason: '输入框不能被挤出弹窗（以前会被挤到看不见）',
+    );
+    expect(
+      fieldRect.bottom,
+      lessThanOrEqualTo(368 - 251 + 0.5),
+      reason: '输入框要在输入法上方可见',
+    );
+  });
+
+  testWidgets('宽屏：用户协议弹窗宽度也被 560 夹住', (tester) async {
+    final app = _FakeApp(_FakeClient());
+    await _pumpDrive(tester, app, viewSize: const Size(1200, 700));
+
+    // 与应用里一样，从页面 context 打开协议弹窗
+    unawaited(
+      showLegalDialog(tester.element(find.byType(DrivePage)), LegalDoc.privacy),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .getSize(
+            find
+                .ancestor(
+                  of: find.byType(FilledButton),
+                  matching: find.byType(Material),
+                )
+                .first,
+          )
+          .width,
+      lessThanOrEqualTo(560),
+    );
   });
 
   testWidgets('桌面端紧凑密度：菜单放得下时卡片贴着内容，底部不多留白', (tester) async {

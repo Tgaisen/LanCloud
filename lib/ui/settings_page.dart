@@ -1470,7 +1470,8 @@ class _SettingsPageState extends State<SettingsPage>
     final controller = TextEditingController(text: current);
     await showDialog<void>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
+      builder: (dialogContext) => formDialog(
+        dialogContext,
         title: Text(title),
         content: TextField(
           controller: controller,

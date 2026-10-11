@@ -3591,10 +3591,9 @@ class _ItemFormDialogState extends State<_ItemFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
+    return formDialog(
+      context,
       title: Text(widget.title),
-      // 简介是多行输入：键盘弹出时内容可能超高，允许滚动避免溢出
-      scrollable: true,
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -3644,7 +3643,8 @@ class _EditDescDialogState extends State<_EditDescDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
+    return formDialog(
+      context,
       title: Text(context.l10n.editDesc),
       content: TextField(
         controller: _controller,
@@ -3685,7 +3685,8 @@ class _FolderNameDialogState extends State<_FolderNameDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
+    return formDialog(
+      context,
       title: Text(context.l10n.newFolder),
       content: TextField(
         controller: _controller,

@@ -3692,6 +3692,66 @@ Future<PasswordEditResult?> showPasswordDialog(
   );
 }
 
+/// 表单弹窗（带输入框）内容的固定宽度。
+///
+/// `AlertDialog` 内部用 `IntrinsicWidth` 量内容宽度，而 `TextField` 的固有宽度
+/// 会跟着输入文本变——多打几个字弹窗就抽动一下。给输入区一个固定宽度就稳住了。
+///
+/// 取值：屏宽减掉对话框左右内边距（`Dialog` 默认 40×2）和内容左右内边距
+/// （M3 弹窗内容 24×2），再夹在 M3 对话框宽度（280–560）对应的内容宽之间。
+double dialogFormWidth(BuildContext context) {
+  final double available = MediaQuery.sizeOf(context).width - 2 * 40 - 2 * 24;
+  return available.clamp(280 - 2 * 24, 560 - 2 * 24).toDouble();
+}
+
+/// 表单弹窗（带输入框的 [AlertDialog]）的统一骨架。
+///
+/// 两个坑都在这里摆平：
+///
+/// - **宽度**：M3 的对话框宽 280–560，`AlertDialog` 内部按内容算固有宽度，
+///   `TextField` 会跟着输入文本变宽——内容固定成 [dialogFormWidth]，多打几个字
+///   弹窗也不会抽动。
+/// - **高度**：横屏 + 输入法时可用高度只剩 100dp 上下（实测 NOH-AN00 横屏 +
+///   微信输入法：368 − 251 = 117dp），而「输入框 56 + 操作行 72」就要 128dp——
+///   普通 `AlertDialog` 怎么排都会把输入框挤到看不见。可用高度富余时走普通对话
+///   框（标题照旧）；很紧时改成「内容 + 操作同一个滚动区」，输入框排在最上面
+///   （先看到的就是它），操作按钮往下滚一点就能点到。
+Widget formDialog(
+  BuildContext context, {
+  required Widget title,
+  required Widget content,
+  required List<Widget> actions,
+}) {
+  final MediaQueryData media = MediaQuery.of(context);
+  final double available = media.size.height - media.viewInsets.bottom;
+  if (available < 220) {
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: math.max(120, available - 16)),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              content,
+              const SizedBox(height: 8),
+              Row(mainAxisAlignment: MainAxisAlignment.end, children: actions),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+  return AlertDialog(
+    scrollable: true,
+    title: title,
+    content: SizedBox(width: dialogFormWidth(context), child: content),
+    actions: actions,
+  );
+}
+
 /// 批量操作进度弹窗（MD3E 风格，内容居中）：
 /// 圆角进度条 + “1/20” 计数 + 当前处理项，[run] 完成后自动关闭。
 /// 操作进行中不可用返回键关闭。

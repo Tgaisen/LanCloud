@@ -113,6 +113,9 @@ class M3eComponentStyles extends StatelessWidget {
         // 弹窗标题 → headline。
         dialogTheme: theme.dialogTheme.copyWith(
           titleTextStyle: emph.headlineSmall,
+          // M3 basic dialog：宽度 280–560。默认只卡了下限，横屏 / 桌面上长文本
+          // 弹窗（用户协议等）会一路撑到接近全屏。
+          constraints: const BoxConstraints(minWidth: 280, maxWidth: 560),
         ),
         // 主要操作按钮 → label large 的强调版本（次要按钮保持基线）。
         filledButtonTheme: FilledButtonThemeData(
