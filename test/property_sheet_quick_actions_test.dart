@@ -132,6 +132,7 @@ Future<void> _pumpDrive(
   _FakeApp app, {
   String folderId = '-1',
   String folderName = '根目录',
+  VisualDensity density = VisualDensity.standard,
 }) async {
   final manager = TransferManager(app);
   addTearDown(app.dispose);
@@ -146,6 +147,7 @@ Future<void> _pumpDrive(
         ChangeNotifierProvider<TransferManager>.value(value: manager),
       ],
       child: MaterialApp(
+        theme: ThemeData(visualDensity: density),
         localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         locale: const Locale('zh'),
@@ -244,6 +246,30 @@ void main() {
     await _settleSheet(tester);
     expect(find.byType(M3EToggleButton), findsNWidgets(5));
     expect(_sheetText('修改信息'), findsOneWidget);
+  });
+
+  testWidgets('桌面端紧凑密度：菜单放得下时卡片贴着内容，底部不多留白', (tester) async {
+    final app = _FakeApp(_FakeClient());
+    // Windows 桌面默认 visualDensity.compact：行高被压到 40dp 而不是 48dp。
+    // 卡片高度如果按 48dp 硬算，完全展开时底部就会多出一截空白。
+    await _pumpDrive(tester, app, density: VisualDensity.compact);
+
+    await tester.tap(find.byTooltip('文件操作'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pump(const Duration(milliseconds: 600));
+
+    final rows = find.byType(M3eMenuRow);
+    expect(rows, findsNWidgets(5));
+    // 卡片 = 菜单行最近的 Material 祖先
+    final Rect card = tester.getRect(
+      find.ancestor(of: rows.first, matching: find.byType(Material)).first,
+    );
+    final Rect first = tester.getRect(rows.first);
+    final Rect last = tester.getRect(rows.last);
+    expect(first.height, 40, reason: '紧凑密度下 MenuItemButton 行高 40dp');
+    expect(first.top - card.top, 4, reason: '首项到卡片顶边也是 4dp');
+    expect(card.bottom - last.bottom, 4, reason: '末项到卡片底边也是 4dp');
   });
 
   testWidgets('文件属性弹窗：常用操作收成一行图标按钮，列表只剩低频项', (tester) async {

@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:m3e_core/m3e_core.dart' as core;
 import 'package:material_ui/material_ui.dart';
 
@@ -711,8 +709,13 @@ class _M3eMenuRoute<T> extends PopupRoute<T> {
     final double topLimit = viewPadding.top + _screenPadding;
     final double bottomLimit =
         screen.height - viewPadding.bottom - _screenPadding;
+    // 行高按平台的实际密度算：桌面端 ThemeData.visualDensity 默认 compact，
+    // MenuItemButton 的 48dp 最小高度会被压到 40dp。这里只用来判断「该朝哪边
+    // 开」；卡片高度本身交给内容决定（见下面的 ConstrainedBox + shrinkWrap）。
+    final double rowHeight =
+        _rowHeight + Theme.of(context).visualDensity.baseSizeAdjustment.dy;
     final double contentHeight =
-        items.length * _rowHeight +
+        items.length * rowHeight +
         (items.length - 1) * _itemGap +
         _verticalPadding * 2;
     final double below = bottomLimit - (anchor.bottom + _anchorGap);
@@ -720,11 +723,9 @@ class _M3eMenuRoute<T> extends PopupRoute<T> {
     // 先试锚点下方；放不下且上方更宽敞时才翻到上方，避免菜单贴屏幕边
     final bool opensAbove = below < contentHeight && above > below;
     final double available = opensAbove ? above : below;
-    // 高度只受「可用空间」和 M3 上限约束：内容更少时卡片按内容收紧
-    final double height = math.min(
-      contentHeight,
-      available.clamp(0.0, _maxHeight),
-    );
+    // 卡片最高只能到「可用空间」和 M3 上限，具体多高由内容决定：放得下就贴着
+    // 内容（不留多余空白），放不下才在里面滚。
+    final double maxHeight = available.clamp(0.0, _maxHeight);
     final double width = (anchor.width + 176)
         .clamp(_minWidth, _maxWidth)
         .clamp(0.0, screen.width - _screenPadding * 2);
@@ -732,9 +733,12 @@ class _M3eMenuRoute<T> extends PopupRoute<T> {
       _screenPadding,
       screen.width - _screenPadding - width,
     );
-    final double top = opensAbove
-        ? anchor.top - _anchorGap - height
-        : anchor.bottom + _anchorGap;
+    // 贴住锚点那一侧：向上开时钉住底边、向下开时钉住顶边，卡片高度变化也不会
+    // 和锚点之间飘出空隙
+    final double? top = opensAbove ? null : anchor.bottom + _anchorGap;
+    final double? bottom = opensAbove
+        ? screen.height - anchor.top + _anchorGap
+        : null;
 
     // 动画围绕锚点那一侧展开：菜单在锚点下方时顶端固定、向下长出来，反之亦然
     final Alignment anchorCorner = opensAbove
@@ -747,6 +751,7 @@ class _M3eMenuRoute<T> extends PopupRoute<T> {
         Positioned(
           left: left,
           top: top,
+          bottom: bottom,
           width: width,
           child: AnimatedBuilder(
             animation: animation,
@@ -771,8 +776,8 @@ class _M3eMenuRoute<T> extends PopupRoute<T> {
               surfaceTintColor: Colors.transparent,
               borderRadius: BorderRadius.circular(_radius),
               clipBehavior: Clip.antiAlias,
-              child: SizedBox(
-                height: height,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: maxHeight),
                 // 卡片固定，超出高度的部分在卡片里面滚：滚动条沿用应用同款
                 // （6dp 圆角滑块、无轨道、滚动时才出现）
                 //
@@ -792,6 +797,9 @@ class _M3eMenuRoute<T> extends PopupRoute<T> {
                       radius: const Radius.circular(3),
                       child: ListView(
                         controller: _scroll,
+                        // 贴着内容：放得下时卡片刚好包住项目（不同平台的
+                        // VisualDensity 会让行高在 40–48dp 之间变），放不下才滚
+                        shrinkWrap: true,
                         padding: const EdgeInsets.symmetric(
                           vertical: _verticalPadding,
                           horizontal: _itemInset,
