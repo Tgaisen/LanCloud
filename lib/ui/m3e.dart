@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import 'package:m3e_core/m3e_core.dart' as core;
 import 'package:material_ui/material_ui.dart';
 
+import 'reduce_motion.dart';
+
 export 'm3e_pull_refresh.dart';
 
 /// 应用只需要认这一个入口：把用到的 MD3E 组件透出来。
@@ -564,10 +566,16 @@ Future<T?> showM3eMenu<T>({
   required List<M3eMenuItem<T>> items,
   bool alignEnd = false,
 }) {
-  return Navigator.of(
-    context,
-    rootNavigator: true,
-  ).push<T>(_M3eMenuRoute<T>(anchor: anchor, items: items, alignEnd: alignEnd));
+  // 少动效在这里就定下来：路由的时长是 getter，拿不到 context
+  final bool reduceMotion = reduceMotionOf(context);
+  return Navigator.of(context, rootNavigator: true).push<T>(
+    _M3eMenuRoute<T>(
+      anchor: anchor,
+      items: items,
+      alignEnd: alignEnd,
+      reduceMotion: reduceMotion,
+    ),
+  );
 }
 
 /// 菜单里的一行：图标 + 文案。
@@ -615,24 +623,28 @@ class _M3eMenuRoute<T> extends PopupRoute<T> {
     required this.anchor,
     required this.items,
     required this.alignEnd,
+    required this.reduceMotion,
   });
 
   final Rect anchor;
   final List<M3eMenuItem<T>> items;
   final bool alignEnd;
+  final bool reduceMotion;
 
   /// M3 菜单：宽度 112–280、项高 48、上下内边距 8、离屏幕边缘 12。
   static const double _minWidth = 112;
   static const double _maxWidth = 280;
   static const double _maxHeight = 320;
   static const double _rowHeight = 48;
-  static const double _verticalPadding = 8;
 
-  /// 项目相对卡片的左右内缩；同时决定项目自己的圆角（16 − 4 = 12dp）。
-  static const double _itemInset = 4;
+  /// 卡片上下内边距：和项目间隔一致，首 / 末项到卡片的距离 = 项目之间的距离。
+  static const double _verticalPadding = _itemGap;
 
   /// 项目之间的间隔：M3E vertical menu 里每一项是各自独立的圆角块。
   static const double _itemGap = 4;
+
+  /// 项目相对卡片的左右内缩；同时决定项目自己的圆角（16 − 4 = 12dp）。
+  static const double _itemInset = 4;
 
   static const double _screenPadding = 12;
   static const double _anchorGap = 4;
@@ -649,8 +661,35 @@ class _M3eMenuRoute<T> extends PopupRoute<T> {
   @override
   String get barrierLabel => 'Popup menu';
 
+  /// MD3 默认的菜单动效：展开 400ms、收起 150ms；少动效时直接跳过。
   @override
-  Duration get transitionDuration => const Duration(milliseconds: 160);
+  Duration get transitionDuration =>
+      reduceMotion ? Duration.zero : const Duration(milliseconds: 400);
+
+  @override
+  Duration get reverseTransitionDuration =>
+      reduceMotion ? Duration.zero : const Duration(milliseconds: 150);
+
+  /// 错开占展开进度的比例：第一项从 0 开始，最后一项从 [_staggerSpan] 开始，
+  /// 全部在动画结束时到位。
+  static const double _staggerSpan = 0.35;
+
+  /// 项目沿轴线的入场位移（dp）：从锚点那一侧滑到自己的位置。
+  static const double _itemSlide = 8;
+
+  /// 单个项目在当前进度下的「出现程度」：0 = 还没出现，1 = 到位。
+  ///
+  /// 展开时按索引错开；收起（150ms）不叠错开——整块一起走更利落。
+  double _itemProgress(Animation<double> animation, int index) {
+    if (reduceMotion || items.length <= 1) return animation.value;
+    if (animation.status == AnimationStatus.reverse) return animation.value;
+    final double start = _staggerSpan * index / (items.length - 1);
+    final double t = ((animation.value - start) / (1 - _staggerSpan)).clamp(
+      0.0,
+      1.0,
+    );
+    return Curves.easeOutCubic.transform(t);
+  }
 
   @override
   void dispose() {
@@ -697,69 +736,91 @@ class _M3eMenuRoute<T> extends PopupRoute<T> {
         ? anchor.top - _anchorGap - height
         : anchor.bottom + _anchorGap;
 
-    final CurvedAnimation expand = CurvedAnimation(
-      parent: animation,
-      curve: Curves.easeOutCubic,
-      reverseCurve: Curves.easeInCubic,
-    );
+    // 动画围绕锚点那一侧展开：菜单在锚点下方时顶端固定、向下长出来，反之亦然
+    final Alignment anchorCorner = opensAbove
+        ? (alignEnd ? Alignment.bottomRight : Alignment.bottomLeft)
+        : (alignEnd ? Alignment.topRight : Alignment.topLeft);
+    // 项目沿轴线滑入：在锚点下方时从「更靠近锚点」的位置滑下来
+    final double itemSlide = opensAbove ? _itemSlide : -_itemSlide;
     return Stack(
       children: [
         Positioned(
           left: left,
           top: top,
           width: width,
-          child: FadeTransition(
-            opacity: expand,
-            child: ScaleTransition(
-              scale: Tween<double>(begin: 0.94, end: 1).animate(expand),
-              alignment: opensAbove
-                  ? (alignEnd ? Alignment.bottomRight : Alignment.bottomLeft)
-                  : (alignEnd ? Alignment.topRight : Alignment.topLeft),
-              child: Material(
-                color: scheme.surfaceContainerLow,
-                // M3 给菜单的是 elevation level 2；这里按需求用 3
-                elevation: 3,
-                surfaceTintColor: Colors.transparent,
-                borderRadius: BorderRadius.circular(_radius),
-                clipBehavior: Clip.antiAlias,
-                child: SizedBox(
-                  height: height,
-                  // 卡片固定，超出高度的部分在卡片里面滚：滚动条沿用应用同款
-                  // （6dp 圆角滑块、无轨道、滚动时才出现）
-                  //
-                  // 轨道默认会让开状态栏 / 挖孔（读 MediaQuery.padding），菜单是
-                  // 浮在屏幕中间的小卡片，用不上这些安全区——清零后滑块才贴着
-                  // 卡片的上边和右边（列表页 FastScrollbar 是反着用的：那里要把
-                  // 顶栏 / 底栏让出来）。
-                  child: MediaQuery(
-                    data: media.copyWith(padding: EdgeInsets.zero),
-                    child: ScrollbarTheme(
-                      data: const ScrollbarThemeData(
-                        trackColor: WidgetStatePropertyAll(Colors.transparent),
-                      ),
-                      child: Scrollbar(
+          child: AnimatedBuilder(
+            animation: animation,
+            builder: (BuildContext context, Widget? child) {
+              final double t = reduceMotion
+                  ? 1
+                  : Curves.easeOutCubic.transform(animation.value);
+              return Opacity(
+                opacity: t,
+                // 轴向展开：只沿竖直方向长出来，横向不变
+                child: Transform(
+                  alignment: anchorCorner,
+                  transform: Matrix4.diagonal3Values(1, 0.8 + 0.2 * t, 1),
+                  child: child,
+                ),
+              );
+            },
+            child: Material(
+              color: scheme.surfaceContainerLow,
+              // M3 给菜单的是 elevation level 2；这里按需求用 3
+              elevation: 3,
+              surfaceTintColor: Colors.transparent,
+              borderRadius: BorderRadius.circular(_radius),
+              clipBehavior: Clip.antiAlias,
+              child: SizedBox(
+                height: height,
+                // 卡片固定，超出高度的部分在卡片里面滚：滚动条沿用应用同款
+                // （6dp 圆角滑块、无轨道、滚动时才出现）
+                //
+                // 轨道默认会让开状态栏 / 挖孔（读 MediaQuery.padding），菜单是
+                // 浮在屏幕中间的小卡片，用不上这些安全区——清零后滑块才贴着
+                // 卡片的上边和右边（列表页 FastScrollbar 是反着用的：那里要把
+                // 顶栏 / 底栏让出来）。
+                child: MediaQuery(
+                  data: media.copyWith(padding: EdgeInsets.zero),
+                  child: ScrollbarTheme(
+                    data: const ScrollbarThemeData(
+                      trackColor: WidgetStatePropertyAll(Colors.transparent),
+                    ),
+                    child: Scrollbar(
+                      controller: _scroll,
+                      thickness: 6,
+                      radius: const Radius.circular(3),
+                      child: ListView(
                         controller: _scroll,
-                        thickness: 6,
-                        radius: const Radius.circular(3),
-                        child: ListView(
-                          controller: _scroll,
-                          padding: const EdgeInsets.symmetric(
-                            vertical: _verticalPadding,
-                            horizontal: _itemInset,
-                          ),
-                          children: [
-                            for (int i = 0; i < items.length; i++) ...[
-                              // 项目之间留间隔，头尾不额外留（M3E 的块状项目）
-                              if (i > 0) const SizedBox(height: _itemGap),
-                              M3eMenuRow(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: _verticalPadding,
+                          horizontal: _itemInset,
+                        ),
+                        children: [
+                          for (int i = 0; i < items.length; i++) ...[
+                            // 项目之间留间隔，头尾不额外留（M3E 的块状项目）
+                            if (i > 0) const SizedBox(height: _itemGap),
+                            AnimatedBuilder(
+                              animation: animation,
+                              builder: (BuildContext context, Widget? row) {
+                                final double p = _itemProgress(animation, i);
+                                return Opacity(
+                                  opacity: p,
+                                  child: Transform.translate(
+                                    offset: Offset(0, itemSlide * (1 - p)),
+                                    child: row,
+                                  ),
+                                );
+                              },
+                              child: M3eMenuRow(
                                 icon: items[i].icon,
                                 label: items[i].label,
                                 onTap: () =>
                                     Navigator.of(context).pop(items[i].value),
                               ),
-                            ],
+                            ),
                           ],
-                        ),
+                        ],
                       ),
                     ),
                   ),
