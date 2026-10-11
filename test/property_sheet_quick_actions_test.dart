@@ -262,6 +262,10 @@ void main() {
     await _settleSheet(tester);
     await tester.tap(find.text('新建文件夹'));
     await _settleSheet(tester);
+    // 自动聚焦 → 帧后量位置 → 180ms 上移动画：多给几帧让它走完
+    for (int i = 0; i < 4; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
 
     expect(find.byType(AlertDialog), findsOneWidget);
     // 页面顶栏还有搜索框，这里只看弹窗里的那个
@@ -298,6 +302,11 @@ void main() {
     await _settleSheet(tester);
     await tester.tap(find.text('新建文件夹'));
     await _settleSheet(tester);
+
+    // 自动聚焦 → 帧后量位置 → 180ms 上移动画：多给几帧让它走完
+    for (int i = 0; i < 4; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
 
     // 紧凑形态下不再是 AlertDialog（内容和操作在同一个滚动区里），
     // 页面本身没有输入框，直接按类型找即可

@@ -3711,45 +3711,140 @@ double dialogFormWidth(BuildContext context) {
 /// - **宽度**：M3 的对话框宽 280–560，`AlertDialog` 内部按内容算固有宽度，
 ///   `TextField` 会跟着输入文本变宽——内容固定成 [dialogFormWidth]，多打几个字
 ///   弹窗也不会抽动。
-/// - **高度**：横屏 + 输入法时可用高度只剩 100dp 上下（实测 NOH-AN00 横屏 +
-///   微信输入法：368 − 251 = 117dp），而「输入框 56 + 操作行 72」就要 128dp——
-///   普通 `AlertDialog` 怎么排都会把输入框挤到看不见。可用高度富余时走普通对话
-///   框（标题照旧）；很紧时改成「内容 + 操作同一个滚动区」，输入框排在最上面
-///   （先看到的就是它），操作按钮往下滚一点就能点到。
+/// - **高度**：`Dialog` 默认按 `viewInsets` 给弹窗加 padding（等价于 Android 的
+///   `adjustResize`），横屏 + 大键盘下会把弹窗压成一条（实测 NOH-AN00：368 −
+///   251 = 117dp 可用）。这里改成原生的 `adjustPan` 手感：弹窗**保持原来的尺寸**
+///   不被压扁，键盘顶上来时整体上移，把当前聚焦的输入框顶到键盘上方（见
+///   [_FormDialogPanShell]）。
 Widget formDialog(
   BuildContext context, {
   required Widget title,
   required Widget content,
   required List<Widget> actions,
 }) {
-  final MediaQueryData media = MediaQuery.of(context);
-  final double available = media.size.height - media.viewInsets.bottom;
-  if (available < 220) {
-    return Dialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: math.max(120, available - 16)),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              content,
-              const SizedBox(height: 8),
-              Row(mainAxisAlignment: MainAxisAlignment.end, children: actions),
-            ],
-          ),
-        ),
+  return _FormDialogPanShell(
+    // 去掉输入法下边距：Dialog 不再据此缩小 / 上推，交给外壳整体平移
+    child: MediaQuery.removeViewInsets(
+      context: context,
+      removeBottom: true,
+      child: AlertDialog(
+        scrollable: true,
+        title: title,
+        content: SizedBox(width: dialogFormWidth(context), child: content),
+        actions: actions,
       ),
+    ),
+  );
+}
+
+/// 「弹窗不被输入法压扁、而是整体上移」的外壳 —— 原生 Android `adjustPan` 的
+/// 手感。Flutter 没有内置等价物：`Dialog` 只会按 `viewInsets` 加 padding（等价于
+/// `adjustResize`），横屏大键盘下弹窗会被压成一条。
+///
+/// 做法：焦点或键盘高度变化后，量出当前聚焦控件的位置，算出「它到键盘顶边还差
+/// 多少」并把弹窗整体上移这么多（键盘收起 / 焦点移走后自动滑回）。
+class _FormDialogPanShell extends StatefulWidget {
+  const _FormDialogPanShell({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_FormDialogPanShell> createState() => _FormDialogPanShellState();
+}
+
+class _FormDialogPanShellState extends State<_FormDialogPanShell> {
+  /// 输入框底边到键盘顶边之间留的余量。
+  static const double _margin = 12;
+
+  /// 目标上移量（正值 = 向上）。
+  double _target = 0;
+
+  /// 动画当前实际应用的平移量。测量时要按它把弹窗的自然位置还原出来，否则会把
+  /// 「已经挪过的位置」当成新基准，越挪越远。
+  double _applied = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    FocusManager.instance.addListener(_scheduleMeasure);
+  }
+
+  @override
+  void dispose() {
+    FocusManager.instance.removeListener(_scheduleMeasure);
+    super.dispose();
+  }
+
+  /// 焦点变化发生在这一帧之后：等画完再量位置。
+  void _scheduleMeasure() {
+    WidgetsBinding.instance.addPostFrameCallback((_) => _measure());
+  }
+
+  void _measure() {
+    if (!mounted) return;
+    final MediaQueryData media = MediaQuery.of(context);
+    final double keyboardTop = media.size.height - media.viewInsets.bottom;
+    final Rect? field = _focusedFieldRect();
+    double target = 0;
+    if (field != null) {
+      // field 已经是「平移过」的位置：加回动画当前值才是自然位置
+      target = field.bottom + _applied + _margin - keyboardTop;
+    }
+    if (target < 0) target = 0;
+    if ((target - _target).abs() < 0.5) return;
+    setState(() => _target = target);
+  }
+
+  /// 弹窗里当前正在编辑的输入框的全局矩形。
+  ///
+  /// 不能用 `FocusManager.instance.primaryFocus`：弹窗打开时焦点先落在
+  /// `FocusScope` 上，量出来的是整屏（会把弹窗顶飞）。这里在弹窗子树里找
+  /// `hasFocus` 的 [EditableText]。
+  Rect? _focusedFieldRect() {
+    Rect? found;
+    void visit(Element element) {
+      if (found != null) return;
+      final Widget widget = element.widget;
+      if (widget is EditableText && widget.focusNode.hasFocus) {
+        // 用外层 TextField 的框（含装饰的内边距）：只量内部 EditableText 的话，
+        // 输入框下沿会露出到键盘底下一点
+        Element target = element;
+        element.visitAncestorElements((Element ancestor) {
+          if (ancestor.widget is TextField) {
+            target = ancestor;
+            return false;
+          }
+          return true;
+        });
+        final RenderObject? object = target.findRenderObject();
+        if (object is RenderBox && object.hasSize) {
+          found = object.localToGlobal(Offset.zero) & object.size;
+          return;
+        }
+      }
+      element.visitChildren(visit);
+    }
+
+    (context as Element).visitChildren(visit);
+    return found;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // 依赖 MediaQuery：键盘高度变化时重建并重新测量
+    MediaQuery.of(context);
+    _scheduleMeasure();
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: _target),
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOutCubic,
+      builder: (BuildContext context, double value, Widget? child) {
+        _applied = value;
+        return Transform.translate(offset: Offset(0, -value), child: child);
+      },
+      child: widget.child,
     );
   }
-  return AlertDialog(
-    scrollable: true,
-    title: title,
-    content: SizedBox(width: dialogFormWidth(context), child: content),
-    actions: actions,
-  );
 }
 
 /// 批量操作进度弹窗（MD3E 风格，内容居中）：
