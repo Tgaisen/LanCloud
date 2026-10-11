@@ -185,7 +185,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
 
     expect(find.byType(M3EMenuItem), findsNWidgets(5));
-    for (final label in ['属性', '移动', '修改信息', '访问密码', '删除']) {
+    const order = ['属性', '访问密码', '修改信息', '移动', '删除'];
+    for (final label in order) {
       // 页面本身也有「删除」这类文案，断言限定在菜单行里
       expect(
         find.descendant(
@@ -194,6 +195,25 @@ void main() {
         ),
         findsOneWidget,
         reason: label,
+      );
+    }
+    // 顺序：属性 / 访问密码 / 修改信息 / 移动 / 删除
+    final tops = [
+      for (final label in order)
+        tester
+            .getTopLeft(
+              find.descendant(
+                of: find.byType(M3EMenuItem),
+                matching: find.text(label),
+              ),
+            )
+            .dy,
+    ];
+    for (int i = 1; i < tops.length; i++) {
+      expect(
+        tops[i],
+        greaterThan(tops[i - 1]),
+        reason: '「${order[i]}」要排在「${order[i - 1]}」下面',
       );
     }
     // 原来那套「更多操作」弹窗（含修改简介）已经不在

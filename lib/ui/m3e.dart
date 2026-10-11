@@ -6,10 +6,10 @@ export 'm3e_pull_refresh.dart';
 
 /// 应用只需要认这一个入口：把用到的 MD3E 组件透出来。
 ///
-/// 现状（分支 codex/m3e-expressive-step1）：进度条、按钮组、底部弹窗、强调
-/// 排版、下拉刷新都在 m3e_core；material_3_expressive 只负责加载指示器和
-/// 弹出菜单（`showM3eMenu`）——进度条试迁过，但新包多出来的参数每处调用都要
-/// 重新对齐语义，收益不划算，已退回。
+/// 现状（分支 codex/m3e-expressive-step1）：除了弹出菜单（`showM3eMenu`，
+/// 用 material_3_expressive 的 M3EMenu），其余进度条 / 加载指示器 / 按钮组 /
+/// 底部弹窗 / 强调排版 / 下拉刷新都在 m3e_core——新包这两类控件试迁过，但它
+/// 多出来的参数每处调用都要重新对齐语义，收益不划算，已退回。
 ///
 /// 两个包有 80+ 个同名类型，所以：新包只在本文件内部用（`m3ex.` 前缀），不往
 /// 外透；业务代码只认本文件导出的名字。注意 `export` 不会让名字在本文件里
@@ -168,17 +168,17 @@ class M3eLoadingIndicator extends StatelessWidget {
   final String? semanticsValue;
 
   @override
-  Widget build(BuildContext context) => m3ex.M3ELoadingIndicator(
+  Widget build(BuildContext context) => core.M3ELoadingIndicator(
     color: color,
     constraints: BoxConstraints.tightFor(width: size, height: size),
-    semanticLabel: semanticsLabel,
-    semanticValue: semanticsValue,
+    semanticsLabel: semanticsLabel,
+    semanticsValue: semanticsValue,
   );
 }
 
 // 注：原先的 M3eContainedLoadingIndicator 一直没人用（下拉刷新小球用的是
-// m3e_core 自带的那个），迁移时直接删掉；需要时用 m3ex.M3ELoadingIndicator(
-// variant: M3ELoadingIndicatorVariant.contained) 即可。
+// m3e_core 自带的那个），迁移时直接删掉；需要时用 core 的
+// M3EContainedLoadingIndicator 即可。
 
 /// MD3E 线性进度条。[wavy] 为真时使用波浪形态——适合「时间长、想少一点
 /// 静态感」的过程（例如文件传输），否则用标准平直形态。
@@ -575,4 +575,13 @@ Future<T?> showM3eMenu<T>({
         ),
     ],
   );
+}
+
+/// 取 [context] 对应渲染对象的全局矩形，给 [showM3eMenu] 当锚点。
+///
+/// 渲染对象还没布局（或已经卸载）时返回 null，调用方直接放弃这次弹菜单即可。
+Rect? m3eMenuAnchorOf(BuildContext context) {
+  final RenderBox? box = context.findRenderObject() as RenderBox?;
+  if (box == null || !box.hasSize) return null;
+  return box.localToGlobal(Offset.zero) & box.size;
 }

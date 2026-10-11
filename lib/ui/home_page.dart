@@ -15,6 +15,12 @@ import 'scroll_tint.dart';
 import 'share_file_sheet.dart';
 import 'share_page.dart';
 
+/// 快速访问条目 ⋯ 菜单里的动作。
+enum _QuickPinAction { open, removePin, moveToTop }
+
+/// 最近使用条目 ⋯ 菜单里的动作。
+enum _RecentAction { open, addFavorite, deleteRecord }
+
 class HomePage extends StatefulWidget {
   const HomePage({super.key, this.tabIndex});
 
@@ -126,25 +132,32 @@ class _HomePageState extends State<HomePage>
     final l10n = context.l10n;
     final scheme = Theme.of(context).colorScheme;
     final removing = _removingQuick.contains(item.ref);
-    return Md3ListItem(
-      key: ValueKey('quick-${item.ref}'),
-      index: index,
-      removing: removing,
-      icon: Icons.folder,
-      iconColor: scheme.primary,
-      title: item.name,
-      subtitle: quickAccessPathLabel(l10n, item),
-      trailing: IconButton(
-        // 与收藏 / 传输页的 ⋯ 保持一致（紧凑尺寸）
-        visualDensity: VisualDensity.standard,
-        iconSize: 20,
-        tooltip: l10n.moreActions,
-        icon: const Icon(Icons.more_vert),
-        onPressed: () => _showPinMenu(item, first: first),
+    // 菜单要贴在被点的 ⋯ 下方，所以这里得拿到行 / 按钮各自的 context
+    return Builder(
+      builder: (BuildContext rowContext) => Md3ListItem(
+        key: ValueKey('quick-${item.ref}'),
+        index: index,
+        removing: removing,
+        icon: Icons.folder,
+        iconColor: scheme.primary,
+        title: item.name,
+        subtitle: quickAccessPathLabel(l10n, item),
+        trailing: Builder(
+          builder: (BuildContext buttonContext) => IconButton(
+            // 与收藏 / 传输页的 ⋯ 保持一致（紧凑尺寸）
+            visualDensity: VisualDensity.standard,
+            iconSize: 20,
+            tooltip: l10n.moreActions,
+            icon: const Icon(Icons.more_vert),
+            onPressed: () =>
+                _showPinMenu(item, first: first, anchorContext: buttonContext),
+          ),
+        ),
+        // 桌面端右键：与 ⋯ 菜单同一套操作
+        onSecondaryTap: () =>
+            _showPinMenu(item, first: first, anchorContext: rowContext),
+        onTap: () => _openItem(context, 'folder', item.ref, item.name, ''),
       ),
-      // 桌面端右键：与 ⋯ 菜单同一套操作
-      onSecondaryTap: () => _showPinMenu(item, first: first),
-      onTap: () => _openItem(context, 'folder', item.ref, item.name, ''),
     );
   }
 
@@ -153,116 +166,135 @@ class _HomePageState extends State<HomePage>
     final item = _recents[i];
     final isFolder = item.kind.toLowerCase().contains('folder');
     final scheme = Theme.of(context).colorScheme;
-    return Md3ListItem(
-      key: ValueKey('recent-${item.ref}'),
-      index: i,
-      removing: _removingRecents.contains(item.ref),
-      icon: isFolder ? Icons.folder : iconForFile(item.name),
-      iconColor: isFolder
-          ? scheme.primary
-          : fileIconColor(item.name, brightness: scheme.brightness),
-      title: item.name,
-      subtitle: item.kind.startsWith('share')
-          ? l10n.sharedContent
-          : l10n.myDrive,
-      trailing: IconButton(
-        visualDensity: VisualDensity.compact,
-        iconSize: 20,
-        tooltip: l10n.moreActions,
-        icon: const Icon(Icons.more_vert),
-        onPressed: () => _showRecentMenu(item),
+    // 菜单要贴在被点的 ⋯ 下方，所以这里得拿到行 / 按钮各自的 context
+    return Builder(
+      builder: (BuildContext rowContext) => Md3ListItem(
+        key: ValueKey('recent-${item.ref}'),
+        index: i,
+        removing: _removingRecents.contains(item.ref),
+        icon: isFolder ? Icons.folder : iconForFile(item.name),
+        iconColor: isFolder
+            ? scheme.primary
+            : fileIconColor(item.name, brightness: scheme.brightness),
+        title: item.name,
+        subtitle: item.kind.startsWith('share')
+            ? l10n.sharedContent
+            : l10n.myDrive,
+        trailing: Builder(
+          builder: (BuildContext buttonContext) => IconButton(
+            visualDensity: VisualDensity.compact,
+            iconSize: 20,
+            tooltip: l10n.moreActions,
+            icon: const Icon(Icons.more_vert),
+            onPressed: () => _showRecentMenu(item, buttonContext),
+          ),
+        ),
+        // 桌面端右键：与 ⋯ 菜单同一套操作
+        onSecondaryTap: () => _showRecentMenu(item, rowContext),
+        onTap: () =>
+            _openItem(context, item.kind, item.ref, item.name, item.pwd),
       ),
-      // 桌面端右键：与 ⋯ 菜单同一套操作
-      onSecondaryTap: () => _showRecentMenu(item),
-      onTap: () => _openItem(context, item.kind, item.ref, item.name, item.pwd),
     );
   }
 
   /// 快速访问菜单：取消固定；不在顶部时可以移到顶部。
-  Future<void> _showPinMenu(PinItem item, {required bool first}) async {
+  ///
+  /// [anchorContext] 是那颗 ⋯ 按钮（桌面端右键时是整行）的 context——
+  /// 菜单贴它下方右对齐弹出。
+  Future<void> _showPinMenu(
+    PinItem item, {
+    required bool first,
+    required BuildContext anchorContext,
+  }) async {
     final app = context.read<AppController>();
     final l10n = context.l10n;
-    await showAppSheet<void>(
-      context,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            leading: const Icon(Icons.open_in_new),
-            title: Text(l10n.open),
-            onTap: () {
-              Navigator.of(context).pop();
-              _openItem(context, 'folder', item.ref, item.name, '');
-            },
+    final anchor = m3eMenuAnchorOf(anchorContext);
+    if (anchor == null) return;
+    final _QuickPinAction? action = await showM3eMenu<_QuickPinAction>(
+      context: context,
+      anchor: anchor,
+      // ⋯ 贴着右边缘：菜单右缘对齐，免得被屏幕右上角夹歪
+      alignEnd: true,
+      items: [
+        M3eMenuItem(
+          value: _QuickPinAction.open,
+          label: l10n.open,
+          icon: Icons.open_in_new,
+        ),
+        M3eMenuItem(
+          value: _QuickPinAction.removePin,
+          label: l10n.removeFromQuickAccess,
+          icon: Icons.keep_off,
+        ),
+        if (!first)
+          M3eMenuItem(
+            value: _QuickPinAction.moveToTop,
+            label: l10n.moveToTop,
+            icon: Icons.vertical_align_top,
           ),
-          ListTile(
-            leading: const Icon(Icons.keep_off),
-            title: Text(l10n.removeFromQuickAccess),
-            onTap: () async {
-              Navigator.of(context).pop();
-              // 先播放删除动画，再真正删库（列表由 db.revision 通知刷新）
-              setState(() => _removingQuick.add(item.ref));
-              await Future<void>.delayed(const Duration(milliseconds: 220));
-              if (!mounted) return;
-              await app.db.removePin(item.ref);
-            },
-          ),
-          if (!first)
-            ListTile(
-              leading: const Icon(Icons.vertical_align_top),
-              title: Text(l10n.moveToTop),
-              onTap: () async {
-                Navigator.of(context).pop();
-                await app.db.movePinToTop(item.ref);
-              },
-            ),
-        ],
-      ),
+      ],
     );
+    if (!mounted || action == null) return;
+    switch (action) {
+      case _QuickPinAction.open:
+        _openItem(context, 'folder', item.ref, item.name, '');
+      case _QuickPinAction.removePin:
+        // 先播放删除动画，再真正删库（列表由 db.revision 通知刷新）
+        setState(() => _removingQuick.add(item.ref));
+        await Future<void>.delayed(const Duration(milliseconds: 220));
+        if (!mounted) return;
+        await app.db.removePin(item.ref);
+      case _QuickPinAction.moveToTop:
+        await app.db.movePinToTop(item.ref);
+    }
   }
 
   /// 最近使用菜单：打开 / 删除此条记录（与快速访问菜单同款底部弹窗）。
-  Future<void> _showRecentMenu(RecentItem item) async {
+  ///
+  /// [anchorContext] 是那颗 ⋯ 按钮（桌面端右键时是整行）的 context。
+  Future<void> _showRecentMenu(
+    RecentItem item,
+    BuildContext anchorContext,
+  ) async {
     final app = context.read<AppController>();
     final l10n = context.l10n;
-    await showAppSheet<void>(
-      context,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            leading: const Icon(Icons.open_in_new),
-            title: Text(l10n.open),
-            onTap: () {
-              Navigator.of(context).pop();
-              _openItem(context, item.kind, item.ref, item.name, item.pwd);
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.star_outline),
-            title: Text(l10n.addFavorite),
-            onTap: () {
-              Navigator.of(context).pop();
-              _favoriteRecent(item);
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.delete_outline),
-            title: Text(l10n.deleteRecord),
-            onTap: () async {
-              Navigator.of(context).pop();
-              setState(() => _removingRecents.add(item.ref));
-              await Future<void>.delayed(const Duration(milliseconds: 220));
-              if (!mounted) return;
-              await app.db.removeRecent(
-                account: app.activeUid ?? '',
-                ref: item.ref,
-              );
-            },
-          ),
-        ],
-      ),
+    final anchor = m3eMenuAnchorOf(anchorContext);
+    if (anchor == null) return;
+    final _RecentAction? action = await showM3eMenu<_RecentAction>(
+      context: context,
+      anchor: anchor,
+      // ⋯ 贴着右边缘：菜单右缘对齐，免得被屏幕右上角夹歪
+      alignEnd: true,
+      items: [
+        M3eMenuItem(
+          value: _RecentAction.open,
+          label: l10n.open,
+          icon: Icons.open_in_new,
+        ),
+        M3eMenuItem(
+          value: _RecentAction.addFavorite,
+          label: l10n.addFavorite,
+          icon: Icons.star_outline,
+        ),
+        M3eMenuItem(
+          value: _RecentAction.deleteRecord,
+          label: l10n.deleteRecord,
+          icon: Icons.delete_outline,
+        ),
+      ],
     );
+    if (!mounted || action == null) return;
+    switch (action) {
+      case _RecentAction.open:
+        _openItem(context, item.kind, item.ref, item.name, item.pwd);
+      case _RecentAction.addFavorite:
+        _favoriteRecent(item);
+      case _RecentAction.deleteRecord:
+        setState(() => _removingRecents.add(item.ref));
+        await Future<void>.delayed(const Duration(milliseconds: 220));
+        if (!mounted) return;
+        await app.db.removeRecent(account: app.activeUid ?? '', ref: item.ref);
+    }
   }
 
   /// 最近使用条目加入收藏：分享链接直接收藏；网盘文件 / 目录先取分享链接

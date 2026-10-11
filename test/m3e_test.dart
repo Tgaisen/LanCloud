@@ -10,9 +10,8 @@ import 'package:m3e_core/m3e_core.dart'
     show
         M3ECircularProgressIndicator,
         M3ELinearProgressIndicator,
-        M3ELinearWavyProgressIndicator;
-import 'package:material_3_expressive/material_3_expressive.dart'
-    show M3ELoadingIndicator;
+        M3ELinearWavyProgressIndicator,
+        M3ELoadingIndicator;
 
 /// m3e_core 与应用同处 material_ui 之上，这里守住「MD3E 控件能正常渲染 /
 /// 打开」这条底线（迁移前它们之间还需要一层主题桥，现已删除）。

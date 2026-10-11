@@ -1812,12 +1812,12 @@ class _DrivePageState extends State<DrivePage>
       });
       return;
     }
-    final RenderBox? button = buttonContext.findRenderObject() as RenderBox?;
-    if (button == null || !button.hasSize) return;
+    final Rect? anchor = m3eMenuAnchorOf(buttonContext);
+    if (anchor == null) return;
     final l10n = context.l10n;
     final _FileMenuAction? action = await showM3eMenu<_FileMenuAction>(
       context: context,
-      anchor: button.localToGlobal(Offset.zero) & button.size,
+      anchor: anchor,
       // ⋯ 贴着右边缘：菜单右缘对齐，免得被屏幕右上角夹歪
       alignEnd: true,
       items: [
@@ -1827,9 +1827,9 @@ class _DrivePageState extends State<DrivePage>
           icon: Icons.info_outline,
         ),
         M3eMenuItem(
-          value: _FileMenuAction.move,
-          label: l10n.move,
-          icon: Icons.drive_file_move_outline,
+          value: _FileMenuAction.password,
+          label: l10n.accessPassword,
+          icon: Icons.lock_outline,
         ),
         M3eMenuItem(
           value: _FileMenuAction.editInfo,
@@ -1837,9 +1837,9 @@ class _DrivePageState extends State<DrivePage>
           icon: Icons.edit_note,
         ),
         M3eMenuItem(
-          value: _FileMenuAction.password,
-          label: l10n.accessPassword,
-          icon: Icons.lock_outline,
+          value: _FileMenuAction.move,
+          label: l10n.move,
+          icon: Icons.drive_file_move_outline,
         ),
         M3eMenuItem(
           value: _FileMenuAction.delete,
