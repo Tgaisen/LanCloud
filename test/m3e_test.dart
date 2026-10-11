@@ -4,6 +4,13 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/m3e.dart';
+// 出口只透出自己的 wrapper；测试要断言 m3e_core 的具体控件就直连它。
+import 'package:m3e_core/m3e_core.dart'
+    show
+        M3ECircularProgressIndicator,
+        M3ELinearProgressIndicator,
+        M3ELinearWavyProgressIndicator,
+        M3ELoadingIndicator;
 
 /// m3e_core 与应用同处 material_ui 之上，这里守住「MD3E 控件能正常渲染 /
 /// 打开」这条底线（迁移前它们之间还需要一层主题桥，现已删除）。
@@ -22,7 +29,6 @@ void main() {
           mainAxisSize: MainAxisSize.min,
           children: [
             M3eLoadingIndicator(semanticsLabel: '加载中'),
-            M3eContainedLoadingIndicator(),
             M3eLinearProgressIndicator(value: 0.5),
             M3eLinearProgressIndicator(value: 0.5, wavy: true),
             M3eCircularProgressIndicator(value: 0.25),
@@ -33,11 +39,31 @@ void main() {
     await tester.pump(const Duration(milliseconds: 32));
 
     expect(tester.takeException(), isNull);
-    expect(find.byType(M3ELoadingIndicator), findsNWidgets(2));
+    expect(find.byType(M3ELoadingIndicator), findsOneWidget);
     expect(find.byType(M3ELinearProgressIndicator), findsOneWidget);
     expect(find.byType(M3ELinearWavyProgressIndicator), findsOneWidget);
     expect(find.byType(M3ECircularProgressIndicator), findsOneWidget);
     expect(find.bySemanticsLabel('加载中'), findsOneWidget);
+  });
+
+  testWidgets('线性进度条：平直按线宽传，波浪按容器高度传', (tester) async {
+    Future<Size> measure(Widget child) async {
+      final Key key = UniqueKey();
+      await tester.pumpWidget(host(KeyedSubtree(key: key, child: child)));
+      return tester.getSize(find.byKey(key));
+    }
+
+    // 平直：默认 4dp；显式值即线宽（备份页 AppBar 下那条 2dp 细线靠它）。
+    expect((await measure(const M3eLinearProgressIndicator())).height, 4);
+    expect(
+      (await measure(const M3eLinearProgressIndicator(height: 2))).height,
+      2,
+    );
+    // 波浪：这个参数是容器高度（波幅叠在 4dp 线宽上），默认 10dp。
+    expect(
+      (await measure(const M3eLinearProgressIndicator(wavy: true))).height,
+      10,
+    );
   });
 
   testWidgets('MD3E 模态底部弹窗能在根 Navigator 上打开', (tester) async {

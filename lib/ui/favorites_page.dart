@@ -11,6 +11,9 @@ import 'scroll_tint.dart';
 import 'share_file_sheet.dart';
 import 'share_page.dart';
 
+/// 收藏条目 ⋯ 菜单里的动作。
+enum _FavoriteItemAction { edit, delete }
+
 /// 收藏视图：独立底栏页，布局与传输页一致（分组 + 多选删除）。
 class FavoritesPage extends StatefulWidget {
   const FavoritesPage({super.key, this.tabIndex});
@@ -362,34 +365,44 @@ class _FavoritesPageState extends State<FavoritesPage>
     }
   }
 
-  Future<void> _itemOptions(FavoriteItem item) async {
+  /// 条目 ⋯ 菜单（MD3E 弹出菜单）：修改信息 / 删除。
+  ///
+  /// [anchorContext] 是那颗 ⋯ 按钮（桌面端右键时是整行）的 context——
+  /// 菜单贴它下方右对齐弹出。
+  Future<void> _itemOptions(
+    FavoriteItem item,
+    BuildContext anchorContext,
+  ) async {
     final app = context.read<AppController>();
-    final action = await showAppSheet<String>(
-      context,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            leading: const Icon(Icons.edit_note),
-            title: Text(context.l10n.editInfo),
-            onTap: () => Navigator.of(context).pop('edit'),
-          ),
-          ListTile(
-            leading: const Icon(Icons.delete_outline),
-            title: Text(context.l10n.delete),
-            onTap: () => Navigator.of(context).pop('delete'),
-          ),
-        ],
-      ),
+    final anchor = m3eMenuAnchorOf(anchorContext);
+    if (anchor == null) return;
+    final _FavoriteItemAction? action = await showM3eMenu<_FavoriteItemAction>(
+      context: context,
+      anchor: anchor,
+      // ⋯ 贴着右边缘：菜单右缘对齐，免得被屏幕右上角夹歪
+      alignEnd: true,
+      items: [
+        M3eMenuItem(
+          value: _FavoriteItemAction.edit,
+          label: context.l10n.editInfo,
+          icon: Icons.edit_note,
+        ),
+        M3eMenuItem(
+          value: _FavoriteItemAction.delete,
+          label: context.l10n.delete,
+          icon: Icons.delete_outline,
+        ),
+      ],
     );
     if (!mounted || action == null) return;
-    if (action == 'edit') {
-      await _editFavorite(item);
-    } else if (action == 'delete') {
-      setState(() => _removing.add(item.id));
-      await Future<void>.delayed(const Duration(milliseconds: 220));
-      if (!mounted) return;
-      await app.db.removeFavoriteById(item.id);
+    switch (action) {
+      case _FavoriteItemAction.edit:
+        await _editFavorite(item);
+      case _FavoriteItemAction.delete:
+        setState(() => _removing.add(item.id));
+        await Future<void>.delayed(const Duration(milliseconds: 220));
+        if (!mounted) return;
+        await app.db.removeFavoriteById(item.id);
     }
   }
 
@@ -459,36 +472,43 @@ class _FavoritesPageState extends State<FavoritesPage>
     final scheme = Theme.of(context).colorScheme;
     final selected = _selected.contains(item.id);
     final isFolder = item.kind == 'shareFolder';
-    return Md3ListItem(
-      key: ValueKey('favorite-${item.id}'),
-      index: index,
-      // 入场动画由外层 ListEnterAnimation 统一驱动（只播一次）
-      animateIn: false,
-      removing: _removing.contains(item.id),
-      pulse: _pulse[item.id] ?? 0,
-      icon: isFolder ? Icons.folder : iconForFile(item.name),
-      // 图标块底色与文件项一致，文件夹只换图标颜色
-      iconColor: isFolder
-          ? scheme.primary
-          : fileIconColor(item.name, brightness: scheme.brightness),
-      title: item.title.isEmpty ? item.name : item.title,
-      subtitle: _subtitle(item),
-      titleMaxLines: 2,
-      subtitleMaxLines: 2,
-      selected: selected,
-      onTap: () => _open(item),
-      onLongPress: () => _enterSelection(id: item.id),
-      // 桌面端右键：与 ⋯ 菜单同一套操作（多选时不响应，和 ⋯ 一起隐藏）
-      onSecondaryTap: _selecting ? null : () => _itemOptions(item),
-      // 多选时隐藏 ⋯，但保留占位：条目高度不会跳
-      trailing: HideKeepingSpace(
-        hidden: _selecting,
-        child: IconButton(
-          visualDensity: VisualDensity.standard,
-          iconSize: 20,
-          tooltip: l10n.moreActions,
-          icon: const Icon(Icons.more_vert),
-          onPressed: () => _itemOptions(item),
+    // 菜单要贴在被点的 ⋯ 下方，所以这里得拿到行 / 按钮各自的 context
+    return Builder(
+      builder: (BuildContext rowContext) => Md3ListItem(
+        key: ValueKey('favorite-${item.id}'),
+        index: index,
+        // 入场动画由外层 ListEnterAnimation 统一驱动（只播一次）
+        animateIn: false,
+        removing: _removing.contains(item.id),
+        pulse: _pulse[item.id] ?? 0,
+        icon: isFolder ? Icons.folder : iconForFile(item.name),
+        // 图标块底色与文件项一致，文件夹只换图标颜色
+        iconColor: isFolder
+            ? scheme.primary
+            : fileIconColor(item.name, brightness: scheme.brightness),
+        title: item.title.isEmpty ? item.name : item.title,
+        subtitle: _subtitle(item),
+        titleMaxLines: 2,
+        subtitleMaxLines: 2,
+        selected: selected,
+        onTap: () => _open(item),
+        onLongPress: () => _enterSelection(id: item.id),
+        // 桌面端右键：与 ⋯ 菜单同一套操作（多选时不响应，和 ⋯ 一起隐藏）
+        onSecondaryTap: _selecting
+            ? null
+            : () => _itemOptions(item, rowContext),
+        // 多选时隐藏 ⋯，但保留占位：条目高度不会跳
+        trailing: HideKeepingSpace(
+          hidden: _selecting,
+          child: Builder(
+            builder: (BuildContext buttonContext) => IconButton(
+              visualDensity: VisualDensity.standard,
+              iconSize: 20,
+              tooltip: l10n.moreActions,
+              icon: const Icon(Icons.more_vert),
+              onPressed: () => _itemOptions(item, buttonContext),
+            ),
+          ),
         ),
       ),
     );

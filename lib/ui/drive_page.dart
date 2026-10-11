@@ -23,6 +23,9 @@ import 'scroll_tint.dart';
 
 const int kFreeUploadLimit = 100 * 1024 * 1024;
 
+/// 网盘页文件条目 ⋯ 菜单里的动作。
+enum _FileMenuAction { properties, move, editInfo, password, delete }
+
 class DrivePage extends StatefulWidget {
   const DrivePage({
     super.key,
@@ -1799,54 +1802,79 @@ class _DrivePageState extends State<DrivePage>
     });
   }
 
-  /// 点 ⋯：操作弹窗（常用操作）
-  Future<void> _fileMenuSheet(LzFile file) async {
+  /// 点 ⋯：MD3E 弹出菜单（属性 / 移动 / 修改信息 / 访问密码 / 删除）。
+  ///
+  /// [buttonContext] 是那颗 ⋯ 按钮的 context——菜单贴它下方右对齐弹出。
+  Future<void> _fileMenu(LzFile file, BuildContext buttonContext) async {
     if (_selecting) {
       setState(() {
         if (!_selectedFiles.remove(file.id)) _selectedFiles.add(file.id);
       });
       return;
     }
-    await showAppSheet<void>(
-      context,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            leading: const Icon(Icons.drive_file_move_outline),
-            title: Text(context.l10n.move),
-            onTap: () {
-              Navigator.of(context).pop();
-              _moveSingleFile(file);
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.edit_note),
-            title: Text(context.l10n.editDesc),
-            onTap: () {
-              Navigator.of(context).pop();
-              _singleSetDesc(file);
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.password),
-            title: Text(context.l10n.setPassword),
-            onTap: () {
-              Navigator.of(context).pop();
-              _singleSetPasswd(file);
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.delete_outline),
-            title: Text(context.l10n.delete),
-            onTap: () {
-              Navigator.of(context).pop();
-              _deleteFile(file);
-            },
-          ),
-        ],
-      ),
+    final Rect? anchor = m3eMenuAnchorOf(buttonContext);
+    if (anchor == null) return;
+    final l10n = context.l10n;
+    final _FileMenuAction? action = await showM3eMenu<_FileMenuAction>(
+      context: context,
+      anchor: anchor,
+      // ⋯ 贴着右边缘：菜单右缘对齐，免得被屏幕右上角夹歪
+      alignEnd: true,
+      items: [
+        M3eMenuItem(
+          value: _FileMenuAction.properties,
+          label: l10n.properties,
+          icon: Icons.info_outline,
+        ),
+        M3eMenuItem(
+          value: _FileMenuAction.password,
+          label: l10n.accessPassword,
+          icon: Icons.lock_outline,
+        ),
+        M3eMenuItem(
+          value: _FileMenuAction.editInfo,
+          label: l10n.folderInfo,
+          icon: Icons.edit_note,
+        ),
+        M3eMenuItem(
+          value: _FileMenuAction.move,
+          label: l10n.move,
+          icon: Icons.drive_file_move_outline,
+        ),
+        M3eMenuItem(
+          value: _FileMenuAction.delete,
+          label: l10n.delete,
+          icon: Icons.delete_outline,
+        ),
+      ],
     );
+    if (action == null || !mounted) return;
+    switch (action) {
+      case _FileMenuAction.properties:
+        await _showFileProperties(file);
+      case _FileMenuAction.move:
+        await _moveSingleFile(file);
+      case _FileMenuAction.editInfo:
+        await _editFileInfoFromMenu(file);
+      case _FileMenuAction.password:
+        await _singleSetPasswd(file);
+      case _FileMenuAction.delete:
+        await _deleteFile(file);
+    }
+  }
+
+  /// ⋯ 菜单里的「修改信息」：列表项没有简介正文，先取一次再开弹窗——
+  /// 否则输入框是空的，用户只改名就会把简介覆盖掉。取不到就按空简介处理。
+  Future<void> _editFileInfoFromMenu(LzFile file) async {
+    final client = context.read<AppController>().client;
+    var desc = '';
+    if (client != null) {
+      try {
+        desc = await client.fileDesc(file.id);
+      } catch (_) {}
+    }
+    if (!mounted) return;
+    await _editFileInfo(file, desc: desc);
   }
 
   Future<void> _moveSingleFile(LzFile file) async {
@@ -1868,43 +1896,6 @@ class _DrivePageState extends State<DrivePage>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.l10n.movedTo(1, target.name))),
       );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
-    }
-  }
-
-  Future<void> _singleSetDesc(LzFile file) async {
-    // 控制器由弹窗自己持有（见 _EditDescDialog）
-    final desc = await showDialog<String>(
-      context: context,
-      builder: (_) => const _EditDescDialog(),
-    );
-    if (desc == null || !mounted) return;
-    try {
-      await context.read<AppController>().client?.setDesc(file.id, desc);
-      if (!mounted) return;
-      setState(() {
-        _files = [
-          for (final f in _files)
-            f.id == file.id
-                ? LzFile(
-                    id: f.id,
-                    name: f.name,
-                    time: f.time,
-                    size: f.size,
-                    downs: f.downs,
-                    hasPwd: f.hasPwd,
-                    hasDes: true,
-                  )
-                : f,
-        ];
-      });
-      _pulseItems(fileIds: {file.id});
-      _updateCacheSnapshot();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(context.l10n.descUpdated)));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
@@ -2929,7 +2920,7 @@ class _DrivePageState extends State<DrivePage>
               selected: selected,
               selecting: _selecting,
               onTap: () => _openFolder(folder),
-              onMenu: () => _folderActions(folder),
+              onMenu: (_) => _folderActions(folder),
               onLongPress: () => _enterSelection(folderId: folder.id),
             )
           : _FolderRow(
@@ -2937,7 +2928,7 @@ class _DrivePageState extends State<DrivePage>
               selected: selected,
               selecting: _selecting,
               onTap: () => _openFolder(folder),
-              onMenu: () => _folderActions(folder),
+              onMenu: (_) => _folderActions(folder),
               onLongPress: () => _enterSelection(folderId: folder.id),
             ),
     );
@@ -2969,7 +2960,7 @@ class _DrivePageState extends State<DrivePage>
               selected: selected,
               selecting: _selecting,
               onTap: () => _fileActions(file),
-              onMenu: () => _fileMenuSheet(file),
+              onMenu: (buttonContext) => _fileMenu(file, buttonContext),
               onLongPress: () => _enterSelection(fileId: file.id),
             )
           : _FileRow(
@@ -2977,7 +2968,7 @@ class _DrivePageState extends State<DrivePage>
               selected: selected,
               selecting: _selecting,
               onTap: () => _fileActions(file),
-              onMenu: () => _fileMenuSheet(file),
+              onMenu: (buttonContext) => _fileMenu(file, buttonContext),
               onLongPress: () => _enterSelection(fileId: file.id),
             ),
     );
@@ -3159,7 +3150,9 @@ class _FolderTile extends StatelessWidget {
   /// 多选期间隐藏行内 ⋯ 菜单（和收藏 / 传输页一致），避免误触。
   final bool selecting;
   final VoidCallback onTap;
-  final VoidCallback onMenu;
+
+  /// ⋯（或桌面端右键）触发；回调带上那颗按钮的 context，菜单贴它弹出。
+  final void Function(BuildContext buttonContext) onMenu;
   final VoidCallback onLongPress;
 
   @override
@@ -3174,7 +3167,7 @@ class _FolderTile extends StatelessWidget {
         onTap: onTap,
         onLongPress: onLongPress,
         // 桌面端右键 = 点 ⋯ 菜单（同一套操作；多选时和 ⋯ 一起失效）
-        onSecondaryTap: selecting ? null : onMenu,
+        onSecondaryTap: selecting ? null : () => onMenu(context),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(10, 8, 4, 10),
           child: Column(
@@ -3202,12 +3195,14 @@ class _FolderTile extends StatelessWidget {
                   // 多选时只隐藏不占位变化：条目高度 / 文字宽度保持一致
                   HideKeepingSpace(
                     hidden: selecting,
-                    child: IconButton(
-                      visualDensity: VisualDensity.standard,
-                      iconSize: 18,
-                      tooltip: context.l10n.folderActions,
-                      onPressed: onMenu,
-                      icon: const Icon(Icons.more_vert),
+                    child: Builder(
+                      builder: (BuildContext buttonContext) => IconButton(
+                        visualDensity: VisualDensity.standard,
+                        iconSize: 18,
+                        tooltip: context.l10n.folderActions,
+                        onPressed: () => onMenu(buttonContext),
+                        icon: const Icon(Icons.more_vert),
+                      ),
                     ),
                   ),
                 ],
@@ -3248,7 +3243,9 @@ class _FileTile extends StatelessWidget {
   /// 多选期间隐藏行内 ⋯ 菜单（和收藏 / 传输页一致），避免误触。
   final bool selecting;
   final VoidCallback onTap;
-  final VoidCallback onMenu;
+
+  /// ⋯（或桌面端右键）触发；回调带上那颗按钮的 context，菜单贴它弹出。
+  final void Function(BuildContext buttonContext) onMenu;
   final VoidCallback onLongPress;
 
   @override
@@ -3263,7 +3260,7 @@ class _FileTile extends StatelessWidget {
         onTap: onTap,
         onLongPress: onLongPress,
         // 桌面端右键 = 点 ⋯ 菜单（同一套操作；多选时和 ⋯ 一起失效）
-        onSecondaryTap: selecting ? null : onMenu,
+        onSecondaryTap: selecting ? null : () => onMenu(context),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(10, 8, 4, 10),
           child: Column(
@@ -3294,12 +3291,14 @@ class _FileTile extends StatelessWidget {
                   const Spacer(),
                   HideKeepingSpace(
                     hidden: selecting,
-                    child: IconButton(
-                      visualDensity: VisualDensity.standard,
-                      iconSize: 18,
-                      tooltip: context.l10n.fileActions,
-                      onPressed: onMenu,
-                      icon: const Icon(Icons.more_vert),
+                    child: Builder(
+                      builder: (BuildContext buttonContext) => IconButton(
+                        visualDensity: VisualDensity.standard,
+                        iconSize: 18,
+                        tooltip: context.l10n.fileActions,
+                        onPressed: () => onMenu(buttonContext),
+                        icon: const Icon(Icons.more_vert),
+                      ),
                     ),
                   ),
                 ],
@@ -3354,7 +3353,9 @@ class _DriveRow extends StatelessWidget {
   final String subtitle;
   final String menuTooltip;
   final VoidCallback onTap;
-  final VoidCallback onMenu;
+
+  /// ⋯（或桌面端右键）触发；回调带上那颗按钮的 context，菜单贴它弹出。
+  final void Function(BuildContext buttonContext) onMenu;
   final VoidCallback onLongPress;
 
   final bool locked;
@@ -3383,7 +3384,7 @@ class _DriveRow extends StatelessWidget {
           onTap: onTap,
           onLongPress: onLongPress,
           // 桌面端右键 = 点 ⋯ 菜单（同一套操作；多选时和 ⋯ 一起失效）
-          onSecondaryTap: selecting ? null : onMenu,
+          onSecondaryTap: selecting ? null : () => onMenu(context),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(10, 8, 2, 8),
             child: Row(
@@ -3448,13 +3449,15 @@ class _DriveRow extends StatelessWidget {
                   ),
                 HideKeepingSpace(
                   hidden: selecting,
-                  child: IconButton(
-                    tooltip: menuTooltip,
-                    visualDensity: VisualDensity.standard,
-                    iconSize: 20,
-                    color: selected ? scheme.onPrimaryContainer : null,
-                    icon: const Icon(Icons.more_vert),
-                    onPressed: onMenu,
+                  child: Builder(
+                    builder: (BuildContext buttonContext) => IconButton(
+                      tooltip: menuTooltip,
+                      visualDensity: VisualDensity.standard,
+                      iconSize: 20,
+                      color: selected ? scheme.onPrimaryContainer : null,
+                      icon: const Icon(Icons.more_vert),
+                      onPressed: () => onMenu(buttonContext),
+                    ),
                   ),
                 ),
               ],
@@ -3480,7 +3483,9 @@ class _FolderRow extends StatelessWidget {
   final bool selected;
   final bool selecting;
   final VoidCallback onTap;
-  final VoidCallback onMenu;
+
+  /// ⋯（或桌面端右键）触发；回调带上那颗按钮的 context，菜单贴它弹出。
+  final void Function(BuildContext buttonContext) onMenu;
   final VoidCallback onLongPress;
 
   @override
@@ -3515,7 +3520,9 @@ class _FileRow extends StatelessWidget {
   final bool selected;
   final bool selecting;
   final VoidCallback onTap;
-  final VoidCallback onMenu;
+
+  /// ⋯（或桌面端右键）触发；回调带上那颗按钮的 context，菜单贴它弹出。
+  final void Function(BuildContext buttonContext) onMenu;
   final VoidCallback onLongPress;
 
   @override
@@ -3740,8 +3747,9 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
     hasDes: _file.hasDes,
   );
 
-  /// 「复制链接 / 二维码」二选一菜单：挂在按钮组上弹出（MD3E menu）。
-  final MenuController _linkMenu = MenuController();
+  /// 「复制链接 / 二维码」二选一菜单的锚点：那一行图标按钮组（菜单要贴在
+  /// 被点的那一段下面，所以要量它的位置）。
+  final GlobalKey _quickActionGroupKey = GlobalKey();
   _FileQuickAction? _menuTarget;
 
   @override
@@ -3803,12 +3811,52 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
   }
 
   /// 打开二选一菜单。菜单内容依赖被点的是「复制链接」还是「二维码」，
-  /// 所以先重建那一帧，再真正弹出来。
-  void _openLinkMenu(_FileQuickAction target) {
+  /// 所以先重建那一帧再量按钮组的位置，最后挂在被点那一段下方弹出。
+  Future<void> _openLinkMenu(_FileQuickAction target) async {
     if (_menuTarget != target) setState(() => _menuTarget = target);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _linkMenu.open();
-    });
+    // 等这一帧画完：按钮组的 RenderBox 这时才有位置可量（endOfFrame 在空闲
+    // 时会自己安排一帧，不必依赖别处 setState 触发）。
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+    final RenderBox? group =
+        _quickActionGroupKey.currentContext?.findRenderObject() as RenderBox?;
+    if (group == null || !group.hasSize) return;
+    final l10n = context.l10n;
+    final bool qr = target == _FileQuickAction.qr;
+    final bool? direct = await showM3eMenu<bool>(
+      context: context,
+      anchor: _linkMenuAnchor(group, target),
+      items: [
+        M3eMenuItem(
+          value: false,
+          label: qr ? l10n.shareLinkQr : l10n.copyShareLink,
+          icon: Icons.share_outlined,
+        ),
+        M3eMenuItem(
+          value: true,
+          label: qr ? l10n.directLinkQr : l10n.copyDirectLink,
+          icon: Icons.file_present,
+        ),
+      ],
+    );
+    if (direct == null || !mounted) return;
+    _pickLinkMenu(direct: direct);
+  }
+
+  /// 被点那一段（复制链接 / 二维码）的全局矩形。
+  ///
+  /// 段宽用和按钮组同一个公式算，保证菜单左缘和那一段对齐；窄窗口按钮组会
+  /// 横向滚动，这里不补偿滚动偏移（和原来挂在组上的做法一致）。
+  Rect _linkMenuAnchor(RenderBox group, _FileQuickAction target) {
+    final double segment = m3eIconButtonWidth(group.size.width, 5);
+    final int index = target == _FileQuickAction.qr ? 2 : 1;
+    final Offset origin = group.localToGlobal(Offset.zero);
+    return Rect.fromLTWH(
+      origin.dx + index * (segment + kM3EIconButtonSpacing),
+      origin.dy,
+      segment,
+      group.size.height,
+    );
   }
 
   /// 菜单里选了「分享链接」还是「下载直链」。
@@ -3893,117 +3941,64 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
         // 宽度自适应弹窗，最多 80dp）
         Padding(
           padding: const EdgeInsets.fromLTRB(24, 4, 24, 8),
-          child: LayoutBuilder(
-            builder: (BuildContext context, BoxConstraints constraints) {
-              // 菜单要对准被点的那一段：用和组件同一个公式算段宽
-              final double segment = m3eIconButtonWidth(
-                constraints.maxWidth,
-                5,
-              );
-              final int targetIndex = switch (_menuTarget) {
-                _FileQuickAction.link => 1,
-                _FileQuickAction.qr => 2,
-                _ => 0,
-              };
-              final scheme = Theme.of(context).colorScheme;
-              return MenuAnchor(
-                controller: _linkMenu,
-                // M3E vertical menu 观感：容器用 surfaceContainerLow、圆角加大；
-                // 菜单顶边贴按钮底边，横向对准被点的那一段。
-                // 项高 48dp / 左右内边距 12dp / 图标 24dp / 容器内边距 8dp /
-                // 112~280dp 宽度都沿用 M3 菜单默认值；16dp 圆角是这里取的
-                // （M3 只公开了 baseline 菜单的 4dp，vertical menu 没给数值）。
-                style: MenuStyle(
-                  alignment: Alignment.bottomLeft,
-                  backgroundColor: WidgetStatePropertyAll<Color?>(
-                    scheme.surfaceContainerLow,
-                  ),
-                  shape: const WidgetStatePropertyAll<OutlinedBorder?>(
-                    RoundedRectangleBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(16)),
-                    ),
-                  ),
+          // 菜单（showM3eMenu）要贴在被点的那一段下面，所以这里得量按钮组的
+          // 真实位置：挂个 GlobalKey 给它。
+          child: KeyedSubtree(
+            key: _quickActionGroupKey,
+            child: M3EIconButtonGroup<_FileQuickAction>(
+              items: [
+                M3EIconAction(
+                  value: _FileQuickAction.download,
+                  icon: Icons.download_outlined,
+                  checkedIcon: Icons.download,
+                  tooltip: l10n.download,
+                  // 复用弹窗打开时取的分享信息，等它回来再放开
+                  enabled: _share != null,
                 ),
-                alignmentOffset: Offset(
-                  targetIndex * (segment + kM3EIconButtonSpacing),
-                  0,
+                M3EIconAction(
+                  value: _FileQuickAction.link,
+                  icon: Icons.link_outlined,
+                  checkedIcon: Icons.link,
+                  tooltip: l10n.copyLink,
+                  enabled: _share != null,
                 ),
-                menuChildren: [
-                  MenuItemButton(
-                    leadingIcon: const Icon(Icons.link_outlined),
-                    onPressed: () => _pickLinkMenu(direct: false),
-                    child: Text(
-                      _menuTarget == _FileQuickAction.qr
-                          ? l10n.shareLinkQr
-                          : l10n.copyShareLink,
-                    ),
-                  ),
-                  MenuItemButton(
-                    leadingIcon: const Icon(Icons.download_outlined),
-                    onPressed: () => _pickLinkMenu(direct: true),
-                    child: Text(
-                      _menuTarget == _FileQuickAction.qr
-                          ? l10n.directLinkQr
-                          : l10n.copyDirectLink,
-                    ),
-                  ),
-                ],
-                child: M3EIconButtonGroup<_FileQuickAction>(
-                  items: [
-                    M3EIconAction(
-                      value: _FileQuickAction.download,
-                      icon: Icons.download_outlined,
-                      checkedIcon: Icons.download,
-                      tooltip: l10n.download,
-                      // 复用弹窗打开时取的分享信息，等它回来再放开
-                      enabled: _share != null,
-                    ),
-                    M3EIconAction(
-                      value: _FileQuickAction.link,
-                      icon: Icons.link_outlined,
-                      checkedIcon: Icons.link,
-                      tooltip: l10n.copyLink,
-                      enabled: _share != null,
-                    ),
-                    M3EIconAction(
-                      value: _FileQuickAction.qr,
-                      icon: Icons.qr_code,
-                      checkedIcon: Icons.qr_code,
-                      tooltip: l10n.showQr,
-                      enabled: _share != null,
-                    ),
-                    M3EIconAction(
-                      value: _FileQuickAction.favorite,
-                      icon: Icons.star_border,
-                      checkedIcon: Icons.star_outline,
-                      tooltip: _favorite == true
-                          ? l10n.unfavorite
-                          : l10n.addFavorite,
-                      checked: _favorite == true,
-                      isToggle: true,
-                      // 收藏态要等分享信息 + 收藏表回来才知道，之前先置灰
-                      enabled: _favorite != null,
-                    ),
-                    M3EIconAction(
-                      value: _FileQuickAction.password,
-                      icon: Icons.lock_outline,
-                      checkedIcon: Icons.lock_outline,
-                      tooltip: l10n.accessPassword,
-                      checked: file.hasPwd,
-                      isToggle: true,
-                    ),
-                  ],
-                  onPressed: _runQuickAction,
-                  onToggled: (action, checked) {
-                    if (action == _FileQuickAction.favorite) {
-                      _toggleFavorite(checked);
-                    } else if (action == _FileQuickAction.password) {
-                      _editPassword();
-                    }
-                  },
+                M3EIconAction(
+                  value: _FileQuickAction.qr,
+                  icon: Icons.qr_code,
+                  checkedIcon: Icons.qr_code,
+                  tooltip: l10n.showQr,
+                  enabled: _share != null,
                 ),
-              );
-            },
+                M3EIconAction(
+                  value: _FileQuickAction.favorite,
+                  icon: Icons.star_border,
+                  checkedIcon: Icons.star_outline,
+                  tooltip: _favorite == true
+                      ? l10n.unfavorite
+                      : l10n.addFavorite,
+                  checked: _favorite == true,
+                  isToggle: true,
+                  // 收藏态要等分享信息 + 收藏表回来才知道，之前先置灰
+                  enabled: _favorite != null,
+                ),
+                M3EIconAction(
+                  value: _FileQuickAction.password,
+                  icon: Icons.lock_outline,
+                  checkedIcon: Icons.lock_outline,
+                  tooltip: l10n.accessPassword,
+                  checked: file.hasPwd,
+                  isToggle: true,
+                ),
+              ],
+              onPressed: _runQuickAction,
+              onToggled: (action, checked) {
+                if (action == _FileQuickAction.favorite) {
+                  _toggleFavorite(checked);
+                } else if (action == _FileQuickAction.password) {
+                  _editPassword();
+                }
+              },
+            ),
           ),
         ),
         ListTile(

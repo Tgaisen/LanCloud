@@ -970,6 +970,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get folderProperties => 'Folder details';
 
   @override
+  String get properties => 'Properties';
+
+  @override
   String get sortByName => 'Sort by name';
 
   @override

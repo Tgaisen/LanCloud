@@ -13,7 +13,14 @@
 // scrollDelta > 0（靠列表滚动来收小球），反向拖动没法只收小球。
 
 import 'package:flutter/physics.dart';
-import 'package:m3e_core/m3e_core.dart';
+// 只取用到的三个名字：两个 MD3E 包有 80+ 个同名类型，直连处越窄越安全
+// （业务代码一律只认 lib/ui/m3e.dart 这个出口）。
+import 'package:m3e_core/m3e_core.dart'
+    show
+        M3EContainedLoadingIndicator,
+        M3EHapticFeedback,
+        M3EMotion,
+        applyHaptic;
 import 'package:material_ui/material_ui.dart';
 
 /// 和 [BouncingScrollPhysics] 共存的下拉刷新指示器（MD3E 视觉）。

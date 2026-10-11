@@ -170,6 +170,82 @@ Future<void> _settleSheet(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets('网盘页文件 ⋯ 菜单：五项操作，属性打开属性弹窗', (tester) async {
+    final app = _FakeApp(_FakeClient());
+    await _pumpDrive(tester, app);
+
+    await tester.tap(find.byTooltip('文件操作'));
+    // ⋯ 菜单是弹簧展开的：pump 到它长出来（真机一两帧，测试里有界多给点）
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pump(const Duration(milliseconds: 600));
+
+    expect(find.byType(M3eMenuRow), findsNWidgets(5));
+    const order = ['属性', '访问密码', '修改信息', '移动', '删除'];
+    for (final label in order) {
+      // 页面本身也有「删除」这类文案，断言限定在菜单行里
+      expect(
+        find.descendant(
+          of: find.byType(M3eMenuRow),
+          matching: find.text(label),
+        ),
+        findsOneWidget,
+        reason: label,
+      );
+    }
+    // 顺序：属性 / 访问密码 / 修改信息 / 移动 / 删除
+    final tops = [
+      for (final label in order)
+        tester
+            .getTopLeft(
+              find.descendant(
+                of: find.byType(M3eMenuRow),
+                matching: find.text(label),
+              ),
+            )
+            .dy,
+    ];
+    for (int i = 1; i < tops.length; i++) {
+      expect(
+        tops[i],
+        greaterThan(tops[i - 1]),
+        reason: '「${order[i]}」要排在「${order[i - 1]}」下面',
+      );
+    }
+    // M3E vertical menu：项目是各自独立的圆角块，之间留 4dp 间隔
+    final rows = find.byType(M3eMenuRow).evaluate().toList();
+    for (int i = 1; i < rows.length; i++) {
+      final above = tester.getRect(find.byType(M3eMenuRow).at(i - 1));
+      final below = tester.getRect(find.byType(M3eMenuRow).at(i));
+      expect(
+        below.top - above.bottom,
+        4,
+        reason: '第 ${i + 1} 项与上一项之间应是 4dp 间隔',
+      );
+    }
+    // 项目本身的圆角 12dp（卡片 16 − 左右内缩 4）
+    final item = tester.widget<MenuItemButton>(
+      find.byType(MenuItemButton).first,
+    );
+    final shape =
+        item.style?.shape?.resolve(<WidgetState>{}) as RoundedRectangleBorder?;
+    expect(
+      (shape?.borderRadius as BorderRadius?)?.topLeft.x,
+      12,
+      reason: '菜单项目圆角应为 12dp',
+    );
+    // 原来那套「更多操作」弹窗（含修改简介）已经不在
+    expect(find.text('修改简介'), findsNothing);
+
+    // 点「属性」→ 打开文件属性弹窗（那一行 5 个图标按钮）
+    await tester.tap(
+      find.descendant(of: find.byType(M3eMenuRow), matching: find.text('属性')),
+    );
+    await _settleSheet(tester);
+    expect(find.byType(M3EToggleButton), findsNWidgets(5));
+    expect(_sheetText('修改信息'), findsOneWidget);
+  });
+
   testWidgets('文件属性弹窗：常用操作收成一行图标按钮，列表只剩低频项', (tester) async {
     final app = _FakeApp(_FakeClient());
     await _pumpDrive(tester, app);
@@ -210,12 +286,24 @@ void main() {
     await _settleSheet(tester);
     await tester.tap(find.byTooltip('复制链接'));
     await _settleSheet(tester);
+    // 菜单是弹簧展开的：等它长出来再断言（真机上就是一两帧的事）
+    await tester.pumpAndSettle();
 
-    // 菜单是挂在按钮组上的弹出菜单：属性弹窗还在，菜单在它上面
+    // 菜单是贴在被点那一段下面的弹出菜单：属性弹窗还在，菜单浮在它上面
     expect(find.byType(M3EToggleButton), findsNWidgets(5));
-    expect(find.byType(MenuItemButton), findsNWidgets(2));
+    expect(find.byType(M3eMenuRow), findsNWidgets(2));
     expect(find.text('复制分享链接'), findsOneWidget);
     expect(find.text('复制下载直链'), findsOneWidget);
+
+    // 菜单左缘跟着被点的那一段（而不是整个按钮组），并且贴着它的下边缘
+    final Rect button = tester.getRect(find.byTooltip('复制链接'));
+    final Rect item = tester.getRect(find.byType(M3eMenuRow).first);
+    expect(
+      (item.left - button.left).abs(),
+      lessThan(24),
+      reason: '菜单左缘要对准被点的那一段',
+    );
+    expect(item.top, greaterThan(button.bottom), reason: '菜单要贴在那一段下方');
   });
 
   testWidgets('文件属性弹窗：收藏态没加载出来前，收藏按钮置灰', (tester) async {
@@ -249,7 +337,7 @@ void main() {
 
     // 弹菜单、选「复制分享链接」都不再请求分享信息
     await tester.tap(find.byTooltip('复制链接'));
-    await _settleSheet(tester);
+    await tester.pumpAndSettle();
     expect(client.shareFileCalls, 1);
     await tester.tap(find.text('复制分享链接'));
     await _settleSheet(tester);

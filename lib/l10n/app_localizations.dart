@@ -1826,6 +1826,12 @@ abstract class AppLocalizations {
   /// **'目录属性'**
   String get folderProperties;
 
+  /// No description provided for @properties.
+  ///
+  /// In zh, this message translates to:
+  /// **'属性'**
+  String get properties;
+
   /// No description provided for @sortByName.
   ///
   /// In zh, this message translates to:

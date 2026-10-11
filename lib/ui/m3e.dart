@@ -1,33 +1,36 @@
-import 'package:m3e_core/m3e_core.dart';
+import 'dart:math' as math;
+
+import 'package:m3e_core/m3e_core.dart' as core;
 import 'package:material_ui/material_ui.dart';
+
+import 'reduce_motion.dart';
 
 export 'm3e_pull_refresh.dart';
 
-/// 应用只需要认这一个入口：把用到的 MD3E 组件从 m3e_core 透出来。
+/// 应用只需要认这一个入口：把用到的 MD3E 组件透出来。
+///
+/// 组件（进度条 / 加载指示器 / 按钮组 / 底部弹窗 / 强调排版 / 下拉刷新）都来自
+/// m3e_core；弹出菜单（`showM3eMenu`）是自己画的（见文件末尾的说明）。
+///
+/// 业务代码只认本文件导出的名字，不要直接 import m3e_core。注意 `export` 不会
+/// 让名字在本文件里可见：本文件自己用到的 m3e_core 类型要写 `core.` 前缀。
 export 'package:m3e_core/m3e_core.dart'
     show
-        M3EBottomSheet,
-        M3EBottomSheetStyle,
-        M3EBottomSheetTheme,
         M3EButtonGroupDensity,
         M3EButtonGroupOverflow,
         M3EButtonGroupType,
+        M3EBottomSheet,
+        M3EBottomSheetStyle,
+        M3EBottomSheetTheme,
         M3EButtonShape,
         M3EButtonSize,
         M3EButtonStyle,
-        M3EContainedLoadingIndicator,
-        M3ECircularProgressIndicator,
-        M3ECircularWavyProgressIndicator,
-        M3ELinearProgressIndicator,
-        M3ELinearWavyProgressIndicator,
-        M3ELoadingIndicator,
         M3EMotion,
         M3EToggleButton,
         M3EToggleButtonDecoration,
         M3EToggleButtonGroup,
         M3EToggleButtonGroupAction,
         M3ETypography,
-        Shapes,
         showM3EModalBottomSheet;
 
 /// ────────────────────────────── M3E 排版 ──────────────────────────────
@@ -51,7 +54,11 @@ TextTheme m3eEmphasizedTextTheme(
   double rond = 0,
   double? bodyRond,
 }) {
-  final canon = M3ETypography.emphasized(base, rond: rond, bodyRond: bodyRond);
+  final canon = core.M3ETypography.emphasized(
+    base,
+    rond: rond,
+    bodyRond: bodyRond,
+  );
   TextStyle? weigh(TextStyle? b, TextStyle? c) =>
       b?.copyWith(fontWeight: c?.fontWeight, fontVariations: c?.fontVariations);
   return TextTheme(
@@ -152,7 +159,6 @@ class M3eLoadingIndicator extends StatelessWidget {
     this.color,
     this.semanticsLabel,
     this.semanticsValue,
-    this.shapes,
   });
 
   /// 边长（M3 允许 24–240dp，默认 48dp）。
@@ -161,50 +167,18 @@ class M3eLoadingIndicator extends StatelessWidget {
   final String? semanticsLabel;
   final String? semanticsValue;
 
-  /// 自定义形变序列（至少两个形状）；默认用 M3E 自带的七个形状。
-  final List<Shapes>? shapes;
-
   @override
-  Widget build(BuildContext context) => M3ELoadingIndicator(
+  Widget build(BuildContext context) => core.M3ELoadingIndicator(
     color: color,
-    shapes: shapes,
     constraints: BoxConstraints.tightFor(width: size, height: size),
     semanticsLabel: semanticsLabel,
     semanticsValue: semanticsValue,
   );
 }
 
-/// 带容器的 MD3E Loading indicator：浮在内容之上时用，容器提供额外对比。
-class M3eContainedLoadingIndicator extends StatelessWidget {
-  const M3eContainedLoadingIndicator({
-    super.key,
-    this.size = 48,
-    this.padding = const EdgeInsets.all(8),
-    this.containerColor,
-    this.indicatorColor,
-    this.semanticsLabel,
-    this.shapes,
-  });
-
-  /// 指示器本体边长（不含外层 [padding]）。
-  final double size;
-  final EdgeInsetsGeometry padding;
-  final Color? containerColor;
-  final Color? indicatorColor;
-  final String? semanticsLabel;
-  final List<Shapes>? shapes;
-
-  @override
-  Widget build(BuildContext context) => M3EContainedLoadingIndicator(
-    padding: padding,
-    containerColor: containerColor,
-    indicatorColor: indicatorColor,
-    semanticsLabel: semanticsLabel,
-    shapes: shapes,
-    width: size + padding.horizontal,
-    height: size + padding.vertical,
-  );
-}
+// 注：原先的 M3eContainedLoadingIndicator 一直没人用（下拉刷新小球用的是
+// m3e_core 自带的那个），迁移时直接删掉；需要时用 core 的
+// M3EContainedLoadingIndicator 即可。
 
 /// MD3E 线性进度条。[wavy] 为真时使用波浪形态——适合「时间长、想少一点
 /// 静态感」的过程（例如文件传输），否则用标准平直形态。
@@ -222,7 +196,12 @@ class M3eLinearProgressIndicator extends StatelessWidget {
   /// 0.0–1.0 的确定进度；为空表示不确定进度。
   final double? value;
   final double width;
+
+  /// 平直形态下是轨道粗细，波浪形态下是「容器高度」（波浪会抬高整体高度）。
+  ///
+  /// 留空时用 m3e_core 的默认值：平直 4dp、波浪容器 10dp。
   final double? height;
+
   final Color? color;
   final Color? backgroundColor;
   final bool wavy;
@@ -230,7 +209,7 @@ class M3eLinearProgressIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!wavy) {
-      return M3ELinearProgressIndicator(
+      return core.M3ELinearProgressIndicator(
         value: value,
         width: width,
         minHeight: height ?? 4,
@@ -238,7 +217,7 @@ class M3eLinearProgressIndicator extends StatelessWidget {
         backgroundColor: backgroundColor,
       );
     }
-    return M3ELinearWavyProgressIndicator(
+    return core.M3ELinearWavyProgressIndicator(
       value: value,
       width: width,
       // m3e_core 的默认容器高度：10dp（波浪会抬高整体高度）。
@@ -267,7 +246,7 @@ class M3eCircularProgressIndicator extends StatelessWidget {
   final Color? backgroundColor;
 
   @override
-  Widget build(BuildContext context) => M3ECircularProgressIndicator(
+  Widget build(BuildContext context) => core.M3ECircularProgressIndicator(
     value: value,
     size: size,
     strokeWidth: strokeWidth,
@@ -293,9 +272,9 @@ class M3eConnectedButtonGroup<T> extends StatelessWidget {
     required this.onSelected,
     required this.labelOf,
     this.iconOf,
-    this.size = M3EButtonSize.sm,
+    this.size = core.M3EButtonSize.sm,
     this.expand = true,
-    this.style = M3EButtonStyle.tonal,
+    this.style = core.M3EButtonStyle.tonal,
     this.semanticLabel,
   });
 
@@ -315,13 +294,13 @@ class M3eConnectedButtonGroup<T> extends StatelessWidget {
   final Widget Function(T value)? iconOf;
 
   /// 尺寸（sm=40dp、md=56dp）。默认 sm。
-  final M3EButtonSize size;
+  final core.M3EButtonSize size;
 
   /// 是否让按钮等分整行宽度（整行切换条、弹窗里的一行选项）。
   final bool expand;
 
   /// 按钮配色。
-  final M3EButtonStyle style;
+  final core.M3EButtonStyle style;
 
   /// 整组的读屏名称。
   final String? semanticLabel;
@@ -338,12 +317,12 @@ class M3eConnectedButtonGroup<T> extends StatelessWidget {
         final width = expand && constraints.maxWidth.isFinite && count > 0
             ? (constraints.maxWidth - 2.0 * (count - 1)) / count
             : null;
-        return M3EToggleButtonGroup(
-          type: M3EButtonGroupType.connected,
-          shape: M3EButtonShape.round,
+        return core.M3EToggleButtonGroup(
+          type: core.M3EButtonGroupType.connected,
+          shape: core.M3EButtonShape.round,
           size: size,
           style: style,
-          overflow: M3EButtonGroupOverflow.none,
+          overflow: core.M3EButtonGroupOverflow.none,
           semanticLabel: semanticLabel,
           selectedIndex: selectedIndex < 0 ? null : selectedIndex,
           onSelectedIndexChanged: (index) {
@@ -353,7 +332,7 @@ class M3eConnectedButtonGroup<T> extends StatelessWidget {
           },
           actions: [
             for (final value in values)
-              M3EToggleButtonGroupAction(
+              core.M3EToggleButtonGroupAction(
                 icon: iconOf?.call(value),
                 label: labelOf(value),
                 width: width,
@@ -439,8 +418,8 @@ class M3EIconButtonGroup<T> extends StatelessWidget {
     required this.items,
     this.onPressed,
     this.onToggled,
-    this.size = M3EButtonSize.md,
-    this.style = M3EButtonStyle.tonal,
+    this.size = core.M3EButtonSize.md,
+    this.style = core.M3EButtonStyle.tonal,
     this.spacing = 6,
     this.maxWidth = 80,
     this.minWidth = 48,
@@ -457,11 +436,11 @@ class M3EIconButtonGroup<T> extends StatelessWidget {
   final void Function(T value, bool checked)? onToggled;
 
   /// 按钮尺寸：默认 md（56dp 高）。
-  final M3EButtonSize size;
+  final core.M3EButtonSize size;
 
   /// 配色。M3 规定按钮组用 filled / tonal / outlined / elevated，
   /// 不要用 standard 图标按钮或文字按钮（它们没有容器）；默认 tonal。
-  final M3EButtonStyle style;
+  final core.M3EButtonStyle style;
 
   /// 按钮之间的间距。
   final double spacing;
@@ -517,21 +496,21 @@ class M3EIconButtonGroup<T> extends StatelessWidget {
         );
         // 窄窗口一行放不下时不换行，交给组横向滚动
         final bool scroll = width * count + gap > available + 0.5;
-        return M3EToggleButtonGroup(
-          type: M3EButtonGroupType.standard,
-          shape: M3EButtonShape.round,
+        return core.M3EToggleButtonGroup(
+          type: core.M3EButtonGroupType.standard,
+          shape: core.M3EButtonShape.round,
           size: size,
           style: style,
           spacing: spacing,
           overflow: scroll
-              ? M3EButtonGroupOverflow.scroll
-              : M3EButtonGroupOverflow.none,
+              ? core.M3EButtonGroupOverflow.scroll
+              : core.M3EButtonGroupOverflow.none,
           semanticLabel: semanticLabel,
           selectedIndices: _checkedIndices,
           onSelectedIndicesChanged: _handleSelectionChanged,
           actions: [
             for (final item in items)
-              M3EToggleButtonGroupAction(
+              core.M3EToggleButtonGroupAction(
                 icon: Icon(item.icon),
                 checkedIcon: Icon(item.checkedIcon),
                 tooltip: item.tooltip,
@@ -544,4 +523,322 @@ class M3EIconButtonGroup<T> extends StatelessWidget {
       },
     );
   }
+}
+
+/// ────────────────────────────── 弹出菜单 ──────────────────────────────
+
+/// [showM3eMenu] 里的一项：图标 + 文案 + 选中后返回的值。
+class M3eMenuItem<T> {
+  const M3eMenuItem({
+    required this.value,
+    required this.label,
+    required this.icon,
+  });
+
+  /// 选中这一项时 [showM3eMenu] 返回的值。
+  final T value;
+
+  /// 菜单文案。
+  final String label;
+
+  /// 行首图标。
+  final IconData icon;
+}
+
+/// 贴在被点控件下方弹出的 MD3E 菜单。
+///
+/// [anchor] 是被点控件的全局矩形：菜单贴它下方弹出（[items] 顺序即显示顺序），
+/// 默认左缘对齐；[alignEnd] 为真时右缘对齐——贴右侧的 ⋯ 按钮用这个，菜单不会
+/// 被屏幕右上角夹歪。上下空间不够时翻到锚点上方；左右夹在屏幕边缘内。选中返回
+/// 那一项的 [M3eMenuItem.value]，点别处 / 按返回收起返回 null。
+///
+/// 观感跟主题走：容器 surfaceContainerLow、16dp 圆角、项高 48dp、图标 24dp，
+/// 颜色由 ambient `ColorScheme` 推出，所以深浅色切换跟着变。
+///
+/// 实现说明：没有继续用 material_3_expressive 的 `M3EMenu`——它一旦要滚动，就会
+/// 把所有项并成**一张卡片**塞进 `ListView`：卡片跟着内容一起滚，圆角和阴影被视口
+/// 裁掉；滚动条也是包里硬编码的常显 `RawScrollbar`（和应用里的 FastScrollbar 不是
+/// 一套）。这里自绘弹层：卡片固定，超出高度只让里面的项目滚动，滚动条沿用应用同款
+/// （6dp 圆角滑块、无轨道、滚动时出现）。
+Future<T?> showM3eMenu<T>({
+  required BuildContext context,
+  required Rect anchor,
+  required List<M3eMenuItem<T>> items,
+  bool alignEnd = false,
+}) {
+  // 少动效在这里就定下来：路由的时长是 getter，拿不到 context
+  final bool reduceMotion = reduceMotionOf(context);
+  return Navigator.of(context, rootNavigator: true).push<T>(
+    _M3eMenuRoute<T>(
+      anchor: anchor,
+      items: items,
+      alignEnd: alignEnd,
+      reduceMotion: reduceMotion,
+    ),
+  );
+}
+
+/// 菜单里的一行：图标 + 文案。
+///
+/// 公开是为了让测试能断言「菜单里有哪些行」；业务代码不需要直接用。
+class M3eMenuRow extends StatelessWidget {
+  const M3eMenuRow({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  /// 行首图标。
+  final IconData icon;
+
+  /// 行文案。
+  final String label;
+
+  /// 点这一行。
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    // 用框架的 MenuItemButton 拿到它的默认度量（48dp 高、左右内边距 12dp、
+    // 图标 24dp、labelLarge）和桌面端的悬停 / 焦点 / 键盘行为；圆角按 M3E 的
+    // vertical menu 规格改：项目是卡片里的一块圆角块，圆角 12dp——卡片圆角 16、
+    // 项目左右内缩 4dp，内圆角 = 16 − 4 = 12，符合嵌套规则。
+    return MenuItemButton(
+      onPressed: onTap,
+      style: MenuItemButton.styleFrom(
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(12)),
+        ),
+      ),
+      leadingIcon: Icon(icon, size: 24),
+      child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+    );
+  }
+}
+
+/// [showM3eMenu] 的弹层：固定卡片 + 内部滚动。
+class _M3eMenuRoute<T> extends PopupRoute<T> {
+  _M3eMenuRoute({
+    required this.anchor,
+    required this.items,
+    required this.alignEnd,
+    required this.reduceMotion,
+  });
+
+  final Rect anchor;
+  final List<M3eMenuItem<T>> items;
+  final bool alignEnd;
+  final bool reduceMotion;
+
+  /// M3 菜单：宽度 112–280、项高 48、上下内边距 8、离屏幕边缘 12。
+  static const double _minWidth = 112;
+  static const double _maxWidth = 280;
+  static const double _maxHeight = 320;
+  static const double _rowHeight = 48;
+
+  /// 卡片上下内边距：和项目间隔一致，首 / 末项到卡片的距离 = 项目之间的距离。
+  static const double _verticalPadding = _itemGap;
+
+  /// 项目之间的间隔：M3E vertical menu 里每一项是各自独立的圆角块。
+  static const double _itemGap = 4;
+
+  /// 项目相对卡片的左右内缩；同时决定项目自己的圆角（16 − 4 = 12dp）。
+  static const double _itemInset = 4;
+
+  static const double _screenPadding = 12;
+  static const double _anchorGap = 4;
+  static const double _radius = 16;
+
+  final ScrollController _scroll = ScrollController();
+
+  @override
+  Color? get barrierColor => null;
+
+  @override
+  bool get barrierDismissible => true;
+
+  @override
+  String get barrierLabel => 'Popup menu';
+
+  /// MD3 默认的菜单动效：展开 400ms、收起 150ms；少动效时直接跳过。
+  @override
+  Duration get transitionDuration =>
+      reduceMotion ? Duration.zero : const Duration(milliseconds: 400);
+
+  @override
+  Duration get reverseTransitionDuration =>
+      reduceMotion ? Duration.zero : const Duration(milliseconds: 150);
+
+  /// 错开占展开进度的比例：第一项从 0 开始，最后一项从 [_staggerSpan] 开始，
+  /// 全部在动画结束时到位。
+  static const double _staggerSpan = 0.35;
+
+  /// 项目沿轴线的入场位移（dp）：从锚点那一侧滑到自己的位置。
+  static const double _itemSlide = 8;
+
+  /// 单个项目在当前进度下的「出现程度」：0 = 还没出现，1 = 到位。
+  ///
+  /// 展开时按索引错开；收起（150ms）不叠错开——整块一起走更利落。
+  double _itemProgress(Animation<double> animation, int index) {
+    if (reduceMotion || items.length <= 1) return animation.value;
+    if (animation.status == AnimationStatus.reverse) return animation.value;
+    final double start = _staggerSpan * index / (items.length - 1);
+    final double t = ((animation.value - start) / (1 - _staggerSpan)).clamp(
+      0.0,
+      1.0,
+    );
+    return Curves.easeOutCubic.transform(t);
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget buildPage(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+  ) {
+    final MediaQueryData media = MediaQuery.of(context);
+    final Size screen = media.size;
+    final EdgeInsets viewPadding = media.padding;
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+
+    final double topLimit = viewPadding.top + _screenPadding;
+    final double bottomLimit =
+        screen.height - viewPadding.bottom - _screenPadding;
+    final double contentHeight =
+        items.length * _rowHeight +
+        (items.length - 1) * _itemGap +
+        _verticalPadding * 2;
+    final double below = bottomLimit - (anchor.bottom + _anchorGap);
+    final double above = (anchor.top - _anchorGap) - topLimit;
+    // 先试锚点下方；放不下且上方更宽敞时才翻到上方，避免菜单贴屏幕边
+    final bool opensAbove = below < contentHeight && above > below;
+    final double available = opensAbove ? above : below;
+    // 高度只受「可用空间」和 M3 上限约束：内容更少时卡片按内容收紧
+    final double height = math.min(
+      contentHeight,
+      available.clamp(0.0, _maxHeight),
+    );
+    final double width = (anchor.width + 176)
+        .clamp(_minWidth, _maxWidth)
+        .clamp(0.0, screen.width - _screenPadding * 2);
+    final double left = (alignEnd ? anchor.right - width : anchor.left).clamp(
+      _screenPadding,
+      screen.width - _screenPadding - width,
+    );
+    final double top = opensAbove
+        ? anchor.top - _anchorGap - height
+        : anchor.bottom + _anchorGap;
+
+    // 动画围绕锚点那一侧展开：菜单在锚点下方时顶端固定、向下长出来，反之亦然
+    final Alignment anchorCorner = opensAbove
+        ? (alignEnd ? Alignment.bottomRight : Alignment.bottomLeft)
+        : (alignEnd ? Alignment.topRight : Alignment.topLeft);
+    // 项目沿轴线滑入：在锚点下方时从「更靠近锚点」的位置滑下来
+    final double itemSlide = opensAbove ? _itemSlide : -_itemSlide;
+    return Stack(
+      children: [
+        Positioned(
+          left: left,
+          top: top,
+          width: width,
+          child: AnimatedBuilder(
+            animation: animation,
+            builder: (BuildContext context, Widget? child) {
+              final double t = reduceMotion
+                  ? 1
+                  : Curves.easeOutCubic.transform(animation.value);
+              return Opacity(
+                opacity: t,
+                // 轴向展开：只沿竖直方向长出来，横向不变
+                child: Transform(
+                  alignment: anchorCorner,
+                  transform: Matrix4.diagonal3Values(1, 0.8 + 0.2 * t, 1),
+                  child: child,
+                ),
+              );
+            },
+            child: Material(
+              color: scheme.surfaceContainerLow,
+              // M3 给菜单的是 elevation level 2；这里按需求用 3
+              elevation: 3,
+              surfaceTintColor: Colors.transparent,
+              borderRadius: BorderRadius.circular(_radius),
+              clipBehavior: Clip.antiAlias,
+              child: SizedBox(
+                height: height,
+                // 卡片固定，超出高度的部分在卡片里面滚：滚动条沿用应用同款
+                // （6dp 圆角滑块、无轨道、滚动时才出现）
+                //
+                // 轨道默认会让开状态栏 / 挖孔（读 MediaQuery.padding），菜单是
+                // 浮在屏幕中间的小卡片，用不上这些安全区——清零后滑块才贴着
+                // 卡片的上边和右边（列表页 FastScrollbar 是反着用的：那里要把
+                // 顶栏 / 底栏让出来）。
+                child: MediaQuery(
+                  data: media.copyWith(padding: EdgeInsets.zero),
+                  child: ScrollbarTheme(
+                    data: const ScrollbarThemeData(
+                      trackColor: WidgetStatePropertyAll(Colors.transparent),
+                    ),
+                    child: Scrollbar(
+                      controller: _scroll,
+                      thickness: 6,
+                      radius: const Radius.circular(3),
+                      child: ListView(
+                        controller: _scroll,
+                        padding: const EdgeInsets.symmetric(
+                          vertical: _verticalPadding,
+                          horizontal: _itemInset,
+                        ),
+                        children: [
+                          for (int i = 0; i < items.length; i++) ...[
+                            // 项目之间留间隔，头尾不额外留（M3E 的块状项目）
+                            if (i > 0) const SizedBox(height: _itemGap),
+                            AnimatedBuilder(
+                              animation: animation,
+                              builder: (BuildContext context, Widget? row) {
+                                final double p = _itemProgress(animation, i);
+                                return Opacity(
+                                  opacity: p,
+                                  child: Transform.translate(
+                                    offset: Offset(0, itemSlide * (1 - p)),
+                                    child: row,
+                                  ),
+                                );
+                              },
+                              child: M3eMenuRow(
+                                icon: items[i].icon,
+                                label: items[i].label,
+                                onTap: () =>
+                                    Navigator.of(context).pop(items[i].value),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// 取 [context] 对应渲染对象的全局矩形，给 [showM3eMenu] 当锚点。
+///
+/// 渲染对象还没布局（或已经卸载）时返回 null，调用方直接放弃这次弹菜单即可。
+Rect? m3eMenuAnchorOf(BuildContext context) {
+  final RenderBox? box = context.findRenderObject() as RenderBox?;
+  if (box == null || !box.hasSize) return null;
+  return box.localToGlobal(Offset.zero) & box.size;
 }
