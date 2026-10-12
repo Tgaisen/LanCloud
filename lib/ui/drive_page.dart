@@ -24,10 +24,10 @@ import 'scroll_tint.dart';
 const int kFreeUploadLimit = 100 * 1024 * 1024;
 
 /// 网盘页文件条目 ⋯ 菜单里的动作。
-enum _FileMenuAction { properties, move, editInfo, password, delete }
+enum _FileMenuAction { properties, copyLink, move, editInfo, password, delete }
 
 /// 网盘页文件夹条目 ⋯ 菜单里的动作。
-enum _FolderMenuAction { properties, password, editInfo, delete }
+enum _FolderMenuAction { properties, copyLink, password, editInfo, delete }
 
 class DrivePage extends StatefulWidget {
   const DrivePage({
@@ -1317,6 +1317,7 @@ class _DrivePageState extends State<DrivePage>
               url: direct.url,
               name: direct.name.isEmpty ? name : direct.name,
               referer: info.url,
+              pwd: info.pwd,
               via: app.publicClient,
               refId: '${app.activeUid ?? ''}:$id',
             );
@@ -1805,7 +1806,7 @@ class _DrivePageState extends State<DrivePage>
     });
   }
 
-  /// 点 ⋯：MD3E 弹出菜单（属性 / 移动 / 修改信息 / 访问密码 / 删除）。
+  /// 点 ⋯：MD3E 弹出菜单（属性 / 复制链接 / 访问密码 / 修改信息 / 移动 / 删除）。
   ///
   /// [buttonContext] 是那颗 ⋯ 按钮的 context——菜单贴它下方右对齐弹出。
   Future<void> _fileMenu(LzFile file, BuildContext buttonContext) async {
@@ -1828,6 +1829,11 @@ class _DrivePageState extends State<DrivePage>
           value: _FileMenuAction.properties,
           label: l10n.properties,
           icon: Icons.info_outline,
+        ),
+        M3eMenuItem(
+          value: _FileMenuAction.copyLink,
+          label: l10n.copyLink,
+          icon: Icons.link,
         ),
         M3eMenuItem(
           value: _FileMenuAction.password,
@@ -1855,6 +1861,8 @@ class _DrivePageState extends State<DrivePage>
     switch (action) {
       case _FileMenuAction.properties:
         await _showFileProperties(file);
+      case _FileMenuAction.copyLink:
+        await _copyShareLink(file);
       case _FileMenuAction.move:
         await _moveSingleFile(file);
       case _FileMenuAction.editInfo:
@@ -2139,7 +2147,7 @@ class _DrivePageState extends State<DrivePage>
     }
   }
 
-  /// 点文件夹 ⋯：MD3E 弹出菜单（属性 / 访问密码 / 修改信息 / 删除）。
+  /// 点文件夹 ⋯：MD3E 弹出菜单（属性 / 复制链接 / 访问密码 / 修改信息 / 删除）。
   ///
   /// [buttonContext] 是那颗 ⋯ 按钮的 context（桌面端右键时是整行）——
   /// 菜单贴它下方右对齐弹出。
@@ -2167,6 +2175,11 @@ class _DrivePageState extends State<DrivePage>
           icon: Icons.info_outline,
         ),
         M3eMenuItem(
+          value: _FolderMenuAction.copyLink,
+          label: l10n.copyLink,
+          icon: Icons.link,
+        ),
+        M3eMenuItem(
           value: _FolderMenuAction.password,
           label: l10n.accessPassword,
           icon: Icons.lock_outline,
@@ -2187,6 +2200,8 @@ class _DrivePageState extends State<DrivePage>
     switch (action) {
       case _FolderMenuAction.properties:
         await _showFolderProperties(folder);
+      case _FolderMenuAction.copyLink:
+        await _copyFolderShareLink(folder);
       case _FolderMenuAction.password:
         await _setFolderPasswd(folder);
       case _FolderMenuAction.editInfo:
@@ -2248,6 +2263,7 @@ class _DrivePageState extends State<DrivePage>
         url: direct.url,
         name: direct.name.isEmpty ? file.name : direct.name,
         referer: info.url,
+        pwd: info.pwd,
         via: app.publicClient,
         refId: '${app.activeUid ?? ''}:${file.id}',
       );
@@ -3283,12 +3299,10 @@ class _FolderTile extends StatelessWidget {
                   HideKeepingSpace(
                     hidden: selecting,
                     child: Builder(
-                      builder: (BuildContext buttonContext) => IconButton(
-                        visualDensity: VisualDensity.standard,
-                        iconSize: 18,
+                      builder: (BuildContext buttonContext) => M3eIconButton(
                         tooltip: context.l10n.folderActions,
+                        icon: Icons.more_vert,
                         onPressed: () => onMenu(buttonContext),
-                        icon: const Icon(Icons.more_vert),
                       ),
                     ),
                   ),
@@ -3379,12 +3393,10 @@ class _FileTile extends StatelessWidget {
                   HideKeepingSpace(
                     hidden: selecting,
                     child: Builder(
-                      builder: (BuildContext buttonContext) => IconButton(
-                        visualDensity: VisualDensity.standard,
-                        iconSize: 18,
+                      builder: (BuildContext buttonContext) => M3eIconButton(
                         tooltip: context.l10n.fileActions,
+                        icon: Icons.more_vert,
                         onPressed: () => onMenu(buttonContext),
-                        icon: const Icon(Icons.more_vert),
                       ),
                     ),
                   ),
@@ -3546,12 +3558,9 @@ class _DriveRow extends StatelessWidget {
                 HideKeepingSpace(
                   hidden: selecting,
                   child: Builder(
-                    builder: (BuildContext buttonContext) => IconButton(
+                    builder: (BuildContext buttonContext) => M3eIconButton(
                       tooltip: menuTooltip,
-                      visualDensity: VisualDensity.standard,
-                      iconSize: 20,
-                      color: selected ? scheme.onPrimaryContainer : null,
-                      icon: const Icon(Icons.more_vert),
+                      icon: Icons.more_vert,
                       onPressed: () => onMenu(buttonContext),
                     ),
                   ),

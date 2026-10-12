@@ -365,7 +365,7 @@ abstract class AppLocalizations {
   /// No description provided for @cookiePrivacy.
   ///
   /// In zh, this message translates to:
-  /// **'Cookie 只保存在你手机本地（系统加密存储），不会上传到任何第三方服务器。'**
+  /// **'Cookie 只保存在本地（系统加密存储），不会上传到任何第三方服务器。'**
   String get cookiePrivacy;
 
   /// No description provided for @pleasePasteCookie.
@@ -602,6 +602,72 @@ abstract class AppLocalizations {
   /// **'重试'**
   String get retry;
 
+  /// No description provided for @batchRetry.
+  ///
+  /// In zh, this message translates to:
+  /// **'批量重试'**
+  String get batchRetry;
+
+  /// No description provided for @taskInterrupted.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用已退出，任务中断'**
+  String get taskInterrupted;
+
+  /// No description provided for @retryUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用重启后请重新发起下载'**
+  String get retryUnavailable;
+
+  /// No description provided for @retryUploadUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用重启后无法继续该上传，请重新上传'**
+  String get retryUploadUnavailable;
+
+  /// No description provided for @retryUploadFileGone.
+  ///
+  /// In zh, this message translates to:
+  /// **'源文件已不存在，请重新选择文件上传'**
+  String get retryUploadFileGone;
+
+  /// No description provided for @uploadNeedLogin.
+  ///
+  /// In zh, this message translates to:
+  /// **'请先登录后再上传'**
+  String get uploadNeedLogin;
+
+  /// No description provided for @retryResolving.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在重新解析下载链接…'**
+  String get retryResolving;
+
+  /// No description provided for @retryResolveFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'重新解析下载链接失败：{error}'**
+  String retryResolveFailed(String error);
+
+  /// No description provided for @networkError.
+  ///
+  /// In zh, this message translates to:
+  /// **'网络错误'**
+  String get networkError;
+
+  /// No description provided for @networkErrorHttp.
+  ///
+  /// In zh, this message translates to:
+  /// **'网络错误（HTTP {status}）'**
+  String networkErrorHttp(int status);
+
+  /// No description provided for @downloadBlocked.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载被风控拦截，请稍后重试'**
+  String get downloadBlocked;
+
   /// No description provided for @open.
   ///
   /// In zh, this message translates to:
@@ -695,7 +761,7 @@ abstract class AppLocalizations {
   /// No description provided for @chinese.
   ///
   /// In zh, this message translates to:
-  /// **'中文'**
+  /// **'简体中文'**
   String get chinese;
 
   /// No description provided for @english.
@@ -1217,7 +1283,7 @@ abstract class AppLocalizations {
   /// No description provided for @searchSettings.
   ///
   /// In zh, this message translates to:
-  /// **'搜索设置'**
+  /// **'搜索设置项'**
   String get searchSettings;
 
   /// No description provided for @closeSearch.
@@ -1229,7 +1295,7 @@ abstract class AppLocalizations {
   /// No description provided for @searchPlaceholder.
   ///
   /// In zh, this message translates to:
-  /// **'输入关键词搜索设置，如：域名、收起、下载、并发'**
+  /// **'支持输入关键词搜索'**
   String get searchPlaceholder;
 
   /// No description provided for @noMatch.
@@ -1561,6 +1627,18 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'已加入 {ok} 个下载任务，{failed} 个解析失败'**
   String addedDownloadsPartial(int ok, int failed);
+
+  /// No description provided for @retriedDownloads.
+  ///
+  /// In zh, this message translates to:
+  /// **'已重新加入 {count} 个下载任务'**
+  String retriedDownloads(int count);
+
+  /// No description provided for @retriedDownloadsPartial.
+  ///
+  /// In zh, this message translates to:
+  /// **'已重新加入 {ok} 个下载任务，{failed} 个重试失败'**
+  String retriedDownloadsPartial(int ok, int failed);
 
   /// No description provided for @noLinksToCopy.
   ///
@@ -2729,7 +2807,7 @@ abstract class AppLocalizations {
   /// No description provided for @backupAndRestoreSubtitle.
   ///
   /// In zh, this message translates to:
-  /// **'本地文件与 WebDAV 云端'**
+  /// **'本地备份与 WebDAV 云端'**
   String get backupAndRestoreSubtitle;
 
   /// No description provided for @backupKeywords.

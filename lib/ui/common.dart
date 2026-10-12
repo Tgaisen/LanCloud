@@ -1665,6 +1665,8 @@ class BatchAction extends StatelessWidget {
 /// MD3E 标准列表项：圆角图标块 + 标题 / 副标题 + 尾部操作。
 /// 首页（快速访问、最近使用）、传输、收藏共用，参数与网盘列表项一致：
 /// 内边距 10/8、图标块 42dp（圆角 12）、标题 bodyLarge、副标题 bodyMedium。
+/// 尾部操作按钮统一用 `M3eIconButton`（40dp 圆形容器 / 24dp 图标、触控目标
+/// 48dp、按下有 M3E 形状形变），保证各页的 ⋯ / ✕ 尺寸位置一致。
 ///
 /// 动画与网盘列表同款：
 /// - 挂载时淡入 + 轻微上移（[index] 控制错峰，只取前 8 项）；
@@ -4077,6 +4079,7 @@ Future<bool> downloadShareFile(
       url: direct.url,
       name: direct.name.isEmpty ? (fallbackName ?? 'download') : direct.name,
       referer: url,
+      pwd: pwd,
       via: app.publicClient,
     );
     messenger.showSnackBar(SnackBar(content: Text(l10n.addedToQueue)));
@@ -4126,6 +4129,7 @@ Future<void> downloadShareFiles(
             url: direct.url,
             name: direct.name.isEmpty ? names[i] : direct.name,
             referer: urls[i],
+            pwd: pwd,
             via: app.publicClient,
           );
           added += 1;

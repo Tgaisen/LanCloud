@@ -15,10 +15,13 @@ import 'core/notifications.dart';
 import 'core/platform_support.dart';
 import 'core/share_inbox.dart';
 import 'core/system_motion.dart';
+import 'core/third_party_licenses.dart';
 import 'core/transfer/transfer_manager.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // 开源许可页要展示的素材许可证（第三方图标集等）：先登记再运行
+  registerThirdPartyLicenses();
   // 导航栏沉浸：Android 15+（API 35）系统强制 edge-to-edge，14 及以下
   // 需要显式开启，否则系统导航栏/状态栏会不透明地占掉一条（内容被顶开）。
   // 非 edgeToEdge 模式在 API 36 上会被系统忽略，这里保持与系统一致。

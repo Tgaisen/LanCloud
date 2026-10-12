@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/api/lanzou_client.dart';
 import 'package:lancloud/core/api/models.dart';
@@ -177,7 +178,7 @@ Future<void> _settleSheet(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets('网盘页文件 ⋯ 菜单：五项操作，属性打开属性弹窗', (tester) async {
+  testWidgets('网盘页文件 ⋯ 菜单：六项操作，属性打开属性弹窗', (tester) async {
     final app = _FakeApp(_FakeClient());
     await _pumpDrive(tester, app);
 
@@ -187,8 +188,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
     await tester.pump(const Duration(milliseconds: 600));
 
-    expect(find.byType(M3eMenuRow), findsNWidgets(5));
-    const order = ['属性', '访问密码', '修改信息', '移动', '删除'];
+    expect(find.byType(M3eMenuRow), findsNWidgets(6));
+    const order = ['属性', '复制链接', '访问密码', '修改信息', '移动', '删除'];
     for (final label in order) {
       // 页面本身也有「删除」这类文案，断言限定在菜单行里
       expect(
@@ -200,7 +201,7 @@ void main() {
         reason: label,
       );
     }
-    // 顺序：属性 / 访问密码 / 修改信息 / 移动 / 删除
+    // 顺序：属性 / 复制链接 / 访问密码 / 修改信息 / 移动 / 删除
     final tops = [
       for (final label in order)
         tester
@@ -251,6 +252,40 @@ void main() {
     await _settleSheet(tester);
     expect(find.byType(M3EToggleButton), findsNWidgets(5));
     expect(_sheetText('修改信息'), findsOneWidget);
+  });
+
+  testWidgets('网盘页文件 ⋯ 菜单：复制链接复制的是分享链接（带提取码）', (tester) async {
+    final client = _FakeClient();
+    final app = _FakeApp(client);
+    final clipboard = <MethodCall>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+          if (call.method == 'Clipboard.setData') clipboard.add(call);
+          return null;
+        });
+    addTearDown(
+      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, null),
+    );
+
+    await _pumpDrive(tester, app);
+    await tester.tap(find.byTooltip('文件操作'));
+    // ⋯ 菜单是弹簧展开的：pump 到它长出来
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pump(const Duration(milliseconds: 600));
+
+    await tester.tap(
+      find.descendant(of: find.byType(M3eMenuRow), matching: find.text('复制链接')),
+    );
+    await tester.pumpAndSettle();
+
+    // 和属性弹窗一样：现取分享信息，把链接（含提取码）写进剪贴板
+    expect(client.shareFileCalls, 1);
+    expect(clipboard, hasLength(1));
+    final copied = '${(clipboard.single.arguments as Map)['text']}';
+    expect(copied, contains(_FakeClient.fileUrl));
+    expect(copied, contains('abcd'));
   });
 
   testWidgets('宽屏：新建文件夹弹窗宽度固定，不超过 M3 上限 560', (tester) async {
@@ -424,7 +459,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
 
     final rows = find.byType(M3eMenuRow);
-    expect(rows, findsNWidgets(5));
+    expect(rows, findsNWidgets(6));
     // 卡片 = 菜单行最近的 Material 祖先
     final Rect card = tester.getRect(
       find.ancestor(of: rows.first, matching: find.byType(Material)).first,
@@ -550,7 +585,7 @@ void main() {
     expect(_toggleButton(tester, '添加收藏').checked, isFalse);
   });
 
-  testWidgets('网盘页文件夹 ⋯ 菜单：四项操作，属性打开属性弹窗', (tester) async {
+  testWidgets('网盘页文件夹 ⋯ 菜单：五项操作，属性打开属性弹窗', (tester) async {
     final client = _FakeClient();
     final app = _FakeApp(client);
     await _pumpDrive(tester, app);
@@ -561,8 +596,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
     await tester.pump(const Duration(milliseconds: 600));
 
-    // 文件夹菜单：属性 / 访问密码 / 修改信息 / 删除（文件夹没有「移动」）
-    const order = ['属性', '访问密码', '修改信息', '删除'];
+    // 文件夹菜单：属性 / 复制链接 / 访问密码 / 修改信息 / 删除（文件夹没有「移动」）
+    const order = ['属性', '复制链接', '访问密码', '修改信息', '删除'];
     expect(find.byType(M3eMenuRow), findsNWidgets(order.length));
     final tops = [
       for (final label in order)

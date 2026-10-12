@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
 import '../api/lanzou_client.dart';
+import '../api/models.dart';
 import '../app_controller.dart';
 import '../notifications.dart';
 import '../platform_support.dart';
@@ -27,6 +28,7 @@ class TransferTask {
     this.localFilePath = '',
     this.url = '',
     this.referer = '',
+    this.pwd = '',
     this.streamFactory,
     this.sourceSize = 0,
     this.via,
@@ -39,11 +41,22 @@ class TransferTask {
   final String accountUid;
   final String folderId;
   final String localFilePath;
-  final String url;
+
+  /// 解析后的直链。应用重启后为空，重试时会按 [referer] 重新解析。
+  String url;
+
+  /// 分享链接（下载来源）：重试时用它重新解析直链，也用作下载请求的 Referer。
   final String referer;
+
+  /// 分享密码（无密码为空串）：应用重启后重试解析用。
+  final String pwd;
+
   final Stream<List<int>> Function()? streamFactory;
   final int sourceSize;
-  final LanzouClient? via;
+
+  /// 下载走的客户端（带解析时拿到的 Cookie 等）；重启后重试时会换回
+  /// 新解析用的客户端，所以不是 final。
+  LanzouClient? via;
   final String? refId;
   final CancelToken cancelToken = CancelToken();
 
@@ -74,6 +87,10 @@ class TransferManager extends ChangeNotifier {
   int _seq = 0;
   bool _serviceRunning = false;
 
+  /// 测试注入：重启后重试时用来重新解析直链；默认走 [AppController.publicClient]。
+  @visibleForTesting
+  Future<DirectFile> Function(String shareUrl, String pwd)? debugResolveShare;
+
   void addTaskListener(void Function(TransferTask) listener) {
     _taskListeners.add(listener);
   }
@@ -98,14 +115,20 @@ class TransferManager extends ChangeNotifier {
         if (status == TransferStatus.running ||
             status == TransferStatus.queued) {
           status = TransferStatus.failed;
-          error = '应用已退出，任务中断';
+          error = NotificationService.i18n?.taskInterrupted ?? '应用已退出，任务中断';
         }
         final task = TransferTask(
           id: '${row['id']}',
           kind: kind,
           name: '${row['name']}',
-          accountUid: '',
+          // 上传要带账号 Cookie；老记录没存账号时退回到当前激活账号
+          accountUid: '${row['account'] ?? ''}'.isEmpty
+              ? (_app.activeUid ?? '')
+              : '${row['account']}',
           folderId: '${row['folder_id'] ?? ''}',
+          localFilePath: '${row['local_path'] ?? ''}',
+          referer: '${row['referer'] ?? ''}',
+          pwd: '${row['pwd'] ?? ''}',
           refId: '${row['ref'] ?? ''}'.isEmpty ? null : '${row['ref']}',
         );
         task.total = (row['total'] as int?) ?? 0;
@@ -137,6 +160,10 @@ class TransferManager extends ChangeNotifier {
         savedPath: task.savedPath ?? '',
         ref: task.refId ?? '',
         folderId: task.folderId,
+        referer: task.referer,
+        pwd: task.pwd,
+        localPath: task.localFilePath,
+        account: task.accountUid,
       );
     } catch (_) {}
   }
@@ -173,6 +200,7 @@ class TransferManager extends ChangeNotifier {
     required String name,
     String accountUid = '',
     String referer = '',
+    String pwd = '',
     int size = 0,
     LanzouClient? via,
     String? refId,
@@ -184,6 +212,7 @@ class TransferManager extends ChangeNotifier {
       accountUid: accountUid.isEmpty ? (_app.activeUid ?? '') : accountUid,
       url: url,
       referer: referer,
+      pwd: pwd,
       via: via,
       refId: refId,
     )..total = size;
@@ -207,18 +236,73 @@ class TransferManager extends ChangeNotifier {
     _pump();
   }
 
-  void retry(String id) {
+  /// 重试失败任务。
+  ///
+  /// 下载任务在应用重启后只剩分享链接（[TransferTask.referer]）与密码，
+  /// 这里先重新解析出直链再入队；解析要走网络，所以是异步的。
+  /// 返回需要提示给用户的错误信息；成功入队（或无需处理）返回 null。
+  Future<String?> retry(String id) async {
     final task = _find(id);
-    if (task == null || task.status != TransferStatus.failed) return;
-    if (task.kind == TransferKind.upload && task.localFilePath.isEmpty) {
-      task.error = '应用重启后无法继续该上传，请重新上传';
-      notifyListeners();
-      return;
+    if (task == null || task.status != TransferStatus.failed) return null;
+    final i18n = NotificationService.i18n;
+    if (task.kind == TransferKind.upload) {
+      if (task.localFilePath.isNotEmpty) {
+        // 源文件路径已持久化，重启后一般还在缓存目录里；被清理掉时提示重选
+        if (!File(task.localFilePath).existsSync()) {
+          final message = i18n?.retryUploadFileGone ?? '源文件已不存在，请重新选择文件上传';
+          task.error = message;
+          _persist(task);
+          notifyListeners();
+          return message;
+        }
+      } else if (task.streamFactory == null) {
+        // 旧记录没留源文件路径，来源也只是一次性的流：没法继续
+        final message = i18n?.retryUploadUnavailable ?? '应用重启后无法继续该上传，请重新上传';
+        task.error = message;
+        _persist(task);
+        notifyListeners();
+        return message;
+      }
+      // 上传必须带账号 Cookie：账号被移除、或记录里没有可用账号时先拦下，
+      // 别发出请求让服务端回 "login not"
+      if (_uploadAccountUid(task).isEmpty) {
+        final message = i18n?.uploadNeedLogin ?? '请先登录后再上传';
+        task.error = message;
+        _persist(task);
+        notifyListeners();
+        return message;
+      }
     }
     if (task.kind == TransferKind.download && task.url.isEmpty) {
-      task.error = '应用重启后请重新发起下载';
+      if (task.referer.isEmpty) {
+        // 旧记录没留分享链接：解析不回来，只能重新发起
+        final message = i18n?.retryUnavailable ?? '应用重启后请重新发起下载';
+        task.error = message;
+        _persist(task);
+        notifyListeners();
+        return message;
+      }
+      // 解析期间列表里先给出反馈；失败时保留错误提示
+      task.error = i18n?.retryResolving ?? '正在重新解析下载链接…';
       notifyListeners();
-      return;
+      try {
+        final direct =
+            await (debugResolveShare?.call(task.referer, task.pwd) ??
+                _app.publicClient.resolveFileShare(
+                  task.referer,
+                  pwd: task.pwd,
+                ));
+        if (task.removed) return null;
+        task.url = direct.url;
+        task.via = _app.publicClient;
+      } catch (e) {
+        if (task.removed) return null;
+        final message = i18n?.retryResolveFailed('$e') ?? '重新解析下载链接失败：$e';
+        task.error = message;
+        _persist(task);
+        notifyListeners();
+        return message;
+      }
     }
     task.status = TransferStatus.queued;
     task.error = null;
@@ -226,6 +310,7 @@ class TransferManager extends ChangeNotifier {
     _persist(task);
     notifyListeners();
     _pump();
+    return null;
   }
 
   void clearFinished() {
@@ -437,8 +522,24 @@ class TransferManager extends ChangeNotifier {
     }
   }
 
+  /// 上传要用的账号 uid：任务自带账号优先，老记录退回到当前激活账号；
+  /// 账号不在账号列表里（被移除 / 已登出）时返回空串。
+  String _uploadAccountUid(TransferTask task) {
+    final uid = task.accountUid.isEmpty
+        ? (_app.activeUid ?? '')
+        : task.accountUid;
+    if (uid.isEmpty || _app.accounts.byUid(uid) == null) return '';
+    return uid;
+  }
+
   Future<void> _runUpload(TransferTask task) async {
-    final client = _app.clientFor(task.accountUid);
+    final uid = _uploadAccountUid(task);
+    if (uid.isEmpty) {
+      throw LanzouException(
+        NotificationService.i18n?.uploadNeedLogin ?? '请先登录后再上传',
+      );
+    }
+    final client = _app.clientFor(uid);
     await client.uploadFile(
       name: task.name,
       folderId: task.folderId,
@@ -496,7 +597,9 @@ class TransferManager extends ChangeNotifier {
         if (text.contains('acw_sc__v2') || text.startsWith('<!DOCTYPE')) {
           await file.delete();
           task.savedPath = null;
-          throw const LanzouException('下载被风控拦截，请稍后重试');
+          throw LanzouException(
+            NotificationService.i18n?.downloadBlocked ?? '下载被风控拦截，请稍后重试',
+          );
         }
       }
       if (treeUri == null) {
@@ -566,8 +669,11 @@ class TransferManager extends ChangeNotifier {
   }
 
   String _dioMessage(DioException e) {
+    final i18n = NotificationService.i18n;
     final status = e.response?.statusCode;
-    if (status != null) return '网络错误（HTTP $status）';
-    return e.message ?? '网络错误';
+    if (status != null) {
+      return i18n?.networkErrorHttp(status) ?? '网络错误（HTTP $status）';
+    }
+    return e.message ?? i18n?.networkError ?? '网络错误';
   }
 }

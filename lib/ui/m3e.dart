@@ -1,3 +1,6 @@
+import 'dart:math' as math;
+
+import 'package:flutter/physics.dart';
 import 'package:m3e_core/m3e_core.dart' as core;
 import 'package:material_ui/material_ui.dart';
 
@@ -554,6 +557,141 @@ class M3EIconButtonGroup<T> extends StatelessWidget {
   }
 }
 
+/// ──────────────────── 列表行尾的标准图标按钮 ────────────────────
+
+/// MD3E 标准（standard）图标按钮：列表行尾的 ⋯ / ✕ 这类低强调操作统一用它。
+///
+/// 参数（M3E 图标按钮规格）：
+/// - 尺寸 Small（默认档）：40dp 圆形容器 + 24dp 图标；
+/// - 形态 round：静止圆角 CornerFull（正圆），按下形变为 CornerSmall（8dp）；
+/// - 配色 standard：图标用 on surface variant，容器静止时不可见，只有状态层
+///   （悬停 8%、聚焦 / 按下 10%）；
+/// - 触控目标 48dp（M3E 要求 ≥48dp，嵌套在列表项里也一样，且不要用密度压缩）。
+///
+/// 按下形变是形状动画，用 expressive fast spatial 弹簧（stiffness 800 /
+/// damping 0.6，形状类动效属于 spatial）；系统要求少动效时直接跳到终值。
+class M3eIconButton extends StatefulWidget {
+  const M3eIconButton({
+    super.key,
+    required this.icon,
+    required this.tooltip,
+    this.onPressed,
+  });
+
+  final IconData icon;
+
+  /// 悬停 / 长按提示，同时充当读屏名称（描述动作，不是图标名）。
+  final String tooltip;
+
+  /// null = 禁用：图标 38% 透明度，不响应点击。
+  final VoidCallback? onPressed;
+
+  @override
+  State<M3eIconButton> createState() => _M3eIconButtonState();
+}
+
+class _M3eIconButtonState extends State<M3eIconButton>
+    with SingleTickerProviderStateMixin {
+  /// Small 尺寸：40dp 容器 / 24dp 图标；触控目标 ≥48dp。
+  static const double _container = 40;
+  static const double _icon = 24;
+  static const double _target = 48;
+
+  /// 静止 = CornerFull（正圆，半径取容器一半），按下 = CornerSmall（8dp）。
+  static const double _restRadius = _container / 2;
+  static const double _pressedRadius = 8;
+
+  /// 0 = 未按下（正圆），1 = 按下（8dp 圆角）。
+  late final AnimationController _morph = AnimationController.unbounded(
+    vsync: this,
+    value: 0,
+  );
+
+  @override
+  void dispose() {
+    _morph.dispose();
+    super.dispose();
+  }
+
+  void _setPressed(bool pressed) {
+    final double target = pressed ? 1 : 0;
+    if (reduceMotionOf(context)) {
+      _morph.value = target;
+      return;
+    }
+    final motion = core.M3EMotion.expressiveSpatialFast;
+    _morph.animateWith(
+      SpringSimulation(
+        SpringDescription.withDampingRatio(
+          mass: 1,
+          stiffness: motion.stiffness,
+          ratio: motion.damping,
+        ),
+        _morph.value,
+        target,
+        _morph.velocity,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final enabled = widget.onPressed != null;
+    final iconColor = scheme.onSurfaceVariant.withValues(
+      alpha: enabled ? 1 : 0.38,
+    );
+    final layer = scheme.onSurfaceVariant;
+    return Semantics(
+      label: widget.tooltip,
+      button: true,
+      enabled: enabled,
+      onTap: widget.onPressed,
+      excludeSemantics: true,
+      child: Tooltip(
+        message: widget.tooltip,
+        child: SizedBox.square(
+          dimension: _target,
+          child: Center(
+            child: AnimatedBuilder(
+              animation: _morph,
+              builder: (BuildContext context, _) {
+                final t = _morph.value.clamp(0.0, 1.0);
+                final shape = RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(
+                    _restRadius + (_pressedRadius - _restRadius) * t,
+                  ),
+                );
+                return Material(
+                  type: MaterialType.transparency,
+                  shape: shape,
+                  clipBehavior: Clip.antiAlias,
+                  child: InkResponse(
+                    onTap: widget.onPressed,
+                    onHighlightChanged: _setPressed,
+                    containedInkWell: true,
+                    customBorder: shape,
+                    hoverColor: layer.withValues(alpha: 0.08),
+                    focusColor: layer.withValues(alpha: 0.1),
+                    highlightColor: layer.withValues(alpha: 0.1),
+                    splashColor: layer.withValues(alpha: 0.1),
+                    child: SizedBox.square(
+                      dimension: _container,
+                      child: Center(
+                        child: Icon(widget.icon, size: _icon, color: iconColor),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// ────────────────────────────── 弹出菜单 ──────────────────────────────
 
 /// [showM3eMenu] 里的一项：图标 + 文案 + 选中后返回的值。
@@ -646,6 +784,11 @@ class M3eMenuRow extends StatelessWidget {
     // 项目左右内缩 4dp，内圆角 = 16 − 4 = 12，符合嵌套规则。
     return MenuItemButton(
       onPressed: onTap,
+      // 菜单里的项目是竖排文案：必须显式指定 vertical，MenuItemButton 才会把
+      // 文案放进 Expanded（+ClipRect）里约束住；默认的 horizontal 是给 MenuBar
+      // 用的，文案会拿到无约束宽度、直接溢出卡片（长文案就是被卡片裁掉）。
+      // 约束住之后，超出菜单最大宽度（280）的长文案按规范走省略号。
+      overflowAxis: Axis.vertical,
       style: MenuItemButton.styleFrom(
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.all(Radius.circular(12)),
@@ -731,6 +874,38 @@ class _M3eMenuRoute<T> extends PopupRoute<T> {
     return Curves.easeOutCubic.transform(t);
   }
 
+  /// 菜单宽度按内容算（M3：112–280dp），不跟锚点宽度绑定：
+  /// 逐项量「左右内边距 + 图标 + 图标与文案的间距 + 文案宽度」，取最宽的一项。
+  /// 文案样式与 [MenuItemButton] 的默认一致（labelLarge）；量出来的宽度超过
+  /// 280dp / 屏幕可用宽度时由行内省略号截断（见 [M3eMenuRow]）。
+  double _contentWidth(BuildContext context, Size screen) {
+    final theme = Theme.of(context);
+    final density = theme.visualDensity;
+    // MenuItemButton（M3 默认）的左右内边距：max(8, 12 + 视觉密度)。
+    // 字号放大时框架会把内边距收窄到 8，这里保守取基础值，只多不少。
+    final double padding = math.max(8, 12 + density.baseSizeAdjustment.dx);
+    // 图标与文案之间的间距：max(4, 12 + 密度)。
+    final double gap = math.max(4, 12 + density.horizontal * 2);
+    final TextStyle? labelStyle = theme.textTheme.labelLarge;
+    final TextScaler textScaler = MediaQuery.textScalerOf(context);
+    final TextDirection direction = Directionality.of(context);
+    var widest = 0.0;
+    for (final M3eMenuItem<T> item in items) {
+      final TextPainter painter = TextPainter(
+        text: TextSpan(text: item.label, style: labelStyle),
+        maxLines: 1,
+        textDirection: direction,
+        textScaler: textScaler,
+      )..layout();
+      final double row = padding * 2 + 24 + gap + painter.width;
+      if (row > widest) widest = row;
+    }
+    return (widest + _itemInset * 2).clamp(
+      _minWidth,
+      math.min(_maxWidth, screen.width - _screenPadding * 2),
+    );
+  }
+
   @override
   void dispose() {
     _scroll.dispose();
@@ -768,9 +943,7 @@ class _M3eMenuRoute<T> extends PopupRoute<T> {
     // 卡片最高只能到「可用空间」和 M3 上限，具体多高由内容决定：放得下就贴着
     // 内容（不留多余空白），放不下才在里面滚。
     final double maxHeight = available.clamp(0.0, _maxHeight);
-    final double width = (anchor.width + 176)
-        .clamp(_minWidth, _maxWidth)
-        .clamp(0.0, screen.width - _screenPadding * 2);
+    final double width = _contentWidth(context, screen);
     final double left = (alignEnd ? anchor.right - width : anchor.left).clamp(
       _screenPadding,
       screen.width - _screenPadding - width,

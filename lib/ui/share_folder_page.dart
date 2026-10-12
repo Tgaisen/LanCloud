@@ -404,9 +404,8 @@ class _ShareFolderPageState extends State<ShareFolderPage>
         M3eMenuItem(
           value: _ShareItemAction.favorite,
           label: favorited ? l10n.unfavorite : l10n.favorite,
-          icon: Icons.star_outline,
-          // 已收藏用实心星（Material Symbols 的 FILL 轴）
-          iconFill: favorited ? 1 : 0,
+          // 取消收藏用 Remix 的 star-off-line（描边）；「收藏」保持描边星星
+          icon: favorited ? Icons.star_off_line : Icons.star_outline,
         ),
       ],
     );
@@ -462,11 +461,9 @@ class _ShareFolderPageState extends State<ShareFolderPage>
       HideKeepingSpace(
         hidden: _selecting,
         child: Builder(
-          builder: (BuildContext buttonContext) => IconButton(
-            visualDensity: VisualDensity.standard,
-            iconSize: 20,
+          builder: (BuildContext buttonContext) => M3eIconButton(
             tooltip: context.l10n.moreActions,
-            icon: const Icon(Icons.more_vert),
+            icon: Icons.more_vert,
             onPressed: () => _showItemMenu(
               anchorContext: buttonContext,
               folder: folder,

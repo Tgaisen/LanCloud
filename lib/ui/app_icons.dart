@@ -38,6 +38,7 @@ class Icons {
   static const IconData cloud_upload_outlined = Symbols.cloud_upload;
   static const IconData content_paste_go = Symbols.content_paste_go;
   static const IconData contrast = Symbols.contrast;
+  static const IconData contract = Symbols.contract;
   static const IconData copy = Symbols.content_copy;
   static const IconData create_new_folder_outlined = Symbols.create_new_folder;
   static const IconData dark_mode_outlined = Symbols.dark_mode;
@@ -112,6 +113,7 @@ class Icons {
   static const IconData select_all = Symbols.select_all;
   static const IconData settings_outlined = Symbols.settings;
   static const IconData shield = Symbols.shield;
+  static const IconData shield_person = Symbols.shield_person;
   static const IconData settings_backup_restore =
       Symbols.settings_backup_restore;
   static const IconData share_outlined = Symbols.share;
@@ -120,11 +122,21 @@ class Icons {
   static const IconData speed = Symbols.speed;
   static const IconData star_border = Symbols.star_border;
   static const IconData star_outline = Symbols.star;
+
+  /// 「取消收藏」用的星形划斜杠（描边）：来自 Remix Icon 图标集的
+  /// star-off-line（U+F59A），笔画粗细与 Material Symbols 一致。
+  /// 字形随仓库自带的单字形字体子集（assets/fonts/remixicon_subset.ttf，
+  /// 见 pubspec），许可证见设置-关于-开源许可。
+  static const IconData star_off_line = IconData(
+    0xf59a,
+    fontFamily: 'RemixIcon',
+  );
   static const IconData swap_vert = Symbols.swap_vert;
   static const IconData task_alt = Symbols.task_alt;
   static const IconData swap_vert_outlined = Symbols.swap_vert;
   static const IconData swipe = Symbols.swipe;
   static const IconData switch_account_outlined = Symbols.switch_account;
+  static const IconData sync = Symbols.sync;
   static const IconData table_chart_outlined = Symbols.table_chart;
   static const IconData timer_outlined = Symbols.timer;
   static const IconData translate = Symbols.translate;

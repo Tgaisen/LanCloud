@@ -258,8 +258,12 @@ class _TransfersPageState extends State<TransfersPage>
   }
 
   /// 重试选中的失败项（其它状态忽略）。
-  void _retrySelected() {
+  ///
+  /// 重启后的下载任务要先重新解析直链，所以整批都放在进度弹窗里跑
+  /// （和首页批量下载同一套样式），结束后提示结果。
+  Future<void> _retrySelected() async {
     final manager = context.read<TransferManager>();
+    final l10n = context.l10n;
     final failed = _tasksOf(manager)
         .where(
           (t) => _selected.contains(t.id) && t.status == TransferStatus.failed,
@@ -267,9 +271,33 @@ class _TransfersPageState extends State<TransfersPage>
         .toList();
     if (failed.isEmpty) return;
     _exitSelection();
-    for (final task in failed) {
-      manager.retry(task.id);
-    }
+    var failedCount = 0;
+    await runBatchWithProgress(
+      context,
+      title: l10n.batchRetry,
+      total: failed.length,
+      run: (report) async {
+        for (var i = 0; i < failed.length; i++) {
+          final task = failed[i];
+          report(i + 1, task.name);
+          final message = await manager.retry(task.id);
+          if (message != null) failedCount += 1;
+        }
+      },
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          failedCount == 0
+              ? l10n.retriedDownloads(failed.length)
+              : l10n.retriedDownloadsPartial(
+                  failed.length - failedCount,
+                  failedCount,
+                ),
+        ),
+      ),
+    );
   }
 
   /// 打开已下载的文件（与点击条目同一个入口，测试注入的 openFile 也走这里）。
@@ -345,7 +373,12 @@ class _TransfersPageState extends State<TransfersPage>
           mime: _shareMimeFor(task.name),
         );
       case _TransferMenuAction.retry:
-        manager.retry(task.id);
+        final message = await manager.retry(task.id);
+        if (!mounted) return;
+        if (message != null) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(message)));
+        }
       case _TransferMenuAction.removeRecord:
         await _removeTask(task);
       case _TransferMenuAction.removeRecordAndFile:
@@ -868,21 +901,17 @@ class _TransferTile extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (active)
-                IconButton(
-                  visualDensity: VisualDensity.standard,
-                  iconSize: 20,
+                M3eIconButton(
                   tooltip: l10n.cancel,
-                  icon: const Icon(Icons.close),
+                  icon: Icons.close,
                   onPressed: () => manager.cancel(task.id),
                 ),
               // 完成 / 失败 / 删除这些操作都收进 ⋯ 菜单（菜单项按状态给出），
               // 行里只留「取消」这颗抢时间的按钮
               Builder(
-                builder: (BuildContext buttonContext) => IconButton(
-                  visualDensity: VisualDensity.standard,
-                  iconSize: 20,
+                builder: (BuildContext buttonContext) => M3eIconButton(
                   tooltip: l10n.moreActions,
-                  icon: const Icon(Icons.more_vert),
+                  icon: Icons.more_vert,
                   onPressed: () => onMenu(buttonContext),
                 ),
               ),

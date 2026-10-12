@@ -155,7 +155,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get saveAndLogin => '保存并登录';
 
   @override
-  String get cookiePrivacy => 'Cookie 只保存在你手机本地（系统加密存储），不会上传到任何第三方服务器。';
+  String get cookiePrivacy => 'Cookie 只保存在本地（系统加密存储），不会上传到任何第三方服务器。';
 
   @override
   String get pleasePasteCookie => '请输入 Cookie';
@@ -281,6 +281,43 @@ class AppLocalizationsZh extends AppLocalizations {
   String get retry => '重试';
 
   @override
+  String get batchRetry => '批量重试';
+
+  @override
+  String get taskInterrupted => '应用已退出，任务中断';
+
+  @override
+  String get retryUnavailable => '应用重启后请重新发起下载';
+
+  @override
+  String get retryUploadUnavailable => '应用重启后无法继续该上传，请重新上传';
+
+  @override
+  String get retryUploadFileGone => '源文件已不存在，请重新选择文件上传';
+
+  @override
+  String get uploadNeedLogin => '请先登录后再上传';
+
+  @override
+  String get retryResolving => '正在重新解析下载链接…';
+
+  @override
+  String retryResolveFailed(String error) {
+    return '重新解析下载链接失败：$error';
+  }
+
+  @override
+  String get networkError => '网络错误';
+
+  @override
+  String networkErrorHttp(int status) {
+    return '网络错误（HTTP $status）';
+  }
+
+  @override
+  String get downloadBlocked => '下载被风控拦截，请稍后重试';
+
+  @override
   String get open => '打开';
 
   @override
@@ -328,7 +365,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get followSystem => '跟随系统';
 
   @override
-  String get chinese => '中文';
+  String get chinese => '简体中文';
 
   @override
   String get english => 'English';
@@ -597,13 +634,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutText => '自用的蓝奏云第三方客户端，基于非官方接口实现，请勿传播或用于商业用途。';
 
   @override
-  String get searchSettings => '搜索设置';
+  String get searchSettings => '搜索设置项';
 
   @override
   String get closeSearch => '关闭搜索';
 
   @override
-  String get searchPlaceholder => '输入关键词搜索设置，如：域名、收起、下载、并发';
+  String get searchPlaceholder => '支持输入关键词搜索';
 
   @override
   String get noMatch => '没有匹配的设置项';
@@ -801,6 +838,16 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String addedDownloadsPartial(int ok, int failed) {
     return '已加入 $ok 个下载任务，$failed 个解析失败';
+  }
+
+  @override
+  String retriedDownloads(int count) {
+    return '已重新加入 $count 个下载任务';
+  }
+
+  @override
+  String retriedDownloadsPartial(int ok, int failed) {
+    return '已重新加入 $ok 个下载任务，$failed 个重试失败';
   }
 
   @override
@@ -1431,7 +1478,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get backupAndRestore => '备份与恢复';
 
   @override
-  String get backupAndRestoreSubtitle => '本地文件与 WebDAV 云端';
+  String get backupAndRestoreSubtitle => '本地备份与 WebDAV 云端';
 
   @override
   String get backupKeywords => 'backup restore webdav cookie 备份 恢复 云端 导出';

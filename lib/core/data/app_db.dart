@@ -95,7 +95,7 @@ class AppDb {
     final path = p.join(await _databaseDirectory(), 'lancloud.db');
     return openDatabase(
       path,
-      version: 7,
+      version: 10,
       onCreate: (db, version) async {
         await db.execute(
           'CREATE TABLE favorites('
@@ -149,6 +149,10 @@ class AppDb {
           'saved_path TEXT DEFAULT "",'
           'ref TEXT DEFAULT "",'
           'folder_id TEXT DEFAULT "",'
+          'referer TEXT DEFAULT "",'
+          'pwd TEXT DEFAULT "",'
+          'local_path TEXT DEFAULT "",'
+          'account TEXT DEFAULT "",'
           'created_at INTEGER NOT NULL)',
         );
       },
@@ -227,6 +231,29 @@ class AppDb {
             'CREATE INDEX IF NOT EXISTS idx_favorites_ref ON favorites(ref)',
           );
         }
+        if (oldVersion < 8) {
+          // 下载任务重启后重试：留一份分享链接（+密码），用来重新解析直链
+          await db.execute(
+            'ALTER TABLE transfers ADD COLUMN referer TEXT DEFAULT ""',
+          );
+          await db.execute(
+            'ALTER TABLE transfers ADD COLUMN pwd TEXT DEFAULT ""',
+          );
+        }
+        if (oldVersion < 9) {
+          // 上传任务重启后重试：留一份源文件路径（选文件 / 拖拽会先落到
+          // 应用缓存目录，重启后路径仍然可用；缓存被清掉时重试会提示重新选择）
+          await db.execute(
+            'ALTER TABLE transfers ADD COLUMN local_path TEXT DEFAULT ""',
+          );
+        }
+        if (oldVersion < 10) {
+          // 上传要带账号 Cookie：把任务所属账号也持久化，重启后重试才不会
+          // 拿着空账号去上传（服务端会回 "login not"）
+          await db.execute(
+            'ALTER TABLE transfers ADD COLUMN account TEXT DEFAULT ""',
+          );
+        }
       },
     );
   }
@@ -287,6 +314,10 @@ class AppDb {
     String savedPath = '',
     String ref = '',
     String folderId = '',
+    String referer = '',
+    String pwd = '',
+    String localPath = '',
+    String account = '',
   }) async {
     final database = await db;
     final values = <String, Object?>{
@@ -299,6 +330,10 @@ class AppDb {
       'saved_path': savedPath,
       'ref': ref,
       'folder_id': folderId,
+      'referer': referer,
+      'pwd': pwd,
+      'local_path': localPath,
+      'account': account,
     };
     final updated = await database.update(
       'transfers',

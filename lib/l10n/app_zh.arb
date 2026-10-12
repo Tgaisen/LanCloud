@@ -75,7 +75,7 @@
   "cookieHint": "ylogin=1234567; phpdisk_info=xxxxxx...",
   "verifying": "正在验证…",
   "saveAndLogin": "保存并登录",
-  "cookiePrivacy": "Cookie 只保存在你手机本地（系统加密存储），不会上传到任何第三方服务器。",
+  "cookiePrivacy": "Cookie 只保存在本地（系统加密存储），不会上传到任何第三方服务器。",
   "pleasePasteCookie": "请输入 Cookie",
   "cookieMissingYlogin": "未找到 ylogin，请确认复制的是完整 Cookie",
   "cookieInvalid": "Cookie 无效或已过期，请重新获取",
@@ -130,6 +130,27 @@
   "canceled": "已取消",
   "unknownSize": "未知大小",
   "retry": "重试",
+  "batchRetry": "批量重试",
+  "taskInterrupted": "应用已退出，任务中断",
+  "retryUnavailable": "应用重启后请重新发起下载",
+  "retryUploadUnavailable": "应用重启后无法继续该上传，请重新上传",
+  "retryUploadFileGone": "源文件已不存在，请重新选择文件上传",
+  "uploadNeedLogin": "请先登录后再上传",
+  "retryResolving": "正在重新解析下载链接…",
+  "retryResolveFailed": "重新解析下载链接失败：{error}",
+  "@retryResolveFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "networkError": "网络错误",
+  "networkErrorHttp": "网络错误（HTTP {status}）",
+  "@networkErrorHttp": {
+    "placeholders": {
+      "status": {"type": "int"}
+    }
+  },
+  "downloadBlocked": "下载被风控拦截，请稍后重试",
   "open": "打开",
   "view": "查看",
   "pleasePasteShareLink": "请输入分享链接",
@@ -150,7 +171,7 @@
   "shareEmpty": "这个分享里没有文件",
   "language": "语言",
   "followSystem": "跟随系统",
-  "chinese": "中文",
+  "chinese": "简体中文",
   "english": "English",
   "themeMode": "主题模式",
   "light": "浅色",
@@ -261,9 +282,9 @@
   "aboutSubtitle": "LanCloud · 蓝奏云第三方客户端",
   "aboutKeywords": "版本 关于 开源 协议",
   "aboutText": "自用的蓝奏云第三方客户端，基于非官方接口实现，请勿传播或用于商业用途。",
-  "searchSettings": "搜索设置",
+  "searchSettings": "搜索设置项",
   "closeSearch": "关闭搜索",
-  "searchPlaceholder": "输入关键词搜索设置，如：域名、收起、下载、并发",
+  "searchPlaceholder": "支持输入关键词搜索",
   "noMatch": "没有匹配的设置项",
   "cleared": "已清空",
   "restoredDefaultDir": "已恢复默认目录",
@@ -397,6 +418,19 @@
   },
   "addedDownloadsPartial": "已加入 {ok} 个下载任务，{failed} 个解析失败",
   "@addedDownloadsPartial": {
+    "placeholders": {
+      "ok": {"type": "int"},
+      "failed": {"type": "int"}
+    }
+  },
+  "retriedDownloads": "已重新加入 {count} 个下载任务",
+  "@retriedDownloads": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "retriedDownloadsPartial": "已重新加入 {ok} 个下载任务，{failed} 个重试失败",
+  "@retriedDownloadsPartial": {
     "placeholders": {
       "ok": {"type": "int"},
       "failed": {"type": "int"}
@@ -706,7 +740,7 @@
   "openSystemSettings": "前往系统管理",
   "openSystemSettingsKeywords": "系统 设置 应用 信息 管理 app settings",
   "backupAndRestore": "备份与恢复",
-  "backupAndRestoreSubtitle": "本地文件与 WebDAV 云端",
+  "backupAndRestoreSubtitle": "本地备份与 WebDAV 云端",
   "backupKeywords": "backup restore webdav cookie 备份 恢复 云端 导出",
   "localBackup": "本地备份",
   "backupNow": "立即备份",

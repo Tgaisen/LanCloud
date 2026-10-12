@@ -143,12 +143,9 @@ class _HomePageState extends State<HomePage>
         title: item.name,
         subtitle: quickAccessPathLabel(l10n, item),
         trailing: Builder(
-          builder: (BuildContext buttonContext) => IconButton(
-            // 与收藏 / 传输页的 ⋯ 保持一致（紧凑尺寸）
-            visualDensity: VisualDensity.standard,
-            iconSize: 20,
+          builder: (BuildContext buttonContext) => M3eIconButton(
             tooltip: l10n.moreActions,
-            icon: const Icon(Icons.more_vert),
+            icon: Icons.more_vert,
             onPressed: () =>
                 _showPinMenu(item, first: first, anchorContext: buttonContext),
           ),
@@ -181,11 +178,9 @@ class _HomePageState extends State<HomePage>
             ? l10n.sharedContent
             : l10n.myDrive,
         trailing: Builder(
-          builder: (BuildContext buttonContext) => IconButton(
-            visualDensity: VisualDensity.compact,
-            iconSize: 20,
+          builder: (BuildContext buttonContext) => M3eIconButton(
             tooltip: l10n.moreActions,
-            icon: const Icon(Icons.more_vert),
+            icon: Icons.more_vert,
             onPressed: () => _showRecentMenu(item, buttonContext),
           ),
         ),
@@ -282,9 +277,8 @@ class _HomePageState extends State<HomePage>
         M3eMenuItem(
           value: _RecentAction.toggleFavorite,
           label: favorited ? l10n.unfavorite : l10n.favorite,
-          // 已收藏用实心星：Material Symbols 同一字形靠 FILL 轴切实心 / 描边
-          icon: Icons.star_outline,
-          iconFill: favorited ? 1 : 0,
+          // 取消收藏用 Remix 的 star-off-line（描边）；「收藏」保持描边星星
+          icon: favorited ? Icons.star_off_line : Icons.star_outline,
         ),
         M3eMenuItem(
           value: _RecentAction.deleteRecord,

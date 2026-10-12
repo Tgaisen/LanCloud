@@ -229,7 +229,7 @@ class _FavoritesPageState extends State<FavoritesPage>
               },
             ),
             ListTile(
-              // 与项目菜单里的「取消收藏」（playlist_remove）成对
+              // 与条目菜单里的「取消收藏」对应（那边用 star-off 自定义图标）
               leading: const Icon(Icons.playlist_add),
               title: Text(l10n.newFavorite),
               onTap: () {
@@ -401,7 +401,8 @@ class _FavoritesPageState extends State<FavoritesPage>
         M3eMenuItem(
           value: _FavoriteItemAction.unfavorite,
           label: context.l10n.unfavorite,
-          icon: Icons.playlist_remove,
+          // 与首页 / 分享浏览菜单一致：星形划斜杠（Remix star-off-line）
+          icon: Icons.star_off_line,
         ),
       ],
     );
@@ -520,11 +521,9 @@ class _FavoritesPageState extends State<FavoritesPage>
         trailing: HideKeepingSpace(
           hidden: _selecting,
           child: Builder(
-            builder: (BuildContext buttonContext) => IconButton(
-              visualDensity: VisualDensity.standard,
-              iconSize: 20,
+            builder: (BuildContext buttonContext) => M3eIconButton(
               tooltip: l10n.moreActions,
-              icon: const Icon(Icons.more_vert),
+              icon: Icons.more_vert,
               onPressed: () => _itemOptions(item, buttonContext),
             ),
           ),

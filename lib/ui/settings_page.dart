@@ -686,7 +686,7 @@ class _SettingsPageState extends State<SettingsPage>
         keywords: l10n.backupKeywords.split(' '),
         category: 'data',
         build: (context, app) => ListTile(
-          leading: const Icon(Icons.cloud_upload_outlined),
+          leading: const Icon(Icons.sync),
           title: Text(context.l10n.backupAndRestore),
           subtitle: Text(context.l10n.backupAndRestoreSubtitle),
           trailing: const Icon(Icons.chevron_right),
@@ -805,6 +805,14 @@ class _SettingsPageState extends State<SettingsPage>
     _ => context.l10n.custom,
   };
 
+  /// 退出搜索：清空关键词并切回分类列表（与收藏页同一套行为）。
+  void _exitSearch() {
+    setState(() {
+      _searching = false;
+      _search.clear();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final app = context.watch<AppController>();
@@ -822,53 +830,64 @@ class _SettingsPageState extends State<SettingsPage>
         )
         .toList();
 
-    return TopBarOverlayScaffold(
-      controller: _list,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        scrolledUnderElevation: 0,
-        leading: const AppBarBackButton(),
-        // 标题 ↔ 搜索框带显示 / 隐藏动画，不要直接闪出来
-        title: AppBarSearchSwitcher(
-          searching: _searching,
-          title: Text(l10n.settings),
-          searchField: TextField(
-            controller: _search,
-            autofocus: true,
-            decoration: InputDecoration(
-              hintText: l10n.searchSettings,
-              border: InputBorder.none,
+    return PopScope(
+      // 搜索时返回先退出搜索（与收藏页一致），再退出页面
+      canPop: !_searching,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && _searching) _exitSearch();
+      },
+      child: TopBarOverlayScaffold(
+        controller: _list,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          scrolledUnderElevation: 0,
+          // 搜索时「关闭搜索」占用返回按钮的位置（与收藏页一致）
+          leading: _searching
+              ? IconButton(
+                  tooltip: l10n.closeSearch,
+                  icon: const Icon(Icons.close),
+                  onPressed: _exitSearch,
+                )
+              : const AppBarBackButton(),
+          // 标题 ↔ 搜索框带显示 / 隐藏动画，不要直接闪出来
+          title: AppBarSearchSwitcher(
+            searching: _searching,
+            title: Text(l10n.settings),
+            searchField: TextField(
+              controller: _search,
+              autofocus: true,
+              decoration: InputDecoration(
+                hintText: l10n.searchSettings,
+                border: InputBorder.none,
+              ),
+              onChanged: (_) => setState(() {}),
             ),
-            onChanged: (_) => setState(() {}),
           ),
+          actions: _searching
+              ? const <Widget>[]
+              : [
+                  IconButton(
+                    tooltip: l10n.searchSettings,
+                    icon: const Icon(Icons.search),
+                    onPressed: () => setState(() => _searching = true),
+                  ),
+                ],
         ),
-        actions: [
-          IconButton(
-            tooltip: _searching ? l10n.closeSearch : l10n.searchSettings,
-            icon: Icon(_searching ? Icons.close : Icons.search),
-            onPressed: () {
-              setState(() {
-                _searching = !_searching;
-                if (!_searching) _search.clear();
-              });
-            },
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.all(16),
+            // 整块布局：分组高度差异大，懒布局会让 maxScrollExtent 一直修正、
+            // 滚动条滑块长度抖动（见 SliverColumn 注释）
+            // 整块布局：分组高度差异大，懒布局会让 maxScrollExtent 一直修正、
+            // 滚动条滑块长度抖动（见 SliverColumn 注释）
+            sliver: SliverColumn(
+              children: _searching
+                  ? _buildSearchResults(context, app, matching)
+                  : _buildCategories(context, app, entries),
+            ),
           ),
         ],
       ),
-      slivers: [
-        SliverPadding(
-          padding: const EdgeInsets.all(16),
-          // 整块布局：分组高度差异大，懒布局会让 maxScrollExtent 一直修正、
-          // 滚动条滑块长度抖动（见 SliverColumn 注释）
-          // 整块布局：分组高度差异大，懒布局会让 maxScrollExtent 一直修正、
-          // 滚动条滑块长度抖动（见 SliverColumn 注释）
-          sliver: SliverColumn(
-            children: _searching
-                ? _buildSearchResults(context, app, matching)
-                : _buildCategories(context, app, entries),
-          ),
-        ),
-      ],
     );
   }
 

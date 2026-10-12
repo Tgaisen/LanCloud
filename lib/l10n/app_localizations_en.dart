@@ -80,7 +80,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get transferCenter => 'Transfer center';
+  String get transferCenter => 'Transfers';
 
   @override
   String get quickAccess => 'Quick access';
@@ -288,6 +288,46 @@ class AppLocalizationsEn extends AppLocalizations {
   String get retry => 'Retry';
 
   @override
+  String get batchRetry => 'Retry all';
+
+  @override
+  String get taskInterrupted => 'The app exited and interrupted this task';
+
+  @override
+  String get retryUnavailable =>
+      'The app has restarted; please start the download again';
+
+  @override
+  String get retryUploadUnavailable =>
+      'This upload can\'t continue after an app restart; please upload again';
+
+  @override
+  String get retryUploadFileGone =>
+      'The source file is gone; please pick the file again';
+
+  @override
+  String get uploadNeedLogin => 'Please sign in before uploading';
+
+  @override
+  String get retryResolving => 'Re-resolving the download link…';
+
+  @override
+  String retryResolveFailed(String error) {
+    return 'Failed to re-resolve the download link: $error';
+  }
+
+  @override
+  String get networkError => 'Network error';
+
+  @override
+  String networkErrorHttp(int status) {
+    return 'Network error (HTTP $status)';
+  }
+
+  @override
+  String get downloadBlocked => 'Download was blocked; please try again later';
+
+  @override
   String get open => 'Open';
 
   @override
@@ -335,7 +375,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get followSystem => 'Follow system';
 
   @override
-  String get chinese => '中文';
+  String get chinese => '简体中文';
 
   @override
   String get english => 'English';
@@ -824,6 +864,16 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String addedDownloadsPartial(int ok, int failed) {
     return 'Added $ok download tasks; $failed failed to resolve';
+  }
+
+  @override
+  String retriedDownloads(int count) {
+    return 'Re-queued $count download tasks';
+  }
+
+  @override
+  String retriedDownloadsPartial(int ok, int failed) {
+    return 'Re-queued $ok download tasks; $failed failed';
   }
 
   @override

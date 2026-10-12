@@ -105,6 +105,15 @@ flutter:
     # 这份 .ico 复制到应用数据目录（和 exe 图标是同一个源文件）
     - windows/runner/resources/app_icon.ico
 
+  # 图标字体：Remix Icon 的 star-off-line 单字形子集，「取消收藏」菜单项用
+  # （U+F59A；笔画粗细和 Material Symbols 一致）。许可证文本登记在
+  # lib/core/third_party_licenses.dart。需要更多 Remix 字形时：拿完整的
+  # remixicon.ttf 重新子集化（subset-font）后替换本文件。
+  fonts:
+    - family: RemixIcon
+      fonts:
+        - asset: assets/fonts/remixicon_subset.ttf
+
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 
