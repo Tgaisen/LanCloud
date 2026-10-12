@@ -614,6 +614,12 @@ abstract class AppLocalizations {
   /// **'重新下载'**
   String get redownload;
 
+  /// No description provided for @deleteDownloadRecord.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除下载记录'**
+  String get deleteDownloadRecord;
+
   /// No description provided for @waitingToDownload.
   ///
   /// In zh, this message translates to:

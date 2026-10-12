@@ -435,8 +435,8 @@ void main() {
     expect(find.byTooltip('分享'), findsNothing);
 
     await openRowMenu(tester, 'tool.apk');
-    // 完成项：打开 / 分享 / 删除此条记录 / 删除记录与文件，且不给「重试」
-    expect(menuLabels(tester), ['打开', '分享', '删除此条记录', '删除记录与文件']);
+    // 完成项：打开 / 分享 / 删除下载记录 / 删除记录与文件，且不给「重试」
+    expect(menuLabels(tester), ['打开', '分享', '删除下载记录', '删除记录与文件']);
 
     await tester.tap(menuItem('分享'));
     await tester.pumpAndSettle();
@@ -501,7 +501,7 @@ void main() {
 
     await openRowMenu(tester, 'bad.zip');
     // 失败项：不给打开 / 分享，给重试
-    expect(menuLabels(tester), ['重试', '删除此条记录', '删除记录与文件']);
+    expect(menuLabels(tester), ['重试', '删除下载记录', '删除记录与文件']);
 
     // 这个任务没有可用的直链（等价于重启后重启下载）：retry 会改成提示重新发起，
     // 正好用来确认菜单确实调到了 TransferManager.retry

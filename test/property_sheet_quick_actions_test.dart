@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -316,7 +317,7 @@ void main() {
     expect(copied, contains('abcd'));
   });
 
-  testWidgets('已添加下载的文件：属性弹窗下载按钮 checked，点击弹四项菜单', (tester) async {
+  testWidgets('已添加下载的文件：属性弹窗下载按钮 checked，点击弹五项菜单', (tester) async {
     final client = _FakeClient();
     final app = _FakeApp(client);
     final manager = TransferManager(app);
@@ -342,26 +343,84 @@ void main() {
     // 下载按钮变 checked、tooltip 变「已下载」
     expect(_toggleButton(tester, '已下载').checked, isTrue);
 
-    // 点它弹二级菜单：已完成 → 打开 / 分享可用，取消位换成删除记录，重新下载可用
+    // 点它弹二级菜单：已完成 → 打开 / 分享可用，取消位换成删除记录，
+    // 重新下载与「删除记录与文件」也可用
     await tester.tap(find.byTooltip('已下载'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
     final rows = tester
         .widgetList<M3eMenuRow>(find.byType(M3eMenuRow))
         .toList();
-    expect(rows.map((r) => r.label).toList(), ['打开', '分享', '删除此条记录', '重新下载']);
+    expect(rows.map((r) => r.label).toList(), [
+      '打开',
+      '分享',
+      '删除下载记录',
+      '删除记录与文件',
+      '重新下载',
+    ]);
     expect(rows.every((r) => r.enabled), isTrue);
 
     // 删除这条任务记录：标记消失，按钮回到未选中（tooltip 变回「下载」）
     await tester.tap(
       find.descendant(
         of: find.byType(M3eMenuRow),
-        matching: find.text('删除此条记录'),
+        matching: find.text('删除下载记录'),
       ),
     );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(manager.tasks, isEmpty);
+    expect(_toggleButton(tester, '下载').checked, isFalse);
+  });
+
+  testWidgets('已添加下载的文件：菜单「删除记录与文件」连带删掉本地文件并恢复未下载', (tester) async {
+    final app = _FakeApp(_FakeClient());
+    final manager = TransferManager(app);
+    final dir = Directory.systemTemp.createTempSync('lancloud-del-mark');
+    addTearDown(() {
+      try {
+        dir.deleteSync(recursive: true);
+      } catch (_) {}
+    });
+    final file = File('${dir.path}/a.zip')..writeAsStringSync('x');
+    manager.tasks.add(
+      TransferTask(
+          id: 'd1',
+          kind: TransferKind.download,
+          name: 'a.zip',
+          accountUid: '',
+          refId: ':f1',
+        )
+        ..status = TransferStatus.done
+        ..savedPath = file.path,
+    );
+
+    await _pumpDrive(tester, app, manager: manager);
+    await tester.tap(find.text('a.zip'));
+    await _settleSheet(tester);
+    await tester.tap(find.byTooltip('已下载'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.tap(
+      find.descendant(
+        of: find.byType(M3eMenuRow),
+        matching: find.text('删除记录与文件'),
+      ),
+    );
+    // 点击 → 菜单收起（post-frame 回调）→ 选择回调里删文件、删记录
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(manager.tasks, isEmpty);
+    // 文件是后台真实 I/O 删的：让真实事件循环跑两轮再回假时钟刷新续体
+    for (var i = 0; i < 3 && file.existsSync(); i++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 50)),
+      );
+      await tester.pump();
+    }
+    expect(file.existsSync(), isFalse);
+    // 恢复未下载原状
     expect(_toggleButton(tester, '下载').checked, isFalse);
   });
 

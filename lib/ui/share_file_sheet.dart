@@ -241,9 +241,8 @@ class _ShareFileInfoSheetState extends State<ShareFileInfoSheet> {
             // 收藏态查出来之前先置灰：否则会在状态未知时点出重复收藏 / 错误取消
             enabled: !_invalid && _favorite != null,
             leading: Icon(
-              Icons.star_outline,
-              // 已收藏切到实心星（FILL 轴），未收藏保持描边
-              fill: _favorite == true ? 1 : 0,
+              // 取消收藏用自定义 star-off-line；未收藏保持描边星星
+              _favorite == true ? Icons.star_off_line : Icons.star_outline,
             ),
             title: Text(_favorite == true ? l10n.unfavorite : l10n.favorite),
             onTap: () async {

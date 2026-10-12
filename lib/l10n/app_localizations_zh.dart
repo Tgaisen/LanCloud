@@ -287,6 +287,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get redownload => '重新下载';
 
   @override
+  String get deleteDownloadRecord => '删除下载记录';
+
+  @override
   String get waitingToDownload => '等待中';
 
   @override

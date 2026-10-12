@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:provider/provider.dart';
 
 import '../core/platform_support.dart';
+import '../core/saved_file.dart';
 import '../core/system_open.dart';
 import '../core/system_share.dart';
 import '../core/transfer/transfer_manager.dart';
@@ -57,7 +58,7 @@ class DownloadMarkIcon extends StatelessWidget {
   }
 }
 
-enum _DownloadMenuAction { open, share, stop, redownload }
+enum _DownloadMenuAction { open, share, stop, deleteFile, redownload }
 
 /// 「已下载」入口的二级菜单（两步菜单：点入口后弹这一层）：
 /// 打开 / 分享（桌面端为在资源管理器定位）/ 取消下载或删除任务记录 / 重新下载。
@@ -111,8 +112,15 @@ Future<void> showDownloadTaskMenu(
       // 操作置灰或换说法，而不是留一个点了没反应的入口）
       M3eMenuItem(
         value: _DownloadMenuAction.stop,
-        label: running ? l10n.cancelDownload : l10n.deleteRecord,
+        label: running ? l10n.cancelDownload : l10n.deleteDownloadRecord,
         icon: running ? Icons.close : Icons.playlist_remove,
+      ),
+      // 连文件一起删：删完标记消失，属性弹窗恢复「下载」原状
+      M3eMenuItem(
+        value: _DownloadMenuAction.deleteFile,
+        label: l10n.deleteRecordAndFile,
+        icon: Icons.delete_outline,
+        enabled: hasFile,
       ),
       M3eMenuItem(
         value: _DownloadMenuAction.redownload,
@@ -142,6 +150,10 @@ Future<void> showDownloadTaskMenu(
       } else {
         manager.removeTask(task.id);
       }
+    case _DownloadMenuAction.deleteFile:
+      // 先删记录（标记立即消失、弹窗恢复原状），再删本地文件
+      manager.removeTask(task.id);
+      await deleteSavedFile(savedPath!);
     case _DownloadMenuAction.redownload:
       manager.removeTask(task.id);
       await onRedownload();

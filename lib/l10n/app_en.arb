@@ -91,6 +91,7 @@
   "retry": "Retry",
   "cancelDownload": "Cancel download",
   "redownload": "Download again",
+  "deleteDownloadRecord": "Delete download record",
   "waitingToDownload": "Waiting",
   "downloadFailed": "Download failed",
   "batchRetry": "Retry all",

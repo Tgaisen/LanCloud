@@ -131,11 +131,19 @@ void main() {
     final rows = tester
         .widgetList<M3eMenuRow>(find.byType(M3eMenuRow))
         .toList();
-    expect(rows.map((r) => r.label).toList(), ['打开', '分享', '取消下载', '重新下载']);
+    expect(rows.map((r) => r.label).toList(), [
+      '打开',
+      '分享',
+      '取消下载',
+      '删除记录与文件',
+      '重新下载',
+    ]);
     expect(rows[0].enabled, isFalse);
     expect(rows[1].enabled, isFalse);
     expect(rows[2].enabled, isTrue);
+    // 还没落盘：删除记录与文件不可用
     expect(rows[3].enabled, isFalse);
+    expect(rows[4].enabled, isFalse);
 
     // 取消下载：标记消失，入口回到「下载」
     await tester.tap(
@@ -252,7 +260,7 @@ void main() {
     await tester.tap(find.text('下载中'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
-    expect(find.byType(M3eMenuRow), findsNWidgets(4));
+    expect(find.byType(M3eMenuRow), findsNWidgets(5));
 
     // 这条任务完成（状态变了）：菜单自动收起，别让用户对着旧选项点
     task.status = TransferStatus.done;
