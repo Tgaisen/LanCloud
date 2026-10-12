@@ -1299,6 +1299,8 @@ Future<T?> showAppSheet<T>(
   // 还有很远，这时不需要左右让位；只有弹窗真的通铺整屏（窗口不超过上限）
   // 时才要避开两侧的挖孔 / 导航栏。
   final fullWidthSheet = size.width <= kModalSheetMaxWidth;
+  // 系统要求少动效时整块面板直接出现 / 消失，不做滑入滑出
+  final reduceMotion = reduceMotionOf(context);
   return showModalBottomSheet<T>(
     context: context,
     isScrollControlled: true,
@@ -1312,10 +1314,12 @@ Future<T?> showAppSheet<T>(
     // 面板弹过头时，外壳垫在底部的 overshoot 垫色正好补住面板与屏幕底边的缝。
     // 时长在框架默认 250ms 上放宽到 350ms，节奏更和缓；
     // 关闭方向不设，仍用框架默认的 200ms。
-    sheetAnimationStyle: const AnimationStyle(
-      duration: Duration(milliseconds: 350),
-      curve: Cubic(0.22, 1.15, 0.55, 1.02),
-    ),
+    sheetAnimationStyle: reduceMotion
+        ? const AnimationStyle(duration: Duration.zero)
+        : const AnimationStyle(
+            duration: Duration(milliseconds: 350),
+            curve: Cubic(0.22, 1.15, 0.55, 1.02),
+          ),
     // 通铺整屏时让「弹窗窗体」整体避开左右挖孔：useSafeArea 作用在弹窗
     // 面板外侧（路由层），弹窗被收窄，而不是面板照旧压住挖孔、只让内容
     // 缩进一截（那样有挖孔的一侧会多出留白）。

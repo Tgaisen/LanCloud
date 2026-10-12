@@ -263,7 +263,9 @@ class AppController extends ChangeNotifier {
     // 系统要求少动效：顶栏/底栏直接到位，不做下滑
     // （systemReduceMotion 由外壳从 MediaQuery 同步，SystemMotion 是原生读到的
     //   动画缩放，覆盖华为等引擎看不到的 ROM）
-    if (systemReduceMotion || SystemMotion.reduceMotion.value) {
+    if (systemReduceMotion ||
+        SystemMotion.reduceMotion.value ||
+        SystemMotion.touchExploration.value) {
       _barsTicker.stop();
       if (barsHide.value != to) barsHide.value = to;
       if (topBarHide.value != to) topBarHide.value = to;

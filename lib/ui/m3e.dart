@@ -150,6 +150,12 @@ class M3eComponentStyles extends StatelessWidget {
 ///
 /// M3 的等待时间规则：< 200ms 不显示指示器；200ms–5s 用 Loading indicator；
 /// > 5s 用 Progress indicator（确定进度优先）。
+///
+/// 系统要求少动效（含读屏接管）时，下面三个指示器统一退化成**静态**形态：
+/// 还在转的环 / 走的条本身就是大面积重复运动，前庭敏感的用户会被它晃到；
+/// 保留一个静止的进度图形，既不丢「正在处理」的提示，也不再有运动。
+/// （确定进度本来就是静态的，不受影响。）
+const double _kStaticProgressValue = 0.75;
 
 /// MD3E Loading indicator：形状形变的循环动画，替代绝大多数
 /// `CircularProgressIndicator`（不确定进度的中短等待）。
@@ -169,12 +175,29 @@ class M3eLoadingIndicator extends StatelessWidget {
   final String? semanticsValue;
 
   @override
-  Widget build(BuildContext context) => core.M3ELoadingIndicator(
-    color: color,
-    constraints: BoxConstraints.tightFor(width: size, height: size),
-    semanticsLabel: semanticsLabel,
-    semanticsValue: semanticsValue,
-  );
+  Widget build(BuildContext context) {
+    if (reduceMotionOf(context)) {
+      final ring = core.M3ECircularProgressIndicator(
+        value: _kStaticProgressValue,
+        size: size,
+        strokeWidth: size / 12,
+        color: color,
+      );
+      if (semanticsLabel == null && semanticsValue == null) return ring;
+      // M3ECircularProgressIndicator 本身没有语义参数，这里补一层
+      return Semantics(
+        label: semanticsLabel,
+        value: semanticsValue,
+        child: ring,
+      );
+    }
+    return core.M3ELoadingIndicator(
+      color: color,
+      constraints: BoxConstraints.tightFor(width: size, height: size),
+      semanticsLabel: semanticsLabel,
+      semanticsValue: semanticsValue,
+    );
+  }
 }
 
 // 注：原先的 M3eContainedLoadingIndicator 一直没人用（下拉刷新小球用的是
@@ -209,9 +232,12 @@ class M3eLinearProgressIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 不确定进度在少动效下换成静止的 75% 进度
+    final effectiveValue =
+        value ?? (reduceMotionOf(context) ? _kStaticProgressValue : null);
     if (!wavy) {
       return core.M3ELinearProgressIndicator(
-        value: value,
+        value: effectiveValue,
         width: width,
         minHeight: height ?? 4,
         color: color,
@@ -219,7 +245,7 @@ class M3eLinearProgressIndicator extends StatelessWidget {
       );
     }
     return core.M3ELinearWavyProgressIndicator(
-      value: value,
+      value: effectiveValue,
       width: width,
       // m3e_core 的默认容器高度：10dp（波浪会抬高整体高度）。
       height: height ?? 10,
@@ -248,7 +274,7 @@ class M3eCircularProgressIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => core.M3ECircularProgressIndicator(
-    value: value,
+    value: value ?? (reduceMotionOf(context) ? _kStaticProgressValue : null),
     size: size,
     strokeWidth: strokeWidth,
     color: color,

@@ -24,6 +24,7 @@ import android.view.DragEvent
 import android.view.DragAndDropPermissions
 import android.view.View
 import android.view.ViewGroup
+import android.view.accessibility.AccessibilityManager
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterFragmentActivity
@@ -383,23 +384,32 @@ class MainActivity : FlutterFragmentActivity() {
         linksChannel = links
         linkFromIntent(intent)?.let { pendingLink = it }
 
-        // 系统「移除动画 / 减弱动态效果」：Flutter 引擎只读
-        // transition_animation_scale，而华为等 ROM 的无障碍开关只改
-        // window / animator 两个 scale，引擎那边读不到。这里自己把三项都读出来
-        // 报给 Dart 侧，并在开关变化时主动推送。
+        // 系统「移除动画 / 减弱动态效果」与「读屏接管交互」：
+        //
+        // - 动画缩放：Flutter 引擎只读 transition_animation_scale，而华为等 ROM
+        //   的无障碍开关只改 window / animator 两个 scale，引擎那边读不到；
+        //   这里把三项都读出来报给 Dart 侧，变化时主动推送。
+        // - 触摸探索（TalkBack / 屏幕朗读）：引擎给 Dart 的 accessibleNavigation
+        //   是**任何**无障碍服务查一次语义树就会被置位的标志（自动记账、自动填表
+        //   这类服务也会），不能当「要求少动效」用；这里改成看
+        //   AccessibilityManager.isTouchExplorationEnabled()——只有真正的读屏
+        //   才会开触摸探索。
         val systemChannel = MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             "lancloud/system",
         )
         systemChannel.setMethodCallHandler { call, result ->
             when (call.method) {
-                "reduceMotion" -> result.success(systemReduceMotion())
+                "motionState" -> result.success(systemMotionState())
                 else -> result.notImplemented()
             }
         }
-        observeAnimationScales(systemChannel)
+        observeMotionState(systemChannel)
         setupDragDrop(flutterEngine)
     }
+
+    private fun accessibilityManager(): AccessibilityManager? =
+        getSystemService(Context.ACCESSIBILITY_SERVICE) as? AccessibilityManager
 
     /// 三个动画缩放任一为 0 → 系统要求「移除动画」。
     private fun systemReduceMotion(): Boolean {
@@ -412,24 +422,30 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
+    /// 当前是否要求少动效的两项依据：动画缩放 + 触摸探索（真正的读屏）。
+    private fun systemMotionState(): Map<String, Boolean> = mapOf(
+        "reduceMotion" to systemReduceMotion(),
+        "touchExploration" to (accessibilityManager()?.isTouchExplorationEnabled == true),
+    )
+
     private fun animationScaleKeys(): List<String> = listOf(
         Settings.Global.TRANSITION_ANIMATION_SCALE,
         Settings.Global.WINDOW_ANIMATION_SCALE,
         Settings.Global.ANIMATOR_DURATION_SCALE,
     )
 
-    /// 用户开关「移除动画」时立即通知 Dart 侧（不必重启应用）。
-    private fun observeAnimationScales(channel: MethodChannel) {
+    /// 用户改动画缩放 / 开关读屏时立即通知 Dart 侧（不必重启应用）。
+    private fun observeMotionState(channel: MethodChannel) {
+        fun push() {
+            try {
+                channel.invokeMethod("motionStateChanged", systemMotionState())
+            } catch (_: Exception) {
+                // Dart 侧还没准备好时忽略
+            }
+        }
         val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
             override fun onChange(selfChange: Boolean) {
-                try {
-                    channel.invokeMethod(
-                        "reduceMotionChanged",
-                        systemReduceMotion(),
-                    )
-                } catch (_: Exception) {
-                    // Dart 侧还没准备好时忽略
-                }
+                push()
             }
         }
         for (key in animationScaleKeys()) {
@@ -442,6 +458,11 @@ class MainActivity : FlutterFragmentActivity() {
             } catch (_: Exception) {
                 // 个别 ROM 不允许注册，忽略即可（还有启动/回前台时的主动读取）
             }
+        }
+        try {
+            accessibilityManager()?.addTouchExplorationStateChangeListener { push() }
+        } catch (_: Exception) {
+            // 拿不到 AccessibilityManager 时忽略（还有启动/回前台时的主动读取）
         }
         animationScaleObserver = observer
     }
