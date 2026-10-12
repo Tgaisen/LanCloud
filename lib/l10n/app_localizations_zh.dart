@@ -631,6 +631,33 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String privateDownloadDir(String path) {
+    return '私有目录（$path）';
+  }
+
+  @override
+  String publicDownloadDir(String path) {
+    return '公共目录（$path）';
+  }
+
+  @override
+  String customDownloadDir(String path) {
+    return '非公共目录（$path）';
+  }
+
+  @override
+  String get downloadDirHint =>
+      '应用默认下载到应用私有目录。如需更改，建议选择系统公共目录（如 Download、Documents 等）。受 Android 11+ 限制，如更改到非公共目录，则需先下载到应用内部目录，完成后再移至所选的目录。';
+
+  @override
+  String get safDirPermissionLost => '下载目录授权已失效，请在设置里重新选择下载目录';
+
+  @override
+  String safExportFailed(String error) {
+    return '写入下载目录失败：$error';
+  }
+
+  @override
   String get noInterval => '不间隔';
 
   @override

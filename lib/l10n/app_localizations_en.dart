@@ -653,6 +653,34 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String privateDownloadDir(String path) {
+    return 'Private folder ($path)';
+  }
+
+  @override
+  String publicDownloadDir(String path) {
+    return 'Public folder ($path)';
+  }
+
+  @override
+  String customDownloadDir(String path) {
+    return 'Non-public folder ($path)';
+  }
+
+  @override
+  String get downloadDirHint =>
+      'Downloads go to the app\'s private folder by default. To change it, prefer a public system folder (such as Download or Documents). Due to Android 11+ restrictions, files saved to a non-public folder must be downloaded to the app\'s private folder first and moved into place afterwards.';
+
+  @override
+  String get safDirPermissionLost =>
+      'Access to the download folder expired; please pick it again in Settings';
+
+  @override
+  String safExportFailed(String error) {
+    return 'Failed to write into the download folder: $error';
+  }
+
+  @override
   String get noInterval => 'No delay';
 
   @override

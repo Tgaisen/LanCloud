@@ -2,12 +2,15 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
 import '../api/lanzou_client.dart';
 import '../app_controller.dart';
 import '../notifications.dart';
 import '../platform_support.dart';
+import '../saf_storage.dart';
+import '../saved_file.dart';
 
 enum TransferKind { upload, download }
 
@@ -453,43 +456,112 @@ class TransferManager extends ChangeNotifier {
   }
 
   Future<void> _runDownload(TransferTask task) async {
-    final path = await _app.uniqueSavePath(task.name);
-    final dio = task.via?.dio ?? Dio();
-    await dio.download(
-      task.url,
-      path,
-      cancelToken: task.cancelToken,
-      onReceiveProgress: (received, total) {
-        task.received = received;
-        if (total > 0) task.total = total;
-        notifyListeners();
-        _syncProgressNotification();
-      },
-      options: Options(
-        headers: {
-          'User-Agent': kUserAgent,
-          if (task.referer.isNotEmpty) 'Referer': task.referer,
+    // SAF 模式（Android 用户授权目录）：先下到应用专属中转目录，
+    // 完成后由原生写入授权目录；其它情况直接写目标路径。
+    final treeUri = _app.safDownloadTree;
+    final path = treeUri == null
+        ? await _app.uniqueSavePath(task.name)
+        : await _app.safTempFilePath(task.id, task.name);
+    try {
+      final dio = task.via?.dio ?? Dio();
+      await dio.download(
+        task.url,
+        path,
+        cancelToken: task.cancelToken,
+        onReceiveProgress: (received, total) {
+          task.received = received;
+          if (total > 0) task.total = total;
+          notifyListeners();
+          _syncProgressNotification();
         },
-        receiveTimeout: const Duration(hours: 2),
-      ),
-    );
-    task.savedPath = path;
-    if (task.total == 0) {
-      final f = File(path);
-      if (await f.exists()) task.total = await f.length();
-    }
-    // 被风控拦截时会保存成校验页，这里识别并清理
-    final file = File(path);
-    if (await file.exists()) {
-      final head = await file
-          .openRead(0, 512)
-          .fold<List<int>>(<int>[], (acc, chunk) => acc..addAll(chunk));
-      final text = String.fromCharCodes(head);
-      if (text.contains('acw_sc__v2') || text.startsWith('<!DOCTYPE')) {
-        await file.delete();
-        task.savedPath = null;
-        throw const LanzouException('下载被风控拦截，请稍后重试');
+        options: Options(
+          headers: {
+            'User-Agent': kUserAgent,
+            if (task.referer.isNotEmpty) 'Referer': task.referer,
+          },
+          receiveTimeout: const Duration(hours: 2),
+        ),
+      );
+      if (task.total == 0) {
+        final f = File(path);
+        if (await f.exists()) task.total = await f.length();
       }
+      // 被风控拦截时会保存成校验页，这里识别并清理
+      final file = File(path);
+      if (await file.exists()) {
+        final head = await file
+            .openRead(0, 512)
+            .fold<List<int>>(<int>[], (acc, chunk) => acc..addAll(chunk));
+        final text = String.fromCharCodes(head);
+        if (text.contains('acw_sc__v2') || text.startsWith('<!DOCTYPE')) {
+          await file.delete();
+          task.savedPath = null;
+          throw const LanzouException('下载被风控拦截，请稍后重试');
+        }
+      }
+      if (treeUri == null) {
+        task.savedPath = path;
+        return;
+      }
+      // 用户已取消：不把中转文件写进授权目录
+      if (task.status == TransferStatus.canceled ||
+          task.cancelToken.isCancelled) {
+        return;
+      }
+      await _exportToSafDir(task, treeUri, path);
+      // 复制阶段被打断不了：取消得晚的话把已经写入的文件清掉，保持
+      // 「取消 = 没有文件」的直觉
+      if (task.status == TransferStatus.canceled) {
+        final saved = task.savedPath;
+        task.savedPath = null;
+        if (saved != null && saved.isNotEmpty) {
+          await deleteSavedFile(saved);
+        }
+      }
+    } finally {
+      if (treeUri != null) {
+        try {
+          final tmp = File(path);
+          if (await tmp.exists()) await tmp.delete();
+        } catch (_) {}
+      }
+    }
+  }
+
+  /// 把中转文件写入用户授权的目录，复制进度直接更新任务进度。
+  Future<void> _exportToSafDir(
+    TransferTask task,
+    String treeUri,
+    String path,
+  ) async {
+    final i18n = NotificationService.i18n;
+    // 下载阶段已到 100%，复制阶段重新从 0 开始显示
+    task.received = 0;
+    try {
+      final saved = await SafStorage.export(
+        treeUri: treeUri,
+        sourcePath: path,
+        fileName: task.name,
+        mime: mimeForFileName(task.name),
+        jobId: task.id,
+        onProgress: (copied, total) {
+          task.received = copied;
+          if (total > 0) task.total = total;
+          notifyListeners();
+          _syncProgressNotification();
+        },
+      );
+      task.savedPath = saved.uri;
+    } on PlatformException catch (e) {
+      if (e.code == 'perm_denied') {
+        throw LanzouException(
+          i18n?.safDirPermissionLost ?? '下载目录授权已失效，请在设置里重新选择下载目录',
+        );
+      }
+      throw LanzouException(
+        i18n?.safExportFailed(e.message ?? e.code) ??
+            '写入下载目录失败：${e.message ?? e.code}',
+      );
     }
   }
 

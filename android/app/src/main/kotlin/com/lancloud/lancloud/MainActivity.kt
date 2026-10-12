@@ -9,10 +9,12 @@ import android.content.pm.PackageManager
 import android.database.ContentObserver
 import android.net.Uri
 import android.os.Build
+import android.os.Environment
 import android.os.Handler
 import android.os.Looper
 import android.os.Process
 import android.os.PowerManager
+import android.os.SystemClock
 import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.provider.OpenableColumns
@@ -26,8 +28,11 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import java.io.File
+import java.io.FileInputStream
+import java.io.IOException
 
 // local_auth（生物识别）要求宿主 Activity 必须是 FragmentActivity。
 class MainActivity : FlutterFragmentActivity() {
@@ -37,6 +42,10 @@ class MainActivity : FlutterFragmentActivity() {
     /// 系统「保存文件」对话框（ACTION_CREATE_DOCUMENT）的等待结果与待写入文件。
     private var saveFileResult: MethodChannel.Result? = null
     private var saveSourcePath: String? = null
+    /// SAF 选择下载目录（ACTION_OPEN_DOCUMENT_TREE）的等待结果。
+    private var pickDirResult: MethodChannel.Result? = null
+    /// SAF 通道：把文件写入用户授权目录时，主动向 Dart 侧推送复制进度。
+    private var safChannel: MethodChannel? = null
     private var linksChannel: MethodChannel? = null
     private var pendingLink: String? = null
     /// 等待结果的「本地网络」权限请求（Android 17 起局域网访问需要）。
@@ -68,6 +77,11 @@ class MainActivity : FlutterFragmentActivity() {
         ActivityResultContracts.StartActivityForResult(),
     ) { activityResult ->
         handleSaveFileResult(activityResult.resultCode, activityResult.data)
+    }
+    private val pickDirLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { activityResult ->
+        handlePickDirectoryResult(activityResult.resultCode, activityResult.data)
     }
 
     companion object {
@@ -239,6 +253,16 @@ class MainActivity : FlutterFragmentActivity() {
                 else -> result.notImplemented()
             }
         }
+        // SAF（Storage Access Framework）目录读写：
+        // 选择下载目录（持久化授权）、把下载好的文件写入授权目录、
+        // 删除 / 打开这些文件。全部经 ContentResolver 走系统授予的权限，
+        // 不需要任何存储权限，也不受分区存储限制。
+        val saf = MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "lancloud/saf",
+        )
+        saf.setMethodCallHandler { call, result -> handleSafCall(call, result) }
+        safChannel = saf
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             "lancloud/share",
@@ -277,19 +301,30 @@ class MainActivity : FlutterFragmentActivity() {
                         return@setMethodCallHandler
                     }
                     try {
-                        val file = File(path)
-                        if (!file.exists()) {
-                            result.error("not_found", "file not found", null)
-                            return@setMethodCallHandler
+                        // SAF 下载的文件本身就是 content:// URI（应用持有
+                        // 持久化读权限），直接分享并把读权限转授给接收方；
+                        // 其它路径仍走 FileProvider。
+                        val uri: Uri
+                        val defaultMime: String
+                        if (path.startsWith("content://")) {
+                            uri = Uri.parse(path)
+                            defaultMime = contentResolver.getType(uri) ?: "*/*"
+                        } else {
+                            val file = File(path)
+                            if (!file.exists()) {
+                                result.error("not_found", "file not found", null)
+                                return@setMethodCallHandler
+                            }
+                            uri = FileProvider.getUriForFile(
+                                this,
+                                "$packageName.fileProvider",
+                                file,
+                            )
+                            defaultMime = "application/octet-stream"
                         }
-                        val uri = FileProvider.getUriForFile(
-                            this,
-                            "$packageName.fileProvider",
-                            file,
-                        )
                         val subject = call.argument<String>("subject").orEmpty()
                         val send = Intent(Intent.ACTION_SEND).apply {
-                            type = call.argument<String>("mime") ?: "application/octet-stream"
+                            type = call.argument<String>("mime") ?: defaultMime
                             putExtra(Intent.EXTRA_STREAM, uri)
                             if (subject.isNotEmpty()) {
                                 putExtra(Intent.EXTRA_SUBJECT, subject)
@@ -592,6 +627,355 @@ class MainActivity : FlutterFragmentActivity() {
             result.success(queryDisplayName(uri) ?: File(sourcePath).name)
         } catch (e: Exception) {
             result.error("save_failed", e.message, null)
+        }
+    }
+
+    // -------------------------------------------------------------------- SAF
+
+    /// SAF 通道入口：选目录 / 导出文件 / 删除 / 打开。
+    private fun handleSafCall(call: MethodCall, result: MethodChannel.Result) {
+        when (call.method) {
+            "pickDirectory" -> {
+                // 上一次请求还没回来（理论上不会发生）：当作取消处理
+                pickDirResult?.success(null)
+                pickDirResult = result
+                val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+                    addFlags(
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                            Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
+                            Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION or
+                            Intent.FLAG_GRANT_PREFIX_URI_PERMISSION,
+                    )
+                    val initial = call.argument<String>("initialUri")
+                    if (!initial.isNullOrEmpty() &&
+                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                    ) {
+                        try {
+                            putExtra(
+                                DocumentsContract.EXTRA_INITIAL_URI,
+                                Uri.parse(initial),
+                            )
+                        } catch (_: Exception) {
+                            // 个别 ROM 不支持初始目录，忽略即可
+                        }
+                    }
+                }
+                try {
+                    pickDirLauncher.launch(intent)
+                } catch (e: Exception) {
+                    pickDirResult = null
+                    result.error("pick_failed", e.message, null)
+                }
+            }
+            "releaseDirectory" -> {
+                releaseSafTree(call.argument<String>("uri"))
+                result.success(null)
+            }
+            "exportFile" -> exportToSafTree(call, result)
+            "deleteFile" -> deleteSafDocument(call.argument<String>("uri"), result)
+            "openFile" -> openSafDocument(call.argument<String>("uri"), result)
+            else -> result.notImplemented()
+        }
+    }
+
+    /// 用户在系统目录选择器里选定目录：
+    /// - Download、Documents 等标准公共目录可以直接按文件路径写入
+    ///   （Android 11+），返回 `{uri, label, path}`，不占用持久化授权；
+    /// - 其它目录拿到持久化读写授权后返回 `{uri, label}`；
+    /// - 用户取消返回 null。
+    private fun handlePickDirectoryResult(resultCode: Int, data: Intent?) {
+        val result = pickDirResult
+        pickDirResult = null
+        if (result == null) return
+        val uri = if (resultCode == RESULT_OK) data?.data else null
+        if (uri == null) {
+            result.success(null)
+            return
+        }
+        val direct = directPathForTree(uri)
+        if (direct != null && canWriteDirectly(direct)) {
+            result.success(
+                mapOf(
+                    "uri" to uri.toString(),
+                    "label" to direct,
+                    "path" to direct,
+                ),
+            )
+            return
+        }
+        try {
+            val takeFlags = (data?.flags ?: 0) and
+                (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+            contentResolver.takePersistableUriPermission(uri, takeFlags)
+            result.success(
+                mapOf(
+                    "uri" to uri.toString(),
+                    "label" to safTreeLabel(uri),
+                ),
+            )
+        } catch (e: Exception) {
+            result.error("pick_failed", e.message, null)
+        }
+    }
+
+    /// 选中的目录是主存储上的标准公共目录时，返回可直接写入的真实路径；
+    /// 其它情况（二级存储 / 非公共目录 / Android 10）返回 null，需要走 SAF。
+    private fun directPathForTree(uri: Uri): String? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return null
+        val docId = try {
+            DocumentsContract.getTreeDocumentId(uri)
+        } catch (_: Exception) {
+            return null
+        }
+        when (uri.authority) {
+            "com.android.externalstorage.documents" -> {
+                val sep = docId.indexOf(':')
+                if (sep <= 0) return null
+                if (docId.substring(0, sep) != "primary") return null
+                val relative = docId.substring(sep + 1)
+                val top = relative.substringBefore('/')
+                if (top.isEmpty() || !isWritableStandardDir(top)) return null
+                return "${Environment.getExternalStorageDirectory().absolutePath}/$relative"
+            }
+            // 侧栏「Downloads」快捷入口：映射到主存储的 Download 目录
+            "com.android.providers.downloads.documents" -> {
+                if (docId != "downloads") return null
+                return File(
+                    Environment.getExternalStorageDirectory(),
+                    Environment.DIRECTORY_DOWNLOADS,
+                ).absolutePath
+            }
+        }
+        return null
+    }
+
+    /// 标准公共目录（Download、Documents、DCIM 等）里应用可以直接创建
+    /// 自己的文件；其余目录受分区存储限制。个别设备目录名大小写不一致，
+    /// 统一按小写判断（到底能不能写由 [canWriteDirectly] 探针复核）。
+    private fun isWritableStandardDir(name: String): Boolean =
+        name.lowercase() in setOf(
+            "music", "podcasts", "ringtones", "alarms", "notifications",
+            "pictures", "movies", "download", "dcim", "documents",
+            "audiobooks", "recordings",
+        )
+
+    /// 真写一个探针文件，确认这个目录确实可以按路径写入
+    /// （不通过时 [handlePickDirectoryResult] 会退回 SAF 授权流程）。
+    private fun canWriteDirectly(path: String): Boolean {
+        val probe = File(path, ".lancloud_probe_${System.currentTimeMillis()}")
+        return try {
+            val created = probe.createNewFile()
+            if (created) probe.delete()
+            created
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    /// 释放不再使用的目录授权（换目录 / 恢复默认时调用）。
+    private fun releaseSafTree(uriStr: String?) {
+        if (uriStr.isNullOrEmpty()) return
+        try {
+            contentResolver.releasePersistableUriPermission(
+                Uri.parse(uriStr),
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+            )
+        } catch (_: Exception) {
+            // 没持有过（例如备份恢复到另一台设备）：忽略
+        }
+    }
+
+    /// 目录的展示名：内部存储转成 /storage/emulated/0/xxx 这样的路径，
+    /// 其它存储卷 / 提供方退回系统给的目录显示名。
+    private fun safTreeLabel(uri: Uri): String {
+        val docId = try {
+            DocumentsContract.getTreeDocumentId(uri)
+        } catch (_: Exception) {
+            null
+        }
+        val displayName = try {
+            val docUri = DocumentsContract.buildDocumentUriUsingTree(uri, docId.orEmpty())
+            contentResolver.query(
+                docUri,
+                arrayOf(DocumentsContract.Document.COLUMN_DISPLAY_NAME),
+                null,
+                null,
+                null,
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) cursor.getString(0) else null
+            }
+        } catch (_: Exception) {
+            null
+        }
+        val id = docId ?: return displayName ?: uri.toString()
+        val sep = id.indexOf(':')
+        if (sep <= 0) return displayName ?: id
+        val volume = id.substring(0, sep)
+        val relative = id.substring(sep + 1)
+        return if (volume == "primary") {
+            "${Environment.getExternalStorageDirectory().absolutePath}/$relative"
+        } else {
+            "$volume/$relative"
+        }
+    }
+
+    /// 把应用专属目录里下载好的文件写入用户授权的目录：
+    /// 先查目标目录已有名字去重（沿用 Dart 侧 `name(1).ext` 的规则），
+    /// 再 createDocument + 流式复制，复制中向 Dart 侧推送进度。
+    private fun exportToSafTree(call: MethodCall, result: MethodChannel.Result) {
+        val treeUriStr = call.argument<String>("treeUri")
+        val sourcePath = call.argument<String>("sourcePath")
+        val fileName = call.argument<String>("fileName")
+        if (treeUriStr.isNullOrEmpty() || sourcePath.isNullOrEmpty() || fileName.isNullOrEmpty()) {
+            result.error("bad_args", "treeUri, sourcePath and fileName are required", null)
+            return
+        }
+        val mime = call.argument<String>("mime") ?: "application/octet-stream"
+        val jobId = call.argument<String>("jobId").orEmpty()
+        Thread {
+            doExportToSafTree(treeUriStr, sourcePath, fileName, mime, jobId, result)
+        }.start()
+    }
+
+    /// 复制本体；放在后台线程里执行（由 [exportToSafTree] 调用）。
+    private fun doExportToSafTree(
+        treeUriStr: String,
+        sourcePath: String,
+        fileName: String,
+        mime: String,
+        jobId: String,
+        result: MethodChannel.Result,
+    ) {
+        try {
+            val source = File(sourcePath)
+            if (!source.exists()) {
+                postSafError(result, "not_found", "source file not found")
+                return
+            }
+            val treeUri = Uri.parse(treeUriStr)
+            val treeDocId = DocumentsContract.getTreeDocumentId(treeUri)
+            val parentDocUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, treeDocId)
+            val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, treeDocId)
+            val existing = mutableSetOf<String>()
+            try {
+                contentResolver.query(
+                    childrenUri,
+                    arrayOf(DocumentsContract.Document.COLUMN_DISPLAY_NAME),
+                    null,
+                    null,
+                    null,
+                )?.use { cursor ->
+                    while (cursor.moveToNext()) {
+                        cursor.getString(0)?.let { existing.add(it) }
+                    }
+                }
+            } catch (_: Exception) {
+                // 查询失败时按原名创建，重名交给系统处理
+            }
+            val targetName = uniqueSafName(existing, fileName)
+            val created = DocumentsContract.createDocument(
+                contentResolver,
+                parentDocUri,
+                mime,
+                targetName,
+            ) ?: throw IOException("createDocument returned null")
+            val total = source.length()
+            var copied = 0L
+            contentResolver.openOutputStream(created)?.use { output ->
+                FileInputStream(source).use { input ->
+                    val buffer = ByteArray(128 * 1024)
+                    var lastTick = 0L
+                    while (true) {
+                        val read = input.read(buffer)
+                        if (read < 0) break
+                        output.write(buffer, 0, read)
+                        copied += read
+                        val now = SystemClock.elapsedRealtime()
+                        if (jobId.isNotEmpty() && now - lastTick >= 120) {
+                            lastTick = now
+                            postSafProgress(jobId, copied, total)
+                        }
+                    }
+                }
+            } ?: throw IOException("openOutputStream returned null")
+            if (jobId.isNotEmpty()) postSafProgress(jobId, copied, total)
+            runOnUiThread {
+                result.success(mapOf("uri" to created.toString(), "name" to targetName))
+            }
+        } catch (e: SecurityException) {
+            postSafError(result, "perm_denied", e.message)
+        } catch (e: Exception) {
+            postSafError(result, "export_failed", e.message)
+        }
+    }
+
+    /// 目标目录里有同名文件时，按 `name(1).ext` 规则找一个没被占用的名字。
+    private fun uniqueSafName(existing: Set<String>, name: String): String {
+        if (!existing.contains(name)) return name
+        val dot = name.lastIndexOf('.')
+        val base = if (dot > 0) name.substring(0, dot) else name
+        val ext = if (dot > 0) name.substring(dot) else ""
+        var index = 1
+        while (true) {
+            val candidate = "$base($index)$ext"
+            if (!existing.contains(candidate)) return candidate
+            index++
+        }
+    }
+
+    private fun deleteSafDocument(uriStr: String?, result: MethodChannel.Result) {
+        if (uriStr.isNullOrEmpty()) {
+            result.error("bad_args", "uri required", null)
+            return
+        }
+        Thread {
+            try {
+                val deleted = DocumentsContract.deleteDocument(contentResolver, Uri.parse(uriStr))
+                runOnUiThread { result.success(deleted) }
+            } catch (e: Exception) {
+                postSafError(result, "delete_failed", e.message)
+            }
+        }.start()
+    }
+
+    /// 用系统默认程序打开 SAF 文件（把读权限转授给目标应用）。
+    private fun openSafDocument(uriStr: String?, result: MethodChannel.Result) {
+        if (uriStr.isNullOrEmpty()) {
+            result.error("bad_args", "uri required", null)
+            return
+        }
+        try {
+            val uri = Uri.parse(uriStr)
+            val mime = contentResolver.getType(uri) ?: "*/*"
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, mime)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            if (intent.resolveActivity(packageManager) == null) {
+                result.success(false)
+                return
+            }
+            startActivity(intent)
+            result.success(true)
+        } catch (e: Exception) {
+            result.error("open_failed", e.message, null)
+        }
+    }
+
+    private fun postSafError(result: MethodChannel.Result, code: String, message: String?) {
+        runOnUiThread { result.error(code, message, null) }
+    }
+
+    private fun postSafProgress(jobId: String, copied: Long, total: Long) {
+        Handler(Looper.getMainLooper()).post {
+            try {
+                safChannel?.invokeMethod(
+                    "progress",
+                    mapOf("id" to jobId, "copied" to copied, "total" to total),
+                )
+            } catch (_: Exception) {
+                // Dart 侧还没注册处理器时忽略
+            }
         }
     }
 

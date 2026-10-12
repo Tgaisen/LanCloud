@@ -3,6 +3,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 class SettingsStore {
   static const _keyLanguage = 'language';
   static const _keyDownloadDir = 'download_dir';
+  static const _keyDownloadDirTree = 'download_dir_tree';
+  static const _keyDownloadDirLabel = 'download_dir_label';
   static const _keyGridView = 'grid_view';
   static const _keyLaunchPage = 'launch_page';
   static const _keyHomeFolderOpen = 'home_folder_open';
@@ -37,6 +39,10 @@ class SettingsStore {
   static const _keyNavFavorites = 'nav_show_favorites';
 
   String? downloadDir;
+
+  /// Android SAF 授权的下载目录（tree URI）与展示名；为空表示未授权。
+  String? downloadDirTree;
+  String? downloadDirLabel;
   String language = 'system';
   bool gridView = true;
   String launchPage = 'home';
@@ -100,6 +106,8 @@ class SettingsStore {
     final prefs = await SharedPreferences.getInstance();
     language = prefs.getString(_keyLanguage) ?? 'system';
     downloadDir = prefs.getString(_keyDownloadDir);
+    downloadDirTree = prefs.getString(_keyDownloadDirTree);
+    downloadDirLabel = prefs.getString(_keyDownloadDirLabel);
     gridView = prefs.getBool(_keyGridView) ?? true;
     launchPage = prefs.getString(_keyLaunchPage) ?? 'home';
     homeFolderOpenMode = prefs.getString(_keyHomeFolderOpen) ?? 'drive';
@@ -321,6 +329,21 @@ class SettingsStore {
     }
   }
 
+  /// 保存 / 清除 SAF 授权目录。清除时同时清掉展示名。
+  Future<void> setDownloadDirTree(String? uri, String? label) async {
+    final value = (uri == null || uri.isEmpty) ? null : uri;
+    downloadDirTree = value;
+    downloadDirLabel = value == null ? null : (label ?? '');
+    final prefs = await SharedPreferences.getInstance();
+    if (value == null) {
+      await prefs.remove(_keyDownloadDirTree);
+      await prefs.remove(_keyDownloadDirLabel);
+    } else {
+      await prefs.setString(_keyDownloadDirTree, value);
+      await prefs.setString(_keyDownloadDirLabel, downloadDirLabel ?? '');
+    }
+  }
+
   Future<void> setLanguage(String value) async {
     language = value;
     final prefs = await SharedPreferences.getInstance();
@@ -339,6 +362,8 @@ class SettingsStore {
   Map<String, Object?> toJson() => {
     _keyLanguage: language,
     _keyDownloadDir: downloadDir,
+    _keyDownloadDirTree: downloadDirTree,
+    _keyDownloadDirLabel: downloadDirLabel,
     _keyGridView: gridView,
     _keyLaunchPage: launchPage,
     _keyHomeFolderOpen: homeFolderOpenMode,

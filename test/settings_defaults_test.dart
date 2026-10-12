@@ -20,4 +20,24 @@ void main() {
     await store.load();
     expect(store.clipboardLinkPrompt, isTrue);
   });
+
+  test('SAF 下载目录（tree URI + 展示名）可持久化与清除', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final store = SettingsStore();
+    await store.setDownloadDirTree(
+      'content://tree/primary%3ABaiduNetdisk',
+      '/storage/emulated/0/BaiduNetdisk',
+    );
+
+    final reloaded = SettingsStore();
+    await reloaded.load();
+    expect(reloaded.downloadDirTree, 'content://tree/primary%3ABaiduNetdisk');
+    expect(reloaded.downloadDirLabel, '/storage/emulated/0/BaiduNetdisk');
+
+    await reloaded.setDownloadDirTree(null, null);
+    final cleared = SettingsStore();
+    await cleared.load();
+    expect(cleared.downloadDirTree, isNull);
+    expect(cleared.downloadDirLabel, isNull);
+  });
 }

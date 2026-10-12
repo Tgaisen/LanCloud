@@ -14,6 +14,7 @@ import 'data/settings_store.dart';
 import 'drive_cache.dart';
 import 'dynamic_color_support.dart';
 import 'platform_support.dart';
+import 'saf_storage.dart';
 import 'system_motion.dart';
 
 /// 网盘页当前所在目录：id + 相对根目录的路径（不含"根目录"这几个字，
@@ -140,8 +141,27 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 设置固定路径的下载目录（桌面端，或 Android 选中的公共目录——
+  /// 公共目录无需授权、直接按路径写入）；已有 SAF 目录授权会一并释放。
   Future<void> setDownloadDir(String? dir) async {
+    final oldTree = settings.downloadDirTree;
     await settings.setDownloadDir(dir);
+    await settings.setDownloadDirTree(null, null);
+    if (oldTree != null && oldTree.isNotEmpty) {
+      await SafStorage.release(oldTree);
+    }
+    notifyListeners();
+  }
+
+  /// 保存 SAF 授权目录（Android，见 [SafStorage.pickDirectory]）。
+  /// 原始的路径设置在 SAF 模式下不再使用，旧目录授权同时释放。
+  Future<void> setSafDownloadDir(SafDirectory dir) async {
+    final oldTree = settings.downloadDirTree;
+    await settings.setDownloadDirTree(dir.uri, dir.label);
+    await settings.setDownloadDir(null);
+    if (oldTree != null && oldTree.isNotEmpty && oldTree != dir.uri) {
+      await SafStorage.release(oldTree);
+    }
     notifyListeners();
   }
 
@@ -452,6 +472,58 @@ class AppController extends ChangeNotifier {
     }
     if (!await dir.exists()) await dir.create(recursive: true);
     return dir;
+  }
+
+  /// 当前生效的 SAF 下载目录（仅 Android 且用户授权过时非空）。
+  ///
+  /// 非空时下载走「先写到应用专属中转目录，再由原生写入授权目录」的流程，
+  /// [downloadDirectory] / [uniqueSavePath] 只服务其它情况。
+  String? get safDownloadTree {
+    if (!PlatformSupport.isAndroid) return null;
+    final uri = settings.downloadDirTree;
+    return (uri == null || uri.isEmpty) ? null : uri;
+  }
+
+  /// SAF 模式下的下载中转文件路径；任务 id 唯一，重试时清掉同名残留。
+  Future<String> safTempFilePath(String taskId, String name) async {
+    final dir = await _safTempDirectory();
+    final file = File(p.join(dir.path, '$taskId${p.extension(name)}'));
+    if (await file.exists()) {
+      try {
+        await file.delete();
+      } catch (_) {}
+    }
+    return file.path;
+  }
+
+  /// 应用专属的中转目录：系统缓存目录会被系统清理，这里放在外部专属目录。
+  static bool _safTmpSwept = false;
+
+  Future<Directory> _safTempDirectory() async {
+    final base =
+        await getExternalStorageDirectory() ??
+        await getApplicationDocumentsDirectory();
+    final dir = Directory(p.join(base.path, 'LanCloud', '.tmp'));
+    if (!await dir.exists()) await dir.create(recursive: true);
+    if (!_safTmpSwept) {
+      _safTmpSwept = true;
+      unawaited(_sweepStaleSafTmp(dir));
+    }
+    return dir;
+  }
+
+  /// 清掉应用被系统杀掉时留下的中转文件（保留 1 天内、可能有任务在用的）。
+  static Future<void> _sweepStaleSafTmp(Directory dir) async {
+    try {
+      final cutoff = DateTime.now().subtract(const Duration(hours: 24));
+      await for (final entity in dir.list(followLinks: false)) {
+        if (entity is! File) continue;
+        try {
+          final stat = await entity.stat();
+          if (stat.modified.isBefore(cutoff)) await entity.delete();
+        } catch (_) {}
+      }
+    } catch (_) {}
   }
 
   Future<void> setGridView(bool value) async {

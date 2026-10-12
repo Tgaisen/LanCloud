@@ -1,11 +1,11 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:provider/provider.dart';
 
 import '../core/app_controller.dart';
 import '../core/platform_support.dart';
+import '../core/saved_file.dart';
 import '../core/system_open.dart';
 import '../core/system_share.dart';
 import '../core/transfer/transfer_manager.dart';
@@ -247,15 +247,12 @@ class _TransfersPageState extends State<TransfersPage>
     _exitSelection();
     // 批量删除不逐条播动画：一次落库、一次通知，列表整体刷新一遍
     manager.removeTasks(ids);
-    // 下载到本地的文件由本应用写入，删除属于正常操作（不需要额外权限）
+    // 下载到本地的文件由本应用写入：普通路径直接删，SAF 文件走系统授权删
     if (deleteFiles) {
       for (final task in tasks) {
         final path = task.savedPath;
         if (path == null || path.isEmpty) continue;
-        try {
-          final file = File(path);
-          if (await file.exists()) await file.delete();
-        } catch (_) {}
+        await deleteSavedFile(path);
       }
     }
   }
@@ -373,10 +370,7 @@ class _TransfersPageState extends State<TransfersPage>
   Future<void> _deleteTaskFile(TransferTask task) async {
     final path = task.savedPath;
     if (path == null || path.isEmpty) return;
-    try {
-      final file = File(path);
-      if (await file.exists()) await file.delete();
-    } catch (_) {}
+    await deleteSavedFile(path);
   }
 
   @override

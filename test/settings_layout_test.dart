@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
@@ -106,5 +107,68 @@ void main() {
     await tester.tap(find.text('经典紫'));
     await tester.pumpAndSettle();
     expect(app.settings.themeSeed, 0xFF6750A4);
+  });
+
+  // 下载目录弹窗：分类提示 + 使用说明只在 Android 显示
+  testWidgets('下载目录弹窗：Android 显示提示文案', (tester) async {
+    await pumpSettings(tester);
+    final entry = find.text('下载目录');
+    await tester.ensureVisible(entry);
+    await tester.pumpAndSettle();
+    // ensureVisible 会把条目贴到浮层顶栏下面（点不到）：往回滚一点再点
+    await tester.drag(find.byType(SettingsPage), const Offset(0, 240));
+    await tester.pumpAndSettle();
+    await tester.tap(entry);
+    await tester.pumpAndSettle();
+
+    final l10n = AppLocalizations.of(tester.element(find.byType(SettingsPage)));
+    expect(find.text(l10n.downloadDirHint), findsOneWidget);
+    // 当前目录按分类显示：默认即私有目录（只看弹窗里的那行）
+    expect(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.textContaining('私有目录（'),
+      ),
+      findsOneWidget,
+    );
+
+    // 点弹窗外关闭
+    await tester.tapAt(const Offset(10, 10));
+    await tester.pumpAndSettle();
+    expect(find.text(l10n.downloadDirHint), findsNothing);
+  });
+
+  testWidgets('下载目录弹窗：Windows 不显示提示文案', (tester) async {
+    // 这个 debug 变量必须在用例体内复位（tearDown 里复位会被框架判定为
+    // 「测试改了 foundation debug 变量」）
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    try {
+      await pumpSettings(tester);
+      final entry = find.text('下载目录');
+      await tester.ensureVisible(entry);
+      await tester.pumpAndSettle();
+      await tester.drag(find.byType(SettingsPage), const Offset(0, 240));
+      await tester.pumpAndSettle();
+      await tester.tap(entry);
+      await tester.pumpAndSettle();
+
+      final l10n = AppLocalizations.of(
+        tester.element(find.byType(SettingsPage)),
+      );
+      expect(find.text(l10n.downloadDirHint), findsNothing);
+      // 桌面端仍是「默认（路径）」的写法（只看弹窗里的那行）
+      expect(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.textContaining('默认（'),
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tapAt(const Offset(10, 10));
+      await tester.pumpAndSettle();
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
   });
 }

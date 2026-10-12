@@ -22,6 +22,9 @@ class PlatformSupport {
 
   static bool get isWindows => defaultTargetPlatform == TargetPlatform.windows;
 
+  /// Android：SAF（系统目录授权）等能力只有这里有。
+  static bool get isAndroid => defaultTargetPlatform == TargetPlatform.android;
+
   /// 移动端：前台服务、分享接收、APK 安装等都只有这里才有。
   static bool get isMobile => switch (defaultTargetPlatform) {
     TargetPlatform.android || TargetPlatform.iOS => true,

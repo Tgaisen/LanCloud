@@ -1,15 +1,19 @@
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 
 import '../core/app_controller.dart';
 import '../core/app_cache.dart';
 import '../core/app_log.dart';
 import '../core/app_permissions.dart';
+import '../core/download_dir.dart';
 import '../core/dynamic_color_support.dart';
 import '../core/notifications.dart';
 import '../core/platform_support.dart';
+import '../core/saf_storage.dart';
 import '../core/system_file_saver.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
@@ -56,6 +60,11 @@ class _SettingsPageState extends State<SettingsPage>
 
   /// 默认下载目录的真实路径（副标题里显示，进入设置时读一次）。
   String? _defaultDownloadDir;
+
+  /// 应用专属目录的根（默认下载目录所在位置）与外部存储根：
+  /// 副标题用它给下载目录分类（仅 Android）。
+  List<String> _privateDirRoots = const [];
+  String? _publicDirRoot;
   final TextEditingController _search = TextEditingController();
 
   /// 设置页列表；传给 TopBarOverlayScaffold 后点顶栏空白即可回到顶部。
@@ -79,18 +88,55 @@ class _SettingsPageState extends State<SettingsPage>
   Future<void> _loadDefaultDownloadDir() async {
     try {
       final path = await context.read<AppController>().defaultDownloadDirPath();
+      if (PlatformSupport.isAndroid) {
+        final roots = <String>{p.dirname(path)};
+        try {
+          roots.add((await getApplicationDocumentsDirectory()).path);
+        } catch (_) {
+          // 拿不到内部文档目录就少一个私有根，不影响判断
+        }
+        _privateDirRoots = roots.where((root) => root.isNotEmpty).toList();
+        _publicDirRoot = publicStorageRootFrom(path);
+      }
       if (mounted) setState(() => _defaultDownloadDir = path);
     } catch (_) {
       // 取不到路径时保持占位符，不影响设置页其余内容
     }
   }
 
-  /// 下载目录副标题：自定义目录显示所选路径，默认目录显示真实路径。
-  String _downloadDirLabel(AppLocalizations l10n, AppController app) {
+  /// 下载目录副标题：Android 上按目录分类加前缀（私有 / 公共 / 非公共），
+  /// 桌面端保持「默认（路径）」与自定义路径。
+  String _downloadDirLabel(AppLocalizations l10n, AppController app) =>
+      _dirLabel(l10n, app, _defaultDownloadDir);
+
+  String _dirLabel(
+    AppLocalizations l10n,
+    AppController app,
+    String? defaultPath,
+  ) {
+    final treeUri = app.settings.downloadDirTree;
+    if (treeUri != null && treeUri.isNotEmpty) {
+      final label = app.settings.downloadDirLabel;
+      final path = (label == null || label.isEmpty) ? treeUri : label;
+      return PlatformSupport.isAndroid ? l10n.customDownloadDir(path) : path;
+    }
     final custom = app.settings.downloadDir;
-    if (custom != null && custom.isNotEmpty) return custom;
-    final path = _defaultDownloadDir;
-    return l10n.defaultDownloadDir(path ?? '…');
+    if (custom != null && custom.isNotEmpty) {
+      if (!PlatformSupport.isAndroid) return custom;
+      return switch (classifyDownloadDir(
+        custom,
+        privateRoots: _privateDirRoots,
+        publicRoot: _publicDirRoot,
+      )) {
+        DownloadDirKind.privateDir => l10n.privateDownloadDir(custom),
+        DownloadDirKind.publicDir => l10n.publicDownloadDir(custom),
+        DownloadDirKind.customDir => l10n.customDownloadDir(custom),
+      };
+    }
+    final path = defaultPath ?? '…';
+    return PlatformSupport.isAndroid
+        ? l10n.privateDownloadDir(path)
+        : l10n.defaultDownloadDir(path);
   }
 
   /// 底栏显示项文案：首页 · 网盘 [· 传输] [· 收藏] · 我的。
@@ -1179,20 +1225,38 @@ class _SettingsPageState extends State<SettingsPage>
     ),
   );
 
-  static Future<void> _changeDownloadDir(BuildContext context) async {
+  Future<void> _changeDownloadDir(BuildContext context) async {
     final app = context.read<AppController>();
     final l10n = context.l10n;
-    final custom = app.settings.downloadDir;
-    // 默认目录直接显示真实路径
-    final current = custom != null && custom.isNotEmpty
-        ? custom
-        : l10n.defaultDownloadDir(await app.defaultDownloadDirPath());
+    // 当前目录：与副标题同一套分类（私有 / 公共 / 非公共）
+    var defaultPath = _defaultDownloadDir;
+    if (defaultPath == null) {
+      try {
+        defaultPath = await app.defaultDownloadDirPath();
+      } catch (_) {
+        // 取不到默认路径时用占位符，不影响弹窗其它信息
+      }
+    }
+    final current = _dirLabel(l10n, app, defaultPath);
     if (!context.mounted) return;
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(l10n.downloadDir),
-        content: Text(current),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(current),
+            if (PlatformSupport.isAndroid) ...[
+              const SizedBox(height: 12),
+              Text(
+                l10n.downloadDirHint,
+                style: Theme.of(dialogContext).textTheme.bodySmall,
+              ),
+            ],
+          ],
+        ),
         actions: [
           TextButton(
             onPressed: () async {
@@ -1210,6 +1274,31 @@ class _SettingsPageState extends State<SettingsPage>
             onPressed: () async {
               Navigator.of(dialogContext).pop();
               try {
+                if (PlatformSupport.isAndroid) {
+                  // Android：公共目录（Download、Documents 等）直接按路径
+                  // 写入；其它目录走 SAF 目录授权
+                  final dir = await SafStorage.pickDirectory(
+                    initialUri: app.settings.downloadDirTree,
+                  );
+                  if (dir == null) return; // 用户取消
+                  final direct = dir.directPath;
+                  if (direct != null) {
+                    await app.setDownloadDir(direct);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(l10n.downloadDirSet(direct))),
+                      );
+                    }
+                    return;
+                  }
+                  await app.setSafDownloadDir(dir);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(l10n.downloadDirSet(dir.label))),
+                    );
+                  }
+                  return;
+                }
                 final dir = await FilePicker.platform.getDirectoryPath();
                 if (dir != null && dir.isNotEmpty) {
                   await app.setDownloadDir(dir);
@@ -1221,8 +1310,11 @@ class _SettingsPageState extends State<SettingsPage>
                 }
               } catch (e) {
                 if (context.mounted) {
+                  final message = e is PlatformException
+                      ? (e.message ?? e.code)
+                      : '$e';
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(l10n.pickDirFailed('$e'))),
+                    SnackBar(content: Text(l10n.pickDirFailed(message))),
                   );
                 }
               }
