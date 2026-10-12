@@ -17,6 +17,7 @@ import '../core/transfer/transfer_manager.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
+import 'download_mark.dart';
 import 'm3e.dart';
 import 'reduce_motion.dart';
 import 'scroll_tint.dart';
@@ -2247,14 +2248,16 @@ class _DrivePageState extends State<DrivePage>
   ///
   /// [share] 由属性弹窗传入：打开弹窗时为了收藏判定已经取过分享信息，
   /// 直接复用可以省掉 2 个请求。
-  Future<void> _downloadOwnFile(LzFile file, {ShareInfo? share}) async {
+  /// 解析分享信息 + 直链并入队。返回值给属性弹窗用：false = 没入队
+  /// （解析失败 / 未登录），调用方据此把「解析中」状态恢复原状。
+  Future<bool> _downloadOwnFile(LzFile file, {ShareInfo? share}) async {
     final app = context.read<AppController>();
     final transfers = context.read<TransferManager>();
     final client = app.client;
-    if (client == null) return;
+    if (client == null) return false;
     try {
       final info = share ?? await client.shareInfoOfFile(file.id);
-      if (!mounted) return;
+      if (!mounted) return false;
       final direct = await app.publicClient.resolveFileShare(
         info.url,
         pwd: info.pwd,
@@ -2267,12 +2270,14 @@ class _DrivePageState extends State<DrivePage>
         via: app.publicClient,
         refId: '${app.activeUid ?? ''}:${file.id}',
       );
-      if (!mounted) return;
+      if (!mounted) return true;
       // 属性弹窗不再关闭：反馈要走盖在弹窗之上的轻提示
       showAppToast(context, context.l10n.addedToQueue);
+      return true;
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) return false;
       showAppToast(context, '$e');
+      return false;
     }
   }
 
@@ -3048,6 +3053,7 @@ class _DrivePageState extends State<DrivePage>
     required bool animate,
   }) {
     final selected = _selectedFiles.contains(file.id);
+    final downloadKey = driveDownloadKey(_app.activeUid ?? '', file.id);
     final item = _AnimatedListItem(
       key: ValueKey('$_folderId-l-${file.id}'),
       index: index,
@@ -3060,6 +3066,7 @@ class _DrivePageState extends State<DrivePage>
       child: grid
           ? _FileTile(
               file: file,
+              downloadKey: downloadKey,
               selected: selected,
               selecting: _selecting,
               onTap: () => _fileActions(file),
@@ -3068,6 +3075,7 @@ class _DrivePageState extends State<DrivePage>
             )
           : _FileRow(
               file: file,
+              downloadKey: downloadKey,
               selected: selected,
               selecting: _selecting,
               onTap: () => _fileActions(file),
@@ -3331,6 +3339,7 @@ class _FolderTile extends StatelessWidget {
 class _FileTile extends StatelessWidget {
   const _FileTile({
     required this.file,
+    required this.downloadKey,
     required this.selected,
     required this.selecting,
     required this.onTap,
@@ -3339,6 +3348,10 @@ class _FileTile extends StatelessWidget {
   });
 
   final LzFile file;
+
+  /// 「已下载」标记的匹配键；多选期间沿用同一个 key。
+  final String downloadKey;
+
   final bool selected;
 
   /// 多选期间隐藏行内 ⋯ 菜单（和收藏 / 传输页一致），避免误触。
@@ -3413,6 +3426,7 @@ class _FileTile extends StatelessWidget {
               // 卡片边缘。图标跟着 bodySmall 的字号走（12dp），和大小文本观感一致。
               Row(
                 children: [
+                  DownloadMarkIcon(markKey: downloadKey, size: 12),
                   if (file.hasPwd) ...[
                     const Icon(Icons.lock_outline, size: 12),
                     const SizedBox(width: 4),
@@ -3448,6 +3462,7 @@ class _DriveRow extends StatelessWidget {
     required this.onTap,
     required this.onMenu,
     required this.onLongPress,
+    this.downloadKey,
     this.locked = false,
     this.iconColor,
   });
@@ -3460,6 +3475,10 @@ class _DriveRow extends StatelessWidget {
   final String title;
   final String subtitle;
   final String menuTooltip;
+
+  /// 「已下载」标记的匹配键；文件夹没有下载任务，传 null。
+  final String? downloadKey;
+
   final VoidCallback onTap;
 
   /// ⋯（或桌面端右键）触发；回调带上那颗按钮的 context，菜单贴它弹出。
@@ -3546,6 +3565,8 @@ class _DriveRow extends StatelessWidget {
                     ],
                   ),
                 ),
+                if (downloadKey != null)
+                  DownloadMarkIcon(markKey: downloadKey!, size: 16),
                 if (locked)
                   Padding(
                     padding: const EdgeInsets.only(left: 4),
@@ -3614,6 +3635,7 @@ class _FolderRow extends StatelessWidget {
 class _FileRow extends StatelessWidget {
   const _FileRow({
     required this.file,
+    required this.downloadKey,
     required this.selected,
     required this.selecting,
     required this.onTap,
@@ -3622,6 +3644,10 @@ class _FileRow extends StatelessWidget {
   });
 
   final LzFile file;
+
+  /// 「已下载」标记的匹配键。
+  final String downloadKey;
+
   final bool selected;
   final bool selecting;
   final VoidCallback onTap;
@@ -3634,6 +3660,7 @@ class _FileRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return _DriveRow(
       icon: iconForFile(file.name),
+      downloadKey: downloadKey,
       iconColor: fileIconColor(
         file.name,
         brightness: Theme.of(context).colorScheme.brightness,
@@ -3858,6 +3885,10 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
   final GlobalKey _quickActionGroupKey = GlobalKey();
   _FileQuickAction? _menuTarget;
 
+  /// 正在解析直链（点了下载、任务还没入队）：按钮位显示不确定态小环，
+  /// 解析失败恢复原状。
+  bool _resolvingDownload = false;
+
   @override
   void initState() {
     super.initState();
@@ -3899,12 +3930,18 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
 
   /// 普通动作按钮（下载 / 复制链接 / 二维码 / 访问密码）。
   void _runQuickAction(_FileQuickAction action) {
-    final page = widget.page;
-    final file = _currentFile;
     switch (action) {
       case _FileQuickAction.download:
-        // 不关弹窗：反馈用 showAppToast，加入队列后还能接着做别的
-        page._downloadOwnFile(file, share: _share);
+        final mark = _downloadTask;
+        if (mark != null) {
+          // 已加入下载：入口改成状态展示，点它弹二级菜单（打开 / 分享 /
+          // 取消下载 / 重新下载）
+          _openDownloadMenu(mark);
+        } else if (!_resolvingDownload) {
+          // 解析中忽略再次点击，避免并发解析两条
+          _startDownload();
+        }
+        break;
       case _FileQuickAction.link:
       case _FileQuickAction.qr:
         _openLinkMenu(action);
@@ -3914,6 +3951,39 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
         // 开关型按钮走 onToggled，这里不会命中
         break;
     }
+  }
+
+  /// 点「下载」：解析期间先在按钮位显示不确定态环；失败恢复原状。
+  Future<void> _startDownload() async {
+    if (_resolvingDownload) return;
+    setState(() => _resolvingDownload = true);
+    await widget.page._downloadOwnFile(_currentFile, share: _share);
+    if (!mounted) return;
+    // 成功的话任务已经入队（标记接管显示）；失败恢复原状
+    setState(() => _resolvingDownload = false);
+  }
+
+  /// 这个文件的下载标记：按「账号uid:文件id」查最近的下载任务（已取消的不算）。
+  TransferTask? get _downloadTask {
+    final app = context.read<AppController>();
+    return context.read<TransferManager>().downloadMarkOf(
+      driveDownloadKey(app.activeUid ?? '', _file.id),
+    );
+  }
+
+  /// 「已下载」二级菜单：挂在下载按钮所在的那一段下方（和复制链接同一套锚点）。
+  Future<void> _openDownloadMenu(TransferTask task) async {
+    final RenderBox? group =
+        _quickActionGroupKey.currentContext?.findRenderObject() as RenderBox?;
+    if (group == null || !group.hasSize) return;
+    await showDownloadTaskMenu(
+      context,
+      anchor: _actionMenuAnchor(group, 0),
+      task: task,
+      // 重新下载：旧任务已经删掉，这里重新解析直链再入队；解析期间同样
+      // 走「解析中」状态（按钮位显示不确定态环）
+      onRedownload: _startDownload,
+    );
   }
 
   /// 打开二选一菜单。菜单内容依赖被点的是「复制链接」还是「二维码」，
@@ -3953,9 +4023,9 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
   ///
   /// 段宽用和按钮组同一个公式算，保证菜单左缘和那一段对齐；窄窗口按钮组会
   /// 横向滚动，这里不补偿滚动偏移（和原来挂在组上的做法一致）。
-  Rect _linkMenuAnchor(RenderBox group, _FileQuickAction target) {
+  /// 按钮组里第 [index] 段的全局矩形（段宽与按钮组内部同一个公式）。
+  Rect _actionMenuAnchor(RenderBox group, int index) {
     final double segment = m3eIconButtonWidth(group.size.width, 5);
-    final int index = target == _FileQuickAction.qr ? 2 : 1;
     final Offset origin = group.localToGlobal(Offset.zero);
     return Rect.fromLTWH(
       origin.dx + index * (segment + kM3EIconButtonSpacing),
@@ -3964,6 +4034,9 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
       group.size.height,
     );
   }
+
+  Rect _linkMenuAnchor(RenderBox group, _FileQuickAction target) =>
+      _actionMenuAnchor(group, target == _FileQuickAction.qr ? 2 : 1);
 
   /// 菜单里选了「分享链接」还是「下载直链」。
   ///
@@ -4051,58 +4124,116 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
           // 真实位置：挂个 GlobalKey 给它。
           child: KeyedSubtree(
             key: _quickActionGroupKey,
-            child: M3EIconButtonGroup<_FileQuickAction>(
-              items: [
-                M3EIconAction(
-                  value: _FileQuickAction.download,
-                  icon: Icons.download_outlined,
-                  checkedIcon: Icons.download,
-                  tooltip: l10n.download,
-                  // 复用弹窗打开时取的分享信息，等它回来再放开
-                  enabled: _share != null,
-                ),
-                M3EIconAction(
-                  value: _FileQuickAction.link,
-                  icon: Icons.link_outlined,
-                  checkedIcon: Icons.link,
-                  tooltip: l10n.copyLink,
-                  enabled: _share != null,
-                ),
-                M3EIconAction(
-                  value: _FileQuickAction.qr,
-                  icon: Icons.qr_code,
-                  checkedIcon: Icons.qr_code,
-                  tooltip: l10n.showQr,
-                  enabled: _share != null,
-                ),
-                M3EIconAction(
-                  value: _FileQuickAction.favorite,
-                  icon: Icons.star_border,
-                  checkedIcon: Icons.star_outline,
-                  tooltip: _favorite == true
-                      ? l10n.unfavorite
-                      : l10n.addFavorite,
-                  checked: _favorite == true,
-                  isToggle: true,
-                  // 收藏态要等分享信息 + 收藏表回来才知道，之前先置灰
-                  enabled: _favorite != null,
-                ),
-                M3EIconAction(
-                  value: _FileQuickAction.password,
-                  icon: Icons.lock_outline,
-                  checkedIcon: Icons.lock_outline,
-                  tooltip: l10n.accessPassword,
-                  checked: file.hasPwd,
-                  isToggle: true,
-                ),
-              ],
-              onPressed: _runQuickAction,
-              onToggled: (action, checked) {
-                if (action == _FileQuickAction.favorite) {
-                  _toggleFavorite(checked);
-                } else if (action == _FileQuickAction.password) {
-                  _editPassword();
-                }
+            // 监听传输管理器：下载中时把进度环画在「下载」按钮的图标位上
+            // （只重建这一行，弹窗关掉就停）
+            child: ListenableBuilder(
+              listenable: Listenable.merge([
+                context.read<TransferManager>(),
+                context.read<TransferManager>().marksRevision,
+              ]),
+              builder: (BuildContext context, _) {
+                final scheme = Theme.of(context).colorScheme;
+                final mark = _downloadTask;
+                final resolving = _resolvingDownload;
+                final tooltip = resolving
+                    ? l10n.resolving
+                    : switch (mark?.status) {
+                        TransferStatus.queued => l10n.waitingToDownload,
+                        TransferStatus.running => l10n.downloading,
+                        TransferStatus.done => l10n.downloaded,
+                        TransferStatus.failed => l10n.downloadFailed,
+                        _ => l10n.download,
+                      };
+                // 按钮组是 tonal 配色：选中容器 secondary、未选中
+                // secondaryContainer；进度环用各自配套的 on 色，和底色的
+                // 对比度才够（默认 primary 和选中态强调色太接近）
+                M3eCircularProgressIndicator ring({
+                  required Color color,
+                  double? value,
+                }) => M3eCircularProgressIndicator(
+                  value: value,
+                  color: color,
+                  backgroundColor: color.withValues(alpha: 0.2),
+                  size: 24,
+                  strokeWidth: 2.5,
+                );
+                return M3EIconButtonGroup<_FileQuickAction>(
+                  items: [
+                    M3EIconAction(
+                      value: _FileQuickAction.download,
+                      icon: Icons.download_outlined,
+                      checkedIcon: Icons.download_done,
+                      tooltip: tooltip,
+                      // 有任务（未取消）即 checked；解析中还不算，解析成功才选中
+                      checked: mark != null,
+                      // 解析中按钮还没选中，环挂在未选中图标位（容器
+                      // secondaryContainer）；用配套的 onSecondaryContainer 色
+                      iconWidget: !resolving
+                          ? null
+                          : ring(color: scheme.onSecondaryContainer),
+                      checkedIconWidget: switch (mark?.status) {
+                        // 排队中：不确定态，等调度
+                        TransferStatus.queued => ring(
+                          color: scheme.onSecondary,
+                        ),
+                        // 下载中：确定态；大小未知时退回不确定态
+                        TransferStatus.running => ring(
+                          color: scheme.onSecondary,
+                          value: (mark?.total ?? 0) > 0 ? mark?.progress : null,
+                        ),
+                        // 下载失败：隐藏小环，换成「下载关闭」图标
+                        TransferStatus.failed => const Icon(
+                          Icons.file_download_off,
+                        ),
+                        _ => null, // 已完成：用 checkedIcon（download_done）
+                      },
+                      // 没有任务时要等分享信息才能下载；有任务 / 解析中随时可操作
+                      enabled: mark != null || resolving || _share != null,
+                    ),
+                    M3EIconAction(
+                      value: _FileQuickAction.link,
+                      icon: Icons.link_outlined,
+                      checkedIcon: Icons.link,
+                      tooltip: l10n.copyLink,
+                      enabled: _share != null,
+                    ),
+                    M3EIconAction(
+                      value: _FileQuickAction.qr,
+                      icon: Icons.qr_code,
+                      checkedIcon: Icons.qr_code,
+                      tooltip: l10n.showQr,
+                      enabled: _share != null,
+                    ),
+                    M3EIconAction(
+                      value: _FileQuickAction.favorite,
+                      icon: Icons.star_border,
+                      checkedIcon: Icons.star_outline,
+                      tooltip: _favorite == true
+                          ? l10n.unfavorite
+                          : l10n.addFavorite,
+                      checked: _favorite == true,
+                      isToggle: true,
+                      // 收藏态要等分享信息 + 收藏表回来才知道，之前先置灰
+                      enabled: _favorite != null,
+                    ),
+                    M3EIconAction(
+                      value: _FileQuickAction.password,
+                      icon: Icons.lock_outline,
+                      checkedIcon: Icons.lock_outline,
+                      tooltip: l10n.accessPassword,
+                      checked: file.hasPwd,
+                      isToggle: true,
+                    ),
+                  ],
+                  onPressed: _runQuickAction,
+                  onToggled: (action, checked) {
+                    if (action == _FileQuickAction.favorite) {
+                      _toggleFavorite(checked);
+                    } else if (action == _FileQuickAction.password) {
+                      _editPassword();
+                    }
+                  },
+                );
               },
             ),
           ),

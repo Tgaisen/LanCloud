@@ -506,18 +506,29 @@ class _AppToastState extends State<_AppToast>
                   ),
                 ),
             child: Center(
-              child: Material(
-                color: scheme.inverseSurface,
-                elevation: 3,
-                shape: const StadiumBorder(),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
-                  ),
-                  child: Text(
-                    widget.message,
-                    style: TextStyle(color: scheme.onInverseSurface),
+              // 左右留出边距：长文本不再贴着屏幕边缘
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: ConstrainedBox(
+                  // 大屏上别拉成一整条：与弹窗同量级的宽度上限
+                  constraints: const BoxConstraints(maxWidth: 560),
+                  child: Material(
+                    color: scheme.inverseSurface,
+                    elevation: 3,
+                    shape: const StadiumBorder(),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
+                      child: Text(
+                        widget.message,
+                        // 最多两行，超出省略：错误详情这类长文本不再撑成一大块
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: scheme.onInverseSurface),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -1682,6 +1693,7 @@ class Md3ListItem extends StatefulWidget {
     this.onLongPress,
     this.onSecondaryTap,
     this.trailing,
+    this.badge,
     this.selected = false,
     this.iconBoxColor,
     this.iconColor,
@@ -1705,6 +1717,9 @@ class Md3ListItem extends StatefulWidget {
 
   /// 尾部操作（⋯、重试、打开等）。
   final Widget? trailing;
+
+  /// 尾部操作前的小标记（例如「已下载」小图标）；没有就传 null。
+  final Widget? badge;
 
   /// 多选选中态：整行填主色容器，圆角由外层分组控制。
   final bool selected;
@@ -1887,6 +1902,7 @@ class _Md3ListItemState extends State<Md3ListItem>
                         ],
                       ),
                     ),
+                    if (widget.badge != null) widget.badge!,
                     if (widget.trailing != null) ...[
                       const SizedBox(width: 4),
                       widget.trailing!,
@@ -4060,21 +4076,34 @@ Future<bool?> toggleFavoriteByRef(
 }
 
 /// 解析分享链接并把文件加入下载队列。
+///
+/// [showLoading] 为真时弹一个模态「正在解析」对话框（默认，适合一次性入口）；
+/// 属性弹窗这类要在原地显示解析态的入口传 false——不弹框，提示走轻提示
+/// （SnackBar 会被下层的弹窗盖住），弹窗也不会被误关。
 Future<bool> downloadShareFile(
   BuildContext context, {
   required String url,
   String pwd = '',
   String? fallbackName,
+  bool showLoading = true,
 }) async {
   final app = context.read<AppController>();
   final transfers = context.read<TransferManager>();
   final navigator = Navigator.of(context);
   final messenger = ScaffoldMessenger.of(context);
   final l10n = context.l10n;
-  showLoadingDialog(context, l10n.resolvingDownload);
+  void notify(String message) {
+    if (showLoading) {
+      messenger.showSnackBar(SnackBar(content: Text(message)));
+    } else {
+      showAppToast(context, message);
+    }
+  }
+
+  if (showLoading) showLoadingDialog(context, l10n.resolvingDownload);
   try {
     final direct = await app.publicClient.resolveFileShare(url, pwd: pwd);
-    navigator.pop();
+    if (showLoading) navigator.pop();
     transfers.addDownload(
       url: direct.url,
       name: direct.name.isEmpty ? (fallbackName ?? 'download') : direct.name,
@@ -4082,19 +4111,19 @@ Future<bool> downloadShareFile(
       pwd: pwd,
       via: app.publicClient,
     );
-    messenger.showSnackBar(SnackBar(content: Text(l10n.addedToQueue)));
+    notify(l10n.addedToQueue);
     return true;
   } on NeedPasswordException {
-    navigator.pop();
-    messenger.showSnackBar(SnackBar(content: Text(l10n.shareNeedsPassword)));
+    if (showLoading) navigator.pop();
+    notify(l10n.shareNeedsPassword);
     return false;
   } on LanzouException catch (e) {
-    navigator.pop();
-    messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    if (showLoading) navigator.pop();
+    notify(e.message);
     return false;
   } catch (e) {
-    navigator.pop();
-    messenger.showSnackBar(SnackBar(content: Text(l10n.resolveFailed('$e'))));
+    if (showLoading) navigator.pop();
+    notify(l10n.resolveFailed('$e'));
     return false;
   }
 }

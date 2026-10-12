@@ -288,6 +288,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get retry => 'Retry';
 
   @override
+  String get cancelDownload => 'Cancel download';
+
+  @override
+  String get redownload => 'Download again';
+
+  @override
+  String get waitingToDownload => 'Waiting';
+
+  @override
+  String get downloadFailed => 'Download failed';
+
+  @override
   String get batchRetry => 'Retry all';
 
   @override

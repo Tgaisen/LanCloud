@@ -4,9 +4,12 @@ import 'package:provider/provider.dart';
 import '../core/api/lanzou_client.dart';
 import '../core/api/models.dart';
 import '../core/app_controller.dart';
+import '../core/transfer/transfer_manager.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
+import 'download_mark.dart';
+import 'm3e.dart';
 
 /// 分享文件属性弹窗：加载时显示小圆环，加载完展示简介与文件信息，
 /// 提供下载、复制链接、二维码与收藏（「打开链接」已按需求去掉）。
@@ -41,6 +44,24 @@ class _ShareFileInfoSheetState extends State<ShareFileInfoSheet> {
 
   /// 收藏状态：null = 还没查出来（查完之前收藏项置灰，避免点出「重复收藏」）。
   bool? _favorite;
+
+  /// 正在解析直链（点了下载、任务还没入队）：行尾显示不确定态小环，
+  /// 解析失败恢复「下载」原状。
+  bool _resolvingDownload = false;
+
+  /// 点「下载 / 重新下载」：解析期间先在行尾显示不确定态小环；失败恢复原状。
+  Future<void> _startDownload() async {
+    if (_resolvingDownload) return;
+    setState(() => _resolvingDownload = true);
+    await downloadShareFile(
+      context,
+      url: widget.url,
+      pwd: widget.pwd,
+      fallbackName: _name,
+      showLoading: false,
+    );
+    if (mounted) setState(() => _resolvingDownload = false);
+  }
 
   @override
   void initState() {
@@ -101,6 +122,7 @@ class _ShareFileInfoSheetState extends State<ShareFileInfoSheet> {
     final l10n = context.l10n;
     final scheme = Theme.of(context).colorScheme;
     final navigator = Navigator.of(context);
+    final transfers = context.read<TransferManager>();
     return SafeArea(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -124,17 +146,70 @@ class _ShareFileInfoSheetState extends State<ShareFileInfoSheet> {
                 message: widget.invalid ? l10n.fileInvalid : l10n.shareInvalid,
               ),
             ),
-          ListTile(
-            enabled: !_invalid,
-            leading: const Icon(Icons.download_outlined),
-            title: Text(l10n.download),
-            onTap: () {
-              navigator.pop();
-              downloadShareFile(
-                context,
-                url: widget.url,
-                pwd: widget.pwd,
-                fallbackName: _name,
+          // 下载状态原位显示：解析中 / 等待中 / 下载中在行尾显示进度环，
+          // 已下载 / 下载失败换图标与文案；已加入下载后点击弹二级菜单
+          // （打开 / 分享 / 取消下载 / 重新下载）
+          ListenableBuilder(
+            // 进度更新走 manager（环要动）；标记集合变化走低频 revision，
+            // 两者都听，状态切换不会漏刷新
+            listenable: Listenable.merge([transfers, transfers.marksRevision]),
+            builder: (BuildContext context, _) {
+              final mark = transfers.downloadMarkOf(widget.url);
+              final status = mark?.status;
+              final resolving = _resolvingDownload;
+              final active =
+                  resolving ||
+                  status == TransferStatus.queued ||
+                  status == TransferStatus.running;
+              final title = resolving
+                  ? l10n.resolving
+                  : switch (status) {
+                      TransferStatus.queued => l10n.waitingToDownload,
+                      TransferStatus.running => l10n.downloading,
+                      TransferStatus.done => l10n.downloaded,
+                      TransferStatus.failed => l10n.downloadFailed,
+                      _ => l10n.download,
+                    };
+              return Builder(
+                builder: (BuildContext rowContext) => ListTile(
+                  enabled: !_invalid,
+                  leading: Icon(switch (status) {
+                    TransferStatus.done => Icons.download_done,
+                    TransferStatus.failed => Icons.file_download_off,
+                    _ => Icons.download_outlined,
+                  }),
+                  title: Text(title),
+                  trailing: !active
+                      ? null
+                      : M3eCircularProgressIndicator(
+                          // 下载中显示确定进度；解析中 / 排队中 / 大小未知
+                          // 都是不确定态
+                          value:
+                              status == TransferStatus.running &&
+                                  (mark?.total ?? 0) > 0
+                              ? mark?.progress
+                              : null,
+                          size: 24,
+                          strokeWidth: 2.5,
+                        ),
+                  onTap: () {
+                    if (mark != null) {
+                      final anchor = m3eMenuAnchorOf(rowContext);
+                      if (anchor == null) return;
+                      showDownloadTaskMenu(
+                        context,
+                        anchor: anchor,
+                        task: mark,
+                        // 重新下载：旧任务已删，重新解析直链；解析期间同样
+                        // 走「解析中」状态（行尾不确定态环）
+                        onRedownload: _startDownload,
+                      );
+                      return;
+                    }
+                    // 解析中忽略再次点击；解析失败会回到「下载」原状
+                    _startDownload();
+                  },
+                ),
               );
             },
           ),

@@ -104,12 +104,39 @@ class _FakeClient extends LanzouClient {
 }
 
 class _FakeApp extends AppController {
-  _FakeApp(this._client);
+  _FakeApp(this._client, {LanzouClient? publicClient})
+    : _public = publicClient ?? _FakePublic();
 
   final LanzouClient _client;
+  final LanzouClient _public;
 
   @override
   LanzouClient get client => _client;
+
+  @override
+  LanzouClient get publicClient => _public;
+}
+
+/// 直链解析：默认立刻成功，测试里不打网络。
+class _FakePublic extends LanzouClient {
+  _FakePublic() : super(uid: '0');
+
+  @override
+  Future<DirectFile> resolveFileShare(
+    String shareUrl, {
+    String pwd = '',
+  }) async => DirectFile(name: 'a.zip', url: 'https://cdn.example/a.zip');
+}
+
+/// 直链解析挂起：放行 / 放失败由测试决定。
+class _GatedPublic extends LanzouClient {
+  _GatedPublic() : super(uid: '0');
+
+  final Completer<DirectFile> gate = Completer<DirectFile>();
+
+  @override
+  Future<DirectFile> resolveFileShare(String shareUrl, {String pwd = ''}) =>
+      gate.future;
 }
 
 /// 分享信息卡住不返回的客户端：用来验「数据没回来时按钮置灰」。
@@ -132,12 +159,13 @@ Finder _sheetText(String text) =>
 Future<void> _pumpDrive(
   WidgetTester tester,
   _FakeApp app, {
+  TransferManager? manager,
   String folderId = '-1',
   String folderName = '根目录',
   VisualDensity density = VisualDensity.standard,
   Size viewSize = const Size(420, 900),
 }) async {
-  final manager = TransferManager(app);
+  final transfers = manager ?? TransferManager(app);
   addTearDown(app.dispose);
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = viewSize;
@@ -147,7 +175,7 @@ Future<void> _pumpDrive(
     MultiProvider(
       providers: [
         ChangeNotifierProvider<AppController>.value(value: app),
-        ChangeNotifierProvider<TransferManager>.value(value: manager),
+        ChangeNotifierProvider<TransferManager>.value(value: transfers),
       ],
       child: MaterialApp(
         theme: ThemeData(visualDensity: density),
@@ -286,6 +314,175 @@ void main() {
     final copied = '${(clipboard.single.arguments as Map)['text']}';
     expect(copied, contains(_FakeClient.fileUrl));
     expect(copied, contains('abcd'));
+  });
+
+  testWidgets('已添加下载的文件：属性弹窗下载按钮 checked，点击弹四项菜单', (tester) async {
+    final client = _FakeClient();
+    final app = _FakeApp(client);
+    final manager = TransferManager(app);
+    // 与页面一致的任务 refId：app.activeUid 在测试里是空串
+    manager.tasks.add(
+      TransferTask(
+          id: 'd1',
+          kind: TransferKind.download,
+          name: 'a.zip',
+          accountUid: '',
+          refId: ':f1',
+        )
+        ..status = TransferStatus.done
+        ..savedPath = '/tmp/a.zip',
+    );
+
+    await _pumpDrive(tester, app, manager: manager);
+    // 列表卡片上先有「已下载」小标记
+    expect(find.byIcon(Icons.download_done), findsOneWidget);
+
+    await tester.tap(find.text('a.zip'));
+    await _settleSheet(tester);
+    // 下载按钮变 checked、tooltip 变「已下载」
+    expect(_toggleButton(tester, '已下载').checked, isTrue);
+
+    // 点它弹二级菜单：已完成 → 打开 / 分享可用，取消位换成删除记录，重新下载可用
+    await tester.tap(find.byTooltip('已下载'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    final rows = tester
+        .widgetList<M3eMenuRow>(find.byType(M3eMenuRow))
+        .toList();
+    expect(rows.map((r) => r.label).toList(), ['打开', '分享', '删除此条记录', '重新下载']);
+    expect(rows.every((r) => r.enabled), isTrue);
+
+    // 删除这条任务记录：标记消失，按钮回到未选中（tooltip 变回「下载」）
+    await tester.tap(
+      find.descendant(
+        of: find.byType(M3eMenuRow),
+        matching: find.text('删除此条记录'),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(manager.tasks, isEmpty);
+    expect(_toggleButton(tester, '下载').checked, isFalse);
+  });
+
+  testWidgets('已添加下载但失败：属性弹窗显示「下载失败」+ 下载关闭图标', (tester) async {
+    final app = _FakeApp(_FakeClient());
+    final manager = TransferManager(app);
+    manager.tasks.add(
+      TransferTask(
+          id: 'd1',
+          kind: TransferKind.download,
+          name: 'a.zip',
+          accountUid: '',
+          refId: ':f1',
+        )
+        ..status = TransferStatus.failed
+        ..error = '网络错误',
+    );
+    await _pumpDrive(tester, app, manager: manager);
+    await tester.tap(find.text('a.zip'));
+    await _settleSheet(tester);
+
+    expect(_toggleButton(tester, '下载失败').checked, isTrue);
+    // 弹窗里的图标位换成「下载关闭」（列表徽标仍是 download_done）
+    expect(find.byIcon(Icons.file_download_off), findsOneWidget);
+  });
+
+  testWidgets('网盘文件属性弹窗：点下载先显示解析中环，解析失败恢复原状', (tester) async {
+    final shareGate = _GatedClient();
+    final directGate = _GatedPublic();
+    final app = _FakeApp(shareGate, publicClient: directGate);
+    await _pumpDrive(tester, app);
+    await tester.tap(find.text('a.zip'));
+    await _settleSheet(tester);
+
+    // 分享信息回来之前：下载按钮置灰（原有行为）
+    expect(_toggleButton(tester, '下载').enabled, isFalse);
+    shareGate.share.complete(
+      ShareInfo(
+        url: _FakeClient.fileUrl,
+        pwd: 'abcd',
+        isFile: true,
+        name: 'a.zip',
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(_toggleButton(tester, '下载').enabled, isTrue);
+
+    // 直链解析挂住：按钮位显示不确定态环 + 「解析中」（文案取 l10n，
+    // 避免写死后被改文案带崩）
+    final resolving = AppLocalizations.of(
+      tester.element(find.byType(DrivePage)),
+    ).resolving;
+    await tester.tap(find.byTooltip('下载'));
+    await tester.pump();
+    expect(find.byTooltip(resolving), findsOneWidget);
+    expect(
+      tester
+          .widget<M3eCircularProgressIndicator>(
+            find.byType(M3eCircularProgressIndicator),
+          )
+          .value,
+      isNull,
+    );
+
+    // 解析失败：回到「下载」原状（没有任务、没有环）
+    directGate.gate.completeError(const LanzouException('网络异常'));
+    await tester.pump();
+    await tester.pump();
+    expect(_toggleButton(tester, '下载').enabled, isTrue);
+    expect(find.byTooltip(resolving), findsNothing);
+  });
+
+  testWidgets('网盘文件属性弹窗：点「重新下载」立刻进入解析中状态', (tester) async {
+    final directGate = _GatedPublic();
+    final app = _FakeApp(_FakeClient(), publicClient: directGate);
+    final manager = TransferManager(app);
+    manager.tasks.add(
+      TransferTask(
+        id: 'd1',
+        kind: TransferKind.download,
+        name: 'a.zip',
+        accountUid: '',
+        refId: ':f1',
+      )..status = TransferStatus.failed,
+    );
+    await _pumpDrive(tester, app, manager: manager);
+    await tester.tap(find.text('a.zip'));
+    await _settleSheet(tester);
+
+    await tester.tap(find.byTooltip('下载失败'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.tap(
+      find.descendant(of: find.byType(M3eMenuRow), matching: find.text('重新下载')),
+    );
+    // 点击 → 菜单收起（post-frame 回调）→ 选择回调里删旧任务并开始解析
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    // 旧任务已删、新任务还没入队：按钮位立刻换成不确定态环
+    final resolving = AppLocalizations.of(
+      tester.element(find.byType(DrivePage)),
+    ).resolving;
+    expect(manager.tasks, isEmpty);
+    expect(find.byTooltip(resolving), findsOneWidget);
+    expect(
+      tester
+          .widget<M3eCircularProgressIndicator>(
+            find.byType(M3eCircularProgressIndicator),
+          )
+          .value,
+      isNull,
+    );
+
+    // 解析失败：恢复「下载」原状
+    directGate.gate.completeError(const LanzouException('网络异常'));
+    await tester.pump();
+    await tester.pump();
+    expect(find.byTooltip(resolving), findsNothing);
+    expect(_toggleButton(tester, '下载').enabled, isTrue);
   });
 
   testWidgets('宽屏：新建文件夹弹窗宽度固定，不超过 M3 上限 560', (tester) async {

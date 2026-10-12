@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/api/lanzou_client.dart';
 import 'package:lancloud/core/api/models.dart';
 import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/app_localizations_zh.dart';
 import 'package:lancloud/ui/common.dart';
@@ -103,8 +104,13 @@ Future<void> pumpPage(
   tester.view.physicalSize = const Size(400, 700);
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
-    ChangeNotifierProvider<AppController>.value(
-      value: app,
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider<AppController>.value(value: app),
+        ChangeNotifierProvider<TransferManager>.value(
+          value: TransferManager(app),
+        ),
+      ],
       child: MaterialApp(
         localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,

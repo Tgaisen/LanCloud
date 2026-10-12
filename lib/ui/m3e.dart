@@ -407,6 +407,8 @@ class M3EIconAction<T> {
     this.checked = false,
     this.isToggle = false,
     this.enabled = true,
+    this.iconWidget,
+    this.checkedIconWidget,
   });
 
   /// 业务值，点击时回传给组的回调。
@@ -431,6 +433,12 @@ class M3EIconAction<T> {
   /// 是否可以点。选中态还没加载出来时（例如收藏态要等一次请求）先置灰，
   /// 免得状态未知时点出错误的结果。
   final bool enabled;
+
+  /// 图标位的自定义控件（例如下载进度环）；给了就用它取代 [icon]。
+  final Widget? iconWidget;
+
+  /// 选中态图标位的自定义控件；给了就用它取代 [checkedIcon]。
+  final Widget? checkedIconWidget;
 }
 
 /// MD3E 标准按钮组（standard / spaced）：一行纯图标按钮。
@@ -541,10 +549,11 @@ class M3EIconButtonGroup<T> extends StatelessWidget {
           actions: [
             for (final item in items)
               core.M3EToggleButtonGroupAction(
-                icon: Icon(item.icon),
+                icon: item.iconWidget ?? Icon(item.icon),
                 // Material Symbols 是可变字体：选中态默认切到 FILL=1 的实心版，
                 // 否则「已收藏 / 已设密码」这类开关图标和未选中长得一模一样。
-                checkedIcon: Icon(item.checkedIcon, fill: 1),
+                checkedIcon:
+                    item.checkedIconWidget ?? Icon(item.checkedIcon, fill: 1),
                 tooltip: item.tooltip,
                 semanticLabel: item.tooltip,
                 width: width,
@@ -701,6 +710,7 @@ class M3eMenuItem<T> {
     required this.label,
     required this.icon,
     this.iconFill = 0,
+    this.enabled = true,
   });
 
   /// 选中这一项时 [showM3eMenu] 返回的值。
@@ -717,6 +727,10 @@ class M3eMenuItem<T> {
   /// Material Symbols 只有一套字形，实心 / 描边靠这条可变字体轴切：例如
   /// 「已收藏」用实心星、「收藏」用描边星。不支持的图标字体上无效果。
   final double iconFill;
+
+  /// 是否可用：置灰的项仍显示（M3 规范：不可用的操作置灰而不是删掉），
+  /// 但点不动。
+  final bool enabled;
 }
 
 /// 贴在被点控件下方弹出的 MD3E 菜单。
@@ -739,6 +753,8 @@ Future<T?> showM3eMenu<T>({
   required Rect anchor,
   required List<M3eMenuItem<T>> items,
   bool alignEnd = false,
+  Listenable? closeOn,
+  bool Function()? closeWhen,
 }) {
   // 少动效在这里就定下来：路由的时长是 getter，拿不到 context
   final bool reduceMotion = reduceMotionOf(context);
@@ -748,6 +764,8 @@ Future<T?> showM3eMenu<T>({
       items: items,
       alignEnd: alignEnd,
       reduceMotion: reduceMotion,
+      closeOn: closeOn,
+      closeWhen: closeWhen,
     ),
   );
 }
@@ -762,6 +780,7 @@ class M3eMenuRow extends StatelessWidget {
     required this.label,
     required this.onTap,
     this.iconFill = 0,
+    this.enabled = true,
   });
 
   /// 行首图标。
@@ -776,6 +795,10 @@ class M3eMenuRow extends StatelessWidget {
   /// 点这一行。
   final VoidCallback onTap;
 
+  /// 置灰的项仍显示但点不动（M3 规范）。[MenuItemButton] 传 null 回调
+  /// 即渲染成禁用态，颜色由主题负责。
+  final bool enabled;
+
   @override
   Widget build(BuildContext context) {
     // 用框架的 MenuItemButton 拿到它的默认度量（48dp 高、左右内边距 12dp、
@@ -783,7 +806,7 @@ class M3eMenuRow extends StatelessWidget {
     // vertical menu 规格改：项目是卡片里的一块圆角块，圆角 12dp——卡片圆角 16、
     // 项目左右内缩 4dp，内圆角 = 16 − 4 = 12，符合嵌套规则。
     return MenuItemButton(
-      onPressed: onTap,
+      onPressed: enabled ? onTap : null,
       // 菜单里的项目是竖排文案：必须显式指定 vertical，MenuItemButton 才会把
       // 文案放进 Expanded（+ClipRect）里约束住；默认的 horizontal 是给 MenuBar
       // 用的，文案会拿到无约束宽度、直接溢出卡片（长文案就是被卡片裁掉）。
@@ -807,12 +830,33 @@ class _M3eMenuRoute<T> extends PopupRoute<T> {
     required this.items,
     required this.alignEnd,
     required this.reduceMotion,
+    this.closeOn,
+    this.closeWhen,
   });
 
   final Rect anchor;
   final List<M3eMenuItem<T>> items;
   final bool alignEnd;
   final bool reduceMotion;
+
+  /// 外部状态变化时自动收起菜单：监听 [closeOn]（应当是低频的通知源，
+  /// 例如 [TransferManager.marksRevision]；别监听每次进度更新都会通知的对象），
+  /// 且 [closeWhen] 为真（默认恒真）时收起。收起走正常 pop，返回 null。
+  final Listenable? closeOn;
+  final bool Function()? closeWhen;
+
+  void _handleCloseOn() {
+    if (!isActive) return;
+    if (closeWhen != null && !closeWhen!()) return;
+    // 只有菜单还在最上层时才关它；否则请等它回到最上层（这种情况极少）
+    if (isCurrent) navigator?.pop();
+  }
+
+  @override
+  void install() {
+    super.install();
+    closeOn?.addListener(_handleCloseOn);
+  }
 
   /// M3 菜单：宽度 112–280、项高 48、上下内边距 8、离屏幕边缘 12。
   static const double _minWidth = 112;
@@ -908,6 +952,7 @@ class _M3eMenuRoute<T> extends PopupRoute<T> {
 
   @override
   void dispose() {
+    closeOn?.removeListener(_handleCloseOn);
     _scroll.dispose();
     super.dispose();
   }
@@ -1039,6 +1084,7 @@ class _M3eMenuRoute<T> extends PopupRoute<T> {
                                 icon: items[i].icon,
                                 iconFill: items[i].iconFill,
                                 label: items[i].label,
+                                enabled: items[i].enabled,
                                 onTap: () =>
                                     Navigator.of(context).pop(items[i].value),
                               ),

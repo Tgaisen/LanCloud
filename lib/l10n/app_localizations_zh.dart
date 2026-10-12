@@ -281,6 +281,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get retry => '重试';
 
   @override
+  String get cancelDownload => '取消下载';
+
+  @override
+  String get redownload => '重新下载';
+
+  @override
+  String get waitingToDownload => '等待中';
+
+  @override
+  String get downloadFailed => '下载失败';
+
+  @override
   String get batchRetry => '批量重试';
 
   @override
@@ -342,7 +354,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get passwordOptional => '提取码（如有）';
 
   @override
-  String get resolving => '解析中…';
+  String get resolving => '解析中';
 
   @override
   String get resolve => '解析';

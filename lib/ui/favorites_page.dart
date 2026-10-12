@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:provider/provider.dart';
 
 import '../core/app_controller.dart';
+import 'download_mark.dart';
 import '../core/data/app_db.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
@@ -517,6 +518,8 @@ class _FavoritesPageState extends State<FavoritesPage>
         onSecondaryTap: _selecting
             ? null
             : () => _itemOptions(item, rowContext),
+        // 已加入下载的分享文件：标题右侧显示一个「已下载」小标记
+        badge: isFolder ? null : DownloadMarkIcon(markKey: item.ref, size: 16),
         // 多选时隐藏 ⋯，但保留占位：条目高度不会跳
         trailing: HideKeepingSpace(
           hidden: _selecting,

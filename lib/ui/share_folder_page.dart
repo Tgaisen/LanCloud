@@ -4,9 +4,11 @@ import 'package:provider/provider.dart';
 import '../core/api/lanzou_client.dart';
 import '../core/api/models.dart';
 import '../core/app_controller.dart';
+import '../core/transfer/transfer_manager.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
+import 'download_mark.dart';
 import 'm3e.dart';
 import 'reduce_motion.dart';
 import 'share_file_sheet.dart';
@@ -331,8 +333,8 @@ class _ShareFolderPageState extends State<ShareFolderPage>
             },
           ),
           ListTile(
-            // 已收藏切到实心星（FILL 轴），未收藏保持描边
-            leading: Icon(Icons.star_outline, fill: favorited ? 1 : 0),
+            // 取消收藏用自定义 star-off-line；「收藏」保持描边星星
+            leading: Icon(favorited ? Icons.star_off_line : Icons.star_outline),
             title: Text(
               favorited ? context.l10n.unfavorite : context.l10n.favorite,
             ),
@@ -376,6 +378,11 @@ class _ShareFolderPageState extends State<ShareFolderPage>
     final l10n = context.l10n;
     final url = folder?.url ?? file!.url;
     final name = folder?.name ?? file!.name;
+    // 已加入下载（未取消）的文件：菜单里的「下载」置灰——打开 / 分享 /
+    // 取消下载 / 重新下载这些操作都在属性弹窗里
+    final alreadyAdded =
+        file != null &&
+        context.read<TransferManager>().downloadMarkOf(file.url) != null;
     // 收藏项要显示「收藏 / 取消收藏」：ref 就是分享链接，先查本地收藏表
     final favorited = await isFavoritedByRef(context, url);
     if (!mounted) return;
@@ -395,6 +402,7 @@ class _ShareFolderPageState extends State<ShareFolderPage>
             value: _ShareItemAction.download,
             label: l10n.download,
             icon: Icons.download_outlined,
+            enabled: !alreadyAdded,
           ),
         M3eMenuItem(
           value: _ShareItemAction.copyLink,
@@ -779,6 +787,11 @@ class _ShareFolderPageState extends State<ShareFolderPage>
                                 trailing: file.invalid
                                     ? null
                                     : _itemMenuButton(file: file),
+                                // 已加入下载的分享文件：显示「已下载」小标记
+                                badge: DownloadMarkIcon(
+                                  markKey: file.url,
+                                  size: 16,
+                                ),
                                 onSecondaryTap: _selecting || file.invalid
                                     ? null
                                     : () => _showItemMenu(

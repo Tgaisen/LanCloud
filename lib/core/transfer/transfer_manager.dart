@@ -91,6 +91,28 @@ class TransferManager extends ChangeNotifier {
   @visibleForTesting
   Future<DirectFile> Function(String shareUrl, String pwd)? debugResolveShare;
 
+  /// 「已下载」标记的低频版本号：任务增删 / 状态变化时自增，下载中的进度
+  /// 更新**不**触发。列表里的下载标记监听它，避免长列表跟着进度高频重建。
+  final ValueNotifier<int> marksRevision = ValueNotifier(0);
+
+  void _bumpMarks() => marksRevision.value += 1;
+
+  /// 某个文件的下载状态（用于「已添加下载」标记）：找最近一条匹配的下载任务，
+  /// 已取消的不算。
+  ///
+  /// [key] 对网盘文件是 `"账号uid:文件id"`（匹配任务的 [TransferTask.refId]），
+  /// 对分享文件是分享链接（匹配任务的 [TransferTask.referer]）。
+  TransferTask? downloadMarkOf(String key) {
+    if (key.isEmpty) return null;
+    for (var i = tasks.length - 1; i >= 0; i--) {
+      final task = tasks[i];
+      if (task.kind != TransferKind.download) continue;
+      if (task.status == TransferStatus.canceled) continue;
+      if (task.refId == key || task.referer == key) return task;
+    }
+    return null;
+  }
+
   void addTaskListener(void Function(TransferTask) listener) {
     _taskListeners.add(listener);
   }
@@ -142,6 +164,7 @@ class TransferManager extends ChangeNotifier {
           await _persist(task);
         }
       }
+      _bumpMarks();
       notifyListeners();
     } catch (_) {}
   }
@@ -217,6 +240,7 @@ class TransferManager extends ChangeNotifier {
       refId: refId,
     )..total = size;
     tasks.add(task);
+    _bumpMarks();
     _persist(task);
     notifyListeners();
     _pump();
@@ -231,6 +255,7 @@ class TransferManager extends ChangeNotifier {
       task.cancelToken.cancel('user canceled');
       task.status = TransferStatus.canceled;
     }
+    _bumpMarks();
     _persist(task);
     notifyListeners();
     _pump();
@@ -307,6 +332,7 @@ class TransferManager extends ChangeNotifier {
     task.status = TransferStatus.queued;
     task.error = null;
     task.received = 0;
+    _bumpMarks();
     _persist(task);
     notifyListeners();
     _pump();
@@ -330,6 +356,7 @@ class TransferManager extends ChangeNotifier {
     for (final id in removed) {
       _app.db.deleteTransfer(id).catchError((_) {});
     }
+    _bumpMarks();
     notifyListeners();
   }
 
@@ -343,6 +370,7 @@ class TransferManager extends ChangeNotifier {
     }
     tasks.remove(task);
     _app.db.deleteTransfer(id).catchError((_) {});
+    _bumpMarks();
     notifyListeners();
     _pump();
   }
@@ -363,6 +391,7 @@ class TransferManager extends ChangeNotifier {
     }
     if (removed.isEmpty) return;
     _app.db.deleteTransfers(removed).catchError((_) {});
+    _bumpMarks();
     notifyListeners();
     _pump();
   }
@@ -431,6 +460,7 @@ class TransferManager extends ChangeNotifier {
   Future<void> _start(TransferTask task) async {
     task.status = TransferStatus.running;
     task.error = null;
+    _bumpMarks();
     _persist(task);
     notifyListeners();
     _syncProgressNotification();
@@ -466,6 +496,7 @@ class TransferManager extends ChangeNotifier {
       task.status = TransferStatus.failed;
       task.error = '$e';
     } finally {
+      _bumpMarks();
       _persist(task);
       notifyListeners();
       _pump();

@@ -1,7 +1,8 @@
-import 'package:material_ui/material_ui.dart';
+import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/api/models.dart';
 import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/m3e.dart';
@@ -21,8 +22,13 @@ Future<AppController> pumpShareFolder(
   final app = AppController()..settings.hideTopBar = true;
   addTearDown(app.dispose);
   await tester.pumpWidget(
-    ChangeNotifierProvider<AppController>.value(
-      value: app,
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider<AppController>.value(value: app),
+        ChangeNotifierProvider<TransferManager>.value(
+          value: TransferManager(app),
+        ),
+      ],
       child: MaterialApp(
         localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
@@ -151,6 +157,52 @@ void main() {
     expect(menuLabels(), ['查看', '下载', '复制链接', '收藏']);
     await tester.tapAt(const Offset(5, 300));
     await tester.pumpAndSettle();
+  });
+
+  testWidgets('分享浏览页 ⋯ 菜单：已加入下载的文件「下载」项置灰', (tester) async {
+    await pumpShareFolder(
+      tester,
+      FolderShareDetail(
+        name: '测试分享',
+        files: [
+          ShareFileItem(
+            name: 'a.txt',
+            time: '2026-10-01',
+            size: '1 M',
+            url: 'https://example.com/a',
+          ),
+        ],
+      ),
+    );
+    // 页面里读的就是同一个管理器：直接塞一条匹配的任务（含下载中）
+    final manager = Provider.of<TransferManager>(
+      tester.element(find.byType(ShareFolderPage)),
+      listen: false,
+    );
+    manager.tasks.add(
+      TransferTask(
+        id: 'd1',
+        kind: TransferKind.download,
+        name: 'a.txt',
+        accountUid: '',
+        referer: 'https://example.com/a',
+      )..status = TransferStatus.running,
+    );
+
+    final row = find.ancestor(
+      of: find.text('a.txt'),
+      matching: find.byType(Md3ListItem),
+    );
+    await tester.tap(
+      find.descendant(of: row, matching: find.byTooltip('更多操作')),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+
+    final downloadRow = tester
+        .widgetList<M3eMenuRow>(find.byType(M3eMenuRow))
+        .firstWhere((r) => r.label == '下载');
+    expect(downloadRow.enabled, isFalse);
   });
 
   testWidgets('空分享居中显示提示', (tester) async {

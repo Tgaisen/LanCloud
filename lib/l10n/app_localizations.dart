@@ -602,6 +602,30 @@ abstract class AppLocalizations {
   /// **'重试'**
   String get retry;
 
+  /// No description provided for @cancelDownload.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消下载'**
+  String get cancelDownload;
+
+  /// No description provided for @redownload.
+  ///
+  /// In zh, this message translates to:
+  /// **'重新下载'**
+  String get redownload;
+
+  /// No description provided for @waitingToDownload.
+  ///
+  /// In zh, this message translates to:
+  /// **'等待中'**
+  String get waitingToDownload;
+
+  /// No description provided for @downloadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载失败'**
+  String get downloadFailed;
+
   /// No description provided for @batchRetry.
   ///
   /// In zh, this message translates to:
@@ -719,7 +743,7 @@ abstract class AppLocalizations {
   /// No description provided for @resolving.
   ///
   /// In zh, this message translates to:
-  /// **'解析中…'**
+  /// **'解析中'**
   String get resolving;
 
   /// No description provided for @resolve.
