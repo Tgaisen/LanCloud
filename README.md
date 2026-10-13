@@ -2,8 +2,15 @@
 
 蓝奏云第三方 Flutter 客户端，使用 DeepSeek + Codex 辅助开发与验证。
 
-- 不收集个人信息，账号与数据只保存在本机
-- 运行时直连蓝奏云官方接口，没有中间服务器
+</div>
+<img src="assets/images/screenshots/screenshot_1.png" width="48%" alt="home_fold" />&nbsp;
+<img src="assets/images/screenshots/screenshot_2.png" width="48%" alt="home_fold_split_screen" />
+<br/>
+<img src="assets/images/screenshots/screenshot_3.png" width="23%" alt="home" />&nbsp;
+<img src="assets/images/screenshots/screenshot_4.png" width="23%" alt="drive" />&nbsp;
+<img src="assets/images/screenshots/screenshot_5.png" width="23%" alt="transfers" />&nbsp;
+<img src="assets/images/screenshots/screenshot_6.png" width="23%" alt="settings" />
+</div>
 
 ## 功能
 
@@ -76,6 +83,10 @@ powershell -ExecutionPolicy Bypass -File tools/build_windows.ps1
 ## 开源与致谢
 
 本项目使用 DeepSeek + Codex 辅助开发与验证。
+
+<div>
+<img src="assets/images/deepseek_generated_by_ai.jpg" width=100></img>
+</div>
 
 本项目以 Apache License 2.0 开源。
 
