@@ -71,6 +71,8 @@
   "recycleBin": "Recycle bin",
   "removeAccountTitle": "Remove account",
   "removeAccountMessage": "This removes account {uid} and its login info from this device. Files in the cloud are unaffected.",
+  "clearUsageData": "Clear usage data",
+  "clearUsageDataSubtitle": "Removes data related to this account, such as quick access and recent items",
   "cancel": "Cancel",
   "remove": "Remove",
   "clear": "Clear",

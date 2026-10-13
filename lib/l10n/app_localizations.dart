@@ -494,6 +494,18 @@ abstract class AppLocalizations {
   /// **'将从本机移除账号 {uid} 及其登录信息，云端文件不受影响。'**
   String removeAccountMessage(String uid);
 
+  /// No description provided for @clearUsageData.
+  ///
+  /// In zh, this message translates to:
+  /// **'清除使用数据'**
+  String get clearUsageData;
+
+  /// No description provided for @clearUsageDataSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'清除此账号相关数据，如快速访问、最近使用'**
+  String get clearUsageDataSubtitle;
+
   /// No description provided for @cancel.
   ///
   /// In zh, this message translates to:

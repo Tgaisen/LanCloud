@@ -687,6 +687,21 @@ class AppDb {
     _touch();
   }
 
+  /// 移除某个账号在本机留下的使用数据：快速访问与最近使用。
+  ///
+  /// 供「移除账号」时勾选「清除使用数据」使用；收藏按分享链接记（不分账号）、
+  /// 下载记录与磁盘上的文件都不动。
+  Future<void> clearUsageData(String account) async {
+    final database = await db;
+    await database.delete('pins', where: 'account = ?', whereArgs: [account]);
+    await database.delete(
+      'recents',
+      where: 'account = ?',
+      whereArgs: [account],
+    );
+    _touch();
+  }
+
   /// 删除某条最近使用记录（首页条目菜单的「删除此条记录」）。
   Future<void> removeRecent({
     required String account,

@@ -318,24 +318,49 @@ class _ProfilePageState extends State<ProfilePage>
 
   Future<void> _removeAccount(BuildContext context, String uid) async {
     final app = context.read<AppController>();
+    final l10n = context.l10n;
+    var clearData = false;
     final ok = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(context.l10n.removeAccountTitle),
-        content: Text(context.l10n.removeAccountMessage(uid)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(context.l10n.cancel),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: Text(l10n.removeAccountTitle),
+          // M3 对话框内容边距 24dp；列表组外边距 0，组沿落在 24dp 上
+          contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(l10n.removeAccountMessage(uid)),
+              const SizedBox(height: 16),
+              // 复选行放进列表组（与选择弹窗同一套样式）
+              DialogListGroup(
+                children: [
+                  M3ePickTile(
+                    label: l10n.clearUsageData,
+                    subtitle: l10n.clearUsageDataSubtitle,
+                    selected: clearData,
+                    onTap: () => setDialogState(() => clearData = !clearData),
+                  ),
+                ],
+              ),
+            ],
           ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(context.l10n.remove),
-          ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(l10n.cancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(l10n.remove),
+            ),
+          ],
+        ),
       ),
     );
-    if (ok == true) await app.removeAccount(uid);
+    if (ok != true) return;
+    await app.removeAccount(uid, clearData: clearData);
   }
 }
 

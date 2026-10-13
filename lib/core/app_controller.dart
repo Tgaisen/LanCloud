@@ -453,7 +453,15 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> removeAccount(String uid) async {
+  /// 移除账号。[clearData] 为 true 时一并清掉本机里这个账号的使用数据
+  /// （快速访问、最近使用）。
+  Future<void> removeAccount(String uid, {bool clearData = false}) async {
+    // 先清使用数据再移除账号；本地库出问题也不能挡住退出登录
+    if (clearData) {
+      try {
+        await db.clearUsageData(uid);
+      } catch (_) {}
+    }
     await accounts.remove(uid);
     _clients.remove(uid);
     await driveCache.bindAccount(accounts.activeUid);

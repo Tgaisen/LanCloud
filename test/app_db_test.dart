@@ -266,4 +266,34 @@ void main() {
       ['favorites'],
     );
   });
+
+  test('清除使用数据：只清该账号的快速访问与最近使用，其它账号不受影响', () async {
+    final db = AppDb.instance;
+
+    await db.addPin(account: 'clear-a', name: 'A 目录', ref: 'clear-a-pin');
+    await db.addPin(account: 'clear-b', name: 'B 目录', ref: 'clear-b-pin');
+    await db.addRecent(
+      account: 'clear-a',
+      kind: 'folder',
+      name: 'A 最近',
+      ref: 'clear-a-recent',
+    );
+    await db.addRecent(
+      account: 'clear-b',
+      kind: 'folder',
+      name: 'B 最近',
+      ref: 'clear-b-recent',
+    );
+
+    await db.clearUsageData('clear-a');
+
+    expect(await db.isPinned('clear-a', 'clear-a-pin'), isFalse);
+    expect(await db.recents('clear-a'), isEmpty);
+    // 另一个账号的快速访问 / 最近使用原样保留
+    expect(await db.isPinned('clear-b', 'clear-b-pin'), isTrue);
+    expect(
+      (await db.recents('clear-b')).map((r) => r.ref),
+      contains('clear-b-recent'),
+    );
+  });
 }

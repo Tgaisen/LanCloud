@@ -232,6 +232,13 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get clearUsageData => 'Clear usage data';
+
+  @override
+  String get clearUsageDataSubtitle =>
+      'Removes data related to this account, such as quick access and recent items';
+
+  @override
   String get cancel => 'Cancel';
 
   @override

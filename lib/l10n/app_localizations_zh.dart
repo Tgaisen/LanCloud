@@ -225,6 +225,12 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get clearUsageData => '清除使用数据';
+
+  @override
+  String get clearUsageDataSubtitle => '清除此账号相关数据，如快速访问、最近使用';
+
+  @override
   String get cancel => '取消';
 
   @override

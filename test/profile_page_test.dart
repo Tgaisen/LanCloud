@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/data/account_store.dart';
@@ -206,5 +207,61 @@ void main() {
       ),
       findsOneWidget,
     );
+  });
+
+  testWidgets('移除账号弹窗：列表组复选行「清除使用数据」，勾选后确认即移除账号', (tester) async {
+    // 移除账号会写安全存储：测试里换成内存实现
+    FlutterSecureStorage.setMockInitialValues({});
+    final app = AppController();
+    addTearDown(app.dispose);
+    app.accounts.accounts.add(
+      Account(uid: '556911', cookie: 'c', nickname: '土豆'),
+    );
+    app.accounts.activeUid = '556911';
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AppController>.value(
+        value: app,
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const ProfilePage(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('管理'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('退出登录'));
+    await tester.pumpAndSettle();
+
+    // 确认弹窗：消息 + 「清除使用数据」复选行（列表组样式）
+    expect(find.text('移除账号'), findsOneWidget);
+    expect(find.text('清除使用数据'), findsOneWidget);
+    expect(find.text('清除此账号相关数据，如快速访问、最近使用'), findsOneWidget);
+    Checkbox checkbox() => tester.widget<Checkbox>(find.byType(Checkbox));
+    expect(checkbox().value, isFalse);
+
+    // 点行勾选（默认没勾：移除账号不动使用数据）
+    await tester.tap(find.text('清除使用数据'));
+    await tester.pumpAndSettle();
+    expect(checkbox().value, isTrue);
+
+    // 取消：账号还在
+    await tester.tap(find.text('取消'));
+    await tester.pumpAndSettle();
+    expect(app.accounts.accounts, hasLength(1));
+
+    // 重新打开并确认移除：账号从本机删掉
+    await tester.tap(find.text('管理'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('退出登录'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('清除使用数据'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('移除'));
+    await tester.pumpAndSettle();
+    expect(app.accounts.accounts, isEmpty);
+    expect(app.accounts.activeUid, isNull);
   });
 }
