@@ -2,6 +2,7 @@ name: 问题反馈
 description: 描述你遇到的问题，以帮助定位并修复
 title: "[BUG] "
 labels: ["bug"]
+assignees: ["Tgaisen"]
 type: Bug
 body:
   - type: checkboxes

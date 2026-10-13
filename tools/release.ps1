@@ -21,7 +21,8 @@
 #>
 [CmdletBinding()]
 param(
-  # 手写发布说明（markdown）；不传则用 gh --generate-notes 自动生成
+  # 手写发布说明（markdown，格式见 docs/releases/TEMPLATE.md）；
+  # 不传则用 gh --generate-notes 自动生成
   [string]$NotesFile = '',
   # 先建草稿，确认无误再到网页里发布
   [switch]$Draft,
