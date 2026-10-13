@@ -427,26 +427,24 @@ class _BackupPageState extends State<BackupPage> {
     }
     final picked = await showAppSheet<WebdavEntry>(
       context,
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 4),
-        child: SheetListGroup(
-          children: [
-            for (final entry in entries)
-              ListTile(
-                leading: Icon(
-                  entry.name == BackupService.latestName
-                      ? Icons.cached_outlined
-                      : Icons.cloud_outlined,
-                ),
-                title: Text(entry.name),
-                subtitle: Text(
-                  '${entry.modified == null ? '' : formatDateShort(entry.modified!.millisecondsSinceEpoch)}'
-                  '${entry.size > 0 ? ' · ${formatBytes(entry.size)}' : ''}',
-                ),
-                onTap: () => Navigator.of(context).pop(entry),
+      child: SheetListGroup(
+        margin: SheetListGroup.endMargin,
+        children: [
+          for (final entry in entries)
+            ListTile(
+              leading: Icon(
+                entry.name == BackupService.latestName
+                    ? Icons.cached_outlined
+                    : Icons.cloud_outlined,
               ),
-          ],
-        ),
+              title: Text(entry.name),
+              subtitle: Text(
+                '${entry.modified == null ? '' : formatDateShort(entry.modified!.millisecondsSinceEpoch)}'
+                '${entry.size > 0 ? ' · ${formatBytes(entry.size)}' : ''}',
+              ),
+              onTap: () => Navigator.of(context).pop(entry),
+            ),
+        ],
       ),
     );
     if (picked == null || !mounted) return;

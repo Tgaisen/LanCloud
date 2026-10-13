@@ -157,7 +157,7 @@ void main() {
     expect(find.text('普'), findsNothing);
   });
 
-  testWidgets('管理账号弹窗：两个列表组，容器色比弹窗底高一档、左右 16dp', (tester) async {
+  testWidgets('管理账号弹窗：两个列表组，容器色比弹窗底高一档、窗体边距 16dp', (tester) async {
     final app = AppController();
     addTearDown(app.dispose);
     app.accounts.accounts.add(
@@ -194,9 +194,10 @@ void main() {
     for (final list in lists) {
       // 比弹窗底（surfaceContainerLow）高一档容器色
       expect(list.color, scheme.surfaceContainer);
-      // 左右 16dp 与弹窗里的标题对齐
-      expect(list.margin, const EdgeInsets.fromLTRB(16, 4, 16, 4));
     }
+    // 组 1 是普通组外边距；组 2 是弹窗内容的最后一块：底边与左右同值（16dp）
+    expect(lists[0].margin, const EdgeInsets.fromLTRB(16, 4, 16, 4));
+    expect(lists[1].margin, SheetListGroup.endMargin);
     // 退出登录单独一组（第二组只有它一项）
     expect(
       find.descendant(

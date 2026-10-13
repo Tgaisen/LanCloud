@@ -148,6 +148,7 @@ class _ShareFileInfoSheetState extends State<ShareFileInfoSheet> {
             ),
           // 下载 / 复制链接 / 二维码 / 收藏：弹窗里的列表组
           SheetListGroup(
+            margin: SheetListGroup.endMargin,
             children: [
               // 下载状态原位显示：解析中 / 等待中 / 下载中在行尾显示进度环，
               // 已下载 / 下载失败换图标与文案；已加入下载后点击弹二级菜单
@@ -271,7 +272,6 @@ class _ShareFileInfoSheetState extends State<ShareFileInfoSheet> {
               ),
             ],
           ),
-          const SizedBox(height: 4),
         ],
       ),
     );

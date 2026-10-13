@@ -404,60 +404,58 @@ class _HomePageState extends State<HomePage>
     // 与其它弹窗一致：走统一外壳（MD3E 底部弹窗 + 自适应高度）。
     await showAppSheet<void>(
       context,
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 4),
-        child: SheetListGroup(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.download_outlined),
-              title: Text(context.l10n.download),
-              onTap: () async {
-                Navigator.of(context).pop();
-                final client = app.client;
-                if (client == null) return;
-                try {
-                  final info = await client.shareInfoOfFile(fileId);
-                  if (!context.mounted) return;
-                  await downloadShareFile(
-                    context,
-                    url: info.url,
-                    pwd: info.pwd,
-                    fallbackName: name,
-                  );
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context)
-                        .showSnackBar(SnackBar(content: Text('$e')));
-                  }
+      child: SheetListGroup(
+        margin: SheetListGroup.endMargin,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.download_outlined),
+            title: Text(context.l10n.download),
+            onTap: () async {
+              Navigator.of(context).pop();
+              final client = app.client;
+              if (client == null) return;
+              try {
+                final info = await client.shareInfoOfFile(fileId);
+                if (!context.mounted) return;
+                await downloadShareFile(
+                  context,
+                  url: info.url,
+                  pwd: info.pwd,
+                  fallbackName: name,
+                );
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context)
+                      .showSnackBar(SnackBar(content: Text('$e')));
                 }
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.link_outlined),
-              title: Text(context.l10n.copyLink),
-              onTap: () async {
-                Navigator.of(context).pop();
-                final client = app.client;
-                if (client == null) return;
-                try {
-                  final info = await client.shareInfoOfFile(fileId);
-                  if (!context.mounted) return;
-                  await copyText(
-                    context,
-                    info.pwd.isEmpty
-                        ? info.url
-                        : context.l10n.linkWithPassword(info.url, info.pwd),
-                  );
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context)
-                        .showSnackBar(SnackBar(content: Text('$e')));
-                  }
+              }
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.link_outlined),
+            title: Text(context.l10n.copyLink),
+            onTap: () async {
+              Navigator.of(context).pop();
+              final client = app.client;
+              if (client == null) return;
+              try {
+                final info = await client.shareInfoOfFile(fileId);
+                if (!context.mounted) return;
+                await copyText(
+                  context,
+                  info.pwd.isEmpty
+                      ? info.url
+                      : context.l10n.linkWithPassword(info.url, info.pwd),
+                );
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context)
+                      .showSnackBar(SnackBar(content: Text('$e')));
                 }
-              },
-            ),
-          ],
-        ),
+              }
+            },
+          ),
+        ],
       ),
     );
   }

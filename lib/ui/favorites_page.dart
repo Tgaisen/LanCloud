@@ -213,8 +213,9 @@ class _FavoritesPageState extends State<FavoritesPage>
               ),
             ),
             SheetListGroup(
-              // 与上面的按钮组分开：上边距用列表的左右边距同值（16dp）
-              margin: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+              // 与上面的按钮组分开：上边距用列表的左右边距同值（16dp）；
+              // 作为弹窗内容最后一块，下边距同样与左右同值（16dp）
+              margin: const EdgeInsets.fromLTRB(16, 16, 16, 16),
               children: [
                 ListTile(
                   leading: const Icon(Icons.checklist),
@@ -236,7 +237,6 @@ class _FavoritesPageState extends State<FavoritesPage>
                 ),
               ],
             ),
-            const SizedBox(height: 4),
           ],
         ),
       ),

@@ -1024,8 +1024,9 @@ class _DrivePageState extends State<DrivePage>
               ),
             ),
             SheetListGroup(
-              // 与上面的按钮组分开：上边距用列表的左右边距同值（16dp）
-              margin: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+              // 与上面的按钮组分开：上边距用列表的左右边距同值（16dp）；
+              // 作为弹窗内容最后一块，下边距同样与左右同值（16dp）
+              margin: const EdgeInsets.fromLTRB(16, 16, 16, 16),
               children: [
                 ListTile(
                   leading: const Icon(Icons.checklist),
@@ -1064,7 +1065,6 @@ class _DrivePageState extends State<DrivePage>
                   ),
               ],
             ),
-            const SizedBox(height: 8),
           ],
         ),
       ),
@@ -1074,39 +1074,37 @@ class _DrivePageState extends State<DrivePage>
   Future<void> _showAddMenu() async {
     await showAppSheet<void>(
       context,
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 4),
-        child: SheetListGroup(
-          children: [
+      child: SheetListGroup(
+        margin: SheetListGroup.endMargin,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.create_new_folder_outlined),
+            title: Text(context.l10n.newFolder),
+            onTap: () {
+              Navigator.of(context).pop();
+              _mkdir();
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.upload_file_outlined),
+            title: Text(context.l10n.uploadFile),
+            onTap: () {
+              Navigator.of(context).pop();
+              _upload();
+            },
+          ),
+          // 桌面端没有 ACTION_OPEN_DOCUMENT 那套「从其他应用/文档提供器选取」，
+          // 系统选择器与「上传文件」完全一样，这里不重复给入口。
+          if (PlatformSupport.isMobile)
             ListTile(
-              leading: const Icon(Icons.create_new_folder_outlined),
-              title: Text(context.l10n.newFolder),
+              leading: const Icon(Icons.file_open),
+              title: Text(context.l10n.uploadFromApp),
               onTap: () {
                 Navigator.of(context).pop();
-                _mkdir();
+                _uploadFromApp();
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.upload_file_outlined),
-              title: Text(context.l10n.uploadFile),
-              onTap: () {
-                Navigator.of(context).pop();
-                _upload();
-              },
-            ),
-            // 桌面端没有 ACTION_OPEN_DOCUMENT 那套「从其他应用/文档提供器选取」，
-            // 系统选择器与「上传文件」完全一样，这里不重复给入口。
-            if (PlatformSupport.isMobile)
-              ListTile(
-                leading: const Icon(Icons.file_open),
-                title: Text(context.l10n.uploadFromApp),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  _uploadFromApp();
-                },
-              ),
-          ],
-        ),
+        ],
       ),
     );
   }
@@ -1456,27 +1454,25 @@ class _DrivePageState extends State<DrivePage>
   Future<void> _batchMore() async {
     final action = await showAppSheet<String>(
       context,
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 4),
-        child: SheetListGroup(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.drive_file_move_outline),
-              title: Text(context.l10n.move),
-              onTap: () => Navigator.of(context).pop('move'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.edit_note),
-              title: Text(context.l10n.editDesc),
-              onTap: () => Navigator.of(context).pop('desc'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.lock_outline),
-              title: Text(context.l10n.setPassword),
-              onTap: () => Navigator.of(context).pop('pwd'),
-            ),
-          ],
-        ),
+      child: SheetListGroup(
+        margin: SheetListGroup.endMargin,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.drive_file_move_outline),
+            title: Text(context.l10n.move),
+            onTap: () => Navigator.of(context).pop('move'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.edit_note),
+            title: Text(context.l10n.editDesc),
+            onTap: () => Navigator.of(context).pop('desc'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.lock_outline),
+            title: Text(context.l10n.setPassword),
+            onTap: () => Navigator.of(context).pop('pwd'),
+          ),
+        ],
       ),
     );
     if (!mounted) return;
@@ -4278,6 +4274,7 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
           ),
         ),
         SheetListGroup(
+          margin: SheetListGroup.endMargin,
           children: [
             ListTile(
               leading: const Icon(Icons.edit_note),
@@ -4580,6 +4577,7 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
             ),
           ),
           SheetListGroup(
+            margin: SheetListGroup.endMargin,
             children: [
               ListTile(
                 leading: const Icon(Icons.edit_note),

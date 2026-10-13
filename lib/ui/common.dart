@@ -3224,7 +3224,9 @@ class _SegmentedListState extends State<SegmentedList> {
 /// - 容器色比弹窗底（`surfaceContainerLow`）**高一档**（`surfaceContainer`），
 ///   和设置页「选项 vs 页面底」是同一个关系（越 high 的容器越深）；
 /// - 左右 16dp（M3 列表项的 leading padding 就是 16dp），与弹窗里的标题 /
-///   分组小标题对齐；上下 4dp 保持组内 2dp 间隔的节奏。
+///   分组小标题对齐；上下 4dp 保持组内 2dp 间隔的节奏；
+/// - 作为弹窗内容最后一块时用 [endMargin]：底边与左右同值，列表组距弹窗
+///   的左右和底边都是 16dp。
 ///
 /// 弹窗里的列表统一用它，样式就不会在各处漂。
 class SheetListGroup extends StatelessWidget {
@@ -3239,6 +3241,10 @@ class SheetListGroup extends StatelessWidget {
   /// 组外边距：默认 16 / 4；紧跟在按钮组之类的另一组内容后面时，
   /// 把上边距提到 16（两组内容之间的间距与列表的左右边距同值）。
   final EdgeInsetsGeometry margin;
+
+  /// 弹窗内容最后一块的组外边距：下边距与左右同值（16dp，M3 间距刻度的
+  /// space200），即列表组到弹窗底边也按窗体边距留 16dp。
+  static const EdgeInsets endMargin = EdgeInsets.fromLTRB(16, 4, 16, 16);
 
   @override
   Widget build(BuildContext context) => SegmentedList(

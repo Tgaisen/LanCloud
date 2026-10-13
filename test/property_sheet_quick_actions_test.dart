@@ -1003,7 +1003,7 @@ void main() {
     expect(_sheetText('打开'), findsNothing);
   });
 
-  testWidgets('弹窗里的列表组：容器色比弹窗底高一档、左右 16dp', (tester) async {
+  testWidgets('弹窗里的列表组：容器色比弹窗底高一档、窗体边距 16dp', (tester) async {
     final app = _FakeApp(_FakeClient());
     await _pumpDrive(tester, app);
 
@@ -1020,8 +1020,8 @@ void main() {
           .colorScheme;
       // 比弹窗底（surfaceContainerLow）高一档
       expect(list.color, scheme.surfaceContainer);
-      // 左右 16dp 与弹窗里的标题对齐
-      expect(list.margin, const EdgeInsets.fromLTRB(16, 4, 16, 4));
+      // 作为弹窗内容最后一块：底边与左右同值（16dp），是三边 16dp 的窗体边距
+      expect(list.margin, SheetListGroup.endMargin);
     }
 
     // 文件属性弹窗

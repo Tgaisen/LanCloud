@@ -1190,55 +1190,53 @@ class _SettingsPageState extends State<SettingsPage>
               : l10n.notifPermissionDenied);
     return showAppSheet<void>(
       context,
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: Text(
-                l10n.managePermissions,
-                style: context.m3eEmphasizedTheme.titleLarge,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Text(
+              l10n.managePermissions,
+              style: context.m3eEmphasizedTheme.titleLarge,
+            ),
+          ),
+          SheetListGroup(
+            margin: SheetListGroup.endMargin,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.notifications_outlined),
+                title: Text(l10n.notifPermission),
+                subtitle: Text(notifStatus),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _requestNotifPermission();
+                },
               ),
-            ),
-            SheetListGroup(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.notifications_outlined),
-                  title: Text(l10n.notifPermission),
-                  subtitle: Text(notifStatus),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    _requestNotifPermission();
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.install_mobile),
-                  title: Text(l10n.permissionInstall),
-                  subtitle: Text(_installStatusText()),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    _openInstallSettings();
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.battery_0_bar),
-                  title: Text(l10n.permissionBattery),
-                  subtitle: Text(_batteryStatusText()),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    _requestBatteryOptimization();
-                  },
-                ),
-              ],
-            ),
-          ],
-        ),
+              ListTile(
+                leading: const Icon(Icons.install_mobile),
+                title: Text(l10n.permissionInstall),
+                subtitle: Text(_installStatusText()),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _openInstallSettings();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.battery_0_bar),
+                title: Text(l10n.permissionBattery),
+                subtitle: Text(_batteryStatusText()),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _requestBatteryOptimization();
+                },
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

@@ -81,9 +81,10 @@ class LoginEntries extends StatelessWidget {
         onTap: () => _cookieLogin(context),
       ),
     ];
-    // 弹窗里用弹窗预设（容器色高一档、左右 16dp 与标题对齐）；页面里保持默认
+    // 弹窗里用弹窗预设（容器色高一档、左右 16dp 与标题对齐，作为弹窗内容的
+    // 最后一块用窗体底部边距）；页面里保持默认
     return onSheet
-        ? SheetListGroup(children: children)
+        ? SheetListGroup(margin: SheetListGroup.endMargin, children: children)
         : SegmentedList(children: children);
   }
 }

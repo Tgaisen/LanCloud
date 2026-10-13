@@ -258,62 +258,60 @@ class _ProfilePageState extends State<ProfilePage>
     final l10n = context.l10n;
     await showAppSheet<void>(
       context,
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: Text(
-                l10n.switchAccount,
-                style: context.m3eEmphasizedTheme.titleLarge,
-              ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Text(
+              l10n.switchAccount,
+              style: context.m3eEmphasizedTheme.titleLarge,
             ),
-            // 组 1：账号列表 + 添加账号
-            SheetListGroup(
-              children: [
-                for (final account in app.accounts.accounts)
-                  M3ePickTile(
-                    label: account.nickname.isEmpty
-                        ? l10n.accountUid(account.uid)
-                        : account.nickname,
-                    subtitle: l10n.uidLabel(account.uid),
-                    selected: account.uid == app.activeUid,
-                    singleSelect: true,
-                    onTap: () async {
-                      Navigator.of(context).pop();
-                      await app.switchAccount(account.uid);
-                    },
-                  ),
-                M3ePickTile.action(
-                  label: l10n.addAccount,
-                  leading: const Icon(Icons.add),
+          ),
+          // 组 1：账号列表 + 添加账号
+          SheetListGroup(
+            children: [
+              for (final account in app.accounts.accounts)
+                M3ePickTile(
+                  label: account.nickname.isEmpty
+                      ? l10n.accountUid(account.uid)
+                      : account.nickname,
+                  subtitle: l10n.uidLabel(account.uid),
+                  selected: account.uid == app.activeUid,
+                  singleSelect: true,
                   onTap: () async {
                     Navigator.of(context).pop();
-                    await showLoginSheet(context);
+                    await app.switchAccount(account.uid);
                   },
                 ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            // 组 2：退出登录单独一组
-            SheetListGroup(
-              children: [
-                M3ePickTile.action(
-                  label: l10n.logout,
-                  leading: const Icon(Icons.logout),
-                  onTap: () {
-                    final uid = app.activeUid;
-                    Navigator.of(context).pop();
-                    if (uid != null) _removeAccount(context, uid);
-                  },
-                ),
-              ],
-            ),
-          ],
-        ),
+              M3ePickTile.action(
+                label: l10n.addAccount,
+                leading: const Icon(Icons.add),
+                onTap: () async {
+                  Navigator.of(context).pop();
+                  await showLoginSheet(context);
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // 组 2：退出登录单独一组
+          SheetListGroup(
+            margin: SheetListGroup.endMargin,
+            children: [
+              M3ePickTile.action(
+                label: l10n.logout,
+                leading: const Icon(Icons.logout),
+                onTap: () {
+                  final uid = app.activeUid;
+                  Navigator.of(context).pop();
+                  if (uid != null) _removeAccount(context, uid);
+                },
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

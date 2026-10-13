@@ -70,40 +70,35 @@ Future<QrImageSource?> showQrSourceSheet(BuildContext context) {
   final l10n = context.l10n;
   return showAppSheet<QrImageSource>(
     context,
-    child: Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: Text(
-              l10n.scan,
-              style: context.m3eEmphasizedTheme.titleLarge,
-            ),
-          ),
-          SheetListGroup(
-            children: [
-              if (PlatformSupport.hasCameraCapture)
-                ListTile(
-                  leading: const Icon(Icons.photo_camera_outlined),
-                  title: Text(l10n.scanTakePhoto),
-                  subtitle: Text(l10n.scanTakePhotoSubtitle),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => Navigator.of(context).pop(QrImageSource.camera),
-                ),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: Text(l10n.scan, style: context.m3eEmphasizedTheme.titleLarge),
+        ),
+        SheetListGroup(
+          margin: SheetListGroup.endMargin,
+          children: [
+            if (PlatformSupport.hasCameraCapture)
               ListTile(
-                leading: const Icon(Icons.photo_library_outlined),
-                title: Text(l10n.scanFromGallery),
-                subtitle: Text(l10n.scanFromGallerySubtitle),
+                leading: const Icon(Icons.photo_camera_outlined),
+                title: Text(l10n.scanTakePhoto),
+                subtitle: Text(l10n.scanTakePhotoSubtitle),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.of(context).pop(QrImageSource.gallery),
+                onTap: () => Navigator.of(context).pop(QrImageSource.camera),
               ),
-            ],
-          ),
-        ],
-      ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: Text(l10n.scanFromGallery),
+              subtitle: Text(l10n.scanFromGallerySubtitle),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).pop(QrImageSource.gallery),
+            ),
+          ],
+        ),
+      ],
     ),
   );
 }
