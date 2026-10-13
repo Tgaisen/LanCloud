@@ -36,15 +36,20 @@ if (-not $devices) {
     exit 0
 }
 
-$abi = (& $adb shell getprop ro.product.cpu.abi).Trim()
-$apkName = if ($abi -like 'arm64*') {
-    "LanCloud_android_${version}_arm64-v8a.apk"
-} elseif ($abi -like 'x86*') {
-    "LanCloud_android_${version}_x86_64.apk"
-} else {
-    "LanCloud_android_${version}_armeabi-v7a.apk"
+# 逐个设备安装（真机 + 虚拟机可能同时连着）：按各自的 ABI 选包。
+# -d 允许降级：测试设备上常装着手工调高过 versionCode 的构建（签名相同）。
+foreach ($line in $devices) {
+    $serial = ($line.ToString() -split "`t")[0]
+    $abi = (& $adb -s $serial shell getprop ro.product.cpu.abi).Trim()
+    $apkName = if ($abi -like 'arm64*') {
+        "LanCloud_android_${version}_arm64-v8a.apk"
+    } elseif ($abi -like 'x86*') {
+        "LanCloud_android_${version}_x86_64.apk"
+    } else {
+        "LanCloud_android_${version}_armeabi-v7a.apk"
+    }
+    Write-Output "==> Installing $apkName to $serial ($abi)"
+    & $adb -s $serial install -r -d (Join-Path $outDir $apkName)
+    & $adb -s $serial shell am start -n $activity
 }
-Write-Output "==> Installing $apkName to device ($abi)"
-& $adb install -r (Join-Path $outDir $apkName)
-& $adb shell am start -n $activity
 Write-Output '==> Done'

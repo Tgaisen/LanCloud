@@ -218,7 +218,7 @@ class LoginPage extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           // 装饰图：应用名就在下面，读屏不用再念一遍图片
           child: Image.asset(
-            'assets/app_icon.png',
+            'assets/images/logo/app_icon.png',
             width: 72,
             height: 72,
             excludeFromSemantics: true,

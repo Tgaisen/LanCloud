@@ -103,7 +103,7 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     # 应用图标（首次启动页 / 关于页展示）
-    - assets/app_icon.png
+    - assets/images/logo/app_icon.png
     # Windows 通知图标：AUMID 的 IconUri 需要一个真实文件路径，运行时会把
     # 这份 .ico 复制到应用数据目录（和 exe 图标是同一个源文件）
     - windows/runner/resources/app_icon.ico

@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 //
-// Renders assets/icon_master.svg (the icon master: rounded tile + cloud) into
+// Renders assets/images/logo/icon_master.svg (the icon master: rounded tile + cloud) into
 // PNG frames at exact pixel sizes, so the Windows .ico does not have to be
 // downscaled from one big bitmap. Rendering per size straight from the vector
 // is what keeps the 16–48px frames crisp (see tools/gen_app_icons.ps1).
 //
 // Usage:
 //   npm i @resvg/resvg-js            # once, anywhere (NODE_PATH works too)
-//   node tools/render_icon_pngs.cjs assets/icon_master.svg <outDir> 16,20,30,… [options]
+//   node tools/render_icon_pngs.cjs assets/images/logo/icon_master.svg <outDir> 16,20,30,… [options]
 //
 //   --crop-tile   crop the viewBox to the rounded tile itself, so the tile fills
 //                 the whole frame (what the Windows taskbar / Explorer expect).

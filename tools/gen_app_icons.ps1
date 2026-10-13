@@ -1,7 +1,7 @@
 ﻿# Generates LanCloud app icons: Android adaptive icons (foreground/monochrome
 # layers plus night background color), the iOS AppIcon set and the Windows .ico.
 #
-# 首选路径：用矢量母版 assets/icon_master.svg 在**每个目标尺寸**上单独栅格化
+# 首选路径：用矢量母版 assets/images/logo/icon_master.svg 在**每个目标尺寸**上单独栅格化
 # （零缩放，小尺寸最锐），需要 node + @resvg/resvg-js：
 #     npm i @resvg/resvg-js        # 装哪都行，用 NODE_PATH 指过来也可以
 # 找不到就回退到"把 432px 前景层位图降采样"，能用，只是小尺寸略软。
@@ -178,7 +178,7 @@ function New-SvgRenderDir {
     Join-Path ([System.IO.Path]::GetTempPath()) ("lancloud_icon_" + [guid]::NewGuid().ToString('N'))
 }
 
-# Renders the master SVG (assets/icon_master.svg) at exact pixel sizes via
+# Renders the master SVG (assets/images/logo/icon_master.svg) at exact pixel sizes via
 # tools/render_icon_pngs.cjs. Returns $false when node / @resvg/resvg-js are not
 # available, so callers can fall back to downscaling a bitmap instead.
 function Invoke-SvgRender(
@@ -266,15 +266,15 @@ $resDir = Join-Path $ProjectRoot 'android\app\src\main\res'
 # 图标母版（矢量）+ 渲染器：有 node 和 @resvg/resvg-js 时所有平台都直接用
 # 矢量在目标尺寸上栅格化（最锐）；否则回退到 android 里那张 432px 前景层
 # 位图降采样。
-$masterSvg = Join-Path $ProjectRoot 'assets\icon_master.svg'
+$masterSvg = Join-Path $ProjectRoot 'assets\images\logo\icon_master.svg'
 # 只有云朵、没有圆角方块的一层（自适应图标的前景 / 单色层用）。
 # 方块的"背景色"由 Android 的 <background> 图层提供：浅色 #0AC4E0、
 # 深色 #3E3E75（values / values-night），所以前景不该再画一遍方块，
 # 否则深色模式会露出一块浅色的方块。
-$masterFgSvg = Join-Path $ProjectRoot 'assets\icon_master_foreground.svg'
+$masterFgSvg = Join-Path $ProjectRoot 'assets\images\logo\icon_master_foreground.svg'
 # 深色版整图（方块 #3E3E75 + 白云）：给需要"深色整图"的场合用
 # （例如文档 / 预览图），Android 侧靠背景色切换，不需要它。
-$masterDarkSvg = Join-Path $ProjectRoot 'assets\icon_master_dark.svg'
+$masterDarkSvg = Join-Path $ProjectRoot 'assets\images\logo\icon_master_dark.svg'
 $script:nodeRenderer = $null
 if ((Get-Command node -ErrorAction SilentlyContinue) -and (Test-Path $masterSvg)) {
     $candidate = Join-Path $PSScriptRoot 'render_icon_pngs.cjs'
@@ -367,7 +367,7 @@ $icoSizes = @(
 $svgFrames = if (Test-Path $masterSvg) { New-IcoFramesFromSvg $masterSvg $icoSizes } else { $null }
 if ($svgFrames) {
     Write-Ico $icoPath $svgFrames
-    Write-Host ("Windows  {0,-28} {1} sizes, rendered from assets/icon_master.svg" -f 'app_icon.ico', $icoSizes.Count)
+    Write-Host ("Windows  {0,-28} {1} sizes, rendered from assets/images/logo/icon_master.svg" -f 'app_icon.ico', $icoSizes.Count)
 } else {
     # 回退：没有 node / @resvg/resvg-js 时，用位图母图降采样（圆角 22%，
 # 与微信 / QQ 图标观感一致）
