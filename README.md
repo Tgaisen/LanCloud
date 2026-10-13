@@ -2,7 +2,7 @@
 
 蓝奏云第三方 Flutter 客户端，使用 DeepSeek + Codex 辅助开发与验证。
 
-</div>
+<div align="center">
 <img src="assets/images/screenshots/screenshot_1.png" width="48%" alt="home_fold" />&nbsp;
 <img src="assets/images/screenshots/screenshot_2.png" width="48%" alt="home_fold_split_screen" />
 <br/>
@@ -14,15 +14,15 @@
 
 ## 功能
 
-- **MD 3 设计**：动态取色、自适应布局、悬浮底栏
+- **MD 3 设计**：表现力设计、动态取色、自适应布局、悬浮底栏
 - **网盘管理**：上传、下载、分享、新建文件夹、修改信息、移动、删除、搜索、排序
 - **分享链接**：支持打开蓝奏云分享链接
 - **多账号**：多账号支持
 - **便利功能**：收藏 / 快速访问 / 最近使用
-- **传输中心**：上传、下载任务管理，支持多选批量操作
+- **传输中心**：上传、下载任务管理，支持多任务
 - **备份与恢复**：本地备份 + WebDAV 自动备份
-- **Android 系统集成**：可接收其他应用分享的链接 / 文件；下载目录可选任意文件夹（Download、Documents 等公共目录直接写入，其它目录经系统授权先下到应用内部目录再移入）；适配 Android 12 启动屏与预测性返回手势
-- **Windows 桌面端**：可把文件从资源管理器拖进窗口上传；导出走系统「另存为」对话框
+- **Android 集成**：可接收其他应用分享的链接 / 文件；适配 Android 12 启动屏与预测性返回手势
+- **Windows 集成**：可把文件从资源管理器拖进窗口上传；系统通知框架
 
 ## 平台
 
