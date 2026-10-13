@@ -121,6 +121,7 @@
   "shareEmpty": "This share contains no files",
   "language": "Language",
   "followSystem": "Follow system",
+  "system": "System",
   "chinese": "简体中文",
   "english": "English",
   "themeMode": "Theme mode",

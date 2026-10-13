@@ -146,121 +146,132 @@ class _ShareFileInfoSheetState extends State<ShareFileInfoSheet> {
                 message: widget.invalid ? l10n.fileInvalid : l10n.shareInvalid,
               ),
             ),
-          // 下载状态原位显示：解析中 / 等待中 / 下载中在行尾显示进度环，
-          // 已下载 / 下载失败换图标与文案；已加入下载后点击弹二级菜单
-          // （打开 / 分享 / 取消下载 / 重新下载）
-          ListenableBuilder(
-            // 进度更新走 manager（环要动）；标记集合变化走低频 revision，
-            // 两者都听，状态切换不会漏刷新
-            listenable: Listenable.merge([transfers, transfers.marksRevision]),
-            builder: (BuildContext context, _) {
-              final mark = transfers.downloadMarkOf(widget.url);
-              final status = mark?.status;
-              final resolving = _resolvingDownload;
-              final active =
-                  resolving ||
-                  status == TransferStatus.queued ||
-                  status == TransferStatus.running;
-              final title = resolving
-                  ? l10n.resolving
-                  : switch (status) {
-                      TransferStatus.queued => l10n.waitingToDownload,
-                      TransferStatus.running => l10n.downloading,
-                      TransferStatus.done => l10n.downloaded,
-                      TransferStatus.failed => l10n.downloadFailed,
-                      _ => l10n.download,
-                    };
-              return Builder(
-                builder: (BuildContext rowContext) => ListTile(
-                  enabled: !_invalid,
-                  leading: Icon(switch (status) {
-                    TransferStatus.done => Icons.download_done,
-                    TransferStatus.failed => Icons.file_download_off,
-                    _ => Icons.download_outlined,
-                  }),
-                  title: Text(title),
-                  trailing: !active
-                      ? null
-                      : M3eCircularProgressIndicator(
-                          // 下载中显示确定进度；解析中 / 排队中 / 大小未知
-                          // 都是不确定态
-                          value:
-                              status == TransferStatus.running &&
-                                  (mark?.total ?? 0) > 0
-                              ? mark?.progress
-                              : null,
-                          size: 24,
-                          strokeWidth: 2.5,
-                        ),
-                  onTap: () {
-                    if (mark != null) {
-                      final anchor = m3eMenuAnchorOf(rowContext);
-                      if (anchor == null) return;
-                      showDownloadTaskMenu(
-                        context,
-                        anchor: anchor,
-                        task: mark,
-                        // 重新下载：旧任务已删，重新解析直链；解析期间同样
-                        // 走「解析中」状态（行尾不确定态环）
-                        onRedownload: _startDownload,
-                      );
-                      return;
-                    }
-                    // 解析中忽略再次点击；解析失败会回到「下载」原状
-                    _startDownload();
-                  },
+          // 下载 / 复制链接 / 二维码 / 收藏：弹窗里的列表组
+          SheetListGroup(
+            children: [
+              // 下载状态原位显示：解析中 / 等待中 / 下载中在行尾显示进度环，
+              // 已下载 / 下载失败换图标与文案；已加入下载后点击弹二级菜单
+              // （打开 / 分享 / 取消下载 / 重新下载）
+              ListenableBuilder(
+                // 进度更新走 manager（环要动）；标记集合变化走低频 revision，
+                // 两者都听，状态切换不会漏刷新
+                listenable: Listenable.merge([
+                  transfers,
+                  transfers.marksRevision,
+                ]),
+                builder: (BuildContext context, _) {
+                  final mark = transfers.downloadMarkOf(widget.url);
+                  final status = mark?.status;
+                  final resolving = _resolvingDownload;
+                  final active =
+                      resolving ||
+                      status == TransferStatus.queued ||
+                      status == TransferStatus.running;
+                  final title = resolving
+                      ? l10n.resolving
+                      : switch (status) {
+                          TransferStatus.queued => l10n.waitingToDownload,
+                          TransferStatus.running => l10n.downloading,
+                          TransferStatus.done => l10n.downloaded,
+                          TransferStatus.failed => l10n.downloadFailed,
+                          _ => l10n.download,
+                        };
+                  return Builder(
+                    builder: (BuildContext rowContext) => ListTile(
+                      enabled: !_invalid,
+                      leading: Icon(switch (status) {
+                        TransferStatus.done => Icons.download_done,
+                        TransferStatus.failed => Icons.file_download_off,
+                        _ => Icons.download_outlined,
+                      }),
+                      title: Text(title),
+                      trailing: !active
+                          ? null
+                          : M3eCircularProgressIndicator(
+                              // 下载中显示确定进度；解析中 / 排队中 / 大小未知
+                              // 都是不确定态
+                              value:
+                                  status == TransferStatus.running &&
+                                      (mark?.total ?? 0) > 0
+                                  ? mark?.progress
+                                  : null,
+                              size: 24,
+                              strokeWidth: 2.5,
+                            ),
+                      onTap: () {
+                        if (mark != null) {
+                          final anchor = m3eMenuAnchorOf(rowContext);
+                          if (anchor == null) return;
+                          showDownloadTaskMenu(
+                            context,
+                            anchor: anchor,
+                            task: mark,
+                            // 重新下载：旧任务已删，重新解析直链；解析期间同样
+                            // 走「解析中」状态（行尾不确定态环）
+                            onRedownload: _startDownload,
+                          );
+                          return;
+                        }
+                        // 解析中忽略再次点击；解析失败会回到「下载」原状
+                        _startDownload();
+                      },
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                enabled: !_invalid,
+                leading: const Icon(Icons.copy),
+                title: Text(l10n.copyLink),
+                onTap: () {
+                  navigator.pop();
+                  copyText(context, widget.url);
+                },
+              ),
+              ListTile(
+                enabled: !_invalid,
+                leading: const Icon(Icons.qr_code),
+                title: Text(l10n.showQr),
+                onTap: () {
+                  navigator.pop();
+                  showQrDialog(
+                    // 用 navigator 的 context：弹窗刚被 pop，原 context 已失效
+                    navigator.context,
+                    title: _name,
+                    url: widget.url,
+                    pwd: widget.pwd,
+                  );
+                },
+              ),
+              ListTile(
+                // 收藏态查出来之前先置灰：否则会在状态未知时点出重复收藏 / 错误取消
+                enabled: !_invalid && _favorite != null,
+                leading: Icon(
+                  // 取消收藏用自定义 star-off-line；未收藏保持描边星星
+                  _favorite == true ? Icons.star_off_line : Icons.star_outline,
                 ),
-              );
-            },
+                title: Text(
+                  _favorite == true ? l10n.unfavorite : l10n.favorite,
+                ),
+                onTap: () async {
+                  // 与网盘页属性弹窗一致：收藏就地切换，不关弹窗（反馈走轻提示）
+                  final next = await toggleFavoriteByRef(
+                    context,
+                    kind: 'shareFile',
+                    name: _name,
+                    ref: widget.url,
+                    pwd: widget.pwd,
+                    size: _size,
+                    sharer: _resolved?.sharer ?? '',
+                  );
+                  if (next != null && mounted) {
+                    setState(() => _favorite = next);
+                  }
+                },
+              ),
+            ],
           ),
-          ListTile(
-            enabled: !_invalid,
-            leading: const Icon(Icons.copy),
-            title: Text(l10n.copyLink),
-            onTap: () {
-              navigator.pop();
-              copyText(context, widget.url);
-            },
-          ),
-          ListTile(
-            enabled: !_invalid,
-            leading: const Icon(Icons.qr_code),
-            title: Text(l10n.showQr),
-            onTap: () {
-              navigator.pop();
-              showQrDialog(
-                // 用 navigator 的 context：弹窗刚被 pop，原 context 已失效
-                navigator.context,
-                title: _name,
-                url: widget.url,
-                pwd: widget.pwd,
-              );
-            },
-          ),
-          ListTile(
-            // 收藏态查出来之前先置灰：否则会在状态未知时点出重复收藏 / 错误取消
-            enabled: !_invalid && _favorite != null,
-            leading: Icon(
-              // 取消收藏用自定义 star-off-line；未收藏保持描边星星
-              _favorite == true ? Icons.star_off_line : Icons.star_outline,
-            ),
-            title: Text(_favorite == true ? l10n.unfavorite : l10n.favorite),
-            onTap: () async {
-              // 与网盘页属性弹窗一致：收藏就地切换，不关弹窗（反馈走轻提示）
-              final next = await toggleFavoriteByRef(
-                context,
-                kind: 'shareFile',
-                name: _name,
-                ref: widget.url,
-                pwd: widget.pwd,
-                size: _size,
-                sharer: _resolved?.sharer ?? '',
-              );
-              if (next != null && mounted) {
-                setState(() => _favorite = next);
-              }
-            },
-          ),
+          const SizedBox(height: 4),
         ],
       ),
     );

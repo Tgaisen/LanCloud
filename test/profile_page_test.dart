@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/data/account_store.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
+import 'package:lancloud/ui/common.dart';
+import 'package:lancloud/ui/m3e.dart';
 import 'package:lancloud/ui/profile_page.dart';
 import 'package:provider/provider.dart';
 
@@ -153,5 +155,55 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('白'), findsOneWidget);
     expect(find.text('普'), findsNothing);
+  });
+
+  testWidgets('管理账号弹窗：两个列表组，容器色比弹窗底高一档、左右 16dp', (tester) async {
+    final app = AppController();
+    addTearDown(app.dispose);
+    app.accounts.accounts.add(
+      Account(uid: '556911', cookie: 'c', nickname: '土豆'),
+    );
+    app.accounts.activeUid = '556911';
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AppController>.value(
+        value: app,
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const ProfilePage(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('管理'));
+    await tester.pumpAndSettle();
+
+    // 弹窗里：账号组 + 退出登录组，共 2 组
+    final lists = tester
+        .widgetList<SegmentedList>(
+          find.descendant(
+            of: find.byType(M3EBottomSheet),
+            matching: find.byType(SegmentedList),
+          ),
+        )
+        .toList();
+    expect(lists, hasLength(2));
+    final scheme = Theme.of(tester.element(find.byType(ProfilePage)))
+        .colorScheme;
+    for (final list in lists) {
+      // 比弹窗底（surfaceContainerLow）高一档容器色
+      expect(list.color, scheme.surfaceContainer);
+      // 左右 16dp 与弹窗里的标题对齐
+      expect(list.margin, const EdgeInsets.fromLTRB(16, 4, 16, 4));
+    }
+    // 退出登录单独一组（第二组只有它一项）
+    expect(
+      find.descendant(
+        of: find.byType(M3EBottomSheet),
+        matching: find.text('退出登录'),
+      ),
+      findsOneWidget,
+    );
   });
 }

@@ -981,95 +981,89 @@ class _DrivePageState extends State<DrivePage>
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // 分组小标题 + 按钮组：标题用统一的 M3eSectionHeader
+            M3eSectionHeader(context.l10n.layout, horizontalInset: 20),
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    context.l10n.layout,
-                    style: Theme.of(context).textTheme.labelLarge,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: SizedBox(
+                width: double.infinity,
+                child: M3eConnectedButtonGroup<String>(
+                  values: const ['grid', 'list'],
+                  selected: grid ? 'grid' : 'list',
+                  onSelected: (value) {
+                    setSheetState(() => grid = value == 'grid');
+                    app.setGridView(grid);
+                  },
+                  labelOf: (value) => Text(
+                    value == 'grid' ? context.l10n.grid : context.l10n.list,
                   ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: M3eConnectedButtonGroup<String>(
-                      values: const ['grid', 'list'],
-                      selected: grid ? 'grid' : 'list',
-                      onSelected: (value) {
-                        setSheetState(() => grid = value == 'grid');
-                        app.setGridView(grid);
-                      },
-                      labelOf: (value) => Text(
-                        value == 'grid' ? context.l10n.grid : context.l10n.list,
-                      ),
-                      iconOf: (value) => Icon(
-                        value == 'grid' ? Icons.grid_view : Icons.view_list,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    context.l10n.sort,
-                    style: Theme.of(context).textTheme.labelLarge,
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: M3eConnectedButtonGroup<String>(
-                      values: const ['default', 'name', 'size'],
-                      selected: sort,
-                      onSelected: (value) {
-                        setSheetState(() => sort = value);
-                        setState(() => _sortMode = value);
-                        app.setSortMode(value);
-                      },
-                      labelOf: (value) => Text(switch (value) {
-                        'name' => context.l10n.sortName,
-                        'size' => context.l10n.sortSize,
-                        _ => context.l10n.sortTime,
-                      }),
-                    ),
-                  ),
-                ],
+                  iconOf: (value) =>
+                      Icon(value == 'grid' ? Icons.grid_view : Icons.view_list),
+                ),
               ),
             ),
-            const SizedBox(height: 12),
-            ListTile(
-              leading: const Icon(Icons.checklist),
-              title: Text(context.l10n.multiSelect),
-              onTap: () {
-                Navigator.of(context).pop();
-                _enterSelection();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.refresh),
-              title: Text(context.l10n.refresh),
-              onTap: () {
-                Navigator.of(context).pop();
-                _reloadAfterChange();
-              },
-            ),
-            if (!isRoot)
-              ListTile(
-                leading: const Icon(Icons.info_outline),
-                title: Text(context.l10n.folderProperties),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  showAppSheet<void>(
-                    context,
-                    child: _FolderInfoSheet(
-                      folder: LzFolder(
-                        id: _folderId,
-                        name: _path.last.name,
-                        desc: '',
-                      ),
-                      page: this,
-                    ),
-                  );
-                },
+            M3eSectionHeader(context.l10n.sort, horizontalInset: 20),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: SizedBox(
+                width: double.infinity,
+                child: M3eConnectedButtonGroup<String>(
+                  values: const ['default', 'name', 'size'],
+                  selected: sort,
+                  onSelected: (value) {
+                    setSheetState(() => sort = value);
+                    setState(() => _sortMode = value);
+                    app.setSortMode(value);
+                  },
+                  labelOf: (value) => Text(switch (value) {
+                    'name' => context.l10n.sortName,
+                    'size' => context.l10n.sortSize,
+                    _ => context.l10n.sortTime,
+                  }),
+                ),
               ),
+            ),
+            SheetListGroup(
+              // 与上面的按钮组分开：上边距用列表的左右边距同值（16dp）
+              margin: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.checklist),
+                  title: Text(context.l10n.multiSelect),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _enterSelection();
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.refresh),
+                  title: Text(context.l10n.refresh),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _reloadAfterChange();
+                  },
+                ),
+                if (!isRoot)
+                  ListTile(
+                    leading: const Icon(Icons.info_outline),
+                    title: Text(context.l10n.folderProperties),
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      showAppSheet<void>(
+                        context,
+                        child: _FolderInfoSheet(
+                          folder: LzFolder(
+                            id: _folderId,
+                            name: _path.last.name,
+                            desc: '',
+                          ),
+                          page: this,
+                        ),
+                      );
+                    },
+                  ),
+              ],
+            ),
             const SizedBox(height: 8),
           ],
         ),
@@ -1080,37 +1074,39 @@ class _DrivePageState extends State<DrivePage>
   Future<void> _showAddMenu() async {
     await showAppSheet<void>(
       context,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            leading: const Icon(Icons.create_new_folder_outlined),
-            title: Text(context.l10n.newFolder),
-            onTap: () {
-              Navigator.of(context).pop();
-              _mkdir();
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.upload_file_outlined),
-            title: Text(context.l10n.uploadFile),
-            onTap: () {
-              Navigator.of(context).pop();
-              _upload();
-            },
-          ),
-          // 桌面端没有 ACTION_OPEN_DOCUMENT 那套「从其他应用/文档提供器选取」，
-          // 系统选择器与「上传文件」完全一样，这里不重复给入口。
-          if (PlatformSupport.isMobile)
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 4),
+        child: SheetListGroup(
+          children: [
             ListTile(
-              leading: const Icon(Icons.file_open),
-              title: Text(context.l10n.uploadFromApp),
+              leading: const Icon(Icons.create_new_folder_outlined),
+              title: Text(context.l10n.newFolder),
               onTap: () {
                 Navigator.of(context).pop();
-                _uploadFromApp();
+                _mkdir();
               },
             ),
-        ],
+            ListTile(
+              leading: const Icon(Icons.upload_file_outlined),
+              title: Text(context.l10n.uploadFile),
+              onTap: () {
+                Navigator.of(context).pop();
+                _upload();
+              },
+            ),
+            // 桌面端没有 ACTION_OPEN_DOCUMENT 那套「从其他应用/文档提供器选取」，
+            // 系统选择器与「上传文件」完全一样，这里不重复给入口。
+            if (PlatformSupport.isMobile)
+              ListTile(
+                leading: const Icon(Icons.file_open),
+                title: Text(context.l10n.uploadFromApp),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _uploadFromApp();
+                },
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -1336,7 +1332,8 @@ class _DrivePageState extends State<DrivePage>
     );
   }
 
-  Future<void> _batchShare() async {
+  /// 批量复制分享链接（提取码一起复制）。
+  Future<void> _batchCopyLinks() async {
     final fileIds = _selectedFiles.toList();
     final folderIds = _selectedFolders.toList();
     if (fileIds.isEmpty && folderIds.isEmpty) return;
@@ -1347,7 +1344,7 @@ class _DrivePageState extends State<DrivePage>
     final folderNames = {for (final f in _folders) f.id: f.name};
     await runBatchWithProgress(
       context,
-      title: l10n.share,
+      title: l10n.copyLink,
       total: fileIds.length + folderIds.length,
       run: (report) async {
         var done = 0;
@@ -1459,28 +1456,27 @@ class _DrivePageState extends State<DrivePage>
   Future<void> _batchMore() async {
     final action = await showAppSheet<String>(
       context,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            leading: const Icon(Icons.drive_file_move_outline),
-            title: Text(context.l10n.move),
-            subtitle: Text(context.l10n.moveSubtitle),
-            onTap: () => Navigator.of(context).pop('move'),
-          ),
-          ListTile(
-            leading: const Icon(Icons.edit_note),
-            title: Text(context.l10n.editDesc),
-            subtitle: Text(context.l10n.editDescBatchSubtitle),
-            onTap: () => Navigator.of(context).pop('desc'),
-          ),
-          ListTile(
-            leading: const Icon(Icons.password),
-            title: Text(context.l10n.setPassword),
-            subtitle: Text(context.l10n.setPasswordSubtitle),
-            onTap: () => Navigator.of(context).pop('pwd'),
-          ),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 4),
+        child: SheetListGroup(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.drive_file_move_outline),
+              title: Text(context.l10n.move),
+              onTap: () => Navigator.of(context).pop('move'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.edit_note),
+              title: Text(context.l10n.editDesc),
+              onTap: () => Navigator.of(context).pop('desc'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.lock_outline),
+              title: Text(context.l10n.setPassword),
+              onTap: () => Navigator.of(context).pop('pwd'),
+            ),
+          ],
+        ),
       ),
     );
     if (!mounted) return;
@@ -2612,9 +2608,11 @@ class _DrivePageState extends State<DrivePage>
                               : _batchDownload,
                         ),
                         BatchAction(
-                          icon: Icons.share_outlined,
-                          label: context.l10n.share,
-                          onPressed: selectedCount == 0 ? null : _batchShare,
+                          icon: Icons.copy,
+                          label: context.l10n.copyLink,
+                          onPressed: selectedCount == 0
+                              ? null
+                              : _batchCopyLinks,
                         ),
                         BatchAction(
                           icon: Icons.star_outline,
@@ -4160,7 +4158,7 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
         // 常用操作：一行纯图标的标准按钮组（间距 6dp、md 尺寸、
         // 宽度自适应弹窗，最多 80dp）
         Padding(
-          padding: const EdgeInsets.fromLTRB(24, 4, 24, 8),
+          padding: const EdgeInsets.fromLTRB(24, 4, 24, 12),
           // 菜单（showM3eMenu）要贴在被点的那一段下面，所以这里得量按钮组的
           // 真实位置：挂个 GlobalKey 给它。
           child: KeyedSubtree(
@@ -4279,26 +4277,30 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
             ),
           ),
         ),
-        ListTile(
-          leading: const Icon(Icons.edit_note),
-          title: Text(l10n.folderInfo),
-          onTap: _editInfo,
-        ),
-        ListTile(
-          leading: const Icon(Icons.drive_file_move_outline),
-          title: Text(l10n.move),
-          onTap: () {
-            Navigator.of(context).pop();
-            page._moveSingleFile(file);
-          },
-        ),
-        ListTile(
-          leading: const Icon(Icons.delete_outline),
-          title: Text(l10n.delete),
-          onTap: () {
-            Navigator.of(context).pop();
-            page._deleteFile(file);
-          },
+        SheetListGroup(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit_note),
+              title: Text(l10n.folderInfo),
+              onTap: _editInfo,
+            ),
+            ListTile(
+              leading: const Icon(Icons.drive_file_move_outline),
+              title: Text(l10n.move),
+              onTap: () {
+                Navigator.of(context).pop();
+                page._moveSingleFile(file);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline),
+              title: Text(l10n.delete),
+              onTap: () {
+                Navigator.of(context).pop();
+                page._deleteFile(file);
+              },
+            ),
+          ],
         ),
       ],
     );
@@ -4514,7 +4516,7 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
           // 常用操作：一行纯图标的标准按钮组（间距 6dp、md 尺寸、
           // 宽度自适应弹窗，最多 80dp）
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 4, 24, 8),
+            padding: const EdgeInsets.fromLTRB(24, 4, 24, 12),
             child: M3EIconButtonGroup<_FolderQuickAction>(
               items: [
                 M3EIconAction(
@@ -4577,18 +4579,22 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
               },
             ),
           ),
-          ListTile(
-            leading: const Icon(Icons.edit_note),
-            title: Text(context.l10n.folderInfo),
-            onTap: _editInfo,
-          ),
-          ListTile(
-            leading: const Icon(Icons.delete_outline),
-            title: Text(context.l10n.delete),
-            onTap: () {
-              Navigator.of(context).pop();
-              page._deleteFolder(_folder);
-            },
+          SheetListGroup(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.edit_note),
+                title: Text(context.l10n.folderInfo),
+                onTap: _editInfo,
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete_outline),
+                title: Text(context.l10n.delete),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  page._deleteFolder(_folder);
+                },
+              ),
+            ],
           ),
         ],
       ),

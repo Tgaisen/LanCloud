@@ -39,28 +39,26 @@ Future<RestoreDecision?> showRestoreConfirmDialog(
     builder: (dialogContext) => StatefulBuilder(
       builder: (dialogContext, setDialogState) => AlertDialog(
         title: Text(l10n.restoreConfirmTitle),
-        // 内容不加左右内边距：复选行自己铺满弹窗宽度，
-        // 点按波纹/悬停高亮和「默认启动页」弹窗一样是整个宽度
-        contentPadding: const EdgeInsets.symmetric(vertical: 8),
+        // M3 对话框内容边距 24dp；列表组外边距 0，组沿落在 24dp 上
+        contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 4),
-              child: Text('${l10n.restoreConfirmMessage}\n\n$label'),
-            ),
+            Text('${l10n.restoreConfirmMessage}\n\n$label'),
             if (hasFavorites) ...[
-              const SizedBox(height: 8),
-              CheckboxListTile(
-                // 文字与弹窗内其它内容左对齐，但墨水区域是整行
-                contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-                controlAffinity: ListTileControlAffinity.leading,
-                value: keepFavorites,
-                onChanged: (value) =>
-                    setDialogState(() => keepFavorites = value ?? true),
-                title: Text(l10n.restoreKeepFavorites),
-                subtitle: Text(l10n.restoreKeepFavoritesHint),
+              const SizedBox(height: 16),
+              // 复选行放进列表组（与选择弹窗同一套样式）
+              DialogListGroup(
+                children: [
+                  M3ePickTile(
+                    label: l10n.restoreKeepFavorites,
+                    subtitle: l10n.restoreKeepFavoritesHint,
+                    selected: keepFavorites,
+                    onTap: () =>
+                        setDialogState(() => keepFavorites = !keepFavorites),
+                  ),
+                ],
               ),
             ],
           ],
@@ -199,44 +197,50 @@ class _BackupPageState extends State<BackupPage> {
           }
 
           final theme = Theme.of(dialogContext);
-          Widget group(String name) => Padding(
-            padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
-            child: Text(
-              name,
-              style: theme.textTheme.titleSmall?.copyWith(
-                color: theme.colorScheme.primary,
+          // 每个分项一个 MD3E 列表组（组内 2dp 间隔 + 连接式圆角）；
+          // 选中项用次级色底 + 对勾（与其它选择弹窗同一套样式）
+          Widget group(String name, List<BackupSection> sections) => Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // 弹窗里列表组外边距为 0：标题也无缩进，与外沿对齐
+              M3eSectionHeader(name, horizontalInset: 0),
+              // 列表组比弹窗底（surfaceContainerHigh）再高一档容器色
+              DialogListGroup(
+                children: [
+                  for (final section in sections)
+                    M3ePickTile(
+                      label: _sectionName(l10n, section),
+                      selected: selected.contains(section),
+                      onTap: () => toggle(section, !selected.contains(section)),
+                    ),
+                ],
               ),
-            ),
-          );
-          // 无图标样式：选项只有文本 + 复选框（再加前缀图标显得拥挤），
-          // 内容内边距与上面的分组标题对齐
-          Widget item(BackupSection section, String label) => CheckboxListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-            title: Text(label),
-            value: selected.contains(section),
-            onChanged: (value) => toggle(section, value ?? false),
+            ],
           );
 
           return AlertDialog(
             title: Text(title),
-            // 左右不留内边距：选项整行显示，波纹不会被截断
-            contentPadding: const EdgeInsets.only(top: 4, bottom: 4),
+            // M3 对话框内容边距 24dp；列表组自带 0 外边距，组沿落在 24dp 上
+            contentPadding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  group(l10n.backupGroupGeneral),
-                  item(BackupSection.settings, l10n.backupSectionSettings),
-                  item(BackupSection.favorites, l10n.backupSectionFavorites),
-                  group(l10n.backupGroupAccount),
-                  item(BackupSection.quick, l10n.backupSectionQuick),
-                  item(BackupSection.recents, l10n.backupSectionRecents),
-                  group(l10n.backupGroupSensitive),
-                  item(BackupSection.cookies, l10n.backupSectionCookies),
-                  item(BackupSection.webdavAccount, l10n.webdavAccount),
+                  group(l10n.backupGroupGeneral, const [
+                    BackupSection.settings,
+                    BackupSection.favorites,
+                  ]),
+                  group(l10n.backupGroupAccount, const [
+                    BackupSection.quick,
+                    BackupSection.recents,
+                  ]),
+                  group(l10n.backupGroupSensitive, const [
+                    BackupSection.cookies,
+                    BackupSection.webdavAccount,
+                  ]),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+                    padding: const EdgeInsets.fromLTRB(0, 12, 0, 0),
                     child: Text(
                       l10n.backupContentHint,
                       style: theme.textTheme.bodySmall,
@@ -295,17 +299,20 @@ class _BackupPageState extends State<BackupPage> {
     if (sections.isEmpty) return l10n.backupSectionEmpty;
     return [
       for (final section in BackupSection.values)
-        if (sections.contains(section))
-          switch (section) {
-            BackupSection.settings => l10n.backupSectionSettings,
-            BackupSection.favorites => l10n.backupSectionFavorites,
-            BackupSection.quick => l10n.backupSectionQuick,
-            BackupSection.recents => l10n.backupSectionRecents,
-            BackupSection.cookies => l10n.backupSectionCookies,
-            BackupSection.webdavAccount => l10n.webdavAccount,
-          },
+        if (sections.contains(section)) _sectionName(l10n, section),
     ].join(' · ');
   }
+
+  /// 备份分项的名称（摘要与「备份内容」弹窗共用）。
+  String _sectionName(AppLocalizations l10n, BackupSection section) =>
+      switch (section) {
+        BackupSection.settings => l10n.backupSectionSettings,
+        BackupSection.favorites => l10n.backupSectionFavorites,
+        BackupSection.quick => l10n.backupSectionQuick,
+        BackupSection.recents => l10n.backupSectionRecents,
+        BackupSection.cookies => l10n.backupSectionCookies,
+        BackupSection.webdavAccount => l10n.webdavAccount,
+      };
 
   /// 立即备份：每次都在弹窗里重新勾选要写进本次备份的内容。
   Future<void> _backupToFile() async {
@@ -420,25 +427,26 @@ class _BackupPageState extends State<BackupPage> {
     }
     final picked = await showAppSheet<WebdavEntry>(
       context,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (final entry in entries)
-            ListTile(
-              leading: Icon(
-                entry.name == BackupService.latestName
-                    ? Icons.cached_outlined
-                    : Icons.cloud_outlined,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 4),
+        child: SheetListGroup(
+          children: [
+            for (final entry in entries)
+              ListTile(
+                leading: Icon(
+                  entry.name == BackupService.latestName
+                      ? Icons.cached_outlined
+                      : Icons.cloud_outlined,
+                ),
+                title: Text(entry.name),
+                subtitle: Text(
+                  '${entry.modified == null ? '' : formatDateShort(entry.modified!.millisecondsSinceEpoch)}'
+                  '${entry.size > 0 ? ' · ${formatBytes(entry.size)}' : ''}',
+                ),
+                onTap: () => Navigator.of(context).pop(entry),
               ),
-              title: Text(entry.name),
-              subtitle: Text(
-                '${entry.modified == null ? '' : formatDateShort(entry.modified!.millisecondsSinceEpoch)}'
-                '${entry.size > 0 ? ' · ${formatBytes(entry.size)}' : ''}',
-              ),
-              onTap: () => Navigator.of(context).pop(entry),
-            ),
-        ],
+          ],
+        ),
       ),
     );
     if (picked == null || !mounted) return;
@@ -474,7 +482,7 @@ class _BackupPageState extends State<BackupPage> {
           // 整块布局：避免懒布局估算导致滚动条滑块抖动（见 SliverColumn）
           sliver: SliverColumn(
             children: [
-              _section(context, l10n.localBackup),
+              M3eSectionHeader(l10n.localBackup),
               SegmentedList(
                 children: [
                   ListTile(
@@ -491,7 +499,7 @@ class _BackupPageState extends State<BackupPage> {
                   ),
                 ],
               ),
-              _section(context, l10n.webdavSection),
+              M3eSectionHeader(l10n.webdavSection),
               SegmentedList(
                 children: [
                   ListTile(
@@ -617,15 +625,6 @@ class _BackupPageState extends State<BackupPage> {
     await _service.webdav.setInterval(value);
     if (mounted) setState(() {});
   }
-
-  Widget _section(BuildContext context, String name) => Padding(
-    padding: const EdgeInsets.fromLTRB(4, 12, 4, 8),
-    child: Text(
-      name,
-      style: Theme.of(context).textTheme.titleSmall
-          ?.copyWith(color: Theme.of(context).colorScheme.primary),
-    ),
-  );
 }
 
 /// WebDAV 账号编辑弹窗：自己持有输入控制器，并在弹窗销毁时释放。

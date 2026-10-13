@@ -1631,7 +1631,11 @@ class SectionHeader extends StatelessWidget {
   }
 }
 
-/// 多选操作栏里的单个操作（图标 + 文字，禁用时置灰）。
+/// 多选操作栏里的单个操作：MD3E 图标按钮。
+///
+/// **参考 M3 规范**：密集排布的操作可以用图标按钮组成工具栏 / 按钮组
+/// （图标要含义明确，tooltip 描述动作）。与「文件属性弹窗」那排常用操作
+/// 同一套观感：tonal 圆形容器 + 按下形状形变，禁用时容器与图标一起压暗。
 class BatchAction extends StatelessWidget {
   const BatchAction({
     super.key,
@@ -1641,42 +1645,18 @@ class BatchAction extends StatelessWidget {
   });
 
   final IconData icon;
+
+  /// 悬停 / 长按提示，同时充当读屏名称（描述动作，不是图标名）。
   final String label;
+
   final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
-    final enabled = onPressed != null;
-    final scheme = Theme.of(context).colorScheme;
-    final color = enabled
-        ? scheme.onSurface
-        : scheme.outline.withValues(alpha: 0.6);
-    // 无障碍：整块合成一个语义节点，并带上 enabled 状态。
-    // 不加这一层时，置灰的按钮（onPressed == null）没有自己的语义节点，
-    // 它的文字会冒泡到上层 —— 读屏聚焦窗口最外层会念出「下载」。
-    // 显式标注后读作「下载，已停用」，既不会漏读也不会串节点。
-    return Semantics(
-      label: label,
-      button: true,
-      enabled: enabled,
-      onTap: onPressed,
-      excludeSemantics: true,
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 22, color: color),
-              const SizedBox(height: 2),
-              Text(label, style: TextStyle(fontSize: 12, color: color)),
-            ],
-          ),
-        ),
-      ),
-    );
+    // MD3E standard 图标按钮：容器底色跟外层悬浮条一致（不画可见容器，
+    // 只有状态层）+ 按下形状形变；没有可见文字，tooltip 同时充当读屏名称，
+    // 禁用时读作「下载，已停用」（M3eIconButton 内部已处理语义）。
+    return M3eIconButton(icon: icon, tooltip: label, onPressed: onPressed);
   }
 }
 
@@ -2406,7 +2386,15 @@ class HideKeepingSpace extends StatelessWidget {
   }
 }
 
-/// 多选底部操作栏（MD3E）：悬浮圆角容器，操作项均分整行。
+/// 多选底部操作栏（MD3E）：菜单同款的悬浮卡片 + 一排图标按钮。
+///
+/// **参考 M3 规范**：密集排布的操作组成一行图标按钮（图标含义明确，
+/// tooltip 描述动作）；卡片沿用弹出菜单的样式——`surface container low`
+/// 底色、16dp 圆角、elevation 3（M3 给菜单的是 level 2，这里与
+/// `showM3eMenu` 保持一致用 3）。
+/// **本应用的设计决定（非 M3 规范）**：卡片宽度跟随按钮组、水平居中
+/// （不再永远占满屏幕）；按钮之间留 [kM3EIconButtonSpacing]（与属性弹窗
+/// 那排常用操作同值）。
 /// 网盘、传输、收藏、分享浏览页共用，样式保持一致。
 class BatchActionBar extends StatelessWidget {
   const BatchActionBar({super.key, required this.children});
@@ -2434,16 +2422,27 @@ class BatchActionBar extends StatelessWidget {
     );
     return Padding(
       padding: EdgeInsets.fromLTRB(12, 4, 12, 12 + bottomInset),
-      child: Material(
-        // 与列表卡片区分：用最浅的容器色，不加阴影
-        elevation: 0,
-        color: scheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(16),
-        clipBehavior: Clip.antiAlias,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-          child: Row(
-            children: [for (final child in children) Expanded(child: child)],
+      // 宽度跟着按钮组走（不再占满屏幕），整体居中
+      child: Align(
+        alignment: Alignment.center,
+        child: Material(
+          // 与弹出菜单（showM3eMenu）同一套卡片：底色 / 圆角 / 阴影
+          color: scheme.surfaceContainerLow,
+          elevation: 3,
+          surfaceTintColor: Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+          clipBehavior: Clip.antiAlias,
+          child: Padding(
+            padding: const EdgeInsets.all(kM3EIconButtonSpacing),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (var i = 0; i < children.length; i++) ...[
+                  if (i > 0) const SizedBox(width: kM3EIconButtonSpacing),
+                  children[i],
+                ],
+              ],
+            ),
           ),
         ),
       ),
@@ -3220,6 +3219,58 @@ class _SegmentedListState extends State<SegmentedList> {
   }
 }
 
+/// 底部弹窗里的 MD3E 列表组：[SegmentedList] 的弹窗预设。
+///
+/// - 容器色比弹窗底（`surfaceContainerLow`）**高一档**（`surfaceContainer`），
+///   和设置页「选项 vs 页面底」是同一个关系（越 high 的容器越深）；
+/// - 左右 16dp（M3 列表项的 leading padding 就是 16dp），与弹窗里的标题 /
+///   分组小标题对齐；上下 4dp 保持组内 2dp 间隔的节奏。
+///
+/// 弹窗里的列表统一用它，样式就不会在各处漂。
+class SheetListGroup extends StatelessWidget {
+  const SheetListGroup({
+    super.key,
+    required this.children,
+    this.margin = const EdgeInsets.fromLTRB(16, 4, 16, 4),
+  });
+
+  final List<Widget> children;
+
+  /// 组外边距：默认 16 / 4；紧跟在按钮组之类的另一组内容后面时，
+  /// 把上边距提到 16（两组内容之间的间距与列表的左右边距同值）。
+  final EdgeInsetsGeometry margin;
+
+  @override
+  Widget build(BuildContext context) => SegmentedList(
+    color: Theme.of(context).colorScheme.surfaceContainer,
+    margin: margin,
+    children: children,
+  );
+}
+
+/// 对话框里的 MD3E 列表组：[SegmentedList] 的对话框预设。
+///
+/// - 弹窗底是 `surfaceContainerHigh`，列表组用更高一档的
+///   `surfaceContainerHighest`（light 模式下越 high 越深，是同一个关系）；
+/// - 外边距 0：对话框内容边距已按规范留了 24dp，组沿正好落在 24dp 上。
+class DialogListGroup extends StatelessWidget {
+  const DialogListGroup({
+    super.key,
+    required this.children,
+    this.margin = EdgeInsets.zero,
+  });
+
+  final List<Widget> children;
+  final EdgeInsetsGeometry margin;
+
+  @override
+  Widget build(BuildContext context) => SegmentedList(
+    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+    margin: margin,
+    children: children,
+  );
+}
+
 /// 把「固定的若干块内容」放进滚动视图，且**不做懒加载估算**。
 ///
 /// `SliverList` + `SliverChildListDelegate` 的 maxScrollExtent 取的是已布局
@@ -3745,40 +3796,41 @@ Future<PasswordEditResult?> showPasswordDialog(
           child: AlertDialog(
             scrollable: true,
             title: Text(l10n.accessPassword),
-            // 左右不留内边距：开关整行显示，波纹铺满弹窗宽度；上下仍留出
-            // 标题 / 操作按钮之间的呼吸感
-            contentPadding: const EdgeInsets.only(top: 4, bottom: 24),
+            // M3 对话框内容边距 24dp；列表组外边距 0，组沿落在 24dp 上
+            contentPadding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
             content: SizedBox(
-              width: dialogFormWidth(context) + 2 * 24,
+              width: dialogFormWidth(context),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  SwitchListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-                    title: Text(l10n.enablePassword),
-                    subtitle: freeTier ? Text(l10n.disablePasswordHint) : null,
-                    value: isEnabled,
-                    onChanged: (value) => setDialogState(() {
-                      isEnabled = value;
-                      error = null;
-                    }),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: TextField(
-                      controller: controller,
-                      enabled: isEnabled,
-                      maxLength: maxLength,
-                      autofocus: isEnabled,
-                      decoration: InputDecoration(
-                        hintText: maxLength > 6 ? l10n.pwdHint12 : l10n.pwdHint,
-                        errorText: error,
+                  // 开关放进列表组（与选择弹窗同一套样式）
+                  DialogListGroup(
+                    children: [
+                      M3eSwitchTile(
+                        label: l10n.enablePassword,
+                        subtitle: freeTier ? l10n.disablePasswordHint : null,
+                        value: isEnabled,
+                        onChanged: (value) => setDialogState(() {
+                          isEnabled = value;
+                          error = null;
+                        }),
                       ),
-                      onChanged: (_) {
-                        if (error != null) setDialogState(() => error = null);
-                      },
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: controller,
+                    enabled: isEnabled,
+                    maxLength: maxLength,
+                    autofocus: isEnabled,
+                    decoration: InputDecoration(
+                      hintText: maxLength > 6 ? l10n.pwdHint12 : l10n.pwdHint,
+                      errorText: error,
                     ),
+                    onChanged: (_) {
+                      if (error != null) setDialogState(() => error = null);
+                    },
                   ),
                 ],
               ),

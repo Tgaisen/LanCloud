@@ -11,6 +11,8 @@ import 'package:lancloud/core/cookie_auth.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/app_localizations_zh.dart';
 import 'package:lancloud/ui/backup_page.dart';
+import 'package:lancloud/ui/common.dart';
+import 'package:lancloud/ui/m3e.dart';
 import 'package:local_auth_android/local_auth_android.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -192,8 +194,13 @@ void main() {
     // 所以没有单独的「账号列表」分项
     final l10n = AppLocalizationsZh();
     expect(
-      find.descendant(of: dialog, matching: find.byType(CheckboxListTile)),
+      find.descendant(of: dialog, matching: find.byType(M3ePickTile)),
       findsNWidgets(6),
+    );
+    // 按「常规 / 账号 / 敏感」分成 3 个 MD3E 列表组
+    expect(
+      find.descendant(of: dialog, matching: find.byType(SegmentedList)),
+      findsNWidgets(3),
     );
     expect(
       find.descendant(of: dialog, matching: find.text(l10n.backupSectionQuick)),
@@ -280,10 +287,10 @@ void main() {
     expect(fakeAuth.calls, 1);
     expect(
       tester
-          .widget<CheckboxListTile>(
-            find.widgetWithText(CheckboxListTile, l10n.backupSectionCookies),
+          .widget<M3ePickTile>(
+            find.widgetWithText(M3ePickTile, l10n.backupSectionCookies),
           )
-          .value,
+          .selected,
       isFalse,
     );
 
@@ -299,10 +306,10 @@ void main() {
     expect(fakeAuth.calls, 2);
     expect(
       tester
-          .widget<CheckboxListTile>(
-            find.widgetWithText(CheckboxListTile, l10n.backupSectionCookies),
+          .widget<M3ePickTile>(
+            find.widgetWithText(M3ePickTile, l10n.backupSectionCookies),
           )
-          .value,
+          .selected,
       isTrue,
     );
 
@@ -315,10 +322,10 @@ void main() {
     expect(fakeAuth.calls, 2);
     expect(
       tester
-          .widget<CheckboxListTile>(
-            find.widgetWithText(CheckboxListTile, l10n.webdavAccount),
+          .widget<M3ePickTile>(
+            find.widgetWithText(M3ePickTile, l10n.webdavAccount),
           )
-          .value,
+          .selected,
       isTrue,
     );
   });
@@ -355,10 +362,8 @@ void main() {
     expect(tester.widget<AlertDialog>(find.byType(AlertDialog)).icon, isNull);
     expect(
       tester
-          .widget<CheckboxListTile>(
-            find.widgetWithText(CheckboxListTile, '保留原收藏夹内容'),
-          )
-          .value,
+          .widget<M3ePickTile>(find.widgetWithText(M3ePickTile, '保留原收藏夹内容'))
+          .selected,
       isTrue,
     );
 

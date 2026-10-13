@@ -35,7 +35,7 @@ class LoginSheet extends StatelessWidget {
               style: context.m3eEmphasizedTheme.titleLarge,
             ),
           ),
-          const LoginEntries(),
+          const LoginEntries(onSheet: true),
         ],
       ),
     );
@@ -44,7 +44,10 @@ class LoginSheet extends StatelessWidget {
 
 /// 登录方式入口：网页登录、Cookie 登录。弹窗与兜底页面共用。
 class LoginEntries extends StatelessWidget {
-  const LoginEntries({super.key});
+  const LoginEntries({super.key, this.onSheet = false});
+
+  /// 在底部弹窗里（弹窗底色 surfaceContainerLow，列表组要高一档才不糊在一起）。
+  final bool onSheet;
 
   Future<void> _webLogin(BuildContext context) async {
     final ok = await Navigator.of(context)
@@ -63,23 +66,25 @@ class LoginEntries extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return SegmentedList(
-      children: [
-        ListTile(
-          leading: const Icon(Icons.public),
-          title: Text(l10n.webLogin),
-          subtitle: Text(l10n.webLoginRecommended),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () => _webLogin(context),
-        ),
-        ListTile(
-          leading: const Icon(Icons.password),
-          title: Text(l10n.cookieLogin),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () => _cookieLogin(context),
-        ),
-      ],
-    );
+    final children = <Widget>[
+      ListTile(
+        leading: const Icon(Icons.public),
+        title: Text(l10n.webLogin),
+        subtitle: Text(l10n.webLoginRecommended),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => _webLogin(context),
+      ),
+      ListTile(
+        leading: const Icon(Icons.password),
+        title: Text(l10n.cookieLogin),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => _cookieLogin(context),
+      ),
+    ];
+    // 弹窗里用弹窗预设（容器色高一档、左右 16dp 与标题对齐）；页面里保持默认
+    return onSheet
+        ? SheetListGroup(children: children)
+        : SegmentedList(children: children);
   }
 }
 

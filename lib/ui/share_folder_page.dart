@@ -320,45 +320,49 @@ class _ShareFolderPageState extends State<ShareFolderPage>
     if (!mounted) return;
     await showAppSheet<void>(
       context,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // 原顶栏的多选入口移到这里
-          ListTile(
-            leading: const Icon(Icons.checklist),
-            title: Text(context.l10n.multiSelect),
-            onTap: () {
-              Navigator.of(context).pop();
-              _toggleSelecting();
-            },
-          ),
-          ListTile(
-            // 取消收藏用自定义 star-off-line；「收藏」保持描边星星
-            leading: Icon(favorited ? Icons.star_off_line : Icons.star_outline),
-            title: Text(
-              favorited ? context.l10n.unfavorite : context.l10n.favorite,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 4),
+        child: SheetListGroup(
+          children: [
+            // 原顶栏的多选入口移到这里
+            ListTile(
+              leading: const Icon(Icons.checklist),
+              title: Text(context.l10n.multiSelect),
+              onTap: () {
+                Navigator.of(context).pop();
+                _toggleSelecting();
+              },
             ),
-            onTap: () {
-              Navigator.of(context).pop();
-              toggleFavoriteByRef(
-                context,
-                kind: 'shareFolder',
-                name: widget.folder.name,
-                ref: widget.link,
-                pwd: widget.pwd,
-                sharer: widget.folder.sharer,
-              );
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.copy),
-            title: Text(context.l10n.copyLink),
-            onTap: () {
-              Navigator.of(context).pop();
-              copyText(context, widget.link);
-            },
-          ),
-        ],
+            ListTile(
+              // 取消收藏用自定义 star-off-line；「收藏」保持描边星星
+              leading: Icon(
+                favorited ? Icons.star_off_line : Icons.star_outline,
+              ),
+              title: Text(
+                favorited ? context.l10n.unfavorite : context.l10n.favorite,
+              ),
+              onTap: () {
+                Navigator.of(context).pop();
+                toggleFavoriteByRef(
+                  context,
+                  kind: 'shareFolder',
+                  name: widget.folder.name,
+                  ref: widget.link,
+                  pwd: widget.pwd,
+                  sharer: widget.folder.sharer,
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.copy),
+              title: Text(context.l10n.copyLink),
+              onTap: () {
+                Navigator.of(context).pop();
+                copyText(context, widget.link);
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

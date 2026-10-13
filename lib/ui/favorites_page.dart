@@ -191,54 +191,52 @@ class _FavoritesPageState extends State<FavoritesPage>
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // 分组小标题 + 按钮组：标题用统一的 M3eSectionHeader
+            M3eSectionHeader(l10n.sort, horizontalInset: 24),
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    l10n.sort,
-                    style: Theme.of(context).textTheme.labelLarge,
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: M3eConnectedButtonGroup<String>(
-                      values: const ['time', 'name', 'size'],
-                      selected: sort,
-                      onSelected: (value) {
-                        setSheetState(() => sort = value);
-                        setState(() => _sort = value);
-                      },
-                      labelOf: (value) => Text(switch (value) {
-                        'name' => l10n.sortName,
-                        'size' => l10n.sortSize,
-                        _ => l10n.sortTime,
-                      }),
-                    ),
-                  ),
-                ],
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: SizedBox(
+                width: double.infinity,
+                child: M3eConnectedButtonGroup<String>(
+                  values: const ['time', 'name', 'size'],
+                  selected: sort,
+                  onSelected: (value) {
+                    setSheetState(() => sort = value);
+                    setState(() => _sort = value);
+                  },
+                  labelOf: (value) => Text(switch (value) {
+                    'name' => l10n.sortName,
+                    'size' => l10n.sortSize,
+                    _ => l10n.sortTime,
+                  }),
+                ),
               ),
             ),
-            const SizedBox(height: 12),
-            ListTile(
-              leading: const Icon(Icons.checklist),
-              title: Text(l10n.multiSelect),
-              onTap: () {
-                Navigator.of(context).pop();
-                _enterSelection();
-              },
+            SheetListGroup(
+              // 与上面的按钮组分开：上边距用列表的左右边距同值（16dp）
+              margin: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.checklist),
+                  title: Text(l10n.multiSelect),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _enterSelection();
+                  },
+                ),
+                ListTile(
+                  // 与条目菜单里的「取消收藏」对应（那边用 star-off 自定义图标）
+                  leading: const Icon(Icons.playlist_add),
+                  title: Text(l10n.newFavorite),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    // 打开「打开链接」弹窗，识别出文件（夹）后直接加入收藏
+                    openShareSheet(context, addFavoriteOnResolve: true);
+                  },
+                ),
+              ],
             ),
-            ListTile(
-              // 与条目菜单里的「取消收藏」对应（那边用 star-off 自定义图标）
-              leading: const Icon(Icons.playlist_add),
-              title: Text(l10n.newFavorite),
-              onTap: () {
-                Navigator.of(context).pop();
-                // 打开「打开链接」弹窗，识别出文件（夹）后直接加入收藏
-                openShareSheet(context, addFavoriteOnResolve: true);
-              },
-            ),
+            const SizedBox(height: 4),
           ],
         ),
       ),
@@ -304,6 +302,26 @@ class _FavoritesPageState extends State<FavoritesPage>
         if (!_selected.remove(item.id)) _selected.add(item.id);
       }
     });
+  }
+
+  /// 批量复制分享链接：每行「名称 链接」，有提取码的一起复制
+  /// （与分享文件夹浏览页的多选「复制链接」同一口径；多条一起复制时，
+  /// 名称能把链接对上号）。
+  Future<void> _copySelectedLinks() async {
+    final items = _items.where((item) => _selected.contains(item.id)).toList();
+    if (items.isEmpty) return;
+    final l10n = context.l10n;
+    final lines = [
+      for (final item in items)
+        item.pwd.isEmpty
+            ? '${item.displayName} ${item.ref}'
+            : l10n.linkWithPassword(
+                '${item.displayName} ${item.ref}',
+                item.pwd,
+              ),
+    ];
+    _exitSelection();
+    await copyText(context, lines.join('\n'));
   }
 
   Future<void> _deleteSelected() async {
@@ -507,7 +525,7 @@ class _FavoritesPageState extends State<FavoritesPage>
         iconColor: isFolder
             ? scheme.primary
             : fileIconColor(item.name, brightness: scheme.brightness),
-        title: item.title.isEmpty ? item.name : item.title,
+        title: item.displayName,
         subtitle: _subtitle(item),
         titleMaxLines: 2,
         subtitleMaxLines: 2,
@@ -816,6 +834,13 @@ class _FavoritesPageState extends State<FavoritesPage>
                   curve: Curves.easeInOut,
                   child: BatchActionBar(
                     children: [
+                      BatchAction(
+                        icon: Icons.copy,
+                        label: l10n.copyLink,
+                        onPressed: selectedCount == 0
+                            ? null
+                            : _copySelectedLinks,
+                      ),
                       BatchAction(
                         icon: Icons.delete_outline,
                         label: l10n.delete,

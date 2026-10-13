@@ -162,27 +162,33 @@ class _SettingsPageState extends State<SettingsPage>
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) => AlertDialog(
           title: Text(l10n.navBarItems),
-          // 左右不留内边距：选项整行显示，波纹不会被截断
-          contentPadding: const EdgeInsets.only(top: 8, bottom: 4),
+          // M3 对话框内容边距 24dp（正文到操作区 24dp）；列表组再用自带的
+          // 0 外边距铺满内容区，组沿正好落在 24dp 上
+          contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+          // 与单选弹窗同一套列表组样式：选中 = 主容器色 + 对勾（多选语义）
           content: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              CheckboxListTile(
-                secondary: const Icon(Icons.swap_vert),
-                title: Text(l10n.tabTransfers),
-                value: transfers,
-                onChanged: (value) =>
-                    setDialogState(() => transfers = value ?? false),
-              ),
-              CheckboxListTile(
-                secondary: const Icon(Icons.star_border),
-                title: Text(l10n.favorite),
-                value: favorites,
-                onChanged: (value) =>
-                    setDialogState(() => favorites = value ?? false),
+              // 列表组比弹窗底（surfaceContainerHigh）再高一档容器色
+              DialogListGroup(
+                children: [
+                  M3ePickTile(
+                    label: l10n.tabTransfers,
+                    leading: const Icon(Icons.swap_vert),
+                    selected: transfers,
+                    onTap: () => setDialogState(() => transfers = !transfers),
+                  ),
+                  M3ePickTile(
+                    label: l10n.favorite,
+                    leading: const Icon(Icons.star_border),
+                    selected: favorites,
+                    onTap: () => setDialogState(() => favorites = !favorites),
+                  ),
+                ],
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+                padding: const EdgeInsets.fromLTRB(0, 8, 0, 0),
                 child: Text(
                   l10n.navBarItemsHint,
                   style: Theme.of(dialogContext).textTheme.bodySmall,
@@ -270,8 +276,28 @@ class _SettingsPageState extends State<SettingsPage>
         build: (context, app) => ListTile(
           leading: const Icon(Icons.dark_mode_outlined),
           title: Text(context.l10n.themeMode),
-          subtitle: Text(themeModeName()),
-          onTap: () => _pickThemeMode(context),
+          // MD3E：行内直接放一颗 tonal 连接式按钮组，点一下即切换
+          //（按钮用短文案「系统 / 浅色 / 深色」，跟随系统只在语言弹窗里用全称）
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: M3eConnectedButtonGroup<String>(
+              values: const ['system', 'light', 'dark'],
+              selected: app.settings.themeMode,
+              onSelected: (value) => app.setThemeMode(value),
+              // 标签缩短成「系统」后回到等分宽度（占满内容区）；极窄屏下省略号兜底
+              labelOf: (value) => Text(
+                switch (value) {
+                  'light' => context.l10n.light,
+                  'dark' => context.l10n.dark,
+                  _ => context.l10n.system,
+                },
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              // 选中态只靠 tonal 强调色（够醒目，不再加对勾图标）
+              semanticLabel: context.l10n.themeMode,
+            ),
+          ),
         ),
       ),
       _Entry(
@@ -589,13 +615,14 @@ class _SettingsPageState extends State<SettingsPage>
         subtitle: l10n.requestIntervalSubtitle(app.settings.requestInterval),
         keywords: l10n.requestIntervalKeywords.split(' '),
         category: 'connection',
-        build: (context, app) => ListTile(
-          leading: const Icon(Icons.timer_outlined),
-          title: Text(context.l10n.requestInterval),
-          subtitle: Text(
-            context.l10n.requestIntervalSubtitle(app.settings.requestInterval),
-          ),
-          onTap: () => _pickInterval(context),
+        build: (context, app) => _SliderTile<int>(
+          icon: Icons.timer_outlined,
+          title: context.l10n.requestInterval,
+          // 离散档位 = slider 的 stops（M3E：有预设值时手柄吸附到最近的档）
+          values: const [25, 50, 75, 100, 150, 200, 300, 500, 1000],
+          current: app.settings.requestInterval,
+          labelOf: (ms) => '$ms ms',
+          onChanged: app.setRequestInterval,
         ),
       ),
       _Entry(
@@ -604,11 +631,13 @@ class _SettingsPageState extends State<SettingsPage>
         subtitle: '${app.settings.maxUploads}',
         keywords: l10n.uploadKeywords.split(' '),
         category: 'connection',
-        build: (context, app) => ListTile(
-          leading: const Icon(Icons.upload_outlined),
-          title: Text(context.l10n.maxUploads),
-          subtitle: Text('${app.settings.maxUploads}'),
-          onTap: () => _pickConcurrency(context, true),
+        build: (context, app) => _SliderTile<int>(
+          icon: Icons.upload_outlined,
+          title: context.l10n.maxUploads,
+          values: const [1, 2, 3],
+          current: app.settings.maxUploads,
+          labelOf: (value) => '$value',
+          onChanged: app.setMaxUploads,
         ),
       ),
       _Entry(
@@ -617,11 +646,13 @@ class _SettingsPageState extends State<SettingsPage>
         subtitle: '${app.settings.maxDownloads}',
         keywords: l10n.downloadKeywords.split(' '),
         category: 'connection',
-        build: (context, app) => ListTile(
-          leading: const Icon(Icons.download_outlined),
-          title: Text(context.l10n.maxDownloads),
-          subtitle: Text('${app.settings.maxDownloads}'),
-          onTap: () => _pickConcurrency(context, false),
+        build: (context, app) => _SliderTile<int>(
+          icon: Icons.download_outlined,
+          title: context.l10n.maxDownloads,
+          values: const [1, 2, 3, 4, 5],
+          current: app.settings.maxDownloads,
+          labelOf: (value) => '$value',
+          onChanged: app.setMaxDownloads,
         ),
       ),
       _Entry(
@@ -703,15 +734,16 @@ class _SettingsPageState extends State<SettingsPage>
             : l10n.recentLimitValue(app.settings.recentLimit),
         keywords: l10n.recentLimitKeywords.split(' '),
         category: 'data',
-        build: (context, app) => ListTile(
-          leading: const Icon(Icons.history),
-          title: Text(context.l10n.recentLimit),
-          subtitle: Text(
-            app.settings.recentLimit <= 0
-                ? context.l10n.recentLimitOff
-                : context.l10n.recentLimitValue(app.settings.recentLimit),
-          ),
-          onTap: () => _pickRecentLimit(context),
+        build: (context, app) => _SliderTile<int>(
+          icon: Icons.history,
+          title: context.l10n.recentLimit,
+          // 0 = 不记录（l10n.recentLimitOff）
+          values: const [0, 10, 50, 100, 200],
+          current: app.settings.recentLimit,
+          labelOf: (value) => value <= 0
+              ? context.l10n.recentLimitOff
+              : context.l10n.recentLimitValue(value),
+          onChanged: app.setRecentLimit,
         ),
       ),
       _Entry(
@@ -920,7 +952,7 @@ class _SettingsPageState extends State<SettingsPage>
     for (final name in names) {
       if (name == 'advanced') {
         widgets
-          ..add(_sectionTitle(context, l10n.categoryAdvanced))
+          ..add(M3eSectionHeader(l10n.categoryAdvanced))
           ..add(
             SegmentedList(
               children: [
@@ -939,7 +971,7 @@ class _SettingsPageState extends State<SettingsPage>
         continue;
       }
       widgets
-        ..add(_sectionTitle(context, _categoryName(name)))
+        ..add(M3eSectionHeader(_categoryName(name)))
         ..add(
           SegmentedList(
             children: [
@@ -1171,7 +1203,7 @@ class _SettingsPageState extends State<SettingsPage>
                 style: context.m3eEmphasizedTheme.titleLarge,
               ),
             ),
-            SegmentedList(
+            SheetListGroup(
               children: [
                 ListTile(
                   leading: const Icon(Icons.notifications_outlined),
@@ -1234,15 +1266,6 @@ class _SettingsPageState extends State<SettingsPage>
       ),
     ];
   }
-
-  Widget _sectionTitle(BuildContext context, String name) => Padding(
-    padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
-    child: Text(
-      name,
-      style: Theme.of(context).textTheme.titleSmall
-          ?.copyWith(color: Theme.of(context).colorScheme.primary),
-    ),
-  );
 
   Future<void> _changeDownloadDir(BuildContext context) async {
     final app = context.read<AppController>();
@@ -1345,6 +1368,12 @@ class _SettingsPageState extends State<SettingsPage>
     );
   }
 
+  /// MD3E 单选弹窗：连接式列表组（组内 2dp 间隔 + 外侧 16 / 组内 4 圆角），
+  /// 选中项填主容器色 + 尾部对勾。
+  ///
+  /// **参考 M3 规范**：选中项用 primary container / on primary container 一对
+  /// 角色，并且「选中不能只靠颜色」——底色之外再加对勾；语义上整项是一个
+  /// 单选项（checked + 互斥组）。
   static Future<void> _pickRadio<T>(
     BuildContext context, {
     required String title,
@@ -1355,33 +1384,46 @@ class _SettingsPageState extends State<SettingsPage>
   }) async {
     await showDialog<void>(
       context: context,
-      builder: (dialogContext) => SimpleDialog(
+      builder: (dialogContext) => AlertDialog(
         title: Text(title),
-        children: [
-          if (message != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-              child: Text(
-                message,
-                style: Theme.of(dialogContext).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(dialogContext).colorScheme.onSurfaceVariant,
+        // M3 对话框内容边距 24dp；列表组自带 0 外边距，组沿正好落在 24dp 上
+        contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (message != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
+                  child: Text(
+                    message,
+                    style: Theme.of(dialogContext).textTheme.bodyMedium
+                        ?.copyWith(
+                          color: Theme.of(dialogContext)
+                              .colorScheme
+                              .onSurfaceVariant,
+                        ),
+                  ),
                 ),
+              // 比弹窗底（surfaceContainerHigh）再高一档容器色
+              DialogListGroup(
+                children: [
+                  for (final entry in options)
+                    M3ePickTile(
+                      label: entry.$2,
+                      selected: current == entry.$1,
+                      singleSelect: true,
+                      onTap: () async {
+                        Navigator.of(dialogContext).pop();
+                        await onSelect(entry.$1);
+                      },
+                    ),
+                ],
               ),
-            ),
-          for (final entry in options)
-            ListTile(
-              leading: Icon(
-                current == entry.$1
-                    ? Icons.radio_button_checked
-                    : Icons.radio_button_unchecked,
-              ),
-              title: Text(entry.$2),
-              onTap: () async {
-                Navigator.of(dialogContext).pop();
-                await onSelect(entry.$1);
-              },
-            ),
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -1408,39 +1450,6 @@ class _SettingsPageState extends State<SettingsPage>
       options: [('drive', l10n.openInDriveTab), ('page', l10n.openInNewPage)],
       current: app.settings.homeFolderOpenMode,
       onSelect: (value) => app.setHomeFolderOpenMode(value),
-    );
-  }
-
-  static Future<void> _pickThemeMode(BuildContext context) {
-    final app = context.read<AppController>();
-    final l10n = context.l10n;
-    return _pickRadio(
-      context,
-      title: l10n.themeMode,
-      options: [
-        ('system', l10n.followSystem),
-        ('light', l10n.light),
-        ('dark', l10n.dark),
-      ],
-      current: app.settings.themeMode,
-      onSelect: (value) => app.setThemeMode(value),
-    );
-  }
-
-  /// 最近使用条数：0 表示不记录。
-  static Future<void> _pickRecentLimit(BuildContext context) {
-    final app = context.read<AppController>();
-    final l10n = context.l10n;
-    return _pickRadio<int>(
-      context,
-      title: l10n.recentLimit,
-      options: [
-        (0, l10n.recentLimitOff),
-        for (final count in const [10, 50, 100, 200])
-          (count, l10n.recentLimitValue(count)),
-      ],
-      current: app.settings.recentLimit,
-      onSelect: app.setRecentLimit,
     );
   }
 
@@ -1488,101 +1497,46 @@ class _SettingsPageState extends State<SettingsPage>
     };
     await showDialog<void>(
       context: context,
-      builder: (dialogContext) => SimpleDialog(
+      builder: (dialogContext) => AlertDialog(
         title: Text(l10n.themeColor),
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-            child: Text(
-              l10n.themeSeedDynamicHint,
-              style: Theme.of(dialogContext).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(dialogContext).colorScheme.onSurfaceVariant,
+        contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
+                child: Text(
+                  l10n.themeSeedDynamicHint,
+                  style: Theme.of(dialogContext).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(dialogContext).colorScheme.onSurfaceVariant,
+                  ),
+                ),
               ),
-            ),
+              // 与其它选择弹窗同一套列表组样式：选中 = 主容器色 + 对勾
+              // 比弹窗底（surfaceContainerHigh）再高一档容器色
+              DialogListGroup(
+                children: [
+                  for (final entry in presets.entries)
+                    M3ePickTile(
+                      label: entry.value,
+                      selected: app.settings.themeSeed == entry.key,
+                      singleSelect: true,
+                      leading: CircleAvatar(
+                        radius: 12,
+                        backgroundColor: Color(entry.key),
+                      ),
+                      onTap: () async {
+                        Navigator.of(dialogContext).pop();
+                        await app.setThemeSeed(entry.key);
+                      },
+                    ),
+                ],
+              ),
+            ],
           ),
-          for (final entry in presets.entries)
-            ListTile(
-              leading: CircleAvatar(
-                radius: 12,
-                backgroundColor: Color(entry.key),
-              ),
-              title: Text(entry.value),
-              trailing: app.settings.themeSeed == entry.key
-                  ? const Icon(Icons.check)
-                  : null,
-              onTap: () async {
-                Navigator.of(dialogContext).pop();
-                await app.setThemeSeed(entry.key);
-              },
-            ),
-        ],
-      ),
-    );
-  }
-
-  static Future<void> _pickInterval(BuildContext context) async {
-    final app = context.read<AppController>();
-    final l10n = context.l10n;
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => SimpleDialog(
-        title: Text(l10n.requestInterval),
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
-            child: Text(
-              l10n.requestIntervalHint,
-              style: Theme.of(dialogContext).textTheme.bodySmall?.copyWith(
-                color: Theme.of(dialogContext).colorScheme.outline,
-              ),
-            ),
-          ),
-          // 不提供「不间隔」：过小间隔容易触发服务端限流
-          for (final ms in const [25, 50, 75, 100, 150, 200, 300, 500, 1000])
-            ListTile(
-              title: Text('$ms ms'),
-              trailing: app.settings.requestInterval == ms
-                  ? const Icon(Icons.check)
-                  : null,
-              onTap: () async {
-                Navigator.of(dialogContext).pop();
-                await app.setRequestInterval(ms);
-              },
-            ),
-        ],
-      ),
-    );
-  }
-
-  static Future<void> _pickConcurrency(
-    BuildContext context,
-    bool upload,
-  ) async {
-    final app = context.read<AppController>();
-    final l10n = context.l10n;
-    final max = upload ? 3 : 5;
-    final current = upload
-        ? app.settings.maxUploads
-        : app.settings.maxDownloads;
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => SimpleDialog(
-        title: Text(upload ? l10n.maxUploads : l10n.maxDownloads),
-        children: [
-          for (var i = 1; i <= max; i++)
-            ListTile(
-              title: Text('$i'),
-              trailing: current == i ? const Icon(Icons.check) : null,
-              onTap: () async {
-                Navigator.of(dialogContext).pop();
-                if (upload) {
-                  await app.setMaxUploads(i);
-                } else {
-                  await app.setMaxDownloads(i);
-                }
-              },
-            ),
-        ],
+        ),
       ),
     );
   }
@@ -1724,5 +1678,98 @@ class _AdvancedPage extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+/// MD3E 设置项滑杆：图标 + 标题 + 尾部当前值，下面一行滑杆。
+///
+/// **参考 M3 规范**：[M3ESlider]（XS 档：16dp 轨道 / 44dp 手柄、手柄按下变窄）
+/// 采用 stops 配置——[values] 就是全部可取值，手柄吸附到最近的档；
+/// 数值显示在行的 trailing text 位（「值显示在别处时不必再用浮动值标记」）。
+/// 滑杆放在 ListTile 的 subtitle 槽里，自动让开左侧图标、和标题左对齐。
+///
+/// **本应用的设计决定（非 M3 规范）**：拖动时只更新本地显示，松手才写设置
+/// （避免拖动过程中反复落盘）。
+class _SliderTile<T> extends StatefulWidget {
+  const _SliderTile({
+    required this.icon,
+    required this.title,
+    required this.values,
+    required this.current,
+    required this.labelOf,
+    required this.onChanged,
+  });
+
+  final IconData icon;
+  final String title;
+
+  /// 全部可取值（顺序即滑杆从左到右的档位）。
+  final List<T> values;
+  final T current;
+
+  /// 当前值的显示文本（尾部 + 无障碍）。
+  final String Function(T value) labelOf;
+
+  /// 松手后落盘。
+  final ValueChanged<T> onChanged;
+
+  @override
+  State<_SliderTile<T>> createState() => _SliderTileState<T>();
+}
+
+class _SliderTileState<T> extends State<_SliderTile<T>> {
+  late int _index = _indexOf(widget.current);
+
+  int _indexOf(T value) {
+    final index = widget.values.indexOf(value);
+    return index < 0 ? 0 : index;
+  }
+
+  @override
+  void didUpdateWidget(covariant _SliderTile<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 外部改了值（备份恢复、重置等）时跟上
+    if (widget.current != oldWidget.current) {
+      _index = _indexOf(widget.current);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final value = widget.values[_index];
+    return ListTile(
+      leading: Icon(widget.icon),
+      title: Text(widget.title),
+      // 当前值放尾部（列表的 trailing text 角色），拖动时跟着变
+      trailing: Text(
+        widget.labelOf(value),
+        style: theme.textTheme.labelLarge?.copyWith(
+          color: theme.colorScheme.primary,
+        ),
+      ),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 4, right: 8),
+        child: Semantics(
+          label: widget.title,
+          child: M3ESlider(
+            value: _index.toDouble(),
+            min: 0,
+            max: (widget.values.length - 1).toDouble(),
+            divisions: widget.values.length - 1,
+            onChanged: (v) => setState(() => _index = v.round()),
+            // 松手才落盘；用本地档位（拖动中同步更新）而不是回调给的数值：
+            // 事件成批到达时，受控的 widget.value 可能还停在上一帧
+            onChangeEnd: (_) => _commit(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 落盘：值没变就不写（点一下没拖动、拖回原档位都不写）。
+  void _commit() {
+    final value = widget.values[_index];
+    if (value != widget.current) widget.onChanged(value);
   }
 }

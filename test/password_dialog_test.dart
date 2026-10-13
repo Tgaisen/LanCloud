@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/common.dart';
+import 'package:lancloud/ui/m3e.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
@@ -34,7 +35,7 @@ void main() {
     // 开关按当前状态预填为开启，密码框预填当前密码
     expect(find.text('启用访问密码'), findsOneWidget);
     expect(
-      tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
+      tester.widget<M3eSwitchTile>(find.byType(M3eSwitchTile)).value,
       isTrue,
     );
     expect(
@@ -43,10 +44,10 @@ void main() {
     );
 
     // 关闭开关：密码框禁用
-    await tester.tap(find.byType(SwitchListTile));
+    await tester.tap(find.byType(M3eSwitchTile));
     await tester.pumpAndSettle();
     expect(
-      tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
+      tester.widget<M3eSwitchTile>(find.byType(M3eSwitchTile)).value,
       isFalse,
     );
     expect(tester.widget<TextField>(find.byType(TextField)).enabled, isFalse);
@@ -62,12 +63,12 @@ void main() {
     final result = showPasswordDialog(context, enabled: false, pwd: '');
     await tester.pumpAndSettle();
     expect(
-      tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
+      tester.widget<M3eSwitchTile>(find.byType(M3eSwitchTile)).value,
       isFalse,
     );
 
     // 打开开关后直接确定：提示密码过短，弹窗保持
-    await tester.tap(find.byType(SwitchListTile));
+    await tester.tap(find.byType(M3eSwitchTile));
     await tester.pumpAndSettle();
     await tester.tap(find.text('确定'));
     await tester.pumpAndSettle();
@@ -97,14 +98,14 @@ void main() {
     expect(find.text('2-12 位提取码'), findsOneWidget);
     // 免费账号：开关下面说明「关闭访问密码需要开通会员」
     expect(find.text('关闭访问密码需要开通会员'), findsOneWidget);
-    // 波纹整行：开关宽度 = 弹窗宽度（内容宽度 + 左右各 24 的内边距）
+    // 开关行铺满列表组（内容宽度 = dialogFormWidth，组外边距为 0）
     expect(
-      tester.getSize(find.byType(SwitchListTile)).width,
-      dialogFormWidth(context) + 2 * 24,
+      tester.getSize(find.byType(M3eSwitchTile)).width,
+      dialogFormWidth(context),
     );
 
     // 12 位密码可以确认
-    await tester.tap(find.byType(SwitchListTile));
+    await tester.tap(find.byType(M3eSwitchTile));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), 'abc123456789');
     await tester.tap(find.text('确定'));

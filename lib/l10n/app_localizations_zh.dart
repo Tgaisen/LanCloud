@@ -383,6 +383,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get followSystem => '跟随系统';
 
   @override
+  String get system => '系统';
+
+  @override
   String get chinese => '简体中文';
 
   @override

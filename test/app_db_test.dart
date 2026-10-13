@@ -22,6 +22,13 @@ const _v4Schema = [
 ];
 
 void main() {
+  test('收藏条目的显示名称：自定义标题优先，没设过就用名称', () {
+    FavoriteItem item({String name = 'a.zip', String title = ''}) =>
+        FavoriteItem(id: 1, kind: 'file', name: name, ref: 'r', title: title);
+    expect(item().displayName, 'a.zip');
+    expect(item(title: '自定义标题').displayName, '自定义标题');
+  });
+
   setUpAll(() async {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;

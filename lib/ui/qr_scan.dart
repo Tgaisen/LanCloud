@@ -83,7 +83,7 @@ Future<QrImageSource?> showQrSourceSheet(BuildContext context) {
               style: context.m3eEmphasizedTheme.titleLarge,
             ),
           ),
-          SegmentedList(
+          SheetListGroup(
             children: [
               if (PlatformSupport.hasCameraCapture)
                 ListTile(

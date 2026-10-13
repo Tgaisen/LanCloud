@@ -9,6 +9,7 @@ import 'about_page.dart';
 import 'app_icons.dart';
 import 'common.dart';
 import 'login_page.dart';
+import 'm3e.dart';
 import 'scroll_tint.dart';
 import 'settings_page.dart';
 import 'web_page.dart';
@@ -254,48 +255,65 @@ class _ProfilePageState extends State<ProfilePage>
 
   Future<void> _showAccountSwitcher(BuildContext context) async {
     final app = context.read<AppController>();
+    final l10n = context.l10n;
     await showAppSheet<void>(
       context,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (final account in app.accounts.accounts)
-            ListTile(
-              leading: Icon(
-                account.uid == app.activeUid
-                    ? Icons.radio_button_checked
-                    : Icons.radio_button_unchecked,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Text(
+                l10n.switchAccount,
+                style: context.m3eEmphasizedTheme.titleLarge,
               ),
-              title: Text(
-                account.nickname.isEmpty
-                    ? context.l10n.accountUid(account.uid)
-                    : account.nickname,
-              ),
-              subtitle: Text(context.l10n.uidLabel(account.uid)),
-              onTap: () async {
-                Navigator.of(context).pop();
-                await app.switchAccount(account.uid);
-              },
             ),
-          ListTile(
-            leading: const Icon(Icons.add),
-            title: Text(context.l10n.addAccount),
-            onTap: () async {
-              Navigator.of(context).pop();
-              await showLoginSheet(context);
-            },
-          ),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.logout),
-            title: Text(context.l10n.logout),
-            onTap: () {
-              final uid = app.activeUid;
-              Navigator.of(context).pop();
-              if (uid != null) _removeAccount(context, uid);
-            },
-          ),
-        ],
+            // 组 1：账号列表 + 添加账号
+            SheetListGroup(
+              children: [
+                for (final account in app.accounts.accounts)
+                  M3ePickTile(
+                    label: account.nickname.isEmpty
+                        ? l10n.accountUid(account.uid)
+                        : account.nickname,
+                    subtitle: l10n.uidLabel(account.uid),
+                    selected: account.uid == app.activeUid,
+                    singleSelect: true,
+                    onTap: () async {
+                      Navigator.of(context).pop();
+                      await app.switchAccount(account.uid);
+                    },
+                  ),
+                M3ePickTile.action(
+                  label: l10n.addAccount,
+                  leading: const Icon(Icons.add),
+                  onTap: () async {
+                    Navigator.of(context).pop();
+                    await showLoginSheet(context);
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            // 组 2：退出登录单独一组
+            SheetListGroup(
+              children: [
+                M3ePickTile.action(
+                  label: l10n.logout,
+                  leading: const Icon(Icons.logout),
+                  onTap: () {
+                    final uid = app.activeUid;
+                    Navigator.of(context).pop();
+                    if (uid != null) _removeAccount(context, uid);
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

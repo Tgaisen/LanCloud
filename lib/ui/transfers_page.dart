@@ -204,26 +204,24 @@ class _TransfersPageState extends State<TransfersPage>
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) => AlertDialog(
           title: Text(l10n.transferDeleteConfirmTitle),
-          // 内容不加左右内边距：复选行自己铺满弹窗宽度，
-          // 点按波纹 / 悬停高亮和「恢复确认」弹窗一样覆盖整行
-          contentPadding: const EdgeInsets.symmetric(vertical: 8),
+          // M3 对话框内容边距 24dp；列表组外边距 0，组沿落在 24dp 上
+          contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 4),
-                child: Text(l10n.transferDeleteConfirmMessage(count)),
-              ),
-              const SizedBox(height: 8),
-              CheckboxListTile(
-                // 文字与弹窗内其它内容左对齐，但墨水区域是整行
-                contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-                controlAffinity: ListTileControlAffinity.leading,
-                value: deleteFiles,
-                onChanged: (value) =>
-                    setDialogState(() => deleteFiles = value ?? false),
-                title: Text(l10n.deleteFilesToo),
+              Text(l10n.transferDeleteConfirmMessage(count)),
+              const SizedBox(height: 16),
+              // 复选行放进列表组（与选择弹窗同一套样式）
+              DialogListGroup(
+                children: [
+                  M3ePickTile(
+                    label: l10n.deleteFilesToo,
+                    selected: deleteFiles,
+                    onTap: () =>
+                        setDialogState(() => deleteFiles = !deleteFiles),
+                  ),
+                ],
               ),
             ],
           ),

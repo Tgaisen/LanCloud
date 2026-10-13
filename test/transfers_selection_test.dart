@@ -51,7 +51,8 @@ Future<(AppController, TransferManager)> host(WidgetTester tester) async {
 
 bool retryEnabled(WidgetTester tester) {
   final action = tester.widget<BatchAction>(
-    find.ancestor(of: find.text('重试'), matching: find.byType(BatchAction)),
+    // 图标按钮没有可见文字：标签就是 tooltip，按它定位
+    find.ancestor(of: find.byTooltip('重试'), matching: find.byType(BatchAction)),
   );
   return action.onPressed != null;
 }
@@ -340,7 +341,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('已选择 2 项'), findsOneWidget);
 
-    await tester.tap(find.text('删除'));
+    await tester.tap(find.byTooltip('删除'));
     await tester.pumpAndSettle();
     // 确认弹窗
     expect(find.text('删除传输记录'), findsOneWidget);
@@ -604,7 +605,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('f2.zip'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('删除'));
+    await tester.tap(find.byTooltip('删除'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('删除').last);
     await tester.pump();

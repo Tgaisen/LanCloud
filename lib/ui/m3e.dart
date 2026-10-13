@@ -2,7 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/physics.dart';
 import 'package:m3e_core/m3e_core.dart' as core;
-import 'package:material_ui/material_ui.dart';
+import 'package:material_ui/material_ui.dart' hide Icons;
 
 import 'reduce_motion.dart';
 
@@ -28,6 +28,7 @@ export 'package:m3e_core/m3e_core.dart'
         M3EButtonStyle,
         M3EClipper,
         M3EMotion,
+        M3ESlider,
         M3EToggleButton,
         M3EToggleButtonDecoration,
         M3EToggleButtonGroup,
@@ -359,6 +360,7 @@ class M3eConnectedButtonGroup<T> extends StatelessWidget {
     required this.onSelected,
     required this.labelOf,
     this.iconOf,
+    this.checkedIconOf,
     this.size = core.M3EButtonSize.sm,
     this.expand = true,
     this.style = core.M3EButtonStyle.tonal,
@@ -379,6 +381,10 @@ class M3eConnectedButtonGroup<T> extends StatelessWidget {
 
   /// 按钮图标；为 null 时是纯文字按钮（与原实现保持一致）。
   final Widget Function(T value)? iconOf;
+
+  /// 选中态图标（显示在文字前面，例如对勾）。给了它就不要再给 [iconOf]：
+  /// M3E 开关按钮选中时换成另一个图标，未选中态没有图标。
+  final Widget Function(T value)? checkedIconOf;
 
   /// 尺寸（sm=40dp、md=56dp）。默认 sm。
   final core.M3EButtonSize size;
@@ -421,6 +427,7 @@ class M3eConnectedButtonGroup<T> extends StatelessWidget {
             for (final value in values)
               core.M3EToggleButtonGroupAction(
                 icon: iconOf?.call(value),
+                checkedIcon: checkedIconOf?.call(value),
                 label: labelOf(value),
                 width: width,
               ),
@@ -432,6 +439,155 @@ class M3eConnectedButtonGroup<T> extends StatelessWidget {
 }
 
 /// ──────────────────── 标准（spaced）图标按钮组 ────────────────────
+
+/// MD3E 选择列表里的一行（单选 / 多选共用），用 `SegmentedList` 组成列表组。
+///
+/// **参考 M3 规范**：
+/// - 选择控件用 **radio button（单选）/ checkbox（多选）**——M3 列表明确
+///   要求单选配 radio、多选配 checkbox，让人一眼看出能不能多选；
+/// - 选中状态**只由选择控件表示**（选中控件用 primary、未选中用
+///   on surface variant，都是 M3 给 radio / checkbox 定的角色），行的底色与
+///   文字不随选中变化——指示器已经把状态说清楚了，再加一层强调是重复的；
+/// - 语义上单选是 radio（`checked` + 互斥组），多选是 checkbox；控件自身
+///   的语义排除掉，整行只有一个节点。
+class M3ePickTile extends StatelessWidget {
+  const M3ePickTile({
+    super.key,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.subtitle,
+    this.leading,
+    this.singleSelect = false,
+    this.showSelector = true,
+  }) : assert(showSelector || !selected, '纯操作行（showSelector: false）不该有选中态');
+
+  /// 纯操作行（添加账号 / 退出登录）：不画选择控件、也没有选中态。
+  const M3ePickTile.action({
+    super.key,
+    required this.label,
+    required this.onTap,
+    this.subtitle,
+    this.leading,
+  }) : selected = false,
+       singleSelect = false,
+       showSelector = false;
+
+  final String label;
+  final String? subtitle;
+  final Widget? leading;
+
+  /// 选中态：次级色底 + on 次级色文字 + 尾部对勾。
+  final bool selected;
+
+  final VoidCallback onTap;
+
+  /// 单选列表（true）还是多选列表（false）：只影响读屏的语义角色。
+  final bool singleSelect;
+
+  /// 是否画选择控件（radio / checkbox）。
+  final bool showSelector;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      checked: selected,
+      inMutuallyExclusiveGroup: singleSelect,
+      child: ListTile(
+        leading: leading,
+        title: Text(label),
+        subtitle: subtitle == null ? null : Text(subtitle!),
+        trailing: showSelector ? _selector() : null,
+        onTap: onTap,
+      ),
+    );
+  }
+
+  /// 选择控件：单选 radio、多选 checkbox。
+  ///
+  /// 用 M3 给这两个控件定的颜色角色（选中 primary / 未选中 on surface
+  /// variant）：列表组底色是 surface container，这两个角色在它上面对比足够。
+  Widget _selector() {
+    if (singleSelect) {
+      return ExcludeSemantics(
+        child: RadioGroup<bool>(
+          groupValue: selected,
+          onChanged: (_) => onTap(),
+          child: const Radio<bool>(value: true),
+        ),
+      );
+    }
+    return ExcludeSemantics(
+      child: Checkbox(value: selected, onChanged: (_) => onTap()),
+    );
+  }
+}
+
+/// 设置类页面里列表组上方的小标题（分组名）。
+///
+/// **参考 M3 规范**：分区标题用 `title` 角色（typography 的角色分配里
+/// 「Category header」→ title），这里取 small 档（列表密度下够用）；
+/// 字重用 **emphasized**（同尺寸、更重）强化层级（M3E：强调排版解决的是
+/// 层级，不是装饰）；上下间距 16 / 8dp——都在 8dp 栅格上，标题离它下面
+/// 这一组更近（分组原则）；左右 4dp 与列表组的外边距对齐。
+///
+/// **本应用的设计决定（非 M3 规范）**：颜色沿用既有的 primary
+/// （M3 没给分区标题指定颜色角色）。
+class M3eSectionHeader extends StatelessWidget {
+  const M3eSectionHeader(this.title, {super.key, this.horizontalInset = 4});
+
+  final String title;
+
+  /// 左右缩进：默认 4dp 与列表组自带的外边距（4dp）对齐；
+  /// 放在弹窗里（列表组外边距为 0）时传 0，与列表组外沿对齐。
+  final double horizontalInset;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(horizontalInset, 16, horizontalInset, 8),
+      child: Text(
+        title,
+        style: context.m3eEmphasizedTheme.titleSmall?.copyWith(
+          color: Theme.of(context).colorScheme.primary,
+        ),
+      ),
+    );
+  }
+}
+
+/// MD3E 开关行（放进列表组里用）：整行可点，尾部标准 Switch。
+///
+/// **参考 M3 规范**：开关型设置保持 switch 控件本身（不用 radio / checkbox
+/// ——那两个是「从一组里选」的控件）；行不随开关状态变底色，状态由控件表示。
+/// 语义与 `SwitchListTile` 一致：合并成一个节点，读作
+/// 「启用访问密码，开关，已开启」。
+class M3eSwitchTile extends StatelessWidget {
+  const M3eSwitchTile({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.onChanged,
+    this.subtitle,
+  });
+
+  final String label;
+  final String? subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return MergeSemantics(
+      child: ListTile(
+        title: Text(label),
+        subtitle: subtitle == null ? null : Text(subtitle!),
+        trailing: Switch(value: value, onChanged: onChanged),
+        onTap: () => onChanged(!value),
+      ),
+    );
+  }
+}
 
 /// 标准图标按钮组的默认按钮间距。
 const double kM3EIconButtonSpacing = 6;
@@ -695,6 +851,7 @@ class M3eIconButton extends StatefulWidget {
     this.onPressed,
     this.selected = false,
     this.containerColor,
+    this.iconColor,
   }) : assert(icon != null || iconBuilder != null, 'icon 和 iconBuilder 至少给一个');
 
   /// 默认图标；用 [iconBuilder] 自定义时可以不传。
@@ -715,6 +872,10 @@ class M3eIconButton extends StatefulWidget {
 
   /// 容器底色；null = standard 风格（静止时容器不可见，只有状态层）。
   final Color? containerColor;
+
+  /// 图标颜色；null = on surface variant（standard 风格）。给了可见容器时
+  /// 一般传与容器配对 on 色（例如 secondaryContainer → onSecondaryContainer）。
+  final Color? iconColor;
 
   @override
   State<M3eIconButton> createState() => _M3eIconButtonState();
@@ -763,9 +924,15 @@ class _M3eIconButtonState extends State<M3eIconButton>
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final enabled = widget.onPressed != null;
-    final iconColor = scheme.onSurfaceVariant.withValues(
+    final iconColor = (widget.iconColor ?? scheme.onSurfaceVariant).withValues(
       alpha: enabled ? 1 : 0.38,
     );
+    // 有可见容器时，禁用态容器也压暗（M3：禁用容器用 on surface 12%）
+    final containerColor = widget.containerColor == null
+        ? null
+        : enabled
+        ? widget.containerColor
+        : scheme.onSurface.withValues(alpha: 0.12);
     final layer = scheme.onSurfaceVariant;
     return Semantics(
       label: widget.tooltip,
@@ -793,7 +960,7 @@ class _M3eIconButtonState extends State<M3eIconButton>
                   ),
                 );
                 return Material(
-                  color: widget.containerColor ?? Colors.transparent,
+                  color: containerColor ?? Colors.transparent,
                   shape: shape,
                   clipBehavior: Clip.antiAlias,
                   child: InkResponse(

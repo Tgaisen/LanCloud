@@ -10,6 +10,7 @@ import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/delegates.dart';
 import 'package:lancloud/ui/app_icons.dart';
+import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/drive_page.dart';
 import 'package:lancloud/ui/legal_dialog.dart';
 import 'package:lancloud/ui/m3e.dart';
@@ -156,6 +157,12 @@ M3EToggleButton _toggleButton(WidgetTester tester, String tooltip) => tester
 /// 弹窗（面板）内的文字：页面本身也有「删除」等按钮，断言要限定在弹窗里。
 Finder _sheetText(String text) =>
     find.descendant(of: find.byType(M3EBottomSheet), matching: find.text(text));
+
+/// 属性弹窗里的快捷操作按钮：页面里还有隐藏的多选条，tooltip 会重名。
+Finder _sheetTooltip(String label) => find.descendant(
+  of: find.byType(M3EBottomSheet),
+  matching: find.byTooltip(label),
+);
 
 Future<void> _pumpDrive(
   WidgetTester tester,
@@ -474,7 +481,13 @@ void main() {
     final resolving = AppLocalizations.of(
       tester.element(find.byType(DrivePage)),
     ).resolving;
-    await tester.tap(find.byTooltip('下载'));
+    // 页面里还有隐藏的多选条（同一个 tooltip），限定在属性弹窗里点
+    await tester.tap(
+      find.descendant(
+        of: find.byType(M3EBottomSheet),
+        matching: find.byTooltip('下载'),
+      ),
+    );
     await tester.pump();
     expect(find.byTooltip(resolving), findsOneWidget);
     expect(
@@ -765,7 +778,7 @@ void main() {
 
     await tester.tap(find.text('a.zip'));
     await _settleSheet(tester);
-    await tester.tap(find.byTooltip('复制链接'));
+    await tester.tap(_sheetTooltip('复制链接'));
     await _settleSheet(tester);
     // 菜单是弹簧展开的：等它长出来再断言（真机上就是一两帧的事）
     await tester.pumpAndSettle();
@@ -777,7 +790,7 @@ void main() {
     expect(find.text('复制下载直链'), findsOneWidget);
 
     // 菜单左缘跟着被点的那一段（而不是整个按钮组），并且贴着它的下边缘
-    final Rect button = tester.getRect(find.byTooltip('复制链接'));
+    final Rect button = tester.getRect(_sheetTooltip('复制链接'));
     final Rect item = tester.getRect(find.byType(M3eMenuRow).first);
     expect(
       (item.left - button.left).abs(),
@@ -817,7 +830,7 @@ void main() {
     expect(client.shareFileCalls, 1);
 
     // 弹菜单、选「复制分享链接」都不再请求分享信息
-    await tester.tap(find.byTooltip('复制链接'));
+    await tester.tap(_sheetTooltip('复制链接'));
     await tester.pumpAndSettle();
     expect(client.shareFileCalls, 1);
     await tester.tap(find.text('复制分享链接'));
@@ -914,7 +927,7 @@ void main() {
     // 复制链接复用打开弹窗时取回的分享信息（不再请求一次）；
     // 注意这一步会把弹窗收起来，所以放在弹窗内容断言之后。
     expect(client.shareFolderCalls, 1);
-    await tester.tap(find.byTooltip('复制链接'));
+    await tester.tap(_sheetTooltip('复制链接'));
     await _settleSheet(tester);
     expect(client.shareFolderCalls, 1);
   });
@@ -988,5 +1001,39 @@ void main() {
 
     expect(_sheetText('修改信息'), findsOneWidget);
     expect(_sheetText('打开'), findsNothing);
+  });
+
+  testWidgets('弹窗里的列表组：容器色比弹窗底高一档、左右 16dp', (tester) async {
+    final app = _FakeApp(_FakeClient());
+    await _pumpDrive(tester, app);
+
+    void expectSheetList() {
+      final list = tester.widget<SegmentedList>(
+        find
+            .descendant(
+              of: find.byType(SheetListGroup),
+              matching: find.byType(SegmentedList),
+            )
+            .first,
+      );
+      final scheme = Theme.of(tester.element(find.byType(SheetListGroup)))
+          .colorScheme;
+      // 比弹窗底（surfaceContainerLow）高一档
+      expect(list.color, scheme.surfaceContainer);
+      // 左右 16dp 与弹窗里的标题对齐
+      expect(list.margin, const EdgeInsets.fromLTRB(16, 4, 16, 4));
+    }
+
+    // 文件属性弹窗
+    await tester.tap(find.text('a.zip'));
+    await _settleSheet(tester);
+    expectSheetList();
+    await tester.tapAt(const Offset(10, 10));
+    await _settleSheet(tester);
+
+    // 「添加」弹窗
+    await tester.tap(find.text('添加'));
+    await _settleSheet(tester);
+    expectSheetList();
   });
 }

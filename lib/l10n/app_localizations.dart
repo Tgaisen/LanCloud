@@ -794,6 +794,12 @@ abstract class AppLocalizations {
   /// **'跟随系统'**
   String get followSystem;
 
+  /// No description provided for @system.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统'**
+  String get system;
+
   /// No description provided for @chinese.
   ///
   /// In zh, this message translates to:

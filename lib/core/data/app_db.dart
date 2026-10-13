@@ -55,6 +55,9 @@ class FavoriteItem {
   final String title;
   final String sharer;
   final int createdAt;
+
+  /// 显示名称：用户改过「标题」就用它，否则用文件 / 文件夹名。
+  String get displayName => title.isEmpty ? name : title;
 }
 
 class RecentItem {
