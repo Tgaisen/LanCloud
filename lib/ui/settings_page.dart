@@ -362,13 +362,12 @@ class _SettingsPageState extends State<SettingsPage>
       _Entry(
         id: 'hide_top_bar',
         title: l10n.hideTopBar,
-        subtitle: l10n.hideTopBarSubtitle,
+        subtitle: '',
         keywords: l10n.hideTopBarKeywords.split(' '),
         category: 'appearance',
         build: (context, app) => SwitchListTile(
           secondary: const Icon(Icons.vertical_align_top),
           title: Text(context.l10n.hideTopBar),
-          subtitle: Text(context.l10n.hideTopBarSubtitle),
           value: app.settings.hideTopBar,
           onChanged: (value) => app.setHideTopBar(value),
         ),
@@ -376,13 +375,12 @@ class _SettingsPageState extends State<SettingsPage>
       _Entry(
         id: 'hide_bottom_bar',
         title: l10n.hideBottomBar,
-        subtitle: l10n.hideBottomBarSubtitle,
+        subtitle: '',
         keywords: l10n.hideBottomBarKeywords.split(' '),
         category: 'appearance',
         build: (context, app) => SwitchListTile(
           secondary: const Icon(Icons.vertical_align_bottom),
           title: Text(context.l10n.hideBottomBar),
-          subtitle: Text(context.l10n.hideBottomBarSubtitle),
           value: app.settings.hideBottomBar,
           onChanged: (value) => app.setHideBottomBar(value),
         ),

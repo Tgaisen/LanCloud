@@ -480,19 +480,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get colorAmber => 'Amber';
 
   @override
-  String get hideTopBar => 'Hide top bar';
-
-  @override
-  String get hideTopBarSubtitle => 'Collapse the top bar while scrolling';
+  String get hideTopBar => 'Collapse top bar on scroll';
 
   @override
   String get hideTopBarKeywords => 'top bar hide on scroll collapse';
 
   @override
-  String get hideBottomBar => 'Hide bottom bar';
-
-  @override
-  String get hideBottomBarSubtitle => 'Collapse the bottom bar while scrolling';
+  String get hideBottomBar => 'Collapse bottom bar on scroll';
 
   @override
   String get hideBottomBarKeywords => 'bottom bar hide on scroll collapse';

@@ -965,14 +965,8 @@ abstract class AppLocalizations {
   /// No description provided for @hideTopBar.
   ///
   /// In zh, this message translates to:
-  /// **'顶栏收起'**
+  /// **'滑动时收起顶栏'**
   String get hideTopBar;
-
-  /// No description provided for @hideTopBarSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'列表滑动时收起顶栏'**
-  String get hideTopBarSubtitle;
 
   /// No description provided for @hideTopBarKeywords.
   ///
@@ -983,14 +977,8 @@ abstract class AppLocalizations {
   /// No description provided for @hideBottomBar.
   ///
   /// In zh, this message translates to:
-  /// **'底栏收起'**
+  /// **'滑动时收起底栏'**
   String get hideBottomBar;
-
-  /// No description provided for @hideBottomBarSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'列表滑动时收起底栏'**
-  String get hideBottomBarSubtitle;
 
   /// No description provided for @hideBottomBarKeywords.
   ///

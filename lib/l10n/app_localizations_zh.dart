@@ -467,19 +467,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get colorAmber => '琥珀';
 
   @override
-  String get hideTopBar => '顶栏收起';
-
-  @override
-  String get hideTopBarSubtitle => '列表滑动时收起顶栏';
+  String get hideTopBar => '滑动时收起顶栏';
 
   @override
   String get hideTopBarKeywords => '顶栏 滑动隐藏 收起';
 
   @override
-  String get hideBottomBar => '底栏收起';
-
-  @override
-  String get hideBottomBarSubtitle => '列表滑动时收起底栏';
+  String get hideBottomBar => '滑动时收起底栏';
 
   @override
   String get hideBottomBarKeywords => '底栏 滑动隐藏 收起';
