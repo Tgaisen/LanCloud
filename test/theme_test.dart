@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/app.dart';
+import 'package:lancloud/ui/system_ui.dart';
 
 void main() {
   test('主题保留默认图标颜色，避免深色模式下图标画成黑色', () {

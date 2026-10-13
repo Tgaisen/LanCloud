@@ -1197,13 +1197,8 @@ class _DrivePageState extends State<DrivePage>
       ),
     );
     if (result == null || !mounted) return;
+    // 名称为空由弹窗自己的 error state 拦住，到这里一定非空
     final name = result.name;
-    if (name.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(context.l10n.folderNameRequired)));
-      return;
-    }
     try {
       await context.read<AppController>().client?.mkdir(
         _folderId,
@@ -1635,14 +1630,22 @@ class _DrivePageState extends State<DrivePage>
   }
 
   Future<void> _batchSetPasswd() async {
-    // 批量不逐项取密码，默认按“启用”打开（留空即关闭）
-    final result = await showPasswordDialog(context, enabled: true, pwd: '');
-    if (result == null || !mounted) return;
-    final pwd = result.enabled ? result.pwd : '';
-    final client = context.read<AppController>().client;
-    if (client == null) return;
+    final app = context.read<AppController>();
     final fileIds = _selectedFiles.toList();
     final folderIds = _selectedFolders.toList();
+    // 批量不逐项取密码，默认按“启用”打开（留空即关闭）；
+    // 文件提取码限 2-6 位，选中项全是文件夹时才放开到 12 位
+    final result = await showPasswordDialog(
+      context,
+      enabled: true,
+      pwd: '',
+      maxLength: fileIds.isEmpty ? 12 : 6,
+      freeTier: app.activeAccount?.isFreeTier ?? false,
+    );
+    if (result == null || !mounted) return;
+    final pwd = result.enabled ? result.pwd : '';
+    final client = app.client;
+    if (client == null) return;
     final fileNames = {for (final f in _files) f.id: f.name};
     final folderNames = {for (final f in _folders) f.id: f.name};
     var failed = 0;
@@ -1933,6 +1936,8 @@ class _DrivePageState extends State<DrivePage>
       context,
       enabled: currentPwd.isNotEmpty,
       pwd: currentPwd,
+      freeTier:
+          context.read<AppController>().activeAccount?.isFreeTier ?? false,
     );
     if (result == null || !mounted) return;
     final pwd = result.enabled ? result.pwd : '';
@@ -2025,6 +2030,10 @@ class _DrivePageState extends State<DrivePage>
       context,
       enabled: currentPwd.isNotEmpty,
       pwd: currentPwd,
+      // 文件夹提取码可以到 12 位（文件仍限 2-6 位）
+      maxLength: 12,
+      freeTier:
+          context.read<AppController>().activeAccount?.isFreeTier ?? false,
     );
     if (result == null || !mounted) return;
     final pwd = result.enabled ? result.pwd : '';
@@ -2055,8 +2064,10 @@ class _DrivePageState extends State<DrivePage>
     LzFile file, {
     required String desc,
   }) async {
-    final client = context.read<AppController>().client;
+    final app = context.read<AppController>();
+    final client = app.client;
     if (client == null) return null;
+    final freeTier = app.activeAccount?.isFreeTier ?? false;
     final result = await showDialog<({String name, String desc})>(
       context: context,
       builder: (_) => _ItemFormDialog(
@@ -2064,16 +2075,14 @@ class _DrivePageState extends State<DrivePage>
         confirmLabel: context.l10n.confirm,
         name: file.name,
         desc: desc,
+        // 普通账号改不了文件名（重命名接口只对会员开放），标题里说明一下
+        nameLabel: freeTier ? context.l10n.nameLabelMember : null,
       ),
     );
     if (result == null || !mounted) return null;
+    // 名称为空由弹窗自己的 error state 拦住，到这里一定非空
     final name = result.name;
     final newDesc = result.desc;
-    if (name.isEmpty) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(context.l10n.nameRequired)));
-      return null;
-    }
     try {
       if (name != file.name) {
         await client.setFileName(file.id, name);
@@ -2126,14 +2135,9 @@ class _DrivePageState extends State<DrivePage>
       ),
     );
     if (result == null || !mounted) return null;
+    // 名称为空由弹窗自己的 error state 拦住，到这里一定非空
     final name = result.name;
     final desc = result.desc;
-    if (name.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(context.l10n.folderNameRequired)));
-      return null;
-    }
     try {
       await client.setFolderInfo(folder.id, name: name, desc: desc);
       if (!mounted) return null;
@@ -3690,12 +3694,17 @@ class _ItemFormDialog extends StatefulWidget {
     required this.confirmLabel,
     this.name = '',
     this.desc = '',
+    this.nameLabel,
   });
 
   final String title;
   final String confirmLabel;
   final String name;
   final String desc;
+
+  /// 名称输入框的标题；不传用默认的「名称」。
+  /// 免费账号改不了文件名，调用处会换成带说明的文案。
+  final String? nameLabel;
 
   @override
   State<_ItemFormDialog> createState() => _ItemFormDialogState();
@@ -3709,6 +3718,9 @@ class _ItemFormDialogState extends State<_ItemFormDialog> {
     text: widget.desc,
   );
 
+  /// 名称为空时的 error state（MD3E：错误文本 + 尾部红色 fill 风格 Error 图标）
+  String? _nameError;
+
   @override
   void dispose() {
     _name.dispose();
@@ -3717,8 +3729,13 @@ class _ItemFormDialogState extends State<_ItemFormDialog> {
   }
 
   void _submit() {
-    Navigator.of(context)
-        .pop((name: _name.text.trim(), desc: _desc.text.trim()));
+    final name = _name.text.trim();
+    if (name.isEmpty) {
+      // 不关弹窗：原地标错，让用户接着改
+      setState(() => _nameError = context.l10n.pleaseEnterName);
+      return;
+    }
+    Navigator.of(context).pop((name: name, desc: _desc.text.trim()));
   }
 
   @override
@@ -3732,7 +3749,16 @@ class _ItemFormDialogState extends State<_ItemFormDialog> {
           TextField(
             controller: _name,
             autofocus: true,
-            decoration: InputDecoration(labelText: context.l10n.nameRequired),
+            onChanged: (_) {
+              if (_nameError != null) setState(() => _nameError = null);
+            },
+            decoration: errorState(
+              context,
+              InputDecoration(
+                labelText: widget.nameLabel ?? context.l10n.nameLabel,
+              ),
+              _nameError,
+            ),
           ),
           const SizedBox(height: 12),
           TextField(
@@ -3809,10 +3835,21 @@ class _FolderNameDialog extends StatefulWidget {
 class _FolderNameDialogState extends State<_FolderNameDialog> {
   final TextEditingController _controller = TextEditingController();
 
+  String? _error;
+
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  void _submit() {
+    final name = _controller.text.trim();
+    if (name.isEmpty) {
+      setState(() => _error = context.l10n.pleaseEnterName);
+      return;
+    }
+    Navigator.of(context).pop(name);
   }
 
   @override
@@ -3823,17 +3860,21 @@ class _FolderNameDialogState extends State<_FolderNameDialog> {
       content: TextField(
         controller: _controller,
         autofocus: true,
-        decoration: InputDecoration(labelText: context.l10n.nameRequired),
+        onChanged: (_) {
+          if (_error != null) setState(() => _error = null);
+        },
+        decoration: errorState(
+          context,
+          InputDecoration(labelText: context.l10n.nameLabel),
+          _error,
+        ),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
           child: Text(context.l10n.cancel),
         ),
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(_controller.text.trim()),
-          child: Text(context.l10n.create),
-        ),
+        FilledButton(onPressed: _submit, child: Text(context.l10n.create)),
       ],
     );
   }
@@ -4612,6 +4653,10 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
   List<PathNode> _path = [];
   bool _loading = true;
   String? _error;
+
+  /// 上传模式下文件名为空时的 error state
+  String? _nameError;
+
   late final TextEditingController _nameController = TextEditingController(
     text: widget.initialName ?? '',
   );
@@ -4662,7 +4707,8 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
       context: context,
       builder: (_) => const _FolderNameDialog(),
     );
-    if (name == null || name.isEmpty || !mounted) return;
+    // 名称为空由弹窗自己的 error state 拦住
+    if (name == null || !mounted) return;
     try {
       await widget.client.mkdir(_folderId, name);
       await _load(_folderId);
@@ -4698,10 +4744,17 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
               if (widget.initialName != null) ...[
                 TextField(
                   controller: _nameController,
-                  decoration: InputDecoration(
-                    isDense: true,
-                    border: const OutlineInputBorder(),
-                    labelText: l10n.nameRequired,
+                  onChanged: (_) {
+                    if (_nameError != null) setState(() => _nameError = null);
+                  },
+                  decoration: errorState(
+                    context,
+                    InputDecoration(
+                      isDense: true,
+                      border: const OutlineInputBorder(),
+                      labelText: l10n.nameLabel,
+                    ),
+                    _nameError,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -4768,13 +4821,18 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
                 ? null
                 : () {
                     final edited = _nameController.text.trim();
+                    // 上传模式带改名框：空名字原地标错，不关弹窗
+                    if (widget.initialName != null && edited.isEmpty) {
+                      setState(() => _nameError = l10n.pleaseEnterName);
+                      return;
+                    }
                     Navigator.of(context).pop(
                       FolderPickResult(
                         _folderId,
                         _targetName(l10n),
                         fileName: widget.initialName == null
                             ? null
-                            : (edited.isEmpty ? widget.initialName : edited),
+                            : edited,
                       ),
                     );
                   },

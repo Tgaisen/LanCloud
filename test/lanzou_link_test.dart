@@ -36,4 +36,33 @@ void main() {
     expect(LanzouLink.parse(''), isNull);
     expect(LanzouLink.parse(null), isNull);
   });
+
+  test('urlFrom：自定义域名的蓝奏云链接也认（不限定域名）', () {
+    expect(
+      LanzouLink.urlFrom('https://pan.example.com/iAbCdEf'),
+      'https://pan.example.com/iAbCdEf',
+    );
+    expect(
+      LanzouLink.urlFrom('pan.example.com/iAbCdEf'),
+      'https://pan.example.com/iAbCdEf',
+    );
+  });
+
+  test('urlFrom：链接后面跟着说明 / 中文标点时只取链接', () {
+    expect(
+      LanzouLink.urlFrom('蓝奏云 https://pan.example.com/abc 密码: abcd'),
+      'https://pan.example.com/abc',
+    );
+    expect(
+      LanzouLink.urlFrom('看看这个（https://pan.example.com/x），提取码：8zb9'),
+      'https://pan.example.com/x',
+    );
+  });
+
+  test('urlFrom：不像网址的内容返回 null', () {
+    expect(LanzouLink.urlFrom('淘口令 abcdefg'), isNull);
+    expect(LanzouLink.urlFrom('随便写的'), isNull);
+    expect(LanzouLink.urlFrom(''), isNull);
+    expect(LanzouLink.urlFrom(null), isNull);
+  });
 }

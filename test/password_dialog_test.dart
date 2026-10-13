@@ -81,4 +81,36 @@ void main() {
     final value = await result;
     expect(value, (enabled: true, pwd: 'ab12'));
   });
+
+  testWidgets('文件夹提取码可到 12 位；免费账号提示关闭需会员；开关整行铺满弹窗', (
+    tester,
+  ) async {
+    final context = await host(tester);
+    final result = showPasswordDialog(
+      context,
+      enabled: false,
+      pwd: '',
+      maxLength: 12,
+      freeTier: true,
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<TextField>(find.byType(TextField)).maxLength, 12);
+    expect(find.text('2-12 位提取码'), findsOneWidget);
+    // 免费账号：开关下面说明「关闭访问密码需要开通会员」
+    expect(find.text('关闭访问密码需要开通会员'), findsOneWidget);
+    // 波纹整行：开关宽度 = 弹窗宽度（内容宽度 + 左右各 24 的内边距）
+    expect(
+      tester.getSize(find.byType(SwitchListTile)).width,
+      dialogFormWidth(context) + 2 * 24,
+    );
+
+    // 12 位密码可以确认
+    await tester.tap(find.byType(SwitchListTile));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'abc123456789');
+    await tester.tap(find.text('确定'));
+    await tester.pumpAndSettle();
+    expect(await result, (enabled: true, pwd: 'abc123456789'));
+  });
 }

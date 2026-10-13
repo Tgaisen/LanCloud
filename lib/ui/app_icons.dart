@@ -56,6 +56,7 @@ class Icons {
   static const IconData download_outlined = Symbols.download;
   static const IconData drive_file_move_outline = Symbols.drive_file_move;
   static const IconData edit_note = Symbols.edit_note;
+  static const IconData error = Symbols.error;
   static const IconData error_outline = Symbols.error_outline;
   static const IconData file_download_off = Symbols.file_download_off;
   static const IconData file_open = Symbols.file_open;

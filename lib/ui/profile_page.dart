@@ -112,12 +112,24 @@ class _ProfilePageState extends State<ProfilePage>
                                 leading: CircleAvatar(
                                   child: Text(_avatarInitial(account, uid)),
                                 ),
-                                title: Text(
-                                  account == null
-                                      ? l10n.notLoggedIn
-                                      : account.nickname.isEmpty
-                                      ? l10n.accountUid(uid)
-                                      : account.nickname,
+                                title: Row(
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        account == null
+                                            ? l10n.notLoggedIn
+                                            : account.nickname.isEmpty
+                                            ? l10n.accountUid(uid)
+                                            : account.nickname,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    // 网页版个人中心截取的用户等级；没取到按「普」
+                                    if (account != null) ...[
+                                      const SizedBox(width: 8),
+                                      _LevelChip(level: account.levelLabel),
+                                    ],
+                                  ],
                                 ),
                                 subtitle: Text(l10n.uidLabel(uid)),
                                 trailing: FilledButton.tonal(
@@ -308,5 +320,32 @@ class _ProfilePageState extends State<ProfilePage>
       ),
     );
     if (ok == true) await app.removeAccount(uid);
+  }
+}
+
+/// 昵称右侧的用户等级小卡片（例如普通用户的「普」）。
+class _LevelChip extends StatelessWidget {
+  const _LevelChip({required this.level});
+
+  final String level;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+      decoration: BoxDecoration(
+        color: scheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        level,
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: scheme.onSecondaryContainer,
+          height: 1.3,
+        ),
+      ),
+    );
   }
 }

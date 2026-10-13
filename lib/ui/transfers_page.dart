@@ -713,7 +713,7 @@ class _TransferListSliver extends StatelessWidget {
           child: Center(
             child: EmptyHint(
               icon: kind == TransferKind.upload
-                  ? Icons.upload_file
+                  ? Icons.upload
                   : Icons.download,
               text: kind == TransferKind.upload
                   ? l10n.noUploads

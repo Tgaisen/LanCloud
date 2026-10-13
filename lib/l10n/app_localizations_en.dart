@@ -68,7 +68,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String accountUid(String uid) {
-    return 'Account $uid';
+    return '$uid';
   }
 
   @override
@@ -350,6 +350,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pleasePasteShareLink => 'Paste a LanZou Cloud share link first';
+
+  @override
+  String get shareLinkFormatError => 'Invalid share link';
 
   @override
   String get addedToFavorites => 'Added to favorites';
@@ -796,7 +799,13 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get nameRequired => 'Name cannot be empty';
+  String get nameLabel => 'Name';
+
+  @override
+  String get nameLabelMember => 'Name (membership required to rename)';
+
+  @override
+  String get pleaseEnterName => 'Enter a name';
 
   @override
   String get descOptional => 'Description (optional)';
@@ -806,6 +815,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get folderNameRequired => 'Folder name cannot be empty';
+
+  @override
+  String get nameRequired => 'Name cannot be empty';
 
   @override
   String get deleteConfirmTitle => 'Confirm deletion';
@@ -952,6 +964,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pwdHint => '2–6 character password';
+
+  @override
+  String get pwdHint12 => '2–12 character password';
+
+  @override
+  String get disablePasswordHint =>
+      'Disabling the access password requires membership';
 
   @override
   String get pwdTooShort => 'Password must be at least 2 characters';
@@ -1615,10 +1634,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get webdavServerHint => 'https://example.com/dav/';
 
   @override
+  String get webdavUrlFormatError => 'Invalid WebDAV URL';
+
+  @override
+  String get pleaseEnterWebdavServer => 'Enter the WebDAV URL';
+
+  @override
   String get webdavUsername => 'Username';
 
   @override
   String get webdavPassword => 'Password';
+
+  @override
+  String get pleaseEnterUsername => 'Enter the username';
+
+  @override
+  String get pleaseEnterPassword => 'Enter the password';
 
   @override
   String get webdavNotSet => 'Not set';

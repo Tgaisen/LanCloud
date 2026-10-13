@@ -26,15 +26,72 @@ export 'package:m3e_core/m3e_core.dart'
         M3EButtonShape,
         M3EButtonSize,
         M3EButtonStyle,
+        M3EClipper,
         M3EMotion,
         M3EToggleButton,
         M3EToggleButtonDecoration,
         M3EToggleButtonGroup,
         M3EToggleButtonGroupAction,
         M3ETypography,
+        Shapes,
         showM3EModalBottomSheet;
 
 /// ────────────────────────────── M3E 排版 ──────────────────────────────
+
+/// MD3E 装饰形状外框里的图标：默认套 9 边「饼干」（Cookie9Sided）形状。
+///
+/// M3 形状库是给**纯视觉元素**用的（图像裁切、头像蒙版、装饰、加载指示器
+/// 这类），空状态图标正属于这一类；形状本身不承载语义——M3 明确要求
+/// 不把某个形状固定解释成某种含义，所以这里只当装饰外框。
+///
+/// **参考 M3 规范**：形状取自 M3 形状库的 `Cookie9Sided`；容器色用次级
+/// 容器角色（装饰、不抢注意力），图标用配对的 on 角色。
+/// **本应用的设计决定（非 M3 规范）**：默认 72dp 外框 / 36dp 图标。
+class M3eShapedIcon extends StatelessWidget {
+  const M3eShapedIcon({
+    super.key,
+    required this.icon,
+    this.size = 72,
+    this.iconSize = 36,
+    this.shape = core.Shapes.c9SidedCookie,
+    this.color,
+    this.iconColor,
+  });
+
+  final IconData icon;
+
+  /// 外框的边长（形状按正方形排版）。
+  final double size;
+  final double iconSize;
+
+  /// M3 形状库里的形状。
+  final core.Shapes shape;
+
+  /// 外框底色；默认次级容器色。
+  final Color? color;
+
+  /// 图标颜色；默认与底色配对的 on 角色。
+  final Color? iconColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return ClipPath(
+      clipper: core.M3EClipper(shape),
+      child: Container(
+        width: size,
+        height: size,
+        color: color ?? scheme.secondaryContainer,
+        alignment: Alignment.center,
+        child: Icon(
+          icon,
+          size: iconSize,
+          color: iconColor ?? scheme.onSecondaryContainer,
+        ),
+      ),
+    );
+  }
+}
 
 /// 依据 M3E 规范计算「强调排版」：字号 / 行高与基线一致，只加粗字重。
 ///
@@ -568,26 +625,87 @@ class M3EIconButtonGroup<T> extends StatelessWidget {
 
 /// ──────────────────── 列表行尾的标准图标按钮 ────────────────────
 
-/// MD3E 标准（standard）图标按钮：列表行尾的 ⋯ / ✕ 这类低强调操作统一用它。
+/// MD3E 按钮的形状过渡：进度 0 → 1（静止形状 → 目标形状）。
+///
+/// 形状类动效属于 spatial：用 expressive fast spatial 弹簧（和 M3E 图标
+/// 按钮的按下形变同一套）；系统要求少动效时直接跳到终值。
+///
+/// 按下形变、选中形变各拿一个实例：插值时先按 [value] 算出当前静止形状，
+/// 再叠按下那层——M3E 规定圆、方按钮的按下形状是同一个。
+class M3eShapeMorph {
+  M3eShapeMorph({required TickerProvider vsync, bool morphed = false})
+    : controller = AnimationController.unbounded(
+        vsync: vsync,
+        value: morphed ? 1 : 0,
+      );
+
+  /// 状态变化进度（[AnimatedBuilder] 监听它重画形状）。
+  final AnimationController controller;
+
+  /// 0 = 静止形状，1 = 目标形状。
+  double get value => controller.value.clamp(0.0, 1.0);
+
+  void setMorphed(BuildContext context, bool morphed) {
+    final double target = morphed ? 1 : 0;
+    if (reduceMotionOf(context)) {
+      controller.value = target;
+      return;
+    }
+    final motion = core.M3EMotion.expressiveSpatialFast;
+    controller.animateWith(
+      SpringSimulation(
+        SpringDescription.withDampingRatio(
+          mass: 1,
+          stiffness: motion.stiffness,
+          ratio: motion.damping,
+        ),
+        controller.value,
+        target,
+        controller.velocity,
+      ),
+    );
+  }
+
+  void dispose() => controller.dispose();
+}
+
+/// 按 [t]（0..1）在圆角 [from] → [to] 之间插值。
+double m3eLerpRadius(double from, double to, double t) =>
+    from + (to - from) * t.clamp(0.0, 1.0);
+
+/// MD3E 标准（standard）图标按钮：列表行尾的 ⋯ / ✕、分区标题的展开 ⌄
+/// 这类低强调操作统一用它。
 ///
 /// 参数（M3E 图标按钮规格）：
-/// - 尺寸 Small（默认档）：40dp 圆形容器 + 24dp 图标；
-/// - 形态 round：静止圆角 CornerFull（正圆），按下形变为 CornerSmall（8dp）；
+/// - 尺寸 Small（默认档）：40dp 容器 + 24dp 图标，触控目标 48dp
+///   （M3E 要求 ≥48dp，嵌套在列表项里也一样，且不要用密度压缩）；
+/// - 形态：静止 = 圆（CornerFull）；[selected] 为真时换成方形档 12dp
+///   ——M3E 开关型图标按钮「未选中圆 → 选中方」；按下统一 8dp（S 档）；
 /// - 配色 standard：图标用 on surface variant，容器静止时不可见，只有状态层
-///   （悬停 8%、聚焦 / 按下 10%）；
-/// - 触控目标 48dp（M3E 要求 ≥48dp，嵌套在列表项里也一样，且不要用密度压缩）。
+///   （悬停 8%、聚焦 / 按下 10%）；需要可见容器时传 [containerColor]。
 ///
-/// 按下形变是形状动画，用 expressive fast spatial 弹簧（stiffness 800 /
-/// damping 0.6，形状类动效属于 spatial）；系统要求少动效时直接跳到终值。
+/// 按下 / 选中都是形状动画，用 expressive fast spatial 弹簧；系统要求少动效
+/// 时直接跳到终值。
 class M3eIconButton extends StatefulWidget {
   const M3eIconButton({
     super.key,
-    required this.icon,
+    this.icon,
+    this.iconBuilder,
     required this.tooltip,
     this.onPressed,
-  });
+    this.selected = false,
+    this.containerColor,
+  }) : assert(
+         icon != null || iconBuilder != null,
+         'icon 和 iconBuilder 至少给一个',
+       );
 
-  final IconData icon;
+  /// 默认图标；用 [iconBuilder] 自定义时可以不传。
+  final IconData? icon;
+
+  /// 自定义图标：拿到按钮算好的颜色（含禁用态透明度）。用于需要额外动画的
+  /// 图标，例如展开 / 收起的 ⌄（转 90°）。
+  final Widget Function(BuildContext context, Color color)? iconBuilder;
 
   /// 悬停 / 长按提示，同时充当读屏名称（描述动作，不是图标名）。
   final String tooltip;
@@ -595,52 +713,53 @@ class M3eIconButton extends StatefulWidget {
   /// null = 禁用：图标 38% 透明度，不响应点击。
   final VoidCallback? onPressed;
 
+  /// 开关型按钮的选中态：静止形状从圆变方（M3E toggle icon button）。
+  final bool selected;
+
+  /// 容器底色；null = standard 风格（静止时容器不可见，只有状态层）。
+  final Color? containerColor;
+
   @override
   State<M3eIconButton> createState() => _M3eIconButtonState();
 }
 
 class _M3eIconButtonState extends State<M3eIconButton>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   /// Small 尺寸：40dp 容器 / 24dp 图标；触控目标 ≥48dp。
   static const double _container = 40;
   static const double _icon = 24;
   static const double _target = 48;
 
-  /// 静止 = CornerFull（正圆，半径取容器一半），按下 = CornerSmall（8dp）。
-  static const double _restRadius = _container / 2;
+  /// 静止：圆 = CornerFull（半径取容器一半）；选中：方形档 12dp；
+  /// 按下：两种形状统一 8dp（M3E 图标按钮尺寸表，S 档）。
+  static const double _circleRadius = _container / 2;
+  static const double _squareRadius = 12;
   static const double _pressedRadius = 8;
 
-  /// 0 = 未按下（正圆），1 = 按下（8dp 圆角）。
-  late final AnimationController _morph = AnimationController.unbounded(
+  /// 按下形变（0 = 静止，1 = 按下）与选中形变（0 = 圆，1 = 方）。
+  late final M3eShapeMorph _press = M3eShapeMorph(vsync: this);
+  late final M3eShapeMorph _selection = M3eShapeMorph(
     vsync: this,
-    value: 0,
+    morphed: widget.selected,
   );
+  late final Listenable _repaint = Listenable.merge([
+    _press.controller,
+    _selection.controller,
+  ]);
+
+  @override
+  void didUpdateWidget(covariant M3eIconButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.selected != oldWidget.selected) {
+      _selection.setMorphed(context, widget.selected);
+    }
+  }
 
   @override
   void dispose() {
-    _morph.dispose();
+    _press.dispose();
+    _selection.dispose();
     super.dispose();
-  }
-
-  void _setPressed(bool pressed) {
-    final double target = pressed ? 1 : 0;
-    if (reduceMotionOf(context)) {
-      _morph.value = target;
-      return;
-    }
-    final motion = core.M3EMotion.expressiveSpatialFast;
-    _morph.animateWith(
-      SpringSimulation(
-        SpringDescription.withDampingRatio(
-          mass: 1,
-          stiffness: motion.stiffness,
-          ratio: motion.damping,
-        ),
-        _morph.value,
-        target,
-        _morph.velocity,
-      ),
-    );
   }
 
   @override
@@ -663,21 +782,27 @@ class _M3eIconButtonState extends State<M3eIconButton>
           dimension: _target,
           child: Center(
             child: AnimatedBuilder(
-              animation: _morph,
+              animation: _repaint,
               builder: (BuildContext context, _) {
-                final t = _morph.value.clamp(0.0, 1.0);
+                // 先算当前静止形状（圆 ↔ 方），再叠按下那层
+                final double rest = m3eLerpRadius(
+                  _circleRadius,
+                  _squareRadius,
+                  _selection.value,
+                );
                 final shape = RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(
-                    _restRadius + (_pressedRadius - _restRadius) * t,
+                    m3eLerpRadius(rest, _pressedRadius, _press.value),
                   ),
                 );
                 return Material(
-                  type: MaterialType.transparency,
+                  color: widget.containerColor ?? Colors.transparent,
                   shape: shape,
                   clipBehavior: Clip.antiAlias,
                   child: InkResponse(
                     onTap: widget.onPressed,
-                    onHighlightChanged: _setPressed,
+                    onHighlightChanged: (pressed) =>
+                        _press.setMorphed(context, pressed),
                     containedInkWell: true,
                     customBorder: shape,
                     hoverColor: layer.withValues(alpha: 0.08),
@@ -687,7 +812,9 @@ class _M3eIconButtonState extends State<M3eIconButton>
                     child: SizedBox.square(
                       dimension: _container,
                       child: Center(
-                        child: Icon(widget.icon, size: _icon, color: iconColor),
+                        child:
+                            widget.iconBuilder?.call(context, iconColor) ??
+                            Icon(widget.icon!, size: _icon, color: iconColor),
                       ),
                     ),
                   ),

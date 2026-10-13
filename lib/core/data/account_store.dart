@@ -3,22 +3,41 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class Account {
-  Account({required this.uid, required this.cookie, this.nickname = ''});
+  Account({
+    required this.uid,
+    required this.cookie,
+    this.nickname = '',
+    this.level = '',
+  });
 
   final String uid;
   String cookie;
   String nickname;
 
+  /// 网页版个人中心截取到的用户等级（如「普」）；空串表示还没取到。
+  String level;
+
+  /// 蓝奏云上普通（免费）用户的等级文本。
+  static const freeLevel = '普';
+
+  /// 展示用等级：没取到 / 截取失败都按普通用户「普」处理。
+  String get levelLabel => level.isEmpty ? freeLevel : level;
+
+  /// 是否普通（免费）账号——等级未知时同样按「普」处理。
+  bool get isFreeTier => levelLabel == freeLevel;
+
   Map<String, dynamic> toJson() => {
     'uid': uid,
     'cookie': cookie,
     'nickname': nickname,
+    'level': level,
   };
 
   factory Account.fromJson(Map<String, dynamic> j) => Account(
     uid: '${j['uid']}',
     cookie: '${j['cookie']}',
     nickname: '${j['nickname'] ?? ''}',
+    level: '${j['level'] ?? ''}',
   );
 }
 
@@ -73,6 +92,7 @@ class AccountStore {
       existing.nickname = account.nickname.isEmpty
           ? existing.nickname
           : account.nickname;
+      existing.level = account.level.isEmpty ? existing.level : account.level;
     }
     activeUid = account.uid;
     await _save();
@@ -87,6 +107,14 @@ class AccountStore {
     final account = byUid(uid);
     if (account == null || account.nickname == nickname) return;
     account.nickname = nickname;
+    await _save();
+  }
+
+  /// 记录网页版个人中心截取到的用户等级；空串（没取到）不覆盖已有值。
+  Future<void> setLevel(String uid, String level) async {
+    final account = byUid(uid);
+    if (account == null || level.isEmpty || account.level == level) return;
+    account.level = level;
     await _save();
   }
 
@@ -106,6 +134,7 @@ class AccountStore {
       {
         'uid': a.uid,
         'nickname': a.nickname,
+        'level': a.level,
         if (includeCookies) 'cookie': a.cookie,
       },
   ];
@@ -126,16 +155,23 @@ class AccountStore {
       final uid = '${entry['uid'] ?? ''}';
       if (uid.isEmpty) continue;
       final nickname = '${entry['nickname'] ?? ''}';
+      final level = '${entry['level'] ?? ''}';
       final cookie = entry['cookie'] == null ? '' : '${entry['cookie']}';
       final existing = byUid(uid);
       if (existing == null) {
         if (cookie.isEmpty) continue;
-        accounts.add(Account(uid: uid, cookie: cookie, nickname: nickname));
+        accounts.add(
+          Account(uid: uid, cookie: cookie, nickname: nickname, level: level),
+        );
         changed += 1;
         continue;
       }
       if (nickname.isNotEmpty && nickname != existing.nickname) {
         existing.nickname = nickname;
+        changed += 1;
+      }
+      if (level.isNotEmpty && level != existing.level) {
+        existing.level = level;
         changed += 1;
       }
       if (cookie.isNotEmpty && existing.cookie.isEmpty) {

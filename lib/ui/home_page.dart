@@ -556,9 +556,20 @@ class _HomePageState extends State<HomePage>
                             child: _quick.isEmpty
                                 ? SegmentedList(
                                     children: [
-                                      EmptyHint(
-                                        icon: Icons.push_pin_outlined,
-                                        text: l10n.quickAccessHint,
+                                      // 空状态卡片略高一点：图标外框和卡片边缘
+                                      // 之间留出呼吸感
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 8,
+                                        ),
+                                        child: EmptyHint(
+                                          icon: Icons.push_pin_outlined,
+                                          text: l10n.quickAccessHint,
+                                          // 首页两张空状态卡片比页面级的空状态
+                                          // 更紧凑：形状外框 64dp（其他 72dp）
+                                          frameSize: 64,
+                                          iconSize: 32,
+                                        ),
                                       ),
                                     ],
                                   )
@@ -588,9 +599,17 @@ class _HomePageState extends State<HomePage>
                                 : (_recents.isEmpty
                                       ? SegmentedList(
                                           children: [
-                                            EmptyHint(
-                                              icon: Icons.history,
-                                              text: l10n.noRecent,
+                                            Padding(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    vertical: 8,
+                                                  ),
+                                              child: EmptyHint(
+                                                icon: Icons.history,
+                                                text: l10n.noRecent,
+                                                frameSize: 64,
+                                                iconSize: 32,
+                                              ),
                                             ),
                                           ],
                                         )

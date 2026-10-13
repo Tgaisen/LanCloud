@@ -946,6 +946,36 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
   });
 
+  testWidgets('文件属性弹窗：修改信息名称为空时原地标错，弹窗不关也不发请求', (tester) async {
+    final client = _FakeClient();
+    final app = _FakeApp(client);
+    await _pumpDrive(tester, app);
+
+    await tester.tap(find.text('a.zip'));
+    await _settleSheet(tester);
+    await tester.tap(_sheetText('修改信息'));
+    await _settleSheet(tester);
+
+    // 清空名称后确定：MD3E error state（错误文本 + 尾部 fill 风格 Error 图标）
+    await tester.enterText(find.byType(TextField).first, '');
+    await tester.tap(find.text('确定'));
+    await _settleSheet(tester);
+    expect(find.text('请输入名称'), findsOneWidget);
+    expect(find.byIcon(Icons.error), findsOneWidget);
+    // 弹窗还在（两个输入框都在），改名 / 改简介接口都没被调用
+    expect(find.byType(TextField), findsNWidgets(2));
+    expect(client.renamedFiles, isEmpty);
+    expect(client.savedDescs, isEmpty);
+
+    // 补上名字就能正常保存
+    await tester.enterText(find.byType(TextField).first, 'b.zip');
+    await tester.tap(find.text('确定'));
+    await _settleSheet(tester);
+    expect(client.renamedFiles, ['b.zip']);
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pump(const Duration(seconds: 1));
+  });
+
   testWidgets('文件夹属性弹窗：从网盘页「目录属性」进来不显示「打开」', (tester) async {
     final app = _FakeApp(_FakeClient());
     // 站在子目录里：顶栏菜单才会出现「目录属性」

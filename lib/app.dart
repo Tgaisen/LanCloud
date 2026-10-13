@@ -33,6 +33,7 @@ import 'ui/app_scroll.dart';
 import 'ui/common.dart';
 import 'ui/scroll_tint.dart';
 import 'ui/share_page.dart';
+import 'ui/system_ui.dart';
 import 'ui/transfers_page.dart';
 import 'ui/app_icons.dart';
 
@@ -113,23 +114,6 @@ class LanCloudApp extends StatelessWidget {
       ),
     );
   }
-}
-
-/// 全局系统栏样式：状态栏、导航栏都透明，图标明暗随主题，
-/// 并关掉系统给透明导航栏垫的半透明遮罩（否则看着不是真透明）。
-SystemUiOverlayStyle systemUiOverlayStyleFor(Brightness brightness) {
-  final dark = brightness == Brightness.dark;
-  return SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-    statusBarIconBrightness: dark ? Brightness.light : Brightness.dark,
-    statusBarBrightness: dark ? Brightness.dark : Brightness.light,
-    systemNavigationBarColor: Colors.transparent,
-    systemNavigationBarDividerColor: Colors.transparent,
-    systemNavigationBarIconBrightness: dark
-        ? Brightness.light
-        : Brightness.dark,
-    systemNavigationBarContrastEnforced: false,
-  );
 }
 
 /// 应用主题（Material 3 + MD3E 细节）。抽出来便于测试。

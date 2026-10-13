@@ -159,6 +159,7 @@
   "open": "打开",
   "view": "查看",
   "pleasePasteShareLink": "请输入分享链接",
+  "shareLinkFormatError": "分享链接格式错误",
   "addedToFavorites": "已加入收藏",
   "openShare": "打开链接",
   "shareLink": "分享链接",
@@ -367,7 +368,9 @@
       "count": {"type": "int"}
     }
   },
-  "nameRequired": "名称（必填）",
+  "nameLabel": "名称",
+  "nameLabelMember": "名称（修改名称需开通会员）",
+  "pleaseEnterName": "请输入名称",
   "descOptional": "简介（选填）",
   "create": "创建",
   "folderNameRequired": "文件夹名称不能为空",
@@ -490,6 +493,8 @@
     }
   },
   "pwdHint": "2-6 位提取码",
+  "pwdHint12": "2-12 位提取码",
+  "disablePasswordHint": "关闭访问密码需要开通会员",
   "pwdTooShort": "提取码至少 2 位",
   "passwordSetCount": "已为 {count} 个条目设置提取码",
   "@passwordSetCount": {
@@ -774,8 +779,12 @@
   "webdavAccount": "WebDAV 账号",
   "webdavServer": "WebDAV 地址",
   "webdavServerHint": "https://example.com/dav/",
+  "webdavUrlFormatError": "WebDAV 地址格式错误",
+  "pleaseEnterWebdavServer": "请输入 WebDAV 地址",
   "webdavUsername": "用户名",
   "webdavPassword": "密码",
+  "pleaseEnterUsername": "请输入用户名",
+  "pleaseEnterPassword": "请输入密码",
   "webdavNotSet": "未设置",
   "webdavBackup": "云端备份",
   "webdavTest": "测试连接",

@@ -342,6 +342,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get pleasePasteShareLink => '请输入分享链接';
 
   @override
+  String get shareLinkFormatError => '分享链接格式错误';
+
+  @override
   String get addedToFavorites => '已加入收藏';
 
   @override
@@ -770,7 +773,13 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get nameRequired => '名称不能为空';
+  String get nameLabel => '名称';
+
+  @override
+  String get nameLabelMember => '名称（修改名称需开通会员）';
+
+  @override
+  String get pleaseEnterName => '请输入名称';
 
   @override
   String get descOptional => '简介（选填）';
@@ -780,6 +789,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get folderNameRequired => '文件夹名称不能为空';
+
+  @override
+  String get nameRequired => '名称不能为空';
 
   @override
   String get deleteConfirmTitle => '删除确认';
@@ -924,6 +936,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get pwdHint => '2-6 位提取码';
+
+  @override
+  String get pwdHint12 => '2-12 位提取码';
+
+  @override
+  String get disablePasswordHint => '关闭访问密码需要开通会员';
 
   @override
   String get pwdTooShort => '提取码至少 2 位';
@@ -1567,10 +1585,22 @@ class AppLocalizationsZh extends AppLocalizations {
   String get webdavServerHint => 'https://example.com/dav/';
 
   @override
+  String get webdavUrlFormatError => 'WebDAV 地址格式错误';
+
+  @override
+  String get pleaseEnterWebdavServer => '请输入 WebDAV 地址';
+
+  @override
   String get webdavUsername => '用户名';
 
   @override
   String get webdavPassword => '密码';
+
+  @override
+  String get pleaseEnterUsername => '请输入用户名';
+
+  @override
+  String get pleaseEnterPassword => '请输入密码';
 
   @override
   String get webdavNotSet => '未设置';

@@ -68,7 +68,7 @@ class AppController extends ChangeNotifier {
     await driveCache.bindAccount(accounts.activeUid);
     ready = true;
     notifyListeners();
-    _refreshActiveNickname();
+    _refreshActiveAccountInfo();
     // 设备支持动态取色且用户还没选过：默认开启（之后尊重用户选择）
     unawaited(autoEnableDynamicColorIfSupported());
   }
@@ -107,7 +107,7 @@ class AppController extends ChangeNotifier {
     await driveCache.bindAccount(accounts.activeUid);
     if (!settings.cacheFolders) driveCache.clear();
     notifyListeners();
-    _refreshActiveNickname();
+    _refreshActiveAccountInfo();
   }
 
   Future<void> setRequestInterval(int ms) async {
@@ -405,11 +405,14 @@ class AppController extends ChangeNotifier {
     final ok = await c.verify();
     if (!ok) throw const CookieInvalidException();
     var nickname = '';
+    var level = '';
     try {
-      nickname = await c.fetchNickname() ?? '';
+      final info = await c.fetchAccountInfo();
+      nickname = info.nickname ?? '';
+      level = info.level;
     } catch (_) {}
     await accounts.upsert(
-      Account(uid: uid, cookie: cookie, nickname: nickname),
+      Account(uid: uid, cookie: cookie, nickname: nickname, level: level),
     );
     _clients[uid] = c;
     // 新账号登入后同样清掉上一个账号的网盘缓存
@@ -417,17 +420,31 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 账号没有昵称时，后台解析一次网页版个人中心并落盘。
-  Future<void> _refreshActiveNickname() async {
+  /// 账号缺昵称 / 等级时，后台解析一次网页版个人中心并落盘。
+  ///
+  /// 等级没取到（页面结构变了等）不写空值，下次启动再试；界面同时会按
+  /// 普通用户「普」显示（见 Account.levelLabel）。
+  Future<void> _refreshActiveAccountInfo() async {
     final uid = accounts.activeUid;
     if (uid == null) return;
     final account = accounts.byUid(uid);
-    if (account == null || account.nickname.isNotEmpty) return;
+    if (account == null ||
+        (account.nickname.isNotEmpty && account.level.isNotEmpty)) {
+      return;
+    }
     try {
-      final nickname = await clientFor(uid).fetchNickname();
-      if (nickname == null || nickname.isEmpty) return;
-      await accounts.setNickname(uid, nickname);
-      notifyListeners();
+      final info = await clientFor(uid).fetchAccountInfo();
+      var changed = false;
+      final nickname = info.nickname ?? '';
+      if (nickname.isNotEmpty) {
+        await accounts.setNickname(uid, nickname);
+        changed = true;
+      }
+      if (info.level.isNotEmpty) {
+        await accounts.setLevel(uid, info.level);
+        changed = true;
+      }
+      if (changed) notifyListeners();
     } catch (_) {}
   }
 

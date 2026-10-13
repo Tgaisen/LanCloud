@@ -90,6 +90,23 @@ class WebdavClient {
     return Uri.parse(value);
   }
 
+  /// WebDAV 地址是否像一条可用地址：允许省略协议头（[normalizeBase] 会补
+  /// https://），但必须能解析出主机名。给「WebDAV 账号」弹窗的 error state 用。
+  static bool isValidUrl(String url) {
+    final value = url.trim();
+    if (value.isEmpty || value.contains(RegExp(r'\s'))) return false;
+    final withScheme =
+        value.startsWith('http://') || value.startsWith('https://')
+        ? value
+        : 'https://$value';
+    // Uri.parse 不会因为 host 里有中文 / 空格就报错，而是把这些字符转义后
+    // 塞进 host（"随便写的" → "%E9%9A%8F..."），所以再查一遍字符集：
+    // 主机名只允许字母数字、点、连字符、下划线，IPv6 字面量会带冒号。
+    final uri = Uri.tryParse(withScheme);
+    if (uri == null || uri.host.isEmpty) return false;
+    return RegExp(r'^[A-Za-z0-9._:-]+$').hasMatch(uri.host);
+  }
+
   Map<String, String> get _headers => {
     if (username.isNotEmpty)
       'Authorization':

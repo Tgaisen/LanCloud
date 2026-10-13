@@ -1,0 +1,114 @@
+import 'package:material_ui/material_ui.dart' hide Icons;
+import 'package:flutter_test/flutter_test.dart';
+import 'package:lancloud/core/backup/webdav_client.dart';
+import 'package:lancloud/l10n/app_localizations.dart';
+import 'package:lancloud/ui/app_icons.dart';
+import 'package:lancloud/ui/backup_page.dart';
+
+import 'package:lancloud/l10n/delegates.dart';
+
+/// 打开 WebDAV 账号弹窗，返回保存结果（取消 / 重置 / 保存都会完成它）。
+Future<Future<List<String>?>> pumpDialog(
+  WidgetTester tester, {
+  String url = '',
+  String username = '',
+  String password = '',
+}) async {
+  late Future<List<String>?> result;
+  await tester.pumpWidget(
+    MaterialApp(
+      localizationsDelegates: appLocalizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      locale: const Locale('zh'),
+      home: Builder(
+        builder: (context) => Scaffold(
+          body: Center(
+            child: TextButton(
+              onPressed: () {
+                result = showDialog<List<String>>(
+                  context: context,
+                  builder: (_) => WebdavAccountDialog(
+                    url: url,
+                    username: username,
+                    password: password,
+                  ),
+                );
+              },
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+  await tester.tap(find.text('open'));
+  await tester.pumpAndSettle();
+  return result;
+}
+
+void main() {
+  test('WebDAV 地址格式判定：允许省协议头与内网地址，拒绝空 / 无主机 / 带空格', () {
+    expect(WebdavClient.isValidUrl('https://example.com/dav'), isTrue);
+    expect(WebdavClient.isValidUrl('http://example.com/dav'), isTrue);
+    // 省略协议头（normalizeBase 会补 https://）
+    expect(WebdavClient.isValidUrl('example.com/dav'), isTrue);
+    expect(WebdavClient.isValidUrl('192.168.1.5:8080/dav'), isTrue);
+    expect(WebdavClient.isValidUrl('https://[::1]/dav'), isTrue);
+    expect(WebdavClient.isValidUrl(''), isFalse);
+    expect(WebdavClient.isValidUrl('http://'), isFalse);
+    expect(WebdavClient.isValidUrl('https://a b.com/dav'), isFalse);
+    expect(WebdavClient.isValidUrl('随便写的'), isFalse);
+  });
+
+  testWidgets('三项都为空点保存：每个输入框各自 error state，弹窗不关', (tester) async {
+    await pumpDialog(tester);
+    await tester.tap(find.text('保存'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('请输入 WebDAV 地址'), findsOneWidget);
+    expect(find.text('请输入用户名'), findsOneWidget);
+    expect(find.text('请输入密码'), findsOneWidget);
+    // 三个输入框都带尾部红色 fill 风格 Error 图标
+    expect(find.byIcon(Icons.error), findsNWidgets(3));
+    expect(find.byType(WebdavAccountDialog), findsOneWidget);
+  });
+
+  testWidgets('地址格式不对：报「WebDAV 地址格式错误」，其它两项不报错', (tester) async {
+    await pumpDialog(tester, url: '随便写的', username: 'u', password: 'p');
+    await tester.tap(find.text('保存'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('WebDAV 地址格式错误'), findsOneWidget);
+    expect(find.text('请输入用户名'), findsNothing);
+    expect(find.text('请输入密码'), findsNothing);
+    expect(find.byType(WebdavAccountDialog), findsOneWidget);
+  });
+
+  testWidgets('填好三项点保存：正常关闭并返回输入值', (tester) async {
+    final result = await pumpDialog(
+      tester,
+      url: ' https://example.com/dav ',
+      username: ' user ',
+      password: 'pwd',
+    );
+    await tester.tap(find.text('保存'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(WebdavAccountDialog), findsNothing);
+    expect(await result, ['https://example.com/dav', 'user', 'pwd']);
+  });
+
+  testWidgets('重置：清空并移除配置（返回三个空值）', (tester) async {
+    final result = await pumpDialog(
+      tester,
+      url: 'https://example.com/dav',
+      username: 'u',
+      password: 'p',
+    );
+    await tester.tap(find.text('重置'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(WebdavAccountDialog), findsNothing);
+    expect(await result, ['', '', '']);
+  });
+}

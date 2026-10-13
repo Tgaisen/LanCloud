@@ -5,6 +5,7 @@ import '../core/agreements.dart';
 import '../l10n/l10n.dart';
 import 'legal_dialog.dart';
 import 'login_page.dart';
+import 'system_ui.dart';
 
 /// 首次启动（或条款更新后）的同意页：同意后才能进入主界面。
 class FirstRunTerms extends StatelessWidget {
@@ -18,16 +19,9 @@ class FirstRunTerms extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      // 状态栏透明，和页面背景保持一致
-      value: SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: theme.brightness == Brightness.dark
-            ? Brightness.light
-            : Brightness.dark,
-        statusBarBrightness: theme.brightness == Brightness.dark
-            ? Brightness.dark
-            : Brightness.light,
-      ),
+      // 沉浸式系统栏：欢迎页在第一帧就显示，导航栏没有主界面那一层
+      // 兜底，这里要自己给全（透明导航栏 + 图标明暗随主题）
+      value: systemUiOverlayStyleFor(theme.brightness),
       child: Scaffold(
         body: SafeArea(
           child: Padding(

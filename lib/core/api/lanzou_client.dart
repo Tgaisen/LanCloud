@@ -563,27 +563,57 @@ class LanzouClient {
 
   // ------------------------------------------------------------------ share
 
-  /// 网页版个人中心昵称；解析失败返回 null（UI 回退显示 UID）。
-  Future<String?> fetchNickname() async {
+  /// 从网页版个人中心（myfile.php?item=1）的 HTML 里取出昵称与用户等级。
+  ///
+  /// 昵称：顶栏的登录用户名优先，发布者昵称（shownames）兜底，都取不到为 null。
+  /// 等级：昵称旁边的等级标记（普通用户是 `<span class="ulv1">普</span>`），
+  /// 取不到返回空串（UI 按普通用户「普」处理）。
+  static ({String? nickname, String level}) parseAccountInfoHtml(String html) {
+    // 昵称：顶栏的登录用户名优先，发布者昵称（shownames）兜底。
+    final loginName = RegExp(r'<div class="c_topr">([^<]+)<span')
+        .firstMatch(html)
+        ?.group(1)
+        ?.trim();
+    final fallback = RegExp(r'id="shownames"[^>]*value="([^"]*)"')
+        .firstMatch(html)
+        ?.group(1)
+        ?.trim();
+    final name = (loginName != null && loginName.isNotEmpty)
+        ? loginName
+        : fallback;
+    // 等级：昵称旁边那个等级标记（普通用户是 <span class="ulv1">普</span>）。
+    // 从顶栏那块往后找，避免误取页面别处的等级图标。
+    final topRight = html.indexOf('c_topr');
+    final scope = topRight < 0 ? html : html.substring(topRight);
+    final level =
+        RegExp(r'<span[^>]*class="ulv[^"]*"[^>]*>\s*([^<]*?)\s*</span>')
+            .firstMatch(scope)
+            ?.group(1)
+            ?.trim() ??
+        '';
+    return (
+      nickname: name == null || name.isEmpty ? null : name,
+      level: level,
+    );
+  }
+
+  /// 网页版个人中心信息：昵称 + 用户等级。
+  ///
+  /// 解析失败时昵称返回 null（UI 回退显示 UID）、等级返回空串
+  /// （UI 按普通用户「普」处理，下次启动再试一次）。
+  Future<({String? nickname, String level})> fetchAccountInfo() async {
     try {
       final resp = await dio.get<String>(
         'https://up.woozooo.com/myfile.php?item=1&v2',
         options: _options(referer: '$apiBase/mydisk.php'),
       );
       final html = resp.data ?? '';
-      if (html.isEmpty || html.contains('网盘用户登录')) return null;
-      // 顶栏的登录用户名优先；发布者昵称（shownames）作为兜底。
-      final loginName = RegExp(r'<div class="c_topr">([^<]+)<span')
-          .firstMatch(html)
-          ?.group(1)
-          ?.trim();
-      if (loginName != null && loginName.isNotEmpty) return loginName;
-      return RegExp(r'id="shownames"[^>]*value="([^"]*)"')
-          .firstMatch(html)
-          ?.group(1)
-          ?.trim();
+      if (html.isEmpty || html.contains('网盘用户登录')) {
+        return (nickname: null, level: '');
+      }
+      return parseAccountInfoHtml(html);
     } catch (_) {
-      return null;
+      return (nickname: null, level: '');
     }
   }
 

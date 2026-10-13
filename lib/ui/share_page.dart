@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../core/api/lanzou_client.dart';
 import '../core/api/models.dart';
 import '../core/app_controller.dart';
+import '../core/lanzou_link.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
@@ -56,7 +57,11 @@ class _ShareLinkDialogState extends State<ShareLinkDialog> {
     text: widget.initialPwd ?? '',
   );
   bool _loading = false;
-  String? _error;
+
+  /// 分享链接输入框的 error state（空 / 格式不对 / 解析失败）
+  String? _linkError;
+
+  /// 提取码输入框的 error state（需要提取码 / 提取码错误）
   String? _pwdError;
 
   @override
@@ -75,27 +80,37 @@ class _ShareLinkDialogState extends State<ShareLinkDialog> {
     super.dispose();
   }
 
-  bool get _looksLikeFolder {
-    final link = _linkController.text.trim();
-    return RegExp(r'lanzou[a-z]*\.com/(s/)?b[a-zA-Z0-9]{7,}').hasMatch(link);
-  }
+  bool _looksLikeFolder(String link) =>
+      RegExp(r'lanzou[a-z]*\.com/(s/)?b[a-zA-Z0-9]{7,}').hasMatch(link);
 
   Future<void> _parse() async {
-    final link = _linkController.text.trim();
-    final pwd = _pwdController.text.trim();
-    if (link.isEmpty) {
-      setState(() => _error = context.l10n.pleasePasteShareLink);
+    final raw = _linkController.text.trim();
+    if (raw.isEmpty) {
+      setState(() => _linkError = context.l10n.pleasePasteShareLink);
       return;
     }
+    // 只看「像不像一条网址」——蓝奏云有自定义域名的分享链接，
+    // 不能只认 lanzou 域名；取不出一条网址才原地标「格式错误」
+    final link = LanzouLink.urlFrom(raw);
+    if (link == null) {
+      setState(() => _linkError = context.l10n.shareLinkFormatError);
+      return;
+    }
+    // 输入里自带提取码（「… 密码: abcd」）时顺手填进提取码框
+    if (_pwdController.text.trim().isEmpty) {
+      final parsedPwd = LanzouLink.extractPwd(raw);
+      if (parsedPwd != null) _pwdController.text = parsedPwd;
+    }
+    final pwd = _pwdController.text.trim();
     setState(() {
       _loading = true;
-      _error = null;
+      _linkError = null;
       _pwdError = null;
     });
     final client = context.read<AppController>().publicClient;
     final navigator = Navigator.of(context);
     try {
-      if (_looksLikeFolder) {
+      if (_looksLikeFolder(link)) {
         final folder = await client.resolveFolderShare(link, pwd: pwd);
         if (!mounted) return;
         await _saveRecent('shareFolder', folder.name, link, pwd);
@@ -166,19 +181,19 @@ class _ShareLinkDialogState extends State<ShareLinkDialog> {
       }
     } on NeedPasswordException catch (e) {
       setState(() {
-        _error = null;
+        _linkError = null;
         _pwdError = e.message;
       });
     } on WrongPasswordException catch (e) {
       // 与「该分享需要提取码」相同的样式：标在提取码输入框上
       setState(() {
-        _error = null;
+        _linkError = null;
         _pwdError = e.message;
       });
     } on LanzouException catch (e) {
-      setState(() => _error = e.message);
+      setState(() => _linkError = e.message);
     } catch (e) {
-      setState(() => _error = context.l10n.resolveFailed('$e'));
+      setState(() => _linkError = context.l10n.resolveFailed('$e'));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -248,7 +263,6 @@ class _ShareLinkDialogState extends State<ShareLinkDialog> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final scheme = Theme.of(context).colorScheme;
     return formDialog(
       context,
       title: Text(l10n.openShare),
@@ -259,24 +273,31 @@ class _ShareLinkDialogState extends State<ShareLinkDialog> {
             controller: _linkController,
             // 手动打开时直接聚焦链接框；带链接进来会立即解析，不弹键盘。
             autofocus: widget.initialLink == null,
-            decoration: InputDecoration(
-              border: const OutlineInputBorder(),
-              labelText: l10n.shareLink,
-              hintText: l10n.shareLinkHint,
-              prefixIcon: const Icon(Icons.link),
+            onChanged: (_) {
+              if (_linkError != null) setState(() => _linkError = null);
+            },
+            decoration: errorState(
+              context,
+              InputDecoration(
+                border: const OutlineInputBorder(),
+                labelText: l10n.shareLink,
+                hintText: l10n.shareLinkHint,
+                prefixIcon: const Icon(Icons.link),
+              ),
+              _linkError,
             ),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _pwdController,
-            decoration: InputDecoration(
-              border: const OutlineInputBorder(),
-              labelText: l10n.passwordOptional,
-              prefixIcon: const Icon(Icons.password),
-              errorText: _pwdError,
-              suffixIcon: _pwdError == null
-                  ? null
-                  : Icon(Icons.cancel, color: scheme.error),
+            decoration: errorState(
+              context,
+              InputDecoration(
+                border: const OutlineInputBorder(),
+                labelText: l10n.passwordOptional,
+                prefixIcon: const Icon(Icons.password),
+              ),
+              _pwdError,
             ),
             onChanged: (_) {
               if (_pwdError != null) {
@@ -287,11 +308,6 @@ class _ShareLinkDialogState extends State<ShareLinkDialog> {
               if (!_loading) _parse();
             },
           ),
-          if (_error != null) ...[
-            const SizedBox(height: 12),
-            // 与「文件已失效」同一套 Error container 卡片
-            ErrorHintCard(message: _error!),
-          ],
         ],
       ),
       actions: [

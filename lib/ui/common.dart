@@ -829,6 +829,8 @@ class EmptyHint extends StatelessWidget {
     required this.icon,
     required this.text,
     this.animate = true,
+    this.frameSize = 72,
+    this.iconSize = 36,
   });
 
   final IconData icon;
@@ -836,6 +838,10 @@ class EmptyHint extends StatelessWidget {
 
   /// 出现时是否淡入（提示类空状态的显隐渐变）。
   final bool animate;
+
+  /// 形状外框 / 图标尺寸（首页那两张空状态卡片用 64 / 32，更紧凑）。
+  final double frameSize;
+  final double iconSize;
 
   @override
   Widget build(BuildContext context) {
@@ -845,9 +851,10 @@ class EmptyHint extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // MD3E：空状态图标套一层 9 边饼干（Cookie9Sided）形状外框
+          M3eShapedIcon(icon: icon, size: frameSize, iconSize: iconSize),
+          const SizedBox(height: 12),
           // 浅色主题下 outline 当正文色只有 4.24:1（低于 4.5:1），改用 onSurfaceVariant
-          Icon(icon, size: 36, color: scheme.onSurfaceVariant),
-          const SizedBox(height: 8),
           Text(
             text,
             textAlign: TextAlign.center,
@@ -1974,7 +1981,11 @@ class _Md3ListItemState extends State<Md3ListItem>
 
 /// MD3E 中号宽版图标按钮：胶囊形容器（默认 surfaceContainerLow，与列表卡片同色）
 /// + 24dp 图标，说明文字放在按钮下方。首页「打开链接 / 传输中心」使用。
-class ExpressiveIconButton extends StatelessWidget {
+///
+/// 按下时圆角从胶囊（半径取半高）形变成 M 档的方块圆角 12dp
+/// （M3E 图标按钮尺寸表：M 档按下 12dp），形状动效用 expressive fast spatial
+/// 弹簧；系统要求少动效时直接跳变。
+class ExpressiveIconButton extends StatefulWidget {
   const ExpressiveIconButton({
     super.key,
     required this.icon,
@@ -1995,47 +2006,89 @@ class ExpressiveIconButton extends StatelessWidget {
   final double height;
 
   @override
+  State<ExpressiveIconButton> createState() => _ExpressiveIconButtonState();
+}
+
+class _ExpressiveIconButtonState extends State<ExpressiveIconButton>
+    with SingleTickerProviderStateMixin {
+  /// M 档（56dp 容器）的按下圆角。
+  static const double _pressedRadius = 12;
+
+  late final M3eShapeMorph _press = M3eShapeMorph(vsync: this);
+
+  @override
+  void dispose() {
+    _press.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final iconWidget = Icon(icon, size: 24, color: scheme.onSurfaceVariant);
+    final iconWidget = Icon(
+      widget.icon,
+      size: 24,
+      color: scheme.onSurfaceVariant,
+    );
     // 无障碍：标签文字在可点区域**下面**（不在 InkWell 里），按钮节点本身
     // 因此没有名字 —— TalkBack 聚焦到它只会读「按钮」。这里把整块合成一个
     // 语义节点：显式给 label + button，并接管 onTap（视觉点击仍走 InkWell）。
     // 角标数字单独读没有意义，并进标签：如「传输 · 3 个任务进行中」。
-    final badgeCount = badge == null ? null : int.tryParse(badge!);
+    final badge = widget.badge;
+    final badgeCount = badge == null ? null : int.tryParse(badge);
     final semanticsLabel = badgeCount == null
-        ? label
-        : '$label · ${context.l10n.notifProgressBody(badgeCount)}';
+        ? widget.label
+        : '${widget.label} · ${context.l10n.notifProgressBody(badgeCount)}';
     return Semantics(
       label: semanticsLabel,
       button: true,
       enabled: true,
-      onTap: onPressed,
+      onTap: widget.onPressed,
       excludeSemantics: true,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Material(
-            color: scheme.surfaceContainerLow,
-            shape: const StadiumBorder(),
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              onTap: onPressed,
-              child: SizedBox(
-                width: width,
-                height: height,
-                child: Center(
-                  child: badge == null
-                      ? iconWidget
-                      : Badge(label: Text(badge!), child: iconWidget),
+          AnimatedBuilder(
+            animation: _press.controller,
+            builder: (BuildContext context, _) {
+              final shape = RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(
+                  m3eLerpRadius(
+                    widget.height / 2,
+                    _pressedRadius,
+                    _press.value,
+                  ),
                 ),
-              ),
-            ),
+              );
+              return Material(
+                color: scheme.surfaceContainerLow,
+                shape: shape,
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  onTap: widget.onPressed,
+                  onHighlightChanged: (pressed) =>
+                      _press.setMorphed(context, pressed),
+                  hoverColor: scheme.onSurfaceVariant.withValues(alpha: 0.08),
+                  highlightColor: scheme.onSurfaceVariant.withValues(
+                    alpha: 0.1,
+                  ),
+                  child: SizedBox(
+                    width: widget.width,
+                    height: widget.height,
+                    child: Center(
+                      child: badge == null
+                          ? iconWidget
+                          : Badge(label: Text(badge), child: iconWidget),
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
           const SizedBox(height: 6),
           Text(
-            label,
+            widget.label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: theme.textTheme.labelLarge?.copyWith(
@@ -2483,8 +2536,8 @@ class FastScrollbar extends StatelessWidget {
   }
 }
 
-/// MD3E 分区标题：标题文字 + 右侧展开/折叠按钮（IconButton，带旋转动画），
-/// 下方内容用 SegmentedList 分组承载。
+/// MD3E 分区标题：标题文字 + 右侧展开/折叠按钮（M3E 图标按钮：开关态形状
+/// 圆 ↔ 方、按下形变，⌄ 带旋转动画），下方内容用 SegmentedList 分组承载。
 ///
 /// 展开 / 收起做的是**整个列表组**的高度过渡（同 ExpansionTile 的
 /// SizeTransition）：内容常驻在树里，只按进度裁剪显示，条目不重建，
@@ -2561,22 +2614,21 @@ class _SectionCardState extends State<SectionCard>
           ),
           ?widget.trailing,
           if (widget.onToggle != null)
-            IconButton(
+            M3eIconButton(
               tooltip: widget.expanded
                   ? context.l10n.collapse
                   : context.l10n.expand,
-              style: IconButton.styleFrom(
-                // 与分组卡片同底色，展开 / 收起按钮浮在标题行右侧
-                backgroundColor: scheme.surfaceContainerLow,
-                foregroundColor: scheme.onSurfaceVariant,
-              ),
-              onPressed: widget.onToggle,
-              icon: AnimatedRotation(
+              // 展开 = 开关的选中态：静止形状从圆变方
+              selected: widget.expanded,
+              // 与分组卡片同底色，展开 / 收起按钮浮在标题行右侧
+              containerColor: scheme.surfaceContainerLow,
+              iconBuilder: (context, color) => AnimatedRotation(
                 turns: widget.expanded ? 0.25 : 0,
                 duration: const Duration(milliseconds: 220),
                 curve: Curves.easeOutCubic,
-                child: const Icon(Icons.chevron_right),
+                child: Icon(Icons.chevron_right, size: 24, color: color),
               ),
+              onPressed: widget.onToggle,
             ),
         ],
       ),
@@ -3666,10 +3718,15 @@ typedef PasswordEditResult = ({bool enabled, String pwd});
 /// 访问密码弹窗：顶部「启用访问密码」开关 + 密码输入框。
 /// 打开前应先取到当前是否启用与密码，用于预填开关和输入框；
 /// 关闭开关后确认即表示关闭访问密码。
+///
+/// [maxLength]：蓝奏云文件提取码限 2-6 位，文件夹可以到 12 位（见调用处）。
+/// [freeTier]：普通（免费）账号不能关闭访问密码，开关下面补一行说明。
 Future<PasswordEditResult?> showPasswordDialog(
   BuildContext context, {
   required bool enabled,
   required String pwd,
+  int maxLength = 6,
+  bool freeTier = false,
 }) {
   final controller = TextEditingController(text: pwd);
   var isEnabled = enabled;
@@ -3680,55 +3737,71 @@ Future<PasswordEditResult?> showPasswordDialog(
     builder: (dialogContext) => StatefulBuilder(
       builder: (context, setDialogState) {
         final l10n = context.l10n;
-        // 带开关 + 密码输入：走统一的表单弹窗骨架（宽度固定 + 上移聚焦）
-        return formDialog(
+        // 带开关 + 密码输入：宽度沿用表单弹窗的算法（见 dialogFormWidth），
+        // 但不走 formDialog——开关要整行铺满弹窗（默认的内容内边距会把波纹
+        // 截短一截），这里把左右 24 的内边距从弹窗挪进内容里自己排。
+        return formDialogPan(
           context,
-          title: Text(l10n.accessPassword),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(l10n.enablePassword),
-                value: isEnabled,
-                onChanged: (value) => setDialogState(() {
-                  isEnabled = value;
-                  error = null;
-                }),
+          child: AlertDialog(
+            scrollable: true,
+            title: Text(l10n.accessPassword),
+            // 左右不留内边距：开关整行显示，波纹铺满弹窗宽度；上下仍留出
+            // 标题 / 操作按钮之间的呼吸感
+            contentPadding: const EdgeInsets.only(top: 4, bottom: 24),
+            content: SizedBox(
+              width: dialogFormWidth(context) + 2 * 24,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SwitchListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+                    title: Text(l10n.enablePassword),
+                    subtitle: freeTier ? Text(l10n.disablePasswordHint) : null,
+                    value: isEnabled,
+                    onChanged: (value) => setDialogState(() {
+                      isEnabled = value;
+                      error = null;
+                    }),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: TextField(
+                      controller: controller,
+                      enabled: isEnabled,
+                      maxLength: maxLength,
+                      autofocus: isEnabled,
+                      decoration: InputDecoration(
+                        hintText: maxLength > 6 ? l10n.pwdHint12 : l10n.pwdHint,
+                        errorText: error,
+                      ),
+                      onChanged: (_) {
+                        if (error != null) setDialogState(() => error = null);
+                      },
+                    ),
+                  ),
+                ],
               ),
-              TextField(
-                controller: controller,
-                enabled: isEnabled,
-                maxLength: 6,
-                autofocus: isEnabled,
-                decoration: InputDecoration(
-                  hintText: l10n.pwdHint,
-                  errorText: error,
-                ),
-                onChanged: (_) {
-                  if (error != null) setDialogState(() => error = null);
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: Text(l10n.cancel),
+              ),
+              FilledButton(
+                onPressed: () {
+                  final value = controller.text.trim();
+                  if (isEnabled && value.length < 2) {
+                    setDialogState(() => error = l10n.pwdTooShort);
+                    return;
+                  }
+                  Navigator.of(dialogContext)
+                      .pop((enabled: isEnabled, pwd: isEnabled ? value : ''));
                 },
+                child: Text(l10n.confirm),
               ),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: Text(l10n.cancel),
-            ),
-            FilledButton(
-              onPressed: () {
-                final value = controller.text.trim();
-                if (isEnabled && value.length < 2) {
-                  setDialogState(() => error = l10n.pwdTooShort);
-                  return;
-                }
-                Navigator.of(dialogContext)
-                    .pop((enabled: isEnabled, pwd: isEnabled ? value : ''));
-              },
-              child: Text(l10n.confirm),
-            ),
-          ],
         );
       },
     ),
@@ -3745,6 +3818,28 @@ Future<PasswordEditResult?> showPasswordDialog(
 double dialogFormWidth(BuildContext context) {
   final double available = MediaQuery.sizeOf(context).width - 2 * 40 - 2 * 24;
   return available.clamp(280 - 2 * 24, 560 - 2 * 24).toDouble();
+}
+
+/// 文本字段的 MD3E error state：错误文本作为 supporting text（M3 要求
+/// 错误文本替换普通支持文本，避免多一行把布局顶开），尾部再给一颗 error 色的
+/// fill 风格 Error 图标——M3 强烈推荐错误状态配图标，只靠颜色对色觉障碍
+/// 用户不够。
+///
+/// [error] 为 null（没有错误）时原样返回 [decoration]。
+InputDecoration errorState(
+  BuildContext context,
+  InputDecoration decoration,
+  String? error,
+) {
+  if (error == null) return decoration;
+  return decoration.copyWith(
+    errorText: error,
+    suffixIcon: Icon(
+      Icons.error,
+      fill: 1,
+      color: Theme.of(context).colorScheme.error,
+    ),
+  );
 }
 
 /// 表单弹窗（带输入框的 [AlertDialog]）的统一骨架。

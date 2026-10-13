@@ -716,6 +716,12 @@ abstract class AppLocalizations {
   /// **'请输入分享链接'**
   String get pleasePasteShareLink;
 
+  /// No description provided for @shareLinkFormatError.
+  ///
+  /// In zh, this message translates to:
+  /// **'分享链接格式错误'**
+  String get shareLinkFormatError;
+
   /// No description provided for @addedToFavorites.
   ///
   /// In zh, this message translates to:
@@ -1514,11 +1520,23 @@ abstract class AppLocalizations {
   /// **'已加入 {count} 个上传任务'**
   String uploadAdded(int count);
 
-  /// No description provided for @nameRequired.
+  /// No description provided for @nameLabel.
   ///
   /// In zh, this message translates to:
-  /// **'名称不能为空'**
-  String get nameRequired;
+  /// **'名称'**
+  String get nameLabel;
+
+  /// No description provided for @nameLabelMember.
+  ///
+  /// In zh, this message translates to:
+  /// **'名称（修改名称需开通会员）'**
+  String get nameLabelMember;
+
+  /// No description provided for @pleaseEnterName.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入名称'**
+  String get pleaseEnterName;
 
   /// No description provided for @descOptional.
   ///
@@ -1537,6 +1555,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'文件夹名称不能为空'**
   String get folderNameRequired;
+
+  /// No description provided for @nameRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'名称不能为空'**
+  String get nameRequired;
 
   /// No description provided for @deleteConfirmTitle.
   ///
@@ -1765,6 +1789,18 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'2-6 位提取码'**
   String get pwdHint;
+
+  /// No description provided for @pwdHint12.
+  ///
+  /// In zh, this message translates to:
+  /// **'2-12 位提取码'**
+  String get pwdHint12;
+
+  /// No description provided for @disablePasswordHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'关闭访问密码需要开通会员'**
+  String get disablePasswordHint;
 
   /// No description provided for @pwdTooShort.
   ///
@@ -2978,6 +3014,18 @@ abstract class AppLocalizations {
   /// **'https://example.com/dav/'**
   String get webdavServerHint;
 
+  /// No description provided for @webdavUrlFormatError.
+  ///
+  /// In zh, this message translates to:
+  /// **'WebDAV 地址格式错误'**
+  String get webdavUrlFormatError;
+
+  /// No description provided for @pleaseEnterWebdavServer.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入 WebDAV 地址'**
+  String get pleaseEnterWebdavServer;
+
   /// No description provided for @webdavUsername.
   ///
   /// In zh, this message translates to:
@@ -2989,6 +3037,18 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'密码'**
   String get webdavPassword;
+
+  /// No description provided for @pleaseEnterUsername.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入用户名'**
+  String get pleaseEnterUsername;
+
+  /// No description provided for @pleaseEnterPassword.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入密码'**
+  String get pleaseEnterPassword;
 
   /// No description provided for @webdavNotSet.
   ///

@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/common.dart';
+import 'package:lancloud/ui/m3e.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
@@ -34,8 +35,8 @@ void main() {
       0.25,
     );
 
-    // 折叠按钮是标题行右侧的 IconButton（点标题文字不再触发）
-    await tester.tap(find.byType(IconButton));
+    // 折叠按钮是标题行右侧的 MD3E 图标按钮（点标题文字不再触发）
+    await tester.tap(find.byType(M3eIconButton));
     await tester.pumpAndSettle();
     // 内容常驻在树里（整组高度过渡，条目不会重建），但被裁到 0 高
     expect(find.text('内容'), findsOneWidget);
@@ -45,7 +46,7 @@ void main() {
       0,
     );
 
-    await tester.tap(find.byType(IconButton));
+    await tester.tap(find.byType(M3eIconButton));
     await tester.pumpAndSettle();
     expect(find.text('内容'), findsOneWidget);
     expect(tester.getSize(find.byType(SizeTransition)).height, greaterThan(0));
@@ -81,7 +82,7 @@ void main() {
     expect(tester.getSize(find.byType(SizeTransition)).height, greaterThan(0));
 
     // 点右侧按钮：正常收起
-    await tester.tap(find.byType(IconButton));
+    await tester.tap(find.byType(M3eIconButton));
     await tester.pumpAndSettle();
     expect(tester.getSize(find.byType(SizeTransition)).height, 0);
   });
@@ -110,7 +111,7 @@ void main() {
     final fullHeight = tester.getSize(find.byType(SectionCard)).height;
     expect(fullHeight, greaterThan(200));
 
-    await tester.tap(find.byType(IconButton));
+    await tester.tap(find.byType(M3eIconButton));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100)); // 动画进行中
     final midHeight = tester.getSize(find.byType(SectionCard)).height;

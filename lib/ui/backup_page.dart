@@ -208,13 +208,14 @@ class _BackupPageState extends State<BackupPage> {
               ),
             ),
           );
-          Widget item(BackupSection section, IconData icon, String label) =>
-              CheckboxListTile(
-                secondary: Icon(icon),
-                title: Text(label),
-                value: selected.contains(section),
-                onChanged: (value) => toggle(section, value ?? false),
-              );
+          // 无图标样式：选项只有文本 + 复选框（再加前缀图标显得拥挤），
+          // 内容内边距与上面的分组标题对齐
+          Widget item(BackupSection section, String label) => CheckboxListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+            title: Text(label),
+            value: selected.contains(section),
+            onChanged: (value) => toggle(section, value ?? false),
+          );
 
           return AlertDialog(
             title: Text(title),
@@ -226,38 +227,14 @@ class _BackupPageState extends State<BackupPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   group(l10n.backupGroupGeneral),
-                  item(
-                    BackupSection.settings,
-                    Icons.settings_outlined,
-                    l10n.backupSectionSettings,
-                  ),
-                  item(
-                    BackupSection.favorites,
-                    Icons.star_border,
-                    l10n.backupSectionFavorites,
-                  ),
+                  item(BackupSection.settings, l10n.backupSectionSettings),
+                  item(BackupSection.favorites, l10n.backupSectionFavorites),
                   group(l10n.backupGroupAccount),
-                  item(
-                    BackupSection.quick,
-                    Icons.push_pin_outlined,
-                    l10n.backupSectionQuick,
-                  ),
-                  item(
-                    BackupSection.recents,
-                    Icons.history,
-                    l10n.backupSectionRecents,
-                  ),
+                  item(BackupSection.quick, l10n.backupSectionQuick),
+                  item(BackupSection.recents, l10n.backupSectionRecents),
                   group(l10n.backupGroupSensitive),
-                  item(
-                    BackupSection.cookies,
-                    Icons.password,
-                    l10n.backupSectionCookies,
-                  ),
-                  item(
-                    BackupSection.webdavAccount,
-                    Icons.dns_outlined,
-                    l10n.webdavAccount,
-                  ),
+                  item(BackupSection.cookies, l10n.backupSectionCookies),
+                  item(BackupSection.webdavAccount, l10n.webdavAccount),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
                     child: Text(
@@ -682,12 +659,38 @@ class _WebdavAccountDialogState extends State<WebdavAccountDialog> {
     text: widget.password,
   );
 
+  String? _urlError;
+  String? _userError;
+  String? _pwdError;
+
   @override
   void dispose() {
     _url.dispose();
     _user.dispose();
     _pwd.dispose();
     super.dispose();
+  }
+
+  void _save() {
+    final l10n = context.l10n;
+    final url = _url.text.trim();
+    final user = _user.text.trim();
+    final pwd = _pwd.text;
+    // 三项都必填：缺哪个标哪个；地址再单独查一次格式
+    setState(() {
+      _urlError = url.isEmpty
+          ? l10n.pleaseEnterWebdavServer
+          : (WebdavClient.isValidUrl(url) ? null : l10n.webdavUrlFormatError);
+      _userError = user.isEmpty ? l10n.pleaseEnterUsername : null;
+      _pwdError = pwd.isEmpty ? l10n.pleaseEnterPassword : null;
+    });
+    if (_urlError != null || _userError != null || _pwdError != null) return;
+    Navigator.of(context).pop([url, user, pwd]);
+  }
+
+  /// 重置 = 清空并移除配置（地址为空即未配置状态），关弹窗交给调用方落盘。
+  void _reset() {
+    Navigator.of(context).pop(const <String>['', '', '']);
   }
 
   @override
@@ -711,21 +714,42 @@ class _WebdavAccountDialogState extends State<WebdavAccountDialog> {
               TextField(
                 controller: _url,
                 keyboardType: TextInputType.url,
-                decoration: InputDecoration(
-                  labelText: l10n.webdavServer,
-                  hintText: l10n.webdavServerHint,
+                onChanged: (_) {
+                  if (_urlError != null) setState(() => _urlError = null);
+                },
+                decoration: errorState(
+                  context,
+                  InputDecoration(
+                    labelText: l10n.webdavServer,
+                    hintText: l10n.webdavServerHint,
+                  ),
+                  _urlError,
                 ),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _user,
-                decoration: InputDecoration(labelText: l10n.webdavUsername),
+                onChanged: (_) {
+                  if (_userError != null) setState(() => _userError = null);
+                },
+                decoration: errorState(
+                  context,
+                  InputDecoration(labelText: l10n.webdavUsername),
+                  _userError,
+                ),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _pwd,
                 obscureText: true,
-                decoration: InputDecoration(labelText: l10n.webdavPassword),
+                onChanged: (_) {
+                  if (_pwdError != null) setState(() => _pwdError = null);
+                },
+                decoration: errorState(
+                  context,
+                  InputDecoration(labelText: l10n.webdavPassword),
+                  _pwdError,
+                ),
               ),
             ],
           ),
@@ -735,20 +759,12 @@ class _WebdavAccountDialogState extends State<WebdavAccountDialog> {
             onPressed: () => Navigator.of(context).pop(),
             child: Text(l10n.cancel),
           ),
-          // 中立：清空三项，保存后即恢复到未配置状态
+          // 中立：清空三项并关弹窗 = 移除配置（保存不再接受空值，见 _save）
           TextButton(
-            onPressed: () => setState(() {
-              _url.clear();
-              _user.clear();
-              _pwd.clear();
-            }),
+            onPressed: _reset,
             child: Text(l10n.reset),
           ),
-          FilledButton(
-            onPressed: () =>
-                Navigator.of(context).pop([_url.text, _user.text, _pwd.text]),
-            child: Text(l10n.save),
-          ),
+          FilledButton(onPressed: _save, child: Text(l10n.save)),
         ],
       ),
     );

@@ -108,4 +108,26 @@ void main() {
     ], activeSnapshot: '999999');
     expect(store.activeUid, '523441');
   });
+
+  test('用户等级：落盘、备份往返，空值不覆盖已有等级', () async {
+    final store = await storeWith([
+      Account(uid: '556911', cookie: 'c1'),
+    ], active: '556911');
+
+    // 截取到等级后落盘
+    await store.setLevel('556911', '白');
+    expect(store.byUid('556911')!.level, '白');
+    // 没取到（空串）不覆盖
+    await store.setLevel('556911', '');
+    expect(store.byUid('556911')!.level, '白');
+
+    // 备份导出带等级，恢复时合并进本机账号
+    expect(store.exportAccounts().first['level'], '白');
+    await store.importAccounts([
+      {'uid': '556911', 'nickname': '土豆', 'level': '普'},
+      {'uid': '999999', 'cookie': 'c9', 'level': '白'},
+    ]);
+    expect(store.byUid('556911')!.level, '普');
+    expect(store.byUid('999999')!.level, '白');
+  });
 }

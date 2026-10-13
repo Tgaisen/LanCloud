@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/data/account_store.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/profile_page.dart';
 import 'package:provider/provider.dart';
@@ -119,5 +120,38 @@ void main() {
     pager.jumpToPage(2);
     await tester.pumpAndSettle();
     expect(pageScroll().pixels, offset);
+  });
+
+  testWidgets('「我的」账号卡片：昵称右边显示等级小卡片', (tester) async {
+    Widget tree(AppController app) =>
+        ChangeNotifierProvider<AppController>.value(
+          value: app,
+          child: MaterialApp(
+            localizationsDelegates: appLocalizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            locale: const Locale('zh'),
+            home: const ProfilePage(),
+          ),
+        );
+
+    final app = AppController();
+    addTearDown(app.dispose);
+    app.accounts.accounts.add(
+      Account(uid: '556911', cookie: 'c', nickname: '土豆'),
+    );
+    app.accounts.activeUid = '556911';
+    await tester.pumpWidget(tree(app));
+    await tester.pumpAndSettle();
+
+    expect(find.text('土豆'), findsOneWidget);
+    // 等级还没取到（空）按普通用户「普」显示
+    expect(find.text('普'), findsOneWidget);
+
+    // 截取到会员等级后显示截取到的文本
+    app.accounts.byUid('556911')!.level = '白';
+    app.notifyListeners();
+    await tester.pumpAndSettle();
+    expect(find.text('白'), findsOneWidget);
+    expect(find.text('普'), findsNothing);
   });
 }
