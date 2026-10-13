@@ -650,10 +650,34 @@ class AppLocalizationsEn extends AppLocalizations {
       'Change only when connections fail or endpoints are blocked; defaults are fine';
 
   @override
-  String get clearRecents => 'Clear recent items';
+  String get clearData => 'Clear data';
 
   @override
-  String get clearRecentsKeywords => 'recent clear history';
+  String get clearDataKeywords =>
+      'clear data quick access recent logs registry';
+
+  @override
+  String get clearDataGroupAccount => 'This account';
+
+  @override
+  String get clearDataGroupOthers => 'Other data';
+
+  @override
+  String get clearDataOtherAccounts => 'Other accounts\' data';
+
+  @override
+  String get clearDataOtherAccountsSubtitle =>
+      'Data related to other accounts, such as quick access and recent items';
+
+  @override
+  String get clearDataLogs => 'App logs';
+
+  @override
+  String get clearDataRegistry => 'Registry entry';
+
+  @override
+  String get clearDataRegistrySubtitle =>
+      'Registry entry created to show the app icon in system notifications';
 
   @override
   String get clearCache => 'Clear cache';

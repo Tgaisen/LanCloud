@@ -1274,17 +1274,59 @@ abstract class AppLocalizations {
   /// **'请仅在连接异常时修改'**
   String get advancedHint;
 
-  /// No description provided for @clearRecents.
+  /// No description provided for @clearData.
   ///
   /// In zh, this message translates to:
-  /// **'清空最近使用记录'**
-  String get clearRecents;
+  /// **'清除数据'**
+  String get clearData;
 
-  /// No description provided for @clearRecentsKeywords.
+  /// No description provided for @clearDataKeywords.
   ///
   /// In zh, this message translates to:
-  /// **'最近 清空 记录'**
-  String get clearRecentsKeywords;
+  /// **'清除 数据 快速访问 最近 日志 注册表'**
+  String get clearDataKeywords;
+
+  /// No description provided for @clearDataGroupAccount.
+  ///
+  /// In zh, this message translates to:
+  /// **'此账号'**
+  String get clearDataGroupAccount;
+
+  /// No description provided for @clearDataGroupOthers.
+  ///
+  /// In zh, this message translates to:
+  /// **'其他数据'**
+  String get clearDataGroupOthers;
+
+  /// No description provided for @clearDataOtherAccounts.
+  ///
+  /// In zh, this message translates to:
+  /// **'其他账号数据'**
+  String get clearDataOtherAccounts;
+
+  /// No description provided for @clearDataOtherAccountsSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'其他账号的相关数据，如快速访问、最近使用'**
+  String get clearDataOtherAccountsSubtitle;
+
+  /// No description provided for @clearDataLogs.
+  ///
+  /// In zh, this message translates to:
+  /// **'运行日志'**
+  String get clearDataLogs;
+
+  /// No description provided for @clearDataRegistry.
+  ///
+  /// In zh, this message translates to:
+  /// **'注册表项目'**
+  String get clearDataRegistry;
+
+  /// No description provided for @clearDataRegistrySubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'为显示系统通知图标而创建的注册表项'**
+  String get clearDataRegistrySubtitle;
 
   /// No description provided for @clearCache.
   ///

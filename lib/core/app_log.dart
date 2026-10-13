@@ -200,6 +200,25 @@ class AppLog {
     await out.writeAsString(buffer.toString(), flush: true);
     return out;
   }
+
+  /// 删除本机保存的全部运行日志（设置-清除数据）。
+  ///
+  /// 删除后继续正常记录新日志（文件会在下一次写入时重建）。
+  Future<void> clear() async {
+    final file = _file;
+    if (file == null) return;
+    try {
+      final dir = file.parent.path;
+      for (var index = 1; index <= _rotatedCount; index++) {
+        final part = File(_partPath(dir, index));
+        if (part.existsSync()) part.deleteSync();
+      }
+      if (file.existsSync()) file.deleteSync();
+      _size = 0;
+    } catch (_) {
+      // 删不掉时保留现状，下次导出还能拿到日志
+    }
+  }
 }
 
 /// 某个异常签名上次写入的时间，以及窗口内被省略的次数。

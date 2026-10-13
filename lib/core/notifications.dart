@@ -1,7 +1,9 @@
 import 'dart:io';
 
+import 'package:ffi/ffi.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:win32/win32.dart';
 
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
@@ -45,6 +47,10 @@ class NotificationService {
   /// 通知点击回调的 CLSID（Windows 要求固定 GUID，随便生成一个后不再改）。
   static const _windowsCallbackGuid = '6f2d1c8a-0b7e-4a53-9e21-7c4f0d9b2a11';
 
+  /// 通知注册信息所在的注册表键（相对 HKCU）。
+  static const _windowsAumidKey =
+      r'Software\Classes\AppUserModelId\com.lancloud.lancloud';
+
   /// 传输完成 / 失败通知渠道。v2：默认不响铃、不振动（渠道建好后
   /// 系统不允许改声音，所以换新 id 让老安装也生效；用户仍可在
   /// 系统设置里自行改回响铃）。
@@ -69,6 +75,23 @@ class NotificationService {
       return file.path;
     } catch (_) {
       return null;
+    }
+  }
+
+  /// 删除 Windows 通知的注册表标识键（设置-清除数据-「注册表项目」）。
+  ///
+  /// 为在系统通知里显示应用名与图标，应用启动时会在
+  /// `HKCU\Software\Classes\AppUserModelId\com.lancloud.lancloud`
+  /// 下写入通知注册信息；该键只服务通知显示，删掉不影响账号与本机数据，
+  /// 下次启动初始化通知时会按需重建。键本来就不存在时同样算干净。
+  static bool removeWindowsRegistryEntry() {
+    if (!PlatformSupport.isWindows) return false;
+    final subKey = _windowsAumidKey.toNativeUtf16();
+    try {
+      final result = RegDeleteTree(HKEY_CURRENT_USER, subKey);
+      return result == ERROR_SUCCESS || result == ERROR_FILE_NOT_FOUND;
+    } finally {
+      calloc.free(subKey);
     }
   }
 

@@ -687,6 +687,29 @@ class AppDb {
     _touch();
   }
 
+  /// 清掉某个账号的快速访问（「清除数据」的「此账号-快速访问」）。
+  ///
+  /// account 为空的旧数据（所有账号可见）不算这个账号的，跟随
+  /// [clearOtherUsageData] 清理。
+  Future<void> clearPins(String account) async {
+    final database = await db;
+    await database.delete('pins', where: 'account = ?', whereArgs: [account]);
+    _touch();
+  }
+
+  /// 清掉除 [account] 以外其它账号的快速访问与最近使用
+  /// （「清除数据」的「其他账号数据」；account 为空的旧数据同样算「其它」）。
+  Future<void> clearOtherUsageData(String account) async {
+    final database = await db;
+    await database.delete('pins', where: 'account != ?', whereArgs: [account]);
+    await database.delete(
+      'recents',
+      where: 'account != ?',
+      whereArgs: [account],
+    );
+    _touch();
+  }
+
   /// 移除某个账号在本机留下的使用数据：快速访问与最近使用。
   ///
   /// 供「移除账号」时勾选「清除使用数据」使用；收藏按分享链接记（不分账号）、

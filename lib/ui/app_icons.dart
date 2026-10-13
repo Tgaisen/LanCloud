@@ -74,6 +74,7 @@ class Icons {
   static const IconData home_outlined = Symbols.home;
   static const IconData image_outlined = Symbols.image;
   static const IconData info_outline = Symbols.info;
+  static const IconData ink_eraser = Symbols.ink_eraser;
   static const IconData insert_drive_file_outlined = Symbols.insert_drive_file;
   static const IconData install_mobile = Symbols.install_mobile;
   static const IconData keep_off = Symbols.keep_off;

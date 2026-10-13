@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/data/account_store.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/app_icons.dart';
 import 'package:lancloud/ui/settings_page.dart';
@@ -51,10 +52,10 @@ void main() {
     expect(privacy.dy, lessThan(permissions.dy));
   });
 
-  testWidgets('设置项图标：管理权限=shield，清空最近使用记录=delete sweep', (tester) async {
+  testWidgets('设置项图标：管理权限=shield，清除数据=ink eraser', (tester) async {
     await pumpSettings(tester);
     expect(iconOf(tester, '管理权限'), Icons.shield);
-    expect(iconOf(tester, '清空最近使用记录'), Icons.delete_sweep_outlined);
+    expect(iconOf(tester, '清除数据'), Icons.ink_eraser);
   });
 
   testWidgets('数据组底部是「清理缓存」，点击弹出确认弹窗（取消不清理）', (tester) async {
@@ -63,10 +64,10 @@ void main() {
     final entry = find.text('清理缓存');
     await tester.ensureVisible(entry);
     await tester.pumpAndSettle();
-    // 它在「清空最近使用记录」下面：数据组最后一项
+    // 它在「最近使用条数」下面：数据组最后一项
     expect(
       tester.getTopLeft(entry).dy,
-      greaterThan(tester.getTopLeft(find.text('清空最近使用记录')).dy),
+      greaterThan(tester.getTopLeft(find.text('最近使用条数')).dy),
     );
 
     await tester.tap(entry);
@@ -166,6 +167,83 @@ void main() {
       );
 
       await tester.tapAt(const Offset(10, 10));
+      await tester.pumpAndSettle();
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  testWidgets('「清除数据」弹窗：两组分组小标题 + 复选列表，取消不清', (tester) async {
+    final app = await pumpSettings(tester);
+    // 有登录账号才会显示「此账号」组
+    app.accounts.accounts.add(Account(uid: '556911', cookie: 'c'));
+    app.accounts.activeUid = '556911';
+    app.notifyListeners();
+    await tester.pumpAndSettle();
+
+    final entry = find.text('清除数据');
+    // 直接滚到底：清除数据是隐私组的最后一项
+    await tester.drag(find.byType(SettingsPage), const Offset(0, -1200));
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(SettingsPage), const Offset(0, -1200));
+    await tester.pumpAndSettle();
+    await tester.tap(entry);
+    await tester.pumpAndSettle();
+
+    // 弹窗标题 + 两组分组小标题
+    expect(find.text('清除数据'), findsNWidgets(2));
+    expect(find.text('此账号'), findsOneWidget);
+    expect(find.text('其他数据'), findsOneWidget);
+    // 选项与说明
+    expect(find.text('快速访问'), findsOneWidget);
+    expect(find.text('最近使用'), findsOneWidget);
+    expect(find.text('其他账号数据'), findsOneWidget);
+    expect(find.text('其他账号的相关数据，如快速访问、最近使用'), findsOneWidget);
+    expect(find.text('运行日志'), findsOneWidget);
+    // 注册表项目只有 Windows 端才有
+    expect(find.text('注册表项目'), findsNothing);
+    expect(find.text('取消'), findsOneWidget);
+    expect(find.text('清除'), findsOneWidget);
+
+    Checkbox checkboxOf(String label) => tester.widget<Checkbox>(
+      find.descendant(
+        of: find.widgetWithText(ListTile, label),
+        matching: find.byType(Checkbox),
+      ),
+    );
+
+    // 默认全不勾；点一行只勾它自己
+    expect(checkboxOf('运行日志').value, isFalse);
+    await tester.tap(find.text('运行日志'));
+    await tester.pumpAndSettle();
+    expect(checkboxOf('运行日志').value, isTrue);
+    expect(checkboxOf('快速访问').value, isFalse);
+
+    // 取消：弹窗关掉，什么都不清
+    await tester.tap(find.text('取消'));
+    await tester.pumpAndSettle();
+    expect(find.text('运行日志'), findsNothing);
+  });
+
+  testWidgets('「清除数据」弹窗：Windows 端多出注册表项目（含说明）', (tester) async {
+    // 这个 debug 变量必须在用例体内复位（tearDown 里复位会被框架判定为
+    // 「测试改了 foundation debug 变量」）
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    try {
+      await pumpSettings(tester);
+      final entry = find.text('清除数据');
+      // 直接滚到底：清除数据是隐私组的最后一项
+      await tester.drag(find.byType(SettingsPage), const Offset(0, -1200));
+      await tester.pumpAndSettle();
+      await tester.drag(find.byType(SettingsPage), const Offset(0, -1200));
+      await tester.pumpAndSettle();
+      await tester.tap(entry);
+      await tester.pumpAndSettle();
+
+      expect(find.text('注册表项目'), findsOneWidget);
+      expect(find.text('为显示系统通知图标而创建的注册表项'), findsOneWidget);
+
+      await tester.tap(find.text('取消'));
       await tester.pumpAndSettle();
     } finally {
       debugDefaultTargetPlatformOverride = null;

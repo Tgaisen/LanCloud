@@ -92,6 +92,26 @@ void main() {
     expect(text, contains('other failure'));
   });
 
+  test('清除日志：删掉全部文件，之后仍能继续记录', () async {
+    await initLog(maxBytes: 200);
+    for (var index = 0; index < 60; index++) {
+      AppLog.instance.log('test', 'entry-$index ${'z' * 40}');
+    }
+    expect(rotatedFile(1).existsSync(), isTrue);
+    expect(currentFile().existsSync(), isTrue);
+
+    await AppLog.instance.clear();
+
+    // 目录里不再有任何日志文件
+    expect(Directory(dir.path).listSync(), isEmpty);
+
+    // 清除后继续记录：文件重新出现，且只有清除之后的新内容
+    AppLog.instance.log('test', 'after-clear');
+    final text = await currentFile().readAsString();
+    expect(text, contains('after-clear'));
+    expect(text, isNot(contains('entry-59')));
+  });
+
   test('超过去重窗口后再次记录并标注省略次数', () async {
     await initLog(repeatWindow: const Duration(milliseconds: 80));
     AppLog.instance.error('net', 'boom', null);

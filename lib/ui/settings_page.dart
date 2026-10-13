@@ -22,6 +22,9 @@ import 'common.dart';
 import 'cookie_sheet.dart';
 import 'm3e.dart';
 
+/// 「清除数据」弹窗里可勾选的清除项。
+enum _ClearDataOption { quickAccess, recents, otherAccounts, logs, registry }
+
 /// 独立设置页：分类卡片 + 高级覆盖项二级页 + 全量搜索。
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -747,24 +750,6 @@ class _SettingsPageState extends State<SettingsPage>
         ),
       ),
       _Entry(
-        id: 'clear_recents',
-        title: l10n.clearRecents,
-        subtitle: '',
-        keywords: l10n.clearRecentsKeywords.split(' '),
-        category: 'data',
-        build: (context, app) => ListTile(
-          leading: const Icon(Icons.delete_sweep_outlined),
-          title: Text(context.l10n.clearRecents),
-          onTap: () async {
-            await app.db.clearRecents(app.activeUid ?? '');
-            if (context.mounted) {
-              ScaffoldMessenger.of(context)
-                  .showSnackBar(SnackBar(content: Text(context.l10n.cleared)));
-            }
-          },
-        ),
-      ),
-      _Entry(
         id: 'clear_cache',
         title: l10n.clearCache,
         subtitle: l10n.clearCacheSubtitle,
@@ -806,6 +791,18 @@ class _SettingsPageState extends State<SettingsPage>
           title: Text(context.l10n.exportLogs),
           subtitle: Text(context.l10n.exportLogsSubtitle),
           onTap: () => _exportLogs(context),
+        ),
+      ),
+      _Entry(
+        id: 'clear_data',
+        title: l10n.clearData,
+        subtitle: '',
+        keywords: l10n.clearDataKeywords.split(' '),
+        category: 'privacy',
+        build: (context, app) => ListTile(
+          leading: const Icon(Icons.ink_eraser),
+          title: Text(context.l10n.clearData),
+          onTap: () => _clearData(context),
         ),
       ),
     ]..removeWhere(
@@ -1121,6 +1118,117 @@ class _SettingsPageState extends State<SettingsPage>
       ),
     );
   }
+
+  /// 「清除数据」：多选要清除的数据（此账号的快速访问 / 最近使用、其它数据），
+  /// 确认后一次性清掉。样式与其它选择弹窗一致（分组小标题 + 列表组复选行）。
+  Future<void> _clearData(BuildContext context) async {
+    final app = context.read<AppController>();
+    final l10n = context.l10n;
+    final selected = <_ClearDataOption>{};
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          Widget group(String name, List<_ClearDataOption> options) => Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // 弹窗里列表组外边距为 0：标题也无缩进，与外沿对齐
+              M3eSectionHeader(name, horizontalInset: 0),
+              DialogListGroup(
+                children: [
+                  for (final option in options)
+                    M3ePickTile(
+                      label: _clearDataName(l10n, option),
+                      subtitle: _clearDataSubtitle(l10n, option),
+                      selected: selected.contains(option),
+                      onTap: () => setDialogState(() {
+                        if (!selected.remove(option)) selected.add(option);
+                      }),
+                    ),
+                ],
+              ),
+            ],
+          );
+
+          return AlertDialog(
+            title: Text(l10n.clearData),
+            // M3 对话框内容边距 24dp；列表组自带 0 外边距，组沿落在 24dp 上
+            contentPadding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // 「此账号」两项只有登录状态下才有意义
+                  if (app.activeUid != null)
+                    group(l10n.clearDataGroupAccount, const [
+                      _ClearDataOption.quickAccess,
+                      _ClearDataOption.recents,
+                    ]),
+                  group(l10n.clearDataGroupOthers, [
+                    _ClearDataOption.otherAccounts,
+                    _ClearDataOption.logs,
+                    // 通知注册表键只有 Windows 端才会创建
+                    if (PlatformSupport.isWindows) _ClearDataOption.registry,
+                  ]),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: Text(l10n.cancel),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: Text(l10n.clear),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    if (ok != true || !mounted) return;
+    final uid = app.activeUid ?? '';
+    try {
+      if (selected.contains(_ClearDataOption.quickAccess)) {
+        await app.db.clearPins(uid);
+      }
+      if (selected.contains(_ClearDataOption.recents)) {
+        await app.db.clearRecents(uid);
+      }
+      if (selected.contains(_ClearDataOption.otherAccounts)) {
+        await app.db.clearOtherUsageData(uid);
+      }
+    } catch (_) {
+      // 本地库出错时静默跳过：清除是尽力而为，不打断用户
+    }
+    if (selected.contains(_ClearDataOption.logs)) {
+      await AppLog.instance.clear();
+    }
+    if (selected.contains(_ClearDataOption.registry)) {
+      NotificationService.removeWindowsRegistryEntry();
+    }
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(l10n.cleared)));
+  }
+
+  String _clearDataName(AppLocalizations l10n, _ClearDataOption option) =>
+      switch (option) {
+        _ClearDataOption.quickAccess => l10n.quickAccess,
+        _ClearDataOption.recents => l10n.recent,
+        _ClearDataOption.otherAccounts => l10n.clearDataOtherAccounts,
+        _ClearDataOption.logs => l10n.clearDataLogs,
+        _ClearDataOption.registry => l10n.clearDataRegistry,
+      };
+
+  String? _clearDataSubtitle(AppLocalizations l10n, _ClearDataOption option) =>
+      switch (option) {
+        _ClearDataOption.otherAccounts => l10n.clearDataOtherAccountsSubtitle,
+        _ClearDataOption.registry => l10n.clearDataRegistrySubtitle,
+        _ => null,
+      };
 
   Future<void> _requestBatteryOptimization() async {
     final l10n = context.l10n;

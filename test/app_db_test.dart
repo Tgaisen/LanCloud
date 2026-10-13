@@ -296,4 +296,38 @@ void main() {
       contains('clear-b-recent'),
     );
   });
+
+  test('清除数据的分类清法：此账号只清自己，「其他账号数据」清掉其余账号', () async {
+    final db = AppDb.instance;
+
+    await db.addPin(account: 'data-a', name: 'A', ref: 'data-a-pin');
+    await db.addPin(account: 'data-b', name: 'B', ref: 'data-b-pin');
+    await db.addRecent(
+      account: 'data-a',
+      kind: 'folder',
+      name: 'A',
+      ref: 'data-a-recent',
+    );
+    await db.addRecent(
+      account: 'data-b',
+      kind: 'folder',
+      name: 'B',
+      ref: 'data-b-recent',
+    );
+
+    // 此账号-快速访问：只清这个账号的行，别的账号不受影响
+    await db.clearPins('data-a');
+    expect(await db.isPinned('data-a', 'data-a-pin'), isFalse);
+    expect(await db.isPinned('data-b', 'data-b-pin'), isTrue);
+
+    // 其他账号数据：清掉除当前账号外的快速访问与最近使用
+    await db.clearOtherUsageData('data-a');
+    expect(await db.isPinned('data-b', 'data-b-pin'), isFalse);
+    expect(await db.recents('data-b'), isEmpty);
+    // 当前账号自己的最近使用还在（要清得单独勾「最近使用」）
+    expect(
+      (await db.recents('data-a')).map((r) => r.ref),
+      contains('data-a-recent'),
+    );
+  });
 }

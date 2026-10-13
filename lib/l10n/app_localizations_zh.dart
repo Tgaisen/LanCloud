@@ -627,10 +627,31 @@ class AppLocalizationsZh extends AppLocalizations {
   String get advancedHint => '请仅在连接异常时修改';
 
   @override
-  String get clearRecents => '清空最近使用记录';
+  String get clearData => '清除数据';
 
   @override
-  String get clearRecentsKeywords => '最近 清空 记录';
+  String get clearDataKeywords => '清除 数据 快速访问 最近 日志 注册表';
+
+  @override
+  String get clearDataGroupAccount => '此账号';
+
+  @override
+  String get clearDataGroupOthers => '其他数据';
+
+  @override
+  String get clearDataOtherAccounts => '其他账号数据';
+
+  @override
+  String get clearDataOtherAccountsSubtitle => '其他账号的相关数据，如快速访问、最近使用';
+
+  @override
+  String get clearDataLogs => '运行日志';
+
+  @override
+  String get clearDataRegistry => '注册表项目';
+
+  @override
+  String get clearDataRegistrySubtitle => '为显示系统通知图标而创建的注册表项';
 
   @override
   String get clearCache => '清理缓存';

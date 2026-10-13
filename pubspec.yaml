@@ -43,6 +43,9 @@ dependencies:
   sqflite: ^2.4.4
   # 桌面端（Windows）用 FFI 实现跑 SQLite；Android/iOS 仍走 sqflite 原生实现
   sqflite_common_ffi: ^2.4.3
+  # Windows 注册表（「清除数据」的注册表项目）：win32 API + FFI 字符串工具
+  ffi: ^2.2.0
+  win32: ^5.15.0
   path: ^1.9.1
   path_provider: ^2.1.6
   shared_preferences: ^2.5.5
