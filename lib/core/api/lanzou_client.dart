@@ -607,10 +607,7 @@ class LanzouClient {
             ?.group(1)
             ?.trim() ??
         '';
-    return (
-      nickname: name == null || name.isEmpty ? null : name,
-      level: level,
-    );
+    return (nickname: name == null || name.isEmpty ? null : name, level: level);
   }
 
   /// 网页版个人中心信息：昵称 + 用户等级。

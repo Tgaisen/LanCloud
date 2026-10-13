@@ -4830,9 +4830,7 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
                       FolderPickResult(
                         _folderId,
                         _targetName(l10n),
-                        fileName: widget.initialName == null
-                            ? null
-                            : edited,
+                        fileName: widget.initialName == null ? null : edited,
                       ),
                     );
                   },

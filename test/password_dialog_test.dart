@@ -82,9 +82,7 @@ void main() {
     expect(value, (enabled: true, pwd: 'ab12'));
   });
 
-  testWidgets('文件夹提取码可到 12 位；免费账号提示关闭需会员；开关整行铺满弹窗', (
-    tester,
-  ) async {
+  testWidgets('文件夹提取码可到 12 位；免费账号提示关闭需会员；开关整行铺满弹窗', (tester) async {
     final context = await host(tester);
     final result = showPasswordDialog(
       context,

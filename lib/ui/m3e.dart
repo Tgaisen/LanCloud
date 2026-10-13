@@ -695,10 +695,7 @@ class M3eIconButton extends StatefulWidget {
     this.onPressed,
     this.selected = false,
     this.containerColor,
-  }) : assert(
-         icon != null || iconBuilder != null,
-         'icon 和 iconBuilder 至少给一个',
-       );
+  }) : assert(icon != null || iconBuilder != null, 'icon 和 iconBuilder 至少给一个');
 
   /// 默认图标；用 [iconBuilder] 自定义时可以不传。
   final IconData? icon;

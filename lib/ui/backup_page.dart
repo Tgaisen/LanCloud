@@ -760,10 +760,7 @@ class _WebdavAccountDialogState extends State<WebdavAccountDialog> {
             child: Text(l10n.cancel),
           ),
           // 中立：清空三项并关弹窗 = 移除配置（保存不再接受空值，见 _save）
-          TextButton(
-            onPressed: _reset,
-            child: Text(l10n.reset),
-          ),
+          TextButton(onPressed: _reset, child: Text(l10n.reset)),
           FilledButton(onPressed: _save, child: Text(l10n.save)),
         ],
       ),

@@ -712,9 +712,7 @@ class _TransferListSliver extends StatelessWidget {
           padding: EdgeInsets.only(bottom: shellBottomBarInset(context)),
           child: Center(
             child: EmptyHint(
-              icon: kind == TransferKind.upload
-                  ? Icons.upload
-                  : Icons.download,
+              icon: kind == TransferKind.upload ? Icons.upload : Icons.download,
               text: kind == TransferKind.upload
                   ? l10n.noUploads
                   : l10n.noDownloads,
