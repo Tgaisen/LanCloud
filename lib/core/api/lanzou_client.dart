@@ -86,9 +86,6 @@ class LanzouClient {
   /// 自定义 User-Agent，留空表示使用内置默认值。
   static String userAgent = '';
 
-  /// 上传接口域名：跟随「网盘接口域名」设置（pc / up）。
-  static String uploadBase = 'https://up.woozooo.com';
-
   /// 网页版网盘首页：网页版 / 回收站 / 网页登录这些页面都在当前配置的
   /// 域名下，不走写死的 pc.woozooo.com。
   static String get mydiskUrl => '$apiBase/mydisk.php';
@@ -97,7 +94,18 @@ class LanzouClient {
   static String get loginUrl => '$apiBase/account.php';
 
   /// 上传接口路径（接口名）：html5up.php（默认）/ fileup.php。
+  ///
+  /// 上传只开放**路径**这一个设置：域名永远跟随「网盘接口域名」
+  /// （[apiBase]）；上传以外的场景一律用 [apiBase]，不要碰上传地址。
   static String uploadPath = 'html5up.php';
+
+  /// 上传接口地址：域名始终取 [apiBase]，路径取 [uploadPath] 的最后一段
+  /// （设置里只提供 html5up.php / fileup.php；万一存了带域名 / 带斜杠的值，
+  /// 也只当路径用）。
+  static String get uploadUrl {
+    final segment = uploadPath.trim().split('/').last;
+    return '$apiBase/${segment.isEmpty ? 'html5up.php' : segment}';
+  }
 
   final String uid;
   late final Dio dio;
@@ -356,7 +364,7 @@ class LanzouClient {
   folderStats(String folderId) async {
     try {
       final resp = await dio.get<String>(
-        '$uploadBase/myfile.php?item=3&folder_id=$folderId&v2',
+        '$apiBase/myfile.php?item=3&folder_id=$folderId&v2',
         options: _options(referer: '$apiBase/mydisk.php'),
       );
       final html = resp.data ?? '';
@@ -551,12 +559,12 @@ class LanzouClient {
       'upload_file': part,
     });
     final resp = await dio.post<String>(
-      '$uploadBase/$uploadPath',
+      uploadUrl,
       data: form,
       cancelToken: cancelToken,
       onSendProgress: (sent, total) => onProgress?.call(sent, total),
       options: Options(
-        headers: {'Referer': '$uploadBase/mydisk.php'},
+        headers: {'Referer': '$apiBase/mydisk.php'},
         contentType: 'multipart/form-data',
         sendTimeout: const Duration(hours: 2),
         receiveTimeout: const Duration(minutes: 10),
@@ -612,7 +620,7 @@ class LanzouClient {
   Future<({String? nickname, String level})> fetchAccountInfo() async {
     try {
       final resp = await dio.get<String>(
-        '$uploadBase/myfile.php?item=1&v2',
+        '$apiBase/myfile.php?item=1&v2',
         options: _options(referer: '$apiBase/mydisk.php'),
       );
       final html = resp.data ?? '';

@@ -36,7 +36,7 @@ void main() {
     LanzouClient.requestInterval = const Duration(milliseconds: 300);
     // 恢复默认域名，别影响其它测试
     LanzouClient.apiBase = 'https://pc.woozooo.com';
-    LanzouClient.uploadBase = 'https://up.woozooo.com';
+    LanzouClient.uploadPath = 'html5up.php';
   });
 
   test('接口域名跟随设置：网页版 / 网页登录地址都用当前配置的域名', () {
@@ -49,11 +49,27 @@ void main() {
     expect(LanzouClient.loginUrl, 'https://pc.woozooo.com/account.php');
   });
 
+  test('上传入口：域名始终跟随接口域名，只有路径可配', () {
+    LanzouClient.apiBase = 'https://pc.woozooo.com';
+    LanzouClient.uploadPath = 'fileup.php';
+    expect(LanzouClient.uploadUrl, 'https://pc.woozooo.com/fileup.php');
+
+    // 换接口域名，上传域名跟着换
+    LanzouClient.apiBase = 'https://up.woozooo.com';
+    expect(LanzouClient.uploadUrl, 'https://up.woozooo.com/fileup.php');
+
+    // 上传路径只当路径用：万一被塞了完整地址，也只取最后一段
+    LanzouClient.uploadPath = 'https://evil.example/other.php';
+    expect(LanzouClient.uploadUrl, 'https://up.woozooo.com/other.php');
+
+    LanzouClient.uploadPath = '';
+    expect(LanzouClient.uploadUrl, 'https://up.woozooo.com/html5up.php');
+  });
+
   test('网页版抓取跟随设置：个人中心 / 文件夹统计 / 默认 Referer', () async {
     // 两个域名都过一遍：写死其中一个的实现会在另一档上暴露出来
     for (final host in ['pc', 'up']) {
       LanzouClient.apiBase = 'https://$host.woozooo.com';
-      LanzouClient.uploadBase = 'https://$host.woozooo.com';
 
       final client = LanzouClient(uid: '1');
       // 默认 Referer 按构造时的域名生成

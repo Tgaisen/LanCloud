@@ -90,7 +90,6 @@ class AppController extends ChangeNotifier {
     );
     LanzouClient.apiBase = _apiBaseFor(settings.apiHost);
     LanzouClient.userAgent = settings.userAgent;
-    LanzouClient.uploadBase = _apiBaseFor(settings.apiHost);
     LanzouClient.uploadPath = settings.uploadPath;
   }
 
@@ -118,9 +117,8 @@ class AppController extends ChangeNotifier {
 
   Future<void> setApiHost(String host) async {
     await settings.setApiHost(host);
-    // 上传接口域名跟随网盘接口域名，改这里要一起更新
+    // 上传接口域名由 apiBase 派生（见 LanzouClient.uploadUrl），不用单独更新
     LanzouClient.apiBase = _apiBaseFor(host);
-    LanzouClient.uploadBase = _apiBaseFor(host);
     notifyListeners();
   }
 
