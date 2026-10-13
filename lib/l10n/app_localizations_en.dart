@@ -238,10 +238,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get remove => 'Remove';
 
   @override
+  String get clear => 'Clear';
+
+  @override
   String get transfers => 'Transfers';
 
   @override
   String get clearFinished => 'Clear finished';
+
+  @override
+  String get clearFinishedConfirmTitle => 'Clear finished records';
+
+  @override
+  String get clearFinishedConfirmMessage =>
+      'This will clear finished transfer records. Continue?';
 
   @override
   String get upload => 'Upload';

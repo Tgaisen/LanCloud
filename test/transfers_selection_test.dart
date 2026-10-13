@@ -255,8 +255,8 @@ void main() {
     app.dispose();
   });
 
-  // 顶栏入口：多选按钮排在「清除已完成」左侧，点一下直接进多选。
-  testWidgets('顶栏多选按钮在「清除已完成」左侧，点击进入多选并播报', (tester) async {
+  // 顶栏入口：「清除已完成」在左、多选在右，点一下直接进多选。
+  testWidgets('顶栏多选按钮在「清除已完成」右侧，点击进入多选并播报', (tester) async {
     final announcements = <String>[];
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockDecodedMessageHandler<dynamic>(SystemChannels.accessibility, (
@@ -283,7 +283,7 @@ void main() {
     expect(multiSelect, findsOneWidget);
     expect(
       tester.getCenter(multiSelect).dx,
-      lessThan(tester.getCenter(find.byTooltip('清除已完成')).dx),
+      greaterThan(tester.getCenter(find.byTooltip('清除已完成')).dx),
     );
 
     await tester.tap(multiSelect);
@@ -358,6 +358,30 @@ void main() {
     expect(find.text('c.zip'), findsNothing);
     expect(find.text('b.zip'), findsOneWidget);
     expect(app.selectionMode, isFalse);
+    app.dispose();
+  });
+
+  testWidgets('「清除已完成」先弹确认：取消保留、清除只移除已结束记录', (tester) async {
+    final (app, manager) = await host(tester);
+
+    await tester.tap(find.byTooltip('清除已完成'));
+    await tester.pumpAndSettle();
+    // 确认弹窗：标题 / 文案与网盘页删除确认同款（默认 MD3 弹窗）
+    expect(find.text('清除已完成记录'), findsOneWidget);
+    expect(find.text('将清除已完成的传输记录，继续吗？'), findsOneWidget);
+
+    // 取消：记录原样
+    await tester.tap(find.text('取消'));
+    await tester.pumpAndSettle();
+    expect(manager.tasks, hasLength(3));
+
+    // 清除：done 的 c.zip 被移除，失败项保留
+    await tester.tap(find.byTooltip('清除已完成'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('清除'));
+    await tester.pumpAndSettle();
+    expect(manager.tasks.map((t) => t.id).toList(), ['t1', 't2']);
+    expect(find.text('c.zip'), findsNothing);
     app.dispose();
   });
 

@@ -231,10 +231,19 @@ class AppLocalizationsZh extends AppLocalizations {
   String get remove => '移除';
 
   @override
+  String get clear => '清除';
+
+  @override
   String get transfers => '传输';
 
   @override
   String get clearFinished => '清除已完成';
+
+  @override
+  String get clearFinishedConfirmTitle => '清除已完成记录';
+
+  @override
+  String get clearFinishedConfirmMessage => '将清除已完成的传输记录，继续吗？';
 
   @override
   String get upload => '上传';

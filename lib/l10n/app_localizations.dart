@@ -506,6 +506,12 @@ abstract class AppLocalizations {
   /// **'移除'**
   String get remove;
 
+  /// No description provided for @clear.
+  ///
+  /// In zh, this message translates to:
+  /// **'清除'**
+  String get clear;
+
   /// No description provided for @transfers.
   ///
   /// In zh, this message translates to:
@@ -517,6 +523,18 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'清除已完成'**
   String get clearFinished;
+
+  /// No description provided for @clearFinishedConfirmTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'清除已完成记录'**
+  String get clearFinishedConfirmTitle;
+
+  /// No description provided for @clearFinishedConfirmMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'将清除已完成的传输记录，继续吗？'**
+  String get clearFinishedConfirmMessage;
 
   /// No description provided for @upload.
   ///

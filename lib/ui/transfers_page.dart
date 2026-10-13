@@ -193,6 +193,31 @@ class _TransfersPageState extends State<TransfersPage>
     });
   }
 
+  /// 清除已完成前的确认：默认 MD3 弹窗 + 消极（取消）/ 积极（清除）按钮，
+  /// 与网盘页的确认删除同款。
+  Future<void> _clearFinished() async {
+    final l10n = context.l10n;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.clearFinishedConfirmTitle),
+        content: Text(l10n.clearFinishedConfirmMessage),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(l10n.clear),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    context.read<TransferManager>().clearFinished();
+  }
+
   /// 删除选中的传输记录（进行中的会先取消）。
   Future<void> _deleteSelected() async {
     if (_selected.isEmpty) return;
@@ -510,15 +535,14 @@ class _TransfersPageState extends State<TransfersPage>
                       title: Text(l10n.transfers),
                       actions: [
                         IconButton(
+                          tooltip: l10n.clearFinished,
+                          icon: const Icon(Icons.delete_sweep_outlined),
+                          onPressed: _clearFinished,
+                        ),
+                        IconButton(
                           tooltip: l10n.multiSelect,
                           icon: const Icon(Icons.checklist),
                           onPressed: () => _enterSelection(),
-                        ),
-                        IconButton(
-                          tooltip: l10n.clearFinished,
-                          icon: const Icon(Icons.delete_sweep_outlined),
-                          onPressed: () =>
-                              context.read<TransferManager>().clearFinished(),
                         ),
                       ],
                       bottom: PreferredSize(
