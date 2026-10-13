@@ -3,13 +3,13 @@
 蓝奏云第三方 Flutter 客户端，使用 DeepSeek + Codex 辅助开发与验证。
 
 <div align="center">
-<img src="assets/images/screenshots/screenshot_1.png" width="48%" alt="home_fold" />&nbsp;
-<img src="assets/images/screenshots/screenshot_2.png" width="48%" alt="home_fold_split_screen" />
+<img src="assets/images/screenshots/screenshot_1.png" width="47%" alt="home_fold" />&nbsp;
+<img src="assets/images/screenshots/screenshot_2.png" width="47%" alt="home_fold_split_screen" />
 <br/>
-<img src="assets/images/screenshots/screenshot_3.png" width="23%" alt="home" />&nbsp;
-<img src="assets/images/screenshots/screenshot_4.png" width="23%" alt="drive" />&nbsp;
-<img src="assets/images/screenshots/screenshot_5.png" width="23%" alt="transfers" />&nbsp;
-<img src="assets/images/screenshots/screenshot_6.png" width="23%" alt="settings" />
+<img src="assets/images/screenshots/screenshot_3.png" width="22.5%" alt="home" />&nbsp;
+<img src="assets/images/screenshots/screenshot_4.png" width="22.5%" alt="drive" />&nbsp;
+<img src="assets/images/screenshots/screenshot_5.png" width="22.5%" alt="transfers" />&nbsp;
+<img src="assets/images/screenshots/screenshot_6.png" width="22.5%" alt="settings" />
 </div>
 
 ## 功能
