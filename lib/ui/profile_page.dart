@@ -149,7 +149,7 @@ class _ProfilePageState extends State<ProfilePage>
                                 trailing: const Icon(Icons.open_in_new),
                                 onTap: () => _openWeb(
                                   context,
-                                  'https://pc.woozooo.com/mydisk.php',
+                                  LanzouClient.mydiskUrl,
                                   l10n.webManagement,
                                 ),
                               ),
@@ -173,7 +173,7 @@ class _ProfilePageState extends State<ProfilePage>
                                 trailing: const Icon(Icons.open_in_new),
                                 onTap: () => _openWeb(
                                   context,
-                                  'https://pc.woozooo.com/mydisk.php?item=recycle',
+                                  '${LanzouClient.mydiskUrl}?item=recycle',
                                   l10n.recycleBin,
                                 ),
                               ),

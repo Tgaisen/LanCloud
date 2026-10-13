@@ -52,7 +52,8 @@ class LanzouClient {
         headers: {
           'User-Agent': userAgent.isEmpty ? kUserAgent : userAgent,
           'Accept-Language': 'zh-CN,zh;q=0.9',
-          'Referer': 'https://pc.woozooo.com/mydisk.php',
+          // 默认 Referer 也要跟着「网盘接口域名」设置走
+          'Referer': '$apiBase/mydisk.php',
         },
         validateStatus: (s) => s != null && s < 500,
         // 连接阶段也必须限时：否则网络异常（丢包 / 半开连接）时请求会一直挂着，
@@ -87,6 +88,13 @@ class LanzouClient {
 
   /// 上传接口域名：跟随「网盘接口域名」设置（pc / up）。
   static String uploadBase = 'https://up.woozooo.com';
+
+  /// 网页版网盘首页：网页版 / 回收站 / 网页登录这些页面都在当前配置的
+  /// 域名下，不走写死的 pc.woozooo.com。
+  static String get mydiskUrl => '$apiBase/mydisk.php';
+
+  /// 网页登录地址（与网页版同一个域名）。
+  static String get loginUrl => '$apiBase/account.php';
 
   /// 上传接口路径（接口名）：html5up.php（默认）/ fileup.php。
   static String uploadPath = 'html5up.php';
@@ -348,7 +356,7 @@ class LanzouClient {
   folderStats(String folderId) async {
     try {
       final resp = await dio.get<String>(
-        'https://up.woozooo.com/myfile.php?item=3&folder_id=$folderId&v2',
+        '$uploadBase/myfile.php?item=3&folder_id=$folderId&v2',
         options: _options(referer: '$apiBase/mydisk.php'),
       );
       final html = resp.data ?? '';
@@ -604,7 +612,7 @@ class LanzouClient {
   Future<({String? nickname, String level})> fetchAccountInfo() async {
     try {
       final resp = await dio.get<String>(
-        'https://up.woozooo.com/myfile.php?item=1&v2',
+        '$uploadBase/myfile.php?item=1&v2',
         options: _options(referer: '$apiBase/mydisk.php'),
       );
       final html = resp.data ?? '';

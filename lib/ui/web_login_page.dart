@@ -21,7 +21,8 @@ class WebLoginPage extends StatefulWidget {
 }
 
 class _WebLoginPageState extends State<WebLoginPage> {
-  static const _loginUrl = 'https://pc.woozooo.com/account.php';
+  /// 登录页跟着「网盘接口域名」设置走（web_login_page 不写死 pc.woozooo.com）。
+  String get _loginUrl => LanzouClient.loginUrl;
 
   bool _checking = false;
   bool _done = false;
