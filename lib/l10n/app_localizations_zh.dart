@@ -1143,10 +1143,10 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get emptyFolder => '这个文件夹是空的';
+  String get emptyFolder => '文件夹为空';
 
   @override
-  String get reachedEnd => '已经到底了';
+  String get reachedEnd => '已加载全部';
 
   @override
   String get searchIncomplete => '未全部加载内容，搜索结果可能不全';

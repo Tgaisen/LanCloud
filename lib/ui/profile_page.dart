@@ -125,8 +125,10 @@ class _ProfilePageState extends State<ProfilePage>
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
-                                    // 网页版个人中心截取的用户等级；没取到按「普」
-                                    if (account != null) ...[
+                                    // 会员等级（网页版个人中心截取）；「普」
+                                    //（含还没取到的情况）不显示，开通会员才有卡片
+                                    if (account != null &&
+                                        !account.isFreeTier) ...[
                                       const SizedBox(width: 8),
                                       _LevelChip(level: account.levelLabel),
                                     ],
@@ -364,7 +366,7 @@ class _ProfilePageState extends State<ProfilePage>
   }
 }
 
-/// 昵称右侧的用户等级小卡片（例如普通用户的「普」）。
+/// 昵称右侧的会员等级小卡片（普通用户「普」不显示）。
 class _LevelChip extends StatelessWidget {
   const _LevelChip({required this.level});
 

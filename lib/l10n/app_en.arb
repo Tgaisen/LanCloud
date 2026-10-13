@@ -382,7 +382,7 @@
   "loadFailed": "Failed to load: {error}",
   "noMatchContent": "Nothing matches “{query}”",
   "emptyFolder": "This folder is empty",
-  "reachedEnd": "You've reached the end",
+  "reachedEnd": "All loaded",
   "searchIncomplete": "Not all content is loaded; results may be incomplete",
   "filterResult": "Filtered results",
   "folderActions": "Folder actions",
@@ -692,7 +692,7 @@
       "count": {"type": "int"}
     }
   },
-  "aboutVersion": "Version {version} (build {build})",
+  "aboutVersion": "{version} (build {build})",
   "@aboutVersion": {
     "placeholders": {
       "version": {"type": "String"},
@@ -702,7 +702,7 @@
   "aboutTerms": "Terms of service",
   "aboutPrivacy": "Privacy policy",
   "aboutLicenses": "Open-source licenses",
-  "aboutProjectHome": "Project home",
+  "aboutProjectHome": "Project homepage",
   "aboutSubmitIssue": "Report an issue",
   "aboutCheckUpdate": "Check for updates",
   "aboutBuildInfo": "Build info",

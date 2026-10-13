@@ -2183,13 +2183,13 @@ abstract class AppLocalizations {
   /// No description provided for @emptyFolder.
   ///
   /// In zh, this message translates to:
-  /// **'这个文件夹是空的'**
+  /// **'文件夹为空'**
   String get emptyFolder;
 
   /// No description provided for @reachedEnd.
   ///
   /// In zh, this message translates to:
-  /// **'已经到底了'**
+  /// **'已加载全部'**
   String get reachedEnd;
 
   /// No description provided for @searchIncomplete.

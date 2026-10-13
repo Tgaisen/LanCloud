@@ -1181,7 +1181,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get emptyFolder => 'This folder is empty';
 
   @override
-  String get reachedEnd => 'You\'ve reached the end';
+  String get reachedEnd => 'All loaded';
 
   @override
   String get searchIncomplete =>
@@ -1863,7 +1863,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String aboutVersion(String version, int build) {
-    return 'Version $version (build $build)';
+    return '$version (build $build)';
   }
 
   @override
@@ -1876,7 +1876,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutLicenses => 'Open-source licenses';
 
   @override
-  String get aboutProjectHome => 'Project home';
+  String get aboutProjectHome => 'Project homepage';
 
   @override
   String get aboutSubmitIssue => 'Report an issue';

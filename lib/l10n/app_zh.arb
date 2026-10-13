@@ -584,8 +584,8 @@
       "query": {"type": "String"}
     }
   },
-  "emptyFolder": "这个文件夹是空的",
-  "reachedEnd": "已经到底了",
+  "emptyFolder": "文件夹为空",
+  "reachedEnd": "已加载全部",
   "searchIncomplete": "未全部加载内容，搜索结果可能不全",
   "filterResult": "筛选结果",
   "folderActions": "文件夹操作",

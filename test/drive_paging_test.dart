@@ -10,7 +10,7 @@ import 'package:lancloud/ui/drive_page.dart';
 import 'package:provider/provider.dart';
 
 /// 第一页只有几条、且服务端说「还有下一页」的目录：真机上必须自动补一页，
-/// 才能知道已经到底（否则要用户滑一下才出现「已经到底了」）。
+/// 才能知道已经到底（否则要用户滑一下才出现「已加载全部」）。
 class _FakeClient extends LanzouClient {
   _FakeClient() : super(uid: '1');
 
@@ -69,7 +69,7 @@ class _FakeApp extends AppController {
 }
 
 void main() {
-  testWidgets('目录内容不满一屏时自动补页：进入即显示「已经到底了」', (tester) async {
+  testWidgets('目录内容不满一屏时自动补页：进入即显示「已加载全部」', (tester) async {
     final client = _FakeClient();
     final app = _FakeApp(client);
     final manager = TransferManager(app);
@@ -100,14 +100,14 @@ void main() {
 
     // 自动补了第二页（不需要用户滑动）
     expect(client.filePages, contains(2));
-    // 并且立刻显示「已经到底了」
+    // 并且立刻显示「已加载全部」
     expect(find.text('f0.zip'), findsOneWidget);
-    expect(find.text('已经到底了'), findsOneWidget);
+    expect(find.text('已加载全部'), findsOneWidget);
   });
 
   // 下拉刷新会清掉目录缓存并强制重新联网拉第一页；这条路径同样要自动补页，
   // 否则刷新后又变成「看起来没到底」。
-  testWidgets('下拉刷新后依然自动补页并显示「已经到底了」', (tester) async {
+  testWidgets('下拉刷新后依然自动补页并显示「已加载全部」', (tester) async {
     final client = _FakeClient();
     final app = _FakeApp(client);
     final manager = TransferManager(app);
@@ -135,7 +135,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('已经到底了'), findsOneWidget);
+    expect(find.text('已加载全部'), findsOneWidget);
 
     // 下拉刷新：清缓存 + 重新拉第一页
     client.filePages.clear();
@@ -148,12 +148,12 @@ void main() {
 
     expect(client.filePages, contains(1));
     expect(client.filePages, contains(2));
-    expect(find.text('已经到底了'), findsOneWidget);
+    expect(find.text('已加载全部'), findsOneWidget);
   });
 
   // 真机上最常见的一条路径：从根目录点进子目录（走目录切换流程），
   // 切换期间的补页检查会被 _directorySwitching 挡住，切换结束后必须再补一次。
-  testWidgets('从根目录进入子目录后也会自动补页并显示「已经到底了」', (tester) async {
+  testWidgets('从根目录进入子目录后也会自动补页并显示「已加载全部」', (tester) async {
     final client = _FakeClient();
     final app = _FakeApp(client);
     // 关掉「最近使用」记录：测试环境没有数据库实现，进入目录时不必写库
@@ -194,6 +194,6 @@ void main() {
       reason: '进入子目录后应该请求该目录的分页',
     );
     expect(client.filePages, contains(2), reason: '内容不满一屏时要自动补第二页');
-    expect(find.text('已经到底了'), findsOneWidget);
+    expect(find.text('已加载全部'), findsOneWidget);
   });
 }

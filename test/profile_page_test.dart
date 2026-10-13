@@ -125,7 +125,7 @@ void main() {
     expect(pageScroll().pixels, offset);
   });
 
-  testWidgets('「我的」账号卡片：昵称右边显示等级小卡片', (tester) async {
+  testWidgets('「我的」账号卡片：普通用户不显示等级卡片，会员等级显示', (tester) async {
     Widget tree(AppController app) =>
         ChangeNotifierProvider<AppController>.value(
           value: app,
@@ -147,14 +147,19 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('土豆'), findsOneWidget);
-    // 等级还没取到（空）按普通用户「普」显示
-    expect(find.text('普'), findsOneWidget);
+    // 等级还没取到（按普通用户「普」处理）：不显示卡片
+    expect(find.text('普'), findsNothing);
 
-    // 截取到会员等级后显示截取到的文本
+    // 截取到会员等级后显示小卡片
     app.accounts.byUid('556911')!.level = '白';
     app.notifyListeners();
     await tester.pumpAndSettle();
     expect(find.text('白'), findsOneWidget);
+
+    // 调成普通用户「普」：卡片隐藏
+    app.accounts.byUid('556911')!.level = '普';
+    app.notifyListeners();
+    await tester.pumpAndSettle();
     expect(find.text('普'), findsNothing);
   });
 
