@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/physics.dart';
+import 'package:flutter/rendering.dart';
 import 'package:m3e_core/m3e_core.dart' as core;
 import 'package:material_ui/material_ui.dart' hide Icons;
 
@@ -345,6 +346,120 @@ class M3eCircularProgressIndicator extends StatelessWidget {
 
 /// ────────────────────────────── 按钮组 ──────────────────────────────
 
+/// 给 m3e_core 按钮组补一层干净的读屏语义。
+///
+/// m3e_core 的 [core.M3EToggleButton] 在每个按钮外面套了一层
+/// `Semantics(checked:)`，里面又是 Material 按钮自己的 `Semantics(button:)`：
+/// 每个按钮因此会产出两个语义节点——先念「复选框」（只有选中态，没有名称和
+/// 动作），滑一下才念「按钮」（有名称、能点击），两个焦点框完全重合。
+/// TalkBack 要滑两次才能把「名称 + 状态 + 点击」凑齐。
+///
+/// 这里不动组件本身（布局、按下动效、focus-ring 间距都保持 m3e_core 原样）：
+/// 把真实按钮组的语义整体排除（[ExcludeSemantics]），在上面盖一层几何一致的
+/// 语义节点——一个按钮 = 一个节点（名称 + 选中态 + 点击）。覆盖层经
+/// [_PointerTransparent] 不接触摸，触摸仍然走真实按钮。
+///
+/// 名称来源：传入和视觉同一份的 label 组件，放在
+/// [Opacity]（透明且 `alwaysIncludeSemantics: true`）里——不绘制但保留语义，
+/// 文字会合并进本节点。这样读屏名称和屏幕文字永远同源，不会两边各写一份。
+///
+/// 已知边界：极窄窗口时真实组内部横向滚动，覆盖层不复刻滚动位置——固定在
+/// 起点，保证节点顺序、名称和未滚动时的几何（读屏按顺序遍历，滚动之后触摸
+/// 探索的命中框才可能偏移）。键盘焦点引起的 focus-ring 间隙变化同理。
+class _M3eButtonGroupSemantics extends StatelessWidget {
+  const _M3eButtonGroupSemantics({
+    required this.count,
+    required this.width,
+    required this.spacing,
+    required this.labelAt,
+    required this.checkedAt,
+    required this.mutuallyExclusive,
+    required this.enabledAt,
+    required this.onTapAt,
+  });
+
+  /// 按钮数量。
+  final int count;
+
+  /// 每个按钮的宽度（与传给按钮组的一致）。
+  final double width;
+
+  /// 按钮之间的间距（连接式 2dp、标准组按调用方给的 spacing）。
+  final double spacing;
+
+  /// 每个按钮的读屏名称源（和视觉同一份组件）。
+  final Widget Function(int index) labelAt;
+
+  /// 每项的选中态；null 表示动作按钮（读屏不报选中状态）。
+  final bool? Function(int index) checkedAt;
+
+  /// 是否互斥组（单选）：与列表选择（M3ePickTile）一致，单选用
+  /// checked + 互斥组表达 radio 语义。
+  final bool mutuallyExclusive;
+
+  /// 每项是否可点。
+  final bool Function(int index) enabledAt;
+
+  /// 每项的点击回调（可选）。
+  final VoidCallback? Function(int index) onTapAt;
+
+  @override
+  Widget build(BuildContext context) {
+    return _PointerTransparent(
+      child: OverflowBox(
+        // 内容允许超出（极窄窗口的真实组会滚动），固定从起始边排布。
+        alignment: AlignmentDirectional.centerStart,
+        maxWidth: double.infinity,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var i = 0; i < count; i++) ...[
+              if (i > 0) SizedBox(width: spacing),
+              Semantics(
+                container: true,
+                button: true,
+                enabled: enabledAt(i),
+                checked: checkedAt(i),
+                inMutuallyExclusiveGroup:
+                    mutuallyExclusive && checkedAt(i) != null ? true : null,
+                onTap: onTapAt(i),
+                child: SizedBox(
+                  width: width,
+                  child: Opacity(
+                    opacity: 0,
+                    alwaysIncludeSemantics: true,
+                    child: labelAt(i),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 覆盖层用：指针穿透、语义不动。
+///
+/// 不用 [IgnorePointer]：它默认把子树的用户动作从语义里一并屏蔽
+/// （`isBlockingUserActions`，读屏能聚焦但双击无效），关闭该行为的
+/// `ignoringSemantics: false` 已弃用；[AbsorbPointer] 同理。这里只重写
+/// 命中测试，语义完全保留。
+class _PointerTransparent extends SingleChildRenderObjectWidget {
+  const _PointerTransparent({super.child});
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderPointerTransparent();
+}
+
+class _RenderPointerTransparent extends RenderProxyBox {
+  @override
+  bool hitTest(BoxHitTestResult result, {required Offset position}) => false;
+}
+
 /// MD3E 连接式切换按钮组（Connected button group）：
 /// 把 [M3EToggleButtonGroup] 的索引选择映射回业务值。
 ///
@@ -352,6 +467,9 @@ class M3eCircularProgressIndicator extends StatelessWidget {
 ///
 /// 默认用 `tonal` 配色：这是应用里切换条的统一观感——比 `filled` 低调，
 /// 不与页面里的主要操作抢焦点（要更强调时显式传 [M3EButtonStyle.filled]）。
+///
+/// 读屏语义由 [_M3eButtonGroupSemantics] 合成（一个按钮一个节点）；
+/// 实现原因和边界见该组件说明。
 class M3eConnectedButtonGroup<T> extends StatelessWidget {
   const M3eConnectedButtonGroup({
     super.key,
@@ -410,7 +528,7 @@ class M3eConnectedButtonGroup<T> extends StatelessWidget {
         final width = expand && constraints.maxWidth.isFinite && count > 0
             ? (constraints.maxWidth - 2.0 * (count - 1)) / count
             : null;
-        return core.M3EToggleButtonGroup(
+        final group = core.M3EToggleButtonGroup(
           type: core.M3EButtonGroupType.connected,
           shape: core.M3EButtonShape.round,
           size: size,
@@ -431,6 +549,31 @@ class M3eConnectedButtonGroup<T> extends StatelessWidget {
                 label: labelOf(value),
                 width: width,
               ),
+          ],
+        );
+        // width == null（expand: false 或宽度无界）时算不出每段几何，
+        // 覆盖层无从对齐，保持原样不合成。
+        if (count == 0 || width == null) return group;
+        return Stack(
+          children: [
+            ExcludeSemantics(child: group),
+            Positioned.fill(
+              child: _M3eButtonGroupSemantics(
+                count: count,
+                width: width,
+                // 连接式按钮组相邻间隙固定 2dp（ButtonGroupTokens.kConnectedGap）
+                spacing: 2,
+                labelAt: (index) => labelOf(values[index]),
+                checkedAt: (index) => index == selectedIndex,
+                mutuallyExclusive: true,
+                enabledAt: (_) => true,
+                onTapAt: (index) => () {
+                  // 与原回调一致：再点已选中项不触发（单选段不能取消）。
+                  if (index == selectedIndex) return;
+                  onSelected(values[index]);
+                },
+              ),
+            ),
           ],
         );
       },
@@ -663,6 +806,9 @@ class M3EIconAction<T> {
 /// 宽度：每段按可用宽度均分，上限 [maxWidth]（默认 80dp）、下限 [minWidth]
 /// （默认 48dp，M3 要求组里每个按钮都有 48dp 触控目标）。一行放不下时交给组
 /// 自己横向滚动——按钮组不换行（M3）。
+///
+/// 读屏语义由 [_M3eButtonGroupSemantics] 合成（一个按钮一个节点）；
+/// 实现原因和边界见该组件说明。
 class M3EIconButtonGroup<T> extends StatelessWidget {
   const M3EIconButtonGroup({
     super.key,
@@ -747,7 +893,7 @@ class M3EIconButtonGroup<T> extends StatelessWidget {
         );
         // 窄窗口一行放不下时不换行，交给组横向滚动
         final bool scroll = width * count + gap > available + 0.5;
-        return core.M3EToggleButtonGroup(
+        final group = core.M3EToggleButtonGroup(
           type: core.M3EButtonGroupType.standard,
           shape: core.M3EButtonShape.round,
           size: size,
@@ -772,6 +918,39 @@ class M3EIconButtonGroup<T> extends StatelessWidget {
                 width: width,
                 enabled: item.enabled,
               ),
+          ],
+        );
+        return Stack(
+          children: [
+            ExcludeSemantics(child: group),
+            Positioned.fill(
+              child: _M3eButtonGroupSemantics(
+                count: count,
+                width: width,
+                spacing: spacing,
+                // 图标按钮没有可见文字，tooltip 就是读屏名称
+                //（与组内传给按钮的 semanticLabel 同一来源）。
+                labelAt: (index) => Text(items[index].tooltip),
+                checkedAt: (index) =>
+                    items[index].isToggle ? items[index].checked : null,
+                // 动作按钮与开关按钮混排：开关各自独立，不构成互斥组。
+                mutuallyExclusive: false,
+                enabledAt: (index) => items[index].enabled,
+                onTapAt: (index) {
+                  final item = items[index];
+                  if (!item.enabled) return null;
+                  // 与 _handleSelectionChanged 同一语义：开关报切换后的状态，
+                  // 动作按钮只回调。
+                  return () {
+                    if (item.isToggle) {
+                      onToggled?.call(item.value, !item.checked);
+                    } else {
+                      onPressed?.call(item.value);
+                    }
+                  };
+                },
+              ),
+            ),
           ],
         );
       },

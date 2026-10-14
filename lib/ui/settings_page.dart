@@ -1794,6 +1794,16 @@ class _AdvancedPage extends StatelessWidget {
 ///
 /// **本应用的设计决定（非 M3 规范）**：拖动时只更新本地显示，松手才写设置
 /// （避免拖动过程中反复落盘）。
+///
+/// **无障碍**：M3ESlider 是纯自绘控件、自身不产出滑杆语义，TalkBack 既读不出
+/// 当前值也无法调节；这里在外面合成滑杆语义节点（slider 角色 + 当前值 +
+/// 上/下调动作），并屏蔽内部手势语义（否则读屏双击会按成控件中心点按）。
+///
+/// **旧版读屏兼容性**：6.1 一脉的旧 TalkBack（如 Android 12 时代的版本、部分
+/// 系统内置读屏）调整后只播报「进度条」：旧逻辑的数值取自调整事件里的
+/// itemCount/currentItemIndex（原生 SeekBar 会填这两个字段，Flutter 引擎不发，
+/// 应用层无法补齐）；新版 TalkBack 走节点文本，值照常播报。不要加
+/// SemanticsService.announce / liveRegion 之类补偿——会让新版重复播报。
 class _SliderTile<T> extends StatefulWidget {
   const _SliderTile({
     required this.icon,
@@ -1854,8 +1864,25 @@ class _SliderTileState<T> extends State<_SliderTile<T>> {
       ),
       subtitle: Padding(
         padding: const EdgeInsets.only(top: 4, right: 8),
+        // 设置页滑杆的无障碍语义都在这一层：
+        //   - container 让滑杆成为读屏单独聚焦的一个控件；
+        //   - slider + value/increasedValue/decreasedValue 让 TalkBack 按
+        //     SeekBar 读出「标题 + 当前值」并预读相邻档；
+        //   - onIncrease/onDecrease 对应 TalkBack 的上滑/下滑调节，走与
+        //     松手相同的落盘路径；
+        //   - excludeSemantics 屏蔽内部手势语义（tap / scroll*），否则
+        //     TalkBack 双击会按控件中心点按、把值直接跳到中间档。
         child: Semantics(
+          container: true,
+          slider: true,
+          enabled: true,
           label: widget.title,
+          value: widget.labelOf(value),
+          increasedValue: widget.labelOf(widget.values[_clampIndex(_index + 1)]),
+          decreasedValue: widget.labelOf(widget.values[_clampIndex(_index - 1)]),
+          onIncrease: () => _step(1),
+          onDecrease: () => _step(-1),
+          excludeSemantics: true,
           child: M3ESlider(
             value: _index.toDouble(),
             min: 0,
@@ -1869,6 +1896,16 @@ class _SliderTileState<T> extends State<_SliderTile<T>> {
         ),
       ),
     );
+  }
+
+  int _clampIndex(int index) => index.clamp(0, widget.values.length - 1);
+
+  /// TalkBack 上滑/下滑：移动一档并立即落盘（已在端点则不动、不写）。
+  void _step(int delta) {
+    final next = _clampIndex(_index + delta);
+    if (next == _index) return;
+    setState(() => _index = next);
+    _commit();
   }
 
   /// 落盘：值没变就不写（点一下没拖动、拖回原档位都不写）。
