@@ -28,7 +28,14 @@ const int kFreeUploadLimit = 100 * 1024 * 1024;
 enum _FileMenuAction { properties, copyLink, move, editInfo, password, delete }
 
 /// 网盘页文件夹条目 ⋯ 菜单里的动作。
-enum _FolderMenuAction { properties, copyLink, password, editInfo, delete }
+enum _FolderMenuAction {
+  open,
+  properties,
+  copyLink,
+  password,
+  editInfo,
+  delete,
+}
 
 class DrivePage extends StatefulWidget {
   const DrivePage({
@@ -2144,7 +2151,8 @@ class _DrivePageState extends State<DrivePage>
     }
   }
 
-  /// 点文件夹 ⋯：MD3E 弹出菜单（属性 / 复制链接 / 访问密码 / 修改信息 / 删除）。
+  /// 点文件夹 ⋯：MD3E 弹出菜单
+  /// （打开 / 属性 / 复制链接 / 访问密码 / 修改信息 / 删除）。
   ///
   /// [buttonContext] 是那颗 ⋯ 按钮的 context（桌面端右键时是整行）——
   /// 菜单贴它下方右对齐弹出。
@@ -2166,6 +2174,11 @@ class _DrivePageState extends State<DrivePage>
       // ⋯ 贴着右边缘：菜单右缘对齐，免得被屏幕右上角夹歪
       alignEnd: true,
       items: [
+        M3eMenuItem(
+          value: _FolderMenuAction.open,
+          label: l10n.open,
+          icon: Icons.open_in_new,
+        ),
         M3eMenuItem(
           value: _FolderMenuAction.properties,
           label: l10n.properties,
@@ -2195,6 +2208,9 @@ class _DrivePageState extends State<DrivePage>
     );
     if (action == null || !mounted) return;
     switch (action) {
+      case _FolderMenuAction.open:
+        // 与点这个文件夹卡片一样：进目录（顺手记一条最近使用）
+        await _openFolder(folder);
       case _FolderMenuAction.properties:
         await _showFolderProperties(folder);
       case _FolderMenuAction.copyLink:

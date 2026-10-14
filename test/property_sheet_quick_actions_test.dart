@@ -854,7 +854,7 @@ void main() {
     expect(_toggleButton(tester, '添加收藏').checked, isFalse);
   });
 
-  testWidgets('网盘页文件夹 ⋯ 菜单：五项操作，属性打开属性弹窗', (tester) async {
+  testWidgets('网盘页文件夹 ⋯ 菜单：六项操作，属性打开属性弹窗', (tester) async {
     final client = _FakeClient();
     final app = _FakeApp(client);
     await _pumpDrive(tester, app);
@@ -865,8 +865,9 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
     await tester.pump(const Duration(milliseconds: 600));
 
-    // 文件夹菜单：属性 / 复制链接 / 访问密码 / 修改信息 / 删除（文件夹没有「移动」）
-    const order = ['属性', '复制链接', '访问密码', '修改信息', '删除'];
+    // 文件夹菜单：打开 / 属性 / 复制链接 / 访问密码 / 修改信息 / 删除
+    //（「打开」排第一，与点文件夹卡片等效；文件夹没有「移动」）
+    const order = ['打开', '属性', '复制链接', '访问密码', '修改信息', '删除'];
     expect(find.byType(M3eMenuRow), findsNWidgets(order.length));
     final tops = [
       for (final label in order)
