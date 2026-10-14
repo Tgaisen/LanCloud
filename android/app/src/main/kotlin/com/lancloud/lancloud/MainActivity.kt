@@ -401,6 +401,9 @@ class MainActivity : FlutterFragmentActivity() {
         systemChannel.setMethodCallHandler { call, result ->
             when (call.method) {
                 "motionState" -> result.success(systemMotionState())
+                // Android SDK（API）级别：WebView 的合成方式按它判定
+                //（Hybrid Composition 只在 Android 10+ 启用，见 web_page.dart）
+                "androidSdkInt" -> result.success(Build.VERSION.SDK_INT)
                 else -> result.notImplemented()
             }
         }

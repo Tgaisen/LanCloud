@@ -72,6 +72,9 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get accountTitle => '账号';
+
+  @override
   String get openShareLink => '打开分享链接';
 
   @override
@@ -697,6 +700,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get noMatch => '没有匹配的设置项';
 
   @override
+  String get searchOtherSettings => '其他设置项';
+
+  @override
   String get cleared => '已清空';
 
   @override
@@ -774,6 +780,33 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get categoryData => '数据';
+
+  @override
+  String get categoryAppearanceLayout => '外观与布局';
+
+  @override
+  String get categoryBehaviorPermissions => '行为与权限';
+
+  @override
+  String get categoryNotificationsReminders => '通知与提醒';
+
+  @override
+  String get categoryTransferConnection => '传输与连接';
+
+  @override
+  String get categoryPrivacyData => '隐私与数据';
+
+  @override
+  String get sectionLayout => '布局';
+
+  @override
+  String get sectionReminder => '提醒';
+
+  @override
+  String get sectionDownload => '下载';
+
+  @override
+  String get sectionUpload => '上传';
 
   @override
   String get exitSelection => '退出多选';

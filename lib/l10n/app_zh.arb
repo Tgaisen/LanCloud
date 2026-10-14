@@ -39,6 +39,7 @@
       "uid": {"type": "String"}
     }
   },
+  "accountTitle": "账号",
   "openShareLink": "打开分享链接",
   "transferringCount": "传输中 {count}",
   "@transferringCount": {
@@ -303,6 +304,7 @@
   "closeSearch": "关闭搜索",
   "searchPlaceholder": "支持输入关键词搜索",
   "noMatch": "没有匹配的设置项",
+  "searchOtherSettings": "其他设置项",
   "cleared": "已清空",
   "clearDataNothingSelected": "未选择清除项",
   "restoredDefaultDir": "已恢复默认目录",
@@ -355,6 +357,15 @@
   "categoryConnection": "连接",
   "categoryAdvanced": "高级覆盖项",
   "categoryData": "数据",
+  "categoryAppearanceLayout": "外观与布局",
+  "categoryBehaviorPermissions": "行为与权限",
+  "categoryNotificationsReminders": "通知与提醒",
+  "categoryTransferConnection": "传输与连接",
+  "categoryPrivacyData": "隐私与数据",
+  "sectionLayout": "布局",
+  "sectionReminder": "提醒",
+  "sectionDownload": "下载",
+  "sectionUpload": "上传",
   "exitSelection": "退出多选",
   "selectedCount": "已选择 {count} 项",
   "@selectedCount": {

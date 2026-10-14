@@ -34,6 +34,22 @@ const double kTransfersTabBarHeight = 58;
 /// 两侧不会贴到屏幕边缘（也就用不到挖孔 / 导航栏的左右让位）。
 const double kModalSheetMaxWidth = 640;
 
+/// 「我的」页右窗格里的二级页（列表-详情的第三层）：
+/// 独立打开时是 push 的整页（小屏 / 从搜索跳转），两栏模式时进右窗格
+/// （顶栏换成二级页标题 + 返回按钮）。
+enum ProfileSubPage {
+  advanced,
+  backup,
+  licenses;
+
+  /// 二级页标题（也是「我的」顶栏在两栏模式下的标题）。
+  String label(AppLocalizations l10n) => switch (this) {
+    ProfileSubPage.advanced => l10n.advanced,
+    ProfileSubPage.backup => l10n.backupAndRestore,
+    ProfileSubPage.licenses => l10n.aboutLicenses,
+  };
+}
+
 /// 是否是大屏布局（侧栏 + 圆角主视图）。
 bool isLargeLayout(BuildContext context) =>
     MediaQuery.sizeOf(context).width >= kLargeLayoutBreakpoint;

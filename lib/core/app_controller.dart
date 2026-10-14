@@ -50,6 +50,10 @@ class AppController extends ChangeNotifier {
   /// 网盘页注册的返回处理：返回 true 表示已消费（例如返回上一级目录）。
   Future<bool> Function()? onDriveBack;
 
+  /// 「我的」页注册的返回处理：返回 true 表示已消费（退出搜索 / 关闭二级设置页）。
+  /// 外壳在「非默认视图 → 回默认视图」的兜底之前先问它。
+  Future<bool> Function()? onProfileBack;
+
   /// 网盘页当前是否需要自己消费返回手势（多选 / 搜索 / 已在子目录），
   /// 由外壳里的 [DrivePage] 实时上报。RootShell 用它决定返回手势交给系统
   /// （系统才会播放退回桌面的预测性返回动画）还是由 Flutter 拦截。

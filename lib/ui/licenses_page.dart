@@ -29,20 +29,6 @@ class _PackageLicenses {
 
 class _LicensesPageState extends State<LicensesPage> {
   final ScrollController _scroll = ScrollController();
-  late final Future<List<_PackageLicenses>> _packages = _collect();
-
-  /// 按包名聚合 [LicenseRegistry] 里的许可证，包名按字母序排列。
-  static Future<List<_PackageLicenses>> _collect() async {
-    final byPackage = <String, List<LicenseEntry>>{};
-    await for (final entry in LicenseRegistry.licenses) {
-      for (final name in entry.packages) {
-        byPackage.putIfAbsent(name, () => <LicenseEntry>[]).add(entry);
-      }
-    }
-    final names = byPackage.keys.toList()
-      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
-    return [for (final name in names) _PackageLicenses(name, byPackage[name]!)];
-  }
 
   @override
   void dispose() {
@@ -61,46 +47,73 @@ class _LicensesPageState extends State<LicensesPage> {
         title: Text(context.l10n.aboutLicenses),
       ),
       slivers: [
-        FutureBuilder<List<_PackageLicenses>>(
-          future: _packages,
-          builder: (context, snapshot) {
-            final packages = snapshot.data;
-            if (packages == null) {
-              return const SliverFillRemaining(
-                hasScrollBody: false,
-                child: Center(child: M3eLoadingIndicator()),
-              );
-            }
-            final detailText = MaterialLocalizations.of(context)
-                .licensesPackageDetailText;
-            // 与「关于」「传输」等页面同款 MD3E 连接式列表组：
-            // 外层 12 + 分组自身 4 = 16dp 视觉内边距，条目之间是空白而非分割线
-            return SliverPadding(
-              padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
-              sliver: SegmentedSliverList(
-                itemCount: packages.length,
-                itemBuilder: (context, index) {
-                  final package = packages[index];
-                  return ListTile(
-                    title: Text(package.name),
-                    subtitle: Text(detailText(package.entries.length)),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => _PackageLicensePage(package: package),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            );
-          },
-        ),
-        // 列表底部让开系统手势区（与其它页面一致）
-        SliverToBoxAdapter(
-          child: SizedBox(height: shellBottomBarInset(context)),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
+          // 整块布局：避免懒布局估算导致滚动条滑块抖动（见 SliverColumn）
+          sliver: const SliverToBoxAdapter(child: LicensesContent()),
         ),
       ],
+    );
+  }
+}
+
+/// 开源许可正文：依赖包列表（按包名聚合），点条目看该包的许可正文。
+/// 独立页（push）与「我的」右窗格共用。
+class LicensesContent extends StatefulWidget {
+  const LicensesContent({super.key});
+
+  @override
+  State<LicensesContent> createState() => _LicensesContentState();
+}
+
+class _LicensesContentState extends State<LicensesContent> {
+  late final Future<List<_PackageLicenses>> _packages = _collect();
+
+  /// 按包名聚合 [LicenseRegistry] 里的许可证，包名按字母序排列。
+  static Future<List<_PackageLicenses>> _collect() async {
+    final byPackage = <String, List<LicenseEntry>>{};
+    await for (final entry in LicenseRegistry.licenses) {
+      for (final name in entry.packages) {
+        byPackage.putIfAbsent(name, () => <LicenseEntry>[]).add(entry);
+      }
+    }
+    final names = byPackage.keys.toList()
+      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+    return [for (final name in names) _PackageLicenses(name, byPackage[name]!)];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<_PackageLicenses>>(
+      future: _packages,
+      builder: (context, snapshot) {
+        final packages = snapshot.data;
+        if (packages == null) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 48),
+            child: Center(child: M3eLoadingIndicator()),
+          );
+        }
+        final detailText = MaterialLocalizations.of(context)
+            .licensesPackageDetailText;
+        // 与「关于」「传输」等页面同款 MD3E 连接式列表组：
+        // 外层 12 + 分组自身 4 = 16dp 视觉内边距，条目之间是空白而非分割线
+        return SegmentedList(
+          children: [
+            for (final package in packages)
+              ListTile(
+                title: Text(package.name),
+                subtitle: Text(detailText(package.entries.length)),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => _PackageLicensePage(package: package),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }

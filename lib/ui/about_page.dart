@@ -29,8 +29,6 @@ class _AboutPageState extends State<AboutPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
     return TopBarOverlayScaffold(
       controller: _scroll,
       appBar: AppBar(
@@ -43,107 +41,127 @@ class _AboutPageState extends State<AboutPage> {
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
           // 整块布局：避免懒布局估算导致滚动条滑块抖动（见 SliverColumn）
-          sliver: SliverColumn(
+          sliver: SliverToBoxAdapter(child: AboutContent()),
+        ),
+      ],
+    );
+  }
+}
+
+/// 关于页正文：版本块 + 各分组列表。
+/// 独立页（小屏 push）与「我的」右侧详情窗格共用同一份内容。
+class AboutContent extends StatelessWidget {
+  const AboutContent({super.key, this.onOpenLicenses});
+
+  /// 「开源许可」的点击行为；为空时按独立页 push 许可页。
+  final VoidCallback? onOpenLicenses;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
             children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                child: Column(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(20),
-                      child: Image.asset(
-                        'assets/images/logo/app_icon.png',
-                        width: 72,
-                        height: 72,
-                        excludeFromSemantics: true,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(l10n.appName, style: theme.textTheme.headlineSmall),
-                    const SizedBox(height: 4),
-                    Text(
-                      l10n.aboutVersion(appVersion, appBuild),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
+              ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Image.asset(
+                  'assets/images/logo/app_icon.png',
+                  width: 72,
+                  height: 72,
+                  excludeFromSemantics: true,
                 ),
               ),
-              // 构建信息 / 获取更新：放在最前，和版本号挨着
-              SegmentedList(
-                children: [
-                  ListTile(
-                    leading: const Icon(Icons.update),
-                    title: Text(l10n.aboutCheckUpdate),
-                    trailing: const Icon(Icons.open_in_new),
-                    onTap: () => launchUrl(
-                      Uri.parse('$projectUrl/releases'),
-                      mode: LaunchMode.externalApplication,
-                    ),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.build_outlined),
-                    title: Text(l10n.aboutBuildInfo),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => showBuildInfoDialog(context),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              SegmentedList(
-                children: [
-                  ListTile(
-                    leading: const Icon(Icons.contract),
-                    title: Text(l10n.aboutTerms),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => showLegalDialog(context, LegalDoc.terms),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.shield_person),
-                    title: Text(l10n.aboutPrivacy),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => showLegalDialog(context, LegalDoc.privacy),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              SegmentedList(
-                children: [
-                  ListTile(
-                    leading: const Icon(Icons.badge_outlined),
-                    title: Text(l10n.aboutLicenses),
-                    trailing: const Icon(Icons.chevron_right),
-                    // 用应用自己的许可页：顶栏风格一致，也没有
-                    // Flutter 默认那块「应用名 + 版本 + powered by Flutter」页头
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const LicensesPage(),
-                      ),
-                    ),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.public),
-                    title: Text(l10n.aboutProjectHome),
-                    trailing: const Icon(Icons.open_in_new),
-                    onTap: () => launchUrl(
-                      Uri.parse(projectUrl),
-                      mode: LaunchMode.externalApplication,
-                    ),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.bug_report_outlined),
-                    title: Text(l10n.aboutSubmitIssue),
-                    trailing: const Icon(Icons.open_in_new),
-                    onTap: () => launchUrl(
-                      Uri.parse('$projectUrl/issues'),
-                      mode: LaunchMode.externalApplication,
-                    ),
-                  ),
-                ],
+              const SizedBox(height: 12),
+              Text(l10n.appName, style: theme.textTheme.headlineSmall),
+              const SizedBox(height: 4),
+              Text(
+                l10n.aboutVersion(appVersion, appBuild),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
               ),
             ],
           ),
+        ),
+        // 构建信息 / 获取更新：放在最前，和版本号挨着
+        SegmentedList(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.update),
+              title: Text(l10n.aboutCheckUpdate),
+              trailing: const Icon(Icons.open_in_new),
+              onTap: () => launchUrl(
+                Uri.parse('$projectUrl/releases'),
+                mode: LaunchMode.externalApplication,
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.build_outlined),
+              title: Text(l10n.aboutBuildInfo),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => showBuildInfoDialog(context),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        SegmentedList(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.contract),
+              title: Text(l10n.aboutTerms),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => showLegalDialog(context, LegalDoc.terms),
+            ),
+            ListTile(
+              leading: const Icon(Icons.shield_person),
+              title: Text(l10n.aboutPrivacy),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => showLegalDialog(context, LegalDoc.privacy),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        SegmentedList(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.badge_outlined),
+              title: Text(l10n.aboutLicenses),
+              trailing: const Icon(Icons.chevron_right),
+              // 用应用自己的许可页：顶栏风格一致，也没有
+              // Flutter 默认那块「应用名 + 版本 + powered by Flutter」页头
+              onTap:
+                  onOpenLicenses ??
+                  () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const LicensesPage(),
+                    ),
+                  ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.public),
+              title: Text(l10n.aboutProjectHome),
+              trailing: const Icon(Icons.open_in_new),
+              onTap: () => launchUrl(
+                Uri.parse(projectUrl),
+                mode: LaunchMode.externalApplication,
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.bug_report_outlined),
+              title: Text(l10n.aboutSubmitIssue),
+              trailing: const Icon(Icons.open_in_new),
+              onTap: () => launchUrl(
+                Uri.parse('$projectUrl/issues'),
+                mode: LaunchMode.externalApplication,
+              ),
+            ),
+          ],
         ),
       ],
     );

@@ -104,7 +104,7 @@ Future<bool> confirmAndRestore(
   return true;
 }
 
-/// 备份与恢复：本地 JSON 文件 + WebDAV 云端。
+/// 备份与恢复（独立页）：本地 JSON 文件 + WebDAV 云端。
 class BackupPage extends StatefulWidget {
   const BackupPage({super.key});
 
@@ -113,18 +113,74 @@ class BackupPage extends StatefulWidget {
 }
 
 class _BackupPageState extends State<BackupPage> {
-  late final BackupService _service;
-  bool _busy = false;
-
-  /// 顶栏那条线是否显示：只在 WebDAV 的网络操作上开（见 [_run]）。
-  bool _progress = false;
-
   /// 页面列表；传给 TopBarOverlayScaffold 后点顶栏空白即可回到顶部。
   final ScrollController _scroll = ScrollController();
+
+  /// 顶栏那条线是否显示：只在 WebDAV 的网络操作上开（见 [BackupContent]）。
+  final ValueNotifier<bool> _progress = ValueNotifier<bool>(false);
 
   @override
   void dispose() {
     _scroll.dispose();
+    _progress.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return ValueListenableBuilder<bool>(
+      valueListenable: _progress,
+      builder: (context, busy, _) => TopBarOverlayScaffold(
+        controller: _scroll,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          scrolledUnderElevation: 0,
+          leading: const AppBarBackButton(),
+          title: Text(l10n.backupAndRestore),
+          bottom: busy ? kBackupProgressBar : null,
+        ),
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            // 整块布局：避免懒布局估算导致滚动条滑块抖动（见 SliverColumn）
+            sliver: SliverToBoxAdapter(
+              child: BackupContent(progress: _progress),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 顶栏底部那条 2dp 进度线（只在 WebDAV 网络操作时显示）。
+/// 独立页放在 [AppBar.bottom]；「我的」右窗格里由「我的」顶栏复用。
+const PreferredSize kBackupProgressBar = PreferredSize(
+  preferredSize: Size.fromHeight(2),
+  child: M3eLinearProgressIndicator(height: 2),
+);
+
+/// 备份与恢复正文：本地备份 + WebDAV。
+/// 独立页（push）与「我的」右窗格共用；[progress] 由宿主显示成顶栏进度线。
+class BackupContent extends StatefulWidget {
+  const BackupContent({super.key, required this.progress});
+
+  /// WebDAV 网络操作进行中时为 true。
+  final ValueNotifier<bool> progress;
+
+  @override
+  State<BackupContent> createState() => _BackupContentState();
+}
+
+class _BackupContentState extends State<BackupContent> {
+  late final BackupService _service;
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    // 离开（切窗格 / 关页面）时别再让顶栏留着进度线
+    widget.progress.value = false;
     super.dispose();
   }
 
@@ -150,10 +206,8 @@ class _BackupPageState extends State<BackupPage> {
     bool showProgress = false,
   }) async {
     if (_busy) return;
-    setState(() {
-      _busy = true;
-      _progress = showProgress;
-    });
+    setState(() => _busy = true);
+    widget.progress.value = showProgress;
     try {
       await body();
     } on BackupException catch (e) {
@@ -162,10 +216,8 @@ class _BackupPageState extends State<BackupPage> {
       if (mounted) _snack('$e');
     } finally {
       if (mounted) {
-        setState(() {
-          _busy = false;
-          _progress = false;
-        });
+        setState(() => _busy = false);
+        widget.progress.value = false;
       }
     }
   }
@@ -460,129 +512,107 @@ class _BackupPageState extends State<BackupPage> {
     final l10n = context.l10n;
     final store = _service.webdav;
     final scheme = Theme.of(context).colorScheme;
-    return TopBarOverlayScaffold(
-      controller: _scroll,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        scrolledUnderElevation: 0,
-        leading: const AppBarBackButton(),
-        title: Text(l10n.backupAndRestore),
-        bottom: _progress
-            ? const PreferredSize(
-                preferredSize: Size.fromHeight(2),
-                child: M3eLinearProgressIndicator(height: 2),
-              )
-            : null,
-      ),
-      slivers: [
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-          // 整块布局：避免懒布局估算导致滚动条滑块抖动（见 SliverColumn）
-          sliver: SliverColumn(
-            children: [
-              M3eSectionHeader(l10n.localBackup),
-              SegmentedList(
-                children: [
-                  ListTile(
-                    leading: const Icon(Icons.upload_file_outlined),
-                    title: Text(l10n.backupNow),
-                    subtitle: Text(l10n.backupNowSubtitle),
-                    onTap: _backupToFile,
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.settings_backup_restore),
-                    title: Text(l10n.restoreFromFile),
-                    subtitle: Text(l10n.restoreFromFileSubtitle),
-                    onTap: _restoreFromFile,
-                  ),
-                ],
-              ),
-              M3eSectionHeader(l10n.webdavSection),
-              SegmentedList(
-                children: [
-                  ListTile(
-                    leading: const Icon(Icons.dns_outlined),
-                    title: Text(l10n.webdavAccount),
-                    subtitle: Text(
-                      store.url.isEmpty ? l10n.webdavNotSet : store.url,
-                    ),
-                    onTap: _editServer,
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.link_outlined),
-                    title: Text(l10n.webdavTest),
-                    enabled: store.configured,
-                    onTap: _testConnection,
-                  ),
-                  // WebDAV 的备份内容会保存下来，只影响云端上传
-                  ListTile(
-                    leading: const Icon(Icons.checklist),
-                    title: Text(l10n.backupContent),
-                    subtitle: Text(_sectionsLabel(store.backupSections)),
-                    onTap: _editBackupSections,
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.cloud_upload_outlined),
-                    title: Text(l10n.webdavUpload),
-                    enabled: store.configured && !_busy,
-                    onTap: _uploadNow,
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.cloud_outlined),
-                    title: Text(l10n.webdavRestore),
-                    enabled: store.configured && !_busy,
-                    onTap: _restoreFromCloud,
-                  ),
-                  SwitchListTile(
-                    secondary: const Icon(Icons.cached_outlined),
-                    title: Text(l10n.webdavAutoBackup),
-                    subtitle: Text(l10n.webdavAutoBackupSubtitle),
-                    value: store.autoBackup,
-                    onChanged: store.configured
-                        ? (value) async {
-                            await store.setAutoBackup(value);
-                            if (mounted) setState(() {});
-                          }
-                        : null,
-                  ),
-                  if (store.autoBackup)
-                    ListTile(
-                      leading: const Icon(Icons.timer_outlined),
-                      title: Text(l10n.webdavInterval),
-                      subtitle: Text(
-                        store.interval == 'weekly'
-                            ? l10n.webdavWeekly
-                            : l10n.webdavDaily,
-                      ),
-                      onTap: _pickInterval,
-                    ),
-                ],
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(4, 12, 4, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      l10n.lastBackupAt(
-                        store.lastBackupAt == 0
-                            ? l10n.neverBackedUp
-                            : formatDateShort(store.lastBackupAt),
-                      ),
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    if (store.lastBackupError.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Text(
-                          l10n.backupFailed(store.lastBackupError),
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: scheme.error),
-                        ),
-                      ),
-                  ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        M3eSectionHeader(l10n.localBackup),
+        SegmentedList(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.upload_file_outlined),
+              title: Text(l10n.backupNow),
+              subtitle: Text(l10n.backupNowSubtitle),
+              onTap: _backupToFile,
+            ),
+            ListTile(
+              leading: const Icon(Icons.settings_backup_restore),
+              title: Text(l10n.restoreFromFile),
+              subtitle: Text(l10n.restoreFromFileSubtitle),
+              onTap: _restoreFromFile,
+            ),
+          ],
+        ),
+        M3eSectionHeader(l10n.webdavSection),
+        SegmentedList(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.dns_outlined),
+              title: Text(l10n.webdavAccount),
+              subtitle: Text(store.url.isEmpty ? l10n.webdavNotSet : store.url),
+              onTap: _editServer,
+            ),
+            ListTile(
+              leading: const Icon(Icons.link_outlined),
+              title: Text(l10n.webdavTest),
+              enabled: store.configured,
+              onTap: _testConnection,
+            ),
+            // WebDAV 的备份内容会保存下来，只影响云端上传
+            ListTile(
+              leading: const Icon(Icons.checklist),
+              title: Text(l10n.backupContent),
+              subtitle: Text(_sectionsLabel(store.backupSections)),
+              onTap: _editBackupSections,
+            ),
+            ListTile(
+              leading: const Icon(Icons.cloud_upload_outlined),
+              title: Text(l10n.webdavUpload),
+              enabled: store.configured && !_busy,
+              onTap: _uploadNow,
+            ),
+            ListTile(
+              leading: const Icon(Icons.cloud_outlined),
+              title: Text(l10n.webdavRestore),
+              enabled: store.configured && !_busy,
+              onTap: _restoreFromCloud,
+            ),
+            SwitchListTile(
+              secondary: const Icon(Icons.cached_outlined),
+              title: Text(l10n.webdavAutoBackup),
+              subtitle: Text(l10n.webdavAutoBackupSubtitle),
+              value: store.autoBackup,
+              onChanged: store.configured
+                  ? (value) async {
+                      await store.setAutoBackup(value);
+                      if (mounted) setState(() {});
+                    }
+                  : null,
+            ),
+            if (store.autoBackup)
+              ListTile(
+                leading: const Icon(Icons.timer_outlined),
+                title: Text(l10n.webdavInterval),
+                subtitle: Text(
+                  store.interval == 'weekly'
+                      ? l10n.webdavWeekly
+                      : l10n.webdavDaily,
                 ),
+                onTap: _pickInterval,
               ),
+          ],
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 12, 4, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                l10n.lastBackupAt(
+                  store.lastBackupAt == 0
+                      ? l10n.neverBackedUp
+                      : formatDateShort(store.lastBackupAt),
+                ),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              if (store.lastBackupError.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    l10n.backupFailed(store.lastBackupError),
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: scheme.error),
+                  ),
+                ),
             ],
           ),
         ),

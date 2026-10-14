@@ -72,6 +72,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get accountTitle => 'Account';
+
+  @override
   String get openShareLink => 'Open share link';
 
   @override
@@ -727,6 +730,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noMatch => 'No matching settings';
 
   @override
+  String get searchOtherSettings => 'Other settings';
+
+  @override
   String get cleared => 'Cleared';
 
   @override
@@ -805,6 +811,33 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get categoryData => 'Data';
+
+  @override
+  String get categoryAppearanceLayout => 'Appearance & layout';
+
+  @override
+  String get categoryBehaviorPermissions => 'Behavior & permissions';
+
+  @override
+  String get categoryNotificationsReminders => 'Notifications & reminders';
+
+  @override
+  String get categoryTransferConnection => 'Transfers & connection';
+
+  @override
+  String get categoryPrivacyData => 'Privacy & data';
+
+  @override
+  String get sectionLayout => 'Layout';
+
+  @override
+  String get sectionReminder => 'Reminders';
+
+  @override
+  String get sectionDownload => 'Downloads';
+
+  @override
+  String get sectionUpload => 'Uploads';
 
   @override
   String get exitSelection => 'Exit selection';

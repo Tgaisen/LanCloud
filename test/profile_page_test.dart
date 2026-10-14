@@ -125,6 +125,170 @@ void main() {
     expect(pageScroll().pixels, offset);
   });
 
+  testWidgets('大屏「我的」：两栏列表-详情，切换类别换详情', (tester) async {
+    tester.view.physicalSize = const Size(1200, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final app = AppController();
+    addTearDown(app.dispose);
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AppController>.value(
+        value: app,
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const ProfilePage(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // 左窗格：账号 / 设置 5 大类 / 关于；默认选中账号，右窗格是账号面板
+    expect(find.text('设置'), findsOneWidget);
+    expect(find.text('外观与布局'), findsOneWidget);
+    expect(find.text('关于'), findsOneWidget);
+    expect(find.text('管理'), findsOneWidget);
+    expect(find.text('网页版'), findsOneWidget);
+    // 顶栏标题跟随右窗格；账号 / 关于没有搜索入口，设置类别才有
+    Finder appBarTitle(String text) =>
+        find.descendant(of: find.byType(AppBar), matching: find.text(text));
+    expect(appBarTitle('账号'), findsOneWidget);
+    expect(find.byTooltip('搜索设置项'), findsNothing);
+
+    // 选中「传输与连接」：右窗格换成该类别的设置页
+    await tester.tap(find.text('传输与连接'));
+    await tester.pumpAndSettle();
+    expect(find.text('下载目录'), findsOneWidget);
+    expect(find.text('管理'), findsNothing);
+    expect(appBarTitle('设置'), findsOneWidget);
+    expect(find.byTooltip('搜索设置项'), findsOneWidget);
+
+    // 选中「关于」：右窗格换成关于内容
+    await tester.tap(find.text('关于'));
+    await tester.pumpAndSettle();
+    expect(find.text('开源许可'), findsOneWidget);
+    expect(find.text('下载目录'), findsNothing);
+    expect(appBarTitle('关于'), findsOneWidget);
+    expect(find.byTooltip('搜索设置项'), findsNothing);
+  });
+
+  testWidgets('大屏二级设置页：高级覆盖项 / 备份与恢复进右窗格，可返回', (tester) async {
+    tester.view.physicalSize = const Size(1200, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final app = AppController();
+    addTearDown(app.dispose);
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AppController>.value(
+        value: app,
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const ProfilePage(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    Finder appBarTitle(String text) =>
+        find.descendant(of: find.byType(AppBar), matching: find.text(text));
+
+    // 传输与连接 → 高级覆盖项：在右窗格内打开（左窗格还在 == 不是整页 push）
+    await tester.tap(find.text('传输与连接'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ListTile, '高级覆盖项'));
+    await tester.pumpAndSettle();
+    expect(appBarTitle('高级覆盖项'), findsOneWidget);
+    expect(find.text('请仅在连接异常时修改'), findsOneWidget);
+    expect(find.text('网盘接口域名'), findsOneWidget);
+    expect(find.text('外观与布局'), findsOneWidget);
+
+    // 返回：回到类别层
+    await tester.tap(find.byTooltip('返回'));
+    await tester.pumpAndSettle();
+    expect(appBarTitle('设置'), findsOneWidget);
+    expect(find.text('网络请求间隔'), findsOneWidget);
+    expect(find.text('请仅在连接异常时修改'), findsNothing);
+
+    // 隐私与数据 → 备份与恢复：同样进右窗格
+    await tester.tap(find.text('隐私与数据'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ListTile, '备份与恢复'));
+    await tester.pumpAndSettle();
+    expect(appBarTitle('备份与恢复'), findsOneWidget);
+    expect(find.text('本地备份'), findsOneWidget);
+    expect(find.text('外观与布局'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('返回'));
+    await tester.pumpAndSettle();
+    expect(appBarTitle('设置'), findsOneWidget);
+    expect(find.text('本地备份'), findsNothing);
+
+    // 关于 → 开源许可：同样进右窗格
+    await tester.tap(find.text('关于'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ListTile, '开源许可'));
+    await tester.pumpAndSettle();
+    expect(appBarTitle('开源许可'), findsOneWidget);
+    expect(find.text('外观与布局'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('返回'));
+    await tester.pumpAndSettle();
+    expect(appBarTitle('关于'), findsOneWidget);
+  });
+
+  testWidgets('大屏右窗格切换动画：前进从右滑入、后退从左滑入', (tester) async {
+    tester.view.physicalSize = const Size(1200, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final app = AppController();
+    addTearDown(app.dispose);
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AppController>.value(
+        value: app,
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const ProfilePage(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    /// 某个文案当前所在窗格的滑动位移（相对窗格宽度的比例）。
+    double slideDxOf(String text) => tester
+        .widget<SlideTransition>(
+          find
+              .ancestor(
+                of: find.text(text),
+                matching: find.byType(SlideTransition),
+              )
+              .first,
+        )
+        .position
+        .value
+        .dx;
+
+    // 前进：账号 → 行为与权限（列表往下选），新内容从右侧滑入、
+    // 旧内容向左滑出
+    await tester.tap(find.text('行为与权限'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 90));
+    expect(slideDxOf('行为'), greaterThan(0)); // 新内容：从右滑入
+    expect(slideDxOf('管理'), lessThan(0)); // 旧内容：向左滑出
+    await tester.pumpAndSettle();
+
+    // 后退：行为与权限 → 外观与布局（列表往上选），新内容从左侧滑入
+    await tester.tap(find.text('外观与布局'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 90));
+    expect(slideDxOf('外观'), lessThan(0));
+    await tester.pumpAndSettle();
+  });
+
   testWidgets('「我的」账号卡片：普通用户不显示等级卡片，会员等级显示', (tester) async {
     Widget tree(AppController app) =>
         ChangeNotifierProvider<AppController>.value(

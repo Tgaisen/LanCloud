@@ -206,6 +206,12 @@ abstract class AppLocalizations {
   /// **'账号 {uid}'**
   String accountUid(String uid);
 
+  /// No description provided for @accountTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'账号'**
+  String get accountTitle;
+
   /// No description provided for @openShareLink.
   ///
   /// In zh, this message translates to:
@@ -1406,6 +1412,12 @@ abstract class AppLocalizations {
   /// **'没有匹配的设置项'**
   String get noMatch;
 
+  /// No description provided for @searchOtherSettings.
+  ///
+  /// In zh, this message translates to:
+  /// **'其他设置项'**
+  String get searchOtherSettings;
+
   /// No description provided for @cleared.
   ///
   /// In zh, this message translates to:
@@ -1537,6 +1549,60 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'数据'**
   String get categoryData;
+
+  /// No description provided for @categoryAppearanceLayout.
+  ///
+  /// In zh, this message translates to:
+  /// **'外观与布局'**
+  String get categoryAppearanceLayout;
+
+  /// No description provided for @categoryBehaviorPermissions.
+  ///
+  /// In zh, this message translates to:
+  /// **'行为与权限'**
+  String get categoryBehaviorPermissions;
+
+  /// No description provided for @categoryNotificationsReminders.
+  ///
+  /// In zh, this message translates to:
+  /// **'通知与提醒'**
+  String get categoryNotificationsReminders;
+
+  /// No description provided for @categoryTransferConnection.
+  ///
+  /// In zh, this message translates to:
+  /// **'传输与连接'**
+  String get categoryTransferConnection;
+
+  /// No description provided for @categoryPrivacyData.
+  ///
+  /// In zh, this message translates to:
+  /// **'隐私与数据'**
+  String get categoryPrivacyData;
+
+  /// No description provided for @sectionLayout.
+  ///
+  /// In zh, this message translates to:
+  /// **'布局'**
+  String get sectionLayout;
+
+  /// No description provided for @sectionReminder.
+  ///
+  /// In zh, this message translates to:
+  /// **'提醒'**
+  String get sectionReminder;
+
+  /// No description provided for @sectionDownload.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载'**
+  String get sectionDownload;
+
+  /// No description provided for @sectionUpload.
+  ///
+  /// In zh, this message translates to:
+  /// **'上传'**
+  String get sectionUpload;
 
   /// No description provided for @exitSelection.
   ///

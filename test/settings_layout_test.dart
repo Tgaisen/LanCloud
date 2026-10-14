@@ -34,7 +34,11 @@ void mockDynamicColorSupport({required bool supported}) {
   );
 }
 
-Future<AppController> pumpSettings(WidgetTester tester) async {
+/// 打开某个设置大类页（设置拆成 5 页后，各用例只关心自己那一页）。
+Future<AppController> pumpSettings(
+  WidgetTester tester,
+  SettingsCategory category,
+) async {
   SharedPreferences.setMockInitialValues({});
   final app = AppController();
   addTearDown(app.dispose);
@@ -59,7 +63,7 @@ Future<AppController> pumpSettings(WidgetTester tester) async {
           localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           locale: const Locale('zh'),
-          home: const SettingsPage(),
+          home: SettingsCategoryPage(category: category),
         ),
       ),
     ),
@@ -89,39 +93,57 @@ Future<void> scrollTo(WidgetTester tester, String text) async {
 }
 
 void main() {
-  // 权限组使用频率低：整组排在隐私组之后（分组顺序与条目声明顺序无关）
-  testWidgets('「权限」分组排在「隐私」分组之后', (tester) async {
-    await pumpSettings(tester);
-    final privacy = tester.getTopLeft(find.text('隐私'));
-    final permissions = tester.getTopLeft(find.text('权限'));
-    expect(privacy.dy, lessThan(permissions.dy));
+  // 分组小节顺序：每个大类页里的小标题按设计顺序排列
+  testWidgets('分组小节顺序：行为 → 无障碍 → 权限 / 备份 → 隐私 → 数据', (tester) async {
+    await pumpSettings(tester, SettingsCategory.behaviorPermissions);
+    expect(
+      tester.getTopLeft(find.text('行为')).dy,
+      lessThan(tester.getTopLeft(find.text('无障碍')).dy),
+    );
+    expect(
+      tester.getTopLeft(find.text('无障碍')).dy,
+      lessThan(tester.getTopLeft(find.text('权限')).dy),
+    );
+
+    await pumpSettings(tester, SettingsCategory.privacyData);
+    expect(
+      // 「备份与恢复」既是小标题也是条目名：取标题（树里在前）
+      tester.getTopLeft(find.text('备份与恢复').first).dy,
+      lessThan(tester.getTopLeft(find.text('隐私')).dy),
+    );
+    expect(
+      tester.getTopLeft(find.text('隐私')).dy,
+      lessThan(tester.getTopLeft(find.text('数据')).dy),
+    );
   });
 
   testWidgets('设置项图标：管理权限=shield，清除数据=ink eraser', (tester) async {
-    await pumpSettings(tester);
+    await pumpSettings(tester, SettingsCategory.behaviorPermissions);
     expect(iconOf(tester, '管理权限'), Icons.shield);
+
+    await pumpSettings(tester, SettingsCategory.privacyData);
     expect(iconOf(tester, '清除数据'), Icons.ink_eraser);
   });
 
-  // 设置页精简：高级覆盖项不再单占一组，入口行并进「连接」组最后一行
+  // 高级覆盖项不再单占一组：入口行并进「连接」组最后一行
   testWidgets('高级覆盖项并入「连接」组最后一行，点开进二级页', (tester) async {
-    await pumpSettings(tester);
+    await pumpSettings(tester, SettingsCategory.transferConnection);
 
     // 只剩入口行本身；原来的独立分组小标题（同名文案）没有了
     expect(find.text('高级覆盖项'), findsOneWidget);
 
-    // 和「最大下载数」在同一个列表组里，且排在它下面（连接组最后一项）
+    // 和「网络请求间隔」在同一个列表组里，且排在它下面（连接组最后一项）
     final group = find.ancestor(
       of: find.text('高级覆盖项'),
       matching: find.byType(SegmentedList),
     );
     expect(
-      find.descendant(of: group, matching: find.text('同时下载数量')),
+      find.descendant(of: group, matching: find.text('网络请求间隔')),
       findsOneWidget,
     );
     expect(
       tester.getTopLeft(find.text('高级覆盖项')).dy,
-      greaterThan(tester.getTopLeft(find.text('同时下载数量')).dy),
+      greaterThan(tester.getTopLeft(find.text('网络请求间隔')).dy),
     );
 
     await scrollTo(tester, '高级覆盖项');
@@ -134,7 +156,7 @@ void main() {
 
   // 纯黑只对深色界面有意义：深色模式、或「跟随系统」且系统是深色时才出现
   testWidgets('纯黑深色主题：仅深色界面时显示', (tester) async {
-    await pumpSettings(tester);
+    await pumpSettings(tester, SettingsCategory.appearanceLayout);
     // 默认跟随系统且系统浅色：隐藏
     expect(find.text('纯黑深色主题'), findsNothing);
 
@@ -167,7 +189,7 @@ void main() {
   testWidgets('主题色弹窗：第一项动态取色，选中/切色互相联动', (tester) async {
     mockDynamicColorSupport(supported: true);
     await DynamicColorSupport.isSupported(refresh: true);
-    final app = await pumpSettings(tester);
+    final app = await pumpSettings(tester, SettingsCategory.appearanceLayout);
 
     await scrollTo(tester, '主题色');
     await tester.tap(find.text('主题色'));
@@ -216,7 +238,7 @@ void main() {
   testWidgets('系统不支持动态取色：弹窗第一项置灰不可点', (tester) async {
     mockDynamicColorSupport(supported: false);
     await DynamicColorSupport.isSupported(refresh: true);
-    final app = await pumpSettings(tester);
+    final app = await pumpSettings(tester, SettingsCategory.appearanceLayout);
 
     await scrollTo(tester, '主题色');
     await tester.tap(find.text('主题色'));
@@ -231,7 +253,7 @@ void main() {
   });
 
   testWidgets('数据组底部是「清理缓存」，点击弹出确认弹窗（取消不清理）', (tester) async {
-    await pumpSettings(tester);
+    await pumpSettings(tester, SettingsCategory.privacyData);
 
     final entry = find.text('清理缓存');
     await tester.ensureVisible(entry);
@@ -264,7 +286,7 @@ void main() {
 
   // MD3 基准色等新增预设：主题色弹窗里能选到，并能写入设置
   testWidgets('主题色新增预设可选（经典紫 / 宝蓝 / 玫红 / 琥珀）', (tester) async {
-    final app = await pumpSettings(tester);
+    final app = await pumpSettings(tester, SettingsCategory.appearanceLayout);
 
     // 主题色在第一组（外观）里，初始就在屏幕内；不要再 ensureVisible，
     // 否则会被滚到顶部、缩到浮层顶栏下面点不到
@@ -288,17 +310,19 @@ void main() {
 
   // 下载目录弹窗：分类提示 + 使用说明只在 Android 显示
   testWidgets('下载目录弹窗：Android 显示提示文案', (tester) async {
-    await pumpSettings(tester);
+    await pumpSettings(tester, SettingsCategory.transferConnection);
     final entry = find.text('下载目录');
     await tester.ensureVisible(entry);
     await tester.pumpAndSettle();
     // ensureVisible 会把条目贴到浮层顶栏下面（点不到）：往回滚一点再点
-    await tester.drag(find.byType(SettingsPage), const Offset(0, 240));
+    await tester.drag(find.byType(SettingsCategoryPage), const Offset(0, 240));
     await tester.pumpAndSettle();
     await tester.tap(entry);
     await tester.pumpAndSettle();
 
-    final l10n = AppLocalizations.of(tester.element(find.byType(SettingsPage)));
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(SettingsCategoryPage)),
+    );
     expect(find.text(l10n.downloadDirHint), findsOneWidget);
     // 当前目录按分类显示：默认即私有目录（只看弹窗里的那行）
     expect(
@@ -320,17 +344,20 @@ void main() {
     // 「测试改了 foundation debug 变量」）
     debugDefaultTargetPlatformOverride = TargetPlatform.windows;
     try {
-      await pumpSettings(tester);
+      await pumpSettings(tester, SettingsCategory.transferConnection);
       final entry = find.text('下载目录');
       await tester.ensureVisible(entry);
       await tester.pumpAndSettle();
-      await tester.drag(find.byType(SettingsPage), const Offset(0, 240));
+      await tester.drag(
+        find.byType(SettingsCategoryPage),
+        const Offset(0, 240),
+      );
       await tester.pumpAndSettle();
       await tester.tap(entry);
       await tester.pumpAndSettle();
 
       final l10n = AppLocalizations.of(
-        tester.element(find.byType(SettingsPage)),
+        tester.element(find.byType(SettingsCategoryPage)),
       );
       expect(find.text(l10n.downloadDirHint), findsNothing);
       // 桌面端仍是「默认（路径）」的写法（只看弹窗里的那行）
@@ -351,12 +378,18 @@ void main() {
 
   // 什么都没勾就点「清除」：不装清空成功，明确提示未选择
   testWidgets('「清除数据」什么都不选点清除：提示未选择清除项', (tester) async {
-    await pumpSettings(tester);
+    await pumpSettings(tester, SettingsCategory.privacyData);
     final entry = find.text('清除数据');
     // 直接滚到底：清除数据是隐私组的最后一项
-    await tester.drag(find.byType(SettingsPage), const Offset(0, -1200));
+    await tester.drag(
+      find.byType(SettingsCategoryPage),
+      const Offset(0, -1200),
+    );
     await tester.pumpAndSettle();
-    await tester.drag(find.byType(SettingsPage), const Offset(0, -1200));
+    await tester.drag(
+      find.byType(SettingsCategoryPage),
+      const Offset(0, -1200),
+    );
     await tester.pumpAndSettle();
     await tester.tap(entry);
     await tester.pumpAndSettle();
@@ -372,7 +405,7 @@ void main() {
   });
 
   testWidgets('「清除数据」弹窗：两组分组小标题 + 复选列表，取消不清', (tester) async {
-    final app = await pumpSettings(tester);
+    final app = await pumpSettings(tester, SettingsCategory.privacyData);
     // 有登录账号才会显示「此账号」组
     app.accounts.accounts.add(Account(uid: '556911', cookie: 'c'));
     app.accounts.activeUid = '556911';
@@ -381,9 +414,15 @@ void main() {
 
     final entry = find.text('清除数据');
     // 直接滚到底：清除数据是隐私组的最后一项
-    await tester.drag(find.byType(SettingsPage), const Offset(0, -1200));
+    await tester.drag(
+      find.byType(SettingsCategoryPage),
+      const Offset(0, -1200),
+    );
     await tester.pumpAndSettle();
-    await tester.drag(find.byType(SettingsPage), const Offset(0, -1200));
+    await tester.drag(
+      find.byType(SettingsCategoryPage),
+      const Offset(0, -1200),
+    );
     await tester.pumpAndSettle();
     await tester.tap(entry);
     await tester.pumpAndSettle();
@@ -428,12 +467,18 @@ void main() {
     // 「测试改了 foundation debug 变量」）
     debugDefaultTargetPlatformOverride = TargetPlatform.windows;
     try {
-      await pumpSettings(tester);
+      await pumpSettings(tester, SettingsCategory.privacyData);
       final entry = find.text('清除数据');
       // 直接滚到底：清除数据是隐私组的最后一项
-      await tester.drag(find.byType(SettingsPage), const Offset(0, -1200));
+      await tester.drag(
+        find.byType(SettingsCategoryPage),
+        const Offset(0, -1200),
+      );
       await tester.pumpAndSettle();
-      await tester.drag(find.byType(SettingsPage), const Offset(0, -1200));
+      await tester.drag(
+        find.byType(SettingsCategoryPage),
+        const Offset(0, -1200),
+      );
       await tester.pumpAndSettle();
       await tester.tap(entry);
       await tester.pumpAndSettle();

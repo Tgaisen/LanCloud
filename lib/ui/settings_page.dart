@@ -21,6 +21,7 @@ import 'app_icons.dart';
 import 'backup_page.dart';
 import 'common.dart';
 import 'cookie_sheet.dart';
+import 'licenses_page.dart';
 import 'm3e.dart';
 
 /// 「清除数据」弹窗里可勾选的清除项。
@@ -29,12 +30,115 @@ enum _ClearDataOption { quickAccess, recents, otherAccounts, logs, registry }
 /// 「无障碍相关问题」反馈邮箱。
 const String _kA11yFeedbackEmail = 'lancloud_feedback@outlook.com';
 
-/// 独立设置页：分类卡片 + 高级覆盖项二级页 + 全量搜索。
-class SettingsPage extends StatefulWidget {
-  const SettingsPage({super.key});
+/// 设置大类：设置内容拆成 5 页。「我的」页里的「设置」类别列表、小屏
+/// 独立打开的二级页、宽窗口下「我的」右侧详情窗格都用同一批页面。
+enum SettingsCategory {
+  appearanceLayout,
+  behaviorPermissions,
+  notificationsReminders,
+  transferConnection,
+  privacyData;
+
+  /// 类别名（「我的」里类别行的标题 / 二级页标题）。
+  String label(AppLocalizations l10n) => switch (this) {
+    SettingsCategory.appearanceLayout => l10n.categoryAppearanceLayout,
+    SettingsCategory.behaviorPermissions => l10n.categoryBehaviorPermissions,
+    SettingsCategory.notificationsReminders =>
+      l10n.categoryNotificationsReminders,
+    SettingsCategory.transferConnection => l10n.categoryTransferConnection,
+    SettingsCategory.privacyData => l10n.categoryPrivacyData,
+  };
+
+  /// 「我的」里类别行的图标。
+  IconData get icon => switch (this) {
+    SettingsCategory.appearanceLayout => Icons.palette_outlined,
+    SettingsCategory.behaviorPermissions => Icons.tune,
+    SettingsCategory.notificationsReminders => Icons.notifications_outlined,
+    SettingsCategory.transferConnection => Icons.swap_vert,
+    SettingsCategory.privacyData => Icons.shield,
+  };
+}
+
+/// 大类页里的分组小标题（外观 / 布局 / 行为 / …）：
+/// 每个小节渲染成「小标题 + 列表组」。
+enum SettingsSection {
+  appearance(SettingsCategory.appearanceLayout),
+  layout(SettingsCategory.appearanceLayout),
+  behavior(SettingsCategory.behaviorPermissions),
+  accessibility(SettingsCategory.behaviorPermissions),
+  permissions(SettingsCategory.behaviorPermissions),
+  notification(SettingsCategory.notificationsReminders),
+  reminder(SettingsCategory.notificationsReminders),
+  download(SettingsCategory.transferConnection),
+  upload(SettingsCategory.transferConnection),
+  connection(SettingsCategory.transferConnection),
+  backup(SettingsCategory.privacyData),
+  privacy(SettingsCategory.privacyData),
+  data(SettingsCategory.privacyData);
+
+  const SettingsSection(this.category);
+
+  /// 本小节属于哪个大类页。
+  final SettingsCategory category;
+
+  /// 分组小标题文案。
+  String label(AppLocalizations l10n) => switch (this) {
+    SettingsSection.appearance => l10n.categoryAppearance,
+    SettingsSection.layout => l10n.sectionLayout,
+    SettingsSection.behavior => l10n.categoryBehavior,
+    SettingsSection.accessibility => l10n.categoryAccessibility,
+    SettingsSection.permissions => l10n.categoryPermissions,
+    SettingsSection.notification => l10n.notifications,
+    SettingsSection.reminder => l10n.sectionReminder,
+    SettingsSection.download => l10n.sectionDownload,
+    SettingsSection.upload => l10n.sectionUpload,
+    SettingsSection.connection => l10n.categoryConnection,
+    SettingsSection.backup => l10n.backupAndRestore,
+    SettingsSection.privacy => l10n.categoryPrivacy,
+    SettingsSection.data => l10n.categoryData,
+  };
+}
+
+/// 单个设置大类页：独立打开（小屏 push / 大屏单栏页）或嵌在「我的」右侧
+/// 详情窗格里。两种形态共用同一份条目与搜索逻辑，只是外壳不同。
+class SettingsCategoryPage extends StatefulWidget {
+  const SettingsCategoryPage({
+    super.key,
+    required this.category,
+    this.embedded = false,
+    this.searching = false,
+    this.query = '',
+    this.onSwitchCategory,
+    this.onOpenSubPage,
+    this.scrollController,
+  });
+
+  /// 本页展示哪个大类。
+  final SettingsCategory category;
+
+  /// 嵌在「我的」右侧详情窗格里：不画顶栏，页内也只有正文
+  /// （标题 / 搜索在「我的」页的顶栏上）。
+  final bool embedded;
+
+  /// 嵌入窗格时由外层顶栏持有的搜索状态：`true` 时正文换成搜索结果。
+  final bool searching;
+
+  /// 嵌入窗格时的搜索关键词。
+  final String query;
+
+  /// [embedded] 时：搜索命中其他类别、点击切换后通知外层更新选中项。
+  final ValueChanged<SettingsCategory>? onSwitchCategory;
+
+  /// [embedded] 时：点开设置二级页（高级覆盖项 / 备份与恢复）时
+  /// 通知外层把窗格内容换成二级页；不传时按独立页 push。
+  final ValueChanged<ProfileSubPage>? onOpenSubPage;
+
+  /// 滚动控制器；不传时页面自建。嵌入窗格时由外层持有，
+  /// 切换类别再切回来滚动位置不丢。
+  final ScrollController? scrollController;
 
   @override
-  State<SettingsPage> createState() => _SettingsPageState();
+  State<SettingsCategoryPage> createState() => _SettingsCategoryPageState();
 }
 
 class _Entry {
@@ -43,23 +147,31 @@ class _Entry {
     required this.title,
     required this.subtitle,
     required this.keywords,
-    required this.category,
+    required this.section,
     required this.build,
     this.visible,
+    this.inAdvancedPage = false,
   });
 
   final String id;
   final String title;
   final String subtitle;
   final List<String> keywords;
-  final String category;
+
+  /// 所属分组小节：决定它出现在哪个大类页的哪个小标题下。
+  final SettingsSection section;
+
   final Widget Function(BuildContext context, AppController app) build;
 
   /// 是否显示（默认显示）。跟随当前主题等运行时状态的条件项用它。
   final bool Function(BuildContext context, AppController app)? visible;
+
+  /// 只出现在「高级覆盖项」二级页：本页列表不渲染，仅参与搜索
+  /// （搜索结果里点击直达高级覆盖项页）。
+  final bool inAdvancedPage;
 }
 
-class _SettingsPageState extends State<SettingsPage>
+class _SettingsCategoryPageState extends State<SettingsCategoryPage>
     with WidgetsBindingObserver {
   bool _searching = false;
   bool? _notifGranted;
@@ -78,8 +190,18 @@ class _SettingsPageState extends State<SettingsPage>
   String? _publicDirRoot;
   final TextEditingController _search = TextEditingController();
 
-  /// 设置页列表；传给 TopBarOverlayScaffold 后点顶栏空白即可回到顶部。
-  final ScrollController _list = ScrollController();
+  /// 页面自建的滚动控制器；外层传入 [SettingsCategoryPage.scrollController]
+  /// 时不用它，销毁时也不释放外层的。
+  ScrollController? _ownScroll;
+
+  /// 设置页列表；传给 TopBarOverlayScaffold / FastScrollbar 后
+  /// 点顶栏空白即可回到顶部。
+  ScrollController get _list =>
+      widget.scrollController ?? (_ownScroll ??= ScrollController());
+
+  /// 搜索态与关键词：独立页用自己的状态，嵌入窗格时用外层顶栏传进来的。
+  bool get _searchActive => widget.embedded ? widget.searching : _searching;
+  String get _searchText => widget.embedded ? widget.query : _search.text;
 
   @override
   void initState() {
@@ -229,8 +351,21 @@ class _SettingsPageState extends State<SettingsPage>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _search.dispose();
-    _list.dispose();
+    _ownScroll?.dispose();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant SettingsCategoryPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 独立页切到别的类别：收掉上一页的搜索状态
+    //（嵌入窗格时搜索状态在外层「我的」页，不在这里处理）
+    if (!widget.embedded &&
+        oldWidget.category != widget.category &&
+        _searching) {
+      _searching = false;
+      _search.clear();
+    }
   }
 
   /// 从系统设置页返回时刷新权限状态。
@@ -275,7 +410,7 @@ class _SettingsPageState extends State<SettingsPage>
         title: l10n.language,
         subtitle: languageName(),
         keywords: const ['language', 'locale', 'zh', 'en', '语言', '中文', '英语'],
-        category: 'appearance',
+        section: SettingsSection.appearance,
         build: (context, app) => ListTile(
           leading: const Icon(Icons.translate),
           title: Text(context.l10n.language),
@@ -288,7 +423,7 @@ class _SettingsPageState extends State<SettingsPage>
         title: l10n.themeMode,
         subtitle: themeModeName(),
         keywords: l10n.themeModeKeywords.split(' '),
-        category: 'appearance',
+        section: SettingsSection.appearance,
         build: (context, app) => ListTile(
           leading: const Icon(Icons.dark_mode_outlined),
           title: Text(context.l10n.themeMode),
@@ -321,7 +456,7 @@ class _SettingsPageState extends State<SettingsPage>
         title: l10n.oled,
         subtitle: '',
         keywords: l10n.oledKeywords.split(' '),
-        category: 'appearance',
+        section: SettingsSection.appearance,
         // 纯黑只对深色界面有意义：深色模式、或「跟随系统」且系统是深色时
         // 才出现（等价于「当前实际是深色界面」）。
         visible: (context, app) =>
@@ -345,7 +480,7 @@ class _SettingsPageState extends State<SettingsPage>
           ...l10n.themeColorKeywords.split(' '),
           ...l10n.dynamicColorKeywords.split(' '),
         ],
-        category: 'appearance',
+        section: SettingsSection.appearance,
         build: (context, app) {
           final dynamicColor = app.settings.dynamicColor;
           return ListTile(
@@ -376,7 +511,7 @@ class _SettingsPageState extends State<SettingsPage>
         title: l10n.hideTopBar,
         subtitle: '',
         keywords: l10n.hideTopBarKeywords.split(' '),
-        category: 'appearance',
+        section: SettingsSection.layout,
         build: (context, app) => SwitchListTile(
           secondary: const Icon(Icons.vertical_align_top),
           title: Text(context.l10n.hideTopBar),
@@ -389,7 +524,7 @@ class _SettingsPageState extends State<SettingsPage>
         title: l10n.hideBottomBar,
         subtitle: '',
         keywords: l10n.hideBottomBarKeywords.split(' '),
-        category: 'appearance',
+        section: SettingsSection.layout,
         build: (context, app) => SwitchListTile(
           secondary: const Icon(Icons.vertical_align_bottom),
           title: Text(context.l10n.hideBottomBar),
@@ -402,7 +537,7 @@ class _SettingsPageState extends State<SettingsPage>
         title: l10n.floatingNav,
         subtitle: '',
         keywords: l10n.floatingNavKeywords.split(' '),
-        category: 'appearance',
+        section: SettingsSection.appearance,
         build: (context, app) => SwitchListTile(
           secondary: const Icon(Icons.smart_button),
           title: Text(context.l10n.floatingNav),
@@ -415,7 +550,7 @@ class _SettingsPageState extends State<SettingsPage>
         title: l10n.navBarItems,
         subtitle: _navItemsLabel(context, app),
         keywords: l10n.navBarItemsKeywords.split(' '),
-        category: 'appearance',
+        section: SettingsSection.layout,
         build: (context, app) => ListTile(
           leading: const Icon(Icons.bottom_navigation),
           title: Text(context.l10n.navBarItems),
@@ -428,7 +563,7 @@ class _SettingsPageState extends State<SettingsPage>
         title: l10n.swipeTabs,
         subtitle: l10n.swipeTabsSubtitle,
         keywords: l10n.swipeTabsKeywords.split(' '),
-        category: 'appearance',
+        section: SettingsSection.layout,
         build: (context, app) => SwitchListTile(
           secondary: const Icon(Icons.swipe),
           title: Text(context.l10n.swipeTabs),
@@ -442,7 +577,7 @@ class _SettingsPageState extends State<SettingsPage>
         title: l10n.transitionAnimations,
         subtitle: l10n.transitionAnimationsSubtitle,
         keywords: l10n.transitionAnimationsKeywords.split(' '),
-        category: 'appearance',
+        section: SettingsSection.appearance,
         build: (context, app) => SwitchListTile(
           // 与「无障碍-全局动画」区分：这里用 Auto Awesome Motion
           secondary: const Icon(Icons.auto_awesome_motion),
@@ -457,7 +592,7 @@ class _SettingsPageState extends State<SettingsPage>
         title: l10n.downloadDir,
         subtitle: _downloadDirLabel(l10n, app),
         keywords: l10n.downloadDirKeywords.split(' '),
-        category: 'behavior',
+        section: SettingsSection.download,
         build: (context, app) => ListTile(
           leading: const Icon(Icons.folder_outlined),
           title: Text(context.l10n.downloadDir),
@@ -477,7 +612,7 @@ class _SettingsPageState extends State<SettingsPage>
             ? l10n.tabDrive
             : l10n.tabHome,
         keywords: l10n.launchPageKeywords.split(' '),
-        category: 'behavior',
+        section: SettingsSection.behavior,
         build: (context, app) => ListTile(
           leading: const Icon(Icons.home_outlined),
           title: Text(context.l10n.launchPage),
@@ -496,7 +631,7 @@ class _SettingsPageState extends State<SettingsPage>
             ? l10n.openInDriveTab
             : l10n.openInNewPage,
         keywords: l10n.homeFolderOpenKeywords.split(' '),
-        category: 'behavior',
+        section: SettingsSection.behavior,
         build: (context, app) => ListTile(
           leading: const Icon(Icons.open_in_new),
           title: Text(context.l10n.homeFolderOpen),
@@ -513,7 +648,7 @@ class _SettingsPageState extends State<SettingsPage>
         title: l10n.cacheFolders,
         subtitle: l10n.cacheFoldersSubtitle,
         keywords: l10n.cacheFoldersKeywords.split(' '),
-        category: 'behavior',
+        section: SettingsSection.behavior,
         build: (context, app) => SwitchListTile(
           secondary: const Icon(Icons.cached_outlined),
           title: Text(context.l10n.cacheFolders),
@@ -527,7 +662,7 @@ class _SettingsPageState extends State<SettingsPage>
         title: l10n.loadAllPages,
         subtitle: l10n.loadAllPagesSubtitle,
         keywords: l10n.loadAllPagesKeywords.split(' '),
-        category: 'behavior',
+        section: SettingsSection.behavior,
         build: (context, app) => SwitchListTile(
           secondary: const Icon(Icons.download_for_offline_outlined),
           title: Text(context.l10n.loadAllPages),
@@ -541,7 +676,7 @@ class _SettingsPageState extends State<SettingsPage>
         title: l10n.notifProgress,
         subtitle: l10n.notifProgressSubtitle,
         keywords: l10n.notifProgressKeywords.split(' '),
-        category: 'notifications',
+        section: SettingsSection.notification,
         build: (context, app) => SwitchListTile(
           secondary: const Icon(Icons.speed),
           title: Text(context.l10n.notifProgress),
@@ -555,7 +690,7 @@ class _SettingsPageState extends State<SettingsPage>
         title: l10n.notifDone,
         subtitle: l10n.notifDoneSubtitle,
         keywords: l10n.notifDoneKeywords.split(' '),
-        category: 'notifications',
+        section: SettingsSection.notification,
         build: (context, app) => SwitchListTile(
           secondary: const Icon(Icons.task_alt),
           title: Text(context.l10n.notifDone),
@@ -569,7 +704,7 @@ class _SettingsPageState extends State<SettingsPage>
         title: l10n.clipboardLinkPrompt,
         subtitle: l10n.clipboardLinkPromptSubtitle,
         keywords: l10n.clipboardLinkPromptKeywords.split(' '),
-        category: 'notifications',
+        section: SettingsSection.reminder,
         build: (context, app) => SwitchListTile(
           secondary: const Icon(Icons.content_paste_go),
           title: Text(context.l10n.clipboardLinkPrompt),
@@ -590,7 +725,7 @@ class _SettingsPageState extends State<SettingsPage>
           ...l10n.permissionBatteryKeywords.split(' '),
           ...l10n.notifPermissionKeywords.split(' '),
         ],
-        category: 'permissions',
+        section: SettingsSection.permissions,
         build: (context, app) => ListTile(
           leading: const Icon(Icons.shield),
           title: Text(context.l10n.managePermissions),
@@ -602,7 +737,7 @@ class _SettingsPageState extends State<SettingsPage>
         title: l10n.manageDefaultLinks,
         subtitle: l10n.manageDefaultLinksSubtitle,
         keywords: l10n.manageDefaultLinksKeywords.split(' '),
-        category: 'permissions',
+        section: SettingsSection.permissions,
         build: (context, app) => ListTile(
           leading: const Icon(Icons.link_outlined),
           title: Text(context.l10n.manageDefaultLinks),
@@ -615,7 +750,7 @@ class _SettingsPageState extends State<SettingsPage>
         title: l10n.openSystemSettings,
         subtitle: '',
         keywords: l10n.openSystemSettingsKeywords.split(' '),
-        category: 'permissions',
+        section: SettingsSection.permissions,
         build: (context, app) => ListTile(
           leading: const Icon(Icons.page_info),
           title: Text(context.l10n.openSystemSettings),
@@ -627,7 +762,7 @@ class _SettingsPageState extends State<SettingsPage>
         title: l10n.requestInterval,
         subtitle: l10n.requestIntervalSubtitle(app.settings.requestInterval),
         keywords: l10n.requestIntervalKeywords.split(' '),
-        category: 'connection',
+        section: SettingsSection.connection,
         build: (context, app) => _SliderTile<int>(
           icon: Icons.timer_outlined,
           title: context.l10n.requestInterval,
@@ -643,7 +778,7 @@ class _SettingsPageState extends State<SettingsPage>
         title: l10n.maxUploads,
         subtitle: '${app.settings.maxUploads}',
         keywords: l10n.uploadKeywords.split(' '),
-        category: 'connection',
+        section: SettingsSection.upload,
         build: (context, app) => _SliderTile<int>(
           icon: Icons.upload_outlined,
           title: context.l10n.maxUploads,
@@ -658,7 +793,7 @@ class _SettingsPageState extends State<SettingsPage>
         title: l10n.maxDownloads,
         subtitle: '${app.settings.maxDownloads}',
         keywords: l10n.downloadKeywords.split(' '),
-        category: 'connection',
+        section: SettingsSection.download,
         build: (context, app) => _SliderTile<int>(
           icon: Icons.download_outlined,
           title: context.l10n.maxDownloads,
@@ -682,13 +817,12 @@ class _SettingsPageState extends State<SettingsPage>
           'user agent',
           '覆盖',
         ],
-        category: 'connection',
+        section: SettingsSection.connection,
         build: (context, app) => ListTile(
           leading: const Icon(Icons.tune),
           title: Text(context.l10n.advanced),
           trailing: const Icon(Icons.chevron_right),
-          onTap: () => Navigator.of(context)
-              .push(MaterialPageRoute(builder: (_) => const _AdvancedPage())),
+          onTap: () => _openSubPage(context, ProfileSubPage.advanced),
         ),
       ),
       _Entry(
@@ -698,7 +832,8 @@ class _SettingsPageState extends State<SettingsPage>
             ? 'up.woozooo.com'
             : 'pc.woozooo.com',
         keywords: l10n.apiHostKeywords.split(' '),
-        category: 'advanced',
+        section: SettingsSection.connection,
+        inAdvancedPage: true,
         build: (context, app) => ListTile(
           leading: const Icon(Icons.dns_outlined),
           title: Text(context.l10n.apiHost),
@@ -713,7 +848,8 @@ class _SettingsPageState extends State<SettingsPage>
         title: l10n.uploadPath,
         subtitle: app.settings.uploadPath,
         keywords: l10n.uploadPathKeywords.split(' '),
-        category: 'advanced',
+        section: SettingsSection.connection,
+        inAdvancedPage: true,
         build: (context, app) => ListTile(
           leading: const Icon(Icons.cloud_upload_outlined),
           title: Text(context.l10n.uploadPath),
@@ -732,7 +868,8 @@ class _SettingsPageState extends State<SettingsPage>
             ? l10n.defaultUserAgent
             : app.settings.userAgent,
         keywords: l10n.userAgentKeywords.split(' '),
-        category: 'advanced',
+        section: SettingsSection.connection,
+        inAdvancedPage: true,
         build: (context, app) => ListTile(
           leading: const Icon(Icons.badge_outlined),
           title: Text(context.l10n.userAgent),
@@ -751,15 +888,13 @@ class _SettingsPageState extends State<SettingsPage>
         title: l10n.backupAndRestore,
         subtitle: l10n.backupAndRestoreSubtitle,
         keywords: l10n.backupKeywords.split(' '),
-        category: 'data',
+        section: SettingsSection.backup,
         build: (context, app) => ListTile(
           leading: const Icon(Icons.sync),
           title: Text(context.l10n.backupAndRestore),
           subtitle: Text(context.l10n.backupAndRestoreSubtitle),
           trailing: const Icon(Icons.chevron_right),
-          onTap: () =>
-              Navigator.of(context)
-                  .push(MaterialPageRoute(builder: (_) => const BackupPage())),
+          onTap: () => _openSubPage(context, ProfileSubPage.backup),
         ),
       ),
       _Entry(
@@ -769,7 +904,7 @@ class _SettingsPageState extends State<SettingsPage>
             ? l10n.recentLimitOff
             : l10n.recentLimitValue(app.settings.recentLimit),
         keywords: l10n.recentLimitKeywords.split(' '),
-        category: 'data',
+        section: SettingsSection.data,
         build: (context, app) => _SliderTile<int>(
           icon: Icons.history,
           title: context.l10n.recentLimit,
@@ -787,7 +922,7 @@ class _SettingsPageState extends State<SettingsPage>
         title: l10n.clearCache,
         subtitle: l10n.clearCacheSubtitle,
         keywords: l10n.clearCacheKeywords.split(' '),
-        category: 'data',
+        section: SettingsSection.data,
         build: (context, app) => ListTile(
           leading: const Icon(Icons.cleaning_services_outlined),
           title: Text(context.l10n.clearCache),
@@ -799,7 +934,7 @@ class _SettingsPageState extends State<SettingsPage>
         title: l10n.showCookie,
         subtitle: l10n.showCookieSubtitle,
         keywords: l10n.showCookieKeywords.split(' '),
-        category: 'privacy',
+        section: SettingsSection.privacy,
         build: (context, app) {
           final account = app.activeAccount;
           return ListTile(
@@ -818,7 +953,7 @@ class _SettingsPageState extends State<SettingsPage>
         title: l10n.exportLogs,
         subtitle: l10n.exportLogsSubtitle,
         keywords: l10n.exportLogsKeywords.split(' '),
-        category: 'privacy',
+        section: SettingsSection.privacy,
         build: (context, app) => ListTile(
           leading: const Icon(Icons.article_outlined),
           title: Text(context.l10n.exportLogs),
@@ -831,7 +966,7 @@ class _SettingsPageState extends State<SettingsPage>
         title: l10n.clearData,
         subtitle: '',
         keywords: l10n.clearDataKeywords.split(' '),
-        category: 'privacy',
+        section: SettingsSection.privacy,
         build: (context, app) => ListTile(
           leading: const Icon(Icons.ink_eraser),
           title: Text(context.l10n.clearData),
@@ -843,7 +978,7 @@ class _SettingsPageState extends State<SettingsPage>
         title: l10n.globalAnimations,
         subtitle: motionModeName(),
         keywords: l10n.motionModeKeywords.split(' '),
-        category: 'accessibility',
+        section: SettingsSection.accessibility,
         build: (context, app) => ListTile(
           leading: const Icon(Icons.animation),
           title: Text(context.l10n.globalAnimations),
@@ -856,7 +991,7 @@ class _SettingsPageState extends State<SettingsPage>
         title: l10n.a11yFeedback,
         subtitle: '',
         keywords: l10n.a11yFeedbackKeywords.split(' '),
-        category: 'accessibility',
+        section: SettingsSection.accessibility,
         build: (context, app) => ListTile(
           leading: const Icon(Icons.mail_outlined),
           title: Text(context.l10n.a11yFeedback),
@@ -899,6 +1034,25 @@ class _SettingsPageState extends State<SettingsPage>
     });
   }
 
+  /// 打开设置二级页：嵌在「我的」右窗格时交给外层换窗格内容，
+  /// 独立页保持 push。
+  void _openSubPage(BuildContext context, ProfileSubPage sub) {
+    final open = widget.onOpenSubPage;
+    if (widget.embedded && open != null) {
+      open(sub);
+      return;
+    }
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => switch (sub) {
+          ProfileSubPage.advanced => const _AdvancedPage(),
+          ProfileSubPage.backup => const BackupPage(),
+          ProfileSubPage.licenses => const LicensesPage(),
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final app = context.watch<AppController>();
@@ -906,17 +1060,25 @@ class _SettingsPageState extends State<SettingsPage>
     final entries = _entries(app)
         .where((e) => e.visible?.call(context, app) ?? true)
         .toList();
-    final query = _search.text.trim().toLowerCase();
+    final query = _searchText.trim().toLowerCase();
 
     final matching = entries
         .where(
           (e) =>
               e.title.toLowerCase().contains(query) ||
               e.subtitle.toLowerCase().contains(query) ||
-              _categoryName(e.category).toLowerCase().contains(query) ||
+              e.section.label(l10n).toLowerCase().contains(query) ||
+              e.section.category.label(l10n).toLowerCase().contains(query) ||
               e.keywords.any((k) => k.toLowerCase().contains(query)),
         )
         .toList();
+
+    // 本页内容：正常态 = 各分组小节；搜索态 = 本页命中 + 「其他设置项」
+    final children = _searchActive
+        ? _buildSearchResults(context, app, matching)
+        : _buildSections(context, app, entries);
+
+    if (widget.embedded) return _buildEmbedded(children);
 
     return PopScope(
       // 搜索时返回先退出搜索（与收藏页一致），再退出页面
@@ -940,7 +1102,7 @@ class _SettingsPageState extends State<SettingsPage>
           // 标题 ↔ 搜索框带显示 / 隐藏动画，不要直接闪出来
           title: AppBarSearchSwitcher(
             searching: _searching,
-            title: Text(l10n.settings),
+            title: Text(widget.category.label(l10n)),
             searchField: TextField(
               controller: _search,
               autofocus: true,
@@ -968,73 +1130,63 @@ class _SettingsPageState extends State<SettingsPage>
             // 滚动条滑块长度抖动（见 SliverColumn 注释）
             // 整块布局：分组高度差异大，懒布局会让 maxScrollExtent 一直修正、
             // 滚动条滑块长度抖动（见 SliverColumn 注释）
-            sliver: SliverColumn(
-              children: _searching
-                  ? _buildSearchResults(context, app, matching)
-                  : _buildCategories(context, app, entries),
-            ),
+            sliver: SliverColumn(children: children),
           ),
         ],
       ),
     );
   }
 
-  List<Widget> _buildCategories(
+  /// 嵌在「我的」右侧详情窗格里的形态：只有正文（标题 / 搜索在外层顶栏），
+  /// 卡片外形（圆角、底色）由「我的」页统一提供。
+  Widget _buildEmbedded(List<Widget> children) {
+    // 顶栏是「我的」页的浮层：正文顶上留出等高占位（与其它页一致），
+    // 顶栏收起时随内容滚走；滑块也不要从顶栏下面露头。
+    final headerHeight = MediaQuery.paddingOf(context).top + kToolbarHeight;
+    return FastScrollbar(
+      controller: _list,
+      padding: EdgeInsets.only(
+        top: headerHeight,
+        bottom: shellBottomBarInset(context),
+      ),
+      child: CustomScrollView(
+        controller: _list,
+        slivers: [
+          SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            // 整块布局：避免懒布局估算导致滚动条滑块抖动（见 SliverColumn）
+            sliver: SliverColumn(children: children),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 本页的分组小节：每个小节 = 小标题 + 一组设置项列表。
+  List<Widget> _buildSections(
     BuildContext context,
     AppController app,
     List<_Entry> entries,
   ) {
-    final groups = <String, List<_Entry>>{};
-    for (final e in entries) {
-      groups.putIfAbsent(e.category, () => []).add(e);
-    }
-    // 分组显示顺序：与条目声明顺序无关。「权限」使用频率低，排在最后。
-    const order = [
-      'appearance',
-      'behavior',
-      'notifications',
-      'connection',
-      'data',
-      'privacy',
-      'accessibility',
-      'permissions',
-    ];
-    final names = [
-      ...order.where(groups.containsKey),
-      ...groups.keys.where((name) => !order.contains(name)),
-    ];
     final widgets = <Widget>[];
-    for (final name in names) {
-      // 高级覆盖项不再单占一组：入口行已移进「连接」组，这里跳过 'advanced'
-      // 归类（它下面的接口域名 / 上传路径 / UA 只出现在搜索与二级页里）。
-      if (name == 'advanced') {
-        continue;
-      }
+    for (final section in SettingsSection.values) {
+      if (section.category != widget.category) continue;
+      // 高级覆盖项下的条目（接口域名 / 上传路径 / UA）只在二级页与搜索里出现
+      final list = entries
+          .where((e) => e.section == section && !e.inAdvancedPage)
+          .toList();
+      if (list.isEmpty) continue;
       widgets
-        ..add(M3eSectionHeader(_categoryName(name)))
+        ..add(M3eSectionHeader(section.label(context.l10n)))
         ..add(
           SegmentedList(
-            children: [
-              for (final entry in groups[name]!) entry.build(context, app),
-            ],
+            children: [for (final entry in list) entry.build(context, app)],
           ),
         );
     }
     return widgets;
   }
-
-  String _categoryName(String id) => switch (id) {
-    'appearance' => context.l10n.categoryAppearance,
-    'behavior' => context.l10n.categoryBehavior,
-    'notifications' => context.l10n.notifications,
-    'permissions' => context.l10n.categoryPermissions,
-    'privacy' => context.l10n.categoryPrivacy,
-    'accessibility' => context.l10n.categoryAccessibility,
-    'connection' => context.l10n.categoryConnection,
-    'advanced' => context.l10n.categoryAdvanced,
-    'data' => context.l10n.categoryData,
-    _ => id,
-  };
 
   String _installStatusText() => switch (_permissions?.install) {
     PermissionState.granted => context.l10n.permissionInstallGranted,
@@ -1399,28 +1551,106 @@ class _SettingsPageState extends State<SettingsPage>
     );
   }
 
+  /// 搜索结果：优先本页命中的条目（按分组小节分块），其余类别归入
+  /// 「其他设置项」，点击切换到对应设置页。
   List<Widget> _buildSearchResults(
     BuildContext context,
     AppController app,
     List<_Entry> matching,
   ) {
-    if (_search.text.trim().isEmpty) {
+    final l10n = context.l10n;
+    if (_searchText.trim().isEmpty) {
       return [
         const SizedBox(height: 48),
-        Center(child: Text(context.l10n.searchPlaceholder)),
+        Center(child: Text(l10n.searchPlaceholder)),
       ];
     }
-    if (matching.isEmpty) {
-      return [
-        const SizedBox(height: 48),
-        Center(child: Text(context.l10n.noMatch)),
-      ];
+    final mine = matching
+        .where(
+          (e) => !e.inAdvancedPage && e.section.category == widget.category,
+        )
+        .toList();
+    final others = matching
+        .where((e) => e.inAdvancedPage || e.section.category != widget.category)
+        .toList();
+    if (mine.isEmpty && others.isEmpty) {
+      return [const SizedBox(height: 48), Center(child: Text(l10n.noMatch))];
     }
-    return [
-      SegmentedList(
-        children: [for (final entry in matching) entry.build(context, app)],
+    final widgets = <Widget>[];
+    for (final section in SettingsSection.values) {
+      if (section.category != widget.category) continue;
+      final list = mine.where((e) => e.section == section).toList();
+      if (list.isEmpty) continue;
+      widgets
+        ..add(M3eSectionHeader(section.label(l10n)))
+        ..add(
+          SegmentedList(
+            children: [for (final entry in list) entry.build(context, app)],
+          ),
+        );
+    }
+    if (others.isNotEmpty) {
+      widgets
+        ..add(M3eSectionHeader(l10n.searchOtherSettings))
+        ..add(
+          SegmentedList(
+            children: [
+              for (final entry in others) _otherResultTile(context, entry),
+            ],
+          ),
+        );
+    }
+    return widgets;
+  }
+
+  /// 「其他设置项」里的行：纯导航行（当前值 · 目标页），点击切到对应设置页。
+  Widget _otherResultTile(BuildContext context, _Entry entry) {
+    final l10n = context.l10n;
+    final target = entry.inAdvancedPage
+        ? l10n.categoryAdvanced
+        : entry.section.category.label(l10n);
+    final subtitle = entry.subtitle.isEmpty
+        ? target
+        : '${entry.subtitle} · $target';
+    return ListTile(
+      title: Text(entry.title),
+      subtitle: Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => _openSearchTarget(entry),
+    );
+  }
+
+  /// 搜索结果里点「其他设置项」：
+  /// - 独立页：pushReplacement 换成目标页（小屏上来回点不会堆出一串设置页）；
+  /// - 详情窗格：通知外层切换选中的类别；
+  /// - 「高级覆盖项」下的条目：打开高级覆盖项页（窗格内直接盖一层）。
+  void _openSearchTarget(_Entry entry) {
+    if (entry.inAdvancedPage) {
+      // 窗格内直接换成高级覆盖项页；独立页 pushReplacement 换成它
+      if (widget.embedded && widget.onOpenSubPage != null) {
+        widget.onOpenSubPage!(ProfileSubPage.advanced);
+        return;
+      }
+      final route = MaterialPageRoute<void>(
+        builder: (_) => const _AdvancedPage(),
+      );
+      if (widget.embedded) {
+        Navigator.of(context).push(route);
+      } else {
+        Navigator.of(context).pushReplacement(route);
+      }
+      return;
+    }
+    final target = entry.section.category;
+    if (widget.embedded) {
+      widget.onSwitchCategory?.call(target);
+      return;
+    }
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(
+        builder: (_) => SettingsCategoryPage(category: target),
       ),
-    ];
+    );
   }
 
   Future<void> _changeDownloadDir(BuildContext context) async {
@@ -1835,13 +2065,72 @@ class _SettingsPageState extends State<SettingsPage>
   }
 }
 
-/// 高级覆盖项二级页。
+/// 高级覆盖项正文：提示 + 接口域名 / 上传路径 / UA。
+/// 独立页（push）与「我的」右窗格共用；外壳由宿主提供。
+class AdvancedContent extends StatelessWidget {
+  const AdvancedContent({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final app = context.watch<AppController>();
+    final l10n = context.l10n;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+          child: Text(
+            l10n.advancedHint,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ),
+        SegmentedList(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.dns_outlined),
+              title: Text(l10n.apiHost),
+              subtitle: Text(
+                app.settings.apiHost == 'up'
+                    ? 'up.woozooo.com'
+                    : 'pc.woozooo.com',
+              ),
+              onTap: () => _SettingsCategoryPageState._pickApiHost(context),
+            ),
+            ListTile(
+              leading: const Icon(Icons.cloud_upload_outlined),
+              title: Text(l10n.uploadPath),
+              subtitle: Text(
+                app.settings.uploadPath,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              onTap: () => _SettingsCategoryPageState._pickUploadPath(context),
+            ),
+            ListTile(
+              leading: const Icon(Icons.badge_outlined),
+              title: Text(l10n.userAgent),
+              subtitle: Text(
+                app.settings.userAgent.isEmpty
+                    ? l10n.defaultUserAgent
+                    : app.settings.userAgent,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              onTap: () => _SettingsCategoryPageState._editUserAgent(context),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// 高级覆盖项二级页（独立打开）。
 class _AdvancedPage extends StatelessWidget {
   const _AdvancedPage();
 
   @override
   Widget build(BuildContext context) {
-    final app = context.watch<AppController>();
     final l10n = context.l10n;
     return TopBarOverlayScaffold(
       appBar: AppBar(
@@ -1853,53 +2142,8 @@ class _AdvancedPage extends StatelessWidget {
       slivers: [
         SliverPadding(
           padding: const EdgeInsets.all(16),
-          sliver: SliverColumn(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
-                child: Text(
-                  l10n.advancedHint,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ),
-              SegmentedList(
-                children: [
-                  ListTile(
-                    leading: const Icon(Icons.dns_outlined),
-                    title: Text(l10n.apiHost),
-                    subtitle: Text(
-                      app.settings.apiHost == 'up'
-                          ? 'up.woozooo.com'
-                          : 'pc.woozooo.com',
-                    ),
-                    onTap: () => _SettingsPageState._pickApiHost(context),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.cloud_upload_outlined),
-                    title: Text(l10n.uploadPath),
-                    subtitle: Text(
-                      app.settings.uploadPath,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    onTap: () => _SettingsPageState._pickUploadPath(context),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.badge_outlined),
-                    title: Text(l10n.userAgent),
-                    subtitle: Text(
-                      app.settings.userAgent.isEmpty
-                          ? l10n.defaultUserAgent
-                          : app.settings.userAgent,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    onTap: () => _SettingsPageState._editUserAgent(context),
-                  ),
-                ],
-              ),
-            ],
-          ),
+          // 整块布局：避免懒布局估算导致滚动条滑块抖动（见 SliverColumn）
+          sliver: const SliverToBoxAdapter(child: AdvancedContent()),
         ),
       ],
     );

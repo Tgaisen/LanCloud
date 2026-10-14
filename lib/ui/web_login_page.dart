@@ -126,7 +126,8 @@ class _WebLoginPageState extends State<WebLoginPage> {
                 javaScriptEnabled: true,
                 domStorageEnabled: true,
                 thirdPartyCookiesEnabled: true,
-                useHybridComposition: true,
+                // Android 10+ 才启用混合合成（官方：更低版本动画掉帧）
+                useHybridComposition: PlatformSupport.useHybridComposition,
                 // 移动端伪装成手机浏览器，拿到的是移动版登录页；
                 // 桌面端（WebView2）用默认 UA，避免被当成手机渲染。
                 userAgent: PlatformSupport.isMobile

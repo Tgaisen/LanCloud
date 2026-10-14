@@ -42,6 +42,7 @@ late _FakePermissions _fake;
 Future<AppController> pumpSettings(
   WidgetTester tester, {
   bool hideTopBar = false,
+  SettingsCategory category = SettingsCategory.behaviorPermissions,
 }) async {
   final app = AppController();
   app.settings.hideTopBar = hideTopBar;
@@ -53,7 +54,7 @@ Future<AppController> pumpSettings(
         localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         locale: const Locale('zh'),
-        home: const SettingsPage(),
+        home: SettingsCategoryPage(category: category),
       ),
     ),
   );
@@ -162,7 +163,7 @@ void main() {
   });
 
   testWidgets('设置底部新增隐私分组，包含显示 Cookie', (tester) async {
-    await pumpSettings(tester);
+    await pumpSettings(tester, category: SettingsCategory.privacyData);
     await scrollToSetting(tester, _zh.showCookie);
 
     expect(find.text(_zh.categoryPrivacy), findsOneWidget);

@@ -24,7 +24,9 @@ void main() {
           localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           locale: const Locale('zh'),
-          home: const SettingsPage(),
+          home: const SettingsCategoryPage(
+            category: SettingsCategory.appearanceLayout,
+          ),
         ),
       ),
     );

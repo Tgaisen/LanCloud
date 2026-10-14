@@ -46,7 +46,10 @@ Future<AppController> _pumpSettings(WidgetTester tester) async {
         localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         locale: const Locale('zh'),
-        home: const SettingsPage(),
+        // 无障碍设置项都在「行为与权限」大类页里
+        home: const SettingsCategoryPage(
+          category: SettingsCategory.behaviorPermissions,
+        ),
       ),
     ),
   );
@@ -80,20 +83,20 @@ void main() {
     SystemMotion.touchExploration.value = false;
   });
 
-  testWidgets('无障碍分组在隐私之下，包含全局动画与无障碍相关问题', (tester) async {
+  testWidgets('无障碍小节在行为之下、权限之上，包含全局动画与无障碍相关问题', (tester) async {
     final app = await _pumpSettings(tester);
     await _scrollTo(tester, _zh.a11yFeedback);
-    // 继续滚到最底：隐私 / 无障碍 / 权限 三组同屏，顺序以此为准
+    // 继续滚到最底：行为 / 无障碍 / 权限 三组同屏，顺序以此为准
     await tester.drag(find.byType(Scrollable).first, const Offset(0, -1200));
     await tester.pumpAndSettle();
 
     expect(find.text(_zh.categoryAccessibility), findsOneWidget);
-    final privacy = tester.getTopLeft(find.text(_zh.categoryPrivacy)).dy;
+    final behavior = tester.getTopLeft(find.text(_zh.categoryBehavior)).dy;
     final a11y = tester.getTopLeft(find.text(_zh.categoryAccessibility)).dy;
     final permissions = tester
         .getTopLeft(find.text(_zh.categoryPermissions))
         .dy;
-    expect(privacy, lessThan(a11y));
+    expect(behavior, lessThan(a11y));
     expect(a11y, lessThan(permissions));
 
     // 两个入口：全局动画（副标题＝当前档）与无障碍相关问题

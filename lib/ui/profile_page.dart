@@ -7,9 +7,12 @@ import '../core/data/account_store.dart';
 import '../l10n/l10n.dart';
 import 'about_page.dart';
 import 'app_icons.dart';
+import 'backup_page.dart';
 import 'common.dart';
 import 'login_page.dart';
+import 'licenses_page.dart';
 import 'm3e.dart';
+import 'reduce_motion.dart';
 import 'scroll_tint.dart';
 import 'settings_page.dart';
 import 'web_page.dart';
@@ -36,8 +39,84 @@ class _ProfilePageState extends State<ProfilePage>
   /// 列表滚动位置：切到别的视图再切回来时保留（和首页 / 网盘等页面一致）。
   final ScrollController _scroll = ScrollController();
 
+  /// 两栏阈值：≥840dp（M3 expanded 档）显式两窗格；
+  /// 600–840 之间保持单栏（平板竖屏等窄窗）。
+  static const double _twoPaneBreakpoint = 840;
+
+  /// 两栏时列表窗格宽度。280dp 取「展开导航栏」的量级
+  /// （规范值 220–360dp；列表窗格本来就承担导航性质的选择）。
+  static const double _listPaneWidth = 280;
+
+  /// 左（导航）窗格与右卡片之间的间距：比 M3 两窗格默认的 24dp 收紧一档。
+  static const double _paneGap = 16;
+
+  /// 右窗格前进 / 后退动画的位移量（占窗格宽度的比例）。
+  /// 6% ≈ 原生 shared-axis 的 30dp 量级。
+  static const double _paneSlide = 0.06;
+
+  /// 当前选中的详情（默认「账号」，与 M3「父-子」列表-详情一致）。
+  _ProfileDetail _detail = _ProfileDetail.account;
+
+  /// 右窗格当前打开的二级页（高级覆盖项 / 备份与恢复 / 开源许可）；
+  /// null = 停在类别层。列表-详情的第三层。
+  ProfileSubPage? _subPage;
+
+  /// 右窗格切换方向：新选中项在列表里更靠下（index 更大）= 前进。
+  /// 用来决定 forward/backward 动画从哪一侧滑入。
+  bool _forward = true;
+
+  /// 两栏顶栏上的搜索状态：搜索针对当前设置类别，结果在右窗格。
+  bool _searching = false;
+  final TextEditingController _search = TextEditingController();
+
+  /// 备份与恢复（窗格内）的网络操作进度：显示成顶栏底下那条线。
+  final ValueNotifier<bool> _subPageProgress = ValueNotifier<bool>(false);
+
+  /// 两栏时每个详情窗格各自的滚动控制器：切走再切回时滚动位置不丢。
+  /// 键 = (类别, 二级页)：三级内容各自记住自己的滚动位置。
+  final Map<Object, ScrollController> _paneScrolls = {};
+
+  /// 当前右窗格内容的滚动控制器键（类别 + 二级页）。
+  Object get _paneKey => (_detail, _subPage);
+
+  /// 右窗格内容的排序值：类别按枚举顺序、二级页比所在类别深一层。
+  /// 用来判断前后方向（新值更大 = 前进）。
+  int get _paneOrder => _detail.index * 2 + (_subPage == null ? 0 : 1);
+
+  ScrollController _paneScroll(Object key) =>
+      _paneScrolls.putIfAbsent(key, () => ScrollController());
+
+  /// 外壳（AppController）引用：用于注册 [AppController.onProfileBack]。
+  AppController? _profileBackHost;
+
+  @override
+  void initState() {
+    super.initState();
+    _subPageProgress.addListener(_onSubPageProgress);
+  }
+
+  void _onSubPageProgress() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _profileBackHost = context.read<AppController>();
+  }
+
   @override
   void dispose() {
+    _subPageProgress.removeListener(_onSubPageProgress);
+    _subPageProgress.dispose();
+    // 别把已经失效的回调留在外壳上
+    if (_profileBackHost?.onProfileBack == _handleProfileBack) {
+      _profileBackHost!.onProfileBack = null;
+    }
+    for (final controller in _paneScrolls.values) {
+      controller.dispose();
+    }
+    _search.dispose();
     _scroll.dispose();
     super.dispose();
   }
@@ -52,197 +131,610 @@ class _ProfilePageState extends State<ProfilePage>
     );
   }
 
-  /// 点顶栏空白处回到列表顶部（与网盘页一致）。
-  void _scrollToTop() {
-    if (!_scroll.hasClients) return;
-    _scroll.animateTo(
+  /// 点顶栏空白处回到当前窗格顶部（与网盘页一致）。
+  void _scrollToTop(ScrollController controller) {
+    if (!controller.hasClients) return;
+    controller.animateTo(
       0,
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeOut,
     );
   }
 
+  void _select(_ProfileDetail detail) {
+    if (_detail == detail) return;
+    final forward = detail.index * 2 > _paneOrder;
+    setState(() {
+      _detail = detail;
+      // 换类别 = 回到类别层（关掉可能开着的二级页）
+      _subPage = null;
+      _forward = forward;
+      // 切换窗格内容时收掉搜索：搜索只服务于「当前设置类别」
+      _searching = false;
+      _search.clear();
+    });
+    _publishProfileBack();
+  }
+
+  /// 打开设置二级页（高级覆盖项 / 备份与恢复），内容进右窗格。
+  void _openSubPage(ProfileSubPage sub) {
+    setState(() {
+      _subPage = sub;
+      _forward = true; // 更深一层 = 前进
+      _searching = false;
+      _search.clear();
+    });
+    _publishProfileBack();
+  }
+
+  void _closeSubPage() {
+    if (_subPage == null) return;
+    setState(() {
+      _subPage = null;
+      _forward = false; // 回到上一层 = 后退
+    });
+    _publishProfileBack();
+  }
+
+  void _startSearch() {
+    setState(() => _searching = true);
+    _publishProfileBack();
+  }
+
+  void _exitSearch() {
+    if (!_searching) return;
+    setState(() {
+      _searching = false;
+      _search.clear();
+    });
+    _publishProfileBack();
+  }
+
+  /// 让外壳的返回键先落在本页（退出搜索 / 关闭二级设置页）：
+  /// 与网盘页处理「返回上一级 / 退出搜索」是同一套机制
+  ///（见 AppController.onProfileBack）。
+  void _publishProfileBack() {
+    final app = _profileBackHost;
+    if (app == null) return;
+    final active = widget.tabIndex != null && (_searching || _subPage != null);
+    app.onProfileBack = active ? _handleProfileBack : null;
+  }
+
+  /// 返回键：搜索 > 二级页 > 交给外壳（回默认视图）。
+  Future<bool> _handleProfileBack() async {
+    if (_searching) {
+      _exitSearch();
+      return true;
+    }
+    if (_subPage != null) {
+      _closeSubPage();
+      return true;
+    }
+    return false;
+  }
+
+  /// 两栏顶栏标题：与右窗格对应（账号 / 设置 / 关于）。
+  String _paneTitle(AppLocalizations l10n) => switch (_detail) {
+    _ProfileDetail.account => l10n.accountTitle,
+    _ProfileDetail.about => l10n.about,
+    _ => l10n.settings,
+  };
+
   @override
   Widget build(BuildContext context) {
     super.build(context); // AutomaticKeepAliveClientMixin 要求
     final app = context.watch<AppController>();
-    final account = app.activeAccount;
-    final uid = app.activeUid ?? '';
     final l10n = context.l10n;
     final scheme = Theme.of(context).colorScheme;
     final headerHeight = MediaQuery.paddingOf(context).top + kToolbarHeight;
     final standalone = !(ModalRoute.of(context)?.isFirst ?? true);
+    final wide = MediaQuery.sizeOf(context).width >= _twoPaneBreakpoint;
+    // 单栏没有搜索入口（各二级页自带）：从两栏缩到单栏时把残留状态清掉
+    if (!wide && _searching) {
+      _searching = false;
+      _search.clear();
+    }
+    // 顶栏空白处点击：滚动当前布局正在用的那个滚动视图
+    final topScroll = wide ? _paneScroll(_paneKey) : _scroll;
 
     return Scaffold(
-      // 大屏外壳里的页面：背景交给外壳的圆角卡片
+      // 大屏外壳里的页面：背景交给外壳的圆角卡片；
+      // 独立打开的大屏页面（非外壳）铺导航区色，与两窗格之间的底色一致
       backgroundColor: transparentPageBackground(context)
           ? Colors.transparent
-          : null,
+          : (isLargeLayout(context) ? scheme.surfaceContainer : null),
       body: Stack(
         children: [
-          // 小屏：正文区整体让开左右挖孔 / 侧边导航栏；顶栏（浮层）保持原样
-          BodySideInset(
-            child: ScrollTint(
-              hideDistance: headerHeight,
-              readBarsHidden: () => app.topBarHide.value,
-              onBarsHidden: app.settings.hideTopBar
-                  ? app.setTopBarHideFromScroll
-                  : null,
-              // 列表快速滑动条（可拖拽）
-              child: FastScrollbar(
-                controller: _scroll,
-                padding: EdgeInsets.only(
-                  top: headerHeight,
-                  bottom: shellBottomBarInset(context),
-                ),
-                child: CustomScrollView(
-                  controller: _scroll,
-                  slivers: [
-                    // 顶栏不占布局，这里留出等高占位
-                    SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
-                    SliverPadding(
-                      // 顶部留白与左右一致
-                      // 底部留白与首页 / 网盘 / 收藏 / 传输保持一致
-                      padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
-                      // 整块布局：避免懒布局估算导致滚动条滑块抖动（见 SliverColumn）
-                      sliver: SliverColumn(
-                        children: [
-                          SegmentedList(
-                            children: [
-                              ListTile(
-                                leading: CircleAvatar(
-                                  child: Text(_avatarInitial(account, uid)),
-                                ),
-                                title: Row(
-                                  children: [
-                                    Flexible(
-                                      child: Text(
-                                        account == null
-                                            ? l10n.notLoggedIn
-                                            : account.nickname.isEmpty
-                                            ? l10n.accountUid(uid)
-                                            : account.nickname,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    // 会员等级（网页版个人中心截取）；「普」
-                                    //（含还没取到的情况）不显示，开通会员才有卡片
-                                    if (account != null &&
-                                        !account.isFreeTier) ...[
-                                      const SizedBox(width: 8),
-                                      _LevelChip(level: account.levelLabel),
-                                    ],
-                                  ],
-                                ),
-                                subtitle: Text(l10n.uidLabel(uid)),
-                                trailing: FilledButton.tonal(
-                                  onPressed: () =>
-                                      _showAccountSwitcher(context),
-                                  child: Text(l10n.manage),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          SegmentedList(
-                            children: [
-                              ListTile(
-                                leading: const Icon(Icons.public),
-                                title: Text(l10n.webManagement),
-                                trailing: const Icon(Icons.open_in_new),
-                                onTap: () => _openWeb(
-                                  context,
-                                  LanzouClient.mydiskUrl,
-                                  l10n.webManagement,
-                                ),
-                              ),
-                              // 个人中心：用设置里的网盘接口域名拼地址
-                              ListTile(
-                                leading: const Icon(Icons.user_attributes),
-                                title: Text(l10n.userCenter),
-                                trailing: const Icon(Icons.open_in_new),
-                                onTap: () => _openWeb(
-                                  context,
-                                  '${LanzouClient.apiBase}'
-                                  '/mydisk.php?item=profile&action=mypower',
-                                  l10n.userCenter,
-                                ),
-                              ),
-                              ListTile(
-                                leading: const Icon(
-                                  Icons.restore_from_trash_outlined,
-                                ),
-                                title: Text(l10n.recycleBin),
-                                trailing: const Icon(Icons.open_in_new),
-                                onTap: () => _openWeb(
-                                  context,
-                                  '${LanzouClient.mydiskUrl}?item=recycle',
-                                  l10n.recycleBin,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          SegmentedList(
-                            children: [
-                              ListTile(
-                                leading: const Icon(Icons.settings_outlined),
-                                title: Text(l10n.settings),
-                                trailing: const Icon(Icons.chevron_right),
-                                onTap: () => Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => const SettingsPage(),
-                                  ),
-                                ),
-                              ),
-                              ListTile(
-                                leading: const Icon(Icons.info_outline),
-                                title: Text(l10n.about),
-                                trailing: const Icon(Icons.chevron_right),
-                                onTap: () => Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => const AboutPage(),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    // 底栏盖在正文上方（extendBody）时，补足列表末尾留白
-                    SliverToBoxAdapter(
-                      child: SizedBox(height: shellBottomBarInset(context)),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+          if (wide)
+            _buildTwoPane(context, app, headerHeight)
+          else
+            _buildSinglePane(context, app, headerHeight),
           // 顶栏浮层：与底栏共用收起进度
           Positioned(
-            left: 0,
+            // 两栏时顶栏只盖在右卡片那一列上（内容 + 底色）：
+            // 左窗格是导航区，整条都不被顶栏覆盖
+            left: wide ? _listPaneWidth + _paneGap : 0,
             right: 0,
             top: 0,
             child: TopBarOverlay(
               height: headerHeight,
               background: topBarBackgroundColor(context, scheme),
               // 点顶栏空白处回到列表顶部（按钮自行响应，不会误触）
-              builder: (context) => GestureDetector(
-                behavior: HitTestBehavior.translucent,
-                onTap: _scrollToTop,
-                child: AppBar(
+              builder: (context) {
+                final bar = AppBar(
                   backgroundColor: Colors.transparent,
                   scrolledUnderElevation: 0,
-                  leading: standalone ? const AppBarBackButton() : null,
-                  title: Text(l10n.tabProfile),
-                ),
-              ),
+                  // 优先级：搜索时「关闭搜索」> 二级页返回 > 独立页返回
+                  leading: _searching
+                      ? IconButton(
+                          tooltip: l10n.closeSearch,
+                          icon: const Icon(Icons.close),
+                          onPressed: _exitSearch,
+                        )
+                      : _subPage != null
+                      ? AppBarBackButton(onPressed: _closeSubPage)
+                      : (standalone ? const AppBarBackButton() : null),
+                  // 两栏：标题跟随右窗格（账号 / 设置 / 二级页 / 关于），
+                  // 搜索框顶替标题；单栏：保持「我的」（搜索入口在各二级页里）
+                  title: wide
+                      ? AppBarSearchSwitcher(
+                          searching: _searching,
+                          title: Text(
+                            _subPage?.label(l10n) ?? _paneTitle(l10n),
+                          ),
+                          searchField: TextField(
+                            controller: _search,
+                            autofocus: true,
+                            decoration: InputDecoration(
+                              hintText: l10n.searchSettings,
+                              border: InputBorder.none,
+                            ),
+                            onChanged: (_) => setState(() {}),
+                          ),
+                        )
+                      : Text(l10n.tabProfile),
+                  // 搜索按钮只在设置类别层出现（账号 / 关于 / 二级页都没有）
+                  actions:
+                      wide &&
+                          !_searching &&
+                          _subPage == null &&
+                          _detail.settingsCategory != null
+                      ? [
+                          IconButton(
+                            tooltip: l10n.searchSettings,
+                            icon: const Icon(Icons.search),
+                            onPressed: _startSearch,
+                          ),
+                        ]
+                      : const <Widget>[],
+                  // 备份与恢复（窗格内）网络操作时，顶栏底下显示进度线
+                  bottom:
+                      _subPage == ProfileSubPage.backup &&
+                          _subPageProgress.value
+                      ? kBackupProgressBar
+                      : null,
+                );
+                return GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onTap: () => _scrollToTop(topScroll),
+                  child: bar,
+                );
+              },
             ),
           ),
         ],
       ),
     );
+  }
+
+  /// 单栏（手机 / 窄窗）：账号 + 设置各大类 + 关于；点类别进入二级页
+  /// （与 M3 一致：单栏下选中项离开列表、以页面承载详情）。
+  Widget _buildSinglePane(
+    BuildContext context,
+    AppController app,
+    double headerHeight,
+  ) {
+    return BodySideInset(
+      child: ScrollTint(
+        hideDistance: headerHeight,
+        readBarsHidden: () => app.topBarHide.value,
+        onBarsHidden: app.settings.hideTopBar
+            ? app.setTopBarHideFromScroll
+            : null,
+        // 列表快速滑动条（可拖拽）
+        child: FastScrollbar(
+          controller: _scroll,
+          padding: EdgeInsets.only(
+            top: headerHeight,
+            bottom: shellBottomBarInset(context),
+          ),
+          child: CustomScrollView(
+            controller: _scroll,
+            slivers: [
+              // 顶栏不占布局，这里留出等高占位
+              SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
+              SliverPadding(
+                // 顶部留白与左右一致
+                // 底部留白与首页 / 网盘 / 收藏 / 传输保持一致
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
+                // 整块布局：避免懒布局估算导致滚动条滑块抖动（见 SliverColumn）
+                sliver: SliverColumn(
+                  children: _singlePaneChildren(context, app),
+                ),
+              ),
+              // 底栏盖在正文上方（extendBody）时，补足列表末尾留白
+              SliverToBoxAdapter(
+                child: SizedBox(height: shellBottomBarInset(context)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _singlePaneChildren(BuildContext context, AppController app) {
+    final l10n = context.l10n;
+    return [
+      // 组 1：账号（信息卡 + 网页版 / 个人中心 / 回收站）
+      SegmentedList(
+        children: [_accountTile(context, app), ..._webLinkTiles(context)],
+      ),
+      // 组 2：设置（分组小标题 + 5 个大类）
+      M3eSectionHeader(l10n.settings),
+      SegmentedList(
+        children: [
+          for (final category in SettingsCategory.values)
+            ListTile(
+              leading: Icon(category.icon),
+              title: Text(category.label(l10n)),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => SettingsCategoryPage(category: category),
+                ),
+              ),
+            ),
+        ],
+      ),
+      const SizedBox(height: 8),
+      // 组 3：关于
+      SegmentedList(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.info_outline),
+            title: Text(l10n.about),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute<void>(builder: (_) => const AboutPage())),
+          ),
+        ],
+      ),
+    ];
+  }
+
+  /// 两栏（≥840dp）：左窗格 = 账号 / 设置 5 大类 / 关于（父），
+  /// 右窗格 = 选中项的详情（子），默认选中账号。
+  Widget _buildTwoPane(
+    BuildContext context,
+    AppController app,
+    double headerHeight,
+  ) {
+    // 右窗格内容身份 = (类别, 二级页)：二级页进出同样走滑动切换
+    final switcherKey = ValueKey((_detail, _subPage));
+    return BodySideInset(
+      child: Padding(
+        // 独立页面（不在外壳里）时让开系统导航栏；外壳里的卡片已经让过位
+        padding: EdgeInsets.only(bottom: shellBottomBarInset(context)),
+        // 两窗格之间的“底”用导航区色（M3：窗格=surface、导航区=
+        // surfaceContainer）。两张窗格卡片和外壳的内容卡片占同一个矩形
+        //（左边贴侧栏，右/下由外壳统一让开 8dp），不额外再缩一圈。
+        child: ColoredBox(
+          color: Theme.of(context).colorScheme.surfaceContainer,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                width: _listPaneWidth,
+                // 左窗格不做卡片：直接坐在导航区底色上（类似 navigation
+                // rail / drawer），只有选中行用次级容器色高亮
+                child: CustomScrollView(
+                  controller: _scroll,
+                  slivers: [
+                    // 左窗格是导航区、不被顶栏覆盖：只让开状态栏，
+                    // 再留一点呼吸位（不然横屏无状态栏时几乎贴着屏幕顶边）
+                    SliverToBoxAdapter(
+                      child: SizedBox(
+                        height: MediaQuery.paddingOf(context).top + 8,
+                      ),
+                    ),
+                    SliverPadding(
+                      // 左右留白由条目自己承担（16dp 指示器起点）
+                      padding: const EdgeInsets.fromLTRB(0, 8, 0, 16),
+                      // 整块布局：避免懒布局估算导致滚动条滑块抖动
+                      //（见 SliverColumn）
+                      sliver: SliverColumn(
+                        children: _listPaneChildren(context, app),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // 窗格间距：左窗格是导航区不是卡片，比 M3 两窗格默认的
+              // 24dp 收紧一档
+              const SizedBox(width: _paneGap),
+              Expanded(
+                child: ValueListenableBuilder<double>(
+                  valueListenable: app.topBarHide,
+                  builder: (context, hide, content) {
+                    final t = app.settings.hideTopBar
+                        ? hide.clamp(0.0, 1.0)
+                        : 0.0;
+                    return Stack(
+                      children: [
+                        // 卡片底：顶边贴着顶栏下沿（静止时圆角完整露出），
+                        // 顶栏收起时跟着上移——和外壳内容卡片同一节奏。
+                        // 内容层不跟着动（滚动仍 1:1），避免两倍阻尼。
+                        Positioned(
+                          left: 0,
+                          right: 0,
+                          top: headerHeight * (1 - t),
+                          bottom: 0,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: ColoredBox(
+                              color: Theme.of(context).scaffoldBackgroundColor,
+                            ),
+                          ),
+                        ),
+                        Positioned.fill(child: content!),
+                      ],
+                    );
+                  },
+                  child: ScrollTint(
+                    hideDistance: headerHeight,
+                    readBarsHidden: () => app.topBarHide.value,
+                    onBarsHidden: app.settings.hideTopBar
+                        ? app.setTopBarHideFromScroll
+                        : null,
+                    // 切换详情（账号 / 各设置类别 / 二级页 / 关于）：
+                    // forward/backward 式滑动 + 淡入淡出——在列表里往下选
+                    // 或进二级页 = 前进（新内容从右侧滑入、旧内容向左淡出），
+                    // 往上选或返回则相反。
+                    // 时长取规范里「起止都在屏内」的 Standard 300ms。
+                    child: AnimatedSwitcher(
+                      duration: reduceMotionOf(context)
+                          ? Duration.zero
+                          : const Duration(milliseconds: 300),
+                      switchInCurve: Curves.easeOutCubic,
+                      switchOutCurve: Curves.easeInCubic,
+                      layoutBuilder: (currentChild, previousChildren) => Stack(
+                        fit: StackFit.expand,
+                        children: [...previousChildren, ?currentChild],
+                      ),
+                      transitionBuilder: (child, animation) {
+                        final incoming = child.key == switcherKey;
+                        final slide = Offset(
+                          _forward ? _paneSlide : -_paneSlide,
+                          0,
+                        );
+                        // 新内容从 dx 侧滑入；旧内容反向滑出
+                        //（AnimatedSwitcher 对旧内容反向播放同一段动画）
+                        return SlideTransition(
+                          position: Tween<Offset>(
+                            begin: incoming ? slide : -slide,
+                            end: Offset.zero,
+                          ).animate(animation),
+                          child: FadeTransition(
+                            opacity: animation,
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: KeyedSubtree(
+                        key: switcherKey,
+                        child: _buildDetailPane(context, app),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _listPaneChildren(BuildContext context, AppController app) {
+    final l10n = context.l10n;
+    // 左窗格按 M3「展开导航栏」组织：条目之间 4dp 间距（collapsed rail
+    // 的 ItemVerticalSpace 量级），分组之间用「设置」小标题和更大的留白。
+    final children = <Widget>[
+      // 组 1：账号
+      _PaneTile(
+        icon: Icons.person_outline,
+        label: l10n.accountTitle,
+        selected: _detail == _ProfileDetail.account,
+        onTap: () => _select(_ProfileDetail.account),
+      ),
+      // 组 2：设置（分组小标题 + 5 个大类）
+      _RailSectionLabel(l10n.settings),
+      for (final category in SettingsCategory.values)
+        _PaneTile(
+          icon: category.icon,
+          label: category.label(l10n),
+          selected: _detail.settingsCategory == category,
+          onTap: () => _select(_ProfileDetail.ofCategory(category)),
+        ),
+      // 组 3：关于
+      const SizedBox(height: 8),
+      _PaneTile(
+        icon: Icons.info_outline,
+        label: l10n.about,
+        selected: _detail == _ProfileDetail.about,
+        onTap: () => _select(_ProfileDetail.about),
+      ),
+    ];
+    return [
+      for (var i = 0; i < children.length; i++) ...[
+        children[i],
+        if (i != children.length - 1) const SizedBox(height: 4),
+      ],
+    ];
+  }
+
+  Widget _buildDetailPane(BuildContext context, AppController app) {
+    // 第三层：二级页（高级覆盖项 / 备份与恢复 / 开源许可）
+    final sub = _subPage;
+    if (sub != null) {
+      return _paneScrollView(
+        context,
+        controller: _paneScroll(_paneKey),
+        children: [
+          switch (sub) {
+            ProfileSubPage.advanced => const AdvancedContent(),
+            ProfileSubPage.backup => BackupContent(progress: _subPageProgress),
+            ProfileSubPage.licenses => const LicensesContent(),
+          },
+        ],
+      );
+    }
+    final detail = _detail;
+    final category = detail.settingsCategory;
+    if (category != null) {
+      return SettingsCategoryPage(
+        category: category,
+        embedded: true,
+        searching: _searching,
+        query: _search.text,
+        scrollController: _paneScroll(_paneKey),
+        onSwitchCategory: (target) =>
+            _select(_ProfileDetail.ofCategory(target)),
+        onOpenSubPage: _openSubPage,
+      );
+    }
+    if (detail == _ProfileDetail.about) {
+      return _paneScrollView(
+        context,
+        controller: _paneScroll(_paneKey),
+        children: [
+          AboutContent(
+            onOpenLicenses: () => _openSubPage(ProfileSubPage.licenses),
+          ),
+        ],
+      );
+    }
+    return _paneScrollView(
+      context,
+      controller: _paneScroll(_paneKey),
+      children: [
+        SegmentedList(
+          children: [_accountTile(context, app), ..._webLinkTiles(context)],
+        ),
+      ],
+    );
+  }
+
+  /// 详情窗格里的滚动视图（快速滑动条 + 整块布局，与设置页嵌入形态一致）。
+  Widget _paneScrollView(
+    BuildContext context, {
+    required ScrollController controller,
+    required List<Widget> children,
+  }) {
+    // 顶栏是「我的」页的浮层：正文顶上留出等高占位（与其它页一致），
+    // 顶栏收起时随内容滚走；滑块也不要从顶栏下面露头。
+    final headerHeight = MediaQuery.paddingOf(context).top + kToolbarHeight;
+    return FastScrollbar(
+      controller: controller,
+      padding: EdgeInsets.only(
+        top: headerHeight,
+        bottom: shellBottomBarInset(context),
+      ),
+      child: CustomScrollView(
+        controller: controller,
+        slivers: [
+          SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            // 整块布局：避免懒布局估算导致滚动条滑块抖动（见 SliverColumn）
+            sliver: SliverColumn(children: children),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 账号信息卡（单栏与两栏详情窗格共用）。
+  Widget _accountTile(BuildContext context, AppController app) {
+    final l10n = context.l10n;
+    final account = app.activeAccount;
+    final uid = app.activeUid ?? '';
+    return ListTile(
+      leading: CircleAvatar(child: Text(_avatarInitial(account, uid))),
+      title: Row(
+        children: [
+          Flexible(
+            child: Text(
+              account == null
+                  ? l10n.notLoggedIn
+                  : account.nickname.isEmpty
+                  ? l10n.accountUid(uid)
+                  : account.nickname,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          // 会员等级（网页版个人中心截取）；「普」
+          //（含还没取到的情况）不显示，开通会员才有卡片
+          if (account != null && !account.isFreeTier) ...[
+            const SizedBox(width: 8),
+            _LevelChip(level: account.levelLabel),
+          ],
+        ],
+      ),
+      subtitle: Text(l10n.uidLabel(uid)),
+      trailing: FilledButton.tonal(
+        onPressed: () => _showAccountSwitcher(context),
+        child: Text(l10n.manage),
+      ),
+    );
+  }
+
+  /// 网页版 / 个人中心 / 回收站三个网页入口（单栏与详情窗格共用）。
+  List<Widget> _webLinkTiles(BuildContext context) {
+    final l10n = context.l10n;
+    return [
+      ListTile(
+        leading: const Icon(Icons.public),
+        title: Text(l10n.webManagement),
+        trailing: const Icon(Icons.open_in_new),
+        onTap: () =>
+            _openWeb(context, LanzouClient.mydiskUrl, l10n.webManagement),
+      ),
+      // 个人中心：用设置里的网盘接口域名拼地址
+      ListTile(
+        leading: const Icon(Icons.user_attributes),
+        title: Text(l10n.userCenter),
+        trailing: const Icon(Icons.open_in_new),
+        onTap: () => _openWeb(
+          context,
+          '${LanzouClient.apiBase}'
+          '/mydisk.php?item=profile&action=mypower',
+          l10n.userCenter,
+        ),
+      ),
+      ListTile(
+        leading: const Icon(Icons.restore_from_trash_outlined),
+        title: Text(l10n.recycleBin),
+        trailing: const Icon(Icons.open_in_new),
+        onTap: () => _openWeb(
+          context,
+          '${LanzouClient.mydiskUrl}?item=recycle',
+          l10n.recycleBin,
+        ),
+      ),
+    ];
   }
 
   String _avatarInitial(Account? account, String uid) {
@@ -387,6 +879,145 @@ class _LevelChip extends StatelessWidget {
         style: theme.textTheme.labelSmall?.copyWith(
           color: scheme.onSecondaryContainer,
           height: 1.3,
+        ),
+      ),
+    );
+  }
+}
+
+/// 两栏模式下「我的」右侧详情窗格显示的内容。
+enum _ProfileDetail {
+  account,
+  appearanceLayout,
+  behaviorPermissions,
+  notificationsReminders,
+  transferConnection,
+  privacyData,
+  about;
+
+  static _ProfileDetail ofCategory(
+    SettingsCategory category,
+  ) => switch (category) {
+    SettingsCategory.appearanceLayout => _ProfileDetail.appearanceLayout,
+    SettingsCategory.behaviorPermissions => _ProfileDetail.behaviorPermissions,
+    SettingsCategory.notificationsReminders =>
+      _ProfileDetail.notificationsReminders,
+    SettingsCategory.transferConnection => _ProfileDetail.transferConnection,
+    SettingsCategory.privacyData => _ProfileDetail.privacyData,
+  };
+
+  /// 设置类别的详情返回对应大类页；账号 / 关于返回 null。
+  SettingsCategory? get settingsCategory => switch (this) {
+    _ProfileDetail.appearanceLayout => SettingsCategory.appearanceLayout,
+    _ProfileDetail.behaviorPermissions => SettingsCategory.behaviorPermissions,
+    _ProfileDetail.notificationsReminders =>
+      SettingsCategory.notificationsReminders,
+    _ProfileDetail.transferConnection => SettingsCategory.transferConnection,
+    _ProfileDetail.privacyData => SettingsCategory.privacyData,
+    _ => null,
+  };
+}
+
+/// 左窗格（展开导航栏）里的一个导航条目。
+///
+/// **来自 M3（Expanded navigation rail）**：指示器高 56dp、图标 24dp、
+/// 图标与文字间距 8dp、条目左侧留白 16dp；选中指示器是 pill（CornerFull），
+/// 采用规范允许的「铺满整行」变体（贴近 navigation drawer 的样子）；
+/// 选中内容用 on secondary container、未选中用 on surface variant；
+/// 选中图标填充、未选中描边。
+///
+/// 高亮与波纹合并成一个：底色由 [Material] 自己画、波纹（[InkWell]）画在
+/// 同一层的上面，并用同一个圆角裁剪——两者的区域、形状完全一致。
+///
+/// **本应用的设计决定（规范未公布条目文字字号）**：文字用 labelLarge。
+class _PaneTile extends StatelessWidget {
+  const _PaneTile({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final foreground = selected
+        ? scheme.onSecondaryContainer
+        : scheme.onSurfaceVariant;
+    return Semantics(
+      selected: selected,
+      button: true,
+      // 条目左右各留 16dp：指示器（高亮 + 波纹）铺满整行但不到边
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Material(
+          // 高亮底色和波纹在同一层、同一个圆角里（Material 画底色，
+          // InkWell 的波纹盖在它上面，一起被这个圆角裁掉）
+          color: selected ? scheme.secondaryContainer : Colors.transparent,
+          borderRadius: BorderRadius.circular(28),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 56),
+              child: Padding(
+                // 指示器内左侧留白 16dp（图标起点）
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    Icon(
+                      icon,
+                      size: 24,
+                      fill: selected ? 1 : 0,
+                      color: foreground,
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      // 文字放大时条目纵向增长、最多两行（M3 无障碍要求）
+                      child: Text(
+                        label,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: foreground,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 左窗格里的分组小标题（对应展开导航栏的 section label）。
+/// M3 没有公布 section label 的排版规格：这里取 titleSmall + on surface
+/// variant、左缩进 16dp（与条目指示器的起点对齐）。
+class _RailSectionLabel extends StatelessWidget {
+  const _RailSectionLabel(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      // 左缩进与条目图标的起点对齐（条目 16dp 外边距 + 指示器内 16dp）
+      padding: const EdgeInsets.fromLTRB(32, 12, 16, 4),
+      child: Text(
+        label,
+        style: theme.textTheme.titleSmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
         ),
       ),
     );

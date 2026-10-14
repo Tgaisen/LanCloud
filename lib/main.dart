@@ -29,6 +29,14 @@ Future<void> main() async {
   if (PlatformSupport.isMobile) {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   }
+  // 平台能力预热：Android SDK 级别（WebView 的合成方式按它判定，
+  // 见 web_page.dart / web_login_page.dart）。留一行日志，
+  // 排查「为什么这台设备的 WebView 表现不同」时能对上号。
+  unawaited(
+    PlatformSupport.loadAndroidSdkInt().then((value) {
+      if (value != null) debugPrint('[LanCloud] androidSdkInt=$value');
+    }),
+  );
   // 运行日志：把异常与 debugPrint 写进本机文件，用户可在设置-隐私里导出
   await AppLog.instance.init();
   final defaultOnError = FlutterError.onError;

@@ -284,7 +284,9 @@ void main() {
           localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           locale: const Locale('zh'),
-          home: const SettingsPage(),
+          home: const SettingsCategoryPage(
+            category: SettingsCategory.transferConnection,
+          ),
         ),
       ),
     );
@@ -294,7 +296,7 @@ void main() {
     await tester.ensureVisible(entry);
     await tester.pumpAndSettle();
     // ensureVisible 会把条目贴到浮层顶栏下面（语义节点被裁剪）：往回滚一点
-    await tester.drag(find.byType(SettingsPage), const Offset(0, 240));
+    await tester.drag(find.byType(SettingsCategoryPage), const Offset(0, 240));
     await tester.pumpAndSettle();
 
     final slider = find.descendant(

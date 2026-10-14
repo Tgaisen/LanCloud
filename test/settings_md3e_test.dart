@@ -10,7 +10,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
-Future<AppController> pumpSettings(WidgetTester tester) async {
+Future<AppController> pumpSettings(
+  WidgetTester tester, [
+  SettingsCategory category = SettingsCategory.appearanceLayout,
+]) async {
   SharedPreferences.setMockInitialValues({});
   final app = AppController();
   addTearDown(app.dispose);
@@ -24,7 +27,7 @@ Future<AppController> pumpSettings(WidgetTester tester) async {
         localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         locale: const Locale('zh'),
-        home: const SettingsPage(),
+        home: SettingsCategoryPage(category: category),
       ),
     ),
   );
@@ -73,13 +76,13 @@ void main() {
   });
 
   testWidgets('网络请求间隔：行内滑杆（离散档位），拖动松手后落盘', (tester) async {
-    final app = await pumpSettings(tester);
+    final app = await pumpSettings(tester, SettingsCategory.transferConnection);
 
     final entry = find.text('网络请求间隔');
     await tester.ensureVisible(entry);
     await tester.pumpAndSettle();
     // ensureVisible 会把条目贴到浮层顶栏下面（拖不到）：往回滚一点
-    await tester.drag(find.byType(SettingsPage), const Offset(0, 240));
+    await tester.drag(find.byType(SettingsCategoryPage), const Offset(0, 240));
     await tester.pumpAndSettle();
 
     final tile = find.widgetWithText(ListTile, '网络请求间隔');
@@ -162,7 +165,7 @@ void main() {
     await tester.ensureVisible(entry);
     await tester.pumpAndSettle();
     // ensureVisible 会把条目贴到浮层顶栏下面（点不到）：往回滚一点再点
-    await tester.drag(find.byType(SettingsPage), const Offset(0, 240));
+    await tester.drag(find.byType(SettingsCategoryPage), const Offset(0, 240));
     await tester.pumpAndSettle();
     await tester.tap(entry);
     await tester.pumpAndSettle();

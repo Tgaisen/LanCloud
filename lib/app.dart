@@ -737,6 +737,11 @@ class _RootShellState extends State<RootShell>
       final handled = await app.onDriveBack!();
       if (handled) return false;
     }
+    // 我的视图：先让页面处理（退出搜索 / 关闭二级设置页）
+    if (currentView == _viewProfile && app.onProfileBack != null) {
+      final handled = await app.onProfileBack!();
+      if (handled) return false;
+    }
     if (currentView != defaultView) {
       _goTo(defaultView);
       return false;
