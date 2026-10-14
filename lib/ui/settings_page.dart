@@ -441,7 +441,8 @@ class _SettingsPageState extends State<SettingsPage>
         keywords: l10n.transitionAnimationsKeywords.split(' '),
         category: 'appearance',
         build: (context, app) => SwitchListTile(
-          secondary: const Icon(Icons.animation),
+          // 与「无障碍-全局动画」区分：这里用 Auto Awesome Motion
+          secondary: const Icon(Icons.auto_awesome_motion),
           title: Text(context.l10n.transitionAnimations),
           subtitle: Text(context.l10n.transitionAnimationsSubtitle),
           value: app.settings.transitionAnimations,
