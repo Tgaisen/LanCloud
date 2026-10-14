@@ -9,6 +9,8 @@
   - flutter analyze / flutter test / flutter build apk --release --split-per-abi
   - 用 apksigner 校验签名证书指纹（防止漏配 key.properties 时发出 debug 签名包）
   - 打 tag 并推送，再用 gh 创建 Release，上传 arm64 / v7a / x86_64 三个 APK
+  - 重发同一版本：先 `gh release delete <tag> --yes --cleanup-tag`（连带远端 tag），
+    本地再 `git tag -d <tag>`，然后照常跑本脚本
 
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File tools/release.ps1
