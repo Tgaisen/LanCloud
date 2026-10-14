@@ -381,8 +381,7 @@ void main() {
     );
     // 单选组（与列表选择 M3ePickTile 同一套语义：checked + 互斥组）
     expect(
-      nodesOf('系统')
-          .single
+      nodesOf('系统').single
           .getSemanticsData()
           .flagsCollection
           .isInMutuallyExclusiveGroup,

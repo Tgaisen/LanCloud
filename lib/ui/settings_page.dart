@@ -1878,8 +1878,12 @@ class _SliderTileState<T> extends State<_SliderTile<T>> {
           enabled: true,
           label: widget.title,
           value: widget.labelOf(value),
-          increasedValue: widget.labelOf(widget.values[_clampIndex(_index + 1)]),
-          decreasedValue: widget.labelOf(widget.values[_clampIndex(_index - 1)]),
+          increasedValue: widget.labelOf(
+            widget.values[_clampIndex(_index + 1)],
+          ),
+          decreasedValue: widget.labelOf(
+            widget.values[_clampIndex(_index - 1)],
+          ),
           onIncrease: () => _step(1),
           onDecrease: () => _step(-1),
           excludeSemantics: true,
