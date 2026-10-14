@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/ui/common.dart';
 import 'package:material_ui/material_ui.dart';
@@ -66,5 +67,53 @@ void main() {
     expect(bubble.width, lessThanOrEqualTo(400 - 32 + 0.5));
     expect(bubble.left, greaterThanOrEqualTo(16 - 0.5));
     expect(bubble.right, lessThanOrEqualTo(400 - 16 + 0.5));
+  });
+
+  // 轻提示是自绘浮层，读屏不会自己读：showAppToast 要同步发一句无障碍播报。
+  testWidgets('轻提示同时走无障碍播报（读屏可读）', (tester) async {
+    final announcements = <String>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockDecodedMessageHandler<dynamic>(SystemChannels.accessibility, (
+          message,
+        ) async {
+          final event = message as Map<dynamic, dynamic>;
+          if (event['type'] == 'announce') {
+            announcements.add(
+              (event['data'] as Map<dynamic, dynamic>)['message'] as String,
+            );
+          }
+        });
+    addTearDown(
+      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockDecodedMessageHandler<dynamic>(
+            SystemChannels.accessibility,
+            null,
+          ),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => Center(
+            child: ElevatedButton(
+              onPressed: () => showAppToast(context, '已复制'),
+              child: const Text('toast'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('toast'));
+    await tester.pump();
+    // 播报延后到「下一帧 + 250ms」：等这段时间过去
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(announcements, ['已复制']);
+
+    // 跑完轻提示的生命周期，别留挂起的定时器
+    await tester.pump(const Duration(milliseconds: 1600));
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump();
+    expect(find.text('已复制'), findsNothing);
   });
 }

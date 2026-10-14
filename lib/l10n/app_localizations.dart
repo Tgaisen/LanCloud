@@ -1043,7 +1043,7 @@ abstract class AppLocalizations {
   /// No description provided for @transitionAnimations.
   ///
   /// In zh, this message translates to:
-  /// **'过渡动画'**
+  /// **'目录过渡动画'**
   String get transitionAnimations;
 
   /// No description provided for @transitionAnimationsSubtitle.
@@ -1411,6 +1411,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'已清空'**
   String get cleared;
+
+  /// No description provided for @clearDataNothingSelected.
+  ///
+  /// In zh, this message translates to:
+  /// **'未选择清除项'**
+  String get clearDataNothingSelected;
 
   /// No description provided for @restoredDefaultDir.
   ///

@@ -603,6 +603,7 @@ class M3ePickTile extends StatelessWidget {
     this.leading,
     this.singleSelect = false,
     this.showSelector = true,
+    this.enabled = true,
   }) : assert(showSelector || !selected, '纯操作行（showSelector: false）不该有选中态');
 
   /// 纯操作行（添加账号 / 退出登录）：不画选择控件、也没有选中态。
@@ -614,6 +615,7 @@ class M3ePickTile extends StatelessWidget {
     this.leading,
   }) : selected = false,
        singleSelect = false,
+       enabled = true,
        showSelector = false;
 
   final String label;
@@ -631,17 +633,22 @@ class M3ePickTile extends StatelessWidget {
   /// 是否画选择控件（radio / checkbox）。
   final bool showSelector;
 
+  /// 置灰：不可点、文字与选择控件都降不透明度，读屏报「已停用」。
+  final bool enabled;
+
   @override
   Widget build(BuildContext context) {
     return Semantics(
       checked: selected,
       inMutuallyExclusiveGroup: singleSelect,
+      enabled: enabled,
       child: ListTile(
+        enabled: enabled,
         leading: leading,
         title: Text(label),
         subtitle: subtitle == null ? null : Text(subtitle!),
         trailing: showSelector ? _selector() : null,
-        onTap: onTap,
+        onTap: enabled ? onTap : null,
       ),
     );
   }
@@ -651,17 +658,18 @@ class M3ePickTile extends StatelessWidget {
   /// 用 M3 给这两个控件定的颜色角色（选中 primary / 未选中 on surface
   /// variant）：列表组底色是 surface container，这两个角色在它上面对比足够。
   Widget _selector() {
-    if (singleSelect) {
-      return ExcludeSemantics(
-        child: RadioGroup<bool>(
-          groupValue: selected,
-          onChanged: (_) => onTap(),
-          child: const Radio<bool>(value: true),
-        ),
-      );
-    }
+    final Widget selector = singleSelect
+        ? RadioGroup<bool>(
+            groupValue: selected,
+            onChanged: (_) => onTap(),
+            child: const Radio<bool>(value: true),
+          )
+        : Checkbox(value: selected, onChanged: (_) => onTap());
     return ExcludeSemantics(
-      child: Checkbox(value: selected, onChanged: (_) => onTap()),
+      // 置灰：控件不响应点击、整体降到 M3 disabled 的 38% 不透明度
+      child: enabled
+          ? selector
+          : IgnorePointer(child: Opacity(opacity: 0.38, child: selector)),
     );
   }
 }

@@ -45,6 +45,7 @@ class _Entry {
     required this.keywords,
     required this.category,
     required this.build,
+    this.visible,
   });
 
   final String id;
@@ -53,6 +54,9 @@ class _Entry {
   final List<String> keywords;
   final String category;
   final Widget Function(BuildContext context, AppController app) build;
+
+  /// 是否显示（默认显示）。跟随当前主题等运行时状态的条件项用它。
+  final bool Function(BuildContext context, AppController app)? visible;
 }
 
 class _SettingsPageState extends State<SettingsPage>
@@ -318,6 +322,10 @@ class _SettingsPageState extends State<SettingsPage>
         subtitle: '',
         keywords: l10n.oledKeywords.split(' '),
         category: 'appearance',
+        // 纯黑只对深色界面有意义：深色模式、或「跟随系统」且系统是深色时
+        // 才出现（等价于「当前实际是深色界面」）。
+        visible: (context, app) =>
+            Theme.of(context).brightness == Brightness.dark,
         build: (context, app) => SwitchListTile(
           secondary: const Icon(Icons.contrast),
           title: Text(context.l10n.oled),
@@ -328,43 +336,38 @@ class _SettingsPageState extends State<SettingsPage>
       _Entry(
         id: 'theme_seed',
         title: l10n.themeColor,
-        subtitle: _seedName(context, app.settings.themeSeed),
-        keywords: l10n.themeColorKeywords.split(' '),
+        // 开了动态取色就显示「动态取色」，否则显示当前颜色名
+        //（动态取色也是弹窗里的一个选项，见 _pickThemeSeed）
+        subtitle: app.settings.dynamicColor
+            ? l10n.dynamicColor
+            : _seedName(context, app.settings.themeSeed),
+        keywords: [
+          ...l10n.themeColorKeywords.split(' '),
+          ...l10n.dynamicColorKeywords.split(' '),
+        ],
         category: 'appearance',
-        build: (context, app) => ListTile(
-          leading: const Icon(Icons.palette_outlined),
-          title: Text(context.l10n.themeColor),
-          subtitle: Text(_seedName(context, app.settings.themeSeed)),
-          trailing: CircleAvatar(
-            radius: 12,
-            backgroundColor: Color(app.settings.themeSeed),
-          ),
-          onTap: () => _pickThemeSeed(context),
-        ),
-      ),
-      _Entry(
-        id: 'dynamic_color',
-        title: l10n.dynamicColor,
-        subtitle: l10n.dynamicColorSubtitle,
-        keywords: l10n.dynamicColorKeywords.split(' '),
-        category: 'appearance',
-        // Android 12+ 才有系统取色，取不到时开关置灰；支持情况在进入
-        // 设置页时探测一次（DynamicColorSupport 带缓存，见其注释）
         build: (context, app) {
-          // 探测期间按「支持」处理：开关直接反映设置值，不会先显示关闭
-          // 再跳到打开（开着动态取色的设备打开设置页会闪一下）；
-          // 探测结果确实不支持时再置灰并显示不支持文案
-          final supported = _dynamicColorSupported ?? true;
-          return SwitchListTile(
-            secondary: const Icon(Icons.wallpaper_outlined),
-            title: Text(context.l10n.dynamicColor),
+          final dynamicColor = app.settings.dynamicColor;
+          return ListTile(
+            leading: const Icon(Icons.palette_outlined),
+            title: Text(context.l10n.themeColor),
             subtitle: Text(
-              supported
-                  ? context.l10n.dynamicColorSubtitle
-                  : context.l10n.dynamicColorUnsupported,
+              dynamicColor
+                  ? context.l10n.dynamicColor
+                  : _seedName(context, app.settings.themeSeed),
             ),
-            value: supported && app.settings.dynamicColor,
-            onChanged: supported ? (value) => app.setDynamicColor(value) : null,
+            // 动态取色时没有固定颜色可展示，尾部不再画色块
+            trailing: dynamicColor
+                ? null
+                : CircleAvatar(
+                    radius: 12,
+                    backgroundColor: Color(app.settings.themeSeed),
+                  ),
+            onTap: () => _pickThemeSeed(
+              context,
+              // 探测完成前按「支持」处理（与旧开关一致），避免闪一下置灰
+              dynamicSupported: _dynamicColorSupported ?? true,
+            ),
           );
         },
       ),
@@ -580,7 +583,7 @@ class _SettingsPageState extends State<SettingsPage>
       _Entry(
         id: 'manage_permissions',
         title: l10n.managePermissions,
-        subtitle: l10n.managePermissionsSubtitle,
+        subtitle: '',
         keywords: [
           ...l10n.managePermissionsKeywords.split(' '),
           ...l10n.permissionInstallKeywords.split(' '),
@@ -591,7 +594,6 @@ class _SettingsPageState extends State<SettingsPage>
         build: (context, app) => ListTile(
           leading: const Icon(Icons.shield),
           title: Text(context.l10n.managePermissions),
-          subtitle: Text(context.l10n.managePermissionsSubtitle),
           onTap: () => _showManagePermissions(context),
         ),
       ),
@@ -664,6 +666,29 @@ class _SettingsPageState extends State<SettingsPage>
           current: app.settings.maxDownloads,
           labelOf: (value) => '$value',
           onChanged: app.setMaxDownloads,
+        ),
+      ),
+      // 高级覆盖项入口：排在「连接」组最后（不再单占一组）
+      _Entry(
+        id: 'advanced',
+        title: l10n.advanced,
+        subtitle: '',
+        keywords: const [
+          'advanced',
+          'api',
+          '接口',
+          '上传路径',
+          'ua',
+          'user agent',
+          '覆盖',
+        ],
+        category: 'connection',
+        build: (context, app) => ListTile(
+          leading: const Icon(Icons.tune),
+          title: Text(context.l10n.advanced),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => Navigator.of(context)
+              .push(MaterialPageRoute(builder: (_) => const _AdvancedPage())),
         ),
       ),
       _Entry(
@@ -848,7 +873,6 @@ class _SettingsPageState extends State<SettingsPage>
 
   /// 只有 Android 才有对应实现的设置项。
   static const _androidOnlyEntries = {
-    'dynamic_color',
     'manage_permissions',
     'default_links',
     'app_settings',
@@ -879,7 +903,9 @@ class _SettingsPageState extends State<SettingsPage>
   Widget build(BuildContext context) {
     final app = context.watch<AppController>();
     final l10n = context.l10n;
-    final entries = _entries(app);
+    final entries = _entries(app)
+        .where((e) => e.visible?.call(context, app) ?? true)
+        .toList();
     final query = _search.text.trim().toLowerCase();
 
     final matching = entries
@@ -958,7 +984,6 @@ class _SettingsPageState extends State<SettingsPage>
     AppController app,
     List<_Entry> entries,
   ) {
-    final l10n = context.l10n;
     final groups = <String, List<_Entry>>{};
     for (final e in entries) {
       groups.putIfAbsent(e.category, () => []).add(e);
@@ -969,7 +994,6 @@ class _SettingsPageState extends State<SettingsPage>
       'behavior',
       'notifications',
       'connection',
-      'advanced',
       'data',
       'privacy',
       'accessibility',
@@ -981,24 +1005,9 @@ class _SettingsPageState extends State<SettingsPage>
     ];
     final widgets = <Widget>[];
     for (final name in names) {
+      // 高级覆盖项不再单占一组：入口行已移进「连接」组，这里跳过 'advanced'
+      // 归类（它下面的接口域名 / 上传路径 / UA 只出现在搜索与二级页里）。
       if (name == 'advanced') {
-        widgets
-          ..add(M3eSectionHeader(l10n.categoryAdvanced))
-          ..add(
-            SegmentedList(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.tune),
-                  title: Text(l10n.advanced),
-                  subtitle: Text(l10n.advancedSubtitle),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const _AdvancedPage()),
-                  ),
-                ),
-              ],
-            ),
-          );
         continue;
       }
       widgets
@@ -1223,7 +1232,13 @@ class _SettingsPageState extends State<SettingsPage>
         },
       ),
     );
-    if (ok != true || !mounted) return;
+    if (ok != true || !context.mounted) return;
+    if (selected.isEmpty) {
+      // 什么都没选就点「清除」：明确提示未选择，而不是假装清空成功
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(l10n.clearDataNothingSelected)));
+      return;
+    }
     final uid = app.activeUid ?? '';
     try {
       if (selected.contains(_ClearDataOption.quickAccess)) {
@@ -1674,7 +1689,12 @@ class _SettingsPageState extends State<SettingsPage>
     );
   }
 
-  static Future<void> _pickThemeSeed(BuildContext context) async {
+  /// 「主题色」单选弹窗：第一项是动态取色（系统不支持时置灰）、其余是预设
+  /// 主题色；两者互斥——选了颜色即关闭动态取色，选动态取色则颜色不生效。
+  static Future<void> _pickThemeSeed(
+    BuildContext context, {
+    required bool dynamicSupported,
+  }) async {
     final app = context.read<AppController>();
     final l10n = context.l10n;
     final presets = <int, String>{
@@ -1689,6 +1709,8 @@ class _SettingsPageState extends State<SettingsPage>
       0xFF984061: l10n.colorRose,
       0xFF8B5000: l10n.colorAmber,
     };
+    // 不支持时动态取色按未选中处理（也点不动）
+    final dynamicSelected = dynamicSupported && app.settings.dynamicColor;
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -1699,23 +1721,30 @@ class _SettingsPageState extends State<SettingsPage>
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
-                child: Text(
-                  l10n.themeSeedDynamicHint,
-                  style: Theme.of(dialogContext).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(dialogContext).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
               // 与其它选择弹窗同一套列表组样式：选中 = 主容器色 + 对勾
               // 比弹窗底（surfaceContainerHigh）再高一档容器色
               DialogListGroup(
                 children: [
+                  M3ePickTile(
+                    label: l10n.dynamicColor,
+                    subtitle: dynamicSupported
+                        ? l10n.dynamicColorSubtitle
+                        : l10n.dynamicColorUnsupported,
+                    selected: dynamicSelected,
+                    singleSelect: true,
+                    enabled: dynamicSupported,
+                    leading: const Icon(Icons.wallpaper_outlined),
+                    onTap: () async {
+                      Navigator.of(dialogContext).pop();
+                      await app.setDynamicColor(true);
+                    },
+                  ),
                   for (final entry in presets.entries)
                     M3ePickTile(
                       label: entry.value,
-                      selected: app.settings.themeSeed == entry.key,
+                      selected:
+                          !dynamicSelected &&
+                          app.settings.themeSeed == entry.key,
                       singleSelect: true,
                       leading: CircleAvatar(
                         radius: 12,
@@ -1723,6 +1752,8 @@ class _SettingsPageState extends State<SettingsPage>
                       ),
                       onTap: () async {
                         Navigator.of(dialogContext).pop();
+                        // 与动态取色互斥：选具体颜色即关闭动态取色
+                        await app.setDynamicColor(false);
                         await app.setThemeSeed(entry.key);
                       },
                     ),

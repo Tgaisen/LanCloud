@@ -522,7 +522,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get swipeTabsKeywords => 'swipe gesture tab';
 
   @override
-  String get transitionAnimations => 'Transition animations';
+  String get transitionAnimations => 'Directory transition animation';
 
   @override
   String get transitionAnimationsSubtitle =>
@@ -728,6 +728,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get cleared => 'Cleared';
+
+  @override
+  String get clearDataNothingSelected => 'Nothing selected to clear';
 
   @override
   String get restoredDefaultDir => 'Restored the default folder';

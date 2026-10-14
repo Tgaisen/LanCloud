@@ -464,6 +464,7 @@ class _AppToastState extends State<_AppToast>
     duration: const Duration(milliseconds: 180),
   );
   Timer? _timer;
+  Timer? _announceTimer;
 
   @override
   void initState() {
@@ -475,11 +476,28 @@ class _AppToastState extends State<_AppToast>
       await _controller.reverse();
       if (mounted) widget.onDone();
     });
+    // 读屏播报同一句：轻提示是自绘浮层，读屏不会自己读。延后 250ms 再发——
+    // 等淡入动画和这一帧的语义树更新落地，否则刚排队的播报会被紧随其后的
+    // 内容变化事件冲掉（华为屏幕朗读上会整句不读）。
+    // 定时器挂在 State 上，随轻提示一起销毁、不会在测试里留挂起任务。
+    _announceTimer = Timer(const Duration(milliseconds: 250), () {
+      if (!mounted) return;
+      final view = View.maybeOf(context);
+      if (view == null) return;
+      unawaited(
+        SemanticsService.sendAnnouncement(
+          view,
+          widget.message,
+          Directionality.of(context),
+        ),
+      );
+    });
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    _announceTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -2455,10 +2473,6 @@ class BatchActionBar extends StatelessWidget {
 /// 注意要在「真正进入多选」的那一刻调用（各页面的 `_enterSelection`），
 /// 不能挂在多选操作栏的 initState 上：那条操作栏在页面里是常驻的
 /// （外面套 AnimatedOpacity + IgnorePointer），切页时就会误播报。
-///
-/// 播报还要等这一帧的语义树更新（顶栏切换、条目变「已选中」）落地之后再发：
-/// 读屏收到紧随其后的内容变化事件时，会把刚排队的播报冲掉（华为屏幕朗读上
-/// 表现为部分页面完全不读）。所以这里延后到下一帧之后再播。
 void announceEnteredMultiSelect(BuildContext context) {
   final view = View.maybeOf(context);
   if (view == null) return;

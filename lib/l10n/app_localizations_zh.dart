@@ -506,7 +506,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get swipeTabsKeywords => '滑动 手势 tab';
 
   @override
-  String get transitionAnimations => '过渡动画';
+  String get transitionAnimations => '目录过渡动画';
 
   @override
   String get transitionAnimationsSubtitle => '目录切换的淡入动画';
@@ -698,6 +698,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get cleared => '已清空';
+
+  @override
+  String get clearDataNothingSelected => '未选择清除项';
 
   @override
   String get restoredDefaultDir => '已恢复默认目录';

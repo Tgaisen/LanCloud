@@ -1,16 +1,41 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/data/account_store.dart';
+import 'package:lancloud/core/dynamic_color_support.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/app_icons.dart';
+import 'package:lancloud/ui/common.dart';
+import 'package:lancloud/ui/m3e.dart';
 import 'package:lancloud/ui/settings_page.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
+/// 动态取色插件的通道：返回非空即表示设备支持动态取色。
+const _dynamicColorChannel = MethodChannel('io.material.plugins/dynamic_color');
+
+void mockDynamicColorSupport({required bool supported}) {
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockMethodCallHandler(_dynamicColorChannel, (call) async {
+        if (call.method == 'getCorePalette') {
+          return supported
+              ? Int32List.fromList(List<int>.filled(65, 0x2E6BE6))
+              : null;
+        }
+        return null;
+      });
+  addTearDown(
+    () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(_dynamicColorChannel, null),
+  );
+}
+
 Future<AppController> pumpSettings(WidgetTester tester) async {
+  SharedPreferences.setMockInitialValues({});
   final app = AppController();
   addTearDown(app.dispose);
   tester.view.devicePixelRatio = 1.0;
@@ -19,11 +44,23 @@ Future<AppController> pumpSettings(WidgetTester tester) async {
   await tester.pumpWidget(
     ChangeNotifierProvider<AppController>.value(
       value: app,
-      child: MaterialApp(
-        localizationsDelegates: appLocalizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        locale: const Locale('zh'),
-        home: const SettingsPage(),
+      // 主题跟随设置（同真实外壳）：切深色模式要真的变主题，
+      // 「纯黑深色主题」这类跟随亮度的设置项才测得到
+      child: ListenableBuilder(
+        listenable: app,
+        builder: (context, _) => MaterialApp(
+          theme: ThemeData(brightness: Brightness.light),
+          darkTheme: ThemeData(brightness: Brightness.dark),
+          themeMode: switch (app.settings.themeMode) {
+            'light' => ThemeMode.light,
+            'dark' => ThemeMode.dark,
+            _ => ThemeMode.system,
+          },
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const SettingsPage(),
+        ),
       ),
     ),
   );
@@ -43,6 +80,14 @@ IconData iconOf(WidgetTester tester, String title) {
       .icon!;
 }
 
+/// 滚动到某个设置项，再往回拖一点，让它避开浮层顶栏（可点）。
+Future<void> scrollTo(WidgetTester tester, String text) async {
+  final scrollable = find.byType(Scrollable).first;
+  await tester.scrollUntilVisible(find.text(text), 400, scrollable: scrollable);
+  await tester.drag(scrollable, const Offset(0, 120));
+  await tester.pumpAndSettle();
+}
+
 void main() {
   // 权限组使用频率低：整组排在隐私组之后（分组顺序与条目声明顺序无关）
   testWidgets('「权限」分组排在「隐私」分组之后', (tester) async {
@@ -56,6 +101,133 @@ void main() {
     await pumpSettings(tester);
     expect(iconOf(tester, '管理权限'), Icons.shield);
     expect(iconOf(tester, '清除数据'), Icons.ink_eraser);
+  });
+
+  // 设置页精简：高级覆盖项不再单占一组，入口行并进「连接」组最后一行
+  testWidgets('高级覆盖项并入「连接」组最后一行，点开进二级页', (tester) async {
+    await pumpSettings(tester);
+
+    // 只剩入口行本身；原来的独立分组小标题（同名文案）没有了
+    expect(find.text('高级覆盖项'), findsOneWidget);
+
+    // 和「最大下载数」在同一个列表组里，且排在它下面（连接组最后一项）
+    final group = find.ancestor(
+      of: find.text('高级覆盖项'),
+      matching: find.byType(SegmentedList),
+    );
+    expect(
+      find.descendant(of: group, matching: find.text('同时下载数量')),
+      findsOneWidget,
+    );
+    expect(
+      tester.getTopLeft(find.text('高级覆盖项')).dy,
+      greaterThan(tester.getTopLeft(find.text('同时下载数量')).dy),
+    );
+
+    await scrollTo(tester, '高级覆盖项');
+    await tester.tap(find.text('高级覆盖项'));
+    await tester.pumpAndSettle();
+    // 二级页（提示文案 + 三条覆盖项）
+    expect(find.text('请仅在连接异常时修改'), findsOneWidget);
+    expect(find.text('网盘接口域名'), findsOneWidget);
+  });
+
+  // 纯黑只对深色界面有意义：深色模式、或「跟随系统」且系统是深色时才出现
+  testWidgets('纯黑深色主题：仅深色界面时显示', (tester) async {
+    await pumpSettings(tester);
+    // 默认跟随系统且系统浅色：隐藏
+    expect(find.text('纯黑深色主题'), findsNothing);
+
+    final themeGroup = find.byType(M3eConnectedButtonGroup<String>);
+    // 切到深色：出现
+    await tester.tap(
+      find.descendant(of: themeGroup, matching: find.text('深色')).first,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('纯黑深色主题'), findsOneWidget);
+
+    // 切回浅色：隐藏（即使系统是深色也不显示）
+    tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+    addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+    await tester.tap(
+      find.descendant(of: themeGroup, matching: find.text('浅色')).first,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('纯黑深色主题'), findsNothing);
+
+    // 跟随系统 + 系统深色：出现
+    await tester.tap(
+      find.descendant(of: themeGroup, matching: find.text('系统')).first,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('纯黑深色主题'), findsOneWidget);
+  });
+
+  // 主题色弹窗：第一项是动态取色（替代原来的独立开关），与颜色互斥
+  testWidgets('主题色弹窗：第一项动态取色，选中/切色互相联动', (tester) async {
+    mockDynamicColorSupport(supported: true);
+    await DynamicColorSupport.isSupported(refresh: true);
+    final app = await pumpSettings(tester);
+
+    await scrollTo(tester, '主题色');
+    await tester.tap(find.text('主题色'));
+    await tester.pumpAndSettle();
+
+    Finder inDialog(String text) => find.descendant(
+      of: find.byType(AlertDialog),
+      matching: find.text(text),
+    );
+
+    // 第一项：动态取色 + 副标题
+    expect(inDialog('动态取色'), findsOneWidget);
+    expect(inDialog('跟随系统壁纸取色'), findsOneWidget);
+    expect(inDialog('默认蓝'), findsOneWidget);
+
+    // 选中动态取色：落盘，行副标题变成「动态取色」，尾部不再画色块
+    await tester.tap(inDialog('动态取色'));
+    await tester.pumpAndSettle();
+    expect(app.settings.dynamicColor, isTrue);
+    expect(find.text('动态取色'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.widgetWithText(ListTile, '主题色'),
+        matching: find.byType(CircleAvatar),
+      ),
+      findsNothing,
+    );
+
+    // 改选具体颜色：关闭动态取色、seed 更新，色块回来
+    await tester.tap(find.text('主题色'));
+    await tester.pumpAndSettle();
+    await tester.tap(inDialog('默认蓝'));
+    await tester.pumpAndSettle();
+    expect(app.settings.dynamicColor, isFalse);
+    expect(app.settings.themeSeed, 0xFF2E6BE6);
+    expect(find.text('默认蓝'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.widgetWithText(ListTile, '主题色'),
+        matching: find.byType(CircleAvatar),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('系统不支持动态取色：弹窗第一项置灰不可点', (tester) async {
+    mockDynamicColorSupport(supported: false);
+    await DynamicColorSupport.isSupported(refresh: true);
+    final app = await pumpSettings(tester);
+
+    await scrollTo(tester, '主题色');
+    await tester.tap(find.text('主题色'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('当前系统不支持动态取色'), findsOneWidget);
+    // 置灰：点它没反应，弹窗还在、设置不变
+    await tester.tap(find.text('动态取色'));
+    await tester.pumpAndSettle();
+    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(app.settings.dynamicColor, isFalse);
   });
 
   testWidgets('数据组底部是「清理缓存」，点击弹出确认弹窗（取消不清理）', (tester) async {
@@ -105,6 +277,10 @@ void main() {
     expect(find.text('玫红'), findsOneWidget);
     expect(find.text('琥珀'), findsOneWidget);
 
+    // 列表第一项是动态取色，预设颜色往下排：先滚到目标项再点
+    // （弹窗内容会滚动，直接点会被挤到可视区外）
+    await tester.ensureVisible(find.text('经典紫'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('经典紫'));
     await tester.pumpAndSettle();
     expect(app.settings.themeSeed, 0xFF6750A4);
@@ -171,6 +347,28 @@ void main() {
     } finally {
       debugDefaultTargetPlatformOverride = null;
     }
+  });
+
+  // 什么都没勾就点「清除」：不装清空成功，明确提示未选择
+  testWidgets('「清除数据」什么都不选点清除：提示未选择清除项', (tester) async {
+    await pumpSettings(tester);
+    final entry = find.text('清除数据');
+    // 直接滚到底：清除数据是隐私组的最后一项
+    await tester.drag(find.byType(SettingsPage), const Offset(0, -1200));
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(SettingsPage), const Offset(0, -1200));
+    await tester.pumpAndSettle();
+    await tester.tap(entry);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('清除'));
+    await tester.pumpAndSettle();
+    expect(find.text('未选择清除项'), findsOneWidget);
+    expect(find.text('已清空'), findsNothing);
+
+    // 让 SnackBar 自己走完生命周期，别留挂起的定时器
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pumpAndSettle();
   });
 
   testWidgets('「清除数据」弹窗：两组分组小标题 + 复选列表，取消不清', (tester) async {

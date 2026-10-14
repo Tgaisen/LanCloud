@@ -86,7 +86,6 @@ void main() {
 
     expect(find.text(_zh.categoryPermissions), findsOneWidget);
     expect(find.text(_zh.managePermissions), findsOneWidget);
-    expect(find.text(_zh.managePermissionsSubtitle), findsOneWidget);
     // 三项不再各自占一行
     expect(find.text(_zh.permissionInstall), findsNothing);
     expect(find.text(_zh.permissionBattery), findsNothing);
