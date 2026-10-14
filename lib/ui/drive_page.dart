@@ -3275,15 +3275,17 @@ class _FolderTile extends StatelessWidget {
       // 与列表项（Md3ListItem）同底色
       color: selected ? scheme.primaryContainer : scheme.surfaceContainerLow,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      child: InkWell(
-        onTap: onTap,
-        onLongPress: onLongPress,
-        // 桌面端右键 = 点 ⋯ 菜单（同一套操作；多选时和 ⋯ 一起失效）
-        onSecondaryTap: selecting ? null : () => onMenu(context),
-        // 选中态标在卡片内部、可点的那颗语义节点上：包在卡片外面会另生成
-        // 一颗没有 label 的节点，TalkBack 聚焦的是可点节点（读不到「已选中」）
-        child: Semantics(
-          selected: selected,
+      // 选中态标在可点节点外层：读屏聚焦卡片本体时能听到「已选中」。
+      // 注意不能包进 InkWell 里面（内容层）：那样整张卡片的文字会并进
+      // ⋯ 按钮那颗节点，卡片本体反而成了没有 label 的节点，读屏进不去。
+      child: Semantics(
+        // 只在选中时标注：普通浏览不额外读「未选中」
+        selected: selected ? true : null,
+        child: InkWell(
+          onTap: onTap,
+          onLongPress: onLongPress,
+          // 桌面端右键 = 点 ⋯ 菜单（同一套操作；多选时和 ⋯ 一起失效）
+          onSecondaryTap: selecting ? null : () => onMenu(context),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(10, 8, 4, 10),
             child: Column(
@@ -3376,15 +3378,17 @@ class _FileTile extends StatelessWidget {
       // 与列表项（Md3ListItem）同底色
       color: selected ? scheme.primaryContainer : scheme.surfaceContainerLow,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      child: InkWell(
-        onTap: onTap,
-        onLongPress: onLongPress,
-        // 桌面端右键 = 点 ⋯ 菜单（同一套操作；多选时和 ⋯ 一起失效）
-        onSecondaryTap: selecting ? null : () => onMenu(context),
-        // 选中态标在卡片内部、可点的那颗语义节点上：包在卡片外面会另生成
-        // 一颗没有 label 的节点，TalkBack 聚焦的是可点节点（读不到「已选中」）
-        child: Semantics(
-          selected: selected,
+      // 选中态标在可点节点外层：读屏聚焦卡片本体时能听到「已选中」。
+      // 注意不能包进 InkWell 里面（内容层）：那样整张卡片的文字会并进
+      // ⋯ 按钮那颗节点，卡片本体反而成了没有 label 的节点，读屏进不去。
+      child: Semantics(
+        // 只在选中时标注：普通浏览不额外读「未选中」
+        selected: selected ? true : null,
+        child: InkWell(
+          onTap: onTap,
+          onLongPress: onLongPress,
+          // 桌面端右键 = 点 ⋯ 菜单（同一套操作；多选时和 ⋯ 一起失效）
+          onSecondaryTap: selecting ? null : () => onMenu(context),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(10, 8, 4, 10),
             child: Column(

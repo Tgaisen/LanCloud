@@ -94,6 +94,58 @@ List<SemanticsData> semanticsDataWith(WidgetTester tester, String label) {
 }
 
 void main() {
+  // 读屏（TalkBack）聚焦结构：卡片本体要自带名字和「点击进入」的动作，
+  // 「文件夹操作 / 文件操作」必须是它下面独立的一颗节点（向右滑一层才到）。
+  // 曾经的写法把 Semantics(selected:) 包进 InkWell 里面，整张卡片的文字
+  // 会并进 ⋯ 那颗节点（读成「文件操作、测试文件夹…」），卡片本体反而成了
+  // 没有 label 的节点，读屏就进不去文件夹 / 文件了。
+  testWidgets('网格卡片：本体带名字与点击动作，⋯ 是独立节点', (tester) async {
+    final handle = tester.ensureSemantics();
+    await host(tester, grid: true);
+
+    for (final (name, menuLabel) in [
+      ('测试文件夹', '文件夹操作'),
+      ('测试文件.zip', '文件操作'),
+    ]) {
+      final datas = semanticsDataWith(tester, name);
+      // 本体：label 第一行就是名字（没有被 ⋯ 的 tooltip 拼进来），可点、可长按
+      final body = datas
+          .where((d) => d.label.split('\n').first == name)
+          .toList();
+      expect(body, hasLength(1), reason: name);
+      expect(body.single.hasAction(SemanticsAction.tap), isTrue, reason: name);
+      expect(
+        body.single.hasAction(SemanticsAction.longPress),
+        isTrue,
+        reason: name,
+      );
+      // 没有任何节点把 tooltip 和名字拼在一起读
+      expect(
+        datas.any((d) => d.label.contains('操作') && d.label.contains(name)),
+        isFalse,
+        reason: name,
+      );
+
+      // ⋯ 独立成节点：在卡片里面，且明显比卡片小
+      final menu = semanticsDataWith(tester, menuLabel).single;
+      expect(menu.label, menuLabel);
+      expect(menu.hasAction(SemanticsAction.tap), isTrue);
+      expect(menu.rect.width, lessThan(body.single.rect.width));
+    }
+
+    // 选中后：本体节点自己带「已选中」（不是另起一颗没 label 的节点）
+    await tester.longPress(find.text('测试文件夹'));
+    await tester.pumpAndSettle();
+    final selectedBody = semanticsDataWith(
+      tester,
+      '测试文件夹',
+    ).where((d) => d.label.split('\n').first == '测试文件夹').toList();
+    expect(selectedBody, hasLength(1));
+    expect(selectedBody.single.flagsCollection.isSelected.name, 'isTrue');
+    expect(selectedBody.single.hasAction(SemanticsAction.tap), isTrue);
+    handle.dispose();
+  });
+
   // TalkBack：网格视图下多选也要读出「已选中」（列表视图一直正常）。
   testWidgets('多选选中态：网格与列表视图都要告诉读屏', (tester) async {
     final handle = tester.ensureSemantics();
