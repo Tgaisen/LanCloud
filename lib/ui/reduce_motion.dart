@@ -15,11 +15,23 @@ import '../core/system_motion.dart';
 /// 大面积位移 / 缩放会让前庭敏感的用户不适。跟手的拖拽与滚动不在此列
 /// （那是用户自己直接操作的）。
 ///
+/// 设置页「全局动画」可以覆盖上面的自动判断
+/// （[SystemMotion.motionMode]）：`on` = 始终启用动画，`off` = 始终禁用，
+/// `auto` = 按上面这套自动逻辑（默认）。
+///
 /// 注意这里**不看** [MediaQueryData.accessibleNavigation]：引擎在「任何一个
 /// 无障碍服务查过一次语义树」时就会把它置位（自动记账、自动填表这类与读屏
 /// 无关的服务也会触发），拿它当少动效等于「开了任意无障碍服务 = 全应用没有
 /// 动画」。是否真的读屏交给原生判断（见 [SystemMotion.touchExploration]）。
 bool reduceMotionOf(BuildContext context) {
+  switch (SystemMotion.motionMode.value) {
+    case 'on':
+      // 用户强制启用动画：无视系统与读屏的信号
+      return false;
+    case 'off':
+      // 用户强制禁用动画
+      return true;
+  }
   if (SystemMotion.reduceMotion.value || SystemMotion.touchExploration.value) {
     return true;
   }

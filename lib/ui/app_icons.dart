@@ -86,6 +86,7 @@ class Icons {
   static const IconData notifications_outlined = Symbols.notifications;
   static const IconData login = Symbols.login;
   static const IconData logout = Symbols.logout;
+  static const IconData mail_outlined = Symbols.mail;
   static const IconData menu_book_outlined = Symbols.menu_book;
   static const IconData more_horiz = Symbols.more_horiz;
   static const IconData more_vert = Symbols.more_vert;

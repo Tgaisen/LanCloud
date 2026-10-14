@@ -3482,6 +3482,84 @@ abstract class AppLocalizations {
   /// **'recent limit history 最近 条数 记录'**
   String get recentLimitKeywords;
 
+  /// No description provided for @categoryAccessibility.
+  ///
+  /// In zh, this message translates to:
+  /// **'无障碍'**
+  String get categoryAccessibility;
+
+  /// No description provided for @globalAnimations.
+  ///
+  /// In zh, this message translates to:
+  /// **'全局动画'**
+  String get globalAnimations;
+
+  /// No description provided for @motionModeAuto.
+  ///
+  /// In zh, this message translates to:
+  /// **'自动'**
+  String get motionModeAuto;
+
+  /// No description provided for @motionModeAutoSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'启用无障碍功能后自动禁用动画'**
+  String get motionModeAutoSubtitle;
+
+  /// No description provided for @motionModeEnabled.
+  ///
+  /// In zh, this message translates to:
+  /// **'启用'**
+  String get motionModeEnabled;
+
+  /// No description provided for @motionModeDisabled.
+  ///
+  /// In zh, this message translates to:
+  /// **'禁用'**
+  String get motionModeDisabled;
+
+  /// No description provided for @motionModeKeywords.
+  ///
+  /// In zh, this message translates to:
+  /// **'动画 动效 全局 无障碍 移除动画 motion animation reduce'**
+  String get motionModeKeywords;
+
+  /// No description provided for @a11yFeedback.
+  ///
+  /// In zh, this message translates to:
+  /// **'无障碍相关问题'**
+  String get a11yFeedback;
+
+  /// No description provided for @a11yFeedbackKeywords.
+  ///
+  /// In zh, this message translates to:
+  /// **'无障碍 读屏 反馈 问题 邮件 邮箱 accessibility feedback email'**
+  String get a11yFeedbackKeywords;
+
+  /// No description provided for @a11yFeedbackDialogTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'反馈无障碍相关问题'**
+  String get a11yFeedbackDialogTitle;
+
+  /// No description provided for @a11yFeedbackDialogBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'如遇到无障碍相关问题，但不便在 GitHub 上反馈，可在此处通过电子邮件反馈。'**
+  String get a11yFeedbackDialogBody;
+
+  /// No description provided for @feedback.
+  ///
+  /// In zh, this message translates to:
+  /// **'反馈'**
+  String get feedback;
+
+  /// No description provided for @emailCopied.
+  ///
+  /// In zh, this message translates to:
+  /// **'已复制电子邮箱地址'**
+  String get emailCopied;
+
   /// No description provided for @termsBody.
   ///
   /// In zh, this message translates to:

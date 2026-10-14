@@ -37,6 +37,7 @@ class SettingsStore {
   static const _keyClipboardLink = 'clipboard_link_prompt';
   static const _keyNavTransfers = 'nav_show_transfers';
   static const _keyNavFavorites = 'nav_show_favorites';
+  static const _keyMotionMode = 'motion_mode';
 
   String? downloadDir;
 
@@ -102,6 +103,10 @@ class SettingsStore {
   bool navShowTransfers = false;
   bool navShowFavorites = false;
 
+  /// 全局动画：auto = 跟随无障碍功能自动禁用（默认），on = 始终启用，
+  /// off = 始终禁用。见 AppController.setMotionMode / reduceMotionOf()。
+  String motionMode = 'auto';
+
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
     language = prefs.getString(_keyLanguage) ?? 'system';
@@ -147,6 +152,7 @@ class SettingsStore {
     clipboardLinkPrompt = prefs.getBool(_keyClipboardLink) ?? false;
     navShowTransfers = prefs.getBool(_keyNavTransfers) ?? false;
     navShowFavorites = prefs.getBool(_keyNavFavorites) ?? false;
+    motionMode = prefs.getString(_keyMotionMode) ?? 'auto';
   }
 
   Future<void> setNavShowTransfers(bool value) async {
@@ -159,6 +165,12 @@ class SettingsStore {
     navShowFavorites = value;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyNavFavorites, value);
+  }
+
+  Future<void> setMotionMode(String value) async {
+    motionMode = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyMotionMode, value);
   }
 
   Future<void> setNotifyProgress(bool value) async {
@@ -393,6 +405,7 @@ class SettingsStore {
     _keyClipboardLink: clipboardLinkPrompt,
     _keyNavTransfers: navShowTransfers,
     _keyNavFavorites: navShowFavorites,
+    _keyMotionMode: motionMode,
   };
 
   /// 恢复备份里的设置：只接受已知键，空值表示恢复为未设置，最后重新读取一次。

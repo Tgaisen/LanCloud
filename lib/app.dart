@@ -51,12 +51,13 @@ class LanCloudApp extends StatelessWidget {
     final mode = app.settings.themeMode;
     final language = app.settings.language;
     // MD3 动态取色：系统壁纸取色（Android 12+），不支持时返回 null。
-    // 外面这层只在系统「移除动画」开关变化时重建整棵树，
+    // 外面这层只在系统「移除动画」开关 / 用户「全局动画」设置变化时重建整棵树，
     // 让各处的 reduceMotionOf 立刻生效（其余时候不会重复构建）。
     return ListenableBuilder(
       listenable: Listenable.merge([
         SystemMotion.reduceMotion,
         SystemMotion.touchExploration,
+        SystemMotion.motionMode,
       ]),
       builder: (context, _) => DynamicColorBuilder(
         builder: (lightDynamic, darkDynamic) {

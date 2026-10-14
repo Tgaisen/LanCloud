@@ -87,6 +87,8 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
   qr: ^3.0.2
+  # 测试里替换 url_launcher 的平台实现，断言「反馈」跳转的 mailto 地址
+  url_launcher_platform_interface: ^2.3.2
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

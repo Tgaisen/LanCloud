@@ -30,6 +30,12 @@ class SystemMotion {
     false,
   );
 
+  /// 用户设置（设置页「全局动画」）：auto = 跟随系统/读屏信号（默认）；
+  /// on = 无视无障碍功能，始终启用动画；off = 始终禁用动画。
+  ///
+  /// 由 [AppController] 从设置里同步；根 widget 监听它，切换后全局立即生效。
+  static final ValueNotifier<String> motionMode = ValueNotifier<String>('auto');
+
   static bool _initialized = false;
 
   /// 启动时调用一次：注册原生推送 + 立刻读一次当前状态。

@@ -1918,6 +1918,49 @@ class AppLocalizationsEn extends AppLocalizations {
   String get recentLimitKeywords => 'recent limit history';
 
   @override
+  String get categoryAccessibility => 'Accessibility';
+
+  @override
+  String get globalAnimations => 'Global animations';
+
+  @override
+  String get motionModeAuto => 'Auto';
+
+  @override
+  String get motionModeAutoSubtitle =>
+      'Automatically disable animations when accessibility features are on';
+
+  @override
+  String get motionModeEnabled => 'On';
+
+  @override
+  String get motionModeDisabled => 'Off';
+
+  @override
+  String get motionModeKeywords =>
+      'animation motion global accessibility reduce remove';
+
+  @override
+  String get a11yFeedback => 'Accessibility issues';
+
+  @override
+  String get a11yFeedbackKeywords =>
+      'accessibility screen reader feedback issue email';
+
+  @override
+  String get a11yFeedbackDialogTitle => 'Report an accessibility issue';
+
+  @override
+  String get a11yFeedbackDialogBody =>
+      'If you run into an accessibility issue but would rather not report it on GitHub, you can send feedback by email here.';
+
+  @override
+  String get feedback => 'Feedback';
+
+  @override
+  String get emailCopied => 'Email address copied';
+
+  @override
   String get termsBody =>
       'Terms of Service\n\n1. This is an unofficial third-party LanZou Cloud client for personal use. It is not affiliated with, authorized by, or endorsed by LanZou.\n\n2. You use your own LanZou account. Do not use this app to violate LanZou\'s terms, applicable laws, or the rights of others.\n\n3. The app is provided \"as is\", without warranty of any kind. Risks such as account restrictions, data loss, or failed uploads/downloads are yours to bear.\n\n4. The APIs used are collected from public and unofficial sources and may stop working at any time.\n\n5. The app is open source under the Apache License 2.0. You may modify and redistribute the code, keeping the original license and copyright notices.\n\n6. Continuing to use the app means you have read and accepted these terms; if not, please uninstall it.';
 

@@ -1847,6 +1847,47 @@ class AppLocalizationsZh extends AppLocalizations {
   String get recentLimitKeywords => 'recent limit history 最近 条数 记录';
 
   @override
+  String get categoryAccessibility => '无障碍';
+
+  @override
+  String get globalAnimations => '全局动画';
+
+  @override
+  String get motionModeAuto => '自动';
+
+  @override
+  String get motionModeAutoSubtitle => '启用无障碍功能后自动禁用动画';
+
+  @override
+  String get motionModeEnabled => '启用';
+
+  @override
+  String get motionModeDisabled => '禁用';
+
+  @override
+  String get motionModeKeywords => '动画 动效 全局 无障碍 移除动画 motion animation reduce';
+
+  @override
+  String get a11yFeedback => '无障碍相关问题';
+
+  @override
+  String get a11yFeedbackKeywords =>
+      '无障碍 读屏 反馈 问题 邮件 邮箱 accessibility feedback email';
+
+  @override
+  String get a11yFeedbackDialogTitle => '反馈无障碍相关问题';
+
+  @override
+  String get a11yFeedbackDialogBody =>
+      '如遇到无障碍相关问题，但不便在 GitHub 上反馈，可在此处通过电子邮件反馈。';
+
+  @override
+  String get feedback => '反馈';
+
+  @override
+  String get emailCopied => '已复制电子邮箱地址';
+
+  @override
   String get termsBody =>
       '1. 本应用是蓝奏云的非官方第三方客户端，仅供个人学习与自用，与蓝奏云官方无任何关联，也未获得官方授权或认可。\n\n2. 使用本应用需要你自己的蓝奏云账号。请勿利用本应用从事违反蓝奏云服务条款、相关法律法规或侵犯他人权益的行为。\n\n3. 本应用按「现状」提供，不提供任何形式的担保。因使用本应用造成的账号受限、数据丢失、上传或下载失败等风险，由使用者自行承担。\n\n4. 应用内使用的接口来自公开渠道与非官方整理，可能随时失效；开发者不保证功能持续可用。\n\n5. 本应用以 Apache License 2.0 开源，你可以自行修改与分发代码，但请保留原始许可与版权声明，并自行承担由此产生的责任。\n\n6. 继续使用即表示你已阅读并同意本协议；如不同意，请卸载本应用。';
 

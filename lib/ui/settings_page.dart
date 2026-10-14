@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../core/app_controller.dart';
 import '../core/app_cache.dart';
@@ -24,6 +25,9 @@ import 'm3e.dart';
 
 /// 「清除数据」弹窗里可勾选的清除项。
 enum _ClearDataOption { quickAccess, recents, otherAccounts, logs, registry }
+
+/// 「无障碍相关问题」反馈邮箱。
+const String _kA11yFeedbackEmail = 'lancloud_feedback@outlook.com';
 
 /// 独立设置页：分类卡片 + 高级覆盖项二级页 + 全量搜索。
 class SettingsPage extends StatefulWidget {
@@ -255,6 +259,11 @@ class _SettingsPageState extends State<SettingsPage>
       'zh' => l10n.chinese,
       'en' => l10n.english,
       _ => l10n.followSystem,
+    };
+    String motionModeName() => switch (app.settings.motionMode) {
+      'on' => l10n.motionModeEnabled,
+      'off' => l10n.motionModeDisabled,
+      _ => l10n.motionModeAuto,
     };
     return [
       _Entry(
@@ -803,6 +812,31 @@ class _SettingsPageState extends State<SettingsPage>
           onTap: () => _clearData(context),
         ),
       ),
+      _Entry(
+        id: 'motion_mode',
+        title: l10n.globalAnimations,
+        subtitle: motionModeName(),
+        keywords: l10n.motionModeKeywords.split(' '),
+        category: 'accessibility',
+        build: (context, app) => ListTile(
+          leading: const Icon(Icons.animation),
+          title: Text(context.l10n.globalAnimations),
+          subtitle: Text(motionModeName()),
+          onTap: () => _pickMotionMode(context),
+        ),
+      ),
+      _Entry(
+        id: 'a11y_feedback',
+        title: l10n.a11yFeedback,
+        subtitle: '',
+        keywords: l10n.a11yFeedbackKeywords.split(' '),
+        category: 'accessibility',
+        build: (context, app) => ListTile(
+          leading: const Icon(Icons.mail_outlined),
+          title: Text(context.l10n.a11yFeedback),
+          onTap: () => _showA11yFeedbackDialog(context),
+        ),
+      ),
     ]..removeWhere(
       // 权限 / 安装 / 默认链接是 Android 原生通道的能力，动态取色只有
       // Android 12+ 有，这些在桌面端都直接不显示。
@@ -937,6 +971,7 @@ class _SettingsPageState extends State<SettingsPage>
       'advanced',
       'data',
       'privacy',
+      'accessibility',
       'permissions',
     ];
     final names = [
@@ -984,6 +1019,7 @@ class _SettingsPageState extends State<SettingsPage>
     'notifications' => context.l10n.notifications,
     'permissions' => context.l10n.categoryPermissions,
     'privacy' => context.l10n.categoryPrivacy,
+    'accessibility' => context.l10n.categoryAccessibility,
     'connection' => context.l10n.categoryConnection,
     'advanced' => context.l10n.categoryAdvanced,
     'data' => context.l10n.categoryData,
@@ -1484,6 +1520,7 @@ class _SettingsPageState extends State<SettingsPage>
     required List<(T, String)> options,
     required T current,
     required Future<void> Function(T) onSelect,
+    String? Function(T value)? subtitleOf,
     String? message,
   }) async {
     await showDialog<void>(
@@ -1516,6 +1553,7 @@ class _SettingsPageState extends State<SettingsPage>
                   for (final entry in options)
                     M3ePickTile(
                       label: entry.$2,
+                      subtitle: subtitleOf?.call(entry.$1),
                       selected: current == entry.$1,
                       singleSelect: true,
                       onTap: () async {
@@ -1570,6 +1608,57 @@ class _SettingsPageState extends State<SettingsPage>
       ],
       current: app.settings.language,
       onSelect: (value) => app.setLanguage(value),
+    );
+  }
+
+  /// 「全局动画」：auto（跟随无障碍功能）/ on（始终启用）/ off（始终禁用）。
+  static Future<void> _pickMotionMode(BuildContext context) {
+    final app = context.read<AppController>();
+    final l10n = context.l10n;
+    return _pickRadio(
+      context,
+      title: l10n.globalAnimations,
+      options: [
+        ('auto', l10n.motionModeAuto),
+        ('on', l10n.motionModeEnabled),
+        ('off', l10n.motionModeDisabled),
+      ],
+      // 默认档的说明（另外两档看名字即可）
+      subtitleOf: (value) =>
+          value == 'auto' ? l10n.motionModeAutoSubtitle : null,
+      current: app.settings.motionMode,
+      onSelect: (value) => app.setMotionMode(value),
+    );
+  }
+
+  /// 「无障碍相关问题」：先在弹窗里说明用途，确认后复制反馈邮箱并唤起邮件。
+  static Future<void> _showA11yFeedbackDialog(BuildContext context) async {
+    final l10n = context.l10n;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.a11yFeedbackDialogTitle),
+        content: Text(l10n.a11yFeedbackDialogBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(l10n.feedback),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    // 先复制邮箱：即使设备上没有邮件应用，用户也拿到了地址
+    await Clipboard.setData(const ClipboardData(text: _kA11yFeedbackEmail));
+    if (!context.mounted) return;
+    showAppToast(context, l10n.emailCopied);
+    await launchUrl(
+      Uri(scheme: 'mailto', path: _kA11yFeedbackEmail),
+      mode: LaunchMode.externalApplication,
     );
   }
 

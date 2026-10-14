@@ -91,6 +91,9 @@ class AppController extends ChangeNotifier {
     LanzouClient.apiBase = _apiBaseFor(settings.apiHost);
     LanzouClient.userAgent = settings.userAgent;
     LanzouClient.uploadPath = settings.uploadPath;
+    // 设置页「全局动画」：同步给 SystemMotion，根 widget 监听它整树重建，
+    // 各处 reduceMotionOf() 立刻按新值生效（备份恢复走同一入口）。
+    SystemMotion.motionMode.value = settings.motionMode;
   }
 
   /// 网盘接口域名（pc / up）。
@@ -170,6 +173,20 @@ class AppController extends ChangeNotifier {
   /// 由外壳在 didChangeDependencies 里同步：控制器里拿不到 MediaQuery，
   /// 但顶栏/底栏的滑出这类装饰性动画要跟着系统设置走。
   bool systemReduceMotion = false;
+
+  /// 当前是否应该少动效：用户设置（全局动画）+ 系统信号合成后的结论。
+  /// 控制器内的动画用它判断；widget 侧统一用 reduceMotionOf()。
+  bool get motionReduced {
+    switch (settings.motionMode) {
+      case 'on':
+        return false;
+      case 'off':
+        return true;
+    }
+    return systemReduceMotion ||
+        SystemMotion.reduceMotion.value ||
+        SystemMotion.touchExploration.value;
+  }
 
   /// 当前激活的 page 视图下标：页面据此把折叠的顶栏动画调出来。
   final ValueNotifier<int> activeTab = ValueNotifier(0);
@@ -261,9 +278,7 @@ class AppController extends ChangeNotifier {
     // 系统要求少动效：顶栏/底栏直接到位，不做下滑
     // （systemReduceMotion 由外壳从 MediaQuery 同步，SystemMotion 是原生读到的
     //   动画缩放，覆盖华为等引擎看不到的 ROM）
-    if (systemReduceMotion ||
-        SystemMotion.reduceMotion.value ||
-        SystemMotion.touchExploration.value) {
+    if (motionReduced) {
       _barsTicker.stop();
       if (barsHide.value != to) barsHide.value = to;
       if (topBarHide.value != to) topBarHide.value = to;
@@ -579,6 +594,13 @@ class AppController extends ChangeNotifier {
 
   Future<void> setThemeMode(String mode) async {
     await settings.setThemeMode(mode);
+    notifyListeners();
+  }
+
+  /// 设置页「全局动画」：auto / on / off（见 [SystemMotion.motionMode]）。
+  Future<void> setMotionMode(String mode) async {
+    await settings.setMotionMode(mode);
+    SystemMotion.motionMode.value = settings.motionMode;
     notifyListeners();
   }
 
