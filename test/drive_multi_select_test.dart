@@ -76,7 +76,41 @@ bool hasSemanticsLabel(WidgetTester tester, String target) {
   return found;
 }
 
+/// 语义树里所有包含 [label] 的节点数据（诊断选中态挂在哪颗节点上）。
+List<SemanticsData> semanticsDataWith(WidgetTester tester, String label) {
+  final owner = tester.binding.renderViews.first.owner!.semanticsOwner!;
+  final out = <SemanticsData>[];
+  void walk(SemanticsNode node) {
+    final data = node.getSemanticsData();
+    if (data.label.contains(label)) out.add(data);
+    node.visitChildren((child) {
+      walk(child);
+      return true;
+    });
+  }
+
+  walk(owner.rootSemanticsNode!);
+  return out;
+}
+
 void main() {
+  // TalkBack：网格视图下多选也要读出「已选中」（列表视图一直正常）。
+  testWidgets('多选选中态：网格与列表视图都要告诉读屏', (tester) async {
+    final handle = tester.ensureSemantics();
+    for (final grid in [false, true]) {
+      await host(tester, grid: grid);
+      await tester.longPress(find.text('测试文件夹'));
+      await tester.pumpAndSettle();
+      final datas = semanticsDataWith(tester, '测试文件夹');
+      expect(
+        datas.any((d) => d.flagsCollection.isSelected.name == 'isTrue'),
+        isTrue,
+        reason: grid ? '网格视图' : '列表视图',
+      );
+    }
+    handle.dispose();
+  });
+
   // 网格视图的卡片高度是固定的：长文件名（两行）+ 访问密码时，密码图标和大小
   // 必须同处一行，否则两行分开写会把大小挤到卡片边缘（甚至溢出）
   testWidgets('网格视图：长文件名 + 访问密码时，密码图标与大小同一行', (tester) async {

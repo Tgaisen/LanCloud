@@ -3040,7 +3040,9 @@ class _DrivePageState extends State<DrivePage>
     );
     // 无障碍：多选「已选中」状态告诉读屏（只换了图标读屏看不出来）；
     // 只在选中时标注，普通浏览时不额外读「未选中」。
-    return selected ? Semantics(selected: true, child: item) : item;
+    // 网格卡片自己在卡片内标注（见 [_FolderTile]）：包在卡片外会另生成一颗
+    // 没有 label 的独立节点，TalkBack 聚焦的是可点节点，就读不到「已选中」了。
+    return selected && !grid ? Semantics(selected: true, child: item) : item;
   }
 
   /// 单个文件条目的动画包装。
@@ -3081,7 +3083,8 @@ class _DrivePageState extends State<DrivePage>
               onLongPress: () => _enterSelection(fileId: file.id),
             ),
     );
-    return selected ? Semantics(selected: true, child: item) : item;
+    // 同上：网格卡片自己在卡片内标注（见 [_FileTile]）
+    return selected && !grid ? Semantics(selected: true, child: item) : item;
   }
 }
 
@@ -3277,56 +3280,61 @@ class _FolderTile extends StatelessWidget {
         onLongPress: onLongPress,
         // 桌面端右键 = 点 ⋯ 菜单（同一套操作；多选时和 ⋯ 一起失效）
         onSecondaryTap: selecting ? null : () => onMenu(context),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(10, 8, 4, 10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      // 与文件项同款的图标块底色（只有图标颜色不同）
-                      color: selected
-                          ? scheme.surface
-                          : scheme.surfaceContainerHigh,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      selected ? Icons.check_circle : Icons.folder,
-                      size: 21,
-                      color: scheme.primary,
-                    ),
-                  ),
-                  const Spacer(),
-                  // 多选时只隐藏不占位变化：条目高度 / 文字宽度保持一致
-                  HideKeepingSpace(
-                    hidden: selecting,
-                    child: Builder(
-                      builder: (BuildContext buttonContext) => M3eIconButton(
-                        tooltip: context.l10n.folderActions,
-                        icon: Icons.more_vert,
-                        onPressed: () => onMenu(buttonContext),
+        // 选中态标在卡片内部、可点的那颗语义节点上：包在卡片外面会另生成
+        // 一颗没有 label 的节点，TalkBack 聚焦的是可点节点（读不到「已选中」）
+        child: Semantics(
+          selected: selected,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(10, 8, 4, 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        // 与文件项同款的图标块底色（只有图标颜色不同）
+                        color: selected
+                            ? scheme.surface
+                            : scheme.surfaceContainerHigh,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        selected ? Icons.check_circle : Icons.folder,
+                        size: 21,
+                        color: scheme.primary,
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const Spacer(),
-              Text(
-                folder.name,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              if (folder.hasPwd)
-                const Padding(
-                  padding: EdgeInsets.only(top: 2),
-                  child: Icon(Icons.lock_outline, size: 14),
+                    const Spacer(),
+                    // 多选时只隐藏不占位变化：条目高度 / 文字宽度保持一致
+                    HideKeepingSpace(
+                      hidden: selecting,
+                      child: Builder(
+                        builder: (BuildContext buttonContext) => M3eIconButton(
+                          tooltip: context.l10n.folderActions,
+                          icon: Icons.more_vert,
+                          onPressed: () => onMenu(buttonContext),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-            ],
+                const Spacer(),
+                Text(
+                  folder.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                if (folder.hasPwd)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 2),
+                    child: Icon(Icons.lock_outline, size: 14),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
@@ -3373,73 +3381,78 @@ class _FileTile extends StatelessWidget {
         onLongPress: onLongPress,
         // 桌面端右键 = 点 ⋯ 菜单（同一套操作；多选时和 ⋯ 一起失效）
         onSecondaryTap: selecting ? null : () => onMenu(context),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(10, 8, 4, 10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? scheme.surface
-                          : scheme.surfaceContainerHigh,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      selected ? Icons.check_circle : iconForFile(file.name),
-                      size: 21,
-                      color: selected
-                          ? scheme.primary
-                          : fileIconColor(
-                              file.name,
-                              brightness: scheme.brightness,
-                            ),
-                    ),
-                  ),
-                  const Spacer(),
-                  HideKeepingSpace(
-                    hidden: selecting,
-                    child: Builder(
-                      builder: (BuildContext buttonContext) => M3eIconButton(
-                        tooltip: context.l10n.fileActions,
-                        icon: Icons.more_vert,
-                        onPressed: () => onMenu(buttonContext),
+        // 选中态标在卡片内部、可点的那颗语义节点上：包在卡片外面会另生成
+        // 一颗没有 label 的节点，TalkBack 聚焦的是可点节点（读不到「已选中」）
+        child: Semantics(
+          selected: selected,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(10, 8, 4, 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? scheme.surface
+                            : scheme.surfaceContainerHigh,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        selected ? Icons.check_circle : iconForFile(file.name),
+                        size: 21,
+                        color: selected
+                            ? scheme.primary
+                            : fileIconColor(
+                                file.name,
+                                brightness: scheme.brightness,
+                              ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const Spacer(),
-              Text(
-                file.name,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              // 密码图标和大小同一行：文件名占满两行时，两者各占一行会把大小顶到
-              // 卡片边缘。图标跟着 bodySmall 的字号走（12dp），和大小文本观感一致。
-              Row(
-                children: [
-                  DownloadMarkIcon(markKey: downloadKey, size: 12),
-                  if (file.hasPwd) ...[
-                    const Icon(Icons.lock_outline, size: 12),
-                    const SizedBox(width: 4),
-                  ],
-                  Flexible(
-                    child: Text(
-                      prettyLzSize(file.size),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall,
+                    const Spacer(),
+                    HideKeepingSpace(
+                      hidden: selecting,
+                      child: Builder(
+                        builder: (BuildContext buttonContext) => M3eIconButton(
+                          tooltip: context.l10n.fileActions,
+                          icon: Icons.more_vert,
+                          onPressed: () => onMenu(buttonContext),
+                        ),
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+                const Spacer(),
+                Text(
+                  file.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                // 密码图标和大小同一行：文件名占满两行时，两者各占一行会把大小顶到
+                // 卡片边缘。图标跟着 bodySmall 的字号走（12dp），和大小文本观感一致。
+                Row(
+                  children: [
+                    DownloadMarkIcon(markKey: downloadKey, size: 12),
+                    if (file.hasPwd) ...[
+                      const Icon(Icons.lock_outline, size: 12),
+                      const SizedBox(width: 4),
+                    ],
+                    Flexible(
+                      child: Text(
+                        prettyLzSize(file.size),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

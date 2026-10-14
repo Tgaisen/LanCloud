@@ -239,6 +239,39 @@ void main() {
     expect(appBarTitle('关于'), findsOneWidget);
   });
 
+  testWidgets('切换窗格内容时把收起的顶栏调出来', (tester) async {
+    tester.view.physicalSize = const Size(1200, 500);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final app = AppController()..settings.hideTopBar = true;
+    addTearDown(app.dispose);
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AppController>.value(
+        value: app,
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const ProfilePage(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('传输与连接'));
+    await tester.pumpAndSettle();
+
+    // 上滑把顶栏收起
+    await tester.drag(find.text('下载目录'), const Offset(0, -200));
+    await tester.pumpAndSettle();
+    expect(app.topBarHide.value, greaterThan(0));
+
+    // 切换类别：新视图要带着顶栏出现（不再保持收起）
+    await tester.tap(find.text('外观与布局'));
+    await tester.pumpAndSettle();
+    expect(app.topBarHide.value, 0);
+  });
+
   testWidgets('大屏右窗格切换动画：前进从右滑入、后退从左滑入', (tester) async {
     tester.view.physicalSize = const Size(1200, 800);
     tester.view.devicePixelRatio = 1.0;

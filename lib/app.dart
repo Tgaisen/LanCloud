@@ -847,15 +847,19 @@ class _RootShellState extends State<RootShell>
         },
         children: [
           for (final id in _ids)
-            ScrollTint(
+            // 切走后离屏页面不销毁：滚动位置、列表入场动画状态都保留
+            //（PageView 默认会把离屏页销毁重建）
+            KeepAlivePage(
               key: ValueKey('view-$id'),
-              hideDistance: barHeight,
-              readBarsHidden: () => app.barsHide.value,
-              onBarsHidden:
-                  (app.settings.hideTopBar || app.settings.hideBottomBar)
-                  ? app.setBarsHideFromScroll
-                  : null,
-              child: _pageFor(id),
+              child: ScrollTint(
+                hideDistance: barHeight,
+                readBarsHidden: () => app.barsHide.value,
+                onBarsHidden:
+                    (app.settings.hideTopBar || app.settings.hideBottomBar)
+                    ? app.setBarsHideFromScroll
+                    : null,
+                child: _pageFor(id),
+              ),
             ),
         ],
       ),
@@ -1070,5 +1074,31 @@ class _RootShellState extends State<RootShell>
               ),
             ),
     );
+  }
+}
+
+/// 让分页器里的这个视图常驻：切走后不销毁，滚动位置、列表入场动画
+/// 状态都保留（PageView 默认只保活声明了 keep-alive 的页面）。
+///
+/// 用 [AutomaticKeepAliveClientMixin] 而不是 `KeepAlive` 组件：后者必须
+/// 贴在 sliver 的槽位那一层，套在外层包装里会因 parent data 类型不符而崩。
+class KeepAlivePage extends StatefulWidget {
+  const KeepAlivePage({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  State<KeepAlivePage> createState() => _KeepAlivePageState();
+}
+
+class _KeepAlivePageState extends State<KeepAlivePage>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context); // AutomaticKeepAliveClientMixin 要求
+    return widget.child;
   }
 }

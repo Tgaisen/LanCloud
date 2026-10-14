@@ -1236,12 +1236,16 @@ Future<T?> showM3eMenu<T>({
 }) {
   // 少动效在这里就定下来：路由的时长是 getter，拿不到 context
   final bool reduceMotion = reduceMotionOf(context);
+  // 读屏进入菜单路由时读的是 barrierLabel：用 Material 本地化的
+  // 「弹出菜单」，别用写死的英文（TalkBack 会读成 "Popup menu"）
+  final String barrierLabel = MaterialLocalizations.of(context).popupMenuLabel;
   return Navigator.of(context, rootNavigator: true).push<T>(
     _M3eMenuRoute<T>(
       anchor: anchor,
       items: items,
       alignEnd: alignEnd,
       reduceMotion: reduceMotion,
+      barrierLabel: barrierLabel,
       closeOn: closeOn,
       closeWhen: closeWhen,
     ),
@@ -1308,6 +1312,7 @@ class _M3eMenuRoute<T> extends PopupRoute<T> {
     required this.items,
     required this.alignEnd,
     required this.reduceMotion,
+    required this.barrierLabel,
     this.closeOn,
     this.closeWhen,
   });
@@ -1316,6 +1321,10 @@ class _M3eMenuRoute<T> extends PopupRoute<T> {
   final List<M3eMenuItem<T>> items;
   final bool alignEnd;
   final bool reduceMotion;
+
+  /// 读屏播报的路由标签（本地化的「弹出菜单」）。
+  @override
+  final String barrierLabel;
 
   /// 外部状态变化时自动收起菜单：监听 [closeOn]（应当是低频的通知源，
   /// 例如 [TransferManager.marksRevision]；别监听每次进度更新都会通知的对象），
@@ -1362,9 +1371,6 @@ class _M3eMenuRoute<T> extends PopupRoute<T> {
 
   @override
   bool get barrierDismissible => true;
-
-  @override
-  String get barrierLabel => 'Popup menu';
 
   /// MD3 默认的菜单动效：展开 400ms、收起 150ms；少动效时直接跳过。
   @override

@@ -154,6 +154,7 @@ class _ProfilePageState extends State<ProfilePage>
       _search.clear();
     });
     _publishProfileBack();
+    _showTopBar();
   }
 
   /// 打开设置二级页（高级覆盖项 / 备份与恢复），内容进右窗格。
@@ -165,6 +166,7 @@ class _ProfilePageState extends State<ProfilePage>
       _search.clear();
     });
     _publishProfileBack();
+    _showTopBar();
   }
 
   void _closeSubPage() {
@@ -174,6 +176,14 @@ class _ProfilePageState extends State<ProfilePage>
       _forward = false; // 回到上一层 = 后退
     });
     _publishProfileBack();
+    _showTopBar();
+  }
+
+  /// 切窗格内容时把（可能已被滚走的）顶栏调出来：
+  /// 「滑动时收起顶栏」开着时，否则新视图会带着收起的顶栏出现，
+  /// 用户看不到标题 / 搜索 / 返回。
+  void _showTopBar() {
+    _profileBackHost?.animateBarsHide(0);
   }
 
   void _startSearch() {
