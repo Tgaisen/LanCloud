@@ -50,12 +50,15 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   project.set_dart_entrypoint_arguments(std::move(command_line_arguments));
 
   FlutterWindow window(project);
-  // Default width 856: the client area lands right on the profile page's
-  // 840dp two-pane breakpoint (_twoPaneBreakpoint in lib/ui/profile_page.dart),
-  // so the page opens as list-detail by default. The window frame costs 16dp
-  // in total at 100% display scaling and slightly less in logical pixels at
-  // other scales, so the client area stays >= 840dp.
-  Win32Window::Size size(856, 576);
+  // Default 856x620:
+  // - Width 856: the client area lands right on the profile page's 840dp
+  //   two-pane breakpoint (_twoPaneBreakpoint in lib/ui/profile_page.dart), so
+  //   the page opens as list-detail by default. The window frame costs 16dp in
+  //   total at 100% display scaling and slightly less in logical pixels at
+  //   other scales, so the client area stays >= 840dp.
+  // - Height 620: the profile page's left pane needs about 540dp (3 section
+  //   labels + 7 rows + paddings); 576 would clip its last row by default.
+  Win32Window::Size size(856, 620);
 
   // Center the window on the primary monitor's work area (desktop minus
   // taskbar). Create() scales both origin and size by the monitor DPI, so the
@@ -66,10 +69,18 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
       FlutterDesktopGetDpiForMonitor(
           ::MonitorFromRect(&work_area, MONITOR_DEFAULTTONEAREST)) /
       96.0;
-  const int window_width = static_cast<int>(size.width * scale_factor);
-  const int window_height = static_cast<int>(size.height * scale_factor);
   const int work_width = work_area.right - work_area.left;
   const int work_height = work_area.bottom - work_area.top;
+  // Never open larger than the work area (small panels at high display
+  // scaling): shrink to fit instead of spilling off the screen.
+  if (static_cast<double>(size.width) * scale_factor > work_width) {
+    size.width = static_cast<unsigned int>(work_width / scale_factor);
+  }
+  if (static_cast<double>(size.height) * scale_factor > work_height) {
+    size.height = static_cast<unsigned int>(work_height / scale_factor);
+  }
+  const int window_width = static_cast<int>(size.width * scale_factor);
+  const int window_height = static_cast<int>(size.height * scale_factor);
   Win32Window::Point origin(
       static_cast<int>((work_area.left + (work_width - window_width) / 2) /
                        scale_factor),

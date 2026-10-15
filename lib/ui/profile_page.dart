@@ -39,10 +39,6 @@ class _ProfilePageState extends State<ProfilePage>
   /// 列表滚动位置：切到别的视图再切回来时保留（和首页 / 网盘等页面一致）。
   final ScrollController _scroll = ScrollController();
 
-  /// 两栏阈值：≥840dp（M3 expanded 档）显式两窗格；
-  /// 600–840 之间保持单栏（平板竖屏等窄窗）。
-  static const double _twoPaneBreakpoint = 840;
-
   /// 两栏时左窗格宽度的下限 / 上限；实际宽度按最长条目实测，见
   /// [_listPaneWidthFor]。
   static const double _listPaneWidthMin = 180;
@@ -221,9 +217,9 @@ class _ProfilePageState extends State<ProfilePage>
     return false;
   }
 
-  /// 两栏顶栏标题：与右窗格对应（账号 / 设置 / 关于）。
+  /// 两栏顶栏标题：与右窗格对应（账号管理 / 设置 / 关于）。
   String _paneTitle(AppLocalizations l10n) => switch (_detail) {
-    _ProfileDetail.account => l10n.accountTitle,
+    _ProfileDetail.account => l10n.accountManagement,
     _ProfileDetail.about => l10n.about,
     _ => l10n.settings,
   };
@@ -236,7 +232,7 @@ class _ProfilePageState extends State<ProfilePage>
     final scheme = Theme.of(context).colorScheme;
     final headerHeight = MediaQuery.paddingOf(context).top + kToolbarHeight;
     final standalone = !(ModalRoute.of(context)?.isFirst ?? true);
-    final wide = MediaQuery.sizeOf(context).width >= _twoPaneBreakpoint;
+    final wide = MediaQuery.sizeOf(context).width >= kProfileTwoPaneBreakpoint;
     // 单栏没有搜索入口（各二级页自带）：从两栏缩到单栏时把残留状态清掉
     if (!wide && _searching) {
       _searching = false;
@@ -453,17 +449,18 @@ class _ProfilePageState extends State<ProfilePage>
     const itemChrome = 16.0 + 16.0 + 16.0 + 16.0 + 24.0 + 8.0;
     var width = 0.0;
     for (final label in [
-      l10n.accountTitle,
+      l10n.accountManagement,
       for (final category in SettingsCategory.values) category.label(l10n),
       l10n.about,
     ]) {
       final needed = itemChrome + measure(label, theme.textTheme.labelLarge);
       if (needed > width) width = needed;
     }
-    // 分组小标题（「设置」）也要放得下：左缩进 32 + 右侧 16
-    final sectionWidth =
-        32.0 + 16.0 + measure(l10n.settings, theme.textTheme.titleSmall);
-    if (sectionWidth > width) width = sectionWidth;
+    // 分组小标题（账号 / 设置 / 应用）也要放得下：左缩进 32 + 右侧 16
+    for (final label in [l10n.accountTitle, l10n.settings, l10n.appSection]) {
+      final needed = 32.0 + 16.0 + measure(label, theme.textTheme.titleSmall);
+      if (needed > width) width = needed;
+    }
     // +1 是亚像素余量：别让最长的那条正好卡在换行边界上
     return (width + 1).clamp(_listPaneWidthMin, _listPaneWidthMax).toDouble();
   }
@@ -501,12 +498,14 @@ class _ProfilePageState extends State<ProfilePage>
                     // 再留一点呼吸位（不然横屏无状态栏时几乎贴着屏幕顶边）
                     SliverToBoxAdapter(
                       child: SizedBox(
-                        height: MediaQuery.paddingOf(context).top + 8,
+                        height: MediaQuery.paddingOf(context).top + 4,
                       ),
                     ),
                     SliverPadding(
-                      // 左右留白由条目自己承担（16dp 指示器起点）
-                      padding: const EdgeInsets.fromLTRB(0, 8, 0, 16),
+                      // 左右留白由条目自己承担（16dp 指示器起点）；
+                      // 上下收到 6 / 12：三条分组小标题加进来后，整列要在默认
+                      // 窗口高度里放得下（否则最后一条会被视口裁掉一截）
+                      padding: const EdgeInsets.fromLTRB(0, 6, 0, 12),
                       // 整块布局：避免懒布局估算导致滚动条滑块抖动
                       //（见 SliverColumn）
                       sliver: SliverColumn(
@@ -520,76 +519,83 @@ class _ProfilePageState extends State<ProfilePage>
               //（选中指示器离窗格边缘 16dp），再留一档就是双重边距。
               // M3 的窗格间距（24dp）假设窗格内容铺满整个窗格，这里不适用。
               Expanded(
-                child: ValueListenableBuilder<double>(
-                  valueListenable: app.topBarHide,
-                  builder: (context, hide, content) {
-                    final t = app.settings.hideTopBar
-                        ? hide.clamp(0.0, 1.0)
-                        : 0.0;
-                    return Stack(
-                      children: [
-                        // 卡片底：顶边贴着顶栏下沿（静止时圆角完整露出），
-                        // 顶栏收起时跟着上移——和外壳内容卡片同一节奏。
-                        // 内容层不跟着动（滚动仍 1:1），避免两倍阻尼。
-                        Positioned(
-                          left: 0,
-                          right: 0,
-                          top: headerHeight * (1 - t),
-                          bottom: 0,
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(16),
-                            child: ColoredBox(
-                              color: Theme.of(context).scaffoldBackgroundColor,
+                // 左窗格（导航区）通到窗口底边；右卡片照旧让开正文卡片
+                // 底部那 8dp（独立页面外面已经套了卡片，helper 返回 0）
+                child: Padding(
+                  padding: EdgeInsets.only(bottom: shellBodyCardGap(context)),
+                  child: ValueListenableBuilder<double>(
+                    valueListenable: app.topBarHide,
+                    builder: (context, hide, content) {
+                      final t = app.settings.hideTopBar
+                          ? hide.clamp(0.0, 1.0)
+                          : 0.0;
+                      return Stack(
+                        children: [
+                          // 卡片底：顶边贴着顶栏下沿（静止时圆角完整露出），
+                          // 顶栏收起时跟着上移——和外壳内容卡片同一节奏。
+                          // 内容层不跟着动（滚动仍 1:1），避免两倍阻尼。
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            top: headerHeight * (1 - t),
+                            bottom: 0,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: ColoredBox(
+                                color: Theme.of(context)
+                                    .scaffoldBackgroundColor,
+                              ),
                             ),
                           ),
+                          Positioned.fill(child: content!),
+                        ],
+                      );
+                    },
+                    child: ScrollTint(
+                      hideDistance: headerHeight,
+                      readBarsHidden: () => app.topBarHide.value,
+                      onBarsHidden: app.settings.hideTopBar
+                          ? app.setTopBarHideFromScroll
+                          : null,
+                      // 切换详情（账号 / 各设置类别 / 二级页 / 关于）：
+                      // forward/backward 式滑动 + 淡入淡出——在列表里往下选
+                      // 或进二级页 = 前进（新内容从右侧滑入、旧内容向左淡出），
+                      // 往上选或返回则相反。
+                      // 时长取规范里「起止都在屏内」的 Standard 300ms。
+                      child: AnimatedSwitcher(
+                        duration: reduceMotionOf(context)
+                            ? Duration.zero
+                            : const Duration(milliseconds: 300),
+                        switchInCurve: Curves.easeOutCubic,
+                        switchOutCurve: Curves.easeInCubic,
+                        layoutBuilder: (currentChild, previousChildren) =>
+                            Stack(
+                              fit: StackFit.expand,
+                              children: [...previousChildren, ?currentChild],
+                            ),
+                        transitionBuilder: (child, animation) {
+                          final incoming = child.key == switcherKey;
+                          final slide = Offset(
+                            _forward ? _paneSlide : -_paneSlide,
+                            0,
+                          );
+                          // 新内容从 dx 侧滑入；旧内容反向滑出
+                          //（AnimatedSwitcher 对旧内容反向播放同一段动画）
+                          return SlideTransition(
+                            position: Tween<Offset>(
+                              begin: incoming ? slide : -slide,
+                              end: Offset.zero,
+                            ).animate(animation),
+                            child: FadeTransition(
+                              opacity: animation,
+                              child: child,
+                            ),
+                          );
+                        },
+                        child: KeyedSubtree(
+                          key: switcherKey,
+                          child: _buildDetailPane(context, app),
                         ),
-                        Positioned.fill(child: content!),
-                      ],
-                    );
-                  },
-                  child: ScrollTint(
-                    hideDistance: headerHeight,
-                    readBarsHidden: () => app.topBarHide.value,
-                    onBarsHidden: app.settings.hideTopBar
-                        ? app.setTopBarHideFromScroll
-                        : null,
-                    // 切换详情（账号 / 各设置类别 / 二级页 / 关于）：
-                    // forward/backward 式滑动 + 淡入淡出——在列表里往下选
-                    // 或进二级页 = 前进（新内容从右侧滑入、旧内容向左淡出），
-                    // 往上选或返回则相反。
-                    // 时长取规范里「起止都在屏内」的 Standard 300ms。
-                    child: AnimatedSwitcher(
-                      duration: reduceMotionOf(context)
-                          ? Duration.zero
-                          : const Duration(milliseconds: 300),
-                      switchInCurve: Curves.easeOutCubic,
-                      switchOutCurve: Curves.easeInCubic,
-                      layoutBuilder: (currentChild, previousChildren) => Stack(
-                        fit: StackFit.expand,
-                        children: [...previousChildren, ?currentChild],
-                      ),
-                      transitionBuilder: (child, animation) {
-                        final incoming = child.key == switcherKey;
-                        final slide = Offset(
-                          _forward ? _paneSlide : -_paneSlide,
-                          0,
-                        );
-                        // 新内容从 dx 侧滑入；旧内容反向滑出
-                        //（AnimatedSwitcher 对旧内容反向播放同一段动画）
-                        return SlideTransition(
-                          position: Tween<Offset>(
-                            begin: incoming ? slide : -slide,
-                            end: Offset.zero,
-                          ).animate(animation),
-                          child: FadeTransition(
-                            opacity: animation,
-                            child: child,
-                          ),
-                        );
-                      },
-                      child: KeyedSubtree(
-                        key: switcherKey,
-                        child: _buildDetailPane(context, app),
                       ),
                     ),
                   ),
@@ -605,12 +611,14 @@ class _ProfilePageState extends State<ProfilePage>
   List<Widget> _listPaneChildren(BuildContext context, AppController app) {
     final l10n = context.l10n;
     // 左窗格按 M3「展开导航栏」组织：条目之间 4dp 间距（collapsed rail
-    // 的 ItemVerticalSpace 量级），分组之间用「设置」小标题和更大的留白。
+    // 的 ItemVerticalSpace 量级），每个分组前有一条小标题
+    //（账号 / 设置 / 应用），小标题自身的内边距承担分组留白。
     final children = <Widget>[
-      // 组 1：账号
+      // 组 1：账号（分组小标题 + 账号管理）
+      _RailSectionLabel(l10n.accountTitle),
       _PaneTile(
         icon: Icons.person_outline,
-        label: l10n.accountTitle,
+        label: l10n.accountManagement,
         selected: _detail == _ProfileDetail.account,
         onTap: () => _select(_ProfileDetail.account),
       ),
@@ -623,8 +631,8 @@ class _ProfilePageState extends State<ProfilePage>
           selected: _detail.settingsCategory == category,
           onTap: () => _select(_ProfileDetail.ofCategory(category)),
         ),
-      // 组 3：关于
-      const SizedBox(height: 8),
+      // 组 3：应用（分组小标题 + 关于）
+      _RailSectionLabel(l10n.appSection),
       _PaneTile(
         icon: Icons.info_outline,
         label: l10n.about,
@@ -751,7 +759,7 @@ class _ProfilePageState extends State<ProfilePage>
       subtitle: Text(l10n.uidLabel(uid)),
       trailing: FilledButton.tonal(
         onPressed: () => _showAccountSwitcher(context),
-        child: Text(l10n.manage),
+        child: Text(l10n.switchAccountShort),
       ),
     );
   }
@@ -1067,8 +1075,9 @@ class _RailSectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      // 左缩进与条目图标的起点对齐（条目 16dp 外边距 + 指示器内 16dp）
-      padding: const EdgeInsets.fromLTRB(32, 12, 16, 4),
+      // 左缩进与条目图标的起点对齐（条目 16dp 外边距 + 指示器内 16dp）；
+      // 上 8 / 下 2：分组之间的留白由它承担，收到刚好能分清组
+      padding: const EdgeInsets.fromLTRB(32, 8, 16, 2),
       child: Text(
         label,
         style: theme.textTheme.titleSmall?.copyWith(

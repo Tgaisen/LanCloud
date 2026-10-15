@@ -28,7 +28,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('未登录'), findsOneWidget);
-    expect(find.text('管理'), findsOneWidget);
+    expect(find.text('切换'), findsOneWidget);
     expect(find.text('显示 Cookie'), findsNothing);
     expect(find.text('网页版'), findsOneWidget);
     expect(find.text('回收站'), findsOneWidget);
@@ -145,15 +145,20 @@ void main() {
     await tester.pumpAndSettle();
 
     // 左窗格：账号 / 设置 5 大类 / 关于；默认选中账号，右窗格是账号面板
+    // 三个分组都有小标题（账号 / 设置 / 应用），账号条目改名「账号管理」
+    expect(find.text('账号'), findsOneWidget);
+    // 「账号管理」既是左窗格条目，也是右窗格顶栏标题
+    expect(find.text('账号管理'), findsNWidgets(2));
     expect(find.text('设置'), findsOneWidget);
     expect(find.text('外观与布局'), findsOneWidget);
     expect(find.text('关于'), findsOneWidget);
-    expect(find.text('管理'), findsOneWidget);
+    expect(find.text('应用'), findsOneWidget);
+    expect(find.text('切换'), findsOneWidget);
     expect(find.text('网页版'), findsOneWidget);
     // 顶栏标题跟随右窗格；账号 / 关于没有搜索入口，设置类别才有
     Finder appBarTitle(String text) =>
         find.descendant(of: find.byType(AppBar), matching: find.text(text));
-    expect(appBarTitle('账号'), findsOneWidget);
+    expect(appBarTitle('账号管理'), findsOneWidget);
     expect(find.byTooltip('搜索设置项'), findsNothing);
 
     // 左右窗格之间没有额外间距：两张窗格（各自的滚动视图）直接相接，
@@ -164,12 +169,18 @@ void main() {
     final paneRight = tester.getRect(panes.at(0)).right;
     expect(tester.getRect(panes.at(1)).left, moreOrLessEquals(paneRight));
     expect(tester.getTopLeft(find.byType(TopBarOverlay)).dx, paneRight);
+    // 左窗格（导航区）通到窗口底边，不再跟着右卡片让开底部那 8dp；
+    // 右卡片照旧留 8dp
+    final screenBottom =
+        tester.view.physicalSize.height / tester.view.devicePixelRatio;
+    expect(tester.getRect(panes.at(0)).bottom, screenBottom);
+    expect(tester.getRect(panes.at(1)).bottom, screenBottom - 8);
 
     // 选中「传输与连接」：右窗格换成该类别的设置页
     await tester.tap(find.text('传输与连接'));
     await tester.pumpAndSettle();
     expect(find.text('下载目录'), findsOneWidget);
-    expect(find.text('管理'), findsNothing);
+    expect(find.text('切换'), findsNothing);
     expect(appBarTitle('设置'), findsOneWidget);
     expect(find.byTooltip('搜索设置项'), findsOneWidget);
 
@@ -180,6 +191,41 @@ void main() {
     expect(find.text('下载目录'), findsNothing);
     expect(appBarTitle('关于'), findsOneWidget);
     expect(find.byTooltip('搜索设置项'), findsNothing);
+  });
+
+  testWidgets('默认窗口尺寸下左窗格整列放得下：不需要滚动', (tester) async {
+    // Windows 默认窗口 856×620 逻辑像素 → 客户区约 841.6×582.4dp，
+    // 外壳底部再让开 8dp，左窗格可视高度约 574dp。
+    // 注：测试字体比真实字体矮一点，这里保证的是「不算紧」的余量。
+    tester.view.physicalSize = const Size(841, 574);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final app = AppController();
+    addTearDown(app.dispose);
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AppController>.value(
+        value: app,
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const ProfilePage(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // 左窗格（两张窗格里的第一个滚动视图）没有滚动余量 = 整列可见，
+    // 最后一条「关于」不会被视口裁掉
+    final paneScroll = tester
+        .state<ScrollableState>(
+          find.descendant(
+            of: find.byType(CustomScrollView).first,
+            matching: find.byType(Scrollable),
+          ),
+        )
+        .position;
+    expect(paneScroll.maxScrollExtent, 0);
   });
 
   testWidgets('大屏「我的」：左窗格宽度按最长条目自适应（中文比英文窄）', (tester) async {
@@ -354,7 +400,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 90));
     expect(slideDxOf('行为'), greaterThan(0)); // 新内容：从右滑入
-    expect(slideDxOf('管理'), lessThan(0)); // 旧内容：向左滑出
+    expect(slideDxOf('切换'), lessThan(0)); // 旧内容：向左滑出
     await tester.pumpAndSettle();
 
     // 后退：行为与权限 → 外观与布局（列表往上选），新内容从左侧滑入
@@ -422,7 +468,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('管理'));
+    await tester.tap(find.text('切换'));
     await tester.pumpAndSettle();
 
     // 弹窗里：账号组 + 退出登录组，共 2 组
@@ -475,7 +521,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('管理'));
+    await tester.tap(find.text('切换'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('退出登录'));
     await tester.pumpAndSettle();
@@ -498,7 +544,7 @@ void main() {
     expect(app.accounts.accounts, hasLength(1));
 
     // 重新打开并确认移除：账号从本机删掉
-    await tester.tap(find.text('管理'));
+    await tester.tap(find.text('切换'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('退出登录'));
     await tester.pumpAndSettle();

@@ -452,6 +452,18 @@ abstract class AppLocalizations {
   /// **'移除当前账号'**
   String get removeCurrentAccount;
 
+  /// No description provided for @accountManagement.
+  ///
+  /// In zh, this message translates to:
+  /// **'账号管理'**
+  String get accountManagement;
+
+  /// No description provided for @appSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用'**
+  String get appSection;
+
   /// No description provided for @settings.
   ///
   /// In zh, this message translates to:
@@ -2533,12 +2545,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'文件已失效'**
   String get fileInvalid;
-
-  /// No description provided for @manage.
-  ///
-  /// In zh, this message translates to:
-  /// **'管理'**
-  String get manage;
 
   /// No description provided for @logout.
   ///

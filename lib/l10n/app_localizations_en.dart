@@ -207,6 +207,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get removeCurrentAccount => 'Remove current account';
 
   @override
+  String get accountManagement => 'Account management';
+
+  @override
+  String get appSection => 'App';
+
+  @override
   String get settings => 'Settings';
 
   @override
@@ -1370,9 +1376,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get fileInvalid => 'This file is no longer available';
-
-  @override
-  String get manage => 'Manage';
 
   @override
   String get logout => 'Log out';

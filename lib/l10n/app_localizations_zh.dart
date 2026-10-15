@@ -202,6 +202,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get removeCurrentAccount => '移除当前账号';
 
   @override
+  String get accountManagement => '账号管理';
+
+  @override
+  String get appSection => '应用';
+
+  @override
   String get settings => '设置';
 
   @override
@@ -1326,9 +1332,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get fileInvalid => '文件已失效';
-
-  @override
-  String get manage => '管理';
 
   @override
   String get logout => '退出登录';

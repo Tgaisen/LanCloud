@@ -399,6 +399,24 @@ class _RootShellState extends State<RootShell>
     _ => const ProfilePage(tabIndex: _viewProfile),
   };
 
+  /// 大屏外壳里正文卡片底部的 8dp 留白：一般页面在页面外面统一让开
+  /// （卡片让了，页面正文跟着让，页面里不用再各写一套）。
+  ///
+  /// 「我的」页两栏态例外：它的左窗格是导航区，要通到窗口底边，所以整页
+  /// 不让位，由页面自己给右卡片补这一档（见 [shellBodyCardGap]）。
+  Widget _withBodyCardGap(BuildContext context, int viewId, Widget child) {
+    final gap = shellBodyCardGap(context);
+    if (gap == 0) return child;
+    if (viewId == _viewProfile &&
+        MediaQuery.sizeOf(context).width >= kProfileTwoPaneBreakpoint) {
+      return child;
+    }
+    return Padding(
+      padding: EdgeInsets.only(bottom: gap),
+      child: child,
+    );
+  }
+
   IconData _iconFor(int id, {required bool selected}) => switch (id) {
     _viewHome => selected ? Icons.dashboard : Icons.dashboard_outlined,
     _viewDrive => selected ? Icons.folder : Icons.folder_outlined,
@@ -851,14 +869,18 @@ class _RootShellState extends State<RootShell>
             //（PageView 默认会把离屏页销毁重建）
             KeepAlivePage(
               key: ValueKey('view-$id'),
-              child: ScrollTint(
-                hideDistance: barHeight,
-                readBarsHidden: () => app.barsHide.value,
-                onBarsHidden:
-                    (app.settings.hideTopBar || app.settings.hideBottomBar)
-                    ? app.setBarsHideFromScroll
-                    : null,
-                child: _pageFor(id),
+              child: _withBodyCardGap(
+                context,
+                id,
+                ScrollTint(
+                  hideDistance: barHeight,
+                  readBarsHidden: () => app.barsHide.value,
+                  onBarsHidden:
+                      (app.settings.hideTopBar || app.settings.hideBottomBar)
+                      ? app.setBarsHideFromScroll
+                      : null,
+                  child: _pageFor(id),
+                ),
               ),
             ),
         ],
@@ -995,8 +1017,12 @@ class _RootShellState extends State<RootShell>
                               left: 0,
                               top: 0,
                               right: 8 + systemPadding.right,
-                              bottom: 8 + systemPadding.bottom,
-                              // 卡片已经按 left/right/bottom inset 让过位了，
+                              // 卡片自己让开了 8dp + 系统导航栏；正文只让系统
+                              // 导航栏，底部那 8dp 由页面自己让
+                              //（见 _withBodyCardGap）——「我的」页两栏态的
+                              // 左窗格是导航区，要一直通到窗口底边
+                              bottom: systemPadding.bottom,
+                              // 卡片已经按 left/right inset 让过位了，
                               // 页面内（AppBar / SafeArea / Scrollbar）不要再让一次
                               child: MediaQuery.removePadding(
                                 context: context,

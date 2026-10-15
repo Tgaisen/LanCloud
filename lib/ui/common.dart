@@ -115,6 +115,20 @@ double shellBottomBarInset(BuildContext context) {
   return bottomObstructionHeight(context);
 }
 
+/// 大屏外壳里正文卡片自己的底部留白：卡片四周留 8dp（见 app.dart 的卡片
+/// 布局），页面正文套在卡片里，也要让开这一段。
+///
+/// 一般页面由外壳在页面外面统一让位（[RootShell] 的 [_withBodyCardGap]）；
+/// 「我的」页两栏态例外：左窗格是导航区，要通到窗口底边（和外壳最左侧的
+/// NavigationRail 一致），所以整页不让位、由页面内部自己给右卡片补这一档。
+double shellBodyCardGap(BuildContext context) =>
+    inRootShell(context) && isLargeLayout(context) ? 8 : 0;
+
+/// 「我的」页两栏布局的宽度断点（M3 expanded 档）：≥ 该宽度时列表-详情并排。
+/// 外壳要靠它判断这一页的正文要不要自己处理底部卡片留白（见
+/// [shellBodyCardGap]）。
+const double kProfileTwoPaneBreakpoint = 840;
+
 /// 大屏（横屏 / 平板）下的 MD3E 正文卡片：body area 用 surface 底色、
 /// 四周 16dp 圆角，外圈留 8dp + 系统导航栏 inset；卡片外面（navigation area）
 /// 由页面 Scaffold 的 surfaceContainer 底色负责。
