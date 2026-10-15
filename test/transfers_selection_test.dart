@@ -88,9 +88,8 @@ Future<AppController> pushTransfers(WidgetTester tester) async {
               child: TextButton(
                 onPressed: () => Navigator.of(context).push(
                   MaterialPageRoute<void>(
-                    // 独立打开时外壳传的就是同一个 tabIndex（见 app.dart
-                    // 的 _openView），这里保持一致，避免判断错页面形态
-                    builder: (_) => const TransfersPage(tabIndex: 2),
+                    // 独立路由形态（非底栏视图）：返回键 / 多选条按此分支
+                    builder: (_) => const TransfersPage(),
                   ),
                 ),
                 child: const Text('打开传输'),

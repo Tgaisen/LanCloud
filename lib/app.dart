@@ -394,7 +394,7 @@ class _RootShellState extends State<RootShell>
   Widget _pageFor(int id) => switch (id) {
     _viewHome => const HomePage(tabIndex: _viewHome),
     _viewDrive => const DrivePage(tabIndex: _viewDrive),
-    _viewTransfers => const TransfersPage(tabIndex: _viewTransfers),
+    _viewTransfers => const TransfersPage(),
     _viewFavorites => const FavoritesPage(tabIndex: _viewFavorites),
     _ => const ProfilePage(tabIndex: _viewProfile),
   };

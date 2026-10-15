@@ -29,10 +29,7 @@ enum _TransferMenuAction {
 }
 
 class TransfersPage extends StatefulWidget {
-  const TransfersPage({super.key, this.tabIndex, this.openFile});
-
-  /// 外壳中的 page 视图下标；作为独立路由打开时为 null（不响应切换通知）。
-  final int? tabIndex;
+  const TransfersPage({super.key, this.openFile});
 
   /// 打开已下载文件；默认交给系统「打开」，测试注入以免真的调起系统应用。
   final Future<void> Function(String path)? openFile;
@@ -58,8 +55,9 @@ class _TransfersPageState extends State<TransfersPage>
     curve: Curves.easeOutCubic,
   );
 
-  /// 列表入场动画：只在首次加载 / 切到本视图 / 切换上传下载时整组播一次，
-  /// 滑动时懒构建出来的条目不再重播（与收藏页一致，改用共享进度驱动）。
+  /// 列表入场动画：只在首次加载 / 切换上传下载时整组播一次，
+  /// 滑动时懒构建出来的条目不再重播（与收藏页一致，改用共享进度驱动）；
+  /// 切走再切回本视图也不重播（页面保活，动画状态与其它页一样保留）。
   late final AnimationController _enter = AnimationController(
     vsync: this,
     duration: ListEnterAnimation.duration,
@@ -70,26 +68,14 @@ class _TransfersPageState extends State<TransfersPage>
 
   /// 正在播放删除动画的记录（动画播完再真正移除）
   final Set<String> _removing = {};
+
+  /// 外壳（AppController）：dispose 里不能再读 context，退出多选要用它。
   AppController? _app;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final app = context.read<AppController>();
-    if (!identical(app, _app)) {
-      _app?.activeTab.removeListener(_onActiveTabChanged);
-      _app = app;
-      app.activeTab.addListener(_onActiveTabChanged);
-    }
-  }
-
-  /// 切到本视图时重播一次入场动画（与收藏页同款）。
-  void _onActiveTabChanged() {
-    final app = _app;
-    if (app == null || widget.tabIndex == null) return;
-    if (app.activeTab.value == widget.tabIndex) {
-      _replayEnter();
-    }
+    _app = context.read<AppController>();
   }
 
   /// 整组入场动画：系统要求少动效时直接显示（不做错峰淡入 / 位移）。
@@ -107,7 +93,7 @@ class _TransfersPageState extends State<TransfersPage>
   @override
   void initState() {
     super.initState();
-    // 首次加载：整组播一次入场动画（之后靠切视图 / 切 tab 重播）
+    // 首次加载：整组播一次入场动画（之后只在切换上传 / 下载时重播）
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _replayEnter();
     });
@@ -120,7 +106,6 @@ class _TransfersPageState extends State<TransfersPage>
       app.setSelectionMode(false);
       app.onRequestExitSelection = null;
     }
-    _app?.activeTab.removeListener(_onActiveTabChanged);
     _tabAnim.dispose();
     _enter.dispose();
     _scroll.dispose();
@@ -451,7 +436,6 @@ class _TransfersPageState extends State<TransfersPage>
     return PopScope(
       // 独立页面（_openView 打开的二级路由）没有外壳的返回处理：
       // 多选状态下返回先退出多选；位于底栏（首个路由）时交给外壳统一处理。
-      // 注意不能用 tabIndex 判断：独立打开时它也带着同一个值。
       canPop: inRootShell(context) || !_selecting,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
