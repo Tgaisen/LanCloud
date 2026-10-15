@@ -11,6 +11,7 @@ import 'about_page.dart';
 import 'app_icons.dart';
 import 'common.dart';
 import 'm3e.dart';
+import 'reduce_motion.dart';
 
 /// 更新页：更新状态卡片 + 版本信息 / 更新日志 + 更新通道 / 自动检查更新。
 class UpdatePage extends StatefulWidget {
@@ -67,7 +68,7 @@ class UpdateContent extends StatelessWidget {
       builder: (context, _) => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _UpdateStatusCard(service: service),
+          _UpdateStatusPanel(service: service),
           const SizedBox(height: 8),
           SegmentedList(
             children: [
@@ -157,17 +158,17 @@ Future<void> _pickChannel(BuildContext context, AppController app) async {
   );
 }
 
-/// 更新状态卡片：左侧图标框、中间状态文本、右侧动作按钮。
+/// 更新状态区：图标框 / 状态文本 / 动作按钮，垂直居中排列。
 ///
-/// **参考 M3 规范**：整张卡不可点、只有按钮是操作（M3：卡片要么整卡可点、
-/// 要么只作为容器放按钮，不能两者兼有）；状态标题是卡片的主信息，用强调
-/// 排版（M3E：强调排版标记层级，不是整份替换）；卡内动作都算主操作，统一
-/// 用 filled 按钮。
-/// **本应用的设计决定（非 M3 规范）**：容器色跟随列表组（surfaceContainerLow
-/// + 16dp 圆角），外边距与列表组一致（4dp）；「检测到新版本」用三级容器色把
-/// 注意力引到这个状态上，失败用错误容器色。
-class _UpdateStatusCard extends StatelessWidget {
-  const _UpdateStatusCard({required this.service});
+/// **参考 M3 规范**：状态标题是这一段的主信息，用强调排版（M3E：强调排版
+/// 标记层级，不是整份替换）；动作都算主操作，统一用 filled 按钮；内容块
+/// 不强制套容器，靠留白与下方列表分组。
+/// **本应用的设计决定（非 M3 规范）**：「检测到新版本」用三级容器色把注意力
+/// 引到这个状态上，失败用错误容器色；图标框 / 状态文本 / 动作按钮
+/// **垂直居中**排列——文本独占一整行宽度，英文等更长的文案不会和按钮挤在
+/// 一起；不套卡片容器，直接坐在页面背景上（与关于页的版本块同一处理）。
+class _UpdateStatusPanel extends StatelessWidget {
+  const _UpdateStatusPanel({required this.service});
 
   final UpdateService service;
 
@@ -241,6 +242,8 @@ class _UpdateStatusCard extends StatelessWidget {
       );
     } else {
       button = FilledButton(
+        // 比默认（40dp）高一档，和放大后的图标框 / 文本成套
+        style: FilledButton.styleFrom(minimumSize: const Size(88, 48)),
         onPressed: status == UpdateStatus.available
             ? () => _openUpdateDialog(context, service)
             : () => _checkManually(context, service),
@@ -253,63 +256,42 @@ class _UpdateStatusCard extends StatelessWidget {
     }
 
     return Padding(
-      // 与列表组同宽：SegmentedList 的默认外边距是 4dp
-      padding: const EdgeInsets.all(4),
-      child: Container(
-        decoration: BoxDecoration(
-          color: scheme.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            _StatusIconBox(
-              color: boxColor,
-              foreground: boxForeground,
-              child: status == UpdateStatus.checking
-                  // 检测中：圆环立即替换图标（M3：内置在组件里的等待用
-                  // 加载指示器；少动效时它是静态形态）
-                  ? M3eLoadingIndicator(
-                      size: 28,
-                      color: boxForeground,
-                      semanticsLabel: l10n.updateCheckingTitle,
-                    )
-                  : Icon(icon, size: 28, color: boxForeground),
+      // 不套卡片：直接坐在页面背景上，左右留白只影响长文案的换行宽度，
+      // 上下与关于页的版本块保持同一档（16dp）
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _StatusIconBox(
+            color: boxColor,
+            foreground: boxForeground,
+            child: status == UpdateStatus.checking
+                // 检测中：圆环立即替换图标（M3：内置在组件里的等待用
+                // 加载指示器；少动效时它是静态形态）
+                ? M3eLoadingIndicator(
+                    size: 36,
+                    color: boxForeground,
+                    semanticsLabel: l10n.updateCheckingTitle,
+                  )
+                : Icon(icon, size: 36, color: boxForeground),
+          ),
+          const SizedBox(height: 16),
+          // 状态文本变化时让读屏播报（与「我的」页标题同一机制）
+          Semantics(
+            liveRegion: true,
+            child: Text(
+              title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: context.m3eEmphasizedTheme.titleLarge,
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // 状态文本变化时让读屏播报（与「我的」页标题同一机制）
-                  Semantics(
-                    liveRegion: true,
-                    child: Text(
-                      title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: context.m3eEmphasizedTheme.titleMedium,
-                    ),
-                  ),
-                  if (subtitle != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Text(
-                        subtitle,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            if (button != null) ...[const SizedBox(width: 8), button],
-          ],
-        ),
+          ),
+          // 副标题槽：出现 / 消失时高度与透明度一起做动画，按钮与整段
+          // 高度跟着它逐帧流动（检测中隐藏副标题时不会瞬间跳一下）
+          _SubtitleSlot(subtitle: subtitle),
+          if (button != null) ...[const SizedBox(height: 20), button],
+        ],
       ),
     );
   }
@@ -328,13 +310,106 @@ class _UpdateStatusCard extends StatelessWidget {
   }
 }
 
+/// 卡片里的副标题槽：内容出现 / 消失时「高度 + 透明度」一起动画。
+///
+/// 检测中会隐藏副标题，直接把子树换掉会让下面的按钮和整段高度瞬间上移；
+/// 这里让槽位常驻：文字淡出、高度收到 0，外层的 Column / 卡片随之平滑地
+/// 重新布局（少动效时直接到位，不做动画）。
+class _SubtitleSlot extends StatefulWidget {
+  const _SubtitleSlot({required this.subtitle});
+
+  /// 当前要显示的副标题；null = 收起。
+  final String? subtitle;
+
+  @override
+  State<_SubtitleSlot> createState() => _SubtitleSlotState();
+}
+
+class _SubtitleSlotState extends State<_SubtitleSlot>
+    with SingleTickerProviderStateMixin {
+  static const Duration _duration = Duration(milliseconds: 220);
+
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: _duration,
+    value: widget.subtitle == null ? 0 : 1,
+  );
+
+  /// 正在显示（或正在淡出）的文案：收起动画期间保留上一份，
+  /// 这样文字能跟着动画一起淡出，而不是先消失、留一块空白慢慢收。
+  String? _shown;
+
+  @override
+  void initState() {
+    super.initState();
+    _shown = widget.subtitle;
+    _controller.addStatusListener(_onStatus);
+  }
+
+  @override
+  void didUpdateWidget(_SubtitleSlot oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.subtitle == oldWidget.subtitle) return;
+    if (widget.subtitle != null) {
+      setState(() => _shown = widget.subtitle);
+      _controller.forward();
+    } else {
+      _controller.reverse();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.removeStatusListener(_onStatus);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  /// 收起动画走完：把旧文案从树里拿掉（零高度 + 全透明仍占着一个节点）。
+  void _onStatus(AnimationStatus status) {
+    if (!mounted) return;
+    if (status == AnimationStatus.dismissed && _shown != null) {
+      setState(() => _shown = null);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // 少动效：时长归零，出现 / 收起都直接到位
+    _controller.duration = reduceMotionOf(context) ? Duration.zero : _duration;
+    final shown = _shown;
+    if (shown == null) return const SizedBox.shrink();
+    final theme = Theme.of(context);
+    return SizeTransition(
+      sizeFactor: _controller,
+      // 沿高度收起 / 展开时贴着顶部（轴向上 -1 的位置）
+      alignment: Alignment.topCenter,
+      child: FadeTransition(
+        opacity: _controller,
+        child: Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text(
+            shown,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// 卡片左侧的图标框：MD3E 装饰形状外框（4 边饼干）+ 图标 / 加载圆环。
 ///
 /// **参考 M3 规范**：形状取自 M3 形状库的 `Cookie4Sided`；容器色用与状态
 /// 配对的容器角色、内容用配对的 on 角色；加载指示器放在别的组件里时，
 /// 颜色要与该组件的图标一致（M3 的对比度要求），所以圆环用图标色。
-/// **本应用的设计决定（非 M3 规范）**：外框 48dp / 内容 28dp（卡片行高
-/// 跟着 AOSP 系统更新页的量级）。
+/// **本应用的设计决定（非 M3 规范）**：外框 64dp / 内容 36dp（卡片改成
+/// 垂直排列后图标框承担视觉焦点，跟着放大一档）。
 class _StatusIconBox extends StatelessWidget {
   const _StatusIconBox({
     required this.child,
@@ -351,8 +426,8 @@ class _StatusIconBox extends StatelessWidget {
     return ClipPath(
       clipper: M3EClipper(Shapes.c4SidedCookie),
       child: Container(
-        width: 48,
-        height: 48,
+        width: 64,
+        height: 64,
         color: color,
         alignment: Alignment.center,
         child: child,

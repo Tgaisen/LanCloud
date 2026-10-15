@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/app_info.dart';
+import 'package:lancloud/core/system_motion.dart';
 import 'package:lancloud/core/update/release_info.dart';
 import 'package:lancloud/core/update/update_service.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
@@ -40,6 +41,7 @@ DioException httpError(int status) => DioException(
 Future<AppController> pumpUpdatePage(
   WidgetTester tester, {
   bool autoCheck = true,
+  Locale locale = const Locale('zh'),
 }) async {
   SharedPreferences.setMockInitialValues(<String, Object>{});
   final app = AppController();
@@ -52,7 +54,7 @@ Future<AppController> pumpUpdatePage(
       child: MaterialApp(
         localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        locale: const Locale('zh'),
+        locale: locale,
         home: const UpdatePage(),
       ),
     ),
@@ -140,6 +142,114 @@ void main() {
     await tester.tap(find.widgetWithText(TextButton, '取消'));
     await tester.pumpAndSettle();
     expect(find.byType(AlertDialog), findsNothing);
+  });
+
+  testWidgets('更新状态区：图标框 / 文本 / 按钮垂直居中排列', (tester) async {
+    await pumpUpdatePage(tester);
+
+    final iconRect = tester.getRect(find.byIcon(app_icons.Icons.update));
+    final titleRect = tester.getRect(find.text('未检测更新'));
+    final buttonRect = tester.getRect(
+      find.widgetWithText(FilledButton, '检测更新'),
+    );
+    // 三者水平居中对齐（文本独占整行，不再和按钮抢宽度）
+    expect(
+      iconRect.center.dx,
+      moreOrLessEquals(titleRect.center.dx, epsilon: 0.5),
+    );
+    expect(
+      buttonRect.center.dx,
+      moreOrLessEquals(titleRect.center.dx, epsilon: 0.5),
+    );
+    // 垂直顺序：图标框 → 状态文本 → 按钮
+    expect(titleRect.top, greaterThan(iconRect.bottom));
+    expect(buttonRect.top, greaterThan(titleRect.bottom));
+  });
+
+  testWidgets('英文长文案在窄屏下不溢出（失败状态最长）', (tester) async {
+    tester.view.physicalSize = const Size(360, 720);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    UpdateService.debugFetchReleases = () async => throw httpError(403);
+    await pumpUpdatePage(tester, locale: const Locale('en'));
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Check for updates'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // 布局在渲染溢出时会直接让用例失败；这里再确认文案确实是最长的那种
+    expect(find.text('Update check failed'), findsNWidgets(2));
+    expect(find.text("Couldn't reach GitHub (HTTP 403)"), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Check again'), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('检测开始时状态区高度平滑收起：副标题区域做布局动画', (tester) async {
+    // 第一次检测成功 → 「已是最新版本」带副标题
+    UpdateService.debugFetchReleases = () async => [rel('1.0.0')];
+    await pumpUpdatePage(tester);
+    await tester.tap(find.widgetWithText(FilledButton, '检测更新'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('上次检测于'), findsOneWidget);
+
+    // 第二次检测挂起，停在「检测中」观察布局动画（副标题收起、按钮上移）
+    final completer = Completer<List<ReleaseInfo>>();
+    UpdateService.debugFetchReleases = () => completer.future;
+    final before = tester
+        .getRect(find.widgetWithText(FilledButton, '重新检测'))
+        .top;
+
+    await tester.tap(find.widgetWithText(FilledButton, '重新检测'));
+    await tester.pump();
+    final started = tester
+        .getRect(find.widgetWithText(FilledButton, '检测中'))
+        .top;
+    await tester.pump(const Duration(milliseconds: 110));
+    final mid = tester.getRect(find.widgetWithText(FilledButton, '检测中')).top;
+    await tester.pump(const Duration(milliseconds: 400));
+    final settled = tester
+        .getRect(find.widgetWithText(FilledButton, '检测中'))
+        .top;
+
+    // 动画从原位开始、平滑上移，而不是瞬间跳到位
+    expect(started, moreOrLessEquals(before, epsilon: 0.5));
+    expect(mid, lessThan(started));
+    expect(settled, lessThan(mid));
+    // 副标题淡出后不再占位
+    expect(find.textContaining('上次检测于'), findsNothing);
+
+    completer.complete([rel('1.0.0')]);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('上次检测于'), findsOneWidget);
+  });
+
+  testWidgets('少动效：状态区布局直接到位，不做尺寸动画', (tester) async {
+    SystemMotion.motionMode.value = 'off';
+    addTearDown(() => SystemMotion.motionMode.value = 'auto');
+
+    UpdateService.debugFetchReleases = () async => [rel('1.0.0')];
+    await pumpUpdatePage(tester);
+    await tester.tap(find.widgetWithText(FilledButton, '检测更新'));
+    await tester.pumpAndSettle();
+
+    final completer = Completer<List<ReleaseInfo>>();
+    UpdateService.debugFetchReleases = () => completer.future;
+    await tester.tap(find.widgetWithText(FilledButton, '重新检测'));
+    await tester.pump();
+    final instant = tester
+        .getRect(find.widgetWithText(FilledButton, '检测中'))
+        .top;
+    await tester.pump(const Duration(milliseconds: 400));
+    final settled = tester
+        .getRect(find.widgetWithText(FilledButton, '检测中'))
+        .top;
+
+    expect(instant, moreOrLessEquals(settled, epsilon: 0.5));
+
+    completer.complete([rel('1.0.0')]);
+    await tester.pumpAndSettle();
   });
 
   testWidgets('检测中：按钮置灰，圆环立即替换图标', (tester) async {
