@@ -30,6 +30,9 @@ void main() {
     expect(find.text('未登录'), findsOneWidget);
     expect(find.text('切换'), findsOneWidget);
     expect(find.text('显示 Cookie'), findsNothing);
+    // 单栏态三组也都有分组小标题（账号 / 设置 / 应用）
+    expect(find.text('账号'), findsOneWidget);
+    expect(find.text('应用'), findsOneWidget);
     expect(find.text('网页版'), findsOneWidget);
     expect(find.text('回收站'), findsOneWidget);
     expect(find.text('设置'), findsOneWidget);

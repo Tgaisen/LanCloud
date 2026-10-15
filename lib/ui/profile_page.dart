@@ -382,7 +382,8 @@ class _ProfilePageState extends State<ProfilePage>
   List<Widget> _singlePaneChildren(BuildContext context, AppController app) {
     final l10n = context.l10n;
     return [
-      // 组 1：账号（信息卡 + 网页版 / 个人中心 / 回收站）
+      // 组 1：账号（分组小标题 + 信息卡 + 网页版 / 个人中心 / 回收站）
+      M3eSectionHeader(l10n.accountTitle),
       SegmentedList(
         children: [_accountTile(context, app), ..._webLinkTiles(context)],
       ),
@@ -403,8 +404,8 @@ class _ProfilePageState extends State<ProfilePage>
             ),
         ],
       ),
-      const SizedBox(height: 8),
-      // 组 3：关于
+      // 组 3：应用（分组小标题 + 关于）
+      M3eSectionHeader(l10n.appSection),
       SegmentedList(
         children: [
           ListTile(
