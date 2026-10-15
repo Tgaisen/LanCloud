@@ -392,6 +392,41 @@ String formatDateShort(int millis) {
   return '${date.year}-$mm-$dd';
 }
 
+/// 相对时间文案：刚刚 / 5分钟前 / 今天 14:30 / 昨天 09:15 / 10月15日 /
+/// 2025年10月15日（更新页「上次检测于 …」用）。
+///
+/// 分档：
+/// - 1 分钟内（含时钟偏差导致的「未来」时间）→ 刚刚；
+/// - 1 分钟内到 1 小时 → N分钟前；
+/// - 再往上按本地日历分「今天 / 昨天」，只显示时分；
+/// - 更早只显示日期，跨年才带年份。
+///
+/// [now] 仅测试注入；文案都走 l10n（见各自的 timeXxx 词条）。
+String formatRelativeTime(
+  AppLocalizations l10n,
+  DateTime time, {
+  DateTime? now,
+}) {
+  final current = now ?? DateTime.now();
+  final diff = current.difference(time);
+  if (diff.isNegative || diff.inMinutes < 1) return l10n.timeJustNow;
+  if (diff.inHours < 1) return l10n.timeMinutesAgo(diff.inMinutes);
+  final day = DateTime(time.year, time.month, time.day);
+  final today = DateTime(current.year, current.month, current.day);
+  final days = today.difference(day).inDays;
+  if (days == 0) return l10n.timeTodayAt(_hourMinute(time));
+  if (days == 1) return l10n.timeYesterdayAt(_hourMinute(time));
+  if (time.year == current.year) {
+    return l10n.timeMonthDay(time.month, time.day);
+  }
+  return l10n.timeYearMonthDay(time.year, time.month, time.day);
+}
+
+/// HH:mm（24 小时制，补零）。
+String _hourMinute(DateTime time) =>
+    '${time.hour.toString().padLeft(2, '0')}:'
+    '${time.minute.toString().padLeft(2, '0')}';
+
 /// 蓝奏云接口返回的大小是 "1.2 M" 这类文本。
 String prettyLzSize(String raw) {
   final text = raw.trim().replaceAll(' ', '');

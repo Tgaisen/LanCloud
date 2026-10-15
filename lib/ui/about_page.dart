@@ -89,15 +89,10 @@ class AboutContent extends StatelessWidget {
             ],
           ),
         ),
-        // 构建信息 / 获取更新：放在最前，和版本号挨着
+        // 构建信息：放在最前，和版本号挨着
+        //（「检测更新」已移到「我的 - 更新」页，这里不再单放入口）
         SegmentedList(
           children: [
-            ListTile(
-              leading: const Icon(Icons.update),
-              title: Text(l10n.aboutCheckUpdate),
-              trailing: const Icon(Icons.open_in_new),
-              onTap: () => openExternalUrl(Uri.parse('$projectUrl/releases')),
-            ),
             ListTile(
               leading: const Icon(Icons.build_outlined),
               title: Text(l10n.aboutBuildInfo),

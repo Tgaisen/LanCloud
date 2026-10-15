@@ -3482,12 +3482,6 @@ abstract class AppLocalizations {
   /// **'提交 Issue'**
   String get aboutSubmitIssue;
 
-  /// No description provided for @aboutCheckUpdate.
-  ///
-  /// In zh, this message translates to:
-  /// **'获取更新'**
-  String get aboutCheckUpdate;
-
   /// No description provided for @aboutBuildInfo.
   ///
   /// In zh, this message translates to:
@@ -3511,6 +3505,168 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'提交'**
   String get commitHash;
+
+  /// No description provided for @update.
+  ///
+  /// In zh, this message translates to:
+  /// **'更新'**
+  String get update;
+
+  /// No description provided for @updateNotChecked.
+  ///
+  /// In zh, this message translates to:
+  /// **'未检测更新'**
+  String get updateNotChecked;
+
+  /// No description provided for @updateCheckingTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在检测更新…'**
+  String get updateCheckingTitle;
+
+  /// No description provided for @updateUpToDateTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'已是最新版本'**
+  String get updateUpToDateTitle;
+
+  /// No description provided for @updateFoundTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'检测到新版本'**
+  String get updateFoundTitle;
+
+  /// No description provided for @updateFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'检测更新失败'**
+  String get updateFailed;
+
+  /// No description provided for @updateUnsupported.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前平台不支持检测更新'**
+  String get updateUnsupported;
+
+  /// No description provided for @updateLastCheckAt.
+  ///
+  /// In zh, this message translates to:
+  /// **'上次检测于 {time}'**
+  String updateLastCheckAt(String time);
+
+  /// No description provided for @updateReachFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法连接至 GitHub ({code})'**
+  String updateReachFailed(String code);
+
+  /// No description provided for @updateCheck.
+  ///
+  /// In zh, this message translates to:
+  /// **'检测更新'**
+  String get updateCheck;
+
+  /// No description provided for @updateCheckingShort.
+  ///
+  /// In zh, this message translates to:
+  /// **'检测中'**
+  String get updateCheckingShort;
+
+  /// No description provided for @updateRecheck.
+  ///
+  /// In zh, this message translates to:
+  /// **'重新检测'**
+  String get updateRecheck;
+
+  /// No description provided for @updateAction.
+  ///
+  /// In zh, this message translates to:
+  /// **'更新'**
+  String get updateAction;
+
+  /// No description provided for @updateVersionInfo.
+  ///
+  /// In zh, this message translates to:
+  /// **'版本信息'**
+  String get updateVersionInfo;
+
+  /// No description provided for @updateChangelog.
+  ///
+  /// In zh, this message translates to:
+  /// **'更新日志'**
+  String get updateChangelog;
+
+  /// No description provided for @updateChannel.
+  ///
+  /// In zh, this message translates to:
+  /// **'更新通道'**
+  String get updateChannel;
+
+  /// No description provided for @updateChannelStable.
+  ///
+  /// In zh, this message translates to:
+  /// **'正式版'**
+  String get updateChannelStable;
+
+  /// No description provided for @updateChannelBeta.
+  ///
+  /// In zh, this message translates to:
+  /// **'测试版'**
+  String get updateChannelBeta;
+
+  /// No description provided for @updateAutoCheck.
+  ///
+  /// In zh, this message translates to:
+  /// **'自动检查更新'**
+  String get updateAutoCheck;
+
+  /// No description provided for @updateDialogTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'检测到新版本 {version}'**
+  String updateDialogTitle(String version);
+
+  /// No description provided for @updateViewDetails.
+  ///
+  /// In zh, this message translates to:
+  /// **'在 GitHub 查看详情'**
+  String get updateViewDetails;
+
+  /// No description provided for @timeJustNow.
+  ///
+  /// In zh, this message translates to:
+  /// **'刚刚'**
+  String get timeJustNow;
+
+  /// No description provided for @timeMinutesAgo.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count}分钟前'**
+  String timeMinutesAgo(int count);
+
+  /// No description provided for @timeTodayAt.
+  ///
+  /// In zh, this message translates to:
+  /// **'今天 {time}'**
+  String timeTodayAt(String time);
+
+  /// No description provided for @timeYesterdayAt.
+  ///
+  /// In zh, this message translates to:
+  /// **'昨天 {time}'**
+  String timeYesterdayAt(String time);
+
+  /// No description provided for @timeMonthDay.
+  ///
+  /// In zh, this message translates to:
+  /// **'{month}月{day}日'**
+  String timeMonthDay(int month, int day);
+
+  /// No description provided for @timeYearMonthDay.
+  ///
+  /// In zh, this message translates to:
+  /// **'{year}年{month}月{day}日'**
+  String timeYearMonthDay(int year, int month, int day);
 
   /// No description provided for @firstRunWelcome.
   ///

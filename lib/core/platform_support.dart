@@ -57,6 +57,27 @@ class PlatformSupport {
     return _androidSdkInt;
   }
 
+  /// 设备支持的 ABI 列表（按系统给的优先级）；非 Android 或读取失败时为
+  /// null。更新检测用它挑对应架构的安装包（见 UpdateService.downloadUrl）。
+  static List<String>? _supportedAbis;
+  static bool _supportedAbisLoaded = false;
+
+  /// 读取并缓存设备 ABI 列表（整个进程只读一次）。
+  static Future<List<String>?> loadSupportedAbis() async {
+    if (_supportedAbisLoaded) return _supportedAbis;
+    _supportedAbisLoaded = true;
+    if (!isAndroid) return null;
+    try {
+      final list = await const MethodChannel('lancloud/system')
+          .invokeMethod<List<Object?>>('supportedAbis');
+      _supportedAbis = list?.whereType<String>().toList(growable: false);
+    } catch (_) {
+      // 测试环境 / 通道不可用：保持 null，调用方退回 Release 页面
+      _supportedAbis = null;
+    }
+    return _supportedAbis;
+  }
+
   /// WebView 是否用 Hybrid Composition（仅 Android 生效）。
   ///
   /// 插件文档（inappwebview 5 更新日志）：Hybrid Composition 在 Android 10+

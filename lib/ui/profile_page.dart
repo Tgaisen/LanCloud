@@ -18,6 +18,7 @@ import 'm3e.dart';
 import 'reduce_motion.dart';
 import 'scroll_tint.dart';
 import 'settings_page.dart';
+import 'update_page.dart';
 import 'web_page.dart';
 
 /// 「我的」视图：账号卡片 + 网页版/回收站 + 设置/关于。
@@ -213,6 +214,7 @@ class _ProfilePageState extends State<ProfilePage>
       detail.settingsCategory?.label(l10n) ??
       switch (detail) {
         _ProfileDetail.about => l10n.about,
+        _ProfileDetail.update => l10n.update,
         _ => l10n.accountManagement,
       };
 
@@ -463,10 +465,18 @@ class _ProfilePageState extends State<ProfilePage>
             ),
         ],
       ),
-      // 组 3：应用（分组小标题 + 关于）
+      // 组 3：应用（分组小标题 + 更新 / 关于）
       M3eSectionHeader(l10n.appSection),
       SegmentedList(
         children: [
+          ListTile(
+            leading: const Icon(Icons.update),
+            title: Text(l10n.update),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute<void>(builder: (_) => const UpdatePage())),
+          ),
           ListTile(
             leading: const Icon(Icons.info_outline),
             title: Text(l10n.about),
@@ -511,6 +521,7 @@ class _ProfilePageState extends State<ProfilePage>
     for (final label in [
       l10n.accountManagement,
       for (final category in SettingsCategory.values) category.label(l10n),
+      l10n.update,
       l10n.about,
     ]) {
       final needed = itemChrome + measure(label, theme.textTheme.labelLarge);
@@ -712,8 +723,14 @@ class _ProfilePageState extends State<ProfilePage>
           selected: _detail.settingsCategory == category,
           onTap: () => _select(_ProfileDetail.ofCategory(category)),
         ),
-      // 组 3：应用（分组小标题 + 关于）
+      // 组 3：应用（分组小标题 + 更新 / 关于）
       _RailSectionLabel(l10n.appSection),
+      _PaneTile(
+        icon: Icons.update,
+        label: l10n.update,
+        selected: _detail == _ProfileDetail.update,
+        onTap: () => _select(_ProfileDetail.update),
+      ),
       _PaneTile(
         icon: Icons.info_outline,
         label: l10n.about,
@@ -768,6 +785,13 @@ class _ProfilePageState extends State<ProfilePage>
             onOpenLicenses: () => _openSubPage(ProfileSubPage.licenses),
           ),
         ],
+      );
+    }
+    if (detail == _ProfileDetail.update) {
+      return _paneScrollView(
+        context,
+        controller: _paneScroll(_paneKey),
+        children: [const UpdateContent()],
       );
     }
     return _paneScrollView(
@@ -1037,6 +1061,7 @@ enum _ProfileDetail {
   notificationsReminders,
   transferConnection,
   privacyData,
+  update,
   about;
 
   static _ProfileDetail ofCategory(

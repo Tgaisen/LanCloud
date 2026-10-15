@@ -142,6 +142,7 @@ class Icons {
   static const IconData swipe = Symbols.swipe;
   static const IconData switch_account_outlined = Symbols.switch_account;
   static const IconData sync = Symbols.sync;
+  static const IconData system_update = Symbols.system_update;
   static const IconData table_chart_outlined = Symbols.table_chart;
   static const IconData timer_outlined = Symbols.timer;
   static const IconData translate = Symbols.translate;

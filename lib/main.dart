@@ -97,6 +97,8 @@ Future<void> main() async {
   await IncomingLinks.instance.init();
   // 自动备份：按每天/每周频率在启动时补一次，失败只记录不打扰。
   unawaited(BackupService.of(app).maybeAutoBackup());
+  // 自动检查更新：在 12 小时有效期内不请求；失败静默（见 UpdateService）。
+  unawaited(app.updates.maybeAutoCheck());
   runApp(
     MultiProvider(
       providers: [

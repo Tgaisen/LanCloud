@@ -1845,9 +1845,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutSubmitIssue => '提交 Issue';
 
   @override
-  String get aboutCheckUpdate => '获取更新';
-
-  @override
   String get aboutBuildInfo => '构建信息';
 
   @override
@@ -1858,6 +1855,103 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get commitHash => '提交';
+
+  @override
+  String get update => '更新';
+
+  @override
+  String get updateNotChecked => '未检测更新';
+
+  @override
+  String get updateCheckingTitle => '正在检测更新…';
+
+  @override
+  String get updateUpToDateTitle => '已是最新版本';
+
+  @override
+  String get updateFoundTitle => '检测到新版本';
+
+  @override
+  String get updateFailed => '检测更新失败';
+
+  @override
+  String get updateUnsupported => '当前平台不支持检测更新';
+
+  @override
+  String updateLastCheckAt(String time) {
+    return '上次检测于 $time';
+  }
+
+  @override
+  String updateReachFailed(String code) {
+    return '无法连接至 GitHub ($code)';
+  }
+
+  @override
+  String get updateCheck => '检测更新';
+
+  @override
+  String get updateCheckingShort => '检测中';
+
+  @override
+  String get updateRecheck => '重新检测';
+
+  @override
+  String get updateAction => '更新';
+
+  @override
+  String get updateVersionInfo => '版本信息';
+
+  @override
+  String get updateChangelog => '更新日志';
+
+  @override
+  String get updateChannel => '更新通道';
+
+  @override
+  String get updateChannelStable => '正式版';
+
+  @override
+  String get updateChannelBeta => '测试版';
+
+  @override
+  String get updateAutoCheck => '自动检查更新';
+
+  @override
+  String updateDialogTitle(String version) {
+    return '检测到新版本 $version';
+  }
+
+  @override
+  String get updateViewDetails => '在 GitHub 查看详情';
+
+  @override
+  String get timeJustNow => '刚刚';
+
+  @override
+  String timeMinutesAgo(int count) {
+    return '$count分钟前';
+  }
+
+  @override
+  String timeTodayAt(String time) {
+    return '今天 $time';
+  }
+
+  @override
+  String timeYesterdayAt(String time) {
+    return '昨天 $time';
+  }
+
+  @override
+  String timeMonthDay(int month, int day) {
+    return '$month月$day日';
+  }
+
+  @override
+  String timeYearMonthDay(int year, int month, int day) {
+    return '$year年$month月$day日';
+  }
 
   @override
   String get firstRunWelcome => '欢迎使用蓝云';

@@ -38,6 +38,7 @@ void main() {
     expect(find.text('网页版'), findsOneWidget);
     expect(find.text('回收站'), findsOneWidget);
     expect(find.text('设置'), findsOneWidget);
+    expect(find.text('更新'), findsOneWidget);
     expect(find.text('关于'), findsOneWidget);
     app.dispose();
   });
@@ -318,12 +319,20 @@ void main() {
     expect(find.text('下载目录'), findsNothing);
     expect(appBarTitle('关于'), findsOneWidget);
     expect(find.byTooltip('搜索设置项'), findsNothing);
+
+    // 选中「更新」：右窗格换成更新页内容（更新在「关于」前面，同一分组）
+    await tester.tap(find.text('更新'));
+    await tester.pumpAndSettle();
+    expect(find.text('更新通道'), findsOneWidget);
+    expect(find.text('开源许可'), findsNothing);
+    expect(appBarTitle('更新'), findsOneWidget);
   });
 
-  testWidgets('默认窗口尺寸下左窗格整列放得下：不需要滚动', (tester) async {
+  testWidgets('默认窗口尺寸下左窗格可滚动：最后一条「关于」能滚到可见', (tester) async {
     // Windows 默认窗口 856×620 逻辑像素 → 客户区约 841.6×582.4dp，
     // 外壳底部再让开 8dp，左窗格可视高度约 574dp。
-    // 注：测试字体比真实字体矮一点，这里保证的是「不算紧」的余量。
+    // 「应用」分组加了「更新」后整列超过这个高度：接受滚动（不压缩窗口与
+    // 间距），保证最后一条能整条滚进视口即可。
     tester.view.physicalSize = const Size(841, 574);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -342,8 +351,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // 左窗格（两张窗格里的第一个滚动视图）没有滚动余量 = 整列可见，
-    // 最后一条「关于」不会被视口裁掉
+    // 左窗格（两张窗格里的第一个滚动视图）现在有滚动余量；
+    // 滚到底后最后一条「关于」整条落在视口里
     final paneScroll = tester
         .state<ScrollableState>(
           find.descendant(
@@ -352,7 +361,12 @@ void main() {
           ),
         )
         .position;
-    expect(paneScroll.maxScrollExtent, 0);
+    expect(paneScroll.maxScrollExtent, greaterThan(0));
+    paneScroll.jumpTo(paneScroll.maxScrollExtent);
+    await tester.pumpAndSettle();
+    final aboutRect = tester.getRect(find.text('关于'));
+    expect(aboutRect.top, greaterThanOrEqualTo(0));
+    expect(aboutRect.bottom, lessThanOrEqualTo(574));
   });
 
   testWidgets('大屏「我的」：左窗格宽度按最长条目自适应（中文比英文窄）', (tester) async {

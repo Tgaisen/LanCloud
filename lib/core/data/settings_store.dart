@@ -1,5 +1,8 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../app_info.dart';
+import '../update/release_info.dart';
+
 class SettingsStore {
   static const _keyLanguage = 'language';
   static const _keyDownloadDir = 'download_dir';
@@ -38,6 +41,8 @@ class SettingsStore {
   static const _keyNavTransfers = 'nav_show_transfers';
   static const _keyNavFavorites = 'nav_show_favorites';
   static const _keyMotionMode = 'motion_mode';
+  static const _keyUpdateChannel = 'update_channel';
+  static const _keyUpdateAutoCheck = 'update_auto_check';
 
   String? downloadDir;
 
@@ -107,6 +112,18 @@ class SettingsStore {
   /// off = 始终禁用。见 AppController.setMotionMode / reduceMotionOf()。
   String motionMode = 'auto';
 
+  /// 更新通道：stable = 正式版、beta = 测试版。默认与安装版本的类型一致
+  /// （测试版安装包默认跟测试版，正式版默认跟正式版），用户改过就尊重选择。
+  String updateChannel = defaultUpdateChannel;
+
+  /// 启动时自动检查更新（默认开；检测本身的频率由 UpdateService 控制，
+  /// 见「更新信息有效期」）。
+  bool updateAutoCheck = true;
+
+  /// 默认更新通道：按安装的版本名推导（与发布脚本的预发布判定同一口径）。
+  static String get defaultUpdateChannel =>
+      isPrereleaseVersion(appVersion) ? 'beta' : 'stable';
+
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
     language = prefs.getString(_keyLanguage) ?? 'system';
@@ -153,6 +170,8 @@ class SettingsStore {
     navShowTransfers = prefs.getBool(_keyNavTransfers) ?? false;
     navShowFavorites = prefs.getBool(_keyNavFavorites) ?? false;
     motionMode = prefs.getString(_keyMotionMode) ?? 'auto';
+    updateChannel = prefs.getString(_keyUpdateChannel) ?? defaultUpdateChannel;
+    updateAutoCheck = prefs.getBool(_keyUpdateAutoCheck) ?? true;
   }
 
   Future<void> setNavShowTransfers(bool value) async {
@@ -237,6 +256,18 @@ class SettingsStore {
     swipeTabs = value;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keySwipeTabs, value);
+  }
+
+  Future<void> setUpdateChannel(String value) async {
+    updateChannel = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyUpdateChannel, value);
+  }
+
+  Future<void> setUpdateAutoCheck(bool value) async {
+    updateAutoCheck = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyUpdateAutoCheck, value);
   }
 
   Future<void> setApiHost(String value) async {

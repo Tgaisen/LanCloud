@@ -715,11 +715,80 @@
   "aboutLicenses": "Open-source licenses",
   "aboutProjectHome": "Project homepage",
   "aboutSubmitIssue": "Report an issue",
-  "aboutCheckUpdate": "Check for updates",
   "aboutBuildInfo": "Build info",
   "details": "Details",
   "buildTime": "Build time",
   "commitHash": "Commit",
+  "update": "Updates",
+  "updateNotChecked": "Not checked yet",
+  "updateCheckingTitle": "Checking for updates…",
+  "updateUpToDateTitle": "You're up to date",
+  "updateFoundTitle": "New version available",
+  "updateFailed": "Update check failed",
+  "updateUnsupported": "Update checks aren't supported on this platform",
+  "updateLastCheckAt": "Last checked {time}",
+  "@updateLastCheckAt": {
+    "placeholders": {
+      "time": {"type": "String"}
+    }
+  },
+  "updateReachFailed": "Couldn't reach GitHub ({code})",
+  "@updateReachFailed": {
+    "placeholders": {
+      "code": {"type": "String"}
+    }
+  },
+  "updateCheck": "Check for updates",
+  "updateCheckingShort": "Checking",
+  "updateRecheck": "Check again",
+  "updateAction": "Update",
+  "updateVersionInfo": "Version",
+  "updateChangelog": "Release notes",
+  "updateChannel": "Update channel",
+  "updateChannelStable": "Stable",
+  "updateChannelBeta": "Beta",
+  "updateAutoCheck": "Check for updates automatically",
+  "updateDialogTitle": "New version {version} available",
+  "@updateDialogTitle": {
+    "placeholders": {
+      "version": {"type": "String"}
+    }
+  },
+  "updateViewDetails": "View details on GitHub",
+  "timeJustNow": "Just now",
+  "timeMinutesAgo": "{count} min ago",
+  "@timeMinutesAgo": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "timeTodayAt": "Today {time}",
+  "@timeTodayAt": {
+    "placeholders": {
+      "time": {"type": "String"}
+    }
+  },
+  "timeYesterdayAt": "Yesterday {time}",
+  "@timeYesterdayAt": {
+    "placeholders": {
+      "time": {"type": "String"}
+    }
+  },
+  "timeMonthDay": "{month}/{day}",
+  "@timeMonthDay": {
+    "placeholders": {
+      "month": {"type": "int"},
+      "day": {"type": "int"}
+    }
+  },
+  "timeYearMonthDay": "{year}/{month}/{day}",
+  "@timeYearMonthDay": {
+    "placeholders": {
+      "year": {"type": "int"},
+      "month": {"type": "int"},
+      "day": {"type": "int"}
+    }
+  },
   "firstRunWelcome": "Welcome to LanCloud",
   "firstRunMessage": "Please read and accept the Terms of Service and Privacy Policy before continuing.",
   "agreeAndContinue": "Agree and continue",

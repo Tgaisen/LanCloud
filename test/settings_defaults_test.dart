@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/data/settings_store.dart';
+import 'package:lancloud/core/app_info.dart';
+import 'package:lancloud/core/update/release_info.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -39,5 +41,29 @@ void main() {
     await cleared.load();
     expect(cleared.downloadDirTree, isNull);
     expect(cleared.downloadDirLabel, isNull);
+  });
+
+  test('更新通道默认跟随安装版本类型，自动检查默认开启', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final store = SettingsStore();
+    await store.load();
+    expect(
+      store.updateChannel,
+      isPrereleaseVersion(appVersion) ? 'beta' : 'stable',
+    );
+    expect(store.updateAutoCheck, isTrue);
+  });
+
+  test('更新通道与自动检查开关可持久化', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final store = SettingsStore();
+    await store.load();
+    await store.setUpdateChannel('stable');
+    await store.setUpdateAutoCheck(false);
+
+    final reloaded = SettingsStore();
+    await reloaded.load();
+    expect(reloaded.updateChannel, 'stable');
+    expect(reloaded.updateAutoCheck, isFalse);
   });
 }

@@ -923,11 +923,80 @@
   "aboutLicenses": "开源许可",
   "aboutProjectHome": "项目主页",
   "aboutSubmitIssue": "提交 Issue",
-  "aboutCheckUpdate": "获取更新",
   "aboutBuildInfo": "构建信息",
   "details": "详情",
   "buildTime": "构建时间",
   "commitHash": "提交",
+  "update": "更新",
+  "updateNotChecked": "未检测更新",
+  "updateCheckingTitle": "正在检测更新…",
+  "updateUpToDateTitle": "已是最新版本",
+  "updateFoundTitle": "检测到新版本",
+  "updateFailed": "检测更新失败",
+  "updateUnsupported": "当前平台不支持检测更新",
+  "updateLastCheckAt": "上次检测于 {time}",
+  "@updateLastCheckAt": {
+    "placeholders": {
+      "time": {"type": "String"}
+    }
+  },
+  "updateReachFailed": "无法连接至 GitHub ({code})",
+  "@updateReachFailed": {
+    "placeholders": {
+      "code": {"type": "String"}
+    }
+  },
+  "updateCheck": "检测更新",
+  "updateCheckingShort": "检测中",
+  "updateRecheck": "重新检测",
+  "updateAction": "更新",
+  "updateVersionInfo": "版本信息",
+  "updateChangelog": "更新日志",
+  "updateChannel": "更新通道",
+  "updateChannelStable": "正式版",
+  "updateChannelBeta": "测试版",
+  "updateAutoCheck": "自动检查更新",
+  "updateDialogTitle": "检测到新版本 {version}",
+  "@updateDialogTitle": {
+    "placeholders": {
+      "version": {"type": "String"}
+    }
+  },
+  "updateViewDetails": "在 GitHub 查看详情",
+  "timeJustNow": "刚刚",
+  "timeMinutesAgo": "{count}分钟前",
+  "@timeMinutesAgo": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "timeTodayAt": "今天 {time}",
+  "@timeTodayAt": {
+    "placeholders": {
+      "time": {"type": "String"}
+    }
+  },
+  "timeYesterdayAt": "昨天 {time}",
+  "@timeYesterdayAt": {
+    "placeholders": {
+      "time": {"type": "String"}
+    }
+  },
+  "timeMonthDay": "{month}月{day}日",
+  "@timeMonthDay": {
+    "placeholders": {
+      "month": {"type": "int"},
+      "day": {"type": "int"}
+    }
+  },
+  "timeYearMonthDay": "{year}年{month}月{day}日",
+  "@timeYearMonthDay": {
+    "placeholders": {
+      "year": {"type": "int"},
+      "month": {"type": "int"},
+      "day": {"type": "int"}
+    }
+  },
   "firstRunWelcome": "欢迎使用蓝云",
   "firstRunMessage": "使用前请先阅读并同意《用户协议》与《隐私政策》。",
   "agreeAndContinue": "同意并继续",

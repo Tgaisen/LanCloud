@@ -424,6 +424,8 @@ class MainActivity : FlutterFragmentActivity() {
                 // Android SDK（API）级别：WebView 的合成方式按它判定
                 //（Hybrid Composition 只在 Android 10+ 启用，见 web_page.dart）
                 "androidSdkInt" -> result.success(Build.VERSION.SDK_INT)
+                // 设备支持的 ABI（按优先级）：更新检测据此挑对应架构的安装包
+                "supportedAbis" -> result.success(Build.SUPPORTED_ABIS.toList())
                 else -> result.notImplemented()
             }
         }

@@ -1915,9 +1915,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutSubmitIssue => 'Report an issue';
 
   @override
-  String get aboutCheckUpdate => 'Check for updates';
-
-  @override
   String get aboutBuildInfo => 'Build info';
 
   @override
@@ -1928,6 +1925,104 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get commitHash => 'Commit';
+
+  @override
+  String get update => 'Updates';
+
+  @override
+  String get updateNotChecked => 'Not checked yet';
+
+  @override
+  String get updateCheckingTitle => 'Checking for updates…';
+
+  @override
+  String get updateUpToDateTitle => 'You\'re up to date';
+
+  @override
+  String get updateFoundTitle => 'New version available';
+
+  @override
+  String get updateFailed => 'Update check failed';
+
+  @override
+  String get updateUnsupported =>
+      'Update checks aren\'t supported on this platform';
+
+  @override
+  String updateLastCheckAt(String time) {
+    return 'Last checked $time';
+  }
+
+  @override
+  String updateReachFailed(String code) {
+    return 'Couldn\'t reach GitHub ($code)';
+  }
+
+  @override
+  String get updateCheck => 'Check for updates';
+
+  @override
+  String get updateCheckingShort => 'Checking';
+
+  @override
+  String get updateRecheck => 'Check again';
+
+  @override
+  String get updateAction => 'Update';
+
+  @override
+  String get updateVersionInfo => 'Version';
+
+  @override
+  String get updateChangelog => 'Release notes';
+
+  @override
+  String get updateChannel => 'Update channel';
+
+  @override
+  String get updateChannelStable => 'Stable';
+
+  @override
+  String get updateChannelBeta => 'Beta';
+
+  @override
+  String get updateAutoCheck => 'Check for updates automatically';
+
+  @override
+  String updateDialogTitle(String version) {
+    return 'New version $version available';
+  }
+
+  @override
+  String get updateViewDetails => 'View details on GitHub';
+
+  @override
+  String get timeJustNow => 'Just now';
+
+  @override
+  String timeMinutesAgo(int count) {
+    return '$count min ago';
+  }
+
+  @override
+  String timeTodayAt(String time) {
+    return 'Today $time';
+  }
+
+  @override
+  String timeYesterdayAt(String time) {
+    return 'Yesterday $time';
+  }
+
+  @override
+  String timeMonthDay(int month, int day) {
+    return '$month/$day';
+  }
+
+  @override
+  String timeYearMonthDay(int year, int month, int day) {
+    return '$year/$month/$day';
+  }
 
   @override
   String get firstRunWelcome => 'Welcome to LanCloud';
