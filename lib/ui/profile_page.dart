@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:material_ui/material_ui.dart' hide Icons;
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../core/app_controller.dart';
@@ -66,6 +69,14 @@ class _ProfilePageState extends State<ProfilePage>
   /// 备份与恢复（窗格内）的网络操作进度：显示成顶栏底下那条线。
   final ValueNotifier<bool> _subPageProgress = ValueNotifier<bool>(false);
 
+  /// 右窗格内容的焦点节点：切类别 / 进二级页 / 从二级页返回后，把键盘焦点
+  /// 移进右窗格（见 [_focusDetailPane]）。
+  /// skipTraversal：它只是落点，不占一个 Tab 位置——Tab 从这里直接进入
+  /// 右窗格里的第一个可聚焦控件。
+  late final FocusNode _paneFocus = FocusNode(
+    debugLabel: 'profile-detail-pane',
+  );
+
   /// 两栏时每个详情窗格各自的滚动控制器：切走再切回时滚动位置不丢。
   /// 键 = (类别, 二级页)：三级内容各自记住自己的滚动位置。
   final Map<Object, ScrollController> _paneScrolls = {};
@@ -103,6 +114,7 @@ class _ProfilePageState extends State<ProfilePage>
   void dispose() {
     _subPageProgress.removeListener(_onSubPageProgress);
     _subPageProgress.dispose();
+    _paneFocus.dispose();
     // 别把已经失效的回调留在外壳上
     if (_profileBackHost?.onProfileBack == _handleProfileBack) {
       _profileBackHost!.onProfileBack = null;
@@ -149,6 +161,7 @@ class _ProfilePageState extends State<ProfilePage>
     });
     _publishProfileBack();
     _showTopBar();
+    _focusDetailPane();
   }
 
   /// 打开设置二级页（高级覆盖项 / 备份与恢复），内容进右窗格。
@@ -161,6 +174,7 @@ class _ProfilePageState extends State<ProfilePage>
     });
     _publishProfileBack();
     _showTopBar();
+    _focusDetailPane();
   }
 
   void _closeSubPage() {
@@ -171,6 +185,7 @@ class _ProfilePageState extends State<ProfilePage>
     });
     _publishProfileBack();
     _showTopBar();
+    _focusDetailPane();
   }
 
   /// 切窗格内容时把（可能已被滚走的）顶栏调出来：
@@ -179,6 +194,27 @@ class _ProfilePageState extends State<ProfilePage>
   void _showTopBar() {
     _profileBackHost?.animateBarsHide(0);
   }
+
+  /// 右窗格换了内容之后，把键盘焦点带进右窗格：列表-详情布局里内容换了焦点
+  /// 不能留在左窗格，否则键盘用户得先穿过左窗格剩下的条目才能到右边。
+  ///
+  /// 读屏播报不在这里做：右窗格内容外面挂了 liveRegion 语义（见
+  /// [_buildTwoPane]），念什么、什么时候念由 TalkBack 自己按它那一版的逻辑
+  /// 决定（引擎也提示过 announceForAccessibility 在 Android 上已废弃、应改用
+  /// 语义属性）。Flutter 也没有「应用主动移动读屏焦点」的 API（dart:ui 里只有
+  /// 入站的 SemanticsAction.focus / didGainAccessibilityFocus），所以读屏焦点
+  /// 只能由用户自己滑过去。
+  void _focusDetailPane() {
+    _paneFocus.requestFocus();
+  }
+
+  /// 详情（账号管理 / 设置某类别 / 关于）的条目文案。
+  String _detailLabel(AppLocalizations l10n, _ProfileDetail detail) =>
+      detail.settingsCategory?.label(l10n) ??
+      switch (detail) {
+        _ProfileDetail.about => l10n.about,
+        _ => l10n.accountManagement,
+      };
 
   void _startSearch() {
     setState(() => _searching = true);
@@ -217,12 +253,16 @@ class _ProfilePageState extends State<ProfilePage>
     return false;
   }
 
-  /// 两栏顶栏标题：与右窗格对应（账号管理 / 设置 / 关于）。
-  String _paneTitle(AppLocalizations l10n) => switch (_detail) {
-    _ProfileDetail.account => l10n.accountManagement,
-    _ProfileDetail.about => l10n.about,
-    _ => l10n.settings,
-  };
+  /// 右窗格当前内容的标题（顶栏标题，也是读屏朗读的文案）：
+  /// 二级页用二级页名、设置类别用类别名、账号 / 关于用条目名。
+  ///
+  /// 类别用类别名而不是「设置」：单栏态 push 出来的类别页标题就是类别名
+  /// （见 SettingsCategoryPage），两栏态对齐后读屏念顶栏标题才有信息量。
+  String _paneTitle(AppLocalizations l10n) {
+    final sub = _subPage;
+    if (sub != null) return sub.label(l10n);
+    return _detailLabel(l10n, _detail);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -249,86 +289,105 @@ class _ProfilePageState extends State<ProfilePage>
       backgroundColor: transparentPageBackground(context)
           ? Colors.transparent
           : (isLargeLayout(context) ? scheme.surfaceContainer : null),
-      body: Stack(
-        children: [
-          if (wide)
-            _buildTwoPane(context, app, headerHeight, paneWidth)
-          else
-            _buildSinglePane(context, app, headerHeight),
-          // 顶栏浮层：与底栏共用收起进度
-          Positioned(
-            // 两栏时顶栏只盖在右卡片那一列上（内容 + 底色）：
-            // 左窗格是导航区，整条都不被顶栏覆盖
-            left: paneWidth,
-            right: 0,
-            top: 0,
-            child: TopBarOverlay(
-              height: headerHeight,
-              background: topBarBackgroundColor(context, scheme),
-              // 点顶栏空白处回到列表顶部（按钮自行响应，不会误触）
-              builder: (context) {
-                final bar = AppBar(
-                  backgroundColor: Colors.transparent,
-                  scrolledUnderElevation: 0,
-                  // 优先级：搜索时「关闭搜索」> 二级页返回 > 独立页返回
-                  leading: _searching
-                      ? IconButton(
-                          tooltip: l10n.closeSearch,
-                          icon: const Icon(Icons.close),
-                          onPressed: _exitSearch,
-                        )
-                      : _subPage != null
-                      ? AppBarBackButton(onPressed: _closeSubPage)
-                      : (standalone ? const AppBarBackButton() : null),
-                  // 两栏：标题跟随右窗格（账号 / 设置 / 二级页 / 关于），
-                  // 搜索框顶替标题；单栏：保持「我的」（搜索入口在各二级页里）
-                  title: wide
-                      ? AppBarSearchSwitcher(
-                          searching: _searching,
-                          title: Text(
-                            _subPage?.label(l10n) ?? _paneTitle(l10n),
-                          ),
-                          searchField: TextField(
-                            controller: _search,
-                            autofocus: true,
-                            decoration: InputDecoration(
-                              hintText: l10n.searchSettings,
-                              border: InputBorder.none,
-                            ),
-                            onChanged: (_) => setState(() {}),
-                          ),
-                        )
-                      : Text(l10n.tabProfile),
-                  // 搜索按钮只在设置类别层出现（账号 / 关于 / 二级页都没有）
-                  actions:
-                      wide &&
-                          !_searching &&
-                          _subPage == null &&
-                          _detail.settingsCategory != null
-                      ? [
-                          IconButton(
-                            tooltip: l10n.searchSettings,
-                            icon: const Icon(Icons.search),
-                            onPressed: _startSearch,
-                          ),
-                        ]
-                      : const <Widget>[],
-                  // 备份与恢复（窗格内）网络操作时，顶栏底下显示进度线
-                  bottom:
-                      _subPage == ProfileSubPage.backup &&
-                          _subPageProgress.value
-                      ? kBackupProgressBar
-                      : null,
-                );
-                return GestureDetector(
-                  behavior: HitTestBehavior.translucent,
-                  onTap: () => _scrollToTop(topScroll),
-                  child: bar,
-                );
-              },
-            ),
+      // 桌面端键盘：Esc 走 Flutter 的默认快捷键映射（Esc → DismissIntent，
+      // 由 WidgetsApp 提供），这里用官方的 Actions/DismissIntent 接——
+      // M3 的 Escape 语义是「关闭 / 移除焦点 / 清除选择」。弹窗、菜单自带更近
+      // 的 DismissAction，自动优先于这里；没有可关的东西时这里是空操作。
+      body: Actions(
+        actions: {
+          DismissIntent: CallbackAction<DismissIntent>(
+            onInvoke: (_) {
+              unawaited(_handleProfileBack());
+              return null;
+            },
           ),
-        ],
+        },
+        child: Stack(
+          children: [
+            if (wide)
+              _buildTwoPane(context, app, headerHeight, paneWidth)
+            else
+              _buildSinglePane(context, app, headerHeight),
+            // 顶栏浮层：与底栏共用收起进度
+            Positioned(
+              // 两栏时顶栏只盖在右卡片那一列上（内容 + 底色）：
+              // 左窗格是导航区，整条都不被顶栏覆盖
+              left: paneWidth,
+              right: 0,
+              top: 0,
+              child: TopBarOverlay(
+                height: headerHeight,
+                background: topBarBackgroundColor(context, scheme),
+                // 点顶栏空白处回到列表顶部（按钮自行响应，不会误触）
+                builder: (context) {
+                  final bar = AppBar(
+                    backgroundColor: Colors.transparent,
+                    scrolledUnderElevation: 0,
+                    // 优先级：搜索时「关闭搜索」> 二级页返回 > 独立页返回
+                    leading: _searching
+                        ? IconButton(
+                            tooltip: l10n.closeSearch,
+                            icon: const Icon(Icons.close),
+                            onPressed: _exitSearch,
+                          )
+                        : _subPage != null
+                        ? AppBarBackButton(onPressed: _closeSubPage)
+                        : (standalone ? const AppBarBackButton() : null),
+                    // 两栏：标题跟随右窗格（账号 / 设置 / 二级页 / 关于），
+                    // 搜索框顶替标题；单栏：保持「我的」（搜索入口在各二级页里）
+                    title: wide
+                        ? AppBarSearchSwitcher(
+                            searching: _searching,
+                            // 读屏：标题自己就是 live region——右窗格换内容时
+                            // 标题跟着换，TalkBack 按它那一版的逻辑念标题
+                            //（不自己发 announcement、也不加「右侧内容」这类
+                            // 自造文案；引擎也提示过 Android 上应改用语义属性）。
+                            title: Semantics(
+                              liveRegion: true,
+                              child: Text(_paneTitle(l10n)),
+                            ),
+                            searchField: TextField(
+                              controller: _search,
+                              autofocus: true,
+                              decoration: InputDecoration(
+                                hintText: l10n.searchSettings,
+                                border: InputBorder.none,
+                              ),
+                              onChanged: (_) => setState(() {}),
+                            ),
+                          )
+                        : Text(l10n.tabProfile),
+                    // 搜索按钮只在设置类别层出现（账号 / 关于 / 二级页都没有）
+                    actions:
+                        wide &&
+                            !_searching &&
+                            _subPage == null &&
+                            _detail.settingsCategory != null
+                        ? [
+                            IconButton(
+                              tooltip: l10n.searchSettings,
+                              icon: const Icon(Icons.search),
+                              onPressed: _startSearch,
+                            ),
+                          ]
+                        : const <Widget>[],
+                    // 备份与恢复（窗格内）网络操作时，顶栏底下显示进度线
+                    bottom:
+                        _subPage == ProfileSubPage.backup &&
+                            _subPageProgress.value
+                        ? kBackupProgressBar
+                        : null,
+                  );
+                  return GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTap: () => _scrollToTop(topScroll),
+                    child: bar,
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -492,28 +551,42 @@ class _ProfilePageState extends State<ProfilePage>
                 width: paneWidth,
                 // 左窗格不做卡片：直接坐在导航区底色上（类似 navigation
                 // rail / drawer），只有选中行用次级容器色高亮
-                child: CustomScrollView(
-                  controller: _scroll,
-                  slivers: [
-                    // 左窗格是导航区、不被顶栏覆盖：只让开状态栏，
-                    // 再留一点呼吸位（不然横屏无状态栏时几乎贴着屏幕顶边）
-                    SliverToBoxAdapter(
-                      child: SizedBox(
-                        height: MediaQuery.paddingOf(context).top + 4,
-                      ),
+                // 键盘：M3 导航栏的语义是「Tab / 方向键在交互元素间移动、
+                // Enter / Space 选中」，这里把 ↑ / ↓ 映射成焦点移动。
+                // 只包住左窗格：右窗格里的方向键（滑杆、列表）不受影响
+                child: Shortcuts(
+                  shortcuts: const <ShortcutActivator, Intent>{
+                    SingleActivator(LogicalKeyboardKey.arrowDown):
+                        NextFocusIntent(),
+                    SingleActivator(LogicalKeyboardKey.arrowUp):
+                        PreviousFocusIntent(),
+                  },
+                  // 焦点在窗格内按阅读顺序移动，不窜到右窗格
+                  child: FocusTraversalGroup(
+                    child: CustomScrollView(
+                      controller: _scroll,
+                      slivers: [
+                        // 左窗格是导航区、不被顶栏覆盖：只让开状态栏，
+                        // 再留一点呼吸位（不然横屏无状态栏时几乎贴着屏幕顶边）
+                        SliverToBoxAdapter(
+                          child: SizedBox(
+                            height: MediaQuery.paddingOf(context).top + 4,
+                          ),
+                        ),
+                        SliverPadding(
+                          // 左右留白由条目自己承担（16dp 指示器起点）；
+                          // 上下收到 6 / 12：三条分组小标题加进来后，整列要在默认
+                          // 窗口高度里放得下（否则最后一条会被视口裁掉一截）
+                          padding: const EdgeInsets.fromLTRB(0, 6, 0, 12),
+                          // 整块布局：避免懒布局估算导致滚动条滑块抖动
+                          //（见 SliverColumn）
+                          sliver: SliverColumn(
+                            children: _listPaneChildren(context, app),
+                          ),
+                        ),
+                      ],
                     ),
-                    SliverPadding(
-                      // 左右留白由条目自己承担（16dp 指示器起点）；
-                      // 上下收到 6 / 12：三条分组小标题加进来后，整列要在默认
-                      // 窗口高度里放得下（否则最后一条会被视口裁掉一截）
-                      padding: const EdgeInsets.fromLTRB(0, 6, 0, 12),
-                      // 整块布局：避免懒布局估算导致滚动条滑块抖动
-                      //（见 SliverColumn）
-                      sliver: SliverColumn(
-                        children: _listPaneChildren(context, app),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
               // 两窗格之间不另留间距：左窗格条目自带左右 16dp 内边距
@@ -563,39 +636,46 @@ class _ProfilePageState extends State<ProfilePage>
                       // 或进二级页 = 前进（新内容从右侧滑入、旧内容向左淡出），
                       // 往上选或返回则相反。
                       // 时长取规范里「起止都在屏内」的 Standard 300ms。
-                      child: AnimatedSwitcher(
-                        duration: reduceMotionOf(context)
-                            ? Duration.zero
-                            : const Duration(milliseconds: 300),
-                        switchInCurve: Curves.easeOutCubic,
-                        switchOutCurve: Curves.easeInCubic,
-                        layoutBuilder: (currentChild, previousChildren) =>
-                            Stack(
-                              fit: StackFit.expand,
-                              children: [...previousChildren, ?currentChild],
-                            ),
-                        transitionBuilder: (child, animation) {
-                          final incoming = child.key == switcherKey;
-                          final slide = Offset(
-                            _forward ? _paneSlide : -_paneSlide,
-                            0,
-                          );
-                          // 新内容从 dx 侧滑入；旧内容反向滑出
-                          //（AnimatedSwitcher 对旧内容反向播放同一段动画）
-                          return SlideTransition(
-                            position: Tween<Offset>(
-                              begin: incoming ? slide : -slide,
-                              end: Offset.zero,
-                            ).animate(animation),
-                            child: FadeTransition(
-                              opacity: animation,
-                              child: child,
-                            ),
-                          );
-                        },
-                        child: KeyedSubtree(
-                          key: switcherKey,
-                          child: _buildDetailPane(context, app),
+                      // 外面包的 Focus 是「右窗格内容的焦点落点」：切类别 /
+                      // 进二级页后键盘焦点移到这里（见 _focusDetailPane），
+                      // skipTraversal：它不占 Tab 位置，Tab 直接进新内容
+                      child: Focus(
+                        focusNode: _paneFocus,
+                        skipTraversal: true,
+                        child: AnimatedSwitcher(
+                          duration: reduceMotionOf(context)
+                              ? Duration.zero
+                              : const Duration(milliseconds: 300),
+                          switchInCurve: Curves.easeOutCubic,
+                          switchOutCurve: Curves.easeInCubic,
+                          layoutBuilder: (currentChild, previousChildren) =>
+                              Stack(
+                                fit: StackFit.expand,
+                                children: [...previousChildren, ?currentChild],
+                              ),
+                          transitionBuilder: (child, animation) {
+                            final incoming = child.key == switcherKey;
+                            final slide = Offset(
+                              _forward ? _paneSlide : -_paneSlide,
+                              0,
+                            );
+                            // 新内容从 dx 侧滑入；旧内容反向滑出
+                            //（AnimatedSwitcher 对旧内容反向播放同一段动画）
+                            return SlideTransition(
+                              position: Tween<Offset>(
+                                begin: incoming ? slide : -slide,
+                                end: Offset.zero,
+                              ).animate(animation),
+                              child: FadeTransition(
+                                opacity: animation,
+                                child: child,
+                              ),
+                            );
+                          },
+                          child: KeyedSubtree(
+                            key: switcherKey,
+                            child: _buildDetailPane(context, app),
+                          ),
                         ),
                       ),
                     ),
