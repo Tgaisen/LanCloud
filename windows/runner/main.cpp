@@ -50,7 +50,12 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   project.set_dart_entrypoint_arguments(std::move(command_line_arguments));
 
   FlutterWindow window(project);
-  Win32Window::Size size(850, 576);
+  // Default width 856: the client area lands right on the profile page's
+  // 840dp two-pane breakpoint (_twoPaneBreakpoint in lib/ui/profile_page.dart),
+  // so the page opens as list-detail by default. The window frame costs 16dp
+  // in total at 100% display scaling and slightly less in logical pixels at
+  // other scales, so the client area stays >= 840dp.
+  Win32Window::Size size(856, 576);
 
   // Center the window on the primary monitor's work area (desktop minus
   // taskbar). Create() scales both origin and size by the monitor DPI, so the

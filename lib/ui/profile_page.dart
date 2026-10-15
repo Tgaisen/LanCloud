@@ -43,12 +43,10 @@ class _ProfilePageState extends State<ProfilePage>
   /// 600–840 之间保持单栏（平板竖屏等窄窗）。
   static const double _twoPaneBreakpoint = 840;
 
-  /// 两栏时列表窗格宽度。280dp 取「展开导航栏」的量级
-  /// （规范值 220–360dp；列表窗格本来就承担导航性质的选择）。
-  static const double _listPaneWidth = 280;
-
-  /// 左（导航）窗格与右卡片之间的间距：比 M3 两窗格默认的 24dp 收紧一档。
-  static const double _paneGap = 16;
+  /// 两栏时左窗格宽度的下限 / 上限；实际宽度按最长条目实测，见
+  /// [_listPaneWidthFor]。
+  static const double _listPaneWidthMin = 180;
+  static const double _listPaneWidthMax = 320;
 
   /// 右窗格前进 / 后退动画的位移量（占窗格宽度的比例）。
   /// 6% ≈ 原生 shared-axis 的 30dp 量级。
@@ -246,6 +244,8 @@ class _ProfilePageState extends State<ProfilePage>
     }
     // 顶栏空白处点击：滚动当前布局正在用的那个滚动视图
     final topScroll = wide ? _paneScroll(_paneKey) : _scroll;
+    // 两栏时左窗格宽度按当前语言的实测最长条目算（单栏用不到，给 0）
+    final paneWidth = wide ? _listPaneWidthFor(context) : 0.0;
 
     return Scaffold(
       // 大屏外壳里的页面：背景交给外壳的圆角卡片；
@@ -256,14 +256,14 @@ class _ProfilePageState extends State<ProfilePage>
       body: Stack(
         children: [
           if (wide)
-            _buildTwoPane(context, app, headerHeight)
+            _buildTwoPane(context, app, headerHeight, paneWidth)
           else
             _buildSinglePane(context, app, headerHeight),
           // 顶栏浮层：与底栏共用收起进度
           Positioned(
             // 两栏时顶栏只盖在右卡片那一列上（内容 + 底色）：
             // 左窗格是导航区，整条都不被顶栏覆盖
-            left: wide ? _listPaneWidth + _paneGap : 0,
+            left: paneWidth,
             right: 0,
             top: 0,
             child: TopBarOverlay(
@@ -424,12 +424,57 @@ class _ProfilePageState extends State<ProfilePage>
     ];
   }
 
+  /// 两栏时的左窗格宽度：按「当前语言 + 文字缩放」实测最长条目，而不是写死。
+  ///
+  /// 中英文条目长度差得多（中文最长 5 个字，英文 “Notifications &
+  /// reminders”），写死 280dp 在中文下会留出大片空白。测量用的样式和文字
+  /// 缩放与条目实际渲染完全一致（labelLarge + MediaQuery.textScaler），所以
+  /// 量出来的就是「刚好放得下最长条目一格」的宽度。
+  ///
+  /// 上下限只作护栏：下限避免窄语言（或将来更短的文案）把窗格挤成一条缝
+  /// ——M3 展开导航栏给的 220–360dp 是含 FAB / 菜单 / 徽标的导航栏容器，
+  /// 这里是列表性质的选择条目，按内容取更合适；上限避免长语言把详情窗格
+  /// 挤压得太小。
+  double _listPaneWidthFor(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = context.l10n;
+    final textScaler = MediaQuery.textScalerOf(context);
+    final textDirection = Directionality.of(context);
+
+    double measure(String text, TextStyle? style) => (TextPainter(
+      text: TextSpan(text: text, style: style),
+      maxLines: 1,
+      textDirection: textDirection,
+      textScaler: textScaler,
+    )..layout()).width;
+
+    // 条目固定占位：左右外边距 16×2 + 指示器内边距 16×2 + 图标 24 +
+    // 图标与文字的间距 8
+    const itemChrome = 16.0 + 16.0 + 16.0 + 16.0 + 24.0 + 8.0;
+    var width = 0.0;
+    for (final label in [
+      l10n.accountTitle,
+      for (final category in SettingsCategory.values) category.label(l10n),
+      l10n.about,
+    ]) {
+      final needed = itemChrome + measure(label, theme.textTheme.labelLarge);
+      if (needed > width) width = needed;
+    }
+    // 分组小标题（「设置」）也要放得下：左缩进 32 + 右侧 16
+    final sectionWidth =
+        32.0 + 16.0 + measure(l10n.settings, theme.textTheme.titleSmall);
+    if (sectionWidth > width) width = sectionWidth;
+    // +1 是亚像素余量：别让最长的那条正好卡在换行边界上
+    return (width + 1).clamp(_listPaneWidthMin, _listPaneWidthMax).toDouble();
+  }
+
   /// 两栏（≥840dp）：左窗格 = 账号 / 设置 5 大类 / 关于（父），
   /// 右窗格 = 选中项的详情（子），默认选中账号。
   Widget _buildTwoPane(
     BuildContext context,
     AppController app,
     double headerHeight,
+    double paneWidth,
   ) {
     // 右窗格内容身份 = (类别, 二级页)：二级页进出同样走滑动切换
     final switcherKey = ValueKey((_detail, _subPage));
@@ -446,7 +491,7 @@ class _ProfilePageState extends State<ProfilePage>
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               SizedBox(
-                width: _listPaneWidth,
+                width: paneWidth,
                 // 左窗格不做卡片：直接坐在导航区底色上（类似 navigation
                 // rail / drawer），只有选中行用次级容器色高亮
                 child: CustomScrollView(
@@ -471,9 +516,9 @@ class _ProfilePageState extends State<ProfilePage>
                   ],
                 ),
               ),
-              // 窗格间距：左窗格是导航区不是卡片，比 M3 两窗格默认的
-              // 24dp 收紧一档
-              const SizedBox(width: _paneGap),
+              // 两窗格之间不另留间距：左窗格条目自带左右 16dp 内边距
+              //（选中指示器离窗格边缘 16dp），再留一档就是双重边距。
+              // M3 的窗格间距（24dp）假设窗格内容铺满整个窗格，这里不适用。
               Expanded(
                 child: ValueListenableBuilder<double>(
                   valueListenable: app.topBarHide,

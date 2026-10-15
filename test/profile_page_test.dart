@@ -156,6 +156,15 @@ void main() {
     expect(appBarTitle('账号'), findsOneWidget);
     expect(find.byTooltip('搜索设置项'), findsNothing);
 
+    // 左右窗格之间没有额外间距：两张窗格（各自的滚动视图）直接相接，
+    // 左窗格条目自带的 16dp 内边距就是全部（不再是 16 + 16 的双重边距）；
+    // 顶栏只盖右窗格，起点与左窗格右缘一致（宽度按最长条目实测）。
+    final panes = find.byType(CustomScrollView);
+    expect(panes, findsNWidgets(2));
+    final paneRight = tester.getRect(panes.at(0)).right;
+    expect(tester.getRect(panes.at(1)).left, moreOrLessEquals(paneRight));
+    expect(tester.getTopLeft(find.byType(TopBarOverlay)).dx, paneRight);
+
     // 选中「传输与连接」：右窗格换成该类别的设置页
     await tester.tap(find.text('传输与连接'));
     await tester.pumpAndSettle();
@@ -171,6 +180,40 @@ void main() {
     expect(find.text('下载目录'), findsNothing);
     expect(appBarTitle('关于'), findsOneWidget);
     expect(find.byTooltip('搜索设置项'), findsNothing);
+  });
+
+  testWidgets('大屏「我的」：左窗格宽度按最长条目自适应（中文比英文窄）', (tester) async {
+    tester.view.physicalSize = const Size(1200, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    Future<double> paneWidth(Locale locale) async {
+      final app = AppController();
+      addTearDown(app.dispose);
+      await tester.pumpWidget(
+        ChangeNotifierProvider<AppController>.value(
+          value: app,
+          child: MaterialApp(
+            localizationsDelegates: appLocalizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            locale: locale,
+            home: const ProfilePage(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      // 左窗格的滚动视图从 0 开始，右缘就是窗格宽度
+      return tester.getRect(find.byType(CustomScrollView).first).right;
+    }
+
+    final zh = await paneWidth(const Locale('zh'));
+    final en = await paneWidth(const Locale('en'));
+
+    // 中文最长条目只有 5 个字：窗格明显窄于原来写死的 280dp
+    expect(zh, lessThan(280));
+    // 英文条目更长：窗格更宽，但仍受上限约束
+    expect(en, greaterThan(zh));
+    expect(en, lessThanOrEqualTo(320));
   });
 
   testWidgets('大屏二级设置页：高级覆盖项 / 备份与恢复进右窗格，可返回', (tester) async {
