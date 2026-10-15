@@ -85,5 +85,8 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    // 外部链接的 Custom Tabs（MainActivity 里直接引用 androidx.browser）。
+    // url_launcher / flutter_inappwebview 也依赖它，这里显式声明保证编译可见。
+    implementation("androidx.browser:browser:1.9.0")
 }
 

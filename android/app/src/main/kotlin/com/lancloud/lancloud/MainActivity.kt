@@ -26,6 +26,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.accessibility.AccessibilityManager
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.browser.customtabs.CustomTabsClient
+import androidx.browser.customtabs.CustomTabsIntent
 import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -383,6 +385,24 @@ class MainActivity : FlutterFragmentActivity() {
         }
         linksChannel = links
         linkFromIntent(intent)?.let { pendingLink = it }
+
+        // 外部链接（http / https）：优先交给浏览器的 Custom Tabs 打开。
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "lancloud/external_link",
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "openCustomTab" -> {
+                    val url = call.argument<String>("url")
+                    if (url.isNullOrEmpty()) {
+                        result.error("bad_args", "url required", null)
+                        return@setMethodCallHandler
+                    }
+                    result.success(openExternalCustomTab(url))
+                }
+                else -> result.notImplemented()
+            }
+        }
 
         // 系统「移除动画 / 减弱动态效果」与「读屏接管交互」：
         //
@@ -1000,6 +1020,37 @@ class MainActivity : FlutterFragmentActivity() {
             } catch (_: Exception) {
                 // Dart 侧还没注册处理器时忽略
             }
+        }
+    }
+
+    // ------------------------------------------------- 外部链接（Custom Tabs）
+
+    /// 用 Custom Tabs 打开外部链接；返回 false 表示本机不适合走 Custom Tabs，
+    /// 由 Dart 侧落回 url_launcher（普通浏览器打开）。
+    ///
+    /// 判定口径与 url_launcher 的 inAppBrowserView 一致：CustomTabsClient 的
+    /// 首选包就是「默认浏览器」——它不支持 Custom Tabs（国内 ROM 自带浏览器
+    /// 大多如此）时返回 null。这种情况保持原来的「交给默认浏览器」行为，
+    /// 不硬切到用户没在用的浏览器（如已装但非默认的 Chrome）。
+    private fun openExternalCustomTab(url: String): Boolean {
+        val uri = Uri.parse(url)
+        val scheme = uri.scheme?.lowercase()
+        if (scheme != "http" && scheme != "https") return false
+        val packageName = try {
+            CustomTabsClient.getPackageName(this, null)
+        } catch (e: Exception) {
+            Log.w(TAG, "custom tabs lookup failed: ${e.message}")
+            return false
+        } ?: return false
+        return try {
+            val intent = CustomTabsIntent.Builder().build()
+            // 指定包名：否则系统可能弹出「用哪个应用打开」的选择器
+            intent.intent.setPackage(packageName)
+            intent.launchUrl(this, uri)
+            true
+        } catch (e: Exception) {
+            Log.w(TAG, "custom tab launch failed: ${e.message}")
+            false
         }
     }
 

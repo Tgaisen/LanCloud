@@ -2,8 +2,8 @@ import 'dart:typed_data';
 
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-import 'package:url_launcher/url_launcher.dart';
 
+import '../core/external_link.dart';
 import '../core/platform_support.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
@@ -147,10 +147,7 @@ class _WebPageState extends State<WebPage> {
             IconButton(
               tooltip: l10n.openLink,
               icon: const Icon(Icons.open_in_new),
-              onPressed: () => launchUrl(
-                Uri.parse(widget.url),
-                mode: LaunchMode.externalApplication,
-              ),
+              onPressed: () => openExternalUrl(Uri.parse(widget.url)),
             ),
           ],
         ),

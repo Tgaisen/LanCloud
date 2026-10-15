@@ -167,5 +167,15 @@
         <intent>
             <action android:name="android.media.action.IMAGE_CAPTURE"/>
         </intent>
+        <!-- 外部链接默认走浏览器的 Custom Tabs：Android 11+ 的软件包可见性
+             限制下，缺这两条会让「默认浏览器 / 支持 Custom Tabs 的浏览器」
+             判定失败，退化成普通打开。 -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="http"/>
+        </intent>
+        <intent>
+            <action android:name="android.support.customtabs.action.CustomTabsService"/>
+        </intent>
     </queries>
 </manifest>

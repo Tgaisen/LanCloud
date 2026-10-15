@@ -1,7 +1,7 @@
 import 'package:material_ui/material_ui.dart' hide Icons;
-import 'package:url_launcher/url_launcher.dart';
 
 import '../core/app_info.dart';
+import '../core/external_link.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
@@ -96,10 +96,7 @@ class AboutContent extends StatelessWidget {
               leading: const Icon(Icons.update),
               title: Text(l10n.aboutCheckUpdate),
               trailing: const Icon(Icons.open_in_new),
-              onTap: () => launchUrl(
-                Uri.parse('$projectUrl/releases'),
-                mode: LaunchMode.externalApplication,
-              ),
+              onTap: () => openExternalUrl(Uri.parse('$projectUrl/releases')),
             ),
             ListTile(
               leading: const Icon(Icons.build_outlined),
@@ -147,19 +144,13 @@ class AboutContent extends StatelessWidget {
               leading: const Icon(Icons.public),
               title: Text(l10n.aboutProjectHome),
               trailing: const Icon(Icons.open_in_new),
-              onTap: () => launchUrl(
-                Uri.parse(projectUrl),
-                mode: LaunchMode.externalApplication,
-              ),
+              onTap: () => openExternalUrl(Uri.parse(projectUrl)),
             ),
             ListTile(
               leading: const Icon(Icons.bug_report_outlined),
               title: Text(l10n.aboutSubmitIssue),
               trailing: const Icon(Icons.open_in_new),
-              onTap: () => launchUrl(
-                Uri.parse('$projectUrl/issues'),
-                mode: LaunchMode.externalApplication,
-              ),
+              onTap: () => openExternalUrl(Uri.parse('$projectUrl/issues')),
             ),
           ],
         ),
@@ -188,10 +179,8 @@ Future<void> showBuildInfoDialog(BuildContext context) {
       actions: [
         if (hasCommit)
           TextButton(
-            onPressed: () => launchUrl(
-              Uri.parse('$projectUrl/commit/$gitCommit'),
-              mode: LaunchMode.externalApplication,
-            ),
+            onPressed: () =>
+                openExternalUrl(Uri.parse('$projectUrl/commit/$gitCommit')),
             child: Text(l10n.details),
           ),
         FilledButton(
