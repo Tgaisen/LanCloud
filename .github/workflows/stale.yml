@@ -1,0 +1,40 @@
+name: 自动管理无活动 Issue
+
+on:
+  schedule:
+    # 每日 09:00（Asia/Shanghai）；GitHub Actions 的 cron 使用 UTC。
+    - cron: "0 1 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: stale-issues
+  cancel-in-progress: false
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+      issues: write
+    steps:
+      - name: 标记并关闭无活动 Issue
+        uses: actions/stale@v11.0.0
+        with:
+          days-before-stale: 14
+          days-before-close: 5
+          days-before-pr-stale: -1
+          days-before-pr-close: -1
+          stale-issue-label: stale
+          exempt-issue-labels: keep-open
+          remove-issue-stale-when-updated: true
+          close-issue-reason: not_planned
+          stale-issue-message: |
+            该 Issue 已连续 14 天没有活动，现已标记为 `stale`。
+
+            若仍需继续处理，请回复或移除 `stale` 标签；否则将在 5 天后自动关闭。若需要长期保留，请添加 `keep-open` 标签。
+          close-issue-message: |
+            该 Issue 标记为 `stale` 后已连续 5 天没有活动，现已自动关闭。
+
+            如仍需跟进，可以重新打开该 Issue 并说明原因；若需要长期保留，请添加 `keep-open` 标签。
+          operations-per-run: 100
