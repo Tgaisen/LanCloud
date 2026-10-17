@@ -527,7 +527,6 @@ class TransferManager extends ChangeNotifier {
     var total = 0;
     var received = 0;
     var known = 0;
-    final done = tasks.where((t) => t.status == TransferStatus.done).length;
     for (final t in running) {
       received += t.received;
       if (t.total > 0) {
@@ -537,7 +536,6 @@ class TransferManager extends ChangeNotifier {
     }
     ns.showProgress(
       count: running.length,
-      done: done,
       percent: total > 0 ? (received * 100) ~/ total : 0,
       indeterminate: known == 0,
     );

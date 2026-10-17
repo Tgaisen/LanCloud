@@ -200,6 +200,12 @@ void main() {
             url: 'https://example.com/a',
           ),
           ShareFileItem(
+            name: 'b.apk',
+            time: '2026-10-01',
+            size: '1 M',
+            url: 'https://example.com/b',
+          ),
+          ShareFileItem(
             name: '***.apk',
             time: '2024-12-25',
             size: '30.5 M',
@@ -238,17 +244,23 @@ void main() {
     await tester.longPress(find.text('a.apk'));
     await tester.pumpAndSettle();
     expect(find.text(l10n.selectedCount(1)), findsOneWidget);
-    // 先取消选中，再点「全选」：只会选中可下载的那一条
-    await tester.tap(find.text('a.apk'));
-    await tester.pumpAndSettle();
-    expect(find.text(l10n.selectedCount(0)), findsOneWidget);
+
+    // 全选：只选中两个可下载条目（失效项不参与）
     await tester.tap(find.byTooltip(l10n.selectAll));
     await tester.pumpAndSettle();
     expect(
-      find.text(l10n.selectedCount(1)),
+      find.text(l10n.selectedCount(2)),
       findsOneWidget,
       reason: '失效条目不参与批量操作',
     );
+
+    // 逐个取消，选中数归零时自动退出多选
+    await tester.tap(find.text('a.apk'));
+    await tester.pumpAndSettle();
+    expect(find.text(l10n.selectedCount(1)), findsOneWidget);
+    await tester.tap(find.text('b.apk'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip(l10n.selectAll), findsNothing);
   });
 
   testWidgets('分享文件夹：搜索时不显示加载转圈，改为提示结果可能不全', (tester) async {

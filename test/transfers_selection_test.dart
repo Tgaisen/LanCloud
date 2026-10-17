@@ -254,6 +254,37 @@ void main() {
     app.dispose();
   });
 
+  // 多选期间切换上传 / 下载：不禁用按钮组，切换后自动退出多选。
+  testWidgets('多选时切换上传 / 下载会退出多选', (tester) async {
+    await host(tester);
+    await tester.longPress(find.text('a.zip'));
+    await tester.pumpAndSettle();
+    expect(selectionBarOpacity(tester), 1);
+
+    // 按钮组内部会重复构建 label（用于测量/动画），按位置点右半边的「下载」
+    final group = tester.getRect(find.byType(M3eConnectedButtonGroup<int>));
+    await tester.tapAt(
+      Offset(group.left + group.width * 0.75, group.center.dy),
+    );
+    await tester.pumpAndSettle();
+
+    expect(selectionBarOpacity(tester), 0, reason: '切换 tab 后应退出多选');
+    expect(find.text('暂无下载任务'), findsOneWidget);
+  });
+
+  // 取消最后一个选中项 → 自动退出多选（不再停在「已选择 0 项」）。
+  testWidgets('选中数归零自动退出多选', (tester) async {
+    await host(tester);
+    await tester.longPress(find.text('a.zip'));
+    await tester.pumpAndSettle();
+    expect(selectionBarOpacity(tester), 1);
+
+    await tester.tap(find.text('a.zip'));
+    await tester.pumpAndSettle();
+
+    expect(selectionBarOpacity(tester), 0);
+  });
+
   // 顶栏入口：「清除已完成」在左、多选在右，点一下直接进多选。
   testWidgets('顶栏多选按钮在「清除已完成」右侧，点击进入多选并播报', (tester) async {
     final announcements = <String>[];

@@ -233,6 +233,8 @@ class _ShareFolderPageState extends State<ShareFolderPage>
     setState(() {
       if (!_selected.remove(url)) _selected.add(url);
     });
+    // 选中数归零 → 自动退出多选
+    if (_selected.isEmpty) _toggleSelecting();
   }
 
   /// 长按条目进入多选并选中它。
@@ -261,6 +263,7 @@ class _ShareFolderPageState extends State<ShareFolderPage>
           ..addAll(selectable);
       }
     });
+    if (_selected.isEmpty) _toggleSelecting();
   }
 
   void _invertSelection() {
@@ -270,6 +273,7 @@ class _ShareFolderPageState extends State<ShareFolderPage>
         if (!_selected.remove(file.url)) _selected.add(file.url);
       }
     });
+    if (_selected.isEmpty) _toggleSelecting();
   }
 
   Future<void> _downloadSelected() async {
@@ -793,6 +797,17 @@ class _ShareFolderPageState extends State<ShareFolderPage>
                                 onLongPress: file.invalid
                                     ? null
                                     : () => _enterSelection(file.url),
+                                // 鼠标：点图标块 = 进入多选并选中 / 已选中时取消选中
+                                onIconTap: file.invalid
+                                    ? null
+                                    : iconTapFor(
+                                        selected:
+                                            _selecting &&
+                                            _selected.contains(file.url),
+                                        onTap: () => _toggleFile(file.url),
+                                        onLongPress: () =>
+                                            _enterSelection(file.url),
+                                      ),
                                 onTap: () {
                                   if (_selecting) {
                                     _toggleFile(file.url);

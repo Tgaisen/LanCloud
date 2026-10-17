@@ -8,6 +8,7 @@ import 'package:lancloud/core/drive_cache.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/app_icons.dart' as app_icons;
+import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/drive_page.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -94,6 +95,41 @@ List<SemanticsData> semanticsDataWith(WidgetTester tester, String label) {
 }
 
 void main() {
+  // 鼠标：点图标块 = 进入多选并选中，不应打开文件夹；已选中时再点 = 取消选中。
+  testWidgets('鼠标：点图标块进入多选并选中，再点取消选中', (tester) async {
+    // 运行时检测到鼠标才启用（见 MousePresenceDetector），测试里直接置真
+    PointerSupport.hasMouse.value = true;
+    try {
+      for (final grid in [true, false]) {
+        // 先清空树：否则同一位置会复用上一轮的 DrivePage State（还在多选态）
+        await tester.pumpWidget(const SizedBox.shrink());
+        final app = await host(tester, grid: grid);
+        expect(find.text('根目录'), findsOneWidget);
+        await tester.tap(find.byIcon(app_icons.Icons.folder).first);
+        await tester.pumpAndSettle();
+
+        expect(find.text('已选择 1 项'), findsOneWidget, reason: '$grid');
+        // 还停在根目录（点图标没有触发「打开文件夹」）
+        expect(find.text('根目录'), findsOneWidget, reason: '$grid');
+
+        // 已选中：再点同一个图标块 → 取消选中，并自动退出多选
+        await tester.tap(find.byIcon(app_icons.Icons.check_circle).first);
+        await tester.pumpAndSettle();
+        expect(find.text('已选择 1 项'), findsNothing, reason: '$grid');
+        // 没有停在「已选择 0 项」：多选整体退出，图标也恢复成文件夹
+        expect(app.selectionMode, isFalse, reason: '$grid');
+        expect(
+          find.byIcon(app_icons.Icons.check_circle),
+          findsNothing,
+          reason: '$grid',
+        );
+        expect(find.text('根目录'), findsOneWidget, reason: '$grid');
+      }
+    } finally {
+      PointerSupport.hasMouse.value = false;
+    }
+  });
+
   // 读屏（TalkBack）聚焦结构：卡片本体要自带名字和「点击进入」的动作，
   // 「文件夹操作 / 文件操作」必须是它下面独立的一颗节点（向右滑一层才到）。
   // 曾经的写法把 Semantics(selected:) 包进 InkWell 里面，整张卡片的文字

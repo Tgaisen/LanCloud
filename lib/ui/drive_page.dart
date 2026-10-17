@@ -816,11 +816,27 @@ class _DrivePageState extends State<DrivePage>
     _app.setSelectionMode(false);
   }
 
+  /// 切换单个文件 / 文件夹的选中态；选中数归零时自动退出多选。
+  void _toggleFileSelection(String id) {
+    setState(() {
+      if (!_selectedFiles.remove(id)) _selectedFiles.add(id);
+    });
+    if (_selectedFiles.isEmpty && _selectedFolders.isEmpty) _exitSelection();
+  }
+
+  void _toggleFolderSelection(String id) {
+    setState(() {
+      if (!_selectedFolders.remove(id)) _selectedFolders.add(id);
+    });
+    if (_selectedFiles.isEmpty && _selectedFolders.isEmpty) _exitSelection();
+  }
+
   void _selectAll() {
     setState(() {
       _selectedFiles.addAll(_visibleFiles.map((f) => f.id));
       _selectedFolders.addAll(_visibleFolders.map((f) => f.id));
     });
+    if (_selectedFiles.isEmpty && _selectedFolders.isEmpty) _exitSelection();
   }
 
   void _invertSelection() {
@@ -832,6 +848,7 @@ class _DrivePageState extends State<DrivePage>
         if (!_selectedFolders.remove(id)) _selectedFolders.add(id);
       }
     });
+    if (_selectedFiles.isEmpty && _selectedFolders.isEmpty) _exitSelection();
   }
 
   PreferredSizeWidget _selectionAppBar(int count) => AppBar(
@@ -861,11 +878,7 @@ class _DrivePageState extends State<DrivePage>
 
   Future<void> _openFolder(LzFolder folder) async {
     if (_selecting) {
-      setState(() {
-        if (!_selectedFolders.remove(folder.id)) {
-          _selectedFolders.add(folder.id);
-        }
-      });
+      _toggleFolderSelection(folder.id);
       return;
     }
     if (_directorySwitching) return;
@@ -1766,9 +1779,7 @@ class _DrivePageState extends State<DrivePage>
   /// 打开后由 [_FileInfoSheet] 拉取最新简介与所在分页的最新条目渐入更新。
   Future<void> _showFileProperties(LzFile file) async {
     if (_selecting) {
-      setState(() {
-        if (!_selectedFiles.remove(file.id)) _selectedFiles.add(file.id);
-      });
+      _toggleFileSelection(file.id);
       return;
     }
     // 与文件夹属性等弹窗保持一致：统一使用 showAppSheet（内容自适应高度 +
@@ -1814,9 +1825,7 @@ class _DrivePageState extends State<DrivePage>
   /// [buttonContext] 是那颗 ⋯ 按钮的 context——菜单贴它下方右对齐弹出。
   Future<void> _fileMenu(LzFile file, BuildContext buttonContext) async {
     if (_selecting) {
-      setState(() {
-        if (!_selectedFiles.remove(file.id)) _selectedFiles.add(file.id);
-      });
+      _toggleFileSelection(file.id);
       return;
     }
     final Rect? anchor = m3eMenuAnchorOf(buttonContext);
@@ -2158,11 +2167,7 @@ class _DrivePageState extends State<DrivePage>
   /// 菜单贴它下方右对齐弹出。
   Future<void> _folderMenu(LzFolder folder, BuildContext buttonContext) async {
     if (_selecting) {
-      setState(() {
-        if (!_selectedFolders.remove(folder.id)) {
-          _selectedFolders.add(folder.id);
-        }
-      });
+      _toggleFolderSelection(folder.id);
       return;
     }
     final anchor = m3eMenuAnchorOf(buttonContext);
@@ -3309,20 +3314,27 @@ class _FolderTile extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Container(
-                      width: 38,
-                      height: 38,
-                      decoration: BoxDecoration(
-                        // 与文件项同款的图标块底色（只有图标颜色不同）
-                        color: selected
-                            ? scheme.surface
-                            : scheme.surfaceContainerHigh,
-                        borderRadius: BorderRadius.circular(12),
+                    IconBoxTap(
+                      onTap: iconTapFor(
+                        selected: selected,
+                        onTap: onTap,
+                        onLongPress: onLongPress,
                       ),
-                      child: Icon(
-                        selected ? Icons.check_circle : Icons.folder,
-                        size: 21,
-                        color: scheme.primary,
+                      child: Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          // 与文件项同款的图标块底色（只有图标颜色不同）
+                          color: selected
+                              ? scheme.surface
+                              : scheme.surfaceContainerHigh,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          selected ? Icons.check_circle : Icons.folder,
+                          size: 21,
+                          color: scheme.primary,
+                        ),
                       ),
                     ),
                     const Spacer(),
@@ -3412,24 +3424,33 @@ class _FileTile extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Container(
-                      width: 38,
-                      height: 38,
-                      decoration: BoxDecoration(
-                        color: selected
-                            ? scheme.surface
-                            : scheme.surfaceContainerHigh,
-                        borderRadius: BorderRadius.circular(12),
+                    IconBoxTap(
+                      onTap: iconTapFor(
+                        selected: selected,
+                        onTap: onTap,
+                        onLongPress: onLongPress,
                       ),
-                      child: Icon(
-                        selected ? Icons.check_circle : iconForFile(file.name),
-                        size: 21,
-                        color: selected
-                            ? scheme.primary
-                            : fileIconColor(
-                                file.name,
-                                brightness: scheme.brightness,
-                              ),
+                      child: Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: selected
+                              ? scheme.surface
+                              : scheme.surfaceContainerHigh,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          selected
+                              ? Icons.check_circle
+                              : iconForFile(file.name),
+                          size: 21,
+                          color: selected
+                              ? scheme.primary
+                              : fileIconColor(
+                                  file.name,
+                                  brightness: scheme.brightness,
+                                ),
+                        ),
                       ),
                     ),
                     const Spacer(),
@@ -3547,26 +3568,33 @@ class _DriveRow extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(10, 8, 2, 8),
             child: Row(
               children: [
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 220),
-                  curve: Curves.easeOutCubic,
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: selected
-                        ? scheme.surface
-                        : scheme.surfaceContainerHigh,
-                    borderRadius: BorderRadius.circular(selected ? 14 : 12),
+                IconBoxTap(
+                  onTap: iconTapFor(
+                    selected: selected,
+                    onTap: onTap,
+                    onLongPress: onLongPress,
                   ),
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 200),
-                    child: Icon(
-                      selected ? Icons.check_circle : icon,
-                      key: ValueKey(selected),
-                      size: 22,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOutCubic,
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
                       color: selected
-                          ? scheme.primary
-                          : iconColor ?? scheme.onSurfaceVariant,
+                          ? scheme.surface
+                          : scheme.surfaceContainerHigh,
+                      borderRadius: BorderRadius.circular(selected ? 14 : 12),
+                    ),
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 200),
+                      child: Icon(
+                        selected ? Icons.check_circle : icon,
+                        key: ValueKey(selected),
+                        size: 22,
+                        color: selected
+                            ? scheme.primary
+                            : iconColor ?? scheme.onSurfaceVariant,
+                      ),
                     ),
                   ),
                 ),

@@ -2618,12 +2618,6 @@ abstract class AppLocalizations {
   /// **'安装'**
   String get install;
 
-  /// No description provided for @notifDoneCount.
-  ///
-  /// In zh, this message translates to:
-  /// **'已完成 {count} 个'**
-  String notifDoneCount(int count);
-
   /// No description provided for @addToQuickAccess.
   ///
   /// In zh, this message translates to:

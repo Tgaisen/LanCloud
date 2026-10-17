@@ -148,6 +148,8 @@ class _TransfersPageState extends State<TransfersPage>
     setState(() {
       if (!_selected.remove(id)) _selected.add(id);
     });
+    // 选中数归零 → 自动退出多选
+    if (_selected.isEmpty) _exitSelection();
   }
 
   void _selectAll() {
@@ -157,6 +159,7 @@ class _TransfersPageState extends State<TransfersPage>
         ..clear()
         ..addAll(_tasksOf(manager).map((t) => t.id));
     });
+    if (_selected.isEmpty) _exitSelection();
   }
 
   /// 点顶栏空白处回到列表顶部（与网盘页一致）。
@@ -176,6 +179,7 @@ class _TransfersPageState extends State<TransfersPage>
         if (!_selected.remove(task.id)) _selected.add(task.id);
       }
     });
+    if (_selected.isEmpty) _exitSelection();
   }
 
   /// 清除已完成前的确认：默认 MD3 弹窗 + 消极（取消）/ 积极（清除）按钮，
@@ -535,35 +539,33 @@ class _TransfersPageState extends State<TransfersPage>
                         ),
                         child: Padding(
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-                          // 多选期间禁用切换上传/下载
-                          child: IgnorePointer(
-                            ignoring: _selecting,
-                            child: SizedBox(
-                              width: double.infinity,
-                              child: M3eConnectedButtonGroup<int>(
-                                values: const [0, 1],
-                                selected: _tab,
-                                onSelected: (value) {
-                                  if (value == _tab) return;
-                                  setState(() => _tab = value);
-                                  if (reduceMotionOf(context)) {
-                                    // 少动效：切上传 / 下载直接到位
-                                    _tabAnim.value = 1;
-                                  } else {
-                                    _tabAnim.forward(from: 0);
-                                  }
-                                  // 切换上传 / 下载：整组重播一次入场动画
-                                  _replayEnter();
-                                },
-                                labelOf: (value) => Text(
-                                  value == 0 ? l10n.upload : l10n.download,
-                                ),
-                                iconOf: (value) => Icon(
-                                  value == 0 ? Icons.upload : Icons.download,
-                                ),
-                                semanticLabel:
-                                    '${l10n.upload} / ${l10n.download}',
+                          // 多选期间也可以切换上传 / 下载：切换后自动退出多选
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: M3eConnectedButtonGroup<int>(
+                              values: const [0, 1],
+                              selected: _tab,
+                              onSelected: (value) {
+                                if (value == _tab) return;
+                                if (_selecting) _exitSelection();
+                                setState(() => _tab = value);
+                                if (reduceMotionOf(context)) {
+                                  // 少动效：切上传 / 下载直接到位
+                                  _tabAnim.value = 1;
+                                } else {
+                                  _tabAnim.forward(from: 0);
+                                }
+                                // 切换上传 / 下载：整组重播一次入场动画
+                                _replayEnter();
+                              },
+                              labelOf: (value) => Text(
+                                value == 0 ? l10n.upload : l10n.download,
                               ),
+                              iconOf: (value) => Icon(
+                                value == 0 ? Icons.upload : Icons.download,
+                              ),
+                              semanticLabel:
+                                  '${l10n.upload} / ${l10n.download}',
                             ),
                           ),
                         ),
@@ -899,6 +901,12 @@ class _TransferTile extends StatelessWidget {
         selected: selected,
         onTap: onTap,
         onLongPress: onLongPress,
+        // 鼠标：点图标块 = 进入多选并选中 / 已选中时取消选中
+        onIconTap: iconTapFor(
+          selected: selected,
+          onTap: onTap,
+          onLongPress: onLongPress,
+        ),
         // 桌面端右键：与 ⋯ 菜单同一套操作（多选时不响应，和 ⋯ 一起隐藏）
         onSecondaryTap: selecting ? null : () => onMenu(rowContext),
         // 多选期间隐藏行内操作（避免误触），但保留占位：条目高度不跳

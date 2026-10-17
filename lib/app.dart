@@ -37,10 +37,18 @@ import 'ui/system_ui.dart';
 import 'ui/transfers_page.dart';
 import 'ui/app_icons.dart';
 
-class LanCloudApp extends StatelessWidget {
+class LanCloudApp extends StatefulWidget {
   const LanCloudApp({super.key});
 
   static const seed = Color(0xFF2E6BE6);
+
+  @override
+  State<LanCloudApp> createState() => _LanCloudAppState();
+}
+
+class _LanCloudAppState extends State<LanCloudApp> {
+  /// 根 Navigator：给 Windows 鼠标侧键「后退」用（maybePop 与系统返回键同效）。
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
   @override
   Widget build(BuildContext context) {
@@ -58,6 +66,8 @@ class LanCloudApp extends StatelessWidget {
         SystemMotion.reduceMotion,
         SystemMotion.touchExploration,
         SystemMotion.motionMode,
+        // 第一次检测到鼠标时重建一次，让「点图标块 = 多选」各处生效
+        PointerSupport.hasMouse,
       ]),
       builder: (context, _) => DynamicColorBuilder(
         builder: (lightDynamic, darkDynamic) {
@@ -70,6 +80,7 @@ class LanCloudApp extends StatelessWidget {
                 : null,
           );
           return MaterialApp(
+            navigatorKey: _navigatorKey,
             // 系统「最近任务」里的应用名（桌面图标名由 Android 资源 app_name 决定，
             // 任务卡片这里是 Flutter 的 Title 设置的，要跟着语言走）
             onGenerateTitle: (context) => context.l10n.appName,
@@ -92,19 +103,26 @@ class LanCloudApp extends StatelessWidget {
             scrollBehavior: const AppScrollBehavior(),
             // 系统栏（状态栏 / 导航栏）样式跟随主题明暗：
             // Android 15+ 导航栏强制透明，能调的只有图标明暗与是否加系统遮罩。
-            builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
-              value: systemUiOverlayStyleFor(Theme.of(context).brightness),
-              // M3E：强调排版落到顶栏标题 / 弹窗标题 / 主要按钮 / 导航选中项，
-              // 挂在 Navigator 之上（弹窗、对话框同样能取到）。
-              child: M3eComponentStyles(
-                // 桌面端在窗口这一层接住拖拽（Android 走原生通道，这里原样透传）
-                child: DesktopDropTarget(
-                  child: Stack(
-                    children: [
-                      child ?? const SizedBox.shrink(),
-                      // 拖拽悬停提示条挂在 Navigator 之上：二级页面也能看到
-                      const DropHoverBanner(),
-                    ],
+            builder: (context, child) => MousePresenceDetector(
+              child: MouseBackButtonListener(
+                // Windows 鼠标侧键「后退」= 系统返回键（与 Android 返回同一条路径）
+                enabled: PlatformSupport.isWindows,
+                onBack: () => _navigatorKey.currentState?.maybePop(),
+                child: AnnotatedRegion<SystemUiOverlayStyle>(
+                  value: systemUiOverlayStyleFor(Theme.of(context).brightness),
+                  // M3E：强调排版落到顶栏标题 / 弹窗标题 / 主要按钮 / 导航选中项，
+                  // 挂在 Navigator 之上（弹窗、对话框同样能取到）。
+                  child: M3eComponentStyles(
+                    // 桌面端在窗口这一层接住拖拽（Android 走原生通道，这里原样透传）
+                    child: DesktopDropTarget(
+                      child: Stack(
+                        children: [
+                          child ?? const SizedBox.shrink(),
+                          // 拖拽悬停提示条挂在 Navigator 之上：二级页面也能看到
+                          const DropHoverBanner(),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),

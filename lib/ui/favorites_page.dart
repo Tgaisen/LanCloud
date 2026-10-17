@@ -280,6 +280,8 @@ class _FavoritesPageState extends State<FavoritesPage>
     setState(() {
       if (!_selected.remove(id)) _selected.add(id);
     });
+    // 选中数归零 → 自动退出多选
+    if (_selected.isEmpty) _exitSelection();
   }
 
   /// 点顶栏空白处回到列表顶部（与网盘页一致）。
@@ -298,6 +300,7 @@ class _FavoritesPageState extends State<FavoritesPage>
         ..clear()
         ..addAll(_items.map((item) => item.id));
     });
+    if (_selected.isEmpty) _exitSelection();
   }
 
   void _invertSelection() {
@@ -306,6 +309,7 @@ class _FavoritesPageState extends State<FavoritesPage>
         if (!_selected.remove(item.id)) _selected.add(item.id);
       }
     });
+    if (_selected.isEmpty) _exitSelection();
   }
 
   /// 批量复制分享链接：每行「名称 链接」，有提取码的一起复制
@@ -596,6 +600,12 @@ class _FavoritesPageState extends State<FavoritesPage>
         selected: selected,
         onTap: () => _open(item),
         onLongPress: () => _enterSelection(id: item.id),
+        // 鼠标：点图标块 = 进入多选并选中 / 已选中时取消选中
+        onIconTap: iconTapFor(
+          selected: selected,
+          onTap: () => _open(item),
+          onLongPress: () => _enterSelection(id: item.id),
+        ),
         // 桌面端右键：与 ⋯ 菜单同一套操作（多选时不响应，和 ⋯ 一起隐藏）
         onSecondaryTap: _selecting
             ? null

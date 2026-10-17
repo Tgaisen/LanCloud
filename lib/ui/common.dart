@@ -1746,6 +1746,113 @@ class BatchAction extends StatelessWidget {
   }
 }
 
+/// 桌面端（Windows）：把列表项 / 卡片的图标块包成可点区域。
+///
+/// 点图标 = 长按该项（进入多选并选中它），这是鼠标下的快捷方式；
+/// 其它平台传 null，图标块保持纯展示，也不会额外产生读屏节点
+/// （整行本身已经带名字和点击 / 长按动作）。
+class IconBoxTap extends StatelessWidget {
+  const IconBoxTap({super.key, this.onTap, required this.child});
+
+  final VoidCallback? onTap;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final onTap = this.onTap;
+    if (onTap == null) return child;
+    return ExcludeSemantics(
+      child: GestureDetector(
+        // 图标块在整行的 InkWell 里：内层手势在竞技场里先胜出，
+        // 点图标不会同时触发整行的 onTap（打开文件夹 / 文件）。
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: child,
+      ),
+    );
+  }
+}
+
+/// 是否检测到鼠标。悬停事件只来自鼠标 / 触控板，触摸屏不会触发，
+/// 所以用它给桌面端交互（点图标块进入多选）做运行时开关：
+/// Android 插上鼠标也能用，纯触摸时行为保持不变。
+class PointerSupport {
+  PointerSupport._();
+
+  static final ValueNotifier<bool> hasMouse = ValueNotifier<bool>(false);
+}
+
+/// 全局检测鼠标：鼠标悬停 / 按下时把 [PointerSupport.hasMouse] 置真
+/// （一旦检测到就一直保持，触摸与鼠标混用时不来回切）。
+class MousePresenceDetector extends StatelessWidget {
+  const MousePresenceDetector({super.key, required this.child});
+
+  final Widget child;
+
+  void _mark(PointerEvent event) {
+    if (event.kind != PointerDeviceKind.mouse) return;
+    if (!PointerSupport.hasMouse.value) PointerSupport.hasMouse.value = true;
+  }
+
+  @override
+  Widget build(BuildContext context) => Listener(
+    behavior: HitTestBehavior.translucent,
+    onPointerHover: _mark,
+    onPointerDown: _mark,
+    child: child,
+  );
+}
+
+/// 点图标块时要执行的动作：
+/// - 没检测到鼠标 → null（图标块只做展示）；
+/// - 已选中 → 走整行在选中态的点击（取消选中）；
+/// - 未选中 → 走长按（进入多选并选中这一项）。
+VoidCallback? iconTapFor({
+  required bool selected,
+  required VoidCallback? onTap,
+  required VoidCallback? onLongPress,
+}) {
+  if (!PointerSupport.hasMouse.value || onLongPress == null) return null;
+  if (selected && onTap != null) return onTap;
+  return onLongPress;
+}
+
+/// Windows：鼠标侧键「后退」（XBUTTON1）当作系统返回键。
+///
+/// [onBack] 由外层接到根 Navigator 的 `maybePop()`：有可弹出的路由就先 pop
+/// （页面转场、PopScope 都会照常生效）；在根页面则由 RootShell 的 PopScope
+/// 处理（退出多选 / 网盘返回上一级 / 回到默认视图 / 传输中的退出确认）。
+class MouseBackButtonListener extends StatelessWidget {
+  const MouseBackButtonListener({
+    super.key,
+    required this.child,
+    required this.onBack,
+    this.enabled = true,
+  });
+
+  final Widget child;
+
+  /// 后退键按下时要执行的动作（一般是 `navigator.maybePop()`）。
+  final VoidCallback onBack;
+
+  /// 测试里可显式打开；默认按钮是否生效由调用方按平台决定。
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!enabled) return child;
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: (event) {
+        if (event.kind != PointerDeviceKind.mouse) return;
+        if (event.buttons & kBackMouseButton == 0) return;
+        onBack();
+      },
+      child: child,
+    );
+  }
+}
+
 /// MD3E 标准列表项：圆角图标块 + 标题 / 副标题 + 尾部操作。
 /// 首页（快速访问、最近使用）、传输、收藏共用，参数与网盘列表项一致：
 /// 内边距 10/8、图标块 42dp（圆角 12）、标题 bodyLarge、副标题 bodyMedium。
@@ -1770,6 +1877,7 @@ class Md3ListItem extends StatefulWidget {
     this.selected = false,
     this.iconBoxColor,
     this.iconColor,
+    this.onIconTap,
     this.bottom,
     this.titleMaxLines = 1,
     this.subtitleMaxLines = 1,
@@ -1802,6 +1910,9 @@ class Md3ListItem extends StatefulWidget {
 
   /// 图标颜色，默认主题强调色（文件夹用主色，文件传类型色）。
   final Color? iconColor;
+
+  /// 点图标块的回调（Windows 上用于「进入多选并选中」，等价长按）。
+  final VoidCallback? onIconTap;
 
   /// 标题行下方的附加内容（例如传输进度条）。
   final Widget? bottom;
@@ -1922,24 +2033,27 @@ class _Md3ListItemState extends State<Md3ListItem>
               children: [
                 Row(
                   children: [
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 220),
-                      curve: Curves.easeOutCubic,
-                      width: 42,
-                      height: 42,
-                      decoration: BoxDecoration(
-                        color: widget.selected
-                            ? scheme.surface
-                            : widget.iconBoxColor ??
-                                  scheme.surfaceContainerHigh,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        widget.selected ? Icons.check_circle : widget.icon,
-                        size: 22,
-                        color: widget.selected
-                            ? scheme.primary
-                            : widget.iconColor ?? scheme.primary,
+                    IconBoxTap(
+                      onTap: widget.onIconTap,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 220),
+                        curve: Curves.easeOutCubic,
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: widget.selected
+                              ? scheme.surface
+                              : widget.iconBoxColor ??
+                                    scheme.surfaceContainerHigh,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          widget.selected ? Icons.check_circle : widget.icon,
+                          size: 22,
+                          color: widget.selected
+                              ? scheme.primary
+                              : widget.iconColor ?? scheme.primary,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 14),

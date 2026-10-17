@@ -1418,11 +1418,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get install => 'Install';
 
   @override
-  String notifDoneCount(int count) {
-    return '$count completed';
-  }
-
-  @override
   String get addToQuickAccess => 'Add to quick access';
 
   @override
