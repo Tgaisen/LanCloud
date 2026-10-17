@@ -37,6 +37,10 @@ migrate_working_dir/
 /refs/
 /coverage/
 
+# 发布说明以 GitHub Releases 为归档，仓库只保留模板
+/docs/releases/*.md
+!/docs/releases/TEMPLATE.md
+
 # Symbolication related
 app.*.symbols
 
