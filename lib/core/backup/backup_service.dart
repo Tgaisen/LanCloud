@@ -70,6 +70,12 @@ class BackupService {
         'username': webdav.username,
         'password': webdav.password,
         'path': webdav.path,
+        // 「备份内容」勾选项与「自动备份」开关跟着账号配置一起走：
+        // 换设备恢复后不用再手动勾一遍
+        'autoBackup': webdav.autoBackup,
+        'backupSections': [
+          for (final section in webdav.backupSections) section.id,
+        ]..sort(),
       };
     }
     return const JsonEncoder.withIndent('  ').convert(payload);
@@ -124,6 +130,14 @@ class BackupService {
         // 旧备份没有 path：URL 本身就是备份目录，按「/」恢复
         path: '${webdavData['path'] ?? '/'}',
       );
+      final autoBackup = webdavData['autoBackup'];
+      if (autoBackup is bool) await webdav.setAutoBackup(autoBackup);
+      final sectionIds = webdavData['backupSections'];
+      if (sectionIds is List) {
+        await webdav.setBackupSections(
+          BackupSection.fromIds(sectionIds.map((id) => '$id')),
+        );
+      }
       await webdav.addBackupSection(BackupSection.webdavAccount);
     }
     await app.reloadFromStorage();

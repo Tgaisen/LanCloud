@@ -3284,6 +3284,18 @@ abstract class AppLocalizations {
   /// **'云端还没有备份文件'**
   String get webdavNoBackups;
 
+  /// No description provided for @selectRestoreVersion.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择恢复版本'**
+  String get selectRestoreVersion;
+
+  /// No description provided for @restoreLatestTag.
+  ///
+  /// In zh, this message translates to:
+  /// **'最新版本'**
+  String get restoreLatestTag;
+
   /// No description provided for @webdavAutoBackup.
   ///
   /// In zh, this message translates to:

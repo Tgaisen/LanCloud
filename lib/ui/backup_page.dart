@@ -155,11 +155,12 @@ class _BackupPageState extends State<BackupPage> {
   }
 }
 
-/// 顶栏底部那条 2dp 进度线（只在 WebDAV 网络操作时显示）。
+/// 顶栏底部那条 4dp 进度线（只在 WebDAV 网络操作时显示）。
+/// 粗细与 WebView 页的进度条一致（M3eLinearProgressIndicator 默认 4dp）。
 /// 独立页放在 [AppBar.bottom]；「我的」右窗格里由「我的」顶栏复用。
 const PreferredSize kBackupProgressBar = PreferredSize(
-  preferredSize: Size.fromHeight(2),
-  child: M3eLinearProgressIndicator(height: 2),
+  preferredSize: Size.fromHeight(4),
+  child: M3eLinearProgressIndicator(height: 4),
 );
 
 /// 备份与恢复正文：本地备份 + WebDAV。
@@ -198,19 +199,22 @@ class _BackupContentState extends State<BackupContent> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
 
-  /// 跑一个可能失败的操作：统一处理忙碌标记与错误提示。
+  /// 跑一个可能失败的操作：统一处理忙碌标记与错误提示（失败返回 null）。
   ///
   /// [showProgress] 只在 WebDAV 这类要等网络的操作上开：本地备份 / 恢复花在
   /// 系统弹窗和本地写盘上，顶栏那条线既不是上传百分比也没参考价值。
-  Future<void> _run(
-    Future<void> Function() body, {
+  ///
+  /// 进度线只覆盖这次操作本身：操作之后才弹的窗（选择恢复版本 / 确认恢复）
+  /// 要放在 `_run` 外面，否则线会一直亮在弹窗后面。
+  Future<T?> _run<T>(
+    Future<T> Function() body, {
     bool showProgress = false,
   }) async {
-    if (_busy) return;
+    if (_busy) return null;
     setState(() => _busy = true);
     widget.progress.value = showProgress;
     try {
-      await body();
+      return await body();
     } on BackupException catch (e) {
       if (mounted) _snack(e.message);
     } catch (e) {
@@ -221,6 +225,7 @@ class _BackupContentState extends State<BackupContent> {
         widget.progress.value = false;
       }
     }
+    return null;
   }
 
   // -------------------------------------------------------------- 本地备份
@@ -472,41 +477,73 @@ class _BackupContentState extends State<BackupContent> {
     }
   }, showProgress: true);
 
-  Future<void> _restoreFromCloud() => _run(() async {
+  Future<void> _restoreFromCloud() async {
     final l10n = context.l10n;
-    final entries = await _service.remoteBackups();
+    // 拉列表是网络操作：进度线只亮到列表回来为止
+    final entries = await _run(_service.remoteBackups, showProgress: true);
     if (!mounted) return;
+    if (entries == null) return;
     if (entries.isEmpty) {
       _snack(l10n.webdavNoBackups);
       return;
     }
     final picked = await showAppSheet<WebdavEntry>(
       context,
-      child: SheetListGroup(
-        margin: SheetListGroup.endMargin,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          for (final entry in entries)
-            ListTile(
-              leading: Icon(
-                entry.name == BackupService.latestName
-                    ? Icons.cached_outlined
-                    : Icons.cloud_outlined,
-              ),
-              title: Text(entry.name),
-              subtitle: Text(
-                '${entry.modified == null ? '' : formatDateShort(entry.modified!.millisecondsSinceEpoch)}'
-                '${entry.size > 0 ? ' · ${formatBytes(entry.size)}' : ''}',
-              ),
-              onTap: () => Navigator.of(context).pop(entry),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Text(
+              l10n.selectRestoreVersion,
+              style: context.m3eEmphasizedTheme.titleLarge,
             ),
+          ),
+          SheetListGroup(
+            margin: SheetListGroup.endMargin,
+            children: [
+              for (var i = 0; i < entries.length; i++)
+                ListTile(
+                  leading: Icon(
+                    entries[i].name == BackupService.latestName
+                        ? Icons.cached_outlined
+                        : Icons.cloud_outlined,
+                  ),
+                  title: Text(entries[i].name),
+                  subtitle: Text(
+                    _restoreEntrySubtitle(l10n, entries[i], latest: i == 0),
+                  ),
+                  onTap: () => Navigator.of(context).pop(entries[i]),
+                ),
+            ],
+          ),
         ],
       ),
     );
     if (picked == null || !mounted) return;
-    final content = await _service.webdavDownload(picked.name);
-    if (!mounted) return;
+    final content = await _run(
+      () => _service.webdavDownload(picked.name),
+      showProgress: true,
+    );
+    if (content == null || !mounted) return;
     await _confirmAndRestore(content, picked.name);
-  }, showProgress: true);
+  }
+
+  /// 恢复列表的副标题：时间用与更新页一致的分层相对格式，
+  /// 最新的一条在末尾带上「· 最新版本」。
+  String _restoreEntrySubtitle(
+    AppLocalizations l10n,
+    WebdavEntry entry, {
+    required bool latest,
+  }) {
+    final parts = <String>[
+      if (entry.modified != null) formatRelativeTime(l10n, entry.modified!),
+      if (entry.size > 0) formatBytes(entry.size),
+      if (latest) l10n.restoreLatestTag,
+    ];
+    return parts.join(' · ');
+  }
 
   // ------------------------------------------------------------------ build
 

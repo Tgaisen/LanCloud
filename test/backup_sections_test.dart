@@ -101,6 +101,58 @@ void main() {
     expect(reloaded.backupSections, contains(BackupSection.webdavAccount));
   });
 
+  test('备份 WebDAV 账号时一并带上「备份内容」勾选项与「自动备份」开关', () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = _MemoryWebdavStore()
+      ..url = 'https://dav.example.com/blue/'
+      ..username = 'u'
+      ..password = 'p'
+      ..path = '/LanCloud'
+      ..autoBackup = true
+      ..backupSections = {BackupSection.favorites, BackupSection.webdavAccount};
+    final service = BackupService(AppController(), webdav: store);
+
+    final payload = jsonDecode(
+      await service.encode(sections: {BackupSection.webdavAccount}),
+    ) as Map;
+    final webdav = payload['webdav'] as Map;
+    expect(webdav['path'], '/LanCloud');
+    expect(webdav['autoBackup'], isTrue);
+    expect(
+      webdav['backupSections'],
+      containsAll(['favorites', 'webdavAccount']),
+    );
+  });
+
+  test('恢复 WebDAV 账号时一并恢复「备份内容」与「自动备份」开关', () async {
+    SharedPreferences.setMockInitialValues({});
+    final app = AppController();
+    await app.settings.load();
+    final store = _MemoryWebdavStore();
+    await store.load();
+    final service = BackupService(app, webdav: store);
+
+    const content =
+        '{"app":"lancloud","format":2,"sections":["webdavAccount"],'
+        '"tables":{},'
+        '"webdav":{"url":"https://dav.example.com/blue/","username":"u",'
+        '"password":"p","path":"/LanCloud","autoBackup":true,'
+        '"backupSections":["favorites","cookies"]}}';
+    await service.restoreFromString(content);
+
+    expect(store.url, 'https://dav.example.com/blue/');
+    expect(store.path, '/LanCloud');
+    expect(store.autoBackup, isTrue);
+    expect(
+      store.backupSections,
+      containsAll([
+        BackupSection.favorites,
+        BackupSection.cookies,
+        BackupSection.webdavAccount,
+      ]),
+    );
+  });
+
   test('不勾 Cookie 不写 activeUid / accounts，勾 Cookie 才带上账号条目', () async {
     SharedPreferences.setMockInitialValues({});
     final service = BackupService(

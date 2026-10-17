@@ -829,6 +829,8 @@
   },
   "webdavRestore": "从云端恢复",
   "webdavNoBackups": "云端还没有备份文件",
+  "selectRestoreVersion": "选择恢复版本",
+  "restoreLatestTag": "最新版本",
   "webdavAutoBackup": "自动备份",
   "webdavAutoBackupSubtitle": "启动应用时按频率自动上传",
   "webdavInterval": "备份频率",

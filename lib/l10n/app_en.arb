@@ -621,6 +621,8 @@
   },
   "webdavRestore": "Restore from cloud",
   "webdavNoBackups": "No backups in the cloud yet",
+  "selectRestoreVersion": "Select a version to restore",
+  "restoreLatestTag": "Latest",
   "webdavAutoBackup": "Auto backup",
   "webdavAutoBackupSubtitle": "Upload automatically at launch",
   "webdavInterval": "Backup frequency",

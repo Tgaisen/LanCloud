@@ -1776,6 +1776,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get webdavNoBackups => 'No backups in the cloud yet';
 
   @override
+  String get selectRestoreVersion => 'Select a version to restore';
+
+  @override
+  String get restoreLatestTag => 'Latest';
+
+  @override
   String get webdavAutoBackup => 'Auto backup';
 
   @override

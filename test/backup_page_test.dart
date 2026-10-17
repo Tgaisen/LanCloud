@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:material_ui/material_ui.dart';
@@ -6,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/backup/backup_sections.dart';
 import 'package:lancloud/core/backup/backup_service.dart';
+import 'package:lancloud/core/backup/webdav_client.dart';
 import 'package:lancloud/core/backup/webdav_store.dart';
 import 'package:lancloud/core/cookie_auth.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
@@ -37,6 +39,12 @@ class _FakeBackupService extends BackupService {
   String? lastRestoredContent;
   bool? lastMergeFavorites;
   Set<BackupSection>? lastSections;
+
+  /// 云端恢复列表：测试里按需设置；[remoteGate] 用来卡住「拉列表」这一步，
+  /// 观察进度线在列表回来前后是否收起。
+  List<WebdavEntry> remoteEntries = const [];
+  Completer<void>? remoteGate;
+  String downloadedContent = '';
 
   @override
   Future<File> exportFile({
@@ -72,6 +80,16 @@ class _FakeBackupService extends BackupService {
     lastRestoredContent = content;
     lastMergeFavorites = mergeFavorites;
   }
+
+  @override
+  Future<List<WebdavEntry>> remoteBackups() async {
+    final gate = remoteGate;
+    if (gate != null) await gate.future;
+    return remoteEntries;
+  }
+
+  @override
+  Future<String> webdavDownload(String name) async => downloadedContent;
 }
 
 /// 测试环境没有安全存储插件，密码改放内存。
@@ -527,6 +545,65 @@ void main() {
       find.text('已上传 lancloud-backup-20261002-181500.json'),
       findsOneWidget,
     );
+  });
+
+  testWidgets('云端恢复：选择版本弹窗带标题、分层时间与最新标记；进度线不残留', (tester) async {
+    await fake.webdav.saveServer(
+      url: 'https://dav.example.com/blue/',
+      username: 'user',
+      password: 'pwd',
+      path: WebdavStore.defaultPath,
+    );
+    final now = DateTime.now();
+    final newest = now.subtract(const Duration(minutes: 10));
+    final older = now.subtract(const Duration(days: 3));
+    fake.remoteEntries = [
+      WebdavEntry(
+        name: BackupService.latestName,
+        href: '',
+        size: 2048,
+        modified: newest,
+      ),
+      WebdavEntry(
+        name: 'lancloud-backup-20261010-120000.json',
+        href: '',
+        size: 0,
+        modified: older,
+      ),
+    ];
+    fake.remoteGate = Completer<void>();
+    await pumpPage(tester);
+
+    await tester.tap(find.text('从云端恢复'));
+    await tester.pump();
+    // 列表还在拉取：顶栏进度线显示（粗细与 WebView 进度条一致，4dp）
+    expect(find.byType(M3eLinearProgressIndicator), findsOneWidget);
+    expect(kBackupProgressBar.preferredSize.height, 4);
+
+    fake.remoteGate!.complete();
+    await tester.pumpAndSettle();
+
+    // 弹窗打开时进度线已经收起
+    expect(find.byType(M3eLinearProgressIndicator), findsNothing);
+    expect(find.text('选择恢复版本'), findsOneWidget);
+    // 最新一条（列表第一行）带「· 最新版本」；时间用分层相对格式
+    final l10n = AppLocalizationsZh();
+    expect(
+      find.text('${formatRelativeTime(l10n, newest)} · 2.0 KB · 最新版本'),
+      findsOneWidget,
+    );
+    // 其它条目没有「最新版本」标记，时间同样走分层格式（如「10月14日」）
+    final olderTile = tester.widget<ListTile>(
+      find.widgetWithText(ListTile, 'lancloud-backup-20261010-120000.json'),
+    );
+    final olderSubtitle = (olderTile.subtitle! as Text).data!;
+    expect(olderSubtitle.contains('最新版本'), isFalse);
+    expect(olderSubtitle, matches(RegExp(r'^\d{1,2}月\d{1,2}日$')));
+
+    // 点空白处关掉弹窗
+    await tester.tapAt(const Offset(10, 10));
+    await tester.pumpAndSettle();
+    expect(find.text('选择恢复版本'), findsNothing);
   });
 
   testWidgets('备份内容含敏感项时，上传前先验证身份', (tester) async {

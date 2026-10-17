@@ -1070,7 +1070,10 @@ class TopBarOverlay extends StatelessWidget {
                 Positioned.fill(child: ColoredBox(color: background)),
                 Opacity(
                   opacity: (1 - t).clamp(0.0, 1.0),
-                  child: builder(context),
+                  // 顶栏高度按传入值收紧：AppBar 带 bottom 时内部是带
+                  // Flexible 的 Column，无界高度会触发布局断言（备份页的
+                  // 进度线就是这种情况），也顺便保证 bottom 真的参与高度。
+                  child: SizedBox(height: height, child: builder(context)),
                 ),
               ],
             ),

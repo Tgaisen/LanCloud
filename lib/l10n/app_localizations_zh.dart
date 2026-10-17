@@ -1722,6 +1722,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get webdavNoBackups => '云端还没有备份文件';
 
   @override
+  String get selectRestoreVersion => '选择恢复版本';
+
+  @override
+  String get restoreLatestTag => '最新版本';
+
+  @override
   String get webdavAutoBackup => '自动备份';
 
   @override
