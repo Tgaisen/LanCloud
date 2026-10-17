@@ -492,6 +492,7 @@ void main() {
       url: 'https://dav.example.com/blue/',
       username: 'user',
       password: 'pwd',
+      path: WebdavStore.defaultPath,
     );
     await pumpPage(tester);
 
@@ -506,6 +507,7 @@ void main() {
       url: 'https://dav.example.com/blue/',
       username: 'user',
       password: 'pwd',
+      path: WebdavStore.defaultPath,
     );
     await pumpPage(tester);
 
@@ -532,6 +534,7 @@ void main() {
       url: 'https://dav.example.com/blue/',
       username: 'user',
       password: 'pwd',
+      path: WebdavStore.defaultPath,
     );
     await fake.webdav.setBackupSections({BackupSection.cookies});
     fakeAuth.result = CookieAuthResult.canceled;

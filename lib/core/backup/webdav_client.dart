@@ -149,6 +149,39 @@ class WebdavClient {
     return parsePropfind('${response.data}', baseUri);
   });
 
+  /// 列目录；目录还不存在（一次都还没备份过）时返回空列表，而不是报 404。
+  Future<List<WebdavEntry>> listOrEmpty() => _guard(() async {
+    try {
+      final response = await _request(
+        'PROPFIND',
+        baseUri,
+        headers: const {'Depth': '1'},
+        plain: true,
+      );
+      _ensureOk(response, '读取云端目录失败');
+      return parsePropfind('${response.data}', baseUri);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return const [];
+      rethrow;
+    }
+  });
+
+  /// 确认备份目录存在：不存在就建（MKCOL）。
+  ///
+  /// 目录已存在时按 RFC 4918 服务器会回 405 Method Not Allowed（部分服务器
+  /// 用 301/302 指到既有目录），都按成功处理；其它状态码 / 网络错误交给
+  /// [_guard] 统一翻译成用户能看懂的提示。
+  Future<void> ensureDirectory() => _guard(() async {
+    try {
+      final response = await _request('MKCOL', baseUri);
+      _ensureOk(response, '创建备份目录失败');
+    } on DioException catch (e) {
+      final code = e.response?.statusCode;
+      if (code == 405 || code == 301 || code == 302) return;
+      rethrow;
+    }
+  });
+
   Future<void> upload(String name, String content) => _guard(() async {
     final response = await _dio.putUri(
       _fileUri(name),

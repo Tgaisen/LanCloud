@@ -3206,6 +3206,18 @@ abstract class AppLocalizations {
   /// **'密码'**
   String get webdavPassword;
 
+  /// No description provided for @webdavPath.
+  ///
+  /// In zh, this message translates to:
+  /// **'路径'**
+  String get webdavPath;
+
+  /// No description provided for @webdavPathHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务器地址下的备份目录'**
+  String get webdavPathHint;
+
   /// No description provided for @pleaseEnterUsername.
   ///
   /// In zh, this message translates to:
@@ -3217,6 +3229,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'请输入密码'**
   String get pleaseEnterPassword;
+
+  /// No description provided for @pleaseEnterWebdavPath.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入路径'**
+  String get pleaseEnterWebdavPath;
 
   /// No description provided for @webdavNotSet.
   ///
@@ -3653,7 +3671,7 @@ abstract class AppLocalizations {
   /// No description provided for @updateViewDetails.
   ///
   /// In zh, this message translates to:
-  /// **'在 GitHub 查看详情'**
+  /// **'查看详情'**
   String get updateViewDetails;
 
   /// No description provided for @timeJustNow.

@@ -603,8 +603,11 @@
   "pleaseEnterWebdavServer": "Enter the WebDAV URL",
   "webdavUsername": "Username",
   "webdavPassword": "Password",
+  "webdavPath": "Path",
+  "webdavPathHint": "Backup folder under the server URL",
   "pleaseEnterUsername": "Enter the username",
   "pleaseEnterPassword": "Enter the password",
+  "pleaseEnterWebdavPath": "Enter a path",
   "webdavNotSet": "Not set",
   "webdavBackup": "Cloud backup",
   "webdavTest": "Test connection",
@@ -758,7 +761,7 @@
       "version": {"type": "String"}
     }
   },
-  "updateViewDetails": "View details on GitHub",
+  "updateViewDetails": "View details",
   "timeJustNow": "Just now",
   "timeMinutesAgo": "{count} min ago",
   "@timeMinutesAgo": {

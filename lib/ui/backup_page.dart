@@ -10,6 +10,7 @@ import '../core/app_controller.dart';
 import '../core/backup/backup_sections.dart';
 import '../core/backup/backup_service.dart';
 import '../core/backup/webdav_client.dart';
+import '../core/backup/webdav_store.dart';
 import '../core/cookie_auth.dart';
 import '../core/system_file_saver.dart';
 import '../l10n/l10n.dart';
@@ -425,6 +426,7 @@ class _BackupContentState extends State<BackupContent> {
         url: store.url,
         username: store.username,
         password: store.password,
+        path: store.path,
       ),
     );
     if (result == null) return;
@@ -433,6 +435,7 @@ class _BackupContentState extends State<BackupContent> {
         url: result[0],
         username: result[1],
         password: result[2],
+        path: result[3],
       );
       if (mounted) setState(() {});
     });
@@ -665,11 +668,15 @@ class WebdavAccountDialog extends StatefulWidget {
     required this.url,
     required this.username,
     required this.password,
+    required this.path,
   });
 
   final String url;
   final String username;
   final String password;
+
+  /// 备份 / 恢复目录（服务器地址下的路径）。
+  final String path;
 
   @override
   State<WebdavAccountDialog> createState() => _WebdavAccountDialogState();
@@ -685,16 +692,21 @@ class _WebdavAccountDialogState extends State<WebdavAccountDialog> {
   late final TextEditingController _pwd = TextEditingController(
     text: widget.password,
   );
+  late final TextEditingController _path = TextEditingController(
+    text: widget.path,
+  );
 
   String? _urlError;
   String? _userError;
   String? _pwdError;
+  String? _pathError;
 
   @override
   void dispose() {
     _url.dispose();
     _user.dispose();
     _pwd.dispose();
+    _path.dispose();
     super.dispose();
   }
 
@@ -703,27 +715,36 @@ class _WebdavAccountDialogState extends State<WebdavAccountDialog> {
     final url = _url.text.trim();
     final user = _user.text.trim();
     final pwd = _pwd.text;
-    // 三项都必填：缺哪个标哪个；地址再单独查一次格式
+    final path = _path.text.trim();
+    // 四项都必填：缺哪个标哪个；地址再单独查一次格式
     setState(() {
       _urlError = url.isEmpty
           ? l10n.pleaseEnterWebdavServer
           : (WebdavClient.isValidUrl(url) ? null : l10n.webdavUrlFormatError);
       _userError = user.isEmpty ? l10n.pleaseEnterUsername : null;
       _pwdError = pwd.isEmpty ? l10n.pleaseEnterPassword : null;
+      _pathError = path.isEmpty ? l10n.pleaseEnterWebdavPath : null;
     });
-    if (_urlError != null || _userError != null || _pwdError != null) return;
-    Navigator.of(context).pop([url, user, pwd]);
+    if (_urlError != null ||
+        _userError != null ||
+        _pwdError != null ||
+        _pathError != null) {
+      return;
+    }
+    Navigator.of(context).pop([url, user, pwd, path]);
   }
 
-  /// 重置 = 清空并移除配置（地址为空即未配置状态），关弹窗交给调用方落盘。
+  /// 重置 = 清空并移除配置（地址为空即未配置状态），路径回到默认值，
+  /// 关弹窗交给调用方落盘。
   void _reset() {
-    Navigator.of(context).pop(const <String>['', '', '']);
+    Navigator.of(context)
+        .pop(const <String>['', '', '', WebdavStore.defaultPath]);
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    // 三个输入框的配置弹窗：套上「不被输入法压扁 + 上移聚焦」外壳
+    // 四个输入框的配置弹窗：套上「不被输入法压扁 + 上移聚焦」外壳
     return formDialogPan(
       context,
       child: AlertDialog(
@@ -732,7 +753,7 @@ class _WebdavAccountDialogState extends State<WebdavAccountDialog> {
         // "RenderFlex children have non-zero flex but incoming height
         // constraints are unbounded"）；交给 AlertDialog 自己滚动即可。
         scrollable: true,
-        title: Text(l10n.webdavSection),
+        title: Text(l10n.webdavAccount),
         content: SizedBox(
           width: 420,
           child: Column(
@@ -778,15 +799,27 @@ class _WebdavAccountDialogState extends State<WebdavAccountDialog> {
                   _pwdError,
                 ),
               ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _path,
+                keyboardType: TextInputType.url,
+                onChanged: (_) {
+                  if (_pathError != null) setState(() => _pathError = null);
+                },
+                decoration: errorState(
+                  context,
+                  InputDecoration(
+                    labelText: l10n.webdavPath,
+                    hintText: l10n.webdavPathHint,
+                  ),
+                  _pathError,
+                ),
+              ),
             ],
           ),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(l10n.cancel),
-          ),
-          // 中立：清空三项并关弹窗 = 移除配置（保存不再接受空值，见 _save）
+          // 中立：清空所有项并关弹窗 = 移除配置（保存不再接受空值，见 _save）
           TextButton(onPressed: _reset, child: Text(l10n.reset)),
           FilledButton(onPressed: _save, child: Text(l10n.save)),
         ],

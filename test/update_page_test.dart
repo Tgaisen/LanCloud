@@ -132,7 +132,7 @@ void main() {
     // 引用行与「下载选择」不进弹窗
     expect(find.text('• 新功能'), findsOneWidget);
     expect(find.text('• 修复问题'), findsOneWidget);
-    expect(find.text('在 GitHub 查看详情'), findsOneWidget);
+    expect(find.text('查看详情'), findsOneWidget);
     expect(find.textContaining('Full Changelog'), findsNothing);
     expect(find.textContaining('下载选择'), findsNothing);
     // 两个动作：取消 + 更新（「详情」是正文里的链接，不占动作位）

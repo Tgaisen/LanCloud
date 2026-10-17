@@ -1681,10 +1681,19 @@ class AppLocalizationsZh extends AppLocalizations {
   String get webdavPassword => '密码';
 
   @override
+  String get webdavPath => '路径';
+
+  @override
+  String get webdavPathHint => '服务器地址下的备份目录';
+
+  @override
   String get pleaseEnterUsername => '请输入用户名';
 
   @override
   String get pleaseEnterPassword => '请输入密码';
+
+  @override
+  String get pleaseEnterWebdavPath => '请输入路径';
 
   @override
   String get webdavNotSet => '未设置';
@@ -1935,7 +1944,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get updateViewDetails => '在 GitHub 查看详情';
+  String get updateViewDetails => '查看详情';
 
   @override
   String get timeJustNow => '刚刚';

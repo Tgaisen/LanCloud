@@ -1735,10 +1735,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get webdavPassword => 'Password';
 
   @override
+  String get webdavPath => 'Path';
+
+  @override
+  String get webdavPathHint => 'Backup folder under the server URL';
+
+  @override
   String get pleaseEnterUsername => 'Enter the username';
 
   @override
   String get pleaseEnterPassword => 'Enter the password';
+
+  @override
+  String get pleaseEnterWebdavPath => 'Enter a path';
 
   @override
   String get webdavNotSet => 'Not set';
@@ -2006,7 +2015,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get updateViewDetails => 'View details on GitHub';
+  String get updateViewDetails => 'View details';
 
   @override
   String get timeJustNow => 'Just now';

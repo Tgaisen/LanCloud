@@ -811,8 +811,11 @@
   "pleaseEnterWebdavServer": "请输入 WebDAV 地址",
   "webdavUsername": "用户名",
   "webdavPassword": "密码",
+  "webdavPath": "路径",
+  "webdavPathHint": "服务器地址下的备份目录",
   "pleaseEnterUsername": "请输入用户名",
   "pleaseEnterPassword": "请输入密码",
+  "pleaseEnterWebdavPath": "请输入路径",
   "webdavNotSet": "未设置",
   "webdavBackup": "云端备份",
   "webdavTest": "测试连接",
@@ -966,7 +969,7 @@
       "version": {"type": "String"}
     }
   },
-  "updateViewDetails": "在 GitHub 查看详情",
+  "updateViewDetails": "查看详情",
   "timeJustNow": "刚刚",
   "timeMinutesAgo": "{count}分钟前",
   "@timeMinutesAgo": {

@@ -69,6 +69,7 @@ class BackupService {
         'url': webdav.url,
         'username': webdav.username,
         'password': webdav.password,
+        'path': webdav.path,
       };
     }
     return const JsonEncoder.withIndent('  ').convert(payload);
@@ -120,6 +121,8 @@ class BackupService {
         url: '${webdavData['url'] ?? ''}',
         username: '${webdavData['username'] ?? ''}',
         password: '${webdavData['password'] ?? ''}',
+        // 旧备份没有 path：URL 本身就是备份目录，按「/」恢复
+        path: '${webdavData['path'] ?? '/'}',
       );
       await webdav.addBackupSection(BackupSection.webdavAccount);
     }
@@ -155,7 +158,10 @@ class BackupService {
   Future<void> testConnection() async {
     await webdav.load();
     if (!webdav.configured) throw const BackupException('请先填写 WebDAV 地址');
-    await _client().check();
+    final client = _client();
+    // 备份目录可能还没建出来：先确保它可以创建 / 存在，再测连接
+    await client.ensureDirectory();
+    await client.check();
   }
 
   /// 立即上传备份，返回文件名。成功后同时更新 latest 文件并清理旧备份。
@@ -174,6 +180,8 @@ class BackupService {
     final name = '$filePrefix${stamp(now)}.json';
     final client = _client();
     try {
+      // 路径可能是第一次使用：不存在的目录先建出来（已存在时服务器回 405）
+      await client.ensureDirectory();
       await client.upload(name, content);
       await client.upload(latestName, content);
       await _prune(client);
@@ -189,7 +197,8 @@ class BackupService {
   Future<List<WebdavEntry>> remoteBackups() async {
     await webdav.load();
     if (!webdav.configured) throw const BackupException('请先填写 WebDAV 地址');
-    final entries = await _client().list();
+    // 目录还没建出来时按「没有备份」处理，不把 404 当错误弹给用户
+    final entries = await _client().listOrEmpty();
     final backups =
         entries
             .where(
@@ -242,7 +251,7 @@ class BackupService {
   }
 
   WebdavClient _client() => WebdavClient(
-    url: webdav.url,
+    url: webdav.backupUrl,
     username: webdav.username,
     password: webdav.password,
   );
