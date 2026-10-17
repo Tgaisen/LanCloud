@@ -439,11 +439,21 @@ class AppDb {
     String? title,
     String? ref,
     String? pwd,
+    String? name,
+    String? sharer,
+    String? size,
   }) async {
     final database = await db;
     await database.update(
       'favorites',
-      {'title': ?title, 'ref': ?ref, 'pwd': ?pwd},
+      {
+        'title': ?title,
+        'ref': ?ref,
+        'pwd': ?pwd,
+        'name': ?name,
+        'sharer': ?sharer,
+        'size': ?size,
+      },
       where: 'id = ?',
       whereArgs: [id],
     );

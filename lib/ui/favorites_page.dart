@@ -1,6 +1,8 @@
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:provider/provider.dart';
 
+import '../core/api/lanzou_client.dart';
+import '../core/api/models.dart';
 import '../core/app_controller.dart';
 import 'download_mark.dart';
 import '../core/data/app_db.dart';
@@ -10,7 +12,9 @@ import 'common.dart';
 import 'm3e.dart';
 import 'scroll_tint.dart';
 import 'share_file_sheet.dart';
+import 'share_folder_page.dart';
 import 'share_page.dart';
+import 'share_password_dialog.dart';
 
 /// 收藏条目 ⋯ 菜单里的动作。
 enum _FavoriteItemAction { open, copyLink, edit, unfavorite }
@@ -374,15 +378,75 @@ class _FavoritesPageState extends State<FavoritesPage>
           url: item.ref,
           pwd: item.pwd,
           size: item.size,
+          sharer: item.sharer,
+          // 解析出的最新名称 / 分享者同步写回收藏
+          onResolved: (file) => _db.updateFavorite(
+            item.id,
+            name: file.name.isEmpty ? null : file.name,
+            sharer: file.sharer.isEmpty ? null : file.sharer,
+            // 有些入口收藏时没带 size：解析出来就补上
+            size: file.size.isEmpty ? null : file.size,
+          ),
+          // 提取码不对时补一次密码；验证通过后把新密码写回收藏
+          onPasswordUpdated: (pwd) => _db.updateFavorite(item.id, pwd: pwd),
         ),
       );
     } else {
-      await openShareSheet(
-        context,
-        initialLink: item.ref,
-        initialPwd: item.pwd,
-      );
+      await _openFolder(item);
     }
+  }
+
+  /// 打开收藏的分享文件夹：先用收藏里的提取码解析；提取码失效时弹
+  /// 「此文件夹需要密码」，验证通过后把新密码写回收藏，再进入浏览页。
+  Future<void> _openFolder(FavoriteItem item) async {
+    final app = context.read<AppController>();
+    final l10n = context.l10n;
+    showLoadingDialog(context, l10n.resolving);
+    FolderShareDetail? detail;
+    var pwd = item.pwd;
+    try {
+      detail = await app.publicClient.resolveFolderShare(item.ref, pwd: pwd);
+    } on NeedPasswordException {
+      detail = null;
+    } on WrongPasswordException {
+      detail = null;
+    } on LanzouException catch (e) {
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.message)));
+      return;
+    } catch (_) {
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      return;
+    }
+    if (!mounted) return;
+    Navigator.of(context).pop();
+    if (detail == null) {
+      final result = await showFolderPasswordDialog(context, url: item.ref);
+      if (result == null || !mounted) return;
+      detail = result.value;
+      pwd = result.pwd;
+      // 上传者改过提取码：同步写回收藏，下次直接用新的
+      await _db.updateFavorite(item.id, pwd: pwd);
+      if (!mounted) return;
+    }
+    // 与「打开链接」打开文件夹一致：进入浏览页前记一条最近使用
+    await app.db.addRecent(
+      account: app.activeUid ?? '',
+      kind: 'shareFolder',
+      name: detail.name,
+      ref: item.ref,
+      pwd: pwd,
+    );
+    if (!mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) =>
+            ShareFolderPage(folder: detail!, link: item.ref, pwd: pwd),
+      ),
+    );
   }
 
   /// 条目 ⋯ 菜单（MD3E 弹出菜单）：打开 / 复制链接 / 修改信息 / 取消收藏。

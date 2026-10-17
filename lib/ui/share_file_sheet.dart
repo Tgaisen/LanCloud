@@ -10,6 +10,7 @@ import 'app_icons.dart';
 import 'common.dart';
 import 'download_mark.dart';
 import 'm3e.dart';
+import 'share_password_dialog.dart';
 
 /// 分享文件属性弹窗：加载时显示小圆环，加载完展示简介与文件信息，
 /// 提供下载、复制链接、二维码与收藏（「打开链接」已按需求去掉）。
@@ -21,7 +22,10 @@ class ShareFileInfoSheet extends StatefulWidget {
     required this.pwd,
     this.size = '',
     this.time = '',
+    this.sharer = '',
     this.invalid = false,
+    this.onPasswordUpdated,
+    this.onResolved,
   });
 
   final String name;
@@ -30,8 +34,17 @@ class ShareFileInfoSheet extends StatefulWidget {
   final String size;
   final String time;
 
+  /// 打开时已知的分享者（分享文件夹 / 收藏带过来）；解析出文件页的值后覆盖。
+  final String sharer;
+
   /// 已知失效的条目（服务端 id 为 -1）：不再去解析链接，直接提示「文件已失效」。
   final bool invalid;
+
+  /// 提取码验证通过后回调：收藏夹用它把新密码写回收藏数据。
+  final Future<void> Function(String pwd)? onPasswordUpdated;
+
+  /// 解析成功后回调：收藏夹用它把最新的名称 / 分享者写回收藏数据。
+  final Future<void> Function(DirectFile file)? onResolved;
 
   @override
   State<ShareFileInfoSheet> createState() => _ShareFileInfoSheetState();
@@ -41,6 +54,9 @@ class _ShareFileInfoSheetState extends State<ShareFileInfoSheet> {
   bool _loading = true;
   bool _invalid = false;
   DirectFile? _resolved;
+
+  /// 当前使用的提取码：解析出「提取码错误」并重新验证后换成新的。
+  late String _pwd = widget.pwd;
 
   /// 收藏状态：null = 还没查出来（查完之前收藏项置灰，避免点出「重复收藏」）。
   bool? _favorite;
@@ -56,9 +72,11 @@ class _ShareFileInfoSheetState extends State<ShareFileInfoSheet> {
     await downloadShareFile(
       context,
       url: widget.url,
-      pwd: widget.pwd,
+      pwd: _pwd,
       fallbackName: _name,
       showLoading: false,
+      // 提取码错误（例如上传者改过）：先补密码，验证通过再继续入队
+      askPassword: _promptPassword,
     );
     if (mounted) setState(() => _resolvingDownload = false);
   }
@@ -84,11 +102,22 @@ class _ShareFileInfoSheetState extends State<ShareFileInfoSheet> {
   Future<void> _fetch() async {
     final client = context.read<AppController>().publicClient;
     try {
+      // 属性弹窗要显示简介：分享页没有时再去下载页（/tp）兜底
       final resolved = await client.resolveFileShare(
         widget.url,
-        pwd: widget.pwd,
+        pwd: _pwd,
+        withDescription: true,
       );
       if (mounted) setState(() => _resolved = resolved);
+      await widget.onResolved?.call(resolved);
+    } on NeedPasswordException {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      await _promptPassword();
+    } on WrongPasswordException {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      await _promptPassword();
     } on LanzouException catch (e) {
       if (mounted) {
         setState(
@@ -101,6 +130,22 @@ class _ShareFileInfoSheetState extends State<ShareFileInfoSheet> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  /// 提取码缺失 / 错误：弹「此文件需要密码」，验证通过后用新密码刷新信息，
+  /// 并通知外面（收藏夹）同步新密码。
+  Future<String?> _promptPassword() async {
+    final result = await showFilePasswordDialog(context, url: widget.url);
+    if (result == null || !mounted) return null;
+    setState(() {
+      _pwd = result.pwd;
+      _resolved = result.value;
+      _invalid = false;
+      _loading = false;
+    });
+    await widget.onResolved?.call(result.value);
+    await widget.onPasswordUpdated?.call(result.pwd);
+    return result.pwd;
   }
 
   String get _name {
@@ -120,6 +165,12 @@ class _ShareFileInfoSheetState extends State<ShareFileInfoSheet> {
 
   String get _desc => _resolved?.desc ?? '';
 
+  String get _sharer {
+    final resolved = _resolved;
+    if (resolved != null && resolved.sharer.isNotEmpty) return resolved.sharer;
+    return widget.sharer;
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -137,6 +188,7 @@ class _ShareFileInfoSheetState extends State<ShareFileInfoSheet> {
             subtitle: [
               if (_size.isNotEmpty) prettyLzSize(_size),
               if (widget.time.isNotEmpty) widget.time,
+              if (_sharer.isNotEmpty) l10n.sharerLabel(_sharer),
             ].join(' · '),
             desc: _desc,
             loading: _loading,
@@ -243,7 +295,7 @@ class _ShareFileInfoSheetState extends State<ShareFileInfoSheet> {
                     navigator.context,
                     title: _name,
                     url: widget.url,
-                    pwd: widget.pwd,
+                    pwd: _pwd,
                   );
                 },
               ),
@@ -264,9 +316,9 @@ class _ShareFileInfoSheetState extends State<ShareFileInfoSheet> {
                     kind: 'shareFile',
                     name: _name,
                     ref: widget.url,
-                    pwd: widget.pwd,
+                    pwd: _pwd,
                     size: _size,
-                    sharer: _resolved?.sharer ?? '',
+                    sharer: _sharer,
                   );
                   if (next != null && mounted) {
                     setState(() => _favorite = next);

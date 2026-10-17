@@ -24,6 +24,7 @@ class _FakeClient extends LanzouClient {
   Future<DirectFile> resolveFileShare(
     String shareUrl, {
     String pwd = '',
+    bool withDescription = false,
   }) async {
     resolveCalls += 1;
     throw error;
@@ -33,6 +34,7 @@ class _FakeClient extends LanzouClient {
   Future<FolderShareDetail> resolveFolderShare(
     String shareUrl, {
     String pwd = '',
+    bool withDescription = false,
   }) async {
     resolveCalls += 1;
     throw error;

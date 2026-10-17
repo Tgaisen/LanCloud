@@ -256,6 +256,7 @@ class _ShareLinkDialogState extends State<ShareLinkDialog> {
         url: link,
         pwd: pwd,
         size: file.size,
+        sharer: file.sharer,
       ),
     );
   }

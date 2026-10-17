@@ -23,6 +23,7 @@ class _NoNetClient extends LanzouClient {
   Future<DirectFile> resolveFileShare(
     String shareUrl, {
     String pwd = '',
+    bool withDescription = false,
   }) async {
     throw const LanzouException('网络异常');
   }
@@ -46,7 +47,11 @@ class _GateSecondPublic extends LanzouClient {
   int calls = 0;
 
   @override
-  Future<DirectFile> resolveFileShare(String shareUrl, {String pwd = ''}) {
+  Future<DirectFile> resolveFileShare(
+    String shareUrl, {
+    String pwd = '',
+    bool withDescription = false,
+  }) {
     calls += 1;
     if (calls == 1) return Future.error(const LanzouException('网络异常'));
     return gate.future;
@@ -63,8 +68,28 @@ class _SizeClient extends LanzouClient {
   Future<DirectFile> resolveFileShare(
     String shareUrl, {
     String pwd = '',
+    bool withDescription = false,
   }) async {
     return DirectFile(name: 'a.zip', url: 'https://example.com/a', size: size);
+  }
+}
+
+/// 文件页带简介：验证信息卡会把简介显示出来。
+class _DescClient extends LanzouClient {
+  _DescClient() : super(uid: '0');
+
+  @override
+  Future<DirectFile> resolveFileShare(
+    String shareUrl, {
+    String pwd = '',
+    bool withDescription = false,
+  }) async {
+    return DirectFile(
+      name: 'a.zip',
+      url: 'https://example.com/a',
+      size: '1 M',
+      desc: '这是文件简介',
+    );
   }
 }
 
@@ -103,6 +128,11 @@ Future<void> pumpSheet(
 }
 
 void main() {
+  testWidgets('分享文件属性弹窗：文件页有简介时显示在信息卡里', (tester) async {
+    await pumpSheet(tester, _FakeApp(_DescClient()));
+    expect(find.text('这是文件简介'), findsOneWidget);
+  });
+
   testWidgets('分享文件属性弹窗：大小以列表值为准，不被文件页解析值覆盖', (tester) async {
     // 列表给的 31.5 M 是文件夹接口的真实大小；文件页解析出的 22 是错的
     await pumpSheet(tester, _FakeApp(_SizeClient('22')), size: '31.5 M');

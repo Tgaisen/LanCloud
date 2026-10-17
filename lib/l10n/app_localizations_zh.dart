@@ -387,6 +387,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get folderNeedsPassword => '此文件夹需要密码';
 
   @override
+  String get fileNeedsPassword => '此文件需要密码';
+
+  @override
   String get passwordFieldLabel => '提取码';
 
   @override

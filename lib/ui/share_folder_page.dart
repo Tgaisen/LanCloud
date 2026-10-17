@@ -9,10 +9,10 @@ import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
 import 'download_mark.dart';
-import 'folder_password_dialog.dart';
 import 'm3e.dart';
 import 'reduce_motion.dart';
 import 'share_file_sheet.dart';
+import 'share_password_dialog.dart';
 
 /// 分享浏览页条目 ⋯ 菜单里的动作。
 ///
@@ -460,6 +460,8 @@ class _ShareFolderPageState extends State<ShareFolderPage>
         pwd: widget.pwd,
         size: file.size,
         time: file.time,
+        // 文件夹页已知分享者：先显示，文件页解析出更准确的值后覆盖
+        sharer: widget.folder.sharer,
         invalid: file.invalid,
       ),
     );
@@ -513,7 +515,7 @@ class _ShareFolderPageState extends State<ShareFolderPage>
       // 子文件夹有自己的密码：弹框输入，解析成功后用这次的提取码进入
       final result = await showFolderPasswordDialog(context, url: sub.url);
       if (result == null || !mounted) return;
-      detail = result.folder;
+      detail = result.value;
       pwd = result.pwd;
     }
     await Navigator.of(context).push(

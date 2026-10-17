@@ -4318,6 +4318,11 @@ Future<bool> downloadShareFile(
   String pwd = '',
   String? fallbackName,
   bool showLoading = true,
+
+  /// 提取码缺失 / 错误时调用：返回新提取码就用它重试一次，返回 null 放弃。
+  ///
+  /// 属性弹窗传这个回调：补密码后继续下载，并把新密码同步到收藏夹。
+  Future<String?> Function()? askPassword,
 }) async {
   final app = context.read<AppController>();
   final transfers = context.read<TransferManager>();
@@ -4333,30 +4338,52 @@ Future<bool> downloadShareFile(
   }
 
   if (showLoading) showLoadingDialog(context, l10n.resolvingDownload);
-  try {
-    final direct = await app.publicClient.resolveFileShare(url, pwd: pwd);
+  var currentPwd = pwd;
+  // 只补一次密码：用户改完仍不对就按错误提示，避免反复弹框
+  var asked = false;
+  while (true) {
+    String? passwordError;
+    try {
+      final direct = await app.publicClient.resolveFileShare(
+        url,
+        pwd: currentPwd,
+      );
+      if (showLoading) navigator.pop();
+      transfers.addDownload(
+        url: direct.url,
+        name: direct.name.isEmpty ? (fallbackName ?? 'download') : direct.name,
+        referer: url,
+        pwd: currentPwd,
+        via: app.publicClient,
+      );
+      notify(l10n.addedToQueue);
+      return true;
+    } on NeedPasswordException catch (e) {
+      passwordError = e.message;
+    } on WrongPasswordException catch (e) {
+      passwordError = e.message;
+    } on LanzouException catch (e) {
+      if (showLoading) navigator.pop();
+      notify(e.message);
+      return false;
+    } catch (e) {
+      if (showLoading) navigator.pop();
+      notify(l10n.resolveFailed('$e'));
+      return false;
+    }
+    // 需要提取码 / 提取码错误
+    if (askPassword == null || asked || !context.mounted) {
+      if (showLoading) navigator.pop();
+      notify(passwordError);
+      return false;
+    }
+    asked = true;
     if (showLoading) navigator.pop();
-    transfers.addDownload(
-      url: direct.url,
-      name: direct.name.isEmpty ? (fallbackName ?? 'download') : direct.name,
-      referer: url,
-      pwd: pwd,
-      via: app.publicClient,
-    );
-    notify(l10n.addedToQueue);
-    return true;
-  } on NeedPasswordException {
-    if (showLoading) navigator.pop();
-    notify(l10n.shareNeedsPassword);
-    return false;
-  } on LanzouException catch (e) {
-    if (showLoading) navigator.pop();
-    notify(e.message);
-    return false;
-  } catch (e) {
-    if (showLoading) navigator.pop();
-    notify(l10n.resolveFailed('$e'));
-    return false;
+    final next = await askPassword();
+    if (next == null || next.trim().isEmpty) return false;
+    if (!context.mounted) return false;
+    currentPwd = next.trim();
+    if (showLoading) showLoadingDialog(context, l10n.resolvingDownload);
   }
 }
 

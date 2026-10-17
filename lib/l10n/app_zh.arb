@@ -174,6 +174,7 @@
   "shareLinkHint": "https://www.lanzou.com/xxxxx",
   "passwordOptional": "提取码（如有）",
   "folderNeedsPassword": "此文件夹需要密码",
+  "fileNeedsPassword": "此文件需要密码",
   "passwordFieldLabel": "提取码",
   "passwordRequired": "请输入提取码",
   "resolving": "解析中",

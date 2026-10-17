@@ -684,14 +684,20 @@ class LanzouClient {
     );
   }
 
-  Future<String> fetchSharePage(String url) async {
-    var resp = await dio.get<String>(url, options: _options(referer: url));
+  Future<String> fetchSharePage(String url, {String? referer}) async {
+    var resp = await dio.get<String>(
+      url,
+      options: _options(referer: referer ?? url),
+    );
     var html = resp.data ?? '';
     if (html.contains('acw_sc__v2')) {
       final token = calcAcwScV2(html);
       if (token.isNotEmpty) {
         _jar.putIfAbsent(Uri.parse(url).host, () => {})['acw_sc__v2'] = token;
-        resp = await dio.get<String>(url, options: _options(referer: url));
+        resp = await dio.get<String>(
+          url,
+          options: _options(referer: referer ?? url),
+        );
         html = resp.data ?? '';
       }
     }
@@ -866,11 +872,18 @@ class LanzouClient {
   Future<DirectFile> resolveFileShare(
     String shareUrl, {
     String pwd = '',
+
+    /// 是否连下载页（/tp）一起取简介：属性弹窗打开，批量解析 / 下载不需要。
+    bool withDescription = false,
   }) async {
     Object? lastError;
     for (final candidate in _shareUrlCandidates(shareUrl)) {
       try {
-        return await _resolveFileShareOn(candidate, pwd);
+        return await _resolveFileShareOn(
+          candidate,
+          pwd,
+          withDescription: withDescription,
+        );
       } on NeedPasswordException {
         rethrow;
       } catch (e) {
@@ -882,7 +895,11 @@ class LanzouClient {
         : LanzouException('解析分享失败：$lastError');
   }
 
-  Future<DirectFile> _resolveFileShareOn(String url, String pwd) async {
+  Future<DirectFile> _resolveFileShareOn(
+    String url,
+    String pwd, {
+    bool withDescription = false,
+  }) async {
     final uri = Uri.parse(url);
     final base = '${uri.scheme}://${uri.host}';
     final html = await fetchSharePage(url);
@@ -909,6 +926,11 @@ class LanzouClient {
     var desc = _cleanDesc(
       _match(html, [r'class="n_box_des">(.*?)</div>']) ?? '',
     );
+    // app 用桌面 UA 请求时会返回 PC 版模板：简介写在「文件描述：」表格里
+    // （exe / 普通文件的分享页就是这种），APK 模板没有这个字段。
+    if (desc.isEmpty) {
+      desc = pcShareDescriptionFromHtml(html) ?? desc;
+    }
 
     // 新版流程：分享页 -> iframe -> ajaxfile.php
     final iframeRaw = RegExp(r'<iframe.*?src="(.+?)"')
@@ -916,16 +938,31 @@ class LanzouClient {
         ?.group(1);
     var legacyHtml = html;
     String? iframeUrl;
+    String? iframeHtml;
     if (iframeRaw != null) {
       iframeUrl = _absoluteUrl(base, uri.scheme, iframeRaw);
-      final iframeHtml = await fetchSharePage(iframeUrl);
+      iframeHtml = await fetchSharePage(iframeUrl);
       legacyHtml = iframeHtml;
       final frameTitle = _match(iframeHtml, [r'<title>(.+?)</title>']);
       if (frameTitle != null && frameTitle.trim().isNotEmpty) {
         name = frameTitle.trim();
       }
       final frameDesc = _match(iframeHtml, [r'class="n_box_des">(.*?)</div>']);
-      if (frameDesc != null) desc = _cleanDesc(frameDesc);
+      if (frameDesc != null) {
+        final cleaned = _cleanDesc(frameDesc);
+        // iframe 里是空的就别覆盖分享页已解析到的简介
+        if (cleaned.isNotEmpty) desc = cleaned;
+      }
+    }
+
+    // exe / apk 等分享页模板没有简介节点：下载页（/tp）的 .mdo 才是简介。
+    // 只在属性弹窗（需要简介）且分享页没解析到简介时多请求一次。
+    if (withDescription && desc.isEmpty) {
+      final tpDesc = await _fetchTpDescription(html, base, uri.scheme, url);
+      if (tpDesc != null && tpDesc.isNotEmpty) desc = tpDesc;
+    }
+
+    if (iframeHtml != null && iframeUrl != null) {
       final direct = await _resolveViaAjaxFile(iframeHtml, iframeUrl, url, pwd);
       if (direct != null) {
         return DirectFile(
@@ -1011,12 +1048,27 @@ class LanzouClient {
   }
 
   String _cleanDesc(String raw) {
-    return raw
-        .replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n')
-        .replaceAll(RegExp(r'<[^>]+>'), '')
-        .replaceAll('&nbsp;', ' ')
-        .replaceAll('&amp;', '&')
-        .trim();
+    return _cleanShareText(raw);
+  }
+
+  /// 从下载页（/tp）抓简介：exe / apk 等模板把简介放在 `.mdo` 里。
+  Future<String?> _fetchTpDescription(
+    String pageHtml,
+    String base,
+    String scheme,
+    String pageUrl,
+  ) async {
+    final raw = RegExp(r"link\.href\s*=\s*'([^']+)'")
+        .firstMatch(pageHtml)
+        ?.group(1);
+    if (raw == null || raw.isEmpty) return null;
+    final tpUrl = _absoluteUrl(base, scheme, raw);
+    try {
+      final html = await fetchSharePage(tpUrl, referer: pageUrl);
+      return tpDescriptionFromHtml(html);
+    } catch (_) {
+      return null;
+    }
   }
 
   /// 新版带密码分享：首页直接 POST ajaxfile.php（isngis 作 sign、kdns 作 kd、p 为提取码）。
@@ -1286,4 +1338,48 @@ String shareFileSizeFromHtml(String html) {
       ).firstMatch(html);
   final raw = match?.group(1) ?? '';
   return raw.replaceAll(',', '').replaceAll(RegExp(r'\s+'), '');
+}
+
+/// 清理分享页里的富文本（简介、描述）：保留换行、去掉标签与常见实体。
+String _cleanShareText(String raw) {
+  return raw
+      .replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n')
+      .replaceAll(RegExp(r'<[^>]+>'), '')
+      .replaceAll('&nbsp;', ' ')
+      .replaceAll('&amp;', '&')
+      .trim();
+}
+
+/// 从下载页（/tp）HTML 取真正的简介。
+///
+/// 有简介的文件，`.mdo` 是上传者写的内容；没写简介时这里是系统默认的
+/// 「下载说明」（建议网络 / 反馈），不能当成简介显示。
+String? tpDescriptionFromHtml(String html) {
+  final raw = RegExp(
+    r'<div class="mdo">(.*?)</div>',
+    dotAll: true,
+  ).firstMatch(html)?.group(1);
+  if (raw == null) return null;
+  final text = _cleanShareText(raw);
+  if (text.isEmpty) return null;
+  if (text.contains('下载说明') || text.contains('建议使用最快的网络')) {
+    return null;
+  }
+  return text;
+}
+
+/// 从 PC 版分享页取「文件描述」。
+///
+/// app 用桌面 UA 请求，exe / 普通文件页返回的是 PC 模板：
+/// `<span class="p7">文件描述：</span><br>简介</td>`；
+/// APK 等没有这个字段时返回 null。
+String? pcShareDescriptionFromHtml(String html) {
+  final raw = RegExp(
+    r'<span class="p7">文件描述[：:]\s*</span>\s*<br\s*/?>\s*(.*?)</td>',
+    dotAll: true,
+    caseSensitive: false,
+  ).firstMatch(html)?.group(1);
+  if (raw == null) return null;
+  final text = _cleanShareText(raw);
+  return text.isEmpty ? null : text;
 }

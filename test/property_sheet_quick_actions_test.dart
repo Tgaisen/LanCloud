@@ -127,6 +127,7 @@ class _FakePublic extends LanzouClient {
   Future<DirectFile> resolveFileShare(
     String shareUrl, {
     String pwd = '',
+    bool withDescription = false,
   }) async => DirectFile(name: 'a.zip', url: 'https://cdn.example/a.zip');
 }
 
@@ -137,8 +138,11 @@ class _GatedPublic extends LanzouClient {
   final Completer<DirectFile> gate = Completer<DirectFile>();
 
   @override
-  Future<DirectFile> resolveFileShare(String shareUrl, {String pwd = ''}) =>
-      gate.future;
+  Future<DirectFile> resolveFileShare(
+    String shareUrl, {
+    String pwd = '',
+    bool withDescription = false,
+  }) => gate.future;
 }
 
 /// 分享信息卡住不返回的客户端：用来验「数据没回来时按钮置灰」。

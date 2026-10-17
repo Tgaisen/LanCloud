@@ -806,6 +806,12 @@ abstract class AppLocalizations {
   /// **'此文件夹需要密码'**
   String get folderNeedsPassword;
 
+  /// No description provided for @fileNeedsPassword.
+  ///
+  /// In zh, this message translates to:
+  /// **'此文件需要密码'**
+  String get fileNeedsPassword;
+
   /// No description provided for @passwordFieldLabel.
   ///
   /// In zh, this message translates to:

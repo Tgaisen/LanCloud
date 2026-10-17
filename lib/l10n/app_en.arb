@@ -123,6 +123,7 @@
   "shareLinkHint": "https://www.lanzou.com/xxxxx",
   "passwordOptional": "Password (if any)",
   "folderNeedsPassword": "This folder needs a password",
+  "fileNeedsPassword": "This file needs a password",
   "passwordFieldLabel": "Password",
   "passwordRequired": "Enter the password",
   "resolving": "Resolving…",
