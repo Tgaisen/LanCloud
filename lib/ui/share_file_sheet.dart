@@ -110,9 +110,12 @@ class _ShareFileInfoSheetState extends State<ShareFileInfoSheet> {
   }
 
   String get _size {
+    // 分享文件夹列表里的 size 来自文件夹接口，和列表显示的一致；
+    // 文件页解析出的 size 偶尔会取到别的数字（历史上是页内日期 22），
+    // 有列表值时以列表为准，保证打开属性弹窗前后的显示不跳变。
+    if (widget.size.isNotEmpty) return widget.size;
     final resolved = _resolved;
-    if (resolved != null && resolved.size.isNotEmpty) return resolved.size;
-    return widget.size;
+    return resolved?.size ?? '';
   }
 
   String get _desc => _resolved?.desc ?? '';

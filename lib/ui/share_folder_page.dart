@@ -9,6 +9,7 @@ import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
 import 'download_mark.dart';
+import 'folder_password_dialog.dart';
 import 'm3e.dart';
 import 'reduce_motion.dart';
 import 'share_file_sheet.dart';
@@ -485,19 +486,17 @@ class _ShareFolderPageState extends State<ShareFolderPage>
     final app = context.read<AppController>();
     final l10n = context.l10n;
     showLoadingDialog(context, l10n.resolving);
+    // 子文件夹可能是独立分享、带自己的提取码：先按父文件夹的提取码试一次
+    // （沿用原行为），拿到「需要提取码 / 提取码错误」再弹输入框，不要把
+    // 父提取码当成错误直接报出去。
+    FolderShareDetail? detail;
+    var pwd = widget.pwd;
     try {
-      final detail = await app.publicClient.resolveFolderShare(
-        sub.url,
-        pwd: widget.pwd,
-      );
-      if (!mounted) return;
-      Navigator.of(context).pop();
-      await Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) =>
-              ShareFolderPage(folder: detail, link: sub.url, pwd: widget.pwd),
-        ),
-      );
+      detail = await app.publicClient.resolveFolderShare(sub.url, pwd: pwd);
+    } on NeedPasswordException {
+      detail = null;
+    } on WrongPasswordException {
+      detail = null;
     } on LanzouException catch (e) {
       if (!mounted) return;
       Navigator.of(context).pop();
@@ -506,7 +505,23 @@ class _ShareFolderPageState extends State<ShareFolderPage>
     } catch (_) {
       if (!mounted) return;
       Navigator.of(context).pop();
+      return;
     }
+    if (!mounted) return;
+    Navigator.of(context).pop();
+    if (detail == null) {
+      // 子文件夹有自己的密码：弹框输入，解析成功后用这次的提取码进入
+      final result = await showFolderPasswordDialog(context, url: sub.url);
+      if (result == null || !mounted) return;
+      detail = result.folder;
+      pwd = result.pwd;
+    }
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) =>
+            ShareFolderPage(folder: detail!, link: sub.url, pwd: pwd),
+      ),
+    );
   }
 
   /// 普通顶栏：返回 / 关闭搜索 + 标题或搜索框 + 搜索 / 菜单。

@@ -384,6 +384,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get passwordOptional => '提取码（如有）';
 
   @override
+  String get folderNeedsPassword => '此文件夹需要密码';
+
+  @override
+  String get passwordFieldLabel => '提取码';
+
+  @override
+  String get passwordRequired => '请输入提取码';
+
+  @override
   String get resolving => '解析中';
 
   @override

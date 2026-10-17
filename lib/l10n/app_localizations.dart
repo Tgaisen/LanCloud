@@ -800,6 +800,24 @@ abstract class AppLocalizations {
   /// **'提取码（如有）'**
   String get passwordOptional;
 
+  /// No description provided for @folderNeedsPassword.
+  ///
+  /// In zh, this message translates to:
+  /// **'此文件夹需要密码'**
+  String get folderNeedsPassword;
+
+  /// No description provided for @passwordFieldLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'提取码'**
+  String get passwordFieldLabel;
+
+  /// No description provided for @passwordRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入提取码'**
+  String get passwordRequired;
+
   /// No description provided for @resolving.
   ///
   /// In zh, this message translates to:

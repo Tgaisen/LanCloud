@@ -53,11 +53,27 @@ class _GateSecondPublic extends LanzouClient {
   }
 }
 
+/// 返回指定大小的假客户端：模拟文件页把大小解析错（如历史 bug 的 22）。
+class _SizeClient extends LanzouClient {
+  _SizeClient(this.size) : super(uid: '0');
+
+  final String size;
+
+  @override
+  Future<DirectFile> resolveFileShare(
+    String shareUrl, {
+    String pwd = '',
+  }) async {
+    return DirectFile(name: 'a.zip', url: 'https://example.com/a', size: size);
+  }
+}
+
 Future<void> pumpSheet(
   WidgetTester tester,
   AppController app, {
   TransferManager? manager,
   bool invalid = false,
+  String size = '1 MB',
 }) async {
   final transfers = manager ?? TransferManager(app);
   addTearDown(app.dispose);
@@ -76,7 +92,7 @@ Future<void> pumpSheet(
             name: 'a.zip',
             url: 'https://example.com/abcdef',
             pwd: '',
-            size: '1 MB',
+            size: size,
             invalid: invalid,
           ),
         ),
@@ -87,6 +103,14 @@ Future<void> pumpSheet(
 }
 
 void main() {
+  testWidgets('分享文件属性弹窗：大小以列表值为准，不被文件页解析值覆盖', (tester) async {
+    // 列表给的 31.5 M 是文件夹接口的真实大小；文件页解析出的 22 是错的
+    await pumpSheet(tester, _FakeApp(_SizeClient('22')), size: '31.5 M');
+
+    expect(find.textContaining('31.5 MB'), findsOneWidget);
+    expect(find.textContaining('22.0 MB'), findsNothing);
+  });
+
   // 分享文件夹浏览页里点文件弹出的这张表就是「项目菜单」：只留下载 / 复制链接 /
   // 二维码 / 收藏，「打开链接」按需求去掉（浏览器的入口在别处）。
   testWidgets('分享文件属性弹窗：没有「打开链接」，其余入口都在', (tester) async {

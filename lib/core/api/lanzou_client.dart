@@ -899,8 +899,7 @@ class LanzouClient {
           r'<div class="filethetext".+?>([^<>]+?)</div>',
         ]) ??
         url.split('/').last;
-    final size = (_match(html, [r'大小.+?(\d[\d.,]+\s?[BKM]?)<']) ?? '')
-        .replaceAll(',', '');
+    final size = shareFileSizeFromHtml(html);
     final sharer =
         _match(html, [
           r'<span class="user-name">([^<]+)</span>',
@@ -1266,4 +1265,25 @@ class LanzouClient {
     }
     throw const LanzouException('获取分享文件列表失败');
   }
+}
+
+/// 从分享文件页 HTML 解析大小（返回如 `1.1M`，解析不到返回空串）。
+///
+/// 文件页把大小写在 meta description（`大小：1.1 M`）和下载按钮里
+/// （`下载 ( 1.1 M )`）。旧写法 `大小.+?(\d...)<` 带 dotAll，会一路跨行
+/// 吃到页面里的日期 `2026-06-22<`，于是所有文件都被读成 `22`（22.0 MB）；
+/// 这里只认「大小：数字+单位」这种紧邻的写法，不再用跨行通配。
+String shareFileSizeFromHtml(String html) {
+  final match =
+      RegExp(
+        r'content="大小[：:]\s*([\d.,]+\s*[BKMGT]?)"',
+        caseSensitive: false,
+      ).firstMatch(html) ??
+      RegExp(r'下载\s*\(\s*([\d.,]+\s*[BKMGT]?)\s*\)').firstMatch(html) ??
+      RegExp(
+        r'大小[：:]\s*([\d.,]+\s*[BKMGT]?)',
+        caseSensitive: false,
+      ).firstMatch(html);
+  final raw = match?.group(1) ?? '';
+  return raw.replaceAll(',', '').replaceAll(RegExp(r'\s+'), '');
 }

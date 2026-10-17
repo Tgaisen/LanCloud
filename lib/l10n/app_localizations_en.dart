@@ -396,6 +396,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get passwordOptional => 'Password (if any)';
 
   @override
+  String get folderNeedsPassword => 'This folder needs a password';
+
+  @override
+  String get passwordFieldLabel => 'Password';
+
+  @override
+  String get passwordRequired => 'Enter the password';
+
+  @override
   String get resolving => 'Resolving…';
 
   @override
