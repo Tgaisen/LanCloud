@@ -1,6 +1,6 @@
 /// 应用信息：发版时与 pubspec.yaml 的 version 一起更新（版本号规范见 README）。
-const String appVersion = '26.1.0-pre.10';
-const int appBuild = 260100210;
+const String appVersion = '26.1.0-pre.11';
+const int appBuild = 260100211;
 
 /// 开源协议与项目地址。
 const String projectUrl = 'https://github.com/Tgaisen/LanCloud';
