@@ -90,7 +90,7 @@ powershell -ExecutionPolicy Bypass -File tools/build_windows.ps1
 
 | 组件 | 信息 |
 | --- | --- |
-| Flutter | 3.47.5 |
+| Flutter | 3.47.7 |
 | JDK | 17 |
 | Android SDK | platform 37、build-tools、NDK 28.2、CMake |
 | Visual Studio Build Tools | 2026（Windows SDK 10.0.28000）；勾选「使用 C++ 的桌面开发」工作负载（含 Windows SDK 与 CMake），与「C++ ATL for x64/x86 (最新 MSVC)」 |
