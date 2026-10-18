@@ -376,8 +376,8 @@ void main() {
     }
   });
 
-  // 什么都没勾就点「清除」：不装清空成功，明确提示未选择
-  testWidgets('「清除数据」什么都不选点清除：提示未选择清除项', (tester) async {
+  // 一项都没勾选时「清除」置灰；勾选后恢复可点
+  testWidgets('「清除数据」未勾选时清除按钮置灰，勾选后可用', (tester) async {
     await pumpSettings(tester, SettingsCategory.privacyData);
     final entry = find.text('清除数据');
     // 直接滚到底：清除数据是隐私组的最后一项
@@ -394,14 +394,18 @@ void main() {
     await tester.tap(entry);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('清除'));
-    await tester.pumpAndSettle();
-    expect(find.text('未选择清除项'), findsOneWidget);
-    expect(find.text('已清空'), findsNothing);
+    final clearButton = find.widgetWithText(FilledButton, '清除');
+    expect(tester.widget<FilledButton>(clearButton).onPressed, isNull);
 
-    // 让 SnackBar 自己走完生命周期，别留挂起的定时器
-    await tester.pump(const Duration(seconds: 4));
+    // 勾一项后按钮恢复可点
+    await tester.tap(find.text('运行日志'));
     await tester.pumpAndSettle();
+    expect(tester.widget<FilledButton>(clearButton).onPressed, isNotNull);
+
+    // 取消：不执行清除
+    await tester.tap(find.text('取消'));
+    await tester.pumpAndSettle();
+    expect(find.byType(AlertDialog), findsNothing);
   });
 
   testWidgets('「清除数据」弹窗：两组分组小标题 + 复选列表，取消不清', (tester) async {

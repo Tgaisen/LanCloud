@@ -3692,6 +3692,18 @@ abstract class AppLocalizations {
   /// **'刚刚'**
   String get timeJustNow;
 
+  /// No description provided for @dayToday.
+  ///
+  /// In zh, this message translates to:
+  /// **'今天'**
+  String get dayToday;
+
+  /// No description provided for @dayYesterday.
+  ///
+  /// In zh, this message translates to:
+  /// **'昨天'**
+  String get dayYesterday;
+
   /// No description provided for @timeMinutesAgo.
   ///
   /// In zh, this message translates to:

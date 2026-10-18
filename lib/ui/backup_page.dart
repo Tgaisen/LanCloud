@@ -601,7 +601,7 @@ class _BackupContentState extends State<BackupContent> {
               onTap: _uploadNow,
             ),
             ListTile(
-              leading: const Icon(Icons.cloud_outlined),
+              leading: const Icon(Icons.cloud_download),
               title: Text(l10n.webdavRestore),
               enabled: store.configured && !_busy,
               onTap: _restoreFromCloud,
@@ -640,7 +640,7 @@ class _BackupContentState extends State<BackupContent> {
                 l10n.lastBackupAt(
                   store.lastBackupAt == 0
                       ? l10n.neverBackedUp
-                      : formatDateShort(store.lastBackupAt),
+                      : _backupDayLabel(context, store.lastBackupAt),
                 ),
                 style: Theme.of(context).textTheme.bodySmall,
               ),
@@ -693,6 +693,21 @@ class _BackupContentState extends State<BackupContent> {
     await _service.webdav.setInterval(value);
     if (mounted) setState(() {});
   }
+}
+
+/// 「上次备份」的日期：今天 / 昨天 / yyyy-MM-dd（与更新页的分层思路一致）。
+String _backupDayLabel(BuildContext context, int millis) {
+  final date = DateTime.fromMillisecondsSinceEpoch(millis);
+  final now = DateTime.now();
+  final days = DateTime(
+    now.year,
+    now.month,
+    now.day,
+  ).difference(DateTime(date.year, date.month, date.day)).inDays;
+  final l10n = context.l10n;
+  if (days == 0) return l10n.dayToday;
+  if (days == 1) return l10n.dayYesterday;
+  return formatDateShort(millis);
 }
 
 /// WebDAV 账号编辑弹窗：自己持有输入控制器，并在弹窗销毁时释放。

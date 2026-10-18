@@ -1378,7 +1378,10 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
                 child: Text(l10n.cancel),
               ),
               FilledButton(
-                onPressed: () => Navigator.of(dialogContext).pop(true),
+                // 一项都没勾选时置灰：先选内容再清除
+                onPressed: selected.isEmpty
+                    ? null
+                    : () => Navigator.of(dialogContext).pop(true),
                 child: Text(l10n.clear),
               ),
             ],
@@ -2268,7 +2271,8 @@ class _SliderTileState<T> extends State<_SliderTile<T>> {
             if (widget.subtitle != null) ...[
               Text(
                 widget.subtitle!,
-                style: theme.textTheme.bodySmall?.copyWith(
+                // 与其它设置项的 ListTile 副标题同一档（bodyMedium）
+                style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
@@ -2282,30 +2286,35 @@ class _SliderTileState<T> extends State<_SliderTile<T>> {
             //     松手相同的落盘路径；
             //   - excludeSemantics 屏蔽内部手势语义（tap / scroll*），否则
             //     TalkBack 双击会按控件中心点按、把值直接跳到中间档。
-            Semantics(
-              container: true,
-              slider: true,
-              enabled: true,
-              label: widget.title,
-              value: widget.labelOf(value),
-              increasedValue: widget.labelOf(
-                widget.values[_clampIndex(_index + 1)],
-              ),
-              decreasedValue: widget.labelOf(
-                widget.values[_clampIndex(_index - 1)],
-              ),
-              onIncrease: () => _step(1),
-              onDecrease: () => _step(-1),
-              excludeSemantics: true,
-              child: M3ESlider(
-                value: _index.toDouble(),
-                min: 0,
-                max: (widget.values.length - 1).toDouble(),
-                divisions: widget.values.length - 1,
-                onChanged: (v) => setState(() => _index = v.round()),
-                // 松手才落盘；用本地档位（拖动中同步更新）而不是回调给的数值：
-                // 事件成批到达时，受控的 widget.value 可能还停在上一帧
-                onChangeEnd: (_) => _commit(),
+            // M3ESlider 在轨道两端各留了 thumbRadius（10dp）的内边距；
+            // 左移同样的距离，让轨道起点与标题左缘对齐。
+            Transform.translate(
+              offset: const Offset(-10, 0),
+              child: Semantics(
+                container: true,
+                slider: true,
+                enabled: true,
+                label: widget.title,
+                value: widget.labelOf(value),
+                increasedValue: widget.labelOf(
+                  widget.values[_clampIndex(_index + 1)],
+                ),
+                decreasedValue: widget.labelOf(
+                  widget.values[_clampIndex(_index - 1)],
+                ),
+                onIncrease: () => _step(1),
+                onDecrease: () => _step(-1),
+                excludeSemantics: true,
+                child: M3ESlider(
+                  value: _index.toDouble(),
+                  min: 0,
+                  max: (widget.values.length - 1).toDouble(),
+                  divisions: widget.values.length - 1,
+                  onChanged: (v) => setState(() => _index = v.round()),
+                  // 松手才落盘；用本地档位（拖动中同步更新）而不是回调给的数值：
+                  // 事件成批到达时，受控的 widget.value 可能还停在上一帧
+                  onChangeEnd: (_) => _commit(),
+                ),
               ),
             ),
           ],

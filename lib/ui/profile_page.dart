@@ -860,7 +860,10 @@ class _ProfilePageState extends State<ProfilePage>
     final account = app.activeAccount;
     final uid = app.activeUid ?? '';
     return ListTile(
-      leading: CircleAvatar(child: Text(_avatarInitial(account, uid))),
+      // 头像里的首字母是装饰：账号名 / 账号在标题与副标题里，读屏跳过它
+      leading: ExcludeSemantics(
+        child: CircleAvatar(child: Text(_avatarInitial(account, uid))),
+      ),
       title: Row(
         children: [
           Flexible(

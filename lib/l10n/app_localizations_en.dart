@@ -2025,6 +2025,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get timeJustNow => 'Just now';
 
   @override
+  String get dayToday => 'Today';
+
+  @override
+  String get dayYesterday => 'Yesterday';
+
+  @override
   String timeMinutesAgo(int count) {
     return '$count min ago';
   }

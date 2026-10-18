@@ -606,6 +606,32 @@ void main() {
     expect(find.text('选择恢复版本'), findsNothing);
   });
 
+  testWidgets('「上次备份」日期：今天 / 昨天 / yyyy-MM-dd', (tester) async {
+    final now = DateTime.now();
+    // 页面 initState 会重新 load 存储，所以把状态放进 mock 的 SharedPreferences
+    Future<void> pumpWith(int millis) async {
+      SharedPreferences.setMockInitialValues(<String, Object>{
+        'webdav_url': 'https://dav.example.com/blue/',
+        'webdav_last_backup_at': millis,
+      });
+      // 先卸载旧页面：否则同类型 widget 复用 State，不会重新 load 存储
+      await tester.pumpWidget(const SizedBox());
+      await pumpPage(tester);
+    }
+
+    await pumpWith(now.millisecondsSinceEpoch);
+    expect(find.text('上次备份：今天'), findsOneWidget);
+
+    await pumpWith(
+      now.subtract(const Duration(days: 1)).millisecondsSinceEpoch,
+    );
+    expect(find.text('上次备份：昨天'), findsOneWidget);
+
+    final old = now.subtract(const Duration(days: 3)).millisecondsSinceEpoch;
+    await pumpWith(old);
+    expect(find.text('上次备份：${formatDateShort(old)}'), findsOneWidget);
+  });
+
   testWidgets('备份内容含敏感项时，上传前先验证身份', (tester) async {
     await fake.webdav.saveServer(
       url: 'https://dav.example.com/blue/',

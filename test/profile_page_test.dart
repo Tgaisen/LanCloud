@@ -579,6 +579,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('土豆'), findsOneWidget);
+    // 头像首字母是装饰：读屏跳过它（账号信息由标题 / 副标题播报）
+    expect(
+      find.ancestor(
+        of: find.byType(CircleAvatar),
+        matching: find.byType(ExcludeSemantics),
+      ),
+      findsOneWidget,
+    );
     // 等级还没取到（按普通用户「普」处理）：不显示卡片
     expect(find.text('普'), findsNothing);
 

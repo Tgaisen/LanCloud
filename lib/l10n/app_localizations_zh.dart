@@ -1954,6 +1954,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get timeJustNow => '刚刚';
 
   @override
+  String get dayToday => '今天';
+
+  @override
+  String get dayYesterday => '昨天';
+
+  @override
   String timeMinutesAgo(int count) {
     return '$count分钟前';
   }

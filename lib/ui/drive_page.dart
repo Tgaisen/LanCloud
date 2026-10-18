@@ -1845,7 +1845,7 @@ class _DrivePageState extends State<DrivePage>
         M3eMenuItem(
           value: _FileMenuAction.copyLink,
           label: l10n.copyLink,
-          icon: Icons.link,
+          icon: Icons.copy,
         ),
         M3eMenuItem(
           value: _FileMenuAction.password,
@@ -1855,7 +1855,7 @@ class _DrivePageState extends State<DrivePage>
         M3eMenuItem(
           value: _FileMenuAction.editInfo,
           label: l10n.folderInfo,
-          icon: Icons.edit_note,
+          icon: Icons.edit,
         ),
         M3eMenuItem(
           value: _FileMenuAction.move,
@@ -2192,7 +2192,7 @@ class _DrivePageState extends State<DrivePage>
         M3eMenuItem(
           value: _FolderMenuAction.copyLink,
           label: l10n.copyLink,
-          icon: Icons.link,
+          icon: Icons.copy,
         ),
         M3eMenuItem(
           value: _FolderMenuAction.password,
@@ -2202,7 +2202,7 @@ class _DrivePageState extends State<DrivePage>
         M3eMenuItem(
           value: _FolderMenuAction.editInfo,
           label: l10n.folderInfo,
-          icon: Icons.edit_note,
+          icon: Icons.edit,
         ),
         M3eMenuItem(
           value: _FolderMenuAction.delete,

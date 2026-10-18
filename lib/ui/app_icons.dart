@@ -36,6 +36,7 @@ class Icons {
   static const IconData code_outlined = Symbols.code;
   static const IconData cloud_off = Symbols.cloud_off;
   static const IconData cloud_outlined = Symbols.cloud;
+  static const IconData cloud_download = Symbols.cloud_download;
   static const IconData cloud_upload_outlined = Symbols.cloud_upload;
   static const IconData content_paste_go = Symbols.content_paste_go;
   static const IconData contrast = Symbols.contrast;
@@ -56,6 +57,7 @@ class Icons {
       Symbols.download_for_offline;
   static const IconData download_outlined = Symbols.download;
   static const IconData drive_file_move_outline = Symbols.drive_file_move;
+  static const IconData edit = Symbols.edit;
   static const IconData edit_note = Symbols.edit_note;
   static const IconData error = Symbols.error;
   static const IconData error_outline = Symbols.error_outline;

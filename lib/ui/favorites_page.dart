@@ -478,12 +478,12 @@ class _FavoritesPageState extends State<FavoritesPage>
         M3eMenuItem(
           value: _FavoriteItemAction.copyLink,
           label: context.l10n.copyLink,
-          icon: Icons.link,
+          icon: Icons.copy,
         ),
         M3eMenuItem(
           value: _FavoriteItemAction.edit,
           label: context.l10n.editInfo,
-          icon: Icons.edit_note,
+          icon: Icons.edit,
         ),
         M3eMenuItem(
           value: _FavoriteItemAction.unfavorite,

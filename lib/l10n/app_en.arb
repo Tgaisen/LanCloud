@@ -760,6 +760,8 @@
   "updateViewDetails": "View details",
   "updateDetectedSubtitle": "Update available",
   "timeJustNow": "Just now",
+  "dayToday": "Today",
+  "dayYesterday": "Yesterday",
   "timeMinutesAgo": "{count} min ago",
   "@timeMinutesAgo": {
     "placeholders": {

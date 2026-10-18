@@ -968,6 +968,8 @@
   "updateViewDetails": "查看详情",
   "updateDetectedSubtitle": "检测到更新",
   "timeJustNow": "刚刚",
+  "dayToday": "今天",
+  "dayYesterday": "昨天",
   "timeMinutesAgo": "{count}分钟前",
   "@timeMinutesAgo": {
     "placeholders": {
