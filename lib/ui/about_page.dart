@@ -96,13 +96,11 @@ class AboutContent extends StatelessWidget {
             ListTile(
               leading: const Icon(Icons.contract),
               title: Text(l10n.aboutTerms),
-              trailing: const Icon(Icons.chevron_right),
               onTap: () => showLegalDialog(context, LegalDoc.terms),
             ),
             ListTile(
               leading: const Icon(Icons.shield_person),
               title: Text(l10n.aboutPrivacy),
-              trailing: const Icon(Icons.chevron_right),
               onTap: () => showLegalDialog(context, LegalDoc.privacy),
             ),
           ],
@@ -145,7 +143,6 @@ class AboutContent extends StatelessWidget {
             ListTile(
               leading: const Icon(Icons.info_outline),
               title: Text(l10n.relatedInfo),
-              trailing: const Icon(Icons.chevron_right),
               onTap: () => showRelatedInfoDialog(context),
             ),
           ],

@@ -34,6 +34,15 @@ void main() {
     expect(find.text('开源许可'), findsOneWidget);
     expect(find.text('项目主页'), findsOneWidget);
     expect(find.text('提交 Issue'), findsOneWidget);
+    // 弹窗类条目（不跳新页面）右侧不带箭头
+    for (final label in ['用户协议', '隐私政策', '相关信息']) {
+      final tile = tester.widget<ListTile>(
+        find
+            .ancestor(of: find.text(label), matching: find.byType(ListTile))
+            .first,
+      );
+      expect(tile.trailing, isNull, reason: label);
+    }
     // 用 TopBarOverlayScaffold 的页面都带快速滑动条
     expect(find.byType(FastScrollbar), findsOneWidget);
     app.dispose();
