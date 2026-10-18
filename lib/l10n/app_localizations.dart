@@ -3680,6 +3680,12 @@ abstract class AppLocalizations {
   /// **'查看详情'**
   String get updateViewDetails;
 
+  /// No description provided for @updateDetectedSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'检测到更新'**
+  String get updateDetectedSubtitle;
+
   /// No description provided for @timeJustNow.
   ///
   /// In zh, this message translates to:

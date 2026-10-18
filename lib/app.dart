@@ -36,6 +36,7 @@ import 'ui/share_page.dart';
 import 'ui/system_ui.dart';
 import 'ui/transfers_page.dart';
 import 'ui/app_icons.dart';
+import 'ui/update_prompt.dart';
 
 class LanCloudApp extends StatefulWidget {
   const LanCloudApp({super.key});
@@ -256,7 +257,8 @@ class _AgreementGateState extends State<AgreementGate> {
     if (!_accepted) {
       return FirstRunTerms(onAccepted: () => setState(() => _accepted = true));
     }
-    return const RootShell();
+    // 自动检测到新版本时，在任意页面主动提醒一次（条款同意之后才挂上）
+    return const UpdatePromptHost(child: RootShell());
   }
 }
 

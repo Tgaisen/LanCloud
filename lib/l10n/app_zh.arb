@@ -966,6 +966,7 @@
     }
   },
   "updateViewDetails": "查看详情",
+  "updateDetectedSubtitle": "检测到更新",
   "timeJustNow": "刚刚",
   "timeMinutesAgo": "{count}分钟前",
   "@timeMinutesAgo": {

@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../core/app_controller.dart';
 import '../core/api/lanzou_client.dart';
 import '../core/data/account_store.dart';
+import '../core/update/update_service.dart';
 import '../l10n/l10n.dart';
 import 'about_page.dart';
 import 'app_icons.dart';
@@ -217,6 +218,12 @@ class _ProfilePageState extends State<ProfilePage>
         _ProfileDetail.update => l10n.update,
         _ => l10n.accountManagement,
       };
+
+  /// 「更新」条目的副标题：有效检测结果里发现新版本时显示「检测到更新」。
+  String? _updateSubtitle(BuildContext context, AppController app) =>
+      app.updates.status == UpdateStatus.available
+      ? context.l10n.updateDetectedSubtitle
+      : null;
 
   void _startSearch() {
     setState(() => _searching = true);
@@ -469,13 +476,21 @@ class _ProfilePageState extends State<ProfilePage>
       M3eSectionHeader(l10n.appSection),
       SegmentedList(
         children: [
-          ListTile(
-            leading: const Icon(Icons.update),
-            title: Text(l10n.update),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.of(
-              context,
-            ).push(MaterialPageRoute<void>(builder: (_) => const UpdatePage())),
+          // 自动检测到新版本时在副标题引导用户进入更新页
+          ListenableBuilder(
+            listenable: app.updates,
+            builder: (context, _) {
+              final subtitle = _updateSubtitle(context, app);
+              return ListTile(
+                leading: const Icon(Icons.update),
+                title: Text(l10n.update),
+                subtitle: subtitle == null ? null : Text(subtitle),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(builder: (_) => const UpdatePage()),
+                ),
+              );
+            },
           ),
           ListTile(
             leading: const Icon(Icons.info_outline),
@@ -725,11 +740,16 @@ class _ProfilePageState extends State<ProfilePage>
         ),
       // 组 3：应用（分组小标题 + 更新 / 关于）
       _RailSectionLabel(l10n.appSection),
-      _PaneTile(
-        icon: Icons.update,
-        label: l10n.update,
-        selected: _detail == _ProfileDetail.update,
-        onTap: () => _select(_ProfileDetail.update),
+      // 自动检测到新版本时在副标题引导用户进入更新页
+      ListenableBuilder(
+        listenable: app.updates,
+        builder: (context, _) => _PaneTile(
+          icon: Icons.update,
+          label: l10n.update,
+          subtitle: _updateSubtitle(context, app),
+          selected: _detail == _ProfileDetail.update,
+          onTap: () => _select(_ProfileDetail.update),
+        ),
       ),
       _PaneTile(
         icon: Icons.info_outline,
@@ -1105,10 +1125,15 @@ class _PaneTile extends StatelessWidget {
     required this.label,
     required this.selected,
     required this.onTap,
+    this.subtitle,
   });
 
   final IconData icon;
   final String label;
+
+  /// 可选副标题（如「检测到更新」）：在标签下方另起一行，字号更小。
+  final String? subtitle;
+
   final bool selected;
   final VoidCallback onTap;
 
@@ -1148,14 +1173,33 @@ class _PaneTile extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     Flexible(
-                      // 文字放大时条目纵向增长、最多两行（M3 无障碍要求）
-                      child: Text(
-                        label,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          color: foreground,
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // 文字放大时条目纵向增长、最多两行（M3 无障碍要求）
+                          Text(
+                            label,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.labelLarge?.copyWith(
+                              color: foreground,
+                            ),
+                          ),
+                          if (subtitle != null)
+                            Text(
+                              subtitle!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: selected
+                                    ? scheme.onSecondaryContainer.withValues(
+                                        alpha: 0.75,
+                                      )
+                                    : scheme.onSurfaceVariant,
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                   ],

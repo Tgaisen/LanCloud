@@ -758,6 +758,7 @@
     }
   },
   "updateViewDetails": "View details",
+  "updateDetectedSubtitle": "Update available",
   "timeJustNow": "Just now",
   "timeMinutesAgo": "{count} min ago",
   "@timeMinutesAgo": {

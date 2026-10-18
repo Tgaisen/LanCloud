@@ -1948,6 +1948,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get updateViewDetails => '查看详情';
 
   @override
+  String get updateDetectedSubtitle => '检测到更新';
+
+  @override
   String get timeJustNow => '刚刚';
 
   @override

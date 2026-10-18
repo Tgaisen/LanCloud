@@ -245,7 +245,7 @@ class _UpdateStatusPanel extends StatelessWidget {
         // 比默认（40dp）高一档，和放大后的图标框 / 文本成套
         style: FilledButton.styleFrom(minimumSize: const Size(88, 48)),
         onPressed: status == UpdateStatus.available
-            ? () => _openUpdateDialog(context, service)
+            ? () => showUpdateDialog(context, service)
             : () => _checkManually(context, service),
         child: Text(switch (status) {
           UpdateStatus.available => l10n.updateAction,
@@ -441,7 +441,10 @@ class _StatusIconBox extends StatelessWidget {
 /// **参考 M3 规范**：基本弹窗最多两个动作（详情这类第三动作不推荐），所以
 /// 「详情」是正文末尾的内联链接（M3：链接用 primary 色 + 下划线）；
 /// 长正文用可滚动内容，标题与按钮固定。
-Future<void> _openUpdateDialog(
+///
+/// 更新页的「更新」按钮与全局自动提醒（update_prompt.dart 的
+/// UpdatePromptHost）共用这个弹窗。
+Future<void> showUpdateDialog(
   BuildContext context,
   UpdateService service,
 ) async {

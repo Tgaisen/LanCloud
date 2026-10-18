@@ -69,6 +69,10 @@ class UpdateService extends ChangeNotifier {
   DateTime? _lastCheckAt;
   DateTime? _lastAttemptAt;
 
+  /// 自动检测到新版本时记下的版本名：界面据此主动弹一次更新弹窗；
+  /// 手动检测不会设置。界面处理完调用 [clearAutoUpdateNotice]。
+  String? _autoUpdateNotice;
+
   /// 测试注入用：替换真实网络请求。
   @visibleForTesting
   static Future<List<ReleaseInfo>> Function()? debugFetchReleases;
@@ -96,6 +100,14 @@ class UpdateService extends ChangeNotifier {
   ReleaseInfo? get latestRelease => _cached;
 
   String? get remoteVersion => _cached?.version;
+
+  String? get autoUpdateNotice => _autoUpdateNotice;
+
+  void clearAutoUpdateNotice() {
+    if (_autoUpdateNotice == null) return;
+    _autoUpdateNotice = null;
+    notifyListeners();
+  }
 
   /// 检测结果是否还在有效期内。
   bool get inValidity {
@@ -154,7 +166,12 @@ class UpdateService extends ChangeNotifier {
     if (lastAttempt != null && _now.difference(lastAttempt) < retryCooldown) {
       return;
     }
-    await check();
+    final ok = await check();
+    // 自动检测到新版本：留一个一次性标记，界面在任意页面提醒一次
+    if (ok && status == UpdateStatus.available) {
+      _autoUpdateNotice = remoteVersion;
+      notifyListeners();
+    }
   }
 
   /// 执行一次检测（手动 / 自动共用）。返回是否成功——手动检测失败时页面

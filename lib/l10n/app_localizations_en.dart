@@ -2019,6 +2019,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get updateViewDetails => 'View details';
 
   @override
+  String get updateDetectedSubtitle => 'Update available';
+
+  @override
   String get timeJustNow => 'Just now';
 
   @override
