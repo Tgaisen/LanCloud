@@ -426,6 +426,30 @@ class MainActivity : FlutterFragmentActivity() {
                 "androidSdkInt" -> result.success(Build.VERSION.SDK_INT)
                 // 设备支持的 ABI（按优先级）：更新检测据此挑对应架构的安装包
                 "supportedAbis" -> result.success(Build.SUPPORTED_ABIS.toList())
+                // 设备 / 系统信息：「关于 - 相关信息」反馈用。
+                // versionCode 取系统里实际安装的包（拆分包按 ABI 加了偏移，
+                // 和 pubspec 里的基准号不同），反馈时以这个为准。
+                "deviceInfo" -> {
+                    val packageInfo = packageManager.getPackageInfo(packageName, 0)
+                    val installedVersionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        packageInfo.longVersionCode
+                    } else {
+                        @Suppress("DEPRECATION")
+                        val legacyCode = packageInfo.versionCode
+                        legacyCode.toLong()
+                    }
+                    result.success(
+                        mapOf(
+                            "manufacturer" to Build.MANUFACTURER,
+                            "model" to Build.MODEL,
+                            "release" to Build.VERSION.RELEASE,
+                            "sdkInt" to Build.VERSION.SDK_INT,
+                            "display" to Build.DISPLAY,
+                            "abis" to Build.SUPPORTED_ABIS.toList(),
+                            "versionCode" to installedVersionCode,
+                        )
+                    )
+                }
                 else -> result.notImplemented()
             }
         }

@@ -3,7 +3,7 @@
   构建并按版本号规范发布 GitHub Release（预发布自动带 Pre-release 标记）。
 
 .DESCRIPTION
-  - 从 pubspec.yaml 读 version（如 26.1.0-snapshot.1+260101001）
+  - 从 pubspec.yaml 读 version（如 26.1.0-snapshot.1+260100101）
   - 校验 versionCode 是否符合分段公式（与 test/version_test.dart 同一套规则）
   - 校验工作区干净、HEAD 已推送到 origin/main、tag 不存在
   - flutter analyze / flutter test / flutter build apk --release --split-per-abi
@@ -74,11 +74,14 @@ function Get-VersionCode([string]$name) {
     return [int]$release.Groups[1].Value * 10000000 +
            [int]$release.Groups[2].Value * 100000 +
            [int]$release.Groups[3].Value * 10000 +
-           9 * 1000 + 999
+           9 * 100 + 99
   }
   $pre = [regex]::Match(
     $name, '^(\d{2})\.(\d+)\.(\d+)-(snapshot|pre|beta|rc)\.(\d+)$')
   if (-not $pre.Success) { return $null }
+  $seq = [int]$pre.Groups[5].Value
+  # Seq 只占两位（01–99）：再大的序号会和阶段位撞在一起
+  if ($seq -gt 99) { return $null }
   $stage = switch ($pre.Groups[4].Value) {
     'snapshot' { 1 }
     'pre' { 2 }
@@ -88,8 +91,8 @@ function Get-VersionCode([string]$name) {
   return [int]$pre.Groups[1].Value * 10000000 +
          [int]$pre.Groups[2].Value * 100000 +
          [int]$pre.Groups[3].Value * 10000 +
-         $stage * 1000 +
-         [int]$pre.Groups[5].Value
+         $stage * 100 +
+         $seq
 }
 
 # ---------------------------------------------------------------- 版本号

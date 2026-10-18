@@ -611,7 +611,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get requestIntervalHint =>
-      'Default 100 ms. A smaller interval may trigger server rate limiting.';
+      'Too small an interval may trigger server rate limiting';
 
   @override
   String get requestIntervalKeywords =>
@@ -643,9 +643,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'upload endpoint path domain up html5up fileup';
 
   @override
-  String get uploadPathHint => 'Only change this when uploading files fails';
-
-  @override
   String get userAgent => 'Custom User-Agent';
 
   @override
@@ -662,7 +659,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get advancedHint =>
-      'Change only when connections fail or endpoints are blocked; defaults are fine';
+      'Normally you shouldn\'t change these options; doing so may break related features';
 
   @override
   String get clearData => 'Clear data';
@@ -1935,6 +1932,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutSubmitIssue => 'Report an issue';
+
+  @override
+  String get relatedInfo => 'Device info';
 
   @override
   String get aboutBuildInfo => 'Build info';

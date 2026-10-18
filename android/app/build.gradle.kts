@@ -1,5 +1,6 @@
 import java.io.FileInputStream
 import java.util.Properties
+import com.android.build.api.variant.FilterConfiguration
 
 plugins {
     id("com.android.application")
@@ -34,10 +35,10 @@ android {
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = 37
-        // Uses the version code from pubspec.yaml. When using split APKs, 1000 * ABI_VERSION
-        // is added automatically by Flutter. (https://developer.android.com/studio/build/configure-apk-splits#configure-APK-versions)
-        // You can force using the value of versionCode by specifying the `-Pforce-version-code-ignoring-abi=true`
-        // flag during build.
+        // versionCode 来自 pubspec.yaml，存的是 ABI=0 的基准号；拆分包的实际
+        // versionCode 由下面的 androidComponents 按 ABI 位加上 digit*1000
+        // （见 docs/VERSIONING.md）。Flutter 自带的 ABI 偏移已由
+        // android/gradle.properties 的 force-version-code-ignoring-abi=true 关掉。
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
@@ -68,6 +69,30 @@ android {
                 // 其他机器 / CI 上没有密钥时仍能出包；正式发布前请确认签名指纹
                 logger.warn("LanCloud: 缺少 android/key.properties，release 包将使用 debug 签名")
                 signingConfigs.getByName("debug")
+            }
+        }
+    }
+}
+
+// versionCode 第 6 位是 ABI（见 docs/VERSIONING.md）：
+// 0 = universal（预留）/ 4 = armeabi-v7a / 7 = arm64-v8a / 8 = x86_64。
+// pubspec 里存 ABI=0 的基准号，拆分包按实际 ABI 加上 digit*1000。
+androidComponents {
+    onVariants { variant ->
+        variant.outputs.forEach { output ->
+            val abi = output.filters
+                .firstOrNull {
+                    it.filterType == FilterConfiguration.FilterType.ABI
+                }
+                ?.identifier
+            val abiDigit = when (abi) {
+                "armeabi-v7a" -> 4
+                "arm64-v8a" -> 7
+                "x86_64" -> 8
+                else -> 0
+            }
+            if (abiDigit != 0) {
+                output.versionCode.set(flutter.versionCode + abiDigit * 1000)
             }
         }
     }

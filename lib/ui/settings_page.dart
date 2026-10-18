@@ -766,6 +766,8 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         build: (context, app) => _SliderTile<int>(
           icon: Icons.timer_outlined,
           title: context.l10n.requestInterval,
+          // 提醒间隔过小会被服务器限流（放在滑杆上方当副标题）
+          subtitle: context.l10n.requestIntervalHint,
           // 离散档位 = slider 的 stops（M3E：有预设值时手柄吸附到最近的档）
           values: const [25, 50, 75, 100, 150, 200, 300, 500, 1000],
           current: app.settings.requestInterval,
@@ -1603,18 +1605,15 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
     return widgets;
   }
 
-  /// 「其他设置项」里的行：纯导航行（当前值 · 目标页），点击切到对应设置页。
+  /// 「其他设置项」里的行：纯导航行（只显示所在大类），点击切到对应设置页。
   Widget _otherResultTile(BuildContext context, _Entry entry) {
     final l10n = context.l10n;
     final target = entry.inAdvancedPage
         ? l10n.categoryAdvanced
         : entry.section.category.label(l10n);
-    final subtitle = entry.subtitle.isEmpty
-        ? target
-        : '${entry.subtitle} · $target';
     return ListTile(
       title: Text(entry.title),
-      subtitle: Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis),
+      subtitle: Text(target, maxLines: 1, overflow: TextOverflow.ellipsis),
       trailing: const Icon(Icons.chevron_right),
       onTap: () => _openSearchTarget(entry),
     );
@@ -1767,7 +1766,6 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
     required T current,
     required Future<void> Function(T) onSelect,
     String? Function(T value)? subtitleOf,
-    String? message,
   }) async {
     await showDialog<void>(
       context: context,
@@ -1780,19 +1778,6 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (message != null)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
-                  child: Text(
-                    message,
-                    style: Theme.of(dialogContext).textTheme.bodyMedium
-                        ?.copyWith(
-                          color: Theme.of(dialogContext)
-                              .colorScheme
-                              .onSurfaceVariant,
-                        ),
-                  ),
-                ),
               // 比弹窗底（surfaceContainerHigh）再高一档容器色
               DialogListGroup(
                 children: [
@@ -2042,7 +2027,6 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
     return _pickRadio(
       context,
       title: context.l10n.uploadPath,
-      message: context.l10n.uploadPathHint,
       options: const [
         ('html5up.php', 'html5up.php'),
         ('fileup.php', 'fileup.php'),
@@ -2079,10 +2063,7 @@ class AdvancedContent extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
-          child: Text(
-            l10n.advancedHint,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
+          child: _AdvancedHintCard(text: l10n.advancedHint),
         ),
         SegmentedList(
           children: [
@@ -2121,6 +2102,54 @@ class AdvancedContent extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+/// 高级覆盖项顶部的提示卡片（MD3E 容器 + info 图标）。
+///
+/// **参考 M3 规范**：提示是需要被看见、但不打断流程的一段信息——放进卡片
+/// 容器而不是留在正文里（M3E 的「containment」：用容器把内容从页面背景里
+/// 拎出来）；容器色只作为填充，文字 / 图标用配对的 `on` 角色；图标与文字
+/// 行首对齐、同色。
+/// **本应用的设计决定（非 M3 规范）**：用 `secondaryContainer`（提示语气
+/// 比错误容器轻，又比普通正文醒目）；圆角 16dp、内边距 16dp，与列表组同一
+/// 套容器语言。
+class _AdvancedHintCard extends StatelessWidget {
+  const _AdvancedHintCard({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: scheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.info_outline,
+            size: 24,
+            color: scheme.onSecondaryContainer,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: scheme.onSecondaryContainer,
+                height: 1.5,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -2177,10 +2206,14 @@ class _SliderTile<T> extends StatefulWidget {
     required this.current,
     required this.labelOf,
     required this.onChanged,
+    this.subtitle,
   });
 
   final IconData icon;
   final String title;
+
+  /// 可选的说明文字（滑杆上方的一行小字）。
+  final String? subtitle;
 
   /// 全部可取值（顺序即滑杆从左到右的档位）。
   final List<T> values;
@@ -2229,39 +2262,53 @@ class _SliderTileState<T> extends State<_SliderTile<T>> {
       ),
       subtitle: Padding(
         padding: const EdgeInsets.only(top: 4, right: 8),
-        // 设置页滑杆的无障碍语义都在这一层：
-        //   - container 让滑杆成为读屏单独聚焦的一个控件；
-        //   - slider + value/increasedValue/decreasedValue 让 TalkBack 按
-        //     SeekBar 读出「标题 + 当前值」并预读相邻档；
-        //   - onIncrease/onDecrease 对应 TalkBack 的上滑/下滑调节，走与
-        //     松手相同的落盘路径；
-        //   - excludeSemantics 屏蔽内部手势语义（tap / scroll*），否则
-        //     TalkBack 双击会按控件中心点按、把值直接跳到中间档。
-        child: Semantics(
-          container: true,
-          slider: true,
-          enabled: true,
-          label: widget.title,
-          value: widget.labelOf(value),
-          increasedValue: widget.labelOf(
-            widget.values[_clampIndex(_index + 1)],
-          ),
-          decreasedValue: widget.labelOf(
-            widget.values[_clampIndex(_index - 1)],
-          ),
-          onIncrease: () => _step(1),
-          onDecrease: () => _step(-1),
-          excludeSemantics: true,
-          child: M3ESlider(
-            value: _index.toDouble(),
-            min: 0,
-            max: (widget.values.length - 1).toDouble(),
-            divisions: widget.values.length - 1,
-            onChanged: (v) => setState(() => _index = v.round()),
-            // 松手才落盘；用本地档位（拖动中同步更新）而不是回调给的数值：
-            // 事件成批到达时，受控的 widget.value 可能还停在上一帧
-            onChangeEnd: (_) => _commit(),
-          ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (widget.subtitle != null) ...[
+              Text(
+                widget.subtitle!,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 4),
+            ],
+            // 设置页滑杆的无障碍语义都在这一层：
+            //   - container 让滑杆成为读屏单独聚焦的一个控件；
+            //   - slider + value/increasedValue/decreasedValue 让 TalkBack 按
+            //     SeekBar 读出「标题 + 当前值」并预读相邻档；
+            //   - onIncrease/onDecrease 对应 TalkBack 的上滑/下滑调节，走与
+            //     松手相同的落盘路径；
+            //   - excludeSemantics 屏蔽内部手势语义（tap / scroll*），否则
+            //     TalkBack 双击会按控件中心点按、把值直接跳到中间档。
+            Semantics(
+              container: true,
+              slider: true,
+              enabled: true,
+              label: widget.title,
+              value: widget.labelOf(value),
+              increasedValue: widget.labelOf(
+                widget.values[_clampIndex(_index + 1)],
+              ),
+              decreasedValue: widget.labelOf(
+                widget.values[_clampIndex(_index - 1)],
+              ),
+              onIncrease: () => _step(1),
+              onDecrease: () => _step(-1),
+              excludeSemantics: true,
+              child: M3ESlider(
+                value: _index.toDouble(),
+                min: 0,
+                max: (widget.values.length - 1).toDouble(),
+                divisions: widget.values.length - 1,
+                onChanged: (v) => setState(() => _index = v.round()),
+                // 松手才落盘；用本地档位（拖动中同步更新）而不是回调给的数值：
+                // 事件成批到达时，受控的 widget.value 可能还停在上一帧
+                onChangeEnd: (_) => _commit(),
+              ),
+            ),
+          ],
         ),
       ),
     );

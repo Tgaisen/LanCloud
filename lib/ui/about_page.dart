@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart' hide Icons;
 
 import '../core/app_info.dart';
+import '../core/device_info.dart';
 import '../core/external_link.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
@@ -8,7 +9,7 @@ import 'common.dart';
 import 'legal_dialog.dart';
 import 'licenses_page.dart';
 
-/// 关于页：版本、协议与隐私、开源许可、项目主页、提交 Issue 与免责声明。
+/// 关于页：版本、协议与隐私、开源许可、项目主页、提交 Issue / 相关信息。
 class AboutPage extends StatefulWidget {
   const AboutPage({super.key});
 
@@ -89,19 +90,7 @@ class AboutContent extends StatelessWidget {
             ],
           ),
         ),
-        // 构建信息：放在最前，和版本号挨着
-        //（「检测更新」已移到「我的 - 更新」页，这里不再单放入口）
-        SegmentedList(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.build_outlined),
-              title: Text(l10n.aboutBuildInfo),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => showBuildInfoDialog(context),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
+        // 构建信息已搬到「我的 - 更新」页（版本信息条目），这里不再单放
         SegmentedList(
           children: [
             ListTile(
@@ -141,11 +130,23 @@ class AboutContent extends StatelessWidget {
               trailing: const Icon(Icons.open_in_new),
               onTap: () => openExternalUrl(Uri.parse(projectUrl)),
             ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        // 反馈相关：提交 Issue + 一键复制设备 / 构建信息
+        SegmentedList(
+          children: [
             ListTile(
               leading: const Icon(Icons.bug_report_outlined),
               title: Text(l10n.aboutSubmitIssue),
               trailing: const Icon(Icons.open_in_new),
               onTap: () => openExternalUrl(Uri.parse('$projectUrl/issues')),
+            ),
+            ListTile(
+              leading: const Icon(Icons.info_outline),
+              title: Text(l10n.relatedInfo),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => showRelatedInfoDialog(context),
             ),
           ],
         ),
@@ -213,4 +214,58 @@ class _BuildInfoRow extends StatelessWidget {
       ],
     );
   }
+}
+
+/// 反馈用的「相关信息」弹窗：应用构建信息 + 设备 / 系统信息，一键复制。
+///
+/// **本应用的设计决定（非 M3 规范）**：文本刻意用英文标签（issue 里开发者
+/// 和用户都能看懂），缺项显示「—」；复制内容与屏幕上的完全一致。
+Future<void> showRelatedInfoDialog(BuildContext context) async {
+  final l10n = context.l10n;
+  final info = await DeviceInfo.load();
+  if (!context.mounted) return;
+  final text = _relatedInfoText(info);
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      // 行数较多：标题与按钮固定、正文滚动（M3）
+      scrollable: true,
+      title: Text(l10n.relatedInfo),
+      content: SelectableText(
+        text,
+        style: Theme.of(dialogContext).textTheme.bodyMedium
+            ?.copyWith(height: 1.6),
+      ),
+      actions: [
+        TextButton(
+          // 复制后弹轻提示，弹窗保持打开：核对完再点确定
+          onPressed: () => copyText(dialogContext, text, asToast: true),
+          child: Text(l10n.copy),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(dialogContext).pop(),
+          child: Text(l10n.confirm),
+        ),
+      ],
+    ),
+  );
+}
+
+String _relatedInfoText(DeviceInfo info) {
+  String value(String text) => text.trim().isEmpty ? '—' : text.trim();
+  final preRelease = appVersion.contains('-');
+  return [
+    'App version: $appVersion',
+    'Build: $appBuild (${preRelease ? 'pre-release' : 'release'})',
+    // Android 上系统里的实际安装码（拆分包按 ABI 加过偏移），
+    // 反馈安装 / 升级问题时以这个为准
+    if (info.versionCode != null) 'Version code: ${info.versionCode}',
+    'Build time: ${value(buildTime)}',
+    'Commit: ${value(gitCommit)}',
+    'Device: ${value(info.device)}',
+    'System: ${value(info.system)}',
+    if (info.systemBuild.trim().isNotEmpty)
+      'System build: ${info.systemBuild.trim()}',
+    'Architecture: ${value(info.architectures)}',
+  ].join('\n');
 }

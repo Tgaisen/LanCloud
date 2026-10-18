@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
+import 'package:lancloud/ui/app_icons.dart';
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/m3e.dart';
 import 'package:lancloud/ui/settings_page.dart';
@@ -88,6 +89,11 @@ void main() {
     final tile = find.widgetWithText(ListTile, '网络请求间隔');
     final slider = find.descendant(of: tile, matching: find.byType(M3ESlider));
     expect(slider, findsOneWidget);
+    // 滑杆上方有「间隔过小易触发服务器限流」的说明
+    expect(
+      find.descendant(of: tile, matching: find.text('间隔过小易触发服务器限流')),
+      findsOneWidget,
+    );
     // 值显示在行的尾部（不再开弹窗）
     expect(
       find.descendant(of: tile, matching: find.text('100 ms')),
@@ -226,5 +232,57 @@ void main() {
         )
         .dx;
     expect(headerLeft, itemLeft);
+  });
+
+  testWidgets('高级覆盖项：提示卡片带 info 图标，容器用次级容器色 + 16dp 圆角', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final app = AppController();
+    addTearDown(app.dispose);
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AppController>.value(
+        value: app,
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const Scaffold(
+            body: SingleChildScrollView(
+              padding: EdgeInsets.all(16),
+              child: AdvancedContent(),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    const message = '正常情况下不宜更改这些选项，否则可能导致相关功能故障';
+    expect(find.text(message), findsOneWidget);
+    // 带 info 图标（提示卡片里唯一一个 info）
+    expect(
+      find.descendant(
+        of: find.byType(AdvancedContent),
+        matching: find.byIcon(Icons.info_outline),
+      ),
+      findsOneWidget,
+    );
+
+    // 卡片容器：次级容器色 + 16dp 圆角；文字用配对的 on 角色
+    final scheme = Theme.of(tester.element(find.text(message))).colorScheme;
+    final card = tester.widget<Container>(
+      find
+          .ancestor(of: find.text(message), matching: find.byType(Container))
+          .first,
+    );
+    final decoration = card.decoration! as BoxDecoration;
+    expect(decoration.color, scheme.secondaryContainer);
+    expect(
+      (decoration.borderRadius! as BorderRadius).topLeft.x,
+      moreOrLessEquals(16),
+    );
+    expect(
+      tester.widget<Text>(find.text(message)).style?.color,
+      scheme.onSecondaryContainer,
+    );
   });
 }

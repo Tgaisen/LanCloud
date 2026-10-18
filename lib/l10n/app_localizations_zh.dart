@@ -591,7 +591,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get requestIntervalHint => '默认 100 ms；间隔过小可能触发服务端限流，请谨慎调整。';
+  String get requestIntervalHint => '间隔过小易触发服务器限流';
 
   @override
   String get requestIntervalKeywords => '间隔 限流 风控 请求';
@@ -621,9 +621,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get uploadPathKeywords => '上传 接口 路径 域名 up html5up fileup';
 
   @override
-  String get uploadPathHint => '请仅在无法上传文件时尝试修改';
-
-  @override
   String get userAgent => '自定义 User-Agent';
 
   @override
@@ -639,7 +636,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get advancedSubtitle => '接口/上传路径与自定义 UA';
 
   @override
-  String get advancedHint => '请仅在连接异常时修改';
+  String get advancedHint => '正常情况下不宜更改这些选项，否则可能导致相关功能故障';
 
   @override
   String get clearData => '清除数据';
@@ -1865,6 +1862,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutSubmitIssue => '提交 Issue';
+
+  @override
+  String get relatedInfo => '相关信息';
 
   @override
   String get aboutBuildInfo => '构建信息';

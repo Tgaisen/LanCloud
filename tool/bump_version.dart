@@ -106,10 +106,10 @@ String _nextName(String name) {
     return '${match.group(1)}.${match.group(2)}.$hotfix-pre.1';
   }
   final seq = int.parse(match.group(5)!);
-  if (seq >= 999) {
+  if (seq >= 99) {
     _fail(
-      '$stage.$seq 已经是该阶段最后一个序号：请手动进入下一阶段'
-      '（snapshot → pre → rc → 正式版），或换下一个内容更新版本',
+      '$stage.$seq 已经是该阶段最后一个序号（Seq 只有两位）：请手动进入'
+      '下一阶段（snapshot → pre → rc → 正式版），或换下一个内容更新版本',
     );
   }
   return '${match.group(1)}.${match.group(2)}.${match.group(3)}'

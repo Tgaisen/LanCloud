@@ -408,8 +408,8 @@ class _SubtitleSlotState extends State<_SubtitleSlot>
 /// **参考 M3 规范**：形状取自 M3 形状库的 `Cookie4Sided`；容器色用与状态
 /// 配对的容器角色、内容用配对的 on 角色；加载指示器放在别的组件里时，
 /// 颜色要与该组件的图标一致（M3 的对比度要求），所以圆环用图标色。
-/// **本应用的设计决定（非 M3 规范）**：外框 64dp / 内容 36dp（卡片改成
-/// 垂直排列后图标框承担视觉焦点，跟着放大一档）。
+/// **本应用的设计决定（非 M3 规范）**：外框 72dp / 内容 36dp——与空状态
+/// 图标（[M3eShapedIcon] 的默认尺寸）一致。
 class _StatusIconBox extends StatelessWidget {
   const _StatusIconBox({
     required this.child,
@@ -426,8 +426,8 @@ class _StatusIconBox extends StatelessWidget {
     return ClipPath(
       clipper: M3EClipper(Shapes.c4SidedCookie),
       child: Container(
-        width: 64,
-        height: 64,
+        width: 72,
+        height: 72,
         color: color,
         alignment: Alignment.center,
         child: child,

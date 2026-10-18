@@ -150,7 +150,7 @@ void main() {
     await tester.tap(find.text('高级覆盖项'));
     await tester.pumpAndSettle();
     // 二级页（提示文案 + 三条覆盖项）
-    expect(find.text('请仅在连接异常时修改'), findsOneWidget);
+    expect(find.text('正常情况下不宜更改这些选项，否则可能导致相关功能故障'), findsOneWidget);
     expect(find.text('网盘接口域名'), findsOneWidget);
   });
 

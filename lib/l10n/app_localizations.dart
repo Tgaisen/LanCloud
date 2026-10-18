@@ -1205,7 +1205,7 @@ abstract class AppLocalizations {
   /// No description provided for @requestIntervalHint.
   ///
   /// In zh, this message translates to:
-  /// **'默认 100 ms；间隔过小可能触发服务端限流，请谨慎调整。'**
+  /// **'间隔过小易触发服务器限流'**
   String get requestIntervalHint;
 
   /// No description provided for @requestIntervalKeywords.
@@ -1262,12 +1262,6 @@ abstract class AppLocalizations {
   /// **'上传 接口 路径 域名 up html5up fileup'**
   String get uploadPathKeywords;
 
-  /// No description provided for @uploadPathHint.
-  ///
-  /// In zh, this message translates to:
-  /// **'请仅在无法上传文件时尝试修改'**
-  String get uploadPathHint;
-
   /// No description provided for @userAgent.
   ///
   /// In zh, this message translates to:
@@ -1301,7 +1295,7 @@ abstract class AppLocalizations {
   /// No description provided for @advancedHint.
   ///
   /// In zh, this message translates to:
-  /// **'请仅在连接异常时修改'**
+  /// **'正常情况下不宜更改这些选项，否则可能导致相关功能故障'**
   String get advancedHint;
 
   /// No description provided for @clearData.
@@ -3529,6 +3523,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'提交 Issue'**
   String get aboutSubmitIssue;
+
+  /// No description provided for @relatedInfo.
+  ///
+  /// In zh, this message translates to:
+  /// **'相关信息'**
+  String get relatedInfo;
 
   /// No description provided for @aboutBuildInfo.
   ///

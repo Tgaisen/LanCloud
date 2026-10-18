@@ -70,10 +70,10 @@ void main() {
 
   group('版本号比较（README 版本号规范）', () {
     test('按 versionCode 分段公式排序', () {
-      expect(versionCodeOf('26.1.0-pre.1'), 260102001);
-      expect(versionCodeOf('26.1.0-pre.6'), 260102006);
-      expect(versionCodeOf('26.1.0'), 260109999);
-      expect(versionCodeOf('26.1.0-rc.1'), 260103001);
+      expect(versionCodeOf('26.1.0-pre.1'), 260100201);
+      expect(versionCodeOf('26.1.0-pre.6'), 260100206);
+      expect(versionCodeOf('26.1.0'), 260100999);
+      expect(versionCodeOf('26.1.0-rc.1'), 260100301);
       expect(versionCodeOf('不合规范'), isNull);
 
       expect(compareVersionNames('26.1.0', '26.1.0-pre.6'), greaterThan(0));

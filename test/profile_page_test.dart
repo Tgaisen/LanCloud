@@ -436,7 +436,7 @@ void main() {
     await tester.tap(find.widgetWithText(ListTile, '高级覆盖项'));
     await tester.pumpAndSettle();
     expect(appBarTitle('高级覆盖项'), findsOneWidget);
-    expect(find.text('请仅在连接异常时修改'), findsOneWidget);
+    expect(find.text('正常情况下不宜更改这些选项，否则可能导致相关功能故障'), findsOneWidget);
     expect(find.text('网盘接口域名'), findsOneWidget);
     expect(find.text('外观与布局'), findsOneWidget);
 
@@ -445,7 +445,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(appBarTitle('传输与连接'), findsOneWidget);
     expect(find.text('网络请求间隔'), findsOneWidget);
-    expect(find.text('请仅在连接异常时修改'), findsNothing);
+    expect(find.text('正常情况下不宜更改这些选项，否则可能导致相关功能故障'), findsNothing);
 
     // 隐私与数据 → 备份与恢复：同样进右窗格
     await tester.tap(find.text('隐私与数据'));

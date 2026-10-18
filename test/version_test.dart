@@ -3,17 +3,17 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_info.dart';
 
-/// 版本号规范（README「版本号规范」）：
+/// 版本号规范（docs/VERSIONING.md）：
 /// versionName = 年份.内容更新序号.热修号[-阶段.序号]，
-/// versionCode = YY*10_000_000 + Drop*100_000 + Hotfix*10_000 + Stage*1_000 + Seq
-/// 阶段码：snapshot=1 / pre(beta)=2 / rc=3 / 正式版=9（且 Seq 固定 999）。
+/// versionCode = YY*10^7 + Drop*10^5 + Hotfix*10^4 + ABI*10^3 + Stage*10^2 + Seq
+/// （ABI=0 的基准号；阶段：snapshot=1 / pre(beta)=2 / rc=3 / 正式版=9 且 Seq=99）。
 int _code({
   required int yy,
   required int drop,
   required int hotfix,
   required int stage,
   required int seq,
-}) => yy * 10000000 + drop * 100000 + hotfix * 10000 + stage * 1000 + seq;
+}) => yy * 10000000 + drop * 100000 + hotfix * 10000 + stage * 100 + seq;
 
 /// 按规范换算 versionCode；不符合规范时返回 null。
 int? versionCodeFor(String version) {
@@ -24,12 +24,15 @@ int? versionCodeFor(String version) {
       drop: int.parse(release.group(2)!),
       hotfix: int.parse(release.group(3)!),
       stage: 9,
-      seq: 999,
+      seq: 99,
     );
   }
   final pre = RegExp(r'^(\d{2})\.(\d+)\.(\d+)-(snapshot|pre|beta|rc)\.(\d+)$')
       .firstMatch(version);
   if (pre == null) return null;
+  final seq = int.parse(pre.group(5)!);
+  // Seq 只占两位（01–99）
+  if (seq > 99) return null;
   final stage = switch (pre.group(4)!) {
     'snapshot' => 1,
     'pre' || 'beta' => 2,
@@ -41,7 +44,7 @@ int? versionCodeFor(String version) {
     drop: int.parse(pre.group(2)!),
     hotfix: int.parse(pre.group(3)!),
     stage: stage,
-    seq: int.parse(pre.group(5)!),
+    seq: seq,
   );
 }
 
@@ -63,15 +66,18 @@ void main() {
   });
 
   test('versionCode 按分段公式推算（snapshot / pre / rc / 正式版）', () {
-    expect(versionCodeFor('26.1.0-snapshot.1'), 260101001);
-    expect(versionCodeFor('26.1.0-pre.1'), 260102001);
-    expect(versionCodeFor('26.1.0-rc.1'), 260103001);
-    expect(versionCodeFor('26.1.0'), 260109999);
-    expect(versionCodeFor('26.1.1-rc.1'), 260113001);
-    expect(versionCodeFor('26.1.1'), 260119999);
+    expect(versionCodeFor('26.1.0-snapshot.1'), 260100101);
+    expect(versionCodeFor('26.1.0-pre.1'), 260100201);
+    expect(versionCodeFor('26.1.0-pre.99'), 260100299);
+    expect(versionCodeFor('26.1.0-rc.1'), 260100301);
+    expect(versionCodeFor('26.1.0'), 260100999);
+    expect(versionCodeFor('26.1.1-rc.1'), 260110301);
+    expect(versionCodeFor('26.1.1'), 260110999);
     // 不合规范的版本号返回 null
     expect(versionCodeFor('26.1.0-rc'), isNull);
     expect(versionCodeFor('26.1.0-alpha.1'), isNull);
+    // Seq 只有两位：100 会和阶段位撞车
+    expect(versionCodeFor('26.1.0-pre.100'), isNull);
   });
 
   test('阶段顺序：snapshot < pre < rc < 正式版 < 下一个热修的预发布', () {

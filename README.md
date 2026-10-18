@@ -35,8 +35,8 @@
 
 可以从 [Releases](https://github.com/Tgaisen/LanCloud/releases) 下载，或克隆仓库后自行编译。
 
-- Android：优先选择 `arm64-v8a`；旧设备选 `armeabi-v7a`；模拟器选 `x86_64`。
-- Windows：目前提供便携版 `x64_portable`，需下载解压后使用；运行需要 [WebView2 运行时](https://developer.microsoft.com/zh-cn/microsoft-edge/webview2/)，如缺乏，则无法打开网页登录 / 分享浏览等内嵌网页。
+- **Android**：优先选择 `arm64-v8a`；旧设备选 `armeabi-v7a`；模拟器选 `x86_64`。
+- **Windows**：目前提供便携版 `x64_portable`，需下载解压后使用；运行需要 [WebView2 运行时](https://developer.microsoft.com/zh-cn/microsoft-edge/webview2/)，如缺乏，则无法打开网页登录 / 分享浏览等内嵌网页。
 
 ## 构建
 

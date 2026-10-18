@@ -138,21 +138,27 @@ class ReleaseAsset {
   };
 }
 
-/// 版本号规范（README「版本号规范」）的 Dart 实现，与 tools/release.ps1、
+/// 版本号规范（docs/VERSIONING.md）的 Dart 实现，与 tools/release.ps1、
 /// test/version_test.dart 的分段公式一致：
 ///
 /// versionName = 年份.内容更新序号.热修号[-阶段.序号]，
-/// versionCode = YY*10_000_000 + Drop*100_000 + Hotfix*10_000 + Stage*1_000 + Seq
-/// （snapshot=1 / pre、beta=2 / rc=3 / 正式版=9 且 Seq=999）。
+/// versionCode = YY*10^7 + Drop*10^5 + Hotfix*10^4 + ABI*10^3
+///               + Stage*10^2 + Seq
+/// （ABI：universal=0 / v7a=4 / arm64=7 / x86_64=8；
+///  Stage：snapshot=1 / pre、beta=2 / rc=3 / 正式版=9 且 Seq=99；
+///  Seq 只有两位，01–99）。
 ///
-/// 版本比较直接比 versionCode：数字比较天然满足
+/// 这里算的是 **ABI=0 的基准号**（pubspec / app_info 里存的值）；实际安装包
+/// 由 Gradle 按 ABI 加上 digit*1000（arm64 的 pre.10 是 260107210）。
+///
+/// 版本比较直接比基准号：数字比较天然满足
 /// `26.1.0-pre.6 < 26.1.0-rc.1 < 26.1.0 < 26.1.1-pre.1` 这套顺序。
 ///
 /// 注：test/version_test.dart 故意保留一份自己的实现——它校验的是
 /// pubspec / app_info 与发布脚本的口径，不该和被测代码共用同一份逻辑。
 int? versionCodeOf(String version) {
   int code(int yy, int drop, int hotfix, int stage, int seq) =>
-      yy * 10000000 + drop * 100000 + hotfix * 10000 + stage * 1000 + seq;
+      yy * 10000000 + drop * 100000 + hotfix * 10000 + stage * 100 + seq;
 
   final release = RegExp(r'^(\d{2})\.(\d+)\.(\d+)$').firstMatch(version);
   if (release != null) {
@@ -161,12 +167,15 @@ int? versionCodeOf(String version) {
       int.parse(release.group(2)!),
       int.parse(release.group(3)!),
       9,
-      999,
+      99,
     );
   }
   final pre = RegExp(r'^(\d{2})\.(\d+)\.(\d+)-(snapshot|pre|beta|rc)\.(\d+)$')
       .firstMatch(version);
   if (pre == null) return null;
+  final seq = int.parse(pre.group(5)!);
+  // Seq 只占两位（01–99）：再大的序号会和阶段位撞在一起
+  if (seq > 99) return null;
   final stage = switch (pre.group(4)!) {
     'snapshot' => 1,
     'pre' || 'beta' => 2,
@@ -178,7 +187,7 @@ int? versionCodeOf(String version) {
     int.parse(pre.group(2)!),
     int.parse(pre.group(3)!),
     stage,
-    int.parse(pre.group(5)!),
+    seq,
   );
 }
 

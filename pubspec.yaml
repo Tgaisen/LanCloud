@@ -17,10 +17,10 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
 # 版本号规范：version: 年份.内容更新序号.热修号[-阶段.序号]+versionCode，
-# versionCode = YY*10_000_000 + 内容更新序号*100_000 + 热修号*10_000 + Stage*1_000 + Seq
-# （snapshot=1 / pre=2 / rc=3 / 正式版=9 且 Seq=999；如 26.1.0-pre.1 → 260102001）。
-# 详见 README「版本号规范」；改完记得同步 lib/core/app_info.dart（有测试校验）。
-version: 26.1.0-pre.9+260102009
+# versionCode = YY*10^7 + Drop*10^5 + Hotfix*10^4 + ABI*10^3 + Stage*10^2 + Seq
+# （这里存 ABI=0 的基准号；ABI 位由 android/app/build.gradle.kts 构建时加上）。
+# 详见 docs/VERSIONING.md；改完记得同步 lib/core/app_info.dart（有测试校验）。
+version: 26.1.0-pre.10+260100210
 
 environment:
   sdk: ^3.13.4

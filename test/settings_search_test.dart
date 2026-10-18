@@ -63,6 +63,8 @@ void main() {
       find.descendant(of: other, matching: find.textContaining('传输与连接')),
       findsOneWidget,
     );
+    // 只显示所在大类，不再带原条目的副标题（当前值等）
+    expect((tester.widget<ListTile>(other).subtitle! as Text).data, '传输与连接');
 
     await tester.tap(other);
     await tester.pumpAndSettle();
@@ -93,7 +95,7 @@ void main() {
 
     await tester.tap(other);
     await tester.pumpAndSettle();
-    expect(find.text('请仅在连接异常时修改'), findsOneWidget);
+    expect(find.text('正常情况下不宜更改这些选项，否则可能导致相关功能故障'), findsOneWidget);
     expect(find.text('网盘接口域名'), findsOneWidget);
   });
 
@@ -111,7 +113,7 @@ void main() {
     await tester.pumpAndSettle();
     // 在右窗格内打开（左窗格还在、顶栏标题换成二级页），不是整页 push
     expect(find.text('外观与布局'), findsOneWidget);
-    expect(find.text('请仅在连接异常时修改'), findsOneWidget);
+    expect(find.text('正常情况下不宜更改这些选项，否则可能导致相关功能故障'), findsOneWidget);
     expect(
       find.descendant(of: find.byType(AppBar), matching: find.text('高级覆盖项')),
       findsOneWidget,
