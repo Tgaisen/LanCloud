@@ -99,7 +99,8 @@ Android 构建结束后会用 `apksigner` 校验证书 SHA-256，指纹不匹配
   build-tools 36.0.0、NDK 28.2.13676358 和 CMake 3.22.1。2026-10-19 发现
   Linux runner 构建的 Android 包在 Android 15/17 上启动白屏，而同一份代码在
   本地 Windows 工具链构建正常，因此暂不迁回 Ubuntu；定位到 Linux Flutter/AOT
-  差异后再评估。
+  差异后再评估。Windows CI 还会关闭 Kotlin 增量缓存，避开 runner 上
+  incremental cache 关闭失败的已知构建问题。
 - Windows 在 `windows-latest` 构建，workflow 会启用开发者模式并准备 NuGet，
   以支持 Flutter 插件符号链接和 WebView2 SDK。
 - 首次运行需要下载 SDK、Gradle、Flutter 引擎等冷缓存内容，通常比后续运行慢；

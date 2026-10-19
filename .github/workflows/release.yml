@@ -81,6 +81,11 @@ jobs:
           cache: false
       - name: 获取依赖
         run: flutter pub get
+      - name: 关闭 Kotlin 增量缓存（Windows CI）
+        shell: pwsh
+        run: |
+          Add-Content -Path android/gradle.properties `
+            -Value "`nkotlin.incremental=false" -Encoding ascii
       - name: 配置 release 签名
         shell: pwsh
         env:
