@@ -1,6 +1,6 @@
 # HarmonyOS NEXT / OpenHarmony 适配与发版指南
 
-> 文档状态：方案草案，供鸿蒙适配立项、技术验证和后续维护使用。
+> 文档状态：适配方案草案；主平台发布 CI 已落地，OHOS 构建与发布仍待实施。
 >
 > 更新日期：2026-10-19。
 >
@@ -14,7 +14,7 @@
 - 业务、状态管理、网络、模型、本地化和绝大多数界面均在 Dart 层，Android、iOS、Windows 只负责平台入口和系统能力。
 - 仓库当前没有 `ohos/` 工程，也未完成过 HAP 构建。
 - Android 侧现有约 9 个自定义 MethodChannel，负责安装、文件选择、SAF、分享、权限、链接、外部链接、系统信息和拖拽等能力。
-- CI 会在每次推送时执行格式检查、`flutter analyze` 和 `flutter test`；推送到 `main` 后，Release workflow 还会检查版本，未发布时构建 Android/Windows 产物并创建 draft Release，详见 [CI_RELEASE.md](CI_RELEASE.md)。
+- CI 会在 PR 和推送到 `main` 时执行格式检查、`flutter analyze` 和 `flutter test`；推送到 `main` 后，Release workflow 还会检查版本，未发布时构建 Android/Windows 产物并创建 draft Release，详见 [CI_RELEASE.md](CI_RELEASE.md)。
 - 版本号规则见 [VERSIONING.md](./VERSIONING.md)。当前版本号中包含 Android ABI 位，不能直接照搬为 HAP 的 versionCode。
 
 ### 1.2 结论
@@ -44,6 +44,19 @@
 - 将 Android APK 直接安装到 HarmonyOS NEXT。
 - 在首版同时支持所有历史 HarmonyOS NEXT API 版本。
 - 继续使用 Android APK 的自动更新机制更新 HAP。
+
+### 1.4 当前自动化状态
+
+| 项目 | 状态 | 说明 |
+| --- | --- | --- |
+| 格式、分析、共享测试 | 已落地 | `ci.yml` 在 PR 和 main 推送时运行 |
+| Android Release 构建 | 已落地并跑通 | `release.yml` 使用 Ubuntu runner 构建三个 APK |
+| Windows Release 构建 | 已落地并跑通 | `release.yml` 使用 `windows-latest` 构建便携版 ZIP |
+| Android Release 签名 | 已落地 | 从 GitHub Secrets 注入 keystore，并校验证书指纹 |
+| Android/Windows draft Release | 已落地并跑通 | 推送 main 且版本尚未发布时自动构建并创建 draft |
+| `main` 到 `ohos` 自动同步 | 未实施 | 暂无 `ohos` 分支和同步 workflow |
+| OHOS CI、HAP 构建与签名 | 未实施 | 尚无专用 runner、HAP 构建任务和签名配置 |
+| 本项目 HAP 真机验证 | 未完成 | 依赖兼容矩阵目前仍属于待验证方案 |
 
 ## 2. 技术路线与工具链
 
@@ -289,34 +302,54 @@ OpenHarmony 三方库总表：<https://gitcode.com/CPF-Flutter/docs/blob/main/Th
   - OHOS 分支 commit
   - Flutter OH SDK tag
 - 如果同一 Release 页面同时挂 APK、ZIP 和 HAP，发布说明必须注明 HAP 对应的 OHOS tag/source commit。
+- 当前主平台发布 CI 会在 Android/Windows 构建成功后才创建或补齐 `v<版本>` tag 和 Release；如果版本已经正式发布，后续推送会跳过构建。
 
-### 8.2 标准发布步骤
+### 8.2 已实现的主平台发布流程
 
-1. 在 `main` 完成版本号更新、格式检查、分析和测试。
-2. 生成发布候选 tag，并构建 Android/Windows 候选产物。
-3. 自动将同一个 tag 合并到 `ohos` 分支。
-4. 在 OHOS 环境执行 `flutter pub get`、`flutter analyze`、`flutter test`。
-5. 构建 debug/release HAP，执行签名校验。
-6. 运行回归矩阵，至少覆盖本文第 10 节的验收项。
-7. 生成 `ohos-vX` tag，上传 HAP、校验和及构建信息。
-8. 通过人工发布门禁后发布。
+当前由 [.github/workflows/release.yml](../.github/workflows/release.yml) 驱动，并复用 [tools/release/](../tools/release/) 下的拆分脚本。详细配置见 [CI_RELEASE.md](./CI_RELEASE.md)。
+
+1. 在 `main` 更新版本号，确认 `pubspec.yaml` 与 `lib/core/app_info.dart` 一致，然后推送。
+2. `Release` workflow 的 `validate` job 校验版本、tag/Release 状态，并执行格式检查、静态分析和测试。
+3. 版本尚未发布时，`android` 和 `windows` 两个 job 并行构建产物并上传 Actions artifact。
+4. `release` job 下载产物，调用 `tools/release/publish.ps1` 创建或补齐 draft Release。
+5. tag 不存在时，`publish.ps1` 在产物齐全后创建并推送 `v<版本>` tag。
+6. 在 GitHub Releases 页面检查四个产物和发布说明，人工点击发布。
+
+如果版本已经正式发布，workflow 会输出 `should_release=false` 并跳过后续构建；如果同名 Release 仍是 draft，可以重跑 workflow 补齐或替换产物。
+
+`tools/release.ps1` 仍然保留为本地一键发布入口，但不再是唯一发布路径。它和 CI 使用同一组校验、构建和发布脚本：
+
+- `tools/release/validate.ps1`
+- `tools/release/build_android.ps1`
+- `tools/release/build_windows.ps1`
+- `tools/release/publish.ps1`
+
+### 8.3 OHOS 接入后的目标流程
+
+1. 在 `main` 完成版本号和发布 CI 流程。
+2. 将同一个 `v<版本>` tag 合并到 `ohos` 分支。
+3. 在 OHOS 专用 runner 执行依赖解析、格式检查、静态分析和共享测试。
+4. 构建 debug/release HAP，执行签名与校验和检查。
+5. 运行鸿蒙真机回归矩阵，至少覆盖本文第 10 节验收项。
+6. 通过后创建 `ohos-v<版本>` 下游 tag，并上传 HAP、校验和及构建信息。
+7. 通过人工发布门禁后发布，或将 HAP 作为已审阅主 Release 的附加资产。
 
 如果 OHOS 验证失败，可以单独延迟 HAP 发布，但不能把未验证的 HAP 和同版本 APK 一起发布。
 
-### 8.3 预发布版本
+### 8.4 预发布版本
 
 - 每次 `snapshot/pre/beta/rc` 都构建内部 HAP 是可取的。
 - 不建议每个预发布都做完整应用市场发布，避免维护和审核成本过高。
 - 稳定版和 RC 必须做完整回归；普通 snapshot 可以只跑核心冒烟测试。
 - 安全修复、账号登录修复和文件损坏修复应立即同步到 OHOS。
 
-### 8.4 热修复
+### 8.5 热修复
 
 - 修复共享代码：在 `main` 修复、发 patch tag，再合并到 `ohos`。
 - 修复 OHOS 专属问题：在 `ohos` 修复并打 OHOS patch tag，同时评估是否需要补公共接口。
 - 禁止长期只在 OHOS 分支存在业务修复，避免版本语义分叉。
 
-### 8.5 更新通道
+### 8.6 更新通道
 
 当前 `UpdateService` 只支持 Android 和 Windows，HAP 不应继续走 APK 更新逻辑。
 
@@ -337,28 +370,48 @@ OpenHarmony 三方库总表：<https://gitcode.com/CPF-Flutter/docs/blob/main/Th
 
 ### 9.1 现有 CI
 
-当前 GitHub Actions 在 Ubuntu 上使用官方 Flutter 3.47.7，执行：
+当前 GitHub Actions 已包含两条主线：
 
-- `dart format --set-exit-if-changed`
-- `flutter analyze`
-- `flutter test`
+1. [ci.yml](../.github/workflows/ci.yml)
+   - 在 PR 和推送 main 时运行。
+   - 使用官方 Flutter 3.47.7。
+   - 执行 `dart format --set-exit-if-changed`、`flutter analyze`、`flutter test`。
+2. [release.yml](../.github/workflows/release.yml)
+   - 每次推送 main 都检查版本，也支持 `workflow_dispatch`。
+   - jobs：`validate` → `android` / `windows` → `release`。
+   - Android 使用 GitHub Secrets 中的 keystore 构建三个 APK，并校验证书 SHA-256。
+   - Windows 使用 `windows-latest` 构建便携版 ZIP。
+   - 产物通过 Actions artifacts 在 job 之间传递，再创建或补齐 draft Release。
+   - 默认创建 draft；手动触发可显式选择是否 draft。
+   - 使用 `concurrency: release-main` 防止并发发布冲突。
 
-这适合共享 Dart 代码的质量门禁，但不足以构建 HAP。
+这已经覆盖共享 Dart 代码和 Android/Windows 的主发布链，但还不能构建 HAP。
 
-### 9.2 推荐 CI 结构
+### 9.2 OHOS CI 的接入方式
 
-建议增加以下 workstream：
+建议先使用独立 `ohos-release.yml`，避免 HAP 构建还不稳定时阻塞 Android/Windows 发布；等 HAP 流程稳定后，再通过 `workflow_call` 或 `workflow_run` 接入主 Release。
 
-1. `main` CI：保留现有格式、分析和测试。
-2. `ohos-sync`：定时或手动把 `main` 合并到 `ohos`，冲突时创建 PR 并标记。
-3. `ohos-check`：OHOS 专用 runner 上执行格式、分析和共享测试。
-4. `ohos-build`：构建 debug/release HAP、签名、生成校验和。
-5. `ohos-release`：由 tag 手动触发或受保护环境触发，上传 HAP。
+建议的 OHOS workflow 分成：
 
-HAP 构建需要 DevEco Studio、HarmonyOS SDK、`ohpm`、`hvigor`、`hdc` 和签名材料，建议使用专用的自托管 runner，或在 GitCode 侧建立等价 CI；不能假定标准 GitHub Ubuntu runner 已具备这些环境。
+1. `validate-ohos`：确认主版本 tag 已经合并到 `ohos`，解析 Flutter OH SDK 和插件版本。
+2. `test-ohos`：OHOS Flutter SDK 下执行格式、分析和共享测试。
+3. `build-ohos`：构建 debug/release HAP，签名、校验并计算 SHA-256。
+4. `publish-ohos`：在人工审批后创建 `ohos-v<版本>` tag 和 Release，或把 HAP 上传到已批准的主 Release。
+
+另建 `ohos-sync.yml` 做每日/手动同步 PR：
+
+1. checkout `main` 和 `ohos`。
+2. 将 `main` 合并到 `ohos`，无冲突则推送同步分支或 PR。
+3. 有冲突时只创建 PR 并通知维护者，不自动解决语义冲突。
+4. 发布前校验 `v<版本>` tag 是 `ohos` 分支的祖先。
+
+HAP 构建需要 DevEco Studio、HarmonyOS SDK、`ohpm`、`hvigor`、`hdc` 和签名材料。当前 GitHub Actions 主发布使用托管 Ubuntu/Windows runner；OHOS job 应使用专用的自托管 runner，或在 GitCode 侧建立等价 CI。不能假定标准 GitHub runner 已具备这些环境。
 
 ### 9.3 可以自动化的内容
 
+- 已实现：版本/tag/Release 状态检查。
+- 已实现：Android/Windows 并行构建和 artifact 传递。
+- 已实现：Android 签名校验、SHA-256 输出和 draft Release 创建。
 - 自动创建 main → ohos 同步 PR。
 - 合并无冲突且构建通过的同步变更。
 - 运行共享测试、OHOS 相关测试和静态分析。
@@ -381,8 +434,10 @@ HAP 构建需要 DevEco Studio、HarmonyOS SDK、`ohpm`、`hvigor`、`hdc` 和�
 ### 9.5 签名和密钥
 
 - HAP 签名证书和密钥不得进入 Git。
-- CI 使用 GitHub Environment/GitCode Secret 等受控存储。
-- release runner 只允许从受保护 tag 触发。
+- Android 目前通过 `ANDROID_KEYSTORE_BASE64`、`ANDROID_KEYSTORE_PASSWORD`、`ANDROID_KEY_ALIAS`、`ANDROID_KEY_PASSWORD` 四个 GitHub Secrets 注入签名材料。
+- HAP 签名材料应使用独立 GitHub Environment/GitCode Secret，不与普通 PR 构建环境共享。
+- 当前 `release.yml` 在 workflow 级别声明了 `contents: write`；接入自托管 OHOS runner 前，建议把写权限和环境审批进一步收窄到发布 job。
+- HAP 发布只允许从受保护 tag 或受保护 Environment 触发。
 - 构建日志中不得打印证书内容、密码或完整签名配置。
 - 上传产物同时记录证书指纹和校验和。
 
@@ -481,7 +536,7 @@ HAP 构建需要 DevEco Studio、HarmonyOS SDK、`ohpm`、`hvigor`、`hdc` 和�
 
 - `flutter_foreground_task` 完成后接入，或实现受控的 OHOS 持续任务。
 - HAP 签名、版本号、更新策略。
-- CI 自动构建和发布门禁。
+- 在已完成的主平台 Release CI 上增加 OHOS CI、HAP 签名和发布门禁。
 - 真机回归和发布文档。
 
 预计：约 2–4 周。
@@ -490,6 +545,7 @@ HAP 构建需要 DevEco Studio、HarmonyOS SDK、`ohpm`、`hvigor`、`hdc` 和�
 
 ## 13. 立项前检查清单
 
+- [x] 主平台 CI 与 draft Release 流程已经跑通。
 - [ ] 确认 HarmonyOS 目标设备的 API 最低版本为 26。
 - [ ] 确认可以接受 HAP 使用独立的应用安装/更新流程。
 - [ ] 确认 `ohos` 分支作为 main 的下游分支，而不是复制一套产品代码。
