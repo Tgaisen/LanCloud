@@ -20,7 +20,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # versionCode = YY*10^7 + Drop*10^5 + Hotfix*10^4 + ABI*10^3 + Stage*10^2 + Seq
 # （这里存 ABI=0 的基准号；ABI 位由 android/app/build.gradle.kts 构建时加上）。
 # 详见 docs/VERSIONING.md；改完记得同步 lib/core/app_info.dart（有测试校验）。
-version: 26.1.0-pre.11+260100211
+version: 26.1.0-pre.15+260100215
 
 environment:
   sdk: ^3.13.3
@@ -49,6 +49,11 @@ dependencies:
   path: ^1.9.1
   path_provider: ^2.1.6
   shared_preferences: ^2.5.5
+  # 2.5.0 在 release/R8 下会丢失 JNI 使用的 Kotlin 挂起方法签名，
+  # 启动时 getAll 抛出 NoSuchMethodError 并停在启动页。固定到 2.4.28，
+  # 等上游修复正式发布后再升级。
+  # https://github.com/flutter/flutter/issues/194649
+  shared_preferences_android: ">=2.4.28 <2.5.0"
   flutter_secure_storage: 9.2.4
   file_picker: 8.3.3
   open_filex: ^4.7.0

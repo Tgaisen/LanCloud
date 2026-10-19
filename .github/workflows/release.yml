@@ -22,6 +22,9 @@ concurrency:
 env:
   FLUTTER_VERSION: 3.47.7
   EXPECTED_CERT_SHA256: 70BD4AA85322FE26E67202FAC31729BDE1F854FA1BD2FD52C88FFCAA02EDB5BB
+  # pubspec.lock 使用 Flutter 中国镜像生成；CI 必须使用同一镜像，
+  # 否则 pub 会把 lock 中的每个包视为不同来源并解析到最新版本。
+  PUB_HOSTED_URL: https://pub.flutter-io.cn
 
 jobs:
   validate:
@@ -42,7 +45,7 @@ jobs:
           channel: stable
           cache: true
       - name: 获取依赖
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
       - name: 发布前校验
         id: validate
         shell: pwsh
@@ -66,7 +69,8 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v4
+      - name: 安装 Android SDK 组件
+        uses: android-actions/setup-android@v4
       - name: 接受 Android SDK 许可
         run: yes | sdkmanager --licenses > /dev/null
       - name: 安装 Android SDK 组件
@@ -89,35 +93,43 @@ jobs:
           cache: true
       - uses: gradle/actions/setup-gradle@v6
       - name: 获取依赖
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
       - name: 配置 release 签名
-        shell: bash
+        shell: pwsh
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          set -euo pipefail
-          missing=0
-          for name in KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
-            if [ -z "${!name:-}" ]; then
-              echo "::error::缺少 GitHub secret $name"
-              missing=1
-            fi
-          done
-          if [ "$missing" -ne 0 ]; then
-            echo "请按 docs/CI_RELEASE.md 配置 Android 签名 secrets。"
-            exit 1
-          fi
-          umask 077
-          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > android/app/ci-release.jks
-          {
-            printf 'storePassword=%s\n' "$KEYSTORE_PASSWORD"
-            printf 'keyPassword=%s\n' "$KEY_PASSWORD"
-            printf 'keyAlias=%s\n' "$KEY_ALIAS"
-            printf 'storeFile=ci-release.jks\n'
-          } > android/key.properties
+          $missing = @(
+            foreach ($name in @(
+              'KEYSTORE_BASE64', 'KEYSTORE_PASSWORD', 'KEY_ALIAS', 'KEY_PASSWORD'
+            )) {
+              if ([string]::IsNullOrEmpty(
+                [Environment]::GetEnvironmentVariable($name)
+              )) {
+                $name
+              }
+            }
+          )
+          if ($missing.Count -gt 0) {
+            throw "缺少 GitHub secret：$($missing -join ', ')。请按 docs/CI_RELEASE.md 配置。"
+          }
+          $keystore = [Convert]::FromBase64String($env:KEYSTORE_BASE64)
+          [IO.File]::WriteAllBytes(
+            (Join-Path $env:GITHUB_WORKSPACE 'android/app/ci-release.jks'),
+            $keystore
+          )
+          [IO.File]::WriteAllLines(
+            (Join-Path $env:GITHUB_WORKSPACE 'android/key.properties'),
+            @(
+              "storePassword=$env:KEYSTORE_PASSWORD",
+              "keyPassword=$env:KEY_PASSWORD",
+              "keyAlias=$env:KEY_ALIAS",
+              'storeFile=ci-release.jks'
+            )
+          )
       - name: 构建并校验签名
         shell: pwsh
         run: |
@@ -157,7 +169,7 @@ jobs:
           channel: stable
           cache: true
       - name: 获取依赖
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
       - name: 准备 NuGet CLI
         shell: pwsh
         run: |

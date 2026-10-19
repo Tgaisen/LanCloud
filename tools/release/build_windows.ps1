@@ -132,6 +132,7 @@ Info "构建信息：$buildTime · $commitHash"
 Info 'flutter build windows --release'
 Invoke-ReleaseTool -Exe $flutter -Arguments @(
   'build', 'windows', '--release',
+  '--no-pub',
   "--dart-define=BUILD_TIME=$buildTime",
   "--dart-define=GIT_COMMIT=$commitHash"
 ) -DryRun:$DryRun

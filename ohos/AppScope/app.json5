@@ -2,8 +2,8 @@
   "app": {
     "bundleName": "com.lancloud.lancloud",
     "vendor": "LanCloud",
-    "versionCode": 260100211,
-    "versionName": "26.1.0-pre.11",
+    "versionCode": 260100215,
+    "versionName": "26.1.0-pre.15",
     "icon": "$media:app_icon",
     "label": "$string:app_name"
   }

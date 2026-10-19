@@ -78,6 +78,7 @@ Info "构建信息：$buildTime · $commitHash"
 Info 'flutter build apk --release --split-per-abi'
 Invoke-ReleaseTool -Exe $flutter -Arguments @(
   'build', 'apk', '--release', '--split-per-abi',
+  '--no-pub',
   "--dart-define=BUILD_TIME=$buildTime",
   "--dart-define=GIT_COMMIT=$commitHash"
 ) -DryRun:$DryRun
