@@ -29,7 +29,7 @@
 
 - [x] **Android** `7+`
 - [x] **Windows** `10 1809 17763+`
-- [ ] HarmonyOS NEXT（暂无计划，请使用卓易通）
+- [ ] HarmonyOS NEXT（Phase 0 技术验证通过，debug HAP 可运行；尚未发布）
 - [ ] 其余平台无计划
 
 ## 获取
