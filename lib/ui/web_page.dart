@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
+import '../core/app_log.dart';
 import '../core/external_link.dart';
 import '../core/platform_support.dart';
 import '../l10n/l10n.dart';
@@ -14,7 +16,7 @@ import 'm3e.dart';
 /// 通过 CookieManager 注入账号 Cookie 免二次登录。
 ///
 /// 进出转场避免平台视图卡顿（WebView 跟随转场逐帧移动/缩放很贵）：
-/// 1. 进入：push 动画期间 WebView 不绘制（照常创建、开始加载），
+/// 1. 进入：push 动画期间 WebView 不绘制（照常创建，写好 Cookie 后再加载），
 ///    动画结束后再显示；
 /// 2. 退出：先给 WebView 截一张静态帧顶替它，再开始 pop——
 ///    退出动画里只剩一张图片。
@@ -47,13 +49,16 @@ class _WebPageState extends State<WebPage> {
   /// 防止重复触发「截图 → pop」。
   bool _popping = false;
 
-  ModalRoute<Object?>? _route;
+  /// Cookie 写入 / 首次导航是否已经开始。
+  bool _loadStarted = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _injectCookie();
-  }
+  /// 正在写 Cookie，或首次导航尚未发出。
+  bool _preparing = true;
+
+  /// 写 Cookie 失败时的提示；此时不导航，避免用残缺登录态访问网盘。
+  String? _loadError;
+
+  ModalRoute<Object?>? _route;
 
   @override
   void didChangeDependencies() {
@@ -97,23 +102,68 @@ class _WebPageState extends State<WebPage> {
     if (mounted) Navigator.of(context).pop();
   }
 
-  Future<void> _injectCookie() async {
+  /// 先写完整 Cookie，再开始网页导航。
+  ///
+  /// 蓝奏云的 `mydisk.php` 在未登录时会立刻跳到
+  /// `acc.php?t=logout&ref=`（页面文案是「退出中...」）。如果 WebView
+  /// 在 Cookie 只写了一半时先导航，服务端会把这次残缺请求当成退出，
+  /// 后续再补 Cookie 也来不及。Windows WebView2 初始化比 Android
+  /// WebView 快，所以这个竞争在 Windows 上更容易出现。
+  Future<void> _loadWithCookie(InAppWebViewController controller) async {
+    if (!mounted) return;
+    setState(() {
+      _preparing = true;
+      _loadError = null;
+      _progress = 0;
+    });
+    try {
+      await _injectCookie(controller);
+      if (!mounted) return;
+      await controller.loadUrl(urlRequest: URLRequest(url: WebUri(widget.url)));
+    } catch (error, stack) {
+      AppLog.instance.error('webview', error, stack);
+      if (mounted) setState(() => _loadError = '$error');
+    } finally {
+      if (mounted) setState(() => _preparing = false);
+    }
+  }
+
+  Future<void> _injectCookie(InAppWebViewController controller) async {
     final cookie = widget.cookie;
     if (cookie == null || cookie.isEmpty) return;
     final uri = WebUri(widget.url);
+    final manager = CookieManager.instance();
     for (final part in cookie.split(';')) {
       final i = part.indexOf('=');
       if (i <= 0) continue;
       final name = part.substring(0, i).trim();
       final value = part.substring(i + 1).trim();
       if (name.isEmpty) continue;
-      await CookieManager.instance().setCookie(
+      // 手动粘贴的整段 Cookie 可能还带 Path / Expires 等属性，它们不是
+      // Cookie 键值，不能当成独立 Cookie 再写一遍。
+      if (_cookieAttributes.contains(name.toLowerCase())) continue;
+      final ok = await manager.setCookie(
         url: uri,
         name: name,
         value: value,
         isSecure: uri.scheme == 'https',
+        // 复用当前 WebView 写入，避免 CookieManager 另建临时 WebView。
+        webViewController: controller,
       );
+      if (!ok && (name == 'ylogin' || name == 'phpdisk_info')) {
+        throw StateError('写入登录凭据失败');
+      }
     }
+  }
+
+  Future<void> _reload() async {
+    final controller = _controller;
+    if (controller == null || _preparing) return;
+    if (_loadError != null) {
+      await _loadWithCookie(controller);
+      return;
+    }
+    await controller.reload();
   }
 
   @override
@@ -142,7 +192,7 @@ class _WebPageState extends State<WebPage> {
             IconButton(
               tooltip: l10n.refresh,
               icon: const Icon(Icons.refresh),
-              onPressed: () => _controller?.reload(),
+              onPressed: _controller == null || _preparing ? null : _reload,
             ),
             IconButton(
               tooltip: l10n.openLink,
@@ -163,15 +213,21 @@ class _WebPageState extends State<WebPage> {
                 Offstage(
                   offstage: !_entered || _snapshot != null,
                   child: InAppWebView(
-                    initialUrlRequest: URLRequest(url: WebUri(widget.url)),
                     initialSettings: InAppWebViewSettings(
                       javaScriptEnabled: true,
+                      domStorageEnabled: true,
+                      thirdPartyCookiesEnabled: true,
                       supportZoom: true,
                       // Android 10+ 才启用混合合成（官方：更低版本动画掉帧）
                       useHybridComposition:
                           PlatformSupport.useHybridComposition,
                     ),
-                    onWebViewCreated: (controller) => _controller = controller,
+                    onWebViewCreated: (controller) {
+                      _controller = controller;
+                      if (_loadStarted) return;
+                      _loadStarted = true;
+                      unawaited(_loadWithCookie(controller));
+                    },
                     onProgressChanged: (controller, progress) {
                       if (mounted) setState(() => _progress = progress / 100);
                     },
@@ -186,10 +242,45 @@ class _WebPageState extends State<WebPage> {
                       gaplessPlayback: true,
                     ),
                   ),
-                if (_progress < 1 && _snapshot == null)
+                if (!_preparing &&
+                    _loadError == null &&
+                    _progress < 1 &&
+                    _snapshot == null)
                   Align(
                     alignment: Alignment.topCenter,
                     child: M3eLinearProgressIndicator(value: _progress),
+                  ),
+                if (_preparing && _snapshot == null)
+                  Center(
+                    child: M3eLoadingIndicator(semanticsLabel: l10n.loading),
+                  ),
+                if (_loadError != null && _snapshot == null)
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.cloud_off,
+                            size: 40,
+                            color: Theme.of(context).colorScheme.outline,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            l10n.loadFailed(_loadError!),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 12),
+                          FilledButton(
+                            onPressed: _controller == null
+                                ? null
+                                : () => _loadWithCookie(_controller!),
+                            child: Text(l10n.retry),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
               ],
             ),
@@ -199,3 +290,16 @@ class _WebPageState extends State<WebPage> {
     );
   }
 }
+
+/// Cookie 字符串里的属性名；真正需要写入的是名称对应的值。
+const _cookieAttributes = {
+  'path',
+  'domain',
+  'expires',
+  'max-age',
+  'samesite',
+  'secure',
+  'httponly',
+  'priority',
+  'partitioned',
+};
