@@ -1,0 +1,16 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "LanCloud HarmonyOS client"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "LanCloud main ability"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "蓝云"
+    }
+  ]
+}

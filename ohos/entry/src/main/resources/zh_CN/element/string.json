@@ -1,0 +1,16 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "蓝云 HarmonyOS 客户端"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "蓝云主界面"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "蓝云"
+    }
+  ]
+}

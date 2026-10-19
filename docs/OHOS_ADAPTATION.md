@@ -1,18 +1,27 @@
 # HarmonyOS NEXT / OpenHarmony 适配与发版指南
 
-> 文档状态：适配方案草案；主平台发布 CI 已落地，OHOS 构建与发布仍待实施。
+> 文档状态：Phase 0 技术验证已完成，`ohos` 下游分支和 debug HAP 构建已落地；
+> OHOS CI、release HAP 与正式发布流程仍待实施。
 >
 > 更新日期：2026-10-19。
 >
 > 适用项目：LanCloud（Flutter 客户端，当前主要支持 Android、Windows）。
 
+> Phase 0 验证结果（2026-10-19）：**ARM64 真机 debug 核心闭环通过，
+> release/AOT 未通过。** 真实 LanCloud 已在 `ohos` 分支构建、安装并运行
+> signed debug HAP，WebView 登录、Cookie 恢复、安全存储、SQLite、path
+> provider、shared preferences 和真实网盘列表均已验证。Material/Cupertino
+> shim 已固化，共享测试 539 项通过；Windows release 仍缺少正确的 OHOS
+> `gen_snapshot`。详见 [OHOS_PHASE0_VALIDATION.md](OHOS_PHASE0_VALIDATION.md)。
+
 ## 1. 背景与目标
 
 ### 1.1 当前项目基线
 
-- 当前代码基线使用 Flutter 3.47.7、Dart SDK `^3.13.4`。
+- 当前代码基线使用 Flutter 3.47.7、Dart SDK `^3.13.3`。
 - 业务、状态管理、网络、模型、本地化和绝大多数界面均在 Dart 层，Android、iOS、Windows 只负责平台入口和系统能力。
-- 仓库当前没有 `ohos/` 工程，也未完成过 HAP 构建。
+- 仓库已有 `ohos` 下游分支和 `ohos/` 平台工程；正式工程的 ARM64 debug
+  HAP 已构建并在 API 24 真机运行，release HAP 仍因 AOT 工具链阻塞。
 - Android 侧现有约 9 个自定义 MethodChannel，负责安装、文件选择、SAF、分享、权限、链接、外部链接、系统信息和拖拽等能力。
 - CI 会在 PR 和推送到 `main` 时执行格式检查、`flutter analyze` 和 `flutter test`；推送到 `main` 后，Release workflow 还会检查版本，未发布时构建 Android/Windows 产物并创建 draft Release，详见 [CI_RELEASE.md](CI_RELEASE.md)。
 - 版本号规则见 [VERSIONING.md](./VERSIONING.md)。当前版本号中包含 Android ABI 位，不能直接照搬为 HAP 的 versionCode。
@@ -54,9 +63,10 @@
 | Windows Release 构建 | 已落地并跑通 | `release.yml` 使用 `windows-latest` 构建便携版 ZIP |
 | Android Release 签名 | 已落地 | 从 GitHub Secrets 注入 keystore，并校验证书指纹 |
 | Android/Windows draft Release | 已落地并跑通 | 推送 main 且版本尚未发布时自动构建并创建 draft |
-| `main` 到 `ohos` 自动同步 | 未实施 | 暂无 `ohos` 分支和同步 workflow |
+| `main` 到 `ohos` 自动同步 | 未实施 | `ohos` 分支已建立，但尚无同步 workflow |
 | OHOS CI、HAP 构建与签名 | 未实施 | 尚无专用 runner、HAP 构建任务和签名配置 |
-| 本项目 HAP 真机验证 | 未完成 | 依赖兼容矩阵目前仍属于待验证方案 |
+| OHOS debug HAP 构建与真机验证 | 已完成 | 正式 `ohos/` 工程构建通过；API 24 ARM64 真机核心闭环通过 |
+| OHOS release/AOT 与发布签名 | 未完成 | Windows 缺少 arm64/OHOS `gen_snapshot`，不能产出可运行 release HAP |
 
 ## 2. 技术路线与工具链
 
@@ -79,7 +89,9 @@ OH-Flutter 是社区适配线，不是 Google 官方 Flutter 支持。正式项�
 
 - `3.47.7-ohos-1.0.0` 的框架标签与 Flutter 3.47.7 对齐，但仍属于较新的社区发布。
 - 3.47.7 相对 3.47.5 的上游改动集中在 iOS，OHOS 引擎工件复用了 3.47.5 批次；不能把标签更新理解为 OHOS 引擎重新成熟了一轮。
-- API 26 最低运行要求会排除较早的 HarmonyOS NEXT 设备。是否接受这一限制需要产品侧明确决策。
+- OH-Flutter Release Note 声明的应用最低运行 API 为 26，但当前 `ohos/`
+  工程为在现有 API 24 真机上验证而配置 `compatibleSdkVersion: 6.1.1(24)`。
+  这只是 PoC 配置，不是正式最低 API 承诺；是否支持 API 24 需要产品侧决策。
 - Flutter OH 版本和项目版本必须一起记录在构建信息中，不能只记录应用版本号。
 
 ### 2.3 建议的本机/CI 环境
@@ -96,8 +108,14 @@ OH-Flutter 是社区适配线，不是 Google 官方 Flutter 支持。正式项�
 
 ```text
 DEVECO_SDK_HOME=<HarmonyOS SDK 目录>
-FLUTTER_STORAGE_BASE_URL=https://flutter-ohos.obs.cn-south-1.myhuaweicloud.com
+FLUTTER_STORAGE_BASE_URL=https://storage.flutter-io.cn
+# 可选；OHOS 工件默认已有独立 OBS 地址
+FLUTTER_OHOS_STORAGE_BASE_URL=https://flutter-ohos.obs.cn-south-1.myhuaweicloud.com
 ```
+
+不要将 `FLUTTER_STORAGE_BASE_URL` 指向 OHOS OBS。该地址不提供
+`engine_stamp.json`、`flutter_gpu.zip` 等通用 Flutter 工件，已验证会返回
+404；OHOS 专用工件由 `FLUTTER_OHOS_STORAGE_BASE_URL` 单独控制。
 
 环境搭建后应满足：
 
@@ -114,7 +132,7 @@ flutter devices
 
 ### 2.4 首个 HAP 构建
 
-先在独立实验分支或临时工程中验证，不直接修改正式发布配置。
+首轮在隔离工程中验证，随后把平台入口和依赖 pin 收敛到 `ohos` 分支。
 
 ```text
 flutter create --platforms ohos <临时项目>
@@ -123,6 +141,21 @@ flutter build hap --debug
 flutter build hap --release
 flutter install -t <device-id> <hap 路径>
 ```
+
+2026-10-19 已在正式 `ohos/` 工程验证：
+
+```text
+flutter build hap --debug --target-platform ohos-arm64 --no-codesign
+```
+
+构建产物为 `build/ohos/hap/entry-default-unsigned.hap`。安装到真机仍需
+DevEco 调试签名；签名材料只在 `outputs/` 临时副本中使用，不进入仓库。
+
+> 2026-10-19 实测：上述命令在 Windows 上不能完成可运行的 release HAP。
+> 官方 release 只提供 Darwin 主机的同版本 `gen_snapshot`；用 Windows 自带
+> 的 x64 工具临时替换虽能产出 HAP，但生成的 snapshot 目标为 x64/Windows，
+> 在 arm64/OHOS 上会白屏。x64 模拟器也会因旧引擎无法启动 Dart isolate。
+> 详细的 debug 成功路径和 release 阻塞见验证记录。
 
 如果已有项目增加 OHOS 目标，应在临时工程中对比 OHOS 模板，确认 `ohos/`、应用标识、图标、权限、签名和权限文案均已正确配置。
 
@@ -184,28 +217,29 @@ ohos/                   # HarmonyOS/ArkTS 工程（适配后新增）
 
 ## 4. 三方依赖兼容矩阵
 
-以下是首次适配的候选方案。表中的版本来自 2026-10-19 可查到的社区适配仓库，必须通过实际 HAP 构建和真机测试后才能标记为“已验证”。
+以下矩阵区分 Phase 0 已实际采用的固定来源，以及仍需在 Phase 1 验证的
+候选实现。未标注“已验证”的行仍不能视为正式支持。
 
 OpenHarmony 三方库总表：<https://gitcode.com/CPF-Flutter/docs/blob/main/ThirdpartyLibrarites.md>
 
 | 依赖 | 项目当前版本 | OHOS 候选实现 | 适配动作与风险 |
 | --- | --- | --- | --- |
-| `flutter_inappwebview` | `6.2.0-beta.3` | `6.1.5-ohos-1.0.1` | 需要从 beta 版本对齐到稳定分支；已声明支持 `CookieManager.getCookies`，但仍需验证网页登录和多域名 Cookie |
-| `flutter_secure_storage` | `9.2.4` | `fluttertpc_flutter_secure_storage` 的 `9.2.4-ohos-1.0.0` / `flutter_secure_storage_ohos` | pub.dev 主包不声明 OHOS，必须使用 CPF 适配实现；不要把敏感数据降级为明文偏好存储 |
-| `sqflite` | `2.4.4` | `2.4.2-ohos-1.0.0` | 版本接近，运行数据库迁移和并发读写测试；Windows 的 FFI 分支不要带到 OHOS |
+| `flutter_inappwebview` | `6.2.0-beta.3` | CPF-Flutter tag `6.1.5-ohos-1.0.1` | **已验证（debug）**：网页登录和 CookieManager 闭环通过；仍需补页面、键盘、旋转等回归 |
+| `flutter_secure_storage` | `9.2.4` | CPF-Flutter tag `9.2.4-ohos-1.0.0` + vendored OHOS 分支补丁 | **已验证（debug）**：`secure_storage=PASS`，冷启动恢复账号成功；补丁固定在 `ohos/packages/flutter_secure_storage` |
+| `sqflite` | `2.4.4` | CPF-Flutter tag `2.4.2-ohos-1.0.0` | **已验证（debug）**：建表、写入、查询、删除和真实数据库落盘通过 |
 | `file_picker` | `8.3.3` | `file_picker_ohos` `10.3.8-ohos-1.0.0`，或旧版 `8.0.6` | 需要选择版本并调整 import/API；目录选择模式存在已知限制，下载目录授权需要单独实现 |
 | `open_filex` | `4.7.0` | `4.7.0-ohos-1.0.0` | 版本匹配，优先验证本地文件打开和 URI 权限 |
 | `receive_sharing_intent` | `1.9.0` | `1.8.1-ohos-1.0.0` | 小版本回退，验证冷启动、热启动和多文件分享 |
 | `local_auth` | `3.0.2` | OHOS `local_auth 3.0.2` 适配分支/提交 | 需要固定 tag 或 commit；同时移除共享代码对 Android/Darwin 实现包的直接依赖 |
-| `path_provider` | `2.1.6` | OHOS `path_provider` 2.1.5 适配 | 验证应用文档、缓存、临时目录和下载目录语义 |
-| `shared_preferences` | `2.5.5` | OHOS `shared_preferences` 2.5.4 适配 | 版本接近，确认初始化时机和数据类型兼容 |
+| `path_provider` | `2.1.6` | `path_provider_ohos`，commit `5d620c9b5d091547bdb3c324f83495e4460b24ee` | **已验证（debug）**：`path_provider=PASS`；来源为小社区仓库，长期维护风险待确认 |
+| `shared_preferences` | `2.5.5` | `shared_preferences_ohos`，commit `1562f7cc77e3bd2ca467ed2a927ee3497f3d96bf` | **已验证（debug）**：`shared_preferences=PASS`；来源为小社区仓库，长期维护风险待确认 |
 | `url_launcher` | `6.3.2` | OHOS `url_launcher` 6.3.2 适配 | 外部链接使用系统浏览器，自定义 scheme 需要单独测试 |
 | `flutter_local_notifications` | `22.3.1` | `22.0.1-ohos-1.0.0-beta.1` | 当前项目主要使用 `show/cancel`，基础通知可用；需要补 OHOS 初始化和通知详情，进度/常驻/定时能力有限制 |
 | `flutter_foreground_task` | `11.0.3` | 适配中 | 不能作为首版硬依赖；先规划前台传输降级，或实现 ArkTS 持续任务适配 |
 | `desktop_drop` | `0.8.4` | `0.6.1-ohos-1.0.0` | 版本差较大；移动端不是核心功能，可作为非阻塞项或关闭 |
 | `dynamic_color` | `2.1.0` | 无必要适配 | 在 OHOS 上像 Windows 一样禁用/降级为固定主题 |
 | `m3e_core` | `1.1.4` | Dart 组件可复用 | 触觉反馈通道可能需要降级；与 Material UI 包名一起验证 |
-| `material_ui` / `cupertino_ui` | `1.6.0` / `1.1.2` | OHOS SDK 仍包含 `flutter/material.dart`、`flutter/cupertino.dart` | 可使用本地包名映射/shim；不要直接假定第三方包中的 `TargetPlatform` switch 已覆盖 `ohos` |
+| `material_ui` / `cupertino_ui` | `1.6.0` / `1.1.2` | OHOS SDK 仍包含 `flutter/material.dart`、`flutter/cupertino.dart` | **已验证（debug）**：`ohos/packages` 中的 shim 已固化，官方 Flutter 下共享测试 539 项通过；不要直接假定第三方包中的 `TargetPlatform` switch 已覆盖 `ohos` |
 
 ### 4.1 依赖管理规则
 
@@ -445,7 +479,13 @@ HAP 构建需要 DevEco Studio、HarmonyOS SDK、`ohpm`、`hvigor`、`hdc` 和�
 
 ### 10.1 自动化测试
 
-- 共享测试必须分别在官方 Flutter 3.47.7 和 Flutter OH 3.47.7 下运行。
+- 共享测试必须同时在官方 Flutter 3.47.7 和 Flutter OH 3.47.7 下运行。
+- Phase 0 已在官方 Flutter 3.47.7 + 固化 Material/Cupertino shim 下跑完
+  539 项共享测试，全部通过；OH-Flutter `flutter analyze` 无问题。
+- OH-Flutter 3.47.7 的 `flutter test` 当前在加载用例前报
+  `Can't load Kernel binary: Invalid SDK hash`。已清理 `.dart_tool` 并使用
+  独立 `PUB_CACHE` 复现，属于宿主 `flutter_tester`/kernel 配套问题，不能
+  误报为测试失败；需等上游修复或在 CI 中改用可用的 OHOS 测试运行器。
 - 对 `TargetPlatform.ohos` 分支增加单元/组件测试，避免平台 switch 漏分支。
 - 通道协议测试：Dart 方法名、参数和 ArkTS 返回值保持一致。
 - 数据库迁移测试：沿用现有迁移测试，增加 OHOS 新安装和升级场景。
@@ -502,6 +542,11 @@ HAP 构建需要 DevEco Studio、HarmonyOS SDK、`ohpm`、`hvigor`、`hdc` 和�
 
 目标：证明能构建、安装并运行 HAP。
 
+> 2026-10-19 状态：**debug HAP 核心闭环已通过，release/AOT 未通过**。
+> 空 HAP、真实登录、Cookie 恢复、安全存储、SQLite 和真实网盘列表已在
+> ARM64 真机验证；Material/Cupertino shim、Dart 约束、path provider、
+> shared preferences 和安全存储补丁已固化，共享测试 539 项通过。详见验证记录。
+
 - 搭建 Flutter OH、DevEco、API 26 环境。
 - 构建空 HAP。
 - 验证 WebView 登录、安全存储和数据库最小闭环。
@@ -548,10 +593,11 @@ HAP 构建需要 DevEco Studio、HarmonyOS SDK、`ohpm`、`hvigor`、`hdc` 和�
 - [x] 主平台 CI 与 draft Release 流程已经跑通。
 - [ ] 确认 HarmonyOS 目标设备的 API 最低版本为 26。
 - [ ] 确认可以接受 HAP 使用独立的应用安装/更新流程。
-- [ ] 确认 `ohos` 分支作为 main 的下游分支，而不是复制一套产品代码。
-- [ ] 确认使用 OH-Flutter 3.47.7 的固定 tag。
-- [ ] 完成 WebView 登录和 Cookie 的真机验证。
-- [ ] 完成安全存储和数据库的最小闭环。
+- [x] 确认 `ohos` 分支作为 main 的下游分支，而不是复制一套产品代码。
+- [x] 确认使用 OH-Flutter 3.47.7 的固定 tag。
+- [x] 完成 WebView 登录和 Cookie 的真机验证。
+- [x] 完成安全存储和数据库的最小闭环。
+- [x] 完成 path_provider、shared_preferences 的正式插件替换和真机自检。
 - [ ] 完成文件选择、下载、打开和分享的最小闭环。
 - [ ] 明确后台传输是否作为首版硬性要求。
 - [ ] 准备专用 OHOS 构建 runner 和签名材料。

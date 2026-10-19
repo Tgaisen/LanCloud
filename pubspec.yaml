@@ -76,6 +76,45 @@ dependencies:
   m3e_core: ^1.1.4
   material_ui: ^1.6.0
   cupertino_ui: ^1.1.2
+
+  # OHOS federated implementations. These packages only register on OHOS;
+  # Android/Windows keep using the official implementations above.
+  flutter_secure_storage_ohos:
+    git:
+      url: https://gitcode.com/CPF-Flutter/fluttertpc_flutter_secure_storage.git
+      path: flutter_secure_storage_ohos
+      ref: 9.2.4-ohos-1.0.0
+  path_provider_ohos:
+    git:
+      url: https://github.com/kumsumit/path_provider_ohos.git
+      ref: 5d620c9b5d091547bdb3c324f83495e4460b24ee
+  shared_preferences_ohos:
+    git:
+      url: https://github.com/naizhao/shared_preferences_ohos.git
+      ref: 1562f7cc77e3bd2ca467ed2a927ee3497f3d96bf
+
+# OHOS is a downstream integration branch. Keep the platform-specific
+# replacements here, pinned to tags/commits, until the upstream packages support
+# Flutter OH directly.
+dependency_overrides:
+  flutter_inappwebview:
+    git:
+      url: https://gitcode.com/CPF-Flutter/flutter_inappwebview.git
+      path: flutter_inappwebview
+      ref: 6.1.5-ohos-1.0.1
+  flutter_secure_storage:
+    path: ohos/packages/flutter_secure_storage
+  material_ui:
+    path: ohos/packages/material_ui
+  cupertino_ui:
+    path: ohos/packages/cupertino_ui
+  path_provider_platform_interface: ^2.1.3
+  sqflite:
+    git:
+      url: https://gitcode.com/CPF-Flutter/flutter_sqflite.git
+      path: sqflite
+      ref: 2.4.2-ohos-1.0.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

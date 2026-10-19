@@ -1,0 +1,15 @@
+name: material_ui
+description: OHOS shim backed by the Flutter OH SDK Material library.
+version: 1.7.0
+publish_to: none
+
+environment:
+  sdk: ^3.13.3
+  flutter: ">=3.47.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
