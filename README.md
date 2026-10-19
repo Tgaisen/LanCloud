@@ -29,8 +29,10 @@
 
 - [x] **Android** `7+`
 - [x] **Windows** `10 1809 17763+`
-- [ ] HarmonyOS NEXT（Phase 0 技术验证通过，debug HAP 可运行；尚未发布）
+- [ ] HarmonyOS NEXT `早期技术验证阶段`
 - [ ] 其余平台无计划
+
+> HarmonyOS NEXT 未来数月将维持早期技术验证阶段。因目前 Flutter OpenHarmony 适配的[主要社区](https://atomgit.com/CPF-Flutter/flutter_flutter)暂未适配 Flutter 3.47，而社区分支版本经测试性能表现欠佳，且无法对齐部分关键功能。
 
 ## 获取
 
