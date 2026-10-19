@@ -5,6 +5,10 @@ on:
     branches: [main]
   pull_request:
 
+env:
+  # 与 pubspec.lock 的来源保持一致，确保 CI 使用 lock 中的确切版本。
+  PUB_HOSTED_URL: https://pub.flutter-io.cn
+
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -15,7 +19,7 @@ jobs:
           flutter-version: 3.47.7
           channel: stable
           cache: true
-      - run: flutter pub get
+      - run: flutter pub get --enforce-lockfile
       - name: 代码格式检查（dart format）
         run: dart format --output=none --set-exit-if-changed lib test tool
       - name: 静态分析（flutter analyze）

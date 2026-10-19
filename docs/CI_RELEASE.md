@@ -91,20 +91,36 @@ Android 构建结束后会用 `apksigner` 校验证书 SHA-256，指纹不匹配
 `android/app/keystore.base64.txt`）。该路径已经加入 `.gitignore`，但它仍然是
 签名私钥的可还原副本。
 
+## 依赖锁定与 Android 启动回归
+
+`pubspec.lock` 使用 Flutter 中国镜像生成。Release workflow 固定设置同一个
+`PUB_HOSTED_URL`，并在三个任务里用 `flutter pub get --enforce-lockfile`
+取依赖；两个构建脚本也会给 `flutter build` 传 `--no-pub`，避免构建阶段再次
+解析依赖。不要删掉这些保护，否则 GitHub runner 使用不同包源时可能忽略
+lock 中的版本并自动升级。
+
+`pubspec.yaml` 将 `shared_preferences_android` 固定在 `<2.5.0`。2.5.0 的
+release/R8 构建会丢掉 JNI 使用的 Kotlin 挂起方法签名，启动时
+`SharedPreferencesApiRegistrar.getAll` 抛出 `NoSuchMethodError`，界面会永久
+停在启动页。上游修复正式发布前不要移除这个限制；升级依赖后必须生成新的
+APK 并在 Android 真机或模拟器上实际启动验证：
+
+```text
+https://github.com/flutter/flutter/issues/194649
+```
+
 ## 权限与运行环境
 
 - workflow 使用 GitHub Actions 内置的 `GITHUB_TOKEN`，并声明
   `contents: write`，用于创建 tag 和 Release；不需要额外的 Personal Access Token。
-- Android 目前也在 `windows-latest` 构建，安装 JDK 17、Android SDK Platform 37.0、
-  build-tools 36.0.0、NDK 28.2.13676358 和 CMake 3.22.1。2026-10-19 发现
-  Linux runner 构建的 Android 包在 Android 15/17 上启动白屏，而同一份代码在
-  本地 Windows 工具链构建正常，因此暂不迁回 Ubuntu；定位到 Linux Flutter/AOT
-  差异后再评估。Windows CI 还会关闭 Kotlin 增量缓存，避开 runner 上
-  incremental cache 关闭失败的已知构建问题。
+- Android 在 `ubuntu-latest` 构建，安装 JDK 17、Android SDK Platform 37.0、
+  build-tools 36.0.0、NDK 28.2.13676358 和 CMake 3.22.1。Android 15/17
+  启动白屏已定位为依赖解析问题，不是 Linux 构建链问题，因此不需要固定到
+  Windows runner。
 - Windows 在 `windows-latest` 构建，workflow 会启用开发者模式并准备 NuGet，
   以支持 Flutter 插件符号链接和 WebView2 SDK。
 - 首次运行需要下载 SDK、Gradle、Flutter 引擎等冷缓存内容，通常比后续运行慢；
-  当前首次实测整条 Release workflow 约 17 分钟。任务显示进行中但暂时没有
+  当前实测整条 Release workflow 约 13–20 分钟。任务显示进行中但暂时没有
   新日志时，先等待构建步骤完成。
 - tag 只在 Android 和 Windows 都构建成功后的 `release` job 中创建；如果上传
   阶段失败，tag 或 draft 可能已经存在，重跑同一个 workflow 会补齐或覆盖产物。
@@ -189,5 +205,5 @@ CI 使用托管 runner，不需要本地配置。
 当作正式版本。
 
 **构建很慢或看起来没有日志**：首次运行要下载 SDK、Gradle 和 Flutter 引擎，
-构建步骤可能长时间没有新日志。当前首次实测整条流程约 17 分钟，先看 job
+构建步骤可能长时间没有新日志。当前实测整条流程约 13–20 分钟，先看 job
 是否仍在 `in_progress`，不要急着取消。
