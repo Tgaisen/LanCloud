@@ -138,12 +138,6 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
-        <!-- Flutter 3.47.7 的 Impeller Vulkan 在 HUAWEI NOH-AN00 / Android 12
-             上无法输出首帧，表现为永久停在启动页。先关闭 Impeller 走 Skia，
-             等引擎修复后再移除；上游 opt-out 已标记为 deprecated。 -->
-        <meta-data
-            android:name="io.flutter.embedding.android.EnableImpeller"
-            android:value="false" />
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileProvider"
