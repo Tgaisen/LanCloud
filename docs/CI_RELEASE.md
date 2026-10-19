@@ -95,8 +95,11 @@ Android 构建结束后会用 `apksigner` 校验证书 SHA-256，指纹不匹配
 
 - workflow 使用 GitHub Actions 内置的 `GITHUB_TOKEN`，并声明
   `contents: write`，用于创建 tag 和 Release；不需要额外的 Personal Access Token。
-- Android 在 `ubuntu-latest` 构建，安装 JDK 17、Android SDK Platform 37.0、
-  build-tools 36.0.0、NDK 28.2.13676358 和 CMake 3.22.1。
+- Android 目前也在 `windows-latest` 构建，安装 JDK 17、Android SDK Platform 37.0、
+  build-tools 36.0.0、NDK 28.2.13676358 和 CMake 3.22.1。2026-10-19 发现
+  Linux runner 构建的 Android 包在 Android 15/17 上启动白屏，而同一份代码在
+  本地 Windows 工具链构建正常，因此暂不迁回 Ubuntu；定位到 Linux Flutter/AOT
+  差异后再评估。
 - Windows 在 `windows-latest` 构建，workflow 会启用开发者模式并准备 NuGet，
   以支持 Flutter 插件符号链接和 WebView2 SDK。
 - 首次运行需要下载 SDK、Gradle、Flutter 引擎等冷缓存内容，通常比后续运行慢；
