@@ -20,7 +20,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # versionCode = YY*10^7 + Drop*10^5 + Hotfix*10^4 + ABI*10^3 + Stage*10^2 + Seq
 # （这里存 ABI=0 的基准号；ABI 位由 android/app/build.gradle.kts 构建时加上）。
 # 详见 docs/VERSIONING.md；改完记得同步 lib/core/app_info.dart（有测试校验）。
-version: 26.1.0-pre.11+260100211
+version: 26.1.0-pre.12+260100212
 
 environment:
   sdk: ^3.13.4
