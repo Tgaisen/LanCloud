@@ -49,6 +49,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('如何获取 Cookie'), findsOneWidget);
     expect(find.byType(TextField), findsOneWidget);
+
+    await tester.tap(find.text('取消'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.byType(TextField), findsNothing);
   });
 
   testWidgets('兜底登录页内容与弹窗一致（页面内没有 Cookie 输入框）', (tester) async {
