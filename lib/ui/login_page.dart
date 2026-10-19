@@ -91,114 +91,132 @@ class LoginEntries extends StatelessWidget {
 
 /// Cookie 登录弹窗：获取步骤 + 粘贴框 + 校验登录；返回 true 表示登录成功。
 Future<bool> showCookieLoginDialog(BuildContext context) async {
-  final l10n = context.l10n;
-  final controller = TextEditingController();
-  var busy = false;
-  String? error;
   final ok = await showDialog<bool>(
     context: context,
-    builder: (dialogContext) => StatefulBuilder(
-      // Cookie 登录弹窗带多行输入：套上「不被输入法压扁 + 上移聚焦」外壳
-      builder: (dialogContext, setDialogState) => formDialogPan(
-        dialogContext,
-        child: AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(28),
-          ),
-          title: Text(l10n.cookieLogin),
-          content: SizedBox(
-            width: 420,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    l10n.howToGetCookie,
-                    style: Theme.of(dialogContext).textTheme.titleSmall,
+    builder: (_) => const _CookieLoginDialog(),
+  );
+  return ok == true;
+}
+
+class _CookieLoginDialog extends StatefulWidget {
+  const _CookieLoginDialog();
+
+  @override
+  State<_CookieLoginDialog> createState() => _CookieLoginDialogState();
+}
+
+class _CookieLoginDialogState extends State<_CookieLoginDialog> {
+  final TextEditingController _controller = TextEditingController();
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final l10n = context.l10n;
+    final cookie = _controller.text.trim();
+    if (cookie.isEmpty) {
+      setState(() => _error = l10n.pleasePasteCookie);
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await context.read<AppController>().addAccountFromCookie(cookie);
+      if (mounted) {
+        Navigator.of(context).pop(true);
+      }
+    } on CookieFormatException {
+      _showError(l10n.cookieMissingYlogin);
+    } on CookieInvalidException {
+      _showError(l10n.cookieInvalid);
+    } on LanzouException catch (e) {
+      _showError(e.message);
+    } catch (e) {
+      _showError('$e');
+    }
+  }
+
+  void _showError(String message) {
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      _error = message;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return formDialogPan(
+      context,
+      child: AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        title: Text(l10n.cookieLogin),
+        content: SizedBox(
+          width: 420,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l10n.howToGetCookie,
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  l10n.cookieSteps,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _controller,
+                  maxLines: 6,
+                  minLines: 3,
+                  decoration: InputDecoration(
+                    border: const OutlineInputBorder(),
+                    labelText: l10n.lanzouCookie,
+                    hintText: l10n.cookieHint,
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    l10n.cookieSteps,
-                    style: Theme.of(dialogContext).textTheme.bodySmall,
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: controller,
-                    maxLines: 6,
-                    minLines: 3,
-                    decoration: InputDecoration(
-                      border: const OutlineInputBorder(),
-                      labelText: l10n.lanzouCookie,
-                      hintText: l10n.cookieHint,
-                    ),
-                  ),
-                  if (error != null) ...[
-                    const SizedBox(height: 12),
-                    Text(
-                      error!,
-                      style: TextStyle(
-                        color: Theme.of(dialogContext).colorScheme.error,
-                      ),
-                    ),
-                  ],
+                ),
+                if (_error != null) ...[
                   const SizedBox(height: 12),
                   Text(
-                    l10n.cookiePrivacy,
-                    style: Theme.of(dialogContext).textTheme.bodySmall,
+                    _error!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
                   ),
                 ],
-              ),
+                const SizedBox(height: 12),
+                Text(
+                  l10n.cookiePrivacy,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: Text(l10n.cancel),
-            ),
-            FilledButton(
-              onPressed: busy
-                  ? null
-                  : () async {
-                      final cookie = controller.text.trim();
-                      if (cookie.isEmpty) {
-                        setDialogState(() => error = l10n.pleasePasteCookie);
-                        return;
-                      }
-                      setDialogState(() {
-                        busy = true;
-                        error = null;
-                      });
-                      try {
-                        await context
-                            .read<AppController>()
-                            .addAccountFromCookie(cookie);
-                        if (dialogContext.mounted) {
-                          Navigator.of(dialogContext).pop(true);
-                        }
-                      } on CookieFormatException {
-                        setDialogState(() => error = l10n.cookieMissingYlogin);
-                      } on CookieInvalidException {
-                        setDialogState(() => error = l10n.cookieInvalid);
-                      } on LanzouException catch (e) {
-                        setDialogState(() => error = e.message);
-                      } catch (e) {
-                        setDialogState(() => error = '$e');
-                      } finally {
-                        if (dialogContext.mounted) {
-                          setDialogState(() => busy = false);
-                        }
-                      }
-                    },
-              child: Text(busy ? l10n.verifying : l10n.saveAndLogin),
-            ),
-          ],
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: _busy ? null : _submit,
+            child: Text(_busy ? l10n.verifying : l10n.saveAndLogin),
+          ),
+        ],
       ),
-    ),
-  );
-  controller.dispose();
-  return ok == true;
+    );
+  }
 }
 
 /// 无账号时的兜底页面（已同意协议但未登录）：内容与登录弹窗一致。
