@@ -28,7 +28,7 @@ class ReleaseInfo {
   /// Release 页面地址（tag 页面），弹窗里的「详情」用它。
   final String htmlUrl;
 
-  /// GitHub 的预发布标记：tools/release.ps1 按版本名是否含 `-` 自动打标，
+  /// GitHub 的预发布标记：tools/release/publish.ps1 按版本名是否含 `-` 自动打标，
   /// 与本应用的版本号规范（snapshot / pre / beta / rc 都是预发布）口径一致。
   final bool prerelease;
 
@@ -83,7 +83,8 @@ class ReleaseInfo {
 
   /// 按设备 ABI 优先级找 Android 安装包。
   ///
-  /// 发布脚本的命名是 `LanCloud_android_{版本}_{abi}.apk`（见 tools/release.ps1），
+  /// 发布脚本的命名是 `LanCloud_android_{版本}_{abi}.apk`（见
+  /// tools/release/build_android.ps1），
   /// 这里按「ABI 是文件名子串」匹配，不写死完整文件名——以后版本号规则变了
   /// 也照样能找。逐 ABI 尝试是为了兼容：设备的首选 ABI 没发对应包时，
   /// 退而求其次拿下一个能装的（例如 arm64 设备上的 x86 模拟器场景不会发生，
@@ -138,7 +139,7 @@ class ReleaseAsset {
   };
 }
 
-/// 版本号规范（docs/VERSIONING.md）的 Dart 实现，与 tools/release.ps1、
+/// 版本号规范（docs/VERSIONING.md）的 Dart 实现，与 tools/release 下的脚本、
 /// test/version_test.dart 的分段公式一致：
 ///
 /// versionName = 年份.内容更新序号.热修号[-阶段.序号]，
@@ -203,7 +204,7 @@ int compareVersionNames(String a, String b) {
   return a.compareTo(b);
 }
 
-/// 版本名是不是预发布（与 tools/release.ps1 的 `$isPreRelease` 同一判定）。
+/// 版本名是不是预发布（与 tools/release/publish.ps1 的判定一致）。
 bool isPrereleaseVersion(String version) => version.contains('-');
 
 /// 从 Release 列表里挑出当前通道的最新一版；该通道一版都没有时返回 null。

@@ -14,7 +14,7 @@
 - 业务、状态管理、网络、模型、本地化和绝大多数界面均在 Dart 层，Android、iOS、Windows 只负责平台入口和系统能力。
 - 仓库当前没有 `ohos/` 工程，也未完成过 HAP 构建。
 - Android 侧现有约 9 个自定义 MethodChannel，负责安装、文件选择、SAF、分享、权限、链接、外部链接、系统信息和拖拽等能力。
-- 当前 CI 只执行格式检查、`flutter analyze` 和 `flutter test`；Android/Windows Release 仍由本地 `tools/release.ps1` 构建和发布。
+- CI 会在每次推送时执行格式检查、`flutter analyze` 和 `flutter test`；推送到 `main` 后，Release workflow 还会检查版本，未发布时构建 Android/Windows 产物并创建 draft Release，详见 [CI_RELEASE.md](CI_RELEASE.md)。
 - 版本号规则见 [VERSIONING.md](./VERSIONING.md)。当前版本号中包含 Android ABI 位，不能直接照搬为 HAP 的 versionCode。
 
 ### 1.2 结论

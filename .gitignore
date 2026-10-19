@@ -67,6 +67,8 @@ signing.properties
 *.pem
 *.key
 *.bks
+# 上传 GitHub Secrets 时临时生成的 Base64 文本，禁止入库
+/android/app/keystore.base64.txt
 
 # Widget Preview related
 .widget_preview/

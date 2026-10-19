@@ -57,3 +57,6 @@ Android versionCode（9 位）按位拼接：
   本机覆盖调试，不要用来分发。
 - 每个阶段有 99 个序号（versionCode 的最后两位）；用满后进入下一阶段
   （snapshot → pre → rc → 正式版），或换下一个热修号 / 内容更新序号。
+- 推送到 `main` 后，Release CI 会检查当前版本；尚未发布时自动构建
+  Android / Windows 并创建 draft Release。发布说明和 CI 签名配置见
+  [CI_RELEASE.md](CI_RELEASE.md)。

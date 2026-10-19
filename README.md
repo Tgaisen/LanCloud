@@ -63,6 +63,18 @@ flutter build apk --release --split-per-abi
 powershell -ExecutionPolicy Bypass -File tools/build_windows.ps1
 ```
 
+### 发布
+
+发版脚本已拆成校验、Android 构建、Windows 构建、产物发布四段；本地一键发布：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/release.ps1 -Draft
+```
+
+推送到 `main` 后，GitHub Actions 会检查当前版本：尚未发布时构建 Android
+与 Windows 产物并创建 **draft Release**，确认后到 Releases 页面手动发布。
+CI 签名配置与完整流程见 [docs/CI_RELEASE.md](docs/CI_RELEASE.md)。
+
 ## 开源与致谢
 
 本项目使用 DeepSeek + Codex 辅助开发与验证。

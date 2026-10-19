@@ -1,0 +1,207 @@
+name: Release
+
+# 每次 push 到 main 都检查版本；tag / Release 已存在时跳过构建。
+# 也可以在 Actions 页面手动触发，默认仍然创建 draft。
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      draft:
+        description: 创建 draft Release（默认是）
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-main
+  cancel-in-progress: false
+
+env:
+  FLUTTER_VERSION: 3.47.7
+  EXPECTED_CERT_SHA256: 70BD4AA85322FE26E67202FAC31729BDE1F854FA1BD2FD52C88FFCAA02EDB5BB
+
+jobs:
+  validate:
+    name: 校验
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      should_release: ${{ steps.validate.outputs.should_release }}
+      version: ${{ steps.validate.outputs.version }}
+      tag: ${{ steps.validate.outputs.tag }}
+      commit: ${{ steps.validate.outputs.commit }}
+      is_prerelease: ${{ steps.validate.outputs.is_prerelease }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: 获取依赖
+        run: flutter pub get
+      - name: 发布前校验
+        id: validate
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ./tools/release/validate.ps1 `
+            -CI `
+            -SkipPubGet `
+            -ExpectedCertSha256 $env:EXPECTED_CERT_SHA256
+
+  android:
+    name: Android 构建
+    needs: validate
+    if: needs.validate.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v4
+      - name: 接受 Android SDK 许可
+        run: yes | sdkmanager --licenses > /dev/null
+      - name: 安装 Android SDK 组件
+        run: |
+          sdkmanager \
+            "platforms;android-37.0" \
+            "build-tools;36.0.0" \
+            "ndk;28.2.13676358" \
+            "cmake;3.22.1"
+      - name: 使用官方 Gradle 分发
+        shell: bash
+        run: |
+          sed -i 's#mirrors.cloud.tencent.com/gradle/#services.gradle.org/distributions/#' \
+            android/gradle/wrapper/gradle-wrapper.properties
+          grep '^distributionUrl=' android/gradle/wrapper/gradle-wrapper.properties
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - uses: gradle/actions/setup-gradle@v6
+      - name: 获取依赖
+        run: flutter pub get
+      - name: 配置 release 签名
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::缺少 GitHub secret $name"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "请按 docs/CI_RELEASE.md 配置 Android 签名 secrets。"
+            exit 1
+          fi
+          umask 077
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > android/app/ci-release.jks
+          {
+            printf 'storePassword=%s\n' "$KEYSTORE_PASSWORD"
+            printf 'keyPassword=%s\n' "$KEY_PASSWORD"
+            printf 'keyAlias=%s\n' "$KEY_ALIAS"
+            printf 'storeFile=ci-release.jks\n'
+          } > android/key.properties
+      - name: 构建并校验签名
+        shell: pwsh
+        run: |
+          ./tools/release/build_android.ps1 `
+            -SkipTests `
+            -SkipPubGet `
+            -ExpectedCertSha256 $env:EXPECTED_CERT_SHA256
+      - uses: actions/upload-artifact@v7
+        with:
+          name: android-apks
+          path: outputs/LanCloud_android_*.apk
+          if-no-files-found: error
+          retention-days: 7
+
+  windows:
+    name: Windows 构建
+    needs: validate
+    if: needs.validate.outputs.should_release == 'true'
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - name: 启用开发者模式（符号链接）
+        shell: pwsh
+        run: |
+          $key = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock'
+          New-Item -Path $key -Force | Out-Null
+          New-ItemProperty `
+            -Path $key `
+            -Name AllowDevelopmentWithoutDevLicense `
+            -PropertyType DWord `
+            -Value 1 `
+            -Force | Out-Null
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: 获取依赖
+        run: flutter pub get
+      - name: 准备 NuGet CLI
+        shell: pwsh
+        run: |
+          $nugetDir = Join-Path $env:RUNNER_TEMP 'nuget'
+          New-Item -ItemType Directory -Force -Path $nugetDir | Out-Null
+          Invoke-WebRequest `
+            -Uri 'https://dist.nuget.org/win-x86-commandline/latest/nuget.exe' `
+            -OutFile (Join-Path $nugetDir 'nuget.exe')
+          Add-Content -Path $env:GITHUB_PATH -Value $nugetDir
+      - name: 构建 Windows 便携版
+        shell: pwsh
+        run: |
+          ./tools/release/build_windows.ps1 `
+            -SkipTests `
+            -SkipPubGet `
+            -CI
+      - uses: actions/upload-artifact@v7
+        with:
+          name: windows-portable
+          path: outputs/LanCloud_windows_*_x64_portable.zip
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    name: 创建 Release
+    needs: [validate, android, windows]
+    if: needs.validate.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: android-apks
+          path: outputs
+      - uses: actions/download-artifact@v8
+        with:
+          name: windows-portable
+          path: outputs
+      - name: 创建/补齐 Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_DRAFT: ${{ github.event_name == 'push' || inputs.draft }}
+        run: |
+          $draft = [System.Convert]::ToBoolean($env:RELEASE_DRAFT)
+          ./tools/release/publish.ps1 -Draft:$draft
