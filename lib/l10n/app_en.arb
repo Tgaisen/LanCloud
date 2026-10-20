@@ -581,6 +581,66 @@
   "manageDefaultLinksKeywords": "default links open with permission",
   "deleteFilesToo": "Also delete the downloaded files",
   "login": "Sign in",
+  "startUsingTitle": "Get started",
+  "startUsingSubtitle": "Sign in or restore your app data from an existing backup.",
+  "agreementConsentPrefix": "I have read and agree to the ",
+  "agreementConjunction": " and ",
+  "restoreGroupTitle": "Restore",
+  "restoreExistingBackup": "Restore from an existing backup",
+  "restoreIntro": "Choose a backup source.",
+  "restoreLocalSource": "Local backup file",
+  "restoreLocalSourceSubtitle": "Choose a previously exported JSON file",
+  "restoreCloudSource": "WebDAV cloud",
+  "restoreCloudSourceSubtitle": "Connect to a server and choose a backup",
+  "restoreFileInvalid": "The backup could not be read or is not a valid UTF-8 JSON file",
+  "restorePreviewTitle": "Review backup",
+  "restoreCreatedAtLabel": "Created:",
+  "restoreCreatedAt": "Created: {time}",
+  "@restoreCreatedAt": {
+    "placeholders": {
+      "time": {"type": "String"}
+    }
+  },
+  "restoreIncludedContent": "Included content",
+  "restoreIncludedContentLabel": "Included content:",
+  "restoreAccountLabel": "Accounts:",
+  "restoreAccountCount": "Accounts: {count}",
+  "@restoreAccountCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "restoreAccountCountValue": "{count}",
+  "@restoreAccountCountValue": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "restoreUsingAccount": "Sign in as {name} after restoring",
+  "@restoreUsingAccount": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "restoreLoginReady": "The saved sign-in state is valid and ready to restore.",
+  "restoreNoLoginCookie": "This backup has no sign-in credentials. You can sign in after restoring.",
+  "restoreLoginInvalid": "The saved sign-in state has expired. Other data can still be restored.",
+  "restoreLoginNetwork": "LanCloud could not be reached to verify sign-in. Retry or restore data only.",
+  "restoreLoginServer": "LanCloud is temporarily unavailable. Retry or restore data only.",
+  "restoreContainsCredentials": "This backup contains account credentials. Existing local sign-in state will be kept.",
+  "restoreNoCredentials": "This backup has no account credentials. Only the backed-up data will be restored.",
+  "restoreCheckAgain": "Check again",
+  "restoreAndLogin": "Restore and sign in",
+  "restoreOnlyData": "Restore data only",
+  "restoreData": "Restore data",
+  "restoreDataDone": "Data restored. Continue by signing in.",
+  "restoreConnect": "Connect and find backups",
+  "restoreChooseCopy": "Choose a backup",
+  "webdavRestoreIntro": "Enter the WebDAV server details where the backup is stored.",
+  "restoreInsecureTitle": "Insecure connection",
+  "restoreInsecureMessage": "HTTPS is recommended. Continue anyway?",
+  "showPassword": "Show password",
+  "hidePassword": "Hide password",
   "cookieLogin": "Cookie login",
   "permissionInstall": "Install apps",
   "permissionInstallKeywords": "install apk unknown sources permission",
@@ -829,7 +889,7 @@
   },
   "firstRunWelcome": "Welcome to LanCloud",
   "firstRunMessage": "Please read and accept the Terms of Service and Privacy Policy before continuing.",
-  "agreeAndContinue": "Agree and continue",
+  "agreeAndContinue": "Next",
   "disagreeAndExit": "Decline and exit",
   "recentLimit": "Recent items limit",
   "recentLimitOff": "Don't record",

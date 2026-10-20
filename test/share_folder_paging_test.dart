@@ -227,6 +227,10 @@ void main() {
     await tester.pumpAndSettle();
     // 提示用 Error container 卡片（图标 + 文字都是 on error container）
     expect(find.byType(ErrorHintCard), findsOneWidget);
+    expect(
+      tester.widget<ErrorHintCard>(find.byType(ErrorHintCard)).margin,
+      const EdgeInsets.fromLTRB(16, 12, 16, 4),
+    );
     expect(find.text(l10n.fileInvalid), findsOneWidget);
     final downloadTile = tester.widget<ListTile>(
       find

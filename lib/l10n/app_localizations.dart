@@ -3134,6 +3134,246 @@ abstract class AppLocalizations {
   /// **'登录'**
   String get login;
 
+  /// No description provided for @startUsingTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'开始使用'**
+  String get startUsingTitle;
+
+  /// No description provided for @startUsingSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'登录账号，或从已有备份恢复应用数据。'**
+  String get startUsingSubtitle;
+
+  /// No description provided for @agreementConsentPrefix.
+  ///
+  /// In zh, this message translates to:
+  /// **'我已阅读并同意'**
+  String get agreementConsentPrefix;
+
+  /// No description provided for @agreementConjunction.
+  ///
+  /// In zh, this message translates to:
+  /// **'与'**
+  String get agreementConjunction;
+
+  /// No description provided for @restoreGroupTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复'**
+  String get restoreGroupTitle;
+
+  /// No description provided for @restoreExistingBackup.
+  ///
+  /// In zh, this message translates to:
+  /// **'从已有备份恢复'**
+  String get restoreExistingBackup;
+
+  /// No description provided for @restoreIntro.
+  ///
+  /// In zh, this message translates to:
+  /// **'请选择备份来源'**
+  String get restoreIntro;
+
+  /// No description provided for @restoreLocalSource.
+  ///
+  /// In zh, this message translates to:
+  /// **'本地备份文件'**
+  String get restoreLocalSource;
+
+  /// No description provided for @restoreLocalSourceSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择之前导出的 JSON 文件'**
+  String get restoreLocalSourceSubtitle;
+
+  /// No description provided for @restoreCloudSource.
+  ///
+  /// In zh, this message translates to:
+  /// **'WebDAV 云端'**
+  String get restoreCloudSource;
+
+  /// No description provided for @restoreCloudSourceSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'连接服务器并选择备份副本'**
+  String get restoreCloudSourceSubtitle;
+
+  /// No description provided for @restoreFileInvalid.
+  ///
+  /// In zh, this message translates to:
+  /// **'备份文件无法读取或不是有效的 UTF-8 JSON 文件'**
+  String get restoreFileInvalid;
+
+  /// No description provided for @restorePreviewTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'确认备份内容'**
+  String get restorePreviewTitle;
+
+  /// No description provided for @restoreCreatedAtLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'创建时间：'**
+  String get restoreCreatedAtLabel;
+
+  /// No description provided for @restoreCreatedAt.
+  ///
+  /// In zh, this message translates to:
+  /// **'创建时间：{time}'**
+  String restoreCreatedAt(String time);
+
+  /// No description provided for @restoreIncludedContent.
+  ///
+  /// In zh, this message translates to:
+  /// **'包含内容'**
+  String get restoreIncludedContent;
+
+  /// No description provided for @restoreIncludedContentLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'包含内容：'**
+  String get restoreIncludedContentLabel;
+
+  /// No description provided for @restoreAccountLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'账号：'**
+  String get restoreAccountLabel;
+
+  /// No description provided for @restoreAccountCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'账号：{count} 个'**
+  String restoreAccountCount(int count);
+
+  /// No description provided for @restoreAccountCountValue.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 个'**
+  String restoreAccountCountValue(int count);
+
+  /// No description provided for @restoreUsingAccount.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复后使用 {name} 登录'**
+  String restoreUsingAccount(String name);
+
+  /// No description provided for @restoreLoginReady.
+  ///
+  /// In zh, this message translates to:
+  /// **'登录状态有效，可以恢复并登录。'**
+  String get restoreLoginReady;
+
+  /// No description provided for @restoreNoLoginCookie.
+  ///
+  /// In zh, this message translates to:
+  /// **'此备份不含登录凭据，恢复后可继续选择登录方式。'**
+  String get restoreNoLoginCookie;
+
+  /// No description provided for @restoreLoginInvalid.
+  ///
+  /// In zh, this message translates to:
+  /// **'备份中的登录状态已失效，仍可恢复其他数据。'**
+  String get restoreLoginInvalid;
+
+  /// No description provided for @restoreLoginNetwork.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂时无法连接蓝奏云验证登录状态，可重试或仅恢复数据。'**
+  String get restoreLoginNetwork;
+
+  /// No description provided for @restoreLoginServer.
+  ///
+  /// In zh, this message translates to:
+  /// **'蓝奏云服务暂时异常，可重试或仅恢复数据。'**
+  String get restoreLoginServer;
+
+  /// No description provided for @restoreContainsCredentials.
+  ///
+  /// In zh, this message translates to:
+  /// **'此备份包含账号登录凭据，恢复时会保留本机已有登录态。'**
+  String get restoreContainsCredentials;
+
+  /// No description provided for @restoreNoCredentials.
+  ///
+  /// In zh, this message translates to:
+  /// **'此备份不含账号登录凭据，只恢复备份中的数据。'**
+  String get restoreNoCredentials;
+
+  /// No description provided for @restoreCheckAgain.
+  ///
+  /// In zh, this message translates to:
+  /// **'重新检查'**
+  String get restoreCheckAgain;
+
+  /// No description provided for @restoreAndLogin.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复并登录'**
+  String get restoreAndLogin;
+
+  /// No description provided for @restoreOnlyData.
+  ///
+  /// In zh, this message translates to:
+  /// **'仅恢复数据'**
+  String get restoreOnlyData;
+
+  /// No description provided for @restoreData.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复数据'**
+  String get restoreData;
+
+  /// No description provided for @restoreDataDone.
+  ///
+  /// In zh, this message translates to:
+  /// **'数据已恢复，请继续登录'**
+  String get restoreDataDone;
+
+  /// No description provided for @restoreConnect.
+  ///
+  /// In zh, this message translates to:
+  /// **'连接并查找备份'**
+  String get restoreConnect;
+
+  /// No description provided for @restoreChooseCopy.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择备份副本'**
+  String get restoreChooseCopy;
+
+  /// No description provided for @webdavRestoreIntro.
+  ///
+  /// In zh, this message translates to:
+  /// **'请填写存放备份的 WebDAV 服务器信息'**
+  String get webdavRestoreIntro;
+
+  /// No description provided for @restoreInsecureTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'连接不安全'**
+  String get restoreInsecureTitle;
+
+  /// No description provided for @restoreInsecureMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'建议使用 HTTPS 连接，是否继续？'**
+  String get restoreInsecureMessage;
+
+  /// No description provided for @showPassword.
+  ///
+  /// In zh, this message translates to:
+  /// **'显示密码'**
+  String get showPassword;
+
+  /// No description provided for @hidePassword.
+  ///
+  /// In zh, this message translates to:
+  /// **'隐藏密码'**
+  String get hidePassword;
+
   /// No description provided for @cookieLogin.
   ///
   /// In zh, this message translates to:
@@ -3941,7 +4181,7 @@ abstract class AppLocalizations {
   /// No description provided for @agreeAndContinue.
   ///
   /// In zh, this message translates to:
-  /// **'同意并继续'**
+  /// **'下一步'**
   String get agreeAndContinue;
 
   /// No description provided for @disagreeAndExit.

@@ -77,6 +77,12 @@ class CookieInvalidException extends LanzouException {
   const CookieInvalidException() : super('Cookie 无效或已过期，请重新获取');
 }
 
+/// 恢复备份或手动登录时对账号登录态的分层校验结果。
+///
+/// 网络异常和账号失效必须区分：前者不应把用户引向重新获取 Cookie，
+/// 后者也不应阻止用户恢复备份中的其他数据。
+enum LoginStateValidation { valid, invalid, networkError, serverError }
+
 class LanzouClient {
   /// 全局请求间隔，避免触发风控（可在设置里调整）。
   static Duration requestInterval = const Duration(milliseconds: 300);
@@ -230,16 +236,40 @@ class LanzouClient {
 
   // ---------------------------------------------------------------- account
 
-  Future<bool> verify() async {
+  Future<bool> verify() async =>
+      await validateLoginState() == LoginStateValidation.valid;
+
+  /// 校验当前 Cookie 是否仍可登录。
+  ///
+  /// 与 [verify] 不同，这里不把所有失败都折叠成 `false`，恢复流程可以据此
+  /// 区分「Cookie 已失效」「网络不可达」和「服务端异常」。
+  Future<LoginStateValidation> validateLoginState() async {
     try {
       final resp = await dio.post<String>(
         '$apiBase/doupload.php',
         data: {'task': 5, 'folder_id': -1, 'pg': 1},
         options: _options(),
       );
-      return '${_asMap(resp.data)['zt']}' == '1';
+      if (resp.statusCode != null && resp.statusCode! >= 500) {
+        return LoginStateValidation.serverError;
+      }
+      return '${_asMap(resp.data)['zt']}' == '1'
+          ? LoginStateValidation.valid
+          : LoginStateValidation.invalid;
+    } on DioException catch (e) {
+      final status = e.response?.statusCode;
+      if (status != null && status >= 500) {
+        return LoginStateValidation.serverError;
+      }
+      return switch (e.type) {
+        DioExceptionType.connectionTimeout ||
+        DioExceptionType.sendTimeout ||
+        DioExceptionType.receiveTimeout ||
+        DioExceptionType.connectionError => LoginStateValidation.networkError,
+        _ => LoginStateValidation.serverError,
+      };
     } catch (_) {
-      return false;
+      return LoginStateValidation.serverError;
     }
   }
 

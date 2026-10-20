@@ -96,8 +96,12 @@ class _WebLoginPageState extends State<WebLoginPage> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final l10n = context.l10n;
+    final large = isLargeLayout(context);
     return Scaffold(
+      backgroundColor: large ? scheme.surfaceContainer : null,
       appBar: AppBar(
+        backgroundColor: large ? Colors.transparent : null,
+        scrolledUnderElevation: 0,
         title: Text(l10n.webLogin),
         leading: const AppBarBackButton(),
         actions: [
@@ -107,69 +111,75 @@ class _WebLoginPageState extends State<WebLoginPage> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            color: scheme.secondaryContainer,
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-            child: Text(
-              l10n.webLoginGuide,
-              style: TextStyle(color: scheme.onSecondaryContainer),
-            ),
-          ),
-          if (_progress < 1) M3eLinearProgressIndicator(value: _progress),
-          Expanded(
-            child: InAppWebView(
-              initialUrlRequest: URLRequest(url: WebUri(_loginUrl)),
-              initialSettings: InAppWebViewSettings(
-                javaScriptEnabled: true,
-                domStorageEnabled: true,
-                thirdPartyCookiesEnabled: true,
-                // Android 10+ 才启用混合合成（官方：更低版本动画掉帧）
-                useHybridComposition: PlatformSupport.useHybridComposition,
-                // 移动端伪装成手机浏览器，拿到的是移动版登录页；
-                // 桌面端（WebView2）用默认 UA，避免被当成手机渲染。
-                userAgent: PlatformSupport.isMobile
-                    ? 'Mozilla/5.0 (Linux; Android 13; Pixel 7) '
-                          'AppleWebKit/537.36 (KHTML, like Gecko) '
-                          'Chrome/124.0.0.0 Mobile Safari/537.36'
-                    : null,
+      body: Md3eBodyCard(
+        // WebView 是不透明内容，裁到圆角卡片里；小屏保持整页布局。
+        clipContent: true,
+        child: BodySideInset(
+          child: Column(
+            children: [
+              Container(
+                width: double.infinity,
+                color: scheme.secondaryContainer,
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+                child: Text(
+                  l10n.webLoginGuide,
+                  style: TextStyle(color: scheme.onSecondaryContainer),
+                ),
               ),
-              onProgressChanged: (controller, progress) {
-                setState(() => _progress = progress / 100);
-              },
-              onLoadStop: (controller, url) async {
-                final target = url?.toString() ?? '';
-                if (target.contains('mydisk')) {
-                  await _tryCapture();
-                }
-              },
-            ),
-          ),
-          if (_error != null)
-            Container(
-              width: double.infinity,
-              color: scheme.errorContainer,
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.info_outline,
-                    size: 18,
-                    color: scheme.onErrorContainer,
+              if (_progress < 1) M3eLinearProgressIndicator(value: _progress),
+              Expanded(
+                child: InAppWebView(
+                  initialUrlRequest: URLRequest(url: WebUri(_loginUrl)),
+                  initialSettings: InAppWebViewSettings(
+                    javaScriptEnabled: true,
+                    domStorageEnabled: true,
+                    thirdPartyCookiesEnabled: true,
+                    // Android 10+ 才启用混合合成（官方：更低版本动画掉帧）
+                    useHybridComposition: PlatformSupport.useHybridComposition,
+                    // 移动端伪装成手机浏览器，拿到的是移动版登录页；
+                    // 桌面端（WebView2）用默认 UA，避免被当成手机渲染。
+                    userAgent: PlatformSupport.isMobile
+                        ? 'Mozilla/5.0 (Linux; Android 13; Pixel 7) '
+                              'AppleWebKit/537.36 (KHTML, like Gecko) '
+                              'Chrome/124.0.0.0 Mobile Safari/537.36'
+                        : null,
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      _error!,
-                      style: TextStyle(color: scheme.onErrorContainer),
-                    ),
-                  ),
-                ],
+                  onProgressChanged: (controller, progress) {
+                    setState(() => _progress = progress / 100);
+                  },
+                  onLoadStop: (controller, url) async {
+                    final target = url?.toString() ?? '';
+                    if (target.contains('mydisk')) {
+                      await _tryCapture();
+                    }
+                  },
+                ),
               ),
-            ),
-        ],
+              if (_error != null)
+                Container(
+                  width: double.infinity,
+                  color: scheme.errorContainer,
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        size: 18,
+                        color: scheme.onErrorContainer,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _error!,
+                          style: TextStyle(color: scheme.onErrorContainer),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }

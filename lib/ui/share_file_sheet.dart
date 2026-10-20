@@ -194,12 +194,10 @@ class _ShareFileInfoSheetState extends State<ShareFileInfoSheet> {
             loading: _loading,
           ),
           if (_invalid)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
-              // 已知失效 / 链接解析失败：Error container 卡片提示
-              child: ErrorHintCard(
-                message: widget.invalid ? l10n.fileInvalid : l10n.shareInvalid,
-              ),
+            // 已知失效 / 链接解析失败：与下方列表组使用同一左右边距。
+            ErrorHintCard(
+              message: widget.invalid ? l10n.fileInvalid : l10n.shareInvalid,
+              margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
             ),
           // 下载 / 复制链接 / 二维码 / 收藏：弹窗里的列表组
           SheetListGroup(

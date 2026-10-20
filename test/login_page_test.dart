@@ -1,9 +1,12 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/app_icons.dart' as app_icons;
+import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/login_page.dart';
+import 'package:lancloud/ui/m3e.dart';
 import 'package:provider/provider.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
@@ -64,7 +67,164 @@ void main() {
     expect(find.text('登录'), findsOneWidget);
     expect(find.text('网页登录'), findsOneWidget);
     expect(find.text('Cookie 登录'), findsOneWidget);
+    expect(find.text('从已有备份恢复'), findsOneWidget);
     expect(find.byType(TextField), findsNothing);
+  });
+
+  testWidgets('开始使用页使用 MD3E 图标框而不是重复展示应用 Logo', (tester) async {
+    await tester.pumpWidget(host(const LoginPage(firstRun: true)));
+    await tester.pumpAndSettle();
+
+    final iconBox = tester.widget<M3eShapedIcon>(find.byType(M3eShapedIcon));
+    expect(iconBox.size, 88);
+    expect(iconBox.iconSize, 44);
+    expect(find.byType(Image), findsNothing);
+  });
+
+  testWidgets('大屏登录页使用登录 / 恢复两个列表组，并可进入备份来源选择', (tester) async {
+    tester.view.physicalSize = const Size(1200, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(host(const LoginPage(firstRun: true)));
+    await tester.pumpAndSettle();
+
+    expect(find.text('登录'), findsOneWidget);
+    expect(find.text('恢复'), findsOneWidget);
+    final restore = find.widgetWithText(ListTile, '从已有备份恢复');
+    expect(restore, findsOneWidget);
+    expect(tester.widget<ListTile>(restore).subtitle, isNull);
+    expect(find.widgetWithText(OutlinedButton, '从已有备份恢复'), findsNothing);
+    expect(tester.getSize(restore).width, lessThanOrEqualTo(480));
+
+    await tester.tap(restore);
+    await tester.pumpAndSettle();
+    expect(find.text('请选择备份来源'), findsOneWidget);
+    expect(find.byType(Md3eBodyCard), findsOneWidget);
+    expect(
+      tester.widget<Scaffold>(find.byType(Scaffold).last).backgroundColor,
+      Theme.of(tester.element(find.byType(Md3eBodyCard)))
+          .colorScheme
+          .surfaceContainer,
+    );
+    expect(find.text('本地备份文件'), findsOneWidget);
+    expect(find.text('WebDAV 云端'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.widgetWithText(ListTile, '本地备份文件'),
+        matching: find.byIcon(app_icons.Icons.chevron_right),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.descendant(
+        of: find.widgetWithText(ListTile, 'WebDAV 云端'),
+        matching: find.byIcon(app_icons.Icons.chevron_right),
+      ),
+      findsNothing,
+    );
+
+    await tester.tap(find.text('WebDAV 云端'));
+    await tester.pumpAndSettle();
+    expect(find.byType(TextField), findsNWidgets(4));
+    expect(find.text('连接并查找备份'), findsOneWidget);
+    expect(find.text('建议使用 HTTPS，避免 WebDAV 密码在不安全连接中传输。'), findsNothing);
+  });
+
+  testWidgets('HTTP WebDAV 继续连接前弹出不安全连接提醒', (tester) async {
+    await tester.pumpWidget(host(const LoginPage(firstRun: true)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ListTile, '从已有备份恢复'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('WebDAV 云端'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byType(TextField).at(0),
+      'http://dav.example.com/',
+    );
+    await tester.enterText(find.byType(TextField).at(1), 'user');
+    await tester.enterText(find.byType(TextField).at(2), 'password');
+    await tester.tap(find.text('连接并查找备份'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('连接不安全'), findsOneWidget);
+    expect(find.text('建议使用 HTTPS 连接，是否继续？'), findsOneWidget);
+    expect(find.text('继续'), findsOneWidget);
+    expect(find.text('取消'), findsOneWidget);
+
+    await tester.tap(find.text('取消'));
+    await tester.pumpAndSettle();
+    expect(find.text('连接不安全'), findsNothing);
+  });
+
+  testWidgets('恢复页顶栏随滚动渐变并收纳', (tester) async {
+    final app = AppController()..settings.hideTopBar = true;
+    addTearDown(app.dispose);
+    tester.view.physicalSize = const Size(400, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AppController>.value(
+        value: app,
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const LoginPage(firstRun: true),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ListTile, '从已有备份恢复'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('WebDAV 云端'));
+    await tester.pumpAndSettle();
+    tester.view.physicalSize = const Size(400, 320);
+    await tester.pumpAndSettle();
+
+    final initialBar = tester.widget<TopBarOverlay>(find.byType(TopBarOverlay));
+    final initialTop = tester.getTopLeft(find.byType(AppBar)).dy;
+    await tester.drag(
+      find.byType(SingleChildScrollView).last,
+      const Offset(0, -180),
+    );
+    await tester.pumpAndSettle();
+
+    final scrolledBar = tester.widget<TopBarOverlay>(
+      find.byType(TopBarOverlay),
+    );
+    expect(scrolledBar.background, isNot(initialBar.background));
+    expect(tester.getTopLeft(find.byType(AppBar)).dy, lessThan(initialTop));
+  });
+
+  testWidgets('从恢复页直接返回时不会误报数据已恢复', (tester) async {
+    await tester.pumpWidget(host(const LoginPage(firstRun: true)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ListTile, '从已有备份恢复'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(app_icons.Icons.arrow_back));
+    await tester.pumpAndSettle();
+
+    expect(find.text('数据已恢复，请继续登录'), findsNothing);
+    expect(find.text('从已有备份恢复'), findsOneWidget);
+  });
+
+  testWidgets('开始使用页使用透明的沉浸式系统栏', (tester) async {
+    await tester.pumpWidget(host(const LoginPage(firstRun: true)));
+    await tester.pumpAndSettle();
+
+    final region = tester.widget<AnnotatedRegion<SystemUiOverlayStyle>>(
+      find
+          .descendant(
+            of: find.byType(LoginPage),
+            matching: find.byType(AnnotatedRegion<SystemUiOverlayStyle>),
+          )
+          .first,
+    );
+    expect(region.value.statusBarColor, Colors.transparent);
+    expect(region.value.systemNavigationBarColor, Colors.transparent);
+    expect(region.value.systemNavigationBarContrastEnforced, isFalse);
   });
 
   testWidgets('兜底登录页铺满屏幕高度（回弹不截断）', (tester) async {

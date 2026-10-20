@@ -2066,7 +2066,7 @@ class AdvancedContent extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
-          child: _AdvancedHintCard(text: l10n.advancedHint),
+          child: InfoHintCard(text: l10n.advancedHint),
         ),
         SegmentedList(
           children: [
@@ -2105,54 +2105,6 @@ class AdvancedContent extends StatelessWidget {
           ],
         ),
       ],
-    );
-  }
-}
-
-/// 高级覆盖项顶部的提示卡片（MD3E 容器 + info 图标）。
-///
-/// **参考 M3 规范**：提示是需要被看见、但不打断流程的一段信息——放进卡片
-/// 容器而不是留在正文里（M3E 的「containment」：用容器把内容从页面背景里
-/// 拎出来）；容器色只作为填充，文字 / 图标用配对的 `on` 角色；图标与文字
-/// 行首对齐、同色。
-/// **本应用的设计决定（非 M3 规范）**：用 `secondaryContainer`（提示语气
-/// 比错误容器轻，又比普通正文醒目）；圆角 16dp、内边距 16dp，与列表组同一
-/// 套容器语言。
-class _AdvancedHintCard extends StatelessWidget {
-  const _AdvancedHintCard({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: scheme.secondaryContainer,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            Icons.info_outline,
-            size: 24,
-            color: scheme.onSecondaryContainer,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              text,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: scheme.onSecondaryContainer,
-                height: 1.5,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

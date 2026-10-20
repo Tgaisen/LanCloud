@@ -1645,6 +1645,134 @@ class AppLocalizationsZh extends AppLocalizations {
   String get login => '登录';
 
   @override
+  String get startUsingTitle => '开始使用';
+
+  @override
+  String get startUsingSubtitle => '登录账号，或从已有备份恢复应用数据。';
+
+  @override
+  String get agreementConsentPrefix => '我已阅读并同意';
+
+  @override
+  String get agreementConjunction => '与';
+
+  @override
+  String get restoreGroupTitle => '恢复';
+
+  @override
+  String get restoreExistingBackup => '从已有备份恢复';
+
+  @override
+  String get restoreIntro => '请选择备份来源';
+
+  @override
+  String get restoreLocalSource => '本地备份文件';
+
+  @override
+  String get restoreLocalSourceSubtitle => '选择之前导出的 JSON 文件';
+
+  @override
+  String get restoreCloudSource => 'WebDAV 云端';
+
+  @override
+  String get restoreCloudSourceSubtitle => '连接服务器并选择备份副本';
+
+  @override
+  String get restoreFileInvalid => '备份文件无法读取或不是有效的 UTF-8 JSON 文件';
+
+  @override
+  String get restorePreviewTitle => '确认备份内容';
+
+  @override
+  String get restoreCreatedAtLabel => '创建时间：';
+
+  @override
+  String restoreCreatedAt(String time) {
+    return '创建时间：$time';
+  }
+
+  @override
+  String get restoreIncludedContent => '包含内容';
+
+  @override
+  String get restoreIncludedContentLabel => '包含内容：';
+
+  @override
+  String get restoreAccountLabel => '账号：';
+
+  @override
+  String restoreAccountCount(int count) {
+    return '账号：$count 个';
+  }
+
+  @override
+  String restoreAccountCountValue(int count) {
+    return '$count 个';
+  }
+
+  @override
+  String restoreUsingAccount(String name) {
+    return '恢复后使用 $name 登录';
+  }
+
+  @override
+  String get restoreLoginReady => '登录状态有效，可以恢复并登录。';
+
+  @override
+  String get restoreNoLoginCookie => '此备份不含登录凭据，恢复后可继续选择登录方式。';
+
+  @override
+  String get restoreLoginInvalid => '备份中的登录状态已失效，仍可恢复其他数据。';
+
+  @override
+  String get restoreLoginNetwork => '暂时无法连接蓝奏云验证登录状态，可重试或仅恢复数据。';
+
+  @override
+  String get restoreLoginServer => '蓝奏云服务暂时异常，可重试或仅恢复数据。';
+
+  @override
+  String get restoreContainsCredentials => '此备份包含账号登录凭据，恢复时会保留本机已有登录态。';
+
+  @override
+  String get restoreNoCredentials => '此备份不含账号登录凭据，只恢复备份中的数据。';
+
+  @override
+  String get restoreCheckAgain => '重新检查';
+
+  @override
+  String get restoreAndLogin => '恢复并登录';
+
+  @override
+  String get restoreOnlyData => '仅恢复数据';
+
+  @override
+  String get restoreData => '恢复数据';
+
+  @override
+  String get restoreDataDone => '数据已恢复，请继续登录';
+
+  @override
+  String get restoreConnect => '连接并查找备份';
+
+  @override
+  String get restoreChooseCopy => '选择备份副本';
+
+  @override
+  String get webdavRestoreIntro => '请填写存放备份的 WebDAV 服务器信息';
+
+  @override
+  String get restoreInsecureTitle => '连接不安全';
+
+  @override
+  String get restoreInsecureMessage => '建议使用 HTTPS 连接，是否继续？';
+
+  @override
+  String get showPassword => '显示密码';
+
+  @override
+  String get hidePassword => '隐藏密码';
+
+  @override
   String get cookieLogin => 'Cookie 登录';
 
   @override
@@ -2093,7 +2221,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get firstRunMessage => '使用前请先阅读并同意《用户协议》与《隐私政策》。';
 
   @override
-  String get agreeAndContinue => '同意并继续';
+  String get agreeAndContinue => '下一步';
 
   @override
   String get disagreeAndExit => '不同意并退出';

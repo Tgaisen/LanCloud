@@ -1710,6 +1710,146 @@ class AppLocalizationsEn extends AppLocalizations {
   String get login => 'Sign in';
 
   @override
+  String get startUsingTitle => 'Get started';
+
+  @override
+  String get startUsingSubtitle =>
+      'Sign in or restore your app data from an existing backup.';
+
+  @override
+  String get agreementConsentPrefix => 'I have read and agree to the ';
+
+  @override
+  String get agreementConjunction => ' and ';
+
+  @override
+  String get restoreGroupTitle => 'Restore';
+
+  @override
+  String get restoreExistingBackup => 'Restore from an existing backup';
+
+  @override
+  String get restoreIntro => 'Choose a backup source.';
+
+  @override
+  String get restoreLocalSource => 'Local backup file';
+
+  @override
+  String get restoreLocalSourceSubtitle =>
+      'Choose a previously exported JSON file';
+
+  @override
+  String get restoreCloudSource => 'WebDAV cloud';
+
+  @override
+  String get restoreCloudSourceSubtitle =>
+      'Connect to a server and choose a backup';
+
+  @override
+  String get restoreFileInvalid =>
+      'The backup could not be read or is not a valid UTF-8 JSON file';
+
+  @override
+  String get restorePreviewTitle => 'Review backup';
+
+  @override
+  String get restoreCreatedAtLabel => 'Created:';
+
+  @override
+  String restoreCreatedAt(String time) {
+    return 'Created: $time';
+  }
+
+  @override
+  String get restoreIncludedContent => 'Included content';
+
+  @override
+  String get restoreIncludedContentLabel => 'Included content:';
+
+  @override
+  String get restoreAccountLabel => 'Accounts:';
+
+  @override
+  String restoreAccountCount(int count) {
+    return 'Accounts: $count';
+  }
+
+  @override
+  String restoreAccountCountValue(int count) {
+    return '$count';
+  }
+
+  @override
+  String restoreUsingAccount(String name) {
+    return 'Sign in as $name after restoring';
+  }
+
+  @override
+  String get restoreLoginReady =>
+      'The saved sign-in state is valid and ready to restore.';
+
+  @override
+  String get restoreNoLoginCookie =>
+      'This backup has no sign-in credentials. You can sign in after restoring.';
+
+  @override
+  String get restoreLoginInvalid =>
+      'The saved sign-in state has expired. Other data can still be restored.';
+
+  @override
+  String get restoreLoginNetwork =>
+      'LanCloud could not be reached to verify sign-in. Retry or restore data only.';
+
+  @override
+  String get restoreLoginServer =>
+      'LanCloud is temporarily unavailable. Retry or restore data only.';
+
+  @override
+  String get restoreContainsCredentials =>
+      'This backup contains account credentials. Existing local sign-in state will be kept.';
+
+  @override
+  String get restoreNoCredentials =>
+      'This backup has no account credentials. Only the backed-up data will be restored.';
+
+  @override
+  String get restoreCheckAgain => 'Check again';
+
+  @override
+  String get restoreAndLogin => 'Restore and sign in';
+
+  @override
+  String get restoreOnlyData => 'Restore data only';
+
+  @override
+  String get restoreData => 'Restore data';
+
+  @override
+  String get restoreDataDone => 'Data restored. Continue by signing in.';
+
+  @override
+  String get restoreConnect => 'Connect and find backups';
+
+  @override
+  String get restoreChooseCopy => 'Choose a backup';
+
+  @override
+  String get webdavRestoreIntro =>
+      'Enter the WebDAV server details where the backup is stored.';
+
+  @override
+  String get restoreInsecureTitle => 'Insecure connection';
+
+  @override
+  String get restoreInsecureMessage => 'HTTPS is recommended. Continue anyway?';
+
+  @override
+  String get showPassword => 'Show password';
+
+  @override
+  String get hidePassword => 'Hide password';
+
+  @override
   String get cookieLogin => 'Cookie login';
 
   @override
@@ -2178,7 +2318,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Please read and accept the Terms of Service and Privacy Policy before continuing.';
 
   @override
-  String get agreeAndContinue => 'Agree and continue';
+  String get agreeAndContinue => 'Next';
 
   @override
   String get disagreeAndExit => 'Decline and exit';

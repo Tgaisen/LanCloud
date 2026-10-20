@@ -60,6 +60,25 @@ void main() {
     expect(BackupService.containsFavorites('不是 JSON'), isFalse);
   });
 
+  test('备份预检：返回内容摘要、创建时间与首选 Cookie 账号', () {
+    const content =
+        '{"app":"lancloud","format":2,"createdAt":1700000000000,'
+        '"sections":["settings","cookies"],"activeUid":"b",'
+        '"accounts":['
+        '{"uid":"a","nickname":"账号 A","cookie":"ylogin=a; phpdisk_info=x"},'
+        '{"uid":"b","nickname":"账号 B","cookie":"ylogin=b; phpdisk_info=y"}'
+        '],"tables":{}}';
+
+    final preview = BackupService.inspect(content);
+    expect(preview.format, 2);
+    expect(preview.sections, {BackupSection.settings, BackupSection.cookies});
+    expect(preview.accounts, hasLength(2));
+    expect(preview.hasCookies, isTrue);
+    expect(preview.suggestedAccount?.uid, 'b');
+    expect(preview.suggestedAccount?.displayName, '账号 B');
+    expect(preview.createdAt?.millisecondsSinceEpoch, 1700000000000);
+  });
+
   test('WebDAV 上传：没选备份内容时提示先选', () async {
     SharedPreferences.setMockInitialValues({
       'webdav_url': 'https://dav.example.com/blue/',

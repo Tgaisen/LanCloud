@@ -38,6 +38,7 @@ class _FakeBackupService extends BackupService {
   int restoreCount = 0;
   String? lastRestoredContent;
   bool? lastMergeFavorites;
+  bool? lastRestoreAccounts;
   Set<BackupSection>? lastSections;
 
   /// 云端恢复列表：测试里按需设置；[remoteGate] 用来卡住「拉列表」这一步，
@@ -75,10 +76,12 @@ class _FakeBackupService extends BackupService {
   Future<void> restoreFromString(
     String content, {
     bool mergeFavorites = false,
+    bool restoreAccounts = true,
   }) async {
     restoreCount += 1;
     lastRestoredContent = content;
     lastMergeFavorites = mergeFavorites;
+    lastRestoreAccounts = restoreAccounts;
   }
 
   @override
@@ -362,8 +365,11 @@ void main() {
                 onPressed: () async {
                   decision = await showRestoreConfirmDialog(
                     context,
-                    label: 'lancloud-backup.json',
-                    hasFavorites: true,
+                    preview: BackupService.inspect(
+                      '{"app":"lancloud","sections":["favorites"],'
+                      '"tables":{"favorites":[{"ref":"existing"}]}}',
+                    ),
+                    showKeepFavorites: true,
                   );
                 },
                 child: const Text('打开'),
@@ -402,8 +408,10 @@ void main() {
               child: TextButton(
                 onPressed: () => showRestoreConfirmDialog(
                   context,
-                  label: 'lancloud-backup.json',
-                  hasFavorites: false,
+                  preview: BackupService.inspect(
+                    '{"app":"lancloud","tables":{"favorites":[]}}',
+                  ),
+                  showKeepFavorites: false,
                 ),
                 child: const Text('打开'),
               ),
@@ -435,7 +443,6 @@ void main() {
                     context,
                     fake,
                     '{"app":"lancloud","tables":{"favorites":[]}}',
-                    'lancloud-backup.json',
                   );
                 },
                 child: const Text('恢复'),
@@ -471,7 +478,6 @@ void main() {
                     context,
                     fake,
                     '{"app":"lancloud"}',
-                    'lancloud-backup.json',
                   );
                 },
                 child: const Text('恢复'),
@@ -488,6 +494,38 @@ void main() {
 
     expect(restored, isFalse);
     expect(fake.restoreCount, 0);
+  });
+
+  testWidgets('仅恢复数据时明确跳过账号恢复', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('zh'),
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: TextButton(
+                onPressed: () => confirmAndRestore(
+                  context,
+                  fake,
+                  '{"app":"lancloud","tables":{"favorites":[]}}',
+                  restoreAccounts: false,
+                ),
+                child: const Text('恢复数据'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('恢复数据'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, '确定'));
+    await tester.pumpAndSettle();
+
+    expect(fake.restoreCount, 1);
+    expect(fake.lastRestoreAccounts, isFalse);
   });
 
   testWidgets('未配置地址时 WebDAV 操作禁用', (tester) async {

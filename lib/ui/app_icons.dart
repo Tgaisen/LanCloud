@@ -105,6 +105,7 @@ class Icons {
   static const IconData page_info = Symbols.page_info;
   static const IconData person = Symbols.person;
   static const IconData person_outline = Symbols.person;
+  static const IconData people_outline = Symbols.people;
   static const IconData picture_as_pdf_outlined = Symbols.picture_as_pdf;
   static const IconData public = Symbols.public;
   static const IconData push_pin = Symbols.push_pin;
@@ -127,6 +128,7 @@ class Icons {
   static const IconData slideshow_outlined = Symbols.slideshow;
   static const IconData smart_button = Symbols.smart_button;
   static const IconData speed = Symbols.speed;
+  static const IconData schedule = Symbols.schedule;
   static const IconData star_border = Symbols.star_border;
   static const IconData star_outline = Symbols.star;
 
@@ -159,6 +161,9 @@ class Icons {
   static const IconData warning_outlined = Symbols.warning;
   static const IconData vertical_align_bottom = Symbols.vertical_align_bottom;
   static const IconData vertical_align_top = Symbols.vertical_align_top;
+  static const IconData visibility = Symbols.visibility;
+  static const IconData visibility_off = Symbols.visibility_off;
   static const IconData view_list = Symbols.view_list;
+  static const IconData wifi_off = Symbols.wifi_off;
   static const IconData window_outlined = Symbols.window;
 }

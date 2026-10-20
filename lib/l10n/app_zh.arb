@@ -804,6 +804,66 @@
   "manageDefaultLinksKeywords": "default links 默认 链接 打开方式 权限",
   "deleteFilesToo": "同时删除文件",
   "login": "登录",
+  "startUsingTitle": "开始使用",
+  "startUsingSubtitle": "登录账号，或从已有备份恢复应用数据。",
+  "agreementConsentPrefix": "我已阅读并同意",
+  "agreementConjunction": "与",
+  "restoreGroupTitle": "恢复",
+  "restoreExistingBackup": "从已有备份恢复",
+  "restoreIntro": "请选择备份来源",
+  "restoreLocalSource": "本地备份文件",
+  "restoreLocalSourceSubtitle": "选择之前导出的 JSON 文件",
+  "restoreCloudSource": "WebDAV 云端",
+  "restoreCloudSourceSubtitle": "连接服务器并选择备份副本",
+  "restoreFileInvalid": "备份文件无法读取或不是有效的 UTF-8 JSON 文件",
+  "restorePreviewTitle": "确认备份内容",
+  "restoreCreatedAtLabel": "创建时间：",
+  "restoreCreatedAt": "创建时间：{time}",
+  "@restoreCreatedAt": {
+    "placeholders": {
+      "time": {"type": "String"}
+    }
+  },
+  "restoreIncludedContent": "包含内容",
+  "restoreIncludedContentLabel": "包含内容：",
+  "restoreAccountLabel": "账号：",
+  "restoreAccountCount": "账号：{count} 个",
+  "@restoreAccountCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "restoreAccountCountValue": "{count} 个",
+  "@restoreAccountCountValue": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "restoreUsingAccount": "恢复后使用 {name} 登录",
+  "@restoreUsingAccount": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "restoreLoginReady": "登录状态有效，可以恢复并登录。",
+  "restoreNoLoginCookie": "此备份不含登录凭据，恢复后可继续选择登录方式。",
+  "restoreLoginInvalid": "备份中的登录状态已失效，仍可恢复其他数据。",
+  "restoreLoginNetwork": "暂时无法连接蓝奏云验证登录状态，可重试或仅恢复数据。",
+  "restoreLoginServer": "蓝奏云服务暂时异常，可重试或仅恢复数据。",
+  "restoreContainsCredentials": "此备份包含账号登录凭据，恢复时会保留本机已有登录态。",
+  "restoreNoCredentials": "此备份不含账号登录凭据，只恢复备份中的数据。",
+  "restoreCheckAgain": "重新检查",
+  "restoreAndLogin": "恢复并登录",
+  "restoreOnlyData": "仅恢复数据",
+  "restoreData": "恢复数据",
+  "restoreDataDone": "数据已恢复，请继续登录",
+  "restoreConnect": "连接并查找备份",
+  "restoreChooseCopy": "选择备份副本",
+  "webdavRestoreIntro": "请填写存放备份的 WebDAV 服务器信息",
+  "restoreInsecureTitle": "连接不安全",
+  "restoreInsecureMessage": "建议使用 HTTPS 连接，是否继续？",
+  "showPassword": "显示密码",
+  "hidePassword": "隐藏密码",
   "cookieLogin": "Cookie 登录",
   "permissionInstall": "安装应用",
   "permissionInstallKeywords": "install apk unknown sources 安装 未知来源 权限",
@@ -1052,7 +1112,7 @@
   },
   "firstRunWelcome": "欢迎使用蓝云",
   "firstRunMessage": "使用前请先阅读并同意《用户协议》与《隐私政策》。",
-  "agreeAndContinue": "同意并继续",
+  "agreeAndContinue": "下一步",
   "disagreeAndExit": "不同意并退出",
   "recentLimit": "最近使用条数",
   "recentLimitOff": "不记录",

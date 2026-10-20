@@ -1,4 +1,7 @@
+import 'dart:math' as math;
+
 import 'package:material_ui/material_ui.dart' hide Icons;
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../core/api/lanzou_client.dart';
@@ -7,6 +10,8 @@ import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
 import 'm3e.dart';
+import 'restore_page.dart';
+import 'system_ui.dart';
 import 'web_login_page.dart';
 
 /// 打开登录弹窗（MD3E 底部弹窗）；返回 true 表示登录成功。
@@ -44,10 +49,13 @@ class LoginSheet extends StatelessWidget {
 
 /// 登录方式入口：网页登录、Cookie 登录。弹窗与兜底页面共用。
 class LoginEntries extends StatelessWidget {
-  const LoginEntries({super.key, this.onSheet = false});
+  const LoginEntries({super.key, this.onSheet = false, this.onRestore});
 
   /// 在底部弹窗里（弹窗底色 surfaceContainerLow，列表组要高一档才不糊在一起）。
   final bool onSheet;
+
+  /// 未登录的首次启动页传入；添加账号弹窗不提供恢复入口。
+  final VoidCallback? onRestore;
 
   Future<void> _webLogin(BuildContext context) async {
     final ok = await Navigator.of(context)
@@ -66,7 +74,7 @@ class LoginEntries extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final children = <Widget>[
+    final loginChildren = <Widget>[
       ListTile(
         leading: const Icon(Icons.public),
         title: Text(l10n.webLogin),
@@ -80,11 +88,34 @@ class LoginEntries extends StatelessWidget {
         onTap: () => _cookieLogin(context),
       ),
     ];
-    // 弹窗里用弹窗预设（容器色高一档、左右 16dp 与标题对齐，作为弹窗内容的
-    // 最后一块用窗体底部边距）；页面里保持默认
-    return onSheet
-        ? SheetListGroup(margin: SheetListGroup.endMargin, children: children)
-        : SegmentedList(children: children);
+    if (onSheet) {
+      // 弹窗自身已有“登录”标题，列表组直接作为内容最后一块。
+      return SheetListGroup(
+        margin: SheetListGroup.endMargin,
+        children: loginChildren,
+      );
+    }
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        M3eSectionHeader(l10n.login),
+        SegmentedList(children: loginChildren),
+        if (onRestore != null) ...[
+          M3eSectionHeader(l10n.restoreGroupTitle),
+          SegmentedList(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.settings_backup_restore),
+                title: Text(l10n.restoreExistingBackup),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: onRestore,
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
   }
 }
 
@@ -216,76 +247,142 @@ class _CookieLoginDialogState extends State<_CookieLoginDialog> {
   }
 }
 
-/// 无账号时的兜底页面（已同意协议但未登录）：内容与登录弹窗一致。
+/// 无账号时的兜底页面（已同意协议但未登录）。
 class LoginPage extends StatelessWidget {
   const LoginPage({super.key, this.firstRun = false});
 
   final bool firstRun;
 
+  Future<void> _restore(BuildContext context) async {
+    final result = await Navigator.of(context).push<RestorePageResult>(
+      MaterialPageRoute(builder: (_) => const RestorePage()),
+    );
+    if (!context.mounted) return;
+    // 完整恢复会由 RootShell 自动切到主界面；仅恢复数据时仍停留在这里。
+    if (result == RestorePageResult.restored &&
+        context.read<AppController>().activeUid == null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(context.l10n.restoreDataDone)));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
-    final form = Column(
+    final safeInsets = systemUiSafeInsets(context);
+    Widget brand({required bool wide}) => Column(
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: wide
+          ? CrossAxisAlignment.start
+          : CrossAxisAlignment.center,
       children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          // 装饰图：应用名就在下面，读屏不用再念一遍图片
-          child: Image.asset(
-            'assets/images/logo/app_icon.png',
-            width: 72,
-            height: 72,
-            excludeFromSemantics: true,
-          ),
+        // 欢迎页已经展示过应用 Logo；这里用 MD3E 形状图标框直接表达
+        // “开始使用”的动作，不再重复品牌图。
+        const M3eShapedIcon(
+          icon: Icons.login,
+          size: 88,
+          iconSize: 44,
+          shape: Shapes.c4SidedCookie,
         ),
         const SizedBox(height: 20),
-        Text(l10n.login, style: theme.textTheme.headlineSmall),
-        const SizedBox(height: 24),
-        const LoginEntries(),
+        Text(
+          l10n.startUsingTitle,
+          textAlign: wide ? TextAlign.start : TextAlign.center,
+          style: context.m3eEmphasizedTheme.headlineMedium,
+        ),
+        const SizedBox(height: 12),
+        Text(
+          l10n.startUsingSubtitle,
+          textAlign: wide ? TextAlign.start : TextAlign.center,
+          style: theme.textTheme.bodyLarge?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+            height: 1.55,
+          ),
+        ),
       ],
     );
-    // 首次启动（欢迎页同意后）没有顶栏；其余场景与其它页面一致：
-    // 顶栏上滑随手指渐隐，底色不渐隐。
-    if (firstRun) {
-      return Scaffold(
-        body: SafeArea(
-          child: LayoutBuilder(
-            builder: (context, constraints) => SingleChildScrollView(
-              // 内容至少铺满一屏：滚动视图本身占满高度，iOS 回弹时
-              // 不会在一个缩水的高度里被上下截断
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Center(child: form),
+
+    final actions = LoginEntries(
+      onRestore: firstRun ? () => _restore(context) : null,
+    );
+
+    Widget responsiveBody({EdgeInsets systemInsets = EdgeInsets.zero}) =>
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final wide = constraints.maxWidth >= 840;
+            final pagePadding = constraints.maxWidth < 600 ? 16.0 : 24.0;
+            final contentHeight = math.max(
+              0.0,
+              constraints.maxHeight - systemInsets.vertical,
+            );
+            return SingleChildScrollView(
+              child: Padding(
+                padding: systemInsets,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: contentHeight),
+                  child: Padding(
+                    padding: EdgeInsets.all(pagePadding),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 1120),
+                        child: wide
+                            ? Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Expanded(flex: 5, child: brand(wide: true)),
+                                  const SizedBox(width: 48),
+                                  SizedBox(width: 480, child: actions),
+                                ],
+                              )
+                            : ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  maxWidth: 480,
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    brand(wide: false),
+                                    const SizedBox(height: 32),
+                                    actions,
+                                  ],
+                                ),
+                              ),
+                      ),
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
+            );
+          },
+        );
+
+    // 首次启动（欢迎页同意后）没有顶栏；其余场景与其它页面一致：
+    // 顶栏上滑随手指渐隐，底色不渐隐。
+    final Widget page;
+    if (firstRun) {
+      page = Scaffold(body: responsiveBody(systemInsets: safeInsets));
+    } else {
+      page = TopBarOverlayScaffold(
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          scrolledUnderElevation: 0,
+          title: Text(l10n.addAccount),
+          leading: const AppBarBackButton(),
         ),
+        // 内容自带 SafeArea 让开导航栏，末尾不用再补一段留白
+        bottomSafeInset: false,
+        slivers: [
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: SafeArea(top: false, child: responsiveBody()),
+          ),
+        ],
       );
     }
-    return TopBarOverlayScaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        scrolledUnderElevation: 0,
-        title: Text(l10n.addAccount),
-        leading: const AppBarBackButton(),
-      ),
-      // 内容自带 SafeArea 让开导航栏，末尾不用再补一段留白
-      bottomSafeInset: false,
-      slivers: [
-        SliverFillRemaining(
-          hasScrollBody: false,
-          child: SafeArea(
-            top: false,
-            child: Center(
-              child: Padding(padding: const EdgeInsets.all(24), child: form),
-            ),
-          ),
-        ),
-      ],
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: systemUiOverlayStyleFor(theme.brightness),
+      child: page,
     );
   }
 }

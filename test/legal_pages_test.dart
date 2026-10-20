@@ -39,7 +39,7 @@ void main() {
     expect(await Agreements.accepted(), isTrue);
   });
 
-  testWidgets('首次启动同意后弹出登录弹窗；关闭弹窗留在欢迎页', (tester) async {
+  testWidgets('首次启动勾选协议后进入下一步，未登录弹窗不再叠在欢迎页', (tester) async {
     var accepted = false;
     await pumpApp(tester, FirstRunTerms(onAccepted: () => accepted = true));
 
@@ -48,19 +48,21 @@ void main() {
     expect(find.text('隐私政策'), findsOneWidget);
     expect(find.text('不同意并退出'), findsOneWidget);
 
-    await tester.tap(find.text('同意并继续'));
+    expect(
+      tester
+          .widget<FilledButton>(find.widgetWithText(FilledButton, '下一步'))
+          .onPressed,
+      isNull,
+    );
+    await tester.tap(find.byType(Checkbox));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('下一步'));
     await tester.pumpAndSettle();
 
-    // 同意已写入，但登录弹窗还没完成，仍留在欢迎页
+    // 协议同意与登录解耦：这个回调负责让外壳切到下一步。
     expect(await Agreements.accepted(), isTrue);
-    expect(find.text('网页登录'), findsOneWidget);
-    expect(find.text('Cookie 登录'), findsOneWidget);
-    expect(accepted, isFalse);
-
-    Navigator.of(tester.element(find.byType(LoginSheet))).pop();
-    await tester.pumpAndSettle();
-    expect(find.text('欢迎使用蓝云'), findsOneWidget);
-    expect(accepted, isFalse);
+    expect(accepted, isTrue);
+    expect(find.byType(LoginSheet), findsNothing);
   });
 
   testWidgets('同意页可以打开用户协议与隐私政策弹窗', (tester) async {
@@ -84,6 +86,6 @@ void main() {
     await pumpApp(tester, const AgreementGate());
 
     expect(find.text('欢迎使用蓝云'), findsOneWidget);
-    expect(find.text('同意并继续'), findsOneWidget);
+    expect(find.text('下一步'), findsOneWidget);
   });
 }

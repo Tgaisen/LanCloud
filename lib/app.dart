@@ -251,14 +251,45 @@ class _AgreementGateState extends State<AgreementGate> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_checked) {
-      return const Scaffold(body: Center(child: M3eLoadingIndicator(size: 48)));
-    }
-    if (!_accepted) {
-      return FirstRunTerms(onAccepted: () => setState(() => _accepted = true));
-    }
-    // 自动检测到新版本时，在任意页面主动提醒一次（条款同意之后才挂上）
-    return const UpdatePromptHost(child: RootShell());
+    final phase = !_checked
+        ? 'loading'
+        : _accepted
+        ? 'start'
+        : 'terms';
+    final child = KeyedSubtree(
+      key: ValueKey(phase),
+      child: !_checked
+          ? const Scaffold(body: Center(child: M3eLoadingIndicator(size: 48)))
+          : !_accepted
+          ? FirstRunTerms(onAccepted: () => setState(() => _accepted = true))
+          // 自动检测到新版本时，在任意页面主动提醒一次（条款同意之后才挂上）
+          : const UpdatePromptHost(child: RootShell()),
+    );
+    return AnimatedSwitcher(
+      duration: reduceMotionOf(context)
+          ? Duration.zero
+          : const Duration(milliseconds: 300),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      layoutBuilder: (currentChild, previousChildren) => Stack(
+        fit: StackFit.expand,
+        children: [...previousChildren, ?currentChild],
+      ),
+      transitionBuilder: (child, animation) {
+        final incoming = child.key == ValueKey(phase);
+        const distance = 0.04;
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: incoming
+                ? const Offset(distance, 0)
+                : const Offset(-distance, 0),
+            end: Offset.zero,
+          ).animate(animation),
+          child: FadeTransition(opacity: animation, child: child),
+        );
+      },
+      child: child,
+    );
   }
 }
 

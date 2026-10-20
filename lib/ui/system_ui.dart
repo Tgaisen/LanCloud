@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 
@@ -19,5 +21,20 @@ SystemUiOverlayStyle systemUiOverlayStyleFor(Brightness brightness) {
         ? Brightness.light
         : Brightness.dark,
     systemNavigationBarContrastEnforced: false,
+  );
+}
+
+/// edge-to-edge 页面使用的系统安全区。
+///
+/// [MediaQuery.padding] 会被 Scaffold / 键盘等父级清除，而 `viewPadding`
+/// 保留窗口原始的刘海、状态栏与导航栏尺寸。取两者较大值，既不会重复留白，
+/// 也能避免在 Scaffold 内部拿到已经被清空的 padding 后让内容钻到状态栏下面。
+EdgeInsets systemUiSafeInsets(BuildContext context) {
+  final media = MediaQuery.of(context);
+  return EdgeInsets.fromLTRB(
+    math.max(media.padding.left, media.viewPadding.left),
+    math.max(media.padding.top, media.viewPadding.top),
+    math.max(media.padding.right, media.viewPadding.right),
+    math.max(media.padding.bottom, media.viewPadding.bottom),
   );
 }

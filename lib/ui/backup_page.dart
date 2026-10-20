@@ -17,93 +17,9 @@ import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
 import 'm3e.dart';
+import 'restore_dialogs.dart';
 
-/// 恢复前确认弹窗的结果：nil 表示取消。
-class RestoreDecision {
-  const RestoreDecision({required this.keepFavorites});
-
-  /// 勾选「保留原收藏夹内容」：增量合并并按 ref 去重。
-  final bool keepFavorites;
-}
-
-/// 恢复前确认弹窗：无图标的默认文本标题；备份里含收藏夹时多一个
-/// 「保留原收藏夹内容」复选（默认勾选）。
-Future<RestoreDecision?> showRestoreConfirmDialog(
-  BuildContext context, {
-  required String label,
-  required bool hasFavorites,
-}) {
-  final l10n = context.l10n;
-  var keepFavorites = true;
-  return showDialog<RestoreDecision>(
-    context: context,
-    builder: (dialogContext) => StatefulBuilder(
-      builder: (dialogContext, setDialogState) => AlertDialog(
-        title: Text(l10n.restoreConfirmTitle),
-        // M3 对话框内容边距 24dp；列表组外边距 0，组沿落在 24dp 上
-        contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text('${l10n.restoreConfirmMessage}\n\n$label'),
-            if (hasFavorites) ...[
-              const SizedBox(height: 16),
-              // 复选行放进列表组（与选择弹窗同一套样式）
-              DialogListGroup(
-                children: [
-                  M3ePickTile(
-                    label: l10n.restoreKeepFavorites,
-                    subtitle: l10n.restoreKeepFavoritesHint,
-                    selected: keepFavorites,
-                    onTap: () =>
-                        setDialogState(() => keepFavorites = !keepFavorites),
-                  ),
-                ],
-              ),
-            ],
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(null),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () =>
-                Navigator.of(dialogContext)
-                    .pop(RestoreDecision(keepFavorites: keepFavorites)),
-            child: Text(l10n.confirm),
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
-/// 「确认 → 恢复」流程：从文件恢复与从云端恢复共用。
-///
-/// 调用方负责忙碌状态与错误提示：这里**不能**再自己包一层 `_run`，
-/// 调用方已经在 `_run` 里了，重入会被忙碌保护直接吞掉——历史 bug 就是
-/// 因此"弹窗确认后什么都没发生"。
-Future<bool> confirmAndRestore(
-  BuildContext context,
-  BackupService service,
-  String content,
-  String label,
-) async {
-  final decision = await showRestoreConfirmDialog(
-    context,
-    label: label,
-    hasFavorites: BackupService.containsFavorites(content),
-  );
-  if (decision == null) return false;
-  await service.restoreFromString(
-    content,
-    mergeFavorites: decision.keepFavorites,
-  );
-  return true;
-}
+export 'restore_dialogs.dart';
 
 /// 备份与恢复（独立页）：本地 JSON 文件 + WebDAV 云端。
 class BackupPage extends StatefulWidget {
@@ -413,11 +329,11 @@ class _BackupContentState extends State<BackupContent> {
         ? utf8.decode(bytes)
         : await File(file.path!).readAsString();
     if (!mounted) return;
-    await _confirmAndRestore(content, file.name);
+    await _confirmAndRestore(content);
   });
 
-  Future<void> _confirmAndRestore(String content, String label) async {
-    final restored = await confirmAndRestore(context, _service, content, label);
+  Future<void> _confirmAndRestore(String content) async {
+    final restored = await confirmAndRestore(context, _service, content);
     if (restored && mounted) _snack(context.l10n.restoreDone);
   }
 
@@ -527,7 +443,7 @@ class _BackupContentState extends State<BackupContent> {
       showProgress: true,
     );
     if (content == null || !mounted) return;
-    await _confirmAndRestore(content, picked.name);
+    await _confirmAndRestore(content);
   }
 
   /// 恢复列表的副标题：时间用与更新页一致的分层相对格式，

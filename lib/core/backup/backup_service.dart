@@ -14,6 +14,54 @@ import 'webdav_store.dart';
 const int backupFormatVersion = 2;
 const String backupAppTag = 'lancloud';
 
+/// 备份中的一个账号条目。Cookie 只用于恢复流程的内存预检，不直接展示。
+class BackupAccountPreview {
+  const BackupAccountPreview({
+    required this.uid,
+    required this.nickname,
+    required this.cookie,
+  });
+
+  final String uid;
+  final String nickname;
+  final String cookie;
+
+  bool get hasCookie => cookie.trim().isNotEmpty;
+  String get displayName => nickname.trim().isEmpty ? uid : nickname;
+}
+
+/// 不写入任何存储的备份摘要，用于恢复前确认和登录态预检。
+class BackupPreview {
+  const BackupPreview({
+    required this.format,
+    required this.createdAt,
+    required this.sections,
+    required this.accounts,
+    required this.activeUid,
+    required this.hasFavorites,
+  });
+
+  final int format;
+  final DateTime? createdAt;
+  final Set<BackupSection> sections;
+  final List<BackupAccountPreview> accounts;
+  final String activeUid;
+  final bool hasFavorites;
+
+  List<BackupAccountPreview> get cookieAccounts =>
+      accounts.where((account) => account.hasCookie).toList(growable: false);
+
+  bool get hasCookies => cookieAccounts.isNotEmpty;
+
+  /// 首选备份中记录的当前账号；它不可用时退到第一个带 Cookie 的账号。
+  BackupAccountPreview? get suggestedAccount {
+    for (final account in cookieAccounts) {
+      if (account.uid == activeUid) return account;
+    }
+    return cookieAccounts.isEmpty ? null : cookieAccounts.first;
+  }
+}
+
 /// 备份与恢复：本地 JSON 文件 + WebDAV 云端。
 class BackupService {
   BackupService(this.app, {WebdavStore? webdav})
@@ -86,29 +134,21 @@ class BackupService {
   ///
   /// [mergeFavorites] 为真且备份含收藏夹时做增量合并（按 ref 去重），
   /// 原收藏保留；为假时整表覆盖。
+  ///
+  /// [restoreAccounts] 为假时只恢复设置、收藏和 WebDAV 配置等数据，
+  /// 不导入账号或 Cookie；用于备份登录态失效、离线或用户主动只恢复数据。
   Future<void> restoreFromString(
     String content, {
     bool mergeFavorites = false,
+    bool restoreAccounts = true,
   }) async {
-    Object? decoded;
-    try {
-      decoded = jsonDecode(content);
-    } catch (_) {
-      throw const BackupException('备份内容不是有效的 JSON');
-    }
-    if (decoded is! Map || decoded['app'] != backupAppTag) {
-      throw const BackupException('不是 LanCloud 的备份文件');
-    }
-    final format = (decoded['format'] as num?)?.toInt() ?? 1;
-    if (format > backupFormatVersion) {
-      throw const BackupException('备份来自更新版本的应用，请先升级再恢复');
-    }
+    final decoded = _decode(content);
     final settings = decoded['settings'];
     if (settings is Map) {
       await app.settings.applyJson(settings.cast<String, Object?>());
     }
     final accounts = decoded['accounts'];
-    if (accounts is List) {
+    if (restoreAccounts && accounts is List) {
       await app.accounts.importAccounts(
         accounts,
         activeSnapshot: '${decoded['activeUid'] ?? ''}',
@@ -143,15 +183,65 @@ class BackupService {
     await app.reloadFromStorage();
   }
 
+  /// 解析并校验备份，返回不落盘的摘要供恢复向导展示。
+  static BackupPreview inspect(String content) {
+    final decoded = _decode(content);
+    final rawSections = decoded['sections'];
+    final sections = rawSections is List
+        ? BackupSection.fromIds(rawSections.map((value) => '$value'))
+        : <BackupSection>{};
+    final rawAccounts = decoded['accounts'];
+    final accounts = <BackupAccountPreview>[];
+    if (rawAccounts is List) {
+      for (final raw in rawAccounts) {
+        if (raw is! Map) continue;
+        final uid = '${raw['uid'] ?? ''}'.trim();
+        if (uid.isEmpty) continue;
+        accounts.add(
+          BackupAccountPreview(
+            uid: uid,
+            nickname: '${raw['nickname'] ?? ''}',
+            cookie: '${raw['cookie'] ?? ''}',
+          ),
+        );
+      }
+    }
+    final createdAt = decoded['createdAt'];
+    final tables = decoded['tables'];
+    final favorites = tables is Map ? tables['favorites'] : null;
+    return BackupPreview(
+      format: (decoded['format'] as num?)?.toInt() ?? 1,
+      createdAt: createdAt is num
+          ? DateTime.fromMillisecondsSinceEpoch(createdAt.toInt())
+          : null,
+      sections: sections,
+      accounts: accounts,
+      activeUid: '${decoded['activeUid'] ?? ''}',
+      hasFavorites: favorites is List && favorites.isNotEmpty,
+    );
+  }
+
+  static Map<String, dynamic> _decode(String content) {
+    Object? decoded;
+    try {
+      decoded = jsonDecode(content);
+    } catch (_) {
+      throw const BackupException('备份内容不是有效的 JSON');
+    }
+    if (decoded is! Map || decoded['app'] != backupAppTag) {
+      throw const BackupException('不是 LanCloud 的备份文件');
+    }
+    final format = (decoded['format'] as num?)?.toInt() ?? 1;
+    if (format > backupFormatVersion) {
+      throw const BackupException('备份来自更新版本的应用，请先升级再恢复');
+    }
+    return decoded.cast<String, dynamic>();
+  }
+
   /// 备份内容里是否含收藏夹数据（恢复前决定要不要给「保留原收藏夹内容」）。
   static bool containsFavorites(String content) {
     try {
-      final decoded = jsonDecode(content);
-      if (decoded is! Map) return false;
-      final tables = decoded['tables'];
-      if (tables is! Map) return false;
-      final favorites = tables['favorites'];
-      return favorites is List && favorites.isNotEmpty;
+      return inspect(content).hasFavorites;
     } catch (_) {
       return false;
     }
@@ -212,24 +302,41 @@ class BackupService {
     await webdav.load();
     if (!webdav.configured) throw const BackupException('请先填写 WebDAV 地址');
     // 目录还没建出来时按「没有备份」处理，不把 404 当错误弹给用户
-    final entries = await _client().listOrEmpty();
-    final backups =
-        entries
-            .where(
-              (e) =>
-                  e.name == latestName ||
-                  (e.name.startsWith(filePrefix) && e.name.endsWith('.json')),
-            )
-            .toList()
-          ..sort((a, b) {
-            if (a.name == latestName) return -1;
-            if (b.name == latestName) return 1;
-            return (b.modified ?? DateTime.fromMillisecondsSinceEpoch(0))
-                .compareTo(
-                  a.modified ?? DateTime.fromMillisecondsSinceEpoch(0),
-                );
-          });
-    return backups;
+    return _backupEntries(await _client().listOrEmpty());
+  }
+
+  /// 使用恢复向导中临时填写的 WebDAV 连接读取备份列表，不保存连接配置。
+  Future<List<WebdavEntry>> remoteBackupsWithConnection({
+    required String url,
+    required String username,
+    required String password,
+    required String path,
+  }) async {
+    final client = _temporaryClient(
+      url: url,
+      username: username,
+      password: password,
+      path: path,
+    );
+    return _backupEntries(await client.listOrEmpty());
+  }
+
+  List<WebdavEntry> _backupEntries(List<WebdavEntry> entries) {
+    return entries
+        .where(
+          (entry) =>
+              entry.name == latestName ||
+              (entry.name.startsWith(filePrefix) &&
+                  entry.name.endsWith('.json')),
+        )
+        .toList()
+      ..sort((a, b) {
+        if (a.name == latestName) return -1;
+        if (b.name == latestName) return 1;
+        return (b.modified ?? DateTime.fromMillisecondsSinceEpoch(0)).compareTo(
+          a.modified ?? DateTime.fromMillisecondsSinceEpoch(0),
+        );
+      });
   }
 
   Future<void> restoreRemote(String name) async {
@@ -242,6 +349,22 @@ class BackupService {
     await webdav.load();
     if (!webdav.configured) throw const BackupException('请先填写 WebDAV 地址');
     return _client().download(name);
+  }
+
+  /// 使用临时 WebDAV 连接下载备份，不写入本地连接配置。
+  Future<String> webdavDownloadWithConnection(
+    String name, {
+    required String url,
+    required String username,
+    required String password,
+    required String path,
+  }) {
+    return _temporaryClient(
+      url: url,
+      username: username,
+      password: password,
+      path: path,
+    ).download(name);
   }
 
   /// 启动时自动备份：按每天/每周的频率最多跑一次，失败只记录不打扰。
@@ -269,6 +392,24 @@ class BackupService {
     username: webdav.username,
     password: webdav.password,
   );
+
+  WebdavClient _temporaryClient({
+    required String url,
+    required String username,
+    required String password,
+    required String path,
+  }) {
+    final temporary = WebdavStore()
+      ..url = url.trim()
+      ..username = username.trim()
+      ..password = password
+      ..path = WebdavStore.normalizePath(path);
+    return WebdavClient(
+      url: temporary.backupUrl,
+      username: temporary.username,
+      password: temporary.password,
+    );
+  }
 
   /// 云端只保留最新的 maxRemoteFiles 份带时间戳的备份。
   Future<void> _prune(WebdavClient client) async {

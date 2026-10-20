@@ -955,34 +955,94 @@ class EmptyHint extends StatelessWidget {
 /// 用于「文件已失效」「解析失败」这类跟内容贴在一起的提示——比 SnackBar
 /// 更容易和出错的那一项对上号，也比一行裸文字更清楚这是一条状态。
 class ErrorHintCard extends StatelessWidget {
-  const ErrorHintCard({super.key, required this.message});
+  const ErrorHintCard({
+    super.key,
+    required this.message,
+    this.margin = EdgeInsets.zero,
+  });
 
   final String message;
+  final EdgeInsetsGeometry margin;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: scheme.errorContainer,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.error_outline, size: 20, color: scheme.onErrorContainer),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              message,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: scheme.onErrorContainer,
+    return Padding(
+      padding: margin,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: scheme.errorContainer,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.error_outline, size: 20, color: scheme.onErrorContainer),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                message,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: scheme.onErrorContainer,
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 应用统一的非错误提示卡：主题色容器 + info 图标。
+///
+/// 参考 MD3E containment：提示信息放进浅色主题容器、文字和图标使用配对的
+/// on 色；本应用统一使用 secondaryContainer，避免普通提示退化成灰卡片。
+class InfoHintCard extends StatelessWidget {
+  const InfoHintCard({
+    super.key,
+    required this.text,
+    this.icon = Icons.info_outline,
+    this.trailing,
+    this.margin = EdgeInsets.zero,
+  });
+
+  final String text;
+  final IconData icon;
+  final Widget? trailing;
+  final EdgeInsetsGeometry margin;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Padding(
+      padding: margin,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: scheme.secondaryContainer,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 24, color: scheme.onSecondaryContainer),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                text,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: scheme.onSecondaryContainer,
+                  height: 1.5,
+                ),
+              ),
+            ),
+            if (trailing != null) ...[const SizedBox(width: 8), trailing!],
+          ],
+        ),
       ),
     );
   }
