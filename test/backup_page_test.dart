@@ -520,6 +520,46 @@ void main() {
     );
   });
 
+  testWidgets('备份频率弹窗：MD3E 单选列表组（radio 指示），选中即写入', (tester) async {
+    await fake.webdav.saveServer(
+      url: 'https://dav.example.com/blue/',
+      username: 'user',
+      password: 'pwd',
+      path: WebdavStore.defaultPath,
+    );
+    await fake.webdav.setAutoBackup(true);
+    await pumpPage(tester);
+
+    // 自动备份打开后才有「备份频率」这一行
+    await tester.tap(find.text('备份频率'));
+    await tester.pumpAndSettle();
+
+    // 新的单选样式：默认 MD3 弹窗 + 连接式列表组，不是旧的 SimpleDialog
+    expect(find.byType(SimpleDialog), findsNothing);
+    final dialog = find.byType(AlertDialog);
+    expect(dialog, findsOneWidget);
+    expect(
+      find.descendant(of: dialog, matching: find.byType(DialogListGroup)),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: dialog, matching: find.byType(M3ePickTile)),
+      findsNWidgets(2),
+    );
+    // 单选控件是 radio
+    expect(
+      find.descendant(of: dialog, matching: find.byType(Radio<bool>)),
+      findsNWidgets(2),
+    );
+
+    // 选「每周」：弹窗关闭并写入，行副标题跟着变
+    await tester.tap(find.text('每周'));
+    await tester.pumpAndSettle();
+    expect(fake.webdav.interval, 'weekly');
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.text('每周'), findsOneWidget);
+  });
+
   testWidgets('测试连接与上传备份调用服务', (tester) async {
     await fake.webdav.saveServer(
       url: 'https://dav.example.com/blue/',

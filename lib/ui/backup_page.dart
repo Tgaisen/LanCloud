@@ -665,28 +665,32 @@ class _BackupContentState extends State<BackupContent> {
     final current = _service.webdav.interval;
     final value = await showDialog<String>(
       context: context,
-      builder: (dialogContext) => SimpleDialog(
+      builder: (dialogContext) => AlertDialog(
         title: Text(l10n.webdavInterval),
-        children: [
-          for (final option in const ['daily', 'weekly'])
-            SimpleDialogOption(
-              onPressed: () => Navigator.of(dialogContext).pop(option),
-              child: Row(
+        // M3 对话框内容边距 24dp；列表组自带 0 外边距，组沿落在 24dp 上
+        contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // 与其它单选弹窗同一套样式：列表组 + radio 指示
+              DialogListGroup(
                 children: [
-                  Expanded(
-                    child: Text(
-                      option == 'weekly' ? l10n.webdavWeekly : l10n.webdavDaily,
-                    ),
-                  ),
-                  if (option == current)
-                    Icon(
-                      Icons.check,
-                      color: Theme.of(dialogContext).colorScheme.primary,
+                  for (final option in const ['daily', 'weekly'])
+                    M3ePickTile(
+                      label: option == 'weekly'
+                          ? l10n.webdavWeekly
+                          : l10n.webdavDaily,
+                      selected: option == current,
+                      singleSelect: true,
+                      onTap: () => Navigator.of(dialogContext).pop(option),
                     ),
                 ],
               ),
-            ),
-        ],
+            ],
+          ),
+        ),
       ),
     );
     if (value == null) return;
