@@ -48,8 +48,8 @@ Copyright (c) 2026 LanCloud
     expect(find.text('蓝云'), findsNothing);
     // 依赖包列表（按包名）
     expect(find.text('fake_package'), findsOneWidget);
-    // 与「关于」页同款 MD3E 连接式列表组
-    expect(find.byType(SegmentedList), findsOneWidget);
+    // 与「关于」页同款 MD3E 连接式列表组（许可包多，用懒构建的 sliver 版本）
+    expect(find.byType(SegmentedSliverList), findsOneWidget);
 
     // 打开包详情：同样是应用自己的顶栏，正文可选中复制
     await tester.tap(find.text('fake_package'));

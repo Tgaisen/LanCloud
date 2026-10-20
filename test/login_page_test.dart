@@ -65,4 +65,15 @@ void main() {
     expect(find.text('Cookie 登录'), findsOneWidget);
     expect(find.byType(TextField), findsNothing);
   });
+
+  testWidgets('兜底登录页铺满屏幕高度（回弹不截断）', (tester) async {
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(host(const LoginPage(firstRun: true)));
+    await tester.pumpAndSettle();
+
+    // 滚动视图占满整屏：iOS 回弹时内容不会被缩水的高度截断
+    expect(tester.getSize(find.byType(SingleChildScrollView)).height, 800);
+  });
 }

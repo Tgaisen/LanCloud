@@ -30,6 +30,16 @@ class _PackageLicenses {
 class _LicensesPageState extends State<LicensesPage> {
   final ScrollController _scroll = ScrollController();
 
+  List<_PackageLicenses>? _packages;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLicenses().then((packages) {
+      if (mounted) setState(() => _packages = packages);
+    });
+  }
+
   @override
   void dispose() {
     _scroll.dispose();
@@ -38,6 +48,7 @@ class _LicensesPageState extends State<LicensesPage> {
 
   @override
   Widget build(BuildContext context) {
+    final packages = _packages;
     return TopBarOverlayScaffold(
       controller: _scroll,
       appBar: AppBar(
@@ -47,14 +58,64 @@ class _LicensesPageState extends State<LicensesPage> {
         title: Text(context.l10n.aboutLicenses),
       ),
       slivers: [
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
-          // 整块布局：避免懒布局估算导致滚动条滑块抖动（见 SliverColumn）
-          sliver: const SliverToBoxAdapter(child: LicensesContent()),
-        ),
+        if (packages == null)
+          // 首次打开：指示器在内容区正中（与内嵌 WebView 的加载态一致）
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: Center(
+              child: M3eLoadingIndicator(semanticsLabel: context.l10n.loading),
+            ),
+          )
+        else
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
+            // 懒构建：许可包数量多，一次性构建全部条目会让进入时卡一下；
+            // 包条目的高度一致，SliverList 的滚动范围估算也是稳定的。
+            sliver: SegmentedSliverList(
+              itemCount: packages.length,
+              itemBuilder: (context, index) =>
+                  _packageTile(context, packages[index]),
+            ),
+          ),
       ],
     );
   }
+}
+
+/// 收集许可条目并缓存：再次进入许可页时直接复用，避免每次重新遍历
+/// [LicenseRegistry]（注册发生在启动阶段，页面打开后再注册的情况不存在）。
+Future<List<_PackageLicenses>>? _licensesCache;
+
+Future<List<_PackageLicenses>> _loadLicenses() =>
+    _licensesCache ??= _collectLicenses();
+
+/// 按包名聚合 [LicenseRegistry] 里的许可证，包名按字母序排列。
+Future<List<_PackageLicenses>> _collectLicenses() async {
+  final byPackage = <String, List<LicenseEntry>>{};
+  await for (final entry in LicenseRegistry.licenses) {
+    for (final name in entry.packages) {
+      byPackage.putIfAbsent(name, () => <LicenseEntry>[]).add(entry);
+    }
+  }
+  final names = byPackage.keys.toList()
+    ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+  return [for (final name in names) _PackageLicenses(name, byPackage[name]!)];
+}
+
+/// 列表里的一个依赖包条目：点开看该包的许可正文。
+Widget _packageTile(BuildContext context, _PackageLicenses package) {
+  final detailText = MaterialLocalizations.of(context)
+      .licensesPackageDetailText;
+  return ListTile(
+    title: Text(package.name),
+    subtitle: Text(detailText(package.entries.length)),
+    trailing: const Icon(Icons.chevron_right),
+    onTap: () => Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => _PackageLicensePage(package: package),
+      ),
+    ),
+  );
 }
 
 /// 开源许可正文：依赖包列表（按包名聚合），点条目看该包的许可正文。
@@ -67,20 +128,7 @@ class LicensesContent extends StatefulWidget {
 }
 
 class _LicensesContentState extends State<LicensesContent> {
-  late final Future<List<_PackageLicenses>> _packages = _collect();
-
-  /// 按包名聚合 [LicenseRegistry] 里的许可证，包名按字母序排列。
-  static Future<List<_PackageLicenses>> _collect() async {
-    final byPackage = <String, List<LicenseEntry>>{};
-    await for (final entry in LicenseRegistry.licenses) {
-      for (final name in entry.packages) {
-        byPackage.putIfAbsent(name, () => <LicenseEntry>[]).add(entry);
-      }
-    }
-    final names = byPackage.keys.toList()
-      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
-    return [for (final name in names) _PackageLicenses(name, byPackage[name]!)];
-  }
+  late final Future<List<_PackageLicenses>> _packages = _loadLicenses();
 
   @override
   Widget build(BuildContext context) {
@@ -94,23 +142,11 @@ class _LicensesContentState extends State<LicensesContent> {
             child: Center(child: M3eLoadingIndicator()),
           );
         }
-        final detailText = MaterialLocalizations.of(context)
-            .licensesPackageDetailText;
         // 与「关于」「传输」等页面同款 MD3E 连接式列表组：
         // 外层 12 + 分组自身 4 = 16dp 视觉内边距，条目之间是空白而非分割线
         return SegmentedList(
           children: [
-            for (final package in packages)
-              ListTile(
-                title: Text(package.name),
-                subtitle: Text(detailText(package.entries.length)),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => _PackageLicensePage(package: package),
-                  ),
-                ),
-              ),
+            for (final package in packages) _packageTile(context, package),
           ],
         );
       },

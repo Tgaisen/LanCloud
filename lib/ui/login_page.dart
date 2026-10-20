@@ -253,10 +253,17 @@ class LoginPage extends StatelessWidget {
     if (firstRun) {
       return Scaffold(
         body: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: form,
+          child: LayoutBuilder(
+            builder: (context, constraints) => SingleChildScrollView(
+              // 内容至少铺满一屏：滚动视图本身占满高度，iOS 回弹时
+              // 不会在一个缩水的高度里被上下截断
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Center(child: form),
+                ),
+              ),
             ),
           ),
         ),

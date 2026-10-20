@@ -164,7 +164,7 @@ Future<void> showBuildInfoDialog(BuildContext context) {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _BuildInfoRow(label: l10n.buildTime, value: buildTime),
+          _BuildInfoRow(label: l10n.buildTime, value: buildTimeForDisplay()),
           const SizedBox(height: 12),
           _BuildInfoRow(label: l10n.commitHash, value: gitCommit),
         ],
@@ -257,7 +257,7 @@ String _relatedInfoText(DeviceInfo info) {
     // Android 上系统里的实际安装码（拆分包按 ABI 加过偏移），
     // 反馈安装 / 升级问题时以这个为准
     if (info.versionCode != null) 'Version code: ${info.versionCode}',
-    'Build time: ${value(buildTime)}',
+    'Build time: ${value(buildTimeForDisplay())}',
     'Commit: ${value(gitCommit)}',
     'Device: ${value(info.device)}',
     'System: ${value(info.system)}',

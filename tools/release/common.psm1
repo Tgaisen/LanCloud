@@ -356,7 +356,12 @@ function Add-CISummary {
 }
 
 function Format-BuildTime {
-  return (Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
+  # 统一注入带 Z 的 UTC 时间（GitHub Actions runner 是 UTC）；App 显示时
+  # 转成本机时区。若这里直接输出 runner 本地时间，CI 包会少 8 小时。
+  return [DateTime]::UtcNow.ToString(
+    "yyyy-MM-dd'T'HH:mm:ss'Z'",
+    [System.Globalization.CultureInfo]::InvariantCulture
+  )
 }
 
 function Get-FileSha256 {
