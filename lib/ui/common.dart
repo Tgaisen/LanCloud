@@ -4066,6 +4066,141 @@ Future<PasswordEditResult?> showPasswordDialog(
   );
 }
 
+/// 批量访问密码编辑结果：enabled 为是否启用，filePwd / folderPwd 分别对应
+/// 文件与文件夹的提取码（关闭时都为空）。
+typedef BatchPasswordEditResult = ({
+  bool enabled,
+  String filePwd,
+  String folderPwd,
+});
+
+/// 批量访问密码弹窗（同时选中文件和文件夹时使用）。
+///
+/// 蓝奏云文件提取码只认 2-6 位、文件夹可以到 12 位：同一批里两种条目都有时
+/// 一个输入框没法同时满足，这里给文件夹、文件各一个输入框，浮起的标签分别
+/// 写明用途（文件夹密码 / 文件密码）。关闭「启用访问密码」后确认表示清除。
+Future<BatchPasswordEditResult?> showBatchPasswordDialog(
+  BuildContext context, {
+  bool freeTier = false,
+}) {
+  final folderController = TextEditingController();
+  final fileController = TextEditingController();
+  var isEnabled = true;
+  String? folderError;
+  String? fileError;
+  // 与单个密码弹窗一致：不在关闭时立即 dispose 控制器，退场动画期间还会重建。
+  return showDialog<BatchPasswordEditResult>(
+    context: context,
+    builder: (dialogContext) => StatefulBuilder(
+      builder: (context, setDialogState) {
+        final l10n = context.l10n;
+        return formDialogPan(
+          context,
+          child: AlertDialog(
+            scrollable: true,
+            title: Text(l10n.accessPassword),
+            // M3 对话框内容边距 24dp；列表组外边距 0，组沿落在 24dp 上
+            contentPadding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
+            content: SizedBox(
+              width: dialogFormWidth(context),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // 开关放进列表组（与单选 / 选择弹窗同一套样式）
+                  DialogListGroup(
+                    children: [
+                      M3eSwitchTile(
+                        label: l10n.enablePassword,
+                        subtitle: freeTier ? l10n.disablePasswordHint : null,
+                        value: isEnabled,
+                        onChanged: (value) => setDialogState(() {
+                          isEnabled = value;
+                          folderError = null;
+                          fileError = null;
+                        }),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: folderController,
+                    enabled: isEnabled,
+                    maxLength: 12,
+                    autofocus: isEnabled,
+                    decoration: errorState(
+                      context,
+                      InputDecoration(
+                        border: const OutlineInputBorder(),
+                        labelText: l10n.folderPassword,
+                        hintText: l10n.pwdHint12,
+                      ),
+                      folderError,
+                    ),
+                    onChanged: (_) {
+                      if (folderError != null) {
+                        setDialogState(() => folderError = null);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: fileController,
+                    enabled: isEnabled,
+                    maxLength: 6,
+                    decoration: errorState(
+                      context,
+                      InputDecoration(
+                        border: const OutlineInputBorder(),
+                        labelText: l10n.filePassword,
+                        hintText: l10n.pwdHint,
+                      ),
+                      fileError,
+                    ),
+                    onChanged: (_) {
+                      if (fileError != null) {
+                        setDialogState(() => fileError = null);
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: Text(l10n.cancel),
+              ),
+              FilledButton(
+                onPressed: () {
+                  final folderPwd = folderController.text.trim();
+                  final filePwd = fileController.text.trim();
+                  if (isEnabled &&
+                      (folderPwd.length < 2 || filePwd.length < 2)) {
+                    setDialogState(() {
+                      folderError = folderPwd.length < 2
+                          ? l10n.pwdTooShort
+                          : null;
+                      fileError = filePwd.length < 2 ? l10n.pwdTooShort : null;
+                    });
+                    return;
+                  }
+                  Navigator.of(dialogContext).pop((
+                    enabled: isEnabled,
+                    filePwd: isEnabled ? filePwd : '',
+                    folderPwd: isEnabled ? folderPwd : '',
+                  ));
+                },
+                child: Text(l10n.confirm),
+              ),
+            ],
+          ),
+        );
+      },
+    ),
+  );
+}
+
 /// 表单弹窗（带输入框）内容的固定宽度。
 ///
 /// `AlertDialog` 内部用 `IntrinsicWidth` 量内容宽度，而 `TextField` 的固有宽度

@@ -1964,6 +1964,18 @@ abstract class AppLocalizations {
   /// **'可设置或关闭访问密码'**
   String get accessPasswordSubtitle;
 
+  /// No description provided for @folderPassword.
+  ///
+  /// In zh, this message translates to:
+  /// **'文件夹密码'**
+  String get folderPassword;
+
+  /// No description provided for @filePassword.
+  ///
+  /// In zh, this message translates to:
+  /// **'文件密码'**
+  String get filePassword;
+
   /// No description provided for @enablePassword.
   ///
   /// In zh, this message translates to:

@@ -335,6 +335,8 @@
   "folderInfoSubtitle": "Change name and description",
   "accessPassword": "Access password",
   "accessPasswordSubtitle": "Set or disable the access password",
+  "folderPassword": "Folder password",
+  "filePassword": "File password",
   "enablePassword": "Enable access password",
   "folderInfoSaved": "Folder info updated",
   "itemInfoSaved": "Info updated",

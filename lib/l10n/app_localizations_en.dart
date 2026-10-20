@@ -1049,6 +1049,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get accessPasswordSubtitle => 'Set or disable the access password';
 
   @override
+  String get folderPassword => 'Folder password';
+
+  @override
+  String get filePassword => 'File password';
+
+  @override
   String get enablePassword => 'Enable access password';
 
   @override

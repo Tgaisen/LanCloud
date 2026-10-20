@@ -1648,17 +1648,30 @@ class _DrivePageState extends State<DrivePage>
     final app = context.read<AppController>();
     final fileIds = _selectedFiles.toList();
     final folderIds = _selectedFolders.toList();
-    // 批量不逐项取密码，默认按“启用”打开（留空即关闭）；
-    // 文件提取码限 2-6 位，选中项全是文件夹时才放开到 12 位
-    final result = await showPasswordDialog(
-      context,
-      enabled: true,
-      pwd: '',
-      maxLength: fileIds.isEmpty ? 12 : 6,
-      freeTier: app.activeAccount?.isFreeTier ?? false,
-    );
-    if (result == null || !mounted) return;
-    final pwd = result.enabled ? result.pwd : '';
+    final freeTier = app.activeAccount?.isFreeTier ?? false;
+    // 批量不逐项取密码，默认按“启用”打开（留空即关闭）。
+    // 文件提取码限 2-6 位、文件夹可到 12 位：只选一种时一个输入框就够；
+    // 两种都选时分成两个输入框（文件夹一个、文件一个），各按自己的规则填写。
+    String filePwd;
+    String folderPwd;
+    if (fileIds.isNotEmpty && folderIds.isNotEmpty) {
+      final result = await showBatchPasswordDialog(context, freeTier: freeTier);
+      if (result == null || !mounted) return;
+      filePwd = result.enabled ? result.filePwd : '';
+      folderPwd = result.enabled ? result.folderPwd : '';
+    } else {
+      final result = await showPasswordDialog(
+        context,
+        enabled: true,
+        pwd: '',
+        maxLength: folderIds.isNotEmpty ? 12 : 6,
+        freeTier: freeTier,
+      );
+      if (result == null || !mounted) return;
+      final pwd = result.enabled ? result.pwd : '';
+      filePwd = pwd;
+      folderPwd = pwd;
+    }
     final client = app.client;
     if (client == null) return;
     final fileNames = {for (final f in _files) f.id: f.name};
@@ -1673,7 +1686,7 @@ class _DrivePageState extends State<DrivePage>
         for (final id in fileIds) {
           report(++done, fileNames[id] ?? '');
           try {
-            await client.setPasswd(id, pwd);
+            await client.setPasswd(id, filePwd);
           } catch (_) {
             failed += 1;
           }
@@ -1681,7 +1694,7 @@ class _DrivePageState extends State<DrivePage>
         for (final id in folderIds) {
           report(++done, folderNames[id] ?? '');
           try {
-            await client.setFolderPasswd(id, pwd);
+            await client.setFolderPasswd(id, folderPwd);
           } catch (_) {
             failed += 1;
           }
@@ -1702,7 +1715,7 @@ class _DrivePageState extends State<DrivePage>
                   time: f.time,
                   size: f.size,
                   downs: f.downs,
-                  hasPwd: pwd.isNotEmpty,
+                  hasPwd: filePwd.isNotEmpty,
                   hasDes: f.hasDes,
                 )
               : f,
@@ -1714,7 +1727,7 @@ class _DrivePageState extends State<DrivePage>
                   id: fo.id,
                   name: fo.name,
                   desc: fo.desc,
-                  hasPwd: pwd.isNotEmpty,
+                  hasPwd: folderPwd.isNotEmpty,
                 )
               : fo,
       ];
@@ -1725,7 +1738,7 @@ class _DrivePageState extends State<DrivePage>
       SnackBar(
         content: Text(
           failed == 0
-              ? (pwd.isEmpty
+              ? (filePwd.isEmpty && folderPwd.isEmpty
                     ? context.l10n.passwordClearedCount(count)
                     : context.l10n.passwordSetCount(count))
               : context.l10n.passwordSetPartial(count - failed, failed),

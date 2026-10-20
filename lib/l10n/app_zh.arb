@@ -467,6 +467,8 @@
   "folderInfoSubtitle": "修改名称与简介",
   "accessPassword": "访问密码",
   "accessPasswordSubtitle": "可设置或关闭访问密码",
+  "folderPassword": "文件夹密码",
+  "filePassword": "文件密码",
   "enablePassword": "启用访问密码",
   "folderInfoSaved": "文件夹信息已更新",
   "itemInfoSaved": "信息已更新",

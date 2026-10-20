@@ -1005,6 +1005,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get accessPasswordSubtitle => '可设置或关闭访问密码';
 
   @override
+  String get folderPassword => '文件夹密码';
+
+  @override
+  String get filePassword => '文件密码';
+
+  @override
   String get enablePassword => '启用访问密码';
 
   @override
