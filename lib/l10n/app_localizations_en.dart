@@ -19,7 +19,116 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addedToQueue => 'Added to the download queue';
 
   @override
-  String get shareNeedsPassword => 'This file requires a password';
+  String get shareNeedsPassword => 'This share requires a password';
+
+  @override
+  String get wrongPassword => 'Incorrect password';
+
+  @override
+  String get lanzouInvalidResponse => 'Invalid response from the server';
+
+  @override
+  String get lanzouCreateFolderFailed => 'Failed to create folder';
+
+  @override
+  String get lanzouDeleteFailed => 'Delete failed';
+
+  @override
+  String get lanzouMoveFileFailed => 'Failed to move file';
+
+  @override
+  String get lanzouMoveToCurrentFolder => 'Cannot move to the current folder';
+
+  @override
+  String get lanzouMoveFolderWithSubfoldersUnsupported =>
+      'Moving folders that contain subfolders is not supported yet';
+
+  @override
+  String get lanzouReadFolderInfoFailed => 'Unable to read folder information';
+
+  @override
+  String get lanzouSameTargetFolder =>
+      'The source and destination are the same';
+
+  @override
+  String get lanzouUpdateDescriptionFailed =>
+      'Failed to update the description';
+
+  @override
+  String get lanzouFileNameRequired => 'File name cannot be empty';
+
+  @override
+  String get lanzouRenameRequiresMembership =>
+      'Rename failed: This feature requires a membership';
+
+  @override
+  String get lanzouUpdateFilePasswordFailed =>
+      'Failed to update the access password';
+
+  @override
+  String get lanzouFolderNameRequired => 'Folder name cannot be empty';
+
+  @override
+  String get lanzouUpdateFolderInfoFailed =>
+      'Failed to save folder information';
+
+  @override
+  String get lanzouUpdateFolderPasswordFailed =>
+      'Failed to update the folder access password';
+
+  @override
+  String get lanzouUploadContentMissing => 'No file content to upload';
+
+  @override
+  String lanzouUploadFailed(String detail) {
+    return 'Upload failed: $detail';
+  }
+
+  @override
+  String get lanzouUnknownError => 'Unknown error';
+
+  @override
+  String get lanzouFileShareInfoFailed =>
+      'Unable to get share information for this file';
+
+  @override
+  String get lanzouFolderShareInfoFailed =>
+      'Failed to get folder share information';
+
+  @override
+  String lanzouResolveShareFailed(String detail) {
+    return 'Failed to resolve share: $detail';
+  }
+
+  @override
+  String get lanzouFileShareUnavailable =>
+      'The file does not exist or sharing has ended';
+
+  @override
+  String get lanzouPasswordParameterParseFailed =>
+      'Failed to parse the password parameters';
+
+  @override
+  String get lanzouDownloadParameterParseFailed =>
+      'Failed to parse the download parameters';
+
+  @override
+  String lanzouDownloadUrlFailed(String detail) {
+    return 'Failed to get the download link: $detail';
+  }
+
+  @override
+  String get lanzouDirectLinkMissing => 'Direct download link not found';
+
+  @override
+  String get lanzouFolderShareUnavailable =>
+      'The folder does not exist or sharing has ended';
+
+  @override
+  String get lanzouSharePageParseFailed => 'Failed to parse the share page';
+
+  @override
+  String get lanzouShareFileListFailed => 'Failed to load the shared file list';
 
   @override
   String resolveFailed(String error) {

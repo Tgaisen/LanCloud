@@ -425,8 +425,9 @@ class _HomePageState extends State<HomePage>
                 );
               } catch (e) {
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context)
-                      .showSnackBar(SnackBar(content: Text('$e')));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(context.l10n.lanzouError(e))),
+                  );
                 }
               }
             },
@@ -449,8 +450,9 @@ class _HomePageState extends State<HomePage>
                 );
               } catch (e) {
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context)
-                      .showSnackBar(SnackBar(content: Text('$e')));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(context.l10n.lanzouError(e))),
+                  );
                 }
               }
             },

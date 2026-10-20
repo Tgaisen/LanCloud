@@ -88,14 +88,14 @@ class _SharePasswordDialogState<T> extends State<_SharePasswordDialog<T>> {
       // 「提取码错误」标在输入框上，与「打开链接」弹窗一致
       if (mounted) {
         setState(() {
-          _error = e.message;
+          _error = context.l10n.lanzouError(e);
           _loading = false;
         });
       }
     } on LanzouException catch (e) {
       if (mounted) {
         setState(() {
-          _error = e.message;
+          _error = context.l10n.lanzouError(e);
           _loading = false;
         });
       }

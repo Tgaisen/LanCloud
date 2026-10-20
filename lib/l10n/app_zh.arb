@@ -3,7 +3,52 @@
   "copiedToClipboard": "已复制到剪贴板",
   "resolvingDownload": "正在解析下载地址…",
   "addedToQueue": "已加入下载队列",
-  "shareNeedsPassword": "该文件需要提取码",
+  "shareNeedsPassword": "该分享需要提取码",
+  "wrongPassword": "提取码错误",
+  "lanzouInvalidResponse": "接口返回格式异常",
+  "lanzouCreateFolderFailed": "新建文件夹失败",
+  "lanzouDeleteFailed": "删除失败",
+  "lanzouMoveFileFailed": "移动文件失败",
+  "lanzouMoveToCurrentFolder": "不能移动到当前目录",
+  "lanzouMoveFolderWithSubfoldersUnsupported": "暂不支持移动含子文件夹的目录",
+  "lanzouReadFolderInfoFailed": "无法读取文件夹信息",
+  "lanzouSameTargetFolder": "目标位置与当前位置相同",
+  "lanzouUpdateDescriptionFailed": "修改简介失败",
+  "lanzouFileNameRequired": "文件名不能为空",
+  "lanzouRenameRequiresMembership": "重命名失败：此功能需要开通会员",
+  "lanzouUpdateFilePasswordFailed": "设置访问密码失败",
+  "lanzouFolderNameRequired": "文件夹名称不能为空",
+  "lanzouUpdateFolderInfoFailed": "保存文件夹信息失败",
+  "lanzouUpdateFolderPasswordFailed": "设置文件夹访问密码失败",
+  "lanzouUploadContentMissing": "没有可上传的文件内容",
+  "lanzouUploadFailed": "上传失败：{detail}",
+  "@lanzouUploadFailed": {
+    "placeholders": {
+      "detail": {"type": "String"}
+    }
+  },
+  "lanzouUnknownError": "未知错误",
+  "lanzouFileShareInfoFailed": "无法获取该文件的分享信息",
+  "lanzouFolderShareInfoFailed": "获取文件夹分享信息失败",
+  "lanzouResolveShareFailed": "解析分享失败：{detail}",
+  "@lanzouResolveShareFailed": {
+    "placeholders": {
+      "detail": {"type": "String"}
+    }
+  },
+  "lanzouFileShareUnavailable": "文件不存在或已取消分享",
+  "lanzouPasswordParameterParseFailed": "提取码参数解析失败",
+  "lanzouDownloadParameterParseFailed": "下载参数解析失败",
+  "lanzouDownloadUrlFailed": "获取下载地址失败：{detail}",
+  "@lanzouDownloadUrlFailed": {
+    "placeholders": {
+      "detail": {"type": "String"}
+    }
+  },
+  "lanzouDirectLinkMissing": "未获取到直链",
+  "lanzouFolderShareUnavailable": "文件夹不存在或已取消分享",
+  "lanzouSharePageParseFailed": "分享页结构解析失败",
+  "lanzouShareFileListFailed": "获取分享文件列表失败",
   "resolveFailed": "解析失败：{error}",
   "@resolveFailed": {
     "placeholders": {

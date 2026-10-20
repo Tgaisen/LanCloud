@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
+import '../../l10n/l10n.dart';
 import '../api/lanzou_client.dart';
 import '../api/models.dart';
 import '../app_controller.dart';
@@ -491,7 +492,7 @@ class TransferManager extends ChangeNotifier {
       }
     } on LanzouException catch (e) {
       task.status = TransferStatus.failed;
-      task.error = e.message;
+      task.error = NotificationService.i18n?.lanzouError(e) ?? e.message;
     } catch (e) {
       task.status = TransferStatus.failed;
       task.error = '$e';

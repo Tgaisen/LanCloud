@@ -10,22 +10,61 @@ const kUserAgent =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
     '(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
+enum LanzouErrorCode {
+  passwordRequired,
+  wrongPassword,
+  invalidResponse,
+  createFolderFailed,
+  deleteFailed,
+  moveFileFailed,
+  moveToCurrentFolder,
+  moveFolderWithSubfoldersUnsupported,
+  readFolderInfoFailed,
+  sameTargetFolder,
+  updateDescriptionFailed,
+  fileNameRequired,
+  renameRequiresMembership,
+  updateFilePasswordFailed,
+  folderNameRequired,
+  updateFolderInfoFailed,
+  updateFolderPasswordFailed,
+  uploadContentMissing,
+  uploadFailed,
+  fileShareInfoFailed,
+  folderShareInfoFailed,
+  resolveShareFailed,
+  fileShareUnavailable,
+  passwordParameterParseFailed,
+  downloadParameterParseFailed,
+  downloadUrlFailed,
+  directLinkMissing,
+  folderShareUnavailable,
+  sharePageParseFailed,
+  shareFileListFailed,
+}
+
 class LanzouException implements Exception {
-  const LanzouException(this.message);
+  const LanzouException(this.message, {this.code, this.detail});
 
   final String message;
+  final LanzouErrorCode? code;
+
+  /// 服务端原文或底层异常；有 [code] 时由界面层拼进本地化文案。
+  final String? detail;
 
   @override
   String toString() => message;
 }
 
 class NeedPasswordException extends LanzouException {
-  const NeedPasswordException() : super('该分享需要提取码');
+  const NeedPasswordException()
+    : super('该分享需要提取码', code: LanzouErrorCode.passwordRequired);
 }
 
 /// 提取码错误：分享需要密码，但填的密码不对。
 class WrongPasswordException extends LanzouException {
-  const WrongPasswordException() : super('提取码错误');
+  const WrongPasswordException()
+    : super('提取码错误', code: LanzouErrorCode.wrongPassword);
 }
 
 /// Cookie 缺少 ylogin 字段。
@@ -169,7 +208,10 @@ class LanzouClient {
     final text = '$data'.trim();
     final json = jsonDecode(text);
     if (json is Map) return json.cast<String, dynamic>();
-    throw const LanzouException('接口返回格式异常');
+    throw const LanzouException(
+      '接口返回格式异常',
+      code: LanzouErrorCode.invalidResponse,
+    );
   }
 
   String? _match(String source, List<String> patterns) {
@@ -292,7 +334,10 @@ class LanzouClient {
       options: _options(),
     );
     if ('${_asMap(resp.data)['zt']}' != '1') {
-      throw const LanzouException('新建文件夹失败');
+      throw const LanzouException(
+        '新建文件夹失败',
+        code: LanzouErrorCode.createFolderFailed,
+      );
     }
     final beforeIds = existing.folders.map((f) => f.id).toSet();
     final after = await listFolders(parentId);
@@ -300,7 +345,10 @@ class LanzouClient {
         .where((f) => !beforeIds.contains(f.id))
         .toList();
     if (added.isEmpty) {
-      throw const LanzouException('新建文件夹失败');
+      throw const LanzouException(
+        '新建文件夹失败',
+        code: LanzouErrorCode.createFolderFailed,
+      );
     }
     return added.first.id;
   }
@@ -312,7 +360,7 @@ class LanzouClient {
       options: _options(),
     );
     if ('${_asMap(resp.data)['zt']}' != '1') {
-      throw const LanzouException('删除失败');
+      throw const LanzouException('删除失败', code: LanzouErrorCode.deleteFailed);
     }
   }
 
@@ -324,7 +372,10 @@ class LanzouClient {
       options: _options(),
     );
     if ('${_asMap(resp.data)['zt']}' != '1') {
-      throw const LanzouException('移动文件失败');
+      throw const LanzouException(
+        '移动文件失败',
+        code: LanzouErrorCode.moveFileFailed,
+      );
     }
   }
 
@@ -334,19 +385,31 @@ class LanzouClient {
   /// 仅支持不含子文件夹的目录。
   Future<void> moveFolder(String folderId, String parentId) async {
     if (folderId == parentId) {
-      throw const LanzouException('不能移动到当前目录');
+      throw const LanzouException(
+        '不能移动到当前目录',
+        code: LanzouErrorCode.moveToCurrentFolder,
+      );
     }
     final subs = await listFolders(folderId);
     if (subs.folders.isNotEmpty) {
-      throw const LanzouException('暂不支持移动含子文件夹的目录');
+      throw const LanzouException(
+        '暂不支持移动含子文件夹的目录',
+        code: LanzouErrorCode.moveFolderWithSubfoldersUnsupported,
+      );
     }
     final info = await shareInfoOfFolder(folderId);
     if (info.name.isEmpty) {
-      throw const LanzouException('无法读取文件夹信息');
+      throw const LanzouException(
+        '无法读取文件夹信息',
+        code: LanzouErrorCode.readFolderInfoFailed,
+      );
     }
     final newId = await mkdir(parentId, info.name, desc: info.desc);
     if (newId == folderId) {
-      throw const LanzouException('目标位置与当前位置相同');
+      throw const LanzouException(
+        '目标位置与当前位置相同',
+        code: LanzouErrorCode.sameTargetFolder,
+      );
     }
     if (info.pwd.isNotEmpty) {
       await setFolderPasswd(newId, info.pwd);
@@ -428,7 +491,10 @@ class LanzouClient {
       options: _options(),
     );
     if ('${_asMap(resp.data)['zt']}' != '1') {
-      throw const LanzouException('修改简介失败');
+      throw const LanzouException(
+        '修改简介失败',
+        code: LanzouErrorCode.updateDescriptionFailed,
+      );
     }
   }
 
@@ -439,7 +505,10 @@ class LanzouClient {
   Future<void> setFileName(String fileId, String name) async {
     final trimmed = name.trim();
     if (trimmed.isEmpty) {
-      throw const LanzouException('文件名不能为空');
+      throw const LanzouException(
+        '文件名不能为空',
+        code: LanzouErrorCode.fileNameRequired,
+      );
     }
     final resp = await dio.post<String>(
       '$apiBase/doupload.php',
@@ -452,7 +521,10 @@ class LanzouClient {
       options: _options(),
     );
     if ('${_asMap(resp.data)['zt']}' != '1') {
-      throw const LanzouException('重命名失败：免费账号不支持重命名文件（需要会员）');
+      throw const LanzouException(
+        '重命名失败：此功能需要开通会员',
+        code: LanzouErrorCode.renameRequiresMembership,
+      );
     }
   }
 
@@ -469,7 +541,10 @@ class LanzouClient {
       options: _options(),
     );
     if ('${_asMap(resp.data)['zt']}' != '1') {
-      throw const LanzouException('设置访问密码失败');
+      throw const LanzouException(
+        '设置访问密码失败',
+        code: LanzouErrorCode.updateFilePasswordFailed,
+      );
     }
   }
 
@@ -492,7 +567,10 @@ class LanzouClient {
     required String desc,
   }) async {
     if (name.trim().isEmpty) {
-      throw const LanzouException('文件夹名称不能为空');
+      throw const LanzouException(
+        '文件夹名称不能为空',
+        code: LanzouErrorCode.folderNameRequired,
+      );
     }
     final resp = await dio.post<String>(
       '$apiBase/doupload.php',
@@ -505,7 +583,10 @@ class LanzouClient {
       options: _options(),
     );
     if ('${_asMap(resp.data)['zt']}' != '1') {
-      throw const LanzouException('保存文件夹信息失败');
+      throw const LanzouException(
+        '保存文件夹信息失败',
+        code: LanzouErrorCode.updateFolderInfoFailed,
+      );
     }
   }
 
@@ -522,7 +603,10 @@ class LanzouClient {
       options: _options(),
     );
     if ('${_asMap(resp.data)['zt']}' != '1') {
-      throw const LanzouException('设置文件夹访问密码失败');
+      throw const LanzouException(
+        '设置文件夹访问密码失败',
+        code: LanzouErrorCode.updateFolderPasswordFailed,
+      );
     }
   }
 
@@ -544,7 +628,10 @@ class LanzouClient {
     } else if (streamFactory != null) {
       part = MultipartFile.fromStream(streamFactory, length, filename: name);
     } else {
-      throw const LanzouException('没有可上传的文件内容');
+      throw const LanzouException(
+        '没有可上传的文件内容',
+        code: LanzouErrorCode.uploadContentMissing,
+      );
     }
     final form = FormData.fromMap({
       'task': '1',
@@ -573,7 +660,11 @@ class LanzouClient {
     );
     final map = _asMap(resp.data);
     if ('${map['zt']}' != '1') {
-      throw LanzouException('上传失败：${map['info'] ?? '未知错误'}');
+      throw LanzouException(
+        '上传失败：${map['info'] ?? '未知错误'}',
+        code: LanzouErrorCode.uploadFailed,
+        detail: '${map['info'] ?? ''}',
+      );
     }
   }
 
@@ -639,7 +730,10 @@ class LanzouClient {
     final info = (_asMap(resp.data)['info'] as Map).cast<String, dynamic>();
     final fId = '${info['f_id'] ?? ''}';
     if (fId.isEmpty || fId == 'i') {
-      throw const LanzouException('无法获取该文件的分享信息');
+      throw const LanzouException(
+        '无法获取该文件的分享信息',
+        code: LanzouErrorCode.fileShareInfoFailed,
+      );
     }
     var name = '${info['name'] ?? ''}';
     var desc = '';
@@ -672,7 +766,11 @@ class LanzouClient {
     );
     final map = _asMap(resp.data);
     if ('${map['zt']}' != '1') {
-      throw LanzouException('${map['info'] ?? '获取文件夹分享信息失败'}');
+      throw LanzouException(
+        '${map['info'] ?? '获取文件夹分享信息失败'}',
+        code: LanzouErrorCode.folderShareInfoFailed,
+        detail: '${map['info'] ?? ''}',
+      );
     }
     final info = (map['info'] as Map).cast<String, dynamic>();
     return ShareInfo(
@@ -892,7 +990,11 @@ class LanzouClient {
     }
     throw lastError is LanzouException
         ? lastError
-        : LanzouException('解析分享失败：$lastError');
+        : LanzouException(
+            '解析分享失败：$lastError',
+            code: LanzouErrorCode.resolveShareFailed,
+            detail: '$lastError',
+          );
   }
 
   Future<DirectFile> _resolveFileShareOn(
@@ -904,7 +1006,10 @@ class LanzouClient {
     final base = '${uri.scheme}://${uri.host}';
     final html = await fetchSharePage(url);
     if (html.contains('文件不存') || html.contains('文件取消')) {
-      throw const LanzouException('文件不存在或已取消分享');
+      throw const LanzouException(
+        '文件不存在或已取消分享',
+        code: LanzouErrorCode.fileShareUnavailable,
+      );
     }
     final needPwd =
         html.contains('id="pwdload"') || html.contains('id="passwddiv"');
@@ -999,7 +1104,12 @@ class LanzouClient {
     String? sign;
     if (needPwd) {
       final pwdSign = RegExp(r'sign=(\w+?)&').firstMatch(html)?.group(1);
-      if (pwdSign == null) throw const LanzouException('提取码参数解析失败');
+      if (pwdSign == null) {
+        throw const LanzouException(
+          '提取码参数解析失败',
+          code: LanzouErrorCode.passwordParameterParseFailed,
+        );
+      }
       sign = pwdSign;
     } else {
       var rawSign =
@@ -1011,7 +1121,12 @@ class LanzouClient {
       }
       sign = rawSign;
     }
-    if (sign.isEmpty) throw const LanzouException('下载参数解析失败');
+    if (sign.isEmpty) {
+      throw const LanzouException(
+        '下载参数解析失败',
+        code: LanzouErrorCode.downloadParameterParseFailed,
+      );
+    }
     final linkResp = await dio.post<String>(
       '$base/ajaxm.php',
       data: {
@@ -1028,7 +1143,11 @@ class LanzouClient {
       if (info.contains('密码') || info.contains('提取码')) {
         throw const WrongPasswordException();
       }
-      throw LanzouException('获取下载地址失败：${info.isEmpty ? link : info}');
+      throw LanzouException(
+        '获取下载地址失败：${info.isEmpty ? link : info}',
+        code: LanzouErrorCode.downloadUrlFailed,
+        detail: '${info.isEmpty ? link : info}',
+      );
     }
     final dom = '${link['dom'] ?? ''}';
     final path = '${link['url'] ?? ''}';
@@ -1036,7 +1155,10 @@ class LanzouClient {
         ? path
         : await _followDownloadRedirect(dom, path, url);
     if (direct == null || direct.isEmpty) {
-      throw const LanzouException('未获取到直链');
+      throw const LanzouException(
+        '未获取到直链',
+        code: LanzouErrorCode.directLinkMissing,
+      );
     }
     return DirectFile(
       name: name,
@@ -1150,7 +1272,10 @@ class LanzouClient {
     final base = '${uri.scheme}://${uri.host}';
     final html = await fetchSharePage(url);
     if (html.contains('文件不存') || html.contains('文件取消')) {
-      throw const LanzouException('文件夹不存在或已取消分享');
+      throw const LanzouException(
+        '文件夹不存在或已取消分享',
+        code: LanzouErrorCode.folderShareUnavailable,
+      );
     }
     final needPwd =
         html.contains('id="pwdload"') || html.contains('id="passwddiv"');
@@ -1165,7 +1290,10 @@ class LanzouClient {
     final uid = _match(html, [r"'uid'\s*:\s*'(\d+)'"]);
     final puid = _match(html, [r"'puid'\s*:\s*'([^']+)'"]);
     if (lx == null || t == null || k == null || fid == null) {
-      throw const LanzouException('分享页结构解析失败');
+      throw const LanzouException(
+        '分享页结构解析失败',
+        code: LanzouErrorCode.sharePageParseFailed,
+      );
     }
     final name =
         _match(html, [
@@ -1315,7 +1443,10 @@ class LanzouClient {
       if (lastAttempt) break;
       await Future.delayed(Duration(milliseconds: 400 * attempt));
     }
-    throw const LanzouException('获取分享文件列表失败');
+    throw const LanzouException(
+      '获取分享文件列表失败',
+      code: LanzouErrorCode.shareFileListFailed,
+    );
   }
 }
 

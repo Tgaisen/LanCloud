@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
+import 'package:lancloud/ui/app_icons.dart' as app_icons;
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/m3e.dart';
 
@@ -73,6 +74,10 @@ void main() {
     await tester.tap(find.text('确定'));
     await tester.pumpAndSettle();
     expect(find.text('提取码至少 2 位'), findsOneWidget);
+    final invalidField = tester.widget<TextField>(find.byType(TextField));
+    expect(invalidField.decoration!.errorText, '提取码至少 2 位');
+    // 与其它输入弹窗一致：尾部红色 fill 风格 Error 图标
+    expect(find.byIcon(app_icons.Icons.error), findsOneWidget);
     expect(find.byType(AlertDialog), findsOneWidget);
 
     // 输入合法密码后确定

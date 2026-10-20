@@ -19,7 +19,103 @@ class AppLocalizationsZh extends AppLocalizations {
   String get addedToQueue => '已加入下载队列';
 
   @override
-  String get shareNeedsPassword => '该文件需要提取码';
+  String get shareNeedsPassword => '该分享需要提取码';
+
+  @override
+  String get wrongPassword => '提取码错误';
+
+  @override
+  String get lanzouInvalidResponse => '接口返回格式异常';
+
+  @override
+  String get lanzouCreateFolderFailed => '新建文件夹失败';
+
+  @override
+  String get lanzouDeleteFailed => '删除失败';
+
+  @override
+  String get lanzouMoveFileFailed => '移动文件失败';
+
+  @override
+  String get lanzouMoveToCurrentFolder => '不能移动到当前目录';
+
+  @override
+  String get lanzouMoveFolderWithSubfoldersUnsupported => '暂不支持移动含子文件夹的目录';
+
+  @override
+  String get lanzouReadFolderInfoFailed => '无法读取文件夹信息';
+
+  @override
+  String get lanzouSameTargetFolder => '目标位置与当前位置相同';
+
+  @override
+  String get lanzouUpdateDescriptionFailed => '修改简介失败';
+
+  @override
+  String get lanzouFileNameRequired => '文件名不能为空';
+
+  @override
+  String get lanzouRenameRequiresMembership => '重命名失败：此功能需要开通会员';
+
+  @override
+  String get lanzouUpdateFilePasswordFailed => '设置访问密码失败';
+
+  @override
+  String get lanzouFolderNameRequired => '文件夹名称不能为空';
+
+  @override
+  String get lanzouUpdateFolderInfoFailed => '保存文件夹信息失败';
+
+  @override
+  String get lanzouUpdateFolderPasswordFailed => '设置文件夹访问密码失败';
+
+  @override
+  String get lanzouUploadContentMissing => '没有可上传的文件内容';
+
+  @override
+  String lanzouUploadFailed(String detail) {
+    return '上传失败：$detail';
+  }
+
+  @override
+  String get lanzouUnknownError => '未知错误';
+
+  @override
+  String get lanzouFileShareInfoFailed => '无法获取该文件的分享信息';
+
+  @override
+  String get lanzouFolderShareInfoFailed => '获取文件夹分享信息失败';
+
+  @override
+  String lanzouResolveShareFailed(String detail) {
+    return '解析分享失败：$detail';
+  }
+
+  @override
+  String get lanzouFileShareUnavailable => '文件不存在或已取消分享';
+
+  @override
+  String get lanzouPasswordParameterParseFailed => '提取码参数解析失败';
+
+  @override
+  String get lanzouDownloadParameterParseFailed => '下载参数解析失败';
+
+  @override
+  String lanzouDownloadUrlFailed(String detail) {
+    return '获取下载地址失败：$detail';
+  }
+
+  @override
+  String get lanzouDirectLinkMissing => '未获取到直链';
+
+  @override
+  String get lanzouFolderShareUnavailable => '文件夹不存在或已取消分享';
+
+  @override
+  String get lanzouSharePageParseFailed => '分享页结构解析失败';
+
+  @override
+  String get lanzouShareFileListFailed => '获取分享文件列表失败';
 
   @override
   String resolveFailed(String error) {

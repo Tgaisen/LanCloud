@@ -105,6 +105,16 @@ class _FakeClient extends LanzouClient {
   folderStats(String folderId) async => null;
 }
 
+class _MemberRenameClient extends _FakeClient {
+  @override
+  Future<void> setFileName(String fileId, String name) async {
+    throw const LanzouException(
+      'fallback',
+      code: LanzouErrorCode.renameRequiresMembership,
+    );
+  }
+}
+
 class _FakeApp extends AppController {
   _FakeApp(this._client, {LanzouClient? publicClient})
     : _public = publicClient ?? _FakePublic();
@@ -176,6 +186,7 @@ Future<void> _pumpDrive(
   String folderName = '根目录',
   VisualDensity density = VisualDensity.standard,
   Size viewSize = const Size(420, 900),
+  Locale locale = const Locale('zh'),
 }) async {
   final transfers = manager ?? TransferManager(app);
   addTearDown(app.dispose);
@@ -193,7 +204,7 @@ Future<void> _pumpDrive(
         theme: ThemeData(visualDensity: density),
         localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        locale: const Locale('zh'),
+        locale: locale,
         // 和应用一致：强调排版 / 弹窗宽度这些组件级样式挂在 builder 上
         builder: (context, child) =>
             M3eComponentStyles(child: child ?? const SizedBox.shrink()),
@@ -962,6 +973,25 @@ void main() {
     // 让「信息已更新」提示条走完（否则测试结束时还挂着它的定时器）
     await tester.pump(const Duration(seconds: 5));
     await tester.pump(const Duration(seconds: 1));
+  });
+
+  testWidgets('文件属性弹窗：非会员重命名失败提示跟随英文界面', (tester) async {
+    final app = _FakeApp(_MemberRenameClient());
+    const locale = Locale('en');
+    final l10n = lookupAppLocalizations(locale);
+    await _pumpDrive(tester, app, locale: locale);
+
+    await tester.tap(find.text('a.zip'));
+    await _settleSheet(tester);
+    await tester.tap(_sheetText(l10n.editInfo));
+    await _settleSheet(tester);
+
+    await tester.enterText(find.byType(TextField).first, 'b.zip');
+    await tester.tap(find.text(l10n.confirm));
+    await _settleSheet(tester);
+
+    expect(find.text(l10n.lanzouRenameRequiresMembership), findsOneWidget);
+    expect(find.text('重命名失败：此功能需要开通会员'), findsNothing);
   });
 
   testWidgets('文件属性弹窗：修改信息名称为空时原地标错，弹窗不关也不发请求', (tester) async {

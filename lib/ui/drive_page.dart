@@ -674,7 +674,7 @@ class _DrivePageState extends State<DrivePage>
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = '$e';
+        _error = context.l10n.lanzouError(e);
         _loading = false;
       });
     }
@@ -1197,7 +1197,8 @@ class _DrivePageState extends State<DrivePage>
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(context.l10n.lanzouError(e))));
     }
   }
 
@@ -1224,7 +1225,8 @@ class _DrivePageState extends State<DrivePage>
       if (!ok) await _reloadAfterChange();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(context.l10n.lanzouError(e))));
     }
   }
 
@@ -1295,7 +1297,8 @@ class _DrivePageState extends State<DrivePage>
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(context.l10n.lanzouError(e))));
     }
   }
 
@@ -1751,7 +1754,8 @@ class _DrivePageState extends State<DrivePage>
       await _showQr(file.name, info.url, info.pwd);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(context.l10n.lanzouError(e))));
     }
   }
 
@@ -1765,7 +1769,8 @@ class _DrivePageState extends State<DrivePage>
       await _showQr(folder.name, info.url, info.pwd);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(context.l10n.lanzouError(e))));
     }
   }
 
@@ -1921,7 +1926,8 @@ class _DrivePageState extends State<DrivePage>
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(context.l10n.lanzouError(e))));
     }
   }
 
@@ -1981,7 +1987,8 @@ class _DrivePageState extends State<DrivePage>
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(context.l10n.lanzouError(e))));
     }
   }
 
@@ -2060,7 +2067,8 @@ class _DrivePageState extends State<DrivePage>
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(context.l10n.lanzouError(e))));
     }
   }
 
@@ -2121,7 +2129,8 @@ class _DrivePageState extends State<DrivePage>
       return (name: name, desc: newDesc);
     } catch (e) {
       if (!mounted) return null;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(context.l10n.lanzouError(e))));
       return null;
     }
   }
@@ -2155,7 +2164,8 @@ class _DrivePageState extends State<DrivePage>
       return (name: name, desc: desc);
     } catch (e) {
       if (!mounted) return null;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(context.l10n.lanzouError(e))));
       return null;
     }
   }
@@ -2293,7 +2303,7 @@ class _DrivePageState extends State<DrivePage>
       return true;
     } catch (e) {
       if (!mounted) return false;
-      showAppToast(context, '$e');
+      showAppToast(context, context.l10n.lanzouError(e));
       return false;
     }
   }
@@ -2313,7 +2323,7 @@ class _DrivePageState extends State<DrivePage>
       );
     } catch (e) {
       if (!mounted) return;
-      showAppToast(context, '$e');
+      showAppToast(context, context.l10n.lanzouError(e));
     }
   }
 
@@ -2332,7 +2342,7 @@ class _DrivePageState extends State<DrivePage>
       );
     } catch (e) {
       if (!mounted) return;
-      showAppToast(context, '$e');
+      showAppToast(context, context.l10n.lanzouError(e));
     }
   }
 
@@ -2363,7 +2373,7 @@ class _DrivePageState extends State<DrivePage>
     try {
       url = await _resolveFileDirectLink(file, share: share);
     } catch (e) {
-      if (mounted) showAppToast(context, '$e');
+      if (mounted) showAppToast(context, context.l10n.lanzouError(e));
     } finally {
       navigator.pop();
     }
@@ -2380,7 +2390,7 @@ class _DrivePageState extends State<DrivePage>
     try {
       url = await _resolveFileDirectLink(file, share: share);
     } catch (e) {
-      if (mounted) showAppToast(context, '$e');
+      if (mounted) showAppToast(context, context.l10n.lanzouError(e));
     } finally {
       navigator.pop();
     }
@@ -2403,7 +2413,7 @@ class _DrivePageState extends State<DrivePage>
       return true;
     } catch (e) {
       if (!mounted) return false;
-      showAppToast(context, '$e');
+      showAppToast(context, context.l10n.lanzouError(e));
       return false;
     }
   }
@@ -2421,7 +2431,7 @@ class _DrivePageState extends State<DrivePage>
       return true;
     } catch (e) {
       if (!mounted) return false;
-      showAppToast(context, '$e');
+      showAppToast(context, context.l10n.lanzouError(e));
       return false;
     }
   }
@@ -2446,7 +2456,7 @@ class _DrivePageState extends State<DrivePage>
       return true;
     } catch (e) {
       if (!mounted) return false;
-      showAppToast(context, '$e');
+      showAppToast(context, context.l10n.lanzouError(e));
       return false;
     }
   }
@@ -2470,7 +2480,7 @@ class _DrivePageState extends State<DrivePage>
       return true;
     } catch (e) {
       if (!mounted) return false;
-      showAppToast(context, '$e');
+      showAppToast(context, context.l10n.lanzouError(e));
       return false;
     }
   }
@@ -2489,7 +2499,8 @@ class _DrivePageState extends State<DrivePage>
       await _removeItemsWithAnimation(fileIds: {file.id});
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(context.l10n.lanzouError(e))));
     }
   }
 
@@ -2516,7 +2527,8 @@ class _DrivePageState extends State<DrivePage>
       await _removeItemsWithAnimation(folderIds: {folder.id});
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(context.l10n.lanzouError(e))));
     }
   }
 
@@ -4756,7 +4768,7 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = '$e';
+        _error = context.l10n.lanzouError(e);
       });
     }
   }
@@ -4779,7 +4791,7 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
       await _load(_folderId);
     } catch (e) {
       if (!mounted) return;
-      setState(() => _error = '$e');
+      setState(() => _error = context.l10n.lanzouError(e));
     }
   }
 

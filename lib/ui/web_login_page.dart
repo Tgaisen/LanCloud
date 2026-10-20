@@ -78,7 +78,7 @@ class _WebLoginPageState extends State<WebLoginPage> {
     } on LanzouException catch (e) {
       setState(() {
         _checking = false;
-        _error = e.message;
+        _error = context.l10n.lanzouError(e);
       });
     } catch (e) {
       setState(() {

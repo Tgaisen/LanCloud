@@ -4026,9 +4026,13 @@ Future<PasswordEditResult?> showPasswordDialog(
                     enabled: isEnabled,
                     maxLength: maxLength,
                     autofocus: isEnabled,
-                    decoration: InputDecoration(
-                      hintText: maxLength > 6 ? l10n.pwdHint12 : l10n.pwdHint,
-                      errorText: error,
+                    decoration: errorState(
+                      context,
+                      InputDecoration(
+                        border: const OutlineInputBorder(),
+                        hintText: maxLength > 6 ? l10n.pwdHint12 : l10n.pwdHint,
+                      ),
+                      error,
                     ),
                     onChanged: (_) {
                       if (error != null) setDialogState(() => error = null);
@@ -4476,12 +4480,12 @@ Future<bool> downloadShareFile(
       notify(l10n.addedToQueue);
       return true;
     } on NeedPasswordException catch (e) {
-      passwordError = e.message;
+      passwordError = l10n.lanzouError(e);
     } on WrongPasswordException catch (e) {
-      passwordError = e.message;
+      passwordError = l10n.lanzouError(e);
     } on LanzouException catch (e) {
       if (showLoading) navigator.pop();
-      notify(e.message);
+      notify(l10n.lanzouError(e));
       return false;
     } catch (e) {
       if (showLoading) navigator.pop();

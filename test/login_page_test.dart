@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
+import 'package:lancloud/ui/app_icons.dart' as app_icons;
 import 'package:lancloud/ui/login_page.dart';
 import 'package:provider/provider.dart';
 
@@ -75,5 +76,51 @@ void main() {
 
     // 滚动视图占满整屏：iOS 回弹时内容不会被缩水的高度截断
     expect(tester.getSize(find.byType(SingleChildScrollView)).height, 800);
+  });
+
+  testWidgets('Cookie 登录入口使用 badge 图标且不显示右箭头', (tester) async {
+    await tester.pumpWidget(host(const LoginPage(firstRun: true)));
+    await tester.pumpAndSettle();
+
+    final cookieTile = find.widgetWithText(ListTile, 'Cookie 登录');
+    expect(
+      find.descendant(
+        of: cookieTile,
+        matching: find.byIcon(app_icons.Icons.badge_outlined),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: cookieTile,
+        matching: find.byIcon(Icons.chevron_right),
+      ),
+      findsNothing,
+    );
+  });
+
+  testWidgets('Cookie 登录输入框使用统一的 MD3E error state', (tester) async {
+    await tester.pumpWidget(
+      host(
+        Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: () => showCookieLoginDialog(context),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('保存并登录'));
+    await tester.pumpAndSettle();
+
+    final field = tester.widget<TextField>(find.byType(TextField));
+    expect(field.decoration!.errorText, '请输入 Cookie');
+    expect(find.text('请输入 Cookie'), findsOneWidget);
+    expect(find.byIcon(app_icons.Icons.error), findsOneWidget);
   });
 }

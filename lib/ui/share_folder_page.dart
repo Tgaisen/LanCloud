@@ -507,7 +507,7 @@ class _ShareFolderPageState extends State<ShareFolderPage>
       if (!mounted) return;
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.message)));
+          .showSnackBar(SnackBar(content: Text(context.l10n.lanzouError(e))));
     } catch (_) {
       if (!mounted) return;
       Navigator.of(context).pop();

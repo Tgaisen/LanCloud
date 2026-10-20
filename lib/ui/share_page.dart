@@ -182,16 +182,16 @@ class _ShareLinkDialogState extends State<ShareLinkDialog> {
     } on NeedPasswordException catch (e) {
       setState(() {
         _linkError = null;
-        _pwdError = e.message;
+        _pwdError = context.l10n.lanzouError(e);
       });
     } on WrongPasswordException catch (e) {
       // 与「该分享需要提取码」相同的样式：标在提取码输入框上
       setState(() {
         _linkError = null;
-        _pwdError = e.message;
+        _pwdError = context.l10n.lanzouError(e);
       });
     } on LanzouException catch (e) {
-      setState(() => _linkError = e.message);
+      setState(() => _linkError = context.l10n.lanzouError(e));
     } catch (e) {
       setState(() => _linkError = context.l10n.resolveFailed('$e'));
     } finally {

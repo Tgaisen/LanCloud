@@ -119,8 +119,188 @@ abstract class AppLocalizations {
   /// No description provided for @shareNeedsPassword.
   ///
   /// In zh, this message translates to:
-  /// **'该文件需要提取码'**
+  /// **'该分享需要提取码'**
   String get shareNeedsPassword;
+
+  /// No description provided for @wrongPassword.
+  ///
+  /// In zh, this message translates to:
+  /// **'提取码错误'**
+  String get wrongPassword;
+
+  /// No description provided for @lanzouInvalidResponse.
+  ///
+  /// In zh, this message translates to:
+  /// **'接口返回格式异常'**
+  String get lanzouInvalidResponse;
+
+  /// No description provided for @lanzouCreateFolderFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'新建文件夹失败'**
+  String get lanzouCreateFolderFailed;
+
+  /// No description provided for @lanzouDeleteFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除失败'**
+  String get lanzouDeleteFailed;
+
+  /// No description provided for @lanzouMoveFileFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'移动文件失败'**
+  String get lanzouMoveFileFailed;
+
+  /// No description provided for @lanzouMoveToCurrentFolder.
+  ///
+  /// In zh, this message translates to:
+  /// **'不能移动到当前目录'**
+  String get lanzouMoveToCurrentFolder;
+
+  /// No description provided for @lanzouMoveFolderWithSubfoldersUnsupported.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂不支持移动含子文件夹的目录'**
+  String get lanzouMoveFolderWithSubfoldersUnsupported;
+
+  /// No description provided for @lanzouReadFolderInfoFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法读取文件夹信息'**
+  String get lanzouReadFolderInfoFailed;
+
+  /// No description provided for @lanzouSameTargetFolder.
+  ///
+  /// In zh, this message translates to:
+  /// **'目标位置与当前位置相同'**
+  String get lanzouSameTargetFolder;
+
+  /// No description provided for @lanzouUpdateDescriptionFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'修改简介失败'**
+  String get lanzouUpdateDescriptionFailed;
+
+  /// No description provided for @lanzouFileNameRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'文件名不能为空'**
+  String get lanzouFileNameRequired;
+
+  /// No description provided for @lanzouRenameRequiresMembership.
+  ///
+  /// In zh, this message translates to:
+  /// **'重命名失败：此功能需要开通会员'**
+  String get lanzouRenameRequiresMembership;
+
+  /// No description provided for @lanzouUpdateFilePasswordFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'设置访问密码失败'**
+  String get lanzouUpdateFilePasswordFailed;
+
+  /// No description provided for @lanzouFolderNameRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'文件夹名称不能为空'**
+  String get lanzouFolderNameRequired;
+
+  /// No description provided for @lanzouUpdateFolderInfoFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存文件夹信息失败'**
+  String get lanzouUpdateFolderInfoFailed;
+
+  /// No description provided for @lanzouUpdateFolderPasswordFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'设置文件夹访问密码失败'**
+  String get lanzouUpdateFolderPasswordFailed;
+
+  /// No description provided for @lanzouUploadContentMissing.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有可上传的文件内容'**
+  String get lanzouUploadContentMissing;
+
+  /// No description provided for @lanzouUploadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'上传失败：{detail}'**
+  String lanzouUploadFailed(String detail);
+
+  /// No description provided for @lanzouUnknownError.
+  ///
+  /// In zh, this message translates to:
+  /// **'未知错误'**
+  String get lanzouUnknownError;
+
+  /// No description provided for @lanzouFileShareInfoFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法获取该文件的分享信息'**
+  String get lanzouFileShareInfoFailed;
+
+  /// No description provided for @lanzouFolderShareInfoFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'获取文件夹分享信息失败'**
+  String get lanzouFolderShareInfoFailed;
+
+  /// No description provided for @lanzouResolveShareFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'解析分享失败：{detail}'**
+  String lanzouResolveShareFailed(String detail);
+
+  /// No description provided for @lanzouFileShareUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'文件不存在或已取消分享'**
+  String get lanzouFileShareUnavailable;
+
+  /// No description provided for @lanzouPasswordParameterParseFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'提取码参数解析失败'**
+  String get lanzouPasswordParameterParseFailed;
+
+  /// No description provided for @lanzouDownloadParameterParseFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载参数解析失败'**
+  String get lanzouDownloadParameterParseFailed;
+
+  /// No description provided for @lanzouDownloadUrlFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'获取下载地址失败：{detail}'**
+  String lanzouDownloadUrlFailed(String detail);
+
+  /// No description provided for @lanzouDirectLinkMissing.
+  ///
+  /// In zh, this message translates to:
+  /// **'未获取到直链'**
+  String get lanzouDirectLinkMissing;
+
+  /// No description provided for @lanzouFolderShareUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'文件夹不存在或已取消分享'**
+  String get lanzouFolderShareUnavailable;
+
+  /// No description provided for @lanzouSharePageParseFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'分享页结构解析失败'**
+  String get lanzouSharePageParseFailed;
+
+  /// No description provided for @lanzouShareFileListFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'获取分享文件列表失败'**
+  String get lanzouShareFileListFailed;
 
   /// No description provided for @resolveFailed.
   ///

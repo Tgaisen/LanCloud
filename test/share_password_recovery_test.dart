@@ -9,6 +9,7 @@ import 'package:lancloud/core/data/app_db.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/delegates.dart';
+import 'package:lancloud/ui/app_icons.dart' as app_icons;
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/favorites_page.dart';
 import 'package:provider/provider.dart';
@@ -52,6 +53,20 @@ class _StalePwdClient extends LanzouClient {
       size: '2 M',
       sharer: '分享者甲',
     );
+  }
+}
+
+/// 模拟网络层的非业务异常：没有 LanzouException 文案，也必须给用户提示。
+class _BrokenFolderClient extends LanzouClient {
+  _BrokenFolderClient() : super(uid: '0');
+
+  @override
+  Future<FolderShareDetail> resolveFolderShare(
+    String shareUrl, {
+    String pwd = '',
+    bool withDescription = false,
+  }) async {
+    throw Exception('网络连接中断');
   }
 }
 
@@ -190,6 +205,54 @@ void main() {
       done: (f) => f.pwd == 'newpass',
     );
     expect(saved.pwd, 'newpass');
+  });
+
+  testWidgets('收藏文件夹：打开时非业务异常也显示解析失败提示', (tester) async {
+    final app = _FakeApp(_BrokenFolderClient());
+    addTearDown(app.dispose);
+    final ref =
+        'https://example.com/b-broken-${DateTime.now().microsecondsSinceEpoch}';
+    await tester.runAsync(
+      () => app.db.addFavorite(kind: 'shareFolder', name: '打不开的文件夹', ref: ref),
+    );
+    await _pumpFavorites(tester, app, item: find.text('打不开的文件夹'));
+
+    await tester.tap(find.text('打不开的文件夹'));
+    await _until(tester, find.textContaining('解析失败：'));
+
+    expect(find.textContaining('网络连接中断'), findsOneWidget);
+    expect(find.text('解析中'), findsNothing);
+  });
+
+  testWidgets('收藏信息编辑：分享链接为空时显示统一 error state', (tester) async {
+    final app = _FakeApp(_StalePwdClient());
+    addTearDown(app.dispose);
+    final ref =
+        'https://example.com/i-edit-${DateTime.now().microsecondsSinceEpoch}';
+    await tester.runAsync(
+      () => app.db.addFavorite(kind: 'shareFile', name: '待编辑.txt', ref: ref),
+    );
+    await _pumpFavorites(tester, app, item: find.text('待编辑.txt'));
+
+    final favoriteTile = find.ancestor(
+      of: find.text('待编辑.txt'),
+      matching: find.byType(Md3ListItem),
+    );
+    await tester.tap(
+      find.descendant(of: favoriteTile, matching: find.byTooltip('更多操作')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('修改信息'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField).at(1), '');
+    await tester.tap(find.text('保存'));
+    await tester.pumpAndSettle();
+
+    final linkField = tester.widget<TextField>(find.byType(TextField).at(1));
+    expect(linkField.decoration!.errorText, '请输入分享链接');
+    expect(find.text('请输入分享链接'), findsOneWidget);
+    expect(find.byIcon(app_icons.Icons.error), findsOneWidget);
   });
 
   testWidgets('收藏文件：提取码失效时弹「此文件需要密码」，验证后写回收藏并显示分享者', (tester) async {

@@ -418,11 +418,13 @@ class _FavoritesPageState extends State<FavoritesPage>
       if (!mounted) return;
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.message)));
+          .showSnackBar(SnackBar(content: Text(l10n.lanzouError(e))));
       return;
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       Navigator.of(context).pop();
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(l10n.resolveFailed('$e'))));
       return;
     }
     if (!mounted) return;
@@ -516,60 +518,74 @@ class _FavoritesPageState extends State<FavoritesPage>
 
   Future<void> _editFavorite(FavoriteItem item) async {
     final app = context.read<AppController>();
+    final l10n = context.l10n;
     final titleController = TextEditingController(text: item.title);
     final linkController = TextEditingController(text: item.ref);
     final pwdController = TextEditingController(text: item.pwd);
+    String? linkError;
     await showDialog<void>(
       context: context,
-      builder: (dialogContext) => formDialog(
-        dialogContext,
-        title: Text(context.l10n.editInfo),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: titleController,
-              decoration: InputDecoration(
-                labelText: context.l10n.favoriteTitle,
-                hintText: context.l10n.favoriteTitleHint,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => formDialog(
+          dialogContext,
+          title: Text(l10n.editInfo),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: titleController,
+                decoration: InputDecoration(
+                  labelText: l10n.favoriteTitle,
+                  hintText: l10n.favoriteTitleHint,
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: linkController,
-              decoration: InputDecoration(labelText: context.l10n.shareLink),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: pwdController,
-              decoration: InputDecoration(
-                labelText: context.l10n.passwordOptional,
+              const SizedBox(height: 12),
+              TextField(
+                controller: linkController,
+                onChanged: (_) {
+                  if (linkError != null) {
+                    setDialogState(() => linkError = null);
+                  }
+                },
+                decoration: errorState(
+                  context,
+                  InputDecoration(labelText: l10n.shareLink),
+                  linkError,
+                ),
               ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: pwdController,
+                decoration: InputDecoration(labelText: l10n.passwordOptional),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(l10n.cancel),
+            ),
+            FilledButton(
+              onPressed: () {
+                final link = linkController.text.trim();
+                if (link.isEmpty) {
+                  setDialogState(() => linkError = l10n.pleasePasteShareLink);
+                  return;
+                }
+                Navigator.of(dialogContext).pop();
+                app.db.updateFavorite(
+                  item.id,
+                  title: titleController.text.trim(),
+                  ref: link,
+                  pwd: pwdController.text.trim(),
+                );
+                // 修改后闪一下，和网盘列表一致
+                setState(() => _pulse[item.id] = (_pulse[item.id] ?? 0) + 1);
+              },
+              child: Text(l10n.save),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text(context.l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () {
-              final link = linkController.text.trim();
-              if (link.isEmpty) return;
-              Navigator.of(dialogContext).pop();
-              app.db.updateFavorite(
-                item.id,
-                title: titleController.text.trim(),
-                ref: link,
-                pwd: pwdController.text.trim(),
-              );
-              // 修改后闪一下，和网盘列表一致
-              setState(() => _pulse[item.id] = (_pulse[item.id] ?? 0) + 1);
-            },
-            child: Text(context.l10n.save),
-          ),
-        ],
       ),
     );
   }

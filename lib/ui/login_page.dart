@@ -75,9 +75,8 @@ class LoginEntries extends StatelessWidget {
         onTap: () => _webLogin(context),
       ),
       ListTile(
-        leading: const Icon(Icons.password),
+        leading: const Icon(Icons.badge_outlined),
         title: Text(l10n.cookieLogin),
-        trailing: const Icon(Icons.chevron_right),
         onTap: () => _cookieLogin(context),
       ),
     ];
@@ -137,7 +136,7 @@ class _CookieLoginDialogState extends State<_CookieLoginDialog> {
     } on CookieInvalidException {
       _showError(l10n.cookieInvalid);
     } on LanzouException catch (e) {
-      _showError(e.message);
+      _showError(l10n.lanzouError(e));
     } catch (e) {
       _showError('$e');
     }
@@ -180,21 +179,19 @@ class _CookieLoginDialogState extends State<_CookieLoginDialog> {
                   controller: _controller,
                   maxLines: 6,
                   minLines: 3,
-                  decoration: InputDecoration(
-                    border: const OutlineInputBorder(),
-                    labelText: l10n.lanzouCookie,
-                    hintText: l10n.cookieHint,
-                  ),
-                ),
-                if (_error != null) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    _error!,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
+                  decoration: errorState(
+                    context,
+                    InputDecoration(
+                      border: const OutlineInputBorder(),
+                      labelText: l10n.lanzouCookie,
+                      hintText: l10n.cookieHint,
                     ),
+                    _error,
                   ),
-                ],
+                  onChanged: (_) {
+                    if (_error != null) setState(() => _error = null);
+                  },
+                ),
                 const SizedBox(height: 12),
                 Text(
                   l10n.cookiePrivacy,
