@@ -299,10 +299,7 @@ void main() {
     await tester.drag(find.byType(SettingsCategoryPage), const Offset(0, 240));
     await tester.pumpAndSettle();
 
-    final slider = find.descendant(
-      of: find.widgetWithText(ListTile, '网络请求间隔'),
-      matching: find.byType(M3ESlider),
-    );
+    final slider = find.byKey(const ValueKey('settings-slider-网络请求间隔'));
     expect(slider, findsOneWidget);
 
     SemanticsData data() => tester.getSemantics(slider).getSemanticsData();

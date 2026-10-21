@@ -86,28 +86,33 @@ void main() {
     await tester.drag(find.byType(SettingsCategoryPage), const Offset(0, 240));
     await tester.pumpAndSettle();
 
-    final tile = find.widgetWithText(ListTile, '网络请求间隔');
-    final slider = find.descendant(of: tile, matching: find.byType(M3ESlider));
+    final slider = find.byKey(const ValueKey('settings-slider-网络请求间隔'));
     expect(slider, findsOneWidget);
     // 滑杆上方有「间隔过小易触发服务器限流」的说明
-    expect(
-      find.descendant(of: tile, matching: find.text('间隔过小易触发服务器限流')),
-      findsOneWidget,
-    );
+    expect(find.text('间隔过小易触发服务器限流'), findsOneWidget);
     // 值显示在行的尾部（不再开弹窗）
+    expect(find.text('100 ms'), findsOneWidget);
+
+    // 滑杆绘制区向两端各溢出 thumbRadius；扣除后，轨道两端分别与标题
+    // 左缘、当前值右缘对齐。
+    final titleRect = tester.getRect(entry);
+    final valueRect = tester.getRect(find.text('100 ms'));
+    final sliderRect = tester.getRect(slider);
+    const endpointInset = M3ESliderDefaults.thumbRadius;
     expect(
-      find.descendant(of: tile, matching: find.text('100 ms')),
-      findsOneWidget,
+      sliderRect.left + endpointInset,
+      moreOrLessEquals(titleRect.left, epsilon: 0.5),
+    );
+    expect(
+      sliderRect.right - endpointInset,
+      moreOrLessEquals(valueRect.right, epsilon: 0.5),
     );
 
     // 拖到最右 → 最大档 1000ms，松手才写设置
     await tester.drag(slider, const Offset(600, 0));
     await tester.pumpAndSettle();
     expect(app.settings.requestInterval, 1000);
-    expect(
-      find.descendant(of: tile, matching: find.text('1000 ms')),
-      findsOneWidget,
-    );
+    expect(find.text('1000 ms'), findsOneWidget);
   });
 
   testWidgets('单选弹窗：列表组 + radio 指示器，选中项 tonal 强调色，点击即生效', (tester) async {

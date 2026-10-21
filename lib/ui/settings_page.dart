@@ -2139,7 +2139,8 @@ class _AdvancedPage extends StatelessWidget {
 /// **参考 M3 规范**：[M3ESlider]（XS 档：16dp 轨道 / 44dp 手柄、手柄按下变窄）
 /// 采用 stops 配置——[values] 就是全部可取值，手柄吸附到最近的档；
 /// 数值显示在行的 trailing text 位（「值显示在别处时不必再用浮动值标记」）。
-/// 滑杆放在 ListTile 的 subtitle 槽里，自动让开左侧图标、和标题左对齐。
+/// 标题与值单独成行，滑杆放在下方独立一行，避免 ListTile 为 trailing 预留的
+/// 宽度同时挤压 subtitle；滑杆轨道横跨标题左缘到当前值右缘。
 ///
 /// **本应用的设计决定（非 M3 规范）**：拖动时只更新本地显示，松手才写设置
 /// （避免拖动过程中反复落盘）。
@@ -2204,73 +2205,105 @@ class _SliderTileState<T> extends State<_SliderTile<T>> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final value = widget.values[_index];
-    return ListTile(
-      leading: Icon(widget.icon),
-      title: Text(widget.title),
-      // 当前值放尾部（列表的 trailing text 角色），拖动时跟着变
-      trailing: Text(
-        widget.labelOf(value),
-        style: theme.textTheme.labelLarge?.copyWith(
-          color: theme.colorScheme.primary,
-        ),
-      ),
-      subtitle: Padding(
-        padding: const EdgeInsets.only(top: 4, right: 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (widget.subtitle != null) ...[
-              Text(
-                widget.subtitle!,
-                // 与其它设置项的 ListTile 副标题同一档（bodyMedium）
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+    return Padding(
+      // 与 M3 单行 ListTile 的内容内边距一致：leading 16dp、trailing 24dp；
+      // 上下 8dp 对应含副标题列表项的最小垂直留白。
+      padding: const EdgeInsets.fromLTRB(16, 8, 24, 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Icon(widget.icon, color: scheme.onSurfaceVariant),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        widget.title,
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          color: scheme.onSurface,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    // 当前值仍是标题行的 trailing text；拖动时同步更新。
+                    Text(
+                      widget.labelOf(value),
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: scheme.primary,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 4),
-            ],
-            // 设置页滑杆的无障碍语义都在这一层：
-            //   - container 让滑杆成为读屏单独聚焦的一个控件；
-            //   - slider + value/increasedValue/decreasedValue 让 TalkBack 按
-            //     SeekBar 读出「标题 + 当前值」并预读相邻档；
-            //   - onIncrease/onDecrease 对应 TalkBack 的上滑/下滑调节，走与
-            //     松手相同的落盘路径；
-            //   - excludeSemantics 屏蔽内部手势语义（tap / scroll*），否则
-            //     TalkBack 双击会按控件中心点按、把值直接跳到中间档。
-            // M3ESlider 在轨道两端各留了 thumbRadius（10dp）的内边距；
-            // 左移同样的距离，让轨道起点与标题左缘对齐。
-            Transform.translate(
-              offset: const Offset(-10, 0),
-              child: Semantics(
-                container: true,
-                slider: true,
-                enabled: true,
-                label: widget.title,
-                value: widget.labelOf(value),
-                increasedValue: widget.labelOf(
-                  widget.values[_clampIndex(_index + 1)],
+                if (widget.subtitle != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    widget.subtitle!,
+                    // 与其它设置项的 ListTile 副标题同一档（bodyMedium）
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 4),
+                // M3ESlider 的轨道两端各保留 thumbRadius（10dp）作为手柄的
+                // 活动空间。把绘制区向左右各扩 10dp，轨道才会真正落在标题
+                // 左缘和当前值右缘上，而不是缩进一截。
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    const endpointInset = M3ESliderDefaults.thumbRadius;
+                    final width = constraints.maxWidth + endpointInset * 2;
+                    final height = M3ESliderDefaults.thumbRippleRadius * 2;
+                    return SizedBox(
+                      height: height,
+                      child: OverflowBox(
+                        minWidth: width,
+                        maxWidth: width,
+                        minHeight: height,
+                        maxHeight: height,
+                        child: Semantics(
+                          container: true,
+                          slider: true,
+                          enabled: true,
+                          label: widget.title,
+                          value: widget.labelOf(value),
+                          increasedValue: widget.labelOf(
+                            widget.values[_clampIndex(_index + 1)],
+                          ),
+                          decreasedValue: widget.labelOf(
+                            widget.values[_clampIndex(_index - 1)],
+                          ),
+                          onIncrease: () => _step(1),
+                          onDecrease: () => _step(-1),
+                          excludeSemantics: true,
+                          child: M3ESlider(
+                            key: ValueKey('settings-slider-${widget.title}'),
+                            value: _index.toDouble(),
+                            min: 0,
+                            max: (widget.values.length - 1).toDouble(),
+                            divisions: widget.values.length - 1,
+                            onChanged: (v) =>
+                                setState(() => _index = v.round()),
+                            // 松手才落盘；用本地档位（拖动中同步更新）而不是
+                            // 回调给的数值：事件成批到达时，受控的 value 可能
+                            // 还停在上一帧。
+                            onChangeEnd: (_) => _commit(),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                 ),
-                decreasedValue: widget.labelOf(
-                  widget.values[_clampIndex(_index - 1)],
-                ),
-                onIncrease: () => _step(1),
-                onDecrease: () => _step(-1),
-                excludeSemantics: true,
-                child: M3ESlider(
-                  value: _index.toDouble(),
-                  min: 0,
-                  max: (widget.values.length - 1).toDouble(),
-                  divisions: widget.values.length - 1,
-                  onChanged: (v) => setState(() => _index = v.round()),
-                  // 松手才落盘；用本地档位（拖动中同步更新）而不是回调给的数值：
-                  // 事件成批到达时，受控的 widget.value 可能还停在上一帧
-                  onChangeEnd: (_) => _commit(),
-                ),
-              ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

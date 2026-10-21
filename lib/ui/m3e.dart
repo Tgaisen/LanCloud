@@ -30,6 +30,7 @@ export 'package:m3e_core/m3e_core.dart'
         M3EClipper,
         M3EMotion,
         M3ESlider,
+        M3ESliderDefaults,
         M3EToggleButton,
         M3EToggleButtonDecoration,
         M3EToggleButtonGroup,
