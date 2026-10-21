@@ -917,6 +917,7 @@
   "pleaseEnterPassword": "请输入密码",
   "pleaseEnterWebdavPath": "请输入路径",
   "webdavNotSet": "未设置",
+  "webdavAccountIncomplete": "WebDAV 账号配置不完整，请重新填写",
   "webdavBackup": "云端备份",
   "webdavTest": "测试连接",
   "webdavTestOk": "连接成功",
@@ -936,6 +937,8 @@
   "webdavInterval": "备份频率",
   "webdavDaily": "每天",
   "webdavWeekly": "每周",
+  "secureStorageResetTitle": "需要重新登录",
+  "secureStorageResetMessage": "安全存储已升级，旧版的账号和 WebDAV 密码无法迁移。收藏、设置和本地文件仍会保留，请重新登录并重新填写 WebDAV 密码。",
   "lastBackupAt": "上次备份：{time}",
   "@lastBackupAt": {
     "placeholders": {

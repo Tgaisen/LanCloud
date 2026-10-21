@@ -158,7 +158,6 @@ Future<String?> scanQrFromImage(
 
 /// 从系统图库选一张图片（ACTION_PICK，不需要存储权限）。
 Future<String?> _pickFromGallery() async {
-  final picked = await FilePicker.platform.pickFiles(type: FileType.image);
-  if (picked == null || picked.files.isEmpty) return null;
-  return picked.files.first.path;
+  final picked = await FilePicker.pickFile(type: FileType.image);
+  return picked?.path;
 }

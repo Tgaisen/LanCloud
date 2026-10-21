@@ -10,7 +10,7 @@ import 'platform_support.dart';
 /// 应用把生成在私有目录里的文件写到用户选择的位置，
 /// 通过 SAF 写入不需要任何存储权限，也不需要 MANAGE_EXTERNAL_STORAGE。
 ///
-/// 桌面端没有这条原生通道，改用 file_picker 的另存为对话框 + 应用自己复制。
+/// 桌面端没有这条原生通道，改用 file_picker 的另存为对话框直接写入。
 class SystemFileSaver {
   SystemFileSaver._();
 
@@ -42,7 +42,7 @@ class SystemFileSaver {
     return name;
   }
 
-  /// 桌面端另存为：对话框只返回目标路径，文件由应用自己复制过去。
+  /// 桌面端另存为：file_picker 13 的保存 API 接收文件内容并返回实际 URI。
   /// 返回实际使用的文件名；用户取消时返回 null。
   static Future<String?> _saveOnDesktop({
     required String sourcePath,
@@ -50,19 +50,18 @@ class SystemFileSaver {
     required String mime,
   }) async {
     final extensions = _extensionsFor(mime);
-    var target = await FilePicker.platform.saveFile(
+    final target = await FilePicker.saveFile(
       fileName: fileName,
+      bytes: await File(sourcePath).readAsBytes(),
+      mimeType: mime,
       type: extensions.isEmpty ? FileType.any : FileType.custom,
       allowedExtensions: extensions.isEmpty ? null : extensions,
     );
-    if (target == null || target.isEmpty) return null;
-    // 对话框没带扩展名时补上源文件的扩展名
-    if (p.extension(target).isEmpty) {
-      final ext = p.extension(sourcePath);
-      if (ext.isNotEmpty) target = '$target$ext';
-    }
-    await File(sourcePath).copy(target);
-    return p.basename(target);
+    if (target == null) return null;
+    final savedPath = target.isScheme('file')
+        ? target.toFilePath()
+        : target.path;
+    return p.basename(savedPath);
   }
 
   /// MIME → 另存为对话框的文件类型过滤。

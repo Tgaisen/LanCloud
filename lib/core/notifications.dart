@@ -86,7 +86,7 @@ class NotificationService {
   /// 下次启动初始化通知时会按需重建。键本来就不存在时同样算干净。
   static bool removeWindowsRegistryEntry() {
     if (!PlatformSupport.isWindows) return false;
-    final subKey = _windowsAumidKey.toNativeUtf16();
+    final subKey = PCWSTR(_windowsAumidKey.toNativeUtf16());
     try {
       final result = RegDeleteTree(HKEY_CURRENT_USER, subKey);
       return result == ERROR_SUCCESS || result == ERROR_FILE_NOT_FOUND;

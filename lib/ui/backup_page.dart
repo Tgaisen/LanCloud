@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:material_ui/material_ui.dart' hide Icons;
@@ -316,18 +315,13 @@ class _BackupContentState extends State<BackupContent> {
 
   Future<void> _restoreFromFile() => _run(() async {
     final l10n = context.l10n;
-    final picked = await FilePicker.platform.pickFiles(
+    final file = await FilePicker.pickFile(
       dialogTitle: l10n.chooseBackupFile,
       type: FileType.custom,
       allowedExtensions: const ['json'],
-      withData: true,
     );
-    final file = picked?.files.single;
     if (file == null) return;
-    final bytes = file.bytes;
-    final content = bytes != null
-        ? utf8.decode(bytes)
-        : await File(file.path!).readAsString();
+    final content = utf8.decode(await file.readAsBytes());
     if (!mounted) return;
     await _confirmAndRestore(content);
   });
@@ -494,7 +488,13 @@ class _BackupContentState extends State<BackupContent> {
             ListTile(
               leading: const Icon(Icons.dns_outlined),
               title: Text(l10n.webdavAccount),
-              subtitle: Text(store.url.isEmpty ? l10n.webdavNotSet : store.url),
+              subtitle: Text(
+                store.needsConfiguration
+                    ? l10n.webdavAccountIncomplete
+                    : store.url.isEmpty
+                    ? l10n.webdavNotSet
+                    : store.url,
+              ),
               onTap: _editServer,
             ),
             ListTile(

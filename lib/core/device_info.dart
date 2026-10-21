@@ -122,8 +122,8 @@ const String _winBios = r'HARDWARE\DESCRIPTION\System\BIOS';
 
 /// 读注册表字符串值（REG_SZ）；读不到返回 null。
 String? _regString(String subKey, String valueName) {
-  final sub = subKey.toNativeUtf16();
-  final name = valueName.toNativeUtf16();
+  final sub = PCWSTR(subKey.toNativeUtf16());
+  final name = PCWSTR(valueName.toNativeUtf16());
   final size = calloc<Uint32>()..value = 1024;
   final buffer = calloc<Uint8>(size.value);
   try {
@@ -149,8 +149,8 @@ String? _regString(String subKey, String valueName) {
 
 /// 读注册表 DWORD 值；读不到返回 null。
 int? _regDword(String subKey, String valueName) {
-  final sub = subKey.toNativeUtf16();
-  final name = valueName.toNativeUtf16();
+  final sub = PCWSTR(subKey.toNativeUtf16());
+  final name = PCWSTR(valueName.toNativeUtf16());
   final size = calloc<Uint32>()..value = 4;
   final buffer = calloc<Uint32>();
   try {

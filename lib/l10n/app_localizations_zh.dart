@@ -1921,6 +1921,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get webdavNotSet => '未设置';
 
   @override
+  String get webdavAccountIncomplete => 'WebDAV 账号配置不完整，请重新填写';
+
+  @override
   String get webdavBackup => '云端备份';
 
   @override
@@ -1963,6 +1966,13 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get webdavWeekly => '每周';
+
+  @override
+  String get secureStorageResetTitle => '需要重新登录';
+
+  @override
+  String get secureStorageResetMessage =>
+      '安全存储已升级，旧版的账号和 WebDAV 密码无法迁移。收藏、设置和本地文件仍会保留，请重新登录并重新填写 WebDAV 密码。';
 
   @override
   String lastBackupAt(String time) {

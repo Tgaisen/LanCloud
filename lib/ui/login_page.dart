@@ -249,9 +249,16 @@ class _CookieLoginDialogState extends State<_CookieLoginDialog> {
 
 /// 无账号时的兜底页面（已同意协议但未登录）。
 class LoginPage extends StatelessWidget {
-  const LoginPage({super.key, this.firstRun = false});
+  const LoginPage({
+    super.key,
+    this.firstRun = false,
+    this.credentialsResetNotice = false,
+  });
 
   final bool firstRun;
+
+  /// 安全存储跨大版本后不可迁移时，明确说明为什么回到了登录页。
+  final bool credentialsResetNotice;
 
   Future<void> _restore(BuildContext context) async {
     final result = await Navigator.of(context).push<RestorePageResult>(
@@ -303,8 +310,45 @@ class LoginPage extends StatelessWidget {
       ],
     );
 
-    final actions = LoginEntries(
-      onRestore: firstRun ? () => _restore(context) : null,
+    final actions = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (credentialsResetNotice) ...[
+          Semantics(
+            liveRegion: true,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: theme.colorScheme.secondaryContainer,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.secureStorageResetTitle,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: theme.colorScheme.onSecondaryContainer,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      l10n.secureStorageResetMessage,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSecondaryContainer,
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+        ],
+        LoginEntries(onRestore: firstRun ? () => _restore(context) : null),
+      ],
     );
 
     Widget responsiveBody({EdgeInsets systemInsets = EdgeInsets.zero}) =>

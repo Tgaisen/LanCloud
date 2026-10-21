@@ -2000,6 +2000,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get webdavNotSet => 'Not set';
 
   @override
+  String get webdavAccountIncomplete =>
+      'The WebDAV account is incomplete. Re-enter its connection details.';
+
+  @override
   String get webdavBackup => 'Cloud backup';
 
   @override
@@ -2042,6 +2046,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get webdavWeekly => 'Weekly';
+
+  @override
+  String get secureStorageResetTitle => 'Sign in again';
+
+  @override
+  String get secureStorageResetMessage =>
+      'Secure storage was upgraded, so credentials saved by an older version could not be migrated. Favorites, settings, and local files remain; sign in again and re-enter the WebDAV password.';
 
   @override
   String lastBackupAt(String time) {

@@ -15,9 +15,9 @@ class ProviderFilePicker {
 
   static Future<List<String>> pickFiles() async {
     if (PlatformSupport.isDesktop) {
-      final picked = await FilePicker.platform.pickFiles(allowMultiple: true);
+      final picked = await FilePicker.pickFiles();
       return [
-        for (final file in picked?.files ?? const <PlatformFile>[])
+        for (final file in picked)
           if (file.path != null && file.path!.isNotEmpty) file.path!,
       ];
     }

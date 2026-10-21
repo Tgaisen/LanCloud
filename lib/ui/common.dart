@@ -9,7 +9,6 @@ import 'package:flutter/services.dart';
 import 'package:local_auth_android/local_auth_android.dart';
 import 'package:local_auth_darwin/local_auth_darwin.dart';
 import 'package:provider/provider.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 
 import '../core/api/lanzou_client.dart';
 import '../core/app_controller.dart';
@@ -18,6 +17,7 @@ import '../l10n/l10n.dart';
 import 'app_scroll.dart';
 import 'app_icons.dart';
 import 'm3e.dart';
+import 'qr_painter.dart';
 import 'reduce_motion.dart';
 import 'scroll_tint.dart';
 
@@ -1405,17 +1405,13 @@ Future<void> showQrDialog(
                 color: Colors.white,
                 child: Padding(
                   padding: const EdgeInsets.all(12),
-                  // 用 QrPainter + CustomPaint 而不是 QrImageView：后者内部是
-                  // LayoutBuilder，放进 AlertDialog（用 IntrinsicWidth 量内容）会在
-                  // debug 下抛 "LayoutBuilder does not support returning intrinsic
-                  // dimensions"，弹窗只剩遮罩；CustomPaint 没有这个问题。
+                  // 自绘层不引入额外 Widget 布局或 Material 类型依赖，适合
+                  // AlertDialog 用 IntrinsicWidth 测量内容的场景。
                   child: SizedBox(
                     width: 200,
                     height: 200,
                     child: ExcludeSemantics(
-                      child: CustomPaint(
-                        painter: QrPainter(data: url, version: QrVersions.auto),
-                      ),
+                      child: CustomPaint(painter: QrCodePainter(url)),
                     ),
                   ),
                 ),

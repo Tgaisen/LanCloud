@@ -1729,7 +1729,7 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
                   }
                   return;
                 }
-                final dir = await FilePicker.platform.getDirectoryPath();
+                final dir = await FilePicker.getDirectoryPath();
                 if (dir != null && dir.isNotEmpty) {
                   await app.setDownloadDir(dir);
                   if (context.mounted) {

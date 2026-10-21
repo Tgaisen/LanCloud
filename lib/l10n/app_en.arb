@@ -694,6 +694,7 @@
   "pleaseEnterPassword": "Enter the password",
   "pleaseEnterWebdavPath": "Enter a path",
   "webdavNotSet": "Not set",
+  "webdavAccountIncomplete": "The WebDAV account is incomplete. Re-enter its connection details.",
   "webdavBackup": "Cloud backup",
   "webdavTest": "Test connection",
   "webdavTestOk": "Connected",
@@ -713,6 +714,8 @@
   "webdavInterval": "Backup frequency",
   "webdavDaily": "Daily",
   "webdavWeekly": "Weekly",
+  "secureStorageResetTitle": "Sign in again",
+  "secureStorageResetMessage": "Secure storage was upgraded, so credentials saved by an older version could not be migrated. Favorites, settings, and local files remain; sign in again and re-enter the WebDAV password.",
   "lastBackupAt": "Last backup: {time}",
   "@lastBackupAt": {
     "placeholders": {

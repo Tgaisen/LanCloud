@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import 'secure_storage.dart';
+
 class Account {
   Account({
     required this.uid,
@@ -43,7 +45,7 @@ class Account {
 
 class AccountStore {
   /// [storage] 只用于测试注入内存实现，默认走系统安全存储。
-  AccountStore([this._storage = const FlutterSecureStorage()]);
+  AccountStore([this._storage = lanCloudSecureStorage]);
 
   /// 登录凭据放安全存储；测试里注入内存实现。
   final FlutterSecureStorage _storage;

@@ -20,7 +20,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # versionCode = YY*10^7 + Drop*10^5 + Hotfix*10^4 + ABI*10^3 + Stage*10^2 + Seq
 # （这里存 ABI=0 的基准号；ABI 位由 android/app/build.gradle.kts 构建时加上）。
 # 详见 docs/VERSIONING.md；改完记得同步 lib/core/app_info.dart（有测试校验）。
-version: 26.1.0-pre.16+260100216
+version: 26.1.0-pre.17+260100217
 
 environment:
   sdk: ^3.13.3
@@ -42,45 +42,52 @@ dependencies:
   provider: ^6.1.5+1
   sqflite: ^2.4.4
   # 桌面端（Windows）用 FFI 实现跑 SQLite；Android/iOS 仍走 sqflite 原生实现
-  sqflite_common_ffi: ^2.4.3
+  sqflite_common_ffi: ^2.4.4
   # Windows 注册表（「清除数据」的注册表项目）：win32 API + FFI 字符串工具
   ffi: ^2.2.0
-  win32: ^5.15.0
+  win32: ^6.4.0
   path: ^1.9.1
   path_provider: ^2.1.6
   shared_preferences: ^2.5.5
   # 2.5.0 在 release/R8 下会丢失 JNI 使用的 Kotlin 挂起方法签名，
-  # 启动时 getAll 抛出 NoSuchMethodError 并停在启动页。固定到 2.4.28，
-  # 等上游修复正式发布后再升级。
+  # 启动时 getAll 抛出 NoSuchMethodError 并停在启动页；2.5.1 仍带该问题。
+  # 固定到 2.4.28，等上游修复正式发布后再升级。
   # https://github.com/flutter/flutter/issues/194649
   shared_preferences_android: ">=2.4.28 <2.5.0"
-  flutter_secure_storage: 9.2.4
-  file_picker: 8.3.3
-  open_filex: ^4.7.0
+  # 项目仍处于 pre 阶段，允许跳过 v10 的旧安全存储数据；v11 会在读取前
+  # 上报不可迁移状态，应用据此回到登录页，并关闭缺密码的 WebDAV 功能。
+  flutter_secure_storage: ^11.2.0
+  file_picker: ^13.1.0
+  open_filex: ^5.0.0
   url_launcher: ^6.3.2
   flutter_inappwebview: 6.2.0-beta.3
-  qr_flutter: ^4.1.0
+  qr: ^4.0.0
   material_symbols_icons: ^4.2960.0
-  flutter_local_notifications: ^22.3.1
+  flutter_local_notifications: ^22.3.2
   lpinyin: ^2.0.3
   receive_sharing_intent: ^1.9.0
   flutter_foreground_task: ^11.0.3
   local_auth: ^3.0.2
   # 直接依赖平台实现包，用于传入系统验证弹窗的本地化文案
-  local_auth_android: 2.2.0
-  local_auth_darwin: 2.0.4
+  local_auth_android: 2.3.0
+  local_auth_darwin: 2.0.5
   # 2.x 起基于 material_ui（1.x 给的是框架版 ColorScheme，迁移后类型对不上）
   dynamic_color: 2.1.0
   zxing2: ^0.2.4
-  image: ^4.10.1
+  image: ^4.12.0
   # Windows / macOS / Linux 的窗口级拖拽（拖文件或链接进来）
-  desktop_drop: ^0.8.4
+  # 0.9.x 改用 cross_file 0.4 / Win32 6；file_picker 13 尚未跟进
+  # cross_file 0.4（但已依赖 Win32 6），两者暂时无法同时解析。
+  # 等 file_picker 支持 cross_file 0.4 后再成组升级。
+  desktop_drop: ">=0.8.4 <0.9.0"
   # Flutter 3.47 起 Material 从框架拆到了 material_ui，本项目已整体迁移过去
   # （见 docs / 提交记录）；m3e_core 提供 MD3E 控件，cupertino_ui 承接
   # Cupertino 组件。三者版本要配套升级。
   m3e_core: ^1.1.4
-  material_ui: ^1.6.0
-  cupertino_ui: ^1.1.2
+  # 1.8 新增的 RoundedPolygon 与 m3e_core 1.1.4 的同名类型冲突；
+  # 待 m3e_core 适配后再放开 <1.8.0。
+  material_ui: ">=1.6.0 <1.8.0"
+  cupertino_ui: ^1.1.4
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -91,7 +98,6 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
-  qr: ^3.0.2
   # 测试里替换 url_launcher 的平台实现，断言「反馈」跳转的 mailto 地址
   url_launcher_platform_interface: ^2.3.2
 

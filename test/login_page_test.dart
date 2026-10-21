@@ -71,6 +71,16 @@ void main() {
     expect(find.byType(TextField), findsNothing);
   });
 
+  testWidgets('安全存储重置后明确提示需要重新登录且保留其他数据', (tester) async {
+    await tester.pumpWidget(
+      host(const LoginPage(firstRun: true, credentialsResetNotice: true)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('需要重新登录'), findsOneWidget);
+    expect(find.textContaining('收藏、设置和本地文件仍会保留'), findsOneWidget);
+  });
+
   testWidgets('开始使用页使用 MD3E 图标框而不是重复展示应用 Logo', (tester) async {
     await tester.pumpWidget(host(const LoginPage(firstRun: true)));
     await tester.pumpAndSettle();

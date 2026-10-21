@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/common.dart';
+import 'package:lancloud/ui/qr_painter.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
@@ -31,6 +32,12 @@ void main() {
     // 链接文本不显示（二维码本身就是链接）
     expect(find.text(url), findsNothing);
     expect(find.textContaining('share.example'), findsNothing);
+    expect(
+      find.byWidgetPredicate(
+        (widget) => widget is CustomPaint && widget.painter is QrCodePainter,
+      ),
+      findsOneWidget,
+    );
     // 只剩一个「关闭」按钮
     expect(find.text('关闭'), findsOneWidget);
     expect(find.text('复制链接'), findsNothing);

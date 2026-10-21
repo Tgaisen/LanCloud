@@ -860,7 +860,10 @@ class _RootShellState extends State<RootShell>
       return const Scaffold(body: Center(child: M3eLoadingIndicator(size: 48)));
     }
     if (app.activeUid == null) {
-      return const LoginPage(firstRun: true);
+      return LoginPage(
+        firstRun: true,
+        credentialsResetNotice: app.secureStorageNeedsReauthentication,
+      );
     }
     // 底栏显示项变化时，下一帧按新页序重建
     if (_ids.isEmpty) {

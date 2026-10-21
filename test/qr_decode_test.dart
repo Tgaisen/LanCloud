@@ -1,8 +1,11 @@
+import 'dart:ui' as ui;
+
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/app_localizations_zh.dart';
+import 'package:lancloud/ui/qr_painter.dart';
 import 'package:lancloud/ui/qr_scan.dart';
 import 'package:qr/qr.dart';
 
@@ -10,9 +13,9 @@ import 'package:lancloud/l10n/delegates.dart';
 
 /// 用纯 Dart 画一张「白底 + 黑块 + 静区」的二维码 PNG，作为相册图片夹具。
 img.Image _qrImage(String data, {int scale = 8, int quiet = 4}) {
-  final code = QrCode.fromData(
-    data: data,
-    errorCorrectLevel: QrErrorCorrectLevel.M,
+  final code = QrCode(
+    payload: QrPayload.fromString(data),
+    errorCorrectLevel: QrErrorCorrectLevel.medium,
   );
   final qr = QrImage(code);
   final modules = qr.moduleCount;
@@ -45,6 +48,20 @@ void main() {
     const data = 'https://wwa.lanzouq.com/abcdef';
     final png = img.encodePng(_qrImage(data));
     expect(decodeQrFromImageBytes(png), data);
+  });
+
+  test('本地 QrCodePainter 渲染出的二维码仍可被扫码识别', () async {
+    const data = 'https://wwa.lanzouq.com/painter-check';
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    QrCodePainter(data).paint(canvas, const Size(256, 256));
+    final picture = recorder.endRecording();
+    final image = await picture.toImage(256, 256);
+    final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+    expect(bytes, isNotNull);
+    expect(decodeQrFromImageBytes(bytes!.buffer.asUint8List()), data);
+    image.dispose();
+    picture.dispose();
   });
 
   test('图片里没有二维码时返回 null', () {

@@ -2,6 +2,31 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/backup/webdav_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+class _MemoryWebdavStore extends WebdavStore {
+  Map<String, String>? secureAccount;
+  String legacyPassword = '';
+  bool failSecureWrite = false;
+
+  @override
+  Future<Map<String, String>?> readSecureAccount() async =>
+      secureAccount == null ? null : Map.of(secureAccount!);
+
+  @override
+  Future<void> writeSecureAccount(Map<String, String> value) async {
+    if (failSecureWrite) throw StateError('secure storage unavailable');
+    secureAccount = Map.of(value);
+  }
+
+  @override
+  Future<void> deleteSecureAccount() async => secureAccount = null;
+
+  @override
+  Future<String> readLegacyPassword() async => legacyPassword;
+
+  @override
+  Future<void> deleteLegacyPassword() async => legacyPassword = '';
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -47,7 +72,7 @@ void main() {
 
   test('保存与加载：路径会持久化并规范化', () async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
-    final store = WebdavStore();
+    final store = _MemoryWebdavStore();
     await store.saveServer(
       url: 'https://dav.example.com/dav/',
       username: 'u',
@@ -56,9 +81,87 @@ void main() {
     );
     expect(store.path, '/LanCloud');
 
-    final reloaded = WebdavStore();
+    final reloaded = _MemoryWebdavStore()
+      ..secureAccount = Map.of(store.secureAccount!);
     await reloaded.load();
     expect(reloaded.path, '/LanCloud');
     expect(reloaded.backupUrl, 'https://dav.example.com/dav/LanCloud/');
+    expect(reloaded.configured, isTrue);
+  });
+
+  test('密码丢失：禁用 WebDAV 操作并关闭自动备份', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{
+      'webdav_url': 'https://dav.example.com/dav/',
+      'webdav_user': 'u',
+      'webdav_auto': true,
+    });
+    final store = _MemoryWebdavStore();
+    await store.load();
+
+    expect(store.needsConfiguration, isTrue);
+    expect(store.configured, isFalse);
+    expect(store.autoBackup, isFalse);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getBool('webdav_auto'), isFalse);
+    expect(prefs.getString('webdav_url'), isNull);
+    expect(prefs.getString('webdav_user'), isNull);
+    expect(store.secureAccount?['url'], 'https://dav.example.com/dav/');
+  });
+
+  test('地址、用户名、密码、路径任一缺失时都不可用', () {
+    WebdavStore complete() => WebdavStore()
+      ..url = 'https://dav.example.com/dav/'
+      ..username = 'u'
+      ..password = 'p'
+      ..path = '/LanCloud';
+
+    expect(complete().configured, isTrue);
+    expect((complete()..url = '').configured, isFalse);
+    expect((complete()..username = '').configured, isFalse);
+    expect((complete()..password = '').configured, isFalse);
+    expect((complete()..path = '').configured, isFalse);
+  });
+
+  test('旧版分散字段完整迁移到安全存储后才删除原数据', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{
+      'webdav_url': 'https://dav.example.com/dav/',
+      'webdav_user': 'u',
+      'webdav_path': '/Backups',
+    });
+    final store = _MemoryWebdavStore()..legacyPassword = 'p';
+    await store.load();
+
+    expect(store.configured, isTrue);
+    expect(store.secureAccount, {
+      'url': 'https://dav.example.com/dav/',
+      'username': 'u',
+      'password': 'p',
+      'path': '/Backups',
+    });
+    expect(store.legacyPassword, isEmpty);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('webdav_url'), isNull);
+    expect(prefs.getString('webdav_user'), isNull);
+    expect(prefs.getString('webdav_path'), isNull);
+  });
+
+  test('迁移写入失败时保留旧数据并允许下次重试', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{
+      'webdav_url': 'https://dav.example.com/dav/',
+      'webdav_user': 'u',
+      'webdav_path': '/Backups',
+    });
+    final store = _MemoryWebdavStore()
+      ..legacyPassword = 'p'
+      ..failSecureWrite = true;
+    await store.load();
+
+    expect(store.configured, isTrue);
+    expect(store.secureAccount, isNull);
+    expect(store.legacyPassword, 'p');
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('webdav_url'), 'https://dav.example.com/dav/');
+    expect(prefs.getString('webdav_user'), 'u');
+    expect(prefs.getString('webdav_path'), '/Backups');
   });
 }

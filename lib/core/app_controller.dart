@@ -8,9 +8,11 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import 'api/lanzou_client.dart';
+import 'app_log.dart';
 import 'data/account_store.dart';
 import 'data/app_db.dart';
 import 'data/settings_store.dart';
+import 'data/secure_storage.dart';
 import 'drive_cache.dart';
 import 'dynamic_color_support.dart';
 import 'platform_support.dart';
@@ -50,6 +52,7 @@ class AppController extends ChangeNotifier {
   LanzouClient? _publicClient;
 
   bool ready = false;
+  bool secureStorageNeedsReauthentication = false;
   bool selectionMode = false;
   VoidCallback? onRequestExitSelection;
 
@@ -72,6 +75,7 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> init() async {
+    await _inspectSecureStorageUpgrade();
     await accounts.load();
     await settings.load();
     _applyRuntimeSettings();
@@ -82,6 +86,22 @@ class AppController extends ChangeNotifier {
     _refreshActiveAccountInfo();
     // 设备支持动态取色且用户还没选过：默认开启（之后尊重用户选择）
     unawaited(autoEnableDynamicColorIfSupported());
+  }
+
+  /// v11 会移除旧密文和旧加密后端的读取能力。必须在账号存储第一次读取前
+  /// 检查；不可迁移时账号存储会回到空状态，外壳随后稳定落到登录页。
+  Future<void> _inspectSecureStorageUpgrade() async {
+    try {
+      final status = await lanCloudSecureStorage.checkUpgradeStatus();
+      secureStorageNeedsReauthentication =
+          status.hasDataLoss || status.willDiscardOnNextAccess;
+      if (secureStorageNeedsReauthentication) {
+        AppLog.instance.log('secure_storage', '需要重新登录：$status');
+      }
+    } catch (error, stack) {
+      // 状态检查失败不阻断启动；真正的读取仍有插件自身兜底。
+      AppLog.instance.error('secure_storage', error, stack);
+    }
   }
 
   /// 首次启动时按设备支持情况自动开启动态取色。
@@ -114,6 +134,9 @@ class AppController extends ChangeNotifier {
   /// 备份恢复后重新读取账号与设置，并重建网盘客户端。
   Future<void> reloadFromStorage() async {
     await accounts.load();
+    if (accounts.accounts.isNotEmpty) {
+      secureStorageNeedsReauthentication = false;
+    }
     await settings.load();
     _applyRuntimeSettings();
     await updates.bind(settings);

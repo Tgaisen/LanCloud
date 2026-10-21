@@ -97,15 +97,26 @@ class _FakeBackupService extends BackupService {
 
 /// 测试环境没有安全存储插件，密码改放内存。
 class _FakeWebdavStore extends WebdavStore {
-  String _password = '';
+  Map<String, String>? _secureAccount;
+  String _legacyPassword = '';
 
   @override
-  Future<String> readPassword() async => _password;
+  Future<Map<String, String>?> readSecureAccount() async =>
+      _secureAccount == null ? null : Map.of(_secureAccount!);
 
   @override
-  Future<void> writePassword(String value) async {
-    _password = value;
+  Future<void> writeSecureAccount(Map<String, String> value) async {
+    _secureAccount = Map.of(value);
   }
+
+  @override
+  Future<void> deleteSecureAccount() async => _secureAccount = null;
+
+  @override
+  Future<String> readLegacyPassword() async => _legacyPassword;
+
+  @override
+  Future<void> deleteLegacyPassword() async => _legacyPassword = '';
 }
 
 class _FakeCookieAuth extends CookieAuth {
@@ -541,6 +552,30 @@ void main() {
           .onChanged,
       isNull,
     );
+  });
+
+  testWidgets('WebDAV 密码丢失时提示补录并禁用相关操作', (tester) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{
+      'webdav_url': 'https://dav.example.com/blue/',
+      'webdav_user': 'user',
+      'webdav_auto': true,
+    });
+    await pumpPage(tester);
+
+    expect(find.text('WebDAV 账号配置不完整，请重新填写'), findsOneWidget);
+    expect(
+      tester.widget<ListTile>(find.widgetWithText(ListTile, '测试连接')).enabled,
+      isFalse,
+    );
+    expect(
+      tester.widget<ListTile>(find.widgetWithText(ListTile, '上传备份')).enabled,
+      isFalse,
+    );
+    expect(
+      tester.widget<ListTile>(find.widgetWithText(ListTile, '从云端恢复')).enabled,
+      isFalse,
+    );
+    expect(fake.webdav.autoBackup, isFalse);
   });
 
   testWidgets('配置地址后 WebDAV 操作可用', (tester) async {

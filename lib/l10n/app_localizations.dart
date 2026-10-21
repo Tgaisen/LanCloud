@@ -3662,6 +3662,12 @@ abstract class AppLocalizations {
   /// **'未设置'**
   String get webdavNotSet;
 
+  /// No description provided for @webdavAccountIncomplete.
+  ///
+  /// In zh, this message translates to:
+  /// **'WebDAV 账号配置不完整，请重新填写'**
+  String get webdavAccountIncomplete;
+
   /// No description provided for @webdavBackup.
   ///
   /// In zh, this message translates to:
@@ -3745,6 +3751,18 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'每周'**
   String get webdavWeekly;
+
+  /// No description provided for @secureStorageResetTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'需要重新登录'**
+  String get secureStorageResetTitle;
+
+  /// No description provided for @secureStorageResetMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'安全存储已升级，旧版的账号和 WebDAV 密码无法迁移。收藏、设置和本地文件仍会保留，请重新登录并重新填写 WebDAV 密码。'**
+  String get secureStorageResetMessage;
 
   /// No description provided for @lastBackupAt.
   ///

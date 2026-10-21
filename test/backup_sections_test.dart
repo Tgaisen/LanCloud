@@ -11,15 +11,26 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 /// 测试环境没有安全存储插件，密码改放内存。
 class _MemoryWebdavStore extends WebdavStore {
-  String _password = '';
+  Map<String, String>? _secureAccount;
+  String _legacyPassword = '';
 
   @override
-  Future<String> readPassword() async => _password;
+  Future<Map<String, String>?> readSecureAccount() async =>
+      _secureAccount == null ? null : Map.of(_secureAccount!);
 
   @override
-  Future<void> writePassword(String value) async {
-    _password = value;
+  Future<void> writeSecureAccount(Map<String, String> value) async {
+    _secureAccount = Map.of(value);
   }
+
+  @override
+  Future<void> deleteSecureAccount() async => _secureAccount = null;
+
+  @override
+  Future<String> readLegacyPassword() async => _legacyPassword;
+
+  @override
+  Future<void> deleteLegacyPassword() async => _legacyPassword = '';
 }
 
 void main() {
@@ -80,13 +91,15 @@ void main() {
   });
 
   test('WebDAV 上传：没选备份内容时提示先选', () async {
-    SharedPreferences.setMockInitialValues({
-      'webdav_url': 'https://dav.example.com/blue/',
-    });
-    final service = BackupService(
-      AppController(),
-      webdav: _MemoryWebdavStore(),
+    SharedPreferences.setMockInitialValues({});
+    final webdav = _MemoryWebdavStore();
+    await webdav.saveServer(
+      url: 'https://dav.example.com/blue/',
+      username: 'u',
+      password: 'p',
+      path: '/',
     );
+    final service = BackupService(AppController(), webdav: webdav);
     await expectLater(
       service.uploadNow(),
       throwsA(

@@ -1130,16 +1130,24 @@ class _DrivePageState extends State<DrivePage>
   }
 
   Future<void> _upload() async {
-    final result = await FilePicker.platform.pickFiles(allowMultiple: true);
-    if (result == null || result.files.isEmpty) return;
+    final files = await FilePicker.pickFiles();
+    if (files.isEmpty) return;
     if (!mounted) return;
     final transfers = context.read<TransferManager>();
     var skipped = 0;
     var added = 0;
-    for (final file in result.files) {
+    for (final file in files) {
       final path = file.path;
       if (path == null) continue;
-      if (file.size > kFreeUploadLimit) {
+      var size = file.lengthSync();
+      if (size == null) {
+        try {
+          size = await File(path).length();
+        } catch (_) {
+          continue;
+        }
+      }
+      if (size > kFreeUploadLimit) {
         skipped += 1;
         continue;
       }
@@ -1147,7 +1155,7 @@ class _DrivePageState extends State<DrivePage>
         name: file.name,
         folderId: _folderId,
         path: path,
-        size: file.size,
+        size: size,
       );
       added += 1;
     }
@@ -1750,7 +1758,7 @@ class _DrivePageState extends State<DrivePage>
   /// 本地生成二维码（不经过任何服务器）。
   Future<void> _showQr(String title, String url, String pwd) async {
     if (!mounted) return;
-    // 与分享链接里的「显示二维码」共用同一个弹窗（QrPainter 版本）
+    // 与分享链接里的「显示二维码」共用同一个弹窗
     await showQrDialog(context, title: title, url: url, pwd: pwd);
   }
 

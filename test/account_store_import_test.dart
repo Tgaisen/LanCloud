@@ -1,6 +1,7 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/data/account_store.dart';
+import 'package:lancloud/core/data/secure_storage.dart';
 
 /// 内存版安全存储，避免测试环境去调插件。
 class _MemoryStorage extends FlutterSecureStorage {
@@ -11,11 +12,11 @@ class _MemoryStorage extends FlutterSecureStorage {
   @override
   Future<String?> read({
     required String key,
-    IOSOptions? iOptions,
+    AppleOptions? iOptions,
     AndroidOptions? aOptions,
     LinuxOptions? lOptions,
     WebOptions? webOptions,
-    MacOsOptions? mOptions,
+    AppleOptions? mOptions,
     WindowsOptions? wOptions,
   }) async => data[key];
 
@@ -23,11 +24,11 @@ class _MemoryStorage extends FlutterSecureStorage {
   Future<void> write({
     required String key,
     required String? value,
-    IOSOptions? iOptions,
+    AppleOptions? iOptions,
     AndroidOptions? aOptions,
     LinuxOptions? lOptions,
     WebOptions? webOptions,
-    MacOsOptions? mOptions,
+    AppleOptions? mOptions,
     WindowsOptions? wOptions,
   }) async {
     if (value == null) {
@@ -40,11 +41,11 @@ class _MemoryStorage extends FlutterSecureStorage {
   @override
   Future<void> delete({
     required String key,
-    IOSOptions? iOptions,
+    AppleOptions? iOptions,
     AndroidOptions? aOptions,
     LinuxOptions? lOptions,
     WebOptions? webOptions,
-    MacOsOptions? mOptions,
+    AppleOptions? mOptions,
     WindowsOptions? wOptions,
   }) async {
     data.remove(key);
@@ -64,6 +65,14 @@ Future<AccountStore> storeWith(List<Account> accounts, {String? active}) async {
 }
 
 void main() {
+  test('安全存储保留 v9 → v10 迁移路径', () {
+    expect(
+      lanCloudSecureStorage.wOptions.toMap()['useBackwardCompatibility'],
+      'true',
+    );
+    expect(lanCloudSecureStorage.aOptions.toMap()['migrateWithBackup'], 'true');
+  });
+
   test('恢复账号：本机已有 Cookie 不被旧备份覆盖', () async {
     final store = await storeWith([
       Account(uid: '556911', cookie: '新会话', nickname: 'excited233'),

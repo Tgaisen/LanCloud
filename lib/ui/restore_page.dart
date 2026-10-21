@@ -136,28 +136,24 @@ class _RestorePageState extends State<RestorePage> {
   }
 
   Future<void> _pickLocalFile() async {
-    FilePickerResult? picked;
+    PlatformFile? file;
     try {
-      picked = await FilePicker.platform.pickFiles(
+      file = await FilePicker.pickFile(
         dialogTitle: context.l10n.chooseBackupFile,
         type: FileType.custom,
         allowedExtensions: const ['json'],
-        withData: true,
       );
     } catch (error) {
       if (mounted) setState(() => _error = '$error');
       return;
     }
-    final file = picked?.files.single;
-    if (file == null || !mounted) return;
+    final selectedFile = file;
+    if (selectedFile == null || !mounted) return;
     // 系统文件选择器本身不显示页面内进度；用户选中文件后才进入读取阶段。
     await _run(() async {
-      final bytes = file.bytes;
-      final content = bytes != null
-          ? utf8.decode(bytes)
-          : await File(file.path!).readAsString();
+      final content = utf8.decode(await selectedFile.readAsBytes());
       _source = _RestoreSource.local;
-      await _inspectAndPreview(content, file.name);
+      await _inspectAndPreview(content, selectedFile.name);
     });
   }
 
