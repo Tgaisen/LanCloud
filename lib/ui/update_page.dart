@@ -269,13 +269,13 @@ class _UpdateStatusPanel extends StatelessWidget {
                 // 检测中：圆环立即替换图标（M3：内置在组件里的等待用
                 // 加载指示器；少动效时它是静态形态）
                 ? M3eLoadingIndicator(
-                    size: 36,
+                    size: 44,
                     color: boxForeground,
                     semanticsLabel: l10n.updateCheckingTitle,
                   )
-                : Icon(icon, size: 36, color: boxForeground),
+                : Icon(icon, size: 44, color: boxForeground),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           // 状态文本变化时让读屏播报（与「我的」页标题同一机制）
           Semantics(
             liveRegion: true,
@@ -284,7 +284,7 @@ class _UpdateStatusPanel extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
-              style: context.m3eEmphasizedTheme.titleLarge,
+              style: context.m3eEmphasizedTheme.headlineMedium,
             ),
           ),
           // 副标题槽：出现 / 消失时高度与透明度一起做动画，按钮与整段
@@ -387,7 +387,7 @@ class _SubtitleSlotState extends State<_SubtitleSlot>
       child: FadeTransition(
         opacity: _controller,
         child: Padding(
-          padding: const EdgeInsets.only(top: 4),
+          padding: const EdgeInsets.only(top: 12),
           child: Text(
             shown,
             maxLines: 2,
@@ -395,6 +395,7 @@ class _SubtitleSlotState extends State<_SubtitleSlot>
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyLarge?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
+              height: 1.55,
             ),
           ),
         ),
@@ -408,8 +409,8 @@ class _SubtitleSlotState extends State<_SubtitleSlot>
 /// **参考 M3 规范**：形状取自 M3 形状库的 `Cookie4Sided`；容器色用与状态
 /// 配对的容器角色、内容用配对的 on 角色；加载指示器放在别的组件里时，
 /// 颜色要与该组件的图标一致（M3 的对比度要求），所以圆环用图标色。
-/// **本应用的设计决定（非 M3 规范）**：外框 72dp / 内容 36dp——与空状态
-/// 图标（[M3eShapedIcon] 的默认尺寸）一致。
+/// **本应用的设计决定（非 M3 规范）**：外框 88dp / 内容 44dp——与「开始使用」
+/// 页顶部的主视觉图标框保持一致。
 class _StatusIconBox extends StatelessWidget {
   const _StatusIconBox({
     required this.child,
@@ -426,8 +427,8 @@ class _StatusIconBox extends StatelessWidget {
     return ClipPath(
       clipper: M3EClipper(Shapes.c4SidedCookie),
       child: Container(
-        width: 72,
-        height: 72,
+        width: 88,
+        height: 88,
         color: color,
         alignment: Alignment.center,
         child: child,

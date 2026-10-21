@@ -5,7 +5,9 @@ import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/app_info.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/about_page.dart';
+import 'package:lancloud/ui/app_icons.dart' as app_icons;
 import 'package:lancloud/ui/common.dart';
+import 'package:lancloud/ui/m3e.dart';
 import 'package:provider/provider.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
@@ -34,6 +36,30 @@ void main() {
     expect(find.text('开源许可'), findsOneWidget);
     expect(find.text('项目主页'), findsOneWidget);
     expect(find.text('提交 Issue'), findsOneWidget);
+
+    // 顶部主视觉与「开始使用」页共用同一套 MD3E 图标框和间距。
+    final heroIcon = tester.widget<M3eShapedIcon>(find.byType(M3eShapedIcon));
+    expect(heroIcon.icon, app_icons.Icons.info_outline);
+    expect(heroIcon.size, 88);
+    expect(heroIcon.iconSize, 44);
+    expect(heroIcon.shape, Shapes.c4SidedCookie);
+    expect(find.byType(Image), findsNothing);
+
+    final iconRect = tester.getRect(find.byType(M3eShapedIcon));
+    final titleRect = tester.getRect(find.text('蓝云'));
+    final versionRect = tester.getRect(find.text('$appVersion ($appBuild)'));
+    expect(titleRect.top - iconRect.bottom, 20);
+    expect(versionRect.top - titleRect.bottom, 12);
+    expect(titleRect.center.dx, moreOrLessEquals(versionRect.center.dx));
+
+    // 「相关信息」用 Mobile Info，避免与顶部 Info 主视觉重复。
+    final relatedTile = tester.widget<ListTile>(
+      find
+          .ancestor(of: find.text('相关信息'), matching: find.byType(ListTile))
+          .first,
+    );
+    expect((relatedTile.leading! as Icon).icon, app_icons.Icons.mobile_info);
+
     // 弹窗类条目（不跳新页面）右侧不带箭头
     for (final label in ['用户协议', '隐私政策', '相关信息']) {
       final tile = tester.widget<ListTile>(
@@ -117,6 +143,8 @@ void main() {
       findsOneWidget,
     );
 
+    await tester.ensureVisible(find.text('相关信息'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('相关信息'));
     await tester.pumpAndSettle();
 

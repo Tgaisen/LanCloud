@@ -8,6 +8,7 @@ import 'app_icons.dart';
 import 'common.dart';
 import 'legal_dialog.dart';
 import 'licenses_page.dart';
+import 'm3e.dart';
 
 /// 关于页：版本、协议与隐私、开源许可、项目主页、提交 Issue / 相关信息。
 class AboutPage extends StatefulWidget {
@@ -69,22 +70,25 @@ class AboutContent extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 16),
           child: Column(
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: Image.asset(
-                  'assets/images/logo/app_icon.png',
-                  width: 72,
-                  height: 72,
-                  excludeFromSemantics: true,
-                ),
+              const M3eShapedIcon(
+                icon: Icons.info_outline,
+                size: 88,
+                iconSize: 44,
+                shape: Shapes.c4SidedCookie,
+              ),
+              const SizedBox(height: 20),
+              Text(
+                l10n.appName,
+                textAlign: TextAlign.center,
+                style: context.m3eEmphasizedTheme.headlineMedium,
               ),
               const SizedBox(height: 12),
-              Text(l10n.appName, style: theme.textTheme.headlineSmall),
-              const SizedBox(height: 4),
               Text(
                 l10n.aboutVersion(appVersion, appBuild),
-                style: theme.textTheme.bodySmall?.copyWith(
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyLarge?.copyWith(
                   color: scheme.onSurfaceVariant,
+                  height: 1.55,
                 ),
               ),
             ],
@@ -141,7 +145,7 @@ class AboutContent extends StatelessWidget {
               onTap: () => openExternalUrl(Uri.parse('$projectUrl/issues')),
             ),
             ListTile(
-              leading: const Icon(Icons.info_outline),
+              leading: const Icon(Icons.mobile_info),
               title: Text(l10n.relatedInfo),
               onTap: () => showRelatedInfoDialog(context),
             ),

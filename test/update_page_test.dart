@@ -147,10 +147,26 @@ void main() {
   testWidgets('更新状态区：图标框 / 文本 / 按钮垂直居中排列', (tester) async {
     await pumpUpdatePage(tester);
 
+    final iconFrame = find.byWidgetPredicate(
+      (widget) => widget is ClipPath && widget.clipper is M3EClipper,
+    );
+    expect(iconFrame, findsOneWidget);
+    expect(tester.getSize(iconFrame), const Size(88, 88));
+    expect(tester.widget<Icon>(find.byIcon(app_icons.Icons.update)).size, 44);
+
+    final frameRect = tester.getRect(iconFrame);
     final iconRect = tester.getRect(find.byIcon(app_icons.Icons.update));
     final titleRect = tester.getRect(find.text('未检测更新'));
     final buttonRect = tester.getRect(
       find.widgetWithText(FilledButton, '检测更新'),
+    );
+    // 与「开始使用」页顶部主视觉相同：图标框 → 20dp → 标题 → 12dp → 副标题。
+    // 当前「未检测更新」没有副标题，因此这里先校验图标与标题间距。
+    expect(titleRect.top - frameRect.bottom, 20);
+    final title = tester.widget<Text>(find.text('未检测更新'));
+    expect(
+      title.style,
+      tester.element(find.text('未检测更新')).m3eEmphasizedTheme.headlineMedium,
     );
     // 三者水平居中对齐（文本独占整行，不再和按钮抢宽度）
     expect(
@@ -193,6 +209,19 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, '检测更新'));
     await tester.pumpAndSettle();
     expect(find.textContaining('上次检测于'), findsOneWidget);
+    final titleRect = tester.getRect(find.text('已是最新版本'));
+    final subtitleFinder = find.textContaining('上次检测于');
+    final subtitleRect = tester.getRect(subtitleFinder);
+    expect(subtitleRect.top - titleRect.bottom, 12);
+    final subtitle = tester.widget<Text>(subtitleFinder);
+    final subtitleContext = tester.element(subtitleFinder);
+    expect(
+      subtitle.style,
+      Theme.of(subtitleContext).textTheme.bodyLarge?.copyWith(
+        color: Theme.of(subtitleContext).colorScheme.onSurfaceVariant,
+        height: 1.55,
+      ),
+    );
 
     // 第二次检测挂起，停在「检测中」观察布局动画（副标题收起、按钮上移）
     final completer = Completer<List<ReleaseInfo>>();
@@ -268,6 +297,10 @@ void main() {
     expect(button.onPressed, isNull);
     // 圆环不再延迟：进入检测中就直接显示（不先闪一下 update 图标）
     expect(find.byType(M3eLoadingIndicator), findsOneWidget);
+    expect(
+      tester.widget<M3eLoadingIndicator>(find.byType(M3eLoadingIndicator)).size,
+      44,
+    );
     expect(find.byIcon(app_icons.Icons.update), findsNothing);
 
     completer.complete([rel('99.0.0')]);

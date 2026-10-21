@@ -91,6 +91,7 @@ class Icons {
   static const IconData logout = Symbols.logout;
   static const IconData mail_outlined = Symbols.mail;
   static const IconData menu_book_outlined = Symbols.menu_book;
+  static const IconData mobile_info = Symbols.mobile_info;
   static const IconData more_horiz = Symbols.more_horiz;
   static const IconData more_vert = Symbols.more_vert;
   static const IconData movie_outlined = Symbols.movie;
