@@ -3074,6 +3074,10 @@ class _DrivePageState extends State<DrivePage>
       appearing: _appearingFolders.contains(folder.id),
       pulsing: _pulsingFolders.contains(folder.id),
       collapse: !grid,
+      pulsePadding: grid
+          ? const EdgeInsets.all(4)
+          : const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+      pulseRadius: grid ? 18 : (selected ? 14 : 18),
       child: grid
           ? _FolderTile(
               folder: folder,
@@ -3117,6 +3121,10 @@ class _DrivePageState extends State<DrivePage>
       appearing: _appearingFiles.contains(file.id),
       pulsing: _pulsingFiles.contains(file.id),
       collapse: !grid,
+      pulsePadding: grid
+          ? const EdgeInsets.all(4)
+          : const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+      pulseRadius: grid ? 18 : (selected ? 14 : 18),
       child: grid
           ? _FileTile(
               file: file,
@@ -3159,6 +3167,8 @@ class _AnimatedListItem extends StatelessWidget {
     this.removing = false,
     this.pulsing = false,
     this.collapse = false,
+    this.pulsePadding = EdgeInsets.zero,
+    this.pulseRadius = 18,
   });
 
   final int index;
@@ -3171,6 +3181,12 @@ class _AnimatedListItem extends StatelessWidget {
   final bool removing;
   final bool pulsing;
   final bool collapse;
+
+  /// 与条目真实 Material / Card 可点区域一致的高亮内缩。
+  final EdgeInsetsGeometry pulsePadding;
+
+  /// 与条目正在使用的 Material 外形一致。
+  final double pulseRadius;
 
   /// 与控制器时长一致，用于把共享进度换算成单项的错峰区间。
   static const double _enterDuration = 440;
@@ -3227,10 +3243,13 @@ class _AnimatedListItem extends StatelessWidget {
             child!,
             Positioned.fill(
               child: IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: scheme.primary.withValues(alpha: 0.16 * t),
-                    borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: pulsePadding,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: scheme.primary.withValues(alpha: 0.16 * t),
+                      borderRadius: BorderRadius.circular(pulseRadius),
+                    ),
                   ),
                 ),
               ),

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/api/lanzou_client.dart';
@@ -6,6 +8,7 @@ import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/app_icons.dart' as app_icons;
 import 'package:lancloud/ui/common.dart';
+import 'package:lancloud/ui/m3e.dart';
 import 'package:lancloud/ui/share_page.dart';
 import 'package:provider/provider.dart';
 
@@ -13,9 +16,10 @@ import 'package:lancloud/l10n/delegates.dart';
 
 /// 解析分享时固定抛某个异常的假客户端。
 class _FakeClient extends LanzouClient {
-  _FakeClient(this.error) : super(uid: '0');
+  _FakeClient(this.error, {this.gate}) : super(uid: '0');
 
   final LanzouException error;
+  final Completer<void>? gate;
 
   /// 真正发出去的解析请求次数：用来验「格式不对根本不用请求」。
   int resolveCalls = 0;
@@ -27,6 +31,8 @@ class _FakeClient extends LanzouClient {
     bool withDescription = false,
   }) async {
     resolveCalls += 1;
+    final pending = gate;
+    if (pending != null) await pending.future;
     throw error;
   }
 
@@ -37,6 +43,8 @@ class _FakeClient extends LanzouClient {
     bool withDescription = false,
   }) async {
     resolveCalls += 1;
+    final pending = gate;
+    if (pending != null) await pending.future;
     throw error;
   }
 }
@@ -52,9 +60,10 @@ class _FakeApp extends AppController {
 
 Future<_FakeClient> _pumpDialog(
   WidgetTester tester,
-  LanzouException error,
-) async {
-  final client = _FakeClient(error);
+  LanzouException error, {
+  Completer<void>? gate,
+}) async {
+  final client = _FakeClient(error, gate: gate);
   final app = _FakeApp(client);
   addTearDown(app.dispose);
   await tester.pumpWidget(
@@ -81,6 +90,26 @@ Future<void> parseWithWrongPwd(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets('打开链接：解析中在按钮内显示 MD3E 加载指示器', (tester) async {
+    final gate = Completer<void>();
+    await _pumpDialog(tester, const NeedPasswordException(), gate: gate);
+    await tester.enterText(
+      find.byType(TextField).first,
+      'https://wwa.lanzoua.com/iabcdefg',
+    );
+    await tester.tap(find.text('解析'));
+    await tester.pump();
+
+    final indicator = find.byType(M3eLoadingIndicator);
+    expect(indicator, findsOneWidget);
+    expect(tester.widget<M3eLoadingIndicator>(indicator).size, 18);
+    expect(find.text('解析中'), findsNothing);
+
+    gate.complete();
+    await tester.pumpAndSettle();
+    expect(find.byType(M3eLoadingIndicator), findsNothing);
+  });
+
   testWidgets('打开链接：提取码错误标在提取码输入框上，不用红卡片', (tester) async {
     await _pumpDialog(tester, const WrongPasswordException());
     await parseWithWrongPwd(tester);

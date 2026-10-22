@@ -8,6 +8,7 @@ import '../core/lanzou_link.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
+import 'm3e.dart';
 import 'share_file_sheet.dart';
 import 'share_folder_page.dart';
 
@@ -318,7 +319,9 @@ class _ShareLinkDialogState extends State<ShareLinkDialog> {
         ),
         FilledButton(
           onPressed: _loading ? null : _parse,
-          child: Text(_loading ? l10n.resolving : l10n.resolve),
+          child: _loading
+              ? const M3eLoadingIndicator(size: 18)
+              : Text(l10n.resolve),
         ),
       ],
     );

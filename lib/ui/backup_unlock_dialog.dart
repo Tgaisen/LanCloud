@@ -27,6 +27,7 @@ Future<UnlockedBackup?> showBackupUnlockDialog(
   }
   return showDialog<UnlockedBackup>(
     context: context,
+    // 解密、口令校验与结果返回属于同一个连续操作，避免误触遮罩留下半完成状态。
     barrierDismissible: false,
     builder: (_) => _BackupUnlockDialog(
       content: content,
