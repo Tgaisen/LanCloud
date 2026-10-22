@@ -136,6 +136,7 @@ void main() {
     await tester.tap(find.text('WebDAV 云端'));
     await tester.pumpAndSettle();
     expect(find.byType(TextField), findsNWidgets(4));
+    expect(find.text('备份密码'), findsNothing);
     expect(find.text('连接并查找备份'), findsOneWidget);
     expect(find.text('建议使用 HTTPS，避免 WebDAV 密码在不安全连接中传输。'), findsNothing);
   });

@@ -122,11 +122,45 @@ void main() {
     expect(await result, ['', '', '', '/LanCloud']);
   });
 
+  testWidgets('首次填写密码可以显示或隐藏输入内容', (tester) async {
+    await pumpDialog(tester);
+
+    expect(find.byTooltip('显示密码'), findsOneWidget);
+    expect(
+      tester.widget<TextField>(find.byType(TextField).at(2)).obscureText,
+      isTrue,
+    );
+    await tester.tap(find.byTooltip('显示密码'));
+    await tester.pump();
+
+    expect(
+      tester.widget<TextField>(find.byType(TextField).at(2)).obscureText,
+      isFalse,
+    );
+    expect(find.byTooltip('隐藏密码'), findsOneWidget);
+  });
+
+  testWidgets('已有密码再次打开时不提供显示密码入口', (tester) async {
+    await pumpDialog(
+      tester,
+      url: 'https://example.com/dav',
+      username: 'u',
+      password: 'saved-password',
+    );
+
+    expect(find.byTooltip('显示密码'), findsNothing);
+    expect(
+      tester.widget<TextField>(find.byType(TextField).at(2)).obscureText,
+      isTrue,
+    );
+  });
+
   testWidgets('标题是「WebDAV 账号」，动作只有「重置 / 保存」两个', (tester) async {
     await pumpDialog(tester);
 
     expect(find.text('WebDAV 账号'), findsOneWidget);
     expect(find.text('路径'), findsOneWidget);
+    expect(find.text('备份密码'), findsNothing);
     expect(find.text('重置'), findsOneWidget);
     expect(find.text('保存'), findsOneWidget);
     // 基本弹窗最多两个动作：取消已经去掉

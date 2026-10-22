@@ -721,21 +721,24 @@ class M3eSwitchTile extends StatelessWidget {
     required this.value,
     required this.onChanged,
     this.subtitle,
+    this.enabled = true,
   });
 
   final String label;
   final String? subtitle;
   final bool value;
-  final ValueChanged<bool> onChanged;
+  final ValueChanged<bool>? onChanged;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
     return MergeSemantics(
       child: ListTile(
+        enabled: enabled,
         title: Text(label),
         subtitle: subtitle == null ? null : Text(subtitle!),
-        trailing: Switch(value: value, onChanged: onChanged),
-        onTap: () => onChanged(!value),
+        trailing: Switch(value: value, onChanged: enabled ? onChanged : null),
+        onTap: enabled && onChanged != null ? () => onChanged!(!value) : null,
       ),
     );
   }

@@ -12,7 +12,9 @@ import 'package:lancloud/core/backup/webdav_store.dart';
 import 'package:lancloud/core/cookie_auth.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/app_localizations_zh.dart';
+import 'package:lancloud/ui/app_icons.dart' as app_icons;
 import 'package:lancloud/ui/backup_page.dart';
+import 'package:lancloud/ui/backup_options_page.dart';
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/m3e.dart';
 import 'package:local_auth_android/local_auth_android.dart';
@@ -40,6 +42,10 @@ class _FakeBackupService extends BackupService {
   bool? lastMergeFavorites;
   bool? lastRestoreAccounts;
   Set<BackupSection>? lastSections;
+  String? lastPassphrase;
+  Completer<void>? exportGate;
+  Completer<void>? uploadGenerationGate;
+  Completer<void>? uploadGate;
 
   /// 云端恢复列表：测试里按需设置；[remoteGate] 用来卡住「拉列表」这一步，
   /// 观察进度线在列表回来前后是否收起。
@@ -50,10 +56,14 @@ class _FakeBackupService extends BackupService {
   @override
   Future<File> exportFile({
     Set<BackupSection> sections = const {},
+    String? passphrase,
     DateTime? now,
   }) async {
+    final gate = exportGate;
+    if (gate != null) await gate.future;
     saveCount += 1;
     lastSections = sections;
+    lastPassphrase = passphrase;
     return File('${Directory.systemTemp.path}/lancloud-backup-test.json');
   }
 
@@ -66,7 +76,13 @@ class _FakeBackupService extends BackupService {
   Future<String> uploadNow({
     Set<BackupSection>? sections,
     DateTime? now,
+    void Function()? onGenerated,
   }) async {
+    final generationGate = uploadGenerationGate;
+    if (generationGate != null) await generationGate.future;
+    onGenerated?.call();
+    final networkGate = uploadGate;
+    if (networkGate != null) await networkGate.future;
     uploadCount += 1;
     lastSections = sections ?? _store.backupSections;
     return 'lancloud-backup-20261002-181500.json';
@@ -75,6 +91,7 @@ class _FakeBackupService extends BackupService {
   @override
   Future<void> restoreFromString(
     String content, {
+    String? passphrase,
     bool mergeFavorites = false,
     bool restoreAccounts = true,
   }) async {
@@ -194,14 +211,36 @@ void main() {
     expect(find.text('立即备份'), findsOneWidget);
     expect(find.text('从文件恢复'), findsOneWidget);
     expect(find.text('WebDAV 账号'), findsOneWidget);
-    expect(find.text('备份内容'), findsOneWidget);
+    expect(find.text('备份选项'), findsOneWidget);
     expect(find.text('自动备份'), findsOneWidget);
-    expect(find.textContaining('尚未备份'), findsOneWidget);
+    expect(find.text('未配置 WebDAV'), findsOneWidget);
+    expect(find.textContaining('上次备份'), findsNothing);
+    final backupNowTile = tester.widget<ListTile>(
+      find.widgetWithText(ListTile, '立即备份'),
+    );
+    expect(
+      (backupNowTile.trailing! as Icon).icon,
+      app_icons.Icons.chevron_right,
+    );
+    final backupOptionsTile = tester.widget<ListTile>(
+      find.widgetWithText(ListTile, '备份选项'),
+    );
+    expect(
+      (backupOptionsTile.trailing! as Icon).icon,
+      app_icons.Icons.chevron_right,
+    );
+    expect(
+      find.descendant(
+        of: find.widgetWithText(ListTile, '备份选项'),
+        matching: find.byIcon(app_icons.Icons.tune),
+      ),
+      findsOneWidget,
+    );
     // 旧的两个开关搬进「备份内容」弹窗
     expect(find.text('备份包含 Cookie'), findsNothing);
     expect(find.text('备份包含 WebDAV 账号'), findsNothing);
-    // 还没选备份内容时显示「未选择」
-    expect(find.text('未选择'), findsOneWidget);
+    // “备份选项”行只保留标题，不再显示挤占空间的内容摘要小标题
+    expect(find.text('未选择'), findsNothing);
     // 云端备份已并入 WebDAV 分组，不再单独显示小标题
     expect(find.text('云端备份'), findsNothing);
   });
@@ -212,13 +251,20 @@ void main() {
     await tester.tap(find.text('立即备份'));
     await tester.pumpAndSettle();
 
-    // 弹窗默认一项都不勾，确定按钮不可用
-    final dialog = find.byType(AlertDialog);
+    // 独立页面默认一项都不勾，“继续”不可用
+    final optionsPage = find.byType(BackupOptionsPage);
+    expect(optionsPage, findsOneWidget);
+    expect(
+      find.descendant(of: optionsPage, matching: find.text('备份选项')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: optionsPage, matching: find.byType(AppBarBackButton)),
+      findsOneWidget,
+    );
     expect(
       tester
-          .widget<FilledButton>(
-            find.descendant(of: dialog, matching: find.byType(FilledButton)),
-          )
+          .widget<TextButton>(find.widgetWithText(TextButton, '继续'))
           .onPressed,
       isNull,
     );
@@ -226,33 +272,39 @@ void main() {
     // 所以没有单独的「账号列表」分项
     final l10n = AppLocalizationsZh();
     expect(
-      find.descendant(of: dialog, matching: find.byType(M3ePickTile)),
+      find.descendant(of: optionsPage, matching: find.byType(M3ePickTile)),
       findsNWidgets(6),
     );
-    // 按「常规 / 账号 / 敏感」分成 3 个 MD3E 列表组
+    // 保护备份与备份内容各一组
     expect(
-      find.descendant(of: dialog, matching: find.byType(SegmentedList)),
-      findsNWidgets(3),
+      find.descendant(of: optionsPage, matching: find.byType(SegmentedList)),
+      findsNWidgets(2),
     );
     expect(
-      find.descendant(of: dialog, matching: find.text(l10n.backupSectionQuick)),
+      find.descendant(
+        of: optionsPage,
+        matching: find.text(l10n.backupSectionQuick),
+      ),
       findsOneWidget,
     );
     expect(
       find.descendant(
-        of: dialog,
+        of: optionsPage,
         matching: find.text(l10n.backupSectionCookies),
       ),
       findsOneWidget,
     );
 
-    await tester.tap(find.descendant(of: dialog, matching: find.text('设置项')));
+    await tester.tap(
+      find.descendant(of: optionsPage, matching: find.text('设置项')),
+    );
     await tester.pumpAndSettle();
-    await tester.tap(find.descendant(of: dialog, matching: find.text('确定')));
+    await tester.tap(find.widgetWithText(TextButton, '继续'));
     await tester.pumpAndSettle();
 
     expect(fake.saveCount, 1);
     expect(fake.lastSections, {BackupSection.settings});
+    expect(fake.lastPassphrase, isNull);
     expect(savedCalls, hasLength(1));
     expect('${savedCalls.single.arguments['mime']}', 'application/json');
     expect('${savedCalls.single.arguments['fileName']}', endsWith('.json'));
@@ -266,52 +318,79 @@ void main() {
     await tester.tap(find.text('立即备份'));
     await tester.pumpAndSettle();
     await tester.tap(
-      find.descendant(of: find.byType(AlertDialog), matching: find.text('收藏夹')),
+      find.descendant(
+        of: find.byType(BackupOptionsPage),
+        matching: find.text('收藏夹'),
+      ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(
-      find.descendant(of: find.byType(AlertDialog), matching: find.text('确定')),
-    );
+    await tester.tap(find.widgetWithText(TextButton, '继续'));
     await tester.pumpAndSettle();
 
     expect(savedCalls, hasLength(1));
     expect(find.textContaining('已保存到'), findsNothing);
   });
 
-  testWidgets('WebDAV 的备份内容会保存下来，只影响云端上传', (tester) async {
+  testWidgets('生成备份期间显示加载弹窗，完成后再打开系统保存页', (tester) async {
+    fake.exportGate = Completer<void>();
     await pumpPage(tester);
 
-    await tester.tap(find.text('备份内容'));
+    await tester.tap(find.text('立即备份'));
     await tester.pumpAndSettle();
     await tester.tap(
-      find.descendant(of: find.byType(AlertDialog), matching: find.text('收藏夹')),
+      find.descendant(
+        of: find.byType(BackupOptionsPage),
+        matching: find.text('设置项'),
+      ),
     );
     await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(TextButton, '继续'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('正在生成备份'), findsOneWidget);
+    expect(savedCalls, isEmpty);
+
+    fake.exportGate!.complete();
+    await tester.pumpAndSettle();
+    expect(find.text('正在生成备份'), findsNothing);
+    expect(savedCalls, hasLength(1));
+  });
+
+  testWidgets('WebDAV 的备份选项会保存下来，只影响云端上传', (tester) async {
+    await pumpPage(tester);
+
+    await tester.tap(find.text('备份选项'));
+    await tester.pumpAndSettle();
     await tester.tap(
-      find.descendant(of: find.byType(AlertDialog), matching: find.text('确定')),
+      find.descendant(
+        of: find.byType(BackupOptionsPage),
+        matching: find.text('收藏夹'),
+      ),
     );
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(TextButton, '保存'));
     await tester.pumpAndSettle();
 
     expect(fake.webdav.backupSections, {BackupSection.favorites});
     final prefs = await SharedPreferences.getInstance();
     expect(prefs.getStringList('webdav_backup_sections'), ['favorites']);
-    // 页面上显示已选内容的摘要
-    expect(find.text('收藏夹'), findsOneWidget);
+    expect(find.text('备份选项'), findsOneWidget);
   });
 
   testWidgets('敏感项勾选前验证身份，通过后本次运行不再重复验证', (tester) async {
     fakeAuth.result = CookieAuthResult.canceled;
     await pumpPage(tester);
 
-    await tester.tap(find.text('备份内容'));
+    await tester.tap(find.text('备份选项'));
     await tester.pumpAndSettle();
-    final dialog = find.byType(AlertDialog);
+    final optionsPage = find.byType(BackupOptionsPage);
     final l10n = AppLocalizationsZh();
 
     // 验证被取消：Cookie 保持未勾选
     await tester.tap(
       find.descendant(
-        of: dialog,
+        of: optionsPage,
         matching: find.text(l10n.backupSectionCookies),
       ),
     );
@@ -330,7 +409,7 @@ void main() {
     fakeAuth.result = CookieAuthResult.ok;
     await tester.tap(
       find.descendant(
-        of: dialog,
+        of: optionsPage,
         matching: find.text(l10n.backupSectionCookies),
       ),
     );
@@ -348,7 +427,7 @@ void main() {
     // 本次运行已验证过：再勾 WebDav 账号不再弹验证
     fakeAuth.result = CookieAuthResult.canceled;
     await tester.tap(
-      find.descendant(of: dialog, matching: find.text(l10n.webdavAccount)),
+      find.descendant(of: optionsPage, matching: find.text(l10n.webdavAccount)),
     );
     await tester.pumpAndSettle();
     expect(fakeAuth.calls, 2);
@@ -360,6 +439,33 @@ void main() {
           .selected,
       isTrue,
     );
+  });
+
+  testWidgets('导出敏感备份必须设置口令，并把口令交给加密层', (tester) async {
+    await pumpPage(tester);
+    final l10n = AppLocalizationsZh();
+
+    await tester.tap(find.text('立即备份'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(l10n.backupSectionCookies));
+    await tester.pumpAndSettle();
+    expect(find.text('保护备份'), findsOneWidget);
+    expect(
+      tester
+          .widget<M3eSwitchTile>(find.widgetWithText(M3eSwitchTile, '加密备份'))
+          .enabled,
+      isFalse,
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('backup-options-passphrase')),
+      'backup-secret',
+    );
+    await tester.tap(find.widgetWithText(TextButton, '继续'));
+    await tester.pumpAndSettle();
+
+    expect(fake.lastSections, contains(BackupSection.cookies));
+    expect(fake.lastPassphrase, 'backup-secret');
+    expect(savedCalls, hasLength(1));
   });
 
   testWidgets('恢复确认弹窗：无图标标题，含收藏夹时给保留选项且默认勾选', (tester) async {
@@ -507,6 +613,51 @@ void main() {
     expect(fake.restoreCount, 0);
   });
 
+  testWidgets('恢复敏感凭据前重新验证身份，取消时不写入账号', (tester) async {
+    bool? restored;
+    const content =
+        '{"app":"lancloud","format":3,"sections":["cookies"],'
+        '"activeUid":"1","accounts":[{"uid":"1","nickname":"A",'
+        '"cookie":"ylogin=1; phpdisk_info=secret"}],"tables":{}}';
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('zh'),
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: TextButton(
+                onPressed: () async {
+                  restored = await confirmAndRestore(context, fake, content);
+                },
+                child: const Text('恢复'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    fakeAuth.result = CookieAuthResult.canceled;
+    await tester.tap(find.text('恢复'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, '确定'));
+    await tester.pumpAndSettle();
+    expect(restored, isFalse);
+    expect(fakeAuth.calls, 1);
+    expect(fake.restoreCount, 0);
+
+    fakeAuth.result = CookieAuthResult.ok;
+    await tester.tap(find.text('恢复'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, '确定'));
+    await tester.pumpAndSettle();
+    expect(restored, isTrue);
+    expect(fakeAuth.calls, 2);
+    expect(fake.restoreCount, 1);
+  });
+
   testWidgets('仅恢复数据时明确跳过账号恢复', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -583,6 +734,7 @@ void main() {
       url: 'https://dav.example.com/blue/',
       username: 'user',
       password: 'pwd',
+      backupPassphrase: 'backup-secret',
       path: WebdavStore.defaultPath,
     );
     await pumpPage(tester);
@@ -591,6 +743,54 @@ void main() {
       tester.widget<ListTile>(find.widgetWithText(ListTile, '测试连接')).enabled,
       isTrue,
     );
+    expect(find.text('未选择备份内容'), findsOneWidget);
+    expect(
+      tester
+          .widget<SwitchListTile>(find.widgetWithText(SwitchListTile, '自动备份'))
+          .onChanged,
+      isNull,
+    );
+
+    await fake.webdav.setBackupSections({BackupSection.settings});
+    await tester.pumpWidget(const SizedBox());
+    await pumpPage(tester);
+    expect(find.text('上次备份：尚未备份'), findsOneWidget);
+    expect(
+      tester
+          .widget<SwitchListTile>(find.widgetWithText(SwitchListTile, '自动备份'))
+          .onChanged,
+      isNotNull,
+    );
+  });
+
+  testWidgets('重置 WebDAV 账号同时清空备份选项和自动备份', (tester) async {
+    await fake.webdav.saveServer(
+      url: 'https://dav.example.com/blue/',
+      username: 'user',
+      password: 'pwd',
+      backupPassphrase: 'backup-secret',
+      path: WebdavStore.defaultPath,
+    );
+    await fake.webdav.setBackupOptions(
+      sections: {BackupSection.favorites},
+      backupPassphrase: 'backup-secret',
+    );
+    await fake.webdav.setAutoBackup(true);
+    await fake.webdav.markBackup(error: 'network failed');
+    await pumpPage(tester);
+
+    await tester.tap(find.text('WebDAV 账号'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('重置'));
+    await tester.pumpAndSettle();
+
+    expect(fake.webdav.url, isEmpty);
+    expect(fake.webdav.backupPassphrase, isEmpty);
+    expect(fake.webdav.backupSections, isEmpty);
+    expect(fake.webdav.autoBackup, isFalse);
+    expect(fake.webdav.lastBackupAt, 0);
+    expect(fake.webdav.lastBackupError, isEmpty);
+    expect(find.text('未配置 WebDAV'), findsOneWidget);
   });
 
   testWidgets('备份频率弹窗：MD3E 单选列表组（radio 指示），选中即写入', (tester) async {
@@ -598,8 +798,10 @@ void main() {
       url: 'https://dav.example.com/blue/',
       username: 'user',
       password: 'pwd',
+      backupPassphrase: 'backup-secret',
       path: WebdavStore.defaultPath,
     );
+    await fake.webdav.setBackupSections({BackupSection.settings});
     await fake.webdav.setAutoBackup(true);
     await pumpPage(tester);
 
@@ -638,8 +840,10 @@ void main() {
       url: 'https://dav.example.com/blue/',
       username: 'user',
       password: 'pwd',
+      backupPassphrase: 'backup-secret',
       path: WebdavStore.defaultPath,
     );
+    await fake.webdav.setBackupSections({BackupSection.favorites});
     await pumpPage(tester);
 
     await tester.tap(find.text('测试连接'));
@@ -660,11 +864,47 @@ void main() {
     );
   });
 
+  testWidgets('上传备份：生成阶段弹窗，随后显示上传进度线', (tester) async {
+    await fake.webdav.saveServer(
+      url: 'https://dav.example.com/blue/',
+      username: 'user',
+      password: 'pwd',
+      backupPassphrase: 'backup-secret',
+      path: WebdavStore.defaultPath,
+    );
+    await fake.webdav.setBackupSections({BackupSection.favorites});
+    fake.uploadGenerationGate = Completer<void>();
+    fake.uploadGate = Completer<void>();
+    await pumpPage(tester);
+
+    await tester.tap(find.text('上传备份'));
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('正在生成备份'), findsOneWidget);
+    expect(find.byType(M3eLinearProgressIndicator), findsNothing);
+
+    fake.uploadGenerationGate!.complete();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('正在生成备份'), findsNothing);
+    expect(find.byType(M3eLinearProgressIndicator), findsOneWidget);
+
+    fake.uploadGate!.complete();
+    await tester.pumpAndSettle();
+    expect(fake.uploadCount, 1);
+    expect(find.byType(M3eLinearProgressIndicator), findsNothing);
+    expect(
+      find.text('已上传 lancloud-backup-20261002-181500.json'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('云端恢复：选择版本弹窗带标题、分层时间与最新标记；进度线不残留', (tester) async {
     await fake.webdav.saveServer(
       url: 'https://dav.example.com/blue/',
       username: 'user',
       password: 'pwd',
+      backupPassphrase: 'backup-secret',
       path: WebdavStore.defaultPath,
     );
     final now = DateTime.now();
@@ -721,10 +961,17 @@ void main() {
 
   testWidgets('「上次备份」日期：今天 / 昨天 / yyyy-MM-dd', (tester) async {
     final now = DateTime.now();
+    await fake.webdav.saveServer(
+      url: 'https://dav.example.com/blue/',
+      username: 'user',
+      password: 'pwd',
+      backupPassphrase: 'backup-secret',
+      path: WebdavStore.defaultPath,
+    );
     // 页面 initState 会重新 load 存储，所以把状态放进 mock 的 SharedPreferences
     Future<void> pumpWith(int millis) async {
       SharedPreferences.setMockInitialValues(<String, Object>{
-        'webdav_url': 'https://dav.example.com/blue/',
+        'webdav_backup_sections': ['settings'],
         'webdav_last_backup_at': millis,
       });
       // 先卸载旧页面：否则同类型 widget 复用 State，不会重新 load 存储
@@ -750,9 +997,13 @@ void main() {
       url: 'https://dav.example.com/blue/',
       username: 'user',
       password: 'pwd',
+      backupPassphrase: 'backup-secret',
       path: WebdavStore.defaultPath,
     );
-    await fake.webdav.setBackupSections({BackupSection.cookies});
+    await fake.webdav.setBackupOptions(
+      sections: {BackupSection.cookies},
+      backupPassphrase: 'backup-secret',
+    );
     fakeAuth.result = CookieAuthResult.canceled;
     await pumpPage(tester);
 

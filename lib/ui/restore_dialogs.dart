@@ -1,7 +1,9 @@
 import 'package:material_ui/material_ui.dart' hide Icons;
 
 import '../core/backup/backup_service.dart';
+import '../core/cookie_auth.dart';
 import '../l10n/l10n.dart';
+import 'backup_unlock_dialog.dart';
 import 'backup_preview_view.dart';
 import 'common.dart';
 import 'm3e.dart';
@@ -104,7 +106,10 @@ Future<bool> confirmAndRestore(
   String content, {
   bool restoreAccounts = true,
 }) async {
-  final preview = BackupService.inspect(content);
+  final unlocked = await showBackupUnlockDialog(context, content: content);
+  if (unlocked == null || !context.mounted) return false;
+  final plaintext = unlocked.content;
+  final preview = BackupService.inspect(plaintext);
   var existingFavorites = 1;
   try {
     existingFavorites = (await service.app.db.favorites()).length;
@@ -122,8 +127,29 @@ Future<bool> confirmAndRestore(
     restoreAccounts: restoreAccounts,
   );
   if (decision == null) return false;
+  if (!context.mounted) return false;
+  if (decision.restoreAccounts && preview.hasSensitiveData) {
+    final l10n = context.l10n;
+    final result = await CookieAuth.instance.verify(
+      l10n.restoreSensitiveAuthReason,
+      messages: authMessagesFor(l10n),
+    );
+    if (!context.mounted) return false;
+    switch (result) {
+      case CookieAuthResult.ok:
+        break;
+      case CookieAuthResult.canceled:
+        return false;
+      case CookieAuthResult.unavailable:
+        showAppToast(context, l10n.cookieAuthUnavailable);
+        return false;
+      case CookieAuthResult.failed:
+        showAppToast(context, l10n.cookieAuthFailed);
+        return false;
+    }
+  }
   await service.restoreFromString(
-    content,
+    plaintext,
     mergeFavorites: decision.keepFavorites,
     restoreAccounts: decision.restoreAccounts,
   );

@@ -10,8 +10,10 @@ import '../core/app_controller.dart';
 import '../core/backup/backup_service.dart';
 import '../core/backup/webdav_client.dart';
 import '../core/backup/webdav_store.dart';
+import '../core/cookie_auth.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
+import 'backup_unlock_dialog.dart';
 import 'backup_preview_view.dart';
 import 'common.dart';
 import 'm3e.dart';
@@ -55,9 +57,12 @@ class _RestorePageState extends State<RestorePage> {
   LoginStateValidation? _loginStatus;
   String _content = '';
   String _label = '';
+  String _backupPassphrase = '';
   String? _error;
   bool _busy = false;
+  bool _showProgress = false;
   bool _showPassword = false;
+  bool _sensitiveAuthorized = false;
   bool _forward = true;
 
   @override
@@ -114,6 +119,7 @@ class _RestorePageState extends State<RestorePage> {
     if (_busy) return;
     setState(() {
       _busy = true;
+      _showProgress = true;
       _error = null;
     });
     try {
@@ -130,6 +136,7 @@ class _RestorePageState extends State<RestorePage> {
       if (mounted) {
         setState(() {
           _busy = false;
+          _showProgress = false;
         });
       }
     }
@@ -240,8 +247,39 @@ class _RestorePageState extends State<RestorePage> {
   }
 
   Future<void> _inspectAndPreview(String content, String label) async {
-    final preview = BackupService.inspect(content);
-    final candidate = preview.suggestedAccount;
+    var plaintext = content;
+    _backupPassphrase = '';
+    if (BackupService.isEncrypted(content)) {
+      // 解密弹窗自身显示验证进度；顶栏进度只在弹窗关闭后的检查阶段出现。
+      setState(() => _showProgress = false);
+      final unlocked = await showBackupUnlockDialog(context, content: content);
+      if (unlocked == null || !mounted) return;
+      plaintext = unlocked.content;
+      _backupPassphrase = unlocked.passphrase;
+      setState(() => _showProgress = true);
+    }
+    final preview = BackupService.inspect(plaintext);
+    var sensitiveAuthorized = false;
+    String? authorizationError;
+    if (preview.hasSensitiveData && mounted) {
+      final l10n = context.l10n;
+      final result = await CookieAuth.instance.verify(
+        l10n.restoreSensitiveAuthReason,
+        messages: authMessagesFor(l10n),
+      );
+      if (!mounted) return;
+      switch (result) {
+        case CookieAuthResult.ok:
+          sensitiveAuthorized = true;
+        case CookieAuthResult.canceled:
+          return;
+        case CookieAuthResult.unavailable:
+          authorizationError = l10n.cookieAuthUnavailable;
+        case CookieAuthResult.failed:
+          authorizationError = l10n.cookieAuthFailed;
+      }
+    }
+    final candidate = sensitiveAuthorized ? preview.suggestedAccount : null;
     LoginStateValidation? status;
     if (candidate != null && mounted) {
       final client = LanzouClient(uid: candidate.uid)
@@ -251,11 +289,13 @@ class _RestorePageState extends State<RestorePage> {
     if (!mounted) return;
     _topBarHide.value = 0;
     setState(() {
-      _content = content;
+      _content = plaintext;
       _label = label;
       _preview = preview;
       _candidate = candidate;
       _loginStatus = status;
+      _sensitiveAuthorized = sensitiveAuthorized;
+      _error = authorizationError;
       _forward = true;
       _stage = _RestoreStage.preview;
     });
@@ -274,12 +314,49 @@ class _RestorePageState extends State<RestorePage> {
 
   Future<void> _restore({required bool includeAccounts}) async {
     if (_preview == null || _content.isEmpty) return;
+    if (includeAccounts &&
+        _preview!.hasSensitiveData &&
+        !_sensitiveAuthorized) {
+      final l10n = context.l10n;
+      final result = await CookieAuth.instance.verify(
+        l10n.restoreSensitiveAuthReason,
+        messages: authMessagesFor(l10n),
+      );
+      if (!mounted) return;
+      switch (result) {
+        case CookieAuthResult.ok:
+          _sensitiveAuthorized = true;
+        case CookieAuthResult.canceled:
+          return;
+        case CookieAuthResult.unavailable:
+          setState(() => _error = l10n.cookieAuthUnavailable);
+          return;
+        case CookieAuthResult.failed:
+          setState(() => _error = l10n.cookieAuthFailed);
+          return;
+      }
+    }
     await _run(() async {
       await _service.restoreFromString(
         _content,
         mergeFavorites: true,
         restoreAccounts: includeAccounts,
       );
+      // 云端恢复使用的临时连接在成功后转为持久配置；若备份本身恢复了
+      // WebDAV 账号，则保留备份中的完整配置，避免被恢复页输入覆盖。
+      final restoredWebdavCredentials =
+          includeAccounts && (_preview?.hasWebdavCredentials ?? false);
+      if (_source == _RestoreSource.cloud && !restoredWebdavCredentials) {
+        await _service.webdav.saveServer(
+          url: _url.text.trim(),
+          username: _username.text.trim(),
+          password: _password.text,
+          backupPassphrase: _backupPassphrase,
+          path: _path.text.trim().isEmpty
+              ? WebdavStore.defaultPath
+              : _path.text.trim(),
+        );
+      }
       if (mounted) Navigator.of(context).pop(RestorePageResult.restored);
     });
   }
@@ -317,7 +394,7 @@ class _RestorePageState extends State<RestorePage> {
               scrolledUnderElevation: 0,
               title: Text(title),
               leading: AppBarBackButton(onPressed: _busy ? () {} : _goBack),
-              bottom: _busy
+              bottom: _showProgress
                   ? const PreferredSize(
                       preferredSize: Size.fromHeight(4),
                       child: M3eLinearProgressIndicator(height: 4),

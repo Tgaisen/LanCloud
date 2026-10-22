@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lancloud/core/backup/backup_sections.dart';
 import 'package:lancloud/core/backup/webdav_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -78,8 +79,10 @@ void main() {
       username: 'u',
       password: 'p',
       path: 'LanCloud/',
+      backupPassphrase: 'backup-secret',
     );
     expect(store.path, '/LanCloud');
+    expect(store.backupPassphrase, 'backup-secret');
 
     final reloaded = _MemoryWebdavStore()
       ..secureAccount = Map.of(store.secureAccount!);
@@ -87,6 +90,7 @@ void main() {
     expect(reloaded.path, '/LanCloud');
     expect(reloaded.backupUrl, 'https://dav.example.com/dav/LanCloud/');
     expect(reloaded.configured, isTrue);
+    expect(reloaded.backupPassphrase, 'backup-secret');
   });
 
   test('密码丢失：禁用 WebDAV 操作并关闭自动备份', () async {
@@ -122,6 +126,83 @@ void main() {
     expect((complete()..path = '').configured, isFalse);
   });
 
+  test('只有普通备份项时不需要口令也能自动备份', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final store = _MemoryWebdavStore();
+    await store.saveServer(
+      url: 'https://dav.example.com/dav/',
+      username: 'u',
+      password: 'p',
+      path: '/LanCloud',
+    );
+    await store.setBackupSections({BackupSection.favorites});
+    await store.setAutoBackup(true);
+
+    expect(store.hasBackupPassphrase, isFalse);
+    expect(store.autoBackup, isTrue);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getBool('webdav_auto'), isTrue);
+  });
+
+  test('未选择备份内容时不能开启自动备份', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final store = _MemoryWebdavStore();
+    await store.saveServer(
+      url: 'https://dav.example.com/dav/',
+      username: 'u',
+      password: 'p',
+      path: '/LanCloud',
+    );
+    await store.setAutoBackup(true);
+
+    expect(store.configured, isTrue);
+    expect(store.backupSections, isEmpty);
+    expect(store.autoBackup, isFalse);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getBool('webdav_auto'), isFalse);
+  });
+
+  test('重置账号会同时清空备份选项、自动备份和上次执行状态', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final store = _MemoryWebdavStore();
+    await store.saveServer(
+      url: 'https://dav.example.com/dav/',
+      username: 'u',
+      password: 'p',
+      path: '/Backups',
+      backupPassphrase: 'backup-secret',
+    );
+    await store.setBackupSections({BackupSection.favorites});
+    await store.setAutoBackup(true);
+    await store.setInterval('weekly');
+    await store.markBackup(error: 'network failed');
+
+    await store.reset();
+
+    expect(store.url, isEmpty);
+    expect(store.username, isEmpty);
+    expect(store.password, isEmpty);
+    expect(store.backupPassphrase, isEmpty);
+    expect(store.path, WebdavStore.defaultPath);
+    expect(store.backupSections, isEmpty);
+    expect(store.autoBackup, isFalse);
+    expect(store.interval, 'daily');
+    expect(store.lastBackupAt, 0);
+    expect(store.lastBackupError, isEmpty);
+    expect(store.secureAccount, isNull);
+  });
+
+  test('敏感备份选项没有口令时拒绝保存', () async {
+    final store = _MemoryWebdavStore();
+    await expectLater(
+      store.setBackupOptions(
+        sections: {BackupSection.cookies},
+        backupPassphrase: '',
+      ),
+      throwsA(isA<StateError>()),
+    );
+  });
+
   test('旧版分散字段完整迁移到安全存储后才删除原数据', () async {
     SharedPreferences.setMockInitialValues(<String, Object>{
       'webdav_url': 'https://dav.example.com/dav/',
@@ -136,6 +217,7 @@ void main() {
       'url': 'https://dav.example.com/dav/',
       'username': 'u',
       'password': 'p',
+      'backupPassphrase': '',
       'path': '/Backups',
     });
     expect(store.legacyPassword, isEmpty);

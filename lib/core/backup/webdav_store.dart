@@ -27,6 +27,12 @@ class WebdavStore {
   String url = '';
   String username = '';
   String password = '';
+
+  /// 独立的备份密码，只用于加密云端备份。
+  ///
+  /// 与 WebDAV 登录密码一起放在系统安全存储；自动备份直接复用它，
+  /// 不再需要后台任务弹窗等待用户输入。
+  String backupPassphrase = '';
   bool autoBackup = false;
 
   /// 备份 / 恢复目录：相对服务器地址的路径（默认 `/LanCloud`）。
@@ -56,6 +62,14 @@ class WebdavStore {
       username.trim().isNotEmpty &&
       password.isNotEmpty &&
       path.trim().isNotEmpty;
+
+  bool get hasBackupPassphrase => backupPassphrase.trim().isNotEmpty;
+
+  bool get _canAutoBackup =>
+      configured &&
+      backupSections.isNotEmpty &&
+      (!backupSections.any((section) => section.sensitive) ||
+          hasBackupPassphrase);
 
   /// 有效的备份目录（服务器地址 + 路径），WebdavClient 的所有操作都用它。
   String get backupUrl {
@@ -122,7 +136,7 @@ class WebdavStore {
         }
       }
     }
-    if (autoBackup && !configured) {
+    if (autoBackup && !_canAutoBackup) {
       autoBackup = false;
       await prefs.setBool(_keyAuto, false);
     }
@@ -132,6 +146,7 @@ class WebdavStore {
     'url': url,
     'username': username,
     'password': password,
+    'backupPassphrase': backupPassphrase,
     'path': path,
   };
 
@@ -139,6 +154,7 @@ class WebdavStore {
     url = (data['url'] ?? '').trim();
     username = (data['username'] ?? '').trim();
     password = data['password'] ?? '';
+    backupPassphrase = data['backupPassphrase'] ?? '';
     final storedPath = data['path'];
     path = storedPath == null || storedPath.isEmpty
         ? (url.isEmpty ? defaultPath : '/')
@@ -155,6 +171,7 @@ class WebdavStore {
       'url': url,
       'username': username,
       'password': password,
+      'backupPassphrase': '',
       'path': path ?? (url.trim().isEmpty ? defaultPath : '/'),
     });
   }
@@ -164,6 +181,7 @@ class WebdavStore {
       a['url'] == b['url'] &&
       a['username'] == b['username'] &&
       a['password'] == b['password'] &&
+      a['backupPassphrase'] == b['backupPassphrase'] &&
       a['path'] == b['path'];
 
   /// 读取完整账号记录；单独抽出来便于测试替换安全存储插件。
@@ -213,10 +231,12 @@ class WebdavStore {
     required String username,
     required String password,
     required String path,
+    String backupPassphrase = '',
   }) async {
     this.url = url.trim();
     this.username = username.trim();
     this.password = password;
+    this.backupPassphrase = backupPassphrase;
     this.path = normalizePath(path);
     final prefs = await SharedPreferences.getInstance();
     if (this.url.isEmpty) {
@@ -230,16 +250,16 @@ class WebdavStore {
       }
     }
     await _removeLegacyCredentials(prefs);
-    if (!configured && autoBackup) {
+    if (!_canAutoBackup && autoBackup) {
       autoBackup = false;
       await prefs.setBool(_keyAuto, false);
     }
   }
 
   Future<void> setAutoBackup(bool value) async {
-    autoBackup = value;
+    autoBackup = value && _canAutoBackup;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_keyAuto, value);
+    await prefs.setBool(_keyAuto, autoBackup);
   }
 
   Future<void> setInterval(String value) async {
@@ -248,7 +268,7 @@ class WebdavStore {
     await prefs.setString(_keyInterval, value);
   }
 
-  /// 保存 WebDAV 备份内容（「备份内容」弹窗确认时调用）。
+  /// 单独更新 WebDAV 备份分项；兼容恢复流程与测试。
   Future<void> setBackupSections(Set<BackupSection> value) async {
     backupSections = {...value};
     final prefs = await SharedPreferences.getInstance();
@@ -256,6 +276,72 @@ class WebdavStore {
       _keyBackupSections,
       [for (final section in backupSections) section.id]..sort(),
     );
+  }
+
+  /// “备份选项”确认时同时保存分项和独立加密口令。
+  ///
+  /// 含敏感项时由界面强制提供口令；普通备份传空串表示明确不加密。
+  Future<void> setBackupOptions({
+    required Set<BackupSection> sections,
+    required String backupPassphrase,
+  }) async {
+    if (sections.any((section) => section.sensitive) &&
+        backupPassphrase.trim().isEmpty) {
+      throw StateError('敏感备份必须设置备份密码');
+    }
+    final oldSections = backupSections;
+    final oldPassphrase = this.backupPassphrase;
+    final oldAutoBackup = autoBackup;
+    backupSections = {...sections};
+    this.backupPassphrase = backupPassphrase;
+    final prefs = await SharedPreferences.getInstance();
+    try {
+      await prefs.setStringList(
+        _keyBackupSections,
+        [for (final section in backupSections) section.id]..sort(),
+      );
+      final data = _accountData();
+      await writeSecureAccount(data);
+      final verified = await readSecureAccount();
+      if (!_sameAccount(data, verified)) {
+        throw StateError('WebDAV 账号安全存储校验失败');
+      }
+      if (autoBackup && !_canAutoBackup) {
+        autoBackup = false;
+        await prefs.setBool(_keyAuto, false);
+      }
+    } catch (_) {
+      backupSections = oldSections;
+      this.backupPassphrase = oldPassphrase;
+      autoBackup = oldAutoBackup;
+      rethrow;
+    }
+  }
+
+  /// 重置整套 WebDAV 配置，包括账号、备份选项、自动备份和上次执行状态。
+  Future<void> reset() async {
+    url = '';
+    username = '';
+    password = '';
+    backupPassphrase = '';
+    path = defaultPath;
+    backupSections = <BackupSection>{};
+    autoBackup = false;
+    interval = 'daily';
+    lastBackupAt = 0;
+    lastBackupError = '';
+
+    await deleteSecureAccount();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_keyUrl);
+    await prefs.remove(_keyUser);
+    await prefs.remove(_keyPath);
+    await prefs.remove(_keyAuto);
+    await prefs.remove(_keyInterval);
+    await prefs.remove(_keyBackupSections);
+    await prefs.remove(_keyLastAt);
+    await prefs.remove(_keyLastError);
+    await deleteLegacyPassword();
   }
 
   /// 恢复备份时把「包含 WebDav 账号」记回来，后续上传沿用。

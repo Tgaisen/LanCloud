@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/backup/backup_crypto.dart';
 import 'package:lancloud/core/backup/backup_sections.dart';
 import 'package:lancloud/core/backup/backup_service.dart';
 import 'package:lancloud/core/backup/webdav_client.dart';
@@ -90,6 +91,75 @@ void main() {
     expect(preview.createdAt?.millisecondsSinceEpoch, 1700000000000);
   });
 
+  test('敏感分项没有口令时拒绝导出明文', () async {
+    final service = BackupService(
+      AppController(),
+      webdav: _MemoryWebdavStore(),
+    );
+    await expectLater(
+      service.encode(sections: {BackupSection.cookies}),
+      throwsA(
+        isA<BackupException>().having(
+          (error) => error.message,
+          'message',
+          contains('必须设置备份密码'),
+        ),
+      ),
+    );
+  });
+
+  test('口令加密覆盖完整 JSON，错误口令无法解出备份', () async {
+    final store = _MemoryWebdavStore()
+      ..url = 'https://dav.example.com/blue/'
+      ..username = 'user'
+      ..password = 'webdav-secret'
+      ..backupPassphrase = 'backup-secret';
+    final service = BackupService(AppController(), webdav: store);
+    final encrypted = await service.encode(
+      sections: {BackupSection.settings, BackupSection.webdavAccount},
+      passphrase: 'backup-secret',
+    );
+
+    expect(BackupService.isEncrypted(encrypted), isTrue);
+    expect(encrypted, isNot(contains('webdav-secret')));
+    expect(encrypted, isNot(contains('dav.example.com')));
+    await expectLater(
+      BackupService.decryptIfNeeded(encrypted, passphrase: 'wrong-secret'),
+      throwsA(isA<BackupException>()),
+    );
+  });
+
+  test('加密备份可以通过 restoreFromString 验证口令并恢复', () async {
+    SharedPreferences.setMockInitialValues({});
+    final app = AppController();
+    await app.settings.load();
+    final service = BackupService(app, webdav: _MemoryWebdavStore());
+    final plaintext = jsonEncode({
+      'app': 'lancloud',
+      'format': 3,
+      'sections': ['settings'],
+      'settings': {...app.settings.toJson(), 'theme_mode': 'dark'},
+      'tables': <String, Object?>{},
+    });
+    final encryption = await BackupCrypto.encrypt(
+      plaintext,
+      passphrase: 'backup-secret',
+      iterations: 1000,
+    );
+    final content = jsonEncode({
+      'app': 'lancloud',
+      'format': 3,
+      'encryption': encryption,
+    });
+
+    await expectLater(
+      service.restoreFromString(content, passphrase: 'wrong-secret'),
+      throwsA(isA<BackupException>()),
+    );
+    await service.restoreFromString(content, passphrase: 'backup-secret');
+    expect(app.settings.themeMode, 'dark');
+  });
+
   test('WebDAV 上传：没选备份内容时提示先选', () async {
     SharedPreferences.setMockInitialValues({});
     final webdav = _MemoryWebdavStore();
@@ -106,7 +176,7 @@ void main() {
         isA<BackupException>().having(
           (e) => e.message,
           'message',
-          contains('备份内容'),
+          contains('备份选项'),
         ),
       ),
     );
@@ -139,13 +209,22 @@ void main() {
       ..url = 'https://dav.example.com/blue/'
       ..username = 'u'
       ..password = 'p'
+      ..backupPassphrase = 'backup-secret'
       ..path = '/LanCloud'
       ..autoBackup = true
       ..backupSections = {BackupSection.favorites, BackupSection.webdavAccount};
     final service = BackupService(AppController(), webdav: store);
 
+    final encrypted = await service.encode(
+      sections: {BackupSection.webdavAccount},
+      passphrase: 'backup-secret',
+    );
+    expect(BackupService.isEncrypted(encrypted), isTrue);
     final payload = jsonDecode(
-      await service.encode(sections: {BackupSection.webdavAccount}),
+      await BackupService.decryptIfNeeded(
+        encrypted,
+        passphrase: 'backup-secret',
+      ),
     ) as Map;
     final webdav = payload['webdav'] as Map;
     expect(webdav['path'], '/LanCloud');
@@ -168,12 +247,14 @@ void main() {
         '{"app":"lancloud","format":2,"sections":["webdavAccount"],'
         '"tables":{},'
         '"webdav":{"url":"https://dav.example.com/blue/","username":"u",'
-        '"password":"p","path":"/LanCloud","autoBackup":true,'
+        '"password":"p","backupPassphrase":"backup-secret",'
+        '"path":"/LanCloud","autoBackup":true,'
         '"backupSections":["favorites","cookies"]}}';
     await service.restoreFromString(content);
 
     expect(store.url, 'https://dav.example.com/blue/');
     expect(store.path, '/LanCloud');
+    expect(store.backupPassphrase, 'backup-secret');
     expect(store.autoBackup, isTrue);
     expect(
       store.backupSections,
@@ -208,8 +289,16 @@ void main() {
     expect(withoutCookies.containsKey('activeUid'), isFalse);
 
     // Cookie 存在账号条目里：勾 Cookie 时才写账号条目（activeUid + accounts）
+    final encrypted = await service.encode(
+      sections: {BackupSection.cookies},
+      passphrase: 'backup-secret',
+    );
+    expect(BackupService.isEncrypted(encrypted), isTrue);
     final cookies = jsonDecode(
-      await service.encode(sections: {BackupSection.cookies}),
+      await BackupService.decryptIfNeeded(
+        encrypted,
+        passphrase: 'backup-secret',
+      ),
     ) as Map;
     expect(cookies['accounts'], isA<List>());
     expect(cookies['includeCookies'], isTrue);
@@ -248,5 +337,28 @@ void main() {
     expect(app.settings.transitionAnimations, restoredTransitions);
     final favorites = await app.db.favorites();
     expect(favorites.map((f) => f.ref), contains('restored-ref'));
+  });
+
+  test('仅恢复数据时不会导入 Cookie 或 WebDAV 密码', () async {
+    SharedPreferences.setMockInitialValues({});
+    final app = AppController();
+    await app.settings.load();
+    final store = _MemoryWebdavStore();
+    await store.load();
+    final service = BackupService(app, webdav: store);
+    const content =
+        '{"app":"lancloud","format":3,"sections":["cookies","webdavAccount"],'
+        '"activeUid":"1","accounts":[{"uid":"1","cookie":"secret-cookie"}],'
+        '"tables":{},'
+        '"webdav":{"url":"https://dav.example.com/blue/","username":"u",'
+        '"password":"webdav-secret","backupPassphrase":"backup-secret",'
+        '"path":"/LanCloud"}}';
+
+    await service.restoreFromString(content, restoreAccounts: false);
+
+    expect(app.accounts.accounts, isEmpty);
+    expect(store.url, isEmpty);
+    expect(store.password, isEmpty);
+    expect(store.backupPassphrase, isEmpty);
   });
 }

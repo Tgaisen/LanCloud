@@ -1927,13 +1927,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get backupContent => 'Backup content';
 
   @override
-  String get backupGroupGeneral => 'General';
+  String get backupOptions => 'Backup options';
 
   @override
-  String get backupGroupAccount => 'Account';
-
-  @override
-  String get backupGroupSensitive => 'Sensitive';
+  String get generatingBackup => 'Generating backup';
 
   @override
   String get backupSectionSettings => 'Settings';
@@ -1945,17 +1942,82 @@ class AppLocalizationsEn extends AppLocalizations {
   String get backupSectionQuick => 'Quick access';
 
   @override
+  String get backupSectionQuickHint => 'Quick access data for each account';
+
+  @override
   String get backupSectionRecents => 'Recents';
+
+  @override
+  String get backupSectionRecentsHint => 'Recent data for each account';
 
   @override
   String get backupSectionCookies => 'Cookies';
 
   @override
+  String get backupSectionCookiesHint =>
+      'Sensitive; equivalent to account sign-in credentials';
+
+  @override
+  String get backupSectionWebdavHint =>
+      'Sensitive; equivalent to WebDAV sign-in credentials';
+
+  @override
   String get backupSectionEmpty => 'Nothing selected';
 
   @override
-  String get backupContentHint =>
-      'Unchecked items are not written to the backup; sensitive items require identity verification';
+  String get backupProtectionTitle => 'Protect backup';
+
+  @override
+  String get backupProtectionIntro =>
+      'Encrypt the entire backup with a separate passphrase. It is never uploaded and cannot be recovered.';
+
+  @override
+  String get backupUseEncryption => 'Encrypt with a backup passphrase';
+
+  @override
+  String get backupPassphraseReminder =>
+      'Remember this password; without it, the backup cannot be restored';
+
+  @override
+  String get backupPassphrase => 'Backup passphrase';
+
+  @override
+  String get backupPassphraseHint => 'At least 8 characters';
+
+  @override
+  String get backupPassphraseRequired => 'Enter a backup passphrase';
+
+  @override
+  String get backupPassphraseTooShort => 'Use at least 8 characters';
+
+  @override
+  String get backupPassphraseMismatch => 'The backup passphrases do not match';
+
+  @override
+  String get backupEncryptionRequired =>
+      'Backups containing sign-in credentials or WebDAV passwords must be encrypted';
+
+  @override
+  String get backupEncryptionOff =>
+      'This backup will not be encrypted. Anyone who gets the file can read its contents.';
+
+  @override
+  String get backupUnlockTitle => 'Unlock encrypted backup';
+
+  @override
+  String get backupUnlockMessage =>
+      'Enter the backup passphrase used when this file was created.';
+
+  @override
+  String get backupUnlockAction => 'Unlock';
+
+  @override
+  String get backupPassphraseWrong =>
+      'The backup passphrase is incorrect or the file is damaged';
+
+  @override
+  String get restoreSensitiveAuthReason =>
+      'Verify your identity to use sign-in credentials from this backup';
 
   @override
   String get webdavSection => 'WebDAV';
@@ -1982,6 +2044,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get webdavPassword => 'Password';
 
   @override
+  String get webdavBackupPassphrase => 'Backup passphrase';
+
+  @override
+  String get webdavBackupPassphraseHint =>
+      'Used to encrypt cloud backups; changing it affects new backups only';
+
+  @override
   String get webdavPath => 'Path';
 
   @override
@@ -1998,6 +2067,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get webdavNotSet => 'Not set';
+
+  @override
+  String get webdavNotConfigured => 'WebDAV not configured';
+
+  @override
+  String get webdavBackupContentNotSelected => 'No backup content selected';
 
   @override
   String get webdavAccountIncomplete =>
@@ -2397,5 +2472,5 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacyBody =>
-      'Privacy Policy\n\n1. The app collects and uploads no personal data. There is no account system, analytics, ads, or crash-reporting SDK.\n\n2. Your LanZou account (cookie), nickname, favorites, recents, transfer history and settings stay on this device. The cookie is kept in encrypted system storage; viewing it requires biometric or screen-lock verification. Runtime logs (errors plus version info) are also kept on this device, and are written to the location you choose via the system save dialog only when you tap Export runtime logs.\n\n3. The app talks directly to official LanZou endpoints (pc.woozooo.com, up.woozooo.com, etc.); requests only serve the actions you start, such as signing in, listing, uploading or downloading.\n\n4. Sharing goes through the system share sheet: content or files are handed to the app you pick, only when you tap share. The clipboard is written only when you tap Copy; Detect clipboard links is off by default, and once you turn it on under Settings - Notifications the app reads the clipboard when returning to the foreground only to detect LanCloud share links and offer to open them, never uploading it.\n\n5. If you configure WebDAV under Backup & restore, backups are uploaded to the server you enter; cookies are excluded by default. Enabling it and choosing the server is entirely up to you.\n\n6. The camera permission is only for QR scanning, the install-apps permission is only for opening APKs you downloaded, and ignoring battery optimization only keeps background transfers stable. All can be revoked in system settings.\n\n7. Uninstalling the app deletes the accounts and data stored on this device, so back up first.';
+      'Privacy Policy\n\n1. The app collects and uploads no personal data. There is no account system, analytics, ads, or crash-reporting SDK.\n\n2. Your LanZou account (cookie), nickname, favorites, recents, transfer history and settings stay on this device. The cookie is kept in encrypted system storage; viewing it requires biometric or screen-lock verification. Runtime logs (errors plus version info) are also kept on this device, and are written to the location you choose via the system save dialog only when you tap Export runtime logs.\n\n3. The app talks directly to official LanZou endpoints (pc.woozooo.com, up.woozooo.com, etc.); requests only serve the actions you start, such as signing in, listing, uploading or downloading.\n\n4. Sharing goes through the system share sheet: content or files are handed to the app you pick, only when you tap share. The clipboard is written only when you tap Copy; Detect clipboard links is off by default, and once you turn it on under Settings - Notifications the app reads the clipboard when returning to the foreground only to detect LanCloud share links and offer to open them, never uploading it.\n\n5. If you configure WebDAV under Backup & restore, backups are uploaded to the server you enter. Backups containing cookies or WebDAV passwords must use a separate backup passphrase and are encrypted as a whole; other backups can also be encrypted. Enabling WebDAV and choosing the server is entirely up to you.\n\n6. The camera permission is only for QR scanning, the install-apps permission is only for opening APKs downloaded, and ignoring battery optimization only keeps background transfers stable. All can be revoked in system settings.\n\n7. Uninstalling the app deletes the accounts and data stored on this device, so back up first.';
 }

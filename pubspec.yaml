@@ -88,6 +88,7 @@ dependencies:
   # 待 m3e_core 适配后再放开 <1.8.0。
   material_ui: ">=1.6.0 <1.8.0"
   cupertino_ui: ^1.1.4
+  cryptography: ^2.9.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

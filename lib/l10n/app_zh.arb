@@ -24,7 +24,9 @@
   "lanzouUploadFailed": "上传失败：{detail}",
   "@lanzouUploadFailed": {
     "placeholders": {
-      "detail": {"type": "String"}
+      "detail": {
+        "type": "String"
+      }
     }
   },
   "lanzouUnknownError": "未知错误",
@@ -33,7 +35,9 @@
   "lanzouResolveShareFailed": "解析分享失败：{detail}",
   "@lanzouResolveShareFailed": {
     "placeholders": {
-      "detail": {"type": "String"}
+      "detail": {
+        "type": "String"
+      }
     }
   },
   "lanzouFileShareUnavailable": "文件不存在或已取消分享",
@@ -42,7 +46,9 @@
   "lanzouDownloadUrlFailed": "获取下载地址失败：{detail}",
   "@lanzouDownloadUrlFailed": {
     "placeholders": {
-      "detail": {"type": "String"}
+      "detail": {
+        "type": "String"
+      }
     }
   },
   "lanzouDirectLinkMissing": "未获取到直链",
@@ -52,7 +58,9 @@
   "resolveFailed": "解析失败：{error}",
   "@resolveFailed": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "tabHome": "首页",
@@ -63,7 +71,9 @@
   "exitMessage": "当前有 {count} 个传输任务，退出会终止它们，确定退出吗？",
   "@exitMessage": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "keepTransferring": "继续传输",
@@ -73,15 +83,21 @@
   "linkWithPassword": "{url} 提取码：{pwd}",
   "@linkWithPassword": {
     "placeholders": {
-      "url": {"type": "String"},
-      "pwd": {"type": "String"}
+      "url": {
+        "type": "String"
+      },
+      "pwd": {
+        "type": "String"
+      }
     }
   },
   "notLoggedIn": "未登录",
   "accountUid": "账号 {uid}",
   "@accountUid": {
     "placeholders": {
-      "uid": {"type": "String"}
+      "uid": {
+        "type": "String"
+      }
     }
   },
   "accountTitle": "账号",
@@ -89,7 +105,9 @@
   "transferringCount": "传输中 {count}",
   "@transferringCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "transferCenter": "传输",
@@ -107,7 +125,9 @@
   "favoriteDeleteConfirmMessage": "将移除选中的 {count} 个收藏，继续吗？",
   "@favoriteDeleteConfirmMessage": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "unfavorite": "取消收藏",
@@ -134,7 +154,9 @@
   "uidLabel": "账号: {uid}",
   "@uidLabel": {
     "placeholders": {
-      "uid": {"type": "String"}
+      "uid": {
+        "type": "String"
+      }
     }
   },
   "switchAccountShort": "切换",
@@ -152,7 +174,9 @@
   "removeAccountMessage": "将从本机移除账号 {uid} 及其登录信息，云端文件不受影响。",
   "@removeAccountMessage": {
     "placeholders": {
-      "uid": {"type": "String"}
+      "uid": {
+        "type": "String"
+      }
     }
   },
   "clearUsageData": "清除使用数据",
@@ -176,7 +200,9 @@
   "failedWithError": "失败：{error}",
   "@failedWithError": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "unknownError": "未知错误",
@@ -198,14 +224,18 @@
   "retryResolveFailed": "重新解析下载链接失败：{error}",
   "@retryResolveFailed": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "networkError": "网络错误",
   "networkErrorHttp": "网络错误（HTTP {status}）",
   "@networkErrorHttp": {
     "placeholders": {
-      "status": {"type": "int"}
+      "status": {
+        "type": "int"
+      }
     }
   },
   "downloadBlocked": "下载被风控拦截，请稍后重试",
@@ -227,7 +257,9 @@
   "sizeLabel": "大小：{size}",
   "@sizeLabel": {
     "placeholders": {
-      "size": {"type": "String"}
+      "size": {
+        "type": "String"
+      }
     }
   },
   "favorite": "收藏",
@@ -277,7 +309,9 @@
   "defaultDownloadDir": "默认（{path}）",
   "@defaultDownloadDir": {
     "placeholders": {
-      "path": {"type": "String"}
+      "path": {
+        "type": "String"
+      }
     }
   },
   "downloadDirKeywords": "下载 目录 保存位置",
@@ -298,7 +332,9 @@
   "requestIntervalHint": "间隔过小易触发服务器限流",
   "@requestIntervalSubtitle": {
     "placeholders": {
-      "ms": {"type": "int"}
+      "ms": {
+        "type": "int"
+      }
     }
   },
   "requestIntervalKeywords": "间隔 限流 风控 请求",
@@ -363,31 +399,41 @@
   "downloadDirSet": "下载目录已设为 {dir}",
   "@downloadDirSet": {
     "placeholders": {
-      "dir": {"type": "String"}
+      "dir": {
+        "type": "String"
+      }
     }
   },
   "pickDirFailed": "选择目录失败：{error}",
   "@pickDirFailed": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "privateDownloadDir": "私有目录（{path}）",
   "@privateDownloadDir": {
     "placeholders": {
-      "path": {"type": "String"}
+      "path": {
+        "type": "String"
+      }
     }
   },
   "publicDownloadDir": "公共目录（{path}）",
   "@publicDownloadDir": {
     "placeholders": {
-      "path": {"type": "String"}
+      "path": {
+        "type": "String"
+      }
     }
   },
   "customDownloadDir": "非公共目录（{path}）",
   "@customDownloadDir": {
     "placeholders": {
-      "path": {"type": "String"}
+      "path": {
+        "type": "String"
+      }
     }
   },
   "downloadDirHint": "应用默认下载到应用私有目录。如需更改，建议选择系统公共目录（如 Download、Documents 等）。受 Android 11+ 限制，如更改到非公共目录，则需先下载到应用内部目录，完成后再移至所选的目录。",
@@ -395,7 +441,9 @@
   "safExportFailed": "写入下载目录失败：{error}",
   "@safExportFailed": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "noInterval": "不间隔",
@@ -420,7 +468,9 @@
   "selectedCount": "已选择 {count} 项",
   "@selectedCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "selectAll": "全选",
@@ -431,14 +481,20 @@
   "uploadSkipped": "已加入 {added} 个上传任务，跳过 {skipped} 个超过 100MB 的文件",
   "@uploadSkipped": {
     "placeholders": {
-      "added": {"type": "int"},
-      "skipped": {"type": "int"}
+      "added": {
+        "type": "int"
+      },
+      "skipped": {
+        "type": "int"
+      }
     }
   },
   "uploadAdded": "已加入 {count} 个上传任务",
   "@uploadAdded": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "nameLabel": "名称",
@@ -452,13 +508,17 @@
   "deleteConfirmMessage": "将把选中的 {count} 个条目移入回收站，继续吗？",
   "@deleteConfirmMessage": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "deleteConfirmSingle": "将把「{name}」移入回收站，继续吗？",
   "@deleteConfirmSingle": {
     "placeholders": {
-      "name": {"type": "String"}
+      "name": {
+        "type": "String"
+      }
     }
   },
   "deleteRecord": "删除此条记录",
@@ -476,60 +536,82 @@
   "passwordClearedCount": "已关闭 {count} 项的访问密码",
   "@passwordClearedCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "transferDeleteConfirmTitle": "删除传输记录",
   "transferDeleteConfirmMessage": "将移除选中的 {count} 条记录（进行中的会先取消），继续吗？",
   "@transferDeleteConfirmMessage": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "batchDownload": "批量下载",
   "resolvingBatch": "正在解析并加入下载队列（共 {count} 个）",
   "@resolvingBatch": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "addedDownloads": "已加入 {count} 个下载任务",
   "@addedDownloads": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "addedDownloadsPartial": "已加入 {ok} 个下载任务，{failed} 个解析失败",
   "@addedDownloadsPartial": {
     "placeholders": {
-      "ok": {"type": "int"},
-      "failed": {"type": "int"}
+      "ok": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
     }
   },
   "retriedDownloads": "已重新加入 {count} 个下载任务",
   "@retriedDownloads": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "retriedDownloadsPartial": "已重新加入 {ok} 个下载任务，{failed} 个重试失败",
   "@retriedDownloadsPartial": {
     "placeholders": {
-      "ok": {"type": "int"},
-      "failed": {"type": "int"}
+      "ok": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
     }
   },
   "noLinksToCopy": "没有可复制的分享链接",
   "passwordLabel": "提取码：{pwd}",
   "@passwordLabel": {
     "placeholders": {
-      "pwd": {"type": "String"}
+      "pwd": {
+        "type": "String"
+      }
     }
   },
   "favoritedCount": "已收藏 {count} 个条目",
   "@favoritedCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "move": "移动",
@@ -541,15 +623,23 @@
   "movedTo": "已移动 {count} 个条目到「{name}」",
   "@movedTo": {
     "placeholders": {
-      "count": {"type": "int"},
-      "name": {"type": "String"}
+      "count": {
+        "type": "int"
+      },
+      "name": {
+        "type": "String"
+      }
     }
   },
   "movedPartial": "已移动 {ok} 个条目，{failed} 个失败",
   "@movedPartial": {
     "placeholders": {
-      "ok": {"type": "int"},
-      "failed": {"type": "int"}
+      "ok": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
     }
   },
   "newDescHint": "输入新的简介",
@@ -557,14 +647,20 @@
   "descUpdatedCount": "已修改 {count} 个条目的简介",
   "@descUpdatedCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "descUpdatedPartial": "已修改 {ok} 个，{failed} 个失败",
   "@descUpdatedPartial": {
     "placeholders": {
-      "ok": {"type": "int"},
-      "failed": {"type": "int"}
+      "ok": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
     }
   },
   "pwdHint": "2-6 位提取码",
@@ -574,21 +670,29 @@
   "passwordSetCount": "已为 {count} 个条目设置提取码",
   "@passwordSetCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "passwordSetPartial": "已设置 {ok} 个，{failed} 个失败",
   "@passwordSetPartial": {
     "placeholders": {
-      "ok": {"type": "int"},
-      "failed": {"type": "int"}
+      "ok": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
     }
   },
   "close": "关闭",
   "downloadsCount": "下载 {count}",
   "@downloadsCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "hasPassword": "有提取码",
@@ -637,13 +741,17 @@
   "loadFailed": "加载失败：{error}",
   "@loadFailed": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "noMatchContent": "没有匹配「{query}」的内容",
   "@noMatchContent": {
     "placeholders": {
-      "query": {"type": "String"}
+      "query": {
+        "type": "String"
+      }
     }
   },
   "emptyFolder": "文件夹为空",
@@ -657,7 +765,9 @@
   "fileCount": "{count} 个文件",
   "@fileCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "openFolder": "打开文件夹",
@@ -685,7 +795,9 @@
   "notifProgressBody": "{count} 个任务进行中",
   "@notifProgressBody": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "notifUploadDone": "上传完成",
@@ -700,15 +812,21 @@
   "favoritedPartial": "{ok} 个已收藏，{failed} 个失败",
   "@favoritedPartial": {
     "placeholders": {
-      "ok": {"type": "int"},
-      "failed": {"type": "int"}
+      "ok": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
     }
   },
   "file": "文件",
   "sharerLabel": "分享者 {name}",
   "@sharerLabel": {
     "placeholders": {
-      "name": {"type": "String"}
+      "name": {
+        "type": "String"
+      }
     }
   },
   "editInfo": "修改信息",
@@ -721,7 +839,9 @@
   "shareReceivedFiles": "已接收 {count} 个文件，开始上传",
   "@shareReceivedFiles": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "shareTargetUnsupported": "无法识别的分享内容",
@@ -730,7 +850,9 @@
   "uploadTasksAdded": "已加入 {count} 个上传任务",
   "@uploadTasksAdded": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "install": "安装",
@@ -742,13 +864,17 @@
   "expandSection": "展开{title}",
   "@expandSection": {
     "placeholders": {
-      "title": {"type": "String"}
+      "title": {
+        "type": "String"
+      }
     }
   },
   "collapseSection": "收起{title}",
   "@collapseSection": {
     "placeholders": {
-      "title": {"type": "String"}
+      "title": {
+        "type": "String"
+      }
     }
   },
   "enteredMultiSelect": "进入多选",
@@ -777,7 +903,9 @@
   "exportLogsSaved": "已保存到 {path}",
   "@exportLogsSaved": {
     "placeholders": {
-      "path": {"type": "String"}
+      "path": {
+        "type": "String"
+      }
     }
   },
   "scan": "识别二维码方式",
@@ -821,7 +949,9 @@
   "restoreCreatedAt": "创建时间：{time}",
   "@restoreCreatedAt": {
     "placeholders": {
-      "time": {"type": "String"}
+      "time": {
+        "type": "String"
+      }
     }
   },
   "restoreIncludedContent": "包含内容",
@@ -830,19 +960,25 @@
   "restoreAccountCount": "账号：{count} 个",
   "@restoreAccountCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "restoreAccountCountValue": "{count} 个",
   "@restoreAccountCountValue": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "restoreUsingAccount": "恢复后使用 {name} 登录",
   "@restoreUsingAccount": {
     "placeholders": {
-      "name": {"type": "String"}
+      "name": {
+        "type": "String"
+      }
     }
   },
   "restoreLoginReady": "登录状态有效，可以恢复并登录。",
@@ -886,23 +1022,43 @@
   "backupSaved": "已保存到 {path}",
   "@backupSaved": {
     "placeholders": {
-      "path": {"type": "String"}
+      "path": {
+        "type": "String"
+      }
     }
   },
   "restoreFromFile": "从文件恢复",
   "restoreFromFileSubtitle": "选择之前导出的备份文件",
   "chooseBackupFile": "选择备份文件",
   "backupContent": "备份内容",
-  "backupGroupGeneral": "常规",
-  "backupGroupAccount": "账号信息",
-  "backupGroupSensitive": "敏感信息",
+  "backupOptions": "备份选项",
+  "generatingBackup": "正在生成备份",
   "backupSectionSettings": "设置项",
   "backupSectionFavorites": "收藏夹",
   "backupSectionQuick": "快速访问",
+  "backupSectionQuickHint": "各账号的快速访问数据",
   "backupSectionRecents": "最近使用",
+  "backupSectionRecentsHint": "各账号的最近使用数据",
   "backupSectionCookies": "账号列表与 Cookie",
+  "backupSectionCookiesHint": "敏感信息，等同于账号登录凭据",
+  "backupSectionWebdavHint": "敏感信息，等同于 WebDAV 登录凭据",
   "backupSectionEmpty": "未选择",
-  "backupContentHint": "选择备份敏感信息需要验证身份",
+  "backupProtectionTitle": "保护备份",
+  "backupProtectionIntro": "使用独立密码加密备份",
+  "backupUseEncryption": "加密备份",
+  "backupPassphraseReminder": "请牢记密码，否则无法恢复数据",
+  "backupPassphrase": "备份密码",
+  "backupPassphraseHint": "至少 8 个字符",
+  "backupPassphraseRequired": "请输入备份密码",
+  "backupPassphraseTooShort": "备份密码至少需要 8 个字符",
+  "backupPassphraseMismatch": "两次输入的备份密码不一致",
+  "backupEncryptionRequired": "备份包含敏感信息，为确保数据安全需要加密备份",
+  "backupEncryptionOff": "未加密备份，请注意数据安全",
+  "backupUnlockTitle": "解锁加密备份",
+  "backupUnlockMessage": "请输入创建此备份时设置的备份密码。",
+  "backupUnlockAction": "解锁",
+  "backupPassphraseWrong": "备份密码错误或备份已损坏",
+  "restoreSensitiveAuthReason": "验证身份以使用备份中的登录凭据",
   "webdavSection": "WebDAV",
   "webdavAccount": "WebDAV 账号",
   "webdavServer": "WebDAV 地址",
@@ -911,12 +1067,16 @@
   "pleaseEnterWebdavServer": "请输入 WebDAV 地址",
   "webdavUsername": "用户名",
   "webdavPassword": "密码",
+  "webdavBackupPassphrase": "备份密码",
+  "webdavBackupPassphraseHint": "用于加密云端备份；修改后仅影响新备份",
   "webdavPath": "路径",
   "webdavPathHint": "服务器地址下的备份目录",
   "pleaseEnterUsername": "请输入用户名",
   "pleaseEnterPassword": "请输入密码",
   "pleaseEnterWebdavPath": "请输入路径",
   "webdavNotSet": "未设置",
+  "webdavNotConfigured": "未配置 WebDAV",
+  "webdavBackupContentNotSelected": "未选择备份内容",
   "webdavAccountIncomplete": "WebDAV 账号配置不完整，请重新填写",
   "webdavBackup": "云端备份",
   "webdavTest": "测试连接",
@@ -925,7 +1085,9 @@
   "webdavUploadDone": "已上传 {name}",
   "@webdavUploadDone": {
     "placeholders": {
-      "name": {"type": "String"}
+      "name": {
+        "type": "String"
+      }
     }
   },
   "webdavRestore": "从云端恢复",
@@ -942,14 +1104,18 @@
   "lastBackupAt": "上次备份：{time}",
   "@lastBackupAt": {
     "placeholders": {
-      "time": {"type": "String"}
+      "time": {
+        "type": "String"
+      }
     }
   },
   "neverBackedUp": "尚未备份",
   "backupFailed": "上次备份失败：{error}",
   "@backupFailed": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "restoreConfirmTitle": "从备份恢复？",
@@ -960,19 +1126,25 @@
   "dropFilesCount": "收到 {count} 个文件",
   "@dropFilesCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "dropLinksCount": "收到 {count} 个链接",
   "@dropLinksCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "dropUploadConfirm": "是否上传到当前目录（{path}）？",
   "@dropUploadConfirm": {
     "placeholders": {
-      "path": {"type": "String"}
+      "path": {
+        "type": "String"
+      }
     }
   },
   "dropPickAnotherFolder": "更换目录",
@@ -986,7 +1158,9 @@
   "dropHoverUpload": "松开后上传所选文件到该目录",
   "@dropHoverUpload": {
     "placeholders": {
-      "path": {"type": "String"}
+      "path": {
+        "type": "String"
+      }
     }
   },
   "dropHoverPickFolder": "松开后上传所选文件",
@@ -996,38 +1170,52 @@
   "dropUploaded": "已上传 {count} 个文件",
   "@dropUploaded": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "dropFavorited": "已收藏 {count} 条",
   "@dropFavorited": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "dropNeedsPassword": "{count} 条需要提取码",
   "@dropNeedsPassword": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "dropDuplicated": "{count} 条已在收藏中",
   "@dropDuplicated": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "dropFailed": "{count} 条处理失败",
   "@dropFailed": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "aboutVersion": "{version} ({build})",
   "@aboutVersion": {
     "placeholders": {
-      "version": {"type": "String"},
-      "build": {"type": "int"}
+      "version": {
+        "type": "String"
+      },
+      "build": {
+        "type": "int"
+      }
     }
   },
   "aboutTerms": "用户协议",
@@ -1050,13 +1238,17 @@
   "updateLastCheckAt": "上次检测于 {time}",
   "@updateLastCheckAt": {
     "placeholders": {
-      "time": {"type": "String"}
+      "time": {
+        "type": "String"
+      }
     }
   },
   "updateReachFailed": "无法连接至 GitHub ({code})",
   "@updateReachFailed": {
     "placeholders": {
-      "code": {"type": "String"}
+      "code": {
+        "type": "String"
+      }
     }
   },
   "updateCheck": "检测更新",
@@ -1072,7 +1264,9 @@
   "updateDialogTitle": "检测到新版本 {version}",
   "@updateDialogTitle": {
     "placeholders": {
-      "version": {"type": "String"}
+      "version": {
+        "type": "String"
+      }
     }
   },
   "updateViewDetails": "查看详情",
@@ -1083,34 +1277,50 @@
   "timeMinutesAgo": "{count}分钟前",
   "@timeMinutesAgo": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "timeTodayAt": "今天 {time}",
   "@timeTodayAt": {
     "placeholders": {
-      "time": {"type": "String"}
+      "time": {
+        "type": "String"
+      }
     }
   },
   "timeYesterdayAt": "昨天 {time}",
   "@timeYesterdayAt": {
     "placeholders": {
-      "time": {"type": "String"}
+      "time": {
+        "type": "String"
+      }
     }
   },
   "timeMonthDay": "{month}月{day}日",
   "@timeMonthDay": {
     "placeholders": {
-      "month": {"type": "int"},
-      "day": {"type": "int"}
+      "month": {
+        "type": "int"
+      },
+      "day": {
+        "type": "int"
+      }
     }
   },
   "timeYearMonthDay": "{year}年{month}月{day}日",
   "@timeYearMonthDay": {
     "placeholders": {
-      "year": {"type": "int"},
-      "month": {"type": "int"},
-      "day": {"type": "int"}
+      "year": {
+        "type": "int"
+      },
+      "month": {
+        "type": "int"
+      },
+      "day": {
+        "type": "int"
+      }
     }
   },
   "firstRunWelcome": "欢迎使用蓝云",
@@ -1122,7 +1332,9 @@
   "recentLimitValue": "{count} 条",
   "@recentLimitValue": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "recentLimitKeywords": "recent limit history 最近 条数 记录",
@@ -1140,5 +1352,5 @@
   "feedback": "反馈",
   "emailCopied": "已复制电子邮箱地址",
   "termsBody": "1. 本应用是蓝奏云的非官方第三方客户端，仅供个人学习与自用，与蓝奏云官方无任何关联，也未获得官方授权或认可。\n\n2. 使用本应用需要你自己的蓝奏云账号。请勿利用本应用从事违反蓝奏云服务条款、相关法律法规或侵犯他人权益的行为。\n\n3. 本应用按「现状」提供，不提供任何形式的担保。因使用本应用造成的账号受限、数据丢失、上传或下载失败等风险，由使用者自行承担。\n\n4. 应用内使用的接口来自公开渠道与非官方整理，可能随时失效；开发者不保证功能持续可用。\n\n5. 本应用以 Apache License 2.0 开源，你可以自行修改与分发代码，但请保留原始许可与版权声明，并自行承担由此产生的责任。\n\n6. 继续使用即表示你已阅读并同意本协议；如不同意，请卸载本应用。",
-  "privacyBody": "1. 本应用不收集、不上传任何个人信息，没有账号系统，也没有统计、广告或崩溃上报 SDK。\n\n2. 你的蓝奏云账号（Cookie）、昵称、收藏、最近使用、传输记录与设置只保存在本机。Cookie 保存在系统加密存储中；查看 Cookie 需要先通过生物识别或锁屏验证。应用还会在本机保存运行日志（含错误信息与版本信息），只有你主动点击「导出运行日志」时才会通过系统「保存文件」对话框写入你选择的位置。\n\n3. 应用运行时直接与蓝奏云官方接口通信（pc.woozooo.com、up.woozooo.com 等），请求内容仅用于完成你发起的登录、列表、上传、下载等操作。\n\n4. 分享由系统分享面板完成：只有你主动点击分享时，选中的内容或文件才会交给你选择的应用；剪贴板仅在你主动点击「复制」时写入；「识别剪贴板链接」默认关闭，开启后（设置-通知）回到应用前台时会读取剪贴板里是否有蓝奏云分享链接，仅用于提示打开，不会上传。\n\n5. 如果你在「备份与恢复」中配置了 WebDAV，备份文件会上传到你自己填写的服务器；备份默认不包含 Cookie，是否开启与上传到哪台服务器完全由你决定。\n\n6. 相机权限仅用于扫码，安装应用权限仅用于打开你下载的 APK，忽略电池优化仅用于让后台传输更稳定；这些权限都可以随时在系统设置中撤销。\n\n7. 卸载应用会一并删除本机保存的账号与数据，删除前请自行备份。"
+  "privacyBody": "1. 本应用不收集、不上传任何个人信息，没有账号系统，也没有统计、广告或崩溃上报 SDK。\n\n2. 你的蓝奏云账号（Cookie）、昵称、收藏、最近使用、传输记录与设置只保存在本机。Cookie 保存在系统加密存储中；查看 Cookie 需要先通过生物识别或锁屏验证。应用还会在本机保存运行日志（含错误信息与版本信息），只有你主动点击「导出运行日志」时才会通过系统「保存文件」对话框写入你选择的位置。\n\n3. 应用运行时直接与蓝奏云官方接口通信（pc.woozooo.com、up.woozooo.com 等），请求内容仅用于完成你发起的登录、列表、上传、下载等操作。\n\n4. 分享由系统分享面板完成：只有你主动点击分享时，选中的内容或文件才会交给你选择的应用；剪贴板仅在你主动点击「复制」时写入；「识别剪贴板链接」默认关闭，开启后（设置-通知）回到应用前台时会读取剪贴板里是否有蓝奏云分享链接，仅用于提示打开，不会上传。\n\n5. 如果你在「备份与恢复」中配置了 WebDAV，备份文件会上传到你自己填写的服务器。包含 Cookie 或 WebDAV 密码的备份必须使用独立备份密码整包加密；普通备份也可以选择加密。是否开启与上传到哪台服务器完全由你决定。\n\n6. 相机权限仅用于扫码，安装应用权限仅用于打开你下载的 APK，忽略电池优化仅用于让后台传输更稳定；这些权限都可以随时在系统设置中撤销。\n\n7. 卸载应用会一并删除本机保存的账号与数据，删除前请自行备份。"
 }

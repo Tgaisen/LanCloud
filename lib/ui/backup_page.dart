@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
@@ -14,6 +15,7 @@ import '../core/cookie_auth.dart';
 import '../core/system_file_saver.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
+import 'backup_options_page.dart';
 import 'common.dart';
 import 'm3e.dart';
 import 'restore_dialogs.dart';
@@ -145,102 +147,6 @@ class _BackupContentState extends State<BackupContent> {
 
   // -------------------------------------------------------------- 本地备份
 
-  /// 「备份内容」弹窗：三个分组 + 复选，默认都不勾。
-  ///
-  /// 敏感项（Cookie / WebDav 账号）勾选前先做身份验证；本次运行验证通过过
-  /// 就不再重复验证。返回 null 表示取消，返回空集合表示一项都没选。
-  Future<Set<BackupSection>?> _pickBackupContent({
-    required Set<BackupSection> initial,
-    required String title,
-  }) {
-    final l10n = context.l10n;
-    final selected = <BackupSection>{...initial};
-    return showDialog<Set<BackupSection>>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (dialogContext, setDialogState) {
-          Future<void> toggle(BackupSection section, bool value) async {
-            if (!value) {
-              setDialogState(() => selected.remove(section));
-              return;
-            }
-            if (section.sensitive && !await _ensureSensitiveVerified()) return;
-            if (!mounted || !dialogContext.mounted) return;
-            setDialogState(() => selected.add(section));
-          }
-
-          final theme = Theme.of(dialogContext);
-          // 每个分项一个 MD3E 列表组（组内 2dp 间隔 + 连接式圆角）；
-          // 选中项用次级色底 + 对勾（与其它选择弹窗同一套样式）
-          Widget group(String name, List<BackupSection> sections) => Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // 弹窗里列表组外边距为 0：标题也无缩进，与外沿对齐
-              M3eSectionHeader(name, horizontalInset: 0),
-              // 列表组比弹窗底（surfaceContainerHigh）再高一档容器色
-              DialogListGroup(
-                children: [
-                  for (final section in sections)
-                    M3ePickTile(
-                      label: _sectionName(l10n, section),
-                      selected: selected.contains(section),
-                      onTap: () => toggle(section, !selected.contains(section)),
-                    ),
-                ],
-              ),
-            ],
-          );
-
-          return AlertDialog(
-            title: Text(title),
-            // M3 对话框内容边距 24dp；列表组自带 0 外边距，组沿落在 24dp 上
-            contentPadding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  group(l10n.backupGroupGeneral, const [
-                    BackupSection.settings,
-                    BackupSection.favorites,
-                  ]),
-                  group(l10n.backupGroupAccount, const [
-                    BackupSection.quick,
-                    BackupSection.recents,
-                  ]),
-                  group(l10n.backupGroupSensitive, const [
-                    BackupSection.cookies,
-                    BackupSection.webdavAccount,
-                  ]),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(0, 12, 0, 0),
-                    child: Text(
-                      l10n.backupContentHint,
-                      style: theme.textTheme.bodySmall,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(null),
-                child: Text(l10n.cancel),
-              ),
-              FilledButton(
-                // 一项都没选就没有可导出的内容
-                onPressed: selected.isEmpty
-                    ? null
-                    : () => Navigator.of(dialogContext).pop({...selected}),
-                child: Text(l10n.confirm),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
   /// 敏感内容需要身份验证：本次运行验证通过一次后不再重复验证。
   /// 返回 true 表示可以继续。
   Future<bool> _ensureSensitiveVerified() async {
@@ -266,51 +172,53 @@ class _BackupContentState extends State<BackupContent> {
     }
   }
 
-  /// 勾选内容的文字摘要：设置项 · 收藏夹，空集合显示「未选择」。
-  String _sectionsLabel(Set<BackupSection> sections) {
-    final l10n = context.l10n;
-    if (sections.isEmpty) return l10n.backupSectionEmpty;
-    return [
-      for (final section in BackupSection.values)
-        if (sections.contains(section)) _sectionName(l10n, section),
-    ].join(' · ');
+  /// 生成文件期间显示与「解析中」相同的 MD3E 等待弹窗。
+  Future<T?> _withGeneratingDialog<T>(Future<T> Function() action) async {
+    final navigator = Navigator.of(context);
+    unawaited(showLoadingDialog(context, context.l10n.generatingBackup));
+    await WidgetsBinding.instance.endOfFrame;
+    try {
+      return await action();
+    } on BackupException catch (error) {
+      if (mounted) _snack(error.message);
+    } catch (error) {
+      if (mounted) _snack('$error');
+    } finally {
+      if (navigator.mounted) navigator.pop();
+    }
+    return null;
   }
 
-  /// 备份分项的名称（摘要与「备份内容」弹窗共用）。
-  String _sectionName(AppLocalizations l10n, BackupSection section) =>
-      switch (section) {
-        BackupSection.settings => l10n.backupSectionSettings,
-        BackupSection.favorites => l10n.backupSectionFavorites,
-        BackupSection.quick => l10n.backupSectionQuick,
-        BackupSection.recents => l10n.backupSectionRecents,
-        BackupSection.cookies => l10n.backupSectionCookies,
-        BackupSection.webdavAccount => l10n.webdavAccount,
-      };
-
-  /// 立即备份：每次都在弹窗里重新勾选要写进本次备份的内容。
+  /// 立即备份：全屏“备份选项” → 生成等待 → 系统保存文件。
   Future<void> _backupToFile() async {
     final l10n = context.l10n;
-    final sections = await _pickBackupContent(
-      initial: const <BackupSection>{},
-      title: l10n.backupContent,
+    final options = await showBackupOptionsPage(
+      context,
+      initialSections: const <BackupSection>{},
+      confirmLabel: l10n.continueLabel,
+      verifySensitive: _ensureSensitiveVerified,
     );
-    if (sections == null || sections.isEmpty || !mounted) return;
-    await _run(() async {
-      final file = await _service.exportFile(sections: sections);
-      final String? saved;
-      try {
-        saved = await SystemFileSaver.save(
-          sourcePath: file.path,
-          fileName: p.basename(file.path),
-          mime: 'application/json',
-        );
-      } catch (_) {
-        if (mounted) _snack(l10n.cookieExportFailed);
-        return;
-      }
-      if (!mounted || saved == null) return; // 用户取消保存
-      _snack(l10n.backupSaved(saved));
-    });
+    if (options == null || options.sections.isEmpty || !mounted) return;
+    final file = await _withGeneratingDialog(
+      () => _service.exportFile(
+        sections: options.sections,
+        passphrase: options.encrypted ? options.passphrase : null,
+      ),
+    );
+    if (file == null || !mounted) return;
+    final String? saved;
+    try {
+      saved = await SystemFileSaver.save(
+        sourcePath: file.path,
+        fileName: p.basename(file.path),
+        mime: 'application/json',
+      );
+    } catch (_) {
+      if (mounted) _snack(l10n.cookieExportFailed);
+      return;
+    }
+    if (!mounted || saved == null) return;
+    _snack(l10n.backupSaved(saved));
   }
 
   Future<void> _restoreFromFile() => _run(() async {
@@ -346,10 +254,17 @@ class _BackupContentState extends State<BackupContent> {
     );
     if (result == null) return;
     await _run(() async {
+      if (result[0].isEmpty) {
+        await store.reset();
+        if (mounted) setState(() {});
+        return;
+      }
       await store.saveServer(
         url: result[0],
         username: result[1],
         password: result[2],
+        // 备份密码在“备份选项”里独立维护；改连接信息时不能误清缓存。
+        backupPassphrase: store.backupPassphrase,
         path: result[3],
       );
       if (mounted) setState(() {});
@@ -361,31 +276,68 @@ class _BackupContentState extends State<BackupContent> {
     if (mounted) _snack(context.l10n.webdavTestOk);
   }, showProgress: true);
 
-  /// WebDAV 的「备份内容」：勾选结果保存下来，只影响云端上传。
-  Future<void> _editBackupSections() async {
+  /// WebDAV 的“备份选项”：加密方式与备份分项一起保存。
+  Future<void> _editBackupOptions() async {
     final l10n = context.l10n;
-    final picked = await _pickBackupContent(
-      initial: _service.webdav.backupSections,
-      title: l10n.backupContent,
+    final store = _service.webdav;
+    final options = await showBackupOptionsPage(
+      context,
+      initialSections: store.backupSections,
+      initialPassphrase: store.backupPassphrase,
+      confirmLabel: l10n.save,
+      verifySensitive: _ensureSensitiveVerified,
     );
-    if (picked == null || !mounted) return;
-    await _service.webdav.setBackupSections(picked);
-    if (mounted) setState(() {});
+    if (options == null || !mounted) return;
+    await _run(() async {
+      await store.setBackupOptions(
+        sections: options.sections,
+        backupPassphrase: options.encrypted ? options.passphrase : '',
+      );
+      if (mounted) setState(() {});
+    });
   }
 
-  Future<void> _uploadNow() => _run(() async {
+  Future<void> _uploadNow() async {
+    if (_busy) return;
     // 备份内容含敏感项（Cookie / WebDav 账号）时，本次运行至少验证过一次身份
     if (_service.webdav.backupSections.any((s) => s.sensitive) &&
         !await _ensureSensitiveVerified()) {
       return;
     }
     if (!mounted) return;
-    final name = await _service.uploadNow();
-    if (mounted) {
-      setState(() {});
-      _snack(context.l10n.webdavUploadDone(name));
+
+    final navigator = Navigator.of(context);
+    var generatingDialogOpen = true;
+    setState(() => _busy = true);
+    unawaited(showLoadingDialog(context, context.l10n.generatingBackup));
+    await WidgetsBinding.instance.endOfFrame;
+    try {
+      final name = await _service.uploadNow(
+        onGenerated: () {
+          if (generatingDialogOpen && navigator.mounted) {
+            generatingDialogOpen = false;
+            navigator.pop();
+          }
+          // 生成阶段由弹窗表示；关闭后网络上传阶段再由顶栏进度线接管。
+          if (mounted) widget.progress.value = true;
+        },
+      );
+      if (mounted) {
+        setState(() {});
+        _snack(context.l10n.webdavUploadDone(name));
+      }
+    } on BackupException catch (error) {
+      if (mounted) _snack(error.message);
+    } catch (error) {
+      if (mounted) _snack('$error');
+    } finally {
+      if (generatingDialogOpen && navigator.mounted) navigator.pop();
+      if (mounted) {
+        widget.progress.value = false;
+        setState(() => _busy = false);
+      }
     }
-  }, showProgress: true);
+  }
 
   Future<void> _restoreFromCloud() async {
     final l10n = context.l10n;
@@ -462,6 +414,29 @@ class _BackupContentState extends State<BackupContent> {
     final l10n = context.l10n;
     final store = _service.webdav;
     final scheme = Theme.of(context).colorScheme;
+    final sensitiveSections = store.backupSections.any(
+      (section) => section.sensitive,
+    );
+    final encryptionReady = !sensitiveSections || store.hasBackupPassphrase;
+    final canUpload =
+        store.configured &&
+        store.backupSections.isNotEmpty &&
+        encryptionReady &&
+        !_busy;
+    final canAutoBackup =
+        store.configured &&
+        store.backupSections.isNotEmpty &&
+        encryptionReady &&
+        !_busy;
+    final backupStatus = !store.configured
+        ? l10n.webdavNotConfigured
+        : store.backupSections.isEmpty
+        ? l10n.webdavBackupContentNotSelected
+        : l10n.lastBackupAt(
+            store.lastBackupAt == 0
+                ? l10n.neverBackedUp
+                : _backupDayLabel(context, store.lastBackupAt),
+          );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -472,6 +447,7 @@ class _BackupContentState extends State<BackupContent> {
               leading: const Icon(Icons.upload_file_outlined),
               title: Text(l10n.backupNow),
               subtitle: Text(l10n.backupNowSubtitle),
+              trailing: const Icon(Icons.chevron_right),
               onTap: _backupToFile,
             ),
             ListTile(
@@ -503,17 +479,16 @@ class _BackupContentState extends State<BackupContent> {
               enabled: store.configured,
               onTap: _testConnection,
             ),
-            // WebDAV 的备份内容会保存下来，只影响云端上传
             ListTile(
-              leading: const Icon(Icons.checklist),
-              title: Text(l10n.backupContent),
-              subtitle: Text(_sectionsLabel(store.backupSections)),
-              onTap: _editBackupSections,
+              leading: const Icon(Icons.tune),
+              title: Text(l10n.backupOptions),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: _editBackupOptions,
             ),
             ListTile(
               leading: const Icon(Icons.cloud_upload_outlined),
               title: Text(l10n.webdavUpload),
-              enabled: store.configured && !_busy,
+              enabled: canUpload,
               onTap: _uploadNow,
             ),
             ListTile(
@@ -527,7 +502,7 @@ class _BackupContentState extends State<BackupContent> {
               title: Text(l10n.webdavAutoBackup),
               subtitle: Text(l10n.webdavAutoBackupSubtitle),
               value: store.autoBackup,
-              onChanged: store.configured
+              onChanged: canAutoBackup
                   ? (value) async {
                       await store.setAutoBackup(value);
                       if (mounted) setState(() {});
@@ -552,15 +527,10 @@ class _BackupContentState extends State<BackupContent> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                l10n.lastBackupAt(
-                  store.lastBackupAt == 0
-                      ? l10n.neverBackedUp
-                      : _backupDayLabel(context, store.lastBackupAt),
-                ),
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              if (store.lastBackupError.isNotEmpty)
+              Text(backupStatus, style: Theme.of(context).textTheme.bodySmall),
+              if (store.configured &&
+                  store.backupSections.isNotEmpty &&
+                  store.lastBackupError.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
                   child: Text(
@@ -672,6 +642,15 @@ class _WebdavAccountDialogState extends State<WebdavAccountDialog> {
   String? _userError;
   String? _pwdError;
   String? _pathError;
+  late final bool _allowPasswordReveal;
+  bool _showPassword = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // 只有首次填写（没有预填密码）时允许查看输入内容；已保存的密码不再提供明文入口。
+    _allowPasswordReveal = widget.password.isEmpty;
+  }
 
   @override
   void dispose() {
@@ -761,13 +740,31 @@ class _WebdavAccountDialogState extends State<WebdavAccountDialog> {
               const SizedBox(height: 12),
               TextField(
                 controller: _pwd,
-                obscureText: true,
+                obscureText: !_showPassword,
+                autocorrect: false,
+                enableSuggestions: false,
                 onChanged: (_) {
                   if (_pwdError != null) setState(() => _pwdError = null);
                 },
                 decoration: errorState(
                   context,
-                  InputDecoration(labelText: l10n.webdavPassword),
+                  InputDecoration(
+                    labelText: l10n.webdavPassword,
+                    suffixIcon: _allowPasswordReveal
+                        ? IconButton(
+                            tooltip: _showPassword
+                                ? l10n.hidePassword
+                                : l10n.showPassword,
+                            onPressed: () =>
+                                setState(() => _showPassword = !_showPassword),
+                            icon: Icon(
+                              _showPassword
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                            ),
+                          )
+                        : null,
+                  ),
                   _pwdError,
                 ),
               ),
