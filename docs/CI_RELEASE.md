@@ -99,11 +99,12 @@ Android 构建结束后会用 `apksigner` 校验证书 SHA-256，指纹不匹配
 解析依赖。不要删掉这些保护，否则 GitHub runner 使用不同包源时可能忽略
 lock 中的版本并自动升级。
 
-`pubspec.yaml` 将 `shared_preferences_android` 固定在 `<2.5.0`。2.5.0 的
-release/R8 构建会丢掉 JNI 使用的 Kotlin 挂起方法签名，启动时
+`pubspec.yaml` 要求 `shared_preferences_android` 至少为 `2.5.2`。2.5.0/2.5.1
+的 release/R8 构建会丢掉 JNI 使用的 Kotlin 挂起方法签名，启动时
 `SharedPreferencesApiRegistrar.getAll` 抛出 `NoSuchMethodError`，界面会永久
-停在启动页。上游修复正式发布前不要移除这个限制；升级依赖后必须生成新的
-APK 并在 Android 真机或模拟器上实际启动验证：
+停在启动页。2.5.2 通过 consumer R8 rules 保留 JNI 反射使用的 Kotlin 类；
+后续再升级该包时仍必须生成新的 release APK，并在 Android 真机或模拟器上
+实际冷启动验证：
 
 ```text
 https://github.com/flutter/flutter/issues/194649
