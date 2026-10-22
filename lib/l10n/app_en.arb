@@ -671,6 +671,7 @@
   "chooseBackupFile": "Choose backup file",
   "backupContent": "Backup content",
   "backupOptions": "Backup options",
+  "backupPageTitle": "Backup",
   "generatingBackup": "Generating backup",
   "backupSectionSettings": "Settings",
   "backupSectionFavorites": "Favorites",

@@ -68,7 +68,7 @@ class _LicensesPageState extends State<LicensesPage> {
           )
         else
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
+            padding: kM3eSectionPagePadding,
             // 懒构建：许可包数量多，一次性构建全部条目会让进入时卡一下；
             // 包条目的高度一致，SliverList 的滚动范围估算也是稳定的。
             sliver: SegmentedSliverList(
@@ -142,8 +142,8 @@ class _LicensesContentState extends State<LicensesContent> {
             child: Center(child: M3eLoadingIndicator()),
           );
         }
-        // 与「关于」「传输」等页面同款 MD3E 连接式列表组：
-        // 外层 12 + 分组自身 4 = 16dp 视觉内边距，条目之间是空白而非分割线
+        // 与设置类页面同款 MD3E 连接式列表组：
+        // 外层 16 + 分组自身 4 = 20dp 视觉内边距，条目之间是空白而非分割线
         return SegmentedList(
           children: [
             for (final package in packages) _packageTile(context, package),

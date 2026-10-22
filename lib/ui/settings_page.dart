@@ -1127,7 +1127,7 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         ),
         slivers: [
           SliverPadding(
-            padding: const EdgeInsets.all(16),
+            padding: kM3eSectionPagePadding,
             // 整块布局：分组高度差异大，懒布局会让 maxScrollExtent 一直修正、
             // 滚动条滑块长度抖动（见 SliverColumn 注释）
             // 整块布局：分组高度差异大，懒布局会让 maxScrollExtent 一直修正、
@@ -1156,7 +1156,7 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         slivers: [
           SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            padding: kM3eSectionPagePadding,
             // 整块布局：避免懒布局估算导致滚动条滑块抖动（见 SliverColumn）
             sliver: SliverColumn(children: children),
           ),
@@ -2125,7 +2125,7 @@ class _AdvancedPage extends StatelessWidget {
       ),
       slivers: [
         SliverPadding(
-          padding: const EdgeInsets.all(16),
+          padding: kM3eSectionPagePadding,
           // 整块布局：避免懒布局估算导致滚动条滑块抖动（见 SliverColumn）
           sliver: const SliverToBoxAdapter(child: AdvancedContent()),
         ),

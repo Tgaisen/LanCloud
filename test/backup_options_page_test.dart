@@ -190,7 +190,7 @@ void main() {
     expect(result?.passphrase, isEmpty);
   });
 
-  testWidgets('解锁弹窗错误口令原地提示，正确口令返回明文', (tester) async {
+  testWidgets('解锁弹窗校验短密码、错误密码，正确密码返回明文', (tester) async {
     final encryption = await BackupCrypto.encrypt(
       '{"app":"lancloud","format":3,"tables":{}}',
       passphrase: 'backup-secret',
@@ -221,6 +221,15 @@ void main() {
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
     expect(find.byTooltip('显示密码'), findsNothing);
+    await tester.enterText(
+      find.byKey(const ValueKey('backup-unlock-passphrase')),
+      'short',
+    );
+    await tester.tap(find.text('解锁'));
+    await tester.pumpAndSettle();
+    expect(find.text('备份密码至少需要 8 个字符'), findsOneWidget);
+    expect(find.byType(AlertDialog), findsOneWidget);
+
     await tester.enterText(
       find.byKey(const ValueKey('backup-unlock-passphrase')),
       'wrong-secret',

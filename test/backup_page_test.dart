@@ -255,7 +255,7 @@ void main() {
     final optionsPage = find.byType(BackupOptionsPage);
     expect(optionsPage, findsOneWidget);
     expect(
-      find.descendant(of: optionsPage, matching: find.text('备份选项')),
+      find.descendant(of: optionsPage, matching: find.text('备份')),
       findsOneWidget,
     );
     expect(
@@ -362,6 +362,7 @@ void main() {
 
     await tester.tap(find.text('备份选项'));
     await tester.pumpAndSettle();
+    expect(find.widgetWithText(AppBar, '备份选项'), findsOneWidget);
     await tester.tap(
       find.descendant(
         of: find.byType(BackupOptionsPage),
@@ -992,7 +993,7 @@ void main() {
     expect(find.text('上次备份：${formatDateShort(old)}'), findsOneWidget);
   });
 
-  testWidgets('备份内容含敏感项时，上传前先验证身份', (tester) async {
+  testWidgets('敏感云端备份上传前不再重复验证身份', (tester) async {
     await fake.webdav.saveServer(
       url: 'https://dav.example.com/blue/',
       username: 'user',
@@ -1007,17 +1008,10 @@ void main() {
     fakeAuth.result = CookieAuthResult.canceled;
     await pumpPage(tester);
 
-    // 验证被取消：不上传
+    // 敏感分项在“备份选项”阶段已授权；手动上传与自动备份一致，不再重复验证。
     await tester.tap(find.text('上传备份'));
     await tester.pumpAndSettle();
-    expect(fakeAuth.calls, 1);
-    expect(fake.uploadCount, 0);
-
-    // 验证通过后正常上传，并且只验证一次
-    fakeAuth.result = CookieAuthResult.ok;
-    await tester.tap(find.text('上传备份'));
-    await tester.pumpAndSettle();
-    expect(fakeAuth.calls, 2);
+    expect(fakeAuth.calls, 0);
     expect(fake.uploadCount, 1);
     expect(fake.lastSections, contains(BackupSection.cookies));
   });

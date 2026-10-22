@@ -93,6 +93,28 @@ Future<void> scrollTo(WidgetTester tester, String text) async {
 }
 
 void main() {
+  testWidgets('设置页分组标题与列表项共用同一内容标尺', (tester) async {
+    await pumpSettings(tester, SettingsCategory.behaviorPermissions);
+
+    final header = find
+        .descendant(
+          of: find.byType(M3eSectionHeader).first,
+          matching: find.byType(Text),
+        )
+        .first;
+    final tile = find
+        .descendant(
+          of: find.byType(SegmentedList).first,
+          matching: find.byType(ListTile),
+        )
+        .first;
+    expect(tester.getTopLeft(header).dx, 20);
+    expect(
+      tester.getTopLeft(header).dx,
+      closeTo(tester.getTopLeft(tile).dx, 0.01),
+    );
+  });
+
   // 分组小节顺序：每个大类页里的小标题按设计顺序排列
   testWidgets('分组小节顺序：行为 → 无障碍 → 权限 / 备份 → 隐私 → 数据', (tester) async {
     await pumpSettings(tester, SettingsCategory.behaviorPermissions);

@@ -3524,6 +3524,12 @@ abstract class AppLocalizations {
   /// **'备份选项'**
   String get backupOptions;
 
+  /// No description provided for @backupPageTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'备份'**
+  String get backupPageTitle;
+
   /// No description provided for @generatingBackup.
   ///
   /// In zh, this message translates to:

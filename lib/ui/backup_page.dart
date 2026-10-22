@@ -60,7 +60,7 @@ class _BackupPageState extends State<BackupPage> {
         ),
         slivers: [
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            padding: kM3eSectionPagePadding,
             // 整块布局：避免懒布局估算导致滚动条滑块抖动（见 SliverColumn）
             sliver: SliverToBoxAdapter(
               child: BackupContent(progress: _progress),
@@ -196,6 +196,7 @@ class _BackupContentState extends State<BackupContent> {
       context,
       initialSections: const <BackupSection>{},
       confirmLabel: l10n.continueLabel,
+      title: l10n.backupPageTitle,
       verifySensitive: _ensureSensitiveVerified,
     );
     if (options == null || options.sections.isEmpty || !mounted) return;
@@ -299,11 +300,6 @@ class _BackupContentState extends State<BackupContent> {
 
   Future<void> _uploadNow() async {
     if (_busy) return;
-    // 备份内容含敏感项（Cookie / WebDav 账号）时，本次运行至少验证过一次身份
-    if (_service.webdav.backupSections.any((s) => s.sensitive) &&
-        !await _ensureSensitiveVerified()) {
-      return;
-    }
     if (!mounted) return;
 
     final navigator = Navigator.of(context);

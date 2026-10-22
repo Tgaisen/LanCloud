@@ -1032,6 +1032,7 @@
   "chooseBackupFile": "选择备份文件",
   "backupContent": "备份内容",
   "backupOptions": "备份选项",
+  "backupPageTitle": "备份",
   "generatingBackup": "正在生成备份",
   "backupSectionSettings": "设置项",
   "backupSectionFavorites": "收藏夹",

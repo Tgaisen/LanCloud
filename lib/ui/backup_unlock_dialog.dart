@@ -68,6 +68,10 @@ class _BackupUnlockDialogState extends State<_BackupUnlockDialog> {
       setState(() => _error = l10n.backupPassphraseRequired);
       return;
     }
+    if (_passphrase.text.length < 8) {
+      setState(() => _error = l10n.backupPassphraseTooShort);
+      return;
+    }
     setState(() {
       _busy = true;
       _error = null;

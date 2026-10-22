@@ -45,6 +45,21 @@ void main() {
     expect(find.text('设置'), findsOneWidget);
     expect(find.text('更新'), findsOneWidget);
     expect(find.text('关于'), findsOneWidget);
+    final accountHeader = find.descendant(
+      of: find.widgetWithText(M3eSectionHeader, '账号'),
+      matching: find.text('账号'),
+    );
+    final accountTile = find
+        .descendant(
+          of: find.byType(SegmentedList).first,
+          matching: find.byType(ListTile),
+        )
+        .first;
+    expect(tester.getTopLeft(accountHeader).dx, 20);
+    expect(
+      tester.getTopLeft(accountHeader).dx,
+      closeTo(tester.getTopLeft(accountTile).dx, 0.01),
+    );
     app.dispose();
   });
 

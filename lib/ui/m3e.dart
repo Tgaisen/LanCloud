@@ -675,6 +675,10 @@ class M3ePickTile extends StatelessWidget {
   }
 }
 
+/// 设置类正文统一外边距：左右 16dp、顶部 8dp、底部 16dp。
+/// 标题自身再横向缩进 4dp，与 [SegmentedList] 的默认外边距对齐。
+const EdgeInsets kM3eSectionPagePadding = EdgeInsets.fromLTRB(16, 8, 16, 16);
+
 /// 设置类页面里列表组上方的小标题（分组名）。
 ///
 /// **参考 M3 规范**：分区标题用 `title` 角色（typography 的角色分配里

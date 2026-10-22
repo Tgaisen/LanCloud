@@ -1852,6 +1852,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get backupOptions => '备份选项';
 
   @override
+  String get backupPageTitle => '备份';
+
+  @override
   String get generatingBackup => '正在生成备份';
 
   @override

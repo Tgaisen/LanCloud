@@ -41,7 +41,7 @@ class _AboutPageState extends State<AboutPage> {
       ),
       slivers: [
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+          padding: kM3eSectionPagePadding.copyWith(bottom: 32),
           // 整块布局：避免懒布局估算导致滚动条滑块抖动（见 SliverColumn）
           sliver: SliverToBoxAdapter(child: AboutContent()),
         ),

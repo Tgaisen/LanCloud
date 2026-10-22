@@ -25,6 +25,7 @@ Future<BackupOptionsResult?> showBackupOptionsPage(
   BuildContext context, {
   required Set<BackupSection> initialSections,
   required String confirmLabel,
+  String? title,
   String initialPassphrase = '',
   Future<bool> Function()? verifySensitive,
 }) {
@@ -33,6 +34,7 @@ Future<BackupOptionsResult?> showBackupOptionsPage(
       builder: (_) => BackupOptionsPage(
         initialSections: initialSections,
         confirmLabel: confirmLabel,
+        title: title,
         initialPassphrase: initialPassphrase,
         verifySensitive: verifySensitive,
       ),
@@ -49,12 +51,14 @@ class BackupOptionsPage extends StatefulWidget {
     super.key,
     required this.initialSections,
     required this.confirmLabel,
+    this.title,
     this.initialPassphrase = '',
     this.verifySensitive,
   });
 
   final Set<BackupSection> initialSections;
   final String confirmLabel;
+  final String? title;
   final String initialPassphrase;
   final Future<bool> Function()? verifySensitive;
 
@@ -255,7 +259,7 @@ class _BackupOptionsPageState extends State<BackupOptionsPage> {
         backgroundColor: Colors.transparent,
         scrolledUnderElevation: 0,
         leading: const AppBarBackButton(),
-        title: Text(l10n.backupOptions),
+        title: Text(widget.title ?? l10n.backupOptions),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12),
@@ -268,7 +272,7 @@ class _BackupOptionsPageState extends State<BackupOptionsPage> {
       ),
       slivers: [
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+          padding: kM3eSectionPagePadding.copyWith(bottom: 32),
           sliver: SliverToBoxAdapter(
             child: Center(
               child: ConstrainedBox(

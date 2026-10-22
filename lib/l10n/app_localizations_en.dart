@@ -1930,6 +1930,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get backupOptions => 'Backup options';
 
   @override
+  String get backupPageTitle => 'Backup';
+
+  @override
   String get generatingBackup => 'Generating backup';
 
   @override
