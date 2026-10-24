@@ -92,7 +92,8 @@ class AppController extends ChangeNotifier {
   /// 检查；不可迁移时账号存储会回到空状态，外壳随后稳定落到登录页。
   Future<void> _inspectSecureStorageUpgrade() async {
     try {
-      final status = await lanCloudSecureStorage.checkUpgradeStatus();
+      final status = await checkSecureStorageUpgradeOnce();
+      if (status == null) return;
       secureStorageNeedsReauthentication =
           status.hasDataLoss || status.willDiscardOnNextAccess;
       if (secureStorageNeedsReauthentication) {
