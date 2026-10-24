@@ -59,7 +59,7 @@ class _BackupPageState extends State<BackupPage> {
           bottom: busy ? kBackupProgressBar : null,
         ),
         slivers: [
-          SliverPadding(
+          M3eReadingSliverPadding(
             padding: kM3eSectionPagePadding,
             // 整块布局：避免懒布局估算导致滚动条滑块抖动（见 SliverColumn）
             sliver: SliverToBoxAdapter(
@@ -83,10 +83,17 @@ const PreferredSize kBackupProgressBar = PreferredSize(
 /// 备份与恢复正文：本地备份 + WebDAV。
 /// 独立页（push）与「我的」右窗格共用；[progress] 由宿主显示成顶栏进度线。
 class BackupContent extends StatefulWidget {
-  const BackupContent({super.key, required this.progress});
+  const BackupContent({
+    super.key,
+    required this.progress,
+    this.backupOptionsOpener,
+  });
 
   /// WebDAV 网络操作进行中时为 true。
   final ValueNotifier<bool> progress;
+
+  /// 大屏右窗格由宿主接管“备份选项”导航；为空时打开独立页面。
+  final BackupOptionsPageOpener? backupOptionsOpener;
 
   @override
   State<BackupContent> createState() => _BackupContentState();
@@ -189,11 +196,28 @@ class _BackupContentState extends State<BackupContent> {
     return null;
   }
 
+  Future<BackupOptionsResult?> _showBackupOptions({
+    required Set<BackupSection> initialSections,
+    required String confirmLabel,
+    String? title,
+    String initialPassphrase = '',
+    Future<bool> Function()? verifySensitive,
+  }) {
+    final opener = widget.backupOptionsOpener ?? showBackupOptionsPage;
+    return opener(
+      context,
+      initialSections: initialSections,
+      confirmLabel: confirmLabel,
+      title: title,
+      initialPassphrase: initialPassphrase,
+      verifySensitive: verifySensitive,
+    );
+  }
+
   /// 立即备份：全屏“备份选项” → 生成等待 → 系统保存文件。
   Future<void> _backupToFile() async {
     final l10n = context.l10n;
-    final options = await showBackupOptionsPage(
-      context,
+    final options = await _showBackupOptions(
       initialSections: const <BackupSection>{},
       confirmLabel: l10n.continueLabel,
       title: l10n.backupPageTitle,
@@ -281,8 +305,7 @@ class _BackupContentState extends State<BackupContent> {
   Future<void> _editBackupOptions() async {
     final l10n = context.l10n;
     final store = _service.webdav;
-    final options = await showBackupOptionsPage(
-      context,
+    final options = await _showBackupOptions(
       initialSections: store.backupSections,
       initialPassphrase: store.backupPassphrase,
       confirmLabel: l10n.save,

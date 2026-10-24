@@ -52,9 +52,9 @@ enum SettingsCategory {
   /// 「我的」里类别行的图标。
   IconData get icon => switch (this) {
     SettingsCategory.appearanceLayout => Icons.palette_outlined,
-    SettingsCategory.behaviorPermissions => Icons.tune,
+    SettingsCategory.behaviorPermissions => Icons.settings_applications,
     SettingsCategory.notificationsReminders => Icons.notifications_outlined,
-    SettingsCategory.transferConnection => Icons.swap_vert,
+    SettingsCategory.transferConnection => Icons.network_node,
     SettingsCategory.privacyData => Icons.shield,
   };
 }
@@ -1126,7 +1126,7 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
                 ],
         ),
         slivers: [
-          SliverPadding(
+          M3eReadingSliverPadding(
             padding: kM3eSectionPagePadding,
             // 整块布局：分组高度差异大，懒布局会让 maxScrollExtent 一直修正、
             // 滚动条滑块长度抖动（见 SliverColumn 注释）
@@ -2124,8 +2124,8 @@ class _AdvancedPage extends StatelessWidget {
         title: Text(l10n.advanced),
       ),
       slivers: [
-        SliverPadding(
-          padding: kM3eSectionPagePadding,
+        M3eReadingSliverPadding(
+          padding: kM3eSectionPagePadding.copyWith(top: 16),
           // 整块布局：避免懒布局估算导致滚动条滑块抖动（见 SliverColumn）
           sliver: const SliverToBoxAdapter(child: AdvancedContent()),
         ),

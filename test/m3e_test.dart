@@ -22,6 +22,34 @@ Widget host(Widget child) => MaterialApp(
 );
 
 void main() {
+  testWidgets('独立页面阅读宽度：宽屏限制 680dp，窄屏仅保留内容边距', (tester) async {
+    Future<double> measure(double screenWidth) async {
+      tester.view.physicalSize = Size(screenWidth, 800);
+      tester.view.devicePixelRatio = 1;
+      final key = UniqueKey();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: CustomScrollView(
+              slivers: [
+                M3eReadingSliverPadding(
+                  sliver: SliverToBoxAdapter(
+                    child: SizedBox(key: key, height: 20),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      return tester.getSize(find.byKey(key)).width;
+    }
+
+    addTearDown(tester.view.reset);
+    expect(await measure(1200), kM3eReadingMaxWidth);
+    expect(await measure(400), 400 - kM3eSectionPagePadding.horizontal);
+  });
+
   testWidgets('MD3E 加载指示器 / 进度条能在框架主题下渲染', (tester) async {
     await tester.pumpWidget(
       host(

@@ -40,7 +40,7 @@ class _AboutPageState extends State<AboutPage> {
         title: Text(l10n.about),
       ),
       slivers: [
-        SliverPadding(
+        M3eReadingSliverPadding(
           padding: kM3eSectionPagePadding.copyWith(bottom: 32),
           // 整块布局：避免懒布局估算导致滚动条滑块抖动（见 SliverColumn）
           sliver: SliverToBoxAdapter(child: AboutContent()),

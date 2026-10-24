@@ -469,7 +469,7 @@ class _RootShellState extends State<RootShell>
   }
 
   IconData _iconFor(int id, {required bool selected}) => switch (id) {
-    _viewHome => selected ? Icons.dashboard : Icons.dashboard_outlined,
+    _viewHome => Icons.browse_outlined,
     _viewDrive => selected ? Icons.folder : Icons.folder_outlined,
     _viewTransfers => selected ? Icons.swap_vert : Icons.swap_vert_outlined,
     _viewFavorites => selected ? Icons.star_outline : Icons.star_border,

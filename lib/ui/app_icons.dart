@@ -23,6 +23,7 @@ class Icons {
   static const IconData battery_alert_outlined = Symbols.battery_alert;
   static const IconData battery_0_bar = Symbols.battery_0_bar;
   static const IconData bottom_navigation = Symbols.bottom_navigation;
+  static const IconData browse_outlined = Symbols.browse;
   static const IconData bug_report_outlined = Symbols.bug_report;
   static const IconData build_outlined = Symbols.build;
   static const IconData cached_outlined = Symbols.cached;
@@ -37,6 +38,7 @@ class Icons {
   static const IconData cloud_off = Symbols.cloud_off;
   static const IconData cloud_outlined = Symbols.cloud;
   static const IconData cloud_download = Symbols.cloud_download;
+  static const IconData cloud_done = Symbols.cloud_done;
   static const IconData cloud_upload_outlined = Symbols.cloud_upload;
   static const IconData content_paste_go = Symbols.content_paste_go;
   static const IconData contrast = Symbols.contrast;
@@ -96,6 +98,7 @@ class Icons {
   static const IconData more_vert = Symbols.more_vert;
   static const IconData movie_outlined = Symbols.movie;
   static const IconData music_note_outlined = Symbols.music_note;
+  static const IconData network_node = Symbols.network_node;
   static const IconData open_in_new = Symbols.open_in_new;
   static const IconData palette_outlined = Symbols.palette;
   static const IconData photo_library_outlined = Symbols.photo_library;
@@ -121,6 +124,7 @@ class Icons {
   static const IconData security = Symbols.security;
   static const IconData select_all = Symbols.select_all;
   static const IconData settings_outlined = Symbols.settings;
+  static const IconData settings_applications = Symbols.settings_applications;
   static const IconData shield = Symbols.shield;
   static const IconData shield_person = Symbols.shield_person;
   static const IconData settings_backup_restore =

@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -8,7 +9,10 @@ import 'package:lancloud/core/data/account_store.dart';
 import 'package:lancloud/core/update/release_info.dart';
 import 'package:lancloud/core/update/update_service.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
+import 'package:lancloud/ui/app_icons.dart' as app_icons;
+import 'package:lancloud/ui/backup_options_page.dart';
 import 'package:lancloud/ui/common.dart';
+import 'package:lancloud/ui/licenses_page.dart';
 import 'package:lancloud/ui/m3e.dart';
 import 'package:lancloud/ui/profile_page.dart';
 import 'package:provider/provider.dart';
@@ -45,6 +49,9 @@ void main() {
     expect(find.text('设置'), findsOneWidget);
     expect(find.text('更新'), findsOneWidget);
     expect(find.text('关于'), findsOneWidget);
+    expect(find.byIcon(app_icons.Icons.network_node), findsOneWidget);
+    expect(find.byIcon(app_icons.Icons.settings_applications), findsOneWidget);
+    expect(find.byIcon(app_icons.Icons.cloud_done), findsOneWidget);
     final accountHeader = find.descendant(
       of: find.widgetWithText(M3eSectionHeader, '账号'),
       matching: find.text('账号'),
@@ -424,6 +431,11 @@ void main() {
   });
 
   testWidgets('大屏二级设置页：高级覆盖项 / 备份与恢复进右窗格，可返回', (tester) async {
+    LicenseRegistry.addLicense(() async* {
+      yield const LicenseEntryWithLineBreaks(<String>[
+        'profile_pane_package',
+      ], 'Profile pane license');
+    });
     tester.view.physicalSize = const Size(1200, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -444,6 +456,19 @@ void main() {
 
     Finder appBarTitle(String text) =>
         find.descendant(of: find.byType(AppBar), matching: find.text(text));
+    double listLeftInset(Finder tile) {
+      final pane = tester.getRect(find.byType(CustomScrollView).last);
+      return tester.getRect(tile).left - pane.left;
+    }
+
+    double listTopInset(Finder tile) {
+      final appBarBottom = tester.getBottomLeft(find.byType(AppBar)).dy;
+      return tester.getRect(tile).top - appBarBottom;
+    }
+
+    final accountTile = find.widgetWithText(ListTile, '未登录');
+    expect(listLeftInset(accountTile), 20);
+    expect(listTopInset(accountTile), 20);
 
     // 传输与连接 → 高级覆盖项：在右窗格内打开（左窗格还在 == 不是整页 push）
     await tester.tap(find.text('传输与连接'));
@@ -471,6 +496,52 @@ void main() {
     expect(find.text('本地备份'), findsOneWidget);
     expect(find.text('外观与布局'), findsOneWidget);
 
+    // 从备份与恢复继续进入“备份选项”：仍在右窗格，顶栏和确认动作归外层。
+    await tester.tap(find.widgetWithText(ListTile, '备份选项'));
+    await tester.pumpAndSettle();
+    expect(appBarTitle('备份选项'), findsOneWidget);
+    expect(find.byType(BackupOptionsPage), findsOneWidget);
+    final optionsRect = tester.getRect(find.byType(BackupOptionsPage));
+    final paneRect = tester.getRect(find.byType(CustomScrollView).last);
+    expect(optionsRect.left, closeTo(paneRect.left + 16, 0.01));
+    expect(optionsRect.right, closeTo(paneRect.right - 16, 0.01));
+    expect(
+      tester
+          .widget<TextButton>(find.widgetWithText(TextButton, '保存'))
+          .onPressed,
+      isNull,
+    );
+    expect(find.text('外观与布局'), findsOneWidget);
+
+    await tester.tap(
+      find.descendant(
+        of: find.byType(BackupOptionsPage),
+        matching: find.text('设置项'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<TextButton>(find.widgetWithText(TextButton, '保存'))
+          .onPressed,
+      isNotNull,
+    );
+
+    await tester.tap(find.byTooltip('返回'));
+    await tester.pumpAndSettle();
+    expect(appBarTitle('备份与恢复'), findsOneWidget);
+
+    // 本地立即备份的选项页使用“备份”标题，也回到同一右窗格。
+    await tester.tap(find.widgetWithText(ListTile, '立即备份'));
+    await tester.pumpAndSettle();
+    expect(appBarTitle('备份'), findsOneWidget);
+    expect(find.byType(BackupOptionsPage), findsOneWidget);
+    expect(find.text('外观与布局'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('返回'));
+    await tester.pumpAndSettle();
+    expect(appBarTitle('备份与恢复'), findsOneWidget);
+
     await tester.tap(find.byTooltip('返回'));
     await tester.pumpAndSettle();
     expect(appBarTitle('隐私与数据'), findsOneWidget);
@@ -483,6 +554,31 @@ void main() {
     await tester.pumpAndSettle();
     expect(appBarTitle('开源许可'), findsOneWidget);
     expect(find.text('外观与布局'), findsOneWidget);
+
+    final packageTile = find
+        .descendant(
+          of: find.byType(LicensesContent),
+          matching: find.byType(ListTile),
+        )
+        .first;
+    final packageName =
+        (tester.widget<ListTile>(packageTile).title! as Text).data!;
+    final packageLeft = tester.getRect(packageTile).left;
+    final packageTop = tester.getRect(packageTile).top;
+    expect(listLeftInset(packageTile), 20);
+    expect(listTopInset(packageTile), 20);
+    await tester.tap(packageTile);
+    await tester.pumpAndSettle();
+    expect(appBarTitle(packageName), findsOneWidget);
+    expect(find.byType(LicenseDetailContent), findsOneWidget);
+    expect(find.text('外观与布局'), findsOneWidget);
+    final detailCard = find.byKey(const ValueKey('license-detail-card-0'));
+    expect(tester.getTopLeft(detailCard).dx, closeTo(packageLeft, 0.01));
+    expect(tester.getTopLeft(detailCard).dy, closeTo(packageTop, 0.01));
+
+    await tester.tap(find.byTooltip('返回'));
+    await tester.pumpAndSettle();
+    expect(appBarTitle('开源许可'), findsOneWidget);
 
     await tester.tap(find.byTooltip('返回'));
     await tester.pumpAndSettle();

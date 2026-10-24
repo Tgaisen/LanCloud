@@ -5,6 +5,7 @@ import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/data/account_store.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
+import 'package:lancloud/ui/app_icons.dart' as app_icons;
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/profile_page.dart';
 import 'package:provider/provider.dart';
@@ -121,6 +122,8 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+
+    expect(find.byIcon(app_icons.Icons.browse_outlined), findsWidgets);
 
     // 首页（外壳里的页面）：正文让开卡片底部的 8dp
     final homeScroll = find.byType(CustomScrollView).first;

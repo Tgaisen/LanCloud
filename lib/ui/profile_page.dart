@@ -6,12 +6,14 @@ import 'package:provider/provider.dart';
 
 import '../core/app_controller.dart';
 import '../core/api/lanzou_client.dart';
+import '../core/backup/backup_sections.dart';
 import '../core/data/account_store.dart';
 import '../core/update/update_service.dart';
 import '../l10n/l10n.dart';
 import 'about_page.dart';
 import 'app_icons.dart';
 import 'backup_page.dart';
+import 'backup_options_page.dart';
 import 'common.dart';
 import 'login_page.dart';
 import 'licenses_page.dart';
@@ -21,6 +23,8 @@ import 'scroll_tint.dart';
 import 'settings_page.dart';
 import 'update_page.dart';
 import 'web_page.dart';
+
+enum _ProfileDeepPage { backupOptions, licenseDetail }
 
 /// 「我的」视图：账号卡片 + 网页版/回收站 + 设置/关于。
 /// 既作为底栏视图，也可作为独立路由打开。
@@ -60,6 +64,19 @@ class _ProfilePageState extends State<ProfilePage>
   /// null = 停在类别层。列表-详情的第三层。
   ProfileSubPage? _subPage;
 
+  /// 右窗格第三层详情：备份选项 / 许可详情。
+  _ProfileDeepPage? _deepPage;
+  String? _deepTitle;
+
+  Completer<BackupOptionsResult?>? _backupOptionsCompleter;
+  BackupOptionsController? _backupOptionsController;
+  Set<BackupSection> _backupInitialSections = const <BackupSection>{};
+  String _backupInitialPassphrase = '';
+  Future<bool> Function()? _backupVerifySensitive;
+  String _backupConfirmLabel = '';
+
+  LicensePackageGroup? _licensePackage;
+
   /// 右窗格切换方向：新选中项在列表里更靠下（index 更大）= 前进。
   /// 用来决定 forward/backward 动画从哪一侧滑入。
   bool _forward = true;
@@ -84,11 +101,17 @@ class _ProfilePageState extends State<ProfilePage>
   final Map<Object, ScrollController> _paneScrolls = {};
 
   /// 当前右窗格内容的滚动控制器键（类别 + 二级页）。
-  Object get _paneKey => (_detail, _subPage);
+  Object get _paneKey => (_detail, _subPage, _deepPage, _licensePackage?.name);
 
   /// 右窗格内容的排序值：类别按枚举顺序、二级页比所在类别深一层。
   /// 用来判断前后方向（新值更大 = 前进）。
-  int get _paneOrder => _detail.index * 2 + (_subPage == null ? 0 : 1);
+  int get _paneOrder =>
+      _detail.index * 3 +
+      (_deepPage != null
+          ? 2
+          : _subPage != null
+          ? 1
+          : 0);
 
   ScrollController _paneScroll(Object key) =>
       _paneScrolls.putIfAbsent(key, () => ScrollController());
@@ -116,6 +139,11 @@ class _ProfilePageState extends State<ProfilePage>
   void dispose() {
     _subPageProgress.removeListener(_onSubPageProgress);
     _subPageProgress.dispose();
+    final backupCompleter = _backupOptionsCompleter;
+    if (backupCompleter != null && !backupCompleter.isCompleted) {
+      backupCompleter.complete(null);
+    }
+    _backupOptionsController?.dispose();
     _paneFocus.dispose();
     // 别把已经失效的回调留在外壳上
     if (_profileBackHost?.onProfileBack == _handleProfileBack) {
@@ -151,7 +179,8 @@ class _ProfilePageState extends State<ProfilePage>
 
   void _select(_ProfileDetail detail) {
     if (_detail == detail) return;
-    final forward = detail.index * 2 > _paneOrder;
+    _discardDeepPage();
+    final forward = detail.index * 3 > _paneOrder;
     setState(() {
       _detail = detail;
       // 换类别 = 回到类别层（关掉可能开着的二级页）
@@ -168,6 +197,7 @@ class _ProfilePageState extends State<ProfilePage>
 
   /// 打开设置二级页（高级覆盖项 / 备份与恢复），内容进右窗格。
   void _openSubPage(ProfileSubPage sub) {
+    _discardDeepPage();
     setState(() {
       _subPage = sub;
       _forward = true; // 更深一层 = 前进
@@ -180,10 +210,115 @@ class _ProfilePageState extends State<ProfilePage>
   }
 
   void _closeSubPage() {
+    if (_deepPage != null) {
+      _closeDeepPage();
+      return;
+    }
     if (_subPage == null) return;
     setState(() {
       _subPage = null;
       _forward = false; // 回到上一层 = 后退
+    });
+    _publishProfileBack();
+    _showTopBar();
+    _focusDetailPane();
+  }
+
+  void _discardDeepPage() {
+    final completer = _backupOptionsCompleter;
+    final controller = _backupOptionsController;
+    if (_deepPage == null && completer == null && controller == null) return;
+    _clearDeepPageFields();
+    _disposePaneController(controller);
+    if (completer != null && !completer.isCompleted) {
+      completer.complete(null);
+    }
+  }
+
+  void _clearDeepPageFields() {
+    _deepPage = null;
+    _deepTitle = null;
+    _backupOptionsCompleter = null;
+    _backupOptionsController = null;
+    _backupInitialSections = const <BackupSection>{};
+    _backupInitialPassphrase = '';
+    _backupVerifySensitive = null;
+    _backupConfirmLabel = '';
+    _licensePackage = null;
+  }
+
+  void _disposePaneController(BackupOptionsController? controller) {
+    if (controller == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) => controller.dispose());
+  }
+
+  void _closeDeepPage() {
+    if (_deepPage == null) return;
+    final completer = _backupOptionsCompleter;
+    final controller = _backupOptionsController;
+    setState(() {
+      _clearDeepPageFields();
+      _forward = false;
+    });
+    _disposePaneController(controller);
+    if (completer != null && !completer.isCompleted) {
+      completer.complete(null);
+    }
+    _publishProfileBack();
+    _showTopBar();
+    _focusDetailPane();
+  }
+
+  Future<BackupOptionsResult?> _openBackupOptionsInPane(
+    BuildContext context, {
+    required Set<BackupSection> initialSections,
+    required String confirmLabel,
+    String? title,
+    String initialPassphrase = '',
+    Future<bool> Function()? verifySensitive,
+  }) {
+    _discardDeepPage();
+    final completer = Completer<BackupOptionsResult?>();
+    final controller = BackupOptionsController();
+    setState(() {
+      _deepPage = _ProfileDeepPage.backupOptions;
+      _deepTitle = title ?? context.l10n.backupOptions;
+      _backupOptionsCompleter = completer;
+      _backupOptionsController = controller;
+      _backupInitialSections = {...initialSections};
+      _backupInitialPassphrase = initialPassphrase;
+      _backupVerifySensitive = verifySensitive;
+      _backupConfirmLabel = confirmLabel;
+      _licensePackage = null;
+      _forward = true;
+    });
+    _publishProfileBack();
+    _showTopBar();
+    _focusDetailPane();
+    return completer.future;
+  }
+
+  void _completeBackupOptions(BackupOptionsResult result) {
+    final completer = _backupOptionsCompleter;
+    final controller = _backupOptionsController;
+    if (completer == null) return;
+    setState(() {
+      _clearDeepPageFields();
+      _forward = false;
+    });
+    _disposePaneController(controller);
+    if (!completer.isCompleted) completer.complete(result);
+    _publishProfileBack();
+    _showTopBar();
+    _focusDetailPane();
+  }
+
+  void _openLicensePackage(LicensePackageGroup package) {
+    setState(() {
+      _deepPage = _ProfileDeepPage.licenseDetail;
+      _deepTitle = package.name;
+      _licensePackage = package;
+      _forward = true;
     });
     _publishProfileBack();
     _showTopBar();
@@ -245,7 +380,9 @@ class _ProfilePageState extends State<ProfilePage>
   void _publishProfileBack() {
     final app = _profileBackHost;
     if (app == null) return;
-    final active = widget.tabIndex != null && (_searching || _subPage != null);
+    final active =
+        widget.tabIndex != null &&
+        (_searching || _subPage != null || _deepPage != null);
     app.onProfileBack = active ? _handleProfileBack : null;
   }
 
@@ -253,6 +390,10 @@ class _ProfilePageState extends State<ProfilePage>
   Future<bool> _handleProfileBack() async {
     if (_searching) {
       _exitSearch();
+      return true;
+    }
+    if (_deepPage != null) {
+      _closeDeepPage();
       return true;
     }
     if (_subPage != null) {
@@ -268,6 +409,8 @@ class _ProfilePageState extends State<ProfilePage>
   /// 类别用类别名而不是「设置」：单栏态 push 出来的类别页标题就是类别名
   /// （见 SettingsCategoryPage），两栏态对齐后读屏念顶栏标题才有信息量。
   String _paneTitle(AppLocalizations l10n) {
+    final deepTitle = _deepTitle;
+    if (deepTitle != null) return deepTitle;
     final sub = _subPage;
     if (sub != null) return sub.label(l10n);
     return _detailLabel(l10n, _detail);
@@ -339,7 +482,7 @@ class _ProfilePageState extends State<ProfilePage>
                             icon: const Icon(Icons.close),
                             onPressed: _exitSearch,
                           )
-                        : _subPage != null
+                        : (_subPage != null || _deepPage != null)
                         ? AppBarBackButton(onPressed: _closeSubPage)
                         : (standalone ? const AppBarBackButton() : null),
                     // 两栏：标题跟随右窗格（账号 / 设置 / 二级页 / 关于），
@@ -366,20 +509,7 @@ class _ProfilePageState extends State<ProfilePage>
                             ),
                           )
                         : Text(l10n.tabProfile),
-                    // 搜索按钮只在设置类别层出现（账号 / 关于 / 二级页都没有）
-                    actions:
-                        wide &&
-                            !_searching &&
-                            _subPage == null &&
-                            _detail.settingsCategory != null
-                        ? [
-                            IconButton(
-                              tooltip: l10n.searchSettings,
-                              icon: const Icon(Icons.search),
-                              onPressed: _startSearch,
-                            ),
-                          ]
-                        : const <Widget>[],
+                    actions: _paneActions(l10n, wide),
                     // 备份与恢复（窗格内）网络操作时，顶栏底下显示进度线
                     bottom:
                         _subPage == ProfileSubPage.backup &&
@@ -399,6 +529,41 @@ class _ProfilePageState extends State<ProfilePage>
         ),
       ),
     );
+  }
+
+  List<Widget> _paneActions(AppLocalizations l10n, bool wide) {
+    if (!wide) return const <Widget>[];
+    final backupController = _backupOptionsController;
+    if (_deepPage == _ProfileDeepPage.backupOptions &&
+        backupController != null) {
+      return [
+        Padding(
+          padding: const EdgeInsets.only(right: 12),
+          child: ListenableBuilder(
+            listenable: backupController,
+            builder: (context, _) => TextButton(
+              onPressed: backupController.canConfirm
+                  ? backupController.confirm
+                  : null,
+              child: Text(_backupConfirmLabel),
+            ),
+          ),
+        ),
+      ];
+    }
+    if (!_searching &&
+        _subPage == null &&
+        _deepPage == null &&
+        _detail.settingsCategory != null) {
+      return [
+        IconButton(
+          tooltip: l10n.searchSettings,
+          icon: const Icon(Icons.search),
+          onPressed: _startSearch,
+        ),
+      ];
+    }
+    return const <Widget>[];
   }
 
   /// 单栏（手机 / 窄窗）：账号 + 设置各大类 + 关于；点类别进入二级页
@@ -482,7 +647,7 @@ class _ProfilePageState extends State<ProfilePage>
             builder: (context, _) {
               final subtitle = _updateSubtitle(context, app);
               return ListTile(
-                leading: const Icon(Icons.update),
+                leading: const Icon(Icons.cloud_done),
                 title: Text(l10n.update),
                 subtitle: subtitle == null ? null : Text(subtitle),
                 trailing: const Icon(Icons.chevron_right),
@@ -560,7 +725,7 @@ class _ProfilePageState extends State<ProfilePage>
     double paneWidth,
   ) {
     // 右窗格内容身份 = (类别, 二级页)：二级页进出同样走滑动切换
-    final switcherKey = ValueKey((_detail, _subPage));
+    final switcherKey = ValueKey(_paneKey);
     return BodySideInset(
       child: Padding(
         // 独立页面（不在外壳里）时让开系统导航栏；外壳里的卡片已经让过位
@@ -744,7 +909,7 @@ class _ProfilePageState extends State<ProfilePage>
       ListenableBuilder(
         listenable: app.updates,
         builder: (context, _) => _PaneTile(
-          icon: Icons.update,
+          icon: Icons.cloud_done,
           label: l10n.update,
           subtitle: _updateSubtitle(context, app),
           selected: _detail == _ProfileDetail.update,
@@ -767,6 +932,36 @@ class _ProfilePageState extends State<ProfilePage>
   }
 
   Widget _buildDetailPane(BuildContext context, AppController app) {
+    final deep = _deepPage;
+    if (deep == _ProfileDeepPage.backupOptions) {
+      final controller = _backupOptionsController;
+      if (controller == null) return const SizedBox.shrink();
+      return _paneScrollView(
+        context,
+        controller: _paneScroll(_paneKey),
+        children: [
+          BackupOptionsPage(
+            initialSections: _backupInitialSections,
+            confirmLabel: _backupConfirmLabel,
+            initialPassphrase: _backupInitialPassphrase,
+            verifySensitive: _backupVerifySensitive,
+            embedded: true,
+            controller: controller,
+            onResult: _completeBackupOptions,
+          ),
+        ],
+      );
+    }
+    if (deep == _ProfileDeepPage.licenseDetail) {
+      final package = _licensePackage;
+      if (package == null) return const SizedBox.shrink();
+      return _paneScrollView(
+        context,
+        controller: _paneScroll(_paneKey),
+        children: [LicenseDetailContent(package: package)],
+        topPadding: 16,
+      );
+    }
     // 第三层：二级页（高级覆盖项 / 备份与恢复 / 开源许可）
     final sub = _subPage;
     if (sub != null) {
@@ -776,10 +971,16 @@ class _ProfilePageState extends State<ProfilePage>
         children: [
           switch (sub) {
             ProfileSubPage.advanced => const AdvancedContent(),
-            ProfileSubPage.backup => BackupContent(progress: _subPageProgress),
-            ProfileSubPage.licenses => const LicensesContent(),
+            ProfileSubPage.backup => BackupContent(
+              progress: _subPageProgress,
+              backupOptionsOpener: _openBackupOptionsInPane,
+            ),
+            ProfileSubPage.licenses => LicensesContent(
+              onOpenPackage: _openLicensePackage,
+            ),
           },
         ],
+        topPadding: sub == ProfileSubPage.backup ? 8 : 16,
       );
     }
     final detail = _detail;
@@ -822,6 +1023,7 @@ class _ProfilePageState extends State<ProfilePage>
           children: [_accountTile(context, app), ..._webLinkTiles(context)],
         ),
       ],
+      topPadding: 16,
     );
   }
 
@@ -830,6 +1032,7 @@ class _ProfilePageState extends State<ProfilePage>
     BuildContext context, {
     required ScrollController controller,
     required List<Widget> children,
+    double topPadding = 8,
   }) {
     // 顶栏是「我的」页的浮层：正文顶上留出等高占位（与其它页一致），
     // 顶栏收起时随内容滚走；滑块也不要从顶栏下面露头。
@@ -845,7 +1048,7 @@ class _ProfilePageState extends State<ProfilePage>
         slivers: [
           SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
           SliverPadding(
-            padding: kM3eSectionPagePadding,
+            padding: kM3eSectionPagePadding.copyWith(top: topPadding),
             // 整块布局：避免懒布局估算导致滚动条滑块抖动（见 SliverColumn）
             sliver: SliverColumn(children: children),
           ),

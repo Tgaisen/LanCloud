@@ -18,6 +18,38 @@ class BackupOptionsResult {
   bool get encrypted => passphrase.isNotEmpty;
 }
 
+/// 独立页面或大屏详情窗格的“备份选项”打开方式。
+typedef BackupOptionsPageOpener = Future<BackupOptionsResult?> Function(
+  BuildContext context, {
+  required Set<BackupSection> initialSections,
+  required String confirmLabel,
+  String? title,
+  String initialPassphrase,
+  Future<bool> Function()? verifySensitive,
+});
+
+/// 嵌入式“备份选项”把确认状态同步给宿主顶栏。
+class BackupOptionsController extends ChangeNotifier {
+  bool _canConfirm = false;
+  VoidCallback? _confirm;
+
+  bool get canConfirm => _canConfirm;
+
+  void confirm() => _confirm?.call();
+
+  void _update({required bool canConfirm, required VoidCallback confirm}) {
+    final changed = _canConfirm != canConfirm;
+    _canConfirm = canConfirm;
+    _confirm = confirm;
+    if (changed) notifyListeners();
+  }
+
+  void _detach(VoidCallback confirm) {
+    if (_confirm != confirm) return;
+    _confirm = null;
+  }
+}
+
 const _minimumPassphraseLength = 8;
 
 /// 打开独立“备份选项”页；返回 null 表示用户返回取消。
@@ -54,6 +86,9 @@ class BackupOptionsPage extends StatefulWidget {
     this.title,
     this.initialPassphrase = '',
     this.verifySensitive,
+    this.embedded = false,
+    this.controller,
+    this.onResult,
   });
 
   final Set<BackupSection> initialSections;
@@ -61,6 +96,9 @@ class BackupOptionsPage extends StatefulWidget {
   final String? title;
   final String initialPassphrase;
   final Future<bool> Function()? verifySensitive;
+  final bool embedded;
+  final BackupOptionsController? controller;
+  final ValueChanged<BackupOptionsResult>? onResult;
 
   @override
   State<BackupOptionsPage> createState() => _BackupOptionsPageState();
@@ -87,13 +125,24 @@ class _BackupOptionsPageState extends State<BackupOptionsPage> {
     _encrypt =
         widget.initialPassphrase.isNotEmpty ||
         widget.initialSections.any((section) => section.sensitive);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _syncController();
+    });
   }
 
   @override
   void dispose() {
     _scroll.dispose();
     _passphrase.dispose();
+    widget.controller?._detach(_submit);
     super.dispose();
+  }
+
+  void _syncController() {
+    widget.controller?._update(
+      canConfirm: _sections.isNotEmpty,
+      confirm: _submit,
+    );
   }
 
   Future<void> _toggleSection(BackupSection section) async {
@@ -111,6 +160,16 @@ class _BackupOptionsPageState extends State<BackupOptionsPage> {
       }
       _passphraseError = null;
     });
+    _syncController();
+  }
+
+  void _finish(BackupOptionsResult result) {
+    final onResult = widget.onResult;
+    if (onResult != null) {
+      onResult(result);
+      return;
+    }
+    Navigator.of(context).pop(result);
   }
 
   void _submit() {
@@ -129,13 +188,12 @@ class _BackupOptionsPageState extends State<BackupOptionsPage> {
         );
         return;
       }
-      Navigator.of(context).pop(
+      _finish(
         BackupOptionsResult(sections: {..._sections}, passphrase: passphrase),
       );
       return;
     }
-    Navigator.of(context)
-        .pop(BackupOptionsResult(sections: {..._sections}, passphrase: ''));
+    _finish(BackupOptionsResult(sections: {..._sections}, passphrase: ''));
   }
 
   String _sectionName(AppLocalizations l10n, BackupSection section) =>
@@ -253,6 +311,11 @@ class _BackupOptionsPageState extends State<BackupOptionsPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    if (widget.embedded) {
+      // 右窗格已经是受控的内容区域，再套页面级 maxWidth 会与其它详情页产生
+      // 可感知的左右留白差。独立整页仍保留下方的 680dp 阅读宽度限制。
+      return _content(context);
+    }
     return TopBarOverlayScaffold(
       controller: _scroll,
       appBar: AppBar(
@@ -271,16 +334,9 @@ class _BackupOptionsPageState extends State<BackupOptionsPage> {
         ],
       ),
       slivers: [
-        SliverPadding(
+        M3eReadingSliverPadding(
           padding: kM3eSectionPagePadding.copyWith(bottom: 32),
-          sliver: SliverToBoxAdapter(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 680),
-                child: _content(context),
-              ),
-            ),
-          ),
+          sliver: SliverToBoxAdapter(child: _content(context)),
         ),
       ],
     );

@@ -679,6 +679,49 @@ class M3ePickTile extends StatelessWidget {
 /// 标题自身再横向缩进 4dp，与 [SegmentedList] 的默认外边距对齐。
 const EdgeInsets kM3eSectionPagePadding = EdgeInsets.fromLTRB(16, 8, 16, 16);
 
+/// 设置类独立整页的最大阅读宽度。
+///
+/// 这是应用级阅读宽度决定，不是 M3 固定 token。小于该宽度的窗口自然铺满；
+/// 更宽的窗口通过增加左右边距居中，不改变页面自身的 16dp 内容外边距。
+const double kM3eReadingMaxWidth = 680;
+
+/// 独立整页使用的受限宽 SliverPadding。
+///
+/// 大屏右窗格已经是受控区域，嵌入内容应继续使用普通 [SliverPadding]。
+class M3eReadingSliverPadding extends StatelessWidget {
+  const M3eReadingSliverPadding({
+    super.key,
+    required this.sliver,
+    this.padding = kM3eSectionPagePadding,
+  });
+
+  final Widget sliver;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return SliverLayoutBuilder(
+      builder: (context, constraints) {
+        final resolved = padding.resolve(Directionality.of(context));
+        final extra = math.max(
+          0.0,
+          (constraints.crossAxisExtent -
+                  resolved.horizontal -
+                  kM3eReadingMaxWidth) /
+              2,
+        );
+        return SliverPadding(
+          padding: resolved.copyWith(
+            left: resolved.left + extra,
+            right: resolved.right + extra,
+          ),
+          sliver: sliver,
+        );
+      },
+    );
+  }
+}
+
 /// 设置类页面里列表组上方的小标题（分组名）。
 ///
 /// **参考 M3 规范**：分区标题用 `title` 角色（typography 的角色分配里
