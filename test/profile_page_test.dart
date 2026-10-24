@@ -49,8 +49,9 @@ void main() {
     expect(find.text('设置'), findsOneWidget);
     expect(find.text('更新'), findsOneWidget);
     expect(find.text('关于'), findsOneWidget);
-    expect(find.byIcon(app_icons.Icons.network_node), findsOneWidget);
-    expect(find.byIcon(app_icons.Icons.settings_applications), findsOneWidget);
+    expect(find.byIcon(app_icons.Icons.swap_vertical_circle), findsOneWidget);
+    expect(find.byIcon(app_icons.Icons.view_cozy), findsOneWidget);
+    expect(find.byIcon(app_icons.Icons.text_snippet), findsOneWidget);
     expect(find.byIcon(app_icons.Icons.cloud_done), findsOneWidget);
     final accountHeader = find.descendant(
       of: find.widgetWithText(M3eSectionHeader, '账号'),

@@ -52,10 +52,10 @@ enum SettingsCategory {
   /// 「我的」里类别行的图标。
   IconData get icon => switch (this) {
     SettingsCategory.appearanceLayout => Icons.palette_outlined,
-    SettingsCategory.behaviorPermissions => Icons.settings_applications,
+    SettingsCategory.behaviorPermissions => Icons.view_cozy,
     SettingsCategory.notificationsReminders => Icons.notifications_outlined,
-    SettingsCategory.transferConnection => Icons.network_node,
-    SettingsCategory.privacyData => Icons.shield,
+    SettingsCategory.transferConnection => Icons.swap_vertical_circle,
+    SettingsCategory.privacyData => Icons.text_snippet,
   };
 }
 

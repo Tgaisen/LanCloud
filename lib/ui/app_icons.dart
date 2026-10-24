@@ -98,7 +98,6 @@ class Icons {
   static const IconData more_vert = Symbols.more_vert;
   static const IconData movie_outlined = Symbols.movie;
   static const IconData music_note_outlined = Symbols.music_note;
-  static const IconData network_node = Symbols.network_node;
   static const IconData open_in_new = Symbols.open_in_new;
   static const IconData palette_outlined = Symbols.palette;
   static const IconData photo_library_outlined = Symbols.photo_library;
@@ -124,7 +123,6 @@ class Icons {
   static const IconData security = Symbols.security;
   static const IconData select_all = Symbols.select_all;
   static const IconData settings_outlined = Symbols.settings;
-  static const IconData settings_applications = Symbols.settings_applications;
   static const IconData shield = Symbols.shield;
   static const IconData shield_person = Symbols.shield_person;
   static const IconData settings_backup_restore =
@@ -148,11 +146,13 @@ class Icons {
   static const IconData swap_vert = Symbols.swap_vert;
   static const IconData task_alt = Symbols.task_alt;
   static const IconData swap_vert_outlined = Symbols.swap_vert;
+  static const IconData swap_vertical_circle = Symbols.swap_vertical_circle;
   static const IconData swipe = Symbols.swipe;
   static const IconData switch_account_outlined = Symbols.switch_account;
   static const IconData sync = Symbols.sync;
   static const IconData system_update = Symbols.system_update;
   static const IconData table_chart_outlined = Symbols.table_chart;
+  static const IconData text_snippet = Symbols.text_snippet;
   static const IconData timer_outlined = Symbols.timer;
   static const IconData translate = Symbols.translate;
   static const IconData tune = Symbols.tune;
@@ -166,6 +166,7 @@ class Icons {
   static const IconData warning_outlined = Symbols.warning;
   static const IconData vertical_align_bottom = Symbols.vertical_align_bottom;
   static const IconData vertical_align_top = Symbols.vertical_align_top;
+  static const IconData view_cozy = Symbols.view_cozy;
   static const IconData visibility = Symbols.visibility;
   static const IconData visibility_off = Symbols.visibility_off;
   static const IconData view_list = Symbols.view_list;
