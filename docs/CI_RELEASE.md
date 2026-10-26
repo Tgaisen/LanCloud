@@ -18,7 +18,7 @@ CI，本地一键发布也复用同一组脚本。
 
 ## 触发方式
 
-- **自动**：每次推送到 `main` 都会运行
+- **自动**：推送到 `main` 且修改了 `pubspec.yaml` 时运行
   [Release workflow](https://github.com/Tgaisen/LanCloud/actions/workflows/release.yml)
   的校验；当前版本尚未发布时才构建并创建 draft Release，已发布版本会直接跳过。
 - **手动**：在 Actions 页面从 `main` 运行 `Release`，或执行：
@@ -36,8 +36,8 @@ CI，本地一键发布也复用同一组脚本。
 如果运行一个已经发布过的版本，校验阶段会识别出来并跳过后续构建；
 如果同名 Release 还是 draft，重新运行会覆盖上传产物，便于修复失败任务。
 
-注意：如果当前版本尚未发布，任意一次 `main` push（包括只改文档）都可能
-触发首次 draft 构建；发布完成后，同一版本的后续推送会快速跳过构建。
+注意：只有修改 `pubspec.yaml` 的 `main` push 会自动触发 Release。普通代码、
+文档和依赖更新不会启动发布流程；需要提前构建时使用手动触发。
 
 ### 最短发版流程
 
@@ -134,6 +134,20 @@ debug 签名 APK，只用于编译验证，不会上传或发布。
 配置合入默认分支后才会生效，不需要额外 secret 或个人访问令牌。本仓库已在
 `Settings → Code security` 中启用 Dependabot alerts 和 security updates；
 重建仓库或迁移到新仓库时需要重新启用这两项。
+
+Flutter 版本以 `pubspec.yaml` 的 `environment.flutter` 为唯一来源，所有
+workflow 都通过 `flutter-version-file` 读取。单独的 Material UI 组件栈
+（`material_ui`、`m3e_core`、`cupertino_ui`）会独立分组，避免与普通
+minor/patch 更新互相阻塞。
+
+## Actions 质量检查
+
+- `Workflow Lint` 在 `.github/**` 改动时运行 Actionlint 和 YAML 语法检查。
+- `Dependency Review` 在每个 PR 检查新引入的依赖漏洞，高危问题会阻止合并。
+- `Windows CI` 在 `windows/**`、`pubspec.yaml` 或 `pubspec.lock` 改动时执行
+  Windows release 构建，避免原生插件问题拖到正式发版才暴露。
+- 仓库默认 `GITHUB_TOKEN` 权限应为只读；只有创建 Release 的任务显式申请
+  `contents: write`。
 
 ## 权限与运行环境
 

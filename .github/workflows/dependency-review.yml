@@ -1,0 +1,25 @@
+name: Dependency Review
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: dependency-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    name: 审查依赖变更
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 检查新增依赖漏洞
+        uses: actions/dependency-review-action@v5
+        with:
+          fail-on-severity: high
+          show-patched-versions: true
+          retry-on-snapshot-warnings: true
