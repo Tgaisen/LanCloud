@@ -1,0 +1,57 @@
+name: Windows CI
+
+on:
+  pull_request:
+    paths:
+      - "windows/**"
+      - "pubspec.yaml"
+      - "pubspec.lock"
+      - ".github/workflows/windows-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  PUB_HOSTED_URL: https://pub.dev
+
+jobs:
+  build:
+    name: Windows release 构建检查
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - name: 启用开发者模式（符号链接）
+        shell: pwsh
+        run: |
+          $key = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock'
+          New-Item -Path $key -Force | Out-Null
+          New-ItemProperty `
+            -Path $key `
+            -Name AllowDevelopmentWithoutDevLicense `
+            -PropertyType DWord `
+            -Value 1 `
+            -Force | Out-Null
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version-file: pubspec.yaml
+          channel: stable
+          cache: true
+      - name: 获取锁定依赖
+        run: flutter pub get --enforce-lockfile
+      - name: 准备 NuGet CLI
+        shell: pwsh
+        run: |
+          $nugetDir = Join-Path $env:RUNNER_TEMP 'nuget'
+          New-Item -ItemType Directory -Force -Path $nugetDir | Out-Null
+          Invoke-WebRequest `
+            -Uri 'https://dist.nuget.org/win-x86-commandline/latest/nuget.exe' `
+            -OutFile (Join-Path $nugetDir 'nuget.exe')
+          Add-Content -Path $env:GITHUB_PATH -Value $nugetDir
+      - name: 构建 Windows release
+        run: flutter build windows --release --no-pub

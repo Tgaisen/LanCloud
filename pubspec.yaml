@@ -24,6 +24,8 @@ version: 26.1.0-pre.18+260100218
 
 environment:
   sdk: ^3.13.3
+  # GitHub Actions 通过 flutter-version-file 读取该版本，避免多处手动同步。
+  flutter: 3.47.7
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions

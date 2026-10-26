@@ -5,18 +5,57 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 env:
   # 与 pubspec.lock 的来源保持一致，确保 CI 使用 lock 中的确切版本。
   PUB_HOSTED_URL: https://pub.dev
 
 jobs:
-  check:
+  changes:
+    name: 判断是否需要代码检查
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: 过滤纯文档改动
+        id: filter
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          files="$(git diff --name-only \
+            "${{ github.event.pull_request.base.sha }}" \
+            "${{ github.event.pull_request.head.sha }}")"
+          if printf '%s\n' "$files" | grep -Ev \
+            '^(docs/|assets/images/screenshots/|\.github/)|\.md$|(^|/)LICENSE$'; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "code=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  check:
+    name: 代码检查
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: 3.47.7
+          flutter-version-file: pubspec.yaml
           channel: stable
           cache: true
       - run: flutter pub get --enforce-lockfile
@@ -26,3 +65,23 @@ jobs:
         run: flutter analyze
       - name: 单元测试（flutter test）
         run: flutter test
+
+  required:
+    name: CI required
+    needs: [changes, check]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 汇总必需检查
+        shell: bash
+        run: |
+          if [[ "${{ needs.changes.result }}" != "success" ]]; then
+            echo "changes job failed: ${{ needs.changes.result }}"
+            exit 1
+          fi
+          if [[ "${{ needs.check.result }}" != "success" &&
+                "${{ needs.check.result }}" != "skipped" ]]; then
+            echo "check job failed: ${{ needs.check.result }}"
+            exit 1
+          fi

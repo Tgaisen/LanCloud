@@ -1,10 +1,13 @@
 name: Release
 
-# 每次 push 到 main 都检查版本；tag / Release 已存在时跳过构建。
+# 只有修改 pubspec.yaml 的 main push 才检查版本，避免文档和普通代码提交
+# 也启动发布 workflow；tag / Release 已存在时仍会跳过构建。
 # 也可以在 Actions 页面手动触发，默认仍然创建 draft。
 on:
   push:
     branches: [main]
+    paths:
+      - "pubspec.yaml"
   workflow_dispatch:
     inputs:
       draft:
@@ -12,15 +15,11 @@ on:
         type: boolean
         default: true
 
-permissions:
-  contents: write
-
 concurrency:
   group: release-main
   cancel-in-progress: false
 
 env:
-  FLUTTER_VERSION: 3.47.7
   EXPECTED_CERT_SHA256: 70BD4AA85322FE26E67202FAC31729BDE1F854FA1BD2FD52C88FFCAA02EDB5BB
   # pubspec.lock 使用官方源生成；CI 必须使用同一来源，否则 pub 会把
   # lock 中的每个包视为不同来源并拒绝按 lock 解析。
@@ -31,6 +30,8 @@ jobs:
     name: 校验
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
     outputs:
       should_release: ${{ steps.validate.outputs.should_release }}
       version: ${{ steps.validate.outputs.version }}
@@ -41,7 +42,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
+          flutter-version-file: pubspec.yaml
           channel: stable
           cache: true
       - name: 获取依赖
@@ -63,6 +64,8 @@ jobs:
     if: needs.validate.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-java@v6
@@ -82,7 +85,7 @@ jobs:
             "cmake;3.22.1"
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
+          flutter-version-file: pubspec.yaml
           channel: stable
           cache: true
       - uses: gradle/actions/setup-gradle@v6
@@ -137,6 +140,7 @@ jobs:
           path: outputs/LanCloud_android_*.apk
           if-no-files-found: error
           retention-days: 7
+          compression-level: 0
 
   windows:
     name: Windows 构建
@@ -144,6 +148,8 @@ jobs:
     if: needs.validate.outputs.should_release == 'true'
     runs-on: windows-latest
     timeout-minutes: 45
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v7
       - name: 启用开发者模式（符号链接）
@@ -159,7 +165,7 @@ jobs:
             -Force | Out-Null
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
+          flutter-version-file: pubspec.yaml
           channel: stable
           cache: true
       - name: 获取依赖
@@ -186,6 +192,7 @@ jobs:
           path: outputs/LanCloud_windows_*_x64_portable.zip
           if-no-files-found: error
           retention-days: 7
+          compression-level: 0
 
   release:
     name: 创建 Release
@@ -193,6 +200,8 @@ jobs:
     if: needs.validate.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
