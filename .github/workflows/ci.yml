@@ -7,7 +7,7 @@ on:
 
 env:
   # 与 pubspec.lock 的来源保持一致，确保 CI 使用 lock 中的确切版本。
-  PUB_HOSTED_URL: https://pub.flutter-io.cn
+  PUB_HOSTED_URL: https://pub.dev
 
 jobs:
   check:

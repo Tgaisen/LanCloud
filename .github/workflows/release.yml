@@ -22,9 +22,9 @@ concurrency:
 env:
   FLUTTER_VERSION: 3.47.7
   EXPECTED_CERT_SHA256: 70BD4AA85322FE26E67202FAC31729BDE1F854FA1BD2FD52C88FFCAA02EDB5BB
-  # pubspec.lock 使用 Flutter 中国镜像生成；CI 必须使用同一镜像，
-  # 否则 pub 会把 lock 中的每个包视为不同来源并解析到最新版本。
-  PUB_HOSTED_URL: https://pub.flutter-io.cn
+  # pubspec.lock 使用官方源生成；CI 必须使用同一来源，否则 pub 会把
+  # lock 中的每个包视为不同来源并拒绝按 lock 解析。
+  PUB_HOSTED_URL: https://pub.dev
 
 jobs:
   validate:
@@ -80,12 +80,6 @@ jobs:
             "build-tools;36.0.0" \
             "ndk;28.2.13676358" \
             "cmake;3.22.1"
-      - name: 使用官方 Gradle 分发
-        shell: bash
-        run: |
-          sed -i 's#mirrors.cloud.tencent.com/gradle/#services.gradle.org/distributions/#' \
-            android/gradle/wrapper/gradle-wrapper.properties
-          grep '^distributionUrl=' android/gradle/wrapper/gradle-wrapper.properties
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}

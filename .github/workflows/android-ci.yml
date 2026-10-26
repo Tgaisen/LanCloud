@@ -1,0 +1,57 @@
+name: Android CI
+
+# Gradle 依赖更新不会由现有的 Dart 测试覆盖，因此 Android 相关改动额外做一次
+# release 构建，覆盖 R8 等只在 release 阶段出现的问题。缺少发布签名时沿用
+# 项目现有的 debug 签名降级，只作编译校验，不读取任何发布签名 secrets。
+on:
+  pull_request:
+    paths:
+      - "android/**"
+      - "pubspec.yaml"
+      - "pubspec.lock"
+      - ".github/workflows/android-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  PUB_HOSTED_URL: https://pub.dev
+  FLUTTER_VERSION: 3.47.7
+
+jobs:
+  build:
+    name: Android release 构建检查
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: 安装 Android SDK 组件
+        uses: android-actions/setup-android@v4
+      - name: 接受 Android SDK 许可
+        run: yes | sdkmanager --licenses > /dev/null
+      - name: 安装构建组件
+        run: |
+          sdkmanager \
+            "platforms;android-37.0" \
+            "build-tools;36.0.0" \
+            "ndk;28.2.13676358" \
+            "cmake;3.22.1"
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - uses: gradle/actions/setup-gradle@v6
+      - name: 获取锁定依赖
+        run: flutter pub get --enforce-lockfile
+      - name: 构建 Android release APK
+        run: flutter build apk --release --no-pub --target-platform android-arm64

@@ -93,11 +93,15 @@ Android 构建结束后会用 `apksigner` 校验证书 SHA-256，指纹不匹配
 
 ## 依赖锁定与 Android 启动回归
 
-`pubspec.lock` 使用 Flutter 中国镜像生成。Release workflow 固定设置同一个
-`PUB_HOSTED_URL`，并在三个任务里用 `flutter pub get --enforce-lockfile`
+`pubspec.lock` 使用官方 `pub.dev` 源生成。CI workflow 固定设置
+`PUB_HOSTED_URL=https://pub.dev`，并用 `flutter pub get --enforce-lockfile`
 取依赖；两个构建脚本也会给 `flutter build` 传 `--no-pub`，避免构建阶段再次
-解析依赖。不要删掉这些保护，否则 GitHub runner 使用不同包源时可能忽略
-lock 中的版本并自动升级。
+解析依赖。不要删掉这些保护，否则不同包源下的 lockfile 会被视为另一套
+依赖来源，导致 CI 无法按锁定版本解析。
+
+如果以后需要临时切换到 Pub 镜像，必须同时修改 workflow 的
+`PUB_HOSTED_URL` 并重新生成 `pubspec.lock`；只改环境变量而不重建 lockfile
+会使 `--enforce-lockfile` 失败。
 
 `pubspec.yaml` 要求 `shared_preferences_android` 至少为 `2.5.2`。2.5.0/2.5.1
 的 release/R8 构建会丢掉 JNI 使用的 Kotlin 挂起方法签名，启动时
@@ -109,6 +113,27 @@ lock 中的版本并自动升级。
 ```text
 https://github.com/flutter/flutter/issues/194649
 ```
+
+## 依赖自动更新
+
+Dependabot 配置位于 [`.github/dependabot.yml`](../.github/dependabot.yml)，
+每周一上午按 Asia/Shanghai 时区检查以下依赖：
+
+| 生态 | 范围 | 更新策略 |
+| --- | --- | --- |
+| Pub | `pubspec.yaml` / `pubspec.lock` | minor 与 patch 合并；major 单独开 PR |
+| Gradle | `android/` | minor 与 patch 合并；major 单独开 PR |
+| GitHub Actions | `.github/workflows/` | 全部 action 合并到一个 PR |
+
+Dependabot 只负责创建或更新 PR，不自动合并。Pub 依赖 PR 会运行现有
+`CI`；改动 `android/`、`pubspec.yaml` 或 `pubspec.lock` 的 PR 还会运行
+`Android CI` 的 release/R8 构建，避免 Gradle 和插件升级只通过静态分析。
+该检查不读取发布签名 secrets；本地和 CI 缺少正式签名时按项目现有逻辑生成
+debug 签名 APK，只用于编译验证，不会上传或发布。
+
+配置合入默认分支后才会生效，不需要额外 secret 或个人访问令牌。本仓库已在
+`Settings → Code security` 中启用 Dependabot alerts 和 security updates；
+重建仓库或迁移到新仓库时需要重新启用这两项。
 
 ## 权限与运行环境
 
