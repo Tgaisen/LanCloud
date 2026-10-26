@@ -42,7 +42,7 @@ dependencies:
   provider: ^6.1.5+1
   sqflite: ^2.4.5
   # 桌面端（Windows）用 FFI 实现跑 SQLite；Android/iOS 仍走 sqflite 原生实现
-  sqflite_common_ffi: ^2.4.4
+  sqflite_common_ffi: ^2.4.5
   # Windows 注册表（「清除数据」的注册表项目）：win32 API + FFI 字符串工具
   ffi: ^2.2.0
   win32: ^6.4.0
@@ -52,7 +52,7 @@ dependencies:
   # 2.5.2 增加 consumer R8 rules，保留 Pigeon JNI 反射使用的 Kotlin 类，
   # 修复 2.5.0 / 2.5.1 在 Android release 启动时的 NoSuchMethodError。
   # https://github.com/flutter/flutter/issues/194649
-  shared_preferences_android: ^2.5.2
+  shared_preferences_android: ^2.5.3
   # 项目仍处于 pre 阶段，允许跳过 v10 的旧安全存储数据；v11 会在读取前
   # 上报不可迁移状态，应用据此回到登录页，并关闭缺密码的 WebDAV 功能。
   flutter_secure_storage: ^11.2.0
@@ -85,7 +85,7 @@ dependencies:
   m3e_core: ^1.1.4
   # 1.8 新增的 RoundedPolygon 与 m3e_core 1.1.4 的同名类型冲突；
   # 待 m3e_core 适配后再放开 <1.8.0。
-  material_ui: ">=1.6.0 <1.8.0"
+  material_ui: ^1.8.0
   cupertino_ui: ^1.1.4
   cryptography: ^2.9.0
 dev_dependencies:
