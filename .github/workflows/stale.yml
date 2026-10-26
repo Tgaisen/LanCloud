@@ -1,4 +1,4 @@
-name: 自动管理无活动 Issue
+name: Stale Issue Management
 
 on:
   schedule:
