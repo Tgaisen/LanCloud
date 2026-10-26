@@ -1,4 +1,4 @@
-name: Windows CI
+name: "CI: Windows"
 
 on:
   pull_request:

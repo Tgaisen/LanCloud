@@ -126,8 +126,9 @@ Dependabot 配置位于 [`.github/dependabot.yml`](../.github/dependabot.yml)，
 | GitHub Actions | `.github/workflows/` | 全部 action 合并到一个 PR |
 
 Dependabot 只负责创建或更新 PR，不自动合并。Pub 依赖 PR 会运行现有
-`CI`；改动 `android/`、`pubspec.yaml` 或 `pubspec.lock` 的 PR 还会运行
-`Android CI` 的 release/R8 构建，避免 Gradle 和插件升级只通过静态分析。
+`CI: Flutter`；改动 `android/`、`pubspec.yaml` 或 `pubspec.lock` 的 PR
+还会运行 `CI: Android` 的 release/R8 构建，避免 Gradle 和插件升级只通过
+静态分析。
 该检查不读取发布签名 secrets；本地和 CI 缺少正式签名时按项目现有逻辑生成
 debug 签名 APK，只用于编译验证，不会上传或发布。
 
@@ -142,9 +143,9 @@ minor/patch 更新互相阻塞。
 
 ## Actions 质量检查
 
-- `Workflow Lint` 在 `.github/**` 改动时运行 Actionlint 和 YAML 语法检查。
-- `Dependency Review` 在每个 PR 检查新引入的依赖漏洞，高危问题会阻止合并。
-- `Windows CI` 在 `windows/**`、`pubspec.yaml` 或 `pubspec.lock` 改动时执行
+- `CI: Workflow Lint` 在 `.github/**` 改动时运行 Actionlint 和 YAML 语法检查。
+- `CI: Dependency Review` 在每个 PR 检查新引入的依赖漏洞，高危问题会阻止合并。
+- `CI: Windows` 在 `windows/**`、`pubspec.yaml` 或 `pubspec.lock` 改动时执行
   Windows release 构建，避免原生插件问题拖到正式发版才暴露。
 - 仓库默认 `GITHUB_TOKEN` 权限应为只读；只有创建 Release 的任务显式申请
   `contents: write`。

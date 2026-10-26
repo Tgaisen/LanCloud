@@ -1,4 +1,4 @@
-name: Android CI
+name: "CI: Android"
 
 # Gradle 依赖更新不会由现有的 Dart 测试覆盖，因此 Android 相关改动额外做一次
 # release 构建，覆盖 R8 等只在 release 阶段出现的问题。缺少发布签名时沿用
