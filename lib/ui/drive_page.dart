@@ -24,6 +24,13 @@ import 'scroll_tint.dart';
 
 const int kFreeUploadLimit = 100 * 1024 * 1024;
 
+/// 目录进入动画：总时长要容纳常见一屏条目的错峰起点；单项动画与步长
+/// 仍保持原来的 232 / 26ms，后续条目再按列表数量缩放到可用时间内。
+const Duration _driveEnterDuration = Duration(milliseconds: 720);
+const double _driveEnterDurationMs = 720;
+const double _driveEnterItemDurationMs = 232;
+const double _driveEnterStepMs = 26;
+
 /// 网盘页文件条目 ⋯ 菜单里的动作。
 enum _FileMenuAction { properties, copyLink, move, editInfo, password, delete }
 
@@ -75,7 +82,7 @@ class _DrivePageState extends State<DrivePage>
   /// 所以“逐个显现”只在目录加载完成后播放一次，滑动不会重播。
   late final AnimationController _enterAnim = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 440),
+    duration: _driveEnterDuration,
     value: 1,
   );
 
@@ -97,6 +104,8 @@ class _DrivePageState extends State<DrivePage>
   final Set<String> _pulsingFiles = {};
   final Set<String> _pulsingFolders = {};
   bool _directorySwitching = false;
+  int _enterFolderCount = 1;
+  int _enterFileCount = 1;
 
   final ScrollController _scroll = ScrollController();
   final TextEditingController _searchController = TextEditingController();
@@ -474,6 +483,10 @@ class _DrivePageState extends State<DrivePage>
 
   /// 内容就绪：恢复不透明度并播放一次错峰出现动画。
   void _playEnterAnimation() {
+    // 在本次动画开始时固定分组数量。自动补页可能紧接着追加条目；
+    // 继续用新总数重算步长会让正在播放的条目突然跳变。
+    _enterFolderCount = math.max(1, _folders.length);
+    _enterFileCount = math.max(1, _files.length);
     if (!_animationsEnabled) {
       _enterAnim.value = 1;
       return;
@@ -2977,6 +2990,7 @@ class _DrivePageState extends State<DrivePage>
               itemBuilder: (context, index) => _folderItem(
                 folders[index],
                 index,
+                itemCount: _enterFolderCount,
                 grid: true,
                 animate: animate,
               ),
@@ -2991,6 +3005,7 @@ class _DrivePageState extends State<DrivePage>
               itemBuilder: (context, index) => _folderItem(
                 folders[index],
                 index,
+                itemCount: _enterFolderCount,
                 grid: false,
                 animate: animate,
               ),
@@ -3008,8 +3023,13 @@ class _DrivePageState extends State<DrivePage>
                 childAspectRatio: 0.86,
               ),
               itemCount: files.length,
-              itemBuilder: (context, index) =>
-                  _fileItem(files[index], index, grid: true, animate: animate),
+              itemBuilder: (context, index) => _fileItem(
+                files[index],
+                index,
+                itemCount: _enterFileCount,
+                grid: true,
+                animate: animate,
+              ),
             ),
           )
         else
@@ -3018,8 +3038,13 @@ class _DrivePageState extends State<DrivePage>
             sliver: AdaptiveSliverRows(
               itemCount: files.length,
               spacing: 0,
-              itemBuilder: (context, index) =>
-                  _fileItem(files[index], index, grid: false, animate: animate),
+              itemBuilder: (context, index) => _fileItem(
+                files[index],
+                index,
+                itemCount: _enterFileCount,
+                grid: false,
+                animate: animate,
+              ),
             ),
           ),
       SliverToBoxAdapter(
@@ -3061,6 +3086,7 @@ class _DrivePageState extends State<DrivePage>
   Widget _folderItem(
     LzFolder folder,
     int index, {
+    required int itemCount,
     required bool grid,
     required bool animate,
   }) {
@@ -3068,6 +3094,7 @@ class _DrivePageState extends State<DrivePage>
     final item = _AnimatedListItem(
       key: ValueKey('$_folderId-f-${folder.id}'),
       index: index,
+      itemCount: itemCount,
       enter: _enterAnim,
       enabled: animate,
       removing: _removingFolders.contains(folder.id),
@@ -3107,6 +3134,7 @@ class _DrivePageState extends State<DrivePage>
   Widget _fileItem(
     LzFile file,
     int index, {
+    required int itemCount,
     required bool grid,
     required bool animate,
   }) {
@@ -3115,6 +3143,7 @@ class _DrivePageState extends State<DrivePage>
     final item = _AnimatedListItem(
       key: ValueKey('$_folderId-l-${file.id}'),
       index: index,
+      itemCount: itemCount,
       enter: _enterAnim,
       enabled: animate,
       removing: _removingFiles.contains(file.id),
@@ -3160,6 +3189,7 @@ class _AnimatedListItem extends StatelessWidget {
   const _AnimatedListItem({
     super.key,
     required this.index,
+    required this.itemCount,
     required this.enter,
     required this.enabled,
     required this.child,
@@ -3172,6 +3202,7 @@ class _AnimatedListItem extends StatelessWidget {
   });
 
   final int index;
+  final int itemCount;
 
   /// 目录进入动画的共享进度（0..1，动画结束后为 1）。
   final Animation<double> enter;
@@ -3187,11 +3218,6 @@ class _AnimatedListItem extends StatelessWidget {
 
   /// 与条目正在使用的 Material 外形一致。
   final double pulseRadius;
-
-  /// 与控制器时长一致，用于把共享进度换算成单项的错峰区间。
-  static const double _enterDuration = 440;
-  static const double _enterItemDuration = 232;
-  static const double _enterStep = 26;
 
   @override
   Widget build(BuildContext context) {
@@ -3266,12 +3292,17 @@ class _AnimatedListItem extends StatelessWidget {
       animation: enter,
       child: item,
       builder: (context, child) {
-        final delay = index.clamp(0, 8) * _enterStep;
+        final count = math.max(1, itemCount);
+        final step = math.min(
+          _driveEnterStepMs,
+          (_driveEnterDurationMs - _driveEnterItemDurationMs) /
+              math.max(1, count - 1),
+        );
+        final delay = index.clamp(0, count - 1) * step;
         final progress =
-            ((enter.value * _enterDuration - delay) / _enterItemDuration).clamp(
-              0.0,
-              1.0,
-            );
+            ((enter.value * _driveEnterDurationMs - delay) /
+                    _driveEnterItemDurationMs)
+                .clamp(0.0, 1.0);
         final t = Curves.easeOutCubic.transform(progress);
         return Opacity(
           opacity: t,

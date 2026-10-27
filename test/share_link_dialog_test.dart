@@ -90,7 +90,7 @@ Future<void> parseWithWrongPwd(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets('打开链接：解析中在按钮内显示 MD3E 加载指示器', (tester) async {
+  testWidgets('打开链接：解析中在按钮内显示小尺寸 MD3E 环形进度条', (tester) async {
     final gate = Completer<void>();
     await _pumpDialog(tester, const NeedPasswordException(), gate: gate);
     await tester.enterText(
@@ -100,14 +100,16 @@ void main() {
     await tester.tap(find.text('解析'));
     await tester.pump();
 
-    final indicator = find.byType(M3eLoadingIndicator);
+    final indicator = find.byType(M3eCircularProgressIndicator);
     expect(indicator, findsOneWidget);
-    expect(tester.widget<M3eLoadingIndicator>(indicator).size, 18);
+    final progress = tester.widget<M3eCircularProgressIndicator>(indicator);
+    expect(progress.size, 18);
+    expect(progress.strokeWidth, 2);
     expect(find.text('解析中'), findsNothing);
 
     gate.complete();
     await tester.pumpAndSettle();
-    expect(find.byType(M3eLoadingIndicator), findsNothing);
+    expect(find.byType(M3eCircularProgressIndicator), findsNothing);
   });
 
   testWidgets('打开链接：提取码错误标在提取码输入框上，不用红卡片', (tester) async {

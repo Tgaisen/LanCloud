@@ -320,7 +320,7 @@ class _ShareLinkDialogState extends State<ShareLinkDialog> {
         FilledButton(
           onPressed: _loading ? null : _parse,
           child: _loading
-              ? const M3eLoadingIndicator(size: 18)
+              ? const M3eCircularProgressIndicator(size: 18, strokeWidth: 2)
               : Text(l10n.resolve),
         ),
       ],

@@ -303,6 +303,11 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              Text(
+                l10n.navBarItemsHint,
+                style: Theme.of(dialogContext).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 8),
               // 列表组比弹窗底（surfaceContainerHigh）再高一档容器色
               DialogListGroup(
                 children: [
@@ -319,13 +324,6 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
                     onTap: () => setDialogState(() => favorites = !favorites),
                   ),
                 ],
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(0, 8, 0, 0),
-                child: Text(
-                  l10n.navBarItemsHint,
-                  style: Theme.of(dialogContext).textTheme.bodySmall,
-                ),
               ),
             ],
           ),
@@ -2222,17 +2220,33 @@ class _SliderTileState<T> extends State<_SliderTile<T>> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Expanded(
-                      child: Text(
-                        widget.title,
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          color: scheme.onSurface,
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.title,
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              color: scheme.onSurface,
+                            ),
+                          ),
+                          if (widget.subtitle != null) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              widget.subtitle!,
+                              // 与其它设置项的 ListTile 副标题同一档
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                     const SizedBox(width: 16),
-                    // 当前值仍是标题行的 trailing text；拖动时同步更新。
+                    // 当前值与标题、副标题组成的文字列整体垂直居中；拖动时同步更新。
                     Text(
                       widget.labelOf(value),
                       style: theme.textTheme.labelLarge?.copyWith(
@@ -2241,16 +2255,6 @@ class _SliderTileState<T> extends State<_SliderTile<T>> {
                     ),
                   ],
                 ),
-                if (widget.subtitle != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    widget.subtitle!,
-                    // 与其它设置项的 ListTile 副标题同一档（bodyMedium）
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
                 const SizedBox(height: 4),
                 // M3ESlider 的轨道两端各保留 thumbRadius（10dp）作为手柄的
                 // 活动空间。把绘制区向左右各扩 10dp，轨道才会真正落在标题

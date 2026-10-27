@@ -38,6 +38,18 @@ import 'ui/transfers_page.dart';
 import 'ui/app_icons.dart';
 import 'ui/update_prompt.dart';
 
+/// SnackBar 在大屏上的最大宽度。小屏不设置固定宽度，继续使用浮动 SnackBar
+/// 的默认左右安全边距；否则固定宽度会被屏幕约束压到贴边。
+const double kSnackBarMaxWidth = 600;
+
+/// 按当前视口宽度应用 SnackBar 宽度约束。
+ThemeData withResponsiveSnackBarWidth(ThemeData theme, double viewportWidth) {
+  if (viewportWidth < kLargeLayoutBreakpoint) return theme;
+  return theme.copyWith(
+    snackBarTheme: theme.snackBarTheme.copyWith(width: kSnackBarMaxWidth),
+  );
+}
+
 class LanCloudApp extends StatefulWidget {
   const LanCloudApp({super.key});
 
@@ -104,24 +116,32 @@ class _LanCloudAppState extends State<LanCloudApp> {
             scrollBehavior: const AppScrollBehavior(),
             // 系统栏（状态栏 / 导航栏）样式跟随主题明暗：
             // Android 15+ 导航栏强制透明，能调的只有图标明暗与是否加系统遮罩。
-            builder: (context, child) => MousePresenceDetector(
-              child: MouseBackButtonListener(
-                // Windows 鼠标侧键「后退」= 系统返回键（与 Android 返回同一条路径）
-                enabled: PlatformSupport.isWindows,
-                onBack: () => _navigatorKey.currentState?.maybePop(),
-                child: AnnotatedRegion<SystemUiOverlayStyle>(
-                  value: systemUiOverlayStyleFor(Theme.of(context).brightness),
-                  // M3E：强调排版落到顶栏标题 / 弹窗标题 / 主要按钮 / 导航选中项，
-                  // 挂在 Navigator 之上（弹窗、对话框同样能取到）。
-                  child: M3eComponentStyles(
-                    // 桌面端在窗口这一层接住拖拽（Android 走原生通道，这里原样透传）
-                    child: DesktopDropTarget(
-                      child: Stack(
-                        children: [
-                          child ?? const SizedBox.shrink(),
-                          // 拖拽悬停提示条挂在 Navigator 之上：二级页面也能看到
-                          const DropHoverBanner(),
-                        ],
+            builder: (context, child) => Theme(
+              data: withResponsiveSnackBarWidth(
+                Theme.of(context),
+                MediaQuery.sizeOf(context).width,
+              ),
+              child: MousePresenceDetector(
+                child: MouseBackButtonListener(
+                  // Windows 鼠标侧键「后退」= 系统返回键（与 Android 返回同一条路径）
+                  enabled: PlatformSupport.isWindows,
+                  onBack: () => _navigatorKey.currentState?.maybePop(),
+                  child: AnnotatedRegion<SystemUiOverlayStyle>(
+                    value: systemUiOverlayStyleFor(
+                      Theme.of(context).brightness,
+                    ),
+                    // M3E：强调排版落到顶栏标题 / 弹窗标题 / 主要按钮 / 导航选中项，
+                    // 挂在 Navigator 之上（弹窗、对话框同样能取到）。
+                    child: M3eComponentStyles(
+                      // 桌面端在窗口这一层接住拖拽（Android 走原生通道，这里原样透传）
+                      child: DesktopDropTarget(
+                        child: Stack(
+                          children: [
+                            child ?? const SizedBox.shrink(),
+                            // 拖拽悬停提示条挂在 Navigator 之上：二级页面也能看到
+                            const DropHoverBanner(),
+                          ],
+                        ),
                       ),
                     ),
                   ),

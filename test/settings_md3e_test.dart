@@ -96,9 +96,15 @@ void main() {
     // 滑杆绘制区向两端各溢出 thumbRadius；扣除后，轨道两端分别与标题
     // 左缘、当前值右缘对齐。
     final titleRect = tester.getRect(entry);
+    final subtitleRect = tester.getRect(find.text('间隔过小易触发服务器限流'));
     final valueRect = tester.getRect(find.text('100 ms'));
     final sliderRect = tester.getRect(slider);
     const endpointInset = M3ESliderDefaults.thumbRadius;
+    expect(
+      valueRect.center.dy,
+      moreOrLessEquals((titleRect.top + subtitleRect.bottom) / 2, epsilon: 0.5),
+      reason: '当前值应与标题和副标题组成的文字列整体垂直居中',
+    );
     expect(
       sliderRect.left + endpointInset,
       moreOrLessEquals(titleRect.left, epsilon: 0.5),
@@ -181,6 +187,11 @@ void main() {
     await tester.tap(entry);
     await tester.pumpAndSettle();
 
+    expect(
+      tester.getTopLeft(find.text('未勾选的视图不显示在底栏，仍可从首页快捷操作栏打开')).dy,
+      lessThan(tester.getTopLeft(find.text('传输')).dy),
+      reason: '提示文案应位于选项列表之前',
+    );
     // 关闭状态：checkbox 未勾选；打开后：checkbox 勾选（行的底色始终不变化）
     expect(tester.widget<Material>(pickRow('传输')).color, isNull);
     expect(

@@ -1027,7 +1027,7 @@ class InfoHintCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
         ),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Icon(icon, size: 24, color: scheme.onSecondaryContainer),
             const SizedBox(width: 12),
@@ -1751,10 +1751,16 @@ class SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
+      padding: const EdgeInsets.fromLTRB(4, 16, 4, 8),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text(title, style: Theme.of(context).textTheme.titleSmall),
+          Text(
+            title,
+            style: context.m3eEmphasizedTheme.titleSmall?.copyWith(
+              color: scheme.primary,
+            ),
+          ),
           const SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),

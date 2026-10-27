@@ -71,4 +71,18 @@ void main() {
     expect(dark.systemNavigationBarIconBrightness, Brightness.light);
     expect(dark.statusBarIconBrightness, Brightness.light);
   });
+
+  test('SnackBar 仅在大屏限制最大宽度，小屏保留浮动安全边距', () {
+    final theme = buildLanCloudTheme(
+      brightness: Brightness.light,
+      seed: const Color(0xFF2E6BE6),
+      oledDark: false,
+    );
+
+    expect(withResponsiveSnackBarWidth(theme, 420).snackBarTheme.width, isNull);
+    expect(
+      withResponsiveSnackBarWidth(theme, 800).snackBarTheme.width,
+      kSnackBarMaxWidth,
+    );
+  });
 }

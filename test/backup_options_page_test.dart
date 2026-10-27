@@ -220,7 +220,26 @@ void main() {
 
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
-    expect(find.byTooltip('显示密码'), findsNothing);
+    expect(find.byTooltip('显示密码'), findsOneWidget);
+    expect(
+      tester
+          .widget<TextField>(
+            find.byKey(const ValueKey('backup-unlock-passphrase')),
+          )
+          .obscureText,
+      isTrue,
+    );
+    await tester.tap(find.byTooltip('显示密码'));
+    await tester.pump();
+    expect(find.byTooltip('隐藏密码'), findsOneWidget);
+    expect(
+      tester
+          .widget<TextField>(
+            find.byKey(const ValueKey('backup-unlock-passphrase')),
+          )
+          .obscureText,
+      isFalse,
+    );
     await tester.enterText(
       find.byKey(const ValueKey('backup-unlock-passphrase')),
       'short',
@@ -245,6 +264,8 @@ void main() {
       'backup-secret',
     );
     await tester.tap(find.text('解锁'));
+    await tester.pump();
+    expect(find.byType(M3eCircularProgressIndicator), findsOneWidget);
     await tester.pumpAndSettle();
 
     expect(find.byType(AlertDialog), findsNothing);
