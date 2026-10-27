@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart' hide Icons;
 import '../core/backup/backup_service.dart';
 import '../core/backup/webdav_client.dart';
 import '../l10n/l10n.dart';
+import 'app_icons.dart';
 import 'common.dart';
 import 'm3e.dart';
 
@@ -54,6 +55,7 @@ class _BackupUnlockDialogState extends State<_BackupUnlockDialog> {
     text: widget.initialPassphrase,
   );
   bool _busy = false;
+  bool _showPassphrase = false;
   String? _error;
 
   @override
@@ -129,7 +131,7 @@ class _BackupUnlockDialogState extends State<_BackupUnlockDialog> {
                 key: const ValueKey('backup-unlock-passphrase'),
                 controller: _passphrase,
                 autofocus: true,
-                obscureText: true,
+                obscureText: !_showPassphrase,
                 autocorrect: false,
                 enableSuggestions: false,
                 textInputAction: TextInputAction.done,
@@ -139,7 +141,21 @@ class _BackupUnlockDialogState extends State<_BackupUnlockDialog> {
                 },
                 decoration: errorState(
                   context,
-                  InputDecoration(labelText: l10n.backupPassphrase),
+                  InputDecoration(
+                    labelText: l10n.backupPassphrase,
+                    suffixIcon: IconButton(
+                      tooltip: _showPassphrase
+                          ? l10n.hidePassword
+                          : l10n.showPassword,
+                      onPressed: () =>
+                          setState(() => _showPassphrase = !_showPassphrase),
+                      icon: Icon(
+                        _showPassphrase
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                      ),
+                    ),
+                  ),
                   _error,
                 ),
               ),
