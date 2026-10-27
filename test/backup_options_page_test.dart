@@ -265,7 +265,7 @@ void main() {
     );
     await tester.tap(find.text('解锁'));
     await tester.pump();
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byType(M3eCircularProgressIndicator), findsOneWidget);
     await tester.pumpAndSettle();
 
     expect(find.byType(AlertDialog), findsNothing);

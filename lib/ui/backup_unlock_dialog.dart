@@ -5,6 +5,7 @@ import '../core/backup/webdav_client.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
+import 'm3e.dart';
 
 /// 解锁后的明文，以及本次实际使用、可用于缓存到 WebDAV 配置的口令。
 class UnlockedBackup {
@@ -169,10 +170,7 @@ class _BackupUnlockDialogState extends State<_BackupUnlockDialog> {
           FilledButton(
             onPressed: _busy ? null : _unlock,
             child: _busy
-                ? const SizedBox.square(
-                    dimension: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
+                ? const M3eCircularProgressIndicator(size: 18, strokeWidth: 2)
                 : Text(l10n.backupUnlockAction),
           ),
         ],
