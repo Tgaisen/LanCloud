@@ -49,13 +49,10 @@ class SystemFileSaver {
     required String fileName,
     required String mime,
   }) async {
-    final extensions = _extensionsFor(mime);
     final target = await FilePicker.saveFile(
       fileName: fileName,
       bytes: await File(sourcePath).readAsBytes(),
       mimeType: mime,
-      type: extensions.isEmpty ? FileType.any : FileType.custom,
-      allowedExtensions: extensions.isEmpty ? null : extensions,
     );
     if (target == null) return null;
     final savedPath = target.isScheme('file')
@@ -63,11 +60,4 @@ class SystemFileSaver {
         : target.path;
     return p.basename(savedPath);
   }
-
-  /// MIME → 另存为对话框的文件类型过滤。
-  static List<String> _extensionsFor(String mime) => switch (mime) {
-    'application/json' => const ['json'],
-    'text/plain' => const ['txt', 'log'],
-    _ => const <String>[],
-  };
 }

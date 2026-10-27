@@ -264,6 +264,8 @@ void main() {
       'backup-secret',
     );
     await tester.tap(find.text('解锁'));
+    await tester.pump();
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
     await tester.pumpAndSettle();
 
     expect(find.byType(AlertDialog), findsNothing);
