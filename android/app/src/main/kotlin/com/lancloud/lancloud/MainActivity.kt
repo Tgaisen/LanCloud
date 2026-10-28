@@ -3,6 +3,7 @@ package com.lancloud.lancloud
 import android.Manifest
 import android.content.ClipData
 import android.content.ClipDescription
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -49,6 +50,8 @@ class MainActivity : FlutterFragmentActivity() {
     private var pickDirResult: MethodChannel.Result? = null
     /// SAF 通道：把文件写入用户授权目录时，主动向 Dart 侧推送复制进度。
     private var safChannel: MethodChannel? = null
+    /// 公共 Downloads 通道：MediaStore 写入时向 Dart 侧推送复制进度。
+    private var sharedDownloadsChannel: MethodChannel? = null
     private var linksChannel: MethodChannel? = null
     private var pendingLink: String? = null
     /// 等待结果的「本地网络」权限请求（Android 17 起局域网访问需要）。
@@ -266,6 +269,29 @@ class MainActivity : FlutterFragmentActivity() {
         )
         saf.setMethodCallHandler { call, result -> handleSafCall(call, result) }
         safChannel = saf
+        // Android 10+ 的公共 Downloads：MediaStore 由系统负责目录与权限，
+        // 不申请存储权限，也不要求用户选择或授权下载目录。
+        val sharedDownloads = MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "lancloud/shared_downloads",
+        )
+        sharedDownloads.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "isSupported" -> result.success(
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q,
+                )
+                "defaultDirectory" -> result.success(
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        sharedDownloadsDirectoryPath()
+                    } else {
+                        null
+                    },
+                )
+                "saveFile" -> saveToSharedDownloads(call, result)
+                else -> result.notImplemented()
+            }
+        }
+        sharedDownloadsChannel = sharedDownloads
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             "lancloud/share",
@@ -700,6 +726,157 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
+    // ------------------------------------------------------- Shared Downloads
+
+    /// Android 10+ 公共下载目录的展示路径。该路径只用于界面展示；实际写入
+    /// 统一经 MediaStore，避免依赖普通文件路径与存储权限。
+    private fun sharedDownloadsDirectoryPath(): String = File(
+        Environment.getExternalStorageDirectory(),
+        "${Environment.DIRECTORY_DOWNLOADS}/LanCloud",
+    ).absolutePath
+
+    private fun saveToSharedDownloads(call: MethodCall, result: MethodChannel.Result) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            result.error(
+                "unsupported",
+                "MediaStore Downloads requires Android 10 or newer",
+                null,
+            )
+            return
+        }
+        val sourcePath = call.argument<String>("sourcePath")
+        val fileName = call.argument<String>("fileName")
+        if (sourcePath.isNullOrEmpty() || fileName.isNullOrEmpty()) {
+            result.error("bad_args", "sourcePath and fileName are required", null)
+            return
+        }
+        val mime = call.argument<String>("mime") ?: "application/octet-stream"
+        val jobId = call.argument<String>("jobId").orEmpty()
+        Thread {
+            doSaveToSharedDownloads(
+                sourcePath,
+                fileName,
+                mime,
+                jobId,
+                result,
+            )
+        }.start()
+    }
+
+    /// 把应用中转目录中的文件复制到 `Download/LanCloud`。
+    ///
+    /// `IS_PENDING=1` 会先隐藏未写完的文件，复制成功后再发布，避免其它应用
+    /// 看到不完整内容；任何写入失败都会删掉刚创建的 MediaStore 记录。
+    private fun doSaveToSharedDownloads(
+        sourcePath: String,
+        fileName: String,
+        mime: String,
+        jobId: String,
+        result: MethodChannel.Result,
+    ) {
+        var created: Uri? = null
+        try {
+            val source = File(sourcePath)
+            if (!source.exists()) {
+                postSafError(result, "not_found", "source file not found")
+                return
+            }
+            val safeName = fileName
+                .substringAfterLast('/')
+                .substringAfterLast('\\')
+                .ifBlank { "download" }
+            val relativePath = "${Environment.DIRECTORY_DOWNLOADS}/LanCloud/"
+            val targetName = uniqueMediaStoreName(relativePath, safeName)
+            val total = source.length()
+            val values = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, targetName)
+                put(MediaStore.MediaColumns.MIME_TYPE, mime)
+                put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath)
+                put(MediaStore.MediaColumns.IS_PENDING, 1)
+                if (total > 0) put(MediaStore.MediaColumns.SIZE, total)
+            }
+            val item = contentResolver.insert(
+                MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                values,
+            ) ?: throw IOException("MediaStore insert returned null")
+            created = item
+            var copied = 0L
+            contentResolver.openOutputStream(item, "w")?.use { output ->
+                FileInputStream(source).use { input ->
+                    val buffer = ByteArray(128 * 1024)
+                    var lastTick = 0L
+                    while (true) {
+                        val read = input.read(buffer)
+                        if (read < 0) break
+                        output.write(buffer, 0, read)
+                        copied += read
+                        val now = SystemClock.elapsedRealtime()
+                        if (jobId.isNotEmpty() && now - lastTick >= 120) {
+                            lastTick = now
+                            postSharedDownloadsProgress(jobId, copied, total)
+                        }
+                    }
+                }
+            } ?: throw IOException("openOutputStream returned null")
+            if (jobId.isNotEmpty()) {
+                postSharedDownloadsProgress(jobId, copied, total)
+            }
+            val finalized = contentResolver.update(
+                item,
+                ContentValues().apply {
+                    put(MediaStore.MediaColumns.IS_PENDING, 0)
+                },
+                null,
+                null,
+            )
+            if (finalized <= 0) throw IOException("failed to publish MediaStore item")
+            val savedName = queryDisplayName(item) ?: targetName
+            runOnUiThread {
+                result.success(mapOf("uri" to item.toString(), "name" to savedName))
+            }
+        } catch (e: SecurityException) {
+            created?.let { runCatching { contentResolver.delete(it, null, null) } }
+            postSafError(result, "perm_denied", e.message)
+        } catch (e: Exception) {
+            created?.let { runCatching { contentResolver.delete(it, null, null) } }
+            postSafError(result, "export_failed", e.message)
+        }
+    }
+
+    /// 查询本应用能看到的目标目录文件名，沿用 `name(1).ext` 去重规则。
+    private fun uniqueMediaStoreName(relativePath: String, fileName: String): String {
+        val existing = mutableSetOf<String>()
+        try {
+            contentResolver.query(
+                MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                arrayOf(MediaStore.MediaColumns.DISPLAY_NAME),
+                "${MediaStore.MediaColumns.RELATIVE_PATH} = ?",
+                arrayOf(relativePath),
+                null,
+            )?.use { cursor ->
+                while (cursor.moveToNext()) {
+                    cursor.getString(0)?.let { existing.add(it) }
+                }
+            }
+        } catch (_: Exception) {
+            // 查询失败时让 MediaStore 自己处理重名，写入本身不受影响
+        }
+        return uniqueSafName(existing, fileName)
+    }
+
+    private fun postSharedDownloadsProgress(jobId: String, copied: Long, total: Long) {
+        Handler(Looper.getMainLooper()).post {
+            try {
+                sharedDownloadsChannel?.invokeMethod(
+                    "progress",
+                    mapOf("id" to jobId, "copied" to copied, "total" to total),
+                )
+            } catch (_: Exception) {
+                // Dart 侧还没注册处理器时忽略
+            }
+        }
+    }
+
     // -------------------------------------------------------------------- SAF
 
     /// SAF 通道入口：选目录 / 导出文件 / 删除 / 打开。
@@ -1000,7 +1177,14 @@ class MainActivity : FlutterFragmentActivity() {
         }
         Thread {
             try {
-                val deleted = DocumentsContract.deleteDocument(contentResolver, Uri.parse(uriStr))
+                val uri = Uri.parse(uriStr)
+                // MediaStore 的公共下载不是 DocumentsProvider 文档，直接删
+                // content URI；SAF 及其它文档仍走 DocumentsContract。
+                val deleted = if (DocumentsContract.isDocumentUri(this, uri)) {
+                    DocumentsContract.deleteDocument(contentResolver, uri)
+                } else {
+                    contentResolver.delete(uri, null, null) > 0
+                }
                 runOnUiThread { result.success(deleted) }
             } catch (e: Exception) {
                 postSafError(result, "delete_failed", e.message)

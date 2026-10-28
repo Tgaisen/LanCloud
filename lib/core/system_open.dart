@@ -7,7 +7,7 @@ import 'saf_storage.dart';
 
 /// 用系统默认程序打开本地文件。
 ///
-/// - Android SAF 文件（content:// URI）：交给原生带上读权限转授打开；
+/// - Android Content URI（SAF / MediaStore）：交给原生带上读权限转授打开；
 /// - Android / iOS：open_filex（FileProvider / UIDocumentInteractionController）
 /// - 桌面端：open_filex 没有 Windows 实现，交给资源管理器按文件关联打开
 ///   （等价于在资源管理器里双击该文件）

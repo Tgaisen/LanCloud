@@ -135,13 +135,14 @@ class SafStorage {
     }
   }
 
-  /// 删除授权目录里的文件；文件已被用户删掉等情况返回 false。
+  /// 删除 content URI 文件（SAF 文档或 MediaStore 项目）；
+  /// 文件已被用户删掉等情况返回 false。
   static Future<bool> deleteFile(String uri) async {
     final ok = await _channel.invokeMethod<bool>('deleteFile', {'uri': uri});
     return ok ?? false;
   }
 
-  /// 用系统默认程序打开 SAF 文件（读权限会转授给目标应用）。
+  /// 用系统默认程序打开 content URI（读权限会转授给目标应用）。
   /// 打不开（没有可处理的应用等）返回 false，与 open_filex 的口径一致。
   static Future<bool> openFile(String uri) async {
     try {

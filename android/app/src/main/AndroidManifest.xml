@@ -11,8 +11,8 @@
     <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
     <!-- open_filex 会合并进来「媒体和文件」权限，但本应用用不到：
-         下载默认放在应用专属目录（Android/data/<包名>/files/LanCloud），
-         选文件 / 选目录都走系统 SAF 选择器，读外部存储不需要也不应申请。 -->
+         Android 10+ 下载经 MediaStore 写入公共 Download/LanCloud，旧系统
+         使用应用专属目录；选文件 / 选目录走系统选择器，不需要存储权限。 -->
     <uses-permission
         android:name="android.permission.READ_EXTERNAL_STORAGE"
         tools:node="remove"/>

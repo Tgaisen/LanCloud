@@ -27,7 +27,7 @@ String mimeForFileName(String name) {
 }
 
 /// 删除已下载的文件：
-/// - SAF 文件（content:// URI）交给原生经系统授权删除；
+/// - Content URI（SAF 或 MediaStore 公共 Downloads）交给原生删除；
 /// - 其它路径直接用 File 删除。
 /// 文件不存在 / 已经删过都算完成，失败静默（与传输页原有口径一致）。
 Future<void> deleteSavedFile(String path) async {
