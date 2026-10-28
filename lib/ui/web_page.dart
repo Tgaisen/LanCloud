@@ -7,6 +7,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import '../core/app_log.dart';
 import '../core/external_link.dart';
 import '../core/platform_support.dart';
+import '../core/webview_diagnostics.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
@@ -59,6 +60,14 @@ class _WebPageState extends State<WebPage> {
   String? _loadError;
 
   ModalRoute<Object?>? _route;
+  late final WebViewDiagnostics _diagnostics;
+
+  @override
+  void initState() {
+    super.initState();
+    _diagnostics = WebViewDiagnostics(name: 'web-page:${widget.title}')
+      ..opened(widget.url);
+  }
 
   @override
   void didChangeDependencies() {
@@ -74,6 +83,7 @@ class _WebPageState extends State<WebPage> {
 
   @override
   void dispose() {
+    _diagnostics.closed();
     _route?.animation?.removeListener(_handleRouteAnimation);
     super.dispose();
   }
@@ -119,6 +129,7 @@ class _WebPageState extends State<WebPage> {
     try {
       await _injectCookie(controller);
       if (!mounted) return;
+      _diagnostics.loadRequested(widget.url);
       await controller.loadUrl(urlRequest: URLRequest(url: WebUri(widget.url)));
     } catch (error, stack) {
       AppLog.instance.error('webview', error, stack);
@@ -223,13 +234,28 @@ class _WebPageState extends State<WebPage> {
                           PlatformSupport.useHybridComposition,
                     ),
                     onWebViewCreated: (controller) {
+                      _diagnostics.created();
                       _controller = controller;
                       if (_loadStarted) return;
                       _loadStarted = true;
                       unawaited(_loadWithCookie(controller));
                     },
                     onProgressChanged: (controller, progress) {
+                      _diagnostics.progress(progress);
                       if (mounted) setState(() => _progress = progress / 100);
+                    },
+                    onLoadStart: (controller, url) {
+                      _diagnostics.loadStarted(url?.toString());
+                    },
+                    onLoadStop: (controller, url) {
+                      _diagnostics.loadStopped(url?.toString());
+                    },
+                    onReceivedError: (controller, request, error) {
+                      _diagnostics.loadFailed(
+                        request.url.toString(),
+                        error.type.name,
+                        error.description,
+                      );
                     },
                   ),
                 ),

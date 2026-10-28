@@ -195,24 +195,61 @@ if (!$DryRun) {
 
   # VC++ 运行时（app-local 部署）：目标机器不一定装过 VC++ Redistributable，
   # 而 exe 依赖 VCRUNTIME140 / MSVCP140，缺了会直接起不来。这里把 VS 里
-  # 可再分发的那套 DLL 拷到 exe 同目录，便携版才能"解压即用"。
+  # 可再分发的那一套 DLL 拷到 exe 同目录，便携版才能"解压即用"。
+  #
+  # 必须从一个完整的最高版本目录复制。旧实现先跨所有版本收集文件再按
+  # 文件名任取一个，在 CI Runner 同时装有多套 MSVC Redist 时会把 14.29、
+  # 14.44、14.51 等版本混进同一个便携包，导致 WebView2 初始化时进程退出。
   $crtRoot = Join-Path $vsPath 'VC\Redist\MSVC'
-  $crtFiles = @(
-    Get-ChildItem -Path (Join-Path $crtRoot '*\x64\Microsoft.VC*.CRT\*.dll') -ErrorAction SilentlyContinue
-  )
-  if ($crtFiles.Count -eq 0) {
-    Warn '没找到 VC++ 运行时可再分发副本，产物在没装 Redistributable 的机器上可能无法启动'
+  $crtSet = $null
+  $crtVersionDirs = Get-ChildItem -LiteralPath $crtRoot -Directory -ErrorAction SilentlyContinue |
+    Where-Object Name -match '^\d+(\.\d+)+$' |
+    Sort-Object { [version]$_.Name } -Descending
+  foreach ($versionDir in $crtVersionDirs) {
+    $candidate = Get-ChildItem -LiteralPath (Join-Path $versionDir.FullName 'x64') `
+      -Directory -Filter 'Microsoft.VC*.CRT' -ErrorAction SilentlyContinue |
+      Sort-Object Name -Descending |
+      Select-Object -First 1
+    if ($candidate) {
+      $crtSet = $candidate
+      break
+    }
+  }
+  $crtFiles = if ($crtSet) {
+    @(Get-ChildItem -LiteralPath $crtSet.FullName -File -Filter '*.dll')
   } else {
-    # v145 / 14.51 等目录可能指向同一套，按文件名去重
+    @()
+  }
+  $requiredCrtFiles = @(
+    'msvcp140.dll',
+    'vcruntime140.dll',
+    'vcruntime140_1.dll'
+  )
+  $missingCrtFiles = @(
+    $requiredCrtFiles | Where-Object {
+      -not ($crtFiles.Name -contains $_)
+    }
+  )
+  if ($crtFiles.Count -eq 0 -or $missingCrtFiles.Count -gt 0) {
+    Fail '没找到完整的 VC++ 运行时可再分发副本，拒绝生成可能无法启动的便携包'
+  } else {
     $copied = 0
     $bytes = 0
-    foreach ($group in ($crtFiles | Group-Object Name)) {
-      $file = $group.Group | Select-Object -First 1
+    foreach ($file in $crtFiles) {
       Copy-Item -LiteralPath $file.FullName -Destination (Join-Path $pkgDir $file.Name) -Force
       $copied += 1
       $bytes += $file.Length
     }
-    Info ("已内置 VC++ 运行时：{0} 个 DLL（{1:N1} MB）" -f $copied, ($bytes / 1MB))
+    $versions = @(
+      $crtFiles |
+        ForEach-Object { $_.VersionInfo.FileVersion } |
+        Where-Object { $_ } |
+        Sort-Object -Unique
+    )
+    if ($versions.Count -ne 1) {
+      Fail "VC++ 运行时版本不一致，拒绝打包：$($versions -join ', ')"
+    }
+    Info ("已内置 VC++ 运行时 {0}：{1} 个 DLL（{2:N1} MB）" -f $versions[0], $copied, ($bytes / 1MB))
   }
   Info "产物已复制：$pkgDir"
 }

@@ -9,6 +9,7 @@ project(runner LANGUAGES CXX)
 add_executable(${BINARY_NAME} WIN32
   "flutter_window.cpp"
   "main.cpp"
+  "native_log.cpp"
   "utils.cpp"
   "win32_window.cpp"
   "${FLUTTER_MANAGED_DIR}/generated_plugin_registrant.cc"
@@ -27,6 +28,49 @@ target_compile_definitions(${BINARY_NAME} PRIVATE "FLUTTER_VERSION_MINOR=${FLUTT
 target_compile_definitions(${BINARY_NAME} PRIVATE "FLUTTER_VERSION_PATCH=${FLUTTER_VERSION_PATCH}")
 target_compile_definitions(${BINARY_NAME} PRIVATE "FLUTTER_VERSION_BUILD=${FLUTTER_VERSION_BUILD}")
 
+set(FLUTTER_ENGINE_VERSION "unknown")
+set(pubspec_file "${CMAKE_SOURCE_DIR}/../pubspec.yaml")
+if(EXISTS "${pubspec_file}")
+  file(STRINGS "${pubspec_file}" flutter_version_lines
+    REGEX "^[ \t]*flutter:[ \t]*[0-9]+\\.[0-9]+\\.[0-9]+")
+  if(flutter_version_lines)
+    list(GET flutter_version_lines 0 flutter_version_line)
+    string(REGEX REPLACE "^[ \t]*flutter:[ \t]*" ""
+      FLUTTER_ENGINE_VERSION "${flutter_version_line}")
+  endif()
+endif()
+target_compile_definitions(${BINARY_NAME} PRIVATE "FLUTTER_ENGINE_VERSION=\"${FLUTTER_ENGINE_VERSION}\"")
+
+# Keep the semantic plugin versions in native startup diagnostics. The
+# Windows plugin DLL has no Windows version resource, so file metadata alone
+# cannot identify its pub package version.
+function(read_pubspec_lock_version package_name output_variable)
+  set(lock_file "${CMAKE_SOURCE_DIR}/../pubspec.lock")
+  set(package_found FALSE)
+  set(package_version "unknown")
+  if(EXISTS "${lock_file}")
+    file(STRINGS "${lock_file}" lock_lines)
+    foreach(line IN LISTS lock_lines)
+      if(package_found)
+        if(line MATCHES "^    version: \"([^\"]+)\"")
+          set(package_version "${CMAKE_MATCH_1}")
+          break()
+        elseif(line MATCHES "^  [^ ]")
+          break()
+        endif()
+      elseif(line MATCHES "^  ${package_name}:$")
+        set(package_found TRUE)
+      endif()
+    endforeach()
+  endif()
+  set(${output_variable} "${package_version}" PARENT_SCOPE)
+endfunction()
+
+read_pubspec_lock_version("flutter_inappwebview" INAPPWEBVIEW_VERSION)
+read_pubspec_lock_version("flutter_inappwebview_windows" INAPPWEBVIEW_WINDOWS_VERSION)
+target_compile_definitions(${BINARY_NAME} PRIVATE "INAPPWEBVIEW_VERSION=\"${INAPPWEBVIEW_VERSION}\"")
+target_compile_definitions(${BINARY_NAME} PRIVATE "INAPPWEBVIEW_WINDOWS_VERSION=\"${INAPPWEBVIEW_WINDOWS_VERSION}\"")
+
 # Disable Windows macros that collide with C++ standard library functions.
 target_compile_definitions(${BINARY_NAME} PRIVATE "NOMINMAX")
 
@@ -34,6 +78,7 @@ target_compile_definitions(${BINARY_NAME} PRIVATE "NOMINMAX")
 # dependencies here.
 target_link_libraries(${BINARY_NAME} PRIVATE flutter flutter_wrapper_app)
 target_link_libraries(${BINARY_NAME} PRIVATE "dwmapi.lib")
+target_link_libraries(${BINARY_NAME} PRIVATE "advapi32.lib" "shell32.lib" "version.lib")
 target_include_directories(${BINARY_NAME} PRIVATE "${CMAKE_SOURCE_DIR}")
 
 # Run the Flutter tool portions of the build. This must not be removed.
