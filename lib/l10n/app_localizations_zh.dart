@@ -855,7 +855,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get downloadDirHint =>
-      '应用默认下载到应用私有目录。如需更改，建议选择系统公共目录（如 Download、Documents 等）。受 Android 11+ 限制，如更改到非公共目录，则需先下载到应用内部目录，完成后再移至所选的目录。';
+      'Android 10 及以上默认下载到公共目录 Download/LanCloud，无需存储权限或目录授权；Android 9 及以下受系统限制，默认下载到应用私有目录。如需更改位置，建议选择系统公共目录；选择非公共目录需下载完成后二次移入。';
 
   @override
   String get safDirPermissionLost => '下载目录授权已失效，请在设置里重新选择下载目录';

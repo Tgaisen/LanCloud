@@ -898,7 +898,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get downloadDirHint =>
-      'Downloads go to the app\'s private folder by default. To change it, prefer a public system folder (such as Download or Documents). Due to Android 11+ restrictions, files saved to a non-public folder must be downloaded to the app\'s private folder first and moved into place afterwards.';
+      'On Android 10 and newer, downloads are saved to the public Download/LanCloud folder by default without storage permission or folder authorization. Android 9 and older still use the app\'s private folder due to system restrictions. To change the location, prefer a public system folder; non-public folders require authorization and are written after the download finishes.';
 
   @override
   String get safDirPermissionLost =>

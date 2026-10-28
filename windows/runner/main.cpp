@@ -3,6 +3,7 @@
 #include <windows.h>
 
 #include "flutter_window.h"
+#include "native_log.h"
 #include "utils.h"
 
 int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
@@ -38,9 +39,20 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
     return EXIT_SUCCESS;
   }
 
+  lancloud::NativeLog::Initialize();
+  lancloud::NativeLog::InstallCrashHandler();
+  lancloud::NativeLog::Info("native-app", "process-start");
+
   // Initialize COM, so that it is available for use in the library and/or
   // plugins.
-  ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+  const HRESULT com_result =
+      ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+  if (FAILED(com_result)) {
+    lancloud::NativeLog::Error("native-app",
+                               "CoInitializeEx failed: " +
+                                   std::to_string(com_result));
+  }
+  lancloud::NativeLog::LogStartupEnvironment();
 
   flutter::DartProject project(L"data");
 
@@ -95,16 +107,35 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
       PRIMARYLANGID(GetUserDefaultUILanguage()) == LANG_CHINESE;
   const std::wstring title = chinese_ui ? L"\u84dd\u4e91" : L"LanCloud";
   if (!window.Create(title, origin, size)) {
+    lancloud::NativeLog::Error("native-app", "window creation failed");
+    ::CoUninitialize();
     return EXIT_FAILURE;
   }
   window.SetQuitOnClose(true);
+  lancloud::NativeLog::Info("native-app", "window-created");
 
-  ::MSG msg;
-  while (::GetMessage(&msg, nullptr, 0, 0)) {
+  ::MSG msg = {};
+  BOOL message_result = 0;
+  while ((message_result = ::GetMessage(&msg, nullptr, 0, 0)) > 0) {
     ::TranslateMessage(&msg);
     ::DispatchMessage(&msg);
   }
 
+  int exit_code = EXIT_SUCCESS;
+  if (message_result == -1) {
+    const DWORD error = ::GetLastError();
+    lancloud::NativeLog::Error(
+        "native-app", "message loop failed: " + std::to_string(error));
+    exit_code = EXIT_FAILURE;
+  } else {
+    lancloud::NativeLog::Info(
+        "native-app",
+        "message-loop-exit wparam=" + std::to_string(msg.wParam));
+    exit_code = static_cast<int>(msg.wParam);
+  }
   ::CoUninitialize();
-  return EXIT_SUCCESS;
+  lancloud::NativeLog::Info("native-app",
+                            "process-exit code=" +
+                                std::to_string(exit_code));
+  return exit_code;
 }

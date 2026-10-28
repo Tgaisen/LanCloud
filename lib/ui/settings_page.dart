@@ -184,7 +184,7 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
   /// 默认下载目录的真实路径（副标题里显示，进入设置时读一次）。
   String? _defaultDownloadDir;
 
-  /// 应用专属目录的根（默认下载目录所在位置）与外部存储根：
+  /// 应用专属目录的根与外部存储根：
   /// 副标题用它给下载目录分类（仅 Android）。
   List<String> _privateDirRoots = const [];
   String? _publicDirRoot;
@@ -222,7 +222,15 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
     try {
       final path = await context.read<AppController>().defaultDownloadDirPath();
       if (PlatformSupport.isAndroid) {
-        final roots = <String>{p.dirname(path)};
+        final roots = <String>{};
+        try {
+          final external = await getExternalStorageDirectory();
+          if (external != null && external.path.isNotEmpty) {
+            roots.add(external.path);
+          }
+        } catch (_) {
+          // 拿不到外部专属目录就少一个私有根，不影响判断
+        }
         try {
           roots.add((await getApplicationDocumentsDirectory()).path);
         } catch (_) {
@@ -237,8 +245,8 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
     }
   }
 
-  /// 下载目录副标题：Android 上按目录分类加前缀（私有 / 公共 / 非公共），
-  /// 桌面端保持「默认（路径）」与自定义路径。
+  /// 下载目录副标题：未自定义时显示「默认（路径）」；显式设置的 Android
+  /// 目录按分类加前缀（私有 / 公共 / 非公共）。
   String _downloadDirLabel(AppLocalizations l10n, AppController app) =>
       _dirLabel(l10n, app, _defaultDownloadDir);
 
@@ -267,9 +275,7 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
       };
     }
     final path = defaultPath ?? '…';
-    return PlatformSupport.isAndroid
-        ? l10n.privateDownloadDir(path)
-        : l10n.defaultDownloadDir(path);
+    return l10n.defaultDownloadDir(path);
   }
 
   /// 底栏显示项文案：首页 · 网盘 [· 传输] [· 收藏] · 我的。

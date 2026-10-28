@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/data/account_store.dart';
 import 'package:lancloud/core/dynamic_color_support.dart';
+import 'package:lancloud/core/shared_downloads_storage.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/app_icons.dart';
 import 'package:lancloud/ui/common.dart';
@@ -17,6 +18,7 @@ import 'package:lancloud/l10n/delegates.dart';
 
 /// 动态取色插件的通道：返回非空即表示设备支持动态取色。
 const _dynamicColorChannel = MethodChannel('io.material.plugins/dynamic_color');
+const _sharedDownloadsChannel = MethodChannel('lancloud/shared_downloads');
 
 void mockDynamicColorSupport({required bool supported}) {
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -332,6 +334,20 @@ void main() {
 
   // 下载目录弹窗：分类提示 + 使用说明只在 Android 显示
   testWidgets('下载目录弹窗：Android 显示提示文案', (tester) async {
+    SharedDownloadsStorage.resetCacheForTesting();
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(_sharedDownloadsChannel, (call) async {
+          return switch (call.method) {
+            'isSupported' => true,
+            'defaultDirectory' => '/storage/emulated/0/Download/LanCloud',
+            _ => null,
+          };
+        });
+    addTearDown(() {
+      SharedDownloadsStorage.resetCacheForTesting();
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(_sharedDownloadsChannel, null);
+    });
     await pumpSettings(tester, SettingsCategory.transferConnection);
     final entry = find.text('下载目录');
     await tester.ensureVisible(entry);
@@ -346,11 +362,13 @@ void main() {
       tester.element(find.byType(SettingsCategoryPage)),
     );
     expect(find.text(l10n.downloadDirHint), findsOneWidget);
-    // 当前目录按分类显示：默认即私有目录（只看弹窗里的那行）
+    // 未自定义目录时，公共 Download/LanCloud 仍显示为「默认（路径）」
     expect(
       find.descendant(
         of: find.byType(AlertDialog),
-        matching: find.textContaining('私有目录（'),
+        matching: find.text(
+          l10n.defaultDownloadDir('/storage/emulated/0/Download/LanCloud'),
+        ),
       ),
       findsOneWidget,
     );

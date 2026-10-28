@@ -33,9 +33,27 @@ void main() {
 
   test('publicStorageRootFrom：从默认目录推出外部存储根', () {
     expect(publicStorageRootFrom('$privateRoot/LanCloud'), publicRoot);
+    expect(publicStorageRootFrom('$publicRoot/Download/LanCloud'), publicRoot);
+    expect(
+      publicStorageRootFrom('/storage/1234-5678/Download/LanCloud'),
+      '/storage/1234-5678',
+    );
     expect(
       publicStorageRootFrom('/data/user/0/com.lancloud.lancloud/app_flutter'),
       isNull,
+    );
+  });
+
+  test('新版默认目录能判定为公共目录', () {
+    const defaultPath = '$publicRoot/Download/LanCloud';
+    final root = publicStorageRootFrom(defaultPath);
+    expect(
+      classifyDownloadDir(
+        defaultPath,
+        privateRoots: const [privateRoot],
+        publicRoot: root,
+      ),
+      DownloadDirKind.publicDir,
     );
   });
 }

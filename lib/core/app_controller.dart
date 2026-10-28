@@ -13,10 +13,12 @@ import 'data/account_store.dart';
 import 'data/app_db.dart';
 import 'data/settings_store.dart';
 import 'data/secure_storage.dart';
+import 'download_target.dart';
 import 'drive_cache.dart';
 import 'dynamic_color_support.dart';
 import 'platform_support.dart';
 import 'saf_storage.dart';
+import 'shared_downloads_storage.dart';
 import 'system_motion.dart';
 import 'update/update_service.dart';
 
@@ -534,12 +536,18 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 默认下载目录路径。
+  /// 默认下载目录路径（仅用于展示与未启用公共 Downloads 时的实际写入）。
   ///
-  /// Android：Android/data/<包名>/files/LanCloud（取不到外部专属目录时
-  /// 退回应用私有文档目录）；桌面端：系统「下载」目录下的 LanCloud
+  /// Android 10+：`/storage/emulated/0/Download/LanCloud`，实际写入经
+  /// MediaStore，不需要存储权限或 SAF 授权；
+  /// Android 9 及以下：Android/data/<包名>/files/LanCloud（取不到外部专属
+  /// 目录时退回应用私有文档目录）；桌面端：系统「下载」目录下的 LanCloud
   /// （取不到时退回应用文档目录）。
   Future<String> defaultDownloadDirPath() async {
+    if (PlatformSupport.isAndroid) {
+      final shared = await SharedDownloadsStorage.defaultDirectoryPath();
+      if (shared != null && shared.isNotEmpty) return shared;
+    }
     final Directory base;
     if (PlatformSupport.isMobile) {
       base =
@@ -551,6 +559,25 @@ class AppController extends ChangeNotifier {
           await getApplicationDocumentsDirectory();
     }
     return p.join(base.path, 'LanCloud');
+  }
+
+  /// 当前下载落盘方式。显式目录设置优先，未设置时 Android 10+ 默认走
+  /// MediaStore 的公共 Downloads，Android 9 及以下退回应用专属目录。
+  Future<DownloadTargetMode> downloadTargetMode() async {
+    final directory = settings.downloadDir;
+    final treeUri = settings.downloadDirTree;
+    var supportsSharedDownloads = false;
+    if (PlatformSupport.isAndroid &&
+        (directory == null || directory.isEmpty) &&
+        (treeUri == null || treeUri.isEmpty)) {
+      supportsSharedDownloads = await SharedDownloadsStorage.isSupported();
+    }
+    return resolveDownloadTargetMode(
+      isAndroid: PlatformSupport.isAndroid,
+      supportsSharedDownloads: supportsSharedDownloads,
+      directory: directory,
+      treeUri: treeUri,
+    );
   }
 
   Future<Directory> downloadDirectory() async {

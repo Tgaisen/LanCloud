@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../core/api/lanzou_client.dart';
 import '../core/app_controller.dart';
 import '../core/platform_support.dart';
+import '../core/webview_diagnostics.dart';
 import 'app_icons.dart';
 import 'common.dart';
 import 'm3e.dart';
@@ -28,6 +29,19 @@ class _WebLoginPageState extends State<WebLoginPage> {
   bool _done = false;
   double _progress = 0;
   String? _error;
+  late final WebViewDiagnostics _diagnostics;
+
+  @override
+  void initState() {
+    super.initState();
+    _diagnostics = WebViewDiagnostics(name: 'web-login')..opened(_loginUrl);
+  }
+
+  @override
+  void dispose() {
+    _diagnostics.closed();
+    super.dispose();
+  }
 
   Future<void> _tryCapture() async {
     if (_checking || _done) return;
@@ -52,10 +66,12 @@ class _WebLoginPageState extends State<WebLoginPage> {
       final header = map.entries.map((e) => '${e.key}=${e.value}').join('; ');
       if ((map['ylogin'] ?? '').isEmpty ||
           (map['phpdisk_info'] ?? '').isEmpty) {
-        setState(() {
-          _checking = false;
-          _error = context.l10n.noLoginDetected;
-        });
+        if (mounted) {
+          setState(() {
+            _checking = false;
+            _error = context.l10n.noLoginDetected;
+          });
+        }
         return;
       }
       await app.addAccountFromCookie(header);
@@ -66,25 +82,33 @@ class _WebLoginPageState extends State<WebLoginPage> {
       });
       success = true;
     } on CookieFormatException {
-      setState(() {
-        _checking = false;
-        _error = context.l10n.cookieMissingYlogin;
-      });
+      if (mounted) {
+        setState(() {
+          _checking = false;
+          _error = context.l10n.cookieMissingYlogin;
+        });
+      }
     } on CookieInvalidException {
-      setState(() {
-        _checking = false;
-        _error = context.l10n.cookieInvalid;
-      });
+      if (mounted) {
+        setState(() {
+          _checking = false;
+          _error = context.l10n.cookieInvalid;
+        });
+      }
     } on LanzouException catch (e) {
-      setState(() {
-        _checking = false;
-        _error = context.l10n.lanzouError(e);
-      });
+      if (mounted) {
+        setState(() {
+          _checking = false;
+          _error = context.l10n.lanzouError(e);
+        });
+      }
     } catch (e) {
-      setState(() {
-        _checking = false;
-        _error = '$e';
-      });
+      if (mounted) {
+        setState(() {
+          _checking = false;
+          _error = '$e';
+        });
+      }
     } finally {
       // 先关掉进度弹窗，再决定是否关闭本页
       if (mounted) Navigator.of(context, rootNavigator: true).pop();
@@ -144,14 +168,31 @@ class _WebLoginPageState extends State<WebLoginPage> {
                               'Chrome/124.0.0.0 Mobile Safari/537.36'
                         : null,
                   ),
+                  onWebViewCreated: (controller) {
+                    _diagnostics.created();
+                  },
                   onProgressChanged: (controller, progress) {
-                    setState(() => _progress = progress / 100);
+                    _diagnostics.progress(progress);
+                    if (mounted) {
+                      setState(() => _progress = progress / 100);
+                    }
+                  },
+                  onLoadStart: (controller, url) {
+                    _diagnostics.loadStarted(url?.toString());
                   },
                   onLoadStop: (controller, url) async {
+                    _diagnostics.loadStopped(url?.toString());
                     final target = url?.toString() ?? '';
-                    if (target.contains('mydisk')) {
+                    if (mounted && target.contains('mydisk')) {
                       await _tryCapture();
                     }
+                  },
+                  onReceivedError: (controller, request, error) {
+                    _diagnostics.loadFailed(
+                      request.url.toString(),
+                      error.type.name,
+                      error.description,
+                    );
                   },
                 ),
               ),

@@ -9,10 +9,12 @@ import '../../l10n/l10n.dart';
 import '../api/lanzou_client.dart';
 import '../api/models.dart';
 import '../app_controller.dart';
+import '../download_target.dart';
 import '../notifications.dart';
 import '../platform_support.dart';
 import '../saf_storage.dart';
 import '../saved_file.dart';
+import '../shared_downloads_storage.dart';
 
 enum TransferKind { upload, download }
 
@@ -587,12 +589,17 @@ class TransferManager extends ChangeNotifier {
   }
 
   Future<void> _runDownload(TransferTask task) async {
-    // SAF 模式（Android 用户授权目录）：先下到应用专属中转目录，
-    // 完成后由原生写入授权目录；其它情况直接写目标路径。
-    final treeUri = _app.safDownloadTree;
-    final path = treeUri == null
-        ? await _app.uniqueSavePath(task.name)
-        : await _app.safTempFilePath(task.id, task.name);
+    // SAF 目录和公共 Downloads 都先下到应用专属中转目录，完成后由原生
+    // 流式写入目标；固定路径 / 应用专属目录仍可直接写。
+    final target = await _app.downloadTargetMode();
+    final treeUri = target == DownloadTargetMode.safDirectory
+        ? _app.safDownloadTree
+        : null;
+    final staged =
+        treeUri != null || target == DownloadTargetMode.sharedDownloads;
+    final path = staged
+        ? await _app.safTempFilePath(task.id, task.name)
+        : await _app.uniqueSavePath(task.name);
     try {
       final dio = task.via?.dio ?? Dio();
       await dio.download(
@@ -632,16 +639,20 @@ class TransferManager extends ChangeNotifier {
           );
         }
       }
-      if (treeUri == null) {
+      if (!staged) {
         task.savedPath = path;
         return;
       }
-      // 用户已取消：不把中转文件写进授权目录
+      // 用户已取消：不把中转文件写进最终目录
       if (task.status == TransferStatus.canceled ||
           task.cancelToken.isCancelled) {
         return;
       }
-      await _exportToSafDir(task, treeUri, path);
+      if (treeUri != null) {
+        await _exportToSafDir(task, treeUri, path);
+      } else {
+        await _exportToSharedDownloads(task, path);
+      }
       // 复制阶段被打断不了：取消得晚的话把已经写入的文件清掉，保持
       // 「取消 = 没有文件」的直觉
       if (task.status == TransferStatus.canceled) {
@@ -652,12 +663,39 @@ class TransferManager extends ChangeNotifier {
         }
       }
     } finally {
-      if (treeUri != null) {
+      if (staged) {
         try {
           final tmp = File(path);
           if (await tmp.exists()) await tmp.delete();
         } catch (_) {}
       }
+    }
+  }
+
+  /// 把中转文件写入 Android 10+ 的公共 `Download/LanCloud`。
+  Future<void> _exportToSharedDownloads(TransferTask task, String path) async {
+    final i18n = NotificationService.i18n;
+    // 下载阶段已到 100%，复制阶段重新从 0 开始显示
+    task.received = 0;
+    try {
+      final saved = await SharedDownloadsStorage.save(
+        sourcePath: path,
+        fileName: task.name,
+        mime: mimeForFileName(task.name),
+        jobId: task.id,
+        onProgress: (copied, total) {
+          task.received = copied;
+          if (total > 0) task.total = total;
+          notifyListeners();
+          _syncProgressNotification();
+        },
+      );
+      task.savedPath = saved.uri;
+    } on PlatformException catch (e) {
+      throw LanzouException(
+        i18n?.safExportFailed(e.message ?? e.code) ??
+            '写入下载目录失败：${e.message ?? e.code}',
+      );
     }
   }
 

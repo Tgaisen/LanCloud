@@ -5,6 +5,7 @@
 
 #include <algorithm>
 
+#include "native_log.h"
 #include "resource.h"
 
 namespace {
@@ -255,7 +256,15 @@ Win32Window::MessageHandler(HWND hwnd,
                             WPARAM const wparam,
                             LPARAM const lparam) noexcept {
   switch (message) {
+    case WM_CLOSE:
+      lancloud::NativeLog::Info("native-window", "WM_CLOSE");
+      break;
+
     case WM_DESTROY:
+      lancloud::NativeLog::Info(
+          "native-window",
+          std::string("WM_DESTROY quit-on-close=") +
+              (quit_on_close_ ? "true" : "false"));
       window_handle_ = nullptr;
       Destroy();
       if (quit_on_close_) {
