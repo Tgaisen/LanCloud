@@ -48,6 +48,7 @@
 | `tools\agent.cmd test`（ThemeSettingsTile） | 增量 | **354 tests, all passed** | 约 72 s |
 | `tools\agent.cmd test`（ThemeColorSettingsTile） | 增量 | **48 tests, all passed** | 约 16 s |
 | `tools\agent.cmd test`（LanguageSettingsTile） | 增量 | **356 tests, all passed** | 约 69 s |
+| `tools\agent.cmd test`（页面行为设置叶子） | 增量 | **51 tests, all passed** | 约 14 s |
 
 工具链：Flutter 3.47.7（stable）/ Dart 3.13.5 / DevTools 2.60.0。
 静态检查：`analysis_options.yaml` 已开启 `strict-casts` / `strict-inference` / `strict-raw-types`。
@@ -60,7 +61,7 @@
 | `lib` 总行数 | 约 4.7 万 |
 | `test` 测试文件 | 123（平铺，`<主题>_test.dart`） |
 | `test` 总行数 | 约 2 万 |
-| `test` 用例数 | 690（当前总数；本次只验证了受影响增量） |
+| `test` 用例数 | 692（当前总数；本次只验证了受影响增量） |
 | `lib/ui` 页面与组件 | 40 个平铺文件 |
 | `lib/core` | 32 个平铺文件 + 5 个子系统目录 |
 | 文案（`app_zh.arb`） | 1357 行 |
@@ -167,5 +168,8 @@
 - 2026-10-30 的 LanguageSettingsTile 把语言弹窗整理为 `showLanguagePicker` 并
   新增 1 个独立 Widget 测试，同时把语言状态 revision 转发到旧控制器；增量 63 个
   文件 / 356 个测试通过，当前总数由 689 增至 690。
+- 2026-10-30 的页面行为设置新增 2 个独立 Widget 测试，覆盖默认启动页与首页目录
+  打开方式；`ListHomeSettingsState` 增加局部 revision，增量 10 个文件 / 51 个测试
+  通过，当前总数由 690 增至 692。
 - 若临时再改 `analysis_options.yaml` 加规则，issue 数会变；先把预期数量记在这里再跑，
   避免和「本次改坏」混淆。

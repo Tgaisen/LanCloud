@@ -436,6 +436,11 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > “语言”随后迁入 `LanguageSettingsTile`。`showLanguagePicker` 返回
 > `String?`，写入统一经过 `LanguageClipboardSettingsState`；旧控制器监听该状态
 > revision 并转发通知，使根 `MaterialApp.locale` 在应用外壳迁移前仍会立即更新。
+>
+> “默认启动页”和“首页目录打开方式”随后迁入
+> `page_behavior_settings_tile.dart`。两个弹窗均返回 `String?`，设置分别写入
+> `CachePageSettingsState` 与 `ListHomeSettingsState`；这两项只影响后续导航行为，
+> 本轮不需要新增旧控制器通知桥。
 
 ### 阶段 5：处理 `TransferManager`
 

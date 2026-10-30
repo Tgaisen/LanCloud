@@ -28,6 +28,7 @@ import 'licenses_page.dart';
 import 'm3e.dart';
 import 'navigation_appearance_settings_tile.dart';
 import 'notification_settings_tile.dart';
+import 'page_behavior_settings_tile.dart';
 import 'theme_settings_tile.dart';
 
 /// 「清除数据」弹窗里可勾选的清除项。
@@ -548,40 +549,18 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
       _Entry(
         id: 'launch_page',
         title: l10n.launchPage,
-        subtitle: app.settings.launchPage == 'drive'
-            ? l10n.tabDrive
-            : l10n.tabHome,
+        subtitle: launchPageLabel(l10n, app.settings.launchPage),
         keywords: l10n.launchPageKeywords.split(' '),
         section: SettingsSection.behavior,
-        build: (context, app) => ListTile(
-          leading: const Icon(Icons.home_outlined),
-          title: Text(context.l10n.launchPage),
-          subtitle: Text(
-            app.settings.launchPage == 'drive'
-                ? context.l10n.tabDrive
-                : context.l10n.tabHome,
-          ),
-          onTap: () => _pickLaunchPage(context),
-        ),
+        build: (context, app) => const LaunchPageSettingsTile(),
       ),
       _Entry(
         id: 'home_folder_open',
         title: l10n.homeFolderOpen,
-        subtitle: app.settings.homeFolderOpenMode == 'drive'
-            ? l10n.openInDriveTab
-            : l10n.openInNewPage,
+        subtitle: homeFolderOpenLabel(l10n, app.settings.homeFolderOpenMode),
         keywords: l10n.homeFolderOpenKeywords.split(' '),
         section: SettingsSection.behavior,
-        build: (context, app) => ListTile(
-          leading: const Icon(Icons.open_in_new),
-          title: Text(context.l10n.homeFolderOpen),
-          subtitle: Text(
-            app.settings.homeFolderOpenMode == 'drive'
-                ? context.l10n.openInDriveTab
-                : context.l10n.openInNewPage,
-          ),
-          onTap: () => _pickHomeFolderOpenMode(context),
-        ),
+        build: (context, app) => const HomeFolderOpenSettingsTile(),
       ),
       _Entry(
         id: 'cache_folders',
@@ -1678,31 +1657,6 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
           ),
         ),
       ),
-    );
-  }
-
-  static Future<void> _pickLaunchPage(BuildContext context) {
-    final app = context.read<AppController>();
-    final l10n = context.l10n;
-    return _pickRadio(
-      context,
-      title: l10n.launchPage,
-      options: [('home', l10n.tabHome), ('drive', l10n.tabDrive)],
-      current: app.settings.launchPage,
-      onSelect: (value) => app.setLaunchPage(value),
-    );
-  }
-
-  static Future<void> _pickHomeFolderOpenMode(BuildContext context) {
-    final app = context.read<AppController>();
-    final l10n = context.l10n;
-    return _pickRadio(
-      context,
-      title: l10n.homeFolderOpen,
-      // 网盘页作为首项与默认值
-      options: [('drive', l10n.openInDriveTab), ('page', l10n.openInNewPage)],
-      current: app.settings.homeFolderOpenMode,
-      onSelect: (value) => app.setHomeFolderOpenMode(value),
     );
   }
 

@@ -19,6 +19,7 @@ void main() {
     await state.setRecentLimit(20);
     await state.setHomeFolderOpenMode('page');
 
+    expect(state.revision.value, 5);
     expect(state.sortMode, 'name');
     expect(state.quickExpanded, isFalse);
     expect(state.recentsExpanded, isFalse);

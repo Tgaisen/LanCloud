@@ -71,7 +71,9 @@
 仍由外层 `AppController` 监听，尚未整体迁移。“语言”已迁入
 `LanguageSettingsTile`，弹窗返回语言值后通过
 `LanguageClipboardSettingsState` 写入；其 revision 由旧控制器转发，根
-`MaterialApp.locale` 仍会立即切换。
+`MaterialApp.locale` 仍会立即切换。“默认启动页”和“首页目录打开方式”已迁入
+`page_behavior_settings_tile.dart`，分别通过 `CachePageSettingsState` 与
+`ListHomeSettingsState` 局部刷新。
 
 ## 导航与弹层
 
