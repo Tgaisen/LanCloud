@@ -6,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/backup/backup_service.dart';
 import 'package:lancloud/core/data/account_store.dart';
 import 'package:lancloud/core/update/release_info.dart';
 import 'package:lancloud/core/update/update_service.dart';
@@ -22,16 +23,25 @@ import 'package:lancloud/l10n/delegates.dart';
 
 import 'update_test_scope_test.dart';
 
+class _NoopBackupService extends BackupService {
+  _NoopBackupService(super.app);
+
+  @override
+  Future<void> init() async {}
+}
+
 class _TestProviders extends StatelessWidget {
   const _TestProviders.value({
     required this.value,
     required this.child,
     this.container,
+    this.backupService,
   });
 
   final AppController value;
   final Widget child;
   final ProviderContainer? container;
+  final BackupService? backupService;
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +53,11 @@ class _TestProviders extends StatelessWidget {
         child: child,
       );
     }
-    return appTestTree(app: value, child: child);
+    return appTestTree(
+      app: value,
+      child: child,
+      backupService: backupService,
+    );
   }
 }
 
@@ -191,9 +205,11 @@ void main() {
     addTearDown(tester.view.reset);
     final app = AppController();
     addTearDown(app.dispose);
+    final backupService = _NoopBackupService(app);
     await tester.pumpWidget(
       _TestProviders.value(
         value: app,
+        backupService: backupService,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
@@ -311,9 +327,11 @@ void main() {
     addTearDown(tester.view.reset);
     final app = AppController();
     addTearDown(app.dispose);
+    final backupService = _NoopBackupService(app);
     await tester.pumpWidget(
       _TestProviders.value(
         value: app,
+        backupService: backupService,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
@@ -467,9 +485,11 @@ void main() {
     addTearDown(tester.view.reset);
     final app = AppController();
     addTearDown(app.dispose);
+    final backupService = _NoopBackupService(app);
     await tester.pumpWidget(
       _TestProviders.value(
         value: app,
+        backupService: backupService,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,

@@ -4,11 +4,11 @@ import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:path/path.dart' as p;
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../core/app_controller.dart';
 import '../core/backup/backup_sections.dart';
 import '../core/backup/backup_service.dart';
+import '../core/backup/backup_service_provider.dart';
 import '../core/backup/webdav_client.dart';
 import '../core/backup/webdav_store.dart';
 import '../core/cookie_auth.dart';
@@ -82,7 +82,7 @@ const PreferredSize kBackupProgressBar = PreferredSize(
 
 /// 备份与恢复正文：本地备份 + WebDAV。
 /// 独立页（push）与「我的」右窗格共用；[progress] 由宿主显示成顶栏进度线。
-class BackupContent extends StatefulWidget {
+class BackupContent extends ConsumerStatefulWidget {
   const BackupContent({
     super.key,
     required this.progress,
@@ -96,10 +96,10 @@ class BackupContent extends StatefulWidget {
   final BackupOptionsPageOpener? backupOptionsOpener;
 
   @override
-  State<BackupContent> createState() => _BackupContentState();
+  ConsumerState<BackupContent> createState() => _BackupContentState();
 }
 
-class _BackupContentState extends State<BackupContent> {
+class _BackupContentState extends ConsumerState<BackupContent> {
   late final BackupService _service;
   bool _busy = false;
 
@@ -113,7 +113,7 @@ class _BackupContentState extends State<BackupContent> {
   @override
   void initState() {
     super.initState();
-    _service = BackupService.of(context.read<AppController>());
+    _service = ref.read(backupServiceProvider);
     _service.init().then((_) {
       if (mounted) setState(() {});
     });

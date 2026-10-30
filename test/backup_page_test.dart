@@ -3,10 +3,12 @@ import 'dart:io';
 
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/backup/backup_sections.dart';
 import 'package:lancloud/core/backup/backup_service.dart';
+import 'package:lancloud/core/backup/backup_service_provider.dart';
 import 'package:lancloud/core/backup/webdav_client.dart';
 import 'package:lancloud/core/backup/webdav_store.dart';
 import 'package:lancloud/core/cookie_auth.dart';
@@ -181,23 +183,26 @@ void main() {
   tearDown(() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(saveChannel, null);
-    BackupService.instance = null;
     CookieAuth.instance = CookieAuth();
   });
 
   Future<void> pumpPage(WidgetTester tester) async {
-    BackupService.instance = fake;
     tester.view.physicalSize = const Size(1080, 3600);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
-        value: fake.app,
-        child: MaterialApp(
-          localizationsDelegates: appLocalizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          locale: const Locale('zh'),
-          home: const BackupPage(),
+      ProviderScope(
+        overrides: [
+          backupServiceProvider.overrideWithValue(fake),
+        ],
+        child: ChangeNotifierProvider<AppController>.value(
+          value: fake.app,
+          child: MaterialApp(
+            localizationsDelegates: appLocalizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            locale: const Locale('zh'),
+            home: const BackupPage(),
+          ),
         ),
       ),
     );
