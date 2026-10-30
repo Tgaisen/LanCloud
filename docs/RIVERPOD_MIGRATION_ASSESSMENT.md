@@ -503,6 +503,9 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > `TopBarOverlay` / `TopBarOverlayScaffold` 只订阅 `hideTopBar`，
 > `BatchActionBar` 只订阅 `floatingNavBar`；滚动进度继续使用
 > `ValueListenable`，不再因其他 `AppController` 通知重建。
+>
+> `DropHoverBanner` 随后把 `driveVisible` / `favoritesVisible` 收窄为双布尔
+> `context.select`；拖拽通道和当前目录仍分别由 ValueNotifier 实时驱动。
 
 ### 阶段 5：处理 `TransferManager`
 

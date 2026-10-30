@@ -154,26 +154,39 @@ void showDropSummary(BuildContext context, DropOutcome outcome) {
 class DropHoverBanner extends StatelessWidget {
   const DropHoverBanner({super.key});
 
-  String _hintText(AppController app, AppLocalizations l10n, DropHover hover) {
+  String _hintText(
+    AppController app,
+    AppLocalizations l10n,
+    DropHover hover, {
+    required bool driveVisible,
+    required bool favoritesVisible,
+  }) {
     if (hover.isMixed) return l10n.dropHoverMixed;
     if (hover.hasFiles) {
-      return app.driveVisible
+      return driveVisible
           ? l10n.dropHoverUpload(drivePathLabel(l10n, app.driveLocation.value))
           : l10n.dropHoverPickFolder;
     }
-    return app.favoritesVisible
+    return favoritesVisible
         ? l10n.dropHoverFavorite
         : l10n.dropHoverOpenLink;
   }
 
   @override
   Widget build(BuildContext context) {
-    final app = context.watch<AppController>();
+    final app = context.read<AppController>();
+    final visibility = context.select<AppController, ({bool drive, bool fav})>(
+      (app) => (drive: app.driveVisible, fav: app.favoritesVisible),
+    );
     final l10n = context.l10n;
     final scheme = Theme.of(context).colorScheme;
-    return ValueListenableBuilder<DropHover?>(
-      valueListenable: DragDropChannel.instance.hover,
-      builder: (context, hover, _) {
+    return ListenableBuilder(
+      listenable: Listenable.merge([
+        DragDropChannel.instance.hover,
+        app.driveLocation,
+      ]),
+      builder: (context, _) {
+        final hover = DragDropChannel.instance.hover.value;
         final visible = hover != null && !hover.isEmpty;
         return Align(
           alignment: Alignment.topCenter,
@@ -212,7 +225,13 @@ class DropHoverBanner extends StatelessWidget {
                               child: Text(
                                 hover == null
                                     ? ''
-                                    : _hintText(app, l10n, hover),
+                                    : _hintText(
+                                        app,
+                                        l10n,
+                                        hover,
+                                        driveVisible: visibility.drive,
+                                        favoritesVisible: visibility.fav,
+                                      ),
                                 style: Theme.of(context).textTheme.bodyMedium
                                     ?.copyWith(color: scheme.onInverseSurface),
                               ),
