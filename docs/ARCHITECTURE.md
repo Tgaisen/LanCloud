@@ -33,6 +33,7 @@
 | `AppController` | `core/app_controller.dart`（637 行） | 账号、网盘、设置等大部分状态。职责偏宽，是已知问题 |
 | `TransferManager` | `core/transfer/transfer_manager.dart` | 上传/下载任务队列 |
 | `TransferAppAdapter` | `core/transfer/transfer_app_adapter.dart` | `TransferManager` 的最小应用能力边界；迁移期由 `AppController` 实现 |
+| `TransferStore` | `core/transfer/transfer_store.dart` | 传输记录恢复/保存/删除与下载标记端口；`AppDbTransferStore` 适配既有数据库 |
 | `UpdateService` | `core/update/update_service.dart` | `Notifier<UpdateState>`；更新检查、缓存、失败冷却和一次性提醒的唯一所有者 |
 | `AppDb` | `core/data/app_db_provider.dart` | 阶段 2 首个叶子依赖；普通 `Provider` 暴露既有单例，不监听、不自动销毁 |
 | `LanzouClientRegistry` | `core/api/lanzou_client_registry.dart` | 按 uid 缓存账号客户端并保留独立公开客户端；Provider 与 `AppController` 共用同一注册表 |

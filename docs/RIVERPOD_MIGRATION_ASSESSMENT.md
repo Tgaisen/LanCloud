@@ -561,6 +561,10 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > `TransferAppAdapter`；该接口只暴露数据库、当前账号、账号存储、设置、客户端
 > 与下载路径能力。迁移期由 `AppController` 直接实现，因此现有构造调用与运行行为
 > 不变，后续可逐项替换为独立 provider。
+>
+> 随后继续拆出 `TransferStore` 持久化端口，封装任务恢复、保存、删除和下载标记；
+> `AppDbTransferStore` 适配既有 `AppDb`。`TransferManager` 已不再直接持有
+> `AppDb`，并新增使用假存储端口恢复任务的测试。
 
 ### 阶段 6：移除旧 Provider
 

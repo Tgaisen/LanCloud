@@ -34,6 +34,7 @@ import 'system_motion.dart';
 import 'theme_settings_state.dart';
 import 'transfer_connection_settings_state.dart';
 import 'transfer/transfer_app_adapter.dart';
+import 'transfer/transfer_store.dart';
 import 'update/update_settings_state.dart';
 
 export 'drive_state.dart' show DriveLocation;
@@ -99,8 +100,9 @@ class AppController extends ChangeNotifier implements TransferAppAdapter {
   AccountStore get accounts => accountState.store;
   @override
   SettingsStore get settings => settingsState.store;
-  @override
   final AppDb db = AppDb.instance;
+  @override
+  final TransferStore transferStore = AppDbTransferStore();
   DriveCache get driveCache => drive.cache;
   final SharedDownloadsGateway _sharedDownloads;
   final DownloadPathService _downloadPaths;

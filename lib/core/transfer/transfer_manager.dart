@@ -135,7 +135,7 @@ class TransferManager extends ChangeNotifier {
 
   Future<void> _restore() async {
     try {
-      final rows = await _app.db.loadTransfers();
+      final rows = await _app.transferStore.loadTransfers();
       for (final row in rows) {
         final kind = '${row['kind']}' == 'upload'
             ? TransferKind.upload
@@ -184,7 +184,7 @@ class TransferManager extends ChangeNotifier {
   Future<void> _persist(TransferTask task) async {
     if (task.removed) return;
     try {
-      await _app.db.saveTransfer(
+      await _app.transferStore.saveTransfer(
         id: task.id,
         kind: task.kind == TransferKind.upload ? 'upload' : 'download',
         name: task.name,
@@ -366,7 +366,7 @@ class TransferManager extends ChangeNotifier {
           t.status == TransferStatus.canceled,
     );
     for (final id in removed) {
-      _app.db.deleteTransfer(id).catchError((_) {});
+      _app.transferStore.deleteTransfer(id).catchError((_) {});
     }
     _bumpMarks();
     notifyListeners();
@@ -381,7 +381,7 @@ class TransferManager extends ChangeNotifier {
       task.cancelToken.cancel('removed');
     }
     tasks.remove(task);
-    _app.db.deleteTransfer(id).catchError((_) {});
+    _app.transferStore.deleteTransfer(id).catchError((_) {});
     _bumpMarks();
     notifyListeners();
     _pump();
@@ -402,7 +402,7 @@ class TransferManager extends ChangeNotifier {
       removed.add(id);
     }
     if (removed.isEmpty) return;
-    _app.db.deleteTransfers(removed).catchError((_) {});
+    _app.transferStore.deleteTransfers(removed).catchError((_) {});
     _bumpMarks();
     notifyListeners();
     _pump();
@@ -488,7 +488,7 @@ class TransferManager extends ChangeNotifier {
       if (task.kind == TransferKind.download &&
           task.refId != null &&
           task.status == TransferStatus.done) {
-        await _app.db.markDownloaded(
+        await _app.transferStore.markDownloaded(
           ref: task.refId!,
           name: task.name,
           path: task.savedPath ?? '',

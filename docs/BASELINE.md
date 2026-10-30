@@ -67,6 +67,7 @@
 | `tools\agent.cmd test`（HomePage 消费端） | 增量 | **6 tests, all passed** | 约 4 s |
 | `tools\agent.cmd test`（DrivePage 消费端） | 增量 | **45 tests, all passed** | 约 19 s |
 | `tools\agent.cmd test`（TransferAppAdapter） | 增量 | **357 tests, all passed** | 约 64 s |
+| `tools\agent.cmd test`（TransferStore） | 增量 | **358 tests, all passed** | 约 65 s |
 | `tools\agent.cmd analyze`（阶段 4 消费端完成后） | 全量 | No issues found | 约 27 s |
 | `tools\agent.cmd test`（阶段 4 消费端完成后） | 全量 | **707 tests, all passed** | 约 113 s |
 
@@ -81,7 +82,7 @@
 | `lib` 总行数 | 约 4.4 万 |
 | `test` 测试文件 | 155（平铺，`<主题>_test.dart`） |
 | `test` 总行数 | 约 2.1 万 |
-| `test` 用例数 | 708（当前总数；新增阶段 5 边界测试） |
+| `test` 用例数 | 709（当前总数；阶段 5 已新增 2 个边界测试） |
 | `lib/ui` 页面与组件 | 54 个平铺文件 |
 | `lib/core` | 32 个平铺文件 + 5 个子系统目录 |
 | 文案（`app_zh.arb`） | 1357 行 |
@@ -246,6 +247,9 @@
 - 2026-10-30 的阶段 5 `TransferAppAdapter` 新增 1 个边界测试，增量 63 个文件 /
   357 个测试通过，当前总数由全量 707 增至 708；`TransferManager` 已不再直接
   导入完整 `AppController`。
+- 2026-10-30 的阶段 5 `TransferStore` 新增 1 个假存储恢复任务测试，增量 63 个
+  文件 / 358 个测试通过，当前总数由 708 增至 709；`TransferManager` 已不再直接
+  持有 `AppDb`。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release
