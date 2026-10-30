@@ -676,6 +676,12 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > 结论：阶段 5 已完成；阶段 6 不直接进入。先按模块拆分迁移
 > `AppController` 的 Provider 消费面，并等待包含 #193372 的 Flutter 版本完成
 > Windows 复验。iOS 验收若长期无设备，需要明确记录例外后才能移除 Provider。
+>
+> **阶段 6 准备授权（2026-10-30）**：允许建立并执行 `AppController` 消费端的
+> 逐页迁移计划，从登录、协议、关于页等叶子页面开始。准备阶段仍保留 `provider`
+> 依赖、`main.dart` 的 AppController 注入和现有状态所有权；不删除依赖，不把
+> 阶段 6 标记为完成。每个切片必须独立保持 `analyze` 0 issue、`agent.cmd test`
+> 通过。Windows 上游 UIA 阻塞和 iOS 人工验收缺口继续有效。
 
 ### 阶段 6：移除旧 Provider
 
