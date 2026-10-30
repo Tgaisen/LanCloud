@@ -52,6 +52,7 @@
 | `ListHomeSettingsState` | `core/list_home_settings_state.dart` | 阶段 3 设置子组：列表排序、首页折叠、最近使用上限与文件夹打开模式 |
 | `LanguageClipboardSettingsState` | `core/language_clipboard_settings_state.dart` | 阶段 3 设置子组：界面语言与复制分享链接提示 |
 | `CachePageSettingsState` | `core/cache_page_settings_state.dart` | 阶段 3 设置子组：网格视图、启动页、目录缓存和自动加载全部页面 |
+| `DownloadDirectorySettingsState` | `core/download_directory_settings_state.dart` | 阶段 3 设置子组：普通下载目录与 SAF 目录 URI/标签的持久化入口 |
 
 消费现状：`context.read<…>` 约 150 处、`context.watch<…>` 约 17 处。
 UpdateService 试点前 `context.select<…>` 为 0；更新页现在用两处 `select`

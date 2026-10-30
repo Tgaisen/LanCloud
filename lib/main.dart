@@ -17,6 +17,7 @@ import 'core/backup/backup_service.dart';
 import 'core/api/lanzou_client_registry.dart';
 import 'core/data/app_db_provider.dart';
 import 'core/download_path_service.dart';
+import 'core/download_directory_settings_state.dart';
 import 'core/drive_state.dart';
 import 'core/navigation_state.dart';
 import 'core/navigation_appearance_settings_state.dart';
@@ -150,6 +151,9 @@ Future<void> main() async {
         app.languageClipboardSettings,
       ),
       cachePageSettingsStateProvider.overrideWithValue(app.cachePageSettings),
+      downloadDirectorySettingsStateProvider.overrideWithValue(
+        app.downloadDirectorySettings,
+      ),
       notificationServiceProvider.overrideWithValue(
         NotificationService.instance,
       ),

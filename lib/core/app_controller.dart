@@ -15,6 +15,7 @@ import 'data/app_db.dart';
 import 'data/settings_store.dart';
 import 'data/secure_storage.dart';
 import 'download_target.dart';
+import 'download_directory_settings_state.dart';
 import 'download_path_service.dart';
 import 'drive_state.dart';
 import 'drive_cache.dart';
@@ -64,6 +65,7 @@ class AppController extends ChangeNotifier {
     listHomeSettings = ListHomeSettingsState(settings);
     languageClipboardSettings = LanguageClipboardSettingsState(settings);
     cachePageSettings = CachePageSettingsState(settings);
+    downloadDirectorySettings = DownloadDirectorySettingsState(settings);
     this.navigation.addListener(notifyListeners);
   }
 
@@ -77,6 +79,7 @@ class AppController extends ChangeNotifier {
   late final ListHomeSettingsState listHomeSettings;
   late final LanguageClipboardSettingsState languageClipboardSettings;
   late final CachePageSettingsState cachePageSettings;
+  late final DownloadDirectorySettingsState downloadDirectorySettings;
 
   AccountStore get accounts => accountState.store;
   SettingsStore get settings => settingsState.store;
@@ -232,8 +235,8 @@ class AppController extends ChangeNotifier {
   /// 公共目录无需授权、直接按路径写入）；已有 SAF 目录授权会一并释放。
   Future<void> setDownloadDir(String? dir) async {
     final oldTree = settings.downloadDirTree;
-    await settings.setDownloadDir(dir);
-    await settings.setDownloadDirTree(null, null);
+    await downloadDirectorySettings.setDirectoryPath(dir);
+    await downloadDirectorySettings.setSafariDirectory(null, null);
     if (oldTree != null && oldTree.isNotEmpty) {
       await SafStorage.release(oldTree);
     }
@@ -244,8 +247,8 @@ class AppController extends ChangeNotifier {
   /// 原始的路径设置在 SAF 模式下不再使用，旧目录授权同时释放。
   Future<void> setSafDownloadDir(SafDirectory dir) async {
     final oldTree = settings.downloadDirTree;
-    await settings.setDownloadDirTree(dir.uri, dir.label);
-    await settings.setDownloadDir(null);
+    await downloadDirectorySettings.setSafariDirectory(dir.uri, dir.label);
+    await downloadDirectorySettings.setDirectoryPath(null);
     if (oldTree != null && oldTree.isNotEmpty && oldTree != dir.uri) {
       await SafStorage.release(oldTree);
     }

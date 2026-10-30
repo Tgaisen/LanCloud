@@ -37,6 +37,7 @@
 | `tools\agent.cmd test`（ListHomeSettingsState） | 增量 | **340 tests, all passed** | 约 60 s |
 | `tools\agent.cmd test`（LanguageClipboardSettingsState） | 增量 | **343 tests, all passed** | 约 63 s |
 | `tools\agent.cmd test`（CachePageSettingsState） | 增量 | **346 tests, all passed** | 约 68 s |
+| `tools\agent.cmd test`（DownloadDirectorySettingsState） | 增量 | **349 tests, all passed** | 约 62 s |
 
 工具链：Flutter 3.47.7（stable）/ Dart 3.13.5 / DevTools 2.60.0。
 静态检查：`analysis_options.yaml` 已开启 `strict-casts` / `strict-inference` / `strict-raw-types`。
@@ -49,7 +50,7 @@
 | `lib` 总行数 | 约 4.7 万 |
 | `test` 测试文件 | 123（平铺，`<主题>_test.dart`） |
 | `test` 总行数 | 约 2 万 |
-| `test` 用例数 | 676（当前总数；本次只验证了受影响增量） |
+| `test` 用例数 | 679（当前总数；本次只验证了受影响增量） |
 | `lib/ui` 页面与组件 | 40 个平铺文件 |
 | `lib/core` | 32 个平铺文件 + 5 个子系统目录 |
 | 文案（`app_zh.arb`） | 1357 行 |
@@ -130,5 +131,8 @@
 - 2026-10-30 的 CachePageSettingsState 新增 3 个测试，覆盖页面/缓存字段、
   DriveCache 清理副作用和 provider override；增量 60 个文件 / 346 个测试通过，
   当前总数由 673 增至 676。
+- 2026-10-30 的 DownloadDirectorySettingsState 新增 3 个测试，覆盖普通/SAF
+  目录字段、旧 API 互斥写入和 provider override；增量 61 个文件 / 349 个测试
+  通过，当前总数由 676 增至 679。
 - 若临时再改 `analysis_options.yaml` 加规则，issue 数会变；先把预期数量记在这里再跑，
   避免和「本次改坏」混淆。

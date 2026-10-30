@@ -360,6 +360,9 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 >
 > `CachePageSettingsState` 也已拆分：网格视图、启动页、目录缓存和自动加载开关
 > 使用独立 provider。关闭目录缓存时清空 `DriveCache` 的副作用仍由旧控制器执行。
+>
+> `DownloadDirectorySettingsState` 最后拆分：普通下载目录与 SAF URI/标签通过
+> 独立入口读写。平台目录选择、旧 SAF 授权释放和互斥写入顺序仍由旧控制器负责。
 
 ### 阶段 4：迁移 UI 消费端
 
