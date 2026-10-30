@@ -98,6 +98,7 @@
 | `tools\agent.cmd test`（分享文件夹页消费端） | 增量 | **299 tests, all passed** | 约 58 s |
 | `tools\agent.cmd test`（显示 Cookie 设置行） | 增量 | **1 test, all passed** | 约 15 s |
 | `tools\agent.cmd test`（分享文件属性弹窗） | 增量 | **8 tests, all passed** | 约 14 s |
+| `tools\agent.cmd test`（WebView 登录消费端） | 全量 | **719 tests, all passed** | 约 110 s |
 
 工具链：Flutter 3.47.7（stable）/ Dart 3.13.5 / DevTools 2.60.0。
 静态检查：`analysis_options.yaml` 已开启 `strict-casts` / `strict-inference` / `strict-raw-types`。
@@ -348,6 +349,8 @@
 - 2026-10-31 分享文件属性弹窗的直链解析改从 `lanzouClientRegistryProvider`
   读取；增量 1 个测试文件 / 8 个测试通过，用例总数保持 719。收藏与下载共用
   入口仍暂时依赖旧控制器。
+- 2026-10-31 WebView 登录页保存 Cookie 改走 `accountLoginProvider`；该页无直接
+  Widget 测试，因此执行全量验证，719 个测试全部通过，用例总数保持 719。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release

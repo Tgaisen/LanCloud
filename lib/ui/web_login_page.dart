@@ -2,10 +2,10 @@ import 'dart:async';
 
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/account_login.dart';
 import '../core/api/lanzou_client.dart';
-import '../core/app_controller.dart';
 import '../core/platform_support.dart';
 import '../core/webview_diagnostics.dart';
 import 'app_icons.dart';
@@ -14,14 +14,14 @@ import 'm3e.dart';
 import '../l10n/l10n.dart';
 
 /// 用内嵌浏览器完成登录，登录成功后读取系统 Cookie 并保存账号。
-class WebLoginPage extends StatefulWidget {
+class WebLoginPage extends ConsumerStatefulWidget {
   const WebLoginPage({super.key});
 
   @override
-  State<WebLoginPage> createState() => _WebLoginPageState();
+  ConsumerState<WebLoginPage> createState() => _WebLoginPageState();
 }
 
-class _WebLoginPageState extends State<WebLoginPage> {
+class _WebLoginPageState extends ConsumerState<WebLoginPage> {
   /// 登录页跟着「网盘接口域名」设置走（web_login_page 不写死 pc.woozooo.com）。
   String get _loginUrl => LanzouClient.loginUrl;
 
@@ -45,7 +45,6 @@ class _WebLoginPageState extends State<WebLoginPage> {
 
   Future<void> _tryCapture() async {
     if (_checking || _done) return;
-    final app = context.read<AppController>();
     setState(() {
       _checking = true;
       _error = null;
@@ -75,7 +74,7 @@ class _WebLoginPageState extends State<WebLoginPage> {
         }
         return;
       }
-      await app.addAccountFromCookie(header);
+      await ref.read(accountLoginProvider).addAccountFromCookie(header);
       if (!mounted) return;
       setState(() {
         _done = true;

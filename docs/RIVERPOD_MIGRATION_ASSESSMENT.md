@@ -732,6 +732,10 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > 分享文件属性弹窗自己的直链解析随后迁入
 > `lanzouClientRegistryProvider`；收藏查询和共享下载入口仍在旧控制器上，
 > 留到下一片统一迁移。
+>
+> WebView 登录页随后也改为通过 `accountLoginProvider` 保存捕获到的 Cookie；
+> 页面不再读取 `AppController`。该页缺少可直接自动化的 WebView Widget 测试，
+> 因此本轮改跑完整测试套件，719 个测试全部通过。
 
 ### 阶段 6：移除旧 Provider
 
