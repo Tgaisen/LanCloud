@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:provider/provider.dart';
 
 import 'app.dart';
@@ -100,12 +101,16 @@ Future<void> main() async {
   // 自动检查更新：在 12 小时有效期内不请求；失败静默（见 UpdateService）。
   unawaited(app.updates.maybeAutoCheck());
   runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider.value(value: app),
-        ChangeNotifierProvider.value(value: TransferManager(app)),
-      ],
-      child: const LanCloudApp(),
+    // 阶段 0：Provider 与 Riverpod 双栈共存。Riverpod 只服务正在试点的
+    // UpdateService，其余页面继续用 Provider（边界见 AGENTS.md）。
+    ProviderScope(
+      child: MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: app),
+          ChangeNotifierProvider.value(value: TransferManager(app)),
+        ],
+        child: const LanCloudApp(),
+      ),
     ),
   );
 }

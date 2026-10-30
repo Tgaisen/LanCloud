@@ -90,6 +90,9 @@ dependencies:
   material_ui: ">=1.6.0 <1.8.0"
   cupertino_ui: ^1.1.4
   cryptography: ^2.9.0
+  # Riverpod 目前只服务 UpdateService 试点（阶段 0/1），与 provider 双栈并存。
+  # 范围与红线见 AGENTS.md，方案见 docs/RIVERPOD_MIGRATION_ASSESSMENT.md。
+  flutter_riverpod: ^3.4.3
 dev_dependencies:
   flutter_test:
     sdk: flutter
