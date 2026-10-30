@@ -2,8 +2,12 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/cache_page_settings_state.dart';
 import 'package:lancloud/core/data/settings_store.dart';
 import 'package:lancloud/core/data/settings_store_provider.dart';
+import 'package:lancloud/core/drive_state.dart';
+import 'package:lancloud/core/language_clipboard_settings_state.dart';
+import 'package:lancloud/core/notification_settings_state.dart';
 import 'package:lancloud/core/update/release_info.dart';
 import 'package:lancloud/core/update/update_service.dart';
 import 'package:provider/provider.dart';
@@ -34,6 +38,30 @@ Widget updateTestTree({
 }) {
   return UncontrolledProviderScope(
     container: container,
+    child: ChangeNotifierProvider<AppController>.value(
+      value: app,
+      child: child,
+    ),
+  );
+}
+
+/// 同时提供旧 Provider 与页面已迁移状态使用的 Riverpod 作用域。
+Widget appTestTree({
+  required AppController app,
+  required Widget child,
+}) {
+  return ProviderScope(
+    overrides: [
+      settingsStoreProvider.overrideWithValue(app.settings),
+      driveStateProvider.overrideWithValue(app.drive),
+      cachePageSettingsStateProvider.overrideWithValue(app.cachePageSettings),
+      notificationSettingsStateProvider.overrideWithValue(
+        app.notificationSettings,
+      ),
+      languageClipboardSettingsStateProvider.overrideWithValue(
+        app.languageClipboardSettings,
+      ),
+    ],
     child: ChangeNotifierProvider<AppController>.value(
       value: app,
       child: child,

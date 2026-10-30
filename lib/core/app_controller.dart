@@ -64,7 +64,7 @@ class AppController extends ChangeNotifier {
     transferConnectionSettings = TransferConnectionSettingsState(settings);
     listHomeSettings = ListHomeSettingsState(settings);
     languageClipboardSettings = LanguageClipboardSettingsState(settings);
-    cachePageSettings = CachePageSettingsState(settings);
+    cachePageSettings = CachePageSettingsState(settings, this.drive.cache);
     downloadDirectorySettings = DownloadDirectorySettingsState(settings);
     this.navigation.addListener(notifyListeners);
   }
@@ -613,7 +613,6 @@ class AppController extends ChangeNotifier {
 
   Future<void> setCacheFolders(bool value) async {
     await cachePageSettings.setCacheFolders(value);
-    if (!value) driveCache.clear();
     notifyListeners();
   }
 

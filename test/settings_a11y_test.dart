@@ -8,12 +8,13 @@ import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/app_localizations_zh.dart';
 import 'package:lancloud/ui/reduce_motion.dart';
 import 'package:lancloud/ui/settings_page.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher_platform_interface/link.dart';
 import 'package:url_launcher_platform_interface/url_launcher_platform_interface.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
+
+import 'update_test_scope_test.dart';
 
 /// 文案以中文本地化为准，避免改文案就要改测试。
 final _zh = AppLocalizationsZh();
@@ -40,8 +41,8 @@ Future<AppController> _pumpSettings(WidgetTester tester) async {
   final app = AppController();
   addTearDown(app.dispose);
   await tester.pumpWidget(
-    ChangeNotifierProvider<AppController>.value(
-      value: app,
+    appTestTree(
+      app: app,
       child: MaterialApp(
         localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,

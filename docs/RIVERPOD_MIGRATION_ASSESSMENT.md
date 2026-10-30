@@ -368,7 +368,8 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > 入口。应用根 Locale 解析和剪贴板行为尚未迁移。
 >
 > `CachePageSettingsState` 也已拆分：网格视图、启动页、目录缓存和自动加载开关
-> 使用独立 provider。关闭目录缓存时清空 `DriveCache` 的副作用仍由旧控制器执行。
+> 使用独立 provider。关闭目录缓存时清空 `DriveCache` 的副作用已收拢到该状态，
+> 旧控制器只转发同一实例，不再重复清缓存。
 >
 > `DownloadDirectorySettingsState` 最后拆分：普通下载目录与 SAF URI/标签通过
 > 独立入口读写。平台目录选择、旧 SAF 授权释放和互斥写入顺序仍由旧控制器负责。
@@ -413,6 +414,11 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > 进度通知和完成通知两个开关随后迁入 `NotificationSettingsTile`。开关状态由
 > `NotificationSettingsState.revision` 局部刷新，系统通知权限申请可注入，结果
 > 同步回“管理权限”入口。设置页外层依赖仍未移除。
+>
+> “目录缓存”和“自动加载全部页面”两行也已迁入 `CachePageSettingsTile`，通过
+> `CachePageSettingsState.revision` 局部刷新。设置页现有 Riverpod 叶子共用阶段 0
+> 的 `appTestTree` 测试包装器；只更新涉及本页的测试，没有批量迁移其它 Provider
+> 测试。设置页外层依赖仍未移除。
 
 ### 阶段 5：处理 `TransferManager`
 

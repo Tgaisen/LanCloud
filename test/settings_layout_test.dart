@@ -11,10 +11,11 @@ import 'package:lancloud/ui/app_icons.dart';
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/m3e.dart';
 import 'package:lancloud/ui/settings_page.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
+
+import 'update_test_scope_test.dart';
 
 /// 动态取色插件的通道：返回非空即表示设备支持动态取色。
 const _dynamicColorChannel = MethodChannel('io.material.plugins/dynamic_color');
@@ -48,8 +49,8 @@ Future<AppController> pumpSettings(
   tester.view.physicalSize = const Size(420, 900);
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
-    ChangeNotifierProvider<AppController>.value(
-      value: app,
+    appTestTree(
+      app: app,
       // 主题跟随设置（同真实外壳）：切深色模式要真的变主题，
       // 「纯黑深色主题」这类跟随亮度的设置项才测得到
       child: ListenableBuilder(

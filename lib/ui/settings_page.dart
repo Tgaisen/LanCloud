@@ -19,6 +19,7 @@ import '../core/system_file_saver.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'backup_page.dart';
+import 'cache_page_settings_tile.dart';
 import 'clipboard_link_prompt_tile.dart';
 import 'common.dart';
 import 'cookie_sheet.dart';
@@ -655,13 +656,8 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         subtitle: l10n.cacheFoldersSubtitle,
         keywords: l10n.cacheFoldersKeywords.split(' '),
         section: SettingsSection.behavior,
-        build: (context, app) => SwitchListTile(
-          secondary: const Icon(Icons.cached_outlined),
-          title: Text(context.l10n.cacheFolders),
-          subtitle: Text(context.l10n.cacheFoldersSubtitle),
-          value: app.settings.cacheFolders,
-          onChanged: (value) => app.setCacheFolders(value),
-        ),
+        build: (context, app) =>
+            const CachePageSettingsTile(cacheFolders: true),
       ),
       _Entry(
         id: 'load_all_pages',
@@ -669,13 +665,8 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         subtitle: l10n.loadAllPagesSubtitle,
         keywords: l10n.loadAllPagesKeywords.split(' '),
         section: SettingsSection.behavior,
-        build: (context, app) => SwitchListTile(
-          secondary: const Icon(Icons.download_for_offline_outlined),
-          title: Text(context.l10n.loadAllPages),
-          subtitle: Text(context.l10n.loadAllPagesSubtitle),
-          value: app.settings.loadAllPages,
-          onChanged: (value) => app.setLoadAllPages(value),
-        ),
+        build: (context, app) =>
+            const CachePageSettingsTile(cacheFolders: false),
       ),
       _Entry(
         id: 'notify_progress',

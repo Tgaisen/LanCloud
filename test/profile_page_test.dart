@@ -7,7 +7,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/data/account_store.dart';
-import 'package:lancloud/core/data/settings_store_provider.dart';
 import 'package:lancloud/core/update/release_info.dart';
 import 'package:lancloud/core/update/update_service.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
@@ -17,7 +16,6 @@ import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/licenses_page.dart';
 import 'package:lancloud/ui/m3e.dart';
 import 'package:lancloud/ui/profile_page.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
@@ -45,15 +43,7 @@ class _TestProviders extends StatelessWidget {
         child: child,
       );
     }
-    return ProviderScope(
-      overrides: [
-        settingsStoreProvider.overrideWithValue(value.settings),
-      ],
-      child: ChangeNotifierProvider<AppController>.value(
-        value: value,
-        child: child,
-      ),
-    );
+    return appTestTree(app: value, child: child);
   }
 }
 

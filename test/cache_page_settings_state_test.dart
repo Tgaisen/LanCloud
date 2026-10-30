@@ -12,13 +12,14 @@ void main() {
 
   test('CachePageSettingsState 读写全部页面与缓存字段', () async {
     final settings = SettingsStore();
-    final state = CachePageSettingsState(settings);
+    final state = CachePageSettingsState(settings, DriveCache());
 
     await state.setGridView(false);
     await state.setLaunchPage('drive');
     await state.setCacheFolders(false);
     await state.setLoadAllPages(true);
 
+    expect(state.revision.value, 4);
     expect(state.gridView, isFalse);
     expect(state.launchPage, 'drive');
     expect(state.cacheFolders, isFalse);
@@ -47,7 +48,7 @@ void main() {
   });
 
   test('cachePageSettingsStateProvider 可被共享实例覆盖', () {
-    final state = CachePageSettingsState(SettingsStore());
+    final state = CachePageSettingsState(SettingsStore(), DriveCache());
     final container = ProviderContainer(
       overrides: [cachePageSettingsStateProvider.overrideWithValue(state)],
     );

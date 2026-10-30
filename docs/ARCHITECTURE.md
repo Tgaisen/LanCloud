@@ -58,9 +58,12 @@
 `UpdateContent` 已不再读取 `AppController`，更新状态与更新设置均从 Riverpod
 读取；设置 store 的变更通过局部 revision 触发。其余新增 UI 仍应优先用
 `select` 或 `ValueListenableBuilder` 收窄订阅范围，不要继续放大。
-设置页的“复制分享链接后提示”行也已迁为独立 Riverpod Widget；设置页其余条目
-仍由外层 `AppController` 监听，尚未整体迁移。进度通知和完成通知开关也已迁为
-独立 `NotificationSettingsTile`，权限申请通过可注入回调处理。
+设置页的“复制分享链接后提示”行也已迁为独立 Riverpod Widget。进度通知和完成
+通知开关迁入 `NotificationSettingsTile`，权限申请通过可注入回调处理；“目录缓存”
+和“自动加载全部页面”迁入 `CachePageSettingsTile`，由
+`CachePageSettingsState.revision` 局部刷新。关闭目录缓存时清空 `DriveCache`
+的逻辑已收拢到该状态，旧 `AppController` 只转发同一实例。设置页其余条目仍由
+外层 `AppController` 监听，尚未整体迁移。
 
 ## 导航与弹层
 
