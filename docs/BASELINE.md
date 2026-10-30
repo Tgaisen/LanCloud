@@ -59,6 +59,7 @@
 | `tools\agent.cmd test`（DownloadDirectorySettingsTile） | 增量 | **357 tests, all passed** | 约 68 s |
 | `tools\agent.cmd test`（设置页外层监听） | 增量 | **46 tests, all passed** | 约 13 s |
 | `tools\agent.cmd test`（ProfilePage 消费端） | 增量 | **29 tests, all passed** | 约 11 s |
+| `tools\agent.cmd test`（RootShell 消费端） | 增量 | **32 tests, all passed** | 约 12 s |
 
 工具链：Flutter 3.47.7（stable）/ Dart 3.13.5 / DevTools 2.60.0。
 静态检查：`analysis_options.yaml` 已开启 `strict-casts` / `strict-inference` / `strict-raw-types`。
@@ -212,5 +213,8 @@
 - 2026-10-30 的 ProfilePage 移除外层 `context.watch<AppController>()`，账号卡片
   改为局部账号摘要订阅，顶栏隐藏设置使用窄 `context.select`；增量 3 个文件 /
   29 个测试通过，用例总数保持 708。
+- 2026-10-30 的 RootShell 移除 `AppController` / `TransferManager` 整体订阅，
+  改为外壳配置快照与运行中任务数两个 `context.select`；增量 9 个文件 / 32 个测试
+  通过，用例总数保持 708。
 - 若临时再改 `analysis_options.yaml` 加规则，issue 数会变；先把预期数量记在这里再跑，
   避免和「本次改坏」混淆。

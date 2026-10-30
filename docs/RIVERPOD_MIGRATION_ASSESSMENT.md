@@ -488,6 +488,11 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > `context.select` 订阅 `hideTopBar`。账号卡片拆成局部
 > `ProfileAccountTile`，只订阅登录态、UID、昵称和会员等级；其他账号操作仍通过
 > `context.read` 在事件回调中执行。
+>
+> `RootShell` 随后移除对 `AppController` 和 `TransferManager` 的整体 `watch`。
+> 外壳改为订阅只含 ready、UID、导航项、滑动、浮动和隐藏栏的配置快照；
+> `TransferManager` 只订阅运行中任务数，避免普通通知或传输历史变化重建整个
+> PageView。
 
 ### 阶段 5：处理 `TransferManager`
 
