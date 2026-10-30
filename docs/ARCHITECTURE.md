@@ -60,9 +60,11 @@
 | `CachePageSettingsState` | `core/cache_page_settings_state.dart` | 阶段 3 设置子组：网格视图、启动页、目录缓存和自动加载全部页面 |
 | `DownloadDirectorySettingsState` | `core/download_directory_settings_state.dart` | 阶段 3 设置子组：普通下载目录、SAF URI/标签、互斥写入和旧授权释放入口 |
 
-消费现状：`context.read<…>` 约 144 处、`context.watch<…>` 2 处、
-`context.select<…>` 13 处。剩余两处 `watch` 都是 `TransferManager`，留给阶段 5；
-生产代码中的 `context.watch<AppController>()` 已清零。
+消费现状：`context.read<…>` 约 136 处、`context.watch<…>` 0 处、
+`context.select<…>` 13 处。生产代码中的整体 `watch` 已清零；传输页已从
+Riverpod 读取应用级 `TransferManager`，并通过 `ListenableBuilder` 保留既有
+`notifyListeners()` 刷新语义。`RootShell` 的运行中任务数仍暂由 Provider 的
+`context.select` 读取，留待应用外壳切片迁移。
 `UpdateContent` 已不再读取 `AppController`，更新状态与更新设置均从 Riverpod
 读取；设置 store 的变更通过局部 revision 触发。其余新增 UI 仍应优先用
 `select` 或 `ValueListenableBuilder` 收窄订阅范围，不要继续放大。

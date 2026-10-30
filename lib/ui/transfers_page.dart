@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:provider/provider.dart';
 
@@ -9,6 +10,7 @@ import '../core/saved_file.dart';
 import '../core/system_open.dart';
 import '../core/system_share.dart';
 import '../core/transfer/transfer_manager.dart';
+import '../core/transfer/transfer_manager_provider.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
@@ -28,17 +30,17 @@ enum _TransferMenuAction {
   removeRecordAndFile,
 }
 
-class TransfersPage extends StatefulWidget {
+class TransfersPage extends ConsumerStatefulWidget {
   const TransfersPage({super.key, this.openFile});
 
   /// 打开已下载文件；默认交给系统「打开」，测试注入以免真的调起系统应用。
   final Future<void> Function(String path)? openFile;
 
   @override
-  State<TransfersPage> createState() => _TransfersPageState();
+  ConsumerState<TransfersPage> createState() => _TransfersPageState();
 }
 
-class _TransfersPageState extends State<TransfersPage>
+class _TransfersPageState extends ConsumerState<TransfersPage>
     with AutomaticKeepAliveClientMixin, TickerProviderStateMixin {
   static const _anim = Duration(milliseconds: 200);
 
@@ -153,7 +155,7 @@ class _TransfersPageState extends State<TransfersPage>
   }
 
   void _selectAll() {
-    final manager = context.read<TransferManager>();
+    final manager = ref.read(transferManagerProvider);
     setState(() {
       _selected
         ..clear()
@@ -173,7 +175,7 @@ class _TransfersPageState extends State<TransfersPage>
   }
 
   void _invertSelection() {
-    final manager = context.read<TransferManager>();
+    final manager = ref.read(transferManagerProvider);
     setState(() {
       for (final task in _tasksOf(manager)) {
         if (!_selected.remove(task.id)) _selected.add(task.id);
@@ -204,7 +206,7 @@ class _TransfersPageState extends State<TransfersPage>
       ),
     );
     if (ok != true || !mounted) return;
-    context.read<TransferManager>().clearFinished();
+    ref.read(transferManagerProvider).clearFinished();
   }
 
   /// 删除选中的传输记录（进行中的会先取消）。
@@ -253,7 +255,7 @@ class _TransfersPageState extends State<TransfersPage>
       ),
     );
     if (ok != true || !mounted) return;
-    final manager = context.read<TransferManager>();
+    final manager = ref.read(transferManagerProvider);
     final tasks = manager.tasks.where((t) => _selected.contains(t.id)).toList();
     final ids = _selected.toList();
     _exitSelection();
@@ -274,7 +276,7 @@ class _TransfersPageState extends State<TransfersPage>
   /// 重启后的下载任务要先重新解析直链，所以整批都放在进度弹窗里跑
   /// （和首页批量下载同一套样式），结束后提示结果。
   Future<void> _retrySelected() async {
-    final manager = context.read<TransferManager>();
+    final manager = ref.read(transferManagerProvider);
     final l10n = context.l10n;
     final failed = _tasksOf(manager)
         .where(
@@ -324,7 +326,7 @@ class _TransfersPageState extends State<TransfersPage>
     final anchor = m3eMenuAnchorOf(anchorContext);
     if (anchor == null) return;
     final l10n = context.l10n;
-    final manager = context.read<TransferManager>();
+    final manager = ref.read(transferManagerProvider);
     final path = task.savedPath;
     final done = task.status == TransferStatus.done && path != null;
     final failed = task.status == TransferStatus.failed;
@@ -404,7 +406,7 @@ class _TransfersPageState extends State<TransfersPage>
   /// 删除一条传输记录：先播删除动画（与收藏页一致），动画放完再真正移除；
   /// [deleteFile] 为真时连同本地文件一起删。
   Future<void> _removeTask(TransferTask task, {bool deleteFile = false}) async {
-    final manager = context.read<TransferManager>();
+    final manager = ref.read(transferManagerProvider);
     setState(() => _removing.add(task.id));
     await Future<void>.delayed(const Duration(milliseconds: 220));
     // 动画期间页面可能已经被移出树（比如返回了上一页）：记录照删
@@ -425,7 +427,18 @@ class _TransfersPageState extends State<TransfersPage>
   Widget build(BuildContext context) {
     super.build(context);
     final app = context.read<AppController>();
-    final manager = context.watch<TransferManager>();
+    final manager = ref.watch(transferManagerProvider);
+    return ListenableBuilder(
+      listenable: manager,
+      builder: (context, _) => _buildPage(context, app, manager),
+    );
+  }
+
+  Widget _buildPage(
+    BuildContext context,
+    AppController app,
+    TransferManager manager,
+  ) {
     final scheme = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     final headerHeight =
@@ -477,6 +490,8 @@ class _TransfersPageState extends State<TransfersPage>
                         opacity: _tabFade,
                         sliver: _TransferListSliver(
                           kind: _kind,
+                          manager: manager,
+                          tasks: tasks,
                           selecting: _selecting,
                           selected: _selected,
                           removing: _removing,
@@ -664,6 +679,8 @@ class _TransfersPageState extends State<TransfersPage>
 class _TransferListSliver extends StatelessWidget {
   const _TransferListSliver({
     required this.kind,
+    required this.manager,
+    required this.tasks,
     required this.selecting,
     required this.selected,
     required this.removing,
@@ -675,6 +692,8 @@ class _TransferListSliver extends StatelessWidget {
   });
 
   final TransferKind kind;
+  final TransferManager manager;
+  final List<TransferTask> tasks;
   final bool selecting;
   final Set<String> selected;
 
@@ -709,9 +728,7 @@ class _TransferListSliver extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final manager = context.watch<TransferManager>();
     final l10n = context.l10n;
-    final tasks = manager.byKind(kind);
     if (tasks.isEmpty) {
       return SliverFillRemaining(
         hasScrollBody: false,
@@ -766,6 +783,7 @@ class _TransferListSliver extends StatelessWidget {
                 index: index,
                 child: _TransferTile(
                   task: active[index],
+                  manager: manager,
                   index: index,
                   removing: removing.contains(active[index].id),
                   selecting: selecting,
@@ -800,6 +818,7 @@ class _TransferListSliver extends StatelessWidget {
                 index: index,
                 child: _TransferTile(
                   task: finished[index],
+                  manager: manager,
                   index: index,
                   removing: removing.contains(finished[index].id),
                   selecting: selecting,
@@ -823,6 +842,7 @@ class _TransferListSliver extends StatelessWidget {
 class _TransferTile extends StatelessWidget {
   const _TransferTile({
     required this.task,
+    required this.manager,
     required this.selecting,
     required this.selected,
     required this.onTap,
@@ -833,6 +853,7 @@ class _TransferTile extends StatelessWidget {
   });
 
   final TransferTask task;
+  final TransferManager manager;
   final bool selecting;
   final bool selected;
   final VoidCallback onTap;
@@ -877,7 +898,6 @@ class _TransferTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final manager = context.read<TransferManager>();
     final l10n = context.l10n;
     final scheme = Theme.of(context).colorScheme;
     final active =

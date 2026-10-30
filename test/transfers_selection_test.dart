@@ -2,9 +2,11 @@ import 'dart:io';
 
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
+import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/m3e.dart';
@@ -12,6 +14,20 @@ import 'package:lancloud/ui/transfers_page.dart';
 import 'package:provider/provider.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
+
+Widget _transferTestHost({
+  required AppController app,
+  required TransferManager manager,
+  required Widget child,
+}) {
+  return ProviderScope(
+    overrides: [transferManagerProvider.overrideWithValue(manager)],
+    child: ChangeNotifierProvider<AppController>.value(
+      value: app,
+      child: child,
+    ),
+  );
+}
 
 TransferTask task(String id, String name, {required TransferStatus status}) {
   return TransferTask(
@@ -32,11 +48,9 @@ Future<(AppController, TransferManager)> host(WidgetTester tester) async {
     task('t3', 'c.zip', status: TransferStatus.done),
   ]);
   await tester.pumpWidget(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider<AppController>.value(value: app),
-        ChangeNotifierProvider<TransferManager>.value(value: manager),
-      ],
+    _transferTestHost(
+      app: app,
+      manager: manager,
       child: MaterialApp(
         localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
@@ -73,11 +87,9 @@ Future<AppController> pushTransfers(WidgetTester tester) async {
   final manager = TransferManager(app);
   manager.tasks.addAll([task('t1', 'a.zip', status: TransferStatus.failed)]);
   await tester.pumpWidget(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider<AppController>.value(value: app),
-        ChangeNotifierProvider<TransferManager>.value(value: manager),
-      ],
+    _transferTestHost(
+      app: app,
+      manager: manager,
       child: MaterialApp(
         localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
@@ -115,11 +127,9 @@ void main() {
         ..total = 2,
     );
     await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider<AppController>.value(value: app),
-          ChangeNotifierProvider<TransferManager>.value(value: manager),
-        ],
+      _transferTestHost(
+        app: app,
+        manager: manager,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
@@ -463,11 +473,9 @@ void main() {
           .setMockMethodCallHandler(shareChannel, null),
     );
     await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider<AppController>.value(value: app),
-          ChangeNotifierProvider<TransferManager>.value(value: manager),
-        ],
+      _transferTestHost(
+        app: app,
+        manager: manager,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
@@ -537,11 +545,9 @@ void main() {
           ..savedPath = file.path;
     manager.tasks.add(failed);
     await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider<AppController>.value(value: app),
-          ChangeNotifierProvider<TransferManager>.value(value: manager),
-        ],
+      _transferTestHost(
+        app: app,
+        manager: manager,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
@@ -591,11 +597,9 @@ void main() {
       task('u2', 'ok.zip', status: TransferStatus.done),
     ]);
     await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider<AppController>.value(value: app),
-          ChangeNotifierProvider<TransferManager>.value(value: manager),
-        ],
+      _transferTestHost(
+        app: app,
+        manager: manager,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
@@ -636,11 +640,9 @@ void main() {
       );
     }
     await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider<AppController>.value(value: app),
-          ChangeNotifierProvider<TransferManager>.value(value: manager),
-        ],
+      _transferTestHost(
+        app: app,
+        manager: manager,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
@@ -698,11 +700,9 @@ void main() {
     ]);
 
     Widget host(Widget home, {GlobalKey<NavigatorState>? navKey}) =>
-        MultiProvider(
-          providers: [
-            ChangeNotifierProvider<AppController>.value(value: app),
-            ChangeNotifierProvider<TransferManager>.value(value: manager),
-          ],
+        _transferTestHost(
+          app: app,
+          manager: manager,
           child: MaterialApp(
             navigatorKey: navKey,
             localizationsDelegates: appLocalizationsDelegates,
@@ -757,11 +757,9 @@ void main() {
       manager.tasks.add(task('t$i', 'file$i.zip', status: TransferStatus.done));
     }
     await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider<AppController>.value(value: app),
-          ChangeNotifierProvider<TransferManager>.value(value: manager),
-        ],
+      _transferTestHost(
+        app: app,
+        manager: manager,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,

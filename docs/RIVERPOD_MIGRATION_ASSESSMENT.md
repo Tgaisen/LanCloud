@@ -582,6 +582,15 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > 应用入口随后通过 `transferDependenciesProvider` 注入同一依赖集合，并由
 > `transferManagerProvider` 创建应用级 `TransferManager`。Provider 不使用
 > `autoDispose`，容器负责释放；旧页面在迁移期仍通过 Provider 获得同一实例。
+>
+> 传输页随后迁为 `ConsumerStatefulWidget`：事件回调通过
+> `ref.read(transferManagerProvider)` 取得管理器，构建时通过
+> `ref.watch(transferManagerProvider)` 取得同一实例，再用
+> `ListenableBuilder` 订阅 `ChangeNotifier`。这样没有把普通 `Provider` 误当成
+> 会响应 `notifyListeners()` 的响应式状态，也保留了任务进度与状态变化的既有
+> 刷新路径。列表与条目改为显式接收管理器，不再各自从旧 Provider 读取。
+> 四个直接挂载传输页的测试文件已改用 `ProviderScope` 覆盖同一管理器实例，
+> 不再依赖 `ChangeNotifierProvider<TransferManager>`。
 
 ### 阶段 6：移除旧 Provider
 
