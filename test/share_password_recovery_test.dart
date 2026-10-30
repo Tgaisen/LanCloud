@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/api/lanzou_client.dart';
+import 'package:lancloud/core/api/lanzou_client_registry.dart';
 import 'package:lancloud/core/api/models.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/data/app_db.dart';
@@ -99,20 +100,28 @@ class _FakeApp extends AppController {
 
   @override
   LanzouClient get publicClient => _client;
+
+  LanzouClient get dialogClient => _client;
 }
 
 Future<void> _pumpFavorites(
   WidgetTester tester,
-  AppController app, {
+  _FakeApp app, {
   required Finder item,
 }) async {
   final transfers = TransferManager(app);
+  final clients = LanzouClientRegistry(
+    factory: (_) => app.dialogClient,
+  );
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = const Size(400, 720);
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [transferManagerProvider.overrideWithValue(transfers)],
+      overrides: [
+        transferManagerProvider.overrideWithValue(transfers),
+        lanzouClientRegistryProvider.overrideWithValue(clients),
+      ],
       child: ChangeNotifierProvider<AppController>.value(
         value: app,
         child: MaterialApp(
