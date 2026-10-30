@@ -13,7 +13,6 @@ import 'package:provider/provider.dart';
 
 import '../core/api/lanzou_client.dart';
 import '../core/app_controller.dart';
-import '../core/transfer/transfer_manager.dart';
 import '../core/transfer/transfer_manager_provider.dart';
 import '../l10n/l10n.dart';
 import 'app_scroll.dart';
@@ -4726,7 +4725,10 @@ Future<void> downloadShareFiles(
 }) async {
   if (urls.isEmpty || urls.length != names.length) return;
   final app = context.read<AppController>();
-  final transfers = context.read<TransferManager>();
+  final transfers = ProviderScope.containerOf(
+    context,
+    listen: false,
+  ).read(transferManagerProvider);
   final messenger = ScaffoldMessenger.of(context);
   final l10n = context.l10n;
   var added = 0;

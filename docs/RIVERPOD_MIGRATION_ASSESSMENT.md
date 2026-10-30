@@ -626,6 +626,10 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > 共享的 `downloadShareFile` 单文件下载入口随后迁入 Riverpod，首页、分享文件
 > 属性弹窗和分享文件夹菜单继续共用同一套解析、补密码与入队逻辑。批量分享下载
 > 尚未迁移；密码恢复测试的宿主已切换为 Riverpod override。
+>
+> 随后 `downloadShareFiles` 批量分享下载入口也迁入 Riverpod，进度弹窗、逐项
+> 失败计数和最终提示保持不变。至此 `common.dart` 不再直接读取旧
+> `TransferManager`。
 
 ### 阶段 6：移除旧 Provider
 
