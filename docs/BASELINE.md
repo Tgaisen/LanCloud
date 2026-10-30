@@ -2,17 +2,23 @@
 
 > 记录日期：2026-10-30。用途：给人和 AI 代理一个「改之前长什么样」的锚点。
 > 出现红灯时的第一步，是判断「本次改坏」还是「本来就红」。
+>
+> **维护约定**：谁让全量用例数或分析基线发生变化，谁负责同步本文件；
+> 数字必须标明口径（全量 / 增量），两者不可混写。
 
 ## 实测结果
 
-| 命令 | 结果 | 耗时 |
-| --- | --- | --- |
-| `tools\agent.cmd analyze`（无改动→全量） | No issues found | 冷缓存约 58 s / 热缓存约 16 s |
-| `tools\agent.cmd analyze`（1–2 个文件） | No issues found | **0.2–1.7 s**（进程启动约 7 s） |
-| `tools\agent.cmd test`（清理前全量） | **616 tests, all passed** | 约 92 s |
-| `tools\agent.cmd test`（单文件） | passed | 数秒 |
+| 命令 | 口径 | 结果 | 耗时 |
+| --- | --- | --- | --- |
+| `tools\agent.cmd analyze`（无改动→全量） | 全量 | No issues found | 冷缓存约 58 s / 热缓存约 16 s |
+| `tools\agent.cmd analyze`（1–2 个文件） | 增量 | No issues found | **0.2–1.7 s**（进程启动约 7 s） |
+| `tools\agent.cmd test`（strict 清理前） | 全量 | 616 tests, all passed | 约 92 s |
+| `tools\agent.cmd test`（strict 清理后） | 全量 | **626 tests, all passed** | 约 96 s |
+| `tools\agent.cmd test`（改过 35 个文件时） | 增量 | 236 tests, all passed | 数十秒 |
+| `tools\agent.cmd test`（单文件） | 增量 | passed | 数秒 |
 
 工具链：Flutter 3.47.7（stable）/ Dart 3.13.5 / DevTools 2.60.0。
+静态检查：`analysis_options.yaml` 已开启 `strict-casts` / `strict-inference` / `strict-raw-types`。
 
 ## 规模
 
@@ -21,29 +27,31 @@
 | `lib` Dart 文件 | 95 |
 | `lib` 总行数 | 约 4.7 万 |
 | `test` 测试文件 | 123（平铺，`<主题>_test.dart`） |
-| `test` 总行数 | 约 2.1 万 |
+| `test` 总行数 | 约 2 万 |
+| `test` 用例数 | 626 |
 | `lib/ui` 页面与组件 | 40 个平铺文件 |
 | `lib/core` | 32 个平铺文件 + 5 个子系统目录 |
 | 文案（`app_zh.arb`） | 1357 行 |
 
 ## 这个基线意味着什么
 
-- 清理前 616 个测试是**唯一的自动化安全网**：没有 `integration_test`，没有 golden test。
+- 626 个测试是**唯一的自动化安全网**：没有 `integration_test`，没有 golden test。
   所以「跑测试」不是形式，是唯一能自动发现回归的手段。
-- 全量 analyze 约 58 s、全量 test 约 92 s，增量 analyze 只要 1–2 s。
-  `tools\agent.cmd analyze|test` 会自动走增量：改完就跑这两个无参命令，
-  全量由人兜底（见 `AGENTS.md`）。
+- 全量 analyze 冷缓存约 58 s、热缓存约 16 s；全量 test 约 96 s；增量 analyze 只要 1–2 s。
+  `tools\agent.cmd analyze|test` 会自动走增量：改完就跑这两个无参命令，全量由人兜底
+  （见 `AGENTS.md`）。注意增量跑的是**受影响的子集**，不能拿它推断全量是否通过。
 - `flutter analyze` / `flutter test` 默认会隐式执行 `pub get`；沙箱内联网被拦时会直接失败。
   `tools\agent.cmd` 已内置 `--no-pub`；需要装依赖时用 `agent.cmd pubget`。
 - 插件在 Stop 时会自动跑 `dart format` + `dart analyze`，其超时（90 s）与全量 analyze
-  耗时（58 s）贴得比较近：机器忙的时候可能超时，属已知情况，不算改动失败。
+  冷缓存耗时（58 s）贴得比较近：机器忙的时候可能超时，属已知情况，不算改动失败。
+- 当前分析结果为 0 issue 是**硬基线**，不是「再看看」。新增告警要按类型修好，
+  不许用 `// ignore:` / `dynamic` 消掉（见 `AGENTS.md` 代码约定）。
 
 ## 已知偏差
 
-- 本基线对应版本 `26.1.0-pre.19`（合并 `26.1.0-pre.19` 之后重跑，仍为 0 issue）。
+- 本基线对应版本 `26.1.0-pre.19` 之后的工作区（strict 清理完成时）。
 - `pubspec.lock` 里的 SDK 注记已是 `flutter: "3.47.7"` 并已入库，不再每次 `pub get` 产生 diff。
-- 2026-10-30 已修整 strict 类型检查暴露的 20 条既有 issue，并在
-  `analysis_options.yaml` 正式启用 `strict-casts` / `strict-inference` /
-  `strict-raw-types`。
-- 清理后的 `tools\agent.cmd analyze` 为零 issue；`tools\agent.cmd test` 运行了
-  35 个受影响测试文件、236 tests，全部通过。新增 3 个回归用例，全量测试留给人工兜底。
+- 2026-10-30 修整了 strict 类型检查暴露的 20 条既有 issue（1 error + 19 warnings），
+  并在 `analysis_options.yaml` 正式启用三项 strict 开关；清理后全量 0 issue。
+- 若临时再改 `analysis_options.yaml` 加规则，issue 数会变；先把预期数量记在这里再跑，
+  避免和「本次改坏」混淆。

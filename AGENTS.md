@@ -82,6 +82,13 @@ lib/l10n/              arb + 生成文件
 - **导航**：没有路由库，不要引入 `go_router` / `auto_route`。跨页面用 `Navigator.push`。
 - **平台分支**：只走 `core/platform_support.dart`，不要在 UI 里裸写 `Platform.isAndroid`。
 - **文案**：一律 `AppLocalizations.of(context)!.xxx`，禁止硬编码用户可见字符串。
+- **不要让静态分析变红，也不要「压」掉它**：`analysis_options.yaml` 已开启
+  `strict-casts` / `strict-inference` / `strict-raw-types`，全仓当前 0 issue，这个基线要保持。
+  **禁止**为过检查而加 `// ignore:`、改成 `dynamic`、或把类型断言换成 `as dynamic`。
+  确需豁免时，`ignore` 注释必须写明具体理由，并在汇报里单独说明。
+- **JSON 解码边界**：`core/api/` 里对 payload 的显式 `as Map` / `as List` 是开发者主动断言，
+  不要为了"消除告警"去全量改成 `is` 判断——`strict-casts` 只管 `dynamic` 的隐式下转型，
+  显式 `as` 本来就不报。若要做运行时加固，只在解码入口加结构校验，不要散落到调用点。
 
 ## 不要碰
 
@@ -98,7 +105,8 @@ lib/l10n/              arb + 生成文件
 2. 跑过 `tools\agent.cmd test` 并通过；它推断不出受影响文件时会跑全量，属正常
 3. 触及 `core/api/`、`core/data/`、`core/transfer/`、`core/backup/`、`core/update/`
    的改动**必须**带测试（新增或更新）
-4. 汇报格式：**改了哪些文件 → 为什么 → 用哪条命令验证、结果如何 → 遗留风险**
+4. 若用例总数发生变化，同步 `docs/BASELINE.md` 里的用例数与耗时（标明全量/增量口径）
+5. 汇报格式：**改了哪些文件 → 为什么 → 用哪条命令验证、结果如何 → 遗留风险**
 
 没做到 1–3 就别说「完成」。
 
