@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:provider/provider.dart';
 
@@ -5,6 +8,7 @@ import '../core/app_controller.dart';
 import '../core/app_info.dart';
 import '../core/external_link.dart';
 import '../core/update/changelog.dart';
+import '../core/update/release_info.dart';
 import '../core/update/update_service.dart';
 import '../l10n/l10n.dart';
 import 'about_page.dart';
@@ -55,63 +59,78 @@ class _UpdatePageState extends State<UpdatePage> {
 
 /// 更新页正文：状态卡片 + 两个列表组。
 /// 独立页（小屏 push）与「我的」右侧详情窗格共用同一份内容。
-class UpdateContent extends StatelessWidget {
+class UpdateContent extends ConsumerWidget {
   const UpdateContent({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final app = context.watch<AppController>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final channel = context.select(
+      (AppController app) => app.settings.updateChannel,
+    );
+    final autoCheck = context.select(
+      (AppController app) => app.settings.updateAutoCheck,
+    );
+    final state = ref.watch(updateServiceProvider);
+    final status = ref.watch(updateStatusProvider);
+    final supported = ref.watch(updateSupportedProvider);
+    final updates = ref.read(updateServiceProvider.notifier);
     final l10n = context.l10n;
-    final service = app.updates;
-    return ListenableBuilder(
-      listenable: service,
-      builder: (context, _) => Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _UpdateStatusPanel(service: service),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _UpdateStatusPanel(
+          state: state,
+          status: status,
+          supported: supported,
+          check: updates.check,
+          downloadUrl: updates.downloadUrl,
+        ),
+        const SizedBox(height: 8),
+        SegmentedList(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.info_outline),
+              title: Text(l10n.updateVersionInfo),
+              subtitle: Text(l10n.aboutVersion(appVersion, appBuild)),
+              // 与关于页的「构建信息」是同一个弹窗
+              onTap: () => showBuildInfoDialog(context),
+            ),
+            ListTile(
+              leading: const Icon(Icons.article_outlined),
+              title: Text(l10n.updateChangelog),
+              trailing: const Icon(Icons.open_in_new),
+              onTap: () => openExternalUrl(Uri.parse('$projectUrl/releases')),
+            ),
+          ],
+        ),
+        // 列表组 2 只在支持检测更新的平台显示：iOS 没有安装包产物，
+        // 通道与自动检查对它没有意义（状态卡片里另有说明）。
+        if (supported) ...[
           const SizedBox(height: 8),
           SegmentedList(
             children: [
               ListTile(
-                leading: const Icon(Icons.info_outline),
-                title: Text(l10n.updateVersionInfo),
-                subtitle: Text(l10n.aboutVersion(appVersion, appBuild)),
-                // 与关于页的「构建信息」是同一个弹窗
-                onTap: () => showBuildInfoDialog(context),
+                leading: const Icon(Icons.build_outlined),
+                title: Text(l10n.updateChannel),
+                subtitle: Text(_channelName(l10n, channel)),
+                onTap: () => _pickChannel(
+                  context,
+                  context.read<AppController>(),
+                  updates,
+                ),
               ),
-              ListTile(
-                leading: const Icon(Icons.article_outlined),
-                title: Text(l10n.updateChangelog),
-                trailing: const Icon(Icons.open_in_new),
-                onTap: () => openExternalUrl(Uri.parse('$projectUrl/releases')),
+              SwitchListTile(
+                secondary: const Icon(Icons.cached_outlined),
+                title: Text(l10n.updateAutoCheck),
+                value: autoCheck,
+                onChanged: (value) => unawaited(
+                  context.read<AppController>().setUpdateAutoCheck(value),
+                ),
               ),
             ],
           ),
-          // 列表组 2 只在支持检测更新的平台显示：iOS 没有安装包产物，
-          // 通道与自动检查对它没有意义（状态卡片里另有说明）。
-          if (service.supported) ...[
-            const SizedBox(height: 8),
-            SegmentedList(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.build_outlined),
-                  title: Text(l10n.updateChannel),
-                  subtitle: Text(
-                    _channelName(l10n, app.settings.updateChannel),
-                  ),
-                  onTap: () => _pickChannel(context, app),
-                ),
-                SwitchListTile(
-                  secondary: const Icon(Icons.cached_outlined),
-                  title: Text(l10n.updateAutoCheck),
-                  value: app.settings.updateAutoCheck,
-                  onChanged: (value) => app.setUpdateAutoCheck(value),
-                ),
-              ],
-            ),
-          ],
         ],
-      ),
+      ],
     );
   }
 }
@@ -120,7 +139,11 @@ String _channelName(AppLocalizations l10n, String channel) =>
     channel == 'beta' ? l10n.updateChannelBeta : l10n.updateChannelStable;
 
 /// MD3E 单选弹窗（与设置页的选择弹窗同一套样式）：正式版 / 测试版。
-Future<void> _pickChannel(BuildContext context, AppController app) async {
+Future<void> _pickChannel(
+  BuildContext context,
+  AppController app,
+  UpdateService updates,
+) async {
   final l10n = context.l10n;
   final current = app.settings.updateChannel;
   await showDialog<void>(
@@ -146,7 +169,8 @@ Future<void> _pickChannel(BuildContext context, AppController app) async {
                     singleSelect: true,
                     onTap: () {
                       Navigator.of(dialogContext).pop();
-                      app.setUpdateChannel(value);
+                      if (current == value) return;
+                      unawaited(_setUpdateChannel(app, updates, value));
                     },
                   ),
               ],
@@ -156,6 +180,15 @@ Future<void> _pickChannel(BuildContext context, AppController app) async {
       ),
     ),
   );
+}
+
+Future<void> _setUpdateChannel(
+  AppController app,
+  UpdateService updates,
+  String value,
+) async {
+  await app.setUpdateChannel(value);
+  await updates.onChannelChanged();
 }
 
 /// 更新状态区：图标框 / 状态文本 / 动作按钮，垂直居中排列。
@@ -168,17 +201,26 @@ Future<void> _pickChannel(BuildContext context, AppController app) async {
 /// **垂直居中**排列——文本独占一整行宽度，英文等更长的文案不会和按钮挤在
 /// 一起；不套卡片容器，直接坐在页面背景上（与关于页的版本块同一处理）。
 class _UpdateStatusPanel extends StatelessWidget {
-  const _UpdateStatusPanel({required this.service});
+  const _UpdateStatusPanel({
+    required this.state,
+    required this.status,
+    required this.supported,
+    required this.check,
+    required this.downloadUrl,
+  });
 
-  final UpdateService service;
+  final UpdateState state;
+  final UpdateStatus status;
+  final bool supported;
+  final Future<bool> Function() check;
+  final Future<String> Function() downloadUrl;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final status = service.status;
-    final unsupported = !service.supported;
+    final unsupported = !supported;
 
     final String title;
     final String? subtitle;
@@ -205,15 +247,15 @@ class _UpdateStatusPanel extends StatelessWidget {
       // 「未检测更新」时如果从未检测过，连「上次检测于」都没有
       subtitle = switch (status) {
         UpdateStatus.checking => null,
-        UpdateStatus.available => service.remoteVersion,
+        UpdateStatus.available => state.cachedRelease?.version,
         UpdateStatus.failed => l10n.updateReachFailed(
-          service.failureCode ?? 'UNKNOWN',
+          state.failureCode ?? 'UNKNOWN',
         ),
         UpdateStatus.upToDate || UpdateStatus.idle =>
-          service.lastCheckAt == null
+          state.lastCheckAt == null
               ? null
               : l10n.updateLastCheckAt(
-                  formatRelativeTime(l10n, service.lastCheckAt!),
+                  formatRelativeTime(l10n, state.lastCheckAt!),
                 ),
       };
     }
@@ -245,8 +287,18 @@ class _UpdateStatusPanel extends StatelessWidget {
         // 比默认（40dp）高一档，和放大后的图标框 / 文本成套
         style: FilledButton.styleFrom(minimumSize: const Size(88, 48)),
         onPressed: status == UpdateStatus.available
-            ? () => showUpdateDialog(context, service)
-            : () => _checkManually(context, service),
+            ? () {
+                final release = state.cachedRelease;
+                if (release == null) return;
+                unawaited(
+                  showUpdateDialog(
+                    context,
+                    release: release,
+                    downloadUrl: downloadUrl,
+                  ),
+                );
+              }
+            : () => _checkManually(context),
         child: Text(switch (status) {
           UpdateStatus.available => l10n.updateAction,
           UpdateStatus.idle => l10n.updateCheck,
@@ -298,12 +350,9 @@ class _UpdateStatusPanel extends StatelessWidget {
 
   /// 手动检测：失败时补一条提示条——有效期内失败并不改变卡片状态
   ///（按需求「检测更新失败」只在失效后显示），光看卡片会以为没反应。
-  Future<void> _checkManually(
-    BuildContext context,
-    UpdateService service,
-  ) async {
+  Future<void> _checkManually(BuildContext context) async {
     final l10n = context.l10n;
-    final ok = await service.check();
+    final ok = await check();
     if (!ok && context.mounted) {
       showAppToast(context, l10n.updateFailed);
     }
@@ -446,11 +495,10 @@ class _StatusIconBox extends StatelessWidget {
 /// 更新页的「更新」按钮与全局自动提醒（update_prompt.dart 的
 /// UpdatePromptHost）共用这个弹窗。
 Future<void> showUpdateDialog(
-  BuildContext context,
-  UpdateService service,
-) async {
-  final release = service.latestRelease;
-  if (release == null) return;
+  BuildContext context, {
+  required ReleaseInfo release,
+  required Future<String> Function() downloadUrl,
+}) async {
   final l10n = context.l10n;
   await showDialog<void>(
     context: context,
@@ -487,7 +535,7 @@ Future<void> showUpdateDialog(
             // 放在点「更新」之后解析：弹窗立即打开，不卡在异步上
             onPressed: () async {
               Navigator.of(dialogContext).pop();
-              final url = await service.downloadUrl();
+              final url = await downloadUrl();
               if (url.isEmpty) return;
               await openExternalUrl(Uri.parse(url));
             },

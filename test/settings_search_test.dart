@@ -1,6 +1,8 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/update/update_service.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/profile_page.dart';
 import 'package:lancloud/ui/settings_page.dart';
@@ -21,13 +23,16 @@ Future<AppController> _pump(
   tester.view.physicalSize = size;
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
-    ChangeNotifierProvider<AppController>.value(
-      value: app,
-      child: MaterialApp(
-        localizationsDelegates: appLocalizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        locale: const Locale('zh'),
-        home: home,
+    ProviderScope(
+      overrides: [updateSettingsProvider.overrideWithValue(app.settings)],
+      child: ChangeNotifierProvider<AppController>.value(
+        value: app,
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: home,
+        ),
       ),
     ),
   );

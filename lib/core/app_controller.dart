@@ -20,7 +20,6 @@ import 'platform_support.dart';
 import 'saf_storage.dart';
 import 'shared_downloads_storage.dart';
 import 'system_motion.dart';
-import 'update/update_service.dart';
 
 /// 网盘页当前所在目录：id + 相对根目录的路径（不含"根目录"这几个字，
 /// 显示时按当前语言拼）。拖拽上传的确认条用它显示目标位置。
@@ -45,10 +44,6 @@ class AppController extends ChangeNotifier {
   final SettingsStore settings = SettingsStore();
   final AppDb db = AppDb.instance;
   final DriveCache driveCache = DriveCache();
-
-  /// 更新检测（GitHub Release）：状态供「我的 - 更新」页显示，
-  /// 启动时的自动检测见 main.dart 里的 [UpdateService.maybeAutoCheck]。
-  final UpdateService updates = UpdateService();
 
   final Map<String, LanzouClient> _clients = {};
   LanzouClient? _publicClient;
@@ -81,7 +76,6 @@ class AppController extends ChangeNotifier {
     await accounts.load();
     await settings.load();
     _applyRuntimeSettings();
-    await updates.bind(settings);
     await driveCache.bindAccount(accounts.activeUid);
     ready = true;
     notifyListeners();
@@ -142,7 +136,6 @@ class AppController extends ChangeNotifier {
     }
     await settings.load();
     _applyRuntimeSettings();
-    await updates.bind(settings);
     _clients.clear();
     await driveCache.bindAccount(accounts.activeUid);
     if (!settings.cacheFolders) driveCache.clear();
@@ -180,13 +173,11 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 切换更新通道：清掉旧通道的检测结果；开着自动检查时由服务立即重检
-  /// （见 [UpdateService.onChannelChanged]）。
+  /// 切换更新通道；检测结果由 Riverpod 更新控制器在同一交互中清理。
   Future<void> setUpdateChannel(String value) async {
     if (settings.updateChannel == value) return;
     await settings.setUpdateChannel(value);
     notifyListeners();
-    await updates.onChannelChanged();
   }
 
   Future<void> setUpdateAutoCheck(bool value) async {
@@ -373,7 +364,6 @@ class AppController extends ChangeNotifier {
     activeTab.dispose();
     driveFolderRequest.dispose();
     driveLocation.dispose();
-    updates.dispose();
     super.dispose();
   }
 

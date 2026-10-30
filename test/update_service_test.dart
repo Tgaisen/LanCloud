@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -9,6 +10,8 @@ import 'package:lancloud/core/update/changelog.dart';
 import 'package:lancloud/core/update/release_info.dart';
 import 'package:lancloud/core/update/update_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'update_test_scope_test.dart';
 
 /// 构造一条 Release 记录：tag 带 v 前缀（与发布脚本一致），预发布标记按
 /// 版本名推导（与 tools/release/publish.ps1 的预发布判定同一口径）。
@@ -42,6 +45,9 @@ DioException networkError() => DioException(
   error: const SocketException('unreachable'),
 );
 
+late UpdateFetcher _fetchReleases;
+late UpdateClock _now;
+
 Future<UpdateService> boundService({
   String channel = 'beta',
   bool autoCheck = true,
@@ -49,8 +55,14 @@ Future<UpdateService> boundService({
   final settings = SettingsStore()
     ..updateChannel = channel
     ..updateAutoCheck = autoCheck;
-  final service = UpdateService();
-  await service.bind(settings);
+  final container = createUpdateContainer(
+    settings: settings,
+    fetch: () => _fetchReleases(),
+    clock: () => _now(),
+  );
+  addTearDown(container.dispose);
+  final service = container.read(updateServiceProvider.notifier);
+  await service.initialize();
   return service;
 }
 
@@ -59,13 +71,8 @@ void main() {
 
   setUp(() {
     SharedPreferences.setMockInitialValues(<String, Object>{});
-    UpdateService.debugFetchReleases = null;
-    UpdateService.debugNow = DateTime.now;
-  });
-
-  tearDown(() {
-    UpdateService.debugFetchReleases = null;
-    UpdateService.debugNow = DateTime.now;
+    _fetchReleases = () async => const [];
+    _now = DateTime.now;
   });
 
   group('版本号比较（README 版本号规范）', () {
@@ -226,8 +233,53 @@ void main() {
   });
 
   group('检测流程', () {
+    test('状态模型：有效期内的缓存优先于本次失败，过期后才显示失败', () {
+      final checkedAt = DateTime(2026, 1, 1, 12);
+      final state = UpdateState(
+        cachedRelease: rel('99.0.0'),
+        lastCheckAt: checkedAt,
+        failureCode: 'HTTP 403',
+      );
+
+      expect(
+        state.statusAt(checkedAt.add(const Duration(hours: 11))),
+        UpdateStatus.available,
+      );
+      expect(
+        state.statusAt(checkedAt.add(const Duration(hours: 13))),
+        UpdateStatus.failed,
+      );
+      expect(state.hasUpdate, isTrue);
+    });
+
+    test('状态模型：copyWith 可显式清空可空字段', () {
+      final state = UpdateState(
+        checking: true,
+        cachedRelease: rel('99.0.0'),
+        lastCheckAt: DateTime(2026, 1, 1),
+        lastAttemptAt: DateTime(2026, 1, 1),
+        failureCode: 'TIMEOUT',
+        autoUpdateNotice: '99.0.0',
+      );
+
+      final cleared = state.copyWith(
+        checking: false,
+        clearCachedRelease: true,
+        clearLastCheckAt: true,
+        clearFailureCode: true,
+        clearAutoUpdateNotice: true,
+      );
+
+      expect(cleared.checking, isFalse);
+      expect(cleared.cachedRelease, isNull);
+      expect(cleared.lastCheckAt, isNull);
+      expect(cleared.lastAttemptAt, state.lastAttemptAt);
+      expect(cleared.failureCode, isNull);
+      expect(cleared.autoUpdateNotice, isNull);
+    });
+
     test('检测成功：有新版本 / 已是最新，12 小时后失效', () async {
-      UpdateService.debugFetchReleases = () async => [rel('99.0.0')];
+      _fetchReleases = () async => [rel('99.0.0')];
       final service = await boundService();
       expect(service.status, UpdateStatus.idle);
 
@@ -238,15 +290,15 @@ void main() {
 
       // 有效期边界：11 小时后仍有效，13 小时后失效
       final checkedAt = service.lastCheckAt!;
-      UpdateService.debugNow = () => checkedAt.add(const Duration(hours: 11));
+      _now = () => checkedAt.add(const Duration(hours: 11));
       expect(service.status, UpdateStatus.available);
-      UpdateService.debugNow = () => checkedAt.add(const Duration(hours: 13));
+      _now = () => checkedAt.add(const Duration(hours: 13));
       expect(service.status, UpdateStatus.idle);
       expect(service.inValidity, isFalse);
     });
 
     test('远端与安装版本相同 / 更旧：已是最新版本', () async {
-      UpdateService.debugFetchReleases = () async => [rel('1.0.0')];
+      _fetchReleases = () async => [rel('1.0.0')];
       final service = await boundService();
       await service.check();
       expect(service.status, UpdateStatus.upToDate);
@@ -254,7 +306,7 @@ void main() {
     });
 
     test('通道过滤生效：正式版通道不看预发布', () async {
-      UpdateService.debugFetchReleases = () async => [
+      _fetchReleases = () async => [
         rel('99.1.0-pre.1'),
         rel('1.0.0'),
       ];
@@ -266,33 +318,31 @@ void main() {
     });
 
     test('检测失败：状态与错误码，失败不占有效期（重启即回到未检测）', () async {
-      UpdateService.debugFetchReleases = () async => throw httpError(403);
+      _fetchReleases = () async => throw httpError(403);
       final service = await boundService();
       expect(await service.check(), isFalse);
       expect(service.status, UpdateStatus.failed);
       expect(service.failureCode, 'HTTP 403');
 
       // 重启（新实例 + 同一份存储）：失败状态只属于本次启动
-      final restarted = UpdateService();
-      await restarted.bind(SettingsStore());
+      final restarted = await boundService();
       expect(restarted.status, UpdateStatus.idle);
       expect(restarted.lastCheckAt, isNull);
     });
 
     test('跨重启恢复缓存：有效期内不用重新检测', () async {
-      UpdateService.debugFetchReleases = () async => [rel('99.0.0')];
+      _fetchReleases = () async => [rel('99.0.0')];
       final service = await boundService();
       await service.check();
 
-      final restarted = UpdateService();
-      await restarted.bind(SettingsStore());
+      final restarted = await boundService();
       expect(restarted.status, UpdateStatus.available);
       expect(restarted.remoteVersion, '99.0.0');
     });
 
     test('自动检测：有效期内不请求，超过 12 小时才请求', () async {
       var calls = 0;
-      UpdateService.debugFetchReleases = () async {
+      _fetchReleases = () async {
         calls++;
         return [rel('99.0.0')];
       };
@@ -305,14 +355,14 @@ void main() {
       expect(calls, 1, reason: '有效期内不重复请求');
 
       final checkedAt = service.lastCheckAt!;
-      UpdateService.debugNow = () => checkedAt.add(const Duration(hours: 13));
+      _now = () => checkedAt.add(const Duration(hours: 13));
       await service.maybeAutoCheck();
       expect(calls, 2);
     });
 
     test('自动检测：关掉开关后不请求', () async {
       var calls = 0;
-      UpdateService.debugFetchReleases = () async {
+      _fetchReleases = () async {
         calls++;
         return [rel('99.0.0')];
       };
@@ -321,9 +371,26 @@ void main() {
       expect(calls, 0);
     });
 
+    test('检测进行中消费提醒，不会被旧状态覆盖', () async {
+      _fetchReleases = () async => [rel('99.0.0')];
+      final service = await boundService();
+      await service.maybeAutoCheck();
+      expect(service.autoUpdateNotice, '99.0.0');
+
+      final completer = Completer<List<ReleaseInfo>>();
+      _fetchReleases = () => completer.future;
+      final checking = service.check();
+      service.clearAutoUpdateNotice();
+      completer.complete([rel('1.0.0')]);
+
+      expect(await checking, isTrue);
+      expect(service.autoUpdateNotice, isNull);
+      expect(service.remoteVersion, '1.0.0');
+    });
+
     test('自动检测失败后 1 小时内不重试（跨重启也生效）', () async {
       var calls = 0;
-      UpdateService.debugFetchReleases = () async {
+      _fetchReleases = () async {
         calls++;
         throw networkError();
       };
@@ -334,15 +401,14 @@ void main() {
       expect(service.lastCheckAt, isNull, reason: '失败不写入检测成功时间');
 
       // 半小时后重启：还在冷却里，不请求
-      UpdateService.debugNow = () =>
+      _now = () =>
           DateTime.now().add(const Duration(minutes: 30));
-      final restarted = UpdateService();
-      await restarted.bind(SettingsStore());
+      final restarted = await boundService();
       await restarted.maybeAutoCheck();
       expect(calls, 1);
 
       // 超过冷却：再自动检测一次
-      UpdateService.debugNow = () =>
+      _now = () =>
           DateTime.now().add(const Duration(hours: 2));
       await restarted.maybeAutoCheck();
       expect(calls, 2);
@@ -350,7 +416,7 @@ void main() {
 
     test('切换通道：清掉旧结果；开着自动检查时立即重检', () async {
       var calls = 0;
-      UpdateService.debugFetchReleases = () async {
+      _fetchReleases = () async {
         calls++;
         return [rel('99.0.0')];
       };
@@ -364,15 +430,14 @@ void main() {
       expect(calls, 1, reason: '关着自动检查就不自动重检');
 
       // 旧结果也不会从磁盘复活
-      final restarted = UpdateService();
-      await restarted.bind(SettingsStore());
+      final restarted = await boundService();
       expect(restarted.status, UpdateStatus.idle);
       expect(restarted.remoteVersion, isNull);
     });
 
     test('切换通道且开着自动检查：立即重新检测', () async {
       var calls = 0;
-      UpdateService.debugFetchReleases = () async {
+      _fetchReleases = () async {
         calls++;
         return [rel('99.0.0')];
       };
@@ -390,7 +455,7 @@ void main() {
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
       addTearDown(() => debugDefaultTargetPlatformOverride = null);
       var calls = 0;
-      UpdateService.debugFetchReleases = () async {
+      _fetchReleases = () async {
         calls++;
         return [rel('99.0.0')];
       };

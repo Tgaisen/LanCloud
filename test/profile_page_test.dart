@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/data/account_store.dart';
@@ -20,13 +21,46 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
-void main() {
-  tearDown(() => UpdateService.debugFetchReleases = null);
+import 'update_test_scope_test.dart';
 
+class _TestProviders extends StatelessWidget {
+  const _TestProviders.value({
+    required this.value,
+    required this.child,
+    this.container,
+  });
+
+  final AppController value;
+  final Widget child;
+  final ProviderContainer? container;
+
+  @override
+  Widget build(BuildContext context) {
+    final updateContainer = container;
+    if (updateContainer != null) {
+      return updateTestTree(
+        app: value,
+        container: updateContainer,
+        child: child,
+      );
+    }
+    return ProviderScope(
+      overrides: [
+        updateSettingsProvider.overrideWithValue(value.settings),
+      ],
+      child: ChangeNotifierProvider<AppController>.value(
+        value: value,
+        child: child,
+      ),
+    );
+  }
+}
+
+void main() {
   testWidgets('「我的」视图：显示账号、网页版、设置与关于', (tester) async {
     final app = AppController();
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
+      _TestProviders.value(
         value: app,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
@@ -80,7 +114,7 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
       await tester.pumpWidget(
-        ChangeNotifierProvider<AppController>.value(
+        _TestProviders.value(
           value: app,
           child: MaterialApp(
             localizationsDelegates: appLocalizationsDelegates,
@@ -115,7 +149,7 @@ void main() {
     final pager = PageController(initialPage: 2);
     addTearDown(pager.dispose);
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
+      _TestProviders.value(
         value: app,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
@@ -167,7 +201,7 @@ void main() {
     final app = AppController();
     addTearDown(app.dispose);
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
+      _TestProviders.value(
         value: app,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
@@ -287,7 +321,7 @@ void main() {
     final app = AppController();
     addTearDown(app.dispose);
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
+      _TestProviders.value(
         value: app,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
@@ -367,7 +401,7 @@ void main() {
     final app = AppController();
     addTearDown(app.dispose);
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
+      _TestProviders.value(
         value: app,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
@@ -406,7 +440,7 @@ void main() {
       final app = AppController();
       addTearDown(app.dispose);
       await tester.pumpWidget(
-        ChangeNotifierProvider<AppController>.value(
+        _TestProviders.value(
           value: app,
           child: MaterialApp(
             localizationsDelegates: appLocalizationsDelegates,
@@ -443,7 +477,7 @@ void main() {
     final app = AppController();
     addTearDown(app.dispose);
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
+      _TestProviders.value(
         value: app,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
@@ -593,7 +627,7 @@ void main() {
     final app = AppController()..settings.hideTopBar = true;
     addTearDown(app.dispose);
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
+      _TestProviders.value(
         value: app,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
@@ -626,7 +660,7 @@ void main() {
     final app = AppController();
     addTearDown(app.dispose);
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
+      _TestProviders.value(
         value: app,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
@@ -671,7 +705,7 @@ void main() {
 
   testWidgets('「我的」账号卡片：普通用户不显示等级卡片，会员等级显示', (tester) async {
     Widget tree(AppController app) =>
-        ChangeNotifierProvider<AppController>.value(
+        _TestProviders.value(
           value: app,
           child: MaterialApp(
             localizationsDelegates: appLocalizationsDelegates,
@@ -723,7 +757,7 @@ void main() {
     );
     app.accounts.activeUid = '556911';
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
+      _TestProviders.value(
         value: app,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
@@ -776,7 +810,7 @@ void main() {
     );
     app.accounts.activeUid = '556911';
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
+      _TestProviders.value(
         value: app,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
@@ -824,29 +858,35 @@ void main() {
 
   testWidgets('「更新」条目：检测到新版本时显示「检测到更新」副标题（单栏 / 两栏）', (tester) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
-    UpdateService.debugFetchReleases = () async => [
-      ReleaseInfo(
-        tag: 'v99.0.0',
-        version: '99.0.0',
-        body: '',
-        htmlUrl: '',
-        prerelease: false,
-        draft: false,
-        publishedAt: null,
-        assets: const [],
-      ),
-    ];
     final app = AppController();
     addTearDown(app.dispose);
     await app.settings.load();
-    await app.updates.bind(app.settings);
-    await app.updates.check();
-    expect(app.updates.status, UpdateStatus.available);
+    final container = createUpdateContainer(
+      settings: app.settings,
+      fetch: () async => [
+        ReleaseInfo(
+          tag: 'v99.0.0',
+          version: '99.0.0',
+          body: '',
+          htmlUrl: '',
+          prerelease: false,
+          draft: false,
+          publishedAt: null,
+          assets: const [],
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+    final updates = container.read(updateServiceProvider.notifier);
+    await updates.initialize();
+    await updates.check();
+    expect(updates.status, UpdateStatus.available);
 
     Future<void> pumpProfile() async {
       await tester.pumpWidget(
-        ChangeNotifierProvider<AppController>.value(
+        _TestProviders.value(
           value: app,
+          container: container,
           child: MaterialApp(
             localizationsDelegates: appLocalizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,

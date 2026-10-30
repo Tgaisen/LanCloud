@@ -17,21 +17,27 @@
 5. `FlutterForegroundTask.init()`（仅移动端）— 传输期间后台保活
 6. `AppController().init()` — 状态初始化入口
 7. `SystemMotion.init()`、`NotificationService.init()`、`SharedInbox`、`IncomingLinks`
-8. `BackupService.maybeAutoBackup()`、`UpdateService.maybeAutoCheck()`（均不阻塞）
-9. `runApp(MultiProvider(...))` — 注入 `AppController` + `TransferManager`
+8. `BackupService.maybeAutoBackup()`（不阻塞）
+9. 创建更新试点 `ProviderContainer`，恢复更新缓存后非阻塞执行
+   `UpdateService.maybeAutoCheck()`
+10. `runApp(UncontrolledProviderScope(...))` — Riverpod 更新作用域包裹
+    `MultiProvider`，继续注入 `AppController` + `TransferManager`
 
 ## 状态层
 
-应用级只有两个 `ChangeNotifier`，都在 `main.dart` 注入：
+旧 Provider 栈只有两个应用级 `ChangeNotifier`，都在 `main.dart` 注入；
+`core/update/` 的 `UpdateService` 是阶段 1 Riverpod 试点：
 
 | 对象 | 文件 | 说明 |
 | --- | --- | --- |
 | `AppController` | `core/app_controller.dart`（637 行） | 账号、网盘、设置等大部分状态。职责偏宽，是已知问题 |
 | `TransferManager` | `core/transfer/transfer_manager.dart` | 上传/下载任务队列 |
+| `UpdateService` | `core/update/update_service.dart` | `Notifier<UpdateState>`；更新检查、缓存、失败冷却和一次性提醒的唯一所有者 |
 
-消费现状（全仓库统计）：`context.read<…>` 约 150 处、`context.watch<…>` 约 17 处、
-`context.select<…>` **0 处**。也就是说重建粒度天然偏大 —— 新增 UI 时用 `select`
-或 `ValueListenableBuilder` 收窄订阅范围，不要继续放大。
+消费现状：`context.read<…>` 约 150 处、`context.watch<…>` 约 17 处。
+UpdateService 试点前 `context.select<…>` 为 0；更新页现在用两处 `select`
+只订阅更新通道与自动检查开关。其余新增 UI 仍应优先用 `select` 或
+`ValueListenableBuilder` 收窄订阅范围，不要继续放大。
 
 ## 导航与弹层
 

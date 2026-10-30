@@ -18,6 +18,7 @@ import 'core/share_inbox.dart';
 import 'core/system_motion.dart';
 import 'core/third_party_licenses.dart';
 import 'core/transfer/transfer_manager.dart';
+import 'core/update/update_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -98,12 +99,18 @@ Future<void> main() async {
   await IncomingLinks.instance.init();
   // 自动备份：按每天/每周频率在启动时补一次，失败只记录不打扰。
   unawaited(BackupService.of(app).maybeAutoBackup());
-  // 自动检查更新：在 12 小时有效期内不请求；失败静默（见 UpdateService）。
-  unawaited(app.updates.maybeAutoCheck());
+  // Riverpod 更新试点：沿用已加载的设置对象，先恢复缓存再非阻塞检查更新。
+  final updateContainer = ProviderContainer(
+    overrides: [updateSettingsProvider.overrideWithValue(app.settings)],
+  );
+  final updates = updateContainer.read(updateServiceProvider.notifier);
+  await updates.initialize();
+  unawaited(updates.maybeAutoCheck());
   runApp(
-    // 阶段 0：Provider 与 Riverpod 双栈共存。Riverpod 只服务正在试点的
-    // UpdateService，其余页面继续用 Provider（边界见 AGENTS.md）。
-    ProviderScope(
+    // Provider 与 Riverpod 双栈共存。Riverpod 只服务 UpdateService 试点，
+    // 其余应用状态继续用 Provider（边界见 AGENTS.md）。
+    UncontrolledProviderScope(
+      container: updateContainer,
       child: MultiProvider(
         providers: [
           ChangeNotifierProvider.value(value: app),

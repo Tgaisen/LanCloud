@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart' as riverpod;
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -355,8 +356,8 @@ class _ProfilePageState extends State<ProfilePage>
       };
 
   /// 「更新」条目的副标题：有效检测结果里发现新版本时显示「检测到更新」。
-  String? _updateSubtitle(BuildContext context, AppController app) =>
-      app.updates.status == UpdateStatus.available
+  String? _updateSubtitle(BuildContext context, UpdateStatus status) =>
+      status == UpdateStatus.available
       ? context.l10n.updateDetectedSubtitle
       : null;
 
@@ -642,10 +643,12 @@ class _ProfilePageState extends State<ProfilePage>
       SegmentedList(
         children: [
           // 自动检测到新版本时在副标题引导用户进入更新页
-          ListenableBuilder(
-            listenable: app.updates,
-            builder: (context, _) {
-              final subtitle = _updateSubtitle(context, app);
+          riverpod.Consumer(
+            builder: (context, ref, _) {
+              final subtitle = _updateSubtitle(
+                context,
+                ref.watch(updateStatusProvider),
+              );
               return ListTile(
                 leading: const Icon(Icons.cloud_done),
                 title: Text(l10n.update),
@@ -906,12 +909,14 @@ class _ProfilePageState extends State<ProfilePage>
       // 组 3：应用（分组小标题 + 更新 / 关于）
       _RailSectionLabel(l10n.appSection),
       // 自动检测到新版本时在副标题引导用户进入更新页
-      ListenableBuilder(
-        listenable: app.updates,
-        builder: (context, _) => _PaneTile(
+      riverpod.Consumer(
+        builder: (context, ref, _) => _PaneTile(
           icon: Icons.cloud_done,
           label: l10n.update,
-          subtitle: _updateSubtitle(context, app),
+          subtitle: _updateSubtitle(
+            context,
+            ref.watch(updateStatusProvider),
+          ),
           selected: _detail == _ProfileDetail.update,
           onTap: () => _select(_ProfileDetail.update),
         ),
