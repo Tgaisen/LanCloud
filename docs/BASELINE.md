@@ -105,6 +105,8 @@
 | `tools\agent.cmd test`（backupServiceProvider） | 增量 | **1 test, all passed** | 约 13 s |
 | `tools\agent.cmd test`（备份内容 provider 注入） | 增量 | **54 tests, all passed** | 约 27 s |
 | `tools\agent.cmd test`（恢复页 provider 注入） | 增量 | **13 tests, all passed** | 约 18 s |
+| `tools\agent.cmd analyze`（备份恢复消费端完成后） | 全量 | No issues found | 约 25 s |
+| `tools\agent.cmd test`（备份恢复消费端完成后） | 全量 | **720 tests, all passed** | 约 113 s |
 
 工具链：Flutter 3.47.7（stable）/ Dart 3.13.5 / DevTools 2.60.0。
 静态检查：`analysis_options.yaml` 已开启 `strict-casts` / `strict-inference` / `strict-raw-types`。
