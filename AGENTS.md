@@ -29,10 +29,15 @@ C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd help      # 全部动词
 其他动词：`pubget`、`build-apk`、`install`、`logcat`、`devices`，
 其余名字（`run`、`doctor`、`emulators`…）透传给 flutter。
 
-- **原样执行，不要追加 `| Select-Object`、`2>&1`、`;` 等修饰。** 脚本自己裁剪输出，
-  命令字符串保持不变才能命中 `~/.codex/rules/default.rules` 里的免批准规则；
-  一旦加修饰就变成新字符串，会重新弹批准，规则文件也会重新膨胀。需要更少/更多输出时
-  改脚本，不要在命令行上过滤。
+- **原样执行，不要追加 `| Select-Object`、`2>&1`、`;` 等修饰，也不要带参数。**
+  免批准规则对「整条 PowerShell 脚本」做整串相等匹配（Codex 不拆分 `pwsh -Command`
+  里的脚本），所以 `agent.cmd analyze lib\ui\x.dart` 这种带参数的写法同样不匹配，
+  会弹一次批准。日常请用无参形式——动作由脚本自己判断（看 git 改动 / 推断测试）。
+  需要更少/更多输出时改脚本，不要在命令行上过滤，否则规则文件会重新膨胀。
+- 规则文件：`~/.codex/rules/default.rules`。里面每条规则都带 `match`/`not_match`
+  内联测试，**写错会在加载时直接报错**。改完用
+  `codex execpolicy check --rules <该文件> -- <pwsh 路径> -Command "<命令>"`
+  自检，并重启 Codex 生效。新增 `agent.cmd` 动词时必须同步加一条规则。
 - 一律 `--no-pub`（脚本已内置）：隐式 `pub get` 又慢又需要联网，沙箱里会直接失败。
   确实需要装依赖时用 `agent.cmd pubget`。
 - 全量分析/测试留给人工兜底；你改完只需跑这两个无参命令（已是增量的）。
