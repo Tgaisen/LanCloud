@@ -725,6 +725,9 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > `NavigationAppearanceSettingsState.revision`，仅对尚未迁移的旧测试宿主保留
 > AppController 回退。分页、密码恢复、空状态与多选条相关增量 53 个测试文件 /
 > 299 个测试通过，并新增 1 条 Riverpod 外观 revision 回归测试。
+>
+> “显示 Cookie”设置行随后改为直接监听 `AccountState`，只随当前账号变化
+> 局部刷新；其他 `AppController` 通知不会再触发该行重建。
 
 ### 阶段 6：移除旧 Provider
 

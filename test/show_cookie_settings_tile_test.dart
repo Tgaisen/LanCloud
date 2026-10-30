@@ -1,11 +1,12 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lancloud/core/account_state.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/data/account_store.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/delegates.dart';
 import 'package:lancloud/ui/show_cookie_settings_tile.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -14,8 +15,10 @@ void main() {
     final app = AppController();
     addTearDown(app.dispose);
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
-        value: app,
+      ProviderScope(
+        overrides: [
+          accountStateProvider.overrideWithValue(app.accountState),
+        ],
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
@@ -35,7 +38,10 @@ void main() {
     app.accounts.activeUid = '556911';
     await app.setSortMode('name');
     await tester.pumpAndSettle();
+    expect(tester.widget<ListTile>(tile).enabled, isFalse);
 
+    app.accountState.notifyAccountChanged();
+    await tester.pumpAndSettle();
     expect(tester.widget<ListTile>(tile).enabled, isTrue);
   });
 }
