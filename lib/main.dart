@@ -29,6 +29,7 @@ import 'core/settings_state.dart';
 import 'core/shared_downloads_gateway.dart';
 import 'core/system_motion.dart';
 import 'core/theme_settings_state.dart';
+import 'core/transfer_connection_settings_state.dart';
 import 'core/third_party_licenses.dart';
 import 'core/transfer/transfer_manager.dart';
 import 'core/update/update_service.dart';
@@ -138,6 +139,9 @@ Future<void> main() async {
         app.notificationSettings,
       ),
       themeSettingsStateProvider.overrideWithValue(app.themeSettings),
+      transferConnectionSettingsStateProvider.overrideWithValue(
+        app.transferConnectionSettings,
+      ),
       notificationServiceProvider.overrideWithValue(
         NotificationService.instance,
       ),

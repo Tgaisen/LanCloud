@@ -346,6 +346,10 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > `ThemeSettingsState` 随后拆分：主题模式/种子、OLED、动态取色和全局动画通过
 > 独立 provider 读写同一 store。`setMotionMode` 的 `SystemMotion` 同步仍由旧
 > 控制器执行，应用根主题和 UI 消费端尚未迁移。
+>
+> `TransferConnectionSettingsState` 随后拆分：请求间隔、并发数、API 域名、UA 和
+> 上传路径收窄为独立入口。旧控制器仍负责把设置同步到 `LanzouClient` 静态运行时
+> 配置。
 
 ### 阶段 4：迁移 UI 消费端
 

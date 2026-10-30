@@ -28,6 +28,7 @@ import 'settings_state.dart';
 import 'shared_downloads_gateway.dart';
 import 'system_motion.dart';
 import 'theme_settings_state.dart';
+import 'transfer_connection_settings_state.dart';
 import 'update/update_settings_state.dart';
 
 export 'drive_state.dart' show DriveLocation;
@@ -56,6 +57,7 @@ class AppController extends ChangeNotifier {
     notificationSettings = NotificationSettingsState(settings);
     navigationAppearanceSettings = NavigationAppearanceSettingsState(settings);
     themeSettings = ThemeSettingsState(settings);
+    transferConnectionSettings = TransferConnectionSettingsState(settings);
     this.navigation.addListener(notifyListeners);
   }
 
@@ -65,6 +67,7 @@ class AppController extends ChangeNotifier {
   late final NotificationSettingsState notificationSettings;
   late final NavigationAppearanceSettingsState navigationAppearanceSettings;
   late final ThemeSettingsState themeSettings;
+  late final TransferConnectionSettingsState transferConnectionSettings;
 
   AccountStore get accounts => accountState.store;
   SettingsStore get settings => settingsState.store;
@@ -177,26 +180,26 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> setRequestInterval(int ms) async {
-    await settings.setRequestInterval(ms);
+    await transferConnectionSettings.setRequestInterval(ms);
     LanzouClient.requestInterval = Duration(milliseconds: ms);
     notifyListeners();
   }
 
   Future<void> setApiHost(String host) async {
-    await settings.setApiHost(host);
+    await transferConnectionSettings.setApiHost(host);
     // 上传接口域名由 apiBase 派生（见 LanzouClient.uploadUrl），不用单独更新
     LanzouClient.apiBase = _apiBaseFor(host);
     notifyListeners();
   }
 
   Future<void> setUserAgent(String value) async {
-    await settings.setUserAgent(value);
+    await transferConnectionSettings.setUserAgent(value);
     LanzouClient.userAgent = value;
     notifyListeners();
   }
 
   Future<void> setUploadPath(String value) async {
-    await settings.setUploadPath(value);
+    await transferConnectionSettings.setUploadPath(value);
     LanzouClient.uploadPath = settings.uploadPath;
     notifyListeners();
   }
@@ -387,12 +390,12 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> setMaxUploads(int value) async {
-    await settings.setMaxUploads(value);
+    await transferConnectionSettings.setMaxUploads(value);
     notifyListeners();
   }
 
   Future<void> setMaxDownloads(int value) async {
-    await settings.setMaxDownloads(value);
+    await transferConnectionSettings.setMaxDownloads(value);
     notifyListeners();
   }
 
