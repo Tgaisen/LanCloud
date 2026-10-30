@@ -556,6 +556,12 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 - 前后台切换、取消、重试、批量删除和通知栏进度行为不变。
 - 传输状态不会因页面销毁或 `autoDispose` 丢失。
 
+> **实施进度（2026-10-30）**：阶段 5 首个依赖边界切片已落地。
+> `TransferManager` 不再导入或持有完整 `AppController`，改为依赖
+> `TransferAppAdapter`；该接口只暴露数据库、当前账号、账号存储、设置、客户端
+> 与下载路径能力。迁移期由 `AppController` 直接实现，因此现有构造调用与运行行为
+> 不变，后续可逐项替换为独立 provider。
+
 ### 阶段 6：移除旧 Provider
 
 只有在以下条件全部满足后才执行：

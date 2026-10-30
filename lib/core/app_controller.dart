@@ -33,11 +33,12 @@ import 'shared_downloads_gateway.dart';
 import 'system_motion.dart';
 import 'theme_settings_state.dart';
 import 'transfer_connection_settings_state.dart';
+import 'transfer/transfer_app_adapter.dart';
 import 'update/update_settings_state.dart';
 
 export 'drive_state.dart' show DriveLocation;
 
-class AppController extends ChangeNotifier {
+class AppController extends ChangeNotifier implements TransferAppAdapter {
   AppController({
     SharedDownloadsGateway? sharedDownloads,
     DownloadPathService? downloadPaths,
@@ -94,8 +95,11 @@ class AppController extends ChangeNotifier {
   late final CachePageSettingsState cachePageSettings;
   late final DownloadDirectorySettingsState downloadDirectorySettings;
 
+  @override
   AccountStore get accounts => accountState.store;
+  @override
   SettingsStore get settings => settingsState.store;
+  @override
   final AppDb db = AppDb.instance;
   DriveCache get driveCache => drive.cache;
   final SharedDownloadsGateway _sharedDownloads;
@@ -397,6 +401,7 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   String? get activeUid => accounts.activeUid;
 
   Account? get activeAccount => accounts.active;
@@ -406,12 +411,14 @@ class AppController extends ChangeNotifier {
     return uid == null ? null : clientFor(uid);
   }
 
+  @override
   LanzouClient clientFor(String uid) => clientRegistry.clientFor(
     uid,
     cookie: accounts.byUid(uid)?.cookie,
   );
 
   /// 用于解析公开分享链接（不依赖登录态）。
+  @override
   LanzouClient get publicClient => clientRegistry.publicClient;
 
   Future<void> addAccountFromCookie(String rawCookie) async {
@@ -501,6 +508,7 @@ class AppController extends ChangeNotifier {
 
   /// 当前下载落盘方式。显式目录设置优先，未设置时 Android 10+ 默认走
   /// MediaStore 的公共 Downloads，Android 9 及以下退回应用专属目录。
+  @override
   Future<DownloadTargetMode> downloadTargetMode() async {
     final directory = settings.downloadDir;
     final treeUri = settings.downloadDirTree;
@@ -534,6 +542,7 @@ class AppController extends ChangeNotifier {
   ///
   /// 非空时下载走「先写到应用专属中转目录，再由原生写入授权目录」的流程，
   /// [downloadDirectory] / [uniqueSavePath] 只服务其它情况。
+  @override
   String? get safDownloadTree {
     if (!PlatformSupport.isAndroid) return null;
     final uri = settings.downloadDirTree;
@@ -541,6 +550,7 @@ class AppController extends ChangeNotifier {
   }
 
   /// SAF 模式下的下载中转文件路径；任务 id 唯一，重试时清掉同名残留。
+  @override
   Future<String> safTempFilePath(String taskId, String name) async {
     final dir = await _safTempDirectory();
     final file = File(p.join(dir.path, '$taskId${p.extension(name)}'));
@@ -648,6 +658,7 @@ class AppController extends ChangeNotifier {
     await languageClipboardSettings.setLanguage(value);
   }
 
+  @override
   Future<String> uniqueSavePath(String name) async {
     final dir = await downloadDirectory();
     var path = p.join(dir.path, name);

@@ -8,13 +8,13 @@ import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import '../../l10n/l10n.dart';
 import '../api/lanzou_client.dart';
 import '../api/models.dart';
-import '../app_controller.dart';
 import '../download_target.dart';
 import '../notifications.dart';
 import '../platform_support.dart';
 import '../saf_storage.dart';
 import '../saved_file.dart';
 import '../shared_downloads_gateway.dart';
+import 'transfer_app_adapter.dart';
 
 enum TransferKind { upload, download }
 
@@ -90,7 +90,7 @@ class TransferManager extends ChangeNotifier {
   static const int maxUploads = 1;
   static const int maxDownloads = 3;
 
-  final AppController _app;
+  final TransferAppAdapter _app;
   final NotificationService _notifications;
   final SharedDownloadsGateway _sharedDownloads;
   final List<TransferTask> tasks = [];
@@ -98,7 +98,8 @@ class TransferManager extends ChangeNotifier {
   int _seq = 0;
   bool _serviceRunning = false;
 
-  /// 测试注入：重启后重试时用来重新解析直链；默认走 [AppController.publicClient]。
+  /// 测试注入：重启后重试时用来重新解析直链；默认走
+  /// [TransferAppAdapter.publicClient]。
   @visibleForTesting
   Future<DirectFile> Function(String shareUrl, String pwd)? debugResolveShare;
 
