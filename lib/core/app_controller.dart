@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:flutter/animation.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
@@ -18,6 +17,7 @@ import 'download_target.dart';
 import 'download_path_service.dart';
 import 'drive_cache.dart';
 import 'dynamic_color_support.dart';
+import 'navigation_state.dart';
 import 'platform_support.dart';
 import 'saf_storage.dart';
 import 'shared_downloads_gateway.dart';
@@ -45,6 +45,7 @@ class AppController extends ChangeNotifier {
   AppController({
     SharedDownloadsGateway? sharedDownloads,
     DownloadPathService? downloadPaths,
+    NavigationState? navigation,
   }) : _sharedDownloads =
            sharedDownloads ?? const PlatformSharedDownloadsGateway(),
        _downloadPaths =
@@ -52,7 +53,10 @@ class AppController extends ChangeNotifier {
            PlatformDownloadPathService(
              sharedDownloads:
                  sharedDownloads ?? const PlatformSharedDownloadsGateway(),
-           );
+           ),
+       navigation = navigation ?? NavigationState() {
+    this.navigation.addListener(notifyListeners);
+  }
 
   final AccountStore accounts = AccountStore();
   final SettingsStore settings = SettingsStore();
@@ -60,31 +64,36 @@ class AppController extends ChangeNotifier {
   final DriveCache driveCache = DriveCache();
   final SharedDownloadsGateway _sharedDownloads;
   final DownloadPathService _downloadPaths;
+  final NavigationState navigation;
 
   final LanzouClientRegistry clientRegistry = LanzouClientRegistry();
 
   bool ready = false;
   bool secureStorageNeedsReauthentication = false;
-  bool selectionMode = false;
-  VoidCallback? onRequestExitSelection;
+  bool get selectionMode => navigation.selectionMode;
+
+  VoidCallback? get onRequestExitSelection =>
+      navigation.onRequestExitSelection;
+  set onRequestExitSelection(VoidCallback? handler) =>
+      navigation.onRequestExitSelection = handler;
 
   /// 网盘页注册的返回处理：返回 true 表示已消费（例如返回上一级目录）。
-  Future<bool> Function()? onDriveBack;
+  Future<bool> Function()? get onDriveBack => navigation.onDriveBack;
+  set onDriveBack(Future<bool> Function()? handler) =>
+      navigation.onDriveBack = handler;
 
   /// 「我的」页注册的返回处理：返回 true 表示已消费（退出搜索 / 关闭二级设置页）。
   /// 外壳在「非默认视图 → 回默认视图」的兜底之前先问它。
-  Future<bool> Function()? onProfileBack;
+  Future<bool> Function()? get onProfileBack => navigation.onProfileBack;
+  set onProfileBack(Future<bool> Function()? handler) =>
+      navigation.onProfileBack = handler;
 
   /// 网盘页当前是否需要自己消费返回手势（多选 / 搜索 / 已在子目录），
   /// 由外壳里的 [DrivePage] 实时上报。RootShell 用它决定返回手势交给系统
   /// （系统才会播放退回桌面的预测性返回动画）还是由 Flutter 拦截。
-  final ValueNotifier<bool> driveCanHandleBack = ValueNotifier<bool>(false);
+  ValueNotifier<bool> get driveCanHandleBack => navigation.driveCanHandleBack;
 
-  void setSelectionMode(bool value) {
-    if (selectionMode == value) return;
-    selectionMode = value;
-    notifyListeners();
-  }
+  void setSelectionMode(bool value) => navigation.setSelectionMode(value);
 
   Future<void> init() async {
     await _inspectSecureStorageUpgrade();
@@ -224,9 +233,6 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 顶栏/底栏滑动隐藏进度 0..1，由各页面的 ScrollTint 按滚动距离驱动。
-  final ValueNotifier<double> barsHide = ValueNotifier(0);
-
   /// 系统是否要求「少动效」（移除动画 / 减弱动态效果 / 读屏接管）。
   /// 由外壳在 didChangeDependencies 里同步：控制器里拿不到 MediaQuery，
   /// 但顶栏/底栏的滑出这类装饰性动画要跟着系统设置走。
@@ -246,12 +252,14 @@ class AppController extends ChangeNotifier {
         SystemMotion.touchExploration.value;
   }
 
-  /// 当前激活的 page 视图下标：页面据此把折叠的顶栏动画调出来。
-  final ValueNotifier<int> activeTab = ValueNotifier(0);
+  /// 顶栏/底栏滑动隐藏进度 0..1，由各页面按滚动距离驱动。
+  ValueNotifier<double> get barsHide => navigation.barsHide;
 
-  /// 顶栏收起进度 0..1：与底栏同一套手感，但收起距离等于顶栏自身高度，
-  /// 因此滑动时两者都与手指 1:1 跟随。
-  final ValueNotifier<double> topBarHide = ValueNotifier(0);
+  /// 当前激活的 page 视图下标。
+  ValueNotifier<int> get activeTab => navigation.activeTab;
+
+  /// 顶栏收起进度 0..1。
+  ValueNotifier<double> get topBarHide => navigation.topBarHide;
 
   /// 首页“目录打开方式 = 网盘页”时请求打开的目录 id（消费后置空）。
   final ValueNotifier<String?> driveFolderRequest = ValueNotifier(null);
@@ -304,26 +312,13 @@ class AppController extends ChangeNotifier {
     switchTab(1);
   }
 
-  late final Ticker _barsTicker = Ticker(_onBarsTick);
-  double _barsFrom = 0;
-  double _barsTo = 0;
-  double _topBarFrom = 0;
-  Curve _barsCurve = Curves.easeOutCubic;
-  Duration _barsDuration = const Duration(milliseconds: 240);
-
   /// 滚动驱动：1:1 跟随手指，立即生效并打断正在播放的程序化动画。
-  void setBarsHideFromScroll(double value) {
-    if (_barsTicker.isActive) _barsTicker.stop();
-    final target = value.clamp(0.0, 1.0);
-    if (barsHide.value != target) barsHide.value = target;
-  }
+  void setBarsHideFromScroll(double value) =>
+      navigation.setBarsHideFromScroll(value);
 
   /// 顶栏滚动驱动：1:1 跟随手指（距离由各页面的顶栏高度决定）。
-  void setTopBarHideFromScroll(double value) {
-    if (_barsTicker.isActive) _barsTicker.stop();
-    final target = value.clamp(0.0, 1.0);
-    if (topBarHide.value != target) topBarHide.value = target;
-  }
+  void setTopBarHideFromScroll(double value) =>
+      navigation.setTopBarHideFromScroll(value);
 
   /// 程序化显示/隐藏：平滑过渡。
   /// 例如加载新目录时把已收起的顶/底栏调出来，会滑动出现而不是瞬间弹出。
@@ -331,52 +326,17 @@ class AppController extends ChangeNotifier {
     double target, {
     Duration duration = const Duration(milliseconds: 240),
     Curve curve = Curves.easeOutCubic,
-  }) {
-    final to = target.clamp(0.0, 1.0);
-    // 系统要求少动效：顶栏/底栏直接到位，不做下滑
-    // （systemReduceMotion 由外壳从 MediaQuery 同步，SystemMotion 是原生读到的
-    //   动画缩放，覆盖华为等引擎看不到的 ROM）
-    if (motionReduced) {
-      _barsTicker.stop();
-      if (barsHide.value != to) barsHide.value = to;
-      if (topBarHide.value != to) topBarHide.value = to;
-      return;
-    }
-    if (to == barsHide.value && to == topBarHide.value) return;
-    _barsFrom = barsHide.value;
-    _topBarFrom = topBarHide.value;
-    _barsTo = to;
-    _barsCurve = curve;
-    _barsDuration = duration;
-    _barsTicker
-      ..stop()
-      ..start();
-  }
-
-  void _onBarsTick(Duration elapsed) {
-    final total = _barsDuration.inMicroseconds;
-    final t = total <= 0
-        ? 1.0
-        : (elapsed.inMicroseconds / total).clamp(0.0, 1.0);
-    barsHide.value =
-        (_barsFrom + (_barsTo - _barsFrom) * _barsCurve.transform(t)).clamp(
-          0.0,
-          1.0,
-        );
-    topBarHide.value =
-        (_topBarFrom + (_barsTo - _topBarFrom) * _barsCurve.transform(t)).clamp(
-          0.0,
-          1.0,
-        );
-    if (t >= 1) _barsTicker.stop();
-  }
+  }) => navigation.animateBarsHide(
+    target,
+    reduceMotion: motionReduced,
+    duration: duration,
+    curve: curve,
+  );
 
   @override
   void dispose() {
-    _barsTicker.dispose();
-    barsHide.dispose();
-    topBarHide.dispose();
-    activeTab.dispose();
+    navigation.removeListener(notifyListeners);
+    navigation.dispose();
     driveFolderRequest.dispose();
     driveLocation.dispose();
     super.dispose();

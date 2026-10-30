@@ -25,6 +25,7 @@
 | `tools\agent.cmd test`（SharedDownloadsGateway） | 增量 | **311 tests, all passed** | 约 57 s |
 | `tools\agent.cmd test`（Settings/Account store providers） | 增量 | **72 tests, all passed** | 约 12 s |
 | `tools\agent.cmd test`（DownloadPathService） | 增量 | **312 tests, all passed** | 约 59 s |
+| `tools\agent.cmd test`（NavigationState 阶段 3） | 增量 | **315 tests, all passed** | 约 61 s |
 
 工具链：Flutter 3.47.7（stable）/ Dart 3.13.5 / DevTools 2.60.0。
 静态检查：`analysis_options.yaml` 已开启 `strict-casts` / `strict-inference` / `strict-raw-types`。
@@ -37,7 +38,7 @@
 | `lib` 总行数 | 约 4.7 万 |
 | `test` 测试文件 | 123（平铺，`<主题>_test.dart`） |
 | `test` 总行数 | 约 2 万 |
-| `test` 用例数 | 644（当前总数；本次只验证了受影响增量） |
+| `test` 用例数 | 647（当前总数；本次只验证了受影响增量） |
 | `lib/ui` 页面与组件 | 40 个平铺文件 |
 | `lib/core` | 32 个平铺文件 + 5 个子系统目录 |
 | 文案（`app_zh.arb`） | 1357 行 |
@@ -84,5 +85,8 @@
   640 增至 642。
 - 2026-10-30 的 DownloadPathService 新增 2 个测试，覆盖注入目录解析和 provider
   override；增量 49 个文件 / 312 个测试通过，当前总数由 642 增至 644。
+- 2026-10-30 的 NavigationState 阶段 3 首片新增 3 个测试，覆盖状态本身、
+  `AppController` 转发和 provider override；增量 50 个文件 / 315 个测试通过，
+  当前总数由 644 增至 647。
 - 若临时再改 `analysis_options.yaml` 加规则，issue 数会变；先把预期数量记在这里再跑，
   避免和「本次改坏」混淆。

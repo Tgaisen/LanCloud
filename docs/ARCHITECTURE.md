@@ -40,6 +40,7 @@
 | `SharedDownloadsGateway` | `core/shared_downloads_gateway.dart` | 公共 Downloads 能力接口；生产实现委托原 MethodChannel，目录解析与传输保存改用注入实例 |
 | `SettingsStore` / `AccountStore` | `core/data/*_store_provider.dart` | 普通 `Provider` 暴露已加载的可写存储，不当作监听状态；更新服务已统一读取 `settingsStoreProvider` |
 | `DownloadPathService` | `core/download_path_service.dart` | 无状态默认下载目录解析；依赖 `SharedDownloadsGateway`，`AppController` 原方法签名保持不变 |
+| `NavigationState` | `core/navigation_state.dart` | 阶段 3：多选、返回处理器、`driveCanHandleBack`、当前 Tab 和顶/底栏高频进度的唯一所有者；旧 `AppController` 仅转发 |
 
 消费现状：`context.read<…>` 约 150 处、`context.watch<…>` 约 17 处。
 UpdateService 试点前 `context.select<…>` 为 0；更新页现在用两处 `select`

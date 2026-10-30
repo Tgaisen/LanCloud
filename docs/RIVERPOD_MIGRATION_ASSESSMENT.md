@@ -304,6 +304,13 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 - `AppController.notifyListeners()` 数量显著下降。
 - 所有写操作都有单一入口。
 
+> **实施进度（2026-10-30）**：阶段 3 已从 `NavigationState` 的安全子集开始。
+> 多选、网盘/「我的」返回处理器和 `driveCanHandleBack` 已移到独立状态对象，
+> 并通过 `navigationStateProvider` 暴露同一实例。`AppController` 仅保留兼容
+> getter/setter 与通知转发。当前 Tab、顶/底栏进度和 Ticker 动画也已移入该状态，
+> 仍使用 `ValueNotifier`，没有把高频帧更新改成不可变大对象。设置和账户状态尚未
+> 迁移。
+
 ### 阶段 4：迁移 UI 消费端
 
 目标：按页面逐个迁移，而不是全局查找替换。
