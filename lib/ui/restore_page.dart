@@ -364,7 +364,9 @@ class _RestorePageState extends State<RestorePage> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final app = context.watch<AppController>();
+    final hideTopBar = context.select<AppController, bool>(
+      (app) => app.settings.hideTopBar,
+    );
     final safeInsets = systemUiSafeInsets(context);
     final large = isLargeLayout(context);
     // 大屏时 Md3eBodyCard 已经让开窗口边缘与系统导航栏，内容内不再重复加。
@@ -383,7 +385,7 @@ class _RestorePageState extends State<RestorePage> {
       child: ScrollTint(
         hideDistance: safeInsets.top + kToolbarHeight + 4,
         readBarsHidden: () => _topBarHide.value,
-        onBarsHidden: app.settings.hideTopBar
+        onBarsHidden: hideTopBar
             ? (value) => _topBarHide.value = value
             : null,
         child: Builder(

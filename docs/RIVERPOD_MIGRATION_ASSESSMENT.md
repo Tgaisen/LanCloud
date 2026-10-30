@@ -506,6 +506,9 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 >
 > `DropHoverBanner` 随后把 `driveVisible` / `favoritesVisible` 收窄为双布尔
 > `context.select`；拖拽通道和当前目录仍分别由 ValueNotifier 实时驱动。
+>
+> 恢复页随后把整体 `AppController` 订阅收窄为 `hideTopBar` 单个布尔；
+> `BackupService` 仍在初始化时通过 `context.read` 注入，恢复向导状态保持页面本地。
 
 ### 阶段 5：处理 `TransferManager`
 

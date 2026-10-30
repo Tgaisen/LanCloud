@@ -63,6 +63,7 @@
 | `tools\agent.cmd test`（LanCloudApp 根主题/语言） | 增量 | **377 tests, all passed** | 约 68 s |
 | `tools\agent.cmd test`（common 共享顶栏/操作栏） | 增量 | **291 tests, all passed** | 约 61 s |
 | `tools\agent.cmd test`（DropHoverBanner） | 增量 | **12 tests, all passed** | 约 5 s |
+| `tools\agent.cmd test`（RestorePage 顶栏订阅） | 增量 | **1 test, all passed** | 约 4 s |
 
 工具链：Flutter 3.47.7（stable）/ Dart 3.13.5 / DevTools 2.60.0。
 静态检查：`analysis_options.yaml` 已开启 `strict-casts` / `strict-inference` / `strict-raw-types`。
@@ -227,5 +228,7 @@
   用例总数保持 708。
 - 2026-10-30 的 DropHoverBanner 将网盘/收藏可见性收窄为双布尔快照；增量 1 个
   文件 / 12 个测试通过，用例总数保持 708。
+- 2026-10-30 的 RestorePage 将整体 AppController 订阅收窄为 `hideTopBar` 布尔；
+  增量 1 个文件 / 1 个测试通过，用例总数保持 708。
 - 若临时再改 `analysis_options.yaml` 加规则，issue 数会变；先把预期数量记在这里再跑，
   避免和「本次改坏」混淆。
