@@ -97,6 +97,7 @@
 | `tools\agent.cmd analyze`（分享文件夹页消费端） | 增量 | No issues found | 约 17 s |
 | `tools\agent.cmd test`（分享文件夹页消费端） | 增量 | **299 tests, all passed** | 约 58 s |
 | `tools\agent.cmd test`（显示 Cookie 设置行） | 增量 | **1 test, all passed** | 约 15 s |
+| `tools\agent.cmd test`（分享文件属性弹窗） | 增量 | **8 tests, all passed** | 约 14 s |
 
 工具链：Flutter 3.47.7（stable）/ Dart 3.13.5 / DevTools 2.60.0。
 静态检查：`analysis_options.yaml` 已开启 `strict-casts` / `strict-inference` / `strict-raw-types`。
@@ -344,6 +345,9 @@
 - 2026-10-31 “显示 Cookie”设置行改为直接监听 `AccountState`；修改其他设置
   不会刷新该行，账号通知后才局部更新。增量 1 个测试文件 / 1 个测试通过，
   用例总数保持 719。
+- 2026-10-31 分享文件属性弹窗的直链解析改从 `lanzouClientRegistryProvider`
+  读取；增量 1 个测试文件 / 8 个测试通过，用例总数保持 719。收藏与下载共用
+  入口仍暂时依赖旧控制器。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release

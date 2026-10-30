@@ -1,10 +1,9 @@
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:provider/provider.dart';
 
 import '../core/api/lanzou_client.dart';
+import '../core/api/lanzou_client_registry.dart';
 import '../core/api/models.dart';
-import '../core/app_controller.dart';
 import '../core/transfer/transfer_manager.dart';
 import '../core/transfer/transfer_manager_provider.dart';
 import '../l10n/l10n.dart';
@@ -103,7 +102,7 @@ class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
   }
 
   Future<void> _fetch() async {
-    final client = context.read<AppController>().publicClient;
+    final client = ref.read(lanzouClientRegistryProvider).publicClient;
     try {
       // 属性弹窗要显示简介：分享页没有时再去下载页（/tp）兜底
       final resolved = await client.resolveFileShare(

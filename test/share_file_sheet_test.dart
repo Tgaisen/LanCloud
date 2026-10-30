@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/api/lanzou_client.dart';
+import 'package:lancloud/core/api/lanzou_client_registry.dart';
 import 'package:lancloud/core/api/models.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
@@ -39,6 +40,8 @@ class _FakeApp extends AppController {
 
   @override
   LanzouClient get publicClient => _public;
+
+  LanzouClient get sheetClient => _public;
 }
 
 /// 第一次解析（弹窗加载）立刻失败，之后的解析（点击下载）挂起等测试放行。
@@ -97,16 +100,20 @@ class _DescClient extends LanzouClient {
 
 Future<void> pumpSheet(
   WidgetTester tester,
-  AppController app, {
+  _FakeApp app, {
   TransferManager? manager,
   bool invalid = false,
   String size = '1 MB',
 }) async {
   final transfers = manager ?? TransferManager(app);
+  final clients = LanzouClientRegistry(factory: (_) => app.sheetClient);
   addTearDown(app.dispose);
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [transferManagerProvider.overrideWithValue(transfers)],
+      overrides: [
+        transferManagerProvider.overrideWithValue(transfers),
+        lanzouClientRegistryProvider.overrideWithValue(clients),
+      ],
       child: ChangeNotifierProvider<AppController>.value(
         value: app,
         child: MaterialApp(
@@ -146,7 +153,7 @@ void main() {
   // 分享文件夹浏览页里点文件弹出的这张表就是「项目菜单」：只留下载 / 复制链接 /
   // 二维码 / 收藏，「打开链接」按需求去掉（浏览器的入口在别处）。
   testWidgets('分享文件属性弹窗：没有「打开链接」，其余入口都在', (tester) async {
-    await pumpSheet(tester, AppController(), invalid: true);
+    await pumpSheet(tester, _FakeApp(), invalid: true);
 
     expect(find.text('打开链接'), findsNothing);
     expect(find.text('下载'), findsOneWidget);

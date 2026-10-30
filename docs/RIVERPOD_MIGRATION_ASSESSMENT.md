@@ -728,6 +728,10 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 >
 > “显示 Cookie”设置行随后改为直接监听 `AccountState`，只随当前账号变化
 > 局部刷新；其他 `AppController` 通知不会再触发该行重建。
+>
+> 分享文件属性弹窗自己的直链解析随后迁入
+> `lanzouClientRegistryProvider`；收藏查询和共享下载入口仍在旧控制器上，
+> 留到下一片统一迁移。
 
 ### 阶段 6：移除旧 Provider
 
