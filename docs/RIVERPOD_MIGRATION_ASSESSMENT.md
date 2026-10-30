@@ -630,6 +630,9 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > 随后 `downloadShareFiles` 批量分享下载入口也迁入 Riverpod，进度弹窗、逐项
 > 失败计数和最终提示保持不变。至此 `common.dart` 不再直接读取旧
 > `TransferManager`。
+>
+> 拖放上传入口随后迁入 Riverpod；未登录跳过、链接导入和混合内容处理顺序保持
+> 不变。此时生产代码只剩首页运行中任务数的旧 `context.select`。
 
 ### 阶段 6：移除旧 Provider
 

@@ -1,11 +1,12 @@
 import 'package:material_ui/material_ui.dart' hide Icons;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:provider/provider.dart';
 
 import '../core/api/lanzou_client.dart';
 import '../core/app_controller.dart';
 import '../core/drag_drop.dart';
 import '../core/lanzou_link.dart';
-import '../core/transfer/transfer_manager.dart';
+import '../core/transfer/transfer_manager_provider.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
@@ -296,7 +297,10 @@ Future<DropOutcome?> _handleDroppedFiles(
   }
 
   if (!context.mounted) return null;
-  final transfers = context.read<TransferManager>();
+  final transfers = ProviderScope.containerOf(
+    context,
+    listen: false,
+  ).read(transferManagerProvider);
   var uploaded = 0;
   var failed = 0;
   for (final file in files) {
