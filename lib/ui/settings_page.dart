@@ -27,6 +27,7 @@ import 'licenses_page.dart';
 import 'm3e.dart';
 import 'navigation_appearance_settings_tile.dart';
 import 'notification_settings_tile.dart';
+import 'theme_settings_tile.dart';
 
 /// 「清除数据」弹窗里可勾选的清除项。
 enum _ClearDataOption { quickAccess, recents, otherAccounts, logs, registry }
@@ -432,32 +433,8 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         subtitle: themeModeName(),
         keywords: l10n.themeModeKeywords.split(' '),
         section: SettingsSection.appearance,
-        build: (context, app) => ListTile(
-          leading: const Icon(Icons.dark_mode_outlined),
-          title: Text(context.l10n.themeMode),
-          // MD3E：行内直接放一颗 tonal 连接式按钮组，点一下即切换
-          //（按钮用短文案「系统 / 浅色 / 深色」，跟随系统只在语言弹窗里用全称）
-          subtitle: Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: M3eConnectedButtonGroup<String>(
-              values: const ['system', 'light', 'dark'],
-              selected: app.settings.themeMode,
-              onSelected: (value) => app.setThemeMode(value),
-              // 标签缩短成「系统」后回到等分宽度（占满内容区）；极窄屏下省略号兜底
-              labelOf: (value) => Text(
-                switch (value) {
-                  'light' => context.l10n.light,
-                  'dark' => context.l10n.dark,
-                  _ => context.l10n.system,
-                },
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              // 选中态只靠 tonal 强调色（够醒目，不再加对勾图标）
-              semanticLabel: context.l10n.themeMode,
-            ),
-          ),
-        ),
+        build: (context, app) =>
+            const ThemeSettingsTile(type: ThemeSettingsTileType.mode),
       ),
       _Entry(
         id: 'oled',
@@ -469,12 +446,8 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         // 才出现（等价于「当前实际是深色界面」）。
         visible: (context, app) =>
             Theme.of(context).brightness == Brightness.dark,
-        build: (context, app) => SwitchListTile(
-          secondary: const Icon(Icons.contrast),
-          title: Text(context.l10n.oled),
-          value: app.settings.oledBlack,
-          onChanged: (value) => app.setOledBlack(value),
-        ),
+        build: (context, app) =>
+            const ThemeSettingsTile(type: ThemeSettingsTileType.oledBlack),
       ),
       _Entry(
         id: 'theme_seed',

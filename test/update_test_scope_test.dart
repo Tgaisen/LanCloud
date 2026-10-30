@@ -9,6 +9,7 @@ import 'package:lancloud/core/drive_state.dart';
 import 'package:lancloud/core/language_clipboard_settings_state.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/notification_settings_state.dart';
+import 'package:lancloud/core/theme_settings_state.dart';
 import 'package:lancloud/core/update/release_info.dart';
 import 'package:lancloud/core/update/update_service.dart';
 import 'package:provider/provider.dart';
@@ -59,6 +60,7 @@ Widget appTestTree({
       navigationAppearanceSettingsStateProvider.overrideWithValue(
         app.navigationAppearanceSettings,
       ),
+      themeSettingsStateProvider.overrideWithValue(app.themeSettings),
       notificationSettingsStateProvider.overrideWithValue(
         app.notificationSettings,
       ),

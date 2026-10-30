@@ -64,8 +64,10 @@
 `CachePageSettingsState.revision` 局部刷新。关闭目录缓存时清空 `DriveCache`
 的逻辑已收拢到该状态，旧 `AppController` 只转发同一实例。“悬浮导航”“滑动切页”
 和“转场动画”迁入 `NavigationAppearanceSettingsTile`；其 revision 由旧
-`AppController` 监听转发，迁移期仍能触发外壳刷新。设置页其余条目仍由外层
-`AppController` 监听，尚未整体迁移。
+`AppController` 监听转发，迁移期仍能触发外壳刷新。“主题模式”和“纯黑深色”
+迁入 `ThemeSettingsTile`；`ThemeSettingsState.revision` 同样由旧控制器转发，
+因此根主题在应用外壳迁移前仍会立即更新。设置页其余条目仍由外层 `AppController`
+监听，尚未整体迁移。
 
 ## 导航与弹层
 

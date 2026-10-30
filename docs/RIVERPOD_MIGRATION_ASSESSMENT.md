@@ -424,6 +424,11 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > `NavigationAppearanceSettingsTile`。`NavigationAppearanceSettingsState.revision`
 > 由旧 `AppController` 监听并转发，因此直属 Riverpod 写入仍会刷新尚未迁移的外壳；
 > 控制器不复制字段或写入状态。设置页外层依赖仍未移除。
+>
+> “主题模式”和“纯黑深色”随后迁入 `ThemeSettingsTile`，通过
+> `ThemeSettingsState.revision` 局部刷新。旧控制器监听该 revision 并转发通知，
+> 使根 `MaterialApp` 在应用外壳尚未迁移时继续即时响应主题变化。主题色弹窗涉及
+> 动态取色探测，暂未迁移。
 
 ### 阶段 5：处理 `TransferManager`
 

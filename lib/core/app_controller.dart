@@ -68,6 +68,7 @@ class AppController extends ChangeNotifier {
     downloadDirectorySettings = DownloadDirectorySettingsState(settings);
     this.navigation.addListener(notifyListeners);
     navigationAppearanceSettings.revision.addListener(notifyListeners);
+    themeSettings.revision.addListener(notifyListeners);
   }
 
   final AccountState accountState;
@@ -342,6 +343,7 @@ class AppController extends ChangeNotifier {
   void dispose() {
     navigation.removeListener(notifyListeners);
     navigationAppearanceSettings.revision.removeListener(notifyListeners);
+    themeSettings.revision.removeListener(notifyListeners);
     navigation.dispose();
     drive.dispose();
     super.dispose();
@@ -622,7 +624,6 @@ class AppController extends ChangeNotifier {
 
   Future<void> setThemeMode(String mode) async {
     await themeSettings.setThemeMode(mode);
-    notifyListeners();
   }
 
   /// 设置页「全局动画」：auto / on / off（见 [SystemMotion.motionMode]）。
@@ -634,13 +635,11 @@ class AppController extends ChangeNotifier {
 
   Future<void> setOledBlack(bool value) async {
     await themeSettings.setOledBlack(value);
-    notifyListeners();
   }
 
   /// 动态取色（跟随系统壁纸，Android 12+）。
   Future<void> setDynamicColor(bool value) async {
     await themeSettings.setDynamicColor(value);
-    notifyListeners();
   }
 
   /// 复制到蓝奏云分享链接时是否提示打开。
@@ -662,7 +661,6 @@ class AppController extends ChangeNotifier {
 
   Future<void> setThemeSeed(int value) async {
     await themeSettings.setThemeSeed(value);
-    notifyListeners();
   }
 
   Future<void> setLanguage(String value) async {
