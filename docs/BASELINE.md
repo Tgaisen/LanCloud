@@ -94,6 +94,8 @@
 | `tools\agent.cmd test`（阶段 4 消费端完成后） | 全量 | **707 tests, all passed** | 约 113 s |
 | `tools\agent.cmd analyze`（阶段 5 消费端完成后） | 全量 | No issues found | 约 31 s |
 | `tools\agent.cmd test`（阶段 5 消费端完成后） | 全量 | **715 tests, all passed** | 约 106 s |
+| `tools\agent.cmd analyze`（分享文件夹页消费端） | 增量 | No issues found | 约 17 s |
+| `tools\agent.cmd test`（分享文件夹页消费端） | 增量 | **299 tests, all passed** | 约 58 s |
 
 工具链：Flutter 3.47.7（stable）/ Dart 3.13.5 / DevTools 2.60.0。
 静态检查：`analysis_options.yaml` 已开启 `strict-casts` / `strict-inference` / `strict-raw-types`。
@@ -106,7 +108,7 @@
 | `lib` 总行数 | 约 4.4 万 |
 | `test` 测试文件 | 155（平铺，`<主题>_test.dart`） |
 | `test` 总行数 | 约 2.1 万 |
-| `test` 用例数 | 718（当前总数；阶段 6 准备已新增 3 条测试） |
+| `test` 用例数 | 719（当前总数；阶段 6 准备已新增 4 条测试） |
 | `lib/ui` 页面与组件 | 54 个平铺文件 |
 | `lib/core` | 32 个平铺文件 + 5 个子系统目录 |
 | 文案（`app_zh.arb`） | 1357 行 |
@@ -334,6 +336,10 @@
   / 293 个测试通过，当前总数由 717 增至 718。
 - 2026-10-30 关于页和协议 / 首启页测试清理旧 Provider；增量 2 个测试文件 /
   7 个测试通过，用例总数保持 718。
+- 2026-10-31 分享文件夹页、提取码弹窗和 `BatchActionBar` 改为 Riverpod 消费；
+  `ShareFolderPage` 的公开客户端、收藏数据库和“自动加载全部页面”设置均从
+  provider 读取。新增 1 条 `BatchActionBar` Riverpod 外观 revision 测试；增量
+  53 个测试文件 / 299 个测试通过，当前总数由 718 增至 719。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release

@@ -717,6 +717,14 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > “备份选项”页与解锁弹窗的测试随后也改为直接构造
 > `SettingsStore + NavigationState + NavigationAppearanceSettingsState`，
 > 不再通过 AppController 提供顶栏依赖。
+>
+> 分享文件夹页随后迁入 Riverpod 消费端：公开客户端改从
+> `lanzouClientRegistryProvider` 读取，收藏写入改从 `appDbProvider` 读取，
+> “自动加载全部页面”改从 `cachePageSettingsStateProvider` 读取；文件和文件夹
+> 提取码弹窗也使用同一客户端注册表。共享 `BatchActionBar` 改为优先订阅
+> `NavigationAppearanceSettingsState.revision`，仅对尚未迁移的旧测试宿主保留
+> AppController 回退。分页、密码恢复、空状态与多选条相关增量 53 个测试文件 /
+> 299 个测试通过，并新增 1 条 Riverpod 外观 revision 回归测试。
 
 ### 阶段 6：移除旧 Provider
 
