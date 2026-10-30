@@ -1,12 +1,14 @@
 import 'dart:async';
 
 import 'package:material_ui/material_ui.dart' hide Icons;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/api/lanzou_client.dart';
 import 'package:lancloud/core/api/models.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/data/app_db.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
+import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/delegates.dart';
 import 'package:lancloud/ui/app_icons.dart' as app_icons;
@@ -104,23 +106,21 @@ Future<void> _pumpFavorites(
   AppController app, {
   required Finder item,
 }) async {
+  final transfers = TransferManager(app);
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = const Size(400, 720);
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider<AppController>.value(value: app),
-        // 文件属性弹窗要读下载状态
-        ChangeNotifierProvider<TransferManager>.value(
-          value: TransferManager(app),
+    ProviderScope(
+      overrides: [transferManagerProvider.overrideWithValue(transfers)],
+      child: ChangeNotifierProvider<AppController>.value(
+        value: app,
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const FavoritesPage(),
         ),
-      ],
-      child: MaterialApp(
-        localizationsDelegates: appLocalizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        locale: const Locale('zh'),
-        home: const FavoritesPage(),
       ),
     ),
   );
@@ -308,29 +308,29 @@ void main() {
     final manager = TransferManager(app);
     var asked = 0;
     await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider<AppController>.value(value: app),
-          ChangeNotifierProvider<TransferManager>.value(value: manager),
-        ],
-        child: MaterialApp(
-          localizationsDelegates: appLocalizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          locale: const Locale('zh'),
-          home: Scaffold(
-            body: Builder(
-              builder: (context) => TextButton(
-                onPressed: () => downloadShareFile(
-                  context,
-                  url: 'https://example.com/i1',
-                  pwd: 'oldpass',
-                  showLoading: false,
-                  askPassword: () async {
-                    asked += 1;
-                    return 'newpass';
-                  },
+      ProviderScope(
+        overrides: [transferManagerProvider.overrideWithValue(manager)],
+        child: ChangeNotifierProvider<AppController>.value(
+          value: app,
+          child: MaterialApp(
+            localizationsDelegates: appLocalizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            locale: const Locale('zh'),
+            home: Scaffold(
+              body: Builder(
+                builder: (context) => TextButton(
+                  onPressed: () => downloadShareFile(
+                    context,
+                    url: 'https://example.com/i1',
+                    pwd: 'oldpass',
+                    showLoading: false,
+                    askPassword: () async {
+                      asked += 1;
+                      return 'newpass';
+                    },
+                  ),
+                  child: const Text('下载'),
                 ),
-                child: const Text('下载'),
               ),
             ),
           ),

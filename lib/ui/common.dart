@@ -6,6 +6,7 @@ import 'package:flutter/gestures.dart';
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_auth_android/local_auth_android.dart';
 import 'package:local_auth_darwin/local_auth_darwin.dart';
 import 'package:provider/provider.dart';
@@ -13,6 +14,7 @@ import 'package:provider/provider.dart';
 import '../core/api/lanzou_client.dart';
 import '../core/app_controller.dart';
 import '../core/transfer/transfer_manager.dart';
+import '../core/transfer/transfer_manager_provider.dart';
 import '../l10n/l10n.dart';
 import 'app_scroll.dart';
 import 'app_icons.dart';
@@ -4650,7 +4652,10 @@ Future<bool> downloadShareFile(
   Future<String?> Function()? askPassword,
 }) async {
   final app = context.read<AppController>();
-  final transfers = context.read<TransferManager>();
+  final transfers = ProviderScope.containerOf(
+    context,
+    listen: false,
+  ).read(transferManagerProvider);
   final navigator = Navigator.of(context);
   final messenger = ScaffoldMessenger.of(context);
   final l10n = context.l10n;

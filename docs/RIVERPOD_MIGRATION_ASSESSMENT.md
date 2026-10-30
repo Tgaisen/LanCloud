@@ -622,6 +622,10 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > 分享文件夹页的条目菜单随后改为通过当前 `ProviderScope` 读取下载标记，
 > “已加入下载”时仍会禁用菜单下载项。分页和顶栏测试宿主已改用 Riverpod
 > override，现有菜单与失效文件用例继续覆盖实际路径。
+>
+> 共享的 `downloadShareFile` 单文件下载入口随后迁入 Riverpod，首页、分享文件
+> 属性弹窗和分享文件夹菜单继续共用同一套解析、补密码与入队逻辑。批量分享下载
+> 尚未迁移；密码恢复测试的宿主已切换为 Riverpod override。
 
 ### 阶段 6：移除旧 Provider
 
