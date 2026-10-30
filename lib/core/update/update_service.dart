@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../app_info.dart';
 import '../app_log_provider.dart';
 import '../data/settings_store.dart';
+import '../data/settings_store_provider.dart';
 import '../platform_support.dart';
 import 'release_info.dart';
 import 'update_state.dart';
@@ -20,11 +21,6 @@ typedef UpdateClock = DateTime Function();
 
 /// 可注入的 Release 拉取函数，测试无需访问真实网络。
 typedef UpdateFetcher = Future<List<ReleaseInfo>> Function();
-
-/// 更新服务读取的现有设置对象；生产环境由 `main()` 覆盖成已加载的实例。
-final updateSettingsProvider = Provider<SettingsStore>((ref) {
-  throw StateError('updateSettingsProvider 必须由应用入口覆盖');
-});
 
 /// 更新服务的时间源。
 final updateClockProvider = Provider<UpdateClock>((ref) => DateTime.now);
@@ -82,7 +78,7 @@ class UpdateService extends Notifier<UpdateState> {
 
   bool _initialized = false;
 
-  SettingsStore get _settings => ref.read(updateSettingsProvider);
+  SettingsStore get _settings => ref.read(settingsStoreProvider);
 
   DateTime get _now => ref.read(updateClockProvider)();
 

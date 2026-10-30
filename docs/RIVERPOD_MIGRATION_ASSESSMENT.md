@@ -271,7 +271,8 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > `notificationServiceProvider` 注入 `TransferManager`，进度与完成提醒不再直接
 > 读取单例。Android 公共 Downloads 能力已抽成 `SharedDownloadsGateway`，并由
 > `AppController` 与 `TransferManager` 构造注入；其余桌面目录和持久化接口尚未
-> 迁移。
+> 迁移。`SettingsStore` 与 `AccountStore` 已通过普通 Provider 暴露入口，
+> `UpdateService` 的专用设置 provider 已移除并统一读取 `settingsStoreProvider`。
 
 ### 阶段 3：拆分可监听状态
 

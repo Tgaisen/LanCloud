@@ -13,7 +13,9 @@ import 'core/app_log.dart';
 import 'core/app_log_provider.dart';
 import 'core/backup/backup_service.dart';
 import 'core/api/lanzou_client_registry.dart';
+import 'core/data/account_store_provider.dart';
 import 'core/data/app_db_provider.dart';
+import 'core/data/settings_store_provider.dart';
 import 'core/incoming_links.dart';
 import 'core/notifications.dart';
 import 'core/notifications_provider.dart';
@@ -111,11 +113,12 @@ Future<void> main() async {
       appDbProvider.overrideWithValue(app.db),
       appLogProvider.overrideWithValue(AppLog.instance),
       lanzouClientRegistryProvider.overrideWithValue(app.clientRegistry),
+      accountStoreProvider.overrideWithValue(app.accounts),
       notificationServiceProvider.overrideWithValue(
         NotificationService.instance,
       ),
       sharedDownloadsGatewayProvider.overrideWithValue(sharedDownloads),
-      updateSettingsProvider.overrideWithValue(app.settings),
+      settingsStoreProvider.overrideWithValue(app.settings),
     ],
   );
   final transfers = TransferManager(

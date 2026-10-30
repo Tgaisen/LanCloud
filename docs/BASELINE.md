@@ -23,6 +23,7 @@
 | `tools\agent.cmd test`（AppLog provider） | 增量 | **339 tests, all passed** | 约 59 s |
 | `tools\agent.cmd test`（NotificationService provider） | 增量 | **115 tests, all passed** | 约 25 s |
 | `tools\agent.cmd test`（SharedDownloadsGateway） | 增量 | **311 tests, all passed** | 约 57 s |
+| `tools\agent.cmd test`（Settings/Account store providers） | 增量 | **72 tests, all passed** | 约 12 s |
 
 工具链：Flutter 3.47.7（stable）/ Dart 3.13.5 / DevTools 2.60.0。
 静态检查：`analysis_options.yaml` 已开启 `strict-casts` / `strict-inference` / `strict-raw-types`。
@@ -35,7 +36,7 @@
 | `lib` 总行数 | 约 4.7 万 |
 | `test` 测试文件 | 123（平铺，`<主题>_test.dart`） |
 | `test` 总行数 | 约 2 万 |
-| `test` 用例数 | 640（当前总数；本次只验证了受影响增量） |
+| `test` 用例数 | 642（当前总数；本次只验证了受影响增量） |
 | `lib/ui` 页面与组件 | 40 个平铺文件 |
 | `lib/core` | 32 个平铺文件 + 5 个子系统目录 |
 | 文案（`app_zh.arb`） | 1357 行 |
@@ -77,5 +78,8 @@
 - 2026-10-30 的 SharedDownloadsGateway 新增 3 个测试，覆盖注入路径解析、模式
   查询和 provider override；增量 49 个文件 / 311 个测试通过，当前总数由 637
   增至 640。
+- 2026-10-30 的 Settings/Account store provider 新增 2 个测试，并把更新服务
+  统一到 `settingsStoreProvider`；增量 8 个文件 / 72 个测试通过，当前总数由
+  640 增至 642。
 - 若临时再改 `analysis_options.yaml` 加规则，issue 数会变；先把预期数量记在这里再跑，
   避免和「本次改坏」混淆。

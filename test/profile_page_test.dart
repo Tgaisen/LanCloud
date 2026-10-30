@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/data/account_store.dart';
+import 'package:lancloud/core/data/settings_store_provider.dart';
 import 'package:lancloud/core/update/release_info.dart';
 import 'package:lancloud/core/update/update_service.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
@@ -46,7 +47,7 @@ class _TestProviders extends StatelessWidget {
     }
     return ProviderScope(
       overrides: [
-        updateSettingsProvider.overrideWithValue(value.settings),
+        settingsStoreProvider.overrideWithValue(value.settings),
       ],
       child: ChangeNotifierProvider<AppController>.value(
         value: value,

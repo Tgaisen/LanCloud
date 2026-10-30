@@ -4,8 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/app.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/data/account_store.dart';
+import 'package:lancloud/core/data/settings_store_provider.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
-import 'package:lancloud/core/update/update_service.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/app_icons.dart' as app_icons;
 import 'package:lancloud/ui/common.dart';
@@ -111,7 +111,7 @@ void main() {
     final transfers = TransferManager(app);
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [updateSettingsProvider.overrideWithValue(app.settings)],
+        overrides: [settingsStoreProvider.overrideWithValue(app.settings)],
         child: MultiProvider(
           providers: [
             ChangeNotifierProvider<AppController>.value(value: app),

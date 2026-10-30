@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/data/settings_store.dart';
+import 'package:lancloud/core/data/settings_store_provider.dart';
 import 'package:lancloud/core/update/release_info.dart';
 import 'package:lancloud/core/update/update_service.dart';
 import 'package:provider/provider.dart';
@@ -18,7 +19,7 @@ ProviderContainer createUpdateContainer({
 }) {
   return ProviderContainer(
     overrides: [
-      updateSettingsProvider.overrideWithValue(settings),
+      settingsStoreProvider.overrideWithValue(settings),
       updateFetcherProvider.overrideWithValue(fetch),
       if (clock != null) updateClockProvider.overrideWithValue(clock),
     ],
