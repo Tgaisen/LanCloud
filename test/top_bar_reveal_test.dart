@@ -1,6 +1,8 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/scroll_tint.dart';
 import 'package:provider/provider.dart';
@@ -294,5 +296,37 @@ void main() {
     await tester.pumpAndSettle();
     expect(barTop(tester), greaterThan(-0.5));
     app.dispose();
+  });
+
+  testWidgets('独立页面顶栏从 Riverpod 导航外观状态读取收起开关', (tester) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final app = AppController();
+    addTearDown(app.dispose);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          navigationAppearanceSettingsStateProvider.overrideWithValue(
+            app.navigationAppearanceSettings,
+          ),
+        ],
+        child: const MaterialApp(home: ScaffoldProbePage()),
+      ),
+    );
+    final state = tester.state<ScaffoldProbePageState>(
+      find.byType(ScaffoldProbePage),
+    );
+    await tester.pumpAndSettle();
+
+    state.scroll.jumpTo(kToolbarHeight);
+    await tester.pumpAndSettle();
+    expect(barTop(tester), greaterThan(-0.5));
+
+    await app.navigationAppearanceSettings.setHideTopBar(true);
+    await tester.pumpAndSettle();
+    state.scroll.jumpTo(0);
+    await tester.pumpAndSettle();
+    state.scroll.jumpTo(kToolbarHeight);
+    await tester.pumpAndSettle();
+    expect(barTop(tester), -kToolbarHeight);
   });
 }

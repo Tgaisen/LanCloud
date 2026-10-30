@@ -83,6 +83,9 @@ Riverpod 读取应用级 `TransferManager`，并通过 `ListenableBuilder` 保�
 但暂时保留 `provider` 依赖、根控制器注入和现有状态所有权，不执行最终移除。
 登录页已改用 `accountLoginProvider` 和 `accountStateProvider`；其测试宿主仍给
 尚未迁移的 `RestorePage` 子路由保留 AppController Provider。
+共享 `TopBarOverlay` / `TopBarOverlayScaffold` 已优先从
+`NavigationAppearanceSettingsState.revision` 和 `NavigationState` 读取顶栏收起
+状态；缺少 Riverpod 应用级覆盖的旧测试宿主暂时回退 AppController。
 `UpdateContent` 已不再读取 `AppController`，更新状态与更新设置均从 Riverpod
 读取；设置 store 的变更通过局部 revision 触发。其余新增 UI 仍应优先用
 `select` 或 `ValueListenableBuilder` 收窄订阅范围，不要继续放大。

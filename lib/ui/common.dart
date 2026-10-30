@@ -7,12 +7,15 @@ import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show ProviderException;
 import 'package:local_auth_android/local_auth_android.dart';
 import 'package:local_auth_darwin/local_auth_darwin.dart';
 import 'package:provider/provider.dart';
 
 import '../core/api/lanzou_client.dart';
 import '../core/app_controller.dart';
+import '../core/navigation_appearance_settings_state.dart';
+import '../core/navigation_state.dart';
 import '../core/transfer/transfer_manager_provider.dart';
 import '../l10n/l10n.dart';
 import 'app_scroll.dart';
@@ -1114,16 +1117,41 @@ class TopBarOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    try {
+      final container = ProviderScope.containerOf(context);
+      final appearance = container.read(
+        navigationAppearanceSettingsStateProvider,
+      );
+      final hide =
+          progress ?? container.read(navigationStateProvider).topBarHide;
+      return ListenableBuilder(
+        listenable: appearance.revision,
+        builder: (context, _) =>
+            _buildOverlay(context, appearance.hideTopBar, hide),
+      );
+    } on StateError {
+      // 迁移期兼容尚未挂 ProviderScope 的旧测试宿主。
+    } on ProviderException {
+      // ProviderScope 存在但应用级状态未覆盖时，同样回退旧测试宿主。
+    }
     final app = context.read<AppController>();
-    final hideTopBar = context.select<AppController, bool>(
-      (app) => app.settings.hideTopBar,
+    return _buildOverlay(
+      context,
+      context.select<AppController, bool>((app) => app.settings.hideTopBar),
+      progress ?? app.topBarHide,
     );
+  }
+
+  Widget _buildOverlay(
+    BuildContext context,
+    bool hideTopBar,
+    ValueListenable<double> hide,
+  ) {
     return ValueListenableBuilder<double>(
-      // 顶栏用独立的收起进度（距离 = 顶栏自身高度，才能 1:1 跟手）
-      valueListenable: progress ?? app.topBarHide,
-      builder: (context, hide, _) {
+      valueListenable: hide,
+      builder: (context, value, _) {
         // 只有开启「顶栏收起」时才跟随收起进度
-        final t = hideTopBar ? hide.clamp(0.0, 1.0) : 0.0;
+        final t = hideTopBar ? value.clamp(0.0, 1.0) : 0.0;
         return IgnorePointer(
           ignoring: t >= 0.999,
           child: Transform.translate(
@@ -1254,8 +1282,25 @@ class _TopBarOverlayScaffoldState extends State<TopBarOverlayScaffold> {
   /// 页面没传 [TopBarOverlayScaffold.controller] 时兜一个：快速滑动条
   /// 必须和滚动视图共用同一个 controller 才能拖拽。
   final ScrollController _fallbackScroll = ScrollController();
+  NavigationAppearanceSettingsState? _appearance;
 
   ScrollController get _scroll => widget.controller ?? _fallbackScroll;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    try {
+      _appearance = ProviderScope.containerOf(
+        context,
+      ).read(navigationAppearanceSettingsStateProvider);
+    } on StateError {
+      // 迁移期兼容尚未挂 ProviderScope 的旧测试宿主。
+      _appearance = null;
+    } on ProviderException {
+      // ProviderScope 存在但应用级状态未覆盖时，同样回退旧测试宿主。
+      _appearance = null;
+    }
+  }
 
   @override
   void dispose() {
@@ -1266,9 +1311,23 @@ class _TopBarOverlayScaffoldState extends State<TopBarOverlayScaffold> {
 
   @override
   Widget build(BuildContext context) {
-    final hideTopBar = context.select<AppController, bool>(
-      (app) => app.settings.hideTopBar,
+    final appearance = _appearance;
+    if (appearance == null) {
+      return _buildScaffold(
+        context,
+        context.select<AppController, bool>(
+          (app) => app.settings.hideTopBar,
+        ),
+      );
+    }
+    return ValueListenableBuilder<int>(
+      valueListenable: appearance.revision,
+      builder: (context, _, _) =>
+          _buildScaffold(context, appearance.hideTopBar),
     );
+  }
+
+  Widget _buildScaffold(BuildContext context, bool hideTopBar) {
     final scheme = Theme.of(context).colorScheme;
     final topInset =
         MediaQuery.paddingOf(context).top + widget.appBar.preferredSize.height;

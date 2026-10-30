@@ -695,6 +695,13 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > 恢复流程通过 `accountStateProvider` 读取当前账号。`LoginPage` 本身已不再
 > 导入或读取 `AppController`。由于恢复流程仍会进入尚未迁移的 `RestorePage`，
 > 登录页测试宿主在 `ProviderScope` 外暂时保留 AppController Provider。
+>
+> 共享顶栏随后迁移：`TopBarOverlayScaffold` 从
+> `navigationAppearanceSettingsStateProvider` 读取 `hideTopBar`，并通过
+> revision 局部刷新；`TopBarOverlay` 在页面未传进度时从
+> `navigationStateProvider` 读取外壳顶栏进度。两者在没有应用级 Riverpod
+> 覆盖的旧测试宿主中才回退 AppController，并新增一条无 AppController Provider
+> 的 Riverpod-only 回归测试。
 
 ### 阶段 6：移除旧 Provider
 

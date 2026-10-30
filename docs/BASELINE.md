@@ -88,6 +88,7 @@
 | `tools\agent.cmd test`（阶段 5 最终收尾 HEAD） | 全量 | **715 tests, all passed** | 约 111 s |
 | `tools\agent.cmd test`（阶段 6 准备首个切片） | 增量 | **366 tests, all passed** | 约 66 s |
 | `tools\agent.cmd test`（登录页消费端） | 增量 | **16 tests, all passed** | 约 17 s |
+| `tools\agent.cmd test`（共享顶栏消费端） | 增量 | **293 tests, all passed** | 约 75 s |
 | `tools\agent.cmd analyze`（阶段 4 消费端完成后） | 全量 | No issues found | 约 27 s |
 | `tools\agent.cmd test`（阶段 4 消费端完成后） | 全量 | **707 tests, all passed** | 约 113 s |
 | `tools\agent.cmd analyze`（阶段 5 消费端完成后） | 全量 | No issues found | 约 31 s |
@@ -104,7 +105,7 @@
 | `lib` 总行数 | 约 4.4 万 |
 | `test` 测试文件 | 155（平铺，`<主题>_test.dart`） |
 | `test` 总行数 | 约 2.1 万 |
-| `test` 用例数 | 717（当前总数；阶段 6 准备已新增 2 条登录服务测试） |
+| `test` 用例数 | 718（当前总数；阶段 6 准备已新增 3 条测试） |
 | `lib/ui` 页面与组件 | 54 个平铺文件 |
 | `lib/core` | 32 个平铺文件 + 5 个子系统目录 |
 | 文案（`app_zh.arb`） | 1357 行 |
@@ -328,6 +329,8 @@
 - 2026-10-30 登录页消费端迁入 Riverpod；增量 2 个测试文件 / 16 个测试通过，
   用例总数保持 717。`LoginPage` 已无 AppController 读取；其测试宿主仅为尚未
   迁移的 `RestorePage` 保留旧 Provider。
+- 2026-10-30 共享顶栏消费端迁入 Riverpod 并保留旧测试回退；增量 51 个测试文件
+  / 293 个测试通过，当前总数由 717 增至 718。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release
