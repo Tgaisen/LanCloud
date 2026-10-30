@@ -658,6 +658,24 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > 最后两个仍注册旧传输 Provider 的测试宿主（分享文件属性弹窗、应用外壳）也已
 > 切换为 `ProviderScope` override。至此生产代码、启动装配和测试宿主都不再注册
 > `ChangeNotifierProvider<TransferManager>`。
+>
+> **阶段 6 准入审计（2026-10-30）**：
+>
+> - 已完成：传输管理器只由 Riverpod 创建和读取；`ProviderScope` 非
+>   `autoDispose`，启动时主动预热；高频进度继续使用现有通知通道。
+> - 未满足：生产代码仍有 19 个文件导入 `provider`，含 119 处
+>   `context.read<AppController>` 和 11 处 `context.select<AppController>`；
+>   `main.dart` 仍注册 `ChangeNotifierProvider<AppController>`。
+> - 未满足：测试仍有 32 个文件、55 处 AppController Provider 注册。
+> - 未满足：Windows 传输页滚动和拖放可触发 Flutter 上游 UIA 语义树崩溃，
+>   当前稳定版 3.47.9 未包含修复 PR #193372。
+> - 未满足：当前环境无法完成 iOS 启动、返回手势、后台传输和备份恢复人工验收。
+> - 自动化盲区：项目仍无 `integration_test` 和 golden test；715 个测试主要覆盖
+>   Dart/Widget 层，无法发现上述 Windows 原生 UIA 崩溃。
+>
+> 结论：阶段 5 已完成；阶段 6 不直接进入。先按模块拆分迁移
+> `AppController` 的 Provider 消费面，并等待包含 #193372 的 Flutter 版本完成
+> Windows 复验。iOS 验收若长期无设备，需要明确记录例外后才能移除 Provider。
 
 ### 阶段 6：移除旧 Provider
 

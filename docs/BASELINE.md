@@ -85,6 +85,7 @@
 | `tools\agent.cmd test`（首页运行任务计数） | 增量 | **40 tests, all passed** | 约 25 s |
 | `tools\agent.cmd test`（移除传输旧 Provider 注册） | 全量 | **715 tests, all passed** | 约 108 s |
 | `tools\agent.cmd test`（清理最后测试宿主） | 增量 | **17 tests, all passed** | 约 17 s |
+| `tools\agent.cmd test`（阶段 5 最终收尾 HEAD） | 全量 | **715 tests, all passed** | 约 111 s |
 | `tools\agent.cmd analyze`（阶段 4 消费端完成后） | 全量 | No issues found | 约 27 s |
 | `tools\agent.cmd test`（阶段 4 消费端完成后） | 全量 | **707 tests, all passed** | 约 113 s |
 | `tools\agent.cmd analyze`（阶段 5 消费端完成后） | 全量 | No issues found | 约 31 s |
@@ -312,6 +313,9 @@
 - 2026-10-30 清理最后两个测试宿主中的旧传输 Provider；增量 2 个测试文件 /
   17 个测试通过，用例总数保持 715。全仓已无
   `ChangeNotifierProvider<TransferManager>`。
+- 2026-10-30 阶段 5 最终 HEAD 全量复验：`agent.cmd test` 715 个测试全部通过。
+  阶段 6 准入审计确认 AppController 的 Provider 消费面、Windows 上游崩溃、
+  iOS 人工验收和集成测试盲区仍是阻塞项。
 - 2026-10-30 Windows 已知阻塞：Flutter 3.47.x 的 OverlayPortal 孤儿语义节点问题
   可在传输页滚动和拖放释放时触发原生崩溃（flutter#190357，修复 PR #193372
   未进入当前稳定版 3.47.9）。该项阻塞阶段 6 的 Windows 人工验收。
