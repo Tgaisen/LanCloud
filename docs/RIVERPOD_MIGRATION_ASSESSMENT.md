@@ -707,6 +707,12 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > `navigationAppearanceSettingsStateProvider` 和 `navigationStateProvider`；
 > 协议、首启条款和 `AgreementGate` 测试使用空 `ProviderScope`，不再构造
 > AppController。
+>
+> 共享顶栏相关测试随后完成 Riverpod 宿主编排：顶栏点按回顶、安全区布局和
+> 顶栏显隐测试均显式覆盖导航外观与导航状态，不再注册
+> `ChangeNotifierProvider<AppController>`；测试探针也直接读写
+> `NavigationState`。生产组件对尚未迁移页面的 AppController 回退仍保留，
+> 待这些页面完成消费端迁移后再删除。
 
 ### 阶段 6：移除旧 Provider
 

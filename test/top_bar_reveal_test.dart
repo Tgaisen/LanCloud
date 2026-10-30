@@ -3,21 +3,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
+import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/scroll_tint.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// 复刻页面结构：顶栏浮层 + 等高占位 + 列表，
 /// 并用 ScrollTint 按顶栏自身高度驱动收起进度。
-class ProbePage extends StatefulWidget {
+class ProbePage extends ConsumerStatefulWidget {
   const ProbePage({super.key});
 
   @override
-  State<ProbePage> createState() => ProbePageState();
+  ConsumerState<ProbePage> createState() => ProbePageState();
 }
 
-class ProbePageState extends State<ProbePage> {
+class ProbePageState extends ConsumerState<ProbePage> {
   static const double headerHeight = kToolbarHeight;
 
   final ScrollController scroll = ScrollController();
@@ -30,39 +30,45 @@ class ProbePageState extends State<ProbePage> {
 
   @override
   Widget build(BuildContext context) {
-    final app = context.watch<AppController>();
-    return Scaffold(
-      body: Stack(
-        children: [
-          ScrollTint(
-            hideDistance: headerHeight,
-            readBarsHidden: () => app.topBarHide.value,
-            onBarsHidden: app.settings.hideTopBar
-                ? app.setTopBarHideFromScroll
-                : null,
-            child: CustomScrollView(
-              controller: scroll,
-              slivers: [
-                const SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
-                SliverList.builder(
-                  itemCount: 40,
-                  itemBuilder: (context, index) =>
-                      SizedBox(height: 60, child: Text('row $index')),
-                ),
-              ],
+    final appearance = ref.watch(navigationAppearanceSettingsStateProvider);
+    final navigation = ref.watch(navigationStateProvider);
+    return ListenableBuilder(
+      listenable: appearance.revision,
+      builder: (context, _) => Scaffold(
+        body: Stack(
+          children: [
+            ScrollTint(
+              hideDistance: headerHeight,
+              readBarsHidden: () => navigation.topBarHide.value,
+              onBarsHidden: appearance.hideTopBar
+                  ? navigation.setTopBarHideFromScroll
+                  : null,
+              child: CustomScrollView(
+                controller: scroll,
+                slivers: [
+                  const SliverToBoxAdapter(
+                    child: SizedBox(height: headerHeight),
+                  ),
+                  SliverList.builder(
+                    itemCount: 40,
+                    itemBuilder: (context, index) =>
+                        SizedBox(height: 60, child: Text('row $index')),
+                  ),
+                ],
+              ),
             ),
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            top: 0,
-            child: TopBarOverlay(
-              height: headerHeight,
-              background: Colors.white,
-              builder: (context) => AppBar(title: const Text('BAR')),
+            Positioned(
+              left: 0,
+              right: 0,
+              top: 0,
+              child: TopBarOverlay(
+                height: headerHeight,
+                background: Colors.white,
+                builder: (context) => AppBar(title: const Text('BAR')),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -98,6 +104,16 @@ Color barBackground(WidgetTester tester) => tester
           .first,
     )
     .color;
+
+Widget navigationHost(AppController app, Widget home) => ProviderScope(
+  overrides: [
+    navigationAppearanceSettingsStateProvider.overrideWithValue(
+      app.navigationAppearanceSettings,
+    ),
+    navigationStateProvider.overrideWithValue(app.navigation),
+  ],
+  child: MaterialApp(home: home),
+);
 
 /// 复刻独立页面结构：TopBarOverlayScaffold + 长列表。
 class ScaffoldProbePage extends StatefulWidget {
@@ -178,11 +194,9 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
-        value: app,
-        child: const MaterialApp(
-          home: Md3ePageFrame(child: FramedTabProbePage()),
-        ),
+      navigationHost(
+        app,
+        const Md3ePageFrame(child: FramedTabProbePage()),
       ),
     );
     await tester.pumpAndSettle();
@@ -194,12 +208,12 @@ void main() {
   });
 
   testWidgets('独立页面顶栏 1:1 跟随滚动：内容渐隐、底色不渐隐，不动外壳进度', (tester) async {
-    final app = AppController()..settings.hideTopBar = true;
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final app = AppController();
+    addTearDown(app.dispose);
+    await app.navigationAppearanceSettings.setHideTopBar(true);
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
-        value: app,
-        child: const MaterialApp(home: ScaffoldProbePage()),
-      ),
+      navigationHost(app, const ScaffoldProbePage()),
     );
     final state = tester.state<ScaffoldProbePageState>(
       find.byType(ScaffoldProbePage),
@@ -221,24 +235,23 @@ void main() {
     expect(barTop(tester), -kToolbarHeight);
     expect(barContentOpacity(tester), closeTo(0, 0.01));
     // 独立页面用自己的收起进度，不污染标签页共用的外壳进度
-    expect(app.topBarHide.value, 0);
-    expect(app.barsHide.value, 0);
+    expect(app.navigation.topBarHide.value, 0);
+    expect(app.navigation.barsHide.value, 0);
 
     // 回到顶部恢复显示
     state.scroll.jumpTo(0);
     await tester.pumpAndSettle();
     expect(barTop(tester), greaterThan(-0.5));
     expect(barContentOpacity(tester), 1);
-    app.dispose();
   });
 
   testWidgets('顶栏与手指 1:1 跟随：滑动多少就上移多少，且不影响列表位置', (tester) async {
-    final app = AppController()..settings.hideTopBar = true;
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final app = AppController();
+    addTearDown(app.dispose);
+    await app.navigationAppearanceSettings.setHideTopBar(true);
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
-        value: app,
-        child: const MaterialApp(home: ProbePage()),
-      ),
+      navigationHost(app, const ProbePage()),
     );
     final state = tester.state<ProbePageState>(find.byType(ProbePage));
     await tester.pumpAndSettle();
@@ -257,7 +270,7 @@ void main() {
     expect(topOf(tester, 'row 0') - rowBefore, -ProbePageState.headerHeight);
 
     // 切换视图：带动画下滑出现，滚动位置不变
-    app.animateBarsHide(0);
+    app.navigation.animateBarsHide(0, reduceMotion: false);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
     final mid = barTop(tester);
@@ -267,17 +280,15 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     expect(barTop(tester), greaterThan(-0.5));
     expect(state.scroll.position.pixels, ProbePageState.headerHeight);
-    app.dispose();
   });
 
   testWidgets('回到顶部恢复显示；关闭“顶栏收起”时顶栏不跟随进度', (tester) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
-    final app = AppController()..settings.hideTopBar = true;
+    final app = AppController();
+    addTearDown(app.dispose);
+    await app.navigationAppearanceSettings.setHideTopBar(true);
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
-        value: app,
-        child: const MaterialApp(home: ProbePage()),
-      ),
+      navigationHost(app, const ProbePage()),
     );
     final state = tester.state<ProbePageState>(find.byType(ProbePage));
 
@@ -290,12 +301,11 @@ void main() {
     expect(barTop(tester), greaterThan(-0.5));
 
     // 关掉设置后，滚动不再驱动顶栏
-    await app.setHideTopBar(false);
+    await app.navigationAppearanceSettings.setHideTopBar(false);
     await tester.pumpAndSettle();
     state.scroll.jumpTo(ProbePageState.headerHeight);
     await tester.pumpAndSettle();
     expect(barTop(tester), greaterThan(-0.5));
-    app.dispose();
   });
 
   testWidgets('独立页面顶栏从 Riverpod 导航外观状态读取收起开关', (tester) async {
@@ -303,14 +313,7 @@ void main() {
     final app = AppController();
     addTearDown(app.dispose);
     await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          navigationAppearanceSettingsStateProvider.overrideWithValue(
-            app.navigationAppearanceSettings,
-          ),
-        ],
-        child: const MaterialApp(home: ScaffoldProbePage()),
-      ),
+      navigationHost(app, const ScaffoldProbePage()),
     );
     final state = tester.state<ScaffoldProbePageState>(
       find.byType(ScaffoldProbePage),

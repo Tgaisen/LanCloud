@@ -1,8 +1,20 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/navigation_appearance_settings_state.dart';
+import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/ui/common.dart';
-import 'package:provider/provider.dart';
+
+Widget host(AppController app, Widget child) => ProviderScope(
+  overrides: [
+    navigationAppearanceSettingsStateProvider.overrideWithValue(
+      app.navigationAppearanceSettings,
+    ),
+    navigationStateProvider.overrideWithValue(app.navigation),
+  ],
+  child: child,
+);
 
 /// 复刻「没有底栏、只有滚动内容」的页面：设置 / 关于 / 备份等都用这个骨架。
 Future<void> pumpOverlayPage(
@@ -19,9 +31,9 @@ Future<void> pumpOverlayPage(
   tester.view.viewPadding = FakeViewPadding(bottom: bottomInset);
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
-    ChangeNotifierProvider<AppController>.value(
-      value: app,
-      child: MaterialApp(
+    host(
+      app,
+      MaterialApp(
         home: TopBarOverlayScaffold(
           appBar: AppBar(title: const Text('设置')),
           bottomSafeInset: bottomSafeInset,
@@ -73,9 +85,9 @@ void main() {
       tester.view.viewPadding = FakeViewPadding(right: rightInset);
       addTearDown(tester.view.reset);
       await tester.pumpWidget(
-        ChangeNotifierProvider<AppController>.value(
-          value: app,
-          child: MaterialApp(
+        host(
+          app,
+          MaterialApp(
             home: Md3ePageFrame(
               child: Scaffold(
                 appBar: AppBar(
@@ -113,9 +125,9 @@ void main() {
     tester.view.viewPadding = const FakeViewPadding(left: 40, right: 40);
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
-        value: app,
-        child: MaterialApp(
+      host(
+        app,
+        MaterialApp(
           home: Scaffold(
             body: Builder(
               builder: (context) => Center(
@@ -155,9 +167,9 @@ void main() {
       tester.view.viewPadding = FakeViewPadding(left: left, right: right);
       addTearDown(tester.view.reset);
       await tester.pumpWidget(
-        ChangeNotifierProvider<AppController>.value(
-          value: app,
-          child: MaterialApp(
+        host(
+          app,
+          MaterialApp(
             home: TopBarOverlayScaffold(
               appBar: AppBar(
                 title: const Text('设置'),
@@ -207,9 +219,9 @@ void main() {
     tester.view.viewPadding = const FakeViewPadding(left: 30, right: 40);
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
-        value: app,
-        child: MaterialApp(
+      host(
+        app,
+        MaterialApp(
           home: Scaffold(
             body: Builder(
               builder: (context) => Center(
