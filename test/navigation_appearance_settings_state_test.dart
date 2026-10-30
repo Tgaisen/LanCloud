@@ -21,6 +21,7 @@ void main() {
     await state.setNavShowTransfers(true);
     await state.setNavShowFavorites(true);
 
+    expect(state.revision.value, 7);
     expect(state.swipeTabs, isTrue);
     expect(state.hideTopBar, isTrue);
     expect(state.hideBottomBar, isTrue);
@@ -46,6 +47,18 @@ void main() {
     await app.setHideBottomBar(false);
     expect(app.barsHide.value, 0);
     expect(app.topBarHide.value, 0);
+  });
+
+  test('Riverpod 侧设置变更会转发到旧 AppController 监听者', () async {
+    final app = AppController(settingsState: SettingsState());
+    addTearDown(app.dispose);
+    var notifications = 0;
+    app.addListener(() => notifications += 1);
+
+    await app.navigationAppearanceSettings.setFloatingNavBar(true);
+
+    expect(notifications, 1);
+    expect(app.settings.floatingNavBar, isTrue);
   });
 
   test('navigationAppearanceSettingsStateProvider 可被共享实例覆盖', () {

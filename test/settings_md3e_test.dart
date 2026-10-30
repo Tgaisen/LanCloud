@@ -11,6 +11,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
+import 'update_test_scope_test.dart';
+
 Future<AppController> pumpSettings(
   WidgetTester tester, [
   SettingsCategory category = SettingsCategory.appearanceLayout,
@@ -22,8 +24,8 @@ Future<AppController> pumpSettings(
   tester.view.physicalSize = const Size(420, 900);
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
-    ChangeNotifierProvider<AppController>.value(
-      value: app,
+    appTestTree(
+      app: app,
       child: MaterialApp(
         localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,

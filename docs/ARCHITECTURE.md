@@ -62,8 +62,10 @@
 通知开关迁入 `NotificationSettingsTile`，权限申请通过可注入回调处理；“目录缓存”
 和“自动加载全部页面”迁入 `CachePageSettingsTile`，由
 `CachePageSettingsState.revision` 局部刷新。关闭目录缓存时清空 `DriveCache`
-的逻辑已收拢到该状态，旧 `AppController` 只转发同一实例。设置页其余条目仍由
-外层 `AppController` 监听，尚未整体迁移。
+的逻辑已收拢到该状态，旧 `AppController` 只转发同一实例。“悬浮导航”“滑动切页”
+和“转场动画”迁入 `NavigationAppearanceSettingsTile`；其 revision 由旧
+`AppController` 监听转发，迁移期仍能触发外壳刷新。设置页其余条目仍由外层
+`AppController` 监听，尚未整体迁移。
 
 ## 导航与弹层
 

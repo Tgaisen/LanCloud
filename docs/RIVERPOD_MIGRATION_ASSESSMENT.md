@@ -419,6 +419,11 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > `CachePageSettingsState.revision` 局部刷新。设置页现有 Riverpod 叶子共用阶段 0
 > 的 `appTestTree` 测试包装器；只更新涉及本页的测试，没有批量迁移其它 Provider
 > 测试。设置页外层依赖仍未移除。
+>
+> “悬浮导航”“滑动切页”“转场动画”随后迁入
+> `NavigationAppearanceSettingsTile`。`NavigationAppearanceSettingsState.revision`
+> 由旧 `AppController` 监听并转发，因此直属 Riverpod 写入仍会刷新尚未迁移的外壳；
+> 控制器不复制字段或写入状态。设置页外层依赖仍未移除。
 
 ### 阶段 5：处理 `TransferManager`
 

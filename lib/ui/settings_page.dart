@@ -25,6 +25,7 @@ import 'common.dart';
 import 'cookie_sheet.dart';
 import 'licenses_page.dart';
 import 'm3e.dart';
+import 'navigation_appearance_settings_tile.dart';
 import 'notification_settings_tile.dart';
 
 /// 「清除数据」弹窗里可勾选的清除项。
@@ -545,11 +546,8 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         subtitle: '',
         keywords: l10n.floatingNavKeywords.split(' '),
         section: SettingsSection.appearance,
-        build: (context, app) => SwitchListTile(
-          secondary: const Icon(Icons.smart_button),
-          title: Text(context.l10n.floatingNav),
-          value: app.settings.floatingNavBar,
-          onChanged: (value) => app.setFloatingNavBar(value),
+        build: (context, app) => const NavigationAppearanceSettingsTile(
+          setting: NavigationAppearanceSetting.floatingNav,
         ),
       ),
       _Entry(
@@ -571,12 +569,8 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         subtitle: l10n.swipeTabsSubtitle,
         keywords: l10n.swipeTabsKeywords.split(' '),
         section: SettingsSection.layout,
-        build: (context, app) => SwitchListTile(
-          secondary: const Icon(Icons.swipe),
-          title: Text(context.l10n.swipeTabs),
-          subtitle: Text(context.l10n.swipeTabsSubtitle),
-          value: app.settings.swipeTabs,
-          onChanged: (value) => app.setSwipeTabs(value),
+        build: (context, app) => const NavigationAppearanceSettingsTile(
+          setting: NavigationAppearanceSetting.swipeTabs,
         ),
       ),
       _Entry(
@@ -585,13 +579,8 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         subtitle: l10n.transitionAnimationsSubtitle,
         keywords: l10n.transitionAnimationsKeywords.split(' '),
         section: SettingsSection.appearance,
-        build: (context, app) => SwitchListTile(
-          // 与「无障碍-全局动画」区分：这里用 Auto Awesome Motion
-          secondary: const Icon(Icons.auto_awesome_motion),
-          title: Text(context.l10n.transitionAnimations),
-          subtitle: Text(context.l10n.transitionAnimationsSubtitle),
-          value: app.settings.transitionAnimations,
-          onChanged: (value) => app.setTransitionAnimations(value),
+        build: (context, app) => const NavigationAppearanceSettingsTile(
+          setting: NavigationAppearanceSetting.transitionAnimations,
         ),
       ),
       _Entry(

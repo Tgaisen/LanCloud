@@ -44,6 +44,7 @@
 | `tools\agent.cmd test`（ClipboardLinkPromptTile） | 增量 | **49 tests, all passed** | 约 14 s |
 | `tools\agent.cmd test`（NotificationSettingsTile + 文案） | 增量 | **308 tests, all passed** | 约 67 s |
 | `tools\agent.cmd test`（CachePageSettingsTile） | 增量 | **351 tests, all passed** | 约 61 s |
+| `tools\agent.cmd test`（NavigationAppearanceSettingsTile） | 增量 | **352 tests, all passed** | 约 65 s |
 
 工具链：Flutter 3.47.7（stable）/ Dart 3.13.5 / DevTools 2.60.0。
 静态检查：`analysis_options.yaml` 已开启 `strict-casts` / `strict-inference` / `strict-raw-types`。
@@ -56,7 +57,7 @@
 | `lib` 总行数 | 约 4.7 万 |
 | `test` 测试文件 | 123（平铺，`<主题>_test.dart`） |
 | `test` 总行数 | 约 2 万 |
-| `test` 用例数 | 683（当前总数；本次只验证了受影响增量） |
+| `test` 用例数 | 685（当前总数；本次只验证了受影响增量） |
 | `lib/ui` 页面与组件 | 40 个平铺文件 |
 | `lib/core` | 32 个平铺文件 + 5 个子系统目录 |
 | 文案（`app_zh.arb`） | 1357 行 |
@@ -151,5 +152,8 @@
 - 2026-10-30 的 CachePageSettingsTile 新增 1 个独立 Widget 测试，并把关闭目录
   缓存时清空 `DriveCache` 的副作用收拢到 `CachePageSettingsState`；增量 62 个
   文件 / 351 个测试通过，当前总数由 682 增至 683。
+- 2026-10-30 的 NavigationAppearanceSettingsTile 新增 1 个独立 Widget 测试和
+  1 个控制器通知转发测试，覆盖悬浮导航、滑动切页、转场动画；增量 62 个文件 /
+  352 个测试通过，当前总数由 683 增至 685。
 - 若临时再改 `analysis_options.yaml` 加规则，issue 数会变；先把预期数量记在这里再跑，
   避免和「本次改坏」混淆。

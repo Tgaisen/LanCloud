@@ -67,6 +67,7 @@ class AppController extends ChangeNotifier {
     cachePageSettings = CachePageSettingsState(settings, this.drive.cache);
     downloadDirectorySettings = DownloadDirectorySettingsState(settings);
     this.navigation.addListener(notifyListeners);
+    navigationAppearanceSettings.revision.addListener(notifyListeners);
   }
 
   final AccountState accountState;
@@ -218,7 +219,6 @@ class AppController extends ChangeNotifier {
 
   Future<void> setSwipeTabs(bool value) async {
     await navigationAppearanceSettings.setSwipeTabs(value);
-    notifyListeners();
   }
 
   /// 切换更新通道；检测结果由 Riverpod 更新控制器在同一交互中清理。
@@ -341,6 +341,7 @@ class AppController extends ChangeNotifier {
   @override
   void dispose() {
     navigation.removeListener(notifyListeners);
+    navigationAppearanceSettings.revision.removeListener(notifyListeners);
     navigation.dispose();
     drive.dispose();
     super.dispose();
@@ -360,12 +361,10 @@ class AppController extends ChangeNotifier {
 
   Future<void> setFloatingNavBar(bool value) async {
     await navigationAppearanceSettings.setFloatingNavBar(value);
-    notifyListeners();
   }
 
   Future<void> setTransitionAnimations(bool value) async {
     await navigationAppearanceSettings.setTransitionAnimations(value);
-    notifyListeners();
   }
 
   Future<void> setNotifyProgress(bool value) async {
