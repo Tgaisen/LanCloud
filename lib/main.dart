@@ -29,6 +29,7 @@ import 'core/system_motion.dart';
 import 'core/third_party_licenses.dart';
 import 'core/transfer/transfer_manager.dart';
 import 'core/update/update_service.dart';
+import 'core/update/update_settings_state.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -126,6 +127,7 @@ Future<void> main() async {
       driveStateProvider.overrideWithValue(app.drive),
       accountStateProvider.overrideWithValue(app.accountState),
       settingsStateProvider.overrideWithValue(app.settingsState),
+      updateSettingsStateProvider.overrideWithValue(app.updateSettings),
       notificationServiceProvider.overrideWithValue(
         NotificationService.instance,
       ),

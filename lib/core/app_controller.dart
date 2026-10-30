@@ -25,6 +25,7 @@ import 'saf_storage.dart';
 import 'settings_state.dart';
 import 'shared_downloads_gateway.dart';
 import 'system_motion.dart';
+import 'update/update_settings_state.dart';
 
 export 'drive_state.dart' show DriveLocation;
 
@@ -48,11 +49,13 @@ class AppController extends ChangeNotifier {
        drive = drive ?? DriveState(),
        accountState = accountState ?? AccountState(),
        settingsState = settingsState ?? SettingsState() {
+    updateSettings = UpdateSettingsState(settings);
     this.navigation.addListener(notifyListeners);
   }
 
   final AccountState accountState;
   final SettingsState settingsState;
+  late final UpdateSettingsState updateSettings;
 
   AccountStore get accounts => accountState.store;
   SettingsStore get settings => settingsState.store;
@@ -196,13 +199,11 @@ class AppController extends ChangeNotifier {
 
   /// 切换更新通道；检测结果由 Riverpod 更新控制器在同一交互中清理。
   Future<void> setUpdateChannel(String value) async {
-    if (settings.updateChannel == value) return;
-    await settings.setUpdateChannel(value);
-    notifyListeners();
+    if (await updateSettings.setChannel(value)) notifyListeners();
   }
 
   Future<void> setUpdateAutoCheck(bool value) async {
-    await settings.setUpdateAutoCheck(value);
+    await updateSettings.setAutoCheck(value);
     notifyListeners();
   }
 

@@ -323,6 +323,10 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > `SettingsState` 所有权首片已落地：唯一持有现有 `SettingsStore`，
 > `settingsStoreProvider` 从该状态派生，旧 `AppController.settings` 只转发。
 > 35 个设置 setter、默认值和持久化键尚未拆分，后续按设置组逐步迁移。
+>
+> 第一个设置子组 `UpdateSettingsState` 已拆分：更新通道与自动检查开关通过
+> 独立 provider 读写同一个 `SettingsStore`。旧 `AppController` setter 保持原通知
+> 语义（通道同值不通知），没有复制持久化字段。
 
 ### 阶段 4：迁移 UI 消费端
 

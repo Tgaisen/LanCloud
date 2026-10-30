@@ -44,6 +44,7 @@
 | `DriveState` | `core/drive_state.dart` | 阶段 3：目录缓存、目录请求、当前位置和可见性探针的唯一所有者；`DriveLocation` 继续由旧控制器导出 |
 | `AccountState` | `core/account_state.dart` | 阶段 3：唯一持有 `AccountStore`；`accountStoreProvider` 与旧 `AppController.accounts` 均从它派生 |
 | `SettingsState` | `core/settings_state.dart` | 阶段 3：唯一持有 `SettingsStore`；`settingsStoreProvider` 与旧 `AppController.settings` 均从它派生 |
+| `UpdateSettingsState` | `core/update/update_settings_state.dart` | 阶段 3 设置子组：收窄更新通道与自动检查开关的读写边界，持久化仍由 `SettingsStore` 独占 |
 
 消费现状：`context.read<…>` 约 150 处、`context.watch<…>` 约 17 处。
 UpdateService 试点前 `context.select<…>` 为 0；更新页现在用两处 `select`
