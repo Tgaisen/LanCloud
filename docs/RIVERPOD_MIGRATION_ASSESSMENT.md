@@ -643,6 +643,17 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > **阶段 5 全量自动化复验（2026-10-30）**：`agent.cmd analyze` 全量 0 issue；
 > `agent.cmd test` 全量 715 个测试全部通过。Android/Windows 的后台传输、
 > 取消、重试、批量删除和通知栏进度仍需在移除旧 Provider 前人工复验。
+>
+> 随后从 `main.dart` 移除了旧 `ChangeNotifierProvider<TransferManager>`；
+> 启动时仍主动读取一次 `transferManagerProvider`，保持任务恢复和后台服务启动
+> 顺序不变。生产代码和启动装配都只从 Riverpod 获取传输管理器。
+>
+> **Windows 阻塞项（2026-10-30）**：传输页滚动与文件拖放释放均可在 Windows
+> 触发 Flutter 原生语义树崩溃，调用栈分别落在
+> `AXNodeData::GetStringAttribute` 和 `FlutterPlatformNodeDelegate::ChildAtIndex`。
+> 根因与 [flutter#190357](https://github.com/flutter/flutter/issues/190357) 的
+> OverlayPortal 孤儿语义节点问题一致；修复 PR #193372 尚未进入当前稳定的
+> Flutter 3.47.9。阶段 6 的 Windows 人工验收暂标记为上游阻塞。
 
 ### 阶段 6：移除旧 Provider
 

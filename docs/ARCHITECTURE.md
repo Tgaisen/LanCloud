@@ -20,13 +20,15 @@
 8. `BackupService.maybeAutoBackup()`（不阻塞）
 9. 创建更新试点 `ProviderContainer`，恢复更新缓存后非阻塞执行
    `UpdateService.maybeAutoCheck()`
-10. `runApp(UncontrolledProviderScope(...))` — Riverpod 更新作用域包裹
-    `MultiProvider`，继续注入 `AppController` + `TransferManager`
+10. `runApp(UncontrolledProviderScope(...))` — Riverpod 作用域包裹旧
+    `ChangeNotifierProvider<AppController>`；启动前主动读取
+    `transferManagerProvider` 保持任务恢复顺序，旧 Provider 不再注册传输管理器
 
 ## 状态层
 
-旧 Provider 栈只有两个应用级 `ChangeNotifier`，都在 `main.dart` 注入；
-`core/update/` 的 `UpdateService` 是阶段 1 Riverpod 试点：
+旧 Provider 栈只剩应用级 `AppController`，仍在 `main.dart` 注入；
+`TransferManager` 已只由 Riverpod 容器提供。`core/update/` 的 `UpdateService`
+是阶段 1 Riverpod 试点：
 
 | 对象 | 文件 | 说明 |
 | --- | --- | --- |

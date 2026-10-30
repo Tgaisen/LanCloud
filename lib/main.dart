@@ -162,20 +162,18 @@ Future<void> main() async {
       transferDependenciesProvider.overrideWithValue(app.transferDependencies),
     ],
   );
-  final transfers = updateContainer.read(transferManagerProvider);
+  // 生产消费端已迁到 Riverpod，但仍要在 runApp 前主动创建管理器，
+  // 保持任务恢复与后台服务的启动顺序不变。
+  updateContainer.read(transferManagerProvider);
   final updates = updateContainer.read(updateServiceProvider.notifier);
   await updates.initialize();
   unawaited(updates.maybeAutoCheck());
   runApp(
-  // Provider 与 Riverpod 双栈共存。UpdateService 与 TransferManager 由
-  // Riverpod 容器持有，旧页面仍在迁移期通过 Provider 消费同一实例。
+    // Provider 与 Riverpod 双栈仍共存；TransferManager 已只由 Riverpod 提供。
     UncontrolledProviderScope(
       container: updateContainer,
-      child: MultiProvider(
-        providers: [
-          ChangeNotifierProvider.value(value: app),
-          ChangeNotifierProvider.value(value: transfers),
-        ],
+      child: ChangeNotifierProvider.value(
+        value: app,
         child: const LanCloudApp(),
       ),
     ),
