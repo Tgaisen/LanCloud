@@ -79,7 +79,7 @@ TransferManager
 迁移方式可以直接使用，但也意味着 Provider 目前主要承担依赖注入，而不是复杂的
 响应式依赖图。
 
-生产代码中的消费点统计：
+迁移评估时的生产代码消费点统计：
 
 | 指标 | 数量 |
 | --- | ---: |
@@ -479,6 +479,10 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > `DownloadPathService` 解析默认路径，并负责平台目录选择；普通路径与 SAF 字段的
 > 互斥写入、旧授权释放统一由 `DownloadDirectorySettingsState` 完成。选择器支持
 > 测试注入，旧控制器仅监听 revision 转发通知。
+>
+> 设置页外层 `context.watch<AppController>()` 随后移除。页面主体改用
+> `context.read` 生成搜索元数据并处理事件，迁移后的设置行各自订阅局部状态；
+> “显示 Cookie”行使用 `context.select`，只在当前 UID 变化时重建。
 
 ### 阶段 5：处理 `TransferManager`
 

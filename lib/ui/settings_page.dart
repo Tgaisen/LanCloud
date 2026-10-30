@@ -19,7 +19,6 @@ import 'backup_page.dart';
 import 'cache_page_settings_tile.dart';
 import 'clipboard_link_prompt_tile.dart';
 import 'common.dart';
-import 'cookie_sheet.dart';
 import 'download_directory_settings_tile.dart';
 import 'language_settings_tile.dart';
 import 'licenses_page.dart';
@@ -29,6 +28,7 @@ import 'notification_settings_tile.dart';
 import 'page_behavior_settings_tile.dart';
 import 'recent_limit_settings_tile.dart';
 import 'request_interval_settings_tile.dart';
+import 'show_cookie_settings_tile.dart';
 import 'theme_settings_tile.dart';
 import 'transfer_concurrency_settings_tile.dart';
 
@@ -623,18 +623,7 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         subtitle: l10n.showCookieSubtitle,
         keywords: l10n.showCookieKeywords.split(' '),
         section: SettingsSection.privacy,
-        build: (context, app) {
-          final account = app.activeAccount;
-          return ListTile(
-            leading: const Icon(Icons.key_outlined),
-            title: Text(context.l10n.showCookie),
-            subtitle: Text(context.l10n.showCookieSubtitle),
-            enabled: account != null,
-            onTap: account == null
-                ? null
-                : () => showCookieFlow(context, account),
-          );
-        },
+        build: (context, app) => const ShowCookieSettingsTile(),
       ),
       _Entry(
         id: 'export_logs',
@@ -725,7 +714,7 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
 
   @override
   Widget build(BuildContext context) {
-    final app = context.watch<AppController>();
+    final app = context.read<AppController>();
     final l10n = context.l10n;
     final entries = _entries(app)
         .where((e) => e.visible?.call(context, app) ?? true)
