@@ -12,26 +12,35 @@
 | `docs/VERSIONING.md` | 任何涉及版本号的改动 |
 | `docs/PROTOCOL.md` | 改 `core/api/` 的网络与协议逻辑 |
 
-## 工具链：唯一入口是 `tools\flutter.cmd`
+## 工具链：唯一入口是 `tools\agent.cmd`
 
-它钉住了 `JAVA_HOME=C:\dev\java17`、`ANDROID_HOME`、`PUB_HOSTED_URL`。
-**不要直接调用 `flutter` 或 `dart` 跑项目任务**——会用到另一套环境（`flutter doctor`
-报的是 Android Studio 自带的 JDK 25），出问题极难排查。
+`tools\agent.cmd` 是唯一入口。它内部调用 `tools\flutter.cmd`，后者钉住了
+`JAVA_HOME=C:\dev\java17`、`ANDROID_HOME`、`PUB_HOSTED_URL`。
+**不要直接调用 `flutter` / `dart`，也不要绕过 agent.cmd 去调 flutter.cmd 跑日常任务**
+——会用到另一套环境（`flutter doctor` 报的是 Android Studio 自带的 JDK 25），出问题极难排查。
 
 ```powershell
-.\tools\flutter.cmd analyze --no-pub                        # 全量，约 58s
-.\tools\flutter.cmd analyze --no-pub lib\ui\x.dart lib\core\y.dart   # 增量，秒级
-.\tools\flutter.cmd test --no-pub                            # 全量，616 个，约 92s
-.\tools\flutter.cmd test --no-pub test\account_store_test.dart        # 单文件
-.\tools\flutter.cmd gen-l10n                                 # 改完 arb 之后
+C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd analyze   # 有未提交改动→只分析它们；否则全量
+C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd test      # 自动推断受影响的测试；推断不出→全量
+C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd gen       # 改完 arb 之后
+C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd help      # 全部动词
 ```
 
-- 一律带 `--no-pub`：隐式 `pub get` 又慢又需要联网，沙箱里会直接失败。
-- 全量分析/测试留给人工兜底；你改完只需跑**增量分析 + 受影响的单测**。
+其他动词：`pubget`、`build-apk`、`install`、`logcat`、`devices`，
+其余名字（`run`、`doctor`、`emulators`…）透传给 flutter。
+
+- **原样执行，不要追加 `| Select-Object`、`2>&1`、`;` 等修饰。** 脚本自己裁剪输出，
+  命令字符串保持不变才能命中 `~/.codex/rules/default.rules` 里的免批准规则；
+  一旦加修饰就变成新字符串，会重新弹批准，规则文件也会重新膨胀。需要更少/更多输出时
+  改脚本，不要在命令行上过滤。
+- 一律 `--no-pub`（脚本已内置）：隐式 `pub get` 又慢又需要联网，沙箱里会直接失败。
+  确实需要装依赖时用 `agent.cmd pubget`。
+- 全量分析/测试留给人工兜底；你改完只需跑这两个无参命令（已是增量的）。
 - 改版本只能 `dart run tool/bump_version.dart`（同时改 `pubspec.yaml` 与
   `lib/core/app_info.dart`，有测试校验）。禁止手改这两个文件的版本行，
   禁止用 `--build-number` 顶 versionCode。
 - `tool/` 放 Dart 脚本，`tools/` 放 PowerShell 脚本。不要另建第三种位置。
+  新增 `tools\agent.cmd` 动词时，必须同时在 `~/.codex/rules/default.rules` 加一条规则。
 
 ## 结构
 
@@ -80,8 +89,8 @@ lib/l10n/              arb + 生成文件
 
 ## 完成定义（DoD）
 
-1. 改动文件的增量 `analyze` 无新增 issue
-2. 跑过受影响单测：`.\tools\flutter.cmd test --no-pub test\<主题>_test.dart`
+1. 跑过 `tools\agent.cmd analyze`（有未提交改动时即增量），无新增 issue
+2. 跑过 `tools\agent.cmd test` 并通过；它推断不出受影响文件时会跑全量，属正常
 3. 触及 `core/api/`、`core/data/`、`core/transfer/`、`core/backup/`、`core/update/`
    的改动**必须**带测试（新增或更新）
 4. 汇报格式：**改了哪些文件 → 为什么 → 用哪条命令验证、结果如何 → 遗留风险**

@@ -7,8 +7,10 @@
 
 | 命令 | 结果 | 耗时 |
 | --- | --- | --- |
-| `.\tools\flutter.cmd analyze --no-pub` | No issues found | 约 58 s |
-| `.\tools\flutter.cmd test --no-pub` | **616 tests, all passed** | 约 92 s |
+| `tools\agent.cmd analyze`（无改动→全量） | No issues found | 约 58 s |
+| `tools\agent.cmd analyze`（1–2 个文件） | No issues found | **0.2–1.7 s**（进程启动约 7 s） |
+| `tools\agent.cmd test`（全量） | **616 tests, all passed** | 约 92 s |
+| `tools\agent.cmd test`（单文件） | passed | 数秒 |
 
 工具链：Flutter 3.47.7（stable）/ Dart 3.13.5 / DevTools 2.60.0。
 
@@ -28,10 +30,11 @@
 
 - 616 个测试是**唯一的自动化安全网**：没有 `integration_test`，没有 golden test。
   所以「跑测试」不是形式，是唯一能自动发现回归的手段。
-- 全量 analyze 约 58 s、全量 test 约 92 s。代理每次改完都跑全量不现实，约定：
-  **改完跑增量 analyze + 受影响的单测，全量由人兜底**（见 `AGENTS.md`）。
+- 全量 analyze 约 58 s、全量 test 约 92 s，增量 analyze 只要 1–2 s。
+  `tools\agent.cmd analyze|test` 会自动走增量：改完就跑这两个无参命令，
+  全量由人兜底（见 `AGENTS.md`）。
 - `flutter analyze` / `flutter test` 默认会隐式执行 `pub get`；沙箱内联网被拦时会直接失败。
-  因此日常命令一律加 `--no-pub`。
+  `tools\agent.cmd` 已内置 `--no-pub`；需要装依赖时用 `agent.cmd pubget`。
 - 插件在 Stop 时会自动跑 `dart format` + `dart analyze`，其超时（90 s）与全量 analyze
   耗时（58 s）贴得比较近：机器忙的时候可能超时，属已知情况，不算改动失败。
 
