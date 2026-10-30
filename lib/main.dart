@@ -11,6 +11,7 @@ import 'app.dart';
 import 'core/app_controller.dart';
 import 'core/app_log.dart';
 import 'core/backup/backup_service.dart';
+import 'core/data/app_db_provider.dart';
 import 'core/incoming_links.dart';
 import 'core/notifications.dart';
 import 'core/platform_support.dart';
@@ -101,7 +102,10 @@ Future<void> main() async {
   unawaited(BackupService.of(app).maybeAutoBackup());
   // Riverpod 更新试点：沿用已加载的设置对象，先恢复缓存再非阻塞检查更新。
   final updateContainer = ProviderContainer(
-    overrides: [updateSettingsProvider.overrideWithValue(app.settings)],
+    overrides: [
+      appDbProvider.overrideWithValue(app.db),
+      updateSettingsProvider.overrideWithValue(app.settings),
+    ],
   );
   final updates = updateContainer.read(updateServiceProvider.notifier);
   await updates.initialize();

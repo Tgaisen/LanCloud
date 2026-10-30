@@ -18,6 +18,7 @@
 | `tools\agent.cmd test`（单文件） | 增量 | passed | 数秒 |
 | `tools\agent.cmd analyze`（UpdateService 阶段 1） | 增量 | No issues found | 约 21 s |
 | `tools\agent.cmd test`（UpdateService 阶段 1） | 增量 | **334 tests, all passed** | 约 68 s |
+| `tools\agent.cmd test`（AppDb provider） | 增量 | **1 test, all passed** | 约 12 s |
 
 工具链：Flutter 3.47.7（stable）/ Dart 3.13.5 / DevTools 2.60.0。
 静态检查：`analysis_options.yaml` 已开启 `strict-casts` / `strict-inference` / `strict-raw-types`。
@@ -30,7 +31,7 @@
 | `lib` 总行数 | 约 4.7 万 |
 | `test` 测试文件 | 123（平铺，`<主题>_test.dart`） |
 | `test` 总行数 | 约 2 万 |
-| `test` 用例数 | 630（当前总数；本次只验证了受影响增量） |
+| `test` 用例数 | 631（当前总数；本次只验证了受影响增量） |
 | `lib/ui` 页面与组件 | 40 个平铺文件 |
 | `lib/core` | 32 个平铺文件 + 5 个子系统目录 |
 | 文案（`app_zh.arb`） | 1357 行 |
@@ -59,5 +60,7 @@
   并发状态合并、1 个 provider override）；增量 48 个文件 / 334 个测试通过，
   当前总数由 626 增至 630，
   尚未用本轮改动执行全量测试。
+- 2026-10-30 的 AppDb provider 阶段 2 叶子新增 1 个测试，当前总数由 630 增至
+  631；本次只运行了该 provider 的增量测试。
 - 若临时再改 `analysis_options.yaml` 加规则，issue 数会变；先把预期数量记在这里再跑，
   避免和「本次改坏」混淆。
