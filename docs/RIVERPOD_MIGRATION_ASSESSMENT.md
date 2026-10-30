@@ -578,6 +578,10 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > 下载和设置四个端口。`TransferAppAdapter` 已删除；`AppController` 只实现
 > `TransferDependenciesProvider` 提供依赖集合，现有 `TransferManager(app)` 构造
 > 调用仍保持兼容。
+>
+> 应用入口随后通过 `transferDependenciesProvider` 注入同一依赖集合，并由
+> `transferManagerProvider` 创建应用级 `TransferManager`。Provider 不使用
+> `autoDispose`，容器负责释放；旧页面在迁移期仍通过 Provider 获得同一实例。
 
 ### 阶段 6：移除旧 Provider
 

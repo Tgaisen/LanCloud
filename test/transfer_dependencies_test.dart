@@ -1,3 +1,4 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/api/lanzou_client.dart';
 import 'package:lancloud/core/api/lanzou_client_registry.dart';
@@ -10,6 +11,7 @@ import 'package:lancloud/core/transfer/transfer_account_port.dart';
 import 'package:lancloud/core/transfer/transfer_dependencies.dart';
 import 'package:lancloud/core/transfer/transfer_download_port.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
+import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/core/transfer/transfer_settings_port.dart';
 import 'package:lancloud/core/transfer/transfer_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -205,5 +207,27 @@ void main() {
     expect(port.maxDownloads, 4);
     expect(port.notifyProgress, isFalse);
     expect(port.notifyDone, isFalse);
+  });
+
+  test('transferManagerProvider 提供应用级共享实例', () async {
+    final container = ProviderContainer(
+      overrides: [
+        transferDependenciesProvider.overrideWithValue(
+          TransferDependencies(
+            store: _FakeTransferStore(const []),
+            accounts: _FakeTransferAccountPort(),
+            download: _FakeTransferDownloadPort(),
+            settings: StoreTransferSettingsPort(SettingsStore()),
+          ),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final first = container.read(transferManagerProvider);
+    final second = container.read(transferManagerProvider);
+
+    expect(second, same(first));
+    await Future<void>.delayed(const Duration(milliseconds: 10));
   });
 }

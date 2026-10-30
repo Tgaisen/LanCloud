@@ -37,6 +37,7 @@
 | `TransferDownloadPort` | `core/transfer/transfer_download_port.dart` | 下载目标模式、SAF URI、中转路径与唯一保存路径端口 |
 | `TransferSettingsPort` | `core/transfer/transfer_settings_port.dart` | 并发数、进度/完成通知和传输设置读取端口 |
 | `TransferDependencies` | `core/transfer/transfer_dependencies.dart` | 四个传输端口组成的显式应用级依赖集合 |
+| `transferManagerProvider` | `core/transfer/transfer_manager_provider.dart` | 应用级、非 autoDispose 的 `TransferManager` 唯一实例；容器负责释放 |
 | `UpdateService` | `core/update/update_service.dart` | `Notifier<UpdateState>`；更新检查、缓存、失败冷却和一次性提醒的唯一所有者 |
 | `AppDb` | `core/data/app_db_provider.dart` | 阶段 2 首个叶子依赖；普通 `Provider` 暴露既有单例，不监听、不自动销毁 |
 | `LanzouClientRegistry` | `core/api/lanzou_client_registry.dart` | 按 uid 缓存账号客户端并保留独立公开客户端；Provider 与 `AppController` 共用同一注册表 |

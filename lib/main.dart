@@ -35,7 +35,7 @@ import 'core/system_motion.dart';
 import 'core/theme_settings_state.dart';
 import 'core/transfer_connection_settings_state.dart';
 import 'core/third_party_licenses.dart';
-import 'core/transfer/transfer_manager.dart';
+import 'core/transfer/transfer_manager_provider.dart';
 import 'core/update/update_service.dart';
 import 'core/update/update_settings_state.dart';
 
@@ -159,19 +159,16 @@ Future<void> main() async {
       ),
       downloadPathServiceProvider.overrideWithValue(downloadPaths),
       sharedDownloadsGatewayProvider.overrideWithValue(sharedDownloads),
+      transferDependenciesProvider.overrideWithValue(app.transferDependencies),
     ],
   );
-  final transfers = TransferManager(
-    app,
-    notifications: updateContainer.read(notificationServiceProvider),
-    sharedDownloads: updateContainer.read(sharedDownloadsGatewayProvider),
-  );
+  final transfers = updateContainer.read(transferManagerProvider);
   final updates = updateContainer.read(updateServiceProvider.notifier);
   await updates.initialize();
   unawaited(updates.maybeAutoCheck());
   runApp(
-    // Provider 与 Riverpod 双栈共存。Riverpod 只服务 UpdateService 试点，
-    // 其余应用状态继续用 Provider（边界见 AGENTS.md）。
+  // Provider 与 Riverpod 双栈共存。UpdateService 与 TransferManager 由
+  // Riverpod 容器持有，旧页面仍在迁移期通过 Provider 消费同一实例。
     UncontrolledProviderScope(
       container: updateContainer,
       child: MultiProvider(

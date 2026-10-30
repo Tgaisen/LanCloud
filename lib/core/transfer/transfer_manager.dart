@@ -77,12 +77,21 @@ class TransferTask {
 }
 
 class TransferManager extends ChangeNotifier {
-  TransferManager(
+  factory TransferManager(
     TransferDependenciesProvider source, {
     NotificationService? notifications,
     SharedDownloadsGateway? sharedDownloads,
-  }) : _dependencies = source.transferDependencies,
-       _notifications = notifications ?? NotificationService.instance,
+  }) => TransferManager.withDependencies(
+    source.transferDependencies,
+    notifications: notifications,
+    sharedDownloads: sharedDownloads,
+  );
+
+  TransferManager.withDependencies(
+    this._dependencies, {
+    NotificationService? notifications,
+    SharedDownloadsGateway? sharedDownloads,
+  }) : _notifications = notifications ?? NotificationService.instance,
        _sharedDownloads =
            sharedDownloads ?? const PlatformSharedDownloadsGateway() {
     _restore();
