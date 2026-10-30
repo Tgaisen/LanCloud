@@ -14,7 +14,7 @@ import '../platform_support.dart';
 import '../saf_storage.dart';
 import '../saved_file.dart';
 import '../shared_downloads_gateway.dart';
-import 'transfer_app_adapter.dart';
+import 'transfer_dependencies.dart';
 
 enum TransferKind { upload, download }
 
@@ -78,10 +78,11 @@ class TransferTask {
 
 class TransferManager extends ChangeNotifier {
   TransferManager(
-    this._app, {
+    TransferDependenciesProvider source, {
     NotificationService? notifications,
     SharedDownloadsGateway? sharedDownloads,
-  }) : _notifications = notifications ?? NotificationService.instance,
+  }) : _dependencies = source.transferDependencies,
+       _notifications = notifications ?? NotificationService.instance,
        _sharedDownloads =
            sharedDownloads ?? const PlatformSharedDownloadsGateway() {
     _restore();
@@ -90,7 +91,7 @@ class TransferManager extends ChangeNotifier {
   static const int maxUploads = 1;
   static const int maxDownloads = 3;
 
-  final TransferAppAdapter _app;
+  final TransferDependencies _dependencies;
   final NotificationService _notifications;
   final SharedDownloadsGateway _sharedDownloads;
   final List<TransferTask> tasks = [];
@@ -98,8 +99,7 @@ class TransferManager extends ChangeNotifier {
   int _seq = 0;
   bool _serviceRunning = false;
 
-  /// 测试注入：重启后重试时用来重新解析直链；默认走
-  /// [TransferAppAdapter.publicClient]。
+  /// 测试注入：重启后重试时用来重新解析直链；默认走账号端口的公开客户端。
   @visibleForTesting
   Future<DirectFile> Function(String shareUrl, String pwd)? debugResolveShare;
 
@@ -135,7 +135,7 @@ class TransferManager extends ChangeNotifier {
 
   Future<void> _restore() async {
     try {
-      final rows = await _app.transferStore.loadTransfers();
+      final rows = await _dependencies.store.loadTransfers();
       for (final row in rows) {
         final kind = '${row['kind']}' == 'upload'
             ? TransferKind.upload
@@ -157,7 +157,7 @@ class TransferManager extends ChangeNotifier {
           name: '${row['name']}',
           // 上传要带账号 Cookie；老记录没存账号时退回到当前激活账号
           accountUid: '${row['account'] ?? ''}'.isEmpty
-              ? (_app.transferAccounts.activeUid ?? '')
+              ? (_dependencies.accounts.activeUid ?? '')
               : '${row['account']}',
           folderId: '${row['folder_id'] ?? ''}',
           localFilePath: '${row['local_path'] ?? ''}',
@@ -184,7 +184,7 @@ class TransferManager extends ChangeNotifier {
   Future<void> _persist(TransferTask task) async {
     if (task.removed) return;
     try {
-      await _app.transferStore.saveTransfer(
+      await _dependencies.store.saveTransfer(
         id: task.id,
         kind: task.kind == TransferKind.upload ? 'upload' : 'download',
         name: task.name,
@@ -213,7 +213,7 @@ class TransferManager extends ChangeNotifier {
     Stream<List<int>> Function()? streamFactory,
     int size = 0,
   }) {
-    final uid = _app.transferAccounts.activeUid ?? '';
+    final uid = _dependencies.accounts.activeUid ?? '';
     final task = TransferTask(
       id: 'u${DateTime.now().millisecondsSinceEpoch}_${_seq++}',
       kind: TransferKind.upload,
@@ -245,7 +245,7 @@ class TransferManager extends ChangeNotifier {
       kind: TransferKind.download,
       name: name,
       accountUid: accountUid.isEmpty
-          ? (_app.transferAccounts.activeUid ?? '')
+          ? (_dependencies.accounts.activeUid ?? '')
           : accountUid,
       url: url,
       referer: referer,
@@ -327,13 +327,13 @@ class TransferManager extends ChangeNotifier {
       try {
         final direct =
             await (debugResolveShare?.call(task.referer, task.pwd) ??
-                _app.transferAccounts.publicClient.resolveFileShare(
+                _dependencies.accounts.publicClient.resolveFileShare(
                   task.referer,
                   pwd: task.pwd,
                 ));
         if (task.removed) return null;
         task.url = direct.url;
-        task.via = _app.transferAccounts.publicClient;
+        task.via = _dependencies.accounts.publicClient;
       } catch (e) {
         if (task.removed) return null;
         final message = i18n?.retryResolveFailed('$e') ?? '重新解析下载链接失败：$e';
@@ -368,7 +368,7 @@ class TransferManager extends ChangeNotifier {
           t.status == TransferStatus.canceled,
     );
     for (final id in removed) {
-      _app.transferStore.deleteTransfer(id).catchError((_) {});
+      _dependencies.store.deleteTransfer(id).catchError((_) {});
     }
     _bumpMarks();
     notifyListeners();
@@ -383,7 +383,7 @@ class TransferManager extends ChangeNotifier {
       task.cancelToken.cancel('removed');
     }
     tasks.remove(task);
-    _app.transferStore.deleteTransfer(id).catchError((_) {});
+    _dependencies.store.deleteTransfer(id).catchError((_) {});
     _bumpMarks();
     notifyListeners();
     _pump();
@@ -404,7 +404,7 @@ class TransferManager extends ChangeNotifier {
       removed.add(id);
     }
     if (removed.isEmpty) return;
-    _app.transferStore.deleteTransfers(removed).catchError((_) {});
+    _dependencies.store.deleteTransfers(removed).catchError((_) {});
     _bumpMarks();
     notifyListeners();
     _pump();
@@ -435,11 +435,11 @@ class TransferManager extends ChangeNotifier {
     for (final task in tasks) {
       if (task.status != TransferStatus.queued) continue;
       if (task.kind == TransferKind.upload &&
-          runningUploads < _app.settings.maxUploads) {
+          runningUploads < _dependencies.settings.maxUploads) {
         runningUploads += 1;
         _start(task);
       } else if (task.kind == TransferKind.download &&
-          runningDownloads < _app.settings.maxDownloads) {
+          runningDownloads < _dependencies.settings.maxDownloads) {
         runningDownloads += 1;
         _start(task);
       }
@@ -490,7 +490,7 @@ class TransferManager extends ChangeNotifier {
       if (task.kind == TransferKind.download &&
           task.refId != null &&
           task.status == TransferStatus.done) {
-        await _app.transferStore.markDownloaded(
+        await _dependencies.store.markDownloaded(
           ref: task.refId!,
           name: task.name,
           path: task.savedPath ?? '',
@@ -527,7 +527,7 @@ class TransferManager extends ChangeNotifier {
   /// 汇总所有运行中任务的进度，节流更新通知栏进度。
   void _syncProgressNotification() {
     final ns = _notifications;
-    if (!_app.settings.notifyProgress) {
+    if (!_dependencies.settings.notifyProgress) {
       ns.cancelProgress();
       return;
     }
@@ -556,7 +556,7 @@ class TransferManager extends ChangeNotifier {
   }
 
   void _notifyFinished(TransferTask task) {
-    if (!_app.settings.notifyDone) return;
+    if (!_dependencies.settings.notifyDone) return;
     final ns = _notifications;
     if (task.status == TransferStatus.done) {
       ns.showDone(upload: task.kind == TransferKind.upload, name: task.name);
@@ -569,9 +569,9 @@ class TransferManager extends ChangeNotifier {
   /// 账号不在账号列表里（被移除 / 已登出）时返回空串。
   String _uploadAccountUid(TransferTask task) {
     final uid = task.accountUid.isEmpty
-        ? (_app.transferAccounts.activeUid ?? '')
+        ? (_dependencies.accounts.activeUid ?? '')
         : task.accountUid;
-    if (uid.isEmpty || !_app.transferAccounts.hasAccount(uid)) return '';
+    if (uid.isEmpty || !_dependencies.accounts.hasAccount(uid)) return '';
     return uid;
   }
 
@@ -582,7 +582,7 @@ class TransferManager extends ChangeNotifier {
         NotificationService.i18n?.uploadNeedLogin ?? '请先登录后再上传',
       );
     }
-    final client = _app.transferAccounts.clientFor(uid);
+    final client = _dependencies.accounts.clientFor(uid);
     await client.uploadFile(
       name: task.name,
       folderId: task.folderId,
@@ -602,15 +602,15 @@ class TransferManager extends ChangeNotifier {
   Future<void> _runDownload(TransferTask task) async {
     // SAF 目录和公共 Downloads 都先下到应用专属中转目录，完成后由原生
     // 流式写入目标；固定路径 / 应用专属目录仍可直接写。
-    final target = await _app.transferDownload.targetMode();
+    final target = await _dependencies.download.targetMode();
     final treeUri = target == DownloadTargetMode.safDirectory
-        ? _app.transferDownload.safTreeUri
+        ? _dependencies.download.safTreeUri
         : null;
     final staged =
         treeUri != null || target == DownloadTargetMode.sharedDownloads;
     final path = staged
-        ? await _app.transferDownload.safTempFilePath(task.id, task.name)
-        : await _app.transferDownload.uniqueSavePath(task.name);
+        ? await _dependencies.download.safTempFilePath(task.id, task.name)
+        : await _dependencies.download.uniqueSavePath(task.name);
     try {
       final dio = task.via?.dio ?? Dio();
       await dio.download(

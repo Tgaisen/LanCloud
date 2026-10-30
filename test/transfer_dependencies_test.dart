@@ -7,9 +7,10 @@ import 'package:lancloud/core/data/account_store.dart';
 import 'package:lancloud/core/data/settings_store.dart';
 import 'package:lancloud/core/download_target.dart';
 import 'package:lancloud/core/transfer/transfer_account_port.dart';
-import 'package:lancloud/core/transfer/transfer_app_adapter.dart';
+import 'package:lancloud/core/transfer/transfer_dependencies.dart';
 import 'package:lancloud/core/transfer/transfer_download_port.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
+import 'package:lancloud/core/transfer/transfer_settings_port.dart';
 import 'package:lancloud/core/transfer/transfer_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -53,24 +54,14 @@ class _FakeTransferStore implements TransferStore {
   }) async {}
 }
 
-class _FakeTransferAdapter implements TransferAppAdapter {
-  _FakeTransferAdapter(
-    this.transferStore,
-    this.transferAccounts,
-    this.transferDownload,
-  );
+class _FakeTransferDependenciesProvider
+    implements TransferDependenciesProvider {
+  _FakeTransferDependenciesProvider({
+    required this.transferDependencies,
+  });
 
   @override
-  final TransferStore transferStore;
-
-  @override
-  final TransferAccountPort transferAccounts;
-
-  @override
-  final TransferDownloadPort transferDownload;
-
-  @override
-  final SettingsStore settings = SettingsStore();
+  final TransferDependencies transferDependencies;
 }
 
 class _FakeTransferAccountPort implements TransferAccountPort {
@@ -109,12 +100,12 @@ class _FakeTransferDownloadPort implements TransferDownloadPort {
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues(<String, Object>{}));
 
-  test('AppController 实现 TransferManager 的最小依赖边界', () {
+  test('AppController 提供显式传输依赖集合', () {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     final app = AppController();
     addTearDown(app.dispose);
 
-    expect(app, isA<TransferAppAdapter>());
+    expect(app, isA<TransferDependenciesProvider>());
     expect(app.db, same(AppDb.instance));
     final store = app.transferStore;
     expect(store, isA<AppDbTransferStore>());
@@ -129,6 +120,11 @@ void main() {
     }
     expect(app.transferDownload, isA<CallbackTransferDownloadPort>());
     expect(app.settings, same(app.settingsState.store));
+    final dependencies = app.transferDependencies;
+    expect(dependencies.store, same(app.transferStore));
+    expect(dependencies.accounts, same(app.transferAccounts));
+    expect(dependencies.download, same(app.transferDownload));
+    expect(dependencies.settings, same(app.transferSettings));
   });
 
   test('TransferManager 可从注入的存储端口恢复任务', () async {
@@ -151,10 +147,13 @@ void main() {
       },
     ]);
     final manager = TransferManager(
-      _FakeTransferAdapter(
-        store,
-        _FakeTransferAccountPort(),
-        _FakeTransferDownloadPort(),
+      _FakeTransferDependenciesProvider(
+        transferDependencies: TransferDependencies(
+          store: store,
+          accounts: _FakeTransferAccountPort(),
+          download: _FakeTransferDownloadPort(),
+          settings: StoreTransferSettingsPort(SettingsStore()),
+        ),
       ),
     );
     addTearDown(manager.dispose);
@@ -192,5 +191,19 @@ void main() {
     expect(port.safTreeUri, 'content://tree/example');
     expect(await port.safTempFilePath('t1', 'a.bin'), '/tmp/t1a.bin');
     expect(await port.uniqueSavePath('a.bin'), '/downloads/a.bin');
+  });
+
+  test('设置端口实时读取传输相关字段', () {
+    final store = SettingsStore()
+      ..maxUploads = 2
+      ..maxDownloads = 4
+      ..notifyProgress = false
+      ..notifyDone = false;
+    final port = StoreTransferSettingsPort(store);
+
+    expect(port.maxUploads, 2);
+    expect(port.maxDownloads, 4);
+    expect(port.notifyProgress, isFalse);
+    expect(port.notifyDone, isFalse);
   });
 }

@@ -33,15 +33,17 @@ import 'shared_downloads_gateway.dart';
 import 'system_motion.dart';
 import 'theme_settings_state.dart';
 import 'transfer_connection_settings_state.dart';
-import 'transfer/transfer_app_adapter.dart';
 import 'transfer/transfer_account_port.dart';
+import 'transfer/transfer_dependencies.dart';
 import 'transfer/transfer_download_port.dart';
+import 'transfer/transfer_settings_port.dart';
 import 'transfer/transfer_store.dart';
 import 'update/update_settings_state.dart';
 
 export 'drive_state.dart' show DriveLocation;
 
-class AppController extends ChangeNotifier implements TransferAppAdapter {
+class AppController extends ChangeNotifier
+    implements TransferDependenciesProvider {
   AppController({
     SharedDownloadsGateway? sharedDownloads,
     DownloadPathService? downloadPaths,
@@ -99,17 +101,13 @@ class AppController extends ChangeNotifier implements TransferAppAdapter {
   late final DownloadDirectorySettingsState downloadDirectorySettings;
 
   AccountStore get accounts => accountState.store;
-  @override
   SettingsStore get settings => settingsState.store;
   final AppDb db = AppDb.instance;
-  @override
   final TransferStore transferStore = AppDbTransferStore();
-  @override
   late final TransferAccountPort transferAccounts = AppTransferAccountPort(
     accounts: accounts,
     clients: clientRegistry,
   );
-  @override
   late final TransferDownloadPort transferDownload =
       CallbackTransferDownloadPort(
         targetMode: downloadTargetMode,
@@ -117,6 +115,16 @@ class AppController extends ChangeNotifier implements TransferAppAdapter {
         safTempFilePath: safTempFilePath,
         uniqueSavePath: uniqueSavePath,
       );
+  late final TransferSettingsPort transferSettings = StoreTransferSettingsPort(
+    settings,
+  );
+  @override
+  late final TransferDependencies transferDependencies = TransferDependencies(
+    store: transferStore,
+    accounts: transferAccounts,
+    download: transferDownload,
+    settings: transferSettings,
+  );
   DriveCache get driveCache => drive.cache;
   final SharedDownloadsGateway _sharedDownloads;
   final DownloadPathService _downloadPaths;

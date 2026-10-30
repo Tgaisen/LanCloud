@@ -573,6 +573,11 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > 下载目标与路径能力随后拆为 `TransferDownloadPort`，封装目标模式、SAF URI、
 > SAF 中转路径和唯一保存路径。迁移期用 `CallbackTransferDownloadPort` 委托既有
 > `AppController` 方法，实际下载与平台写入逻辑未改。
+>
+> 最后拆出 `TransferSettingsPort`，并通过 `TransferDependencies` 组合存储、账号、
+> 下载和设置四个端口。`TransferAppAdapter` 已删除；`AppController` 只实现
+> `TransferDependenciesProvider` 提供依赖集合，现有 `TransferManager(app)` 构造
+> 调用仍保持兼容。
 
 ### 阶段 6：移除旧 Provider
 
