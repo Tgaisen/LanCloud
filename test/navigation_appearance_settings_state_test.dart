@@ -61,6 +61,16 @@ void main() {
     expect(app.settings.floatingNavBar, isTrue);
   });
 
+  test('批量设置底栏显示项只产生一次 revision', () async {
+    final state = NavigationAppearanceSettingsState(SettingsStore());
+
+    await state.setNavItems(transfers: true, favorites: true);
+
+    expect(state.revision.value, 1);
+    expect(state.navShowTransfers, isTrue);
+    expect(state.navShowFavorites, isTrue);
+  });
+
   test('navigationAppearanceSettingsStateProvider 可被共享实例覆盖', () {
     final state = NavigationAppearanceSettingsState(SettingsStore());
     final container = ProviderContainer(

@@ -75,7 +75,9 @@
 `page_behavior_settings_tile.dart`，分别通过 `CachePageSettingsState` 与
 `ListHomeSettingsState` 局部刷新。“全局动画”迁入 `MotionSettingsTile`，
 `ThemeSettingsState.setMotionMode` 同时更新 `SystemMotion.motionMode`，旧控制器
-只保留兼容转发。
+只保留兼容转发。“底栏显示项”迁入 `NavBarItemsSettingsTile`，多选弹窗返回
+类型化草稿，确认后通过 `NavigationAppearanceSettingsState.setNavItems`
+一次写入并只递增一次 revision。
 
 ## 导航与弹层
 

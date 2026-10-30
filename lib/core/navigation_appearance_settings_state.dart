@@ -53,6 +53,15 @@ class NavigationAppearanceSettingsState {
     await store.setNavShowFavorites(value);
     revision.value += 1;
   }
+
+  Future<void> setNavItems({
+    required bool transfers,
+    required bool favorites,
+  }) async {
+    await store.setNavShowTransfers(transfers);
+    await store.setNavShowFavorites(favorites);
+    revision.value += 1;
+  }
 }
 
 final navigationAppearanceSettingsStateProvider =

@@ -50,6 +50,7 @@
 | `tools\agent.cmd test`（LanguageSettingsTile） | 增量 | **356 tests, all passed** | 约 69 s |
 | `tools\agent.cmd test`（页面行为设置叶子） | 增量 | **51 tests, all passed** | 约 14 s |
 | `tools\agent.cmd test`（MotionSettingsTile） | 增量 | **364 tests, all passed** | 约 66 s |
+| `tools\agent.cmd test`（NavBarItemsSettingsTile） | 增量 | **53 tests, all passed** | 约 15 s |
 
 工具链：Flutter 3.47.7（stable）/ Dart 3.13.5 / DevTools 2.60.0。
 静态检查：`analysis_options.yaml` 已开启 `strict-casts` / `strict-inference` / `strict-raw-types`。
@@ -62,7 +63,7 @@
 | `lib` 总行数 | 约 4.7 万 |
 | `test` 测试文件 | 123（平铺，`<主题>_test.dart`） |
 | `test` 总行数 | 约 2 万 |
-| `test` 用例数 | 693（当前总数；本次只验证了受影响增量） |
+| `test` 用例数 | 695（当前总数；本次只验证了受影响增量） |
 | `lib/ui` 页面与组件 | 40 个平铺文件 |
 | `lib/core` | 32 个平铺文件 + 5 个子系统目录 |
 | 文案（`app_zh.arb`） | 1357 行 |
@@ -175,5 +176,8 @@
 - 2026-10-30 的 MotionSettingsTile 新增 1 个独立 Widget 测试，并把
   `SystemMotion.motionMode` 同步收拢到 `ThemeSettingsState`；增量 64 个文件 /
   364 个测试通过，当前总数由 692 增至 693。
+- 2026-10-30 的 NavBarItemsSettingsTile 新增 1 个批量写入测试和 1 个独立 Widget
+  测试，覆盖取消不写入、确认后一次提交；增量 10 个文件 / 53 个测试通过，当前
+  总数由 693 增至 695。
 - 若临时再改 `analysis_options.yaml` 加规则，issue 数会变；先把预期数量记在这里再跑，
   避免和「本次改坏」混淆。

@@ -285,79 +285,6 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
     return l10n.defaultDownloadDir(path);
   }
 
-  /// 底栏显示项文案：首页 · 网盘 [· 传输] [· 收藏] · 我的。
-  String _navItemsLabel(BuildContext context, AppController app) {
-    final l10n = context.l10n;
-    return [
-      l10n.tabHome,
-      l10n.tabDrive,
-      if (app.settings.navShowTransfers) l10n.tabTransfers,
-      if (app.settings.navShowFavorites) l10n.favorite,
-      l10n.tabProfile,
-    ].join(' · ');
-  }
-
-  /// 多选对话框：控制「传输」「收藏」是否显示在底栏。
-  Future<void> _pickNavBarItems(BuildContext context) async {
-    final app = context.read<AppController>();
-    final l10n = context.l10n;
-    var transfers = app.settings.navShowTransfers;
-    var favorites = app.settings.navShowFavorites;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (dialogContext, setDialogState) => AlertDialog(
-          title: Text(l10n.navBarItems),
-          // M3 对话框内容边距 24dp（正文到操作区 24dp）；列表组再用自带的
-          // 0 外边距铺满内容区，组沿正好落在 24dp 上
-          contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-          // 与单选弹窗同一套列表组样式：选中 = 主容器色 + 对勾（多选语义）
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                l10n.navBarItemsHint,
-                style: Theme.of(dialogContext).textTheme.bodySmall,
-              ),
-              const SizedBox(height: 8),
-              // 列表组比弹窗底（surfaceContainerHigh）再高一档容器色
-              DialogListGroup(
-                children: [
-                  M3ePickTile(
-                    label: l10n.tabTransfers,
-                    leading: const Icon(Icons.swap_vert),
-                    selected: transfers,
-                    onTap: () => setDialogState(() => transfers = !transfers),
-                  ),
-                  M3ePickTile(
-                    label: l10n.favorite,
-                    leading: const Icon(Icons.star_border),
-                    selected: favorites,
-                    onTap: () => setDialogState(() => favorites = !favorites),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: Text(l10n.cancel),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: Text(l10n.confirm),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (ok != true) return;
-    await app.setNavShowTransfers(transfers);
-    await app.setNavShowFavorites(favorites);
-  }
-
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
@@ -493,15 +420,14 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
       _Entry(
         id: 'nav_items',
         title: l10n.navBarItems,
-        subtitle: _navItemsLabel(context, app),
+        subtitle: navItemsLabel(
+          l10n,
+          transfers: app.settings.navShowTransfers,
+          favorites: app.settings.navShowFavorites,
+        ),
         keywords: l10n.navBarItemsKeywords.split(' '),
         section: SettingsSection.layout,
-        build: (context, app) => ListTile(
-          leading: const Icon(Icons.bottom_navigation),
-          title: Text(context.l10n.navBarItems),
-          subtitle: Text(_navItemsLabel(context, app)),
-          onTap: () => _pickNavBarItems(context),
-        ),
+        build: (context, app) => const NavBarItemsSettingsTile(),
       ),
       _Entry(
         id: 'swipe_tabs',

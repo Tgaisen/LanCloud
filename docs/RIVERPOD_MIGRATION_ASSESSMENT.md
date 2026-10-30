@@ -445,6 +445,10 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > “全局动画”随后迁入 `MotionSettingsTile`。`showMotionModePicker` 返回
 > `String?`；`ThemeSettingsState.setMotionMode` 统一负责持久化和
 > `SystemMotion.motionMode` 同步，旧控制器不再保留第二份副作用。
+>
+> “底栏显示项”随后迁入 `NavBarItemsSettingsTile`。
+> `showNavBarItemsPicker` 返回类型化的传输/收藏草稿；取消不写入，确认后通过
+> `NavigationAppearanceSettingsState.setNavItems` 一次提交并只递增一次 revision。
 
 ### 阶段 5：处理 `TransferManager`
 
