@@ -101,6 +101,7 @@
 | `tools\agent.cmd test`（WebView 登录消费端） | 全量 | **719 tests, all passed** | 约 110 s |
 | `tools\agent.cmd analyze`（阶段 6 准备后续切片） | 全量 | No issues found | 约 18 s |
 | `tools\agent.cmd test`（共享收藏 / 分享下载 helper） | 增量 | **302 tests, all passed** | 约 57 s |
+| `tools\agent.cmd test`（打开分享链接弹窗） | 增量 | **20 tests, all passed** | 约 17 s |
 
 工具链：Flutter 3.47.7（stable）/ Dart 3.13.5 / DevTools 2.60.0。
 静态检查：`analysis_options.yaml` 已开启 `strict-casts` / `strict-inference` / `strict-raw-types`。
@@ -358,6 +359,9 @@
   `transferManagerProvider` 读取依赖；分享属性弹窗和单文件下载测试已移除直接
   测试宿主中的 `ChangeNotifierProvider<AppController>`。增量 52 个测试文件 /
   302 个测试通过，用例总数保持 719。
+- 2026-10-31 “打开分享链接”弹窗改用客户端注册表、`appDbProvider` 与
+  `AccountState.store`；生产文件已无 `AppController` 读取。增量 2 个测试文件 /
+  20 个测试通过，用例总数保持 719。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release

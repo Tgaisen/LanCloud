@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/drag_drop.dart';
@@ -99,27 +100,29 @@ void main() {
   testWidgets('其它页面拖入链接：走「打开链接」弹窗', (tester) async {
     final app = AppController();
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
-        value: app,
-        child: MaterialApp(
-          localizationsDelegates: appLocalizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          locale: const Locale('zh'),
-          home: Builder(
-            builder: (context) => Scaffold(
-              body: Center(
-                child: TextButton(
-                  onPressed: () async {
-                    await handleExternalDrop(
-                      context,
-                      const DropPayload(
-                        texts: ['https://wwa.lanzoua.com/iabc123'],
-                      ),
-                      onDrivePage: false,
-                      onFavoritesPage: false,
-                    );
-                  },
-                  child: const Text('drop'),
+      ProviderScope(
+        child: ChangeNotifierProvider<AppController>.value(
+          value: app,
+          child: MaterialApp(
+            localizationsDelegates: appLocalizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            locale: const Locale('zh'),
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: Center(
+                  child: TextButton(
+                    onPressed: () async {
+                      await handleExternalDrop(
+                        context,
+                        const DropPayload(
+                          texts: ['https://wwa.lanzoua.com/iabc123'],
+                        ),
+                        onDrivePage: false,
+                        onFavoritesPage: false,
+                      );
+                    },
+                    child: const Text('drop'),
+                  ),
                 ),
               ),
             ),
