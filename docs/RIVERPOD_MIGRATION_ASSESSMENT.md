@@ -639,6 +639,10 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > `notifyListeners()` 更新会被过滤，只有运行中 / 排队任务数变化才重建。
 > 新增测试同时验证数量变化会重建、重复通知但数量不变不会重建。至此生产代码
 > 已无旧 Provider 的 `TransferManager` 读取或整体订阅。
+>
+> **阶段 5 全量自动化复验（2026-10-30）**：`agent.cmd analyze` 全量 0 issue；
+> `agent.cmd test` 全量 715 个测试全部通过。Android/Windows 的后台传输、
+> 取消、重试、批量删除和通知栏进度仍需在移除旧 Provider 前人工复验。
 
 ### 阶段 6：移除旧 Provider
 

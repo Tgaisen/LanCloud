@@ -85,6 +85,8 @@
 | `tools\agent.cmd test`（首页运行任务计数） | 增量 | **40 tests, all passed** | 约 25 s |
 | `tools\agent.cmd analyze`（阶段 4 消费端完成后） | 全量 | No issues found | 约 27 s |
 | `tools\agent.cmd test`（阶段 4 消费端完成后） | 全量 | **707 tests, all passed** | 约 113 s |
+| `tools\agent.cmd analyze`（阶段 5 消费端完成后） | 全量 | No issues found | 约 31 s |
+| `tools\agent.cmd test`（阶段 5 消费端完成后） | 全量 | **715 tests, all passed** | 约 106 s |
 
 工具链：Flutter 3.47.7（stable）/ Dart 3.13.5 / DevTools 2.60.0。
 静态检查：`analysis_options.yaml` 已开启 `strict-casts` / `strict-inference` / `strict-raw-types`。
@@ -301,6 +303,8 @@
 - 2026-10-30 的共享 `TransferRunningCount` 接入首页并新增过滤重建测试；增量
   12 个文件 / 40 个测试通过，当前总数由 714 增至 715。生产代码已无旧 Provider
   的 `TransferManager` 读取或整体订阅。
+- 2026-10-30 阶段 5 消费端完成后全量复验：`agent.cmd analyze` 0 issue；
+  `agent.cmd test` 715 个测试全部通过。阶段 5 后台传输与跨平台行为仍需人工复验。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release
