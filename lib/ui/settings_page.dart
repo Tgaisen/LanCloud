@@ -24,6 +24,7 @@ import 'common.dart';
 import 'cookie_sheet.dart';
 import 'licenses_page.dart';
 import 'm3e.dart';
+import 'notification_settings_tile.dart';
 
 /// 「清除数据」弹窗里可勾选的清除项。
 enum _ClearDataOption { quickAccess, recents, otherAccounts, logs, registry }
@@ -682,12 +683,11 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         subtitle: l10n.notifProgressSubtitle,
         keywords: l10n.notifProgressKeywords.split(' '),
         section: SettingsSection.notification,
-        build: (context, app) => SwitchListTile(
-          secondary: const Icon(Icons.speed),
-          title: Text(context.l10n.notifProgress),
-          subtitle: Text(context.l10n.notifProgressSubtitle),
-          value: app.settings.notifyProgress,
-          onChanged: _setNotifyProgress,
+        build: (context, app) => NotificationSettingsTile(
+          done: false,
+          onPermissionChanged: (granted) {
+            if (mounted) setState(() => _notifGranted = granted);
+          },
         ),
       ),
       _Entry(
@@ -696,12 +696,11 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         subtitle: l10n.notifDoneSubtitle,
         keywords: l10n.notifDoneKeywords.split(' '),
         section: SettingsSection.notification,
-        build: (context, app) => SwitchListTile(
-          secondary: const Icon(Icons.task_alt),
-          title: Text(context.l10n.notifDone),
-          subtitle: Text(context.l10n.notifDoneSubtitle),
-          value: app.settings.notifyDone,
-          onChanged: _setNotifyDone,
+        build: (context, app) => NotificationSettingsTile(
+          done: true,
+          onPermissionChanged: (granted) {
+            if (mounted) setState(() => _notifGranted = granted);
+          },
         ),
       ),
       _Entry(
@@ -1443,38 +1442,6 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(l10n.permissionOpenFailed)));
     }
-  }
-
-  Future<void> _setNotifyProgress(bool value) async {
-    final app = context.read<AppController>();
-    if (value) {
-      final messenger = ScaffoldMessenger.of(context);
-      final l10n = context.l10n;
-      final granted = await NotificationService.instance.requestPermission();
-      if (mounted) setState(() => _notifGranted = granted);
-      if (!granted) {
-        messenger.showSnackBar(
-          SnackBar(content: Text(l10n.notifPermissionDeniedHint)),
-        );
-      }
-    }
-    await app.setNotifyProgress(value);
-  }
-
-  Future<void> _setNotifyDone(bool value) async {
-    final app = context.read<AppController>();
-    if (value) {
-      final messenger = ScaffoldMessenger.of(context);
-      final l10n = context.l10n;
-      final granted = await NotificationService.instance.requestPermission();
-      if (mounted) setState(() => _notifGranted = granted);
-      if (!granted) {
-        messenger.showSnackBar(
-          SnackBar(content: Text(l10n.notifPermissionDeniedHint)),
-        );
-      }
-    }
-    await app.setNotifyDone(value);
   }
 
   Future<void> _requestNotifPermission() async {

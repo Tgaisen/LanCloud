@@ -409,6 +409,10 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > `ClipboardLinkPromptTile`，使用 `LanguageClipboardSettingsState.revision`
 > 局部刷新并有独立 Widget 测试。设置页外层仍整体监听 `AppController`，后续按
 > 设置组逐个移除外层依赖。
+>
+> 进度通知和完成通知两个开关随后迁入 `NotificationSettingsTile`。开关状态由
+> `NotificationSettingsState.revision` 局部刷新，系统通知权限申请可注入，结果
+> 同步回“管理权限”入口。设置页外层依赖仍未移除。
 
 ### 阶段 5：处理 `TransferManager`
 

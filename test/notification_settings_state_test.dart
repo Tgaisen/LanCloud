@@ -16,6 +16,7 @@ void main() {
     await state.setNotifyProgress(false);
     await state.setNotifyDone(false);
 
+    expect(state.revision.value, 2);
     expect(state.notifyProgress, isFalse);
     expect(state.notifyDone, isFalse);
     expect(settings.notifyProgress, isFalse);
