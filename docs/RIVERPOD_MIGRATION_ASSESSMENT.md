@@ -354,6 +354,9 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > `ListHomeSettingsState` 也已拆分：列表排序、首页折叠、最近使用上限和文件夹
 > 打开模式使用独立 provider。最近使用上限写入后的按账号数据库裁剪仍由旧控制器
 > 执行。
+>
+> `LanguageClipboardSettingsState` 已拆分：界面语言与复制分享链接提示收窄为独立
+> 入口。应用根 Locale 解析和剪贴板行为尚未迁移。
 
 ### 阶段 4：迁移 UI 消费端
 

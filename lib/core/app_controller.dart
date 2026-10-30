@@ -23,6 +23,7 @@ import 'navigation_state.dart';
 import 'navigation_appearance_settings_state.dart';
 import 'notification_settings_state.dart';
 import 'list_home_settings_state.dart';
+import 'language_clipboard_settings_state.dart';
 import 'platform_support.dart';
 import 'saf_storage.dart';
 import 'settings_state.dart';
@@ -60,6 +61,7 @@ class AppController extends ChangeNotifier {
     themeSettings = ThemeSettingsState(settings);
     transferConnectionSettings = TransferConnectionSettingsState(settings);
     listHomeSettings = ListHomeSettingsState(settings);
+    languageClipboardSettings = LanguageClipboardSettingsState(settings);
     this.navigation.addListener(notifyListeners);
   }
 
@@ -71,6 +73,7 @@ class AppController extends ChangeNotifier {
   late final ThemeSettingsState themeSettings;
   late final TransferConnectionSettingsState transferConnectionSettings;
   late final ListHomeSettingsState listHomeSettings;
+  late final LanguageClipboardSettingsState languageClipboardSettings;
 
   AccountStore get accounts => accountState.store;
   SettingsStore get settings => settingsState.store;
@@ -638,7 +641,7 @@ class AppController extends ChangeNotifier {
 
   /// 复制到蓝奏云分享链接时是否提示打开。
   Future<void> setClipboardLinkPrompt(bool value) async {
-    await settings.setClipboardLinkPrompt(value);
+    await languageClipboardSettings.setClipboardLinkPrompt(value);
     notifyListeners();
   }
 
@@ -659,7 +662,7 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> setLanguage(String value) async {
-    await settings.setLanguage(value);
+    await languageClipboardSettings.setLanguage(value);
     notifyListeners();
   }
 

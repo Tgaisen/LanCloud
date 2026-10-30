@@ -20,6 +20,7 @@ import 'core/drive_state.dart';
 import 'core/navigation_state.dart';
 import 'core/navigation_appearance_settings_state.dart';
 import 'core/list_home_settings_state.dart';
+import 'core/language_clipboard_settings_state.dart';
 import 'core/notification_settings_state.dart';
 import 'core/incoming_links.dart';
 import 'core/notifications.dart';
@@ -144,6 +145,9 @@ Future<void> main() async {
         app.transferConnectionSettings,
       ),
       listHomeSettingsStateProvider.overrideWithValue(app.listHomeSettings),
+      languageClipboardSettingsStateProvider.overrideWithValue(
+        app.languageClipboardSettings,
+      ),
       notificationServiceProvider.overrideWithValue(
         NotificationService.instance,
       ),
