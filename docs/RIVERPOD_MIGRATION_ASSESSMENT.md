@@ -483,6 +483,11 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > 设置页外层 `context.watch<AppController>()` 随后移除。页面主体改用
 > `context.read` 生成搜索元数据并处理事件，迁移后的设置行各自订阅局部状态；
 > “显示 Cookie”行使用 `context.select`，只在当前 UID 变化时重建。
+>
+> `ProfilePage` 主体随后也移除 `context.watch<AppController>()`，仅用
+> `context.select` 订阅 `hideTopBar`。账号卡片拆成局部
+> `ProfileAccountTile`，只订阅登录态、UID、昵称和会员等级；其他账号操作仍通过
+> `context.read` 在事件回调中执行。
 
 ### 阶段 5：处理 `TransferManager`
 

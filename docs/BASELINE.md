@@ -58,6 +58,7 @@
 | `tools\agent.cmd test`（隐藏顶/底栏） | 增量 | **357 tests, all passed** | 约 60 s |
 | `tools\agent.cmd test`（DownloadDirectorySettingsTile） | 增量 | **357 tests, all passed** | 约 68 s |
 | `tools\agent.cmd test`（设置页外层监听） | 增量 | **46 tests, all passed** | 约 13 s |
+| `tools\agent.cmd test`（ProfilePage 消费端） | 增量 | **29 tests, all passed** | 约 11 s |
 
 工具链：Flutter 3.47.7（stable）/ Dart 3.13.5 / DevTools 2.60.0。
 静态检查：`analysis_options.yaml` 已开启 `strict-casts` / `strict-inference` / `strict-raw-types`。
@@ -208,5 +209,8 @@
 - 2026-10-30 的设置页移除外层 `context.watch<AppController>()`，新增 1 个
   “显示 Cookie”局部 UID 订阅测试；增量 8 个文件 / 46 个测试通过，当前总数由
   707 增至 708。
+- 2026-10-30 的 ProfilePage 移除外层 `context.watch<AppController>()`，账号卡片
+  改为局部账号摘要订阅，顶栏隐藏设置使用窄 `context.select`；增量 3 个文件 /
+  29 个测试通过，用例总数保持 708。
 - 若临时再改 `analysis_options.yaml` 加规则，issue 数会变；先把预期数量记在这里再跑，
   避免和「本次改坏」混淆。

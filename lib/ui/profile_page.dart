@@ -8,7 +8,6 @@ import 'package:provider/provider.dart';
 import '../core/app_controller.dart';
 import '../core/api/lanzou_client.dart';
 import '../core/backup/backup_sections.dart';
-import '../core/data/account_store.dart';
 import '../core/update/update_service.dart';
 import '../l10n/l10n.dart';
 import 'about_page.dart';
@@ -420,7 +419,10 @@ class _ProfilePageState extends State<ProfilePage>
   @override
   Widget build(BuildContext context) {
     super.build(context); // AutomaticKeepAliveClientMixin 要求
-    final app = context.watch<AppController>();
+    final app = context.read<AppController>();
+    final hideTopBar = context.select<AppController, bool>(
+      (app) => app.settings.hideTopBar,
+    );
     final l10n = context.l10n;
     final scheme = Theme.of(context).colorScheme;
     final headerHeight = MediaQuery.paddingOf(context).top + kToolbarHeight;
@@ -458,9 +460,9 @@ class _ProfilePageState extends State<ProfilePage>
         child: Stack(
           children: [
             if (wide)
-              _buildTwoPane(context, app, headerHeight, paneWidth)
+              _buildTwoPane(context, app, headerHeight, paneWidth, hideTopBar)
             else
-              _buildSinglePane(context, app, headerHeight),
+              _buildSinglePane(context, app, headerHeight, hideTopBar),
             // 顶栏浮层：与底栏共用收起进度
             Positioned(
               // 两栏时顶栏只盖在右卡片那一列上（内容 + 底色）：
@@ -573,12 +575,13 @@ class _ProfilePageState extends State<ProfilePage>
     BuildContext context,
     AppController app,
     double headerHeight,
+    bool hideTopBar,
   ) {
     return BodySideInset(
       child: ScrollTint(
         hideDistance: headerHeight,
         readBarsHidden: () => app.topBarHide.value,
-        onBarsHidden: app.settings.hideTopBar
+        onBarsHidden: hideTopBar
             ? app.setTopBarHideFromScroll
             : null,
         // 列表快速滑动条（可拖拽）
@@ -599,7 +602,7 @@ class _ProfilePageState extends State<ProfilePage>
                 padding: kM3eSectionPagePadding,
                 // 整块布局：避免懒布局估算导致滚动条滑块抖动（见 SliverColumn）
                 sliver: SliverColumn(
-                  children: _singlePaneChildren(context, app),
+                  children: _singlePaneChildren(context),
                 ),
               ),
               // 底栏盖在正文上方（extendBody）时，补足列表末尾留白
@@ -613,13 +616,18 @@ class _ProfilePageState extends State<ProfilePage>
     );
   }
 
-  List<Widget> _singlePaneChildren(BuildContext context, AppController app) {
+  List<Widget> _singlePaneChildren(BuildContext context) {
     final l10n = context.l10n;
     return [
       // 组 1：账号（分组小标题 + 信息卡 + 网页版 / 个人中心 / 回收站）
       M3eSectionHeader(l10n.accountTitle),
       SegmentedList(
-        children: [_accountTile(context, app), ..._webLinkTiles(context)],
+        children: [
+          ProfileAccountTile(
+            onSwitchAccount: () => _showAccountSwitcher(context),
+          ),
+          ..._webLinkTiles(context),
+        ],
       ),
       // 组 2：设置（分组小标题 + 5 个大类）
       M3eSectionHeader(l10n.settings),
@@ -726,6 +734,7 @@ class _ProfilePageState extends State<ProfilePage>
     AppController app,
     double headerHeight,
     double paneWidth,
+    bool hideTopBar,
   ) {
     // 右窗格内容身份 = (类别, 二级页)：二级页进出同样走滑动切换
     final switcherKey = ValueKey(_paneKey);
@@ -775,7 +784,7 @@ class _ProfilePageState extends State<ProfilePage>
                           // 整块布局：避免懒布局估算导致滚动条滑块抖动
                           //（见 SliverColumn）
                           sliver: SliverColumn(
-                            children: _listPaneChildren(context, app),
+                            children: _listPaneChildren(context),
                           ),
                         ),
                       ],
@@ -794,9 +803,7 @@ class _ProfilePageState extends State<ProfilePage>
                   child: ValueListenableBuilder<double>(
                     valueListenable: app.topBarHide,
                     builder: (context, hide, content) {
-                      final t = app.settings.hideTopBar
-                          ? hide.clamp(0.0, 1.0)
-                          : 0.0;
+                      final t = hideTopBar ? hide.clamp(0.0, 1.0) : 0.0;
                       return Stack(
                         children: [
                           // 卡片底：顶边贴着顶栏下沿（静止时圆角完整露出），
@@ -822,7 +829,7 @@ class _ProfilePageState extends State<ProfilePage>
                     child: ScrollTint(
                       hideDistance: headerHeight,
                       readBarsHidden: () => app.topBarHide.value,
-                      onBarsHidden: app.settings.hideTopBar
+                      onBarsHidden: hideTopBar
                           ? app.setTopBarHideFromScroll
                           : null,
                       // 切换详情（账号 / 各设置类别 / 二级页 / 关于）：
@@ -868,7 +875,7 @@ class _ProfilePageState extends State<ProfilePage>
                           },
                           child: KeyedSubtree(
                             key: switcherKey,
-                            child: _buildDetailPane(context, app),
+                            child: _buildDetailPane(context),
                           ),
                         ),
                       ),
@@ -883,7 +890,7 @@ class _ProfilePageState extends State<ProfilePage>
     );
   }
 
-  List<Widget> _listPaneChildren(BuildContext context, AppController app) {
+  List<Widget> _listPaneChildren(BuildContext context) {
     final l10n = context.l10n;
     // 左窗格按 M3「展开导航栏」组织：条目之间 4dp 间距（collapsed rail
     // 的 ItemVerticalSpace 量级），每个分组前有一条小标题
@@ -936,7 +943,7 @@ class _ProfilePageState extends State<ProfilePage>
     ];
   }
 
-  Widget _buildDetailPane(BuildContext context, AppController app) {
+  Widget _buildDetailPane(BuildContext context) {
     final deep = _deepPage;
     if (deep == _ProfileDeepPage.backupOptions) {
       final controller = _backupOptionsController;
@@ -1025,7 +1032,12 @@ class _ProfilePageState extends State<ProfilePage>
       controller: _paneScroll(_paneKey),
       children: [
         SegmentedList(
-          children: [_accountTile(context, app), ..._webLinkTiles(context)],
+          children: [
+            ProfileAccountTile(
+              onSwitchAccount: () => _showAccountSwitcher(context),
+            ),
+            ..._webLinkTiles(context),
+          ],
         ),
       ],
       topPadding: 16,
@@ -1058,44 +1070,6 @@ class _ProfilePageState extends State<ProfilePage>
             sliver: SliverColumn(children: children),
           ),
         ],
-      ),
-    );
-  }
-
-  /// 账号信息卡（单栏与两栏详情窗格共用）。
-  Widget _accountTile(BuildContext context, AppController app) {
-    final l10n = context.l10n;
-    final account = app.activeAccount;
-    final uid = app.activeUid ?? '';
-    return ListTile(
-      // 头像里的首字母是装饰：账号名 / 账号在标题与副标题里，读屏跳过它
-      leading: ExcludeSemantics(
-        child: CircleAvatar(child: Text(_avatarInitial(account, uid))),
-      ),
-      title: Row(
-        children: [
-          Flexible(
-            child: Text(
-              account == null
-                  ? l10n.notLoggedIn
-                  : account.nickname.isEmpty
-                  ? l10n.accountUid(uid)
-                  : account.nickname,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          // 会员等级（网页版个人中心截取）；「普」
-          //（含还没取到的情况）不显示，开通会员才有卡片
-          if (account != null && !account.isFreeTier) ...[
-            const SizedBox(width: 8),
-            _LevelChip(level: account.levelLabel),
-          ],
-        ],
-      ),
-      subtitle: Text(l10n.uidLabel(uid)),
-      trailing: FilledButton.tonal(
-        onPressed: () => _showAccountSwitcher(context),
-        child: Text(l10n.switchAccountShort),
       ),
     );
   }
@@ -1134,16 +1108,6 @@ class _ProfilePageState extends State<ProfilePage>
         ),
       ),
     ];
-  }
-
-  String _avatarInitial(Account? account, String uid) {
-    final name = account == null
-        ? ''
-        : account.nickname.isNotEmpty
-        ? account.nickname
-        : uid;
-    if (name.isEmpty) return '?';
-    return name.substring(0, 1);
   }
 
   Future<void> _showAccountSwitcher(BuildContext context) async {
@@ -1254,6 +1218,77 @@ class _ProfilePageState extends State<ProfilePage>
     );
     if (ok != true) return;
     await app.removeAccount(uid, clearData: clearData);
+  }
+}
+
+typedef _ProfileAccountSnapshot = ({
+  bool signedIn,
+  String uid,
+  String nickname,
+  String level,
+  bool free,
+});
+
+/// 账号信息卡（单栏与两栏详情窗格共用）；只订阅账号摘要字段。
+class ProfileAccountTile extends StatelessWidget {
+  const ProfileAccountTile({
+    super.key,
+    required this.onSwitchAccount,
+  });
+
+  final VoidCallback onSwitchAccount;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final snapshot = context.select<AppController, _ProfileAccountSnapshot>((
+      app,
+    ) {
+      final account = app.activeAccount;
+      return (
+        signedIn: account != null,
+        uid: app.activeUid ?? '',
+        nickname: account?.nickname ?? '',
+        level: account?.levelLabel ?? '',
+        free: account?.isFreeTier ?? true,
+      );
+    });
+    final name = snapshot.nickname.isNotEmpty
+        ? snapshot.nickname
+        : snapshot.uid;
+    return ListTile(
+      // 头像里的首字母是装饰：账号名 / 账号在标题与副标题里，读屏跳过它。
+      leading: ExcludeSemantics(
+        child: CircleAvatar(
+          child: Text(name.isEmpty ? '?' : name.substring(0, 1)),
+        ),
+      ),
+      title: Row(
+        children: [
+          Flexible(
+            child: Text(
+              !snapshot.signedIn
+                  ? l10n.notLoggedIn
+                  : snapshot.nickname.isEmpty
+                  ? l10n.accountUid(snapshot.uid)
+                  : snapshot.nickname,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          // 会员等级（网页版个人中心截取）；「普」
+          //（含还没取到的情况）不显示，开通会员才有卡片。
+          if (snapshot.signedIn && !snapshot.free) ...[
+            const SizedBox(width: 8),
+            _LevelChip(level: snapshot.level),
+          ],
+        ],
+      ),
+      subtitle: Text(l10n.uidLabel(snapshot.uid)),
+      trailing: FilledButton.tonal(
+        onPressed: onSwitchAccount,
+        child: Text(l10n.switchAccountShort),
+      ),
+    );
   }
 }
 
