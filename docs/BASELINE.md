@@ -102,6 +102,7 @@
 | `tools\agent.cmd analyze`（阶段 6 准备后续切片） | 全量 | No issues found | 约 18 s |
 | `tools\agent.cmd test`（共享收藏 / 分享下载 helper） | 增量 | **302 tests, all passed** | 约 57 s |
 | `tools\agent.cmd test`（打开分享链接弹窗） | 增量 | **20 tests, all passed** | 约 17 s |
+| `tools\agent.cmd test`（backupServiceProvider） | 增量 | **1 test, all passed** | 约 13 s |
 
 工具链：Flutter 3.47.7（stable）/ Dart 3.13.5 / DevTools 2.60.0。
 静态检查：`analysis_options.yaml` 已开启 `strict-casts` / `strict-inference` / `strict-raw-types`。
@@ -114,7 +115,7 @@
 | `lib` 总行数 | 约 4.4 万 |
 | `test` 测试文件 | 155（平铺，`<主题>_test.dart`） |
 | `test` 总行数 | 约 2.1 万 |
-| `test` 用例数 | 719（当前总数；阶段 6 准备已新增 4 条测试） |
+| `test` 用例数 | 720（当前总数；阶段 6 准备已新增 5 条测试） |
 | `lib/ui` 页面与组件 | 54 个平铺文件 |
 | `lib/core` | 32 个平铺文件 + 5 个子系统目录 |
 | 文案（`app_zh.arb`） | 1357 行 |
@@ -362,6 +363,9 @@
 - 2026-10-31 “打开分享链接”弹窗改用客户端注册表、`appDbProvider` 与
   `AccountState.store`；生产文件已无 `AppController` 读取。增量 2 个测试文件 /
   20 个测试通过，用例总数保持 719。
+- 2026-10-31 新增应用级 `backupServiceProvider`，由 `main.dart` 用现有
+  `BackupService.of(app)` 覆盖，自动备份与页面后续消费共用同一实例；新增
+  1 个 provider 覆盖 / 同一性测试，当前总数由 719 增至 720。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release

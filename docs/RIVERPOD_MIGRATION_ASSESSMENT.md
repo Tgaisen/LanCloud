@@ -748,6 +748,11 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > `lanzouClientRegistryProvider`，最近使用与收藏写入来自 `appDbProvider`，
 > 当前 UID 来自 `AccountState.store`。弹窗本身的解析、补密码、最近记录、
 > 收藏模式和成功后的导航顺序保持不变；相关增量 2 个测试文件 / 20 个测试通过。
+>
+> 备份恢复消费端开始迁移前，先建立应用级 `backupServiceProvider`。应用入口
+> 仍通过 `BackupService.of(app)` 取得既有单例并同时用于启动自动备份和容器
+> 覆盖，不改变服务内部依赖与生命周期。新增 1 个 provider 覆盖 / 同一性测试，
+> 当前测试总数为 720。
 
 ### 阶段 6：移除旧 Provider
 

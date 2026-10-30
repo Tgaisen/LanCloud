@@ -14,6 +14,7 @@ import 'core/cache_page_settings_state.dart';
 import 'core/app_log.dart';
 import 'core/app_log_provider.dart';
 import 'core/backup/backup_service.dart';
+import 'core/backup/backup_service_provider.dart';
 import 'core/api/lanzou_client_registry.dart';
 import 'core/data/app_db_provider.dart';
 import 'core/download_path_service.dart';
@@ -124,12 +125,14 @@ Future<void> main() async {
   await SharedInbox.instance.init();
   await IncomingLinks.instance.init();
   // 自动备份：按每天/每周频率在启动时补一次，失败只记录不打扰。
-  unawaited(BackupService.of(app).maybeAutoBackup());
+  final backupService = BackupService.of(app);
+  unawaited(backupService.maybeAutoBackup());
   // Riverpod 更新试点：沿用已加载的设置对象，先恢复缓存再非阻塞检查更新。
   final updateContainer = ProviderContainer(
     overrides: [
       appDbProvider.overrideWithValue(app.db),
       appLogProvider.overrideWithValue(AppLog.instance),
+      backupServiceProvider.overrideWithValue(backupService),
       lanzouClientRegistryProvider.overrideWithValue(app.clientRegistry),
       navigationStateProvider.overrideWithValue(app.navigation),
       driveStateProvider.overrideWithValue(app.drive),
