@@ -654,6 +654,10 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > 根因与 [flutter#190357](https://github.com/flutter/flutter/issues/190357) 的
 > OverlayPortal 孤儿语义节点问题一致；修复 PR #193372 尚未进入当前稳定的
 > Flutter 3.47.9。阶段 6 的 Windows 人工验收暂标记为上游阻塞。
+>
+> 最后两个仍注册旧传输 Provider 的测试宿主（分享文件属性弹窗、应用外壳）也已
+> 切换为 `ProviderScope` override。至此生产代码、启动装配和测试宿主都不再注册
+> `ChangeNotifierProvider<TransferManager>`。
 
 ### 阶段 6：移除旧 Provider
 

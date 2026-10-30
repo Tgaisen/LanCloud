@@ -84,6 +84,7 @@
 | `tools\agent.cmd test`（拖放上传入口） | 增量 | **12 tests, all passed** | 约 15 s |
 | `tools\agent.cmd test`（首页运行任务计数） | 增量 | **40 tests, all passed** | 约 25 s |
 | `tools\agent.cmd test`（移除传输旧 Provider 注册） | 全量 | **715 tests, all passed** | 约 108 s |
+| `tools\agent.cmd test`（清理最后测试宿主） | 增量 | **17 tests, all passed** | 约 17 s |
 | `tools\agent.cmd analyze`（阶段 4 消费端完成后） | 全量 | No issues found | 约 27 s |
 | `tools\agent.cmd test`（阶段 4 消费端完成后） | 全量 | **707 tests, all passed** | 约 113 s |
 | `tools\agent.cmd analyze`（阶段 5 消费端完成后） | 全量 | No issues found | 约 31 s |
@@ -308,6 +309,9 @@
   `agent.cmd test` 715 个测试全部通过。阶段 5 后台传输与跨平台行为仍需人工复验。
 - 2026-10-30 从 `main.dart` 移除旧 `ChangeNotifierProvider<TransferManager>`；
   保留启动时主动创建 Riverpod 管理器。全量 715 个测试通过，用例总数不变。
+- 2026-10-30 清理最后两个测试宿主中的旧传输 Provider；增量 2 个测试文件 /
+  17 个测试通过，用例总数保持 715。全仓已无
+  `ChangeNotifierProvider<TransferManager>`。
 - 2026-10-30 Windows 已知阻塞：Flutter 3.47.x 的 OverlayPortal 孤儿语义节点问题
   可在传输页滚动和拖放释放时触发原生崩溃（flutter#190357，修复 PR #193372
   未进入当前稳定版 3.47.9）。该项阻塞阶段 6 的 Windows 人工验收。

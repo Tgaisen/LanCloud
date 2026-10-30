@@ -77,6 +77,7 @@ Riverpod 读取应用级 `TransferManager`，并通过 `ListenableBuilder` 保�
 拖放上传入口也已迁入 Riverpod。生产代码已无旧 Provider 的
 `TransferManager` 读取 / 整体订阅；`RootShell` 与首页共用
 `TransferRunningCount`，只在运行中 / 排队任务数变化时重建。
+启动装配和测试宿主也已移除 `ChangeNotifierProvider<TransferManager>`。
 `UpdateContent` 已不再读取 `AppController`，更新状态与更新设置均从 Riverpod
 读取；设置 store 的变更通过局部 revision 触发。其余新增 UI 仍应优先用
 `select` 或 `ValueListenableBuilder` 收窄订阅范围，不要继续放大。

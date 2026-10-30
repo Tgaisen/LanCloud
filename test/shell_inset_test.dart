@@ -23,12 +23,8 @@ Widget _rootShellHost(
     settingsStoreProvider.overrideWithValue(app.settings),
     transferManagerProvider.overrideWithValue(transfers),
   ],
-  child: MultiProvider(
-    providers: [
-      ChangeNotifierProvider<AppController>.value(value: app),
-      // 子页面尚未迁移完全，双栈期间仍需通过旧 Provider 获得同一管理器。
-      ChangeNotifierProvider<TransferManager>.value(value: transfers),
-    ],
+  child: ChangeNotifierProvider<AppController>.value(
+    value: app,
     child: MaterialApp(
       localizationsDelegates: appLocalizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,

@@ -107,11 +107,8 @@ Future<void> pumpSheet(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [transferManagerProvider.overrideWithValue(transfers)],
-      child: MultiProvider(
-        providers: [
-          ChangeNotifierProvider<AppController>.value(value: app),
-          ChangeNotifierProvider<TransferManager>.value(value: transfers),
-        ],
+      child: ChangeNotifierProvider<AppController>.value(
+        value: app,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
