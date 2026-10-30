@@ -1,19 +1,21 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/backup/backup_crypto.dart';
 import 'package:lancloud/core/backup/backup_service.dart';
+import 'package:lancloud/core/backup/backup_service_provider.dart';
 import 'package:lancloud/core/backup/webdav_client.dart';
 import 'package:lancloud/core/cookie_auth.dart';
+import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/delegates.dart';
 import 'package:lancloud/ui/m3e.dart';
 import 'package:lancloud/ui/restore_page.dart';
 import 'package:local_auth_android/local_auth_android.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:provider/provider.dart';
 
 class _RestoreBackupService extends BackupService {
   _RestoreBackupService(super.app, this.content);
@@ -79,10 +81,8 @@ void main() {
     });
     final service = _RestoreBackupService(app, encrypted);
     final auth = _GatedCookieAuth();
-    BackupService.instance = service;
     CookieAuth.instance = auth;
     addTearDown(() {
-      BackupService.instance = null;
       CookieAuth.instance = CookieAuth();
     });
 
@@ -90,8 +90,13 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
-        value: app,
+      ProviderScope(
+        overrides: [
+          backupServiceProvider.overrideWithValue(service),
+          navigationAppearanceSettingsStateProvider.overrideWithValue(
+            app.navigationAppearanceSettings,
+          ),
+        ],
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,

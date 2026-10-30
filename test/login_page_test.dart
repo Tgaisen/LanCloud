@@ -5,13 +5,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/account_state.dart';
 import 'package:lancloud/core/api/lanzou_client_registry.dart';
 import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/backup/backup_service.dart';
+import 'package:lancloud/core/backup/backup_service_provider.dart';
 import 'package:lancloud/core/drive_state.dart';
+import 'package:lancloud/core/navigation_appearance_settings_state.dart';
+import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/app_icons.dart' as app_icons;
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/login_page.dart';
 import 'package:lancloud/ui/m3e.dart';
-import 'package:provider/provider.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
@@ -23,15 +26,17 @@ Widget host(Widget home, {AppController? app}) {
       accountStateProvider.overrideWithValue(controller.accountState),
       lanzouClientRegistryProvider.overrideWithValue(controller.clientRegistry),
       driveStateProvider.overrideWithValue(controller.drive),
-    ],
-    child: ChangeNotifierProvider<AppController>.value(
-      value: controller,
-      child: MaterialApp(
-        localizationsDelegates: appLocalizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        locale: const Locale('zh'),
-        home: home,
+      backupServiceProvider.overrideWithValue(BackupService(controller)),
+      navigationAppearanceSettingsStateProvider.overrideWithValue(
+        controller.navigationAppearanceSettings,
       ),
+      navigationStateProvider.overrideWithValue(controller.navigation),
+    ],
+    child: MaterialApp(
+      localizationsDelegates: appLocalizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      locale: const Locale('zh'),
+      home: home,
     ),
   );
 }
