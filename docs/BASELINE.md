@@ -66,6 +66,8 @@
 | `tools\agent.cmd test`（RestorePage 顶栏订阅） | 增量 | **1 test, all passed** | 约 4 s |
 | `tools\agent.cmd test`（HomePage 消费端） | 增量 | **6 tests, all passed** | 约 4 s |
 | `tools\agent.cmd test`（DrivePage 消费端） | 增量 | **45 tests, all passed** | 约 19 s |
+| `tools\agent.cmd analyze`（阶段 4 消费端完成后） | 全量 | No issues found | 约 27 s |
+| `tools\agent.cmd test`（阶段 4 消费端完成后） | 全量 | **707 tests, all passed** | 约 113 s |
 
 工具链：Flutter 3.47.7（stable）/ Dart 3.13.5 / DevTools 2.60.0。
 静态检查：`analysis_options.yaml` 已开启 `strict-casts` / `strict-inference` / `strict-raw-types`。
@@ -74,12 +76,12 @@
 
 | 指标 | 数量 |
 | --- | ---: |
-| `lib` Dart 文件 | 95 |
-| `lib` 总行数 | 约 4.7 万 |
-| `test` 测试文件 | 123（平铺，`<主题>_test.dart`） |
-| `test` 总行数 | 约 2 万 |
-| `test` 用例数 | 708（当前总数；本次只验证了受影响增量） |
-| `lib/ui` 页面与组件 | 40 个平铺文件 |
+| `lib` Dart 文件 | 131 |
+| `lib` 总行数 | 约 4.4 万 |
+| `test` 测试文件 | 155（平铺，`<主题>_test.dart`） |
+| `test` 总行数 | 约 2.1 万 |
+| `test` 用例数 | 707（2026-10-30 全量口径） |
+| `lib/ui` 页面与组件 | 54 个平铺文件 |
 | `lib/core` | 32 个平铺文件 + 5 个子系统目录 |
 | 文案（`app_zh.arb`） | 1357 行 |
 
@@ -237,5 +239,13 @@
 - 2026-10-30 的 DrivePage 将整体 AppController 订阅收窄为视图设置快照；增量 5
   个文件 / 45 个测试通过，用例总数保持 708。生产代码中的整体 AppController
   watch 已清零。
+- 2026-10-30 阶段 4 消费端迁移完成后的全量验证发现：此前按增量结果累计的用例数
+  存在 1 条误差；以全量 **707 tests** 为准，相关历史增量的“当前总数”仅反映当时
+  的累计记录口径。
+- 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
+  保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
+  Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release
+  重新构建运行；导航、设置页、启动页弹窗、主题切换、传输并发、下载目录弹窗
+  均正常，运行日志无本轮相关异常。
 - 若临时再改 `analysis_options.yaml` 加规则，issue 数会变；先把预期数量记在这里再跑，
   避免和「本次改坏」混淆。

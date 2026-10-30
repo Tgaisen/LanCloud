@@ -518,6 +518,15 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > 隐藏配置。目录加载、`DriveLocation`、多选、批量下载/删除和缓存状态保持原有
 > 状态机。至此生产代码中的 `context.watch<AppController>()` 已清零；剩余
 > `TransferManager` 整体订阅留到阶段 5。
+>
+> **阶段 4 全量与人工复验（2026-10-30）**：
+>
+> - `agent.cmd analyze` 全量 0 issue；`agent.cmd test` 全量 707 个测试通过。
+> - Android：`NOH AN00` / Android 12 / arm64，debug 覆盖安装保留数据；首页、
+>   「我的」、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和 Android
+>   下载目录提示正常；进程日志无本轮相关异常。
+> - Windows：Windows 10 x64 Release 重新构建运行；导航、设置页、启动页弹窗、
+>   主题切换、传输并发和下载目录弹窗正常；运行日志无本轮相关异常。
 
 ### 阶段 5：处理 `TransferManager`
 
