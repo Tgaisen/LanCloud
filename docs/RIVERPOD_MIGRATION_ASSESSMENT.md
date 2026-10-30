@@ -618,6 +618,10 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > `ConsumerStatefulWidget`，下载标记和进度环从 provider 读取。四个直接测试宿主
 > 已移除旧 `ChangeNotifierProvider<TransferManager>`，只保留 `ProviderScope`
 > override，防止迁移遗漏被双栈测试掩盖。
+>
+> 分享文件夹页的条目菜单随后改为通过当前 `ProviderScope` 读取下载标记，
+> “已加入下载”时仍会禁用菜单下载项。分页和顶栏测试宿主已改用 Riverpod
+> override，现有菜单与失效文件用例继续覆盖实际路径。
 
 ### 阶段 6：移除旧 Provider
 

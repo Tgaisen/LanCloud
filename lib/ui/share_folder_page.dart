@@ -1,10 +1,11 @@
 import 'package:material_ui/material_ui.dart' hide Icons;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:provider/provider.dart';
 
 import '../core/api/lanzou_client.dart';
 import '../core/api/models.dart';
 import '../core/app_controller.dart';
-import '../core/transfer/transfer_manager.dart';
+import '../core/transfer/transfer_manager_provider.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
@@ -389,7 +390,11 @@ class _ShareFolderPageState extends State<ShareFolderPage>
     // 取消下载 / 重新下载这些操作都在属性弹窗里
     final alreadyAdded =
         file != null &&
-        context.read<TransferManager>().downloadMarkOf(file.url) != null;
+        ProviderScope.containerOf(
+              context,
+              listen: false,
+            ).read(transferManagerProvider).downloadMarkOf(file.url) !=
+            null;
     // 收藏项要显示「收藏 / 取消收藏」：ref 就是分享链接，先查本地收藏表
     final favorited = await isFavoritedByRef(context, url);
     if (!mounted) return;

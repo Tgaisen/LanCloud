@@ -1,8 +1,10 @@
 import 'package:material_ui/material_ui.dart' hide Icons;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/api/models.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
+import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/m3e.dart';
@@ -21,22 +23,21 @@ Future<AppController> pumpShareFolder(
   addTearDown(tester.view.reset);
   final app = AppController()..settings.hideTopBar = true;
   addTearDown(app.dispose);
+  final transfers = TransferManager(app);
   await tester.pumpWidget(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider<AppController>.value(value: app),
-        ChangeNotifierProvider<TransferManager>.value(
-          value: TransferManager(app),
-        ),
-      ],
-      child: MaterialApp(
-        localizationsDelegates: appLocalizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        locale: const Locale('zh'),
-        home: ShareFolderPage(
-          folder: folder,
-          link: 'https://example.com/share',
-          pwd: '',
+    ProviderScope(
+      overrides: [transferManagerProvider.overrideWithValue(transfers)],
+      child: ChangeNotifierProvider<AppController>.value(
+        value: app,
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: ShareFolderPage(
+            folder: folder,
+            link: 'https://example.com/share',
+            pwd: '',
+          ),
         ),
       ),
     ),
@@ -175,10 +176,10 @@ void main() {
       ),
     );
     // 页面里读的就是同一个管理器：直接塞一条匹配的任务（含下载中）
-    final manager = Provider.of<TransferManager>(
+    final manager = ProviderScope.containerOf(
       tester.element(find.byType(ShareFolderPage)),
       listen: false,
-    );
+    ).read(transferManagerProvider);
     manager.tasks.add(
       TransferTask(
         id: 'd1',

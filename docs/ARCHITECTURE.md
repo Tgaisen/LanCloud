@@ -60,7 +60,7 @@
 | `CachePageSettingsState` | `core/cache_page_settings_state.dart` | 阶段 3 设置子组：网格视图、启动页、目录缓存和自动加载全部页面 |
 | `DownloadDirectorySettingsState` | `core/download_directory_settings_state.dart` | 阶段 3 设置子组：普通下载目录、SAF URI/标签、互斥写入和旧授权释放入口 |
 
-消费现状：`context.read<…>` 约 122 处、`context.watch<…>` 0 处、
+消费现状：`context.read<…>` 约 121 处、`context.watch<…>` 0 处、
 `context.select<…>` 12 处。生产代码中的整体 `watch` 已清零；传输页已从
 Riverpod 读取应用级 `TransferManager`，并通过 `ListenableBuilder` 保留既有
 `notifyListeners()` 刷新语义。`RootShell` 也已从 Riverpod 取得同一管理器，
@@ -70,6 +70,7 @@ Riverpod 读取应用级 `TransferManager`，并通过 `ListenableBuilder` 保�
 `DrivePage` 已改用 `ConsumerStatefulWidget`，生命周期监听、上传、批量下载、
 自有文件下载、属性卡状态和已下载菜单全部从 Riverpod 取得管理器。对应的四个
 直接测试宿主不再注册旧 `ChangeNotifierProvider<TransferManager>`。
+分享文件夹页的条目菜单也已从 Riverpod 读取已下载状态。
 `UpdateContent` 已不再读取 `AppController`，更新状态与更新设置均从 Riverpod
 读取；设置 store 的变更通过局部 revision 触发。其余新增 UI 仍应优先用
 `select` 或 `ValueListenableBuilder` 收窄订阅范围，不要继续放大。

@@ -78,6 +78,7 @@
 | `tools\agent.cmd test`（已下载菜单与分享属性弹窗） | 增量 | **13 tests, all passed** | 约 15 s |
 | `tools\agent.cmd test`（DrivePage 生命周期监听） | 增量 | **45 tests, all passed** | 约 27 s |
 | `tools\agent.cmd test`（DrivePage 传输交互与属性卡） | 增量 | **45 tests, all passed** | 约 27 s |
+| `tools\agent.cmd test`（分享文件夹菜单） | 增量 | **19 tests, all passed** | 约 18 s |
 | `tools\agent.cmd analyze`（阶段 4 消费端完成后） | 全量 | No issues found | 约 27 s |
 | `tools\agent.cmd test`（阶段 4 消费端完成后） | 全量 | **707 tests, all passed** | 约 113 s |
 
@@ -285,6 +286,8 @@
 - 2026-10-30 的 `DrivePage` 上传、批量下载、自有文件下载和属性卡迁入 Riverpod；
   增量 5 个测试文件 / 45 个测试通过，用例总数保持 714。四个网盘页测试宿主已
   移除旧传输管理器 Provider，只保留 Riverpod override。
+- 2026-10-30 的分享文件夹页条目菜单迁入 Riverpod；增量 4 个测试文件 / 19 个测试
+  通过，用例总数保持 714。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release
