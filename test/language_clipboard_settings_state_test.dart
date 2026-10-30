@@ -16,6 +16,7 @@ void main() {
     await state.setLanguage('en');
     await state.setClipboardLinkPrompt(true);
 
+    expect(state.revision.value, 2);
     expect(state.language, 'en');
     expect(state.clipboardLinkPrompt, isTrue);
     expect(settings.language, 'en');

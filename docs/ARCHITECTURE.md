@@ -58,6 +58,8 @@
 `UpdateContent` 已不再读取 `AppController`，更新状态与更新设置均从 Riverpod
 读取；设置 store 的变更通过局部 revision 触发。其余新增 UI 仍应优先用
 `select` 或 `ValueListenableBuilder` 收窄订阅范围，不要继续放大。
+设置页的“复制分享链接后提示”行也已迁为独立 Riverpod Widget；设置页其余条目
+仍由外层 `AppController` 监听，尚未整体迁移。
 
 ## 导航与弹层
 

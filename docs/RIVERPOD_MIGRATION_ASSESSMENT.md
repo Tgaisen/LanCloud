@@ -404,6 +404,11 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > Riverpod 消费：更新状态、通道和自动检查均来自 provider，设置写入通过
 > `UpdateSettingsState.revision` 局部刷新，不再读取 `AppController`。共享
 > `TopBarOverlayScaffold` 仍依赖旧 Provider，留到应用外壳迁移阶段处理。
+>
+> 设置页的第一个叶子控件“复制分享链接后提示”已抽成
+> `ClipboardLinkPromptTile`，使用 `LanguageClipboardSettingsState.revision`
+> 局部刷新并有独立 Widget 测试。设置页外层仍整体监听 `AppController`，后续按
+> 设置组逐个移除外层依赖。
 
 ### 阶段 5：处理 `TransferManager`
 

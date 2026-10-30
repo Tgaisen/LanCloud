@@ -19,6 +19,7 @@ import '../core/system_file_saver.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'backup_page.dart';
+import 'clipboard_link_prompt_tile.dart';
 import 'common.dart';
 import 'cookie_sheet.dart';
 import 'licenses_page.dart';
@@ -709,13 +710,7 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         subtitle: l10n.clipboardLinkPromptSubtitle,
         keywords: l10n.clipboardLinkPromptKeywords.split(' '),
         section: SettingsSection.reminder,
-        build: (context, app) => SwitchListTile(
-          secondary: const Icon(Icons.content_paste_go),
-          title: Text(context.l10n.clipboardLinkPrompt),
-          subtitle: Text(context.l10n.clipboardLinkPromptSubtitle),
-          value: app.settings.clipboardLinkPrompt,
-          onChanged: (value) => app.setClipboardLinkPrompt(value),
-        ),
+        build: (context, app) => const ClipboardLinkPromptTile(),
       ),
       // 三项系统权限（通知 / 安装应用 / 忽略电池优化）收进一个弹窗，
       // 设置页只留一个「管理权限」入口
