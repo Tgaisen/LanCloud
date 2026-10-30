@@ -17,6 +17,7 @@ import 'core/data/account_store_provider.dart';
 import 'core/data/app_db_provider.dart';
 import 'core/data/settings_store_provider.dart';
 import 'core/download_path_service.dart';
+import 'core/drive_state.dart';
 import 'core/navigation_state.dart';
 import 'core/incoming_links.dart';
 import 'core/notifications.dart';
@@ -122,6 +123,7 @@ Future<void> main() async {
       appLogProvider.overrideWithValue(AppLog.instance),
       lanzouClientRegistryProvider.overrideWithValue(app.clientRegistry),
       navigationStateProvider.overrideWithValue(app.navigation),
+      driveStateProvider.overrideWithValue(app.drive),
       accountStoreProvider.overrideWithValue(app.accounts),
       notificationServiceProvider.overrideWithValue(
         NotificationService.instance,

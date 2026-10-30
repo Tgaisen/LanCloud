@@ -310,6 +310,10 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > getter/setter 与通知转发。当前 Tab、顶/底栏进度和 Ticker 动画也已移入该状态，
 > 仍使用 `ValueNotifier`，没有把高频帧更新改成不可变大对象。设置和账户状态尚未
 > 迁移。
+>
+> `DriveState` 首片也已落地：目录请求、当前位置、网盘/收藏可见性探针迁入独立
+> 状态对象，并通过 `driveStateProvider` 暴露；`DriveLocation` 保持旧导入兼容。
+> `DriveCache` 和账号缓存绑定仍留在后续切片。
 
 ### 阶段 4：迁移 UI 消费端
 
