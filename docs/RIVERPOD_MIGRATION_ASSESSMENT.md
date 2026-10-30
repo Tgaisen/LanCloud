@@ -498,6 +498,11 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > `ThemeSettingsState` 和 `LanguageClipboardSettingsState` 的 revision。
 > `AppController.reloadFromStorage()` 在备份恢复后显式调用两个状态的 `refresh()`，
 > 保持主题与语言恢复行为。
+>
+> `common.dart` 的共享顶栏与多选操作栏随后改为局部订阅：
+> `TopBarOverlay` / `TopBarOverlayScaffold` 只订阅 `hideTopBar`，
+> `BatchActionBar` 只订阅 `floatingNavBar`；滚动进度继续使用
+> `ValueListenable`，不再因其他 `AppController` 通知重建。
 
 ### 阶段 5：处理 `TransferManager`
 

@@ -1113,13 +1113,16 @@ class TopBarOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final app = context.watch<AppController>();
+    final app = context.read<AppController>();
+    final hideTopBar = context.select<AppController, bool>(
+      (app) => app.settings.hideTopBar,
+    );
     return ValueListenableBuilder<double>(
       // 顶栏用独立的收起进度（距离 = 顶栏自身高度，才能 1:1 跟手）
       valueListenable: progress ?? app.topBarHide,
       builder: (context, hide, _) {
         // 只有开启「顶栏收起」时才跟随收起进度
-        final t = app.settings.hideTopBar ? hide.clamp(0.0, 1.0) : 0.0;
+        final t = hideTopBar ? hide.clamp(0.0, 1.0) : 0.0;
         return IgnorePointer(
           ignoring: t >= 0.999,
           child: Transform.translate(
@@ -1262,14 +1265,16 @@ class _TopBarOverlayScaffoldState extends State<TopBarOverlayScaffold> {
 
   @override
   Widget build(BuildContext context) {
-    final app = context.watch<AppController>();
+    final hideTopBar = context.select<AppController, bool>(
+      (app) => app.settings.hideTopBar,
+    );
     final scheme = Theme.of(context).colorScheme;
     final topInset =
         MediaQuery.paddingOf(context).top + widget.appBar.preferredSize.height;
     return ScrollTint(
       hideDistance: topInset,
       readBarsHidden: () => _hide.value,
-      onBarsHidden: app.settings.hideTopBar
+      onBarsHidden: hideTopBar
           ? (value) {
               _hide.value = value;
             }
@@ -2674,9 +2679,11 @@ class BatchActionBar extends StatelessWidget {
     // 普通底栏 = 80 + 系统手势区，悬浮底栏 = 108 + 系统手势区（含 16dp 顶留白）。
     // 按整槽避让时悬浮样式的多选条会离胶囊多出 16dp，这里回退成胶囊实际高度，
     // 两种样式的间距保持一致（都是 12dp）。
-    final app = context.watch<AppController>();
+    final floatingNavBar = context.select<AppController, bool>(
+      (app) => app.settings.floatingNavBar,
+    );
     final floatingNavInShell =
-        inRootShell(context) && app.settings.floatingNavBar;
+        inRootShell(context) && floatingNavBar;
     final bottomInset = math.max(
       0.0,
       MediaQuery.paddingOf(context).bottom -

@@ -4,6 +4,7 @@ import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/scroll_tint.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// 复刻页面结构：顶栏浮层 + 等高占位 + 列表，
 /// 并用 ScrollTint 按顶栏自身高度驱动收起进度。
@@ -268,6 +269,7 @@ void main() {
   });
 
   testWidgets('回到顶部恢复显示；关闭“顶栏收起”时顶栏不跟随进度', (tester) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
     final app = AppController()..settings.hideTopBar = true;
     await tester.pumpWidget(
       ChangeNotifierProvider<AppController>.value(
@@ -286,7 +288,7 @@ void main() {
     expect(barTop(tester), greaterThan(-0.5));
 
     // 关掉设置后，滚动不再驱动顶栏
-    app.settings.hideTopBar = false;
+    await app.setHideTopBar(false);
     await tester.pumpAndSettle();
     state.scroll.jumpTo(ProbePageState.headerHeight);
     await tester.pumpAndSettle();

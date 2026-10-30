@@ -54,8 +54,8 @@
 | `CachePageSettingsState` | `core/cache_page_settings_state.dart` | 阶段 3 设置子组：网格视图、启动页、目录缓存和自动加载全部页面 |
 | `DownloadDirectorySettingsState` | `core/download_directory_settings_state.dart` | 阶段 3 设置子组：普通下载目录、SAF URI/标签、互斥写入和旧授权释放入口 |
 
-消费现状：`context.read<…>` 约 140 处、`context.watch<…>` 约 10 处、
-`context.select<…>` 5 处。
+消费现状：`context.read<…>` 约 141 处、`context.watch<…>` 约 7 处、
+`context.select<…>` 8 处。
 `UpdateContent` 已不再读取 `AppController`，更新状态与更新设置均从 Riverpod
 读取；设置 store 的变更通过局部 revision 触发。其余新增 UI 仍应优先用
 `select` 或 `ValueListenableBuilder` 收窄订阅范围，不要继续放大。
@@ -100,7 +100,9 @@ User-Agent 也迁入 `AdvancedConnectionSettingsTile`；对应 setter 统一同�
 重建整棵页面分页器。应用根 `LanCloudApp` 也已改为
 `ConsumerStatefulWidget`，直接监听 `ThemeSettingsState.revision` 和
 `LanguageClipboardSettingsState.revision`；备份恢复后的设置重载通过显式
-`refresh()` 通知根主题与语言更新。
+`refresh()` 通知根主题与语言更新。共享顶栏组件只订阅 `hideTopBar`，
+`BatchActionBar` 只订阅 `floatingNavBar`，正文、浮层和滚动进度仍由各自
+`ValueNotifier` 驱动。
 
 ## 导航与弹层
 
