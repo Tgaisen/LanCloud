@@ -509,6 +509,10 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 >
 > 恢复页随后把整体 `AppController` 订阅收窄为 `hideTopBar` 单个布尔；
 > `BackupService` 仍在初始化时通过 `context.read` 注入，恢复向导状态保持页面本地。
+>
+> 首页随后移除 `AppController` / `TransferManager` 整体 `watch`，只订阅
+> `hideTopBar` 和运行中任务数。快速访问、最近使用、删除动画和折叠状态继续由
+> 页面本地状态及 `AppDb.revision` 驱动。
 
 ### 阶段 5：处理 `TransferManager`
 

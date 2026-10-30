@@ -54,8 +54,8 @@
 | `CachePageSettingsState` | `core/cache_page_settings_state.dart` | 阶段 3 设置子组：网格视图、启动页、目录缓存和自动加载全部页面 |
 | `DownloadDirectorySettingsState` | `core/download_directory_settings_state.dart` | 阶段 3 设置子组：普通下载目录、SAF URI/标签、互斥写入和旧授权释放入口 |
 
-消费现状：`context.read<…>` 约 142 处、`context.watch<…>` 约 5 处、
-`context.select<…>` 10 处。
+消费现状：`context.read<…>` 约 143 处、`context.watch<…>` 约 3 处、
+`context.select<…>` 12 处。
 `UpdateContent` 已不再读取 `AppController`，更新状态与更新设置均从 Riverpod
 读取；设置 store 的变更通过局部 revision 触发。其余新增 UI 仍应优先用
 `select` 或 `ValueListenableBuilder` 收窄订阅范围，不要继续放大。
@@ -104,7 +104,9 @@ User-Agent 也迁入 `AdvancedConnectionSettingsTile`；对应 setter 统一同�
 `BatchActionBar` 只订阅 `floatingNavBar`，正文、浮层和滚动进度仍由各自
 `ValueNotifier` 驱动。拖拽悬停提示只订阅网盘/收藏可见性快照；当前目录仍从
 `DriveLocation` 实时读取。恢复页也只订阅 `hideTopBar`，备份恢复状态机继续使用
-页面本地状态。
+页面本地状态。首页不再整体监听 `AppController` / `TransferManager`，只订阅
+`hideTopBar` 和运行中任务数；快速访问、最近使用和折叠状态继续由页面本地状态及
+`AppDb.revision` 驱动。
 
 ## 导航与弹层
 

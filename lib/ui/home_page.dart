@@ -465,17 +465,21 @@ class _HomePageState extends State<HomePage>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final app = context.watch<AppController>();
-    final transfers = context.watch<TransferManager>();
+    final app = context.read<AppController>();
+    final hideTopBar = context.select<AppController, bool>(
+      (app) => app.settings.hideTopBar,
+    );
+    final running = context.select<TransferManager, int>((transfers) {
+      return transfers.tasks
+          .where(
+            (t) =>
+                t.status == TransferStatus.running ||
+                t.status == TransferStatus.queued,
+          )
+          .length;
+    });
     final l10n = context.l10n;
     final scheme = Theme.of(context).colorScheme;
-    final running = transfers.tasks
-        .where(
-          (t) =>
-              t.status == TransferStatus.running ||
-              t.status == TransferStatus.queued,
-        )
-        .length;
     final headerHeight = MediaQuery.paddingOf(context).top + kToolbarHeight;
     return Scaffold(
       // 大屏外壳里的页面：背景交给外壳的圆角卡片
@@ -489,7 +493,7 @@ class _HomePageState extends State<HomePage>
             child: ScrollTint(
               hideDistance: headerHeight,
               readBarsHidden: () => app.topBarHide.value,
-              onBarsHidden: app.settings.hideTopBar
+              onBarsHidden: hideTopBar
                   ? app.setTopBarHideFromScroll
                   : null,
               // 列表快速滑动条（可拖拽）
