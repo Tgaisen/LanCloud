@@ -1,6 +1,6 @@
 import '../data/settings_store.dart';
-import '../download_target.dart';
 import 'transfer_account_port.dart';
+import 'transfer_download_port.dart';
 import 'transfer_store.dart';
 
 /// `TransferManager` 在迁移期需要的最小应用能力边界。
@@ -10,10 +10,6 @@ import 'transfer_store.dart';
 abstract interface class TransferAppAdapter {
   TransferStore get transferStore;
   TransferAccountPort get transferAccounts;
+  TransferDownloadPort get transferDownload;
   SettingsStore get settings;
-
-  Future<DownloadTargetMode> downloadTargetMode();
-  String? get safDownloadTree;
-  Future<String> safTempFilePath(String taskId, String name);
-  Future<String> uniqueSavePath(String name);
 }

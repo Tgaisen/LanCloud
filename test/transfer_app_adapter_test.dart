@@ -8,6 +8,7 @@ import 'package:lancloud/core/data/settings_store.dart';
 import 'package:lancloud/core/download_target.dart';
 import 'package:lancloud/core/transfer/transfer_account_port.dart';
 import 'package:lancloud/core/transfer/transfer_app_adapter.dart';
+import 'package:lancloud/core/transfer/transfer_download_port.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/core/transfer/transfer_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -53,7 +54,11 @@ class _FakeTransferStore implements TransferStore {
 }
 
 class _FakeTransferAdapter implements TransferAppAdapter {
-  _FakeTransferAdapter(this.transferStore, this.transferAccounts);
+  _FakeTransferAdapter(
+    this.transferStore,
+    this.transferAccounts,
+    this.transferDownload,
+  );
 
   @override
   final TransferStore transferStore;
@@ -62,22 +67,10 @@ class _FakeTransferAdapter implements TransferAppAdapter {
   final TransferAccountPort transferAccounts;
 
   @override
+  final TransferDownloadPort transferDownload;
+
+  @override
   final SettingsStore settings = SettingsStore();
-
-  @override
-  Future<DownloadTargetMode> downloadTargetMode() async =>
-      DownloadTargetMode.fixedDirectory;
-
-  @override
-  String? get safDownloadTree => null;
-
-  @override
-  Future<String> safTempFilePath(String taskId, String name) async =>
-      throw UnimplementedError('测试恢复流程不应写下载文件');
-
-  @override
-  Future<String> uniqueSavePath(String name) async =>
-      throw UnimplementedError('测试恢复流程不应写下载文件');
 }
 
 class _FakeTransferAccountPort implements TransferAccountPort {
@@ -94,6 +87,23 @@ class _FakeTransferAccountPort implements TransferAccountPort {
   @override
   LanzouClient get publicClient =>
       throw UnimplementedError('测试恢复流程不应解析分享链接');
+}
+
+class _FakeTransferDownloadPort implements TransferDownloadPort {
+  @override
+  Future<DownloadTargetMode> targetMode() async =>
+      DownloadTargetMode.fixedDirectory;
+
+  @override
+  String? get safTreeUri => null;
+
+  @override
+  Future<String> safTempFilePath(String taskId, String name) async =>
+      throw UnimplementedError('测试恢复流程不应写下载文件');
+
+  @override
+  Future<String> uniqueSavePath(String name) async =>
+      throw UnimplementedError('测试恢复流程不应写下载文件');
 }
 
 void main() {
@@ -117,6 +127,7 @@ void main() {
       expect(accounts.accounts, same(app.accountState.store));
       expect(accounts.clients, same(app.clientRegistry));
     }
+    expect(app.transferDownload, isA<CallbackTransferDownloadPort>());
     expect(app.settings, same(app.settingsState.store));
   });
 
@@ -140,7 +151,11 @@ void main() {
       },
     ]);
     final manager = TransferManager(
-      _FakeTransferAdapter(store, _FakeTransferAccountPort()),
+      _FakeTransferAdapter(
+        store,
+        _FakeTransferAccountPort(),
+        _FakeTransferDownloadPort(),
+      ),
     );
     addTearDown(manager.dispose);
 
@@ -163,5 +178,19 @@ void main() {
     expect(port.hasAccount('missing'), isFalse);
     expect(port.clientFor('u1'), same(clients.clientFor('u1')));
     expect(port.publicClient, same(clients.publicClient));
+  });
+
+  test('下载回调端口保持目标模式与路径委托', () async {
+    final port = CallbackTransferDownloadPort(
+      targetMode: () async => DownloadTargetMode.safDirectory,
+      safTreeUri: () => 'content://tree/example',
+      safTempFilePath: (taskId, name) async => '/tmp/$taskId$name',
+      uniqueSavePath: (name) async => '/downloads/$name',
+    );
+
+    expect(await port.targetMode(), DownloadTargetMode.safDirectory);
+    expect(port.safTreeUri, 'content://tree/example');
+    expect(await port.safTempFilePath('t1', 'a.bin'), '/tmp/t1a.bin');
+    expect(await port.uniqueSavePath('a.bin'), '/downloads/a.bin');
   });
 }

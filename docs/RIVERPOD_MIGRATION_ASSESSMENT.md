@@ -569,6 +569,10 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > 账号与客户端能力随后拆为 `TransferAccountPort`：当前 UID、账号存在性、
 > 按 UID 创建客户端和公开客户端统一由 `AppTransferAccountPort` 包装既有
 > `AccountStore + LanzouClientRegistry`。`TransferManager` 不再直接接触账号存储。
+>
+> 下载目标与路径能力随后拆为 `TransferDownloadPort`，封装目标模式、SAF URI、
+> SAF 中转路径和唯一保存路径。迁移期用 `CallbackTransferDownloadPort` 委托既有
+> `AppController` 方法，实际下载与平台写入逻辑未改。
 
 ### 阶段 6：移除旧 Provider
 

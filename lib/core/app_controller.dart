@@ -35,6 +35,7 @@ import 'theme_settings_state.dart';
 import 'transfer_connection_settings_state.dart';
 import 'transfer/transfer_app_adapter.dart';
 import 'transfer/transfer_account_port.dart';
+import 'transfer/transfer_download_port.dart';
 import 'transfer/transfer_store.dart';
 import 'update/update_settings_state.dart';
 
@@ -108,6 +109,14 @@ class AppController extends ChangeNotifier implements TransferAppAdapter {
     accounts: accounts,
     clients: clientRegistry,
   );
+  @override
+  late final TransferDownloadPort transferDownload =
+      CallbackTransferDownloadPort(
+        targetMode: downloadTargetMode,
+        safTreeUri: () => safDownloadTree,
+        safTempFilePath: safTempFilePath,
+        uniqueSavePath: uniqueSavePath,
+      );
   DriveCache get driveCache => drive.cache;
   final SharedDownloadsGateway _sharedDownloads;
   final DownloadPathService _downloadPaths;
@@ -512,7 +521,6 @@ class AppController extends ChangeNotifier implements TransferAppAdapter {
 
   /// 当前下载落盘方式。显式目录设置优先，未设置时 Android 10+ 默认走
   /// MediaStore 的公共 Downloads，Android 9 及以下退回应用专属目录。
-  @override
   Future<DownloadTargetMode> downloadTargetMode() async {
     final directory = settings.downloadDir;
     final treeUri = settings.downloadDirTree;
@@ -546,7 +554,6 @@ class AppController extends ChangeNotifier implements TransferAppAdapter {
   ///
   /// 非空时下载走「先写到应用专属中转目录，再由原生写入授权目录」的流程，
   /// [downloadDirectory] / [uniqueSavePath] 只服务其它情况。
-  @override
   String? get safDownloadTree {
     if (!PlatformSupport.isAndroid) return null;
     final uri = settings.downloadDirTree;
@@ -554,7 +561,6 @@ class AppController extends ChangeNotifier implements TransferAppAdapter {
   }
 
   /// SAF 模式下的下载中转文件路径；任务 id 唯一，重试时清掉同名残留。
-  @override
   Future<String> safTempFilePath(String taskId, String name) async {
     final dir = await _safTempDirectory();
     final file = File(p.join(dir.path, '$taskId${p.extension(name)}'));
@@ -662,7 +668,6 @@ class AppController extends ChangeNotifier implements TransferAppAdapter {
     await languageClipboardSettings.setLanguage(value);
   }
 
-  @override
   Future<String> uniqueSavePath(String name) async {
     final dir = await downloadDirectory();
     var path = p.join(dir.path, name);

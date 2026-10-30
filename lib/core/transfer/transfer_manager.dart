@@ -602,15 +602,15 @@ class TransferManager extends ChangeNotifier {
   Future<void> _runDownload(TransferTask task) async {
     // SAF 目录和公共 Downloads 都先下到应用专属中转目录，完成后由原生
     // 流式写入目标；固定路径 / 应用专属目录仍可直接写。
-    final target = await _app.downloadTargetMode();
+    final target = await _app.transferDownload.targetMode();
     final treeUri = target == DownloadTargetMode.safDirectory
-        ? _app.safDownloadTree
+        ? _app.transferDownload.safTreeUri
         : null;
     final staged =
         treeUri != null || target == DownloadTargetMode.sharedDownloads;
     final path = staged
-        ? await _app.safTempFilePath(task.id, task.name)
-        : await _app.uniqueSavePath(task.name);
+        ? await _app.transferDownload.safTempFilePath(task.id, task.name)
+        : await _app.transferDownload.uniqueSavePath(task.name);
     try {
       final dio = task.via?.dio ?? Dio();
       await dio.download(
