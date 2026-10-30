@@ -1,30 +1,39 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/app_info.dart';
+import 'package:lancloud/core/navigation_appearance_settings_state.dart';
+import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/about_page.dart';
 import 'package:lancloud/ui/app_icons.dart' as app_icons;
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/m3e.dart';
-import 'package:provider/provider.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
+
+Widget host(AppController app, Widget home) => ProviderScope(
+  overrides: [
+    navigationAppearanceSettingsStateProvider.overrideWithValue(
+      app.navigationAppearanceSettings,
+    ),
+    navigationStateProvider.overrideWithValue(app.navigation),
+  ],
+  child: MaterialApp(
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    locale: const Locale('zh'),
+    home: home,
+  ),
+);
 
 void main() {
   testWidgets('关于页显示版本、协议入口与免责声明', (tester) async {
     final app = AppController();
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
-        value: app,
-        child: MaterialApp(
-          localizationsDelegates: appLocalizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          locale: const Locale('zh'),
-          home: const AboutPage(),
-        ),
-      ),
+      host(app, const AboutPage()),
     );
     await tester.pumpAndSettle();
 
@@ -77,15 +86,7 @@ void main() {
   testWidgets('关于页可以打开隐私政策弹窗', (tester) async {
     final app = AppController();
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
-        value: app,
-        child: MaterialApp(
-          localizationsDelegates: appLocalizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          locale: const Locale('zh'),
-          home: const AboutPage(),
-        ),
-      ),
+      host(app, const AboutPage()),
     );
     await tester.pumpAndSettle();
 
@@ -119,15 +120,7 @@ void main() {
 
     final app = AppController();
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
-        value: app,
-        child: MaterialApp(
-          localizationsDelegates: appLocalizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          locale: const Locale('zh'),
-          home: const AboutPage(),
-        ),
-      ),
+      host(app, const AboutPage()),
     );
     await tester.pumpAndSettle();
 

@@ -702,6 +702,11 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > `navigationStateProvider` 读取外壳顶栏进度。两者在没有应用级 Riverpod
 > 覆盖的旧测试宿主中才回退 AppController，并新增一条无 AppController Provider
 > 的 Riverpod-only 回归测试。
+>
+> 随后清理首批叶子页测试：关于页测试只注入
+> `navigationAppearanceSettingsStateProvider` 和 `navigationStateProvider`；
+> 协议、首启条款和 `AgreementGate` 测试使用空 `ProviderScope`，不再构造
+> AppController。
 
 ### 阶段 6：移除旧 Provider
 

@@ -89,6 +89,7 @@
 | `tools\agent.cmd test`（阶段 6 准备首个切片） | 增量 | **366 tests, all passed** | 约 66 s |
 | `tools\agent.cmd test`（登录页消费端） | 增量 | **16 tests, all passed** | 约 17 s |
 | `tools\agent.cmd test`（共享顶栏消费端） | 增量 | **293 tests, all passed** | 约 75 s |
+| `tools\agent.cmd test`（关于 / 协议叶子页测试） | 增量 | **7 tests, all passed** | 约 19 s |
 | `tools\agent.cmd analyze`（阶段 4 消费端完成后） | 全量 | No issues found | 约 27 s |
 | `tools\agent.cmd test`（阶段 4 消费端完成后） | 全量 | **707 tests, all passed** | 约 113 s |
 | `tools\agent.cmd analyze`（阶段 5 消费端完成后） | 全量 | No issues found | 约 31 s |
@@ -331,6 +332,8 @@
   迁移的 `RestorePage` 保留旧 Provider。
 - 2026-10-30 共享顶栏消费端迁入 Riverpod 并保留旧测试回退；增量 51 个测试文件
   / 293 个测试通过，当前总数由 717 增至 718。
+- 2026-10-30 关于页和协议 / 首启页测试清理旧 Provider；增量 2 个测试文件 /
+  7 个测试通过，用例总数保持 718。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release
