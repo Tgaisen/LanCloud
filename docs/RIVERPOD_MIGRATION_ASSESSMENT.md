@@ -493,6 +493,11 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > 外壳改为订阅只含 ready、UID、导航项、滑动、浮动和隐藏栏的配置快照；
 > `TransferManager` 只订阅运行中任务数，避免普通通知或传输历史变化重建整个
 > PageView。
+>
+> 应用根 `LanCloudApp` 随后改为 `ConsumerStatefulWidget`，直接订阅
+> `ThemeSettingsState` 和 `LanguageClipboardSettingsState` 的 revision。
+> `AppController.reloadFromStorage()` 在备份恢复后显式调用两个状态的 `refresh()`，
+> 保持主题与语言恢复行为。
 
 ### 阶段 5：处理 `TransferManager`
 

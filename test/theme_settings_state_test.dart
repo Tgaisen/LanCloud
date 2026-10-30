@@ -24,8 +24,9 @@ void main() {
     await state.setOledBlack(true);
     await state.setDynamicColor(true);
     await state.setMotionMode('off');
+    state.refresh();
 
-    expect(state.revision.value, 5);
+    expect(state.revision.value, 6);
     expect(state.themeMode, 'dark');
     expect(state.themeSeed, 0xFF112233);
     expect(state.oledBlack, isTrue);

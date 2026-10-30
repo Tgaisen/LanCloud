@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter/foundation.dart' show listEquals, visibleForTesting;
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
@@ -10,10 +11,12 @@ import 'core/agreements.dart';
 import 'core/drag_drop.dart';
 import 'core/incoming_links.dart';
 import 'core/lanzou_link.dart';
+import 'core/language_clipboard_settings_state.dart';
 import 'core/notifications.dart';
 import 'core/platform_support.dart';
 import 'core/share_inbox.dart';
 import 'core/system_motion.dart';
+import 'core/theme_settings_state.dart';
 import 'core/transfer/transfer_manager.dart';
 import 'core/window_frame.dart';
 import 'l10n/delegates.dart';
@@ -50,27 +53,23 @@ ThemeData withResponsiveSnackBarWidth(ThemeData theme, double viewportWidth) {
   );
 }
 
-class LanCloudApp extends StatefulWidget {
+class LanCloudApp extends ConsumerStatefulWidget {
   const LanCloudApp({super.key});
 
   static const seed = Color(0xFF2E6BE6);
 
   @override
-  State<LanCloudApp> createState() => _LanCloudAppState();
+  ConsumerState<LanCloudApp> createState() => _LanCloudAppState();
 }
 
-class _LanCloudAppState extends State<LanCloudApp> {
+class _LanCloudAppState extends ConsumerState<LanCloudApp> {
   /// 根 Navigator：给 Windows 鼠标侧键「后退」用（maybePop 与系统返回键同效）。
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
   @override
   Widget build(BuildContext context) {
-    final app = context.watch<AppController>();
-    final seed = Color(app.settings.themeSeed);
-    final oledDark = app.settings.oledBlack;
-    final useDynamicColor = app.settings.dynamicColor;
-    final mode = app.settings.themeMode;
-    final language = app.settings.language;
+    final themeSettings = ref.watch(themeSettingsStateProvider);
+    final languageSettings = ref.watch(languageClipboardSettingsStateProvider);
     // MD3 动态取色：系统壁纸取色（Android 12+），不支持时返回 null。
     // 外面这层只在系统「移除动画」开关 / 用户「全局动画」设置变化时重建整棵树，
     // 让各处的 reduceMotionOf 立刻生效（其余时候不会重复构建）。
@@ -79,79 +78,88 @@ class _LanCloudAppState extends State<LanCloudApp> {
         SystemMotion.reduceMotion,
         SystemMotion.touchExploration,
         SystemMotion.motionMode,
+        themeSettings.revision,
+        languageSettings.revision,
         // 第一次检测到鼠标时重建一次，让「点图标块 = 多选」各处生效
         PointerSupport.hasMouse,
       ]),
-      builder: (context, _) => DynamicColorBuilder(
-        builder: (lightDynamic, darkDynamic) {
-          ThemeData buildTheme(Brightness brightness) => buildLanCloudTheme(
-            brightness: brightness,
-            seed: seed,
-            oledDark: oledDark,
-            dynamicScheme: useDynamicColor
-                ? (brightness == Brightness.dark ? darkDynamic : lightDynamic)
-                : null,
-          );
-          return MaterialApp(
-            navigatorKey: _navigatorKey,
-            // 系统「最近任务」里的应用名（桌面图标名由 Android 资源 app_name 决定，
-            // 任务卡片这里是 Flutter 的 Title 设置的，要跟着语言走）
-            onGenerateTitle: (context) => context.l10n.appName,
-            debugShowCheckedModeBanner: false,
-            locale: language == 'zh'
-                ? const Locale('zh')
-                : language == 'en'
-                ? const Locale('en')
-                : null,
-            supportedLocales: AppLocalizations.supportedLocales,
-            localizationsDelegates: appLocalizationsDelegates,
-            theme: buildTheme(Brightness.light),
-            darkTheme: buildTheme(Brightness.dark),
-            themeMode: mode == 'light'
-                ? ThemeMode.light
-                : mode == 'dark'
-                ? ThemeMode.dark
-                : ThemeMode.system,
-            // 全局 BouncingScrollPhysics（网盘页同款）
-            scrollBehavior: const AppScrollBehavior(),
-            // 系统栏（状态栏 / 导航栏）样式跟随主题明暗：
-            // Android 15+ 导航栏强制透明，能调的只有图标明暗与是否加系统遮罩。
-            builder: (context, child) => Theme(
-              data: withResponsiveSnackBarWidth(
-                Theme.of(context),
-                MediaQuery.sizeOf(context).width,
-              ),
-              child: MousePresenceDetector(
-                child: MouseBackButtonListener(
-                  // Windows 鼠标侧键「后退」= 系统返回键（与 Android 返回同一条路径）
-                  enabled: PlatformSupport.isWindows,
-                  onBack: () => _navigatorKey.currentState?.maybePop(),
-                  child: AnnotatedRegion<SystemUiOverlayStyle>(
-                    value: systemUiOverlayStyleFor(
-                      Theme.of(context).brightness,
-                    ),
-                    // M3E：强调排版落到顶栏标题 / 弹窗标题 / 主要按钮 / 导航选中项，
-                    // 挂在 Navigator 之上（弹窗、对话框同样能取到）。
-                    child: M3eComponentStyles(
-                      // 桌面端在窗口这一层接住拖拽（Android 走原生通道，这里原样透传）
-                      child: DesktopDropTarget(
-                        child: Stack(
-                          children: [
-                            child ?? const SizedBox.shrink(),
-                            // 拖拽悬停提示条挂在 Navigator 之上：二级页面也能看到
-                            const DropHoverBanner(),
-                          ],
+      builder: (context, _) {
+        final seed = Color(themeSettings.themeSeed);
+        final oledDark = themeSettings.oledBlack;
+        final useDynamicColor = themeSettings.dynamicColor;
+        final mode = themeSettings.themeMode;
+        final language = languageSettings.language;
+        return DynamicColorBuilder(
+          builder: (lightDynamic, darkDynamic) {
+            ThemeData buildTheme(Brightness brightness) => buildLanCloudTheme(
+              brightness: brightness,
+              seed: seed,
+              oledDark: oledDark,
+              dynamicScheme: useDynamicColor
+                  ? (brightness == Brightness.dark ? darkDynamic : lightDynamic)
+                  : null,
+            );
+            return MaterialApp(
+              navigatorKey: _navigatorKey,
+              // 系统「最近任务」里的应用名（桌面图标名由 Android 资源 app_name 决定，
+              // 任务卡片这里是 Flutter 的 Title 设置的，要跟着语言走）
+              onGenerateTitle: (context) => context.l10n.appName,
+              debugShowCheckedModeBanner: false,
+              locale: language == 'zh'
+                  ? const Locale('zh')
+                  : language == 'en'
+                  ? const Locale('en')
+                  : null,
+              supportedLocales: AppLocalizations.supportedLocales,
+              localizationsDelegates: appLocalizationsDelegates,
+              theme: buildTheme(Brightness.light),
+              darkTheme: buildTheme(Brightness.dark),
+              themeMode: mode == 'light'
+                  ? ThemeMode.light
+                  : mode == 'dark'
+                  ? ThemeMode.dark
+                  : ThemeMode.system,
+              // 全局 BouncingScrollPhysics（网盘页同款）
+              scrollBehavior: const AppScrollBehavior(),
+              // 系统栏（状态栏 / 导航栏）样式跟随主题明暗：
+              // Android 15+ 导航栏强制透明，能调的只有图标明暗与是否加系统遮罩。
+              builder: (context, child) => Theme(
+                data: withResponsiveSnackBarWidth(
+                  Theme.of(context),
+                  MediaQuery.sizeOf(context).width,
+                ),
+                child: MousePresenceDetector(
+                  child: MouseBackButtonListener(
+                    // Windows 鼠标侧键「后退」= 系统返回键（与 Android 返回同一条路径）
+                    enabled: PlatformSupport.isWindows,
+                    onBack: () => _navigatorKey.currentState?.maybePop(),
+                    child: AnnotatedRegion<SystemUiOverlayStyle>(
+                      value: systemUiOverlayStyleFor(
+                        Theme.of(context).brightness,
+                      ),
+                      // M3E：强调排版落到顶栏标题 / 弹窗标题 / 主要按钮 / 导航选中项，
+                      // 挂在 Navigator 之上（弹窗、对话框同样能取到）。
+                      child: M3eComponentStyles(
+                        // 桌面端在窗口这一层接住拖拽（Android 走原生通道，这里原样透传）
+                        child: DesktopDropTarget(
+                          child: Stack(
+                            children: [
+                              child ?? const SizedBox.shrink(),
+                              // 拖拽悬停提示条挂在 Navigator 之上：二级页面也能看到
+                              const DropHoverBanner(),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-            home: const AgreementGate(),
-          );
-        },
-      ),
+              home: const AgreementGate(),
+            );
+          },
+        );
+      },
     );
   }
 }

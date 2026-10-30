@@ -193,6 +193,8 @@ class AppController extends ChangeNotifier {
     }
     await settings.load();
     _applyRuntimeSettings();
+    themeSettings.refresh();
+    languageClipboardSettings.refresh();
     clientRegistry.clearAccounts();
     await driveCache.bindAccount(accounts.activeUid);
     if (!settings.cacheFolders) driveCache.clear();

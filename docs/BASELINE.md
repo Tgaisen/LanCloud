@@ -60,6 +60,7 @@
 | `tools\agent.cmd test`（设置页外层监听） | 增量 | **46 tests, all passed** | 约 13 s |
 | `tools\agent.cmd test`（ProfilePage 消费端） | 增量 | **29 tests, all passed** | 约 11 s |
 | `tools\agent.cmd test`（RootShell 消费端） | 增量 | **32 tests, all passed** | 约 12 s |
+| `tools\agent.cmd test`（LanCloudApp 根主题/语言） | 增量 | **377 tests, all passed** | 约 68 s |
 
 工具链：Flutter 3.47.7（stable）/ Dart 3.13.5 / DevTools 2.60.0。
 静态检查：`analysis_options.yaml` 已开启 `strict-casts` / `strict-inference` / `strict-raw-types`。
@@ -216,5 +217,8 @@
 - 2026-10-30 的 RootShell 移除 `AppController` / `TransferManager` 整体订阅，
   改为外壳配置快照与运行中任务数两个 `context.select`；增量 9 个文件 / 32 个测试
   通过，用例总数保持 708。
+- 2026-10-30 的 LanCloudApp 改为直接订阅主题与语言状态 revision，并新增
+  `refresh()` 覆盖备份恢复后的设置重载；增量 70 个文件 / 377 个测试通过，用例
+  总数保持 708。
 - 若临时再改 `analysis_options.yaml` 加规则，issue 数会变；先把预期数量记在这里再跑，
   避免和「本次改坏」混淆。

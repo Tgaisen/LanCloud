@@ -23,6 +23,9 @@ class LanguageClipboardSettingsState {
     await store.setClipboardLinkPrompt(value);
     revision.value += 1;
   }
+
+  /// 设置已从其他入口重新加载后，通知订阅者重新读取。
+  void refresh() => revision.value += 1;
 }
 
 final languageClipboardSettingsStateProvider =
