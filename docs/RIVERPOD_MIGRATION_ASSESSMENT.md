@@ -713,6 +713,10 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > `ChangeNotifierProvider<AppController>`；测试探针也直接读写
 > `NavigationState`。生产组件对尚未迁移页面的 AppController 回退仍保留，
 > 待这些页面完成消费端迁移后再删除。
+>
+> “备份选项”页与解锁弹窗的测试随后也改为直接构造
+> `SettingsStore + NavigationState + NavigationAppearanceSettingsState`，
+> 不再通过 AppController 提供顶栏依赖。
 
 ### 阶段 6：移除旧 Provider
 

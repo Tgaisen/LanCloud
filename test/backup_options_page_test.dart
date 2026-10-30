@@ -1,9 +1,12 @@
 import 'dart:convert';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/backup/backup_crypto.dart';
 import 'package:lancloud/core/backup/backup_sections.dart';
+import 'package:lancloud/core/data/settings_store.dart';
+import 'package:lancloud/core/navigation_appearance_settings_state.dart';
+import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/delegates.dart';
 import 'package:lancloud/ui/app_icons.dart' as app_icons;
@@ -12,17 +15,28 @@ import 'package:lancloud/ui/backup_unlock_dialog.dart';
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/m3e.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:provider/provider.dart';
 
-Widget _host(Widget child) => ChangeNotifierProvider<AppController>(
-  create: (_) => AppController(),
-  child: MaterialApp(
-    localizationsDelegates: appLocalizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
-    locale: const Locale('zh'),
-    home: Scaffold(body: Center(child: child)),
-  ),
-);
+Widget _host(Widget child) {
+  final navigation = NavigationState();
+  final appearance = NavigationAppearanceSettingsState(
+    SettingsStore(),
+    navigation: navigation,
+  );
+  addTearDown(navigation.dispose);
+  addTearDown(appearance.revision.dispose);
+  return ProviderScope(
+    overrides: [
+      navigationAppearanceSettingsStateProvider.overrideWithValue(appearance),
+      navigationStateProvider.overrideWithValue(navigation),
+    ],
+    child: MaterialApp(
+      localizationsDelegates: appLocalizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      locale: const Locale('zh'),
+      home: Scaffold(body: Center(child: child)),
+    ),
+  );
+}
 
 void main() {
   testWidgets('备份选项使用独立页面，复用应用顶栏；无内容时动作置灰', (tester) async {
