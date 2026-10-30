@@ -690,6 +690,11 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > 增加账号变化通知，`AppController` 仅转发该通知；旧
 > `addAccountFromCookie` 方法保留兼容签名并委托同一服务。登录页 UI 尚未切换，
 > 当前只完成可注入业务边界与两条服务测试。
+>
+> 登录页随后完成消费端切换：Cookie 登录弹窗通过 `accountLoginProvider` 提交，
+> 恢复流程通过 `accountStateProvider` 读取当前账号。`LoginPage` 本身已不再
+> 导入或读取 `AppController`。由于恢复流程仍会进入尚未迁移的 `RestorePage`，
+> 登录页测试宿主在 `ProviderScope` 外暂时保留 AppController Provider。
 
 ### 阶段 6：移除旧 Provider
 

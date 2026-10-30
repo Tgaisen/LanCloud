@@ -87,6 +87,7 @@
 | `tools\agent.cmd test`（清理最后测试宿主） | 增量 | **17 tests, all passed** | 约 17 s |
 | `tools\agent.cmd test`（阶段 5 最终收尾 HEAD） | 全量 | **715 tests, all passed** | 约 111 s |
 | `tools\agent.cmd test`（阶段 6 准备首个切片） | 增量 | **366 tests, all passed** | 约 66 s |
+| `tools\agent.cmd test`（登录页消费端） | 增量 | **16 tests, all passed** | 约 17 s |
 | `tools\agent.cmd analyze`（阶段 4 消费端完成后） | 全量 | No issues found | 约 27 s |
 | `tools\agent.cmd test`（阶段 4 消费端完成后） | 全量 | **707 tests, all passed** | 约 113 s |
 | `tools\agent.cmd analyze`（阶段 5 消费端完成后） | 全量 | No issues found | 约 31 s |
@@ -324,6 +325,9 @@
 - 2026-10-30 阶段 6 准备首个切片新增 `AccountLogin`，覆盖成功登录以及 Cookie
   格式错误 / 验证失败两条用例；增量 65 个测试文件 / 366 个测试通过，当前总数
   由 715 增至 717。登录页 UI 尚未迁移。
+- 2026-10-30 登录页消费端迁入 Riverpod；增量 2 个测试文件 / 16 个测试通过，
+  用例总数保持 717。`LoginPage` 已无 AppController 读取；其测试宿主仅为尚未
+  迁移的 `RestorePage` 保留旧 Provider。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release
