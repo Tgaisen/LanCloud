@@ -565,6 +565,10 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > 随后继续拆出 `TransferStore` 持久化端口，封装任务恢复、保存、删除和下载标记；
 > `AppDbTransferStore` 适配既有 `AppDb`。`TransferManager` 已不再直接持有
 > `AppDb`，并新增使用假存储端口恢复任务的测试。
+>
+> 账号与客户端能力随后拆为 `TransferAccountPort`：当前 UID、账号存在性、
+> 按 UID 创建客户端和公开客户端统一由 `AppTransferAccountPort` 包装既有
+> `AccountStore + LanzouClientRegistry`。`TransferManager` 不再直接接触账号存储。
 
 ### 阶段 6：移除旧 Provider
 

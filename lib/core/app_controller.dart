@@ -34,6 +34,7 @@ import 'system_motion.dart';
 import 'theme_settings_state.dart';
 import 'transfer_connection_settings_state.dart';
 import 'transfer/transfer_app_adapter.dart';
+import 'transfer/transfer_account_port.dart';
 import 'transfer/transfer_store.dart';
 import 'update/update_settings_state.dart';
 
@@ -96,13 +97,17 @@ class AppController extends ChangeNotifier implements TransferAppAdapter {
   late final CachePageSettingsState cachePageSettings;
   late final DownloadDirectorySettingsState downloadDirectorySettings;
 
-  @override
   AccountStore get accounts => accountState.store;
   @override
   SettingsStore get settings => settingsState.store;
   final AppDb db = AppDb.instance;
   @override
   final TransferStore transferStore = AppDbTransferStore();
+  @override
+  late final TransferAccountPort transferAccounts = AppTransferAccountPort(
+    accounts: accounts,
+    clients: clientRegistry,
+  );
   DriveCache get driveCache => drive.cache;
   final SharedDownloadsGateway _sharedDownloads;
   final DownloadPathService _downloadPaths;
@@ -403,7 +408,6 @@ class AppController extends ChangeNotifier implements TransferAppAdapter {
     notifyListeners();
   }
 
-  @override
   String? get activeUid => accounts.activeUid;
 
   Account? get activeAccount => accounts.active;
@@ -413,14 +417,12 @@ class AppController extends ChangeNotifier implements TransferAppAdapter {
     return uid == null ? null : clientFor(uid);
   }
 
-  @override
   LanzouClient clientFor(String uid) => clientRegistry.clientFor(
     uid,
     cookie: accounts.byUid(uid)?.cookie,
   );
 
   /// 用于解析公开分享链接（不依赖登录态）。
-  @override
   LanzouClient get publicClient => clientRegistry.publicClient;
 
   Future<void> addAccountFromCookie(String rawCookie) async {

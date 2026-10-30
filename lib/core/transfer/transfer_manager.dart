@@ -157,7 +157,7 @@ class TransferManager extends ChangeNotifier {
           name: '${row['name']}',
           // 上传要带账号 Cookie；老记录没存账号时退回到当前激活账号
           accountUid: '${row['account'] ?? ''}'.isEmpty
-              ? (_app.activeUid ?? '')
+              ? (_app.transferAccounts.activeUid ?? '')
               : '${row['account']}',
           folderId: '${row['folder_id'] ?? ''}',
           localFilePath: '${row['local_path'] ?? ''}',
@@ -213,7 +213,7 @@ class TransferManager extends ChangeNotifier {
     Stream<List<int>> Function()? streamFactory,
     int size = 0,
   }) {
-    final uid = _app.activeUid ?? '';
+    final uid = _app.transferAccounts.activeUid ?? '';
     final task = TransferTask(
       id: 'u${DateTime.now().millisecondsSinceEpoch}_${_seq++}',
       kind: TransferKind.upload,
@@ -244,7 +244,9 @@ class TransferManager extends ChangeNotifier {
       id: 'd${DateTime.now().millisecondsSinceEpoch}_${_seq++}',
       kind: TransferKind.download,
       name: name,
-      accountUid: accountUid.isEmpty ? (_app.activeUid ?? '') : accountUid,
+      accountUid: accountUid.isEmpty
+          ? (_app.transferAccounts.activeUid ?? '')
+          : accountUid,
       url: url,
       referer: referer,
       pwd: pwd,
@@ -325,13 +327,13 @@ class TransferManager extends ChangeNotifier {
       try {
         final direct =
             await (debugResolveShare?.call(task.referer, task.pwd) ??
-                _app.publicClient.resolveFileShare(
+                _app.transferAccounts.publicClient.resolveFileShare(
                   task.referer,
                   pwd: task.pwd,
                 ));
         if (task.removed) return null;
         task.url = direct.url;
-        task.via = _app.publicClient;
+        task.via = _app.transferAccounts.publicClient;
       } catch (e) {
         if (task.removed) return null;
         final message = i18n?.retryResolveFailed('$e') ?? '重新解析下载链接失败：$e';
@@ -567,9 +569,9 @@ class TransferManager extends ChangeNotifier {
   /// 账号不在账号列表里（被移除 / 已登出）时返回空串。
   String _uploadAccountUid(TransferTask task) {
     final uid = task.accountUid.isEmpty
-        ? (_app.activeUid ?? '')
+        ? (_app.transferAccounts.activeUid ?? '')
         : task.accountUid;
-    if (uid.isEmpty || _app.accounts.byUid(uid) == null) return '';
+    if (uid.isEmpty || !_app.transferAccounts.hasAccount(uid)) return '';
     return uid;
   }
 
@@ -580,7 +582,7 @@ class TransferManager extends ChangeNotifier {
         NotificationService.i18n?.uploadNeedLogin ?? '请先登录后再上传',
       );
     }
-    final client = _app.clientFor(uid);
+    final client = _app.transferAccounts.clientFor(uid);
     await client.uploadFile(
       name: task.name,
       folderId: task.folderId,

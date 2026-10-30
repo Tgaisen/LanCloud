@@ -1,10 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/api/lanzou_client.dart';
+import 'package:lancloud/core/api/lanzou_client_registry.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/data/app_db.dart';
 import 'package:lancloud/core/data/account_store.dart';
 import 'package:lancloud/core/data/settings_store.dart';
 import 'package:lancloud/core/download_target.dart';
+import 'package:lancloud/core/transfer/transfer_account_port.dart';
 import 'package:lancloud/core/transfer/transfer_app_adapter.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/core/transfer/transfer_store.dart';
@@ -51,27 +53,16 @@ class _FakeTransferStore implements TransferStore {
 }
 
 class _FakeTransferAdapter implements TransferAppAdapter {
-  _FakeTransferAdapter(this.transferStore);
+  _FakeTransferAdapter(this.transferStore, this.transferAccounts);
 
   @override
   final TransferStore transferStore;
 
   @override
-  final AccountStore accounts = AccountStore();
+  final TransferAccountPort transferAccounts;
 
   @override
   final SettingsStore settings = SettingsStore();
-
-  @override
-  String? get activeUid => null;
-
-  @override
-  LanzouClient get publicClient =>
-      throw UnimplementedError('测试恢复流程不应解析分享链接');
-
-  @override
-  LanzouClient clientFor(String uid) =>
-      throw UnimplementedError('测试恢复流程不应创建账号客户端');
 
   @override
   Future<DownloadTargetMode> downloadTargetMode() async =>
@@ -89,6 +80,22 @@ class _FakeTransferAdapter implements TransferAppAdapter {
       throw UnimplementedError('测试恢复流程不应写下载文件');
 }
 
+class _FakeTransferAccountPort implements TransferAccountPort {
+  @override
+  String? get activeUid => null;
+
+  @override
+  bool hasAccount(String uid) => false;
+
+  @override
+  LanzouClient clientFor(String uid) =>
+      throw UnimplementedError('测试恢复流程不应创建账号客户端');
+
+  @override
+  LanzouClient get publicClient =>
+      throw UnimplementedError('测试恢复流程不应解析分享链接');
+}
+
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues(<String, Object>{}));
 
@@ -104,9 +111,13 @@ void main() {
     if (store is AppDbTransferStore) {
       expect(store.database, same(AppDb.instance));
     }
-    expect(app.accounts, same(app.accountState.store));
+    final accounts = app.transferAccounts;
+    expect(accounts, isA<AppTransferAccountPort>());
+    if (accounts is AppTransferAccountPort) {
+      expect(accounts.accounts, same(app.accountState.store));
+      expect(accounts.clients, same(app.clientRegistry));
+    }
     expect(app.settings, same(app.settingsState.store));
-    expect(app.publicClient, same(app.clientRegistry.publicClient));
   });
 
   test('TransferManager 可从注入的存储端口恢复任务', () async {
@@ -128,7 +139,9 @@ void main() {
         'error': '',
       },
     ]);
-    final manager = TransferManager(_FakeTransferAdapter(store));
+    final manager = TransferManager(
+      _FakeTransferAdapter(store, _FakeTransferAccountPort()),
+    );
     addTearDown(manager.dispose);
 
     await Future<void>.delayed(const Duration(milliseconds: 10));
@@ -136,5 +149,19 @@ void main() {
     expect(manager.tasks, hasLength(1));
     expect(manager.tasks.single.id, 'd1');
     expect(manager.tasks.single.status, TransferStatus.done);
+  });
+
+  test('账号端口从同一账号存储和客户端注册表解析', () {
+    final accounts = AccountStore()
+      ..accounts.add(Account(uid: 'u1', cookie: 'cookie'))
+      ..activeUid = 'u1';
+    final clients = LanzouClientRegistry();
+    final port = AppTransferAccountPort(accounts: accounts, clients: clients);
+
+    expect(port.activeUid, 'u1');
+    expect(port.hasAccount('u1'), isTrue);
+    expect(port.hasAccount('missing'), isFalse);
+    expect(port.clientFor('u1'), same(clients.clientFor('u1')));
+    expect(port.publicClient, same(clients.publicClient));
   });
 }
