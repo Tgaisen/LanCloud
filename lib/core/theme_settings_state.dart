@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'data/settings_store.dart';
 import 'data/settings_store_provider.dart';
+import 'system_motion.dart';
 
 /// 主题、动态取色和全局动画设置的明确读写入口。
 class ThemeSettingsState {
@@ -40,6 +41,7 @@ class ThemeSettingsState {
 
   Future<void> setMotionMode(String value) async {
     await store.setMotionMode(value);
+    SystemMotion.motionMode.value = store.motionMode;
     revision.value += 1;
   }
 }

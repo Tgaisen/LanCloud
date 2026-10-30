@@ -32,6 +32,7 @@ void main() {
     expect(state.dynamicColor, isTrue);
     expect(state.dynamicColorChosen, isTrue);
     expect(state.motionMode, 'off');
+    expect(SystemMotion.motionMode.value, 'off');
   });
 
   test('AppController 修改全局动画时仍同步 SystemMotion', () async {

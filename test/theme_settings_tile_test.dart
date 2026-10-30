@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/data/settings_store.dart';
+import 'package:lancloud/core/system_motion.dart';
 import 'package:lancloud/core/theme_settings_state.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/delegates.dart';
@@ -37,6 +38,10 @@ Future<(SettingsStore, ThemeSettingsState)> _pump(
 }
 
 void main() {
+  setUp(() => SystemMotion.motionMode.value = 'auto');
+
+  tearDown(() => SystemMotion.motionMode.value = 'auto');
+
   testWidgets('主题模式不依赖 AppController，并局部刷新', (tester) async {
     final (store, state) = await _pump(
       tester,
@@ -81,6 +86,27 @@ void main() {
     expect(store.oledBlack, isTrue);
     expect(state.revision.value, 1);
     expect(tester.widget<SwitchListTile>(switchTile).value, isTrue);
+  });
+
+  testWidgets('全局动画不依赖 AppController，并同步 SystemMotion', (tester) async {
+    final (store, state) = await _pump(
+      tester,
+      (_) => const MotionSettingsTile(),
+    );
+
+    expect(find.text('自动'), findsOneWidget);
+    await tester.tap(find.widgetWithText(ListTile, '全局动画'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('禁用'));
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 10)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(store.motionMode, 'off');
+    expect(SystemMotion.motionMode.value, 'off');
+    expect(state.revision.value, 1);
+    expect(find.text('禁用'), findsOneWidget);
   });
 
   testWidgets('主题色弹窗不依赖 AppController，并保持动态色与 seed 互斥', (

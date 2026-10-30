@@ -631,8 +631,6 @@ class AppController extends ChangeNotifier {
   /// 设置页「全局动画」：auto / on / off（见 [SystemMotion.motionMode]）。
   Future<void> setMotionMode(String mode) async {
     await themeSettings.setMotionMode(mode);
-    SystemMotion.motionMode.value = settings.motionMode;
-    notifyListeners();
   }
 
   Future<void> setOledBlack(bool value) async {

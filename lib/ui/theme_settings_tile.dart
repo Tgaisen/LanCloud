@@ -29,6 +29,13 @@ String themeSeedLabel(AppLocalizations l10n, int seed) => switch (seed) {
   _ => l10n.custom,
 };
 
+/// 将全局动画模式映射为当前语言下的名称。
+String motionModeLabel(AppLocalizations l10n, String mode) => switch (mode) {
+  'on' => l10n.motionModeEnabled,
+  'off' => l10n.motionModeDisabled,
+  _ => l10n.motionModeAuto,
+};
+
 /// 选择动态取色或一个预设主题色。
 Future<ThemeColorSelection?> showThemeColorPicker(
   BuildContext context, {
@@ -100,6 +107,47 @@ Future<ThemeColorSelection?> showThemeColorPicker(
   );
 }
 
+/// 选择跟随无障碍信号、始终启用或始终禁用动画。
+Future<String?> showMotionModePicker(
+  BuildContext context, {
+  required String current,
+}) {
+  final l10n = context.l10n;
+  final options = <(String, String, String?)>[
+    ('auto', l10n.motionModeAuto, l10n.motionModeAutoSubtitle),
+    ('on', l10n.motionModeEnabled, null),
+    ('off', l10n.motionModeDisabled, null),
+  ];
+  return showDialog<String>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: Text(l10n.globalAnimations),
+      contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            DialogListGroup(
+              children: [
+                for (final entry in options)
+                  M3ePickTile(
+                    label: entry.$2,
+                    subtitle: entry.$3,
+                    selected: current == entry.$1,
+                    singleSelect: true,
+                    onTap: () =>
+                        Navigator.of(dialogContext).pop<String>(entry.$1),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
 /// 主题模式或纯黑深色设置行。
 class ThemeSettingsTile extends ConsumerWidget {
   const ThemeSettingsTile({
@@ -147,6 +195,37 @@ class ThemeSettingsTile extends ConsumerWidget {
         ),
       },
     );
+  }
+}
+
+/// 全局动画模式设置行。
+class MotionSettingsTile extends ConsumerWidget {
+  const MotionSettingsTile({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(themeSettingsStateProvider);
+    final l10n = context.l10n;
+    return ValueListenableBuilder<int>(
+      valueListenable: settings.revision,
+      builder: (context, _, _) => ListTile(
+        leading: const Icon(Icons.animation),
+        title: Text(l10n.globalAnimations),
+        subtitle: Text(motionModeLabel(l10n, settings.motionMode)),
+        onTap: () => unawaited(_pickMotionMode(context, settings)),
+      ),
+    );
+  }
+
+  Future<void> _pickMotionMode(
+    BuildContext context,
+    ThemeSettingsState settings,
+  ) async {
+    final selected = await showMotionModePicker(
+      context,
+      current: settings.motionMode,
+    );
+    if (selected != null) await settings.setMotionMode(selected);
   }
 }
 

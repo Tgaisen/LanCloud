@@ -73,7 +73,9 @@
 `LanguageClipboardSettingsState` 写入；其 revision 由旧控制器转发，根
 `MaterialApp.locale` 仍会立即切换。“默认启动页”和“首页目录打开方式”已迁入
 `page_behavior_settings_tile.dart`，分别通过 `CachePageSettingsState` 与
-`ListHomeSettingsState` 局部刷新。
+`ListHomeSettingsState` 局部刷新。“全局动画”迁入 `MotionSettingsTile`，
+`ThemeSettingsState.setMotionMode` 同时更新 `SystemMotion.motionMode`，旧控制器
+只保留兼容转发。
 
 ## 导航与弹层
 

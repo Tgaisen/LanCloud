@@ -405,11 +405,6 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
       'dark' => l10n.dark,
       _ => l10n.followSystem,
     };
-    String motionModeName() => switch (app.settings.motionMode) {
-      'on' => l10n.motionModeEnabled,
-      'off' => l10n.motionModeDisabled,
-      _ => l10n.motionModeAuto,
-    };
     return [
       _Entry(
         id: 'language',
@@ -879,15 +874,10 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
       _Entry(
         id: 'motion_mode',
         title: l10n.globalAnimations,
-        subtitle: motionModeName(),
+        subtitle: motionModeLabel(l10n, app.settings.motionMode),
         keywords: l10n.motionModeKeywords.split(' '),
         section: SettingsSection.accessibility,
-        build: (context, app) => ListTile(
-          leading: const Icon(Icons.animation),
-          title: Text(context.l10n.globalAnimations),
-          subtitle: Text(motionModeName()),
-          onTap: () => _pickMotionMode(context),
-        ),
+        build: (context, app) => const MotionSettingsTile(),
       ),
       _Entry(
         id: 'a11y_feedback',
@@ -1657,26 +1647,6 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
           ),
         ),
       ),
-    );
-  }
-
-  /// 「全局动画」：auto（跟随无障碍功能）/ on（始终启用）/ off（始终禁用）。
-  static Future<void> _pickMotionMode(BuildContext context) {
-    final app = context.read<AppController>();
-    final l10n = context.l10n;
-    return _pickRadio(
-      context,
-      title: l10n.globalAnimations,
-      options: [
-        ('auto', l10n.motionModeAuto),
-        ('on', l10n.motionModeEnabled),
-        ('off', l10n.motionModeDisabled),
-      ],
-      // 默认档的说明（另外两档看名字即可）
-      subtitleOf: (value) =>
-          value == 'auto' ? l10n.motionModeAutoSubtitle : null,
-      current: app.settings.motionMode,
-      onSelect: (value) => app.setMotionMode(value),
     );
   }
 
