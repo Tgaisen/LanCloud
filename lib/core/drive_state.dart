@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'drive_cache.dart';
+
 /// 网盘页当前所在目录：id + 相对根目录的路径。
 class DriveLocation {
   const DriveLocation({this.id = '-1', this.path = ''});
@@ -20,6 +22,9 @@ class DriveLocation {
 
 /// 网盘页与首页之间的目录导航状态，以及拖拽上传的页面可见性探针。
 class DriveState {
+  /// 按账号隔离的网盘目录内存/根快照缓存。
+  final DriveCache cache = DriveCache();
+
   /// 首页“目录打开方式 = 网盘页”时请求打开的目录 id（消费后置空）。
   final ValueNotifier<String?> folderRequest = ValueNotifier(null);
 
@@ -62,3 +67,8 @@ class DriveState {
 final driveStateProvider = Provider<DriveState>((ref) {
   throw StateError('driveStateProvider 必须由应用入口覆盖');
 });
+
+/// 从唯一 [DriveState] 派生的目录缓存入口。
+final driveCacheProvider = Provider<DriveCache>(
+  (ref) => ref.watch(driveStateProvider).cache,
+);

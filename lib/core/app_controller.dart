@@ -48,7 +48,7 @@ class AppController extends ChangeNotifier {
   final AccountStore accounts = AccountStore();
   final SettingsStore settings = SettingsStore();
   final AppDb db = AppDb.instance;
-  final DriveCache driveCache = DriveCache();
+  DriveCache get driveCache => drive.cache;
   final SharedDownloadsGateway _sharedDownloads;
   final DownloadPathService _downloadPaths;
   final NavigationState navigation;

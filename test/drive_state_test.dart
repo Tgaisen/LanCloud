@@ -19,6 +19,7 @@ void main() {
 
     expect(state.folderRequest.value, 'folder-1');
     expect(state.location.value.path, 'A/B');
+    expect(identical(state.cache, state.cache), isTrue);
     expect(state.driveVisible, isTrue);
     expect(state.favoritesVisible, isFalse);
 
@@ -40,6 +41,7 @@ void main() {
 
     expect(identical(app.driveFolderRequest, drive.folderRequest), isTrue);
     expect(identical(app.driveLocation, drive.location), isTrue);
+    expect(identical(app.driveCache, drive.cache), isTrue);
     expect(app.driveVisible, isTrue);
     expect(app.favoritesVisible, isFalse);
   });
@@ -53,5 +55,6 @@ void main() {
     addTearDown(drive.dispose);
 
     expect(identical(container.read(driveStateProvider), drive), isTrue);
+    expect(identical(container.read(driveCacheProvider), drive.cache), isTrue);
   });
 }
