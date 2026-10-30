@@ -753,6 +753,13 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > 仍通过 `BackupService.of(app)` 取得既有单例并同时用于启动自动备份和容器
 > 覆盖，不改变服务内部依赖与生命周期。新增 1 个 provider 覆盖 / 同一性测试，
 > 当前测试总数为 720。
+>
+> 随后 `BackupContent` 与 `RestorePage` 完成消费端迁移：两者从
+> `backupServiceProvider` 获取同一服务实例，恢复页的 `hideTopBar` 也改为
+> `NavigationAppearanceSettingsState.revision` 局部刷新。备份页、恢复页和
+> “我的”大屏备份窗格测试均通过 provider override 注入假服务；相关增量
+> 5 + 2 个测试文件、54 + 13 个测试通过。`BackupService` 内部仍暂时持有
+> `AppController`，留到后续生命周期拆分时处理。
 
 ### 阶段 6：移除旧 Provider
 
