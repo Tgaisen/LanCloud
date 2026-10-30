@@ -29,6 +29,7 @@ import 'm3e.dart';
 import 'navigation_appearance_settings_tile.dart';
 import 'notification_settings_tile.dart';
 import 'page_behavior_settings_tile.dart';
+import 'recent_limit_settings_tile.dart';
 import 'settings_slider_tile.dart';
 import 'theme_settings_tile.dart';
 import 'transfer_concurrency_settings_tile.dart';
@@ -721,17 +722,7 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
             : l10n.recentLimitValue(app.settings.recentLimit),
         keywords: l10n.recentLimitKeywords.split(' '),
         section: SettingsSection.data,
-        build: (context, app) => SettingsSliderTile<int>(
-          icon: Icons.history,
-          title: context.l10n.recentLimit,
-          // 0 = 不记录（l10n.recentLimitOff）
-          values: const [0, 10, 50, 100, 200],
-          current: app.settings.recentLimit,
-          labelOf: (value) => value <= 0
-              ? context.l10n.recentLimitOff
-              : context.l10n.recentLimitValue(value),
-          onChanged: app.setRecentLimit,
-        ),
+        build: (context, app) => const RecentLimitSettingsTile(),
       ),
       _Entry(
         id: 'clear_cache',

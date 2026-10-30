@@ -80,7 +80,9 @@
 一次写入并只递增一次 revision。设置滑杆已抽成公共
 `SettingsSliderTile`；“上传并发数”和“下载并发数”迁入
 `TransferConcurrencySettingsTile`，通过 `TransferConnectionSettingsState.revision`
-局部刷新，传输调度仍实时读取设置值。
+局部刷新，传输调度仍实时读取设置值。“最近使用条数”迁入
+`RecentLimitSettingsTile`；`ListHomeSettingsState.setRecentLimit` 统一执行
+落盘、当前账号 `AppDb.trimRecents` 和 revision 通知。
 
 ## 导航与弹层
 

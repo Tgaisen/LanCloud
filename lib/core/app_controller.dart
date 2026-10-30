@@ -62,7 +62,11 @@ class AppController extends ChangeNotifier {
     navigationAppearanceSettings = NavigationAppearanceSettingsState(settings);
     themeSettings = ThemeSettingsState(settings);
     transferConnectionSettings = TransferConnectionSettingsState(settings);
-    listHomeSettings = ListHomeSettingsState(settings);
+    listHomeSettings = ListHomeSettingsState(
+      settings,
+      trimRecents: db.trimRecents,
+      activeUid: () => activeUid,
+    );
     languageClipboardSettings = LanguageClipboardSettingsState(settings);
     cachePageSettings = CachePageSettingsState(settings, this.drive.cache);
     downloadDirectorySettings = DownloadDirectorySettingsState(settings);
@@ -70,6 +74,7 @@ class AppController extends ChangeNotifier {
     navigationAppearanceSettings.revision.addListener(notifyListeners);
     themeSettings.revision.addListener(notifyListeners);
     languageClipboardSettings.revision.addListener(notifyListeners);
+    listHomeSettings.revision.addListener(notifyListeners);
   }
 
   final AccountState accountState;
@@ -346,6 +351,7 @@ class AppController extends ChangeNotifier {
     navigationAppearanceSettings.revision.removeListener(notifyListeners);
     themeSettings.revision.removeListener(notifyListeners);
     languageClipboardSettings.revision.removeListener(notifyListeners);
+    listHomeSettings.revision.removeListener(notifyListeners);
     navigation.dispose();
     drive.dispose();
     super.dispose();
@@ -383,25 +389,19 @@ class AppController extends ChangeNotifier {
 
   Future<void> setSortMode(String value) async {
     await listHomeSettings.setSortMode(value);
-    notifyListeners();
   }
 
   Future<void> setQuickExpanded(bool value) async {
     await listHomeSettings.setQuickExpanded(value);
-    notifyListeners();
   }
 
   Future<void> setRecentsExpanded(bool value) async {
     await listHomeSettings.setRecentsExpanded(value);
-    notifyListeners();
   }
 
   /// 设置最近使用条数（0 = 不记录），并立刻按新上限裁剪已有记录。
   Future<void> setRecentLimit(int value) async {
     await listHomeSettings.setRecentLimit(value);
-    final uid = activeUid;
-    if (uid != null) await db.trimRecents(uid, value);
-    notifyListeners();
   }
 
   Future<void> setMaxUploads(int value) async {
@@ -611,7 +611,6 @@ class AppController extends ChangeNotifier {
 
   Future<void> setHomeFolderOpenMode(String value) async {
     await listHomeSettings.setHomeFolderOpenMode(value);
-    notifyListeners();
   }
 
   Future<void> setCacheFolders(bool value) async {

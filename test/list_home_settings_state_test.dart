@@ -47,6 +47,25 @@ void main() {
     expect(notifications, 5);
   });
 
+  test('设置最近使用上限时按当前账号裁剪数据库', () async {
+    String? uid = 'account-1';
+    final trims = <(String, int)>[];
+    final state = ListHomeSettingsState(
+      SettingsStore(),
+      trimRecents: (account, limit) async => trims.add((account, limit)),
+      activeUid: () => uid,
+    );
+
+    await state.setRecentLimit(20);
+    expect(trims, [('account-1', 20)]);
+    expect(state.revision.value, 1);
+
+    uid = null;
+    await state.setRecentLimit(0);
+    expect(trims, [('account-1', 20)]);
+    expect(state.revision.value, 2);
+  });
+
   test('listHomeSettingsStateProvider 可被共享实例覆盖', () {
     final state = ListHomeSettingsState(SettingsStore());
     final container = ProviderContainer(

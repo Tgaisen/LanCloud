@@ -52,6 +52,7 @@
 | `tools\agent.cmd test`（MotionSettingsTile） | 增量 | **364 tests, all passed** | 约 66 s |
 | `tools\agent.cmd test`（NavBarItemsSettingsTile） | 增量 | **53 tests, all passed** | 约 15 s |
 | `tools\agent.cmd test`（传输并发滑杆） | 增量 | **51 tests, all passed** | 约 14 s |
+| `tools\agent.cmd test`（RecentLimitSettingsTile） | 增量 | **357 tests, all passed** | 约 65 s |
 
 工具链：Flutter 3.47.7（stable）/ Dart 3.13.5 / DevTools 2.60.0。
 静态检查：`analysis_options.yaml` 已开启 `strict-casts` / `strict-inference` / `strict-raw-types`。
@@ -64,7 +65,7 @@
 | `lib` 总行数 | 约 4.7 万 |
 | `test` 测试文件 | 123（平铺，`<主题>_test.dart`） |
 | `test` 总行数 | 约 2 万 |
-| `test` 用例数 | 697（当前总数；本次只验证了受影响增量） |
+| `test` 用例数 | 699（当前总数；本次只验证了受影响增量） |
 | `lib/ui` 页面与组件 | 40 个平铺文件 |
 | `lib/core` | 32 个平铺文件 + 5 个子系统目录 |
 | 文案（`app_zh.arb`） | 1357 行 |
@@ -183,5 +184,8 @@
 - 2026-10-30 的上传/下载并发滑杆新增 2 个独立 Widget 测试，并把设置滑杆抽成
   公共 `SettingsSliderTile`；增量 10 个文件 / 51 个测试通过，当前总数由 695
   增至 697。
+- 2026-10-30 的 RecentLimitSettingsTile 新增 1 个状态裁剪测试和 1 个独立 Widget
+  测试，并把 `AppDb.trimRecents` 调用收拢到 `ListHomeSettingsState`；增量 63 个
+  文件 / 357 个测试通过，当前总数由 697 增至 699。
 - 若临时再改 `analysis_options.yaml` 加规则，issue 数会变；先把预期数量记在这里再跑，
   避免和「本次改坏」混淆。

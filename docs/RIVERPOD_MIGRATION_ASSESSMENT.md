@@ -454,6 +454,11 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > 落盘与现有无障碍语义。“上传并发数”和“下载并发数”迁入
 > `TransferConcurrencySettingsTile`；传输调度继续实时读取同一个 `SettingsStore`，
 > 高级连接参数仍由旧控制器同步 `LanzouClient`。
+>
+> “最近使用条数”随后迁入 `RecentLimitSettingsTile`。
+> `ListHomeSettingsState.setRecentLimit` 通过注入的当前账号与
+> `AppDb.trimRecents` 统一执行落盘、数据库裁剪和 revision 通知；旧控制器只监听
+> 转发，不再重复裁剪。
 
 ### 阶段 5：处理 `TransferManager`
 
