@@ -62,6 +62,13 @@ class DrivePage extends StatefulWidget {
   State<DrivePage> createState() => _DrivePageState();
 }
 
+typedef _DriveViewSettings = ({
+  bool gridView,
+  bool floatingNavBar,
+  bool hideTopBar,
+  bool hideBottomBar,
+});
+
 class _DrivePageState extends State<DrivePage>
     with
         TickerProviderStateMixin,
@@ -2569,13 +2576,21 @@ class _DrivePageState extends State<DrivePage>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final app = context.watch<AppController>();
+    final app = context.read<AppController>();
+    final viewSettings = context.select<AppController, _DriveViewSettings>(
+      (app) => (
+        gridView: app.settings.gridView,
+        floatingNavBar: app.settings.floatingNavBar,
+        hideTopBar: app.settings.hideTopBar,
+        hideBottomBar: app.settings.hideBottomBar,
+      ),
+    );
     // 发布当前目录：拖拽文件落下来时的确认条要显示"上传到 根目录/abc"
     app.driveLocation.value = DriveLocation(
       id: _folderId,
       path: [for (final node in _path) node.name].join('/'),
     );
-    final grid = app.settings.gridView;
+    final grid = viewSettings.gridView;
     final selectedCount = _selectedFiles.length + _selectedFolders.length;
     final headerHeight =
         MediaQuery.paddingOf(context).top + kToolbarHeight + 46;
@@ -2584,7 +2599,7 @@ class _DrivePageState extends State<DrivePage>
     final bottomObstruction = bottomObstructionHeight(context);
     // 悬浮胶囊只在外壳里有；独立页面按系统导航栏避让即可。
     final floatingNavInShell =
-        inRootShell(context) && app.settings.floatingNavBar;
+        inRootShell(context) && viewSettings.floatingNavBar;
 
     return AnimatedBuilder(
       animation: Listenable.merge([_selAnim, _exitAnim]),
@@ -2600,7 +2615,9 @@ class _DrivePageState extends State<DrivePage>
           body: Stack(
             children: [
               // 小屏：正文区整体让开左右挖孔 / 侧边导航栏；顶栏（浮层）保持原样
-              BodySideInset(child: _buildBody(grid)),
+              BodySideInset(
+                child: _buildBody(grid, viewSettings.hideTopBar),
+              ),
               // 顶栏浮层：与底栏共用收起进度，切换视图时会下滑出现
               Positioned(
                 left: 0,
@@ -2699,7 +2716,7 @@ class _DrivePageState extends State<DrivePage>
             builder: (context, hide, child) {
               // 只跟随“底栏收起”设置：底栏跟随滚动时 FAB 也同步下滑，
               // 多选等程序化隐藏则用补间动画，方向统一为上滑显示、下滑消失。
-              final follow = app.settings.hideBottomBar
+              final follow = viewSettings.hideBottomBar
                   ? hide.clamp(0.0, 1.0)
                   : 0.0;
               return ValueListenableBuilder<bool>(
@@ -2822,14 +2839,14 @@ class _DrivePageState extends State<DrivePage>
   }
 
   /// 顶栏不参与列表布局，列表顶部留出等高占位。
-  Widget _buildBody(bool grid) {
+  Widget _buildBody(bool grid, bool hideTopBar) {
     final headerInset =
         MediaQuery.of(context).padding.top + kToolbarHeight + 46;
     final app = context.read<AppController>();
     return ScrollTint(
       hideDistance: headerInset,
       readBarsHidden: () => app.topBarHide.value,
-      onBarsHidden: app.settings.hideTopBar
+      onBarsHidden: hideTopBar
           ? app.setTopBarHideFromScroll
           : null,
       // 列表快速滑动条（可拖拽）

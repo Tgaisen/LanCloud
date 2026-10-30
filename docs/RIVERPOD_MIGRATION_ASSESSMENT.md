@@ -513,6 +513,11 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > 首页随后移除 `AppController` / `TransferManager` 整体 `watch`，只订阅
 > `hideTopBar` 和运行中任务数。快速访问、最近使用、删除动画和折叠状态继续由
 > 页面本地状态及 `AppDb.revision` 驱动。
+>
+> 网盘页最后移除整体 `AppController` 订阅，只订阅网格视图、浮动导航与顶/底栏
+> 隐藏配置。目录加载、`DriveLocation`、多选、批量下载/删除和缓存状态保持原有
+> 状态机。至此生产代码中的 `context.watch<AppController>()` 已清零；剩余
+> `TransferManager` 整体订阅留到阶段 5。
 
 ### 阶段 5：处理 `TransferManager`
 
