@@ -52,7 +52,7 @@
 | `ListHomeSettingsState` | `core/list_home_settings_state.dart` | 阶段 3 设置子组：列表排序、首页折叠、最近使用上限与文件夹打开模式 |
 | `LanguageClipboardSettingsState` | `core/language_clipboard_settings_state.dart` | 阶段 3 设置子组：界面语言与复制分享链接提示 |
 | `CachePageSettingsState` | `core/cache_page_settings_state.dart` | 阶段 3 设置子组：网格视图、启动页、目录缓存和自动加载全部页面 |
-| `DownloadDirectorySettingsState` | `core/download_directory_settings_state.dart` | 阶段 3 设置子组：普通下载目录与 SAF 目录 URI/标签的持久化入口 |
+| `DownloadDirectorySettingsState` | `core/download_directory_settings_state.dart` | 阶段 3 设置子组：普通下载目录、SAF URI/标签、互斥写入和旧授权释放入口 |
 
 消费现状：`context.read<…>` 约 150 处、`context.watch<…>` 约 17 处。
 `UpdateContent` 已不再读取 `AppController`，更新状态与更新设置均从 Riverpod
@@ -89,7 +89,9 @@ User-Agent 也迁入 `AdvancedConnectionSettingsTile`；对应 setter 统一同�
 `LanzouClient.apiBase`、`uploadPath` 和 `userAgent`。
 “隐藏顶/底栏”也已迁入 `NavigationAppearanceSettingsTile`；关闭时的栏位展开动画
 由 `NavigationAppearanceSettingsState` 调用注入的 `NavigationState` 执行，并沿用
-旧控制器的少动效判断。
+旧控制器的少动效判断。“下载目录”迁入 `DownloadDirectorySettingsTile`；默认路径
+解析、目录分类和系统选择器保留在 UI，普通路径与 SAF 字段的互斥写入、旧授权释放
+由 `DownloadDirectorySettingsState` 独占。
 
 ## 导航与弹层
 

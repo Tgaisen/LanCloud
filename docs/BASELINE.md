@@ -56,6 +56,7 @@
 | `tools\agent.cmd test`（RequestIntervalSettingsTile） | 增量 | **357 tests, all passed** | 约 65 s |
 | `tools\agent.cmd test`（高级连接覆盖项） | 增量 | **360 tests, all passed** | 约 66 s |
 | `tools\agent.cmd test`（隐藏顶/底栏） | 增量 | **357 tests, all passed** | 约 60 s |
+| `tools\agent.cmd test`（DownloadDirectorySettingsTile） | 增量 | **357 tests, all passed** | 约 68 s |
 
 工具链：Flutter 3.47.7（stable）/ Dart 3.13.5 / DevTools 2.60.0。
 静态检查：`analysis_options.yaml` 已开启 `strict-casts` / `strict-inference` / `strict-raw-types`。
@@ -68,7 +69,7 @@
 | `lib` 总行数 | 约 4.7 万 |
 | `test` 测试文件 | 123（平铺，`<主题>_test.dart`） |
 | `test` 总行数 | 约 2 万 |
-| `test` 用例数 | 705（当前总数；本次只验证了受影响增量） |
+| `test` 用例数 | 707（当前总数；本次只验证了受影响增量） |
 | `lib/ui` 页面与组件 | 40 个平铺文件 |
 | `lib/core` | 32 个平铺文件 + 5 个子系统目录 |
 | 文案（`app_zh.arb`） | 1357 行 |
@@ -200,5 +201,8 @@
 - 2026-10-30 的隐藏顶/底栏复用 `NavigationAppearanceSettingsTile`，新增 1 个
   Riverpod 直属写入的少动效展开测试；增量 62 个文件 / 357 个测试通过，当前总数
   由 704 增至 705。
+- 2026-10-30 的 DownloadDirectorySettingsTile 新增 2 个独立 Widget 测试，覆盖
+  普通目录选择与恢复默认时释放旧 SAF 授权；状态层新增 revision 并独占互斥写入，
+  增量 62 个文件 / 357 个测试通过，当前总数由 705 增至 707。
 - 若临时再改 `analysis_options.yaml` 加规则，issue 数会变；先把预期数量记在这里再跑，
   避免和「本次改坏」混淆。

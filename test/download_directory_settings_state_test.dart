@@ -12,20 +12,31 @@ void main() {
 
   test('DownloadDirectorySettingsState 读写普通目录与 SAF 字段', () async {
     final settings = SettingsStore();
-    final state = DownloadDirectorySettingsState(settings);
+    final released = <String>[];
+    final state = DownloadDirectorySettingsState(
+      settings,
+      releaseSaf: (uri) async => released.add(uri),
+    );
 
-    await state.setDirectoryPath('/downloads/LanCloud');
-    await state.setSafariDirectory('content://tree/primary%3ADownload', 'Download');
+    await state.selectDirectoryPath('/downloads/LanCloud');
+    await state.selectSafariDirectory(
+      const SafDirectory(
+        uri: 'content://tree/primary%3ADownload',
+        label: 'Download',
+      ),
+    );
 
-    expect(state.directoryPath, '/downloads/LanCloud');
+    expect(state.revision.value, 2);
+    expect(state.directoryPath, isNull);
     expect(state.safariTreeUri, 'content://tree/primary%3ADownload');
     expect(state.safariLabel, 'Download');
 
-    await state.setDirectoryPath(null);
-    await state.setSafariDirectory(null, null);
+    await state.selectDirectoryPath(null);
     expect(state.directoryPath, isNull);
     expect(state.safariTreeUri, isNull);
     expect(state.safariLabel, isNull);
+    expect(released, ['content://tree/primary%3ADownload']);
+    expect(state.revision.value, 3);
   });
 
   test('AppController 普通目录与 SAF 设置仍互斥写入', () async {

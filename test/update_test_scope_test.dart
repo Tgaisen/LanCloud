@@ -6,6 +6,7 @@ import 'package:lancloud/core/cache_page_settings_state.dart';
 import 'package:lancloud/core/data/settings_store.dart';
 import 'package:lancloud/core/data/settings_store_provider.dart';
 import 'package:lancloud/core/drive_state.dart';
+import 'package:lancloud/core/download_directory_settings_state.dart';
 import 'package:lancloud/core/language_clipboard_settings_state.dart';
 import 'package:lancloud/core/list_home_settings_state.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
@@ -66,6 +67,9 @@ Widget appTestTree({
       listHomeSettingsStateProvider.overrideWithValue(app.listHomeSettings),
       transferConnectionSettingsStateProvider.overrideWithValue(
         app.transferConnectionSettings,
+      ),
+      downloadDirectorySettingsStateProvider.overrideWithValue(
+        app.downloadDirectorySettings,
       ),
       notificationSettingsStateProvider.overrideWithValue(
         app.notificationSettings,

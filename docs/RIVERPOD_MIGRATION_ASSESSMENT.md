@@ -373,7 +373,8 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > 旧控制器只转发同一实例，不再重复清缓存。
 >
 > `DownloadDirectorySettingsState` 最后拆分：普通下载目录与 SAF URI/标签通过
-> 独立入口读写。平台目录选择、旧 SAF 授权释放和互斥写入顺序仍由旧控制器负责。
+> 独立入口读写。阶段 4 已把旧 SAF 授权释放和互斥写入顺序迁入该状态，平台目录
+> 选择保留在设置叶子。
 
 ### 阶段 4：迁移 UI 消费端
 
@@ -473,6 +474,11 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > “隐藏顶栏”和“隐藏底栏”随后复用 `NavigationAppearanceSettingsTile`。
 > `NavigationAppearanceSettingsState` 注入 `NavigationState` 和少动效判断，关闭
 > 隐藏时会先执行原有栏位展开动画，再通过 revision 通知旧控制器。
+>
+> “下载目录”随后迁入 `DownloadDirectorySettingsTile`。该组件通过
+> `DownloadPathService` 解析默认路径，并负责平台目录选择；普通路径与 SAF 字段的
+> 互斥写入、旧授权释放统一由 `DownloadDirectorySettingsState` 完成。选择器支持
+> 测试注入，旧控制器仅监听 revision 转发通知。
 
 ### 阶段 5：处理 `TransferManager`
 
