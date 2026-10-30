@@ -2,9 +2,11 @@ import 'dart:async';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/app_info.dart';
+import 'package:lancloud/core/data/settings_store.dart';
 import 'package:lancloud/core/system_motion.dart';
 import 'package:lancloud/core/update/release_info.dart';
 import 'package:lancloud/core/update/update_service.dart';
@@ -105,6 +107,36 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(AlertDialog), findsOneWidget);
     expect(find.text('构建信息'), findsOneWidget);
+  });
+
+  testWidgets('更新页只依赖 Riverpod 作用域，不需要 AppController', (tester) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final settings = SettingsStore()..updateAutoCheck = true;
+    final container = createUpdateContainer(
+      settings: settings,
+      fetch: () => _fetchReleases(),
+      clock: () => _now(),
+    );
+    addTearDown(container.dispose);
+    await container.read(updateServiceProvider.notifier).initialize();
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const Scaffold(
+            body: SingleChildScrollView(child: UpdateContent()),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('未检测更新'), findsOneWidget);
+    expect(find.text('自动检查更新'), findsOneWidget);
   });
 
   testWidgets('检测到新版本：卡片、更新弹窗与两个动作', (tester) async {

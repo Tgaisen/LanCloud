@@ -16,6 +16,7 @@ void main() {
     await state.setChannel('stable');
     await state.setAutoCheck(false);
 
+    expect(state.revision.value, 2);
     expect(state.channel, 'stable');
     expect(state.autoCheck, isFalse);
     expect(settings.updateChannel, 'stable');

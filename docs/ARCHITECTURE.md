@@ -55,9 +55,9 @@
 | `DownloadDirectorySettingsState` | `core/download_directory_settings_state.dart` | 阶段 3 设置子组：普通下载目录与 SAF 目录 URI/标签的持久化入口 |
 
 消费现状：`context.read<…>` 约 150 处、`context.watch<…>` 约 17 处。
-UpdateService 试点前 `context.select<…>` 为 0；更新页现在用两处 `select`
-只订阅更新通道与自动检查开关。其余新增 UI 仍应优先用 `select` 或
-`ValueListenableBuilder` 收窄订阅范围，不要继续放大。
+`UpdateContent` 已不再读取 `AppController`，更新状态与更新设置均从 Riverpod
+读取；设置 store 的变更通过局部 revision 触发。其余新增 UI 仍应优先用
+`select` 或 `ValueListenableBuilder` 收窄订阅范围，不要继续放大。
 
 ## 导航与弹层
 

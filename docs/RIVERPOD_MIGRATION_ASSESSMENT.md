@@ -249,6 +249,15 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > - Windows Release 重新构建运行；侧栏切换与转场、更新页和自动检查开关均正常。
 > - 两端测试后均恢复为测试版通道、自动检查开启；日志未发现本次导航/设置拆分
 >   相关异常。
+>
+> **阶段 3 设置拆分后全量复验（2026-10-30）**：
+>
+> - `agent.cmd analyze` 全量无问题；`agent.cmd test` 全量 679 个测试通过。
+> - Android debug 覆盖安装保留数据；启动、导航、更新开关、传输与并发设置、
+>   下载目录页面均正常。
+> - Windows Release 重新构建运行；导航、传输与连接设置、下载目录入口和更新
+>   开关均正常。
+> - 两端本轮运行日志未出现导航或设置所有权拆分相关异常。
 
 ### 阶段 2：迁移叶子依赖和无状态服务
 
@@ -390,6 +399,11 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 - 页面不再依赖整个 `AppController`。
 - provider 依赖关系可以从页面代码直接读出。
 - Provider 和 Riverpod 暂时共存时，两边都能获得同一份权威状态。
+
+> **实施进度（2026-10-30）**：阶段 4 从更新页开始。`UpdateContent` 已完全改为
+> Riverpod 消费：更新状态、通道和自动检查均来自 provider，设置写入通过
+> `UpdateSettingsState.revision` 局部刷新，不再读取 `AppController`。共享
+> `TopBarOverlayScaffold` 仍依赖旧 Provider，留到应用外壳迁移阶段处理。
 
 ### 阶段 5：处理 `TransferManager`
 

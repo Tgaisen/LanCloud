@@ -2,14 +2,13 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart' hide Icons;
-import 'package:provider/provider.dart';
 
-import '../core/app_controller.dart';
 import '../core/app_info.dart';
 import '../core/external_link.dart';
 import '../core/update/changelog.dart';
 import '../core/update/release_info.dart';
 import '../core/update/update_service.dart';
+import '../core/update/update_settings_state.dart';
 import '../l10n/l10n.dart';
 import 'about_page.dart';
 import 'app_icons.dart';
@@ -64,73 +63,66 @@ class UpdateContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final channel = context.select(
-      (AppController app) => app.settings.updateChannel,
-    );
-    final autoCheck = context.select(
-      (AppController app) => app.settings.updateAutoCheck,
-    );
+    final settings = ref.watch(updateSettingsStateProvider);
     final state = ref.watch(updateServiceProvider);
     final status = ref.watch(updateStatusProvider);
     final supported = ref.watch(updateSupportedProvider);
     final updates = ref.read(updateServiceProvider.notifier);
     final l10n = context.l10n;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _UpdateStatusPanel(
-          state: state,
-          status: status,
-          supported: supported,
-          check: updates.check,
-          downloadUrl: updates.downloadUrl,
-        ),
-        const SizedBox(height: 8),
-        SegmentedList(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.info_outline),
-              title: Text(l10n.updateVersionInfo),
-              subtitle: Text(l10n.aboutVersion(appVersion, appBuild)),
-              // 与关于页的「构建信息」是同一个弹窗
-              onTap: () => showBuildInfoDialog(context),
-            ),
-            ListTile(
-              leading: const Icon(Icons.article_outlined),
-              title: Text(l10n.updateChangelog),
-              trailing: const Icon(Icons.open_in_new),
-              onTap: () => openExternalUrl(Uri.parse('$projectUrl/releases')),
-            ),
-          ],
-        ),
-        // 列表组 2 只在支持检测更新的平台显示：iOS 没有安装包产物，
-        // 通道与自动检查对它没有意义（状态卡片里另有说明）。
-        if (supported) ...[
+    return ValueListenableBuilder<int>(
+      valueListenable: settings.revision,
+      builder: (context, _, _) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _UpdateStatusPanel(
+            state: state,
+            status: status,
+            supported: supported,
+            check: updates.check,
+            downloadUrl: updates.downloadUrl,
+          ),
           const SizedBox(height: 8),
           SegmentedList(
             children: [
               ListTile(
-                leading: const Icon(Icons.build_outlined),
-                title: Text(l10n.updateChannel),
-                subtitle: Text(_channelName(l10n, channel)),
-                onTap: () => _pickChannel(
-                  context,
-                  context.read<AppController>(),
-                  updates,
-                ),
+                leading: const Icon(Icons.info_outline),
+                title: Text(l10n.updateVersionInfo),
+                subtitle: Text(l10n.aboutVersion(appVersion, appBuild)),
+                // 与关于页的「构建信息」是同一个弹窗
+                onTap: () => showBuildInfoDialog(context),
               ),
-              SwitchListTile(
-                secondary: const Icon(Icons.cached_outlined),
-                title: Text(l10n.updateAutoCheck),
-                value: autoCheck,
-                onChanged: (value) => unawaited(
-                  context.read<AppController>().setUpdateAutoCheck(value),
-                ),
+              ListTile(
+                leading: const Icon(Icons.article_outlined),
+                title: Text(l10n.updateChangelog),
+                trailing: const Icon(Icons.open_in_new),
+                onTap: () => openExternalUrl(Uri.parse('$projectUrl/releases')),
               ),
             ],
           ),
+          // 列表组 2 只在支持检测更新的平台显示：iOS 没有安装包产物，
+          // 通道与自动检查对它没有意义（状态卡片里另有说明）。
+          if (supported) ...[
+            const SizedBox(height: 8),
+            SegmentedList(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.build_outlined),
+                  title: Text(l10n.updateChannel),
+                  subtitle: Text(_channelName(l10n, settings.channel)),
+                  onTap: () => _pickChannel(context, settings, updates),
+                ),
+                SwitchListTile(
+                  secondary: const Icon(Icons.cached_outlined),
+                  title: Text(l10n.updateAutoCheck),
+                  value: settings.autoCheck,
+                  onChanged: (value) =>
+                      unawaited(settings.setAutoCheck(value)),
+                ),
+              ],
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 }
@@ -141,11 +133,11 @@ String _channelName(AppLocalizations l10n, String channel) =>
 /// MD3E 单选弹窗（与设置页的选择弹窗同一套样式）：正式版 / 测试版。
 Future<void> _pickChannel(
   BuildContext context,
-  AppController app,
+  UpdateSettingsState settings,
   UpdateService updates,
 ) async {
   final l10n = context.l10n;
-  final current = app.settings.updateChannel;
+  final current = settings.channel;
   await showDialog<void>(
     context: context,
     builder: (dialogContext) => AlertDialog(
@@ -170,7 +162,7 @@ Future<void> _pickChannel(
                     onTap: () {
                       Navigator.of(dialogContext).pop();
                       if (current == value) return;
-                      unawaited(_setUpdateChannel(app, updates, value));
+                      unawaited(_setUpdateChannel(settings, updates, value));
                     },
                   ),
               ],
@@ -183,12 +175,13 @@ Future<void> _pickChannel(
 }
 
 Future<void> _setUpdateChannel(
-  AppController app,
+  UpdateSettingsState settings,
   UpdateService updates,
   String value,
 ) async {
-  await app.setUpdateChannel(value);
-  await updates.onChannelChanged();
+  if (await settings.setChannel(value)) {
+    await updates.onChannelChanged();
+  }
 }
 
 /// 更新状态区：图标框 / 状态文本 / 动作按钮，垂直居中排列。
