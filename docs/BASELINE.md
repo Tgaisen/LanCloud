@@ -31,6 +31,7 @@
 | `tools\agent.cmd test`（SettingsState 所有权） | 增量 | **322 tests, all passed** | 约 60 s |
 | `tools\agent.cmd test`（UpdateSettingsState 子组） | 增量 | **325 tests, all passed** | 约 59 s |
 | `tools\agent.cmd test`（NotificationSettingsState 子组） | 增量 | **328 tests, all passed** | 约 60 s |
+| `tools\agent.cmd test`（NavigationAppearanceSettingsState） | 增量 | **331 tests, all passed** | 约 59 s |
 
 工具链：Flutter 3.47.7（stable）/ Dart 3.13.5 / DevTools 2.60.0。
 静态检查：`analysis_options.yaml` 已开启 `strict-casts` / `strict-inference` / `strict-raw-types`。
@@ -43,7 +44,7 @@
 | `lib` 总行数 | 约 4.7 万 |
 | `test` 测试文件 | 123（平铺，`<主题>_test.dart`） |
 | `test` 总行数 | 约 2 万 |
-| `test` 用例数 | 658（当前总数；本次只验证了受影响增量） |
+| `test` 用例数 | 661（当前总数；本次只验证了受影响增量） |
 | `lib/ui` 页面与组件 | 40 个平铺文件 |
 | `lib/core` | 32 个平铺文件 + 5 个子系统目录 |
 | 文案（`app_zh.arb`） | 1357 行 |
@@ -106,5 +107,8 @@
 - 2026-10-30 的 NotificationSettingsState 子组新增 3 个测试，覆盖 store 读写、
   旧 API 通知语义和 provider override；增量 54 个文件 / 328 个测试通过，当前
   总数由 655 增至 658。
+- 2026-10-30 的 NavigationAppearanceSettingsState 新增 3 个测试，覆盖全部字段、
+  隐藏栏立即展开副作用和 provider override；增量 55 个文件 / 331 个测试通过，
+  当前总数由 658 增至 661。
 - 若临时再改 `analysis_options.yaml` 加规则，issue 数会变；先把预期数量记在这里再跑，
   避免和「本次改坏」混淆。

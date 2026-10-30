@@ -20,6 +20,7 @@ import 'drive_state.dart';
 import 'drive_cache.dart';
 import 'dynamic_color_support.dart';
 import 'navigation_state.dart';
+import 'navigation_appearance_settings_state.dart';
 import 'notification_settings_state.dart';
 import 'platform_support.dart';
 import 'saf_storage.dart';
@@ -52,6 +53,7 @@ class AppController extends ChangeNotifier {
        settingsState = settingsState ?? SettingsState() {
     updateSettings = UpdateSettingsState(settings);
     notificationSettings = NotificationSettingsState(settings);
+    navigationAppearanceSettings = NavigationAppearanceSettingsState(settings);
     this.navigation.addListener(notifyListeners);
   }
 
@@ -59,6 +61,7 @@ class AppController extends ChangeNotifier {
   final SettingsState settingsState;
   late final UpdateSettingsState updateSettings;
   late final NotificationSettingsState notificationSettings;
+  late final NavigationAppearanceSettingsState navigationAppearanceSettings;
 
   AccountStore get accounts => accountState.store;
   SettingsStore get settings => settingsState.store;
@@ -196,7 +199,7 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> setSwipeTabs(bool value) async {
-    await settings.setSwipeTabs(value);
+    await navigationAppearanceSettings.setSwipeTabs(value);
     notifyListeners();
   }
 
@@ -326,24 +329,24 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> setHideTopBar(bool value) async {
-    await settings.setHideTopBar(value);
+    await navigationAppearanceSettings.setHideTopBar(value);
     if (!value) animateBarsHide(0);
     notifyListeners();
   }
 
   Future<void> setHideBottomBar(bool value) async {
-    await settings.setHideBottomBar(value);
+    await navigationAppearanceSettings.setHideBottomBar(value);
     if (!value) animateBarsHide(0);
     notifyListeners();
   }
 
   Future<void> setFloatingNavBar(bool value) async {
-    await settings.setFloatingNavBar(value);
+    await navigationAppearanceSettings.setFloatingNavBar(value);
     notifyListeners();
   }
 
   Future<void> setTransitionAnimations(bool value) async {
-    await settings.setTransitionAnimations(value);
+    await navigationAppearanceSettings.setTransitionAnimations(value);
     notifyListeners();
   }
 
@@ -632,12 +635,12 @@ class AppController extends ChangeNotifier {
 
   /// 「传输」「收藏」是否显示在底栏。
   Future<void> setNavShowTransfers(bool value) async {
-    await settings.setNavShowTransfers(value);
+    await navigationAppearanceSettings.setNavShowTransfers(value);
     notifyListeners();
   }
 
   Future<void> setNavShowFavorites(bool value) async {
-    await settings.setNavShowFavorites(value);
+    await navigationAppearanceSettings.setNavShowFavorites(value);
     notifyListeners();
   }
 

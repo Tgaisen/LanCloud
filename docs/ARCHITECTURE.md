@@ -46,6 +46,7 @@
 | `SettingsState` | `core/settings_state.dart` | 阶段 3：唯一持有 `SettingsStore`；`settingsStoreProvider` 与旧 `AppController.settings` 均从它派生 |
 | `UpdateSettingsState` | `core/update/update_settings_state.dart` | 阶段 3 设置子组：收窄更新通道与自动检查开关的读写边界，持久化仍由 `SettingsStore` 独占 |
 | `NotificationSettingsState` | `core/notification_settings_state.dart` | 阶段 3 设置子组：进度通知与完成通知开关的明确读写入口 |
+| `NavigationAppearanceSettingsState` | `core/navigation_appearance_settings_state.dart` | 阶段 3 设置子组：侧滑、顶/底栏隐藏、悬浮导航、转场与导航项显示开关 |
 
 消费现状：`context.read<…>` 约 150 处、`context.watch<…>` 约 17 处。
 UpdateService 试点前 `context.select<…>` 为 0；更新页现在用两处 `select`
