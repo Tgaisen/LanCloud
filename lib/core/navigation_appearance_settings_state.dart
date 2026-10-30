@@ -3,12 +3,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'data/settings_store.dart';
 import 'data/settings_store_provider.dart';
+import 'navigation_state.dart';
 
 /// 导航外观与交互开关的明确读写入口。
 class NavigationAppearanceSettingsState {
-  NavigationAppearanceSettingsState(this.store);
+  NavigationAppearanceSettingsState(
+    this.store, {
+    this.navigation,
+    this.reduceMotion,
+  });
 
   final SettingsStore store;
+  final NavigationState? navigation;
+  final bool Function()? reduceMotion;
   final ValueNotifier<int> revision = ValueNotifier(0);
 
   bool get swipeTabs => store.swipeTabs;
@@ -26,11 +33,13 @@ class NavigationAppearanceSettingsState {
 
   Future<void> setHideTopBar(bool value) async {
     await store.setHideTopBar(value);
+    if (!value) _restoreBars();
     revision.value += 1;
   }
 
   Future<void> setHideBottomBar(bool value) async {
     await store.setHideBottomBar(value);
+    if (!value) _restoreBars();
     revision.value += 1;
   }
 
@@ -61,6 +70,13 @@ class NavigationAppearanceSettingsState {
     await store.setNavShowTransfers(transfers);
     await store.setNavShowFavorites(favorites);
     revision.value += 1;
+  }
+
+  void _restoreBars() {
+    navigation?.animateBarsHide(
+      0,
+      reduceMotion: reduceMotion?.call() ?? false,
+    );
   }
 }
 

@@ -87,6 +87,9 @@
 同时持久化并同步 `LanzouClient.requestInterval`。接口域名、上传路径和自定义
 User-Agent 也迁入 `AdvancedConnectionSettingsTile`；对应 setter 统一同步
 `LanzouClient.apiBase`、`uploadPath` 和 `userAgent`。
+“隐藏顶/底栏”也已迁入 `NavigationAppearanceSettingsTile`；关闭时的栏位展开动画
+由 `NavigationAppearanceSettingsState` 调用注入的 `NavigationState` 执行，并沿用
+旧控制器的少动效判断。
 
 ## 导航与弹层
 

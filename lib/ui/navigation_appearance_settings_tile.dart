@@ -90,6 +90,8 @@ Future<NavBarItemsSelection?> showNavBarItemsPicker(
 
 /// 可独立订阅导航外观设置的开关类型。
 enum NavigationAppearanceSetting {
+  hideTopBar,
+  hideBottomBar,
   floatingNav,
   swipeTabs,
   transitionAnimations,
@@ -109,6 +111,16 @@ class NavigationAppearanceSettingsTile extends ConsumerWidget {
     final settings = ref.watch(navigationAppearanceSettingsStateProvider);
     final l10n = context.l10n;
     final config = switch (setting) {
+      NavigationAppearanceSetting.hideTopBar => (
+        icon: Icons.vertical_align_top,
+        title: l10n.hideTopBar,
+        subtitle: null,
+      ),
+      NavigationAppearanceSetting.hideBottomBar => (
+        icon: Icons.vertical_align_bottom,
+        title: l10n.hideBottomBar,
+        subtitle: null,
+      ),
       NavigationAppearanceSetting.floatingNav => (
         icon: Icons.smart_button,
         title: l10n.floatingNav,
@@ -133,6 +145,8 @@ class NavigationAppearanceSettingsTile extends ConsumerWidget {
         title: Text(config.title),
         subtitle: config.subtitle == null ? null : Text(config.subtitle!),
         value: switch (setting) {
+          NavigationAppearanceSetting.hideTopBar => settings.hideTopBar,
+          NavigationAppearanceSetting.hideBottomBar => settings.hideBottomBar,
           NavigationAppearanceSetting.floatingNav => settings.floatingNavBar,
           NavigationAppearanceSetting.swipeTabs => settings.swipeTabs,
           NavigationAppearanceSetting.transitionAnimations =>
@@ -148,6 +162,9 @@ class NavigationAppearanceSettingsTile extends ConsumerWidget {
     bool value,
   ) {
     return switch (setting) {
+      NavigationAppearanceSetting.hideTopBar => settings.setHideTopBar(value),
+      NavigationAppearanceSetting.hideBottomBar =>
+        settings.setHideBottomBar(value),
       NavigationAppearanceSetting.floatingNav =>
         settings.setFloatingNavBar(value),
       NavigationAppearanceSetting.swipeTabs => settings.setSwipeTabs(value),

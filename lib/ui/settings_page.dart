@@ -391,11 +391,8 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         subtitle: '',
         keywords: l10n.hideTopBarKeywords.split(' '),
         section: SettingsSection.layout,
-        build: (context, app) => SwitchListTile(
-          secondary: const Icon(Icons.vertical_align_top),
-          title: Text(context.l10n.hideTopBar),
-          value: app.settings.hideTopBar,
-          onChanged: (value) => app.setHideTopBar(value),
+        build: (context, app) => const NavigationAppearanceSettingsTile(
+          setting: NavigationAppearanceSetting.hideTopBar,
         ),
       ),
       _Entry(
@@ -404,11 +401,8 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         subtitle: '',
         keywords: l10n.hideBottomBarKeywords.split(' '),
         section: SettingsSection.layout,
-        build: (context, app) => SwitchListTile(
-          secondary: const Icon(Icons.vertical_align_bottom),
-          title: Text(context.l10n.hideBottomBar),
-          value: app.settings.hideBottomBar,
-          onChanged: (value) => app.setHideBottomBar(value),
+        build: (context, app) => const NavigationAppearanceSettingsTile(
+          setting: NavigationAppearanceSetting.hideBottomBar,
         ),
       ),
       _Entry(

@@ -349,23 +349,24 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > 读写同一 store。旧 `AppController` 两个 setter 保持原通知行为，UI 尚未迁移。
 >
 > `NavigationAppearanceSettingsState` 也已拆分：侧滑切换、顶/底栏隐藏、悬浮导航、
-> 转场和导航项显示开关收窄为独立边界。关闭隐藏顶/底栏时立即展开的副作用仍由
-> `AppController` 执行，RootShell UI 尚未迁移。
+> 转场和导航项显示开关收窄为独立边界。关闭隐藏顶/底栏时立即展开的副作用已在
+> 阶段 4 迁入该状态，RootShell UI 本身尚未迁移。
 >
 > `ThemeSettingsState` 随后拆分：主题模式/种子、OLED、动态取色和全局动画通过
-> 独立 provider 读写同一 store。`setMotionMode` 的 `SystemMotion` 同步仍由旧
-> 控制器执行，应用根主题和 UI 消费端尚未迁移。
+> 独立 provider 读写同一 store。`setMotionMode` 的 `SystemMotion` 同步已在阶段 4
+> 迁入该状态，应用根主题和 UI 消费端尚未迁移。
 >
 > `TransferConnectionSettingsState` 随后拆分：请求间隔、并发数、API 域名、UA 和
-> 上传路径收窄为独立入口。旧控制器仍负责把设置同步到 `LanzouClient` 静态运行时
-> 配置。
+> 上传路径收窄为独立入口。阶段 4 已把设置到 `LanzouClient` 的静态运行时同步
+> 迁入该状态，旧控制器仅保留兼容通知。
 >
 > `ListHomeSettingsState` 也已拆分：列表排序、首页折叠、最近使用上限和文件夹
-> 打开模式使用独立 provider。最近使用上限写入后的按账号数据库裁剪仍由旧控制器
-> 执行。
+> 打开模式使用独立 provider。最近使用上限写入后的按账号数据库裁剪已在阶段 4
+> 迁入该状态。
 >
 > `LanguageClipboardSettingsState` 已拆分：界面语言与复制分享链接提示收窄为独立
-> 入口。应用根 Locale 解析和剪贴板行为尚未迁移。
+> 入口。应用根 Locale 读取仍在旧外壳，但阶段 4 已通过 revision 转发保证即时
+> 刷新。
 >
 > `CachePageSettingsState` 也已拆分：网格视图、启动页、目录缓存和自动加载开关
 > 使用独立 provider。关闭目录缓存时清空 `DriveCache` 的副作用已收拢到该状态，
@@ -468,6 +469,10 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > `AdvancedConnectionSettingsTile`。选择/文本弹窗返回类型化结果，对应 setter
 > 统一同步 `LanzouClient.apiBase`、`uploadPath` 和 `userAgent`；旧控制器仅保留
 > 兼容通知。
+>
+> “隐藏顶栏”和“隐藏底栏”随后复用 `NavigationAppearanceSettingsTile`。
+> `NavigationAppearanceSettingsState` 注入 `NavigationState` 和少动效判断，关闭
+> 隐藏时会先执行原有栏位展开动画，再通过 revision 通知旧控制器。
 
 ### 阶段 5：处理 `TransferManager`
 

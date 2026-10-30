@@ -59,7 +59,11 @@ class AppController extends ChangeNotifier {
        settingsState = settingsState ?? SettingsState() {
     updateSettings = UpdateSettingsState(settings);
     notificationSettings = NotificationSettingsState(settings);
-    navigationAppearanceSettings = NavigationAppearanceSettingsState(settings);
+    navigationAppearanceSettings = NavigationAppearanceSettingsState(
+      settings,
+      navigation: this.navigation,
+      reduceMotion: () => motionReduced,
+    );
     themeSettings = ThemeSettingsState(settings);
     transferConnectionSettings = TransferConnectionSettingsState(settings);
     listHomeSettings = ListHomeSettingsState(
@@ -350,14 +354,10 @@ class AppController extends ChangeNotifier {
 
   Future<void> setHideTopBar(bool value) async {
     await navigationAppearanceSettings.setHideTopBar(value);
-    if (!value) animateBarsHide(0);
-    notifyListeners();
   }
 
   Future<void> setHideBottomBar(bool value) async {
     await navigationAppearanceSettings.setHideBottomBar(value);
-    if (!value) animateBarsHide(0);
-    notifyListeners();
   }
 
   Future<void> setFloatingNavBar(bool value) async {
