@@ -19,6 +19,7 @@ import 'core/download_path_service.dart';
 import 'core/drive_state.dart';
 import 'core/navigation_state.dart';
 import 'core/navigation_appearance_settings_state.dart';
+import 'core/list_home_settings_state.dart';
 import 'core/notification_settings_state.dart';
 import 'core/incoming_links.dart';
 import 'core/notifications.dart';
@@ -142,6 +143,7 @@ Future<void> main() async {
       transferConnectionSettingsStateProvider.overrideWithValue(
         app.transferConnectionSettings,
       ),
+      listHomeSettingsStateProvider.overrideWithValue(app.listHomeSettings),
       notificationServiceProvider.overrideWithValue(
         NotificationService.instance,
       ),

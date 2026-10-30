@@ -34,6 +34,7 @@
 | `tools\agent.cmd test`（NavigationAppearanceSettingsState） | 增量 | **331 tests, all passed** | 约 59 s |
 | `tools\agent.cmd test`（ThemeSettingsState 子组） | 增量 | **334 tests, all passed** | 约 60 s |
 | `tools\agent.cmd test`（TransferConnectionSettingsState） | 增量 | **337 tests, all passed** | 约 61 s |
+| `tools\agent.cmd test`（ListHomeSettingsState） | 增量 | **340 tests, all passed** | 约 60 s |
 
 工具链：Flutter 3.47.7（stable）/ Dart 3.13.5 / DevTools 2.60.0。
 静态检查：`analysis_options.yaml` 已开启 `strict-casts` / `strict-inference` / `strict-raw-types`。
@@ -46,7 +47,7 @@
 | `lib` 总行数 | 约 4.7 万 |
 | `test` 测试文件 | 123（平铺，`<主题>_test.dart`） |
 | `test` 总行数 | 约 2 万 |
-| `test` 用例数 | 667（当前总数；本次只验证了受影响增量） |
+| `test` 用例数 | 670（当前总数；本次只验证了受影响增量） |
 | `lib/ui` 页面与组件 | 40 个平铺文件 |
 | `lib/core` | 32 个平铺文件 + 5 个子系统目录 |
 | 文案（`app_zh.arb`） | 1357 行 |
@@ -118,5 +119,8 @@
 - 2026-10-30 的 TransferConnectionSettingsState 新增 3 个测试，覆盖全部连接字段、
   LanzouClient 静态同步和 provider override；增量 57 个文件 / 337 个测试通过，
   当前总数由 664 增至 667。
+- 2026-10-30 的 ListHomeSettingsState 新增 3 个测试，覆盖全部列表/首页字段、
+  旧 API 通知和 provider override；增量 58 个文件 / 340 个测试通过，当前总数由
+  667 增至 670。
 - 若临时再改 `analysis_options.yaml` 加规则，issue 数会变；先把预期数量记在这里再跑，
   避免和「本次改坏」混淆。

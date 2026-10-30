@@ -49,6 +49,7 @@
 | `NavigationAppearanceSettingsState` | `core/navigation_appearance_settings_state.dart` | 阶段 3 设置子组：侧滑、顶/底栏隐藏、悬浮导航、转场与导航项显示开关 |
 | `ThemeSettingsState` | `core/theme_settings_state.dart` | 阶段 3 设置子组：主题模式/种子、OLED、动态取色与全局动画开关 |
 | `TransferConnectionSettingsState` | `core/transfer_connection_settings_state.dart` | 阶段 3 设置子组：请求间隔、并发数、API 域名、UA 与上传路径 |
+| `ListHomeSettingsState` | `core/list_home_settings_state.dart` | 阶段 3 设置子组：列表排序、首页折叠、最近使用上限与文件夹打开模式 |
 
 消费现状：`context.read<…>` 约 150 处、`context.watch<…>` 约 17 处。
 UpdateService 试点前 `context.select<…>` 为 0；更新页现在用两处 `select`

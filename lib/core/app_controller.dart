@@ -22,6 +22,7 @@ import 'dynamic_color_support.dart';
 import 'navigation_state.dart';
 import 'navigation_appearance_settings_state.dart';
 import 'notification_settings_state.dart';
+import 'list_home_settings_state.dart';
 import 'platform_support.dart';
 import 'saf_storage.dart';
 import 'settings_state.dart';
@@ -58,6 +59,7 @@ class AppController extends ChangeNotifier {
     navigationAppearanceSettings = NavigationAppearanceSettingsState(settings);
     themeSettings = ThemeSettingsState(settings);
     transferConnectionSettings = TransferConnectionSettingsState(settings);
+    listHomeSettings = ListHomeSettingsState(settings);
     this.navigation.addListener(notifyListeners);
   }
 
@@ -68,6 +70,7 @@ class AppController extends ChangeNotifier {
   late final NavigationAppearanceSettingsState navigationAppearanceSettings;
   late final ThemeSettingsState themeSettings;
   late final TransferConnectionSettingsState transferConnectionSettings;
+  late final ListHomeSettingsState listHomeSettings;
 
   AccountStore get accounts => accountState.store;
   SettingsStore get settings => settingsState.store;
@@ -367,23 +370,23 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> setSortMode(String value) async {
-    await settings.setSortMode(value);
+    await listHomeSettings.setSortMode(value);
     notifyListeners();
   }
 
   Future<void> setQuickExpanded(bool value) async {
-    await settings.setQuickExpanded(value);
+    await listHomeSettings.setQuickExpanded(value);
     notifyListeners();
   }
 
   Future<void> setRecentsExpanded(bool value) async {
-    await settings.setRecentsExpanded(value);
+    await listHomeSettings.setRecentsExpanded(value);
     notifyListeners();
   }
 
   /// 设置最近使用条数（0 = 不记录），并立刻按新上限裁剪已有记录。
   Future<void> setRecentLimit(int value) async {
-    await settings.setRecentLimit(value);
+    await listHomeSettings.setRecentLimit(value);
     final uid = activeUid;
     if (uid != null) await db.trimRecents(uid, value);
     notifyListeners();
@@ -595,7 +598,7 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> setHomeFolderOpenMode(String value) async {
-    await settings.setHomeFolderOpenMode(value);
+    await listHomeSettings.setHomeFolderOpenMode(value);
     notifyListeners();
   }
 

@@ -350,6 +350,10 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > `TransferConnectionSettingsState` 随后拆分：请求间隔、并发数、API 域名、UA 和
 > 上传路径收窄为独立入口。旧控制器仍负责把设置同步到 `LanzouClient` 静态运行时
 > 配置。
+>
+> `ListHomeSettingsState` 也已拆分：列表排序、首页折叠、最近使用上限和文件夹
+> 打开模式使用独立 provider。最近使用上限写入后的按账号数据库裁剪仍由旧控制器
+> 执行。
 
 ### 阶段 4：迁移 UI 消费端
 
