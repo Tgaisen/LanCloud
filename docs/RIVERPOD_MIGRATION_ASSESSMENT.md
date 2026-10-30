@@ -342,6 +342,10 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > `NavigationAppearanceSettingsState` 也已拆分：侧滑切换、顶/底栏隐藏、悬浮导航、
 > 转场和导航项显示开关收窄为独立边界。关闭隐藏顶/底栏时立即展开的副作用仍由
 > `AppController` 执行，RootShell UI 尚未迁移。
+>
+> `ThemeSettingsState` 随后拆分：主题模式/种子、OLED、动态取色和全局动画通过
+> 独立 provider 读写同一 store。`setMotionMode` 的 `SystemMotion` 同步仍由旧
+> 控制器执行，应用根主题和 UI 消费端尚未迁移。
 
 ### 阶段 4：迁移 UI 消费端
 

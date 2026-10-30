@@ -28,6 +28,7 @@ import 'core/share_inbox.dart';
 import 'core/settings_state.dart';
 import 'core/shared_downloads_gateway.dart';
 import 'core/system_motion.dart';
+import 'core/theme_settings_state.dart';
 import 'core/third_party_licenses.dart';
 import 'core/transfer/transfer_manager.dart';
 import 'core/update/update_service.dart';
@@ -136,6 +137,7 @@ Future<void> main() async {
       notificationSettingsStateProvider.overrideWithValue(
         app.notificationSettings,
       ),
+      themeSettingsStateProvider.overrideWithValue(app.themeSettings),
       notificationServiceProvider.overrideWithValue(
         NotificationService.instance,
       ),

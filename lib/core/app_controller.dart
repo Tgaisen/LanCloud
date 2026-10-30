@@ -27,6 +27,7 @@ import 'saf_storage.dart';
 import 'settings_state.dart';
 import 'shared_downloads_gateway.dart';
 import 'system_motion.dart';
+import 'theme_settings_state.dart';
 import 'update/update_settings_state.dart';
 
 export 'drive_state.dart' show DriveLocation;
@@ -54,6 +55,7 @@ class AppController extends ChangeNotifier {
     updateSettings = UpdateSettingsState(settings);
     notificationSettings = NotificationSettingsState(settings);
     navigationAppearanceSettings = NavigationAppearanceSettingsState(settings);
+    themeSettings = ThemeSettingsState(settings);
     this.navigation.addListener(notifyListeners);
   }
 
@@ -62,6 +64,7 @@ class AppController extends ChangeNotifier {
   late final UpdateSettingsState updateSettings;
   late final NotificationSettingsState notificationSettings;
   late final NavigationAppearanceSettingsState navigationAppearanceSettings;
+  late final ThemeSettingsState themeSettings;
 
   AccountStore get accounts => accountState.store;
   SettingsStore get settings => settingsState.store;
@@ -605,25 +608,25 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> setThemeMode(String mode) async {
-    await settings.setThemeMode(mode);
+    await themeSettings.setThemeMode(mode);
     notifyListeners();
   }
 
   /// 设置页「全局动画」：auto / on / off（见 [SystemMotion.motionMode]）。
   Future<void> setMotionMode(String mode) async {
-    await settings.setMotionMode(mode);
+    await themeSettings.setMotionMode(mode);
     SystemMotion.motionMode.value = settings.motionMode;
     notifyListeners();
   }
 
   Future<void> setOledBlack(bool value) async {
-    await settings.setOledBlack(value);
+    await themeSettings.setOledBlack(value);
     notifyListeners();
   }
 
   /// 动态取色（跟随系统壁纸，Android 12+）。
   Future<void> setDynamicColor(bool value) async {
-    await settings.setDynamicColor(value);
+    await themeSettings.setDynamicColor(value);
     notifyListeners();
   }
 
@@ -645,7 +648,7 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> setThemeSeed(int value) async {
-    await settings.setThemeSeed(value);
+    await themeSettings.setThemeSeed(value);
     notifyListeners();
   }
 
