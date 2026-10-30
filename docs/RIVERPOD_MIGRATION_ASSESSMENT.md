@@ -315,6 +315,10 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > 状态对象，并通过 `driveStateProvider` 暴露；`DriveLocation` 保持旧导入兼容。
 > `DriveCache` 随后也移入 `DriveState`，由 `driveCacheProvider` 派生暴露；旧
 > `AppController.driveCache` 只转发同一实例。账号切换、恢复和清理顺序未改变。
+>
+> `AccountState` 首片已落地：唯一持有现有 `AccountStore`，`accountStoreProvider`
+> 从该状态派生，`AppController.accounts` 只转发同一 store。账号持久化格式、
+> 当前 UID 与登录信息字段仍由 `AccountStore` 负责，没有复制状态。
 
 ### 阶段 4：迁移 UI 消费端
 

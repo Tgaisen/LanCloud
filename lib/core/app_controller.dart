@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 
 import 'api/lanzou_client.dart';
 import 'api/lanzou_client_registry.dart';
+import 'account_state.dart';
 import 'app_log.dart';
 import 'data/account_store.dart';
 import 'data/app_db.dart';
@@ -32,6 +33,7 @@ class AppController extends ChangeNotifier {
     DownloadPathService? downloadPaths,
     NavigationState? navigation,
     DriveState? drive,
+    AccountState? accountState,
   }) : _sharedDownloads =
            sharedDownloads ?? const PlatformSharedDownloadsGateway(),
        _downloadPaths =
@@ -41,11 +43,14 @@ class AppController extends ChangeNotifier {
                  sharedDownloads ?? const PlatformSharedDownloadsGateway(),
            ),
        navigation = navigation ?? NavigationState(),
-       drive = drive ?? DriveState() {
+       drive = drive ?? DriveState(),
+       accountState = accountState ?? AccountState() {
     this.navigation.addListener(notifyListeners);
   }
 
-  final AccountStore accounts = AccountStore();
+  final AccountState accountState;
+
+  AccountStore get accounts => accountState.store;
   final SettingsStore settings = SettingsStore();
   final AppDb db = AppDb.instance;
   DriveCache get driveCache => drive.cache;

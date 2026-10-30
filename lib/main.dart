@@ -8,12 +8,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:provider/provider.dart';
 
 import 'app.dart';
+import 'core/account_state.dart';
 import 'core/app_controller.dart';
 import 'core/app_log.dart';
 import 'core/app_log_provider.dart';
 import 'core/backup/backup_service.dart';
 import 'core/api/lanzou_client_registry.dart';
-import 'core/data/account_store_provider.dart';
 import 'core/data/app_db_provider.dart';
 import 'core/data/settings_store_provider.dart';
 import 'core/download_path_service.dart';
@@ -124,7 +124,7 @@ Future<void> main() async {
       lanzouClientRegistryProvider.overrideWithValue(app.clientRegistry),
       navigationStateProvider.overrideWithValue(app.navigation),
       driveStateProvider.overrideWithValue(app.drive),
-      accountStoreProvider.overrideWithValue(app.accounts),
+      accountStateProvider.overrideWithValue(app.accountState),
       notificationServiceProvider.overrideWithValue(
         NotificationService.instance,
       ),
