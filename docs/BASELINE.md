@@ -53,6 +53,8 @@
 | `tools\agent.cmd test`（NavBarItemsSettingsTile） | 增量 | **53 tests, all passed** | 约 15 s |
 | `tools\agent.cmd test`（传输并发滑杆） | 增量 | **51 tests, all passed** | 约 14 s |
 | `tools\agent.cmd test`（RecentLimitSettingsTile） | 增量 | **357 tests, all passed** | 约 65 s |
+| `tools\agent.cmd test`（RequestIntervalSettingsTile） | 增量 | **357 tests, all passed** | 约 65 s |
+| `tools\agent.cmd test`（高级连接覆盖项） | 增量 | **360 tests, all passed** | 约 66 s |
 
 工具链：Flutter 3.47.7（stable）/ Dart 3.13.5 / DevTools 2.60.0。
 静态检查：`analysis_options.yaml` 已开启 `strict-casts` / `strict-inference` / `strict-raw-types`。
@@ -65,7 +67,7 @@
 | `lib` 总行数 | 约 4.7 万 |
 | `test` 测试文件 | 123（平铺，`<主题>_test.dart`） |
 | `test` 总行数 | 约 2 万 |
-| `test` 用例数 | 699（当前总数；本次只验证了受影响增量） |
+| `test` 用例数 | 704（当前总数；本次只验证了受影响增量） |
 | `lib/ui` 页面与组件 | 40 个平铺文件 |
 | `lib/core` | 32 个平铺文件 + 5 个子系统目录 |
 | 文案（`app_zh.arb`） | 1357 行 |
@@ -187,5 +189,12 @@
 - 2026-10-30 的 RecentLimitSettingsTile 新增 1 个状态裁剪测试和 1 个独立 Widget
   测试，并把 `AppDb.trimRecents` 调用收拢到 `ListHomeSettingsState`；增量 63 个
   文件 / 357 个测试通过，当前总数由 697 增至 699。
+- 2026-10-30 的 RequestIntervalSettingsTile 新增 1 个独立 Widget 测试，并把
+  `LanzouClient.requestInterval` 同步收拢到 `TransferConnectionSettingsState`；
+  增量 63 个文件 / 357 个测试通过，当前总数由 699 增至 700。
+- 2026-10-30 的 AdvancedConnectionSettingsTile 新增 3 个独立 Widget 测试，覆盖
+  API 域名、上传路径和 User-Agent 保存/恢复默认；对应 `LanzouClient` 静态配置
+  同步已收拢到 `TransferConnectionSettingsState`，增量 64 个文件 / 360 个测试
+  通过，当前总数由 700 增至 704。
 - 若临时再改 `analysis_options.yaml` 加规则，issue 数会变；先把预期数量记在这里再跑，
   避免和「本次改坏」混淆。

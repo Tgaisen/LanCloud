@@ -17,6 +17,7 @@ import '../core/platform_support.dart';
 import '../core/saf_storage.dart';
 import '../core/system_file_saver.dart';
 import '../l10n/l10n.dart';
+import 'advanced_connection_settings_tile.dart';
 import 'app_icons.dart';
 import 'backup_page.dart';
 import 'cache_page_settings_tile.dart';
@@ -30,7 +31,7 @@ import 'navigation_appearance_settings_tile.dart';
 import 'notification_settings_tile.dart';
 import 'page_behavior_settings_tile.dart';
 import 'recent_limit_settings_tile.dart';
-import 'settings_slider_tile.dart';
+import 'request_interval_settings_tile.dart';
 import 'theme_settings_tile.dart';
 import 'transfer_concurrency_settings_tile.dart';
 
@@ -588,17 +589,7 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         subtitle: l10n.requestIntervalSubtitle(app.settings.requestInterval),
         keywords: l10n.requestIntervalKeywords.split(' '),
         section: SettingsSection.connection,
-        build: (context, app) => SettingsSliderTile<int>(
-          icon: Icons.timer_outlined,
-          title: context.l10n.requestInterval,
-          // 提醒间隔过小会被服务器限流（放在滑杆上方当副标题）
-          subtitle: context.l10n.requestIntervalHint,
-          // 离散档位 = slider 的 stops（M3E：有预设值时手柄吸附到最近的档）
-          values: const [25, 50, 75, 100, 150, 200, 300, 500, 1000],
-          current: app.settings.requestInterval,
-          labelOf: (ms) => '$ms ms',
-          onChanged: app.setRequestInterval,
-        ),
+        build: (context, app) => const RequestIntervalSettingsTile(),
       ),
       _Entry(
         id: 'max_uploads',
@@ -645,19 +636,12 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
       _Entry(
         id: 'api_host',
         title: l10n.apiHost,
-        subtitle: app.settings.apiHost == 'up'
-            ? 'up.woozooo.com'
-            : 'pc.woozooo.com',
+        subtitle: apiHostLabel(app.settings.apiHost),
         keywords: l10n.apiHostKeywords.split(' '),
         section: SettingsSection.connection,
         inAdvancedPage: true,
-        build: (context, app) => ListTile(
-          leading: const Icon(Icons.dns_outlined),
-          title: Text(context.l10n.apiHost),
-          subtitle: Text(
-            app.settings.apiHost == 'up' ? 'up.woozooo.com' : 'pc.woozooo.com',
-          ),
-          onTap: () => _pickApiHost(context),
+        build: (context, app) => const AdvancedConnectionSettingsTile(
+          setting: AdvancedConnectionSetting.apiHost,
         ),
       ),
       _Entry(
@@ -667,37 +651,19 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         keywords: l10n.uploadPathKeywords.split(' '),
         section: SettingsSection.connection,
         inAdvancedPage: true,
-        build: (context, app) => ListTile(
-          leading: const Icon(Icons.cloud_upload_outlined),
-          title: Text(context.l10n.uploadPath),
-          subtitle: Text(
-            app.settings.uploadPath,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          onTap: () => _pickUploadPath(context),
+        build: (context, app) => const AdvancedConnectionSettingsTile(
+          setting: AdvancedConnectionSetting.uploadPath,
         ),
       ),
       _Entry(
         id: 'user_agent',
         title: l10n.userAgent,
-        subtitle: app.settings.userAgent.isEmpty
-            ? l10n.defaultUserAgent
-            : app.settings.userAgent,
+        subtitle: userAgentLabel(l10n, app.settings.userAgent),
         keywords: l10n.userAgentKeywords.split(' '),
         section: SettingsSection.connection,
         inAdvancedPage: true,
-        build: (context, app) => ListTile(
-          leading: const Icon(Icons.badge_outlined),
-          title: Text(context.l10n.userAgent),
-          subtitle: Text(
-            app.settings.userAgent.isEmpty
-                ? context.l10n.defaultUserAgent
-                : app.settings.userAgent,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          onTap: () => _editUserAgent(context),
+        build: (context, app) => const AdvancedConnectionSettingsTile(
+          setting: AdvancedConnectionSetting.userAgent,
         ),
       ),
       _Entry(
@@ -1511,54 +1477,6 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
     );
   }
 
-  /// MD3E 单选弹窗：连接式列表组（组内 2dp 间隔 + 外侧 16 / 组内 4 圆角），
-  /// 选中项填主容器色 + 尾部对勾。
-  ///
-  /// **参考 M3 规范**：选中项用 primary container / on primary container 一对
-  /// 角色，并且「选中不能只靠颜色」——底色之外再加对勾；语义上整项是一个
-  /// 单选项（checked + 互斥组）。
-  static Future<void> _pickRadio<T>(
-    BuildContext context, {
-    required String title,
-    required List<(T, String)> options,
-    required T current,
-    required Future<void> Function(T) onSelect,
-    String? Function(T value)? subtitleOf,
-  }) async {
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(title),
-        // M3 对话框内容边距 24dp；列表组自带 0 外边距，组沿正好落在 24dp 上
-        contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // 比弹窗底（surfaceContainerHigh）再高一档容器色
-              DialogListGroup(
-                children: [
-                  for (final entry in options)
-                    M3ePickTile(
-                      label: entry.$2,
-                      subtitle: subtitleOf?.call(entry.$1),
-                      selected: current == entry.$1,
-                      singleSelect: true,
-                      onTap: () async {
-                        Navigator.of(dialogContext).pop();
-                        await onSelect(entry.$1);
-                      },
-                    ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   /// 「无障碍相关问题」：先在弹窗里说明用途，确认后复制反馈邮箱并唤起邮件。
   static Future<void> _showA11yFeedbackDialog(BuildContext context) async {
     final l10n = context.l10n;
@@ -1590,83 +1508,6 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
     );
   }
 
-  static Future<void> _pickApiHost(BuildContext context) {
-    final app = context.read<AppController>();
-    return _pickRadio(
-      context,
-      title: context.l10n.apiHost,
-      options: const [('pc', 'pc.woozooo.com'), ('up', 'up.woozooo.com')],
-      current: app.settings.apiHost,
-      onSelect: (value) => app.setApiHost(value),
-    );
-  }
-
-  static Future<void> _editText(
-    BuildContext context, {
-    required String title,
-    required String hint,
-    required String current,
-    required Future<void> Function(String) onSave,
-    bool allowClear = true,
-  }) async {
-    final controller = TextEditingController(text: current);
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => formDialog(
-        dialogContext,
-        title: Text(title),
-        content: TextField(
-          controller: controller,
-          maxLines: 2,
-          autofocus: true,
-          decoration: InputDecoration(hintText: hint),
-        ),
-        actions: [
-          if (allowClear)
-            TextButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-                onSave('');
-              },
-              child: Text(context.l10n.restoreDefault),
-            ),
-          FilledButton(
-            onPressed: () {
-              Navigator.of(dialogContext).pop();
-              onSave(controller.text.trim());
-            },
-            child: Text(context.l10n.save),
-          ),
-        ],
-      ),
-    );
-  }
-
-  static Future<void> _pickUploadPath(BuildContext context) {
-    final app = context.read<AppController>();
-    return _pickRadio(
-      context,
-      title: context.l10n.uploadPath,
-      options: const [
-        ('html5up.php', 'html5up.php'),
-        ('fileup.php', 'fileup.php'),
-      ],
-      current: app.settings.uploadPath,
-      onSelect: (value) => app.setUploadPath(value),
-    );
-  }
-
-  static Future<void> _editUserAgent(BuildContext context) {
-    final app = context.read<AppController>();
-    final l10n = context.l10n;
-    return _editText(
-      context,
-      title: l10n.userAgent,
-      hint: l10n.userAgentHint,
-      current: app.settings.userAgent,
-      onSave: (value) => app.setUserAgent(value),
-    );
-  }
 }
 
 /// 高级覆盖项正文：提示 + 接口域名 / 上传路径 / UA。
@@ -1676,7 +1517,6 @@ class AdvancedContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final app = context.watch<AppController>();
     final l10n = context.l10n;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1687,37 +1527,14 @@ class AdvancedContent extends StatelessWidget {
         ),
         SegmentedList(
           children: [
-            ListTile(
-              leading: const Icon(Icons.dns_outlined),
-              title: Text(l10n.apiHost),
-              subtitle: Text(
-                app.settings.apiHost == 'up'
-                    ? 'up.woozooo.com'
-                    : 'pc.woozooo.com',
-              ),
-              onTap: () => _SettingsCategoryPageState._pickApiHost(context),
+            const AdvancedConnectionSettingsTile(
+              setting: AdvancedConnectionSetting.apiHost,
             ),
-            ListTile(
-              leading: const Icon(Icons.cloud_upload_outlined),
-              title: Text(l10n.uploadPath),
-              subtitle: Text(
-                app.settings.uploadPath,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              onTap: () => _SettingsCategoryPageState._pickUploadPath(context),
+            const AdvancedConnectionSettingsTile(
+              setting: AdvancedConnectionSetting.uploadPath,
             ),
-            ListTile(
-              leading: const Icon(Icons.badge_outlined),
-              title: Text(l10n.userAgent),
-              subtitle: Text(
-                app.settings.userAgent.isEmpty
-                    ? l10n.defaultUserAgent
-                    : app.settings.userAgent,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              onTap: () => _SettingsCategoryPageState._editUserAgent(context),
+            const AdvancedConnectionSettingsTile(
+              setting: AdvancedConnectionSetting.userAgent,
             ),
           ],
         ),

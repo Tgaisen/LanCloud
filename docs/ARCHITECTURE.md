@@ -82,7 +82,11 @@
 `TransferConcurrencySettingsTile`，通过 `TransferConnectionSettingsState.revision`
 局部刷新，传输调度仍实时读取设置值。“最近使用条数”迁入
 `RecentLimitSettingsTile`；`ListHomeSettingsState.setRecentLimit` 统一执行
-落盘、当前账号 `AppDb.trimRecents` 和 revision 通知。
+落盘、当前账号 `AppDb.trimRecents` 和 revision 通知。“网络请求间隔”迁入
+`RequestIntervalSettingsTile`；`TransferConnectionSettingsState.setRequestInterval`
+同时持久化并同步 `LanzouClient.requestInterval`。接口域名、上传路径和自定义
+User-Agent 也迁入 `AdvancedConnectionSettingsTile`；对应 setter 统一同步
+`LanzouClient.apiBase`、`uploadPath` 和 `userAgent`。
 
 ## 导航与弹层
 

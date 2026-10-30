@@ -172,17 +172,13 @@ class AppController extends ChangeNotifier {
     LanzouClient.requestInterval = Duration(
       milliseconds: settings.requestInterval,
     );
-    LanzouClient.apiBase = _apiBaseFor(settings.apiHost);
+    LanzouClient.apiBase = lanzouApiBaseForHost(settings.apiHost);
     LanzouClient.userAgent = settings.userAgent;
     LanzouClient.uploadPath = settings.uploadPath;
     // 设置页「全局动画」：同步给 SystemMotion，根 widget 监听它整树重建，
     // 各处 reduceMotionOf() 立刻按新值生效（备份恢复走同一入口）。
     SystemMotion.motionMode.value = settings.motionMode;
   }
-
-  /// 网盘接口域名（pc / up）。
-  String _apiBaseFor(String host) =>
-      host == 'up' ? 'https://up.woozooo.com' : 'https://pc.woozooo.com';
 
   /// 备份恢复后重新读取账号与设置，并重建网盘客户端。
   Future<void> reloadFromStorage() async {
@@ -201,26 +197,21 @@ class AppController extends ChangeNotifier {
 
   Future<void> setRequestInterval(int ms) async {
     await transferConnectionSettings.setRequestInterval(ms);
-    LanzouClient.requestInterval = Duration(milliseconds: ms);
     notifyListeners();
   }
 
   Future<void> setApiHost(String host) async {
     await transferConnectionSettings.setApiHost(host);
-    // 上传接口域名由 apiBase 派生（见 LanzouClient.uploadUrl），不用单独更新
-    LanzouClient.apiBase = _apiBaseFor(host);
     notifyListeners();
   }
 
   Future<void> setUserAgent(String value) async {
     await transferConnectionSettings.setUserAgent(value);
-    LanzouClient.userAgent = value;
     notifyListeners();
   }
 
   Future<void> setUploadPath(String value) async {
     await transferConnectionSettings.setUploadPath(value);
-    LanzouClient.uploadPath = settings.uploadPath;
     notifyListeners();
   }
 

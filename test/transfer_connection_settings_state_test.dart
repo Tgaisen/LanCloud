@@ -41,6 +41,13 @@ void main() {
     expect(state.apiHost, 'up');
     expect(state.userAgent, 'test-agent');
     expect(state.uploadPath, 'fileup.php');
+    expect(
+      LanzouClient.requestInterval,
+      const Duration(milliseconds: 250),
+    );
+    expect(LanzouClient.apiBase, 'https://up.woozooo.com');
+    expect(LanzouClient.userAgent, 'test-agent');
+    expect(LanzouClient.uploadPath, 'fileup.php');
   });
 
   test('AppController 旧 API 继续同步 LanzouClient 静态配置', () async {

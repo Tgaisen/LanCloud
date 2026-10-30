@@ -459,6 +459,15 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > `ListHomeSettingsState.setRecentLimit` 通过注入的当前账号与
 > `AppDb.trimRecents` 统一执行落盘、数据库裁剪和 revision 通知；旧控制器只监听
 > 转发，不再重复裁剪。
+>
+> “网络请求间隔”随后迁入 `RequestIntervalSettingsTile`。
+> `TransferConnectionSettingsState.setRequestInterval` 统一持久化并同步
+> `LanzouClient.requestInterval`；旧控制器只保留兼容通知。
+>
+> API 域名、上传路径和自定义 User-Agent 随后迁入
+> `AdvancedConnectionSettingsTile`。选择/文本弹窗返回类型化结果，对应 setter
+> 统一同步 `LanzouClient.apiBase`、`uploadPath` 和 `userAgent`；旧控制器仅保留
+> 兼容通知。
 
 ### 阶段 5：处理 `TransferManager`
 
