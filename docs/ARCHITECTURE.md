@@ -65,9 +65,13 @@
 的逻辑已收拢到该状态，旧 `AppController` 只转发同一实例。“悬浮导航”“滑动切页”
 和“转场动画”迁入 `NavigationAppearanceSettingsTile`；其 revision 由旧
 `AppController` 监听转发，迁移期仍能触发外壳刷新。“主题模式”和“纯黑深色”
-迁入 `ThemeSettingsTile`；`ThemeSettingsState.revision` 同样由旧控制器转发，
-因此根主题在应用外壳迁移前仍会立即更新。设置页其余条目仍由外层 `AppController`
-监听，尚未整体迁移。
+迁入 `ThemeSettingsTile`，“主题色”迁入 `ThemeColorSettingsTile`；主题色弹窗
+通过 `showThemeColorPicker` 返回类型化选择。`ThemeSettingsState.revision`
+同样由旧控制器转发，因此根主题在应用外壳迁移前仍会立即更新。设置页其余条目
+仍由外层 `AppController` 监听，尚未整体迁移。“语言”已迁入
+`LanguageSettingsTile`，弹窗返回语言值后通过
+`LanguageClipboardSettingsState` 写入；其 revision 由旧控制器转发，根
+`MaterialApp.locale` 仍会立即切换。
 
 ## 导航与弹层
 

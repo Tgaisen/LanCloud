@@ -23,6 +23,7 @@ import 'cache_page_settings_tile.dart';
 import 'clipboard_link_prompt_tile.dart';
 import 'common.dart';
 import 'cookie_sheet.dart';
+import 'language_settings_tile.dart';
 import 'licenses_page.dart';
 import 'm3e.dart';
 import 'navigation_appearance_settings_tile.dart';
@@ -403,11 +404,6 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
       'dark' => l10n.dark,
       _ => l10n.followSystem,
     };
-    String languageName() => switch (app.settings.language) {
-      'zh' => l10n.chinese,
-      'en' => l10n.english,
-      _ => l10n.followSystem,
-    };
     String motionModeName() => switch (app.settings.motionMode) {
       'on' => l10n.motionModeEnabled,
       'off' => l10n.motionModeDisabled,
@@ -417,15 +413,10 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
       _Entry(
         id: 'language',
         title: l10n.language,
-        subtitle: languageName(),
+        subtitle: languageLabel(l10n, app.settings.language),
         keywords: const ['language', 'locale', 'zh', 'en', '语言', '中文', '英语'],
         section: SettingsSection.appearance,
-        build: (context, app) => ListTile(
-          leading: const Icon(Icons.translate),
-          title: Text(context.l10n.language),
-          subtitle: Text(languageName()),
-          onTap: () => _pickLanguage(context),
-        ),
+        build: (context, app) => const LanguageSettingsTile(),
       ),
       _Entry(
         id: 'theme_mode',
@@ -453,39 +444,19 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         id: 'theme_seed',
         title: l10n.themeColor,
         // 开了动态取色就显示「动态取色」，否则显示当前颜色名
-        //（动态取色也是弹窗里的一个选项，见 _pickThemeSeed）
+        //（动态取色也是弹窗里的一个选项，见 showThemeColorPicker）
         subtitle: app.settings.dynamicColor
             ? l10n.dynamicColor
-            : _seedName(context, app.settings.themeSeed),
+            : themeSeedLabel(l10n, app.settings.themeSeed),
         keywords: [
           ...l10n.themeColorKeywords.split(' '),
           ...l10n.dynamicColorKeywords.split(' '),
         ],
         section: SettingsSection.appearance,
-        build: (context, app) {
-          final dynamicColor = app.settings.dynamicColor;
-          return ListTile(
-            leading: const Icon(Icons.palette_outlined),
-            title: Text(context.l10n.themeColor),
-            subtitle: Text(
-              dynamicColor
-                  ? context.l10n.dynamicColor
-                  : _seedName(context, app.settings.themeSeed),
-            ),
-            // 动态取色时没有固定颜色可展示，尾部不再画色块
-            trailing: dynamicColor
-                ? null
-                : CircleAvatar(
-                    radius: 12,
-                    backgroundColor: Color(app.settings.themeSeed),
-                  ),
-            onTap: () => _pickThemeSeed(
-              context,
-              // 探测完成前按「支持」处理（与旧开关一致），避免闪一下置灰
-              dynamicSupported: _dynamicColorSupported ?? true,
-            ),
-          );
-        },
+        // 探测完成前按「支持」处理（与旧开关一致），避免闪一下置灰。
+        build: (context, app) => ThemeColorSettingsTile(
+          dynamicSupported: _dynamicColorSupported ?? true,
+        ),
       ),
       _Entry(
         id: 'hide_top_bar',
@@ -964,19 +935,6 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
     'manage_permissions',
     'default_links',
     'app_settings',
-  };
-
-  String _seedName(BuildContext context, int seed) => switch (seed) {
-    0xFF2E6BE6 => context.l10n.classicBlue,
-    0xFF00897B => context.l10n.teal,
-    0xFF7B4DFF => context.l10n.violet,
-    0xFFE5533D => context.l10n.vermilion,
-    0xFF3F7D20 => context.l10n.olive,
-    0xFF6750A4 => context.l10n.colorMd3Purple,
-    0xFF0B57D0 => context.l10n.colorRoyalBlue,
-    0xFF984061 => context.l10n.colorRose,
-    0xFF8B5000 => context.l10n.colorAmber,
-    _ => context.l10n.custom,
   };
 
   /// 退出搜索：清空关键词并切回分类列表（与收藏页同一套行为）。
@@ -1748,22 +1706,6 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
     );
   }
 
-  static Future<void> _pickLanguage(BuildContext context) {
-    final app = context.read<AppController>();
-    final l10n = context.l10n;
-    return _pickRadio(
-      context,
-      title: l10n.language,
-      options: [
-        ('system', l10n.followSystem),
-        ('zh', l10n.chinese),
-        ('en', l10n.english),
-      ],
-      current: app.settings.language,
-      onSelect: (value) => app.setLanguage(value),
-    );
-  }
-
   /// 「全局动画」：auto（跟随无障碍功能）/ on（始终启用）/ off（始终禁用）。
   static Future<void> _pickMotionMode(BuildContext context) {
     final app = context.read<AppController>();
@@ -1823,83 +1765,6 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
       options: const [('pc', 'pc.woozooo.com'), ('up', 'up.woozooo.com')],
       current: app.settings.apiHost,
       onSelect: (value) => app.setApiHost(value),
-    );
-  }
-
-  /// 「主题色」单选弹窗：第一项是动态取色（系统不支持时置灰）、其余是预设
-  /// 主题色；两者互斥——选了颜色即关闭动态取色，选动态取色则颜色不生效。
-  static Future<void> _pickThemeSeed(
-    BuildContext context, {
-    required bool dynamicSupported,
-  }) async {
-    final app = context.read<AppController>();
-    final l10n = context.l10n;
-    final presets = <int, String>{
-      0xFF2E6BE6: l10n.classicBlue,
-      0xFF00897B: l10n.teal,
-      0xFF7B4DFF: l10n.violet,
-      0xFFE5533D: l10n.vermilion,
-      0xFF3F7D20: l10n.olive,
-      // MD3 官方基准色（Material 3 baseline）与经典 Material 色板补充
-      0xFF6750A4: l10n.colorMd3Purple,
-      0xFF0B57D0: l10n.colorRoyalBlue,
-      0xFF984061: l10n.colorRose,
-      0xFF8B5000: l10n.colorAmber,
-    };
-    // 不支持时动态取色按未选中处理（也点不动）
-    final dynamicSelected = dynamicSupported && app.settings.dynamicColor;
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(l10n.themeColor),
-        contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // 与其它选择弹窗同一套列表组样式：选中 = 主容器色 + 对勾
-              // 比弹窗底（surfaceContainerHigh）再高一档容器色
-              DialogListGroup(
-                children: [
-                  M3ePickTile(
-                    label: l10n.dynamicColor,
-                    subtitle: dynamicSupported
-                        ? l10n.dynamicColorSubtitle
-                        : l10n.dynamicColorUnsupported,
-                    selected: dynamicSelected,
-                    singleSelect: true,
-                    enabled: dynamicSupported,
-                    leading: const Icon(Icons.wallpaper_outlined),
-                    onTap: () async {
-                      Navigator.of(dialogContext).pop();
-                      await app.setDynamicColor(true);
-                    },
-                  ),
-                  for (final entry in presets.entries)
-                    M3ePickTile(
-                      label: entry.value,
-                      selected:
-                          !dynamicSelected &&
-                          app.settings.themeSeed == entry.key,
-                      singleSelect: true,
-                      leading: CircleAvatar(
-                        radius: 12,
-                        backgroundColor: Color(entry.key),
-                      ),
-                      onTap: () async {
-                        Navigator.of(dialogContext).pop();
-                        // 与动态取色互斥：选具体颜色即关闭动态取色
-                        await app.setDynamicColor(false);
-                        await app.setThemeSeed(entry.key);
-                      },
-                    ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 

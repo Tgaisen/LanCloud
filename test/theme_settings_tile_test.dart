@@ -9,9 +9,9 @@ import 'package:lancloud/ui/theme_settings_tile.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-Future<(SettingsStore, ThemeSettingsState)> _pumpTile(
+Future<(SettingsStore, ThemeSettingsState)> _pump(
   WidgetTester tester,
-  ThemeSettingsTileType type,
+  Widget Function(ThemeSettingsState state) build,
 ) async {
   SharedPreferences.setMockInitialValues(<String, Object>{});
   final store = SettingsStore();
@@ -28,7 +28,7 @@ Future<(SettingsStore, ThemeSettingsState)> _pumpTile(
         localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         locale: const Locale('zh'),
-        home: Scaffold(body: ThemeSettingsTile(type: type)),
+        home: Scaffold(body: build(state)),
       ),
     ),
   );
@@ -38,9 +38,9 @@ Future<(SettingsStore, ThemeSettingsState)> _pumpTile(
 
 void main() {
   testWidgets('主题模式不依赖 AppController，并局部刷新', (tester) async {
-    final (store, state) = await _pumpTile(
+    final (store, state) = await _pump(
       tester,
-      ThemeSettingsTileType.mode,
+      (_) => const ThemeSettingsTile(type: ThemeSettingsTileType.mode),
     );
 
     final group = find.byType(M3eConnectedButtonGroup<String>);
@@ -64,9 +64,9 @@ void main() {
   });
 
   testWidgets('纯黑深色开关不依赖 AppController，并局部刷新', (tester) async {
-    final (store, state) = await _pumpTile(
+    final (store, state) = await _pump(
       tester,
-      ThemeSettingsTileType.oledBlack,
+      (_) => const ThemeSettingsTile(type: ThemeSettingsTileType.oledBlack),
     );
 
     final switchTile = find.byType(SwitchListTile);
@@ -81,5 +81,40 @@ void main() {
     expect(store.oledBlack, isTrue);
     expect(state.revision.value, 1);
     expect(tester.widget<SwitchListTile>(switchTile).value, isTrue);
+  });
+
+  testWidgets('主题色弹窗不依赖 AppController，并保持动态色与 seed 互斥', (
+    tester,
+  ) async {
+    final (store, state) = await _pump(
+      tester,
+      (_) => const ThemeColorSettingsTile(dynamicSupported: true),
+    );
+
+    final entry = find.widgetWithText(ListTile, '主题色');
+    await tester.tap(entry);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('动态取色'));
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 10)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(store.dynamicColor, isTrue);
+    expect(state.revision.value, 1);
+    expect(find.text('动态取色'), findsOneWidget);
+
+    await tester.tap(entry);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('默认蓝'));
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 10)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(store.dynamicColor, isFalse);
+    expect(store.themeSeed, 0xFF2E6BE6);
+    expect(state.revision.value, 3);
+    expect(find.text('默认蓝'), findsOneWidget);
   });
 }

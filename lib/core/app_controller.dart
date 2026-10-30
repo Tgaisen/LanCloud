@@ -69,6 +69,7 @@ class AppController extends ChangeNotifier {
     this.navigation.addListener(notifyListeners);
     navigationAppearanceSettings.revision.addListener(notifyListeners);
     themeSettings.revision.addListener(notifyListeners);
+    languageClipboardSettings.revision.addListener(notifyListeners);
   }
 
   final AccountState accountState;
@@ -344,6 +345,7 @@ class AppController extends ChangeNotifier {
     navigation.removeListener(notifyListeners);
     navigationAppearanceSettings.revision.removeListener(notifyListeners);
     themeSettings.revision.removeListener(notifyListeners);
+    languageClipboardSettings.revision.removeListener(notifyListeners);
     navigation.dispose();
     drive.dispose();
     super.dispose();
@@ -645,7 +647,6 @@ class AppController extends ChangeNotifier {
   /// 复制到蓝奏云分享链接时是否提示打开。
   Future<void> setClipboardLinkPrompt(bool value) async {
     await languageClipboardSettings.setClipboardLinkPrompt(value);
-    notifyListeners();
   }
 
   /// 「传输」「收藏」是否显示在底栏。
@@ -665,7 +666,6 @@ class AppController extends ChangeNotifier {
 
   Future<void> setLanguage(String value) async {
     await languageClipboardSettings.setLanguage(value);
-    notifyListeners();
   }
 
   Future<String> uniqueSavePath(String name) async {

@@ -427,8 +427,15 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 >
 > “主题模式”和“纯黑深色”随后迁入 `ThemeSettingsTile`，通过
 > `ThemeSettingsState.revision` 局部刷新。旧控制器监听该 revision 并转发通知，
-> 使根 `MaterialApp` 在应用外壳尚未迁移时继续即时响应主题变化。主题色弹窗涉及
-> 动态取色探测，暂未迁移。
+> 使根 `MaterialApp` 在应用外壳尚未迁移时继续即时响应主题变化。
+>
+> “主题色”随后迁入 `ThemeColorSettingsTile`。原内联弹窗整理为
+> `showThemeColorPicker`，返回类型化的动态取色或 seed 选择；动态取色支持探测仍由
+> 设置页负责，写入统一经过 `ThemeSettingsState`。
+>
+> “语言”随后迁入 `LanguageSettingsTile`。`showLanguagePicker` 返回
+> `String?`，写入统一经过 `LanguageClipboardSettingsState`；旧控制器监听该状态
+> revision 并转发通知，使根 `MaterialApp.locale` 在应用外壳迁移前仍会立即更新。
 
 ### 阶段 5：处理 `TransferManager`
 
