@@ -15,6 +15,7 @@ import 'data/app_db.dart';
 import 'data/settings_store.dart';
 import 'data/secure_storage.dart';
 import 'download_target.dart';
+import 'download_path_service.dart';
 import 'drive_cache.dart';
 import 'dynamic_color_support.dart';
 import 'platform_support.dart';
@@ -41,15 +42,24 @@ class DriveLocation {
 }
 
 class AppController extends ChangeNotifier {
-  AppController({SharedDownloadsGateway? sharedDownloads})
-    : _sharedDownloads =
-          sharedDownloads ?? const PlatformSharedDownloadsGateway();
+  AppController({
+    SharedDownloadsGateway? sharedDownloads,
+    DownloadPathService? downloadPaths,
+  }) : _sharedDownloads =
+           sharedDownloads ?? const PlatformSharedDownloadsGateway(),
+       _downloadPaths =
+           downloadPaths ??
+           PlatformDownloadPathService(
+             sharedDownloads:
+                 sharedDownloads ?? const PlatformSharedDownloadsGateway(),
+           );
 
   final AccountStore accounts = AccountStore();
   final SettingsStore settings = SettingsStore();
   final AppDb db = AppDb.instance;
   final DriveCache driveCache = DriveCache();
   final SharedDownloadsGateway _sharedDownloads;
+  final DownloadPathService _downloadPaths;
 
   final LanzouClientRegistry clientRegistry = LanzouClientRegistry();
 
@@ -536,23 +546,8 @@ class AppController extends ChangeNotifier {
   /// Android 9 及以下：Android/data/<包名>/files/LanCloud（取不到外部专属
   /// 目录时退回应用私有文档目录）；桌面端：系统「下载」目录下的 LanCloud
   /// （取不到时退回应用文档目录）。
-  Future<String> defaultDownloadDirPath() async {
-    if (PlatformSupport.isAndroid) {
-      final shared = await _sharedDownloads.defaultDirectoryPath();
-      if (shared != null && shared.isNotEmpty) return shared;
-    }
-    final Directory base;
-    if (PlatformSupport.isMobile) {
-      base =
-          await getExternalStorageDirectory() ??
-          await getApplicationDocumentsDirectory();
-    } else {
-      base =
-          await getDownloadsDirectory() ??
-          await getApplicationDocumentsDirectory();
-    }
-    return p.join(base.path, 'LanCloud');
-  }
+  Future<String> defaultDownloadDirPath() =>
+      _downloadPaths.defaultDownloadDirPath();
 
   /// 当前下载落盘方式。显式目录设置优先，未设置时 Android 10+ 默认走
   /// MediaStore 的公共 Downloads，Android 9 及以下退回应用专属目录。

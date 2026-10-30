@@ -273,6 +273,8 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > `AppController` 与 `TransferManager` 构造注入；其余桌面目录和持久化接口尚未
 > 迁移。`SettingsStore` 与 `AccountStore` 已通过普通 Provider 暴露入口，
 > `UpdateService` 的专用设置 provider 已移除并统一读取 `settingsStoreProvider`。
+> 默认下载目录的平台分支也已收拢到 `DownloadPathService` 并通过构造注入接入
+> `AppController`；SAF 中转与目录设置状态仍留在现有控制器。
 
 ### 阶段 3：拆分可监听状态
 

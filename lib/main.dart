@@ -16,6 +16,7 @@ import 'core/api/lanzou_client_registry.dart';
 import 'core/data/account_store_provider.dart';
 import 'core/data/app_db_provider.dart';
 import 'core/data/settings_store_provider.dart';
+import 'core/download_path_service.dart';
 import 'core/incoming_links.dart';
 import 'core/notifications.dart';
 import 'core/notifications_provider.dart';
@@ -91,7 +92,13 @@ Future<void> main() async {
     );
   }
   const sharedDownloads = PlatformSharedDownloadsGateway();
-  final app = AppController(sharedDownloads: sharedDownloads);
+  final downloadPaths = PlatformDownloadPathService(
+    sharedDownloads: sharedDownloads,
+  );
+  final app = AppController(
+    sharedDownloads: sharedDownloads,
+    downloadPaths: downloadPaths,
+  );
   await app.init();
   // 系统「移除动画」：读一次并监听原生推送（华为等 ROM 的开关引擎看不到）
   SystemMotion.init();
@@ -117,6 +124,7 @@ Future<void> main() async {
       notificationServiceProvider.overrideWithValue(
         NotificationService.instance,
       ),
+      downloadPathServiceProvider.overrideWithValue(downloadPaths),
       sharedDownloadsGatewayProvider.overrideWithValue(sharedDownloads),
       settingsStoreProvider.overrideWithValue(app.settings),
     ],
