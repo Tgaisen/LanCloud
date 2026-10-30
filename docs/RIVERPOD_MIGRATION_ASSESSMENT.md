@@ -604,6 +604,10 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > 组件仍只监听低频 `marksRevision`，不会因下载进度变化重建设长列表；没有
 > `ProviderScope` 的独立预览 / 组件测试继续静默不显示。网盘、收藏与分享列表
 > 的三个直接验证测试已通过 Riverpod override 注入同一管理器。
+>
+> 已下载任务的二级菜单随后改为从当前 `ProviderScope` 读取管理器，菜单关闭条件
+> 与任务操作保持不变。分享文件属性弹窗同时迁为 `ConsumerStatefulWidget`，
+> 下载状态、进度环和菜单入口均使用 Riverpod 中的同一管理器实例。
 
 ### 阶段 6：移除旧 Provider
 

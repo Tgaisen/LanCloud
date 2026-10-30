@@ -75,6 +75,7 @@
 | `tools\agent.cmd test`（传输页消费端） | 增量 | **23 tests, all passed** | 约 26 s |
 | `tools\agent.cmd test`（RootShell 传输订阅） | 增量 | **33 tests, all passed** | 约 21 s |
 | `tools\agent.cmd test`（已下载标记消费端） | 增量 | **37 tests, all passed** | 约 26 s |
+| `tools\agent.cmd test`（已下载菜单与分享属性弹窗） | 增量 | **13 tests, all passed** | 约 15 s |
 | `tools\agent.cmd analyze`（阶段 4 消费端完成后） | 全量 | No issues found | 约 27 s |
 | `tools\agent.cmd test`（阶段 4 消费端完成后） | 全量 | **707 tests, all passed** | 约 113 s |
 
@@ -275,6 +276,8 @@
   更新的测试；增量 9 个文件 / 33 个测试通过，当前总数由 713 增至 714。
 - 2026-10-30 的“已下载”标记迁入 Riverpod；增量 3 个测试文件 / 37 个测试通过，
   用例总数保持 714。
+- 2026-10-30 的已下载任务二级菜单与分享文件属性弹窗迁入 Riverpod；增量 2 个
+  测试文件 / 13 个测试通过，用例总数保持 714。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release

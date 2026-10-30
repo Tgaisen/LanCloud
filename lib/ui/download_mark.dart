@@ -1,6 +1,5 @@
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:provider/provider.dart';
 
 import '../core/platform_support.dart';
 import '../core/saved_file.dart';
@@ -79,7 +78,10 @@ Future<void> showDownloadTaskMenu(
   required TransferTask task,
   required Future<void> Function() onRedownload,
 }) async {
-  final manager = context.read<TransferManager>();
+  final manager = ProviderScope.containerOf(
+    context,
+    listen: false,
+  ).read(transferManagerProvider);
   final l10n = context.l10n;
   final bool running =
       task.status == TransferStatus.queued ||

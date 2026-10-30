@@ -1,10 +1,12 @@
 import 'package:material_ui/material_ui.dart' hide Icons;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:provider/provider.dart';
 
 import '../core/api/lanzou_client.dart';
 import '../core/api/models.dart';
 import '../core/app_controller.dart';
 import '../core/transfer/transfer_manager.dart';
+import '../core/transfer/transfer_manager_provider.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
@@ -14,7 +16,7 @@ import 'share_password_dialog.dart';
 
 /// 分享文件属性弹窗：加载时显示小圆环，加载完展示简介与文件信息，
 /// 提供下载、复制链接、二维码与收藏（「打开链接」已按需求去掉）。
-class ShareFileInfoSheet extends StatefulWidget {
+class ShareFileInfoSheet extends ConsumerStatefulWidget {
   const ShareFileInfoSheet({
     super.key,
     required this.name,
@@ -47,10 +49,11 @@ class ShareFileInfoSheet extends StatefulWidget {
   final Future<void> Function(DirectFile file)? onResolved;
 
   @override
-  State<ShareFileInfoSheet> createState() => _ShareFileInfoSheetState();
+  ConsumerState<ShareFileInfoSheet> createState() =>
+      _ShareFileInfoSheetState();
 }
 
-class _ShareFileInfoSheetState extends State<ShareFileInfoSheet> {
+class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
   bool _loading = true;
   bool _invalid = false;
   DirectFile? _resolved;
@@ -176,7 +179,7 @@ class _ShareFileInfoSheetState extends State<ShareFileInfoSheet> {
     final l10n = context.l10n;
     final scheme = Theme.of(context).colorScheme;
     final navigator = Navigator.of(context);
-    final transfers = context.read<TransferManager>();
+    final transfers = ref.read(transferManagerProvider);
     return SafeArea(
       child: Column(
         mainAxisSize: MainAxisSize.min,
