@@ -59,8 +59,9 @@ class _WebLoginPageState extends State<WebLoginPage> {
       );
       final map = <String, String>{};
       for (final cookie in cookies) {
-        if (cookie.name.isNotEmpty && cookie.value != null) {
-          map[cookie.name] = cookie.value!;
+        final value = cookie.value;
+        if (cookie.name.isNotEmpty && value is String) {
+          map[cookie.name] = value;
         }
       }
       final header = map.entries.map((e) => '${e.key}=${e.value}').join('; ');

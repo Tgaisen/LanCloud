@@ -52,6 +52,9 @@ void main() {
   test('空数据与非法数据都返回空列表', () {
     expect(rowsOfAccountData(null), isEmpty);
     expect(rowsOfAccountData('nonsense'), isEmpty);
-    expect(rowsOfAccountData({'data_version': '1', 'data': []}), isEmpty);
+    expect(
+      rowsOfAccountData({'data_version': '1', 'data': <Object?>[]}),
+      isEmpty,
+    );
   });
 }

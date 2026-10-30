@@ -160,7 +160,7 @@ class _ProfilePageState extends State<ProfilePage>
   void _openWeb(BuildContext context, String url, String title) {
     final app = context.read<AppController>();
     Navigator.of(context).push(
-      MaterialPageRoute(
+      MaterialPageRoute<void>(
         builder: (_) =>
             WebPage(title: title, url: url, cookie: app.activeAccount?.cookie),
       ),

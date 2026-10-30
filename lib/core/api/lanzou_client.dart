@@ -111,7 +111,7 @@ class LanzouClient {
       InterceptorsWrapper(
         onRequest: (options, handler) async {
           if (requestInterval > Duration.zero) {
-            await Future.delayed(requestInterval);
+            await Future<void>.delayed(requestInterval);
           }
           final cookie = _cookieHeaderFor(options.uri.host);
           if (cookie.isNotEmpty) options.headers['Cookie'] = cookie;
@@ -1421,7 +1421,7 @@ class LanzouClient {
       } catch (e) {
         // 空响应 / 挑战页这类解析失败同样是「一时拿不到」
         if (lastAttempt) rethrow;
-        await Future.delayed(Duration(milliseconds: 400 * attempt));
+        await Future<void>.delayed(Duration(milliseconds: 400 * attempt));
         continue;
       }
       final zt = '${map['zt']}';
@@ -1471,7 +1471,7 @@ class LanzouClient {
       rep = hint == null ? rep + 1 : (int.tryParse(hint.group(1)!) ?? rep + 1);
       // zt=4 / 未知状态 / 「请刷新」：稍等后按新的 rep 重试同一页
       if (lastAttempt) break;
-      await Future.delayed(Duration(milliseconds: 400 * attempt));
+      await Future<void>.delayed(Duration(milliseconds: 400 * attempt));
     }
     throw const LanzouException(
       '获取分享文件列表失败',

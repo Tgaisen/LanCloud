@@ -192,7 +192,9 @@ class _ShareFolderPageState extends State<ShareFolderPage>
         continue;
       }
       failures = 0;
-      if (_hasMore) await Future.delayed(const Duration(milliseconds: 600));
+      if (_hasMore) {
+        await Future<void>.delayed(const Duration(milliseconds: 600));
+      }
     }
     _autoLoading = false;
   }
@@ -523,7 +525,7 @@ class _ShareFolderPageState extends State<ShareFolderPage>
       pwd = result.pwd;
     }
     await Navigator.of(context).push(
-      MaterialPageRoute(
+      MaterialPageRoute<void>(
         builder: (_) =>
             ShareFolderPage(folder: detail!, link: sub.url, pwd: pwd),
       ),

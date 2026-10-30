@@ -9,7 +9,7 @@
 | --- | --- | --- |
 | `tools\agent.cmd analyze`（无改动→全量） | No issues found | 冷缓存约 58 s / 热缓存约 16 s |
 | `tools\agent.cmd analyze`（1–2 个文件） | No issues found | **0.2–1.7 s**（进程启动约 7 s） |
-| `tools\agent.cmd test`（全量） | **616 tests, all passed** | 约 92 s |
+| `tools\agent.cmd test`（清理前全量） | **616 tests, all passed** | 约 92 s |
 | `tools\agent.cmd test`（单文件） | passed | 数秒 |
 
 工具链：Flutter 3.47.7（stable）/ Dart 3.13.5 / DevTools 2.60.0。
@@ -20,7 +20,7 @@
 | --- | ---: |
 | `lib` Dart 文件 | 95 |
 | `lib` 总行数 | 约 4.7 万 |
-| `test` 测试文件 | 121（平铺，`<主题>_test.dart`） |
+| `test` 测试文件 | 122（平铺，`<主题>_test.dart`） |
 | `test` 总行数 | 约 2.1 万 |
 | `lib/ui` 页面与组件 | 40 个平铺文件 |
 | `lib/core` | 32 个平铺文件 + 5 个子系统目录 |
@@ -28,7 +28,7 @@
 
 ## 这个基线意味着什么
 
-- 616 个测试是**唯一的自动化安全网**：没有 `integration_test`，没有 golden test。
+- 清理前 616 个测试是**唯一的自动化安全网**：没有 `integration_test`，没有 golden test。
   所以「跑测试」不是形式，是唯一能自动发现回归的手段。
 - 全量 analyze 约 58 s、全量 test 约 92 s，增量 analyze 只要 1–2 s。
   `tools\agent.cmd analyze|test` 会自动走增量：改完就跑这两个无参命令，
@@ -42,6 +42,8 @@
 
 - 本基线对应版本 `26.1.0-pre.19`（合并 `26.1.0-pre.19` 之后重跑，仍为 0 issue）。
 - `pubspec.lock` 里的 SDK 注记已是 `flutter: "3.47.7"` 并已入库，不再每次 `pub get` 产生 diff。
-- 若临时在 `analysis_options.yaml` 打开 `strict-casts` / `strict-inference` / `strict-raw-types`，
-  会多出约 20 条 issue（1 error + 19 warnings），属尚未修整的既有问题；**这不是回归**。
-  跑之前先在本文档记一笔，避免和「本次改坏」混淆。
+- 2026-10-30 已修整 strict 类型检查暴露的 20 条既有 issue，并在
+  `analysis_options.yaml` 正式启用 `strict-casts` / `strict-inference` /
+  `strict-raw-types`。
+- 清理后的 `tools\agent.cmd analyze` 为零 issue；`tools\agent.cmd test` 运行了
+  35 个受影响测试文件、236 tests，全部通过。新增 3 个回归用例，全量测试留给人工兜底。

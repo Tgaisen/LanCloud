@@ -300,7 +300,7 @@ void main() {
         passphrase: 'backup-secret',
       ),
     ) as Map;
-    expect(cookies['accounts'], isA<List>());
+    expect(cookies['accounts'], isA<List<dynamic>>());
     expect(cookies['includeCookies'], isTrue);
     expect(cookies.containsKey('activeUid'), isTrue);
   });

@@ -183,7 +183,7 @@ class WebdavClient {
   });
 
   Future<void> upload(String name, String content) => _guard(() async {
-    final response = await _dio.putUri(
+    final response = await _dio.putUri<dynamic>(
       _fileUri(name),
       data: content,
       options: Options(
@@ -206,7 +206,7 @@ class WebdavClient {
   });
 
   Future<void> delete(String name) => _guard(() async {
-    final response = await _dio.deleteUri(
+    final response = await _dio.deleteUri<dynamic>(
       _fileUri(name),
       options: Options(headers: _headers),
     );

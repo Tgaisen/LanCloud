@@ -73,7 +73,10 @@ void main() {
   test('payloadFrom：原生没给内容时返回空 payload', () {
     expect(DragDropChannel.payloadFrom(null).hasFiles, isFalse);
     expect(
-      DragDropChannel.payloadFrom({'texts': [], 'files': []}).hasText,
+      DragDropChannel.payloadFrom({
+        'texts': <Object?>[],
+        'files': <Object?>[],
+      }).hasText,
       isFalse,
     );
   });

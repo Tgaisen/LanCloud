@@ -369,7 +369,7 @@ class _HomePageState extends State<HomePage>
           app.openFolderInDrive(ref);
         } else {
           await Navigator.of(context).push(
-            MaterialPageRoute(
+            MaterialPageRoute<void>(
               // 大屏下独立打开的网盘页同样套 MD3E 卡片
               builder: (_) => Md3ePageFrame(
                 topBarHeight:

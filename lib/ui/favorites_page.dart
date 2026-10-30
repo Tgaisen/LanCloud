@@ -448,7 +448,7 @@ class _FavoritesPageState extends State<FavoritesPage>
     );
     if (!mounted) return;
     await Navigator.of(context).push(
-      MaterialPageRoute(
+      MaterialPageRoute<void>(
         builder: (_) =>
             ShareFolderPage(folder: detail!, link: item.ref, pwd: pwd),
       ),

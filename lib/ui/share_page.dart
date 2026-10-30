@@ -128,7 +128,7 @@ class _ShareLinkDialogState extends State<ShareLinkDialog> {
         }
         navigator.pop();
         await navigator.push(
-          MaterialPageRoute(
+          MaterialPageRoute<void>(
             builder: (_) =>
                 ShareFolderPage(folder: folder, link: link, pwd: pwd),
           ),
@@ -173,7 +173,7 @@ class _ShareLinkDialogState extends State<ShareLinkDialog> {
           }
           navigator.pop();
           await navigator.push(
-            MaterialPageRoute(
+            MaterialPageRoute<void>(
               builder: (_) =>
                   ShareFolderPage(folder: folder, link: link, pwd: pwd),
             ),
