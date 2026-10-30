@@ -612,6 +612,12 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > `DrivePage` 随后迁为 `ConsumerStatefulWidget`，页面在 `initState` 中通过
 > `ref.read(transferManagerProvider)` 获取管理器并注册 / 注销任务监听。该切片
 > 只迁移生命周期所有权；上传、批量下载、属性卡和已下载菜单回调仍在后续切片。
+>
+> 随后清理了 `DrivePage` 内剩余的管理器读取：普通上传、文档提供器上传、批量
+> 下载、自有文件下载统一复用生命周期中保存的同一管理器；文件属性卡迁为
+> `ConsumerStatefulWidget`，下载标记和进度环从 provider 读取。四个直接测试宿主
+> 已移除旧 `ChangeNotifierProvider<TransferManager>`，只保留 `ProviderScope`
+> override，防止迁移遗漏被双栈测试掩盖。
 
 ### 阶段 6：移除旧 Provider
 

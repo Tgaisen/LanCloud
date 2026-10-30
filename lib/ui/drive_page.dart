@@ -1155,7 +1155,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
     final files = await FilePicker.pickFiles();
     if (files.isEmpty) return;
     if (!mounted) return;
-    final transfers = context.read<TransferManager>();
+    final transfers = _transfers;
     var skipped = 0;
     var added = 0;
     for (final file in files) {
@@ -1198,7 +1198,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
     try {
       final paths = await ProviderFilePicker.pickFiles();
       if (paths.isEmpty || !mounted) return;
-      final transfers = context.read<TransferManager>();
+      final transfers = _transfers;
       var added = 0;
       var skipped = 0;
       for (final path in paths) {
@@ -1335,7 +1335,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
   Future<void> _batchDownload() async {
     if (_selectedFiles.isEmpty) return;
     final app = context.read<AppController>();
-    final transfers = context.read<TransferManager>();
+    final transfers = _transfers;
     final l10n = context.l10n;
     final ids = _selectedFiles.toList();
     final names = {for (final file in _files) file.id: file.name};
@@ -2322,7 +2322,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
   /// （解析失败 / 未登录），调用方据此把「解析中」状态恢复原状。
   Future<bool> _downloadOwnFile(LzFile file, {ShareInfo? share}) async {
     final app = context.read<AppController>();
-    final transfers = context.read<TransferManager>();
+    final transfers = _transfers;
     final client = app.client;
     if (client == null) return false;
     try {
@@ -4039,20 +4039,20 @@ class _FolderNameDialogState extends State<_FolderNameDialog> {
 
 /// 文件属性弹窗：简介与下载数变动快，不读缓存——打开时先展示列表里的
 /// 现有信息，随后重新拉取最新简介与所在分页的最新条目渐入更新。
-class _FileInfoSheet extends StatefulWidget {
+class _FileInfoSheet extends ConsumerStatefulWidget {
   const _FileInfoSheet({required this.file, required this.page});
 
   final LzFile file;
   final _DrivePageState page;
 
   @override
-  State<_FileInfoSheet> createState() => _FileInfoSheetState();
+  ConsumerState<_FileInfoSheet> createState() => _FileInfoSheetState();
 }
 
 /// 文件属性弹窗顶部那一行常用操作（图标按钮组）。
 enum _FileQuickAction { download, link, qr, favorite, password }
 
-class _FileInfoSheetState extends State<_FileInfoSheet> {
+class _FileInfoSheetState extends ConsumerState<_FileInfoSheet> {
   late LzFile _file = widget.file;
 
   /// 当前名称（「修改信息」里可以改名，改完头部和后续操作都用新的）。
@@ -4164,7 +4164,7 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
   /// 这个文件的下载标记：按「账号uid:文件id」查最近的下载任务（已取消的不算）。
   TransferTask? get _downloadTask {
     final app = context.read<AppController>();
-    return context.read<TransferManager>().downloadMarkOf(
+    return ref.read(transferManagerProvider).downloadMarkOf(
       driveDownloadKey(app.activeUid ?? '', _file.id),
     );
   }
@@ -4298,6 +4298,7 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
     final page = widget.page;
     final file = _file;
     final scheme = Theme.of(context).colorScheme;
+    final transfers = ref.read(transferManagerProvider);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -4325,10 +4326,7 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
             // 监听传输管理器：下载中时把进度环画在「下载」按钮的图标位上
             // （只重建这一行，弹窗关掉就停）
             child: ListenableBuilder(
-              listenable: Listenable.merge([
-                context.read<TransferManager>(),
-                context.read<TransferManager>().marksRevision,
-              ]),
+              listenable: Listenable.merge([transfers, transfers.marksRevision]),
               builder: (BuildContext context, _) {
                 final scheme = Theme.of(context).colorScheme;
                 final mark = _downloadTask;

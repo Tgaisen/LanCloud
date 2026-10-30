@@ -40,7 +40,6 @@ Future<void> host(WidgetTester tester, {required bool grid}) async {
       child: MultiProvider(
         providers: [
           ChangeNotifierProvider<AppController>.value(value: app),
-          ChangeNotifierProvider<TransferManager>.value(value: manager),
         ],
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,

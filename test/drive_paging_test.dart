@@ -86,7 +86,6 @@ void main() {
         child: MultiProvider(
           providers: [
             ChangeNotifierProvider<AppController>.value(value: app),
-            ChangeNotifierProvider<TransferManager>.value(value: manager),
           ],
           child: MaterialApp(
             localizationsDelegates: appLocalizationsDelegates,
@@ -127,7 +126,6 @@ void main() {
         child: MultiProvider(
           providers: [
             ChangeNotifierProvider<AppController>.value(value: app),
-            ChangeNotifierProvider<TransferManager>.value(value: manager),
           ],
           child: MaterialApp(
             localizationsDelegates: appLocalizationsDelegates,
@@ -178,7 +176,6 @@ void main() {
         child: MultiProvider(
           providers: [
             ChangeNotifierProvider<AppController>.value(value: app),
-            ChangeNotifierProvider<TransferManager>.value(value: manager),
           ],
           child: MaterialApp(
             localizationsDelegates: appLocalizationsDelegates,

@@ -202,7 +202,6 @@ Future<void> _pumpDrive(
       child: MultiProvider(
         providers: [
           ChangeNotifierProvider<AppController>.value(value: app),
-          ChangeNotifierProvider<TransferManager>.value(value: transfers),
         ],
         child: MaterialApp(
           theme: ThemeData(visualDensity: density),
