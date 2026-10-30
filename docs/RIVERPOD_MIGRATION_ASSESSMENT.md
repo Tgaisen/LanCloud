@@ -591,6 +591,14 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > 刷新路径。列表与条目改为显式接收管理器，不再各自从旧 Provider 读取。
 > 四个直接挂载传输页的测试文件已改用 `ProviderScope` 覆盖同一管理器实例，
 > 不再依赖 `ChangeNotifierProvider<TransferManager>`。
+>
+> `RootShell` 随后迁为 `ConsumerStatefulWidget`，上传入口、返回退出确认和
+> 运行中任务检查均改从 `transferManagerProvider` 读取。普通 Riverpod
+> `Provider` 不会转发 `ChangeNotifier` 的通知，因此运行中任务角标使用一个
+> 局部计数桥监听管理器，仅当运行中 / 排队任务数变化时才重建外壳（与迁移前
+> `select` 的重建范围一致）；进度通知仍被过滤。新增测试验证任务取消后角标自动
+> 消失。由于子页面尚未迁移完成，测试同时保留旧 Provider，确保迁移期两边仍指向
+> 同一管理器实例。
 
 ### 阶段 6：移除旧 Provider
 

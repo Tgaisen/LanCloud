@@ -18,6 +18,7 @@ import 'core/share_inbox.dart';
 import 'core/system_motion.dart';
 import 'core/theme_settings_state.dart';
 import 'core/transfer/transfer_manager.dart';
+import 'core/transfer/transfer_manager_provider.dart';
 import 'core/window_frame.dart';
 import 'l10n/delegates.dart';
 import 'l10n/l10n.dart';
@@ -341,11 +342,11 @@ bool canHandBackToSystem({
     atDefaultView &&
     !driveCanHandleBack;
 
-class RootShell extends StatefulWidget {
+class RootShell extends ConsumerStatefulWidget {
   const RootShell({super.key});
 
   @override
-  State<RootShell> createState() => _RootShellState();
+  ConsumerState<RootShell> createState() => _RootShellState();
 }
 
 typedef _ShellStateSnapshot = ({
@@ -361,7 +362,7 @@ typedef _ShellStateSnapshot = ({
   bool selectionMode,
 });
 
-class _RootShellState extends State<RootShell>
+class _RootShellState extends ConsumerState<RootShell>
     with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   /// 视图 id：0 首页 / 1 网盘 / 2 传输 / 3 收藏 / 4 我的。
   /// id 固定不变，底栏顺序由 [_ids] 决定（传输、收藏可隐藏）。
@@ -799,7 +800,7 @@ class _RootShellState extends State<RootShell>
       initialName: files.length == 1 ? p.basename(files.first) : null,
     );
     if (target == null || !mounted) return;
-    final transfers = context.read<TransferManager>();
+    final transfers = ref.read(transferManagerProvider);
     var added = 0;
     for (final path in files) {
       final editedName = target.fileName;
@@ -828,8 +829,8 @@ class _RootShellState extends State<RootShell>
     if (files.isNotEmpty) _handleSharedFiles(files);
   }
 
-  List<TransferTask> get _activeTasks => context
-      .read<TransferManager>()
+  List<TransferTask> get _activeTasks => ref
+      .read(transferManagerProvider)
       .tasks
       .where(
         (t) =>
@@ -841,7 +842,7 @@ class _RootShellState extends State<RootShell>
   Future<bool> _handleBack() async {
     final app = context.read<AppController>();
     final defaultView = _defaultViewId;
-    final transfers = context.read<TransferManager>();
+    final transfers = ref.read(transferManagerProvider);
     final active = _activeTasks;
     if (app.selectionMode) {
       app.onRequestExitSelection?.call();
@@ -906,15 +907,20 @@ class _RootShellState extends State<RootShell>
         selectionMode: app.selectionMode,
       );
     });
-    final running = context.select<TransferManager, int>((transfers) {
-      return transfers.tasks
-          .where(
-            (task) =>
-                task.status == TransferStatus.running ||
-                task.status == TransferStatus.queued,
-          )
-          .length;
-    });
+    final manager = ref.watch(transferManagerProvider);
+    return _TransferRunningCount(
+      manager: manager,
+      builder: (context, running) =>
+          _buildShell(context, app, shell, running),
+    );
+  }
+
+  Widget _buildShell(
+    BuildContext context,
+    AppController app,
+    _ShellStateSnapshot shell,
+    int running,
+  ) {
     final l10n = context.l10n;
     NotificationService.i18n = l10n;
     if (shell.activeUid != _pageViewUid) {
@@ -1222,6 +1228,64 @@ class _RootShellState extends State<RootShell>
             ),
     );
   }
+}
+
+/// 只订阅运行中任务数：TransferManager 仍以 ChangeNotifier 高频通知，
+/// 普通 Riverpod Provider 不负责转发这些通知，因此这里过滤掉进度更新，
+/// 仅在运行中 / 排队任务数变化时重建外壳（与迁移前 select 的范围一致）。
+class _TransferRunningCount extends StatefulWidget {
+  const _TransferRunningCount({
+    required this.manager,
+    required this.builder,
+  });
+
+  final TransferManager manager;
+  final Widget Function(BuildContext context, int running) builder;
+
+  @override
+  State<_TransferRunningCount> createState() => _TransferRunningCountState();
+}
+
+class _TransferRunningCountState extends State<_TransferRunningCount> {
+  late int _running = _count(widget.manager);
+
+  static int _count(TransferManager manager) => manager.tasks
+      .where(
+        (task) =>
+            task.status == TransferStatus.running ||
+            task.status == TransferStatus.queued,
+      )
+      .length;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.manager.addListener(_handleManagerChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant _TransferRunningCount oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (identical(oldWidget.manager, widget.manager)) return;
+    oldWidget.manager.removeListener(_handleManagerChanged);
+    widget.manager.addListener(_handleManagerChanged);
+    _running = _count(widget.manager);
+  }
+
+  void _handleManagerChanged() {
+    final next = _count(widget.manager);
+    if (!mounted || next == _running) return;
+    setState(() => _running = next);
+  }
+
+  @override
+  void dispose() {
+    widget.manager.removeListener(_handleManagerChanged);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.builder(context, _running);
 }
 
 /// 让分页器里的这个视图常驻：切走后不销毁，滚动位置、列表入场动画
