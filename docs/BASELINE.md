@@ -7,7 +7,7 @@
 
 | 命令 | 结果 | 耗时 |
 | --- | --- | --- |
-| `tools\agent.cmd analyze`（无改动→全量） | No issues found | 约 58 s |
+| `tools\agent.cmd analyze`（无改动→全量） | No issues found | 冷缓存约 58 s / 热缓存约 16 s |
 | `tools\agent.cmd analyze`（1–2 个文件） | No issues found | **0.2–1.7 s**（进程启动约 7 s） |
 | `tools\agent.cmd test`（全量） | **616 tests, all passed** | 约 92 s |
 | `tools\agent.cmd test`（单文件） | passed | 数秒 |
@@ -40,5 +40,8 @@
 
 ## 已知偏差
 
-- `pub get` 会把 `pubspec.lock` 里的 `flutter: ">=3.47.0"` 重写为 `flutter: "3.47.7"`。
-  这是本机 SDK 注记，不是依赖变化。想保持工作区干净，可单独提交这一行。
+- 本基线对应版本 `26.1.0-pre.19`（合并 `26.1.0-pre.19` 之后重跑，仍为 0 issue）。
+- `pubspec.lock` 里的 SDK 注记已是 `flutter: "3.47.7"` 并已入库，不再每次 `pub get` 产生 diff。
+- 若临时在 `analysis_options.yaml` 打开 `strict-casts` / `strict-inference` / `strict-raw-types`，
+  会多出约 20 条 issue（1 error + 19 warnings），属尚未修整的既有问题；**这不是回归**。
+  跑之前先在本文档记一笔，避免和「本次改坏」混淆。

@@ -95,7 +95,7 @@ switch ($Verb) {
       Write-Output "增量分析 $($targets.Count) 个文件"
       Invoke-Flutter -FlutterArgs (@('analyze', '--no-pub') + $targets) -OnlyIssues -Tail 2
     } else {
-      Write-Output '无未提交的 lib 改动，跑全量（约 58s）'
+      Write-Output '无未提交的 lib 改动，跑全量（冷缓存约 1 分钟）'
       Invoke-Flutter -FlutterArgs @('analyze', '--no-pub') -OnlyIssues -Tail 2
     }
   }
@@ -106,7 +106,7 @@ switch ($Verb) {
       Write-Output "运行 $($targets.Count) 个受影响的测试文件"
       Invoke-Flutter -FlutterArgs (@('test', '--no-pub') + $targets) -Tail 12
     } else {
-      Write-Output '推断不出受影响的测试文件，跑全量（约 92s）'
+      Write-Output '推断不出受影响的测试文件，跑全量（约 1.5 分钟）'
       Invoke-Flutter -FlutterArgs @('test', '--no-pub') -Tail 12
     }
   }
