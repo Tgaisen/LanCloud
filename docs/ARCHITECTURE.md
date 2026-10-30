@@ -1,0 +1,100 @@
+# 架构地图
+
+> 目的：让人和 AI 代理用最少的读取量定位到该改的文件。
+> 「需求 → 先读哪些文件」一节是本文件最有价值的部分，改需求前先查表。
+
+## 一句话
+
+蓝奏云第三方 Flutter 客户端。单进程、无后端；网络协议在 `lib/core/api/`，
+状态在 2 个应用级 `ChangeNotifier`，页面在 `lib/ui/`（平铺）。
+
+## 启动顺序（`lib/main.dart`，按实际代码）
+
+1. `registerThirdPartyLicenses()` — 先登记素材许可证，开源许可页要用
+2. `SystemChrome.setEnabledSystemUIMode(edgeToEdge)`（仅移动端）
+3. `PlatformSupport.loadAndroidSdkInt()` — 预热，影响 WebView 合成方式
+4. `AppLog.instance.init()` — 接管 `FlutterError.onError` / `PlatformDispatcher.onError` / `debugPrint`
+5. `FlutterForegroundTask.init()`（仅移动端）— 传输期间后台保活
+6. `AppController().init()` — 状态初始化入口
+7. `SystemMotion.init()`、`NotificationService.init()`、`SharedInbox`、`IncomingLinks`
+8. `BackupService.maybeAutoBackup()`、`UpdateService.maybeAutoCheck()`（均不阻塞）
+9. `runApp(MultiProvider(...))` — 注入 `AppController` + `TransferManager`
+
+## 状态层
+
+应用级只有两个 `ChangeNotifier`，都在 `main.dart` 注入：
+
+| 对象 | 文件 | 说明 |
+| --- | --- | --- |
+| `AppController` | `core/app_controller.dart`（637 行） | 账号、网盘、设置等大部分状态。职责偏宽，是已知问题 |
+| `TransferManager` | `core/transfer/transfer_manager.dart` | 上传/下载任务队列 |
+
+消费现状（全仓库统计）：`context.read<…>` 约 150 处、`context.watch<…>` 约 17 处、
+`context.select<…>` **0 处**。也就是说重建粒度天然偏大 —— 新增 UI 时用 `select`
+或 `ValueListenableBuilder` 收窄订阅范围，不要继续放大。
+
+## 导航与弹层
+
+- 根：`app.dart` 的 `LanCloudApp`（含 `MaterialApp`、主题、`locale`）
+  → `AgreementGate`（首启条款门）→ `UpdatePromptHost` → `RootShell`
+- `RootShell`：`NavigationBar` + `PageView` 的外壳。主 tab 页为
+  `ui/home_page.dart`、`ui/drive_page.dart`、`ui/transfers_page.dart`、`ui/profile_page.dart`
+  （以 `app.dart` 里 `RootShell` 的实际实现为准）
+- **没有路由库**（无 `go_router` / `auto_route`），不要引入。跨页面用 `Navigator.push`，
+  页面内切换用外壳状态。
+- 弹层约定：一律写成 `Future<结果类型?> showXxx(BuildContext context)`，
+  把「弹什么、返回什么」收敛到一个具名函数。现有例子：
+  `showAppSheet`、`showM3eMenu`、`showLoginSheet`、`showBackupUnlockDialog`。
+  **禁止在 widget 里内联 `showDialog(...)` 现场拼装。**
+
+## 子系统地图
+
+| 目录／文件 | 职责 |
+| --- | --- |
+| `core/api/lanzou_client.dart` | 蓝奏云 HTTP 客户端（`dio`），协议细节见 `docs/PROTOCOL.md` |
+| `core/api/models.dart` | 接口模型 |
+| `core/api/acw_sc_v2.dart` | 反爬 cookie 挑战（ACW_SC_V2）求解 |
+| `core/data/app_db.dart` | `sqflite` 本地库；桌面端通过 `sqflite_common_ffi` 走 FFI |
+| `core/data/settings_store.dart` | 设置项，`shared_preferences` |
+| `core/data/account_store.dart`、`core/data/secure_storage.dart` | 账号与凭据，`flutter_secure_storage` |
+| `core/data/account_data.dart` | 账号模型 |
+| `core/transfer/transfer_manager.dart` | 任务队列、进度、重试 |
+| `core/backup/` | 本地备份与恢复：`backup_service`（编排）、`backup_crypto`（加解密）、`backup_sections`、`webdav_client` / `webdav_store` |
+| `core/update/` | 更新检查：`update_service`、`release_info`、`changelog` |
+| `core/platform_support.dart` | 平台判定与 Android SDK 级别，所有平台分支的唯一入口 |
+| `core/cookie_auth.dart` | 登录态与 cookie |
+| `core/lanzou_link.dart` | 分享链接解析 |
+| `ui/m3e.dart` | MD3E 组件统一出口（`export` + 薄封装），页面只从这里取 MD3E 控件 |
+| `ui/common.dart` | 跨页面共用的小组件与常量 |
+| `app.dart` | 主题构建（`buildTheme` / `buildLanCloudTheme`）、`MaterialApp`、`RootShell` |
+
+## 需求 → 先读哪些文件
+
+| 需求 | 先读 |
+| --- | --- |
+| 下载 / 传输队列 | `core/transfer/transfer_manager.dart`、`core/download_target.dart`、`core/download_dir.dart`、`core/saved_file.dart`、`ui/transfers_page.dart`、`ui/download_mark.dart` |
+| 上传 / 文件选择 / 保存 | `core/file_picker_channel.dart`、`core/system_file_saver.dart`、`core/shared_downloads_storage.dart`、`ui/drop_actions.dart` |
+| 登录 / 鉴权 / 反爬 | `core/cookie_auth.dart`、`core/api/acw_sc_v2.dart`、`ui/login_page.dart`、`ui/web_login_page.dart`、`ui/cookie_sheet.dart` |
+| 分享链接 / 提取码 | `core/lanzou_link.dart`、`ui/share_page.dart`、`ui/share_file_sheet.dart`、`ui/share_folder_page.dart`、`ui/share_password_dialog.dart` |
+| 备份 / 恢复 / WebDAV | `core/backup/*`、`ui/backup_page.dart`、`ui/backup_options_page.dart`、`ui/restore_page.dart`、`ui/restore_dialogs.dart` |
+| 自动更新 / APK 安装 | `core/update/*`、`core/apk_installer.dart`、`ui/update_page.dart`、`ui/update_prompt.dart` |
+| 本地数据 / 设置项 | `core/data/*`（先看 `app_db.dart` 表结构，再看 `settings_store.dart`） |
+| 平台差异（Android / Windows） | `core/platform_support.dart`、`core/saf_storage.dart`、`core/system_open.dart`、`core/system_share.dart`、`core/window_frame.dart`、`core/drag_drop.dart` |
+| 主题 / 动效 / 无障碍 | `app.dart`（主题）、`ui/m3e.dart`、`core/dynamic_color_support.dart`、`core/system_motion.dart`、`ui/reduce_motion.dart` |
+| 日志 / 崩溃 / 诊断 | `core/app_log.dart`、`core/webview_diagnostics.dart` |
+| 文案 / 国际化 | `lib/l10n/app_zh.arb`（模板）、`app_en.arb`、`l10n.yaml` |
+| 版本号 | `docs/VERSIONING.md`、`tool/bump_version.dart`、`lib/core/app_info.dart` |
+
+## 平台
+
+- 有平台目录：`android/`、`ios/`、`windows/`
+- **没有** `web/`、`macos/`、`linux/`，不要创建，也不要写只在 web 生效的分支
+- OHOS 适配见 `docs/OHOS_ADAPTATION.md`；仓库当前未跟踪 `ohos/` 目录，相关改动先问
+
+## 不变量（改动前确认，别顺手破掉）
+
+1. 版本号只能由 `tool/bump_version.dart` 同时改 `pubspec.yaml` 与 `lib/core/app_info.dart`（有测试校验）
+2. `material_ui` / `m3e_core` / `cupertino_ui` 三件套必须同步升级；`material_ui` 不得 ≥ 1.8.0
+3. 文案模板是 `app_zh.arb`，中英两份必须同时改，改完跑 `gen-l10n`
+4. `android/gradle.properties` 的 `force-version-code-ignoring-abi` 是 versionCode 位段方案的一部分，不要动
+5. `lib/core/third_party_licenses.dart` 的登记结构涉及许可证合规，新增素材要按同格式追加
