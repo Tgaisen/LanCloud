@@ -21,6 +21,8 @@
 | `tools\agent.cmd test`（AppDb provider） | 增量 | **1 test, all passed** | 约 12 s |
 | `tools\agent.cmd test`（LanzouClient 注册表） | 增量 | **311 tests, all passed** | 约 61 s |
 | `tools\agent.cmd test`（AppLog provider） | 增量 | **339 tests, all passed** | 约 59 s |
+| `tools\agent.cmd test`（NotificationService provider） | 增量 | **115 tests, all passed** | 约 25 s |
+| `tools\agent.cmd test`（SharedDownloadsGateway） | 增量 | **311 tests, all passed** | 约 57 s |
 
 工具链：Flutter 3.47.7（stable）/ Dart 3.13.5 / DevTools 2.60.0。
 静态检查：`analysis_options.yaml` 已开启 `strict-casts` / `strict-inference` / `strict-raw-types`。
@@ -33,7 +35,7 @@
 | `lib` 总行数 | 约 4.7 万 |
 | `test` 测试文件 | 123（平铺，`<主题>_test.dart`） |
 | `test` 总行数 | 约 2 万 |
-| `test` 用例数 | 636（当前总数；本次只验证了受影响增量） |
+| `test` 用例数 | 640（当前总数；本次只验证了受影响增量） |
 | `lib/ui` 页面与组件 | 40 个平铺文件 |
 | `lib/core` | 32 个平铺文件 + 5 个子系统目录 |
 | 文案（`app_zh.arb`） | 1357 行 |
@@ -69,5 +71,11 @@
 - 2026-10-30 的 AppLog provider 叶子新增 1 个测试，并将 UpdateService 的失败
   日志改为 provider 读取；增量 50 个文件 / 339 个测试通过，当前总数由 635 增至
   636。
+- 2026-10-30 的 NotificationService provider 新增 1 个测试，并把
+  `TransferManager` 的通知调用改为构造注入；增量 16 个文件 / 115 个测试通过，
+  当前总数由 636 增至 637。
+- 2026-10-30 的 SharedDownloadsGateway 新增 3 个测试，覆盖注入路径解析、模式
+  查询和 provider override；增量 49 个文件 / 311 个测试通过，当前总数由 637
+  增至 640。
 - 若临时再改 `analysis_options.yaml` 加规则，issue 数会变；先把预期数量记在这里再跑，
   避免和「本次改坏」混淆。

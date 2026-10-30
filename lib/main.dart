@@ -16,8 +16,10 @@ import 'core/api/lanzou_client_registry.dart';
 import 'core/data/app_db_provider.dart';
 import 'core/incoming_links.dart';
 import 'core/notifications.dart';
+import 'core/notifications_provider.dart';
 import 'core/platform_support.dart';
 import 'core/share_inbox.dart';
+import 'core/shared_downloads_gateway.dart';
 import 'core/system_motion.dart';
 import 'core/third_party_licenses.dart';
 import 'core/transfer/transfer_manager.dart';
@@ -86,7 +88,8 @@ Future<void> main() async {
       ),
     );
   }
-  final app = AppController();
+  const sharedDownloads = PlatformSharedDownloadsGateway();
+  final app = AppController(sharedDownloads: sharedDownloads);
   await app.init();
   // 系统「移除动画」：读一次并监听原生推送（华为等 ROM 的开关引擎看不到）
   SystemMotion.init();
@@ -108,8 +111,17 @@ Future<void> main() async {
       appDbProvider.overrideWithValue(app.db),
       appLogProvider.overrideWithValue(AppLog.instance),
       lanzouClientRegistryProvider.overrideWithValue(app.clientRegistry),
+      notificationServiceProvider.overrideWithValue(
+        NotificationService.instance,
+      ),
+      sharedDownloadsGatewayProvider.overrideWithValue(sharedDownloads),
       updateSettingsProvider.overrideWithValue(app.settings),
     ],
+  );
+  final transfers = TransferManager(
+    app,
+    notifications: updateContainer.read(notificationServiceProvider),
+    sharedDownloads: updateContainer.read(sharedDownloadsGatewayProvider),
   );
   final updates = updateContainer.read(updateServiceProvider.notifier);
   await updates.initialize();
@@ -122,7 +134,7 @@ Future<void> main() async {
       child: MultiProvider(
         providers: [
           ChangeNotifierProvider.value(value: app),
-          ChangeNotifierProvider.value(value: TransferManager(app)),
+          ChangeNotifierProvider.value(value: transfers),
         ],
         child: const LanCloudApp(),
       ),

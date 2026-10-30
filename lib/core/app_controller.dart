@@ -19,7 +19,7 @@ import 'drive_cache.dart';
 import 'dynamic_color_support.dart';
 import 'platform_support.dart';
 import 'saf_storage.dart';
-import 'shared_downloads_storage.dart';
+import 'shared_downloads_gateway.dart';
 import 'system_motion.dart';
 
 /// 网盘页当前所在目录：id + 相对根目录的路径（不含"根目录"这几个字，
@@ -41,10 +41,15 @@ class DriveLocation {
 }
 
 class AppController extends ChangeNotifier {
+  AppController({SharedDownloadsGateway? sharedDownloads})
+    : _sharedDownloads =
+          sharedDownloads ?? const PlatformSharedDownloadsGateway();
+
   final AccountStore accounts = AccountStore();
   final SettingsStore settings = SettingsStore();
   final AppDb db = AppDb.instance;
   final DriveCache driveCache = DriveCache();
+  final SharedDownloadsGateway _sharedDownloads;
 
   final LanzouClientRegistry clientRegistry = LanzouClientRegistry();
 
@@ -533,7 +538,7 @@ class AppController extends ChangeNotifier {
   /// （取不到时退回应用文档目录）。
   Future<String> defaultDownloadDirPath() async {
     if (PlatformSupport.isAndroid) {
-      final shared = await SharedDownloadsStorage.defaultDirectoryPath();
+      final shared = await _sharedDownloads.defaultDirectoryPath();
       if (shared != null && shared.isNotEmpty) return shared;
     }
     final Directory base;
@@ -558,7 +563,7 @@ class AppController extends ChangeNotifier {
     if (PlatformSupport.isAndroid &&
         (directory == null || directory.isEmpty) &&
         (treeUri == null || treeUri.isEmpty)) {
-      supportsSharedDownloads = await SharedDownloadsStorage.isSupported();
+      supportsSharedDownloads = await _sharedDownloads.isSupported();
     }
     return resolveDownloadTargetMode(
       isAndroid: PlatformSupport.isAndroid,

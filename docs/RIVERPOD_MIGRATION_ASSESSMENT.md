@@ -267,8 +267,11 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > 仍只有一份数据库连接。客户端缓存也已收拢到 `LanzouClientRegistry` 并通过
 > `lanzouClientRegistryProvider` 暴露；`AppController` 保留原公开方法，内部
 > 改为使用同一注册表。运行日志已通过 `appLogProvider` 暴露，更新服务的失败
-> 记录改从 provider 读取；初始化仍保持在容器创建前。路径、通知和持久化接口
-> 尚未迁移。
+> 记录改从 provider 读取；初始化仍保持在容器创建前。通知服务已通过
+> `notificationServiceProvider` 注入 `TransferManager`，进度与完成提醒不再直接
+> 读取单例。Android 公共 Downloads 能力已抽成 `SharedDownloadsGateway`，并由
+> `AppController` 与 `TransferManager` 构造注入；其余桌面目录和持久化接口尚未
+> 迁移。
 
 ### 阶段 3：拆分可监听状态
 

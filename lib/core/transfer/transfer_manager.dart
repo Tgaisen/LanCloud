@@ -14,7 +14,7 @@ import '../notifications.dart';
 import '../platform_support.dart';
 import '../saf_storage.dart';
 import '../saved_file.dart';
-import '../shared_downloads_storage.dart';
+import '../shared_downloads_gateway.dart';
 
 enum TransferKind { upload, download }
 
@@ -77,7 +77,13 @@ class TransferTask {
 }
 
 class TransferManager extends ChangeNotifier {
-  TransferManager(this._app) {
+  TransferManager(
+    this._app, {
+    NotificationService? notifications,
+    SharedDownloadsGateway? sharedDownloads,
+  }) : _notifications = notifications ?? NotificationService.instance,
+       _sharedDownloads =
+           sharedDownloads ?? const PlatformSharedDownloadsGateway() {
     _restore();
   }
 
@@ -85,6 +91,8 @@ class TransferManager extends ChangeNotifier {
   static const int maxDownloads = 3;
 
   final AppController _app;
+  final NotificationService _notifications;
+  final SharedDownloadsGateway _sharedDownloads;
   final List<TransferTask> tasks = [];
   final List<void Function(TransferTask)> _taskListeners = [];
   int _seq = 0;
@@ -515,7 +523,7 @@ class TransferManager extends ChangeNotifier {
 
   /// 汇总所有运行中任务的进度，节流更新通知栏进度。
   void _syncProgressNotification() {
-    final ns = NotificationService.instance;
+    final ns = _notifications;
     if (!_app.settings.notifyProgress) {
       ns.cancelProgress();
       return;
@@ -546,7 +554,7 @@ class TransferManager extends ChangeNotifier {
 
   void _notifyFinished(TransferTask task) {
     if (!_app.settings.notifyDone) return;
-    final ns = NotificationService.instance;
+    final ns = _notifications;
     if (task.status == TransferStatus.done) {
       ns.showDone(upload: task.kind == TransferKind.upload, name: task.name);
     } else if (task.status == TransferStatus.failed) {
@@ -678,7 +686,7 @@ class TransferManager extends ChangeNotifier {
     // 下载阶段已到 100%，复制阶段重新从 0 开始显示
     task.received = 0;
     try {
-      final saved = await SharedDownloadsStorage.save(
+      final saved = await _sharedDownloads.save(
         sourcePath: path,
         fileName: task.name,
         mime: mimeForFileName(task.name),
