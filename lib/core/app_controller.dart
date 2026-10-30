@@ -18,6 +18,7 @@ import 'download_target.dart';
 import 'download_path_service.dart';
 import 'drive_state.dart';
 import 'drive_cache.dart';
+import 'cache_page_settings_state.dart';
 import 'dynamic_color_support.dart';
 import 'navigation_state.dart';
 import 'navigation_appearance_settings_state.dart';
@@ -62,6 +63,7 @@ class AppController extends ChangeNotifier {
     transferConnectionSettings = TransferConnectionSettingsState(settings);
     listHomeSettings = ListHomeSettingsState(settings);
     languageClipboardSettings = LanguageClipboardSettingsState(settings);
+    cachePageSettings = CachePageSettingsState(settings);
     this.navigation.addListener(notifyListeners);
   }
 
@@ -74,6 +76,7 @@ class AppController extends ChangeNotifier {
   late final TransferConnectionSettingsState transferConnectionSettings;
   late final ListHomeSettingsState listHomeSettings;
   late final LanguageClipboardSettingsState languageClipboardSettings;
+  late final CachePageSettingsState cachePageSettings;
 
   AccountStore get accounts => accountState.store;
   SettingsStore get settings => settingsState.store;
@@ -591,12 +594,12 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> setGridView(bool value) async {
-    await settings.setGridView(value);
+    await cachePageSettings.setGridView(value);
     notifyListeners();
   }
 
   Future<void> setLaunchPage(String page) async {
-    await settings.setLaunchPage(page);
+    await cachePageSettings.setLaunchPage(page);
     notifyListeners();
   }
 
@@ -606,13 +609,13 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> setCacheFolders(bool value) async {
-    await settings.setCacheFolders(value);
+    await cachePageSettings.setCacheFolders(value);
     if (!value) driveCache.clear();
     notifyListeners();
   }
 
   Future<void> setLoadAllPages(bool value) async {
-    await settings.setLoadAllPages(value);
+    await cachePageSettings.setLoadAllPages(value);
     notifyListeners();
   }
 

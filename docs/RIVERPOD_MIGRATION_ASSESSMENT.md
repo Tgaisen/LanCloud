@@ -357,6 +357,9 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 >
 > `LanguageClipboardSettingsState` 已拆分：界面语言与复制分享链接提示收窄为独立
 > 入口。应用根 Locale 解析和剪贴板行为尚未迁移。
+>
+> `CachePageSettingsState` 也已拆分：网格视图、启动页、目录缓存和自动加载开关
+> 使用独立 provider。关闭目录缓存时清空 `DriveCache` 的副作用仍由旧控制器执行。
 
 ### 阶段 4：迁移 UI 消费端
 

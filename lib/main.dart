@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import 'app.dart';
 import 'core/account_state.dart';
 import 'core/app_controller.dart';
+import 'core/cache_page_settings_state.dart';
 import 'core/app_log.dart';
 import 'core/app_log_provider.dart';
 import 'core/backup/backup_service.dart';
@@ -148,6 +149,7 @@ Future<void> main() async {
       languageClipboardSettingsStateProvider.overrideWithValue(
         app.languageClipboardSettings,
       ),
+      cachePageSettingsStateProvider.overrideWithValue(app.cachePageSettings),
       notificationServiceProvider.overrideWithValue(
         NotificationService.instance,
       ),
