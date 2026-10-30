@@ -2734,14 +2734,34 @@ class BatchActionBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    try {
+      final appearance = ProviderScope.containerOf(
+        context,
+      ).read(navigationAppearanceSettingsStateProvider);
+      return ListenableBuilder(
+        listenable: appearance.revision,
+        builder: (context, _) =>
+            _buildBar(context, appearance.floatingNavBar),
+      );
+    } on StateError {
+      // 迁移期兼容尚未挂 ProviderScope 的旧测试宿主。
+    } on ProviderException {
+      // ProviderScope 存在但应用级状态未覆盖时，同样回退旧测试宿主。
+    }
+    return _buildBar(
+      context,
+      context.select<AppController, bool>(
+        (app) => app.settings.floatingNavBar,
+      ),
+    );
+  }
+
+  Widget _buildBar(BuildContext context, bool floatingNavBar) {
     final scheme = Theme.of(context).colorScheme;
     // 外壳开了 extendBody 后，底栏槽位高度会写进正文的 padding.bottom：
     // 普通底栏 = 80 + 系统手势区，悬浮底栏 = 108 + 系统手势区（含 16dp 顶留白）。
     // 按整槽避让时悬浮样式的多选条会离胶囊多出 16dp，这里回退成胶囊实际高度，
     // 两种样式的间距保持一致（都是 12dp）。
-    final floatingNavBar = context.select<AppController, bool>(
-      (app) => app.settings.floatingNavBar,
-    );
     final floatingNavInShell =
         inRootShell(context) && floatingNavBar;
     final bottomInset = math.max(
