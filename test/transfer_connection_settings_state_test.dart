@@ -34,6 +34,7 @@ void main() {
     await state.setUserAgent('test-agent');
     await state.setUploadPath('fileup.php');
 
+    expect(state.revision.value, 6);
     expect(state.requestInterval, 250);
     expect(state.maxUploads, 2);
     expect(state.maxDownloads, 4);

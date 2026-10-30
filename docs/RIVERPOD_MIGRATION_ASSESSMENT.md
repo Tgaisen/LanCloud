@@ -449,6 +449,11 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > “底栏显示项”随后迁入 `NavBarItemsSettingsTile`。
 > `showNavBarItemsPicker` 返回类型化的传输/收藏草稿；取消不写入，确认后通过
 > `NavigationAppearanceSettingsState.setNavItems` 一次提交并只递增一次 revision。
+>
+> 设置页滑杆随后抽成公共 `SettingsSliderTile`，保留拖动中只更新本地、松手才
+> 落盘与现有无障碍语义。“上传并发数”和“下载并发数”迁入
+> `TransferConcurrencySettingsTile`；传输调度继续实时读取同一个 `SettingsStore`，
+> 高级连接参数仍由旧控制器同步 `LanzouClient`。
 
 ### 阶段 5：处理 `TransferManager`
 

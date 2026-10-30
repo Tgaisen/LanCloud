@@ -77,7 +77,10 @@
 `ThemeSettingsState.setMotionMode` 同时更新 `SystemMotion.motionMode`，旧控制器
 只保留兼容转发。“底栏显示项”迁入 `NavBarItemsSettingsTile`，多选弹窗返回
 类型化草稿，确认后通过 `NavigationAppearanceSettingsState.setNavItems`
-一次写入并只递增一次 revision。
+一次写入并只递增一次 revision。设置滑杆已抽成公共
+`SettingsSliderTile`；“上传并发数”和“下载并发数”迁入
+`TransferConcurrencySettingsTile`，通过 `TransferConnectionSettingsState.revision`
+局部刷新，传输调度仍实时读取设置值。
 
 ## 导航与弹层
 

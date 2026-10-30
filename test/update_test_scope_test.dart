@@ -11,6 +11,7 @@ import 'package:lancloud/core/list_home_settings_state.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/notification_settings_state.dart';
 import 'package:lancloud/core/theme_settings_state.dart';
+import 'package:lancloud/core/transfer_connection_settings_state.dart';
 import 'package:lancloud/core/update/release_info.dart';
 import 'package:lancloud/core/update/update_service.dart';
 import 'package:provider/provider.dart';
@@ -63,6 +64,9 @@ Widget appTestTree({
       ),
       themeSettingsStateProvider.overrideWithValue(app.themeSettings),
       listHomeSettingsStateProvider.overrideWithValue(app.listHomeSettings),
+      transferConnectionSettingsStateProvider.overrideWithValue(
+        app.transferConnectionSettings,
+      ),
       notificationSettingsStateProvider.overrideWithValue(
         app.notificationSettings,
       ),

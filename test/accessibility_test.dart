@@ -8,10 +8,11 @@ import 'package:lancloud/ui/app_icons.dart';
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/m3e.dart';
 import 'package:lancloud/ui/settings_page.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
+
+import 'update_test_scope_test.dart';
 
 Widget host(Widget child) {
   return MaterialApp(
@@ -266,7 +267,7 @@ void main() {
     expect(announcements, ['进入多选']);
   });
 
-  // 设置页滑杆：M3ESlider 是自绘控件，滑杆语义是在 _SliderTile 外面合成的。
+  // 设置页滑杆：M3ESlider 是自绘控件，滑杆语义是在 SettingsSliderTile 外面合成的。
   // 钉住「TalkBack 按 SeekBar 读出标题与当前值 + 上/下滑可调」；同时钉住
   // 内部手势语义已被屏蔽——暴露的 tap 会让读屏双击按中心点按、跳到中间档。
   testWidgets('设置页滑杆：读出滑杆角色与当前值，上/下滑调节并落盘', (tester) async {
@@ -278,8 +279,8 @@ void main() {
     tester.view.physicalSize = const Size(420, 900);
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
-        value: app,
+      appTestTree(
+        app: app,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
