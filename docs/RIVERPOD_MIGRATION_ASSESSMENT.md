@@ -633,6 +633,12 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 >
 > 拖放上传入口随后迁入 Riverpod；未登录跳过、链接导入和混合内容处理顺序保持
 > 不变。此时生产代码只剩首页运行中任务数的旧 `context.select`。
+>
+> 最后把 `RootShell` 内的运行中任务计数过滤桥抽成共享
+> `TransferRunningCount`，首页也改用该组件。相同任务数下的进度/
+> `notifyListeners()` 更新会被过滤，只有运行中 / 排队任务数变化才重建。
+> 新增测试同时验证数量变化会重建、重复通知但数量不变不会重建。至此生产代码
+> 已无旧 Provider 的 `TransferManager` 读取或整体订阅。
 
 ### 阶段 6：移除旧 Provider
 

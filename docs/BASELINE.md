@@ -82,6 +82,7 @@
 | `tools\agent.cmd test`（共享单文件下载入口） | 增量 | **292 tests, all passed** | 约 61 s |
 | `tools\agent.cmd test`（共享批量下载入口） | 增量 | **292 tests, all passed** | 约 55 s |
 | `tools\agent.cmd test`（拖放上传入口） | 增量 | **12 tests, all passed** | 约 15 s |
+| `tools\agent.cmd test`（首页运行任务计数） | 增量 | **40 tests, all passed** | 约 25 s |
 | `tools\agent.cmd analyze`（阶段 4 消费端完成后） | 全量 | No issues found | 约 27 s |
 | `tools\agent.cmd test`（阶段 4 消费端完成后） | 全量 | **707 tests, all passed** | 约 113 s |
 
@@ -96,7 +97,7 @@
 | `lib` 总行数 | 约 4.4 万 |
 | `test` 测试文件 | 155（平铺，`<主题>_test.dart`） |
 | `test` 总行数 | 约 2.1 万 |
-| `test` 用例数 | 714（当前总数；阶段 5 已新增 7 个边界测试） |
+| `test` 用例数 | 715（当前总数；阶段 5 已新增 8 个边界测试） |
 | `lib/ui` 页面与组件 | 54 个平铺文件 |
 | `lib/core` | 32 个平铺文件 + 5 个子系统目录 |
 | 文案（`app_zh.arb`） | 1357 行 |
@@ -297,6 +298,9 @@
   文件 / 292 个测试通过，用例总数保持 714；`common.dart` 已无旧传输管理器读取。
 - 2026-10-30 的拖放上传入口迁入 Riverpod；增量 1 个测试文件 / 12 个测试通过，
   用例总数保持 714；生产代码只剩首页运行中任务数的旧 `select`。
+- 2026-10-30 的共享 `TransferRunningCount` 接入首页并新增过滤重建测试；增量
+  12 个文件 / 40 个测试通过，当前总数由 714 增至 715。生产代码已无旧 Provider
+  的 `TransferManager` 读取或整体订阅。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release

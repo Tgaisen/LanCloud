@@ -39,6 +39,7 @@ import 'ui/scroll_tint.dart';
 import 'ui/share_page.dart';
 import 'ui/system_ui.dart';
 import 'ui/transfers_page.dart';
+import 'ui/transfer_running_count.dart';
 import 'ui/app_icons.dart';
 import 'ui/update_prompt.dart';
 
@@ -908,7 +909,7 @@ class _RootShellState extends ConsumerState<RootShell>
       );
     });
     final manager = ref.watch(transferManagerProvider);
-    return _TransferRunningCount(
+    return TransferRunningCount(
       manager: manager,
       builder: (context, running) =>
           _buildShell(context, app, shell, running),
@@ -1228,64 +1229,6 @@ class _RootShellState extends ConsumerState<RootShell>
             ),
     );
   }
-}
-
-/// 只订阅运行中任务数：TransferManager 仍以 ChangeNotifier 高频通知，
-/// 普通 Riverpod Provider 不负责转发这些通知，因此这里过滤掉进度更新，
-/// 仅在运行中 / 排队任务数变化时重建外壳（与迁移前 select 的范围一致）。
-class _TransferRunningCount extends StatefulWidget {
-  const _TransferRunningCount({
-    required this.manager,
-    required this.builder,
-  });
-
-  final TransferManager manager;
-  final Widget Function(BuildContext context, int running) builder;
-
-  @override
-  State<_TransferRunningCount> createState() => _TransferRunningCountState();
-}
-
-class _TransferRunningCountState extends State<_TransferRunningCount> {
-  late int _running = _count(widget.manager);
-
-  static int _count(TransferManager manager) => manager.tasks
-      .where(
-        (task) =>
-            task.status == TransferStatus.running ||
-            task.status == TransferStatus.queued,
-      )
-      .length;
-
-  @override
-  void initState() {
-    super.initState();
-    widget.manager.addListener(_handleManagerChanged);
-  }
-
-  @override
-  void didUpdateWidget(covariant _TransferRunningCount oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (identical(oldWidget.manager, widget.manager)) return;
-    oldWidget.manager.removeListener(_handleManagerChanged);
-    widget.manager.addListener(_handleManagerChanged);
-    _running = _count(widget.manager);
-  }
-
-  void _handleManagerChanged() {
-    final next = _count(widget.manager);
-    if (!mounted || next == _running) return;
-    setState(() => _running = next);
-  }
-
-  @override
-  void dispose() {
-    widget.manager.removeListener(_handleManagerChanged);
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => widget.builder(context, _running);
 }
 
 /// 让分页器里的这个视图常驻：切走后不销毁，滚动位置、列表入场动画

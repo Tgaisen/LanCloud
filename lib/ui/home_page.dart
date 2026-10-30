@@ -1,10 +1,11 @@
 import 'package:material_ui/material_ui.dart' hide Icons;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:provider/provider.dart';
 
 import '../core/app_controller.dart';
 import '../core/data/app_db.dart';
 import '../core/lanzou_link.dart';
-import '../core/transfer/transfer_manager.dart';
+import '../core/transfer/transfer_manager_provider.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
@@ -14,6 +15,7 @@ import 'qr_scan.dart';
 import 'scroll_tint.dart';
 import 'share_file_sheet.dart';
 import 'share_page.dart';
+import 'transfer_running_count.dart';
 
 /// 快速访问条目 ⋯ 菜单里的动作。
 enum _QuickPinAction { open, removePin, moveToTop }
@@ -21,17 +23,17 @@ enum _QuickPinAction { open, removePin, moveToTop }
 /// 最近使用条目 ⋯ 菜单里的动作。
 enum _RecentAction { open, toggleFavorite, deleteRecord }
 
-class HomePage extends StatefulWidget {
+class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key, this.tabIndex});
 
   /// 外壳中的 page 视图下标；作为独立路由打开时为 null（不响应切换通知）。
   final int? tabIndex;
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  ConsumerState<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage>
+class _HomePageState extends ConsumerState<HomePage>
     with AutomaticKeepAliveClientMixin {
   List<RecentItem> _recents = [];
   List<PinItem> _quick = [];
@@ -469,15 +471,20 @@ class _HomePageState extends State<HomePage>
     final hideTopBar = context.select<AppController, bool>(
       (app) => app.settings.hideTopBar,
     );
-    final running = context.select<TransferManager, int>((transfers) {
-      return transfers.tasks
-          .where(
-            (t) =>
-                t.status == TransferStatus.running ||
-                t.status == TransferStatus.queued,
-          )
-          .length;
-    });
+    final manager = ref.watch(transferManagerProvider);
+    return TransferRunningCount(
+      manager: manager,
+      builder: (context, running) =>
+          _buildPage(context, app, hideTopBar, running),
+    );
+  }
+
+  Widget _buildPage(
+    BuildContext context,
+    AppController app,
+    bool hideTopBar,
+    int running,
+  ) {
     final l10n = context.l10n;
     final scheme = Theme.of(context).colorScheme;
     final headerHeight = MediaQuery.paddingOf(context).top + kToolbarHeight;
