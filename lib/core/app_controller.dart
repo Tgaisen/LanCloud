@@ -20,6 +20,7 @@ import 'drive_state.dart';
 import 'drive_cache.dart';
 import 'dynamic_color_support.dart';
 import 'navigation_state.dart';
+import 'notification_settings_state.dart';
 import 'platform_support.dart';
 import 'saf_storage.dart';
 import 'settings_state.dart';
@@ -50,12 +51,14 @@ class AppController extends ChangeNotifier {
        accountState = accountState ?? AccountState(),
        settingsState = settingsState ?? SettingsState() {
     updateSettings = UpdateSettingsState(settings);
+    notificationSettings = NotificationSettingsState(settings);
     this.navigation.addListener(notifyListeners);
   }
 
   final AccountState accountState;
   final SettingsState settingsState;
   late final UpdateSettingsState updateSettings;
+  late final NotificationSettingsState notificationSettings;
 
   AccountStore get accounts => accountState.store;
   SettingsStore get settings => settingsState.store;
@@ -345,12 +348,12 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> setNotifyProgress(bool value) async {
-    await settings.setNotifyProgress(value);
+    await notificationSettings.setNotifyProgress(value);
     notifyListeners();
   }
 
   Future<void> setNotifyDone(bool value) async {
-    await settings.setNotifyDone(value);
+    await notificationSettings.setNotifyDone(value);
     notifyListeners();
   }
 

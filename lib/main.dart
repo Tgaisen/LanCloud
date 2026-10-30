@@ -18,6 +18,7 @@ import 'core/data/app_db_provider.dart';
 import 'core/download_path_service.dart';
 import 'core/drive_state.dart';
 import 'core/navigation_state.dart';
+import 'core/notification_settings_state.dart';
 import 'core/incoming_links.dart';
 import 'core/notifications.dart';
 import 'core/notifications_provider.dart';
@@ -128,6 +129,9 @@ Future<void> main() async {
       accountStateProvider.overrideWithValue(app.accountState),
       settingsStateProvider.overrideWithValue(app.settingsState),
       updateSettingsStateProvider.overrideWithValue(app.updateSettings),
+      notificationSettingsStateProvider.overrideWithValue(
+        app.notificationSettings,
+      ),
       notificationServiceProvider.overrideWithValue(
         NotificationService.instance,
       ),

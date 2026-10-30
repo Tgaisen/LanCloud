@@ -335,6 +335,9 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > 第一个设置子组 `UpdateSettingsState` 已拆分：更新通道与自动检查开关通过
 > 独立 provider 读写同一个 `SettingsStore`。旧 `AppController` setter 保持原通知
 > 语义（通道同值不通知），没有复制持久化字段。
+>
+> `NotificationSettingsState` 随后拆分：进度通知与完成通知开关通过独立 provider
+> 读写同一 store。旧 `AppController` 两个 setter 保持原通知行为，UI 尚未迁移。
 
 ### 阶段 4：迁移 UI 消费端
 
