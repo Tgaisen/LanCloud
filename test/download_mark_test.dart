@@ -1,10 +1,11 @@
 import 'package:material_ui/material_ui.dart' hide Icons;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
+import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/ui/app_icons.dart';
 import 'package:lancloud/ui/download_mark.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -100,8 +101,8 @@ void main() {
     manager.tasks.add(task);
 
     await tester.pumpWidget(
-      ChangeNotifierProvider<TransferManager>.value(
-        value: manager,
+      ProviderScope(
+        overrides: [transferManagerProvider.overrideWithValue(manager)],
         child: const MaterialApp(
           home: Scaffold(
             body: Center(child: DownloadMarkIcon(markKey: '1:f1')),

@@ -2,11 +2,13 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/api/lanzou_client.dart';
 import 'package:lancloud/core/api/models.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
+import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/delegates.dart';
 import 'package:lancloud/ui/app_icons.dart';
@@ -195,23 +197,26 @@ Future<void> _pumpDrive(
   addTearDown(tester.view.reset);
 
   await tester.pumpWidget(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider<AppController>.value(value: app),
-        ChangeNotifierProvider<TransferManager>.value(value: transfers),
-      ],
-      child: MaterialApp(
-        theme: ThemeData(visualDensity: density),
-        localizationsDelegates: appLocalizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        locale: locale,
-        // 和应用一致：强调排版 / 弹窗宽度这些组件级样式挂在 builder 上
-        builder: (context, child) =>
-            M3eComponentStyles(child: child ?? const SizedBox.shrink()),
-        home: DrivePage(
-          initialFolderId: folderId,
-          initialName: folderName,
-          tabIndex: 0,
+    ProviderScope(
+      overrides: [transferManagerProvider.overrideWithValue(transfers)],
+      child: MultiProvider(
+        providers: [
+          ChangeNotifierProvider<AppController>.value(value: app),
+          ChangeNotifierProvider<TransferManager>.value(value: transfers),
+        ],
+        child: MaterialApp(
+          theme: ThemeData(visualDensity: density),
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: locale,
+          // 和应用一致：强调排版 / 弹窗宽度这些组件级样式挂在 builder 上
+          builder: (context, child) =>
+              M3eComponentStyles(child: child ?? const SizedBox.shrink()),
+          home: DrivePage(
+            initialFolderId: folderId,
+            initialName: folderName,
+            tabIndex: 0,
+          ),
         ),
       ),
     ),

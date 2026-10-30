@@ -1,11 +1,13 @@
 import 'dart:async';
 
 import 'package:material_ui/material_ui.dart' hide Icons;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/api/lanzou_client.dart';
 import 'package:lancloud/core/api/models.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
+import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/app_icons.dart';
 import 'package:lancloud/ui/m3e.dart';
@@ -103,22 +105,25 @@ Future<void> pumpSheet(
   final transfers = manager ?? TransferManager(app);
   addTearDown(app.dispose);
   await tester.pumpWidget(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider<AppController>.value(value: app),
-        ChangeNotifierProvider<TransferManager>.value(value: transfers),
-      ],
-      child: MaterialApp(
-        localizationsDelegates: appLocalizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        locale: const Locale('zh'),
-        home: Scaffold(
-          body: ShareFileInfoSheet(
-            name: 'a.zip',
-            url: 'https://example.com/abcdef',
-            pwd: '',
-            size: size,
-            invalid: invalid,
+    ProviderScope(
+      overrides: [transferManagerProvider.overrideWithValue(transfers)],
+      child: MultiProvider(
+        providers: [
+          ChangeNotifierProvider<AppController>.value(value: app),
+          ChangeNotifierProvider<TransferManager>.value(value: transfers),
+        ],
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: Scaffold(
+            body: ShareFileInfoSheet(
+              name: 'a.zip',
+              url: 'https://example.com/abcdef',
+              pwd: '',
+              size: size,
+              invalid: invalid,
+            ),
           ),
         ),
       ),

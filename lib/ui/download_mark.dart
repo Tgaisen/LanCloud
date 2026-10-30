@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart' hide Icons;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:provider/provider.dart';
 
 import '../core/platform_support.dart';
@@ -6,6 +7,7 @@ import '../core/saved_file.dart';
 import '../core/system_open.dart';
 import '../core/system_share.dart';
 import '../core/transfer/transfer_manager.dart';
+import '../core/transfer/transfer_manager_provider.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'm3e.dart';
@@ -35,10 +37,15 @@ class DownloadMarkIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 可空读取：单独拿这个小组件做测试 / 预览（没有 Provider 的树）时
-    // 直接不显示标记，而不是抛 ProviderNotFound。
-    final manager = context.read<TransferManager?>();
-    if (manager == null) return const SizedBox.shrink();
+    // 单独拿这个小组件做测试 / 预览时允许没有 ProviderScope：
+    // 直接不显示标记，而不是让整个属性卡构建失败。
+    final ProviderContainer container;
+    try {
+      container = ProviderScope.containerOf(context);
+    } on StateError {
+      return const SizedBox.shrink();
+    }
+    final manager = container.read(transferManagerProvider);
     return ListenableBuilder(
       listenable: manager.marksRevision,
       builder: (BuildContext context, _) {

@@ -599,6 +599,11 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > `select` 的重建范围一致）；进度通知仍被过滤。新增测试验证任务取消后角标自动
 > 消失。由于子页面尚未迁移完成，测试同时保留旧 Provider，确保迁移期两边仍指向
 > 同一管理器实例。
+>
+> “已下载”标记随后迁为从 `ProviderScope` 读取 `transferManagerProvider`。
+> 组件仍只监听低频 `marksRevision`，不会因下载进度变化重建设长列表；没有
+> `ProviderScope` 的独立预览 / 组件测试继续静默不显示。网盘、收藏与分享列表
+> 的三个直接验证测试已通过 Riverpod override 注入同一管理器。
 
 ### 阶段 6：移除旧 Provider
 
