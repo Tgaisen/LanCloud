@@ -28,6 +28,7 @@
 | `tools\agent.cmd test`（NavigationState 阶段 3） | 增量 | **315 tests, all passed** | 约 61 s |
 | `tools\agent.cmd test`（DriveState 阶段 3） | 增量 | **318 tests, all passed** | 约 61 s |
 | `tools\agent.cmd test`（AccountState 阶段 3） | 增量 | **321 tests, all passed** | 约 63 s |
+| `tools\agent.cmd test`（SettingsState 所有权） | 增量 | **322 tests, all passed** | 约 60 s |
 
 工具链：Flutter 3.47.7（stable）/ Dart 3.13.5 / DevTools 2.60.0。
 静态检查：`analysis_options.yaml` 已开启 `strict-casts` / `strict-inference` / `strict-raw-types`。
@@ -40,7 +41,7 @@
 | `lib` 总行数 | 约 4.7 万 |
 | `test` 测试文件 | 123（平铺，`<主题>_test.dart`） |
 | `test` 总行数 | 约 2 万 |
-| `test` 用例数 | 651（当前总数；本次只验证了受影响增量） |
+| `test` 用例数 | 652（当前总数；本次只验证了受影响增量） |
 | `lib/ui` 页面与组件 | 40 个平铺文件 |
 | `lib/core` | 32 个平铺文件 + 5 个子系统目录 |
 | 文案（`app_zh.arb`） | 1357 行 |
@@ -95,5 +96,7 @@
   增至 650。
 - 2026-10-30 的 AccountState 首片新增 1 个测试，覆盖旧 API 与 store 同一性；
   增量 52 个文件 / 321 个测试通过，当前总数由 650 增至 651。
+- 2026-10-30 的 SettingsState 所有权首片新增 1 个测试，覆盖旧 API 与 store
+  同一性；增量 52 个文件 / 322 个测试通过，当前总数由 651 增至 652。
 - 若临时再改 `analysis_options.yaml` 加规则，issue 数会变；先把预期数量记在这里再跑，
   避免和「本次改坏」混淆。

@@ -15,7 +15,6 @@ import 'core/app_log_provider.dart';
 import 'core/backup/backup_service.dart';
 import 'core/api/lanzou_client_registry.dart';
 import 'core/data/app_db_provider.dart';
-import 'core/data/settings_store_provider.dart';
 import 'core/download_path_service.dart';
 import 'core/drive_state.dart';
 import 'core/navigation_state.dart';
@@ -24,6 +23,7 @@ import 'core/notifications.dart';
 import 'core/notifications_provider.dart';
 import 'core/platform_support.dart';
 import 'core/share_inbox.dart';
+import 'core/settings_state.dart';
 import 'core/shared_downloads_gateway.dart';
 import 'core/system_motion.dart';
 import 'core/third_party_licenses.dart';
@@ -125,12 +125,12 @@ Future<void> main() async {
       navigationStateProvider.overrideWithValue(app.navigation),
       driveStateProvider.overrideWithValue(app.drive),
       accountStateProvider.overrideWithValue(app.accountState),
+      settingsStateProvider.overrideWithValue(app.settingsState),
       notificationServiceProvider.overrideWithValue(
         NotificationService.instance,
       ),
       downloadPathServiceProvider.overrideWithValue(downloadPaths),
       sharedDownloadsGatewayProvider.overrideWithValue(sharedDownloads),
-      settingsStoreProvider.overrideWithValue(app.settings),
     ],
   );
   final transfers = TransferManager(

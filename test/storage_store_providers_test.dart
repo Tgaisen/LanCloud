@@ -6,12 +6,14 @@ import 'package:lancloud/core/data/account_store.dart';
 import 'package:lancloud/core/data/account_store_provider.dart';
 import 'package:lancloud/core/data/settings_store.dart';
 import 'package:lancloud/core/data/settings_store_provider.dart';
+import 'package:lancloud/core/settings_state.dart';
 
 void main() {
   test('settingsStoreProvider 提供入口注入的同一设置存储', () {
     final settings = SettingsStore();
+    final settingsState = SettingsState(store: settings);
     final container = ProviderContainer(
-      overrides: [settingsStoreProvider.overrideWithValue(settings)],
+      overrides: [settingsStateProvider.overrideWithValue(settingsState)],
     );
     addTearDown(container.dispose);
 
@@ -36,5 +38,14 @@ void main() {
 
     expect(identical(app.accountState, accountState), isTrue);
     expect(identical(app.accounts, accountState.store), isTrue);
+  });
+
+  test('AppController.settings 转发到同一 SettingsState', () {
+    final settingsState = SettingsState();
+    final app = AppController(settingsState: settingsState);
+    addTearDown(app.dispose);
+
+    expect(identical(app.settingsState, settingsState), isTrue);
+    expect(identical(app.settings, settingsState.store), isTrue);
   });
 }

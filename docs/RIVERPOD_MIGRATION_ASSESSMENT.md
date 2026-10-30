@@ -319,6 +319,10 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > `AccountState` 首片已落地：唯一持有现有 `AccountStore`，`accountStoreProvider`
 > 从该状态派生，`AppController.accounts` 只转发同一 store。账号持久化格式、
 > 当前 UID 与登录信息字段仍由 `AccountStore` 负责，没有复制状态。
+>
+> `SettingsState` 所有权首片已落地：唯一持有现有 `SettingsStore`，
+> `settingsStoreProvider` 从该状态派生，旧 `AppController.settings` 只转发。
+> 35 个设置 setter、默认值和持久化键尚未拆分，后续按设置组逐步迁移。
 
 ### 阶段 4：迁移 UI 消费端
 

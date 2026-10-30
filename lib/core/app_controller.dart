@@ -22,6 +22,7 @@ import 'dynamic_color_support.dart';
 import 'navigation_state.dart';
 import 'platform_support.dart';
 import 'saf_storage.dart';
+import 'settings_state.dart';
 import 'shared_downloads_gateway.dart';
 import 'system_motion.dart';
 
@@ -34,6 +35,7 @@ class AppController extends ChangeNotifier {
     NavigationState? navigation,
     DriveState? drive,
     AccountState? accountState,
+    SettingsState? settingsState,
   }) : _sharedDownloads =
            sharedDownloads ?? const PlatformSharedDownloadsGateway(),
        _downloadPaths =
@@ -44,14 +46,16 @@ class AppController extends ChangeNotifier {
            ),
        navigation = navigation ?? NavigationState(),
        drive = drive ?? DriveState(),
-       accountState = accountState ?? AccountState() {
+       accountState = accountState ?? AccountState(),
+       settingsState = settingsState ?? SettingsState() {
     this.navigation.addListener(notifyListeners);
   }
 
   final AccountState accountState;
+  final SettingsState settingsState;
 
   AccountStore get accounts => accountState.store;
-  final SettingsStore settings = SettingsStore();
+  SettingsStore get settings => settingsState.store;
   final AppDb db = AppDb.instance;
   DriveCache get driveCache => drive.cache;
   final SharedDownloadsGateway _sharedDownloads;
