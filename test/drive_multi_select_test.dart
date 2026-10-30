@@ -1,11 +1,13 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/semantics.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/api/models.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/data/account_store.dart';
 import 'package:lancloud/core/drive_cache.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
+import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/app_icons.dart' as app_icons;
 import 'package:lancloud/ui/common.dart';
@@ -40,16 +42,19 @@ Future<AppController> host(
   );
   final manager = TransferManager(app);
   await tester.pumpWidget(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider<AppController>.value(value: app),
-        ChangeNotifierProvider<TransferManager>.value(value: manager),
-      ],
-      child: MaterialApp(
-        localizationsDelegates: appLocalizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        locale: const Locale('zh'),
-        home: const DrivePage(tabIndex: 0),
+    ProviderScope(
+      overrides: [transferManagerProvider.overrideWithValue(manager)],
+      child: MultiProvider(
+        providers: [
+          ChangeNotifierProvider<AppController>.value(value: app),
+          ChangeNotifierProvider<TransferManager>.value(value: manager),
+        ],
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const DrivePage(tabIndex: 0),
+        ),
       ),
     ),
   );

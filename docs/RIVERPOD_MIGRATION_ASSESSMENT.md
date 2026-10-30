@@ -608,6 +608,10 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > 已下载任务的二级菜单随后改为从当前 `ProviderScope` 读取管理器，菜单关闭条件
 > 与任务操作保持不变。分享文件属性弹窗同时迁为 `ConsumerStatefulWidget`，
 > 下载状态、进度环和菜单入口均使用 Riverpod 中的同一管理器实例。
+>
+> `DrivePage` 随后迁为 `ConsumerStatefulWidget`，页面在 `initState` 中通过
+> `ref.read(transferManagerProvider)` 获取管理器并注册 / 注销任务监听。该切片
+> 只迁移生命周期所有权；上传、批量下载、属性卡和已下载菜单回调仍在后续切片。
 
 ### 阶段 6：移除旧 Provider
 

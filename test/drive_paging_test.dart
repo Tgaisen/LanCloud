@@ -1,9 +1,11 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/api/lanzou_client.dart';
 import 'package:lancloud/core/api/models.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
+import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/delegates.dart';
 import 'package:lancloud/ui/drive_page.dart';
@@ -79,19 +81,22 @@ void main() {
     addTearDown(tester.view.reset);
 
     await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider<AppController>.value(value: app),
-          ChangeNotifierProvider<TransferManager>.value(value: manager),
-        ],
-        child: MaterialApp(
-          localizationsDelegates: appLocalizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          locale: const Locale('zh'),
-          home: const DrivePage(
-            initialFolderId: 'sub',
-            initialName: '子目录',
-            tabIndex: 0,
+      ProviderScope(
+        overrides: [transferManagerProvider.overrideWithValue(manager)],
+        child: MultiProvider(
+          providers: [
+            ChangeNotifierProvider<AppController>.value(value: app),
+            ChangeNotifierProvider<TransferManager>.value(value: manager),
+          ],
+          child: MaterialApp(
+            localizationsDelegates: appLocalizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            locale: const Locale('zh'),
+            home: const DrivePage(
+              initialFolderId: 'sub',
+              initialName: '子目录',
+              tabIndex: 0,
+            ),
           ),
         ),
       ),
@@ -117,19 +122,22 @@ void main() {
     addTearDown(tester.view.reset);
 
     await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider<AppController>.value(value: app),
-          ChangeNotifierProvider<TransferManager>.value(value: manager),
-        ],
-        child: MaterialApp(
-          localizationsDelegates: appLocalizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          locale: const Locale('zh'),
-          home: const DrivePage(
-            initialFolderId: 'sub',
-            initialName: '子目录',
-            tabIndex: 0,
+      ProviderScope(
+        overrides: [transferManagerProvider.overrideWithValue(manager)],
+        child: MultiProvider(
+          providers: [
+            ChangeNotifierProvider<AppController>.value(value: app),
+            ChangeNotifierProvider<TransferManager>.value(value: manager),
+          ],
+          child: MaterialApp(
+            localizationsDelegates: appLocalizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            locale: const Locale('zh'),
+            home: const DrivePage(
+              initialFolderId: 'sub',
+              initialName: '子目录',
+              tabIndex: 0,
+            ),
           ),
         ),
       ),
@@ -165,17 +173,20 @@ void main() {
     addTearDown(tester.view.reset);
 
     await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider<AppController>.value(value: app),
-          ChangeNotifierProvider<TransferManager>.value(value: manager),
-        ],
-        child: MaterialApp(
-          localizationsDelegates: appLocalizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          locale: const Locale('zh'),
-          // 从根目录开始，点进「子目录」验证目录切换这条路径
-          home: const DrivePage(tabIndex: 0),
+      ProviderScope(
+        overrides: [transferManagerProvider.overrideWithValue(manager)],
+        child: MultiProvider(
+          providers: [
+            ChangeNotifierProvider<AppController>.value(value: app),
+            ChangeNotifierProvider<TransferManager>.value(value: manager),
+          ],
+          child: MaterialApp(
+            localizationsDelegates: appLocalizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            locale: const Locale('zh'),
+            // 从根目录开始，点进「子目录」验证目录切换这条路径
+            home: const DrivePage(tabIndex: 0),
+          ),
         ),
       ),
     );

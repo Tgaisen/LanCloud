@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:lpinyin/lpinyin.dart';
 import 'package:path/path.dart' as p;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:provider/provider.dart';
 
 import '../core/api/lanzou_client.dart';
@@ -14,6 +15,7 @@ import '../core/drive_cache.dart';
 import '../core/file_picker_channel.dart';
 import '../core/platform_support.dart';
 import '../core/transfer/transfer_manager.dart';
+import '../core/transfer/transfer_manager_provider.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
@@ -44,7 +46,7 @@ enum _FolderMenuAction {
   delete,
 }
 
-class DrivePage extends StatefulWidget {
+class DrivePage extends ConsumerStatefulWidget {
   const DrivePage({
     super.key,
     this.initialFolderId = '-1',
@@ -59,7 +61,7 @@ class DrivePage extends StatefulWidget {
   final int? tabIndex;
 
   @override
-  State<DrivePage> createState() => _DrivePageState();
+  ConsumerState<DrivePage> createState() => _DrivePageState();
 }
 
 typedef _DriveViewSettings = ({
@@ -69,7 +71,7 @@ typedef _DriveViewSettings = ({
   bool hideBottomBar,
 });
 
-class _DrivePageState extends State<DrivePage>
+class _DrivePageState extends ConsumerState<DrivePage>
     with
         TickerProviderStateMixin,
         AutomaticKeepAliveClientMixin,
@@ -190,7 +192,7 @@ class _DrivePageState extends State<DrivePage>
         0;
     final app = context.read<AppController>();
     _sortMode = app.settings.sortMode;
-    _transfers = context.read<TransferManager>()..addTaskListener(_onTaskDone);
+    _transfers = ref.read(transferManagerProvider)..addTaskListener(_onTaskDone);
     if (widget.initialName != null) {
       _path = [PathNode(id: widget.initialFolderId, name: widget.initialName!)];
     }
