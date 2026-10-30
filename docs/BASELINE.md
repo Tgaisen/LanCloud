@@ -99,6 +99,7 @@
 | `tools\agent.cmd test`（显示 Cookie 设置行） | 增量 | **1 test, all passed** | 约 15 s |
 | `tools\agent.cmd test`（分享文件属性弹窗） | 增量 | **8 tests, all passed** | 约 14 s |
 | `tools\agent.cmd test`（WebView 登录消费端） | 全量 | **719 tests, all passed** | 约 110 s |
+| `tools\agent.cmd analyze`（阶段 6 准备后续切片） | 全量 | No issues found | 约 18 s |
 
 工具链：Flutter 3.47.7（stable）/ Dart 3.13.5 / DevTools 2.60.0。
 静态检查：`analysis_options.yaml` 已开启 `strict-casts` / `strict-inference` / `strict-raw-types`。
