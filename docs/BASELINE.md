@@ -100,6 +100,7 @@
 | `tools\agent.cmd test`（分享文件属性弹窗） | 增量 | **8 tests, all passed** | 约 14 s |
 | `tools\agent.cmd test`（WebView 登录消费端） | 全量 | **719 tests, all passed** | 约 110 s |
 | `tools\agent.cmd analyze`（阶段 6 准备后续切片） | 全量 | No issues found | 约 18 s |
+| `tools\agent.cmd test`（共享收藏 / 分享下载 helper） | 增量 | **302 tests, all passed** | 约 57 s |
 
 工具链：Flutter 3.47.7（stable）/ Dart 3.13.5 / DevTools 2.60.0。
 静态检查：`analysis_options.yaml` 已开启 `strict-casts` / `strict-inference` / `strict-raw-types`。
@@ -352,6 +353,11 @@
   入口仍暂时依赖旧控制器。
 - 2026-10-31 WebView 登录页保存 Cookie 改走 `accountLoginProvider`；该页无直接
   Widget 测试，因此执行全量验证，719 个测试全部通过，用例总数保持 719。
+- 2026-10-31 `common.dart` 的收藏查询、收藏切换、单文件下载和批量下载 helper
+  统一改从 `appDbProvider`、`lanzouClientRegistryProvider` 与
+  `transferManagerProvider` 读取依赖；分享属性弹窗和单文件下载测试已移除直接
+  测试宿主中的 `ChangeNotifierProvider<AppController>`。增量 52 个测试文件 /
+  302 个测试通过，用例总数保持 719。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release

@@ -315,31 +315,32 @@ void main() {
     final app = _FakeApp(client);
     addTearDown(app.dispose);
     final manager = TransferManager(app);
+    final clients = LanzouClientRegistry(factory: (_) => app.dialogClient);
     var asked = 0;
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [transferManagerProvider.overrideWithValue(manager)],
-        child: ChangeNotifierProvider<AppController>.value(
-          value: app,
-          child: MaterialApp(
-            localizationsDelegates: appLocalizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            locale: const Locale('zh'),
-            home: Scaffold(
-              body: Builder(
-                builder: (context) => TextButton(
-                  onPressed: () => downloadShareFile(
-                    context,
-                    url: 'https://example.com/i1',
-                    pwd: 'oldpass',
-                    showLoading: false,
-                    askPassword: () async {
-                      asked += 1;
-                      return 'newpass';
-                    },
-                  ),
-                  child: const Text('下载'),
+        overrides: [
+          transferManagerProvider.overrideWithValue(manager),
+          lanzouClientRegistryProvider.overrideWithValue(clients),
+        ],
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => TextButton(
+                onPressed: () => downloadShareFile(
+                  context,
+                  url: 'https://example.com/i1',
+                  pwd: 'oldpass',
+                  showLoading: false,
+                  askPassword: () async {
+                    asked += 1;
+                    return 'newpass';
+                  },
                 ),
+                child: const Text('下载'),
               ),
             ),
           ),

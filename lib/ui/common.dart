@@ -13,7 +13,9 @@ import 'package:local_auth_darwin/local_auth_darwin.dart';
 import 'package:provider/provider.dart';
 
 import '../core/api/lanzou_client.dart';
+import '../core/api/lanzou_client_registry.dart';
 import '../core/app_controller.dart';
+import '../core/data/app_db_provider.dart';
 import '../core/navigation_appearance_settings_state.dart';
 import '../core/navigation_state.dart';
 import '../core/transfer/transfer_manager_provider.dart';
@@ -4671,7 +4673,8 @@ Future<void> showLoadingDialog(BuildContext context, String text) {
 /// 查一个分享条目（`ref` = 分享链接）是否已收藏。查不到（例如库不可用）按未收藏。
 Future<bool> isFavoritedByRef(BuildContext context, String ref) async {
   try {
-    return await context.read<AppController>().db.isFavorite(ref);
+    final container = ProviderScope.containerOf(context, listen: false);
+    return await container.read(appDbProvider).isFavorite(ref);
   } catch (_) {
     return false;
   }
@@ -4688,15 +4691,18 @@ Future<bool?> toggleFavoriteByRef(
   String size = '',
   String sharer = '',
 }) async {
-  final app = context.read<AppController>();
+  final db = ProviderScope.containerOf(
+    context,
+    listen: false,
+  ).read(appDbProvider);
   final l10n = context.l10n;
   try {
-    if (await app.db.isFavorite(ref)) {
-      await app.db.removeFavorite(ref);
+    if (await db.isFavorite(ref)) {
+      await db.removeFavorite(ref);
       if (context.mounted) showAppToast(context, l10n.unfavorited);
       return false;
     }
-    await app.db.addFavorite(
+    await db.addFavorite(
       kind: kind,
       name: name,
       ref: ref,
@@ -4729,11 +4735,12 @@ Future<bool> downloadShareFile(
   /// 属性弹窗传这个回调：补密码后继续下载，并把新密码同步到收藏夹。
   Future<String?> Function()? askPassword,
 }) async {
-  final app = context.read<AppController>();
-  final transfers = ProviderScope.containerOf(
+  final container = ProviderScope.containerOf(
     context,
     listen: false,
-  ).read(transferManagerProvider);
+  );
+  final client = container.read(lanzouClientRegistryProvider).publicClient;
+  final transfers = container.read(transferManagerProvider);
   final navigator = Navigator.of(context);
   final messenger = ScaffoldMessenger.of(context);
   final l10n = context.l10n;
@@ -4752,7 +4759,7 @@ Future<bool> downloadShareFile(
   while (true) {
     String? passwordError;
     try {
-      final direct = await app.publicClient.resolveFileShare(
+      final direct = await client.resolveFileShare(
         url,
         pwd: currentPwd,
       );
@@ -4762,7 +4769,7 @@ Future<bool> downloadShareFile(
         name: direct.name.isEmpty ? (fallbackName ?? 'download') : direct.name,
         referer: url,
         pwd: currentPwd,
-        via: app.publicClient,
+        via: client,
       );
       notify(l10n.addedToQueue);
       return true;
@@ -4803,11 +4810,12 @@ Future<void> downloadShareFiles(
   String pwd = '',
 }) async {
   if (urls.isEmpty || urls.length != names.length) return;
-  final app = context.read<AppController>();
-  final transfers = ProviderScope.containerOf(
+  final container = ProviderScope.containerOf(
     context,
     listen: false,
-  ).read(transferManagerProvider);
+  );
+  final client = container.read(lanzouClientRegistryProvider).publicClient;
+  final transfers = container.read(transferManagerProvider);
   final messenger = ScaffoldMessenger.of(context);
   final l10n = context.l10n;
   var added = 0;
@@ -4820,7 +4828,7 @@ Future<void> downloadShareFiles(
       for (var i = 0; i < urls.length; i++) {
         report(i + 1, names[i]);
         try {
-          final direct = await app.publicClient.resolveFileShare(
+          final direct = await client.resolveFileShare(
             urls[i],
             pwd: pwd,
           );
@@ -4829,7 +4837,7 @@ Future<void> downloadShareFiles(
             name: direct.name.isEmpty ? names[i] : direct.name,
             referer: urls[i],
             pwd: pwd,
-            via: app.publicClient,
+            via: client,
           );
           added += 1;
         } catch (_) {

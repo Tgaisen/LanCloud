@@ -13,7 +13,6 @@ import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/app_icons.dart';
 import 'package:lancloud/ui/m3e.dart';
 import 'package:lancloud/ui/share_file_sheet.dart';
-import 'package:provider/provider.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
@@ -114,20 +113,17 @@ Future<void> _pumpSheet(
         transferManagerProvider.overrideWithValue(transfers),
         lanzouClientRegistryProvider.overrideWithValue(clients),
       ],
-      child: ChangeNotifierProvider<AppController>.value(
-        value: app,
-        child: MaterialApp(
-          localizationsDelegates: appLocalizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          locale: const Locale('zh'),
-          home: Scaffold(
-            body: ShareFileInfoSheet(
-              name: 'a.zip',
-              url: 'https://example.com/abcdef',
-              pwd: '',
-              size: size,
-              invalid: invalid,
-            ),
+      child: MaterialApp(
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('zh'),
+        home: Scaffold(
+          body: ShareFileInfoSheet(
+            name: 'a.zip',
+            url: 'https://example.com/abcdef',
+            pwd: '',
+            size: size,
+            invalid: invalid,
           ),
         ),
       ),

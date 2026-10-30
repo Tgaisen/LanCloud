@@ -736,6 +736,13 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > WebView 登录页随后也改为通过 `accountLoginProvider` 保存捕获到的 Cookie；
 > 页面不再读取 `AppController`。该页缺少可直接自动化的 WebView Widget 测试，
 > 因此本轮改跑完整测试套件，719 个测试全部通过。
+>
+> `common.dart` 的共享收藏与分享下载入口随后统一迁入 Riverpod：
+> `isFavoritedByRef` / `toggleFavoriteByRef` 读取 `appDbProvider`，
+> `downloadShareFile` / `downloadShareFiles` 读取
+> `lanzouClientRegistryProvider` 与 `transferManagerProvider`。分享文件属性
+> 弹窗及单文件下载测试宿主已可在不注册 `ChangeNotifierProvider<AppController>`
+> 的情况下运行。相关增量 52 个测试文件 / 302 个测试通过。
 
 ### 阶段 6：移除旧 Provider
 
