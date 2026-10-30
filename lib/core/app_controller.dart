@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import 'api/lanzou_client.dart';
+import 'api/lanzou_client_registry.dart';
 import 'app_log.dart';
 import 'data/account_store.dart';
 import 'data/app_db.dart';
@@ -45,8 +46,7 @@ class AppController extends ChangeNotifier {
   final AppDb db = AppDb.instance;
   final DriveCache driveCache = DriveCache();
 
-  final Map<String, LanzouClient> _clients = {};
-  LanzouClient? _publicClient;
+  final LanzouClientRegistry clientRegistry = LanzouClientRegistry();
 
   bool ready = false;
   bool secureStorageNeedsReauthentication = false;
@@ -136,7 +136,7 @@ class AppController extends ChangeNotifier {
     }
     await settings.load();
     _applyRuntimeSettings();
-    _clients.clear();
+    clientRegistry.clearAccounts();
     await driveCache.bindAccount(accounts.activeUid);
     if (!settings.cacheFolders) driveCache.clear();
     notifyListeners();
@@ -441,15 +441,13 @@ class AppController extends ChangeNotifier {
     return uid == null ? null : clientFor(uid);
   }
 
-  LanzouClient clientFor(String uid) => _clients.putIfAbsent(uid, () {
-    final account = accounts.byUid(uid);
-    final c = LanzouClient(uid: uid);
-    if (account != null) c.setCookieHeader(account.cookie);
-    return c;
-  });
+  LanzouClient clientFor(String uid) => clientRegistry.clientFor(
+    uid,
+    cookie: accounts.byUid(uid)?.cookie,
+  );
 
   /// 用于解析公开分享链接（不依赖登录态）。
-  LanzouClient get publicClient => _publicClient ??= LanzouClient(uid: '0');
+  LanzouClient get publicClient => clientRegistry.publicClient;
 
   Future<void> addAccountFromCookie(String rawCookie) async {
     final cookie = rawCookie.trim();
@@ -457,7 +455,7 @@ class AppController extends ChangeNotifier {
     if (uid == null) {
       throw const CookieFormatException();
     }
-    final c = LanzouClient(uid: uid)..setCookieHeader(cookie);
+    final c = clientRegistry.create(uid, cookie: cookie);
     final ok = await c.verify();
     if (!ok) throw const CookieInvalidException();
     var nickname = '';
@@ -470,7 +468,7 @@ class AppController extends ChangeNotifier {
     await accounts.upsert(
       Account(uid: uid, cookie: cookie, nickname: nickname, level: level),
     );
-    _clients[uid] = c;
+    clientRegistry.store(uid, c);
     // 新账号登入后同样清掉上一个账号的网盘缓存
     await driveCache.bindAccount(accounts.activeUid);
     notifyListeners();
@@ -521,7 +519,7 @@ class AppController extends ChangeNotifier {
       } catch (_) {}
     }
     await accounts.remove(uid);
-    _clients.remove(uid);
+    clientRegistry.remove(uid);
     await driveCache.bindAccount(accounts.activeUid);
     notifyListeners();
   }

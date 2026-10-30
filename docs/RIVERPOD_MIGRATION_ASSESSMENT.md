@@ -264,7 +264,11 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 
 > **实施进度（2026-10-30）**：已建立 `appDbProvider`，返回既有
 > `AppDb.instance`；应用入口用 `AppController.db` 覆盖同一实例，确保双栈期间
-> 仍只有一份数据库连接。阶段 2 的客户端注册表及其余服务尚未迁移。
+> 仍只有一份数据库连接。客户端缓存也已收拢到 `LanzouClientRegistry` 并通过
+> `lanzouClientRegistryProvider` 暴露；`AppController` 保留原公开方法，内部
+> 改为使用同一注册表。运行日志已通过 `appLogProvider` 暴露，更新服务的失败
+> 记录改从 provider 读取；初始化仍保持在容器创建前。路径、通知和持久化接口
+> 尚未迁移。
 
 ### 阶段 3：拆分可监听状态
 

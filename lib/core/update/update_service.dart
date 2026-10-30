@@ -7,7 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../app_info.dart';
-import '../app_log.dart';
+import '../app_log_provider.dart';
 import '../data/settings_store.dart';
 import '../platform_support.dart';
 import 'release_info.dart';
@@ -187,7 +187,7 @@ class UpdateService extends Notifier<UpdateState> {
     } catch (error) {
       failure = failureCodeOf(error);
       // 失败细节进运行日志（用户可在设置里导出），界面只显示状态
-      AppLog.instance.error('update', error, null);
+      ref.read(appLogProvider).error('update', error, null);
     }
     final checkedAt = ok ? _now : null;
     final attemptedAt = _now;

@@ -10,7 +10,9 @@ import 'package:provider/provider.dart';
 import 'app.dart';
 import 'core/app_controller.dart';
 import 'core/app_log.dart';
+import 'core/app_log_provider.dart';
 import 'core/backup/backup_service.dart';
+import 'core/api/lanzou_client_registry.dart';
 import 'core/data/app_db_provider.dart';
 import 'core/incoming_links.dart';
 import 'core/notifications.dart';
@@ -104,6 +106,8 @@ Future<void> main() async {
   final updateContainer = ProviderContainer(
     overrides: [
       appDbProvider.overrideWithValue(app.db),
+      appLogProvider.overrideWithValue(AppLog.instance),
+      lanzouClientRegistryProvider.overrideWithValue(app.clientRegistry),
       updateSettingsProvider.overrideWithValue(app.settings),
     ],
   );

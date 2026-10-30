@@ -19,6 +19,8 @@
 | `tools\agent.cmd analyze`（UpdateService 阶段 1） | 增量 | No issues found | 约 21 s |
 | `tools\agent.cmd test`（UpdateService 阶段 1） | 增量 | **334 tests, all passed** | 约 68 s |
 | `tools\agent.cmd test`（AppDb provider） | 增量 | **1 test, all passed** | 约 12 s |
+| `tools\agent.cmd test`（LanzouClient 注册表） | 增量 | **311 tests, all passed** | 约 61 s |
+| `tools\agent.cmd test`（AppLog provider） | 增量 | **339 tests, all passed** | 约 59 s |
 
 工具链：Flutter 3.47.7（stable）/ Dart 3.13.5 / DevTools 2.60.0。
 静态检查：`analysis_options.yaml` 已开启 `strict-casts` / `strict-inference` / `strict-raw-types`。
@@ -31,7 +33,7 @@
 | `lib` 总行数 | 约 4.7 万 |
 | `test` 测试文件 | 123（平铺，`<主题>_test.dart`） |
 | `test` 总行数 | 约 2 万 |
-| `test` 用例数 | 631（当前总数；本次只验证了受影响增量） |
+| `test` 用例数 | 636（当前总数；本次只验证了受影响增量） |
 | `lib/ui` 页面与组件 | 40 个平铺文件 |
 | `lib/core` | 32 个平铺文件 + 5 个子系统目录 |
 | 文案（`app_zh.arb`） | 1357 行 |
@@ -62,5 +64,10 @@
   尚未用本轮改动执行全量测试。
 - 2026-10-30 的 AppDb provider 阶段 2 叶子新增 1 个测试，当前总数由 630 增至
   631；本次只运行了该 provider 的增量测试。
+- 2026-10-30 的 LanzouClient 注册表切片新增 4 个测试，并覆盖备份恢复时保留
+  公开客户端；增量 48 个文件 / 311 个测试通过，当前总数由 631 增至 635。
+- 2026-10-30 的 AppLog provider 叶子新增 1 个测试，并将 UpdateService 的失败
+  日志改为 provider 读取；增量 50 个文件 / 339 个测试通过，当前总数由 635 增至
+  636。
 - 若临时再改 `analysis_options.yaml` 加规则，issue 数会变；先把预期数量记在这里再跑，
   避免和「本次改坏」混淆。
