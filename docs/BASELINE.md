@@ -86,6 +86,7 @@
 | `tools\agent.cmd test`（移除传输旧 Provider 注册） | 全量 | **715 tests, all passed** | 约 108 s |
 | `tools\agent.cmd test`（清理最后测试宿主） | 增量 | **17 tests, all passed** | 约 17 s |
 | `tools\agent.cmd test`（阶段 5 最终收尾 HEAD） | 全量 | **715 tests, all passed** | 约 111 s |
+| `tools\agent.cmd test`（阶段 6 准备首个切片） | 增量 | **366 tests, all passed** | 约 66 s |
 | `tools\agent.cmd analyze`（阶段 4 消费端完成后） | 全量 | No issues found | 约 27 s |
 | `tools\agent.cmd test`（阶段 4 消费端完成后） | 全量 | **707 tests, all passed** | 约 113 s |
 | `tools\agent.cmd analyze`（阶段 5 消费端完成后） | 全量 | No issues found | 约 31 s |
@@ -102,7 +103,7 @@
 | `lib` 总行数 | 约 4.4 万 |
 | `test` 测试文件 | 155（平铺，`<主题>_test.dart`） |
 | `test` 总行数 | 约 2.1 万 |
-| `test` 用例数 | 715（当前总数；阶段 5 已新增 8 个边界测试） |
+| `test` 用例数 | 717（当前总数；阶段 6 准备已新增 2 条登录服务测试） |
 | `lib/ui` 页面与组件 | 54 个平铺文件 |
 | `lib/core` | 32 个平铺文件 + 5 个子系统目录 |
 | 文案（`app_zh.arb`） | 1357 行 |
@@ -314,11 +315,15 @@
   17 个测试通过，用例总数保持 715。全仓已无
   `ChangeNotifierProvider<TransferManager>`。
 - 2026-10-30 阶段 5 最终 HEAD 全量复验：`agent.cmd test` 715 个测试全部通过。
-  阶段 6 准入审计确认 AppController 的 Provider 消费面、Windows 上游崩溃、
-  iOS 人工验收和集成测试盲区仍是阻塞项。
-- 2026-10-30 Windows 已知阻塞：Flutter 3.47.x 的 OverlayPortal 孤儿语义节点问题
-  可在传输页滚动和拖放释放时触发原生崩溃（flutter#190357，修复 PR #193372
-  未进入当前稳定版 3.47.9）。该项阻塞阶段 6 的 Windows 人工验收。
+  阶段 6 准入审计确认 AppController 的 Provider 消费面和集成测试盲区仍是
+  主要阻塞项。
+- 2026-10-30 Windows 间歇风险：Flutter 3.47.x 的 OverlayPortal 孤儿语义节点
+  问题曾在传输页滚动和拖放释放时触发原生崩溃（flutter#190357）。重新构建的
+  便携包和 `26.1.0-pre.19` 正式 Release 均未复现；修复 PR #193372 仍未进入
+  稳定版 3.47.9，后续继续回归观察。iOS 无适配计划，不纳入迁移验收。
+- 2026-10-30 阶段 6 准备首个切片新增 `AccountLogin`，覆盖成功登录以及 Cookie
+  格式错误 / 验证失败两条用例；增量 65 个测试文件 / 366 个测试通过，当前总数
+  由 715 增至 717。登录页 UI 尚未迁移。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release

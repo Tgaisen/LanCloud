@@ -648,12 +648,14 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > 启动时仍主动读取一次 `transferManagerProvider`，保持任务恢复和后台服务启动
 > 顺序不变。生产代码和启动装配都只从 Riverpod 获取传输管理器。
 >
-> **Windows 阻塞项（2026-10-30）**：传输页滚动与文件拖放释放均可在 Windows
+> **Windows 间歇风险（2026-10-30）**：传输页滚动与文件拖放释放曾在 Windows
 > 触发 Flutter 原生语义树崩溃，调用栈分别落在
 > `AXNodeData::GetStringAttribute` 和 `FlutterPlatformNodeDelegate::ChildAtIndex`。
 > 根因与 [flutter#190357](https://github.com/flutter/flutter/issues/190357) 的
 > OverlayPortal 孤儿语义节点问题一致；修复 PR #193372 尚未进入当前稳定的
-> Flutter 3.47.9。阶段 6 的 Windows 人工验收暂标记为上游阻塞。
+> Flutter 3.47.9。重新构建的便携包以及 GitHub Release 的
+> `26.1.0-pre.19` 均未能再次复现拖放崩溃，因此该项降级为上游间歇风险并继续
+> 回归观察，不再作为阶段 6 的硬阻塞。
 >
 > 最后两个仍注册旧传输 Provider 的测试宿主（分享文件属性弹窗、应用外壳）也已
 > 切换为 `ProviderScope` override。至此生产代码、启动装配和测试宿主都不再注册
@@ -667,21 +669,27 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 >   `context.read<AppController>` 和 11 处 `context.select<AppController>`；
 >   `main.dart` 仍注册 `ChangeNotifierProvider<AppController>`。
 > - 未满足：测试仍有 32 个文件、55 处 AppController Provider 注册。
-> - 未满足：Windows 传输页滚动和拖放可触发 Flutter 上游 UIA 语义树崩溃，
->   当前稳定版 3.47.9 未包含修复 PR #193372。
-> - 未满足：当前环境无法完成 iOS 启动、返回手势、后台传输和备份恢复人工验收。
+> - 观察项：Windows 传输页滚动和拖放曾触发 Flutter 上游 UIA 语义树崩溃；
+>   最新便携包与 `26.1.0-pre.19` 正式 Release 均未复现，但稳定版 3.47.9
+>   仍不包含修复 PR #193372，继续保留回归观察。
 > - 自动化盲区：项目仍无 `integration_test` 和 golden test；715 个测试主要覆盖
 >   Dart/Widget 层，无法发现上述 Windows 原生 UIA 崩溃。
 >
 > 结论：阶段 5 已完成；阶段 6 不直接进入。先按模块拆分迁移
 > `AppController` 的 Provider 消费面，并等待包含 #193372 的 Flutter 版本完成
-> Windows 复验。iOS 验收若长期无设备，需要明确记录例外后才能移除 Provider。
+> Windows 回归观察。iOS 明确不在当前产品适配与验收范围内，不作为迁移门禁。
 >
 > **阶段 6 准备授权（2026-10-30）**：允许建立并执行 `AppController` 消费端的
 > 逐页迁移计划，从登录、协议、关于页等叶子页面开始。准备阶段仍保留 `provider`
 > 依赖、`main.dart` 的 AppController 注入和现有状态所有权；不删除依赖，不把
 > 阶段 6 标记为完成。每个切片必须独立保持 `analyze` 0 issue、`agent.cmd test`
-> 通过。Windows 上游 UIA 阻塞和 iOS 人工验收缺口继续有效。
+> 通过。Windows 上游 UIA 问题继续回归观察；iOS 不纳入当前迁移门禁。
+>
+> **阶段 6 准备进度（2026-10-30）**：首个切片建立 `AccountLogin`，统一 Cookie
+> 格式校验、远端验证、账号资料落盘、客户端缓存和网盘缓存切换。`AccountState`
+> 增加账号变化通知，`AppController` 仅转发该通知；旧
+> `addAccountFromCookie` 方法保留兼容签名并委托同一服务。登录页 UI 尚未切换，
+> 当前只完成可注入业务边界与两条服务测试。
 
 ### 阶段 6：移除旧 Provider
 
@@ -691,7 +699,8 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 - 测试包装只保留 `ProviderScope`。
 - 不再依赖 Riverpod 的 `ChangeNotifierProvider` 兼容层，或已明确决定长期保留的少数
   对象。
-- Android、iOS、Windows 的启动、返回手势、后台传输和备份恢复均完成人工验收。
+- Android、Windows 的启动、返回手势、后台传输和备份恢复均完成人工验收。
+  iOS 当前无适配计划，不纳入迁移门禁。
 
 完成后删除 `provider` 依赖和兼容测试辅助函数，避免长期双栈。
 

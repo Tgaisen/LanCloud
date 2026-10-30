@@ -51,6 +51,7 @@
 | `NavigationState` | `core/navigation_state.dart` | 阶段 3：多选、返回处理器、`driveCanHandleBack`、当前 Tab 和顶/底栏高频进度的唯一所有者；旧 `AppController` 仅转发 |
 | `DriveState` | `core/drive_state.dart` | 阶段 3：目录缓存、目录请求、当前位置和可见性探针的唯一所有者；`DriveLocation` 继续由旧控制器导出 |
 | `AccountState` | `core/account_state.dart` | 阶段 3：唯一持有 `AccountStore`；`accountStoreProvider` 与旧 `AppController.accounts` 均从它派生 |
+| `AccountLogin` | `core/account_login.dart` | Cookie 登录验证、账号落盘、客户端缓存和网盘缓存切换；通过 `accountStateProvider` 通知账号变化 |
 | `SettingsState` | `core/settings_state.dart` | 阶段 3：唯一持有 `SettingsStore`；`settingsStoreProvider` 与旧 `AppController.settings` 均从它派生 |
 | `UpdateSettingsState` | `core/update/update_settings_state.dart` | 阶段 3 设置子组：收窄更新通道与自动检查开关的读写边界，持久化仍由 `SettingsStore` 独占 |
 | `NotificationSettingsState` | `core/notification_settings_state.dart` | 阶段 3 设置子组：进度通知与完成通知开关的明确读写入口 |
@@ -188,7 +189,9 @@ User-Agent 也迁入 `AdvancedConnectionSettingsTile`；对应 setter 统一同�
 
 ## 平台
 
-- 有平台目录：`android/`、`ios/`、`windows/`
+- 有平台目录：`android/`、`ios/`、`windows/`。当前产品范围只验收 Android 与
+  Windows；`ios/` 目录继续保留，但暂无适配或验收计划，不作为 Riverpod
+  迁移门禁。
 - **没有** `web/`、`macos/`、`linux/`，不要创建，也不要写只在 web 生效的分支
 - OHOS 适配见 `docs/OHOS_ADAPTATION.md`；仓库当前未跟踪 `ohos/` 目录，相关改动先问
 

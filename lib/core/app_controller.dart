@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'api/lanzou_client.dart';
 import 'api/lanzou_client_registry.dart';
 import 'account_state.dart';
+import 'account_login.dart';
 import 'app_log.dart';
 import 'data/account_store.dart';
 import 'data/app_db.dart';
@@ -86,6 +87,7 @@ class AppController extends ChangeNotifier
     languageClipboardSettings.revision.addListener(notifyListeners);
     listHomeSettings.revision.addListener(notifyListeners);
     downloadDirectorySettings.revision.addListener(notifyListeners);
+    this.accountState.addListener(notifyListeners);
   }
 
   final AccountState accountState;
@@ -132,6 +134,11 @@ class AppController extends ChangeNotifier
   final DriveState drive;
 
   final LanzouClientRegistry clientRegistry = LanzouClientRegistry();
+  late final AccountLogin accountLogin = AccountLogin(
+    accountState: accountState,
+    clients: clientRegistry,
+    driveCache: driveCache,
+  );
 
   bool ready = false;
   bool secureStorageNeedsReauthentication = false;
@@ -361,12 +368,14 @@ class AppController extends ChangeNotifier
 
   @override
   void dispose() {
+    accountState.removeListener(notifyListeners);
     navigation.removeListener(notifyListeners);
     navigationAppearanceSettings.revision.removeListener(notifyListeners);
     themeSettings.revision.removeListener(notifyListeners);
     languageClipboardSettings.revision.removeListener(notifyListeners);
     listHomeSettings.revision.removeListener(notifyListeners);
     downloadDirectorySettings.revision.removeListener(notifyListeners);
+    accountState.dispose();
     navigation.dispose();
     drive.dispose();
     super.dispose();
@@ -443,28 +452,7 @@ class AppController extends ChangeNotifier
   LanzouClient get publicClient => clientRegistry.publicClient;
 
   Future<void> addAccountFromCookie(String rawCookie) async {
-    final cookie = rawCookie.trim();
-    final uid = RegExp(r'ylogin=(\d+)').firstMatch(cookie)?.group(1);
-    if (uid == null) {
-      throw const CookieFormatException();
-    }
-    final c = clientRegistry.create(uid, cookie: cookie);
-    final ok = await c.verify();
-    if (!ok) throw const CookieInvalidException();
-    var nickname = '';
-    var level = '';
-    try {
-      final info = await c.fetchAccountInfo();
-      nickname = info.nickname ?? '';
-      level = info.level;
-    } catch (_) {}
-    await accounts.upsert(
-      Account(uid: uid, cookie: cookie, nickname: nickname, level: level),
-    );
-    clientRegistry.store(uid, c);
-    // 新账号登入后同样清掉上一个账号的网盘缓存
-    await driveCache.bindAccount(accounts.activeUid);
-    notifyListeners();
+    await accountLogin.addAccountFromCookie(rawCookie);
   }
 
   /// 账号缺昵称 / 等级时，后台解析一次网页版个人中心并落盘。
