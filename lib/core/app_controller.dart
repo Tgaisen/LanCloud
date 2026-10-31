@@ -54,7 +54,7 @@ class AppController extends ChangeNotifier {
     listHomeSettings = ListHomeSettingsState(
       settings,
       trimRecents: db.trimRecents,
-      activeUid: () => activeUid,
+      activeUid: () => accounts.activeUid,
     );
     languageClipboardSettings = LanguageClipboardSettingsState(settings);
     cachePageSettings = CachePageSettingsState(settings, this.drive.cache);
@@ -217,21 +217,6 @@ class AppController extends ChangeNotifier {
     super.dispose();
   }
 
-  String? get activeUid => accounts.activeUid;
-
-  LanzouClient? get client {
-    final uid = activeUid;
-    return uid == null ? null : clientFor(uid);
-  }
-
-  LanzouClient clientFor(String uid) => clientRegistry.clientFor(
-    uid,
-    cookie: accounts.byUid(uid)?.cookie,
-  );
-
-  /// 用于解析公开分享链接（不依赖登录态）。
-  LanzouClient get publicClient => clientRegistry.publicClient;
-
   /// 账号缺昵称 / 等级时，后台解析一次网页版个人中心并落盘。
   ///
   /// 等级没取到（页面结构变了等）不写空值，下次启动再试；界面同时会按
@@ -245,7 +230,9 @@ class AppController extends ChangeNotifier {
       return;
     }
     try {
-      final info = await clientFor(uid).fetchAccountInfo();
+      final info = await clientRegistry
+          .clientFor(uid, cookie: accounts.byUid(uid)?.cookie)
+          .fetchAccountInfo();
       var changed = false;
       final nickname = info.nickname ?? '';
       if (nickname.isNotEmpty) {
