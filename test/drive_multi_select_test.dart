@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/account_state.dart';
 import 'package:lancloud/core/api/lanzou_client_registry.dart';
 import 'package:lancloud/core/api/models.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/cache_page_settings_state.dart';
 import 'package:lancloud/core/data/app_db_provider.dart';
 import 'package:lancloud/core/drive_state.dart';
@@ -23,21 +23,24 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
-import 'transfer_dependencies_test.dart' show buildTransferManager;
+import 'transfer_dependencies_test.dart' show buildTransferManagerForEnvironment;
 
 /// 网盘页挂载在目录缓存上（不进网络）：给个账号让 `app.client` 非空，
 /// 再塞一份根目录快照，`_load()` 直接命中缓存。
-Future<AppController> host(
+Future<AppEnvironment> host(
   WidgetTester tester, {
   bool grid = true,
   List<LzFile>? files,
 }) async {
   SharedPreferences.setMockInitialValues({});
-  final app = AppController();
-  app.accountState.store.accounts = [Account(uid: '1', cookie: 'cookie')];
-  app.accountState.store.activeUid = '1';
-  app.settingsState.store.gridView = grid;
-  app.drive.cache.put(
+  final environment = AppEnvironment();
+  addTearDown(environment.dispose);
+  environment.accountState.store.accounts = [
+    Account(uid: '1', cookie: 'cookie'),
+  ];
+  environment.accountState.store.activeUid = '1';
+  environment.settingsState.store.gridView = grid;
+  environment.drive.cache.put(
     '-1',
     CachedFolder(
       folders: [LzFolder(id: 'f1', name: '测试文件夹', desc: '')],
@@ -48,21 +51,27 @@ Future<AppController> host(
       hasMore: false,
     ),
   );
-  final manager = buildTransferManager(app);
+  final manager = buildTransferManagerForEnvironment(environment);
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
         transferManagerProvider.overrideWithValue(manager),
-        accountStateProvider.overrideWithValue(app.accountState),
-        lanzouClientRegistryProvider.overrideWithValue(app.clientRegistry),
-        appDbProvider.overrideWithValue(app.db),
-        driveStateProvider.overrideWithValue(app.drive),
-        cachePageSettingsStateProvider.overrideWithValue(app.cachePageSettings),
-        listHomeSettingsStateProvider.overrideWithValue(app.listHomeSettings),
-        navigationAppearanceSettingsStateProvider.overrideWithValue(
-          app.navigationAppearanceSettings,
+        accountStateProvider.overrideWithValue(environment.accountState),
+        lanzouClientRegistryProvider.overrideWithValue(
+          environment.clientRegistry,
         ),
-        navigationStateProvider.overrideWithValue(app.navigation),
+        appDbProvider.overrideWithValue(environment.db),
+        driveStateProvider.overrideWithValue(environment.drive),
+        cachePageSettingsStateProvider.overrideWithValue(
+          environment.cachePageSettings,
+        ),
+        listHomeSettingsStateProvider.overrideWithValue(
+          environment.listHomeSettings,
+        ),
+        navigationAppearanceSettingsStateProvider.overrideWithValue(
+          environment.navigationAppearanceSettings,
+        ),
+        navigationStateProvider.overrideWithValue(environment.navigation),
       ],
       child: MaterialApp(
         localizationsDelegates: appLocalizationsDelegates,
@@ -73,7 +82,7 @@ Future<AppController> host(
     ),
   );
   await tester.pumpAndSettle();
-  return app;
+  return environment;
 }
 
 /// 语义树里是否还有包含 [target] 的文字（label 或 tooltip）。
@@ -122,7 +131,7 @@ void main() {
       for (final grid in [true, false]) {
         // 先清空树：否则同一位置会复用上一轮的 DrivePage State（还在多选态）
         await tester.pumpWidget(const SizedBox.shrink());
-        final app = await host(tester, grid: grid);
+        final environment = await host(tester, grid: grid);
         expect(find.text('根目录'), findsOneWidget);
         await tester.tap(find.byIcon(app_icons.Icons.folder).first);
         await tester.pumpAndSettle();
@@ -136,7 +145,11 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text('已选择 1 项'), findsNothing, reason: '$grid');
         // 没有停在「已选择 0 项」：多选整体退出，图标也恢复成文件夹
-        expect(app.navigation.selectionMode, isFalse, reason: '$grid');
+        expect(
+          environment.navigation.selectionMode,
+          isFalse,
+          reason: '$grid',
+        );
         expect(
           find.byIcon(app_icons.Icons.check_circle),
           findsNothing,
@@ -254,7 +267,7 @@ void main() {
 
   // 网盘页搜索：关闭按钮改到左侧（与收藏页一致）
   testWidgets('网盘页搜索：关闭按钮在左侧，右侧不再有搜索按钮', (tester) async {
-    final app = await host(tester);
+    await host(tester);
 
     await tester.tap(find.byTooltip('搜索'));
     await tester.pumpAndSettle();
@@ -268,14 +281,13 @@ void main() {
       lessThan(tester.getTopLeft(find.byType(TextField)).dx),
     );
 
-    app.dispose();
   });
 
   // 多选时行尾 ⋯ 菜单没有意义（操作都在底部多选条里），和收藏 / 传输页
   // 一样把它藏起来；但只是「看不见」而不是「不占位」，否则条目高度会跳。
   testWidgets('网盘页进入多选隐藏 ⋯ 但保留占位：高度不变、读屏读不到', (tester) async {
     final handle = tester.ensureSemantics();
-    final app = await host(tester);
+    final environment = await host(tester);
 
     final folderItem = find.byKey(const ValueKey('-1-f-f1'));
     final fileItem = find.byKey(const ValueKey('-1-l-l1'));
@@ -289,7 +301,7 @@ void main() {
 
     await tester.longPress(find.text('测试文件夹'));
     await tester.pumpAndSettle();
-    expect(app.navigation.selectionMode, isTrue);
+    expect(environment.navigation.selectionMode, isTrue);
     // 占位保留：条目高度一点都不能变
     expect(tester.getSize(folderItem).height, folderHeight);
     expect(tester.getSize(fileItem).height, fileHeight);
@@ -299,7 +311,7 @@ void main() {
 
     await tester.tap(find.byTooltip('退出多选'));
     await tester.pumpAndSettle();
-    expect(app.navigation.selectionMode, isFalse);
+    expect(environment.navigation.selectionMode, isFalse);
     expect(tester.getSize(folderItem).height, folderHeight);
     expect(tester.getSize(fileItem).height, fileHeight);
     expect(find.byTooltip('文件夹操作'), findsOneWidget);
@@ -308,13 +320,12 @@ void main() {
     expect(hasSemanticsLabel(tester, '文件操作'), isTrue);
 
     handle.dispose();
-    app.dispose();
   });
 
   // 列表形态（设置里的「列表」视图）同样要保占位：走的是 _DriveRow。
   testWidgets('网盘列表视图进入多选也保留 ⋯ 占位', (tester) async {
     final handle = tester.ensureSemantics();
-    final app = await host(tester, grid: false);
+    final environment = await host(tester, grid: false);
 
     final folderItem = find.byKey(const ValueKey('-1-f-f1'));
     final fileItem = find.byKey(const ValueKey('-1-l-l1'));
@@ -324,7 +335,7 @@ void main() {
 
     await tester.longPress(find.text('测试文件.zip'));
     await tester.pumpAndSettle();
-    expect(app.navigation.selectionMode, isTrue);
+    expect(environment.navigation.selectionMode, isTrue);
     expect(tester.getSize(folderItem).height, folderHeight);
     expect(tester.getSize(fileItem).height, fileHeight);
     expect(hasSemanticsLabel(tester, '文件夹操作'), isFalse);
@@ -334,6 +345,5 @@ void main() {
     await tester.tap(find.byTooltip('退出多选'));
     await tester.pumpAndSettle();
     handle.dispose();
-    app.dispose();
   });
 }

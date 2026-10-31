@@ -7,7 +7,7 @@ import 'package:lancloud/core/account_state.dart';
 import 'package:lancloud/core/api/lanzou_client.dart';
 import 'package:lancloud/core/api/lanzou_client_registry.dart';
 import 'package:lancloud/core/api/models.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/data/app_db.dart';
 import 'package:lancloud/core/data/app_db_provider.dart';
 import 'package:lancloud/core/drive_state.dart';
@@ -21,7 +21,7 @@ import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/favorites_page.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-import 'transfer_dependencies_test.dart' show buildTransferManager;
+import 'transfer_dependencies_test.dart' show buildTransferManagerForEnvironment;
 
 /// 收藏里存的是旧提取码：只有新提取码能解析成功。
 class _StalePwdClient extends LanzouClient {
@@ -98,12 +98,21 @@ class _PwdThenHangClient extends LanzouClient {
   }
 }
 
-class _FakeApp extends AppController {
+class _FakeApp {
   _FakeApp(this._client);
 
+  final AppEnvironment environment = AppEnvironment();
   final LanzouClient _client;
 
   LanzouClient get dialogClient => _client;
+  AccountState get accountState => environment.accountState;
+  AppDb get db => environment.db;
+  DriveState get drive => environment.drive;
+  NavigationAppearanceSettingsState get navigationAppearanceSettings =>
+      environment.navigationAppearanceSettings;
+  NavigationState get navigation => environment.navigation;
+
+  void dispose() => environment.dispose();
 }
 
 Future<void> _pumpFavorites(
@@ -111,7 +120,7 @@ Future<void> _pumpFavorites(
   _FakeApp app, {
   required Finder item,
 }) async {
-  final transfers = buildTransferManager(app);
+  final transfers = buildTransferManagerForEnvironment(app.environment);
   final clients = LanzouClientRegistry(
     factory: (_) => app.dialogClient,
   );
@@ -162,7 +171,7 @@ Future<void> _until(
 /// 等数据库写入落库：属性弹窗是「先刷 UI、再异步写收藏」，直接查会拿到旧值。
 Future<FavoriteItem> _eventuallyFavorite(
   WidgetTester tester,
-  AppController app,
+  _FakeApp app,
   String ref, {
   required bool Function(FavoriteItem item) done,
 }) async {
@@ -320,7 +329,7 @@ void main() {
     final client = _PwdThenHangClient();
     final app = _FakeApp(client);
     addTearDown(app.dispose);
-    final manager = buildTransferManager(app);
+    final manager = buildTransferManagerForEnvironment(app.environment);
     final clients = LanzouClientRegistry(factory: (_) => app.dialogClient);
     var asked = 0;
     await tester.pumpWidget(

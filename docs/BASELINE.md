@@ -259,6 +259,8 @@
 | `tools\agent.cmd test`（环境测试树批次 6） | 增量 | **26 tests, all passed** | 约 20 s |
 | `tools\agent.cmd analyze`（环境测试树批次 7） | 全量 | No issues found | 约 25 s |
 | `tools\agent.cmd test`（环境测试树批次 7） | 增量 | **42 tests, all passed** | 约 26 s |
+| `tools\agent.cmd analyze`（环境测试树批次 8） | 全量 | No issues found | 约 24 s |
+| `tools\agent.cmd test`（环境测试树批次 8） | 增量 | **23 tests, all passed** | 约 20 s |
 | `tools\agent.cmd analyze`（网盘目录切片完成后） | 全量 | No issues found | 约 21 s |
 | `tools\agent.cmd test`（网盘目录切片完成后） | 全量 | **722 tests, all passed** | 约 110 s |
 | `tools\agent.cmd analyze`（拖放与 Cookie 行完成后） | 全量 | No issues found | 约 17 s |
@@ -879,6 +881,11 @@
   `_FakeApp` 改为不再继承控制器的普通 fixture。全量分析无问题，4 个测试
   文件 / 42 个测试通过，用例总数保持 719；测试中的 `AppController` 引用现为
   32 个文件 / 105 处。
+- 2026-10-31 环境测试树批次 8 完成：`share_file_sheet_test`、
+  `share_password_recovery_test`、`drive_multi_select_test` 与
+  `drive_paging_test` 改用 `AppEnvironment`；两个 fake app fixture 改为普通
+  环境包装器。全量分析无问题，4 个测试文件 / 23 个测试通过，用例总数保持
+  719；测试中的 `AppController` 引用现为 28 个文件 / 99 处。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release

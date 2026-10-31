@@ -6,7 +6,7 @@ import 'package:lancloud/core/account_state.dart';
 import 'package:lancloud/core/api/lanzou_client.dart';
 import 'package:lancloud/core/api/lanzou_client_registry.dart';
 import 'package:lancloud/core/api/models.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/cache_page_settings_state.dart';
 import 'package:lancloud/core/data/app_db_provider.dart';
 import 'package:lancloud/core/drive_state.dart';
@@ -19,7 +19,7 @@ import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/delegates.dart';
 import 'package:lancloud/ui/drive_page.dart';
 
-import 'transfer_dependencies_test.dart' show buildTransferManager;
+import 'transfer_dependencies_test.dart' show buildTransferManagerForEnvironment;
 
 /// 第一页只有几条、且服务端说「还有下一页」的目录：真机上必须自动补一页，
 /// 才能知道已经到底（否则要用户滑一下才出现「已加载全部」）。
@@ -71,10 +71,14 @@ class _FakeClient extends LanzouClient {
   }
 }
 
-class _FakeApp extends AppController {
+class _FakeApp {
   _FakeApp() {
-    accountState.store.activeUid = '1';
+    environment.accountState.store.activeUid = '1';
   }
+
+  final AppEnvironment environment = AppEnvironment();
+
+  void dispose() => environment.dispose();
 }
 
 List<Override> _overrides(
@@ -86,22 +90,26 @@ List<Override> _overrides(
   lanzouClientRegistryProvider.overrideWithValue(
     LanzouClientRegistry(factory: (_) => client),
   ),
-  accountStateProvider.overrideWithValue(app.accountState),
-  appDbProvider.overrideWithValue(app.db),
-  driveStateProvider.overrideWithValue(app.drive),
-  cachePageSettingsStateProvider.overrideWithValue(app.cachePageSettings),
-  listHomeSettingsStateProvider.overrideWithValue(app.listHomeSettings),
-  navigationAppearanceSettingsStateProvider.overrideWithValue(
-    app.navigationAppearanceSettings,
+  accountStateProvider.overrideWithValue(app.environment.accountState),
+  appDbProvider.overrideWithValue(app.environment.db),
+  driveStateProvider.overrideWithValue(app.environment.drive),
+  cachePageSettingsStateProvider.overrideWithValue(
+    app.environment.cachePageSettings,
   ),
-  navigationStateProvider.overrideWithValue(app.navigation),
+  listHomeSettingsStateProvider.overrideWithValue(
+    app.environment.listHomeSettings,
+  ),
+  navigationAppearanceSettingsStateProvider.overrideWithValue(
+    app.environment.navigationAppearanceSettings,
+  ),
+  navigationStateProvider.overrideWithValue(app.environment.navigation),
 ];
 
 void main() {
   testWidgets('目录内容不满一屏时自动补页：进入即显示「已加载全部」', (tester) async {
     final client = _FakeClient();
     final app = _FakeApp();
-    final manager = buildTransferManager(app);
+    final manager = buildTransferManagerForEnvironment(app.environment);
     addTearDown(app.dispose);
     tester.view.devicePixelRatio = 1.0;
     tester.view.physicalSize = const Size(420, 900);
@@ -136,7 +144,7 @@ void main() {
   testWidgets('下拉刷新后依然自动补页并显示「已加载全部」', (tester) async {
     final client = _FakeClient();
     final app = _FakeApp();
-    final manager = buildTransferManager(app);
+    final manager = buildTransferManagerForEnvironment(app.environment);
     addTearDown(app.dispose);
     tester.view.devicePixelRatio = 1.0;
     tester.view.physicalSize = const Size(420, 900);
@@ -180,8 +188,8 @@ void main() {
     final client = _FakeClient();
     final app = _FakeApp();
     // 关掉「最近使用」记录：测试环境没有数据库实现，进入目录时不必写库
-    app.settingsState.store.recentLimit = 0;
-    final manager = buildTransferManager(app);
+    app.environment.settingsState.store.recentLimit = 0;
+    final manager = buildTransferManagerForEnvironment(app.environment);
     addTearDown(app.dispose);
     tester.view.devicePixelRatio = 1.0;
     tester.view.physicalSize = const Size(420, 900);
