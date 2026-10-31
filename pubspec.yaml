@@ -53,17 +53,17 @@ dependencies:
   # 2.5.2 增加 consumer R8 rules，保留 Pigeon JNI 反射使用的 Kotlin 类，
   # 修复 2.5.0 / 2.5.1 在 Android release 启动时的 NoSuchMethodError。
   # https://github.com/flutter/flutter/issues/194649
-  shared_preferences_android: ^2.5.3
+  shared_preferences_android: ^2.5.4
   # 项目仍处于 pre 阶段，允许跳过 v10 的旧安全存储数据；v11 会在读取前
   # 上报不可迁移状态，应用据此回到登录页，并关闭缺密码的 WebDAV 功能。
   flutter_secure_storage: ^11.2.0
-  file_picker: ^13.1.0
+  file_picker: ^13.3.0
   open_filex: ^5.0.0
   url_launcher: ^6.3.2
   flutter_inappwebview: 6.2.0-beta.3
-  qr: ^4.0.0
+  qr: ^4.0.1
   material_symbols_icons: ^4.2960.0
-  flutter_local_notifications: ^22.3.2
+  flutter_local_notifications: ^22.3.3
   lpinyin: ^2.0.3
   receive_sharing_intent: ^1.9.0
   flutter_foreground_task: ^11.0.3
@@ -83,11 +83,11 @@ dependencies:
   # Flutter 3.47 起 Material 从框架拆到了 material_ui，本项目已整体迁移过去
   # （见 docs / 提交记录）；m3e_core 提供 MD3E 控件，cupertino_ui 承接
   # Cupertino 组件。三者版本要配套升级。
-  m3e_core: ^1.1.4
+  m3e_core: ^1.1.5
   # 1.8 新增的 RoundedPolygon 与 m3e_core 1.1.4 的同名类型冲突；
   # 待 m3e_core 适配后再放开 <1.8.0。
   material_ui: ">=1.6.0 <1.8.0"
-  cupertino_ui: ^1.1.4
+  cupertino_ui: ^1.1.5
   cryptography: ^2.9.0
   # 应用级状态与依赖注入统一使用 Riverpod。
   flutter_riverpod: ^3.4.3
