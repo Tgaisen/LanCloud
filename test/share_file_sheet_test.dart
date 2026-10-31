@@ -16,6 +16,8 @@ import 'package:lancloud/ui/share_file_sheet.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
+import 'transfer_dependencies_test.dart' show buildTransferManager;
+
 /// 解析一定失败的假客户端：测试里不联网；错误信息不含「不存在 / 取消」，
 /// 所以不会被判成失效（失效会让整张表的入口置灰，测不了点击行为）。
 class _NoNetClient extends LanzouClient {
@@ -104,7 +106,7 @@ Future<void> _pumpSheet(
   bool invalid = false,
   String size = '1 MB',
 }) async {
-  final transfers = manager ?? TransferManager(app);
+  final transfers = manager ?? buildTransferManager(app);
   final clients = LanzouClientRegistry(factory: (_) => app.sheetClient);
   addTearDown(app.dispose);
   await tester.pumpWidget(
@@ -160,7 +162,7 @@ void main() {
 
   testWidgets('分享文件属性弹窗：已加入下载时是「已下载」+ 进度环，点击弹二级菜单', (tester) async {
     final app = _FakeApp();
-    final manager = TransferManager(app);
+    final manager = buildTransferManager(app);
     manager.tasks.add(
       TransferTask(
           id: 'd1',
@@ -217,7 +219,7 @@ void main() {
 
   testWidgets('分享文件属性弹窗：各下载状态的文案与图标', (tester) async {
     final app = _FakeApp();
-    final manager = TransferManager(app);
+    final manager = buildTransferManager(app);
     final task =
         TransferTask(
             id: 'd1',
@@ -273,7 +275,7 @@ void main() {
   testWidgets('分享文件属性弹窗：解析中显示不确定态环，解析失败恢复原状', (tester) async {
     final gate = _GateSecondPublic();
     final app = _FakeApp(gate);
-    await _pumpSheet(tester, app, manager: TransferManager(app));
+    await _pumpSheet(tester, app, manager: buildTransferManager(app));
     final l10n = AppLocalizations.of(
       tester.element(find.byType(ShareFileInfoSheet)),
     );
@@ -301,7 +303,7 @@ void main() {
 
   testWidgets('二级菜单：这条任务的下载状态变更时自动收起', (tester) async {
     final app = _FakeApp();
-    final manager = TransferManager(app);
+    final manager = buildTransferManager(app);
     final task =
         TransferTask(
             id: 'd1',
@@ -333,7 +335,7 @@ void main() {
   testWidgets('分享文件属性弹窗：点「重新下载」立刻进入解析中状态', (tester) async {
     final gate = _GateSecondPublic();
     final app = _FakeApp(gate);
-    final manager = TransferManager(app);
+    final manager = buildTransferManager(app);
     manager.tasks.add(
       TransferTask(
         id: 'd1',
