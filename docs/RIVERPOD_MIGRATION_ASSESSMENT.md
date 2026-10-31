@@ -799,6 +799,11 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > `driveStateProvider`、`lanzouClientRegistryProvider` 与
 > `accountStateProvider`。页面不再读取 AppController；收藏、空状态和密码恢复
 > 测试移除旧宿主，相关增量 3 个测试文件 / 11 个测试通过。
+>
+> 首页随后完成迁移：`NavigationState` 接管现有切页回调（AppController 保留
+> 兼容转发），HomePage 的数据库、当前目录、客户端、首页展开设置、顶栏和
+> 传输运行数分别来自既有 provider。首页不再读取 AppController；相关增量
+> 65 个测试文件 / 366 个测试通过。
 
 ### 阶段 6：移除旧 Provider
 

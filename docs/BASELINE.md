@@ -115,6 +115,7 @@
 | `tools\agent.cmd test`（显示 Cookie 纯 Riverpod） | 增量 | **1 test, all passed** | 约 13 s |
 | `tools\agent.cmd test`（共享顶栏 / 多选条回退移除） | 增量 | **302 tests, all passed** | 约 49 s |
 | `tools\agent.cmd test`（收藏页消费端） | 增量 | **11 tests, all passed** | 约 18 s |
+| `tools\agent.cmd test`（首页消费端与切页回调） | 增量 | **366 tests, all passed** | 约 52 s |
 | `tools\agent.cmd analyze`（拖放与 Cookie 行完成后） | 全量 | No issues found | 约 17 s |
 | `tools\agent.cmd test`（拖放与 Cookie 行完成后） | 全量 | **722 tests, all passed** | 约 99 s |
 | `tools\agent.cmd analyze`（账号会话消费端完成后） | 全量 | No issues found | 约 32 s |
@@ -417,6 +418,10 @@
   客户端注册表和账号状态 provider；页面不再读取 `AppController`。收藏页、
   空状态和密码恢复测试移除对应旧 Provider 宿主；增量 3 个测试文件 /
   11 个测试通过，用例总数保持 722。
+- 2026-10-31 `NavigationState` 接管切页回调，AppController 保留兼容转发；
+  `HomePage` 改用数据库、导航目录、账号客户端、首页设置和传输计数 provider，
+  不再读取 `AppController`。增量 65 个测试文件 / 366 个测试通过，用例总数
+  保持 722。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release

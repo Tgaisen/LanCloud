@@ -65,8 +65,8 @@
 | `CachePageSettingsState` | `core/cache_page_settings_state.dart` | 阶段 3 设置子组：网格视图、启动页、目录缓存和自动加载全部页面 |
 | `DownloadDirectorySettingsState` | `core/download_directory_settings_state.dart` | 阶段 3 设置子组：普通下载目录、SAF URI/标签、互斥写入和旧授权释放入口 |
 
-消费现状：`context.read<AppController>` 74 处、`context.watch` 0 处、
-`context.select<AppController…>` 3 处。生产代码中的整体 `watch` 已清零；传输页已从
+消费现状：`context.read<AppController>` 63 处、`context.watch` 0 处、
+`context.select<AppController…>` 2 处。生产代码中的整体 `watch` 已清零；传输页已从
 Riverpod 读取应用级 `TransferManager`，并通过 `ListenableBuilder` 保留既有
 `notifyListeners()` 刷新语义；多选回调、选择模式和顶栏进度改由
 `NavigationState` 驱动，顶栏收起开关由导航外观状态 revision 驱动。`RootShell`
@@ -142,8 +142,8 @@ User-Agent 也迁入 `AdvancedConnectionSettingsTile`；对应 setter 统一同�
 当前目录仍从 `DriveLocation` 实时读取。恢复页通过 `backupServiceProvider`
 获取服务，并只从
 导航外观状态订阅 `hideTopBar`；备份恢复状态机继续使用页面本地状态。首页不再
-整体监听 `AppController` / `TransferManager`，只订阅
-`hideTopBar` 和运行中任务数；快速访问、最近使用和折叠状态继续由页面本地状态及
+整体监听 `AppController` / `TransferManager`；顶栏、切页、数据库、账号客户端
+和运行中任务数均来自 Riverpod，快速访问与最近使用继续由页面本地状态及
 `AppDb.revision` 驱动。网盘页只订阅网格、浮动导航和顶/底栏隐藏的配置快照；
 目录、`DriveLocation`、多选和批量操作保持原有状态机。
 
