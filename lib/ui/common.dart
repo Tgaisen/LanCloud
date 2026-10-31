@@ -2731,7 +2731,8 @@ class BatchActionBar extends StatelessWidget {
   Widget _buildBar(BuildContext context, bool floatingNavBar) {
     final scheme = Theme.of(context).colorScheme;
     // 外壳开了 extendBody 后，底栏槽位高度会写进正文的 padding.bottom：
-    // 普通底栏 = 80 + 系统手势区，悬浮底栏 = 108 + 系统手势区（含 16dp 顶留白）。
+    // 普通底栏 = 80 + 系统手势区；悬浮底栏 = 92 + 系统手势区
+    //（64dp 工具栏 + 16dp 顶留白 + 12dp 底留白）。
     // 按整槽避让时悬浮样式的多选条会离胶囊多出 16dp，这里回退成胶囊实际高度，
     // 两种样式的间距保持一致（都是 12dp）。
     final floatingNavInShell = inRootShell(context) && floatingNavBar;

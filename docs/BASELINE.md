@@ -10,20 +10,24 @@
 | 命令 | 口径 | 结果 | 耗时 |
 | --- | --- | --- | --- |
 | `tools\agent.cmd analyze` | 全量 | No issues found | 约 27 s |
-| `tools\agent.cmd test` | 全量 | **724 tests, all passed** | 约 100 s |
+| `tools\agent.cmd test` | 全量（最近一次完整运行） | **724 tests, all passed** | 约 100 s |
+| `tools\agent.cmd test` | 增量（本次改动，69 个测试文件） | **373 tests, all passed** | 约 62 s |
 
 当前分析结果为 0 issue 是硬基线。出现红灯时，先判断是否为本次改动引入；
 不要把增量结果当成全量结论。
+
+本次新增 3 个悬浮导航测试，当前全量用例总数应为 727；全量结果待下一次
+人工兜底时刷新。
 
 ## 规模
 
 | 指标 | 当前值 |
 | --- | ---: |
 | `lib` Dart 文件 | 145 |
-| `lib` 总行数 | 44,481 |
+| `lib` 总行数 | 44,804 |
 | `test` 测试文件 | 163（全部为 `*_test.dart`，平铺） |
-| `test` 总行数 | 22,435 |
-| `test` 用例数 | 724 |
+| `test` 总行数 | 22,833 |
+| `test` 用例数 | 727 |
 | `lib/ui` 平铺文件 | 55 |
 | `lib/core` | 52 个平铺文件 + 5 个子系统目录 |
 | 文案（`app_zh.arb`） | 1,357 行 |

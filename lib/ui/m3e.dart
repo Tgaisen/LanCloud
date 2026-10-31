@@ -209,6 +209,330 @@ class M3eComponentStyles extends StatelessWidget {
   }
 }
 
+/// ────────────────────────────── 悬浮导航栏 ──────────────────────────────
+
+/// 导航栏中的一项；悬浮态下只有当前项显示文字，原生态由 [NavigationBar]
+/// 自己决定标签布局。
+class M3eShellNavigationItem {
+  const M3eShellNavigationItem({
+    required this.icon,
+    required this.selectedIcon,
+    required this.label,
+    this.semanticsLabel,
+  });
+
+  final Widget icon;
+  final Widget selectedIcon;
+  final String label;
+
+  /// 读屏使用的完整名称。未传时使用 [label]；传输角标等附加信息应合入这里。
+  final String? semanticsLabel;
+}
+
+/// 外壳导航栏：关闭悬浮时保持原生 [NavigationBar]，开启时改用 M3E 悬浮栏。
+class M3eShellNavigationBar extends StatelessWidget {
+  const M3eShellNavigationBar({
+    super.key,
+    required this.floating,
+    required this.items,
+    required this.selectedIndex,
+    required this.onDestinationSelected,
+  }) : assert(items.length > 0),
+       assert(selectedIndex >= 0 && selectedIndex < items.length);
+
+  final bool floating;
+  final List<M3eShellNavigationItem> items;
+  final int selectedIndex;
+  final ValueChanged<int> onDestinationSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!floating) {
+      return NavigationBar(
+        selectedIndex: selectedIndex,
+        maintainBottomViewPadding: true,
+        onDestinationSelected: onDestinationSelected,
+        destinations: [
+          for (final item in items)
+            NavigationDestination(
+              icon: item.icon,
+              selectedIcon: item.selectedIcon,
+              label: item.label,
+            ),
+        ],
+      );
+    }
+    return M3eFloatingNavigationBar(
+      items: items,
+      selectedIndex: selectedIndex,
+      onDestinationSelected: onDestinationSelected,
+    );
+  }
+}
+
+/// M3E 横向悬浮导航栏。
+///
+/// 选中项在可用宽度内扩展为“图标 + 文字”，其余项收缩为图标。宽度按当前
+/// 可用空间计算，避免 5 个导航项在窄屏上按示例固定尺寸溢出。
+class M3eFloatingNavigationBar extends StatelessWidget {
+  const M3eFloatingNavigationBar({
+    super.key,
+    required this.items,
+    required this.selectedIndex,
+    required this.onDestinationSelected,
+    this.collapsedWidth = 48,
+    this.preferredSelectedWidth = 110,
+    this.itemSpacing = 2,
+    this.iconLabelGap = 4,
+  }) : assert(items.length > 0),
+       assert(selectedIndex >= 0 && selectedIndex < items.length);
+
+  static const double containerHeight = 64;
+
+  static const double _tabHeight = 48;
+  static const double _horizontalPadding = 8;
+  static const double _minimumTabWidth = 48;
+
+  final List<M3eShellNavigationItem> items;
+  final int selectedIndex;
+  final ValueChanged<int> onDestinationSelected;
+  final double collapsedWidth;
+  final double preferredSelectedWidth;
+  final double itemSpacing;
+  final double iconLabelGap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final localizations = MaterialLocalizations.of(context);
+    final reduceMotion = reduceMotionOf(context);
+    return Semantics(
+      role: SemanticsRole.tabBar,
+      container: true,
+      explicitChildNodes: true,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final availableWidth = constraints.hasBoundedWidth
+              ? constraints.maxWidth
+              : MediaQuery.sizeOf(context).width;
+          final contentWidth = math.max(
+            0.0,
+            availableWidth - _horizontalPadding * 2,
+          );
+          final widths = _resolveWidths(contentWidth);
+          final otherCount = items.length - 1;
+          final tabWidth =
+              widths.selected +
+              widths.collapsed * otherCount +
+              itemSpacing * otherCount;
+          return core.M3EHorizontalFloatingToolbar(
+            expanded: true,
+            decoration: core.M3EFloatingToolbarDecoration(
+              colors: core.M3EFloatingToolbarDefaults.vibrantColors(context),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: _horizontalPadding,
+              ),
+              shape: const StadiumBorder(),
+              containerSize: containerHeight,
+              expandedShadowElevation: 0,
+              collapsedShadowElevation: 0,
+            ),
+            content: SizedBox(
+              width: tabWidth,
+              height: _tabHeight,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  for (var i = 0; i < items.length; i++) ...[
+                    if (i > 0) SizedBox(width: itemSpacing),
+                    _M3eFloatingNavigationTab(
+                      item: items[i],
+                      slotIndex: i,
+                      slotCount: items.length,
+                      selected: i == selectedIndex,
+                      collapsedWidth: widths.collapsed,
+                      selectedWidth: widths.selected,
+                      iconLabelGap: iconLabelGap,
+                      reduceMotion: reduceMotion,
+                      selectedBackground: scheme.surface,
+                      selectedForeground: scheme.primary,
+                      unselectedForeground: scheme.onPrimaryContainer,
+                      tabPositionLabel: localizations.tabLabel(
+                        tabIndex: i + 1,
+                        tabCount: items.length,
+                      ),
+                      onTap: () => onDestinationSelected(i),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  ({double collapsed, double selected}) _resolveWidths(double contentWidth) {
+    final otherCount = items.length - 1;
+    final spacing = itemSpacing * otherCount;
+    final widthForTabs = math.max(0.0, contentWidth - spacing);
+    if (otherCount == 0) {
+      return (collapsed: widthForTabs, selected: widthForTabs);
+    }
+
+    final preferredCollapsed = math.min(
+      collapsedWidth,
+      widthForTabs / items.length,
+    );
+    final maximumSelected = math.max(
+      _minimumTabWidth,
+      widthForTabs - preferredCollapsed * otherCount,
+    );
+    final selected = math.min(preferredSelectedWidth, maximumSelected);
+    final remainingForCollapsed = math.max(
+      0.0,
+      (widthForTabs - selected) / otherCount,
+    );
+    final collapsed = math.min(preferredCollapsed, remainingForCollapsed);
+    return (collapsed: collapsed, selected: selected);
+  }
+}
+
+class _M3eFloatingNavigationTab extends StatelessWidget {
+  const _M3eFloatingNavigationTab({
+    required this.item,
+    required this.slotIndex,
+    required this.slotCount,
+    required this.selected,
+    required this.collapsedWidth,
+    required this.selectedWidth,
+    required this.iconLabelGap,
+    required this.reduceMotion,
+    required this.selectedBackground,
+    required this.selectedForeground,
+    required this.unselectedForeground,
+    required this.tabPositionLabel,
+    required this.onTap,
+  });
+
+  final M3eShellNavigationItem item;
+  final int slotIndex;
+  final int slotCount;
+  final bool selected;
+  final double collapsedWidth;
+  final double selectedWidth;
+  final double iconLabelGap;
+  final bool reduceMotion;
+  final Color selectedBackground;
+  final Color selectedForeground;
+  final Color unselectedForeground;
+  final String tabPositionLabel;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = item.semanticsLabel ?? item.label;
+    return Semantics(
+      key: ValueKey('m3e-nav-tab-$slotIndex-of-$slotCount'),
+      container: true,
+      role: SemanticsRole.tab,
+      selected: selected,
+      enabled: true,
+      button: true,
+      label: '$label\n$tabPositionLabel',
+      onTap: onTap,
+      child: ExcludeSemantics(
+        child: Tooltip(
+          message: item.label,
+          excludeFromSemantics: true,
+          preferBelow: false,
+          child: TweenAnimationBuilder<double>(
+            tween: Tween<double>(end: selected ? 1 : 0),
+            duration: reduceMotion
+                ? Duration.zero
+                : const Duration(milliseconds: 240),
+            curve: Curves.easeOutCubic,
+            builder: (context, value, _) {
+              final progress = value.clamp(0.0, 1.0).toDouble();
+              final width =
+                  collapsedWidth + (selectedWidth - collapsedWidth) * progress;
+              final background = Color.lerp(
+                selectedBackground.withValues(alpha: 0),
+                selectedBackground,
+                progress,
+              )!;
+              final foreground = Color.lerp(
+                unselectedForeground,
+                selectedForeground,
+                progress,
+              )!;
+              final labelMaxWidth = math.max(0.0, width - 24 - iconLabelGap);
+              return Ink(
+                width: width,
+                height: M3eFloatingNavigationBar._tabHeight,
+                decoration: BoxDecoration(
+                  color: background,
+                  borderRadius: BorderRadius.circular(
+                    M3eFloatingNavigationBar._tabHeight / 2,
+                  ),
+                ),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(
+                    M3eFloatingNavigationBar._tabHeight / 2,
+                  ),
+                  onTap: onTap,
+                  child: Center(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconTheme.merge(
+                          data: IconThemeData(color: foreground, size: 24),
+                          child: selected ? item.selectedIcon : item.icon,
+                        ),
+                        if (progress > 0.01)
+                          ClipRect(
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              widthFactor: progress,
+                              child: Opacity(
+                                opacity: progress,
+                                child: Padding(
+                                  padding: EdgeInsets.only(left: iconLabelGap),
+                                  child: ConstrainedBox(
+                                    constraints: BoxConstraints(
+                                      maxWidth: labelMaxWidth,
+                                    ),
+                                    child: Text(
+                                      item.label,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium
+                                          ?.copyWith(
+                                            color: foreground,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// ────────────────────────────── 进度 / 加载指示器 ──────────────────────────────
 ///
 /// M3 的等待时间规则：< 200ms 不显示指示器；200ms–5s 用 Loading indicator；

@@ -9,7 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
-/// 外壳底栏高度（与 app.dart 保持一致）：悬浮 108 + 手势区，普通 80 + 手势区。
+/// 外壳底栏高度（与 app.dart 保持一致）：悬浮 92 + 手势区，普通 80 + 手势区。
 const double _gestureInset = 24;
 
 Widget barApp(double shellBarHeight) => MaterialApp(
@@ -74,16 +74,16 @@ void main() {
     final environment = AppEnvironment();
     environment.settingsState.store.floatingNavBar = true;
     addTearDown(environment.dispose);
-    // 悬浮底栏槽位 = 108 + 手势区（胶囊 80 + 顶留白 16 + 底留白 12）
+    // 悬浮底栏槽位 = 92 + 手势区（胶囊 64 + 顶留白 16 + 底留白 12）
     await pumpRiverpodBar(
       tester,
       appearance: environment.navigationAppearanceSettings,
-      shellBarHeight: 108 + _gestureInset,
+      shellBarHeight: 92 + _gestureInset,
     );
-    // 期望值：108 + 手势区 - 16（槽位顶留白）+ 12（自身间距）
+    // 期望值：92 + 手势区 - 16（槽位顶留白）+ 12（自身间距）
     expect(
       barPadding(tester).bottom,
-      closeTo(108 + _gestureInset - 16 + 12, 0.01),
+      closeTo(92 + _gestureInset - 16 + 12, 0.01),
     );
   });
 
@@ -95,15 +95,15 @@ void main() {
     await pumpRiverpodBar(
       tester,
       appearance: environment.navigationAppearanceSettings,
-      shellBarHeight: 108 + _gestureInset,
+      shellBarHeight: 92 + _gestureInset,
     );
     expect(
       barPadding(tester).bottom,
-      closeTo(108 + _gestureInset - 16 + 12, 0.01),
+      closeTo(92 + _gestureInset - 16 + 12, 0.01),
     );
 
     await environment.navigationAppearanceSettings.setFloatingNavBar(false);
     await tester.pumpAndSettle();
-    expect(barPadding(tester).bottom, closeTo(108 + _gestureInset + 12, 0.01));
+    expect(barPadding(tester).bottom, closeTo(92 + _gestureInset + 12, 0.01));
   });
 }
