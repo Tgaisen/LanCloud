@@ -223,6 +223,8 @@
 | `tools\agent.cmd test`（存储访问测试批次 2） | 增量 | **49 tests, all passed** | 约 28 s |
 | `tools\agent.cmd analyze`（存储访问测试批次 3） | 全量 | No issues found | 约 19 s |
 | `tools\agent.cmd test`（存储访问测试批次 3） | 增量 | **42 tests, all passed** | 约 23 s |
+| `tools\agent.cmd analyze`（存储访问测试批次 3 完成后） | 全量 | No issues found | 约 18 s |
+| `tools\agent.cmd test`（存储访问测试批次 3 完成后） | 全量 | **716 tests, all passed** | 约 106 s |
 | `tools\agent.cmd analyze`（网盘目录切片完成后） | 全量 | No issues found | 约 21 s |
 | `tools\agent.cmd test`（网盘目录切片完成后） | 全量 | **722 tests, all passed** | 约 110 s |
 | `tools\agent.cmd analyze`（拖放与 Cookie 行完成后） | 全量 | No issues found | 约 17 s |
