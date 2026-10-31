@@ -3,11 +3,10 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart' as riverpod;
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
 
 import '../core/account_state.dart';
+import '../core/account_session.dart';
 import '../core/api/lanzou_client.dart';
-import '../core/app_controller.dart';
 import '../core/backup/backup_sections.dart';
 import '../core/navigation_appearance_settings_state.dart';
 import '../core/navigation_state.dart';
@@ -1125,7 +1124,9 @@ class _ProfilePageState extends riverpod.ConsumerState<ProfilePage>
   }
 
   Future<void> _showAccountSwitcher(BuildContext context) async {
-    final app = context.read<AppController>();
+    final accountState = ref.read(accountStateProvider);
+    final session = ref.read(accountSessionProvider);
+    final accounts = accountState.store.accounts;
     final l10n = context.l10n;
     await showAppSheet<void>(
       context,
@@ -1143,17 +1144,17 @@ class _ProfilePageState extends riverpod.ConsumerState<ProfilePage>
           // 组 1：账号列表 + 添加账号
           SheetListGroup(
             children: [
-              for (final account in app.accounts.accounts)
+              for (final account in accounts)
                 M3ePickTile(
                   label: account.nickname.isEmpty
                       ? l10n.accountUid(account.uid)
                       : account.nickname,
                   subtitle: l10n.uidLabel(account.uid),
-                  selected: account.uid == app.activeUid,
+                  selected: account.uid == accountState.store.activeUid,
                   singleSelect: true,
                   onTap: () async {
                     Navigator.of(context).pop();
-                    await app.switchAccount(account.uid);
+                    await session.switchAccount(account.uid);
                   },
                 ),
               M3ePickTile.action(
@@ -1175,7 +1176,7 @@ class _ProfilePageState extends riverpod.ConsumerState<ProfilePage>
                 label: l10n.logout,
                 leading: const Icon(Icons.logout),
                 onTap: () {
-                  final uid = app.activeUid;
+                  final uid = accountState.store.activeUid;
                   Navigator.of(context).pop();
                   if (uid != null) _removeAccount(context, uid);
                 },
@@ -1188,7 +1189,7 @@ class _ProfilePageState extends riverpod.ConsumerState<ProfilePage>
   }
 
   Future<void> _removeAccount(BuildContext context, String uid) async {
-    final app = context.read<AppController>();
+    final session = ref.read(accountSessionProvider);
     final l10n = context.l10n;
     var clearData = false;
     final ok = await showDialog<bool>(
@@ -1231,20 +1232,12 @@ class _ProfilePageState extends riverpod.ConsumerState<ProfilePage>
       ),
     );
     if (ok != true) return;
-    await app.removeAccount(uid, clearData: clearData);
+    await session.removeAccount(uid, clearData: clearData);
   }
 }
 
-typedef _ProfileAccountSnapshot = ({
-  bool signedIn,
-  String uid,
-  String nickname,
-  String level,
-  bool free,
-});
-
 /// 账号信息卡（单栏与两栏详情窗格共用）；只订阅账号摘要字段。
-class ProfileAccountTile extends StatelessWidget {
+class ProfileAccountTile extends riverpod.ConsumerWidget {
   const ProfileAccountTile({
     super.key,
     required this.onSwitchAccount,
@@ -1253,55 +1246,57 @@ class ProfileAccountTile extends StatelessWidget {
   final VoidCallback onSwitchAccount;
 
   @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final snapshot = context.select<AppController, _ProfileAccountSnapshot>((
-      app,
-    ) {
-      final account = app.activeAccount;
-      return (
-        signedIn: account != null,
-        uid: app.activeUid ?? '',
-        nickname: account?.nickname ?? '',
-        level: account?.levelLabel ?? '',
-        free: account?.isFreeTier ?? true,
-      );
-    });
-    final name = snapshot.nickname.isNotEmpty
-        ? snapshot.nickname
-        : snapshot.uid;
-    return ListTile(
-      // 头像里的首字母是装饰：账号名 / 账号在标题与副标题里，读屏跳过它。
-      leading: ExcludeSemantics(
-        child: CircleAvatar(
-          child: Text(name.isEmpty ? '?' : name.substring(0, 1)),
-        ),
-      ),
-      title: Row(
-        children: [
-          Flexible(
-            child: Text(
-              !snapshot.signedIn
-                  ? l10n.notLoggedIn
-                  : snapshot.nickname.isEmpty
-                  ? l10n.accountUid(snapshot.uid)
-                  : snapshot.nickname,
-              overflow: TextOverflow.ellipsis,
+  Widget build(BuildContext context, riverpod.WidgetRef ref) {
+    final accountState = ref.watch(accountStateProvider);
+    return ListenableBuilder(
+      listenable: accountState,
+      builder: (context, _) {
+        final l10n = context.l10n;
+        final account = accountState.store.active;
+        final snapshot = (
+          signedIn: account != null,
+          uid: accountState.store.activeUid ?? '',
+          nickname: account?.nickname ?? '',
+          level: account?.levelLabel ?? '',
+          free: account?.isFreeTier ?? true,
+        );
+        final name = snapshot.nickname.isNotEmpty
+            ? snapshot.nickname
+            : snapshot.uid;
+        return ListTile(
+          // 头像里的首字母是装饰：账号名 / 账号在标题与副标题里，读屏跳过它。
+          leading: ExcludeSemantics(
+            child: CircleAvatar(
+              child: Text(name.isEmpty ? '?' : name.substring(0, 1)),
             ),
           ),
-          // 会员等级（网页版个人中心截取）；「普」
-          //（含还没取到的情况）不显示，开通会员才有卡片。
-          if (snapshot.signedIn && !snapshot.free) ...[
-            const SizedBox(width: 8),
-            _LevelChip(level: snapshot.level),
-          ],
-        ],
-      ),
-      subtitle: Text(l10n.uidLabel(snapshot.uid)),
-      trailing: FilledButton.tonal(
-        onPressed: onSwitchAccount,
-        child: Text(l10n.switchAccountShort),
-      ),
+          title: Row(
+            children: [
+              Flexible(
+                child: Text(
+                  !snapshot.signedIn
+                      ? l10n.notLoggedIn
+                      : snapshot.nickname.isEmpty
+                      ? l10n.accountUid(snapshot.uid)
+                      : snapshot.nickname,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              // 会员等级（网页版个人中心截取）；「普」
+              //（含还没取到的情况）不显示，开通会员才有卡片。
+              if (snapshot.signedIn && !snapshot.free) ...[
+                const SizedBox(width: 8),
+                _LevelChip(level: snapshot.level),
+              ],
+            ],
+          ),
+          subtitle: Text(l10n.uidLabel(snapshot.uid)),
+          trailing: FilledButton.tonal(
+            onPressed: onSwitchAccount,
+            child: Text(l10n.switchAccountShort),
+          ),
+        );
+      },
     );
   }
 }

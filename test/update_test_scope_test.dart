@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/account_state.dart';
+import 'package:lancloud/core/account_session.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/backup/backup_service.dart';
 import 'package:lancloud/core/backup/backup_service_provider.dart';
@@ -50,6 +51,9 @@ Widget updateTestTree({
     container: container,
     child: ProviderScope(
       overrides: [
+        accountStateProvider.overrideWithValue(app.accountState),
+        appDbProvider.overrideWithValue(app.db),
+        accountSessionProvider.overrideWithValue(app.accountSession),
         navigationAppearanceSettingsStateProvider.overrideWithValue(
           app.navigationAppearanceSettings,
         ),
@@ -74,6 +78,7 @@ Widget appTestTree({
       if (backupService != null)
         backupServiceProvider.overrideWithValue(backupService),
       accountStateProvider.overrideWithValue(app.accountState),
+      accountSessionProvider.overrideWithValue(app.accountSession),
       appDbProvider.overrideWithValue(app.db),
       settingsStoreProvider.overrideWithValue(app.settings),
       driveStateProvider.overrideWithValue(app.drive),

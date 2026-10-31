@@ -749,13 +749,13 @@ void main() {
 
     // 截取到会员等级后显示小卡片
     app.accounts.byUid('556911')!.level = '白';
-    app.notifyListeners();
+    app.accountState.notifyAccountChanged();
     await tester.pumpAndSettle();
     expect(find.text('白'), findsOneWidget);
 
     // 调成普通用户「普」：卡片隐藏
     app.accounts.byUid('556911')!.level = '普';
-    app.notifyListeners();
+    app.accountState.notifyAccountChanged();
     await tester.pumpAndSettle();
     expect(find.text('普'), findsNothing);
   });

@@ -2,6 +2,8 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/app.dart';
+import 'package:lancloud/core/account_state.dart';
+import 'package:lancloud/core/account_session.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/data/account_store.dart';
 import 'package:lancloud/core/data/settings_store_provider.dart';
@@ -23,6 +25,8 @@ Widget _rootShellHost(
 ) => ProviderScope(
   overrides: [
     settingsStoreProvider.overrideWithValue(app.settings),
+    accountStateProvider.overrideWithValue(app.accountState),
+    accountSessionProvider.overrideWithValue(app.accountSession),
     transferManagerProvider.overrideWithValue(transfers),
     navigationAppearanceSettingsStateProvider.overrideWithValue(
       app.navigationAppearanceSettings,
