@@ -20,7 +20,6 @@ import 'package:lancloud/l10n/delegates.dart';
 import 'package:lancloud/ui/app_icons.dart' as app_icons;
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/drive_page.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// 网盘页挂载在目录缓存上（不进网络）：给个账号让 `app.client` 非空，
@@ -57,16 +56,11 @@ Future<void> host(WidgetTester tester, {required bool grid}) async {
         ),
         navigationStateProvider.overrideWithValue(app.navigation),
       ],
-      child: MultiProvider(
-        providers: [
-          ChangeNotifierProvider<AppController>.value(value: app),
-        ],
-        child: MaterialApp(
-          localizationsDelegates: appLocalizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          locale: const Locale('zh'),
-          home: const DrivePage(tabIndex: 0),
-        ),
+      child: MaterialApp(
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('zh'),
+        home: const DrivePage(tabIndex: 0),
       ),
     ),
   );

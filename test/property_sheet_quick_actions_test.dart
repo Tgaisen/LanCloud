@@ -26,7 +26,6 @@ import 'package:lancloud/ui/legal_dialog.dart';
 import 'package:lancloud/ui/m3e.dart';
 // 应用用的是自己的 Symbols 图标集，和框架的 Icons 同名，按应用代码的习惯隐藏后者
 import 'package:material_ui/material_ui.dart' hide Icons;
-import 'package:provider/provider.dart';
 
 /// 固定返回一个文件 + 一个文件夹，并给出可预测的分享信息。
 ///
@@ -234,23 +233,18 @@ Future<void> _pumpDrive(
         ),
         navigationStateProvider.overrideWithValue(app.navigation),
       ],
-      child: MultiProvider(
-        providers: [
-          ChangeNotifierProvider<AppController>.value(value: app),
-        ],
-        child: MaterialApp(
-          theme: ThemeData(visualDensity: density),
-          localizationsDelegates: appLocalizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          locale: locale,
-          // 和应用一致：强调排版 / 弹窗宽度这些组件级样式挂在 builder 上
-          builder: (context, child) =>
-              M3eComponentStyles(child: child ?? const SizedBox.shrink()),
-          home: DrivePage(
-            initialFolderId: folderId,
-            initialName: folderName,
-            tabIndex: 0,
-          ),
+      child: MaterialApp(
+        theme: ThemeData(visualDensity: density),
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: locale,
+        // 和应用一致：强调排版 / 弹窗宽度这些组件级样式挂在 builder 上
+        builder: (context, child) =>
+            M3eComponentStyles(child: child ?? const SizedBox.shrink()),
+        home: DrivePage(
+          initialFolderId: folderId,
+          initialName: folderName,
+          tabIndex: 0,
         ),
       ),
     ),

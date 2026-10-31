@@ -6,13 +6,11 @@ import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:lpinyin/lpinyin.dart';
 import 'package:path/path.dart' as p;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:provider/provider.dart';
 
 import '../core/account_state.dart';
 import '../core/api/lanzou_client.dart';
 import '../core/api/lanzou_client_registry.dart';
 import '../core/api/models.dart';
-import '../core/app_controller.dart';
 import '../core/cache_page_settings_state.dart';
 import '../core/data/app_db.dart';
 import '../core/data/app_db_provider.dart';
@@ -72,13 +70,6 @@ class DrivePage extends ConsumerStatefulWidget {
   @override
   ConsumerState<DrivePage> createState() => _DrivePageState();
 }
-
-typedef _DriveViewSettings = ({
-  bool gridView,
-  bool floatingNavBar,
-  bool hideTopBar,
-  bool hideBottomBar,
-});
 
 class _DrivePageState extends ConsumerState<DrivePage>
     with
@@ -157,7 +148,6 @@ class _DrivePageState extends ConsumerState<DrivePage>
 
   /// 键盘是否弹出（悬浮底栏的 FAB 留白跟随它，见 didChangeMetrics）。
   final ValueNotifier<bool> _keyboardUp = ValueNotifier(false);
-  late AppController _app;
   late final AccountState _accounts;
   late final NavigationState _navigation;
   late final DriveState _drive;
@@ -181,15 +171,14 @@ class _DrivePageState extends ConsumerState<DrivePage>
     // 底栏形态：只有当前激活的 tab 才算；独立页面：在最上层就算
     if (route == null || route.isFirst) {
       return widget.tabIndex != null &&
-          _appReady &&
+          _dependenciesReady &&
           _navigation.activeTab.value == widget.tabIndex;
     }
     return true;
   }
 
-  /// didChangeDependencies 之前（例如 initState 里同步命中的目录缓存）
-  /// 还不能访问 _app，用这个标记兜底。
-  bool _appReady = false;
+  /// didChangeDependencies 之前还不能启用目录可见性探针，用这个标记兜底。
+  bool _dependenciesReady = false;
 
   @override
   void initState() {
@@ -206,8 +195,6 @@ class _DrivePageState extends ConsumerState<DrivePage>
             .viewInsets
             .bottom >
         0;
-    final app = context.read<AppController>();
-    _app = app;
     _accounts = ref.read(accountStateProvider);
     _navigation = ref.read(navigationStateProvider);
     _drive = ref.read(driveStateProvider);
@@ -245,8 +232,8 @@ class _DrivePageState extends ConsumerState<DrivePage>
       _navigation.driveCanHandleBack.value = false;
     }
     if (_selecting) {
-      _app.setSelectionMode(false);
-      _app.onRequestExitSelection = null;
+      _navigation.setSelectionMode(false);
+      _navigation.onRequestExitSelection = null;
     }
     _selAnim.dispose();
     _enterAnim.dispose();
@@ -540,7 +527,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
   void didChangeDependencies() {
     super.didChangeDependencies();
     _systemReduceMotion = reduceMotionOf(context);
-    _appReady = true;
+    _dependenciesReady = true;
     _drive.addDriveProbe(_dropProbe); // 拖拽判定：当前网盘页是否可见
     if (_isShellPage) {
       _navigation.onDriveBack = _handleDriveBack;
@@ -600,11 +587,11 @@ class _DrivePageState extends ConsumerState<DrivePage>
   /// 当前网盘页是否要自己消费返回手势：多选 > 搜索栏 > 上一级目录。
   bool get _canHandleBack => _selecting || _searching || _path.isNotEmpty;
 
-  /// 上报给 RootShell（见 AppController.driveCanHandleBack）：需要消费返回时
+  /// 上报给 RootShell（见 NavigationState.driveCanHandleBack）：需要消费返回时
   /// 置 true，由 Flutter 拦截手势；false 时交给系统，系统才会播放
   /// 「退回桌面」的预测性返回动画。
   void _publishCanHandleBack() {
-    if (!_appReady || !_isShellPage) return;
+    if (!_dependenciesReady || !_isShellPage) return;
     final notifier = _navigation.driveCanHandleBack;
     final value = _canHandleBack;
     if (notifier.value != value) notifier.value = value;
@@ -850,8 +837,8 @@ class _DrivePageState extends ConsumerState<DrivePage>
       if (folderId != null) _selectedFolders.add(folderId);
     });
     _selAnim.forward();
-    _app.onRequestExitSelection = _exitSelection;
-    _app.setSelectionMode(true);
+    _navigation.onRequestExitSelection = _exitSelection;
+    _navigation.setSelectionMode(true);
     // 只在「刚进入多选」时播报，继续长按其它条目不再重复
     if (!wasSelecting) announceEnteredMultiSelect(context);
   }
@@ -863,8 +850,8 @@ class _DrivePageState extends ConsumerState<DrivePage>
       _selectedFolders.clear();
     });
     _selAnim.reverse();
-    _app.onRequestExitSelection = null;
-    _app.setSelectionMode(false);
+    _navigation.onRequestExitSelection = null;
+    _navigation.setSelectionMode(false);
   }
 
   /// 切换单个文件 / 文件夹的选中态；选中数归零时自动退出多选。
@@ -1271,7 +1258,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
     // 名称为空由弹窗自己的 error state 拦住，到这里一定非空
     final name = result.name;
     try {
-      await context.read<AppController>().client?.mkdir(
+      await _activeClient()?.mkdir(
         _folderId,
         name,
         desc: result.desc,
@@ -2597,34 +2584,36 @@ class _DrivePageState extends ConsumerState<DrivePage>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final app = context.read<AppController>();
-    final viewSettings = context.select<AppController, _DriveViewSettings>(
-      (app) => (
-        gridView: app.settings.gridView,
-        floatingNavBar: app.settings.floatingNavBar,
-        hideTopBar: app.settings.hideTopBar,
-        hideBottomBar: app.settings.hideBottomBar,
-      ),
-    );
     // 发布当前目录：拖拽文件落下来时的确认条要显示"上传到 根目录/abc"
-    app.driveLocation.value = DriveLocation(
+    _drive.location.value = DriveLocation(
       id: _folderId,
       path: [for (final node in _path) node.name].join('/'),
     );
-    final grid = viewSettings.gridView;
-    final selectedCount = _selectedFiles.length + _selectedFolders.length;
-    final headerHeight =
-        MediaQuery.paddingOf(context).top + kToolbarHeight + 46;
-    // 底部被占住的高度（外壳底栏 / 系统导航栏），用来把 FAB 抬到它上面。
-    // 必须在页面上下文里读：FAB 槽位的 MediaQuery 已经把底部内边距清掉了。
-    final bottomObstruction = bottomObstructionHeight(context);
-    // 悬浮胶囊只在外壳里有；独立页面按系统导航栏避让即可。
-    final floatingNavInShell =
-        inRootShell(context) && viewSettings.floatingNavBar;
 
     return AnimatedBuilder(
-      animation: Listenable.merge([_selAnim, _exitAnim]),
+      animation: Listenable.merge([
+        _selAnim,
+        _exitAnim,
+        _cacheSettings.revision,
+        _appearance.revision,
+      ]),
       builder: (context, _) {
+        final viewSettings = (
+          gridView: _cacheSettings.gridView,
+          floatingNavBar: _appearance.floatingNavBar,
+          hideTopBar: _appearance.hideTopBar,
+          hideBottomBar: _appearance.hideBottomBar,
+        );
+        final grid = viewSettings.gridView;
+        final selectedCount = _selectedFiles.length + _selectedFolders.length;
+        final headerHeight =
+            MediaQuery.paddingOf(context).top + kToolbarHeight + 46;
+        // 底部被占住的高度（外壳底栏 / 系统导航栏），用来把 FAB 抬到它上面。
+        // 必须在页面上下文里读：FAB 槽位的 MediaQuery 已经把底部内边距清掉了。
+        final bottomObstruction = bottomObstructionHeight(context);
+        // 悬浮胶囊只在外壳里有；独立页面按系统导航栏避让即可。
+        final floatingNavInShell =
+            inRootShell(context) && viewSettings.floatingNavBar;
         return Scaffold(
           // 大屏外壳里的页面：背景交给外壳的圆角卡片
           backgroundColor: transparentPageBackground(context)
@@ -2733,7 +2722,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
             ],
           ),
           floatingActionButton: ValueListenableBuilder<double>(
-            valueListenable: app.barsHide,
+            valueListenable: _navigation.barsHide,
             builder: (context, hide, child) {
               // 只跟随“底栏收起”设置：底栏跟随滚动时 FAB 也同步下滑，
               // 多选等程序化隐藏则用补间动画，方向统一为上滑显示、下滑消失。
@@ -2863,12 +2852,11 @@ class _DrivePageState extends ConsumerState<DrivePage>
   Widget _buildBody(bool grid, bool hideTopBar) {
     final headerInset =
         MediaQuery.of(context).padding.top + kToolbarHeight + 46;
-    final app = context.read<AppController>();
     return ScrollTint(
       hideDistance: headerInset,
-      readBarsHidden: () => app.topBarHide.value,
+      readBarsHidden: () => _navigation.topBarHide.value,
       onBarsHidden: hideTopBar
-          ? app.setTopBarHideFromScroll
+          ? _navigation.setTopBarHideFromScroll
           : null,
       // 列表快速滑动条（可拖拽）
       child: FastScrollbar(
@@ -3177,7 +3165,10 @@ class _DrivePageState extends ConsumerState<DrivePage>
     required bool animate,
   }) {
     final selected = _selectedFiles.contains(file.id);
-    final downloadKey = driveDownloadKey(_app.activeUid ?? '', file.id);
+    final downloadKey = driveDownloadKey(
+      _accounts.store.activeUid ?? '',
+      file.id,
+    );
     final item = _AnimatedListItem(
       key: ValueKey('$_folderId-l-${file.id}'),
       index: index,

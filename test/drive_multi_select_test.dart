@@ -20,7 +20,6 @@ import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/app_icons.dart' as app_icons;
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/drive_page.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
@@ -64,16 +63,11 @@ Future<AppController> host(
         ),
         navigationStateProvider.overrideWithValue(app.navigation),
       ],
-      child: MultiProvider(
-        providers: [
-          ChangeNotifierProvider<AppController>.value(value: app),
-        ],
-        child: MaterialApp(
-          localizationsDelegates: appLocalizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          locale: const Locale('zh'),
-          home: const DrivePage(tabIndex: 0),
-        ),
+      child: MaterialApp(
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('zh'),
+        home: const DrivePage(tabIndex: 0),
       ),
     ),
   );

@@ -18,7 +18,6 @@ import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/delegates.dart';
 import 'package:lancloud/ui/drive_page.dart';
-import 'package:provider/provider.dart';
 
 /// 第一页只有几条、且服务端说「还有下一页」的目录：真机上必须自动补一页，
 /// 才能知道已经到底（否则要用户滑一下才出现「已加载全部」）。
@@ -114,19 +113,14 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: _overrides(app, manager, client),
-        child: MultiProvider(
-          providers: [
-            ChangeNotifierProvider<AppController>.value(value: app),
-          ],
-          child: MaterialApp(
-            localizationsDelegates: appLocalizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            locale: const Locale('zh'),
-            home: const DrivePage(
-              initialFolderId: 'sub',
-              initialName: '子目录',
-              tabIndex: 0,
-            ),
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const DrivePage(
+            initialFolderId: 'sub',
+            initialName: '子目录',
+            tabIndex: 0,
           ),
         ),
       ),
@@ -154,19 +148,14 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: _overrides(app, manager, client),
-        child: MultiProvider(
-          providers: [
-            ChangeNotifierProvider<AppController>.value(value: app),
-          ],
-          child: MaterialApp(
-            localizationsDelegates: appLocalizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            locale: const Locale('zh'),
-            home: const DrivePage(
-              initialFolderId: 'sub',
-              initialName: '子目录',
-              tabIndex: 0,
-            ),
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const DrivePage(
+            initialFolderId: 'sub',
+            initialName: '子目录',
+            tabIndex: 0,
           ),
         ),
       ),
@@ -204,17 +193,12 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: _overrides(app, manager, client),
-        child: MultiProvider(
-          providers: [
-            ChangeNotifierProvider<AppController>.value(value: app),
-          ],
-          child: MaterialApp(
-            localizationsDelegates: appLocalizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            locale: const Locale('zh'),
-            // 从根目录开始，点进「子目录」验证目录切换这条路径
-            home: const DrivePage(tabIndex: 0),
-          ),
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          // 从根目录开始，点进「子目录」验证目录切换这条路径
+          home: const DrivePage(tabIndex: 0),
         ),
       ),
     );
