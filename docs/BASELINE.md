@@ -114,6 +114,7 @@
 | `tools\agent.cmd test`（拖放动作依赖） | 增量 | **12 tests, all passed** | 约 15 s |
 | `tools\agent.cmd test`（显示 Cookie 纯 Riverpod） | 增量 | **1 test, all passed** | 约 13 s |
 | `tools\agent.cmd test`（共享顶栏 / 多选条回退移除） | 增量 | **302 tests, all passed** | 约 49 s |
+| `tools\agent.cmd test`（收藏页消费端） | 增量 | **11 tests, all passed** | 约 18 s |
 | `tools\agent.cmd analyze`（拖放与 Cookie 行完成后） | 全量 | No issues found | 约 17 s |
 | `tools\agent.cmd test`（拖放与 Cookie 行完成后） | 全量 | **722 tests, all passed** | 约 99 s |
 | `tools\agent.cmd analyze`（账号会话消费端完成后） | 全量 | No issues found | 约 32 s |
@@ -412,6 +413,10 @@
   `BatchActionBar` 的 AppController 回退，共享组件现在只接受应用级 Riverpod
   导航状态。相关测试宿主补齐导航 provider override；增量 54 个测试文件 /
   302 个测试通过，用例总数保持 722。
+- 2026-10-31 `FavoritesPage` 改用 `AppDb`、`NavigationState`、`DriveState`、
+  客户端注册表和账号状态 provider；页面不再读取 `AppController`。收藏页、
+  空状态和密码恢复测试移除对应旧 Provider 宿主；增量 3 个测试文件 /
+  11 个测试通过，用例总数保持 722。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release

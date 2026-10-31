@@ -793,6 +793,12 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > `navigationAppearanceSettingsStateProvider` 与 `navigationStateProvider`。
 > 对应测试宿主随组件迁移补齐 override，不再依赖双栈兼容路径；相关增量
 > 54 个测试文件 / 302 个测试通过。
+>
+> 收藏页随后完成消费端迁移：数据库、导航与多选、收藏探针、公开客户端和当前
+> UID 分别来自 `appDbProvider`、`navigationStateProvider`、
+> `driveStateProvider`、`lanzouClientRegistryProvider` 与
+> `accountStateProvider`。页面不再读取 AppController；收藏、空状态和密码恢复
+> 测试移除旧宿主，相关增量 3 个测试文件 / 11 个测试通过。
 
 ### 阶段 6：移除旧 Provider
 
