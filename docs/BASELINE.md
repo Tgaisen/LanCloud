@@ -117,6 +117,8 @@
 | `tools\agent.cmd test`（收藏页消费端） | 增量 | **11 tests, all passed** | 约 18 s |
 | `tools\agent.cmd test`（首页消费端与切页回调） | 增量 | **366 tests, all passed** | 约 52 s |
 | `tools\agent.cmd test`（网盘目录加载与导航切片） | 增量 | **45 tests, all passed** | 约 25 s |
+| `tools\agent.cmd analyze`（网盘单条目菜单切片） | 增量 | No issues found | 约 29 s |
+| `tools\agent.cmd test`（网盘单条目菜单切片） | 增量 | **46 tests, all passed** | 约 36 s |
 | `tools\agent.cmd analyze`（网盘目录切片完成后） | 全量 | No issues found | 约 21 s |
 | `tools\agent.cmd test`（网盘目录切片完成后） | 全量 | **722 tests, all passed** | 约 110 s |
 | `tools\agent.cmd analyze`（拖放与 Cookie 行完成后） | 全量 | No issues found | 约 17 s |
@@ -135,7 +137,7 @@
 | `lib` 总行数 | 约 4.4 万 |
 | `test` 测试文件 | 155（平铺，`<主题>_test.dart`） |
 | `test` 总行数 | 约 2.1 万 |
-| `test` 用例数 | 722（当前总数；阶段 6 准备已新增 7 条测试） |
+| `test` 用例数 | 723（当前总数；阶段 6 准备已新增 8 条测试） |
 | `lib/ui` 页面与组件 | 54 个平铺文件 |
 | `lib/core` | 32 个平铺文件 + 5 个子系统目录 |
 | 文案（`app_zh.arb`） | 1357 行 |
@@ -429,6 +431,11 @@
   动画和首页目录请求，改用账号、数据库、客户端、目录、页面设置和导航 provider；
   文件操作仍暂用旧控制器。增量 5 个测试文件 / 45 个测试通过，用例总数保持
   722。
+- 2026-10-31 `DrivePage` 单条目菜单切片将复制链接、二维码、修改信息、访问
+  密码、移动、收藏和单条删除改为读取现有账号、数据库、客户端和目录 provider；
+  新增“旧控制器客户端不可用时仍能完成复制、修改和删除”的回归测试。增量
+  5 个测试文件 / 46 个测试通过，当前总数由 722 增至 723。属性卡内部加载、
+  批量操作、下载直链和页面外壳仍待后续切片。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release

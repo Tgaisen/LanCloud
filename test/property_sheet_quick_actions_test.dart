@@ -47,6 +47,7 @@ class _FakeClient extends LanzouClient {
   /// 「修改信息」流程里实际调用的接口参数。
   final List<String> renamedFiles = <String>[];
   final List<String> savedDescs = <String>[];
+  final List<({String id, bool isFile})> deletedItems = [];
 
   @override
   Future<({List<LzFolder> folders, List<PathNode> path})> listFolders(
@@ -93,6 +94,11 @@ class _FakeClient extends LanzouClient {
       savedDescs.add(desc);
 
   @override
+  Future<void> deleteItem({required String id, required bool isFile}) async {
+    deletedItems.add((id: id, isFile: isFile));
+  }
+
+  @override
   Future<ShareInfo> shareInfoOfFile(String fileId) async {
     shareFileCalls += 1;
     return ShareInfo(
@@ -126,14 +132,18 @@ class _MemberRenameClient extends _FakeClient {
 }
 
 class _FakeApp extends AppController {
-  _FakeApp(this._client, {LanzouClient? publicClient})
-    : _public = publicClient ?? _FakePublic();
+  _FakeApp(
+    this._client, {
+    LanzouClient? publicClient,
+    this.exposeLegacyClient = true,
+  }) : _public = publicClient ?? _FakePublic();
 
   final LanzouClient _client;
   final LanzouClient _public;
+  final bool exposeLegacyClient;
 
   @override
-  LanzouClient get client => _client;
+  LanzouClient? get client => exposeLegacyClient ? _client : null;
 
   @override
   LanzouClient get publicClient => _public;
@@ -366,6 +376,65 @@ void main() {
     final copied = '${(clipboard.single.arguments as Map)['text']}';
     expect(copied, contains(_FakeClient.fileUrl));
     expect(copied, contains('abcd'));
+  });
+
+  testWidgets('网盘单条目菜单不依赖旧 AppController 客户端', (tester) async {
+    final client = _FakeClient();
+    final app = _FakeApp(client, exposeLegacyClient: false);
+    final clipboard = <MethodCall>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+          if (call.method == 'Clipboard.setData') clipboard.add(call);
+          return null;
+        });
+    addTearDown(
+      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, null),
+    );
+
+    await _pumpDrive(tester, app);
+
+    await tester.tap(find.byTooltip('文件操作'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.tap(
+      find.descendant(of: find.byType(M3eMenuRow), matching: find.text('复制链接')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(client.shareFileCalls, 1);
+    expect(clipboard, hasLength(1));
+
+    await tester.tap(find.text('a.zip'));
+    await _settleSheet(tester);
+    await tester.tap(_sheetText('修改信息'));
+    await _settleSheet(tester);
+    await tester.enterText(find.byType(TextField).first, 'b.zip');
+    await tester.enterText(find.byType(TextField).last, '新简介');
+    await tester.tap(find.text('确定'));
+    await _settleSheet(tester);
+
+    expect(client.renamedFiles, ['b.zip']);
+    expect(client.savedDescs, ['新简介']);
+
+    Navigator.of(tester.element(find.byType(DrivePage))).pop();
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('文件操作'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.tap(
+      find.descendant(of: find.byType(M3eMenuRow), matching: find.text('删除')),
+    );
+    await _settleSheet(tester);
+    expect(find.text('删除确认'), findsOneWidget);
+
+    await tester.tap(
+      find.descendant(of: find.byType(AlertDialog), matching: find.text('删除')),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(client.deletedItems, [(id: 'f1', isFile: true)]);
   });
 
   testWidgets('已添加下载的文件：属性弹窗下载按钮 checked，点击弹五项菜单', (tester) async {

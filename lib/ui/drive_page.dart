@@ -1815,7 +1815,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
   /// [share] 是属性弹窗已经取回来的分享信息（打开弹窗时为了收藏判定取过），
   /// 传进来就不再重复请求。
   Future<void> _showFileQr(LzFile file, {ShareInfo? share}) async {
-    final client = context.read<AppController>().client;
+    final client = _activeClient();
     if (client == null) return;
     try {
       final info = share ?? await client.shareInfoOfFile(file.id);
@@ -1830,7 +1830,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
 
   /// 显示文件夹的分享链接二维码；[share] 同上，属性弹窗取过就直接用。
   Future<void> _showFolderQr(LzFolder folder, {ShareInfo? share}) async {
-    final client = context.read<AppController>().client;
+    final client = _activeClient();
     if (client == null) return;
     try {
       final info = share ?? await client.shareInfoOfFolder(folder.id);
@@ -1868,7 +1868,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
   ///
   /// 只扫描已经加载的前几页；找不到或出错时返回 null，由调用方沿用现有信息。
   Future<LzFile?> _freshFileEntry(String fileId) async {
-    final client = context.read<AppController>().client;
+    final client = _activeClient();
     if (client == null) return null;
     final maxPage = math.max(1, math.min(_page, 3));
     for (var page = 1; page <= maxPage; page++) {
@@ -1963,7 +1963,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
   /// ⋯ 菜单里的「修改信息」：列表项没有简介正文，先取一次再开弹窗——
   /// 否则输入框是空的，用户只改名就会把简介覆盖掉。取不到就按空简介处理。
   Future<void> _editFileInfoFromMenu(LzFile file) async {
-    final client = context.read<AppController>().client;
+    final client = _activeClient();
     var desc = '';
     if (client != null) {
       try {
@@ -1975,8 +1975,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
   }
 
   Future<void> _moveSingleFile(LzFile file) async {
-    final app = context.read<AppController>();
-    final client = app.client;
+    final client = _activeClient();
     if (client == null) return;
     final target = await showFolderPicker(
       context,
@@ -2001,7 +2000,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
   }
 
   Future<void> _singleSetPasswd(LzFile file) async {
-    final client = context.read<AppController>().client;
+    final client = _activeClient();
     if (client == null) return;
     // 先取当前是否启用与密码，用于预填开关和输入框
     final navigator = Navigator.of(context);
@@ -2019,8 +2018,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
       context,
       enabled: currentPwd.isNotEmpty,
       pwd: currentPwd,
-      freeTier:
-          context.read<AppController>().activeAccount?.isFreeTier ?? false,
+      freeTier: _accounts.store.active?.isFreeTier ?? false,
     );
     if (result == null || !mounted) return;
     final pwd = result.enabled ? result.pwd : '';
@@ -2090,14 +2088,14 @@ class _DrivePageState extends ConsumerState<DrivePage>
     _pulseItems(folderIds: {folderId});
     // 缓存里也要改名，否则再进入该目录时路径栏会显示旧名称
     if (name != null) {
-      context.read<AppController>().driveCache.renameFolder(folderId, name);
+      _drive.cache.renameFolder(folderId, name);
     }
     _updateCacheSnapshot();
   }
 
   /// 文件夹访问密码：先取当前是否启用与密码，再弹开关 + 密码框。
   Future<void> _setFolderPasswd(LzFolder folder) async {
-    final client = context.read<AppController>().client;
+    final client = _activeClient();
     if (client == null) return;
     final navigator = Navigator.of(context);
     showLoadingDialog(context, context.l10n.resolving);
@@ -2116,8 +2114,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
       pwd: currentPwd,
       // 文件夹提取码可以到 12 位（文件仍限 2-6 位）
       maxLength: 12,
-      freeTier:
-          context.read<AppController>().activeAccount?.isFreeTier ?? false,
+      freeTier: _accounts.store.active?.isFreeTier ?? false,
     );
     if (result == null || !mounted) return;
     final pwd = result.enabled ? result.pwd : '';
@@ -2149,10 +2146,9 @@ class _DrivePageState extends ConsumerState<DrivePage>
     LzFile file, {
     required String desc,
   }) async {
-    final app = context.read<AppController>();
-    final client = app.client;
+    final client = _activeClient();
     if (client == null) return null;
-    final freeTier = app.activeAccount?.isFreeTier ?? false;
+    final freeTier = _accounts.store.active?.isFreeTier ?? false;
     final result = await showDialog<({String name, String desc})>(
       context: context,
       builder: (_) => _ItemFormDialog(
@@ -2206,7 +2202,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
 
   /// 修改文件夹信息（名称 + 简介），成功后返回新值给调用方刷新弹窗。
   Future<({String name, String desc})?> _editFolderInfo(LzFolder folder) async {
-    final client = context.read<AppController>().client;
+    final client = _activeClient();
     if (client == null) return null;
     // 控制器由弹窗自己持有：退场动画期间 TextField 仍会重建，
     // 在 showDialog 返回后立刻 dispose 会触发
@@ -2321,7 +2317,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
   /// ⋯ 菜单里的「修改信息」：列表项带的简介可能是截断过的，先取一次最新全文
   /// （与文件的修改信息同一个口径），取不到就沿用列表里的值。
   Future<void> _editFolderInfoFromMenu(LzFolder folder) async {
-    final client = context.read<AppController>().client;
+    final client = _activeClient();
     var desc = folder.desc;
     if (client != null) {
       try {
@@ -2378,7 +2374,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
   }
 
   Future<void> _copyShareLink(LzFile file, {ShareInfo? share}) async {
-    final client = context.read<AppController>().client;
+    final client = _activeClient();
     if (client == null) return;
     try {
       final info = share ?? await client.shareInfoOfFile(file.id);
@@ -2397,7 +2393,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
   }
 
   Future<void> _copyFolderShareLink(LzFolder folder, {ShareInfo? share}) async {
-    final client = context.read<AppController>().client;
+    final client = _activeClient();
     if (client == null) return;
     try {
       final info = share ?? await client.shareInfoOfFolder(folder.id);
@@ -2471,12 +2467,11 @@ class _DrivePageState extends ConsumerState<DrivePage>
   ///
   /// 返回是否成功：调用方（属性弹窗）要按结果回滚按钮的选中态。
   Future<bool> _unfavoriteFile(LzFile file) async {
-    final app = context.read<AppController>();
-    final client = app.client;
+    final client = _activeClient();
     if (client == null) return false;
     try {
       final info = await client.shareInfoOfFile(file.id);
-      await app.db.removeFavorite(info.url);
+      await _db.removeFavorite(info.url);
       if (!mounted) return false;
       showAppToast(context, context.l10n.unfavorited);
       return true;
@@ -2489,12 +2484,11 @@ class _DrivePageState extends ConsumerState<DrivePage>
 
   /// 取消收藏文件夹。
   Future<bool> _unfavoriteFolder(LzFolder folder) async {
-    final app = context.read<AppController>();
-    final client = app.client;
+    final client = _activeClient();
     if (client == null) return false;
     try {
       final info = await client.shareInfoOfFolder(folder.id);
-      await app.db.removeFavorite(info.url);
+      await _db.removeFavorite(info.url);
       if (!mounted) return false;
       showAppToast(context, context.l10n.unfavorited);
       return true;
@@ -2507,18 +2501,17 @@ class _DrivePageState extends ConsumerState<DrivePage>
 
   /// 收藏文件。返回是否成功，供属性弹窗按结果回滚选中态。
   Future<bool> _favoriteFile(LzFile file) async {
-    final app = context.read<AppController>();
-    final client = app.client;
+    final client = _activeClient();
     if (client == null) return false;
     try {
       final info = await client.shareInfoOfFile(file.id);
-      await app.db.addFavorite(
+      await _db.addFavorite(
         kind: 'shareFile',
         name: file.name,
         ref: info.url,
         pwd: info.pwd,
         size: file.size,
-        sharer: app.activeAccount?.nickname ?? '',
+        sharer: _accounts.store.active?.nickname ?? '',
       );
       if (!mounted) return false;
       showAppToast(context, context.l10n.favorited);
@@ -2532,17 +2525,16 @@ class _DrivePageState extends ConsumerState<DrivePage>
 
   /// 收藏文件夹。返回是否成功，供属性弹窗按结果回滚选中态。
   Future<bool> _favoriteFolder(LzFolder folder) async {
-    final app = context.read<AppController>();
-    final client = app.client;
+    final client = _activeClient();
     if (client == null) return false;
     try {
       final info = await client.shareInfoOfFolder(folder.id);
-      await app.db.addFavorite(
+      await _db.addFavorite(
         kind: 'shareFolder',
         name: folder.name,
         ref: info.url,
         pwd: info.pwd,
-        sharer: app.activeAccount?.nickname ?? '',
+        sharer: _accounts.store.active?.nickname ?? '',
       );
       if (!mounted) return false;
       showAppToast(context, context.l10n.favorited);
@@ -2558,12 +2550,13 @@ class _DrivePageState extends ConsumerState<DrivePage>
     final l10n = context.l10n;
     if (!await _confirmDelete(l10n.deleteConfirmSingle(file.name))) return;
     if (!mounted) return;
-    final app = context.read<AppController>();
-    final client = app.client;
+    final client = _activeClient();
     if (client == null) return;
     try {
       await client.deleteItem(id: file.id, isFile: true);
-      await app.db.removeDownloaded(['${app.activeUid ?? ''}:${file.id}']);
+      await _db.removeDownloaded([
+        '${_accounts.store.activeUid ?? ''}:${file.id}',
+      ]);
       if (!mounted) return;
       await _removeItemsWithAnimation(fileIds: {file.id});
     } catch (e) {
@@ -2577,8 +2570,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
     final l10n = context.l10n;
     if (!await _confirmDelete(l10n.deleteConfirmSingle(folder.name))) return;
     if (!mounted) return;
-    final app = context.read<AppController>();
-    final client = app.client;
+    final client = _activeClient();
     if (client == null) return;
     // 删的是当前所在目录：删除成功后这个目录已经不存在了，要退回上一级
     final deletingCurrent = folder.id == _folderId;
@@ -2586,10 +2578,10 @@ class _DrivePageState extends ConsumerState<DrivePage>
       await client.deleteItem(id: folder.id, isFile: false);
       if (!mounted) return;
       // 删除的目录如果固定在快速访问里，一并移除
-      await app.db.removePin(folder.id);
+      await _db.removePin(folder.id);
       if (deletingCurrent) {
         // 不清缓存的话，退回父目录会读到仍包含这一项的旧快照
-        app.driveCache.clear();
+        _drive.cache.clear();
         await _jumpTo(_path.length - 2);
         return;
       }
