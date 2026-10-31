@@ -486,7 +486,7 @@ class AppController extends ChangeNotifier
         await accounts.setLevel(uid, info.level);
         changed = true;
       }
-      if (changed) notifyListeners();
+      if (changed) accountState.notifyAccountChanged();
     } catch (_) {}
   }
 
