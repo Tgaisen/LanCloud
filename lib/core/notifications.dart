@@ -61,7 +61,8 @@ class NotificationService {
   static const doneChannelId = 'transfers_done_v2';
 
   /// 随包发布的 Windows 图标：Release 用原图，Profile / Debug 用 Code 角标图。
-  static String get _windowsIconAsset => currentAppBuildMode == AppBuildMode.release
+  static String get _windowsIconAsset =>
+      currentAppBuildMode == AppBuildMode.release
       ? 'windows/runner/resources/app_icon.ico'
       : 'windows/runner/resources/app_icon_badge.ico';
 

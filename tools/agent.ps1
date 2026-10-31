@@ -10,6 +10,7 @@
 # 用法：tools\agent.cmd <动词> [参数...]
 #   analyze [文件...]   有未提交改动就只分析这些文件，否则全量
 #   test    [文件...]   按未提交改动推断受影响的测试文件，推断不出则全量
+#   format  [目录...]   格式化 Dart 代码，默认 lib test tool
 #   gen                 gen-l10n
 #   pubget              pub get（需要联网，会被沙箱拦，属预期）
 #   build-apk [参数]    默认 --debug
@@ -34,6 +35,7 @@ try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch { }
 $tools   = $PSScriptRoot
 $root    = Split-Path -Parent $tools
 $flutter = Join-Path $tools 'flutter.cmd'
+$dart    = 'C:\dev\flutter\bin\cache\dart-sdk\bin\dart.exe'
 $adb     = 'C:\dev\android-sdk\platform-tools\adb.exe'
 $script:ExitCode = 0
 
@@ -56,6 +58,22 @@ function Invoke-Flutter {
     if ($hits) { $hits | Select-Object -First 40 | ForEach-Object { $_.Trim() } }
   }
   $lines | Select-Object -Last $Tail
+  Write-Output "---- exit=$($script:ExitCode)"
+}
+
+function Invoke-Dart {
+  param(
+    [string[]]$DartArgs,
+    [int]$Tail = 12
+  )
+  $raw = & $dart @DartArgs 2>&1
+  $script:ExitCode = $LASTEXITCODE
+  $flat = (@($raw | ForEach-Object {
+    if ($_ -is [System.Management.Automation.ErrorRecord]) { $_.Exception.Message } else { [string]$_ }
+  }) -join "`n")
+  ($flat -split "\r?\n") |
+    Where-Object { $_ -match '\S' } |
+    Select-Object -Last $Tail
   Write-Output "---- exit=$($script:ExitCode)"
 }
 
@@ -115,6 +133,13 @@ switch ($Verb) {
       Write-Output '推断不出受影响的测试文件，跑全量（约 1.5 分钟）'
       Invoke-Flutter -FlutterArgs @('test', '--no-pub') -Tail 12
     }
+  }
+  'format' {
+    $targets = @($Rest | Where-Object { $_ })
+    if ($targets.Count -eq 0) {
+      $targets = @('lib', 'test', 'tool')
+    }
+    Invoke-Dart -DartArgs (@('format') + $targets) -Tail 12
   }
   'gen' {
     Invoke-Flutter -FlutterArgs @('gen-l10n') -Tail 6

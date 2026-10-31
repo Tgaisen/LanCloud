@@ -1,7 +1,7 @@
 # AGENTS.md — LanCloud（蓝云）
 
 蓝奏云第三方 Flutter 客户端。个人维护的**生产项目**：`lib` 44,481 行 / 145 个文件，
-`test` 22,435 行 / 163 个测试文件 / 719 个测试。改动的默认要求是
+`test` 22,435 行 / 163 个测试文件 / 720 个测试。改动的默认要求是
 「不破坏现有行为」，不是「尽量多写」。
 
 ## 动手前先读
@@ -25,6 +25,7 @@
 ```powershell
 C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd analyze   # 有未提交改动→只分析它们；否则全量
 C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd test      # 自动推断受影响的测试；推断不出→全量
+C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd format    # 格式化 lib / test / tool，与 CI 一致
 C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd gen       # 改完 arb 之后
 C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd help      # 全部动词
 ```
@@ -43,6 +44,8 @@ C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd help      # 全部动词
   自检，并重启 Codex 生效。新增 `agent.cmd` 动词时必须同步加一条规则。
 - 一律 `--no-pub`（脚本已内置）：隐式 `pub get` 又慢又需要联网，沙箱里会直接失败。
   确实需要装依赖时用 `agent.cmd pubget`。
+- 改完 Dart 文件后先跑 `tools\agent.cmd format`，再跑 analyze / test。CI 使用
+  `dart format --output=none --set-exit-if-changed lib test tool`，未格式化会直接失败。
 - 全量分析/测试留给人工兜底；你改完只需跑这两个无参命令（已是增量的）。
 - 改版本只能 `dart run tool/bump_version.dart`（同时改 `pubspec.yaml` 与
   `lib/core/app_info.dart`，有测试校验）。禁止手改这两个文件的版本行，
@@ -104,14 +107,15 @@ lib/l10n/              arb + 生成文件
 
 ## 完成定义（DoD）
 
-1. 跑过 `tools\agent.cmd analyze`（有未提交改动时即增量），无新增 issue
-2. 跑过 `tools\agent.cmd test` 并通过；它推断不出受影响文件时会跑全量，属正常
-3. 触及 `core/api/`、`core/data/`、`core/transfer/`、`core/backup/`、`core/update/`
+1. 跑过 `tools\agent.cmd format`，Dart 文件与 CI 格式检查一致
+2. 跑过 `tools\agent.cmd analyze`（有未提交改动时即增量），无新增 issue
+3. 跑过 `tools\agent.cmd test` 并通过；它推断不出受影响文件时会跑全量，属正常
+4. 触及 `core/api/`、`core/data/`、`core/transfer/`、`core/backup/`、`core/update/`
    的改动**必须**带测试（新增或更新）
-4. 若用例总数发生变化，同步 `docs/BASELINE.md` 里的用例数与耗时（标明全量/增量口径）
-5. 汇报格式：**改了哪些文件 → 为什么 → 用哪条命令验证、结果如何 → 遗留风险**
+5. 若用例总数发生变化，同步 `docs/BASELINE.md` 里的用例数与耗时（标明全量/增量口径）
+6. 汇报格式：**改了哪些文件 → 为什么 → 用哪条命令验证、结果如何 → 遗留风险**
 
-没做到 1–3 就别说「完成」。
+没做到 1–4 就别说「完成」。
 
 ## 纪律
 

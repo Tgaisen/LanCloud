@@ -19,7 +19,8 @@ extension AppBuildL10n on AppLocalizations {
     AppBuildMode.release => appBuildRelease,
   };
 
-  String get currentAppDisplayName => currentAppBuildMode == AppBuildMode.release
+  String get currentAppDisplayName =>
+      currentAppBuildMode == AppBuildMode.release
       ? appName
       : '$appName $currentAppBuildModeLabel';
 }
