@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart' as riverpod;
 import 'package:material_ui/material_ui.dart' hide Icons;
@@ -980,6 +981,15 @@ class _ProfilePageState extends riverpod.ConsumerState<ProfilePage>
     // 第三层：二级页（高级覆盖项 / 备份与恢复 / 开源许可）
     final sub = _subPage;
     if (sub != null) {
+      final topPadding = sub == ProfileSubPage.backup ? 8.0 : 16.0;
+      final loadingMinHeight = math.max(
+        0.0,
+        MediaQuery.sizeOf(context).height -
+            MediaQuery.paddingOf(context).top -
+            kToolbarHeight -
+            topPadding -
+            kM3eSectionPagePadding.bottom,
+      );
       return _paneScrollView(
         context,
         controller: _paneScroll(_paneKey),
@@ -992,10 +1002,11 @@ class _ProfilePageState extends riverpod.ConsumerState<ProfilePage>
             ),
             ProfileSubPage.licenses => LicensesContent(
               onOpenPackage: _openLicensePackage,
+              loadingMinHeight: loadingMinHeight,
             ),
           },
         ],
-        topPadding: sub == ProfileSubPage.backup ? 8 : 16,
+        topPadding: topPadding,
       );
     }
     final detail = _detail;

@@ -220,18 +220,24 @@ class M3eComponentStyles extends StatelessWidget {
 /// （确定进度本来就是静态的，不受影响。）
 const double _kStaticProgressValue = 0.75;
 
+/// 页面级加载指示器的统一直径。
+///
+/// M3 loading indicator 允许 24–240dp；应用选择 64dp 作为整页/整块加载的
+/// 默认值，组件内部的小型等待可显式传更小尺寸。
+const double kM3ePageLoadingIndicatorSize = 64;
+
 /// MD3E Loading indicator：形状形变的循环动画，替代绝大多数
 /// `CircularProgressIndicator`（不确定进度的中短等待）。
 class M3eLoadingIndicator extends StatelessWidget {
   const M3eLoadingIndicator({
     super.key,
-    this.size = 48,
+    this.size = kM3ePageLoadingIndicatorSize,
     this.color,
     this.semanticsLabel,
     this.semanticsValue,
   });
 
-  /// 边长（M3 允许 24–240dp，默认 48dp）。
+  /// 边长（M3 允许 24–240dp；应用页面级默认 64dp）。
   final double size;
   final Color? color;
   final String? semanticsLabel;

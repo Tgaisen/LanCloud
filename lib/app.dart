@@ -294,7 +294,7 @@ class _AgreementGateState extends State<AgreementGate> {
     final child = KeyedSubtree(
       key: ValueKey(phase),
       child: !_checked
-          ? const Scaffold(body: Center(child: M3eLoadingIndicator(size: 48)))
+          ? const Scaffold(body: Center(child: M3eLoadingIndicator()))
           : !_accepted
           ? FirstRunTerms(onAccepted: () => setState(() => _accepted = true))
           // 自动检测到新版本时，在任意页面主动提醒一次（条款同意之后才挂上）
@@ -1002,7 +1002,7 @@ class _RootShellState extends ConsumerState<RootShell>
       WidgetsBinding.instance.addPostFrameCallback((_) => previous.dispose());
     }
     if (!shell.ready) {
-      return const Scaffold(body: Center(child: M3eLoadingIndicator(size: 48)));
+      return const Scaffold(body: Center(child: M3eLoadingIndicator()));
     }
     if (shell.activeUid == null) {
       return LoginPage(

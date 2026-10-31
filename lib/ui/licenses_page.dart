@@ -134,10 +134,13 @@ Widget _packageTile(
 /// 开源许可正文：依赖包列表（按包名聚合），点条目看该包的许可正文。
 /// 独立页（push）与「我的」右窗格共用。
 class LicensesContent extends StatefulWidget {
-  const LicensesContent({super.key, this.onOpenPackage});
+  const LicensesContent({super.key, this.onOpenPackage, this.loadingMinHeight});
 
   /// 大屏右窗格中由宿主接管详情导航；为空时 push 独立详情页。
   final ValueChanged<LicensePackageGroup>? onOpenPackage;
+
+  /// 嵌入可滚动窗格时，加载态至少铺满正文可用高度以保持垂直居中。
+  final double? loadingMinHeight;
 
   @override
   State<LicensesContent> createState() => _LicensesContentState();
@@ -153,9 +156,13 @@ class _LicensesContentState extends State<LicensesContent> {
       builder: (context, snapshot) {
         final packages = snapshot.data;
         if (packages == null) {
-          return const Padding(
-            padding: EdgeInsets.symmetric(vertical: 48),
-            child: Center(child: M3eLoadingIndicator()),
+          return ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: widget.loadingMinHeight ?? 96,
+            ),
+            child: Center(
+              child: M3eLoadingIndicator(semanticsLabel: context.l10n.loading),
+            ),
           );
         }
         // 与设置类页面同款 MD3E 连接式列表组：
