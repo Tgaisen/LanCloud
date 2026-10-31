@@ -51,21 +51,21 @@ final class AppCompositionRoot {
   late final TransferDependencies transferDependencies = TransferDependencies(
     store: AppDbTransferStore(database: app.db),
     accounts: AppTransferAccountPort(
-      accounts: app.accounts,
+      accounts: app.accountState.store,
       clients: app.clientRegistry,
     ),
     download: DefaultTransferDownloadPort(
       downloadPaths: downloadPaths,
       sharedDownloads: sharedDownloads,
-      settings: app.settings,
+      settings: app.settingsState.store,
     ),
-    settings: StoreTransferSettingsPort(app.settings),
+    settings: StoreTransferSettingsPort(app.settingsState.store),
   );
 
   late final BackupService backupService = BackupService.of(
     BackupStoreDependencies(
-      accounts: app.accounts,
-      settings: app.settings,
+      accounts: app.accountState.store,
+      settings: app.settingsState.store,
       db: app.db,
       reloadCallback: app.reloadFromStorage,
     ),

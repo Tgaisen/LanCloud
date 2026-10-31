@@ -97,7 +97,7 @@ Future<void> main() async {
   );
   // 系统「移除动画」：读一次并监听原生推送（华为等 ROM 的开关引擎看不到）
   SystemMotion.init();
-  final language = app.settings.language;
+  final language = app.settingsState.store.language;
   final locale = language == 'zh'
       ? const Locale('zh')
       : language == 'en'
