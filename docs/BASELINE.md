@@ -111,6 +111,7 @@
 | `tools\agent.cmd test`（设置页搜索与事件依赖） | 增量 | **46 tests, all passed** | 约 25 s |
 | `tools\agent.cmd test`（AccountSession 服务） | 增量 | **361 tests, all passed** | 约 53 s |
 | `tools\agent.cmd test`（ProfilePage 账号会话消费端） | 增量 | **359 tests, all passed** | 约 52 s |
+| `tools\agent.cmd test`（拖放动作依赖） | 增量 | **12 tests, all passed** | 约 15 s |
 | `tools\agent.cmd analyze`（账号会话消费端完成后） | 全量 | No issues found | 约 32 s |
 | `tools\agent.cmd test`（账号会话消费端完成后） | 全量 | **722 tests, all passed** | 约 99 s |
 
@@ -396,6 +397,10 @@
   `accountSessionProvider` / `AccountState`，页面本身不再读取
   `AppController`；`settings_search_test` 最后一个旧 Provider 宿主已移除。
   增量 63 个测试文件 / 359 个测试通过，用例总数保持 722。
+- 2026-10-31 `drop_actions.dart` 的悬停提示、文件上传和批量收藏分别改从
+  `driveStateProvider`、`accountStateProvider`、客户端注册表和
+  `appDbProvider` 读取；拖放测试移除 5 个旧 `AppController` Provider 注册。
+  增量 1 个测试文件 / 12 个测试通过，用例总数保持 722。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release

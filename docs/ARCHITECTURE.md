@@ -65,8 +65,8 @@
 | `CachePageSettingsState` | `core/cache_page_settings_state.dart` | 阶段 3 设置子组：网格视图、启动页、目录缓存和自动加载全部页面 |
 | `DownloadDirectorySettingsState` | `core/download_directory_settings_state.dart` | 阶段 3 设置子组：普通下载目录、SAF URI/标签、互斥写入和旧授权释放入口 |
 
-消费现状：`context.read<AppController>` 88 处、`context.watch` 0 处、
-`context.select<AppController…>` 8 处。生产代码中的整体 `watch` 已清零；传输页已从
+消费现状：`context.read<AppController>` 85 处、`context.watch` 0 处、
+`context.select<AppController…>` 7 处。生产代码中的整体 `watch` 已清零；传输页已从
 Riverpod 读取应用级 `TransferManager`，并通过 `ListenableBuilder` 保留既有
 `notifyListeners()` 刷新语义；多选回调、选择模式和顶栏进度改由
 `NavigationState` 驱动，顶栏收起开关由导航外观状态 revision 驱动。`RootShell`
@@ -138,8 +138,9 @@ User-Agent 也迁入 `AdvancedConnectionSettingsTile`；对应 setter 统一同�
 `LanguageClipboardSettingsState.revision`；备份恢复后的设置重载通过显式
 `refresh()` 通知根主题与语言更新。共享顶栏组件只订阅 `hideTopBar`，
 `BatchActionBar` 只订阅 `floatingNavBar`，正文、浮层和滚动进度仍由各自
-`ValueNotifier` 驱动。拖拽悬停提示只订阅网盘/收藏可见性快照；当前目录仍从
-`DriveLocation` 实时读取。恢复页通过 `backupServiceProvider` 获取服务，并只从
+`ValueNotifier` 驱动。拖拽悬停提示直接订阅 `DriveState` 的网盘/收藏可见性；
+当前目录仍从 `DriveLocation` 实时读取。恢复页通过 `backupServiceProvider`
+获取服务，并只从
 导航外观状态订阅 `hideTopBar`；备份恢复状态机继续使用页面本地状态。首页不再
 整体监听 `AppController` / `TransferManager`，只订阅
 `hideTopBar` 和运行中任务数；快速访问、最近使用和折叠状态继续由页面本地状态及

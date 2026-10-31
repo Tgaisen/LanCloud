@@ -779,6 +779,11 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > AppController，`settings_search_test` 也移除了最后一个旧 Provider 宿主。
 > 账号摘要后台刷新改为通知 `AccountState`，避免只刷新旧 Provider 消费者。
 > 相关增量 63 个测试文件 / 359 个测试通过；当前测试总数为 722。
+>
+> 拖放动作随后完成迁移：`DropHoverBanner` 从 `DriveState` 读取可见性与当前
+> 目录，文件上传从 `AccountState + LanzouClientRegistry + DriveState` 组合
+> 客户端，批量收藏从客户端注册表和 `appDbProvider` 获取依赖。拖放测试不再
+> 注册旧 `AppController` Provider；增量 1 个测试文件 / 12 个测试通过。
 
 ### 阶段 6：移除旧 Provider
 
