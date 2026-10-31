@@ -2,7 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/app_info.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
@@ -14,12 +14,12 @@ import 'package:lancloud/ui/m3e.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
-Widget host(AppController app, Widget home) => ProviderScope(
+Widget host(AppEnvironment environment, Widget home) => ProviderScope(
   overrides: [
     navigationAppearanceSettingsStateProvider.overrideWithValue(
-      app.navigationAppearanceSettings,
+      environment.navigationAppearanceSettings,
     ),
-    navigationStateProvider.overrideWithValue(app.navigation),
+    navigationStateProvider.overrideWithValue(environment.navigation),
   ],
   child: MaterialApp(
     localizationsDelegates: appLocalizationsDelegates,
@@ -31,9 +31,10 @@ Widget host(AppController app, Widget home) => ProviderScope(
 
 void main() {
   testWidgets('关于页显示版本、协议入口与免责声明', (tester) async {
-    final app = AppController();
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
     await tester.pumpWidget(
-      host(app, const AboutPage()),
+      host(environment, const AboutPage()),
     );
     await tester.pumpAndSettle();
 
@@ -80,13 +81,13 @@ void main() {
     }
     // 用 TopBarOverlayScaffold 的页面都带快速滑动条
     expect(find.byType(FastScrollbar), findsOneWidget);
-    app.dispose();
   });
 
   testWidgets('关于页可以打开隐私政策弹窗', (tester) async {
-    final app = AppController();
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
     await tester.pumpWidget(
-      host(app, const AboutPage()),
+      host(environment, const AboutPage()),
     );
     await tester.pumpAndSettle();
 
@@ -95,7 +96,6 @@ void main() {
 
     expect(find.byType(AlertDialog), findsOneWidget);
     expect(find.textContaining('WebDAV'), findsWidgets);
-    app.dispose();
   });
 
   testWidgets('关于页：提交 Issue 与相关信息同组；相关信息弹窗展示构建与设备信息', (tester) async {
@@ -118,9 +118,10 @@ void main() {
           .setMockMethodCallHandler(channel, null),
     );
 
-    final app = AppController();
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
     await tester.pumpWidget(
-      host(app, const AboutPage()),
+      host(environment, const AboutPage()),
     );
     await tester.pumpAndSettle();
 
@@ -157,6 +158,5 @@ void main() {
     expect(text, contains('System: Android 12 (31)'));
     expect(text, contains('System build: NOH-AN00 4.2.0.196(C00E182R8P6)'));
     expect(text, contains('Architecture: arm64-v8a, armeabi-v7a, armeabi'));
-    app.dispose();
   });
 }

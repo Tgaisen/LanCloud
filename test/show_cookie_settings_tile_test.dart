@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/account_state.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/data/account_store.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/delegates.dart';
@@ -12,12 +12,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() {
   testWidgets('显示 Cookie 行只随当前账号变化局部刷新', (tester) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
-    final app = AppController();
-    addTearDown(app.dispose);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          accountStateProvider.overrideWithValue(app.accountState),
+          accountStateProvider.overrideWithValue(environment.accountState),
         ],
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
@@ -32,15 +32,15 @@ void main() {
     final tile = find.byType(ListTile);
     expect(tester.widget<ListTile>(tile).enabled, isFalse);
 
-    app.accountState.store.accounts.add(
+    environment.accountState.store.accounts.add(
       Account(uid: '556911', cookie: 'c', nickname: '土豆'),
     );
-    app.accountState.store.activeUid = '556911';
-    await app.listHomeSettings.setSortMode('name');
+    environment.accountState.store.activeUid = '556911';
+    await environment.listHomeSettings.setSortMode('name');
     await tester.pumpAndSettle();
     expect(tester.widget<ListTile>(tile).enabled, isFalse);
 
-    app.accountState.notifyAccountChanged();
+    environment.accountState.notifyAccountChanged();
     await tester.pumpAndSettle();
     expect(tester.widget<ListTile>(tile).enabled, isTrue);
   });

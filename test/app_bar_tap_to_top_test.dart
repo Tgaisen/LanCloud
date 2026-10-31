@@ -1,7 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
@@ -9,12 +9,12 @@ import 'package:lancloud/ui/common.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
-Widget host(AppController app, Widget home) => ProviderScope(
+Widget host(AppEnvironment environment, Widget home) => ProviderScope(
   overrides: [
     navigationAppearanceSettingsStateProvider.overrideWithValue(
-      app.navigationAppearanceSettings,
+      environment.navigationAppearanceSettings,
     ),
-    navigationStateProvider.overrideWithValue(app.navigation),
+    navigationStateProvider.overrideWithValue(environment.navigation),
   ],
   child: MaterialApp(
     localizationsDelegates: appLocalizationsDelegates,
@@ -28,11 +28,11 @@ Widget host(AppController app, Widget home) => ProviderScope(
 /// 点顶栏空白处回到列表顶部，与网盘页一致。
 Future<ScrollController> pumpPage(WidgetTester tester) async {
   final controller = ScrollController();
-  final app = AppController();
-  addTearDown(app.dispose);
+  final environment = AppEnvironment();
+  addTearDown(environment.dispose);
   await tester.pumpWidget(
     host(
-      app,
+      environment,
       TopBarOverlayScaffold(
         controller: controller,
         appBar: AppBar(
@@ -68,11 +68,11 @@ void main() {
   });
 
   testWidgets('没传 controller 的页面不响应（保持原有行为）', (tester) async {
-    final app = AppController();
-    addTearDown(app.dispose);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
     await tester.pumpWidget(
       host(
-        app,
+        environment,
         TopBarOverlayScaffold(
           appBar: AppBar(
             backgroundColor: Colors.transparent,
