@@ -197,6 +197,8 @@
 | `tools\agent.cmd test`（移除导航多选兼容 API） | 增量 | **327 tests, all passed** | 约 49 s |
 | `tools\agent.cmd analyze`（移除导航返回处理器兼容 API） | 增量 | No issues found | 约 7 s |
 | `tools\agent.cmd test`（移除导航返回处理器兼容 API） | 增量 | **327 tests, all passed** | 约 51 s |
+| `tools\agent.cmd analyze`（移除导航 Tab 兼容 API） | 增量 | No issues found | 约 7 s |
+| `tools\agent.cmd test`（移除导航 Tab 兼容 API） | 增量 | **327 tests, all passed** | 约 51 s |
 | `tools\agent.cmd analyze`（网盘目录切片完成后） | 全量 | No issues found | 约 21 s |
 | `tools\agent.cmd test`（网盘目录切片完成后） | 全量 | **722 tests, all passed** | 约 110 s |
 | `tools\agent.cmd analyze`（拖放与 Cookie 行完成后） | 全量 | No issues found | 约 17 s |
@@ -672,6 +674,11 @@
   `onRequestExitSelection`、`onDriveBack`、`onProfileBack` 和
   `driveCanHandleBack` 转发及对应旧 identity 断言。增量分析 1 个生产文件无
   问题，52 个受影响测试文件 / 327 个测试通过，用例总数保持 720。
+- 2026-10-31 移除导航 Tab 兼容 API：删除控制器上的 `activeTab`、
+  `onSwitchTab`、`switchTab` 和 `openFolderInDrive`；首页目录请求、导航
+  兼容测试及传输动画切页模拟改为直接操作 `NavigationState` / `DriveState`。
+  增量分析 1 个生产文件无问题，52 个受影响测试文件 / 327 个测试通过，
+  用例总数保持 720。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release
