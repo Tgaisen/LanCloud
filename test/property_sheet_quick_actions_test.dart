@@ -27,6 +27,8 @@ import 'package:lancloud/ui/m3e.dart';
 // 应用用的是自己的 Symbols 图标集，和框架的 Icons 同名，按应用代码的习惯隐藏后者
 import 'package:material_ui/material_ui.dart' hide Icons;
 
+import 'transfer_dependencies_test.dart' show buildTransferManager;
+
 /// 固定返回一个文件 + 一个文件夹，并给出可预测的分享信息。
 ///
 /// 收藏 / 快速访问的选中态要读本地库，测试环境里没有 sqflite 插件，
@@ -207,7 +209,7 @@ Future<void> _pumpDrive(
   Size viewSize = const Size(420, 900),
   Locale locale = const Locale('zh'),
 }) async {
-  final transfers = manager ?? TransferManager(app);
+  final transfers = manager ?? buildTransferManager(app);
   app.accounts.activeUid = '';
   addTearDown(app.dispose);
   tester.view.devicePixelRatio = 1.0;
@@ -478,7 +480,7 @@ void main() {
   testWidgets('已添加下载的文件：属性弹窗下载按钮 checked，点击弹五项菜单', (tester) async {
     final client = _FakeClient();
     final app = _FakeApp(client);
-    final manager = TransferManager(app);
+    final manager = buildTransferManager(app);
     // 与页面一致的任务 refId：app.activeUid 在测试里是空串
     manager.tasks.add(
       TransferTask(
@@ -533,7 +535,7 @@ void main() {
 
   testWidgets('已添加下载的文件：菜单「删除记录与文件」连带删掉本地文件并恢复未下载', (tester) async {
     final app = _FakeApp(_FakeClient());
-    final manager = TransferManager(app);
+    final manager = buildTransferManager(app);
     final dir = Directory.systemTemp.createTempSync('lancloud-del-mark');
     addTearDown(() {
       try {
@@ -584,7 +586,7 @@ void main() {
 
   testWidgets('已添加下载但失败：属性弹窗显示「下载失败」+ 下载关闭图标', (tester) async {
     final app = _FakeApp(_FakeClient());
-    final manager = TransferManager(app);
+    final manager = buildTransferManager(app);
     manager.tasks.add(
       TransferTask(
           id: 'd1',
@@ -665,7 +667,7 @@ void main() {
   testWidgets('网盘文件属性弹窗：点「重新下载」立刻进入解析中状态', (tester) async {
     final directGate = _GatedPublic();
     final app = _FakeApp(_FakeClient(), publicClient: directGate);
-    final manager = TransferManager(app);
+    final manager = buildTransferManager(app);
     manager.tasks.add(
       TransferTask(
         id: 'd1',
