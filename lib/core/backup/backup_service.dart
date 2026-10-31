@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
-import '../app_controller.dart';
+import 'backup_dependencies.dart';
 import 'backup_crypto.dart';
 import 'backup_sections.dart';
 import 'webdav_client.dart';
@@ -76,7 +76,7 @@ class BackupService {
 
   static BackupService? _instance;
 
-  static BackupService of(AppController app) =>
+  static BackupService of(BackupDependencies app) =>
       _instance ??= BackupService(app);
 
   /// 测试注入用。
@@ -86,7 +86,7 @@ class BackupService {
   static const latestName = 'lancloud-latest.json';
   static const maxRemoteFiles = 5;
 
-  final AppController app;
+  final BackupDependencies app;
   final WebdavStore webdav;
 
   /// 本次运行是否已通过敏感内容备份验证：首次通过后不再重复验证。

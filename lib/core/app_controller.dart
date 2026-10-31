@@ -13,6 +13,7 @@ import 'account_login.dart';
 import 'account_session.dart';
 import 'app_log.dart';
 import 'app_runtime_state.dart';
+import 'backup/backup_dependencies.dart';
 import 'data/account_store.dart';
 import 'data/app_db.dart';
 import 'data/settings_store.dart';
@@ -46,7 +47,7 @@ import 'update/update_settings_state.dart';
 export 'drive_state.dart' show DriveLocation;
 
 class AppController extends ChangeNotifier
-    implements TransferDependenciesProvider {
+    implements TransferDependenciesProvider, BackupDependencies {
   AppController({
     SharedDownloadsGateway? sharedDownloads,
     DownloadPathService? downloadPaths,
@@ -107,8 +108,13 @@ class AppController extends ChangeNotifier
   late final CachePageSettingsState cachePageSettings;
   late final DownloadDirectorySettingsState downloadDirectorySettings;
 
+  @override
   AccountStore get accounts => accountState.store;
+
+  @override
   SettingsStore get settings => settingsState.store;
+
+  @override
   final AppDb db = AppDb.instance;
   final TransferStore transferStore = AppDbTransferStore();
   late final TransferAccountPort transferAccounts = AppTransferAccountPort(
@@ -238,6 +244,7 @@ class AppController extends ChangeNotifier
   }
 
   /// 备份恢复后重新读取账号与设置，并重建网盘客户端。
+  @override
   Future<void> reloadFromStorage() async {
     await accounts.load();
     if (accounts.accounts.isNotEmpty) {

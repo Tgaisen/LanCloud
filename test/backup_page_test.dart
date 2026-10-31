@@ -27,7 +27,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lancloud/l10n/delegates.dart';
 
 class _FakeBackupService extends BackupService {
-  _FakeBackupService(super.app);
+  _FakeBackupService(this.controller) : super(controller);
+
+  final AppController controller;
 
   final _FakeWebdavStore _store = _FakeWebdavStore();
 
@@ -196,9 +198,11 @@ void main() {
         overrides: [
           backupServiceProvider.overrideWithValue(fake),
           navigationAppearanceSettingsStateProvider.overrideWithValue(
-            fake.app.navigationAppearanceSettings,
+            fake.controller.navigationAppearanceSettings,
           ),
-          navigationStateProvider.overrideWithValue(fake.app.navigation),
+          navigationStateProvider.overrideWithValue(
+            fake.controller.navigation,
+          ),
         ],
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
