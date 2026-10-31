@@ -163,11 +163,11 @@ void main() {
 
     await tester.longPress(find.text('a.zip'));
     await tester.pumpAndSettle();
-    expect(app.selectionMode, isTrue);
+    expect(app.navigation.selectionMode, isTrue);
 
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
-    expect(app.selectionMode, isFalse);
+    expect(app.navigation.selectionMode, isFalse);
     expect(find.byType(TransfersPage), findsOneWidget);
 
     await tester.binding.handlePopRoute();
@@ -181,14 +181,14 @@ void main() {
     // 上传条目点不开，点击不做任何反应，也不会进入多选
     await tester.tap(find.text('a.zip'));
     await tester.pumpAndSettle();
-    expect(app.selectionMode, isFalse);
+    expect(app.navigation.selectionMode, isFalse);
     expect(selectionBarOpacity(tester), 0);
 
     await tester.longPress(find.text('a.zip'));
     await tester.pumpAndSettle();
     expect(selectionBarOpacity(tester), 1);
     expect(find.text('已选择 1 项'), findsOneWidget);
-    expect(app.selectionMode, isTrue);
+    expect(app.navigation.selectionMode, isTrue);
   });
 
   // 回归：播报必须挂在「真正进入多选」上。多选条在页面里常驻（透明度切换），
@@ -252,7 +252,7 @@ void main() {
 
     await tester.longPress(find.text('a.zip'));
     await tester.pumpAndSettle();
-    expect(app.selectionMode, isTrue);
+    expect(app.navigation.selectionMode, isTrue);
     expect(tester.getSize(item).height, height);
     expect(
       tester
@@ -335,13 +335,13 @@ void main() {
     await tester.tap(multiSelect);
     await tester.pumpAndSettle();
     await tester.pump(const Duration(milliseconds: 400));
-    expect(app.selectionMode, isTrue);
+    expect(app.navigation.selectionMode, isTrue);
     // 先用顶栏进多选（未选中任何条目），也要有提示
     expect(announcements, ['进入多选']);
 
     await tester.tap(find.byTooltip('退出多选'));
     await tester.pumpAndSettle();
-    expect(app.selectionMode, isFalse);
+    expect(app.navigation.selectionMode, isFalse);
     app.dispose();
   });
 
@@ -373,7 +373,7 @@ void main() {
     // 退出多选
     await tester.tap(find.byTooltip('退出多选'));
     await tester.pumpAndSettle();
-    expect(app.selectionMode, isFalse);
+    expect(app.navigation.selectionMode, isFalse);
     expect(manager.tasks.length, 3);
     app.dispose();
   });
@@ -403,7 +403,7 @@ void main() {
     expect(find.text('a.zip'), findsNothing);
     expect(find.text('c.zip'), findsNothing);
     expect(find.text('b.zip'), findsOneWidget);
-    expect(app.selectionMode, isFalse);
+    expect(app.navigation.selectionMode, isFalse);
     app.dispose();
   });
 

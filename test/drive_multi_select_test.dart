@@ -136,7 +136,7 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text('已选择 1 项'), findsNothing, reason: '$grid');
         // 没有停在「已选择 0 项」：多选整体退出，图标也恢复成文件夹
-        expect(app.selectionMode, isFalse, reason: '$grid');
+        expect(app.navigation.selectionMode, isFalse, reason: '$grid');
         expect(
           find.byIcon(app_icons.Icons.check_circle),
           findsNothing,
@@ -289,7 +289,7 @@ void main() {
 
     await tester.longPress(find.text('测试文件夹'));
     await tester.pumpAndSettle();
-    expect(app.selectionMode, isTrue);
+    expect(app.navigation.selectionMode, isTrue);
     // 占位保留：条目高度一点都不能变
     expect(tester.getSize(folderItem).height, folderHeight);
     expect(tester.getSize(fileItem).height, fileHeight);
@@ -299,7 +299,7 @@ void main() {
 
     await tester.tap(find.byTooltip('退出多选'));
     await tester.pumpAndSettle();
-    expect(app.selectionMode, isFalse);
+    expect(app.navigation.selectionMode, isFalse);
     expect(tester.getSize(folderItem).height, folderHeight);
     expect(tester.getSize(fileItem).height, fileHeight);
     expect(find.byTooltip('文件夹操作'), findsOneWidget);
@@ -324,7 +324,7 @@ void main() {
 
     await tester.longPress(find.text('测试文件.zip'));
     await tester.pumpAndSettle();
-    expect(app.selectionMode, isTrue);
+    expect(app.navigation.selectionMode, isTrue);
     expect(tester.getSize(folderItem).height, folderHeight);
     expect(tester.getSize(fileItem).height, fileHeight);
     expect(hasSemanticsLabel(tester, '文件夹操作'), isFalse);

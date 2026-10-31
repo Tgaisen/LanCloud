@@ -89,12 +89,12 @@ void main() {
     );
     await tester.tap(find.text('多选'));
     await tester.pumpAndSettle();
-    expect(app.selectionMode, isTrue);
+    expect(app.navigation.selectionMode, isTrue);
 
     // 第一次返回：退出多选，页面还在
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
-    expect(app.selectionMode, isFalse);
+    expect(app.navigation.selectionMode, isFalse);
     expect(find.byType(FavoritesPage), findsOneWidget);
 
     // 再返回一次才退出页面
