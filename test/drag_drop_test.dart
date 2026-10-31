@@ -1,16 +1,34 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lancloud/core/account_state.dart';
+import 'package:lancloud/core/api/lanzou_client_registry.dart';
 import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/data/app_db_provider.dart';
 import 'package:lancloud/core/drag_drop.dart';
+import 'package:lancloud/core/drive_state.dart';
 import 'package:lancloud/core/lanzou_link.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/app_localizations_zh.dart';
 import 'package:lancloud/ui/drop_actions.dart';
 import 'package:lancloud/ui/share_page.dart';
-import 'package:provider/provider.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
+
+Widget _host(AppController app, Widget home) => ProviderScope(
+  overrides: [
+    accountStateProvider.overrideWithValue(app.accountState),
+    lanzouClientRegistryProvider.overrideWithValue(app.clientRegistry),
+    appDbProvider.overrideWithValue(app.db),
+    driveStateProvider.overrideWithValue(app.drive),
+  ],
+  child: MaterialApp(
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    locale: const Locale('zh'),
+    home: home,
+  ),
+);
 
 void main() {
   test('parseAll：一段文本里提取多条链接、去重，密码按就近原则', () {
@@ -100,30 +118,23 @@ void main() {
   testWidgets('其它页面拖入链接：走「打开链接」弹窗', (tester) async {
     final app = AppController();
     await tester.pumpWidget(
-      ProviderScope(
-        child: ChangeNotifierProvider<AppController>.value(
-          value: app,
-          child: MaterialApp(
-            localizationsDelegates: appLocalizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            locale: const Locale('zh'),
-            home: Builder(
-              builder: (context) => Scaffold(
-                body: Center(
-                  child: TextButton(
-                    onPressed: () async {
-                      await handleExternalDrop(
-                        context,
-                        const DropPayload(
-                          texts: ['https://wwa.lanzoua.com/iabc123'],
-                        ),
-                        onDrivePage: false,
-                        onFavoritesPage: false,
-                      );
-                    },
-                    child: const Text('drop'),
-                  ),
-                ),
+      _host(
+        app,
+        Builder(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: TextButton(
+                onPressed: () async {
+                  await handleExternalDrop(
+                    context,
+                    const DropPayload(
+                      texts: ['https://wwa.lanzoua.com/iabc123'],
+                    ),
+                    onDrivePage: false,
+                    onFavoritesPage: false,
+                  );
+                },
+                child: const Text('drop'),
               ),
             ),
           ),
@@ -146,31 +157,26 @@ void main() {
     final app = AppController();
     DropOutcome? outcome;
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
-        value: app,
-        child: MaterialApp(
-          localizationsDelegates: appLocalizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          locale: const Locale('zh'),
-          home: Builder(
-            builder: (context) => Scaffold(
-              body: Center(
-                child: TextButton(
-                  onPressed: () async {
-                    outcome = await handleExternalDrop(
-                      context,
-                      const DropPayload(
-                        texts: [
-                          'https://wwa.lanzoua.com/iabc123\n'
-                              'https://wwa.lanzoua.com/iabc456',
-                        ],
-                      ),
-                      onDrivePage: false,
-                      onFavoritesPage: true,
-                    );
-                  },
-                  child: const Text('drop'),
-                ),
+      _host(
+        app,
+        Builder(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: TextButton(
+                onPressed: () async {
+                  outcome = await handleExternalDrop(
+                    context,
+                    const DropPayload(
+                      texts: [
+                        'https://wwa.lanzoua.com/iabc123\n'
+                            'https://wwa.lanzoua.com/iabc456',
+                      ],
+                    ),
+                    onDrivePage: false,
+                    onFavoritesPage: true,
+                  );
+                },
+                child: const Text('drop'),
               ),
             ),
           ),
@@ -193,24 +199,19 @@ void main() {
   testWidgets('没有可导入内容：提示不支持', (tester) async {
     final app = AppController();
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
-        value: app,
-        child: MaterialApp(
-          localizationsDelegates: appLocalizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          locale: const Locale('zh'),
-          home: Builder(
-            builder: (context) => Scaffold(
-              body: Center(
-                child: TextButton(
-                  onPressed: () => handleExternalDrop(
-                    context,
-                    const DropPayload(texts: ['普通文本']),
-                    onDrivePage: false,
-                    onFavoritesPage: false,
-                  ),
-                  child: const Text('drop'),
+      _host(
+        app,
+        Builder(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: TextButton(
+                onPressed: () => handleExternalDrop(
+                  context,
+                  const DropPayload(texts: ['普通文本']),
+                  onDrivePage: false,
+                  onFavoritesPage: false,
                 ),
+                child: const Text('drop'),
               ),
             ),
           ),
@@ -231,27 +232,22 @@ void main() {
     final app = AppController();
     final l10n = AppLocalizationsZh();
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
-        value: app,
-        child: MaterialApp(
-          localizationsDelegates: appLocalizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          locale: const Locale('zh'),
-          home: Builder(
-            builder: (context) => Scaffold(
-              body: Center(
-                child: TextButton(
-                  onPressed: () => handleExternalDrop(
-                    context,
-                    const DropPayload(
-                      texts: ['https://wwa.lanzoua.com/iabc123'],
-                      files: [DropFile(uri: 'content://a/1', name: 'a.zip')],
-                    ),
-                    onDrivePage: false,
-                    onFavoritesPage: true,
+      _host(
+        app,
+        Builder(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: TextButton(
+                onPressed: () => handleExternalDrop(
+                  context,
+                  const DropPayload(
+                    texts: ['https://wwa.lanzoua.com/iabc123'],
+                    files: [DropFile(uri: 'content://a/1', name: 'a.zip')],
                   ),
-                  child: const Text('drop'),
+                  onDrivePage: false,
+                  onFavoritesPage: true,
                 ),
+                child: const Text('drop'),
               ),
             ),
           ),
@@ -278,31 +274,26 @@ void main() {
     final l10n = AppLocalizationsZh();
     DropOutcome? outcome;
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
-        value: app,
-        child: MaterialApp(
-          localizationsDelegates: appLocalizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          locale: const Locale('zh'),
-          home: Builder(
-            builder: (context) => Scaffold(
-              body: Center(
-                child: TextButton(
-                  onPressed: () async {
-                    outcome = await handleExternalDrop(
-                      context,
-                      const DropPayload(
-                        texts: [
-                          'https://wwa.lanzoua.com/iabc123\n'
-                              'https://wwa.lanzoua.com/iabc456',
-                        ],
-                      ),
-                      onDrivePage: false,
-                      onFavoritesPage: false,
-                    );
-                  },
-                  child: const Text('drop'),
-                ),
+      _host(
+        app,
+        Builder(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: TextButton(
+                onPressed: () async {
+                  outcome = await handleExternalDrop(
+                    context,
+                    const DropPayload(
+                      texts: [
+                        'https://wwa.lanzoua.com/iabc123\n'
+                            'https://wwa.lanzoua.com/iabc456',
+                      ],
+                    ),
+                    onDrivePage: false,
+                    onFavoritesPage: false,
+                  );
+                },
+                child: const Text('drop'),
               ),
             ),
           ),
