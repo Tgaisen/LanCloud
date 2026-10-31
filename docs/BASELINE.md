@@ -129,6 +129,8 @@
 | `tools\agent.cmd test`（AppRuntimeState） | 增量 | **363 tests, all passed** | 约 66 s |
 | `tools\agent.cmd analyze`（RootShell 与移除 Provider） | 增量 | No issues found | 约 30 s |
 | `tools\agent.cmd test`（RootShell 与移除 Provider） | 增量 | **382 tests, all passed** | 约 74 s |
+| `tools\agent.cmd analyze`（BackupDependencies） | 增量 | No issues found | 约 19 s |
+| `tools\agent.cmd test`（BackupDependencies） | 增量 | **373 tests, all passed** | 约 72 s |
 | `tools\agent.cmd analyze`（网盘目录切片完成后） | 全量 | No issues found | 约 21 s |
 | `tools\agent.cmd test`（网盘目录切片完成后） | 全量 | **722 tests, all passed** | 约 110 s |
 | `tools\agent.cmd analyze`（拖放与 Cookie 行完成后） | 全量 | No issues found | 约 17 s |
@@ -143,11 +145,11 @@
 
 | 指标 | 数量 |
 | --- | ---: |
-| `lib` Dart 文件 | 142 |
+| `lib` Dart 文件 | 143 |
 | `lib` 总行数 | 约 4.4 万 |
 | `test` 测试文件 | 161（平铺，`<主题>_test.dart`） |
 | `test` 总行数 | 约 2.1 万 |
-| `test` 用例数 | 726（当前总数；阶段 6 准备已新增 11 条测试） |
+| `test` 用例数 | 727（当前总数；阶段 6 及 AppController 退役已新增 12 条测试） |
 | `lib/ui` 页面与组件 | 54 个平铺文件 |
 | `lib/core` | 32 个平铺文件 + 5 个子系统目录 |
 | 文案（`app_zh.arb`） | 1357 行 |
@@ -466,6 +468,12 @@
   随后删除 `provider` 依赖并刷新 lockfile。`lib` / `test` 均无旧 Provider 导入；
   增量 70 个测试文件 / 382 个测试通过，用例总数保持 726。Android / Windows
   人工验收仍未执行，阶段 6 不提前标记为全部完成。
+- 2026-10-31 全量 `analyze` 0 issue、726 个测试全部通过；Android debug 在
+  `NOH AN00` 与 x86_64 Android 17 模拟器安装，Windows Release 构建成功，
+  人工测试未发现问题，阶段 6 完成。
+- 2026-10-31 AppController 退役首片新增 `BackupDependencies`，备份服务不再直接
+  依赖完整控制器；`AppController` 暂时实现该接口以保持调用兼容。新增 1 条
+  接口兼容测试，增量 66 个测试文件 / 373 个测试通过，当前总数由 726 增至 727。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release

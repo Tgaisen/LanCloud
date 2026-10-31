@@ -32,7 +32,7 @@ Riverpod 容器提供。`core/update/` 的 `UpdateService` 是阶段 1 Riverpod 
 
 | 对象 | 文件 | 说明 |
 | --- | --- | --- |
-| `AppController` | `core/app_controller.dart` | 启动初始化与传输依赖装配；账号、网盘、设置等状态已拆到独立状态对象 |
+| `AppController` | `core/app_controller.dart` | 启动初始化与传输依赖装配；UI 消费面已清零，退役期暂时实现 `BackupDependencies` |
 | `TransferManager` | `core/transfer/transfer_manager.dart` | 上传/下载任务队列 |
 | `TransferStore` | `core/transfer/transfer_store.dart` | 传输记录恢复/保存/删除与下载标记端口；`AppDbTransferStore` 适配既有数据库 |
 | `TransferAccountPort` | `core/transfer/transfer_account_port.dart` | 当前 UID、账号存在性、账号客户端与公开客户端端口；包装账号存储和客户端注册表 |
@@ -41,7 +41,8 @@ Riverpod 容器提供。`core/update/` 的 `UpdateService` 是阶段 1 Riverpod 
 | `TransferDependencies` | `core/transfer/transfer_dependencies.dart` | 四个传输端口组成的显式应用级依赖集合 |
 | `transferManagerProvider` | `core/transfer/transfer_manager_provider.dart` | 应用级、非 autoDispose 的 `TransferManager` 唯一实例；容器负责释放 |
 | `UpdateService` | `core/update/update_service.dart` | `Notifier<UpdateState>`；更新检查、缓存、失败冷却和一次性提醒的唯一所有者 |
-| `BackupService` | `core/backup/backup_service.dart` | 本地 / WebDAV 备份恢复服务；应用入口通过 `backupServiceProvider` 暴露与自动备份共用的同一实例 |
+| `BackupService` | `core/backup/backup_service.dart` | 本地 / WebDAV 备份恢复服务；只依赖 `BackupDependencies`，应用入口通过 `backupServiceProvider` 暴露与自动备份共用的同一实例 |
+| `BackupDependencies` | `core/backup/backup_dependencies.dart` | 备份所需的账号、设置、数据库和恢复后重载窄接口；退役期由 `AppController` 实现 |
 | `AppDb` | `core/data/app_db_provider.dart` | 阶段 2 首个叶子依赖；普通 `Provider` 暴露既有单例，不监听、不自动销毁 |
 | `LanzouClientRegistry` | `core/api/lanzou_client_registry.dart` | 按 uid 缓存账号客户端并保留独立公开客户端；Provider 与 `AppController` 共用同一注册表 |
 | `AppLog` | `core/app_log_provider.dart` | 启动时先初始化，再通过普通 `Provider` 暴露同一实例；更新服务已从容器读取 |

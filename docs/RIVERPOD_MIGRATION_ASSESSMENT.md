@@ -855,6 +855,19 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > 外壳与依赖移除后 70 个测试文件 / 382 个测试通过。新增 2 条运行时状态测试，
 > 当前总数为 726。阶段 6 的代码与依赖迁移已完成，但 Android / Windows 的启动、
 > 返回手势、后台传输和备份恢复人工验收尚未执行，因此仍不宣告阶段 6 最终完成。
+>
+> **阶段 6 完成（2026-10-31）**：全量 `analyze` 为 0 issue，全量测试
+> 726 个全部通过。Android debug 包已在 `NOH AN00`（Android 12 / arm64）
+> 和 x86_64 Android 17 模拟器安装；Windows Release 构建成功。用户完成人工
+> 测试后确认未发现问题。至此 `provider` 依赖、旧 Provider 注册和
+> `AppController` Provider 消费面全部移除，阶段 6 完成。
+>
+> **AppController 退役进度**：首个切片已移除 `BackupService` 对
+> `AppController` 的直接依赖。新增 `BackupDependencies` 窄接口，统一暴露账号、
+> 设置、数据库与恢复后重载；`AppController` 在迁移期实现该接口，现有调用方
+> 和启动顺序不变。新增 1 条接口兼容测试，增量 66 个测试文件 / 373 个测试通过，
+> 当前总数为 727。下一步是把 `main.dart` 与测试改为直接构造 `BackupDependencies`
+> 实现，再从 `AppController` 移除该兼容实现。
 
 ### 阶段 6：移除旧 Provider
 
