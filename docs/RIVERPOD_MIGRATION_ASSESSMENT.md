@@ -771,6 +771,14 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > 清缓存使用 `driveCacheProvider`，清数据使用 `accountStateProvider` 与
 > `appDbProvider`；`_Entry` 的构建回调同时去掉未使用的 AppController 参数。
 > 相关增量 8 个测试文件 / 46 个测试通过。
+>
+> ProfilePage 随后完成账号会话迁移：新增应用级 `AccountSession`，统一账号
+> 切换、移除、使用数据清理、客户端移除和网盘缓存重绑；AppController 原公开
+> 方法只委托同一实例。页面上的切换 / 移除 / 账号卡片分别改用
+> `accountSessionProvider` 与 `AccountState`，ProfilePage 不再读取
+> AppController，`settings_search_test` 也移除了最后一个旧 Provider 宿主。
+> 账号摘要后台刷新改为通知 `AccountState`，避免只刷新旧 Provider 消费者。
+> 相关增量 63 个测试文件 / 359 个测试通过；当前测试总数为 722。
 
 ### 阶段 6：移除旧 Provider
 

@@ -109,6 +109,8 @@
 | `tools\agent.cmd test`（备份恢复消费端完成后） | 全量 | **720 tests, all passed** | 约 113 s |
 | `tools\agent.cmd test`（传输页导航依赖） | 增量 | **23 tests, all passed** | 约 12 s |
 | `tools\agent.cmd test`（设置页搜索与事件依赖） | 增量 | **46 tests, all passed** | 约 25 s |
+| `tools\agent.cmd test`（AccountSession 服务） | 增量 | **361 tests, all passed** | 约 53 s |
+| `tools\agent.cmd test`（ProfilePage 账号会话消费端） | 增量 | **359 tests, all passed** | 约 52 s |
 
 工具链：Flutter 3.47.7（stable）/ Dart 3.13.5 / DevTools 2.60.0。
 静态检查：`analysis_options.yaml` 已开启 `strict-casts` / `strict-inference` / `strict-raw-types`。
@@ -121,7 +123,7 @@
 | `lib` 总行数 | 约 4.4 万 |
 | `test` 测试文件 | 155（平铺，`<主题>_test.dart`） |
 | `test` 总行数 | 约 2.1 万 |
-| `test` 用例数 | 720（当前总数；阶段 6 准备已新增 5 条测试） |
+| `test` 用例数 | 722（当前总数；阶段 6 准备已新增 7 条测试） |
 | `lib/ui` 页面与组件 | 54 个平铺文件 |
 | `lib/core` | 32 个平铺文件 + 5 个子系统目录 |
 | 文案（`app_zh.arb`） | 1357 行 |
@@ -385,6 +387,13 @@
   `settingsStoreProvider`、`driveCacheProvider`、`accountStateProvider` 与
   `appDbProvider` 读取；生产文件不再引用 `AppController`。增量 8 个测试文件 /
   46 个测试通过，用例总数保持 720。
+- 2026-10-31 新增应用级 `AccountSession`，统一账号切换、移除、使用数据清理、
+  客户端移除和网盘缓存重绑；`AppController` 兼容方法委托同一实例。新增
+  2 条服务测试，当前总数由 720 增至 722。
+- 2026-10-31 `ProfilePage` 的账号切换、移除和账号卡片改走
+  `accountSessionProvider` / `AccountState`，页面本身不再读取
+  `AppController`；`settings_search_test` 最后一个旧 Provider 宿主已移除。
+  增量 63 个测试文件 / 359 个测试通过，用例总数保持 722。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release
