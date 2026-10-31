@@ -6,7 +6,11 @@ import 'package:path/path.dart' as p;
 import 'package:lancloud/core/api/lanzou_client.dart';
 import 'package:lancloud/core/api/lanzou_client_registry.dart';
 import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_composition_root.dart';
+import 'package:lancloud/core/backup/backup_service.dart';
+import 'package:lancloud/core/backup/backup_service_provider.dart';
 import 'package:lancloud/core/data/app_db.dart';
+import 'package:lancloud/core/data/app_db_provider.dart';
 import 'package:lancloud/core/data/account_store.dart';
 import 'package:lancloud/core/data/settings_store.dart';
 import 'package:lancloud/core/download_path_service.dart';
@@ -160,6 +164,54 @@ void main() {
     expect(dependencies.accounts, same(accounts));
     expect(dependencies.download, same(download));
     expect(dependencies.settings, same(settings));
+  });
+
+  test('启动组合根复用应用级状态与依赖', () {
+    BackupService.instance = null;
+    addTearDown(() => BackupService.instance = null);
+    const sharedDownloads = PlatformSharedDownloadsGateway();
+    final downloadPaths = PlatformDownloadPathService(
+      sharedDownloads: sharedDownloads,
+    );
+    final app = AppController(
+      sharedDownloads: sharedDownloads,
+      downloadPaths: downloadPaths,
+    );
+    addTearDown(app.dispose);
+    final composition = AppCompositionRoot(
+      app: app,
+      sharedDownloads: sharedDownloads,
+      downloadPaths: downloadPaths,
+    );
+    final container = composition.createContainer();
+    addTearDown(container.dispose);
+
+    expect(container.read(appDbProvider), same(app.db));
+    expect(
+      container.read(backupServiceProvider),
+      same(composition.backupService),
+    );
+    expect(
+      container.read(transferDependenciesProvider),
+      same(composition.transferDependencies),
+    );
+    expect(
+      composition.transferDependencies.store,
+      isA<AppDbTransferStore>(),
+    );
+    expect(
+      (composition.transferDependencies.store as AppDbTransferStore).database,
+      same(app.db),
+    );
+    expect(
+      composition.backupService.dependencies.accounts,
+      same(app.accounts),
+    );
+    expect(
+      composition.backupService.dependencies.settings,
+      same(app.settings),
+    );
+    expect(composition.backupService.dependencies.db, same(app.db));
   });
 
   test('TransferManager 可从注入的存储端口恢复任务', () async {

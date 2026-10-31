@@ -7,45 +7,19 @@ import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app.dart';
-import 'core/account_state.dart';
-import 'core/account_session.dart';
 import 'core/app_controller.dart';
-import 'core/cache_page_settings_state.dart';
+import 'core/app_composition_root.dart';
 import 'core/app_log.dart';
-import 'core/app_log_provider.dart';
-import 'core/app_runtime_state.dart';
-import 'core/backup/backup_dependencies.dart';
-import 'core/backup/backup_service.dart';
-import 'core/backup/backup_service_provider.dart';
-import 'core/api/lanzou_client_registry.dart';
-import 'core/data/app_db_provider.dart';
 import 'core/download_path_service.dart';
-import 'core/download_directory_settings_state.dart';
-import 'core/drive_state.dart';
-import 'core/navigation_state.dart';
-import 'core/navigation_appearance_settings_state.dart';
-import 'core/list_home_settings_state.dart';
-import 'core/language_clipboard_settings_state.dart';
-import 'core/notification_settings_state.dart';
 import 'core/incoming_links.dart';
 import 'core/notifications.dart';
-import 'core/notifications_provider.dart';
 import 'core/platform_support.dart';
 import 'core/share_inbox.dart';
-import 'core/settings_state.dart';
 import 'core/shared_downloads_gateway.dart';
 import 'core/system_motion.dart';
-import 'core/theme_settings_state.dart';
-import 'core/transfer_connection_settings_state.dart';
 import 'core/third_party_licenses.dart';
-import 'core/transfer/transfer_account_port.dart';
-import 'core/transfer/transfer_dependencies.dart';
-import 'core/transfer/transfer_download_port.dart';
 import 'core/transfer/transfer_manager_provider.dart';
-import 'core/transfer/transfer_settings_port.dart';
-import 'core/transfer/transfer_store.dart';
 import 'core/update/update_service.dart';
-import 'core/update/update_settings_state.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -119,18 +93,10 @@ Future<void> main() async {
     downloadPaths: downloadPaths,
   );
   await app.init();
-  final transferDependencies = TransferDependencies(
-    store: AppDbTransferStore(database: app.db),
-    accounts: AppTransferAccountPort(
-      accounts: app.accounts,
-      clients: app.clientRegistry,
-    ),
-    download: DefaultTransferDownloadPort(
-      downloadPaths: downloadPaths,
-      sharedDownloads: sharedDownloads,
-      settings: app.settings,
-    ),
-    settings: StoreTransferSettingsPort(app.settings),
+  final composition = AppCompositionRoot(
+    app: app,
+    sharedDownloads: sharedDownloads,
+    downloadPaths: downloadPaths,
   );
   // 系统「移除动画」：读一次并监听原生推送（华为等 ROM 的开关引擎看不到）
   SystemMotion.init();
@@ -145,54 +111,9 @@ Future<void> main() async {
   await SharedInbox.instance.init();
   await IncomingLinks.instance.init();
   // 自动备份：按每天/每周频率在启动时补一次，失败只记录不打扰。
-  final backupDependencies = BackupStoreDependencies(
-    accounts: app.accounts,
-    settings: app.settings,
-    db: app.db,
-    reloadCallback: app.reloadFromStorage,
-  );
-  final backupService = BackupService.of(backupDependencies);
-  unawaited(backupService.maybeAutoBackup());
+  unawaited(composition.backupService.maybeAutoBackup());
   // Riverpod 更新试点：沿用已加载的设置对象，先恢复缓存再非阻塞检查更新。
-  final updateContainer = ProviderContainer(
-    overrides: [
-      appDbProvider.overrideWithValue(app.db),
-      appLogProvider.overrideWithValue(AppLog.instance),
-      backupServiceProvider.overrideWithValue(backupService),
-      lanzouClientRegistryProvider.overrideWithValue(app.clientRegistry),
-      navigationStateProvider.overrideWithValue(app.navigation),
-      driveStateProvider.overrideWithValue(app.drive),
-      appRuntimeStateProvider.overrideWithValue(app.runtimeState),
-      accountStateProvider.overrideWithValue(app.accountState),
-      accountSessionProvider.overrideWithValue(app.accountSession),
-      settingsStateProvider.overrideWithValue(app.settingsState),
-      updateSettingsStateProvider.overrideWithValue(app.updateSettings),
-      navigationAppearanceSettingsStateProvider.overrideWithValue(
-        app.navigationAppearanceSettings,
-      ),
-      notificationSettingsStateProvider.overrideWithValue(
-        app.notificationSettings,
-      ),
-      themeSettingsStateProvider.overrideWithValue(app.themeSettings),
-      transferConnectionSettingsStateProvider.overrideWithValue(
-        app.transferConnectionSettings,
-      ),
-      listHomeSettingsStateProvider.overrideWithValue(app.listHomeSettings),
-      languageClipboardSettingsStateProvider.overrideWithValue(
-        app.languageClipboardSettings,
-      ),
-      cachePageSettingsStateProvider.overrideWithValue(app.cachePageSettings),
-      downloadDirectorySettingsStateProvider.overrideWithValue(
-        app.downloadDirectorySettings,
-      ),
-      notificationServiceProvider.overrideWithValue(
-        NotificationService.instance,
-      ),
-      downloadPathServiceProvider.overrideWithValue(downloadPaths),
-      sharedDownloadsGatewayProvider.overrideWithValue(sharedDownloads),
-      transferDependenciesProvider.overrideWithValue(transferDependencies),
-    ],
-  );
+  final updateContainer = composition.createContainer();
   // 生产消费端已迁到 Riverpod，但仍要在 runApp 前主动创建管理器，
   // 保持任务恢复与后台服务的启动顺序不变。
   updateContainer.read(transferManagerProvider);
