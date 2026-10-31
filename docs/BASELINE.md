@@ -205,6 +205,8 @@
 | `tools\agent.cmd test`（移除导航进度兼容 API） | 增量 | **318 tests, all passed** | 约 51 s |
 | `tools\agent.cmd analyze`（移除 DriveState 转发兼容 API） | 增量 | No issues found | 约 7 s |
 | `tools\agent.cmd test`（移除 DriveState 转发兼容 API） | 增量 | **315 tests, all passed** | 约 51 s |
+| `tools\agent.cmd analyze`（移除 driveCache 转发 getter） | 增量 | No issues found | 约 7 s |
+| `tools\agent.cmd test`（移除 driveCache 转发 getter） | 增量 | **313 tests, all passed** | 约 51 s |
 | `tools\agent.cmd analyze`（网盘目录切片完成后） | 全量 | No issues found | 约 21 s |
 | `tools\agent.cmd test`（网盘目录切片完成后） | 全量 | **722 tests, all passed** | 约 110 s |
 | `tools\agent.cmd analyze`（拖放与 Cookie 行完成后） | 全量 | No issues found | 约 17 s |
@@ -697,6 +699,9 @@
   可见性探针和两个可见性 getter，以及 1 条旧控制器兼容测试；`driveCache`
   因控制器初始化与两个页面测试仍直接使用而保留。增量分析 1 个生产文件无
   问题，49 个受影响测试文件 / 315 个测试通过，用例总数由 719 调整为 718。
+- 2026-10-31 移除 `driveCache` 转发 getter：控制器内部和两个页面测试统一
+  使用 `drive.cache`，删除旧 `drive_cache.dart` 依赖。增量分析 1 个生产文件
+  无问题，48 个受影响测试文件 / 313 个测试通过，用例总数保持 718。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release
