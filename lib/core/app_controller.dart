@@ -342,9 +342,11 @@ class AppController extends ChangeNotifier
   bool get driveVisible => drive.driveVisible;
 
   /// 由外壳注册：切换到指定 page 视图。
-  void Function(int index)? onSwitchTab;
+  void Function(int index)? get onSwitchTab => navigation.onSwitchTab;
+  set onSwitchTab(void Function(int index)? handler) =>
+      navigation.onSwitchTab = handler;
 
-  void switchTab(int index) => onSwitchTab?.call(index);
+  void switchTab(int index) => navigation.switchTab(index);
 
   /// 在网盘页打开指定目录，并切换到网盘视图。
   void openFolderInDrive(String folderId) {

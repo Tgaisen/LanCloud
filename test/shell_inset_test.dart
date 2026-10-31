@@ -6,7 +6,10 @@ import 'package:lancloud/core/account_state.dart';
 import 'package:lancloud/core/account_session.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/data/account_store.dart';
+import 'package:lancloud/core/data/app_db_provider.dart';
 import 'package:lancloud/core/data/settings_store_provider.dart';
+import 'package:lancloud/core/drive_state.dart';
+import 'package:lancloud/core/list_home_settings_state.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
@@ -27,6 +30,9 @@ Widget _rootShellHost(
     settingsStoreProvider.overrideWithValue(app.settings),
     accountStateProvider.overrideWithValue(app.accountState),
     accountSessionProvider.overrideWithValue(app.accountSession),
+    appDbProvider.overrideWithValue(app.db),
+    driveStateProvider.overrideWithValue(app.drive),
+    listHomeSettingsStateProvider.overrideWithValue(app.listHomeSettings),
     transferManagerProvider.overrideWithValue(transfers),
     navigationAppearanceSettingsStateProvider.overrideWithValue(
       app.navigationAppearanceSettings,

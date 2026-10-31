@@ -1,10 +1,16 @@
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:provider/provider.dart';
 
-import '../core/app_controller.dart';
+import '../core/account_state.dart';
+import '../core/api/lanzou_client.dart';
+import '../core/api/lanzou_client_registry.dart';
 import '../core/data/app_db.dart';
+import '../core/data/app_db_provider.dart';
+import '../core/drive_state.dart';
 import '../core/lanzou_link.dart';
+import '../core/list_home_settings_state.dart';
+import '../core/navigation_appearance_settings_state.dart';
+import '../core/navigation_state.dart';
 import '../core/transfer/transfer_manager_provider.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
@@ -46,8 +52,9 @@ class _HomePageState extends ConsumerState<HomePage>
   bool _recentsExpanded = true;
   late final AppDb _db;
 
-  /// dispose 里不能再读 context（元素正在卸载），控制器在 initState 存下来。
-  late final AppController _app;
+  late final NavigationState _navigation;
+  late final DriveState _drive;
+  late final ListHomeSettingsState _listHome;
   final ScrollController _scroll = ScrollController();
 
   @override
@@ -56,29 +63,29 @@ class _HomePageState extends ConsumerState<HomePage>
   @override
   void initState() {
     super.initState();
-    final app = context.read<AppController>();
-    _app = app;
-    _db = app.db;
-    _quickExpanded = app.settings.quickExpanded;
-    _recentsExpanded = app.settings.recentsExpanded;
+    _db = ref.read(appDbProvider);
+    _navigation = ref.read(navigationStateProvider);
+    _drive = ref.read(driveStateProvider);
+    _listHome = ref.read(listHomeSettingsStateProvider);
+    _quickExpanded = _listHome.quickExpanded;
+    _recentsExpanded = _listHome.recentsExpanded;
     _load();
     _db.revision.addListener(_load);
-    app.activeTab.addListener(_onActiveTabChanged);
+    _navigation.activeTab.addListener(_onActiveTabChanged);
   }
 
   @override
   void dispose() {
     _db.revision.removeListener(_load);
-    _app.activeTab.removeListener(_onActiveTabChanged);
+    _navigation.activeTab.removeListener(_onActiveTabChanged);
     _scroll.dispose();
     super.dispose();
   }
 
   /// 切到本视图时刷新本地数据（收藏/最近使用可能已在别处变化）。
   void _onActiveTabChanged() {
-    final app = context.read<AppController>();
     if (widget.tabIndex == null) return;
-    if (app.activeTab.value == widget.tabIndex) {
+    if (_navigation.activeTab.value == widget.tabIndex) {
       _load();
     }
   }
@@ -102,15 +109,13 @@ class _HomePageState extends ConsumerState<HomePage>
 
   /// 展开 / 折叠「快速访问」，状态记在设置里（重启后保持）。
   Future<void> _toggleQuickExpanded() async {
-    final app = context.read<AppController>();
     setState(() => _quickExpanded = !_quickExpanded);
-    await app.setQuickExpanded(_quickExpanded);
+    await _listHome.setQuickExpanded(_quickExpanded);
   }
 
   Future<void> _toggleRecentsExpanded() async {
-    final app = context.read<AppController>();
     setState(() => _recentsExpanded = !_recentsExpanded);
-    await app.setRecentsExpanded(_recentsExpanded);
+    await _listHome.setRecentsExpanded(_recentsExpanded);
   }
 
   /// 点顶栏空白处回到列表顶部（与网盘页一致）。
@@ -126,7 +131,6 @@ class _HomePageState extends ConsumerState<HomePage>
   /// 快速访问条目：名称 + 该目录路径，右侧 ⋯ 打开菜单。
   Widget _quickItem(
     BuildContext context,
-    AppController app,
     PinItem item, {
     required bool first,
     required int index,
@@ -203,7 +207,6 @@ class _HomePageState extends ConsumerState<HomePage>
     required bool first,
     required BuildContext anchorContext,
   }) async {
-    final app = context.read<AppController>();
     final l10n = context.l10n;
     final anchor = m3eMenuAnchorOf(anchorContext);
     if (anchor == null) return;
@@ -240,9 +243,9 @@ class _HomePageState extends ConsumerState<HomePage>
         setState(() => _removingQuick.add(item.ref));
         await Future<void>.delayed(const Duration(milliseconds: 220));
         if (!mounted) return;
-        await app.db.removePin(item.ref);
+        await _db.removePin(item.ref);
       case _QuickPinAction.moveToTop:
-        await app.db.movePinToTop(item.ref);
+        await _db.movePinToTop(item.ref);
     }
   }
 
@@ -253,7 +256,6 @@ class _HomePageState extends ConsumerState<HomePage>
     RecentItem item,
     BuildContext anchorContext,
   ) async {
-    final app = context.read<AppController>();
     final l10n = context.l10n;
     final anchor = m3eMenuAnchorOf(anchorContext);
     if (anchor == null) return;
@@ -313,7 +315,8 @@ class _HomePageState extends ConsumerState<HomePage>
         setState(() => _removingRecents.add(item.ref));
         await Future<void>.delayed(const Duration(milliseconds: 220));
         if (!mounted) return;
-        await app.db.removeRecent(account: app.activeUid ?? '', ref: item.ref);
+        final uid = ref.read(accountStateProvider).store.activeUid ?? '';
+        await _db.removeRecent(account: uid, ref: item.ref);
     }
   }
 
@@ -323,7 +326,7 @@ class _HomePageState extends ConsumerState<HomePage>
     if (item.kind == 'shareFile' || item.kind == 'shareFolder') {
       return item.ref;
     }
-    final client = context.read<AppController>().client;
+    final client = _activeClient();
     if (client == null) return null;
     try {
       final info = item.kind == 'folder'
@@ -335,12 +338,20 @@ class _HomePageState extends ConsumerState<HomePage>
     }
   }
 
+  LanzouClient? _activeClient() {
+    final accounts = ref.read(accountStateProvider).store;
+    final uid = accounts.activeUid;
+    if (uid == null) return null;
+    return ref
+        .read(lanzouClientRegistryProvider)
+        .clientFor(uid, cookie: accounts.byUid(uid)?.cookie);
+  }
+
   Future<void> _load() async {
-    final app = context.read<AppController>();
-    final uid = app.activeUid ?? '';
+    final uid = ref.read(accountStateProvider).store.activeUid ?? '';
     try {
-      final recents = await app.db.recents(uid, limit: 6);
-      final pins = await app.db.pins(uid);
+      final recents = await _db.recents(uid, limit: 6);
+      final pins = await _db.pins(uid);
       if (!mounted) return;
       setState(() {
         _recents = recents;
@@ -365,10 +376,10 @@ class _HomePageState extends ConsumerState<HomePage>
   ) async {
     switch (kind) {
       case 'folder':
-        final app = context.read<AppController>();
-        if (app.settings.homeFolderOpenMode == 'drive') {
+        if (_listHome.homeFolderOpenMode == 'drive') {
           // 跳转网盘视图并加载到该目录
-          app.openFolderInDrive(ref);
+          _drive.folderRequest.value = ref;
+          _navigation.switchTab(1);
         } else {
           await Navigator.of(context).push(
             MaterialPageRoute<void>(
@@ -378,7 +389,7 @@ class _HomePageState extends ConsumerState<HomePage>
                     MediaQuery.paddingOf(context).top +
                     kToolbarHeight +
                     kDrivePathBarHeight,
-                hide: app.topBarHide,
+                hide: _navigation.topBarHide,
                 child: DrivePage(initialFolderId: ref, initialName: name),
               ),
             ),
@@ -402,7 +413,6 @@ class _HomePageState extends ConsumerState<HomePage>
     String fileId,
     String name,
   ) async {
-    final app = context.read<AppController>();
     // 与其它弹窗一致：走统一外壳（MD3E 底部弹窗 + 自适应高度）。
     await showAppSheet<void>(
       context,
@@ -414,7 +424,7 @@ class _HomePageState extends ConsumerState<HomePage>
             title: Text(context.l10n.download),
             onTap: () async {
               Navigator.of(context).pop();
-              final client = app.client;
+              final client = _activeClient();
               if (client == null) return;
               try {
                 final info = await client.shareInfoOfFile(fileId);
@@ -439,7 +449,7 @@ class _HomePageState extends ConsumerState<HomePage>
             title: Text(context.l10n.copyLink),
             onTap: () async {
               Navigator.of(context).pop();
-              final client = app.client;
+              final client = _activeClient();
               if (client == null) return;
               try {
                 final info = await client.shareInfoOfFile(fileId);
@@ -467,22 +477,26 @@ class _HomePageState extends ConsumerState<HomePage>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final app = context.read<AppController>();
-    final hideTopBar = context.select<AppController, bool>(
-      (app) => app.settings.hideTopBar,
-    );
+    final appearance = ref.watch(navigationAppearanceSettingsStateProvider);
     final manager = ref.watch(transferManagerProvider);
-    return TransferRunningCount(
-      manager: manager,
-      builder: (context, running) =>
-          _buildPage(context, app, hideTopBar, running),
+    return ListenableBuilder(
+      listenable: appearance.revision,
+      builder: (context, _) => TransferRunningCount(
+        manager: manager,
+        builder: (context, running) => _buildPage(
+          context,
+          appearance.hideTopBar,
+          _navigation,
+          running,
+        ),
+      ),
     );
   }
 
   Widget _buildPage(
     BuildContext context,
-    AppController app,
     bool hideTopBar,
+    NavigationState navigation,
     int running,
   ) {
     final l10n = context.l10n;
@@ -499,9 +513,9 @@ class _HomePageState extends ConsumerState<HomePage>
           BodySideInset(
             child: ScrollTint(
               hideDistance: headerHeight,
-              readBarsHidden: () => app.topBarHide.value,
+              readBarsHidden: () => navigation.topBarHide.value,
               onBarsHidden: hideTopBar
-                  ? app.setTopBarHideFromScroll
+                  ? navigation.setTopBarHideFromScroll
                   : null,
               // 列表快速滑动条（可拖拽）
               child: FastScrollbar(
@@ -542,13 +556,13 @@ class _HomePageState extends ConsumerState<HomePage>
                               icon: Icons.swap_vert,
                               label: l10n.transferCenter,
                               badge: running > 0 ? '$running' : null,
-                              onPressed: () => app.switchTab(2),
+                              onPressed: () => navigation.switchTab(2),
                             ),
                             const SizedBox(width: 20),
                             ExpressiveIconButton(
                               icon: Icons.star_border,
                               label: l10n.favorite,
-                              onPressed: () => app.switchTab(3),
+                              onPressed: () => navigation.switchTab(3),
                             ),
                           ],
                         ),
@@ -592,7 +606,6 @@ class _HomePageState extends ConsumerState<HomePage>
                                       for (var i = 0; i < _quick.length; i++)
                                         _quickItem(
                                           context,
-                                          app,
                                           _quick[i],
                                           first: i == 0,
                                           index: i,

@@ -18,6 +18,11 @@ class NavigationState extends ChangeNotifier {
   /// 「我的」页注册的返回处理：返回 true 表示已消费。
   Future<bool> Function()? onProfileBack;
 
+  /// 外壳注册：切换到指定页面视图。
+  void Function(int index)? onSwitchTab;
+
+  void switchTab(int index) => onSwitchTab?.call(index);
+
   final ValueNotifier<bool> driveCanHandleBack = ValueNotifier<bool>(false);
 
   /// 顶栏/底栏滑动隐藏进度 0..1，由各页面按滚动距离驱动。

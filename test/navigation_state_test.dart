@@ -12,12 +12,15 @@ void main() {
     void exitSelection() {}
     Future<bool> driveBack() async => true;
     Future<bool> profileBack() async => true;
+    int switched = -1;
 
     state.setSelectionMode(true);
     state.setSelectionMode(true);
     state.onRequestExitSelection = exitSelection;
     state.onDriveBack = driveBack;
     state.onProfileBack = profileBack;
+    state.onSwitchTab = (index) => switched = index;
+    state.switchTab(2);
     state.driveCanHandleBack.value = true;
 
     expect(state.selectionMode, isTrue);
@@ -25,6 +28,7 @@ void main() {
     expect(state.onRequestExitSelection, exitSelection);
     expect(state.onDriveBack, driveBack);
     expect(state.onProfileBack, profileBack);
+    expect(switched, 2);
     expect(state.driveCanHandleBack.value, isTrue);
     expect(state.activeTab.value, 0);
   });
@@ -44,6 +48,9 @@ void main() {
     expect(identical(app.activeTab, navigation.activeTab), isTrue);
     expect(identical(app.barsHide, navigation.barsHide), isTrue);
     expect(identical(app.topBarHide, navigation.topBarHide), isTrue);
+    app.onSwitchTab = (index) => notifications += index;
+    app.switchTab(2);
+    expect(notifications, 3);
   });
 
   test('navigationStateProvider 可以被入口共享实例覆盖', () {
