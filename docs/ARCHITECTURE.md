@@ -29,14 +29,14 @@
 
 `AppController` 仍负责启动初始化，但其状态已全部通过 Riverpod 覆盖为既有权威
 对象，UI 不再读取 `AppController`。`AppCompositionRoot` 只组装已初始化对象与
-Riverpod 覆盖，不接管平台服务启动；`AppController` 的旧依赖 getter 只剩现有
-测试兼容用途。`TransferManager` 同样只由 Riverpod 容器提供。`core/update/`
-的 `UpdateService` 是阶段 1 Riverpod 试点：
+Riverpod 覆盖，不接管平台服务启动；传输和下载装配已完全移出控制器。
+`TransferManager` 同样只由 Riverpod 容器提供。`core/update/` 的
+`UpdateService` 是阶段 1 Riverpod 试点：
 
 | 对象 | 文件 | 说明 |
 | --- | --- | --- |
 | `AppCompositionRoot` | `core/app_composition_root.dart` | 用已初始化应用对象组装备份、传输依赖和 Riverpod 容器；不触发启动副作用 |
-| `AppController` | `core/app_controller.dart` | 启动初始化；UI、备份与生产传输装配已解耦，仅保留测试兼容 getter |
+| `AppController` | `core/app_controller.dart` | 启动初始化与应用级状态对象组装；UI、备份、传输和下载装配均已解耦 |
 | `TransferManager` | `core/transfer/transfer_manager.dart` | 上传/下载任务队列 |
 | `TransferStore` | `core/transfer/transfer_store.dart` | 传输记录恢复/保存/删除与下载标记端口；`AppDbTransferStore` 适配既有数据库 |
 | `TransferAccountPort` | `core/transfer/transfer_account_port.dart` | 当前 UID、账号存在性、账号客户端与公开客户端端口；包装账号存储和客户端注册表 |
@@ -55,7 +55,7 @@ Riverpod 覆盖，不接管平台服务启动；`AppController` 的旧依赖 get
 | `NotificationService` | `core/notifications_provider.dart` | 初始化后通过普通 `Provider` 暴露同一单例；`TransferManager` 的进度与完成通知使用构造注入实例 |
 | `SharedDownloadsGateway` | `core/shared_downloads_gateway.dart` | 公共 Downloads 能力接口；生产实现委托原 MethodChannel，目录解析与传输保存改用注入实例 |
 | `SettingsStore` / `AccountStore` | `core/data/*_store_provider.dart` | 普通 `Provider` 暴露已加载的可写存储，不当作监听状态；更新服务已统一读取 `settingsStoreProvider` |
-| `DownloadPathService` | `core/download_path_service.dart` | 无状态默认下载目录解析；依赖 `SharedDownloadsGateway`，`AppController` 原方法签名保持不变 |
+| `DownloadPathService` | `core/download_path_service.dart` | 无状态默认下载目录解析；由 `DefaultTransferDownloadPort` 和启动组合根使用 |
 | `AppRuntimeState` | `core/app_runtime_state.dart` | 应用启动 ready、凭据重认证提示与系统少动效信号的唯一所有者；非 autoDispose |
 | `NavigationState` | `core/navigation_state.dart` | 阶段 3：多选、返回处理器、`driveCanHandleBack`、当前 Tab 和顶/底栏高频进度的唯一所有者；旧 `AppController` 仅转发 |
 | `DriveState` | `core/drive_state.dart` | 阶段 3：目录缓存、目录请求、当前位置和可见性探针的唯一所有者；`DriveLocation` 继续由旧控制器导出 |
