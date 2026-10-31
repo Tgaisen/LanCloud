@@ -207,9 +207,6 @@ class AppController extends ChangeNotifier {
   /// 顶栏/底栏滑动隐藏进度 0..1，由各页面按滚动距离驱动。
   ValueNotifier<double> get barsHide => navigation.barsHide;
 
-  /// 当前激活的 page 视图下标。
-  ValueNotifier<int> get activeTab => navigation.activeTab;
-
   /// 顶栏收起进度 0..1。
   ValueNotifier<double> get topBarHide => navigation.topBarHide;
 
@@ -235,19 +232,6 @@ class AppController extends ChangeNotifier {
   void removeDriveProbe(bool Function() probe) => drive.removeDriveProbe(probe);
 
   bool get driveVisible => drive.driveVisible;
-
-  /// 由外壳注册：切换到指定 page 视图。
-  void Function(int index)? get onSwitchTab => navigation.onSwitchTab;
-  set onSwitchTab(void Function(int index)? handler) =>
-      navigation.onSwitchTab = handler;
-
-  void switchTab(int index) => navigation.switchTab(index);
-
-  /// 在网盘页打开指定目录，并切换到网盘视图。
-  void openFolderInDrive(String folderId) {
-    driveFolderRequest.value = folderId;
-    switchTab(1);
-  }
 
   /// 滚动驱动：1:1 跟随手指，立即生效并打断正在播放的程序化动画。
   void setBarsHideFromScroll(double value) =>

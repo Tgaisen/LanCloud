@@ -41,12 +41,8 @@ void main() {
     app.addListener(() => notifications += 1);
 
     expect(notifications, 0);
-    expect(identical(app.activeTab, navigation.activeTab), isTrue);
     expect(identical(app.barsHide, navigation.barsHide), isTrue);
     expect(identical(app.topBarHide, navigation.topBarHide), isTrue);
-    app.onSwitchTab = (index) => notifications += index;
-    app.switchTab(2);
-    expect(notifications, 2);
   });
 
   test('navigationStateProvider 可以被入口共享实例覆盖', () {

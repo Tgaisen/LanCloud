@@ -77,9 +77,9 @@ void main() {
 
     // 切到别的视图（外壳更新 activeTab），再切回传输视图：
     // 之前这里会给整组列表重播一次入场动画，与首页 / 收藏等页面不一致
-    app.activeTab.value = 0;
+    app.navigation.activeTab.value = 0;
     await tester.pump();
-    app.activeTab.value = 2;
+    app.navigation.activeTab.value = 2;
     await tester.pump(const Duration(milliseconds: 60));
     expectFullyVisible('a.zip');
   });
