@@ -7,6 +7,7 @@ import 'package:lancloud/core/api/lanzou_client.dart';
 import 'package:lancloud/core/api/lanzou_client_registry.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/app_composition_root.dart';
+import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/backup/backup_service.dart';
 import 'package:lancloud/core/backup/backup_service_provider.dart';
 import 'package:lancloud/core/data/app_db.dart';
@@ -107,15 +108,19 @@ class _FakeTransferDownloadPort implements TransferDownloadPort {
       throw UnimplementedError('测试恢复流程不应写下载文件');
 }
 
-TransferManager buildTransferManager(AppController app) {
+TransferManager buildTransferManager(AppController app) =>
+    buildTransferManagerForEnvironment(app.environment);
+
+TransferManager buildTransferManagerForEnvironment(
+  AppEnvironment environment,
+) {
   const sharedDownloads = PlatformSharedDownloadsGateway();
   final downloadPaths = PlatformDownloadPathService(
     sharedDownloads: sharedDownloads,
   );
-  final environment = app.environment;
   final composition = AppCompositionRoot(
     environment: environment,
-    reloadFromStorage: app.reloadFromStorage,
+    reloadFromStorage: () async {},
     sharedDownloads: sharedDownloads,
     downloadPaths: downloadPaths,
   );

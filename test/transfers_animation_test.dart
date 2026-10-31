@@ -1,7 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/core/system_motion.dart';
@@ -12,7 +12,7 @@ import 'package:lancloud/ui/transfers_page.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
-import 'transfer_dependencies_test.dart' show buildTransferManager;
+import 'transfer_dependencies_test.dart' show buildTransferManagerForEnvironment;
 
 void main() {
   setUp(() {
@@ -23,9 +23,9 @@ void main() {
   });
 
   testWidgets('切走再切回传输页：列表不重播入场动画', (tester) async {
-    final app = AppController();
-    addTearDown(app.dispose);
-    final manager = buildTransferManager(app);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
+    final manager = buildTransferManagerForEnvironment(environment);
     manager.tasks.add(
       TransferTask(
         id: 't1',
@@ -40,9 +40,9 @@ void main() {
         overrides: [
           transferManagerProvider.overrideWithValue(manager),
           navigationAppearanceSettingsStateProvider.overrideWithValue(
-            app.navigationAppearanceSettings,
+            environment.navigationAppearanceSettings,
           ),
-          navigationStateProvider.overrideWithValue(app.navigation),
+          navigationStateProvider.overrideWithValue(environment.navigation),
         ],
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
@@ -77,9 +77,9 @@ void main() {
 
     // 切到别的视图（外壳更新 activeTab），再切回传输视图：
     // 之前这里会给整组列表重播一次入场动画，与首页 / 收藏等页面不一致
-    app.navigation.activeTab.value = 0;
+    environment.navigation.activeTab.value = 0;
     await tester.pump();
-    app.navigation.activeTab.value = 2;
+    environment.navigation.activeTab.value = 2;
     await tester.pump(const Duration(milliseconds: 60));
     expectFullyVisible('a.zip');
   });

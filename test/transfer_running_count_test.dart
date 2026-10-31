@@ -1,16 +1,16 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/ui/transfer_running_count.dart';
 import 'package:material_ui/material_ui.dart';
 
-import 'transfer_dependencies_test.dart' show buildTransferManager;
+import 'transfer_dependencies_test.dart' show buildTransferManagerForEnvironment;
 
 void main() {
   testWidgets('仅运行中任务数变化时重建', (tester) async {
-    final app = AppController();
-    addTearDown(app.dispose);
-    final manager = buildTransferManager(app);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
+    final manager = buildTransferManagerForEnvironment(environment);
     addTearDown(manager.dispose);
     manager.tasks.add(
       TransferTask(

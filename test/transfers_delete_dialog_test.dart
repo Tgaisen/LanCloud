@@ -1,7 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
@@ -13,12 +13,13 @@ import 'package:lancloud/ui/m3e.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
-import 'transfer_dependencies_test.dart' show buildTransferManager;
+import 'transfer_dependencies_test.dart' show buildTransferManagerForEnvironment;
 
 void main() {
   testWidgets('传输页删除弹窗：复选行在列表组里，组沿距内容边距 24dp', (tester) async {
-    final app = AppController();
-    final manager = buildTransferManager(app);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
+    final manager = buildTransferManagerForEnvironment(environment);
     manager.tasks.add(
       TransferTask(
         id: 't1',
@@ -33,9 +34,9 @@ void main() {
         overrides: [
           transferManagerProvider.overrideWithValue(manager),
           navigationAppearanceSettingsStateProvider.overrideWithValue(
-            app.navigationAppearanceSettings,
+            environment.navigationAppearanceSettings,
           ),
-          navigationStateProvider.overrideWithValue(app.navigation),
+          navigationStateProvider.overrideWithValue(environment.navigation),
         ],
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
@@ -76,11 +77,10 @@ void main() {
       moreOrLessEquals(24, epsilon: 0.5),
     );
 
-    // 关掉弹窗并退出多选再收尾：页面 dispose 时还会去改控制器
+    // 关掉弹窗并退出多选再收尾：页面 dispose 时还会去改导航状态
     await tester.tap(find.text('取消'));
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('退出多选'));
     await tester.pumpAndSettle();
-    app.dispose();
   });
 }
