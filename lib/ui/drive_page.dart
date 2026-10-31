@@ -203,7 +203,8 @@ class _DrivePageState extends ConsumerState<DrivePage>
     _listHome = ref.read(listHomeSettingsStateProvider);
     _appearance = ref.read(navigationAppearanceSettingsStateProvider);
     _sortMode = _listHome.sortMode;
-    _transfers = ref.read(transferManagerProvider)..addTaskListener(_onTaskDone);
+    _transfers = ref.read(transferManagerProvider)
+      ..addTaskListener(_onTaskDone);
     if (widget.initialName != null) {
       _path = [PathNode(id: widget.initialFolderId, name: widget.initialName!)];
     }
@@ -257,8 +258,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
   bool _systemReduceMotion = false;
 
   bool get _animationsEnabled =>
-      _appearance.transitionAnimations &&
-      !_systemReduceMotion;
+      _appearance.transitionAnimations && !_systemReduceMotion;
 
   /// 首页选择“网盘页打开”时：跳转到请求的目录。
   void _onDriveFolderRequest() {
@@ -274,10 +274,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
     if (_directorySwitching || folderId == _folderId) return;
     _directorySwitching = true;
     try {
-      _navigation.animateBarsHide(
-        0,
-        reduceMotion: _systemReduceMotion,
-      );
+      _navigation.animateBarsHide(0, reduceMotion: _systemReduceMotion);
       _rememberFolderOffset();
       await _animateDirectorySwitch(folderId);
       if (!mounted) return;
@@ -998,9 +995,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
         final from = _scroll.position.pixels;
         // 回到列表顶部时让悬浮顶栏顺势滑下来（下移显示），
         // 而不是 jumpTo 造成的瞬间出现。
-        final slideTopBar =
-            _animationsEnabled &&
-            _appearance.hideTopBar;
+        final slideTopBar = _animationsEnabled && _appearance.hideTopBar;
         if (slideTopBar && to < from) {
           _scroll.animateTo(
             to,
@@ -1258,11 +1253,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
     // 名称为空由弹窗自己的 error state 拦住，到这里一定非空
     final name = result.name;
     try {
-      await _activeClient()?.mkdir(
-        _folderId,
-        name,
-        desc: result.desc,
-      );
+      await _activeClient()?.mkdir(_folderId, name, desc: result.desc);
       // 局部刷新：只重新拉取文件夹列表，新文件夹淡入出现
       final ok = await _refreshInPlace(refreshFolders: true);
       if (!ok) await _reloadAfterChange();
@@ -1327,9 +1318,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
           }
         },
       );
-      await _db.removeDownloaded([
-        for (final id in fileIds) '$activeUid:$id',
-      ]);
+      await _db.removeDownloaded([for (final id in fileIds) '$activeUid:$id']);
       // 删掉的目录若固定在快速访问里，一并移除
       if (folderIds.isNotEmpty) await _db.removePins(folderIds);
       if (!mounted) return;
@@ -2409,10 +2398,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
     if (client == null) return null;
     final publicClient = ref.read(lanzouClientRegistryProvider).publicClient;
     final info = share ?? await client.shareInfoOfFile(file.id);
-    final direct = await publicClient.resolveFileShare(
-      info.url,
-      pwd: info.pwd,
-    );
+    final direct = await publicClient.resolveFileShare(info.url, pwd: info.pwd);
     return direct.url;
   }
 
@@ -2625,9 +2611,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
           body: Stack(
             children: [
               // 小屏：正文区整体让开左右挖孔 / 侧边导航栏；顶栏（浮层）保持原样
-              BodySideInset(
-                child: _buildBody(grid, viewSettings.hideTopBar),
-              ),
+              BodySideInset(child: _buildBody(grid, viewSettings.hideTopBar)),
               // 顶栏浮层：与底栏共用收起进度，切换视图时会下滑出现
               Positioned(
                 left: 0,
@@ -2855,9 +2839,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
     return ScrollTint(
       hideDistance: headerInset,
       readBarsHidden: () => _navigation.topBarHide.value,
-      onBarsHidden: hideTopBar
-          ? _navigation.setTopBarHideFromScroll
-          : null,
+      onBarsHidden: hideTopBar ? _navigation.setTopBarHideFromScroll : null,
       // 列表快速滑动条（可拖拽）
       child: FastScrollbar(
         controller: _scroll,
@@ -4174,9 +4156,9 @@ class _FileInfoSheetState extends ConsumerState<_FileInfoSheet> {
   /// 这个文件的下载标记：按「账号uid:文件id」查最近的下载任务（已取消的不算）。
   TransferTask? get _downloadTask {
     final activeUid = ref.read(accountStateProvider).store.activeUid ?? '';
-    return ref.read(transferManagerProvider).downloadMarkOf(
-      driveDownloadKey(activeUid, _file.id),
-    );
+    return ref
+        .read(transferManagerProvider)
+        .downloadMarkOf(driveDownloadKey(activeUid, _file.id));
   }
 
   /// 「已下载」二级菜单：挂在下载按钮所在的那一段下方（和复制链接同一套锚点）。
@@ -4336,7 +4318,10 @@ class _FileInfoSheetState extends ConsumerState<_FileInfoSheet> {
             // 监听传输管理器：下载中时把进度环画在「下载」按钮的图标位上
             // （只重建这一行，弹窗关掉就停）
             child: ListenableBuilder(
-              listenable: Listenable.merge([transfers, transfers.marksRevision]),
+              listenable: Listenable.merge([
+                transfers,
+                transfers.marksRevision,
+              ]),
               builder: (BuildContext context, _) {
                 final scheme = Theme.of(context).colorScheme;
                 final mark = _downloadTask;
@@ -4520,10 +4505,9 @@ class _FolderInfoSheetState extends ConsumerState<_FolderInfoSheet> {
   Future<void> _loadPinned() async {
     try {
       final activeUid = ref.read(accountStateProvider).store.activeUid ?? '';
-      final pinned = await ref.read(appDbProvider).isPinned(
-        activeUid,
-        widget.folder.id,
-      );
+      final pinned = await ref
+          .read(appDbProvider)
+          .isPinned(activeUid, widget.folder.id);
       if (mounted) setState(() => _pinned = pinned);
     } catch (_) {}
   }

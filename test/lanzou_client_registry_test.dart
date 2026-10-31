@@ -51,9 +51,7 @@ void main() {
       factory: (uid) => LanzouClient(uid: uid),
     );
     final container = ProviderContainer(
-      overrides: [
-        lanzouClientRegistryProvider.overrideWithValue(registry),
-      ],
+      overrides: [lanzouClientRegistryProvider.overrideWithValue(registry)],
     );
     addTearDown(container.dispose);
 

@@ -53,9 +53,7 @@ void main() {
     addTearDown(() => debugDefaultTargetPlatformOverride = null);
     final gateway = _FakeSharedDownloads(supported: true);
     final port = DefaultTransferDownloadPort(
-      downloadPaths: PlatformDownloadPathService(
-        sharedDownloads: gateway,
-      ),
+      downloadPaths: PlatformDownloadPathService(sharedDownloads: gateway),
       sharedDownloads: gateway,
       settings: SettingsStore(),
     );
@@ -68,9 +66,7 @@ void main() {
   test('sharedDownloadsGatewayProvider 可以被测试实现覆盖', () {
     final gateway = _FakeSharedDownloads(supported: false);
     final container = ProviderContainer(
-      overrides: [
-        sharedDownloadsGatewayProvider.overrideWithValue(gateway),
-      ],
+      overrides: [sharedDownloadsGatewayProvider.overrideWithValue(gateway)],
     );
     addTearDown(container.dispose);
 

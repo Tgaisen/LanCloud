@@ -86,8 +86,7 @@ class _FakeTransferAccountPort implements TransferAccountPort {
       throw UnimplementedError('测试恢复流程不应创建账号客户端');
 
   @override
-  LanzouClient get publicClient =>
-      throw UnimplementedError('测试恢复流程不应解析分享链接');
+  LanzouClient get publicClient => throw UnimplementedError('测试恢复流程不应解析分享链接');
 }
 
 class _FakeTransferDownloadPort implements TransferDownloadPort {
@@ -107,9 +106,7 @@ class _FakeTransferDownloadPort implements TransferDownloadPort {
       throw UnimplementedError('测试恢复流程不应写下载文件');
 }
 
-TransferManager buildTransferManagerForEnvironment(
-  AppEnvironment environment,
-) {
+TransferManager buildTransferManagerForEnvironment(AppEnvironment environment) {
   const sharedDownloads = PlatformSharedDownloadsGateway();
   final downloadPaths = PlatformDownloadPathService(
     sharedDownloads: sharedDownloads,
@@ -198,10 +195,7 @@ void main() {
       container.read(transferDependenciesProvider),
       same(composition.transferDependencies),
     );
-    expect(
-      composition.transferDependencies.store,
-      isA<AppDbTransferStore>(),
-    );
+    expect(composition.transferDependencies.store, isA<AppDbTransferStore>());
     expect(
       (composition.transferDependencies.store as AppDbTransferStore).database,
       same(environment.db),
@@ -296,10 +290,7 @@ void main() {
       settings: settings,
     );
 
-    expect(
-      await port.uniqueSavePath('a.txt'),
-      p.join(dir.path, 'a(1).txt'),
-    );
+    expect(await port.uniqueSavePath('a.txt'), p.join(dir.path, 'a(1).txt'));
   });
 
   test('设置端口实时读取传输相关字段', () {

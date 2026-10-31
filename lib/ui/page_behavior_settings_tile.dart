@@ -120,9 +120,7 @@ class HomeFolderOpenSettingsTile extends ConsumerWidget {
       builder: (context, _, _) => ListTile(
         leading: const Icon(Icons.open_in_new),
         title: Text(l10n.homeFolderOpen),
-        subtitle: Text(
-          homeFolderOpenLabel(l10n, settings.homeFolderOpenMode),
-        ),
+        subtitle: Text(homeFolderOpenLabel(l10n, settings.homeFolderOpenMode)),
         onTap: () => unawaited(_pick(context, settings)),
       ),
     );

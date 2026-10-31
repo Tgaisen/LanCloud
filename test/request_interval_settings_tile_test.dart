@@ -11,9 +11,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  setUp(
-    () => LanzouClient.requestInterval = const Duration(milliseconds: 300),
-  );
+  setUp(() => LanzouClient.requestInterval = const Duration(milliseconds: 300));
 
   tearDown(
     () => LanzouClient.requestInterval = const Duration(milliseconds: 300),
@@ -51,10 +49,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(store.requestInterval, 1000);
-    expect(
-      LanzouClient.requestInterval,
-      const Duration(milliseconds: 1000),
-    );
+    expect(LanzouClient.requestInterval, const Duration(milliseconds: 1000));
     expect(state.revision.value, 1);
     expect(find.text('1000 ms'), findsOneWidget);
   });

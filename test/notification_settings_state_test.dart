@@ -24,9 +24,7 @@ void main() {
   test('notificationSettingsStateProvider 可被共享实例覆盖', () {
     final state = NotificationSettingsState(SettingsStore());
     final container = ProviderContainer(
-      overrides: [
-        notificationSettingsStateProvider.overrideWithValue(state),
-      ],
+      overrides: [notificationSettingsStateProvider.overrideWithValue(state)],
     );
     addTearDown(container.dispose);
 

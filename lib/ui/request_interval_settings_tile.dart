@@ -25,8 +25,7 @@ class RequestIntervalSettingsTile extends ConsumerWidget {
         values: const [25, 50, 75, 100, 150, 200, 300, 500, 1000],
         current: settings.requestInterval,
         labelOf: (ms) => '$ms ms',
-        onChanged: (value) =>
-            unawaited(settings.setRequestInterval(value)),
+        onChanged: (value) => unawaited(settings.setRequestInterval(value)),
       ),
     );
   }

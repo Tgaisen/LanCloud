@@ -12,10 +12,7 @@ abstract interface class TransferAccountPort {
 
 /// 包装既有账号存储与客户端注册表。
 class AppTransferAccountPort implements TransferAccountPort {
-  AppTransferAccountPort({
-    required this.accounts,
-    required this.clients,
-  });
+  AppTransferAccountPort({required this.accounts, required this.clients});
 
   final AccountStore accounts;
   final LanzouClientRegistry clients;

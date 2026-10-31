@@ -28,9 +28,7 @@ Future<TransferConnectionSettingsState> _pump(
         localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         locale: const Locale('zh'),
-        home: Scaffold(
-          body: AdvancedConnectionSettingsTile(setting: setting),
-        ),
+        home: Scaffold(body: AdvancedConnectionSettingsTile(setting: setting)),
       ),
     ),
   );
@@ -54,11 +52,7 @@ void main() {
   testWidgets('接口域名使用 Riverpod 状态，并同步客户端配置', (tester) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     final store = SettingsStore();
-    final state = await _pump(
-      tester,
-      store,
-      AdvancedConnectionSetting.apiHost,
-    );
+    final state = await _pump(tester, store, AdvancedConnectionSetting.apiHost);
 
     await tester.tap(find.widgetWithText(ListTile, '网盘接口域名'));
     await tester.pumpAndSettle();

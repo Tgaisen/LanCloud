@@ -44,9 +44,9 @@ Future<DownloadDirectoryAction?> showDownloadDirectoryDialog(
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(dialogContext).pop(
-            DownloadDirectoryAction.restoreDefault,
-          ),
+          onPressed: () =>
+              Navigator.of(dialogContext)
+                  .pop(DownloadDirectoryAction.restoreDefault),
           child: Text(l10n.restoreDefault),
         ),
         FilledButton(
@@ -186,20 +186,15 @@ class _DownloadDirectorySettingsTileState
     if (!context.mounted) return;
     final action = await showDownloadDirectoryDialog(
       context,
-      current: _directoryLabel(
-        l10n,
-        settings,
-        defaultPath,
-      ),
+      current: _directoryLabel(l10n, settings, defaultPath),
       android: _isAndroid,
     );
     if (action == null || !context.mounted) return;
     if (action == DownloadDirectoryAction.restoreDefault) {
       await settings.selectDirectoryPath(null);
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(l10n.restoredDefaultDir)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(l10n.restoredDefaultDir)));
       }
       return;
     }
@@ -235,18 +230,16 @@ class _DownloadDirectorySettingsTileState
       if (dir == null || dir.isEmpty) return;
       await settings.selectDirectoryPath(dir);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.downloadDirSet(dir))),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(l10n.downloadDirSet(dir))));
       }
     } catch (error) {
       if (!context.mounted) return;
       final message = error is PlatformException
           ? (error.message ?? error.code)
           : '$error';
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(l10n.pickDirFailed(message))));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(l10n.pickDirFailed(message))));
     }
   }
 }

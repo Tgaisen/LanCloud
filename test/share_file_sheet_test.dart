@@ -16,7 +16,8 @@ import 'package:lancloud/ui/share_file_sheet.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
-import 'transfer_dependencies_test.dart' show buildTransferManagerForEnvironment;
+import 'transfer_dependencies_test.dart'
+    show buildTransferManagerForEnvironment;
 
 /// 解析一定失败的假客户端：测试里不联网；错误信息不含「不存在 / 取消」，
 /// 所以不会被判成失效（失效会让整张表的入口置灰，测不了点击行为）。

@@ -73,16 +73,12 @@ class NavigationAppearanceSettingsState {
   }
 
   void _restoreBars() {
-    navigation?.animateBarsHide(
-      0,
-      reduceMotion: reduceMotion?.call() ?? false,
-    );
+    navigation?.animateBarsHide(0, reduceMotion: reduceMotion?.call() ?? false);
   }
 }
 
 final navigationAppearanceSettingsStateProvider =
     Provider<NavigationAppearanceSettingsState>(
-      (ref) => NavigationAppearanceSettingsState(
-        ref.watch(settingsStoreProvider),
-      ),
+      (ref) =>
+          NavigationAppearanceSettingsState(ref.watch(settingsStoreProvider)),
     );

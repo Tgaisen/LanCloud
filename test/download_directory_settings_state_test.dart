@@ -66,10 +66,7 @@ void main() {
     addTearDown(container.dispose);
 
     expect(
-      identical(
-        container.read(downloadDirectorySettingsStateProvider),
-        state,
-      ),
+      identical(container.read(downloadDirectorySettingsStateProvider), state),
       isTrue,
     );
   });

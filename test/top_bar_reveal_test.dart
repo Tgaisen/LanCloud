@@ -194,10 +194,7 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
-      navigationHost(
-        app,
-        const Md3ePageFrame(child: FramedTabProbePage()),
-      ),
+      navigationHost(app, const Md3ePageFrame(child: FramedTabProbePage())),
     );
     await tester.pumpAndSettle();
     final initial = barBackground(tester);
@@ -212,9 +209,7 @@ void main() {
     final app = AppEnvironment();
     addTearDown(app.dispose);
     await app.navigationAppearanceSettings.setHideTopBar(true);
-    await tester.pumpWidget(
-      navigationHost(app, const ScaffoldProbePage()),
-    );
+    await tester.pumpWidget(navigationHost(app, const ScaffoldProbePage()));
     final state = tester.state<ScaffoldProbePageState>(
       find.byType(ScaffoldProbePage),
     );
@@ -250,9 +245,7 @@ void main() {
     final app = AppEnvironment();
     addTearDown(app.dispose);
     await app.navigationAppearanceSettings.setHideTopBar(true);
-    await tester.pumpWidget(
-      navigationHost(app, const ProbePage()),
-    );
+    await tester.pumpWidget(navigationHost(app, const ProbePage()));
     final state = tester.state<ProbePageState>(find.byType(ProbePage));
     await tester.pumpAndSettle();
     final rowBefore = topOf(tester, 'row 0');
@@ -287,9 +280,7 @@ void main() {
     final app = AppEnvironment();
     addTearDown(app.dispose);
     await app.navigationAppearanceSettings.setHideTopBar(true);
-    await tester.pumpWidget(
-      navigationHost(app, const ProbePage()),
-    );
+    await tester.pumpWidget(navigationHost(app, const ProbePage()));
     final state = tester.state<ProbePageState>(find.byType(ProbePage));
 
     state.scroll.jumpTo(ProbePageState.headerHeight);
@@ -312,9 +303,7 @@ void main() {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     final app = AppEnvironment();
     addTearDown(app.dispose);
-    await tester.pumpWidget(
-      navigationHost(app, const ScaffoldProbePage()),
-    );
+    await tester.pumpWidget(navigationHost(app, const ScaffoldProbePage()));
     final state = tester.state<ScaffoldProbePageState>(
       find.byType(ScaffoldProbePage),
     );

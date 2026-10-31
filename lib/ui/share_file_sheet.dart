@@ -48,8 +48,7 @@ class ShareFileInfoSheet extends ConsumerStatefulWidget {
   final Future<void> Function(DirectFile file)? onResolved;
 
   @override
-  ConsumerState<ShareFileInfoSheet> createState() =>
-      _ShareFileInfoSheetState();
+  ConsumerState<ShareFileInfoSheet> createState() => _ShareFileInfoSheetState();
 }
 
 class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {

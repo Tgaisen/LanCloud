@@ -41,6 +41,9 @@ void main() {
     );
     addTearDown(container.dispose);
 
-    expect(identical(container.read(themeSettingsStateProvider), state), isTrue);
+    expect(
+      identical(container.read(themeSettingsStateProvider), state),
+      isTrue,
+    );
   });
 }

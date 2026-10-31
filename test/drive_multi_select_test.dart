@@ -23,7 +23,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
-import 'transfer_dependencies_test.dart' show buildTransferManagerForEnvironment;
+import 'transfer_dependencies_test.dart'
+    show buildTransferManagerForEnvironment;
 
 /// 网盘页挂载在目录缓存上（不进网络）：给个账号让 `app.client` 非空，
 /// 再塞一份根目录快照，`_load()` 直接命中缓存。
@@ -145,11 +146,7 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text('已选择 1 项'), findsNothing, reason: '$grid');
         // 没有停在「已选择 0 项」：多选整体退出，图标也恢复成文件夹
-        expect(
-          environment.navigation.selectionMode,
-          isFalse,
-          reason: '$grid',
-        );
+        expect(environment.navigation.selectionMode, isFalse, reason: '$grid');
         expect(
           find.byIcon(app_icons.Icons.check_circle),
           findsNothing,
@@ -280,7 +277,6 @@ void main() {
       tester.getCenter(close).dx,
       lessThan(tester.getTopLeft(find.byType(TextField)).dx),
     );
-
   });
 
   // 多选时行尾 ⋯ 菜单没有意义（操作都在底部多选条里），和收藏 / 传输页

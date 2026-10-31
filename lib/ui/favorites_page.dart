@@ -642,11 +642,8 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
     final appearance = ref.watch(navigationAppearanceSettingsStateProvider);
     return ListenableBuilder(
       listenable: appearance.revision,
-      builder: (context, _) => _buildPage(
-        context,
-        appearance.hideTopBar,
-        _navigation,
-      ),
+      builder: (context, _) =>
+          _buildPage(context, appearance.hideTopBar, _navigation),
     );
   }
 

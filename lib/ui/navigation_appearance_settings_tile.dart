@@ -55,17 +55,15 @@ Future<NavBarItemsSelection?> showNavBarItemsPicker(
                   label: l10n.tabTransfers,
                   leading: const Icon(Icons.swap_vert),
                   selected: draftTransfers,
-                  onTap: () => setDialogState(
-                    () => draftTransfers = !draftTransfers,
-                  ),
+                  onTap: () =>
+                      setDialogState(() => draftTransfers = !draftTransfers),
                 ),
                 M3ePickTile(
                   label: l10n.favorite,
                   leading: const Icon(Icons.star_border),
                   selected: draftFavorites,
-                  onTap: () => setDialogState(
-                    () => draftFavorites = !draftFavorites,
-                  ),
+                  onTap: () =>
+                      setDialogState(() => draftFavorites = !draftFavorites),
                 ),
               ],
             ),
@@ -77,9 +75,11 @@ Future<NavBarItemsSelection?> showNavBarItemsPicker(
             child: Text(l10n.cancel),
           ),
           FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop<NavBarItemsSelection>(
-              (transfers: draftTransfers, favorites: draftFavorites),
-            ),
+            onPressed: () => Navigator.of(dialogContext)
+                .pop<NavBarItemsSelection>((
+                  transfers: draftTransfers,
+                  favorites: draftFavorites,
+                )),
             child: Text(l10n.confirm),
           ),
         ],
@@ -99,10 +99,7 @@ enum NavigationAppearanceSetting {
 
 /// 悬浮导航、滑动切页或转场动画设置行。
 class NavigationAppearanceSettingsTile extends ConsumerWidget {
-  const NavigationAppearanceSettingsTile({
-    super.key,
-    required this.setting,
-  });
+  const NavigationAppearanceSettingsTile({super.key, required this.setting});
 
   final NavigationAppearanceSetting setting;
 
@@ -163,10 +160,12 @@ class NavigationAppearanceSettingsTile extends ConsumerWidget {
   ) {
     return switch (setting) {
       NavigationAppearanceSetting.hideTopBar => settings.setHideTopBar(value),
-      NavigationAppearanceSetting.hideBottomBar =>
-        settings.setHideBottomBar(value),
-      NavigationAppearanceSetting.floatingNav =>
-        settings.setFloatingNavBar(value),
+      NavigationAppearanceSetting.hideBottomBar => settings.setHideBottomBar(
+        value,
+      ),
+      NavigationAppearanceSetting.floatingNav => settings.setFloatingNavBar(
+        value,
+      ),
       NavigationAppearanceSetting.swipeTabs => settings.setSwipeTabs(value),
       NavigationAppearanceSetting.transitionAnimations =>
         settings.setTransitionAnimations(value),

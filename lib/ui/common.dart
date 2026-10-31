@@ -1121,8 +1121,7 @@ class TopBarOverlay extends StatelessWidget {
     final appearance = container.read(
       navigationAppearanceSettingsStateProvider,
     );
-    final hide =
-        progress ?? container.read(navigationStateProvider).topBarHide;
+    final hide = progress ?? container.read(navigationStateProvider).topBarHide;
     return ListenableBuilder(
       listenable: appearance.revision,
       builder: (context, _) =>
@@ -1277,9 +1276,8 @@ class _TopBarOverlayScaffoldState extends State<TopBarOverlayScaffold> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _appearance = ProviderScope.containerOf(
-      context,
-    ).read(navigationAppearanceSettingsStateProvider);
+    _appearance = ProviderScope.containerOf(context)
+        .read(navigationAppearanceSettingsStateProvider);
   }
 
   @override
@@ -2705,13 +2703,11 @@ class BatchActionBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final appearance = ProviderScope.containerOf(
-      context,
-    ).read(navigationAppearanceSettingsStateProvider);
+    final appearance = ProviderScope.containerOf(context)
+        .read(navigationAppearanceSettingsStateProvider);
     return ListenableBuilder(
       listenable: appearance.revision,
-      builder: (context, _) =>
-          _buildBar(context, appearance.floatingNavBar),
+      builder: (context, _) => _buildBar(context, appearance.floatingNavBar),
     );
   }
 
@@ -2721,8 +2717,7 @@ class BatchActionBar extends StatelessWidget {
     // 普通底栏 = 80 + 系统手势区，悬浮底栏 = 108 + 系统手势区（含 16dp 顶留白）。
     // 按整槽避让时悬浮样式的多选条会离胶囊多出 16dp，这里回退成胶囊实际高度，
     // 两种样式的间距保持一致（都是 12dp）。
-    final floatingNavInShell =
-        inRootShell(context) && floatingNavBar;
+    final floatingNavInShell = inRootShell(context) && floatingNavBar;
     final bottomInset = math.max(
       0.0,
       MediaQuery.paddingOf(context).bottom -
@@ -4692,10 +4687,7 @@ Future<bool> downloadShareFile(
   /// 属性弹窗传这个回调：补密码后继续下载，并把新密码同步到收藏夹。
   Future<String?> Function()? askPassword,
 }) async {
-  final container = ProviderScope.containerOf(
-    context,
-    listen: false,
-  );
+  final container = ProviderScope.containerOf(context, listen: false);
   final client = container.read(lanzouClientRegistryProvider).publicClient;
   final transfers = container.read(transferManagerProvider);
   final navigator = Navigator.of(context);
@@ -4716,10 +4708,7 @@ Future<bool> downloadShareFile(
   while (true) {
     String? passwordError;
     try {
-      final direct = await client.resolveFileShare(
-        url,
-        pwd: currentPwd,
-      );
+      final direct = await client.resolveFileShare(url, pwd: currentPwd);
       if (showLoading) navigator.pop();
       transfers.addDownload(
         url: direct.url,
@@ -4767,10 +4756,7 @@ Future<void> downloadShareFiles(
   String pwd = '',
 }) async {
   if (urls.isEmpty || urls.length != names.length) return;
-  final container = ProviderScope.containerOf(
-    context,
-    listen: false,
-  );
+  final container = ProviderScope.containerOf(context, listen: false);
   final client = container.read(lanzouClientRegistryProvider).publicClient;
   final transfers = container.read(transferManagerProvider);
   final messenger = ScaffoldMessenger.of(context);
@@ -4785,10 +4771,7 @@ Future<void> downloadShareFiles(
       for (var i = 0; i < urls.length; i++) {
         report(i + 1, names[i]);
         try {
-          final direct = await client.resolveFileShare(
-            urls[i],
-            pwd: pwd,
-          );
+          final direct = await client.resolveFileShare(urls[i], pwd: pwd);
           transfers.addDownload(
             url: direct.url,
             name: direct.name.isEmpty ? names[i] : direct.name,

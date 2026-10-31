@@ -19,7 +19,8 @@ import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/delegates.dart';
 import 'package:lancloud/ui/drive_page.dart';
 
-import 'transfer_dependencies_test.dart' show buildTransferManagerForEnvironment;
+import 'transfer_dependencies_test.dart'
+    show buildTransferManagerForEnvironment;
 
 /// 第一页只有几条、且服务端说「还有下一页」的目录：真机上必须自动补一页，
 /// 才能知道已经到底（否则要用户滑一下才出现「已加载全部」）。

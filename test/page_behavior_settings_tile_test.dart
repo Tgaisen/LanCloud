@@ -38,11 +38,7 @@ void main() {
     final container = ProviderContainer(
       overrides: [cachePageSettingsStateProvider.overrideWithValue(state)],
     );
-    await _pump(
-      tester,
-      const LaunchPageSettingsTile(),
-      container,
-    );
+    await _pump(tester, const LaunchPageSettingsTile(), container);
 
     expect(find.text('首页'), findsOneWidget);
     await tester.tap(find.widgetWithText(ListTile, '默认启动页'));
@@ -65,11 +61,7 @@ void main() {
     final container = ProviderContainer(
       overrides: [listHomeSettingsStateProvider.overrideWithValue(state)],
     );
-    await _pump(
-      tester,
-      const HomeFolderOpenSettingsTile(),
-      container,
-    );
+    await _pump(tester, const HomeFolderOpenSettingsTile(), container);
 
     expect(find.text('网盘页'), findsOneWidget);
     await tester.tap(find.widgetWithText(ListTile, '首页目录打开方式'));

@@ -8,11 +8,7 @@ import 'data/settings_store_provider.dart';
 
 /// 列表排序与首页展示设置的明确读写入口。
 class ListHomeSettingsState {
-  ListHomeSettingsState(
-    this.store, {
-    this.trimRecents,
-    this.activeUid,
-  });
+  ListHomeSettingsState(this.store, {this.trimRecents, this.activeUid});
 
   final SettingsStore store;
   final Future<void> Function(String uid, int limit)? trimRecents;

@@ -25,7 +25,8 @@ import 'package:lancloud/ui/profile_page.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
-import 'transfer_dependencies_test.dart' show buildTransferManagerForEnvironment;
+import 'transfer_dependencies_test.dart'
+    show buildTransferManagerForEnvironment;
 
 Widget _rootShellHost(
   AppEnvironment environment,
@@ -158,9 +159,7 @@ void main() {
     environment.accountState.store.activeUid = '556911';
     final transfers = buildTransferManagerForEnvironment(environment);
     addTearDown(transfers.dispose);
-    await tester.pumpWidget(
-      _rootShellHost(environment, transfers),
-    );
+    await tester.pumpWidget(_rootShellHost(environment, transfers));
     await tester.pumpAndSettle();
 
     expect(find.byIcon(app_icons.Icons.browse_outlined), findsWidgets);

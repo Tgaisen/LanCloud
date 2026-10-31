@@ -13,10 +13,7 @@ enum TransferConcurrencySetting { uploads, downloads }
 
 /// 传输并发数滑杆；松手时通过唯一设置状态写入。
 class TransferConcurrencySettingsTile extends ConsumerWidget {
-  const TransferConcurrencySettingsTile({
-    super.key,
-    required this.setting,
-  });
+  const TransferConcurrencySettingsTile({super.key, required this.setting});
 
   final TransferConcurrencySetting setting;
 
@@ -53,14 +50,10 @@ class TransferConcurrencySettingsTile extends ConsumerWidget {
     );
   }
 
-  Future<void> _setValue(
-    TransferConnectionSettingsState settings,
-    int value,
-  ) {
+  Future<void> _setValue(TransferConnectionSettingsState settings, int value) {
     return switch (setting) {
       TransferConcurrencySetting.uploads => settings.setMaxUploads(value),
-      TransferConcurrencySetting.downloads =>
-        settings.setMaxDownloads(value),
+      TransferConcurrencySetting.downloads => settings.setMaxDownloads(value),
     };
   }
 }

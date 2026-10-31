@@ -9,10 +9,7 @@ import 'app_icons.dart';
 
 /// 目录缓存或自动加载全部页面的设置行。
 class CachePageSettingsTile extends ConsumerWidget {
-  const CachePageSettingsTile({
-    super.key,
-    required this.cacheFolders,
-  });
+  const CachePageSettingsTile({super.key, required this.cacheFolders});
 
   final bool cacheFolders;
 
@@ -35,9 +32,7 @@ class CachePageSettingsTile extends ConsumerWidget {
               ? context.l10n.cacheFoldersSubtitle
               : context.l10n.loadAllPagesSubtitle,
         ),
-        value: cacheFolders
-            ? settings.cacheFolders
-            : settings.loadAllPages,
+        value: cacheFolders ? settings.cacheFolders : settings.loadAllPages,
         onChanged: (value) => unawaited(
           cacheFolders
               ? settings.setCacheFolders(value)

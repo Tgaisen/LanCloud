@@ -133,8 +133,7 @@ class _CookieLoginDialog extends ConsumerStatefulWidget {
   const _CookieLoginDialog();
 
   @override
-  ConsumerState<_CookieLoginDialog> createState() =>
-      _CookieLoginDialogState();
+  ConsumerState<_CookieLoginDialog> createState() => _CookieLoginDialogState();
 }
 
 class _CookieLoginDialogState extends ConsumerState<_CookieLoginDialog> {
@@ -349,9 +348,7 @@ class LoginPage extends ConsumerWidget {
           ),
           const SizedBox(height: 20),
         ],
-        LoginEntries(
-          onRestore: firstRun ? () => _restore(context, ref) : null,
-        ),
+        LoginEntries(onRestore: firstRun ? () => _restore(context, ref) : null),
       ],
     );
 

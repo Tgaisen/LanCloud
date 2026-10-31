@@ -31,9 +31,7 @@ void main() {
     final environment = AppEnvironment();
     final service = BackupService(backupDependenciesFor(environment));
     final container = ProviderContainer(
-      overrides: [
-        backupServiceProvider.overrideWithValue(service),
-      ],
+      overrides: [backupServiceProvider.overrideWithValue(service)],
     );
     addTearDown(environment.dispose);
     addTearDown(container.dispose);

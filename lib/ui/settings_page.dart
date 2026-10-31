@@ -296,8 +296,7 @@ class _SettingsCategoryPageState extends ConsumerState<SettingsCategoryPage>
         section: SettingsSection.appearance,
         // 纯黑只对深色界面有意义：深色模式、或「跟随系统」且系统是深色时
         // 才出现（等价于「当前实际是深色界面」）。
-        visible: (context) =>
-            Theme.of(context).brightness == Brightness.dark,
+        visible: (context) => Theme.of(context).brightness == Brightness.dark,
         build: (context) =>
             const ThemeSettingsTile(type: ThemeSettingsTileType.oledBlack),
       ),
@@ -384,7 +383,8 @@ class _SettingsCategoryPageState extends ConsumerState<SettingsCategoryPage>
       _Entry(
         id: 'download_dir',
         title: l10n.downloadDir,
-        subtitle: settings.downloadDirTree ??
+        subtitle:
+            settings.downloadDirTree ??
             settings.downloadDir ??
             l10n.defaultDownloadDir('…'),
         keywords: l10n.downloadDirKeywords.split(' '),
@@ -413,8 +413,7 @@ class _SettingsCategoryPageState extends ConsumerState<SettingsCategoryPage>
         subtitle: l10n.cacheFoldersSubtitle,
         keywords: l10n.cacheFoldersKeywords.split(' '),
         section: SettingsSection.behavior,
-        build: (context) =>
-            const CachePageSettingsTile(cacheFolders: true),
+        build: (context) => const CachePageSettingsTile(cacheFolders: true),
       ),
       _Entry(
         id: 'load_all_pages',
@@ -422,8 +421,7 @@ class _SettingsCategoryPageState extends ConsumerState<SettingsCategoryPage>
         subtitle: l10n.loadAllPagesSubtitle,
         keywords: l10n.loadAllPagesKeywords.split(' '),
         section: SettingsSection.behavior,
-        build: (context) =>
-            const CachePageSettingsTile(cacheFolders: false),
+        build: (context) => const CachePageSettingsTile(cacheFolders: false),
       ),
       _Entry(
         id: 'notify_progress',
@@ -828,10 +826,7 @@ class _SettingsCategoryPageState extends ConsumerState<SettingsCategoryPage>
   }
 
   /// 本页的分组小节：每个小节 = 小标题 + 一组设置项列表。
-  List<Widget> _buildSections(
-    BuildContext context,
-    List<_Entry> entries,
-  ) {
+  List<Widget> _buildSections(BuildContext context, List<_Entry> entries) {
     final widgets = <Widget>[];
     for (final section in SettingsSection.values) {
       if (section.category != widget.category) continue;
@@ -1313,7 +1308,6 @@ class _SettingsCategoryPageState extends ConsumerState<SettingsCategoryPage>
       mode: LaunchMode.externalApplication,
     );
   }
-
 }
 
 /// 高级覆盖项正文：提示 + 接口域名 / 上传路径 / UA。

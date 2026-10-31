@@ -63,10 +63,8 @@ class _FakeClient extends LanzouClient {
   Future<bool> verify() async => valid;
 
   @override
-  Future<({String? nickname, String level})> fetchAccountInfo() async => (
-    nickname: '测试账号',
-    level: '会员',
-  );
+  Future<({String? nickname, String level})> fetchAccountInfo() async =>
+      (nickname: '测试账号', level: '会员');
 }
 
 AccountLogin _login({

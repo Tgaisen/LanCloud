@@ -30,7 +30,5 @@ class LanguageClipboardSettingsState {
 
 final languageClipboardSettingsStateProvider =
     Provider<LanguageClipboardSettingsState>(
-      (ref) => LanguageClipboardSettingsState(
-        ref.watch(settingsStoreProvider),
-      ),
+      (ref) => LanguageClipboardSettingsState(ref.watch(settingsStoreProvider)),
     );

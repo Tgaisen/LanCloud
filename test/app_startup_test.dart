@@ -76,7 +76,10 @@ void main() {
 
     await startup.reloadFromStorage();
 
-    expect(environment.runtimeState.secureStorageNeedsReauthentication.value, isFalse);
+    expect(
+      environment.runtimeState.secureStorageNeedsReauthentication.value,
+      isFalse,
+    );
     expect(order, [
       'accounts',
       'settings',

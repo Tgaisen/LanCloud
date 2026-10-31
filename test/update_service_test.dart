@@ -306,10 +306,7 @@ void main() {
     });
 
     test('通道过滤生效：正式版通道不看预发布', () async {
-      _fetchReleases = () async => [
-        rel('99.1.0-pre.1'),
-        rel('1.0.0'),
-      ];
+      _fetchReleases = () async => [rel('99.1.0-pre.1'), rel('1.0.0')];
       final service = await boundService(channel: 'stable');
       await service.check();
       // 正式版通道里最新是 1.0.0（比安装版本旧）→ 已是最新，而不是 99.1.0
@@ -401,15 +398,13 @@ void main() {
       expect(service.lastCheckAt, isNull, reason: '失败不写入检测成功时间');
 
       // 半小时后重启：还在冷却里，不请求
-      _now = () =>
-          DateTime.now().add(const Duration(minutes: 30));
+      _now = () => DateTime.now().add(const Duration(minutes: 30));
       final restarted = await boundService();
       await restarted.maybeAutoCheck();
       expect(calls, 1);
 
       // 超过冷却：再自动检测一次
-      _now = () =>
-          DateTime.now().add(const Duration(hours: 2));
+      _now = () => DateTime.now().add(const Duration(hours: 2));
       await restarted.maybeAutoCheck();
       expect(calls, 2);
     });

@@ -16,8 +16,7 @@ class ShowCookieSettingsTile extends ConsumerWidget {
     final accountState = ref.watch(accountStateProvider);
     return ListenableBuilder(
       listenable: accountState,
-      builder: (context, _) =>
-          _buildTile(context, accountState.store.active),
+      builder: (context, _) => _buildTile(context, accountState.store.active),
     );
   }
 

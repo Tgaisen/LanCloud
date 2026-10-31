@@ -7,8 +7,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// 因此由 [AppRuntimeState] 唯一持有。
 class AppRuntimeState {
   final ValueNotifier<bool> ready = ValueNotifier(false);
-  final ValueNotifier<bool> secureStorageNeedsReauthentication =
-      ValueNotifier(false);
+  final ValueNotifier<bool> secureStorageNeedsReauthentication = ValueNotifier(
+    false,
+  );
   final ValueNotifier<bool> systemReduceMotion = ValueNotifier(false);
 
   void dispose() {

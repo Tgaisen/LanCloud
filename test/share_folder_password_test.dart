@@ -14,7 +14,8 @@ import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/delegates.dart';
 import 'package:lancloud/ui/share_folder_page.dart';
 
-import 'transfer_dependencies_test.dart' show buildTransferManagerForEnvironment;
+import 'transfer_dependencies_test.dart'
+    show buildTransferManagerForEnvironment;
 
 /// 截图里那种「子文件夹自带提取码」：密码不对时服务端回提取码错误，
 /// 输对了才返回子文件夹内容。

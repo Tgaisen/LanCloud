@@ -41,16 +41,13 @@ void main() {
     await client.upload('lancloud.json', '{}');
     await client.delete('lancloud.json');
 
-    expect(
-      adapter.requests.map((request) => request.method),
-      ['PUT', 'DELETE'],
-    );
-    expect(
-      adapter.requests.map((request) => request.uri.toString()),
-      [
-        'https://dav.example.com/backup/lancloud.json',
-        'https://dav.example.com/backup/lancloud.json',
-      ],
-    );
+    expect(adapter.requests.map((request) => request.method), [
+      'PUT',
+      'DELETE',
+    ]);
+    expect(adapter.requests.map((request) => request.uri.toString()), [
+      'https://dav.example.com/backup/lancloud.json',
+      'https://dav.example.com/backup/lancloud.json',
+    ]);
   });
 }

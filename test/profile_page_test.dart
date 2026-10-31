@@ -731,16 +731,15 @@ void main() {
   });
 
   testWidgets('「我的」账号卡片：普通用户不显示等级卡片，会员等级显示', (tester) async {
-    Widget tree(AppEnvironment app) =>
-        _TestProviders.value(
-          value: app,
-          child: MaterialApp(
-            localizationsDelegates: appLocalizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            locale: const Locale('zh'),
-            home: const ProfilePage(),
-          ),
-        );
+    Widget tree(AppEnvironment app) => _TestProviders.value(
+      value: app,
+      child: MaterialApp(
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('zh'),
+        home: const ProfilePage(),
+      ),
+    );
 
     final app = AppEnvironment();
     addTearDown(app.dispose);

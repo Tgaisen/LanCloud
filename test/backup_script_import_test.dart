@@ -91,9 +91,8 @@ void main() {
         '{"account":"556911","name":"示例","ref":"7654321","path":"根目录/abc/示例","created_at":1791288948000}'
         ']}}';
 
-    await BackupService(
-      backupDependenciesFor(environment),
-    ).restoreFromString(pinsBackup);
+    await BackupService(backupDependenciesFor(environment))
+        .restoreFromString(pinsBackup);
 
     final pins = await environment.db.pins('556911');
     // created_at 大的排前面

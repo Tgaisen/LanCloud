@@ -27,7 +27,8 @@ import 'package:lancloud/ui/m3e.dart';
 // 应用用的是自己的 Symbols 图标集，和框架的 Icons 同名，按应用代码的习惯隐藏后者
 import 'package:material_ui/material_ui.dart' hide Icons;
 
-import 'transfer_dependencies_test.dart' show buildTransferManagerForEnvironment;
+import 'transfer_dependencies_test.dart'
+    show buildTransferManagerForEnvironment;
 
 /// 固定返回一个文件 + 一个文件夹，并给出可预测的分享信息。
 ///
@@ -133,10 +134,8 @@ class _MemberRenameClient extends _FakeClient {
 }
 
 class _FakeApp {
-  _FakeApp(
-    this._client, {
-    LanzouClient? publicClient,
-  }) : _public = publicClient ?? _FakePublic();
+  _FakeApp(this._client, {LanzouClient? publicClient})
+    : _public = publicClient ?? _FakePublic();
 
   final AppEnvironment environment = AppEnvironment();
   final LanzouClient _client;
@@ -205,8 +204,7 @@ Future<void> _pumpDrive(
   Locale locale = const Locale('zh'),
 }) async {
   final environment = app.environment;
-  final transfers =
-      manager ?? buildTransferManagerForEnvironment(environment);
+  final transfers = manager ?? buildTransferManagerForEnvironment(environment);
   environment.accountState.store.activeUid = '';
   addTearDown(app.dispose);
   tester.view.devicePixelRatio = 1.0;
@@ -611,10 +609,7 @@ void main() {
   testWidgets('网盘文件属性弹窗：点下载先显示解析中环，解析失败恢复原状', (tester) async {
     final shareGate = _GatedClient();
     final directGate = _GatedPublic();
-    final app = _FakeApp(
-      shareGate,
-      publicClient: directGate,
-    );
+    final app = _FakeApp(shareGate, publicClient: directGate);
     await _pumpDrive(tester, app);
     await tester.tap(find.text('a.zip'));
     await _settleSheet(tester);

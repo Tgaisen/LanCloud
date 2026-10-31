@@ -21,7 +21,8 @@ import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/favorites_page.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-import 'transfer_dependencies_test.dart' show buildTransferManagerForEnvironment;
+import 'transfer_dependencies_test.dart'
+    show buildTransferManagerForEnvironment;
 
 /// 收藏里存的是旧提取码：只有新提取码能解析成功。
 class _StalePwdClient extends LanzouClient {
@@ -121,9 +122,7 @@ Future<void> _pumpFavorites(
   required Finder item,
 }) async {
   final transfers = buildTransferManagerForEnvironment(app.environment);
-  final clients = LanzouClientRegistry(
-    factory: (_) => app.dialogClient,
-  );
+  final clients = LanzouClientRegistry(factory: (_) => app.dialogClient);
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = const Size(400, 720);
   addTearDown(tester.view.reset);

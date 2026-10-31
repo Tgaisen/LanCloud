@@ -29,5 +29,4 @@ void main() {
 
     expect(identical(container.read(accountStoreProvider), accounts), isTrue);
   });
-
 }

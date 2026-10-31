@@ -109,9 +109,7 @@ void main() {
     expect(find.text('禁用'), findsOneWidget);
   });
 
-  testWidgets('主题色弹窗使用 Riverpod 状态，并保持动态色与 seed 互斥', (
-    tester,
-  ) async {
+  testWidgets('主题色弹窗使用 Riverpod 状态，并保持动态色与 seed 互斥', (tester) async {
     final (store, state) = await _pump(
       tester,
       (_) => const ThemeColorSettingsTile(dynamicSupported: true),

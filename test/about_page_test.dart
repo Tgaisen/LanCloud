@@ -33,9 +33,7 @@ void main() {
   testWidgets('关于页显示版本、协议入口与免责声明', (tester) async {
     final environment = AppEnvironment();
     addTearDown(environment.dispose);
-    await tester.pumpWidget(
-      host(environment, const AboutPage()),
-    );
+    await tester.pumpWidget(host(environment, const AboutPage()));
     await tester.pumpAndSettle();
 
     expect(find.text('蓝云'), findsOneWidget);
@@ -86,9 +84,7 @@ void main() {
   testWidgets('关于页可以打开隐私政策弹窗', (tester) async {
     final environment = AppEnvironment();
     addTearDown(environment.dispose);
-    await tester.pumpWidget(
-      host(environment, const AboutPage()),
-    );
+    await tester.pumpWidget(host(environment, const AboutPage()));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('隐私政策'));
@@ -120,9 +116,7 @@ void main() {
 
     final environment = AppEnvironment();
     addTearDown(environment.dispose);
-    await tester.pumpWidget(
-      host(environment, const AboutPage()),
-    );
+    await tester.pumpWidget(host(environment, const AboutPage()));
     await tester.pumpAndSettle();
 
     // 构建信息已搬到更新页：关于页不再有入口

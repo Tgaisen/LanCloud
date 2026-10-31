@@ -13,7 +13,8 @@ import 'package:lancloud/ui/m3e.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
-import 'transfer_dependencies_test.dart' show buildTransferManagerForEnvironment;
+import 'transfer_dependencies_test.dart'
+    show buildTransferManagerForEnvironment;
 
 void main() {
   testWidgets('传输页删除弹窗：复选行在列表组里，组沿距内容边距 24dp', (tester) async {

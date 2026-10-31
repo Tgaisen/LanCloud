@@ -37,9 +37,7 @@ void main() {
   testWidgets('收藏视图可独立打开，空收藏时显示提示', (tester) async {
     final environment = AppEnvironment();
     addTearDown(environment.dispose);
-    await tester.pumpWidget(
-      _host(environment, const FavoritesPage()),
-    );
+    await tester.pumpWidget(_host(environment, const FavoritesPage()));
     await tester.pumpAndSettle();
 
     expect(find.text('收藏'), findsOneWidget);

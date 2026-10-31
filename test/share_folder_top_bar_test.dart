@@ -14,7 +14,8 @@ import 'package:lancloud/ui/share_folder_page.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
-import 'transfer_dependencies_test.dart' show buildTransferManagerForEnvironment;
+import 'transfer_dependencies_test.dart'
+    show buildTransferManagerForEnvironment;
 
 Future<AppEnvironment> pumpShareFolder(
   WidgetTester tester,

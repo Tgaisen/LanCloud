@@ -9,7 +9,8 @@ import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-import 'transfer_dependencies_test.dart' show buildTransferManagerForEnvironment;
+import 'transfer_dependencies_test.dart'
+    show buildTransferManagerForEnvironment;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

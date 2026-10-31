@@ -17,9 +17,7 @@ Widget barApp(double shellBarHeight) => MaterialApp(
   supportedLocales: AppLocalizations.supportedLocales,
   locale: const Locale('zh'),
   home: MediaQuery(
-    data: MediaQueryData(
-      padding: EdgeInsets.only(bottom: shellBarHeight),
-    ),
+    data: MediaQueryData(padding: EdgeInsets.only(bottom: shellBarHeight)),
     child: const Scaffold(
       body: Align(
         alignment: Alignment.bottomCenter,
@@ -106,9 +104,6 @@ void main() {
 
     await environment.navigationAppearanceSettings.setFloatingNavBar(false);
     await tester.pumpAndSettle();
-    expect(
-      barPadding(tester).bottom,
-      closeTo(108 + _gestureInset + 12, 0.01),
-    );
+    expect(barPadding(tester).bottom, closeTo(108 + _gestureInset + 12, 0.01));
   });
 }

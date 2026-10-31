@@ -483,12 +483,8 @@ class _HomePageState extends ConsumerState<HomePage>
       listenable: appearance.revision,
       builder: (context, _) => TransferRunningCount(
         manager: manager,
-        builder: (context, running) => _buildPage(
-          context,
-          appearance.hideTopBar,
-          _navigation,
-          running,
-        ),
+        builder: (context, running) =>
+            _buildPage(context, appearance.hideTopBar, _navigation, running),
       ),
     );
   }

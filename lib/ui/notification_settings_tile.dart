@@ -52,10 +52,7 @@ class _NotificationSettingsTileState
     );
   }
 
-  Future<void> _setValue(
-    NotificationSettingsState settings,
-    bool value,
-  ) async {
+  Future<void> _setValue(NotificationSettingsState settings, bool value) async {
     if (value) {
       final messenger = ScaffoldMessenger.of(context);
       final deniedText = context.l10n.notifPermissionDeniedHint;

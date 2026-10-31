@@ -41,9 +41,8 @@ class _ScriptedAdapter implements HttpClientAdapter {
   return (client: client, adapter: adapter);
 }
 
-Matcher _throwsLanzouError(LanzouErrorCode code) => throwsA(
-  isA<LanzouException>().having((error) => error.code, 'code', code),
-);
+Matcher _throwsLanzouError(LanzouErrorCode code) =>
+    throwsA(isA<LanzouException>().having((error) => error.code, 'code', code));
 
 const _malformedInfoValues = <Object?>['not-a-map', <Object?>[]];
 

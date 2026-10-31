@@ -381,7 +381,8 @@ class _ShellStateBuilder extends StatefulWidget {
   final AccountState accounts;
   final NavigationState navigation;
   final NavigationAppearanceSettingsState appearance;
-  final Widget Function(BuildContext context, _ShellStateSnapshot shell) builder;
+  final Widget Function(BuildContext context, _ShellStateSnapshot shell)
+  builder;
 
   @override
   State<_ShellStateBuilder> createState() => _ShellStateBuilderState();
@@ -427,10 +428,9 @@ class _ShellStateBuilderState extends State<_ShellStateBuilder> {
   @override
   void dispose() {
     widget.runtime.ready.removeListener(_onChanged);
-    widget
-        .runtime
-        .secureStorageNeedsReauthentication
-        .removeListener(_onChanged);
+    widget.runtime.secureStorageNeedsReauthentication.removeListener(
+      _onChanged,
+    );
     widget.accounts.removeListener(_onChanged);
     widget.navigation.removeListener(_onChanged);
     widget.appearance.revision.removeListener(_onChanged);
@@ -729,9 +729,7 @@ class _RootShellState extends ConsumerState<RootShell>
   }
 
   int get _defaultViewId =>
-      _cacheSettings.launchPage == 'drive'
-      ? _viewDrive
-      : _viewHome;
+      _cacheSettings.launchPage == 'drive' ? _viewDrive : _viewHome;
 
   /// 当前视图 id（底栏配置还没就绪时按首页算）。
   int get _currentViewId => _ids.isEmpty ? _viewHome : _ids[_index];
@@ -1066,10 +1064,7 @@ class _RootShellState extends ConsumerState<RootShell>
           }
           FocusManager.instance.primaryFocus?.unfocus();
           // 视图真正切换后：恢复底栏并通知页面把折叠的顶栏调出来
-          _navigation.animateBarsHide(
-            0,
-            reduceMotion: reduceMotionOf(context),
-          );
+          _navigation.animateBarsHide(0, reduceMotion: reduceMotionOf(context));
           _navigation.activeTab.value = _ids[i];
           setState(() => _index = i);
         },
@@ -1085,8 +1080,7 @@ class _RootShellState extends ConsumerState<RootShell>
                 ScrollTint(
                   hideDistance: barHeight,
                   readBarsHidden: () => _navigation.barsHide.value,
-                  onBarsHidden:
-                      (shell.hideTopBar || shell.hideBottomBar)
+                  onBarsHidden: (shell.hideTopBar || shell.hideBottomBar)
                       ? _navigation.setBarsHideFromScroll
                       : null,
                   child: _pageFor(id),
@@ -1205,9 +1199,7 @@ class _RootShellState extends ConsumerState<RootShell>
                       ]),
                       builder: (context, _) {
                         final hide = _navigation.topBarHide.value;
-                        final t = shell.hideTopBar
-                            ? hide.clamp(0.0, 1.0)
-                            : 0.0;
+                        final t = shell.hideTopBar ? hide.clamp(0.0, 1.0) : 0.0;
                         return Stack(
                           children: [
                             Positioned(

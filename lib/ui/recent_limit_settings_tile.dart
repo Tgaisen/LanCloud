@@ -23,9 +23,8 @@ class RecentLimitSettingsTile extends ConsumerWidget {
         title: l10n.recentLimit,
         values: const [0, 10, 50, 100, 200],
         current: settings.recentLimit,
-        labelOf: (value) => value <= 0
-            ? l10n.recentLimitOff
-            : l10n.recentLimitValue(value),
+        labelOf: (value) =>
+            value <= 0 ? l10n.recentLimitOff : l10n.recentLimitValue(value),
         onChanged: (value) => unawaited(settings.setRecentLimit(value)),
       ),
     );

@@ -25,12 +25,9 @@ final class AppStartup {
     this.enableDynamicColorIfUnset,
   }) : _secureStorageUpgradeCheck =
            secureStorageUpgradeCheck ?? checkSecureStorageUpgradeOnce,
-       _loadAccounts =
-           loadAccounts ?? environment.accountState.store.load,
-       _loadSettings =
-           loadSettings ?? environment.settingsState.store.load,
-       _bindDriveCache =
-           bindDriveCache ?? environment.drive.cache.bindAccount;
+       _loadAccounts = loadAccounts ?? environment.accountState.store.load,
+       _loadSettings = loadSettings ?? environment.settingsState.store.load,
+       _bindDriveCache = bindDriveCache ?? environment.drive.cache.bindAccount;
 
   final AppEnvironment environment;
   final void Function() onChanged;
@@ -83,10 +80,7 @@ final class AppStartup {
       if (status == null) return;
       environment.runtimeState.secureStorageNeedsReauthentication.value =
           status.hasDataLoss || status.willDiscardOnNextAccess;
-      if (environment
-          .runtimeState
-          .secureStorageNeedsReauthentication
-          .value) {
+      if (environment.runtimeState.secureStorageNeedsReauthentication.value) {
         AppLog.instance.log('secure_storage', '需要重新登录：$status');
       }
     } catch (error, stack) {

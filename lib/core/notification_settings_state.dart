@@ -28,7 +28,6 @@ class NotificationSettingsState {
   }
 }
 
-final notificationSettingsStateProvider =
-    Provider<NotificationSettingsState>(
-      (ref) => NotificationSettingsState(ref.watch(settingsStoreProvider)),
-    );
+final notificationSettingsStateProvider = Provider<NotificationSettingsState>(
+  (ref) => NotificationSettingsState(ref.watch(settingsStoreProvider)),
+);

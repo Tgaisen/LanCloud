@@ -36,8 +36,9 @@ final updateSupportedProvider = Provider<bool>(
 );
 
 /// 应用级更新状态；固定常驻，不使用 `autoDispose`。
-final updateServiceProvider =
-    NotifierProvider<UpdateService, UpdateState>(UpdateService.new);
+final updateServiceProvider = NotifierProvider<UpdateService, UpdateState>(
+  UpdateService.new,
+);
 
 /// 由更新状态与当前时间派生的卡片状态。
 final updateStatusProvider = Provider<UpdateStatus>((ref) {
@@ -193,10 +194,7 @@ class UpdateService extends Notifier<UpdateState> {
       cachedRelease: latest,
       writeCache: ok,
     );
-    var next = state.copyWith(
-      checking: false,
-      lastAttemptAt: attemptedAt,
-    );
+    var next = state.copyWith(checking: false, lastAttemptAt: attemptedAt);
     if (ok) {
       next = next.copyWith(
         cachedRelease: latest,
@@ -214,10 +212,7 @@ class UpdateService extends Notifier<UpdateState> {
   /// 切换更新通道：清掉上一通道的检测结果（缓存与「上次检测于」），
   /// 开着自动检查时立即重新检测一次。
   Future<void> onChannelChanged() async {
-    state = state.copyWith(
-      clearCachedRelease: true,
-      clearLastCheckAt: true,
-    );
+    state = state.copyWith(clearCachedRelease: true, clearLastCheckAt: true);
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_keyCache);

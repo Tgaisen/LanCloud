@@ -48,9 +48,7 @@ final class AppEnvironment {
       reduceMotion: () => motionReduced,
     );
     themeSettings = ThemeSettingsState(settingsStore);
-    transferConnectionSettings = TransferConnectionSettingsState(
-      settingsStore,
-    );
+    transferConnectionSettings = TransferConnectionSettingsState(settingsStore);
     listHomeSettings = ListHomeSettingsState(
       settingsStore,
       trimRecents: this.db.trimRecents,

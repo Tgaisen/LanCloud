@@ -21,8 +21,7 @@ class ClipboardLinkPromptTile extends ConsumerWidget {
         title: Text(context.l10n.clipboardLinkPrompt),
         subtitle: Text(context.l10n.clipboardLinkPromptSubtitle),
         value: settings.clipboardLinkPrompt,
-        onChanged: (value) =>
-            unawaited(settings.setClipboardLinkPrompt(value)),
+        onChanged: (value) => unawaited(settings.setClipboardLinkPrompt(value)),
       ),
     );
   }

@@ -118,10 +118,7 @@ Future<T?> _showChoice<T>(
 
 /// 单个高级连接覆盖项。
 class AdvancedConnectionSettingsTile extends ConsumerWidget {
-  const AdvancedConnectionSettingsTile({
-    super.key,
-    required this.setting,
-  });
+  const AdvancedConnectionSettingsTile({super.key, required this.setting});
 
   final AdvancedConnectionSetting setting;
 

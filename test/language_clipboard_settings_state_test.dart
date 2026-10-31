@@ -32,10 +32,7 @@ void main() {
     addTearDown(container.dispose);
 
     expect(
-      identical(
-        container.read(languageClipboardSettingsStateProvider),
-        state,
-      ),
+      identical(container.read(languageClipboardSettingsStateProvider), state),
       isTrue,
     );
   });

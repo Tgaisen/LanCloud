@@ -80,9 +80,9 @@ Future<ThemeColorSelection?> showThemeColorPicker(
                   singleSelect: true,
                   enabled: dynamicSupported,
                   leading: const Icon(Icons.wallpaper_outlined),
-                  onTap: () => Navigator.of(dialogContext).pop<ThemeColorSelection>(
-                    (dynamicColor: true, seed: null),
-                  ),
+                  onTap: () => Navigator.of(
+                    dialogContext,
+                  ).pop<ThemeColorSelection>((dynamicColor: true, seed: null)),
                 ),
                 for (final entry in presets.entries)
                   M3ePickTile(
@@ -93,10 +93,11 @@ Future<ThemeColorSelection?> showThemeColorPicker(
                       radius: 12,
                       backgroundColor: Color(entry.key),
                     ),
-                    onTap: () =>
-                        Navigator.of(dialogContext).pop<ThemeColorSelection>(
-                      (dynamicColor: false, seed: entry.key),
-                    ),
+                    onTap: () => Navigator.of(dialogContext)
+                        .pop<ThemeColorSelection>((
+                          dynamicColor: false,
+                          seed: entry.key,
+                        )),
                   ),
               ],
             ),
@@ -150,10 +151,7 @@ Future<String?> showMotionModePicker(
 
 /// 主题模式或纯黑深色设置行。
 class ThemeSettingsTile extends ConsumerWidget {
-  const ThemeSettingsTile({
-    super.key,
-    required this.type,
-  });
+  const ThemeSettingsTile({super.key, required this.type});
 
   final ThemeSettingsTileType type;
 
@@ -231,10 +229,7 @@ class MotionSettingsTile extends ConsumerWidget {
 
 /// 主题色入口；弹窗返回选择后，通过唯一主题状态写入。
 class ThemeColorSettingsTile extends ConsumerWidget {
-  const ThemeColorSettingsTile({
-    super.key,
-    required this.dynamicSupported,
-  });
+  const ThemeColorSettingsTile({super.key, required this.dynamicSupported});
 
   final bool dynamicSupported;
 

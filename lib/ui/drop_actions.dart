@@ -171,18 +171,13 @@ class DropHoverBanner extends ConsumerWidget {
           ? l10n.dropHoverUpload(drivePathLabel(l10n, location.value))
           : l10n.dropHoverPickFolder;
     }
-    return favoritesVisible
-        ? l10n.dropHoverFavorite
-        : l10n.dropHoverOpenLink;
+    return favoritesVisible ? l10n.dropHoverFavorite : l10n.dropHoverOpenLink;
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final drive = ref.watch(driveStateProvider);
-    final visibility = (
-      drive: drive.driveVisible,
-      fav: drive.favoritesVisible,
-    );
+    final visibility = (drive: drive.driveVisible, fav: drive.favoritesVisible);
     final l10n = context.l10n;
     final scheme = Theme.of(context).colorScheme;
     return ListenableBuilder(

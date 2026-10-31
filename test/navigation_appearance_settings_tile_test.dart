@@ -77,10 +77,7 @@ void main() {
     await tester.tap(find.widgetWithText(ListTile, '底栏显示项'));
     await tester.pumpAndSettle();
     await tester.tap(
-      find.descendant(
-        of: find.byType(AlertDialog),
-        matching: find.text('传输'),
-      ),
+      find.descendant(of: find.byType(AlertDialog), matching: find.text('传输')),
     );
     await tester.tap(find.text('取消'));
     await tester.pumpAndSettle();

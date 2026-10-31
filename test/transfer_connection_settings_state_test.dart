@@ -39,10 +39,7 @@ void main() {
     expect(state.apiHost, 'up');
     expect(state.userAgent, 'test-agent');
     expect(state.uploadPath, 'fileup.php');
-    expect(
-      LanzouClient.requestInterval,
-      const Duration(milliseconds: 250),
-    );
+    expect(LanzouClient.requestInterval, const Duration(milliseconds: 250));
     expect(LanzouClient.apiBase, 'https://up.woozooo.com');
     expect(LanzouClient.userAgent, 'test-agent');
     expect(LanzouClient.uploadPath, 'fileup.php');
@@ -58,10 +55,7 @@ void main() {
     addTearDown(container.dispose);
 
     expect(
-      identical(
-        container.read(transferConnectionSettingsStateProvider),
-        state,
-      ),
+      identical(container.read(transferConnectionSettingsStateProvider), state),
       isTrue,
     );
   });

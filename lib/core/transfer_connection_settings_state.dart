@@ -60,7 +60,6 @@ class TransferConnectionSettingsState {
 
 final transferConnectionSettingsStateProvider =
     Provider<TransferConnectionSettingsState>(
-      (ref) => TransferConnectionSettingsState(
-        ref.watch(settingsStoreProvider),
-      ),
+      (ref) =>
+          TransferConnectionSettingsState(ref.watch(settingsStoreProvider)),
     );

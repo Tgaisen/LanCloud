@@ -37,9 +37,7 @@ void main() {
           localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           locale: const Locale('zh'),
-          home: const Scaffold(
-            body: CachePageSettingsTile(cacheFolders: true),
-          ),
+          home: const Scaffold(body: CachePageSettingsTile(cacheFolders: true)),
         ),
       ),
     );

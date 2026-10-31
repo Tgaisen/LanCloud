@@ -115,8 +115,7 @@ class UpdateContent extends ConsumerWidget {
                   secondary: const Icon(Icons.cached_outlined),
                   title: Text(l10n.updateAutoCheck),
                   value: settings.autoCheck,
-                  onChanged: (value) =>
-                      unawaited(settings.setAutoCheck(value)),
+                  onChanged: (value) => unawaited(settings.setAutoCheck(value)),
                 ),
               ],
             ),

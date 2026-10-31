@@ -391,9 +391,7 @@ class _RestorePageState extends ConsumerState<RestorePage> {
       child: ScrollTint(
         hideDistance: safeInsets.top + kToolbarHeight + 4,
         readBarsHidden: () => _topBarHide.value,
-        onBarsHidden: hideTopBar
-            ? (value) => _topBarHide.value = value
-            : null,
+        onBarsHidden: hideTopBar ? (value) => _topBarHide.value = value : null,
         child: Builder(
           builder: (context) {
             final scheme = Theme.of(context).colorScheme;

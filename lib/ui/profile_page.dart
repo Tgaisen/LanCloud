@@ -417,11 +417,8 @@ class _ProfilePageState extends riverpod.ConsumerState<ProfilePage>
     final appearance = ref.watch(navigationAppearanceSettingsStateProvider);
     return ListenableBuilder(
       listenable: appearance.revision,
-      builder: (context, _) => _buildPage(
-        context,
-        appearance.hideTopBar,
-        _navigation,
-      ),
+      builder: (context, _) =>
+          _buildPage(context, appearance.hideTopBar, _navigation),
     );
   }
 
@@ -594,9 +591,7 @@ class _ProfilePageState extends riverpod.ConsumerState<ProfilePage>
       child: ScrollTint(
         hideDistance: headerHeight,
         readBarsHidden: () => navigation.topBarHide.value,
-        onBarsHidden: hideTopBar
-            ? navigation.setTopBarHideFromScroll
-            : null,
+        onBarsHidden: hideTopBar ? navigation.setTopBarHideFromScroll : null,
         // 列表快速滑动条（可拖拽）
         child: FastScrollbar(
           controller: _scroll,
@@ -614,9 +609,7 @@ class _ProfilePageState extends riverpod.ConsumerState<ProfilePage>
                 // 底部留白与首页 / 网盘 / 收藏 / 传输保持一致
                 padding: kM3eSectionPagePadding,
                 // 整块布局：避免懒布局估算导致滚动条滑块抖动（见 SliverColumn）
-                sliver: SliverColumn(
-                  children: _singlePaneChildren(context),
-                ),
+                sliver: SliverColumn(children: _singlePaneChildren(context)),
               ),
               // 底栏盖在正文上方（extendBody）时，补足列表末尾留白
               SliverToBoxAdapter(
@@ -933,10 +926,7 @@ class _ProfilePageState extends riverpod.ConsumerState<ProfilePage>
         builder: (context, ref, _) => _PaneTile(
           icon: Icons.cloud_done,
           label: l10n.update,
-          subtitle: _updateSubtitle(
-            context,
-            ref.watch(updateStatusProvider),
-          ),
+          subtitle: _updateSubtitle(context, ref.watch(updateStatusProvider)),
           selected: _detail == _ProfileDetail.update,
           onTap: () => _select(_ProfileDetail.update),
         ),
@@ -1238,10 +1228,7 @@ class _ProfilePageState extends riverpod.ConsumerState<ProfilePage>
 
 /// 账号信息卡（单栏与两栏详情窗格共用）；只订阅账号摘要字段。
 class ProfileAccountTile extends riverpod.ConsumerWidget {
-  const ProfileAccountTile({
-    super.key,
-    required this.onSwitchAccount,
-  });
+  const ProfileAccountTile({super.key, required this.onSwitchAccount});
 
   final VoidCallback onSwitchAccount;
 

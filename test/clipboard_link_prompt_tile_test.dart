@@ -25,16 +25,16 @@ void main() {
           localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           locale: const Locale('zh'),
-          home: const Scaffold(
-            body: ClipboardLinkPromptTile(),
-          ),
+          home: const Scaffold(body: ClipboardLinkPromptTile()),
         ),
       ),
     );
     await tester.pumpAndSettle();
 
     final switchTile = find.byType(SwitchListTile);
-    final settingsState = container.read(languageClipboardSettingsStateProvider);
+    final settingsState = container.read(
+      languageClipboardSettingsStateProvider,
+    );
     expect(tester.widget<SwitchListTile>(switchTile).value, isFalse);
     await tester.tap(switchTile);
     await tester.runAsync(

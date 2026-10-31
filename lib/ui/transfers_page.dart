@@ -424,12 +424,8 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
       listenable: appearance.revision,
       builder: (context, _) => ListenableBuilder(
         listenable: manager,
-        builder: (context, _) => _buildPage(
-          context,
-          appearance.hideTopBar,
-          _navigation,
-          manager,
-        ),
+        builder: (context, _) =>
+            _buildPage(context, appearance.hideTopBar, _navigation, manager),
       ),
     );
   }

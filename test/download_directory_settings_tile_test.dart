@@ -88,11 +88,7 @@ void main() {
       store,
       releaseSaf: (uri) async => released.add(uri),
     );
-    await _pump(
-      tester,
-      state: state,
-      defaultPath: '/default/LanCloud',
-    );
+    await _pump(tester, state: state, defaultPath: '/default/LanCloud');
 
     await tester.tap(find.widgetWithText(ListTile, '下载目录'));
     await tester.pumpAndSettle();

@@ -28,9 +28,7 @@ Future<TransferConnectionSettingsState> _pump(
         localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         locale: const Locale('zh'),
-        home: Scaffold(
-          body: TransferConcurrencySettingsTile(setting: setting),
-        ),
+        home: Scaffold(body: TransferConcurrencySettingsTile(setting: setting)),
       ),
     ),
   );

@@ -174,9 +174,7 @@ class BackupService {
     final decoded = _decode(plaintext);
     final settings = decoded['settings'];
     if (settings is Map) {
-      await dependencies.settings.applyJson(
-        settings.cast<String, Object?>(),
-      );
+      await dependencies.settings.applyJson(settings.cast<String, Object?>());
     }
     final accounts = decoded['accounts'];
     if (restoreAccounts && accounts is List) {

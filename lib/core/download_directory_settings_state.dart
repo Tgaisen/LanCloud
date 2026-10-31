@@ -41,7 +41,5 @@ class DownloadDirectorySettingsState {
 
 final downloadDirectorySettingsStateProvider =
     Provider<DownloadDirectorySettingsState>(
-      (ref) => DownloadDirectorySettingsState(
-        ref.watch(settingsStoreProvider),
-      ),
+      (ref) => DownloadDirectorySettingsState(ref.watch(settingsStoreProvider)),
     );
