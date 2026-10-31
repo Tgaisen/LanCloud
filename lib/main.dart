@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 
 import 'app.dart';
 import 'core/account_state.dart';
+import 'core/account_session.dart';
 import 'core/app_controller.dart';
 import 'core/cache_page_settings_state.dart';
 import 'core/app_log.dart';
@@ -137,6 +138,7 @@ Future<void> main() async {
       navigationStateProvider.overrideWithValue(app.navigation),
       driveStateProvider.overrideWithValue(app.drive),
       accountStateProvider.overrideWithValue(app.accountState),
+      accountSessionProvider.overrideWithValue(app.accountSession),
       settingsStateProvider.overrideWithValue(app.settingsState),
       updateSettingsStateProvider.overrideWithValue(app.updateSettings),
       navigationAppearanceSettingsStateProvider.overrideWithValue(

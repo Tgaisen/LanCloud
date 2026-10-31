@@ -10,6 +10,7 @@ import 'api/lanzou_client.dart';
 import 'api/lanzou_client_registry.dart';
 import 'account_state.dart';
 import 'account_login.dart';
+import 'account_session.dart';
 import 'app_log.dart';
 import 'data/account_store.dart';
 import 'data/app_db.dart';
@@ -138,6 +139,12 @@ class AppController extends ChangeNotifier
     accountState: accountState,
     clients: clientRegistry,
     driveCache: driveCache,
+  );
+  late final AccountSession accountSession = AccountSession(
+    accountState: accountState,
+    clients: clientRegistry,
+    driveCache: driveCache,
+    db: db,
   );
 
   bool ready = false;
@@ -484,25 +491,13 @@ class AppController extends ChangeNotifier
   }
 
   Future<void> switchAccount(String uid) async {
-    await accounts.setActive(uid);
-    // 网盘缓存按账号隔离：换账号时清掉旧账号的目录缓存
-    await driveCache.bindAccount(uid);
-    notifyListeners();
+    await accountSession.switchAccount(uid);
   }
 
   /// 移除账号。[clearData] 为 true 时一并清掉本机里这个账号的使用数据
   /// （快速访问、最近使用）。
   Future<void> removeAccount(String uid, {bool clearData = false}) async {
-    // 先清使用数据再移除账号；本地库出问题也不能挡住退出登录
-    if (clearData) {
-      try {
-        await db.clearUsageData(uid);
-      } catch (_) {}
-    }
-    await accounts.remove(uid);
-    clientRegistry.remove(uid);
-    await driveCache.bindAccount(accounts.activeUid);
-    notifyListeners();
+    await accountSession.removeAccount(uid, clearData: clearData);
   }
 
   /// 默认下载目录路径（仅用于展示与未启用公共 Downloads 时的实际写入）。
