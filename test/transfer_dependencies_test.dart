@@ -1,12 +1,17 @@
+import 'dart:io';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:lancloud/core/api/lanzou_client.dart';
 import 'package:lancloud/core/api/lanzou_client_registry.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/data/app_db.dart';
 import 'package:lancloud/core/data/account_store.dart';
 import 'package:lancloud/core/data/settings_store.dart';
+import 'package:lancloud/core/download_path_service.dart';
 import 'package:lancloud/core/download_target.dart';
+import 'package:lancloud/core/shared_downloads_gateway.dart';
 import 'package:lancloud/core/transfer/transfer_account_port.dart';
 import 'package:lancloud/core/transfer/transfer_dependencies.dart';
 import 'package:lancloud/core/transfer/transfer_download_port.dart';
@@ -54,6 +59,15 @@ class _FakeTransferStore implements TransferStore {
     required String name,
     String path = '',
   }) async {}
+}
+
+class _FixedDownloadPathService implements DownloadPathService {
+  const _FixedDownloadPathService(this.path);
+
+  final String path;
+
+  @override
+  Future<String> defaultDownloadDirPath() async => path;
 }
 
 class _FakeTransferDependenciesProvider
@@ -120,7 +134,7 @@ void main() {
       expect(accounts.accounts, same(app.accountState.store));
       expect(accounts.clients, same(app.clientRegistry));
     }
-    expect(app.transferDownload, isA<CallbackTransferDownloadPort>());
+    expect(app.transferDownload, isA<DefaultTransferDownloadPort>());
     expect(app.settings, same(app.settingsState.store));
     final dependencies = app.transferDependencies;
     expect(dependencies.store, same(app.transferStore));
@@ -193,6 +207,27 @@ void main() {
     expect(port.safTreeUri, 'content://tree/example');
     expect(await port.safTempFilePath('t1', 'a.bin'), '/tmp/t1a.bin');
     expect(await port.uniqueSavePath('a.bin'), '/downloads/a.bin');
+  });
+
+  test('默认下载端口在固定目录中生成不冲突路径', () async {
+    final dir = Directory.systemTemp.createTempSync('lancloud-download-port');
+    addTearDown(() {
+      try {
+        dir.deleteSync(recursive: true);
+      } catch (_) {}
+    });
+    File(p.join(dir.path, 'a.txt')).writeAsStringSync('existing');
+    final settings = SettingsStore()..downloadDir = dir.path;
+    final port = DefaultTransferDownloadPort(
+      downloadPaths: _FixedDownloadPathService(dir.path),
+      sharedDownloads: const PlatformSharedDownloadsGateway(),
+      settings: settings,
+    );
+
+    expect(
+      await port.uniqueSavePath('a.txt'),
+      p.join(dir.path, 'a(1).txt'),
+    );
   });
 
   test('设置端口实时读取传输相关字段', () {

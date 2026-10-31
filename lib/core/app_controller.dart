@@ -3,8 +3,6 @@ import 'dart:io';
 
 import 'package:flutter/animation.dart';
 import 'package:flutter/foundation.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 
 import 'api/lanzou_client.dart';
 import 'api/lanzou_client_registry.dart';
@@ -29,7 +27,6 @@ import 'navigation_appearance_settings_state.dart';
 import 'notification_settings_state.dart';
 import 'list_home_settings_state.dart';
 import 'language_clipboard_settings_state.dart';
-import 'platform_support.dart';
 import 'saf_storage.dart';
 import 'settings_state.dart';
 import 'shared_downloads_gateway.dart';
@@ -117,12 +114,11 @@ class AppController extends ChangeNotifier
     accounts: accounts,
     clients: clientRegistry,
   );
-  late final TransferDownloadPort transferDownload =
-      CallbackTransferDownloadPort(
-        targetMode: downloadTargetMode,
-        safTreeUri: () => safDownloadTree,
-        safTempFilePath: safTempFilePath,
-        uniqueSavePath: uniqueSavePath,
+  late final DefaultTransferDownloadPort transferDownload =
+      DefaultTransferDownloadPort(
+        downloadPaths: _downloadPaths,
+        sharedDownloads: _sharedDownloads,
+        settings: settings,
       );
   late final TransferSettingsPort transferSettings = StoreTransferSettingsPort(
     settings,
@@ -529,86 +525,20 @@ class AppController extends ChangeNotifier
 
   /// 当前下载落盘方式。显式目录设置优先，未设置时 Android 10+ 默认走
   /// MediaStore 的公共 Downloads，Android 9 及以下退回应用专属目录。
-  Future<DownloadTargetMode> downloadTargetMode() async {
-    final directory = settings.downloadDir;
-    final treeUri = settings.downloadDirTree;
-    var supportsSharedDownloads = false;
-    if (PlatformSupport.isAndroid &&
-        (directory == null || directory.isEmpty) &&
-        (treeUri == null || treeUri.isEmpty)) {
-      supportsSharedDownloads = await _sharedDownloads.isSupported();
-    }
-    return resolveDownloadTargetMode(
-      isAndroid: PlatformSupport.isAndroid,
-      supportsSharedDownloads: supportsSharedDownloads,
-      directory: directory,
-      treeUri: treeUri,
-    );
-  }
+  Future<DownloadTargetMode> downloadTargetMode() =>
+      transferDownload.targetMode();
 
-  Future<Directory> downloadDirectory() async {
-    Directory dir;
-    final custom = settings.downloadDir;
-    if (custom != null && custom.isNotEmpty) {
-      dir = Directory(custom);
-    } else {
-      dir = Directory(await defaultDownloadDirPath());
-    }
-    if (!await dir.exists()) await dir.create(recursive: true);
-    return dir;
-  }
+  Future<Directory> downloadDirectory() => transferDownload.downloadDirectory();
 
   /// 当前生效的 SAF 下载目录（仅 Android 且用户授权过时非空）。
   ///
   /// 非空时下载走「先写到应用专属中转目录，再由原生写入授权目录」的流程，
   /// [downloadDirectory] / [uniqueSavePath] 只服务其它情况。
-  String? get safDownloadTree {
-    if (!PlatformSupport.isAndroid) return null;
-    final uri = settings.downloadDirTree;
-    return (uri == null || uri.isEmpty) ? null : uri;
-  }
+  String? get safDownloadTree => transferDownload.safTreeUri;
 
   /// SAF 模式下的下载中转文件路径；任务 id 唯一，重试时清掉同名残留。
-  Future<String> safTempFilePath(String taskId, String name) async {
-    final dir = await _safTempDirectory();
-    final file = File(p.join(dir.path, '$taskId${p.extension(name)}'));
-    if (await file.exists()) {
-      try {
-        await file.delete();
-      } catch (_) {}
-    }
-    return file.path;
-  }
-
-  /// 应用专属的中转目录：系统缓存目录会被系统清理，这里放在外部专属目录。
-  static bool _safTmpSwept = false;
-
-  Future<Directory> _safTempDirectory() async {
-    final base =
-        await getExternalStorageDirectory() ??
-        await getApplicationDocumentsDirectory();
-    final dir = Directory(p.join(base.path, 'LanCloud', '.tmp'));
-    if (!await dir.exists()) await dir.create(recursive: true);
-    if (!_safTmpSwept) {
-      _safTmpSwept = true;
-      unawaited(_sweepStaleSafTmp(dir));
-    }
-    return dir;
-  }
-
-  /// 清掉应用被系统杀掉时留下的中转文件（保留 1 天内、可能有任务在用的）。
-  static Future<void> _sweepStaleSafTmp(Directory dir) async {
-    try {
-      final cutoff = DateTime.now().subtract(const Duration(hours: 24));
-      await for (final entity in dir.list(followLinks: false)) {
-        if (entity is! File) continue;
-        try {
-          final stat = await entity.stat();
-          if (stat.modified.isBefore(cutoff)) await entity.delete();
-        } catch (_) {}
-      }
-    } catch (_) {}
-  }
+  Future<String> safTempFilePath(String taskId, String name) =>
+      transferDownload.safTempFilePath(taskId, name);
 
   Future<void> setGridView(bool value) async {
     await cachePageSettings.setGridView(value);
@@ -676,16 +606,6 @@ class AppController extends ChangeNotifier
     await languageClipboardSettings.setLanguage(value);
   }
 
-  Future<String> uniqueSavePath(String name) async {
-    final dir = await downloadDirectory();
-    var path = p.join(dir.path, name);
-    var i = 1;
-    final ext = p.extension(name);
-    final baseName = p.basenameWithoutExtension(name);
-    while (await File(path).exists()) {
-      path = p.join(dir.path, '$baseName($i)$ext');
-      i += 1;
-    }
-    return path;
-  }
+  Future<String> uniqueSavePath(String name) =>
+      transferDownload.uniqueSavePath(name);
 }
