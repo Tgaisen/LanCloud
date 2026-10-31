@@ -825,6 +825,13 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > `ConsumerStatefulWidget`；测试在旧 `AppController.client` 为空的条件下覆盖
 > 文件属性、文件夹属性、下载解析和直链复制。页面内旧 `AppController.read`
 > 由 20 处降至 11 处。相关增量 5 个测试文件 / 46 个测试通过，当前总数保持 723。
+>
+> DrivePage 批量操作切片随后完成：批量删除、下载、复制链接、收藏、移动、
+> 修改简介和访问密码统一从 `_activeClient()`、`AccountState`、
+> `appDbProvider`、客户端注册表及传输管理器读取。新增“旧控制器客户端为空时
+> 批量复制和删除仍可用”的回归测试；页面内旧 `AppController.read` 由 11 处降至
+> 4 处。相关增量 5 个测试文件 / 47 个测试通过，当前总数为 724。剩余旧读取仅为
+> 初始化兼容、新建目录和页面外壳，另有一个设置快照 select。
 
 ### 阶段 6：移除旧 Provider
 

@@ -1316,9 +1316,9 @@ class _DrivePageState extends ConsumerState<DrivePage>
     final l10n = context.l10n;
     if (!await _confirmDelete(l10n.deleteConfirmMessage(count))) return;
     if (!mounted) return;
-    final app = context.read<AppController>();
-    final client = app.client;
+    final client = _activeClient();
     if (client == null) return;
+    final activeUid = _accounts.store.activeUid ?? '';
     final fileIds = _selectedFiles.toList();
     final folderIds = _selectedFolders.toList();
     final fileNames = {for (final f in _files) f.id: f.name};
@@ -1340,11 +1340,11 @@ class _DrivePageState extends ConsumerState<DrivePage>
           }
         },
       );
-      await app.db.removeDownloaded([
-        for (final id in fileIds) '${app.activeUid ?? ''}:$id',
+      await _db.removeDownloaded([
+        for (final id in fileIds) '$activeUid:$id',
       ]);
       // 删掉的目录若固定在快速访问里，一并移除
-      if (folderIds.isNotEmpty) await app.db.removePins(folderIds);
+      if (folderIds.isNotEmpty) await _db.removePins(folderIds);
       if (!mounted) return;
       _exitSelection();
       await _removeItemsWithAnimation(
@@ -1360,8 +1360,10 @@ class _DrivePageState extends ConsumerState<DrivePage>
 
   Future<void> _batchDownload() async {
     if (_selectedFiles.isEmpty) return;
-    final app = context.read<AppController>();
     final transfers = _transfers;
+    final client = _activeClient();
+    final publicClient = ref.read(lanzouClientRegistryProvider).publicClient;
+    final activeUid = _accounts.store.activeUid ?? '';
     final l10n = context.l10n;
     final ids = _selectedFiles.toList();
     final names = {for (final file in _files) file.id: file.name};
@@ -1377,8 +1379,8 @@ class _DrivePageState extends ConsumerState<DrivePage>
           final name = names[id] ?? '';
           report(i + 1, name);
           try {
-            final info = await app.client!.shareInfoOfFile(id);
-            final direct = await app.publicClient.resolveFileShare(
+            final info = await client!.shareInfoOfFile(id);
+            final direct = await publicClient.resolveFileShare(
               info.url,
               pwd: info.pwd,
             );
@@ -1387,8 +1389,8 @@ class _DrivePageState extends ConsumerState<DrivePage>
               name: direct.name.isEmpty ? name : direct.name,
               referer: info.url,
               pwd: info.pwd,
-              via: app.publicClient,
-              refId: '${app.activeUid ?? ''}:$id',
+              via: publicClient,
+              refId: '$activeUid:$id',
             );
           } catch (_) {
             failed += 1;
@@ -1414,7 +1416,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
     final fileIds = _selectedFiles.toList();
     final folderIds = _selectedFolders.toList();
     if (fileIds.isEmpty && folderIds.isEmpty) return;
-    final app = context.read<AppController>();
+    final client = _activeClient();
     final l10n = context.l10n;
     final lines = <String>[];
     final fileNames = {for (final f in _files) f.id: f.name};
@@ -1429,7 +1431,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
           final name = fileNames[id] ?? '';
           report(++done, name);
           try {
-            final info = await app.client!.shareInfoOfFile(id);
+            final info = await client!.shareInfoOfFile(id);
             lines.add(
               info.pwd.isEmpty
                   ? '$name ${info.url}'
@@ -1441,7 +1443,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
           final name = folderNames[id] ?? '';
           report(++done, name);
           try {
-            final info = await app.client!.shareInfoOfFolder(id);
+            final info = await client!.shareInfoOfFolder(id);
             final linkName = info.name.isEmpty ? name : info.name;
             lines.add(
               info.pwd.isEmpty
@@ -1463,9 +1465,9 @@ class _DrivePageState extends ConsumerState<DrivePage>
   }
 
   Future<void> _batchFavorite() async {
-    final app = context.read<AppController>();
-    final client = app.client;
-    final sharer = app.activeAccount?.nickname ?? '';
+    final client = _activeClient();
+    final db = _db;
+    final sharer = _accounts.store.active?.nickname ?? '';
     final fileIds = _selectedFiles.toList();
     final folderIds = _selectedFolders.toList();
     var count = 0;
@@ -1484,7 +1486,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
             report(++done, file?.name ?? '');
             try {
               final info = await client.shareInfoOfFile(id);
-              await app.db.addFavorite(
+              await db.addFavorite(
                 kind: 'shareFile',
                 name: file?.name ?? '',
                 ref: info.url,
@@ -1502,7 +1504,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
             report(++done, folder?.name ?? '');
             try {
               final info = await client.shareInfoOfFolder(id);
-              await app.db.addFavorite(
+              await db.addFavorite(
                 kind: 'shareFolder',
                 name: folder?.name ?? '',
                 ref: info.url,
@@ -1561,8 +1563,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
   }
 
   Future<void> _batchMove() async {
-    final app = context.read<AppController>();
-    final client = app.client;
+    final client = _activeClient();
     if (client == null) return;
     final fileIds = _selectedFiles.toList();
     final folderIds = _selectedFolders.toList();
@@ -1625,7 +1626,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
       builder: (_) => const _EditDescDialog(),
     );
     if (desc == null || !mounted) return;
-    final client = context.read<AppController>().client;
+    final client = _activeClient();
     if (client == null) return;
     final fileIds = _selectedFiles.toList();
     final folderIds = _selectedFolders.toList();
@@ -1701,10 +1702,9 @@ class _DrivePageState extends ConsumerState<DrivePage>
   }
 
   Future<void> _batchSetPasswd() async {
-    final app = context.read<AppController>();
     final fileIds = _selectedFiles.toList();
     final folderIds = _selectedFolders.toList();
-    final freeTier = app.activeAccount?.isFreeTier ?? false;
+    final freeTier = _accounts.store.active?.isFreeTier ?? false;
     // 批量不逐项取密码，默认按“启用”打开（留空即关闭）。
     // 文件提取码限 2-6 位、文件夹可到 12 位：只选一种时一个输入框就够；
     // 两种都选时分成两个输入框（文件夹一个、文件一个），各按自己的规则填写。
@@ -1728,7 +1728,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
       filePwd = pwd;
       folderPwd = pwd;
     }
-    final client = app.client;
+    final client = _activeClient();
     if (client == null) return;
     final fileNames = {for (final f in _files) f.id: f.name};
     final folderNames = {for (final f in _folders) f.id: f.name};

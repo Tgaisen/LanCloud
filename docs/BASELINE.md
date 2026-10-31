@@ -121,6 +121,8 @@
 | `tools\agent.cmd test`（网盘单条目菜单切片） | 增量 | **46 tests, all passed** | 约 36 s |
 | `tools\agent.cmd analyze`（网盘属性卡与直链切片） | 增量 | No issues found | 约 22 s |
 | `tools\agent.cmd test`（网盘属性卡与直链切片） | 增量 | **46 tests, all passed** | 约 28 s |
+| `tools\agent.cmd analyze`（网盘批量操作切片） | 增量 | No issues found | 约 18 s |
+| `tools\agent.cmd test`（网盘批量操作切片） | 增量 | **47 tests, all passed** | 约 27 s |
 | `tools\agent.cmd analyze`（网盘目录切片完成后） | 全量 | No issues found | 约 21 s |
 | `tools\agent.cmd test`（网盘目录切片完成后） | 全量 | **722 tests, all passed** | 约 110 s |
 | `tools\agent.cmd analyze`（拖放与 Cookie 行完成后） | 全量 | No issues found | 约 17 s |
@@ -139,7 +141,7 @@
 | `lib` 总行数 | 约 4.4 万 |
 | `test` 测试文件 | 155（平铺，`<主题>_test.dart`） |
 | `test` 总行数 | 约 2.1 万 |
-| `test` 用例数 | 723（当前总数；阶段 6 准备已新增 8 条测试） |
+| `test` 用例数 | 724（当前总数；阶段 6 准备已新增 9 条测试） |
 | `lib/ui` 页面与组件 | 54 个平铺文件 |
 | `lib/core` | 32 个平铺文件 + 5 个子系统目录 |
 | 文案（`app_zh.arb`） | 1357 行 |
@@ -441,7 +443,10 @@
   快速访问查询、自有文件下载和公开直链解析迁入 Riverpod；测试在旧
   `AppController.client` 为空时继续覆盖属性、下载和直链。页面内旧读取由
   20 处降至 11 处；增量 5 个测试文件 / 46 个测试通过，用例总数保持 723。
-  批量操作、新建目录和页面外壳仍待后续切片。
+- 2026-10-31 `DrivePage` 批量操作切片将批量删除、下载、复制链接、收藏、移动、
+  修改简介和访问密码迁入 Riverpod；新增“旧控制器客户端为空时批量复制和删除
+  仍可用”的回归测试。页面内旧读取由 11 处降至 4 处；增量 5 个测试文件 /
+  47 个测试通过，当前总数由 723 增至 724。新建目录和页面外壳仍待后续切片。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release

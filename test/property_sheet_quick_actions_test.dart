@@ -439,6 +439,48 @@ void main() {
     expect(client.deletedItems, [(id: 'f1', isFile: true)]);
   });
 
+  testWidgets('网盘批量操作不依赖旧 AppController 客户端', (tester) async {
+    final client = _FakeClient();
+    final app = _FakeApp(client, exposeLegacyClient: false);
+    final clipboard = <MethodCall>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+          if (call.method == 'Clipboard.setData') clipboard.add(call);
+          return null;
+        });
+    addTearDown(
+      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, null),
+    );
+
+    await _pumpDrive(tester, app);
+
+    await tester.longPress(find.text('a.zip'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('复制链接'));
+    await tester.pumpAndSettle();
+
+    expect(client.shareFileCalls, 1);
+    expect(clipboard, hasLength(1));
+    // 等复制提示条消失，避免它盖住底部多选操作栏。
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+
+    await tester.longPress(find.text('a.zip'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('删除'));
+    await tester.pumpAndSettle();
+    expect(find.text('删除确认'), findsOneWidget);
+
+    await tester.tap(
+      find.descendant(of: find.byType(AlertDialog), matching: find.text('删除')),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(client.deletedItems, [(id: 'f1', isFile: true)]);
+  });
+
   testWidgets('已添加下载的文件：属性弹窗下载按钮 checked，点击弹五项菜单', (tester) async {
     final client = _FakeClient();
     final app = _FakeApp(client);
