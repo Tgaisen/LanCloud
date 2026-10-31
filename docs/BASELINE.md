@@ -111,6 +111,8 @@
 | `tools\agent.cmd test`（设置页搜索与事件依赖） | 增量 | **46 tests, all passed** | 约 25 s |
 | `tools\agent.cmd test`（AccountSession 服务） | 增量 | **361 tests, all passed** | 约 53 s |
 | `tools\agent.cmd test`（ProfilePage 账号会话消费端） | 增量 | **359 tests, all passed** | 约 52 s |
+| `tools\agent.cmd analyze`（账号会话消费端完成后） | 全量 | No issues found | 约 32 s |
+| `tools\agent.cmd test`（账号会话消费端完成后） | 全量 | **722 tests, all passed** | 约 99 s |
 
 工具链：Flutter 3.47.7（stable）/ Dart 3.13.5 / DevTools 2.60.0。
 静态检查：`analysis_options.yaml` 已开启 `strict-casts` / `strict-inference` / `strict-raw-types`。
