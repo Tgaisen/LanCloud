@@ -12,6 +12,8 @@ import 'package:lancloud/core/backup/backup_service_provider.dart';
 import 'package:lancloud/core/backup/webdav_client.dart';
 import 'package:lancloud/core/backup/webdav_store.dart';
 import 'package:lancloud/core/cookie_auth.dart';
+import 'package:lancloud/core/navigation_appearance_settings_state.dart';
+import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/app_localizations_zh.dart';
 import 'package:lancloud/ui/app_icons.dart' as app_icons;
@@ -194,6 +196,10 @@ void main() {
       ProviderScope(
         overrides: [
           backupServiceProvider.overrideWithValue(fake),
+          navigationAppearanceSettingsStateProvider.overrideWithValue(
+            fake.app.navigationAppearanceSettings,
+          ),
+          navigationStateProvider.overrideWithValue(fake.app.navigation),
         ],
         child: ChangeNotifierProvider<AppController>.value(
           value: fake.app,

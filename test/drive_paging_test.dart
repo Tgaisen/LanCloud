@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/api/lanzou_client.dart';
 import 'package:lancloud/core/api/models.dart';
 import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/navigation_appearance_settings_state.dart';
+import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
@@ -82,7 +84,13 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [transferManagerProvider.overrideWithValue(manager)],
+        overrides: [
+          transferManagerProvider.overrideWithValue(manager),
+          navigationAppearanceSettingsStateProvider.overrideWithValue(
+            app.navigationAppearanceSettings,
+          ),
+          navigationStateProvider.overrideWithValue(app.navigation),
+        ],
         child: MultiProvider(
           providers: [
             ChangeNotifierProvider<AppController>.value(value: app),
@@ -122,7 +130,13 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [transferManagerProvider.overrideWithValue(manager)],
+        overrides: [
+          transferManagerProvider.overrideWithValue(manager),
+          navigationAppearanceSettingsStateProvider.overrideWithValue(
+            app.navigationAppearanceSettings,
+          ),
+          navigationStateProvider.overrideWithValue(app.navigation),
+        ],
         child: MultiProvider(
           providers: [
             ChangeNotifierProvider<AppController>.value(value: app),
@@ -172,7 +186,13 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [transferManagerProvider.overrideWithValue(manager)],
+        overrides: [
+          transferManagerProvider.overrideWithValue(manager),
+          navigationAppearanceSettingsStateProvider.overrideWithValue(
+            app.navigationAppearanceSettings,
+          ),
+          navigationStateProvider.overrideWithValue(app.navigation),
+        ],
         child: MultiProvider(
           providers: [
             ChangeNotifierProvider<AppController>.value(value: app),

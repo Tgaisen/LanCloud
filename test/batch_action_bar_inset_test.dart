@@ -5,7 +5,6 @@ import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/common.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
@@ -29,20 +28,6 @@ Widget barApp(double shellBarHeight) => MaterialApp(
     ),
   ),
 );
-
-Future<void> pumpBar(
-  WidgetTester tester, {
-  required AppController app,
-  required double shellBarHeight,
-}) async {
-  await tester.pumpWidget(
-    ChangeNotifierProvider<AppController>.value(
-      value: app,
-      child: barApp(shellBarHeight),
-    ),
-  );
-  await tester.pumpAndSettle();
-}
 
 Future<void> pumpRiverpodBar(
   WidgetTester tester, {
@@ -78,7 +63,11 @@ void main() {
     final app = AppController()..settings.floatingNavBar = false;
     addTearDown(app.dispose);
     // 普通底栏槽位 = 80 + 手势区
-    await pumpBar(tester, app: app, shellBarHeight: 80 + _gestureInset);
+    await pumpRiverpodBar(
+      tester,
+      appearance: app.navigationAppearanceSettings,
+      shellBarHeight: 80 + _gestureInset,
+    );
     expect(barPadding(tester).bottom, closeTo(80 + _gestureInset + 12, 0.01));
   });
 
@@ -86,7 +75,11 @@ void main() {
     final app = AppController()..settings.floatingNavBar = true;
     addTearDown(app.dispose);
     // 悬浮底栏槽位 = 108 + 手势区（胶囊 80 + 顶留白 16 + 底留白 12）
-    await pumpBar(tester, app: app, shellBarHeight: 108 + _gestureInset);
+    await pumpRiverpodBar(
+      tester,
+      appearance: app.navigationAppearanceSettings,
+      shellBarHeight: 108 + _gestureInset,
+    );
     // 期望值：108 + 手势区 - 16（槽位顶留白）+ 12（自身间距）
     expect(
       barPadding(tester).bottom,

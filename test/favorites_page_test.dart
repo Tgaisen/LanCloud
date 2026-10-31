@@ -1,6 +1,9 @@
 import 'package:material_ui/material_ui.dart' hide Icons;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/navigation_appearance_settings_state.dart';
+import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/app_icons.dart';
 import 'package:lancloud/ui/favorites_page.dart';
@@ -8,19 +11,29 @@ import 'package:provider/provider.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
+Widget _host(AppController app, Widget home) => ProviderScope(
+  overrides: [
+    navigationAppearanceSettingsStateProvider.overrideWithValue(
+      app.navigationAppearanceSettings,
+    ),
+    navigationStateProvider.overrideWithValue(app.navigation),
+  ],
+  child: ChangeNotifierProvider<AppController>.value(
+    value: app,
+    child: MaterialApp(
+      localizationsDelegates: appLocalizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      locale: const Locale('zh'),
+      home: home,
+    ),
+  ),
+);
+
 void main() {
   testWidgets('收藏视图可独立打开，空收藏时显示提示', (tester) async {
     final app = AppController();
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
-        value: app,
-        child: MaterialApp(
-          localizationsDelegates: appLocalizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          locale: const Locale('zh'),
-          home: const FavoritesPage(),
-        ),
-      ),
+      _host(app, const FavoritesPage()),
     );
     await tester.pumpAndSettle();
 
@@ -32,25 +45,20 @@ void main() {
   testWidgets('独立页面：多选时返回只退出多选，不退出页面', (tester) async {
     final app = AppController();
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
-        value: app,
-        child: MaterialApp(
-          localizationsDelegates: appLocalizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          locale: const Locale('zh'),
-          home: Builder(
-            builder: (context) => Scaffold(
-              body: Center(
-                child: TextButton(
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      // 独立打开时外壳传的就是同一个 tabIndex（见 app.dart
-                      // 的 _openView），这里保持一致，避免判断错页面形态
-                      builder: (_) => const FavoritesPage(tabIndex: 3),
-                    ),
+      _host(
+        app,
+        Builder(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: TextButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    // 独立打开时外壳传的就是同一个 tabIndex（见 app.dart
+                    // 的 _openView），这里保持一致，避免判断错页面形态
+                    builder: (_) => const FavoritesPage(tabIndex: 3),
                   ),
-                  child: const Text('打开收藏'),
                 ),
+                child: const Text('打开收藏'),
               ),
             ),
           ),
@@ -96,23 +104,18 @@ void main() {
   testWidgets('独立页面：搜索时返回只退出搜索，不退出页面', (tester) async {
     final app = AppController();
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
-        value: app,
-        child: MaterialApp(
-          localizationsDelegates: appLocalizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          locale: const Locale('zh'),
-          home: Builder(
-            builder: (context) => Scaffold(
-              body: Center(
-                child: TextButton(
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const FavoritesPage(tabIndex: 3),
-                    ),
+      _host(
+        app,
+        Builder(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: TextButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const FavoritesPage(tabIndex: 3),
                   ),
-                  child: const Text('打开收藏'),
                 ),
+                child: const Text('打开收藏'),
               ),
             ),
           ),
