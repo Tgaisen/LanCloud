@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/drive_state.dart';
 
 void main() {
@@ -27,23 +26,6 @@ void main() {
     favoritesVisible = true;
     expect(state.driveVisible, isFalse);
     expect(state.favoritesVisible, isTrue);
-  });
-
-  test('AppController 旧 API 转发到同一 DriveState', () {
-    final drive = DriveState();
-    final app = AppController(drive: drive);
-    addTearDown(app.dispose);
-
-    app.driveFolderRequest.value = '42';
-    app.driveLocation.value = const DriveLocation(id: '42', path: '文档');
-    app.addDriveProbe(() => true);
-    app.addFavoritesProbe(() => false);
-
-    expect(identical(app.driveFolderRequest, drive.folderRequest), isTrue);
-    expect(identical(app.driveLocation, drive.location), isTrue);
-    expect(identical(app.driveCache, drive.cache), isTrue);
-    expect(app.driveVisible, isTrue);
-    expect(app.favoritesVisible, isFalse);
   });
 
   test('driveStateProvider 可以被入口共享实例覆盖', () {

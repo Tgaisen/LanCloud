@@ -203,29 +203,6 @@ class AppController extends ChangeNotifier {
         SystemMotion.touchExploration.value;
   }
 
-  /// 首页“目录打开方式 = 网盘页”时请求打开的目录 id（消费后置空）。
-  ValueNotifier<String?> get driveFolderRequest => drive.folderRequest;
-
-  /// 网盘页当前所在目录（拖拽上传的确认条要显示目标路径）。
-  ValueNotifier<DriveLocation> get driveLocation => drive.location;
-
-  /// 拖拽判定：当前是否"可见地"处于收藏页。收藏页有底栏 tab 与独立路由
-  /// 两种形态，各自注册一个探针（被别的页面盖住时探针返回 false）。
-  void addFavoritesProbe(bool Function() probe) =>
-      drive.addFavoritesProbe(probe);
-
-  void removeFavoritesProbe(bool Function() probe) =>
-      drive.removeFavoritesProbe(probe);
-
-  bool get favoritesVisible => drive.favoritesVisible;
-
-  /// 拖拽判定：当前是否"可见地"处于网盘页（底栏 tab 或独立路由）。
-  void addDriveProbe(bool Function() probe) => drive.addDriveProbe(probe);
-
-  void removeDriveProbe(bool Function() probe) => drive.removeDriveProbe(probe);
-
-  bool get driveVisible => drive.driveVisible;
-
   @override
   void dispose() {
     accountState.removeListener(notifyListeners);
