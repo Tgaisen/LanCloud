@@ -145,6 +145,8 @@
 | `tools\agent.cmd test`（入口直接组装传输依赖） | 增量 | **7 tests, all passed** | 约 14 s |
 | `tools\agent.cmd analyze`（AppCompositionRoot） | 增量 | No issues found | 约 12 s |
 | `tools\agent.cmd test`（AppCompositionRoot） | 增量 | **8 tests, all passed** | 约 13 s |
+| `tools\agent.cmd analyze`（传输测试夹具批次 1） | 全量 | No issues found | 约 17 s |
+| `tools\agent.cmd test`（传输测试夹具批次 1） | 增量 | **23 tests, all passed** | 约 14 s |
 | `tools\agent.cmd analyze`（网盘目录切片完成后） | 全量 | No issues found | 约 21 s |
 | `tools\agent.cmd test`（网盘目录切片完成后） | 全量 | **722 tests, all passed** | 约 110 s |
 | `tools\agent.cmd analyze`（拖放与 Cookie 行完成后） | 全量 | No issues found | 约 17 s |
@@ -514,6 +516,11 @@
   备份、传输恢复和 `runApp()` 的外部顺序不变。新增 1 条“组合根复用应用级状态
   与依赖”测试；增量分析 2 个文件无问题，目标测试文件 8 个测试通过。当前总数
   按 728 条全量基线加 1 条增量记为 729，本片尚未全量复验。
+- 2026-10-31 传输测试夹具第一批迁移完成：`download_mark_test`、
+  `transfer_retry_test` 与 `transfer_running_count_test` 共 14 处
+  `TransferManager(app)` 改为通过 `transfer_dependencies_test.dart` 中的
+  `buildTransferManager` 显式构造依赖。相关 4 个测试文件 / 23 个测试通过，
+  用例总数保持 729。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release
