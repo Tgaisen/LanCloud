@@ -3,7 +3,8 @@ import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
+import 'package:lancloud/core/app_startup.dart';
 import 'package:lancloud/core/backup/backup_crypto.dart';
 import 'package:lancloud/core/backup/backup_dependencies.dart';
 import 'package:lancloud/core/backup/backup_service.dart';
@@ -18,17 +19,20 @@ import 'package:lancloud/ui/restore_page.dart';
 import 'package:local_auth_android/local_auth_android.dart';
 import 'package:material_ui/material_ui.dart';
 
-BackupDependencies backupDependenciesFor(AppController app) =>
+Future<void> _reloadFromStorage(AppEnvironment environment) =>
+    AppStartup(environment: environment, onChanged: () {}).reloadFromStorage();
+
+BackupDependencies backupDependenciesFor(AppEnvironment environment) =>
     BackupStoreDependencies(
-      accounts: app.accountState.store,
-      settings: app.settingsState.store,
-      db: app.db,
-      reloadCallback: app.reloadFromStorage,
+      accounts: environment.accountState.store,
+      settings: environment.settingsState.store,
+      db: environment.db,
+      reloadCallback: () => _reloadFromStorage(environment),
     );
 
 class _RestoreBackupService extends BackupService {
-  _RestoreBackupService(AppController app, this.content)
-    : super(backupDependenciesFor(app));
+  _RestoreBackupService(AppEnvironment environment, this.content)
+    : super(backupDependenciesFor(environment));
 
   final String content;
 
@@ -64,8 +68,8 @@ class _GatedCookieAuth extends CookieAuth {
 
 void main() {
   testWidgets('首次恢复时解密弹窗关闭后才显示顶栏进度条', (tester) async {
-    final app = AppController();
-    addTearDown(app.dispose);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
     final plaintext = jsonEncode({
       'app': 'lancloud',
       'format': 3,
@@ -89,7 +93,7 @@ void main() {
       'format': 3,
       'encryption': encryption,
     });
-    final service = _RestoreBackupService(app, encrypted);
+    final service = _RestoreBackupService(environment, encrypted);
     final auth = _GatedCookieAuth();
     CookieAuth.instance = auth;
     addTearDown(() {
@@ -104,7 +108,7 @@ void main() {
         overrides: [
           backupServiceProvider.overrideWithValue(service),
           navigationAppearanceSettingsStateProvider.overrideWithValue(
-            app.navigationAppearanceSettings,
+            environment.navigationAppearanceSettings,
           ),
         ],
         child: MaterialApp(

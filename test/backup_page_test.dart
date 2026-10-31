@@ -5,7 +5,8 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
+import 'package:lancloud/core/app_startup.dart';
 import 'package:lancloud/core/backup/backup_dependencies.dart';
 import 'package:lancloud/core/backup/backup_sections.dart';
 import 'package:lancloud/core/backup/backup_service.dart';
@@ -27,19 +28,22 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
-BackupDependencies backupDependenciesFor(AppController app) =>
+Future<void> _reloadFromStorage(AppEnvironment environment) =>
+    AppStartup(environment: environment, onChanged: () {}).reloadFromStorage();
+
+BackupDependencies backupDependenciesFor(AppEnvironment environment) =>
     BackupStoreDependencies(
-      accounts: app.accountState.store,
-      settings: app.settingsState.store,
-      db: app.db,
-      reloadCallback: app.reloadFromStorage,
+      accounts: environment.accountState.store,
+      settings: environment.settingsState.store,
+      db: environment.db,
+      reloadCallback: () => _reloadFromStorage(environment),
     );
 
 class _FakeBackupService extends BackupService {
-  _FakeBackupService(this.controller)
-    : super(backupDependenciesFor(controller));
+  _FakeBackupService(this.environment)
+    : super(backupDependenciesFor(environment));
 
-  final AppController controller;
+  final AppEnvironment environment;
 
   final _FakeWebdavStore _store = _FakeWebdavStore();
 
@@ -179,7 +183,8 @@ void main() {
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
-    fake = _FakeBackupService(AppController());
+    fake = _FakeBackupService(AppEnvironment());
+    addTearDown(fake.environment.dispose);
     // 备份包含 Cookie 需要生物验证，测试里直接放行
     fakeAuth = _FakeCookieAuth(CookieAuthResult.ok);
     CookieAuth.instance = fakeAuth;
@@ -208,10 +213,10 @@ void main() {
         overrides: [
           backupServiceProvider.overrideWithValue(fake),
           navigationAppearanceSettingsStateProvider.overrideWithValue(
-            fake.controller.navigationAppearanceSettings,
+            fake.environment.navigationAppearanceSettings,
           ),
           navigationStateProvider.overrideWithValue(
-            fake.controller.navigation,
+            fake.environment.navigation,
           ),
         ],
         child: MaterialApp(
