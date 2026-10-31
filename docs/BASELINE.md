@@ -203,6 +203,8 @@
 | `tools\agent.cmd test`（栏位进度测试迁移） | 增量 | **33 tests, all passed** | 约 24 s |
 | `tools\agent.cmd analyze`（移除导航进度兼容 API） | 增量 | No issues found | 约 7 s |
 | `tools\agent.cmd test`（移除导航进度兼容 API） | 增量 | **318 tests, all passed** | 约 51 s |
+| `tools\agent.cmd analyze`（移除 DriveState 转发兼容 API） | 增量 | No issues found | 约 7 s |
+| `tools\agent.cmd test`（移除 DriveState 转发兼容 API） | 增量 | **315 tests, all passed** | 约 51 s |
 | `tools\agent.cmd analyze`（网盘目录切片完成后） | 全量 | No issues found | 约 21 s |
 | `tools\agent.cmd test`（网盘目录切片完成后） | 全量 | **722 tests, all passed** | 约 110 s |
 | `tools\agent.cmd analyze`（拖放与 Cookie 行完成后） | 全量 | No issues found | 约 17 s |
@@ -221,7 +223,7 @@
 | `lib` 总行数 | 约 4.4 万 |
 | `test` 测试文件 | 161（平铺，`<主题>_test.dart`） |
 | `test` 总行数 | 约 2.1 万 |
-| `test` 用例数 | 719（当前总数；累计删除旧兼容测试） |
+| `test` 用例数 | 718（当前总数；累计删除旧兼容测试） |
 | `lib/ui` 页面与组件 | 54 个平铺文件 |
 | `lib/core` | 32 个平铺文件 + 5 个子系统目录 |
 | 文案（`app_zh.arb`） | 1357 行 |
@@ -691,6 +693,10 @@
   `barsHide`、`topBarHide`、两个滚动驱动方法和 `animateBarsHide`，并删除已
   无断言的旧控制器导航测试。增量分析 1 个生产文件无问题，50 个受影响测试
   文件 / 318 个测试通过，用例总数由 720 调整为 719。
+- 2026-10-31 移除 `DriveState` 转发兼容 API：删除控制器的目录请求、当前位置、
+  可见性探针和两个可见性 getter，以及 1 条旧控制器兼容测试；`driveCache`
+  因控制器初始化与两个页面测试仍直接使用而保留。增量分析 1 个生产文件无
+  问题，49 个受影响测试文件 / 315 个测试通过，用例总数由 719 调整为 718。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release
