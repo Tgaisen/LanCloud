@@ -217,6 +217,8 @@
 | `tools\agent.cmd test`（动态取色默认探测迁移） | 增量 | **317 tests, all passed** | 约 50 s |
 | `tools\agent.cmd analyze`（生产入口脱离存储 getter） | 增量 | No issues found | 约 12 s |
 | `tools\agent.cmd test`（生产入口脱离存储 getter） | 增量 | **8 tests, all passed** | 约 14 s |
+| `tools\agent.cmd analyze`（存储访问测试批次 1） | 全量 | No issues found | 约 18 s |
+| `tools\agent.cmd test`（存储访问测试批次 1） | 增量 | **15 tests, all passed** | 约 15 s |
 | `tools\agent.cmd analyze`（网盘目录切片完成后） | 全量 | No issues found | 约 21 s |
 | `tools\agent.cmd test`（网盘目录切片完成后） | 全量 | **722 tests, all passed** | 约 110 s |
 | `tools\agent.cmd analyze`（拖放与 Cookie 行完成后） | 全量 | No issues found | 约 17 s |
@@ -235,7 +237,7 @@
 | `lib` 总行数 | 约 4.4 万 |
 | `test` 测试文件 | 161（平铺，`<主题>_test.dart`） |
 | `test` 总行数 | 约 2.1 万 |
-| `test` 用例数 | 718（当前总数；累计删除旧兼容测试） |
+| `test` 用例数 | 716（当前总数；累计删除旧兼容测试） |
 | `lib/ui` 页面与组件 | 54 个平铺文件 |
 | `lib/core` | 32 个平铺文件 + 5 个子系统目录 |
 | 文案（`app_zh.arb`） | 1357 行 |
@@ -733,6 +735,10 @@
   `main.dart` 改为直接读取 `accountState.store` / `settingsState.store`；
   控制器 getter 暂时保留给测试夹具。增量分析 2 个生产文件无问题，组合根测试
   8 个全部通过，用例总数保持 718。
+- 2026-10-31 存储访问测试批次 1 完成：`transfer_dependencies_test` 与两个
+  备份夹具改读 `accountState.store` / `settingsState.store`；删除
+  `storage_store_providers_test` 中 2 条仅验证控制器 getter 的测试。全量分析
+  无问题，4 个测试文件 / 15 个测试通过，用例总数由 718 调整为 716。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release
