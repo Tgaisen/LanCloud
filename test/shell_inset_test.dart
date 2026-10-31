@@ -25,6 +25,8 @@ import 'package:lancloud/ui/profile_page.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
+import 'transfer_dependencies_test.dart' show buildTransferManager;
+
 Widget _rootShellHost(
   AppController app,
   TransferManager transfers,
@@ -150,7 +152,7 @@ void main() {
       Account(uid: '556911', cookie: 'c', nickname: '土豆'),
     );
     app.accounts.activeUid = '556911';
-    final transfers = TransferManager(app);
+    final transfers = buildTransferManager(app);
     addTearDown(transfers.dispose);
     await tester.pumpWidget(
       _rootShellHost(app, transfers),
@@ -186,7 +188,7 @@ void main() {
       Account(uid: '556911', cookie: 'c', nickname: '土豆'),
     );
     app.accounts.activeUid = '556911';
-    final transfers = TransferManager(app);
+    final transfers = buildTransferManager(app);
     addTearDown(transfers.dispose);
     transfers.tasks.add(
       TransferTask(
