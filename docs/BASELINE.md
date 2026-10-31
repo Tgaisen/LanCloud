@@ -181,6 +181,8 @@
 | `tools\agent.cmd test`（移除列表/首页兼容 API） | 增量 | **346 tests, all passed** | 约 51 s |
 | `tools\agent.cmd analyze`（移除传输连接兼容 API） | 增量 | No issues found | 约 7 s |
 | `tools\agent.cmd test`（移除传输连接兼容 API） | 增量 | **342 tests, all passed** | 约 52 s |
+| `tools\agent.cmd analyze`（移除主题设置兼容 API） | 增量 | No issues found | 约 7 s |
+| `tools\agent.cmd test`（移除主题设置兼容 API） | 增量 | **338 tests, all passed** | 约 54 s |
 | `tools\agent.cmd analyze`（网盘目录切片完成后） | 全量 | No issues found | 约 21 s |
 | `tools\agent.cmd test`（网盘目录切片完成后） | 全量 | **722 tests, all passed** | 约 110 s |
 | `tools\agent.cmd analyze`（拖放与 Cookie 行完成后） | 全量 | No issues found | 约 17 s |
@@ -199,7 +201,7 @@
 | `lib` 总行数 | 约 4.4 万 |
 | `test` 测试文件 | 161（平铺，`<主题>_test.dart`） |
 | `test` 总行数 | 约 2.1 万 |
-| `test` 用例数 | 723（当前总数；累计删除旧设置兼容测试） |
+| `test` 用例数 | 721（当前总数；累计删除旧设置兼容测试） |
 | `lib/ui` 页面与组件 | 54 个平铺文件 |
 | `lib/core` | 32 个平铺文件 + 5 个子系统目录 |
 | 文案（`app_zh.arb`） | 1357 行 |
@@ -624,6 +626,10 @@
   API 域名、User-Agent 和上传路径共 6 个转发方法及 1 条旧控制器专用测试。
   增量分析 1 个生产文件无问题，57 个受影响测试文件 / 342 个测试通过，
   用例总数由 724 调整为 723。
+- 2026-10-31 移除主题设置兼容 API：自动动态取色改走 `ThemeSettingsState`；
+  删除控制器上的主题模式、全局动画、OLED、动态取色和主题色共 5 个转发方法，
+  以及 2 条只验证旧控制器行为的测试。增量分析 1 个生产文件无问题，56 个
+  受影响测试文件 / 338 个测试通过，用例总数由 723 调整为 721。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release
