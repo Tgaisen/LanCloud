@@ -116,6 +116,7 @@
 | `tools\agent.cmd test`（共享顶栏 / 多选条回退移除） | 增量 | **302 tests, all passed** | 约 49 s |
 | `tools\agent.cmd test`（收藏页消费端） | 增量 | **11 tests, all passed** | 约 18 s |
 | `tools\agent.cmd test`（首页消费端与切页回调） | 增量 | **366 tests, all passed** | 约 52 s |
+| `tools\agent.cmd test`（网盘目录加载与导航切片） | 增量 | **45 tests, all passed** | 约 25 s |
 | `tools\agent.cmd analyze`（拖放与 Cookie 行完成后） | 全量 | No issues found | 约 17 s |
 | `tools\agent.cmd test`（拖放与 Cookie 行完成后） | 全量 | **722 tests, all passed** | 约 99 s |
 | `tools\agent.cmd analyze`（账号会话消费端完成后） | 全量 | No issues found | 约 32 s |
@@ -422,6 +423,10 @@
   `HomePage` 改用数据库、导航目录、账号客户端、首页设置和传输计数 provider，
   不再读取 `AppController`。增量 65 个测试文件 / 366 个测试通过，用例总数
   保持 722。
+- 2026-10-31 `DrivePage` 首个切片迁移目录加载、缓存、导航、返回能力、排序
+  动画和首页目录请求，改用账号、数据库、客户端、目录、页面设置和导航 provider；
+  文件操作仍暂用旧控制器。增量 5 个测试文件 / 45 个测试通过，用例总数保持
+  722。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release

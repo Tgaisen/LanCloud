@@ -65,7 +65,7 @@
 | `CachePageSettingsState` | `core/cache_page_settings_state.dart` | 阶段 3 设置子组：网格视图、启动页、目录缓存和自动加载全部页面 |
 | `DownloadDirectorySettingsState` | `core/download_directory_settings_state.dart` | 阶段 3 设置子组：普通下载目录、SAF URI/标签、互斥写入和旧授权释放入口 |
 
-消费现状：`context.read<AppController>` 63 处、`context.watch` 0 处、
+消费现状：`context.read<AppController>` 52 处、`context.watch` 0 处、
 `context.select<AppController…>` 2 处。生产代码中的整体 `watch` 已清零；传输页已从
 Riverpod 读取应用级 `TransferManager`，并通过 `ListenableBuilder` 保留既有
 `notifyListeners()` 刷新语义；多选回调、选择模式和顶栏进度改由
@@ -74,7 +74,8 @@ Riverpod 读取应用级 `TransferManager`，并通过 `ListenableBuilder` 保�
 并用局部计数桥只在运行中 / 排队任务数变化时重建外壳；管理器的进度通知不会
 直接放大成整壳重建。“已下载”标记也从 Riverpod 读取管理器，继续只监听低频
 `marksRevision`；已下载任务的二级菜单和分享文件属性弹窗也已从 Riverpod 读取。
-`DrivePage` 已改用 `ConsumerStatefulWidget`，生命周期监听、上传、批量下载、
+`DrivePage` 已改用 `ConsumerStatefulWidget`；目录加载、缓存、导航、返回能力、
+动画和排序已迁入 Riverpod。生命周期监听、上传、批量下载、
 自有文件下载、属性卡状态和已下载菜单全部从 Riverpod 取得管理器。对应的四个
 直接测试宿主不再注册旧 `ChangeNotifierProvider<TransferManager>`。
 分享文件夹页的条目菜单也已从 Riverpod 读取已下载状态。
