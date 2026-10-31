@@ -8,7 +8,7 @@ import 'package:lancloud/core/account_state.dart';
 import 'package:lancloud/core/api/lanzou_client.dart';
 import 'package:lancloud/core/api/lanzou_client_registry.dart';
 import 'package:lancloud/core/api/models.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/cache_page_settings_state.dart';
 import 'package:lancloud/core/data/app_db_provider.dart';
 import 'package:lancloud/core/drive_state.dart';
@@ -27,7 +27,7 @@ import 'package:lancloud/ui/m3e.dart';
 // 应用用的是自己的 Symbols 图标集，和框架的 Icons 同名，按应用代码的习惯隐藏后者
 import 'package:material_ui/material_ui.dart' hide Icons;
 
-import 'transfer_dependencies_test.dart' show buildTransferManager;
+import 'transfer_dependencies_test.dart' show buildTransferManagerForEnvironment;
 
 /// 固定返回一个文件 + 一个文件夹，并给出可预测的分享信息。
 ///
@@ -132,14 +132,17 @@ class _MemberRenameClient extends _FakeClient {
   }
 }
 
-class _FakeApp extends AppController {
+class _FakeApp {
   _FakeApp(
     this._client, {
     LanzouClient? publicClient,
   }) : _public = publicClient ?? _FakePublic();
 
+  final AppEnvironment environment = AppEnvironment();
   final LanzouClient _client;
   final LanzouClient _public;
+
+  void dispose() => environment.dispose();
 }
 
 /// 直链解析：默认立刻成功，测试里不打网络。
@@ -201,8 +204,10 @@ Future<void> _pumpDrive(
   Size viewSize = const Size(420, 900),
   Locale locale = const Locale('zh'),
 }) async {
-  final transfers = manager ?? buildTransferManager(app);
-  app.accountState.store.activeUid = '';
+  final environment = app.environment;
+  final transfers =
+      manager ?? buildTransferManagerForEnvironment(environment);
+  environment.accountState.store.activeUid = '';
   addTearDown(app.dispose);
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = viewSize;
@@ -217,15 +222,19 @@ Future<void> _pumpDrive(
             factory: (uid) => uid == '0' ? app._public : app._client,
           ),
         ),
-        accountStateProvider.overrideWithValue(app.accountState),
-        appDbProvider.overrideWithValue(app.db),
-        driveStateProvider.overrideWithValue(app.drive),
-        cachePageSettingsStateProvider.overrideWithValue(app.cachePageSettings),
-        listHomeSettingsStateProvider.overrideWithValue(app.listHomeSettings),
-        navigationAppearanceSettingsStateProvider.overrideWithValue(
-          app.navigationAppearanceSettings,
+        accountStateProvider.overrideWithValue(environment.accountState),
+        appDbProvider.overrideWithValue(environment.db),
+        driveStateProvider.overrideWithValue(environment.drive),
+        cachePageSettingsStateProvider.overrideWithValue(
+          environment.cachePageSettings,
         ),
-        navigationStateProvider.overrideWithValue(app.navigation),
+        listHomeSettingsStateProvider.overrideWithValue(
+          environment.listHomeSettings,
+        ),
+        navigationAppearanceSettingsStateProvider.overrideWithValue(
+          environment.navigationAppearanceSettings,
+        ),
+        navigationStateProvider.overrideWithValue(environment.navigation),
       ],
       child: MaterialApp(
         theme: ThemeData(visualDensity: density),
@@ -472,7 +481,7 @@ void main() {
   testWidgets('已添加下载的文件：属性弹窗下载按钮 checked，点击弹五项菜单', (tester) async {
     final client = _FakeClient();
     final app = _FakeApp(client);
-    final manager = buildTransferManager(app);
+    final manager = buildTransferManagerForEnvironment(app.environment);
     // 与页面一致的任务 refId：app.activeUid 在测试里是空串
     manager.tasks.add(
       TransferTask(
@@ -527,7 +536,7 @@ void main() {
 
   testWidgets('已添加下载的文件：菜单「删除记录与文件」连带删掉本地文件并恢复未下载', (tester) async {
     final app = _FakeApp(_FakeClient());
-    final manager = buildTransferManager(app);
+    final manager = buildTransferManagerForEnvironment(app.environment);
     final dir = Directory.systemTemp.createTempSync('lancloud-del-mark');
     addTearDown(() {
       try {
@@ -578,7 +587,7 @@ void main() {
 
   testWidgets('已添加下载但失败：属性弹窗显示「下载失败」+ 下载关闭图标', (tester) async {
     final app = _FakeApp(_FakeClient());
-    final manager = buildTransferManager(app);
+    final manager = buildTransferManagerForEnvironment(app.environment);
     manager.tasks.add(
       TransferTask(
           id: 'd1',
@@ -658,7 +667,7 @@ void main() {
   testWidgets('网盘文件属性弹窗：点「重新下载」立刻进入解析中状态', (tester) async {
     final directGate = _GatedPublic();
     final app = _FakeApp(_FakeClient(), publicClient: directGate);
-    final manager = buildTransferManager(app);
+    final manager = buildTransferManagerForEnvironment(app.environment);
     manager.tasks.add(
       TransferTask(
         id: 'd1',

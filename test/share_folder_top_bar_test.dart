@@ -2,7 +2,7 @@ import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/api/models.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
@@ -14,9 +14,9 @@ import 'package:lancloud/ui/share_folder_page.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
-import 'transfer_dependencies_test.dart' show buildTransferManager;
+import 'transfer_dependencies_test.dart' show buildTransferManagerForEnvironment;
 
-Future<AppController> pumpShareFolder(
+Future<AppEnvironment> pumpShareFolder(
   WidgetTester tester,
   FolderShareDetail folder,
 ) async {
@@ -24,18 +24,18 @@ Future<AppController> pumpShareFolder(
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = const Size(400, 600);
   addTearDown(tester.view.reset);
-  final app = AppController();
-  app.settingsState.store.hideTopBar = true;
-  addTearDown(app.dispose);
-  final transfers = buildTransferManager(app);
+  final environment = AppEnvironment();
+  environment.settingsState.store.hideTopBar = true;
+  addTearDown(environment.dispose);
+  final transfers = buildTransferManagerForEnvironment(environment);
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
         transferManagerProvider.overrideWithValue(transfers),
         navigationAppearanceSettingsStateProvider.overrideWithValue(
-          app.navigationAppearanceSettings,
+          environment.navigationAppearanceSettings,
         ),
-        navigationStateProvider.overrideWithValue(app.navigation),
+        navigationStateProvider.overrideWithValue(environment.navigation),
       ],
       child: MaterialApp(
         localizationsDelegates: appLocalizationsDelegates,
@@ -50,7 +50,7 @@ Future<AppController> pumpShareFolder(
     ),
   );
   await tester.pumpAndSettle();
-  return app;
+  return environment;
 }
 
 void main() {
@@ -221,7 +221,7 @@ void main() {
   });
 
   testWidgets('顶栏上滑同样随手指渐隐，且不动外壳进度', (tester) async {
-    final app = await pumpShareFolder(
+    final environment = await pumpShareFolder(
       tester,
       FolderShareDetail(
         name: '长分享',
@@ -254,6 +254,6 @@ void main() {
     await tester.pumpAndSettle();
     expect(barTop(), -kToolbarHeight);
     expect(contentOpacity(), closeTo(0, 0.01));
-    expect(app.navigation.topBarHide.value, 0);
+    expect(environment.navigation.topBarHide.value, 0);
   });
 }

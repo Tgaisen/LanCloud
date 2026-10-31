@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/api/lanzou_client.dart';
 import 'package:lancloud/core/api/lanzou_client_registry.dart';
 import 'package:lancloud/core/api/models.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/cache_page_settings_state.dart';
 import 'package:lancloud/core/data/app_db_provider.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
@@ -17,7 +17,7 @@ import 'package:lancloud/ui/share_folder_page.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
-import 'transfer_dependencies_test.dart' show buildTransferManager;
+import 'transfer_dependencies_test.dart' show buildTransferManagerForEnvironment;
 
 /// 记录分页请求的假客户端：第二页固定返回一个文件并到底。
 class _FakeClient extends LanzouClient {
@@ -95,11 +95,11 @@ FolderShareDetail _folder({int firstPageFiles = 20}) => FolderShareDetail(
 
 Future<void> pumpPage(
   WidgetTester tester, {
-  required AppController app,
+  required AppEnvironment environment,
   required LanzouClient client,
   required FolderShareDetail folder,
 }) async {
-  final transfers = buildTransferManager(app);
+  final transfers = buildTransferManagerForEnvironment(environment);
   final clients = LanzouClientRegistry(factory: (_) => client);
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = const Size(400, 700);
@@ -109,12 +109,14 @@ Future<void> pumpPage(
       overrides: [
         transferManagerProvider.overrideWithValue(transfers),
         lanzouClientRegistryProvider.overrideWithValue(clients),
-        appDbProvider.overrideWithValue(app.db),
-        cachePageSettingsStateProvider.overrideWithValue(app.cachePageSettings),
-        navigationAppearanceSettingsStateProvider.overrideWithValue(
-          app.navigationAppearanceSettings,
+        appDbProvider.overrideWithValue(environment.db),
+        cachePageSettingsStateProvider.overrideWithValue(
+          environment.cachePageSettings,
         ),
-        navigationStateProvider.overrideWithValue(app.navigation),
+        navigationAppearanceSettingsStateProvider.overrideWithValue(
+          environment.navigationAppearanceSettings,
+        ),
+        navigationStateProvider.overrideWithValue(environment.navigation),
       ],
       child: MaterialApp(
         localizationsDelegates: appLocalizationsDelegates,
@@ -134,9 +136,14 @@ Future<void> pumpPage(
 void main() {
   testWidgets('分享文件夹：解析后只进页面，滑到底才加载下一页', (tester) async {
     final client = _FakeClient();
-    final app = AppController();
-    addTearDown(app.dispose);
-    await pumpPage(tester, app: app, client: client, folder: _folder());
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
+    await pumpPage(
+      tester,
+      environment: environment,
+      client: client,
+      folder: _folder(),
+    );
 
     // 首屏已经填满：不应该提前请求下一页
     expect(client.calls, isEmpty);
@@ -151,10 +158,15 @@ void main() {
 
   testWidgets('分享文件夹：开启「自动加载全部目录内容」后后台补齐全部分页', (tester) async {
     final client = _FakeClient();
-    final app = AppController();
-    app.settingsState.store.loadAllPages = true;
-    addTearDown(app.dispose);
-    await pumpPage(tester, app: app, client: client, folder: _folder());
+    final environment = AppEnvironment();
+    environment.settingsState.store.loadAllPages = true;
+    addTearDown(environment.dispose);
+    await pumpPage(
+      tester,
+      environment: environment,
+      client: client,
+      folder: _folder(),
+    );
 
     expect(client.calls, contains(2));
     // 列表是懒加载的：新一页在屏幕外，先滚到底再确认它已经渲染出来
@@ -165,11 +177,11 @@ void main() {
 
   testWidgets('分享文件夹：长列表只构建可见条目（懒加载）', (tester) async {
     final client = _FakeClient();
-    final app = AppController();
-    addTearDown(app.dispose);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
     await pumpPage(
       tester,
-      app: app,
+      environment: environment,
       client: client,
       folder: _folder(firstPageFiles: 400),
     );
@@ -181,13 +193,13 @@ void main() {
 
   testWidgets('分享文件夹：第一页不满一屏时自动补页，不留常驻的加载转圈', (tester) async {
     final client = _FakeClient();
-    final app = AppController();
-    addTearDown(app.dispose);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
     // 只有 3 个文件：内容明显不足一屏（修复前 maxScrollExtent > 0 时不会补页，
     // 底部“加载下一页”的转圈会一直停着，直到用户滑动）
     await pumpPage(
       tester,
-      app: app,
+      environment: environment,
       client: client,
       folder: _folder(firstPageFiles: 3),
     );
@@ -201,11 +213,11 @@ void main() {
   testWidgets('分享文件夹：id 为 -1 的失效文件照样显示，但不参与多选 / 下载', (tester) async {
     final l10n = AppLocalizationsZh();
     final client = _FakeClient();
-    final app = AppController();
-    addTearDown(app.dispose);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
     await pumpPage(
       tester,
-      app: app,
+      environment: environment,
       client: client,
       folder: FolderShareDetail(
         name: '测试分享',
@@ -286,10 +298,15 @@ void main() {
 
   testWidgets('分享文件夹：搜索时不显示加载转圈，改为提示结果可能不全', (tester) async {
     final client = _FakeClient();
-    final app = AppController();
-    addTearDown(app.dispose);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
     // 首页有 20 个文件、还有下一页没加载：搜索只在已加载内容里过滤
-    await pumpPage(tester, app: app, client: client, folder: _folder());
+    await pumpPage(
+      tester,
+      environment: environment,
+      client: client,
+      folder: _folder(),
+    );
     expect(client.calls, isEmpty);
 
     await tester.tap(find.byTooltip('搜索'));
@@ -313,11 +330,11 @@ void main() {
   // 以前会一直挂着转圈，要用户自己滑一下才恢复；现在会自动退避重试。
   testWidgets('分享文件夹：自动补页失败会自己重试，不会停在转圈上', (tester) async {
     final client = _FlakyClient(failures: 1);
-    final app = AppController();
-    addTearDown(app.dispose);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
     await pumpPage(
       tester,
-      app: app,
+      environment: environment,
       client: client,
       folder: _folder(firstPageFiles: 3),
     );
@@ -331,11 +348,11 @@ void main() {
 
   testWidgets('分享文件夹：补页一直失败时给「重试」入口，而不是常驻转圈', (tester) async {
     final client = _FlakyClient(failures: 99);
-    final app = AppController();
-    addTearDown(app.dispose);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
     await pumpPage(
       tester,
-      app: app,
+      environment: environment,
       client: client,
       folder: _folder(firstPageFiles: 3),
     );
