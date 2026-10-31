@@ -47,7 +47,7 @@ class AppController extends ChangeNotifier {
     navigationAppearanceSettings = NavigationAppearanceSettingsState(
       settings,
       navigation: this.navigation,
-      reduceMotion: () => motionReduced,
+      reduceMotion: () => _motionReduced,
     );
     themeSettings = ThemeSettingsState(settings);
     transferConnectionSettings = TransferConnectionSettingsState(settings);
@@ -102,21 +102,13 @@ class AppController extends ChangeNotifier {
     db: db,
   );
 
-  bool get ready => runtimeState.ready.value;
-  set ready(bool value) => runtimeState.ready.value = value;
-
-  bool get secureStorageNeedsReauthentication =>
-      runtimeState.secureStorageNeedsReauthentication.value;
-  set secureStorageNeedsReauthentication(bool value) =>
-      runtimeState.secureStorageNeedsReauthentication.value = value;
-
   Future<void> init() async {
     await _inspectSecureStorageUpgrade();
     await accounts.load();
     await settings.load();
     _applyRuntimeSettings();
     await drive.cache.bindAccount(accounts.activeUid);
-    ready = true;
+    runtimeState.ready.value = true;
     notifyListeners();
     _refreshActiveAccountInfo();
     // 设备支持动态取色且用户还没选过：默认开启（之后尊重用户选择）
@@ -129,9 +121,9 @@ class AppController extends ChangeNotifier {
     try {
       final status = await checkSecureStorageUpgradeOnce();
       if (status == null) return;
-      secureStorageNeedsReauthentication =
+      runtimeState.secureStorageNeedsReauthentication.value =
           status.hasDataLoss || status.willDiscardOnNextAccess;
-      if (secureStorageNeedsReauthentication) {
+      if (runtimeState.secureStorageNeedsReauthentication.value) {
         AppLog.instance.log('secure_storage', '需要重新登录：$status');
       }
     } catch (error, stack) {
@@ -167,7 +159,7 @@ class AppController extends ChangeNotifier {
   Future<void> reloadFromStorage() async {
     await accounts.load();
     if (accounts.accounts.isNotEmpty) {
-      secureStorageNeedsReauthentication = false;
+      runtimeState.secureStorageNeedsReauthentication.value = false;
     }
     await settings.load();
     _applyRuntimeSettings();
@@ -180,23 +172,16 @@ class AppController extends ChangeNotifier {
     _refreshActiveAccountInfo();
   }
 
-  /// 系统是否要求「少动效」（移除动画 / 减弱动态效果 / 读屏接管）。
-  /// 由外壳在 didChangeDependencies 里同步：控制器里拿不到 MediaQuery，
-  /// 但顶栏/底栏的滑出这类装饰性动画要跟着系统设置走。
-  bool get systemReduceMotion => runtimeState.systemReduceMotion.value;
-  set systemReduceMotion(bool value) =>
-      runtimeState.systemReduceMotion.value = value;
-
   /// 当前是否应该少动效：用户设置（全局动画）+ 系统信号合成后的结论。
   /// 控制器内的动画用它判断；widget 侧统一用 reduceMotionOf()。
-  bool get motionReduced {
+  bool get _motionReduced {
     switch (settings.motionMode) {
       case 'on':
         return false;
       case 'off':
         return true;
     }
-    return systemReduceMotion ||
+    return runtimeState.systemReduceMotion.value ||
         SystemMotion.reduceMotion.value ||
         SystemMotion.touchExploration.value;
   }

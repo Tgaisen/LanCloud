@@ -147,7 +147,7 @@ void main() {
     addTearDown(tester.view.reset);
     final app = AppController();
     addTearDown(app.dispose);
-    app.ready = true;
+    app.runtimeState.ready.value = true;
     app.accounts.accounts.add(
       Account(uid: '556911', cookie: 'c', nickname: '土豆'),
     );
@@ -183,7 +183,7 @@ void main() {
     addTearDown(tester.view.reset);
     final app = AppController();
     addTearDown(app.dispose);
-    app.ready = true;
+    app.runtimeState.ready.value = true;
     app.accounts.accounts.add(
       Account(uid: '556911', cookie: 'c', nickname: '土豆'),
     );

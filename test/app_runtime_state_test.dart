@@ -1,22 +1,20 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/app_runtime_state.dart';
 
 void main() {
-  test('AppController 运行时字段转发到同一 AppRuntimeState', () {
+  test('AppRuntimeState 保存运行时应用信号', () {
     final runtime = AppRuntimeState();
-    final app = AppController(runtimeState: runtime);
-    addTearDown(app.dispose);
+    addTearDown(runtime.dispose);
 
-    expect(app.ready, isFalse);
-    app.ready = true;
+    expect(runtime.ready.value, isFalse);
+    runtime.ready.value = true;
     expect(runtime.ready.value, isTrue);
 
     runtime.secureStorageNeedsReauthentication.value = true;
-    expect(app.secureStorageNeedsReauthentication, isTrue);
+    expect(runtime.secureStorageNeedsReauthentication.value, isTrue);
 
-    app.systemReduceMotion = true;
+    runtime.systemReduceMotion.value = true;
     expect(runtime.systemReduceMotion.value, isTrue);
   });
 
