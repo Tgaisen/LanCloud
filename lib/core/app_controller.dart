@@ -233,16 +233,6 @@ class AppController extends ChangeNotifier {
     await navigationAppearanceSettings.setSwipeTabs(value);
   }
 
-  /// 切换更新通道；检测结果由 Riverpod 更新控制器在同一交互中清理。
-  Future<void> setUpdateChannel(String value) async {
-    if (await updateSettings.setChannel(value)) notifyListeners();
-  }
-
-  Future<void> setUpdateAutoCheck(bool value) async {
-    await updateSettings.setAutoCheck(value);
-    notifyListeners();
-  }
-
   /// 设置固定路径的下载目录（桌面端，或 Android 选中的公共目录——
   /// 公共目录无需授权、直接按路径写入）；已有 SAF 目录授权会一并释放。
   Future<void> setDownloadDir(String? dir) async {
