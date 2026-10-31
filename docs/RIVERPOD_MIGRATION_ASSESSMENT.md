@@ -879,6 +879,12 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > “我的”/恢复进度测试都改用 `BackupStoreDependencies` 构造服务。全仓已无
 > `BackupService(AppController)` 或 `super.app` 用法，仅保留一条
 > “AppController 满足 BackupDependencies”的临时兼容断言，供最终删除接口时移除。
+>
+> AppController 的备份兼容实现已删除：`AppController` 不再实现
+> `BackupDependencies`，`BackupService` 的构造参数与内部字段统一命名为
+> `dependencies`，恢复弹窗也读取该窄依赖。临时兼容断言同步删除。增量
+> 66 个测试文件 / 373 个测试通过，用例总数由 728 调整为 727（删除的是兼容断言）。
+> 至此备份链路不再依赖完整 `AppController`。
 
 ### 阶段 6：移除旧 Provider
 

@@ -137,6 +137,8 @@
 | `tools\agent.cmd test`（备份测试夹具批次 1） | 增量 | **31 tests, all passed** | 约 24 s |
 | `tools\agent.cmd analyze`（备份测试夹具批次 2） | 全量 | No issues found | 约 19 s |
 | `tools\agent.cmd test`（备份测试夹具批次 2） | 增量 | **72 tests, all passed** | 约 29 s |
+| `tools\agent.cmd analyze`（移除 AppController 备份接口） | 增量 | No issues found | 约 19 s |
+| `tools\agent.cmd test`（移除 AppController 备份接口） | 增量 | **373 tests, all passed** | 约 68 s |
 | `tools\agent.cmd analyze`（网盘目录切片完成后） | 全量 | No issues found | 约 21 s |
 | `tools\agent.cmd test`（网盘目录切片完成后） | 全量 | **722 tests, all passed** | 约 110 s |
 | `tools\agent.cmd analyze`（拖放与 Cookie 行完成后） | 全量 | No issues found | 约 17 s |
@@ -155,7 +157,7 @@
 | `lib` 总行数 | 约 4.4 万 |
 | `test` 测试文件 | 161（平铺，`<主题>_test.dart`） |
 | `test` 总行数 | 约 2.1 万 |
-| `test` 用例数 | 728（当前总数；阶段 6 及 AppController 退役已新增 13 条测试） |
+| `test` 用例数 | 727（当前总数；删除 1 条已无意义的接口兼容断言） |
 | `lib/ui` 页面与组件 | 54 个平铺文件 |
 | `lib/core` | 32 个平铺文件 + 5 个子系统目录 |
 | 文案（`app_zh.arb`） | 1357 行 |
@@ -488,6 +490,10 @@
   备份脚本/分项/provider/登录页，4 个测试文件 31 个测试通过；批次 2 覆盖备份页/
   “我的”/恢复进度，7 个受影响测试文件 72 个测试通过。当前仅剩最终删除
   `AppController` 接口实现的兼容断言。
+- 2026-10-31 删除 `AppController` 的 `BackupDependencies` 实现、相关
+  `@override` 与临时兼容断言；`BackupService` 字段统一改为 `dependencies`，
+  恢复弹窗改用窄依赖读取数据库。增量 66 个测试文件 / 373 个测试通过，
+  用例总数由 728 调整为 727。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release
