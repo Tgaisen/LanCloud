@@ -110,7 +110,7 @@ class _LanCloudAppState extends ConsumerState<LanCloudApp> {
               navigatorKey: _navigatorKey,
               // 系统「最近任务」里的应用名（桌面图标名由 Android 资源 app_name 决定，
               // 任务卡片这里是 Flutter 的 Title 设置的，要跟着语言走）
-              onGenerateTitle: (context) => context.l10n.appName,
+              onGenerateTitle: (context) => context.l10n.currentAppDisplayName,
               debugShowCheckedModeBanner: false,
               locale: language == 'zh'
                   ? const Locale('zh')

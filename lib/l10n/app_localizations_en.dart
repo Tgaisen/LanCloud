@@ -1508,6 +1508,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appName => 'LanCloud';
 
   @override
+  String get appBuildDebug => 'Debug';
+
+  @override
+  String get appBuildProfile => 'Profile';
+
+  @override
+  String get appBuildRelease => 'Release';
+
+  @override
   String shareReceivedFiles(int count) {
     return 'Received $count files; starting upload';
   }

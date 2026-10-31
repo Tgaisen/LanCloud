@@ -495,6 +495,9 @@
   "fileInvalid": "This file is no longer available",
   "logout": "Log out",
   "appName": "LanCloud",
+  "appBuildDebug": "Debug",
+  "appBuildProfile": "Profile",
+  "appBuildRelease": "Release",
   "shareReceivedFiles": "Received {count} files; starting upload",
   "@shareReceivedFiles": {
     "placeholders": {

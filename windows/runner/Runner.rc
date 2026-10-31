@@ -50,9 +50,26 @@ END
 // Icon
 //
 
+#if defined(LANCLOUD_BUILD_MODE_DEBUG) || defined(LANCLOUD_BUILD_MODE_PROFILE)
+#define LANCLOUD_ICON_FILE "resources\\app_icon_badge.ico"
+#else
+#define LANCLOUD_ICON_FILE "resources\\app_icon.ico"
+#endif
+
+#if defined(LANCLOUD_BUILD_MODE_DEBUG)
+#define LANCLOUD_EN_NAME "LanCloud Debug"
+#define LANCLOUD_ZH_NAME "蓝云 Debug"
+#elif defined(LANCLOUD_BUILD_MODE_PROFILE)
+#define LANCLOUD_EN_NAME "LanCloud Profile"
+#define LANCLOUD_ZH_NAME "蓝云 Profile"
+#else
+#define LANCLOUD_EN_NAME "LanCloud"
+#define LANCLOUD_ZH_NAME "蓝云"
+#endif
+
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
-IDI_APP_ICON            ICON                    "resources\\app_icon.ico"
+IDI_APP_ICON            ICON                    LANCLOUD_ICON_FILE
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -92,12 +109,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "LanCloud" "\0"
-            VALUE "FileDescription", "LanCloud" "\0"
+            VALUE "FileDescription", LANCLOUD_EN_NAME "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "lancloud" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 LanCloud. All rights reserved." "\0"
             VALUE "OriginalFilename", "lancloud.exe" "\0"
-            VALUE "ProductName", "LanCloud" "\0"
+            VALUE "ProductName", LANCLOUD_EN_NAME "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
@@ -134,12 +151,12 @@ BEGIN
         BLOCK "080404b0"
         BEGIN
             VALUE "CompanyName", "LanCloud" "\0"
-            VALUE "FileDescription", "蓝云" "\0"
+            VALUE "FileDescription", LANCLOUD_ZH_NAME "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "lancloud" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 LanCloud. All rights reserved." "\0"
             VALUE "OriginalFilename", "lancloud.exe" "\0"
-            VALUE "ProductName", "蓝云" "\0"
+            VALUE "ProductName", LANCLOUD_ZH_NAME "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

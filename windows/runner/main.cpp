@@ -2,6 +2,8 @@
 #include <flutter/flutter_view_controller.h>
 #include <windows.h>
 
+#include <string>
+
 #include "flutter_window.h"
 #include "native_log.h"
 #include "utils.h"
@@ -99,13 +101,20 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
       static_cast<int>((work_area.top + (work_height - window_height) / 2) /
                        scale_factor));
 
-  // Window title follows the Windows UI language, matching the Android app
-  // name: 蓝云 on Chinese systems, LanCloud elsewhere. The Chinese name is
-  // written with \u escapes so the source file encoding (UTF-8 without BOM,
-  // compiled under code page 936) cannot garble it.
+  // Window title follows the Windows UI language and the current Flutter build
+  // mode, matching the Android launcher name. The Chinese base name is written
+  // with \u escapes so source encoding cannot garble it.
   const bool chinese_ui =
       PRIMARYLANGID(GetUserDefaultUILanguage()) == LANG_CHINESE;
-  const std::wstring title = chinese_ui ? L"\u84dd\u4e91" : L"LanCloud";
+#if defined(LANCLOUD_BUILD_MODE_DEBUG)
+  constexpr wchar_t kBuildSuffix[] = L" Debug";
+#elif defined(LANCLOUD_BUILD_MODE_PROFILE)
+  constexpr wchar_t kBuildSuffix[] = L" Profile";
+#else
+  constexpr wchar_t kBuildSuffix[] = L"";
+#endif
+  std::wstring title = chinese_ui ? L"\u84dd\u4e91" : L"LanCloud";
+  title += kBuildSuffix;
   if (!window.Create(title, origin, size)) {
     lancloud::NativeLog::Error("native-app", "window creation failed");
     ::CoUninitialize();

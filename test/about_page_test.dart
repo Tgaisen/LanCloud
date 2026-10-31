@@ -36,7 +36,7 @@ void main() {
     await tester.pumpWidget(host(environment, const AboutPage()));
     await tester.pumpAndSettle();
 
-    expect(find.text('蓝云'), findsOneWidget);
+    expect(find.text('蓝云 Debug'), findsOneWidget);
     // 中文文案已精简为「0.8.9 (56)」形式（与开源许可页里的版本号一致）
     expect(find.text('$appVersion ($appBuild)'), findsOneWidget);
     expect(find.text('用户协议'), findsOneWidget);
@@ -54,7 +54,7 @@ void main() {
     expect(find.byType(Image), findsNothing);
 
     final iconRect = tester.getRect(find.byType(M3eShapedIcon));
-    final titleRect = tester.getRect(find.text('蓝云'));
+    final titleRect = tester.getRect(find.text('蓝云 Debug'));
     final versionRect = tester.getRect(find.text('$appVersion ($appBuild)'));
     expect(titleRect.top - iconRect.bottom, 20);
     expect(versionRect.top - titleRect.bottom, 12);
@@ -145,6 +145,8 @@ void main() {
     expect(text, contains('App version: $appVersion'));
     expect(text, contains('Build: $appBuild (pre-release)'));
     expect(text, contains('Version code: 260107210'));
+    expect(text, contains('Package: '));
+    expect(text, contains('(Debug)'));
     // 本地测试构建没有注入构建时间 / 提交号：显示占位符
     expect(text, contains('Build time: —'));
     expect(text, contains('Commit: —'));

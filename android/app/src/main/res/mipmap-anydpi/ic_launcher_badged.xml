@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 7.x 及以下的 Profile / Debug 普通启动图标。 -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@mipmap/ic_launcher" />
+    <item
+        android:width="11dp"
+        android:height="11dp"
+        android:bottom="3dp"
+        android:right="5dp"
+        android:gravity="bottom|end"
+        android:drawable="@drawable/ic_launcher_badge" />
+</layer-list>

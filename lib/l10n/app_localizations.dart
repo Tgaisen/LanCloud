@@ -2768,6 +2768,24 @@ abstract class AppLocalizations {
   /// **'蓝云'**
   String get appName;
 
+  /// No description provided for @appBuildDebug.
+  ///
+  /// In zh, this message translates to:
+  /// **'Debug'**
+  String get appBuildDebug;
+
+  /// No description provided for @appBuildProfile.
+  ///
+  /// In zh, this message translates to:
+  /// **'Profile'**
+  String get appBuildProfile;
+
+  /// No description provided for @appBuildRelease.
+  ///
+  /// In zh, this message translates to:
+  /// **'Release'**
+  String get appBuildRelease;
+
   /// No description provided for @shareReceivedFiles.
   ///
   /// In zh, this message translates to:

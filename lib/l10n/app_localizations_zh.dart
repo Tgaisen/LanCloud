@@ -1451,6 +1451,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appName => '蓝云';
 
   @override
+  String get appBuildDebug => 'Debug';
+
+  @override
+  String get appBuildProfile => 'Profile';
+
+  @override
+  String get appBuildRelease => 'Release';
+
+  @override
   String shareReceivedFiles(int count) {
     return '已接收 $count 个文件，开始上传';
   }

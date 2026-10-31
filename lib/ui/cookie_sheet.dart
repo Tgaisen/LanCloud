@@ -133,7 +133,7 @@ Future<void> _exportCookie(BuildContext context, Account account) async {
   final l10n = context.l10n;
   final ok = await SystemShare.shareText(
     account.cookie,
-    subject: '${l10n.appName} · UID ${account.uid}',
+    subject: '${l10n.currentAppDisplayName} · UID ${account.uid}',
   );
   if (!context.mounted) return;
   if (!ok) {

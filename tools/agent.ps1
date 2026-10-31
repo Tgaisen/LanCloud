@@ -22,6 +22,12 @@ param(
   [Parameter(ValueFromRemainingArguments = $true)][string[]]$Rest
 )
 
+# PowerShell 的 -File 模式会把 `--debug` 绑定成脚本公共参数，而不是放进
+# ValueFromRemainingArguments。这里显式还原，避免 Flutter 命令静默改用 release。
+if ($PSBoundParameters.ContainsKey('Debug') -and $Rest -notcontains '--debug') {
+  $Rest = @($Rest) + @('--debug')
+}
+
 $ErrorActionPreference = 'Continue'
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch { }
 
@@ -117,7 +123,15 @@ switch ($Verb) {
     Invoke-Flutter -FlutterArgs @('pub', 'get') -Tail 6
   }
   'build-apk' {
-    $extra = if ($Rest -and $Rest.Count -gt 0) { $Rest } else { @('--debug') }
+    # 平台、拆分等附加参数不能隐式切换到 Flutter 的 release 默认值：
+    # 只有显式传入 debug/profile/release 时才沿用调用方模式，否则始终补 --debug。
+    $extra = @($Rest | Where-Object { $_ })
+    $hasBuildMode = @(
+      $extra | Where-Object { $_ -in @('--debug', '--profile', '--release') }
+    ).Count -gt 0
+    if (-not $hasBuildMode) {
+      $extra = @('--debug') + $extra
+    }
     Invoke-Flutter -FlutterArgs ((@('build', 'apk', '--no-pub') + $extra)) -Tail 8
   }
   'install' {

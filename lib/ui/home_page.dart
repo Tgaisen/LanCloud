@@ -674,7 +674,7 @@ class _HomePageState extends ConsumerState<HomePage>
                 child: AppBar(
                   backgroundColor: Colors.transparent,
                   scrolledUnderElevation: 0,
-                  title: Text(l10n.appName),
+                  title: Text(l10n.currentAppDisplayName),
                 ),
               ),
             ),

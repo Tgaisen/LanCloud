@@ -5,6 +5,7 @@ import 'package:ffi/ffi.dart';
 import 'package:flutter/services.dart';
 import 'package:win32/win32.dart';
 
+import 'app_info.dart';
 import 'platform_support.dart';
 
 /// 反馈用的设备 / 系统信息（「关于 - 相关信息」弹窗）。
@@ -18,6 +19,7 @@ class DeviceInfo {
     required this.system,
     required this.systemBuild,
     required this.architectures,
+    required this.packageAbi,
     this.versionCode,
   });
 
@@ -32,6 +34,9 @@ class DeviceInfo {
 
   /// 支持的 CPU 架构（`arm64-v8a, armeabi-v7a, armeabi` / `x64`）。
   final String architectures;
+
+  /// 当前进程实际加载的原生库 ABI。
+  final String packageAbi;
 
   /// Android 上系统里实际安装的 versionCode（拆分包按 ABI 加过偏移）；
   /// 其它平台没有 Android versionCode，为 null。
@@ -53,6 +58,7 @@ class DeviceInfo {
             system: 'Android ${map['release'] ?? ''} (${map['sdkInt'] ?? '?'})',
             systemBuild: '${map['display'] ?? ''}',
             architectures: abis.join(', '),
+            packageAbi: abiLabel(Abi.current()),
             versionCode: (map['versionCode'] as num?)?.toInt(),
           );
         }
@@ -98,6 +104,7 @@ class DeviceInfo {
             : system,
         systemBuild: '',
         architectures: 'x64',
+        packageAbi: abiLabel(Abi.current()),
       );
     }
     return DeviceInfo(
@@ -112,6 +119,7 @@ class DeviceInfo {
       systemBuild: '',
       // 桌面端只发 x64 构建；移动端非 Android 只做兜底展示
       architectures: Platform.isWindows ? 'x64' : Platform.operatingSystem,
+      packageAbi: abiLabel(Abi.current()),
     );
   }
 }

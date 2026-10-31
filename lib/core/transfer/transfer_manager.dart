@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
 import '../../l10n/l10n.dart';
+import '../app_info.dart';
 import '../api/lanzou_client.dart';
 import '../api/models.dart';
 import '../download_target.dart';
@@ -461,7 +462,9 @@ class TransferManager extends ChangeNotifier {
       FlutterForegroundTask.startService(
         serviceId: 1000,
         serviceTypes: const [ForegroundServiceTypes.dataSync],
-        notificationTitle: i18n?.appName ?? '蓝云',
+        notificationTitle:
+            i18n?.currentAppDisplayName ??
+            appDisplayName('蓝云', currentAppBuildMode),
         notificationText: i18n?.notifProgressTitle ?? '传输中',
       );
     } else if (!active && _serviceRunning) {

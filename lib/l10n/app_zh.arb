@@ -836,6 +836,9 @@
   "fileInvalid": "文件已失效",
   "logout": "退出登录",
   "appName": "蓝云",
+  "appBuildDebug": "Debug",
+  "appBuildProfile": "Profile",
+  "appBuildRelease": "Release",
   "shareReceivedFiles": "已接收 {count} 个文件，开始上传",
   "@shareReceivedFiles": {
     "placeholders": {
