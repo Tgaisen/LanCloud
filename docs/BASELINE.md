@@ -163,6 +163,8 @@
 | `tools\agent.cmd test`（属性弹窗夹具批次 8） | 增量 | **26 tests, all passed** | 约 29 s |
 | `tools\agent.cmd analyze`（分享文件弹窗夹具批次 9） | 全量 | No issues found | 约 17 s |
 | `tools\agent.cmd test`（分享文件弹窗夹具批次 9） | 增量 | **8 tests, all passed** | 约 17 s |
+| `tools\agent.cmd analyze`（传输选择夹具批次 10） | 全量 | No issues found | 约 21 s |
+| `tools\agent.cmd test`（传输选择夹具批次 10） | 增量 | **18 tests, all passed** | 约 26 s |
 | `tools\agent.cmd analyze`（网盘目录切片完成后） | 全量 | No issues found | 约 21 s |
 | `tools\agent.cmd test`（网盘目录切片完成后） | 全量 | **722 tests, all passed** | 约 110 s |
 | `tools\agent.cmd analyze`（拖放与 Cookie 行完成后） | 全量 | No issues found | 约 17 s |
@@ -565,6 +567,9 @@
 - 2026-10-31 分享文件弹窗夹具第九批迁移完成：`share_file_sheet_test` 的
   6 处 `TransferManager(app)` 改用 `buildTransferManager`。该测试文件 8 个
   测试通过，用例总数保持 729。
+- 2026-10-31 传输选择夹具第十批迁移完成：`transfers_selection_test` 的
+  9 处 `TransferManager(app)` 全部改用 `buildTransferManager`。该测试文件
+  18 个测试通过，用例总数保持 729；测试代码中的旧控制器构造入口已清零。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release
