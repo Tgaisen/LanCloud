@@ -5,8 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// 应用外壳与子页面共享的导航交互状态。
 ///
-/// 本切片只承载多选、返回处理器和网盘返回能力；Tab、动画进度等仍留在
-/// `AppController`，后续再逐项迁移。
+/// 统一承载多选、返回处理器、当前 Tab 和顶/底栏动画进度。
 class NavigationState extends ChangeNotifier {
   bool _selectionMode = false;
 
@@ -116,7 +115,7 @@ class NavigationState extends ChangeNotifier {
   }
 }
 
-/// 应用级导航状态；阶段 3 过渡期由 `AppController` 转发通知。
+/// 应用级导航状态。
 final navigationStateProvider = Provider<NavigationState>((ref) {
   throw StateError('navigationStateProvider 必须由应用入口覆盖');
 });

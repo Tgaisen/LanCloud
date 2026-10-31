@@ -1,41 +1,34 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
 
 void main() {
-  test('应用环境唯一组装状态对象，控制器仅转发同一实例', () {
-    final app = AppController();
-    addTearDown(app.dispose);
-    final environment = app.environment;
+  test('应用环境中的设置子组共享同一存储实例', () {
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
+    final settings = environment.settingsState.store;
 
-    expect(app.db, same(environment.db));
-    expect(app.navigation, same(environment.navigation));
-    expect(app.drive, same(environment.drive));
-    expect(app.accountState, same(environment.accountState));
-    expect(app.settingsState, same(environment.settingsState));
-    expect(app.runtimeState, same(environment.runtimeState));
-    expect(app.clientRegistry, same(environment.clientRegistry));
-    expect(app.accountLogin, same(environment.accountLogin));
-    expect(app.accountSession, same(environment.accountSession));
-    expect(app.updateSettings, same(environment.updateSettings));
-    expect(app.notificationSettings, same(environment.notificationSettings));
+    expect(environment.updateSettings.store, same(settings));
+    expect(environment.notificationSettings.store, same(settings));
+    expect(environment.navigationAppearanceSettings.store, same(settings));
+    expect(environment.themeSettings.store, same(settings));
+    expect(environment.transferConnectionSettings.store, same(settings));
+    expect(environment.listHomeSettings.store, same(settings));
+    expect(environment.languageClipboardSettings.store, same(settings));
+    expect(environment.cachePageSettings.store, same(settings));
+    expect(environment.downloadDirectorySettings.store, same(settings));
+
     expect(
-      app.navigationAppearanceSettings,
-      same(environment.navigationAppearanceSettings),
+      environment.accountLogin.accountState,
+      same(environment.accountState),
     );
-    expect(app.themeSettings, same(environment.themeSettings));
     expect(
-      app.transferConnectionSettings,
-      same(environment.transferConnectionSettings),
+      environment.accountSession.accountState,
+      same(environment.accountState),
     );
-    expect(app.listHomeSettings, same(environment.listHomeSettings));
+    expect(environment.accountLogin.clients, same(environment.clientRegistry));
     expect(
-      app.languageClipboardSettings,
-      same(environment.languageClipboardSettings),
-    );
-    expect(app.cachePageSettings, same(environment.cachePageSettings));
-    expect(
-      app.downloadDirectorySettings,
-      same(environment.downloadDirectorySettings),
+      environment.accountSession.clients,
+      same(environment.clientRegistry),
     );
   });
 }

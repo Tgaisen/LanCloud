@@ -40,7 +40,7 @@ class AccountSession {
   }
 }
 
-/// 应用级账号会话服务；由入口覆盖，与 AppController 使用同一实例。
+/// 应用级账号会话服务；由 AppEnvironment 构造并通过 provider 覆盖。
 final accountSessionProvider = Provider<AccountSession>((ref) {
   throw StateError('accountSessionProvider 必须由应用入口覆盖');
 });

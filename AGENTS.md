@@ -74,9 +74,9 @@ lib/l10n/              arb + 生成文件
 ## 代码约定（从现有代码归纳，不是理想规范）
 
 - **语言**：注释、提交信息、UI 文案用中文；标识符用英文。
-- **状态**：应用级只有 `AppController` 与 `TransferManager` 两个 `ChangeNotifier`。
-  新增 UI 需要订阅状态时优先 `context.select(...)` 或 `ValueListenableBuilder`：
-  全仓 `context.select` 目前为 0、`read` 约 150、`watch` 约 17，重建面已经偏大，别再放大。
+- **状态**：应用级对象由 `AppEnvironment` 组装，启动/恢复流程由 `AppStartup`
+  编排；`TransferManager` 仍由 Riverpod 管理。新增 UI 需要订阅状态时优先
+  Riverpod `select(...)` 或 `ValueListenableBuilder`，不要再建立新的宽泛全局通知。
 - **弹层**：必须写成 `Future<结果类型?> showXxx(BuildContext context)`，返回带类型的结果；
   参考 `showAppSheet`、`showM3eMenu`、`showLoginSheet`、`showBackupUnlockDialog`。
   **禁止**在 widget 里内联 `showDialog(...)` 临时拼装。
@@ -131,7 +131,7 @@ lib/l10n/              arb + 生成文件
 **必须逐阶段取得人工批准**，不得自行推进。
 
 ### 阶段 0：边界
-1. 保留 `main()` 里 `AppController().init()` → `runApp()` 的现有结构，**不改造启动流程**。
+1. 保留 `main()` 在 `runApp()` 前完成 `AppStartup.initialize()` 的现有顺序。
 2. 双栈共存：Riverpod 只服务试点，其余页面继续用 Provider。
 3. 为同时需要两者的 Widget / 测试提供统一包装 helper；
    **不要批量改 39 个 Provider 测试文件**，随功能迁移逐个改。

@@ -7,9 +7,10 @@ import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app.dart';
-import 'core/app_controller.dart';
 import 'core/app_composition_root.dart';
+import 'core/app_environment.dart';
 import 'core/app_log.dart';
+import 'core/app_startup.dart';
 import 'core/download_path_service.dart';
 import 'core/incoming_links.dart';
 import 'core/notifications.dart';
@@ -88,17 +89,18 @@ Future<void> main() async {
   final downloadPaths = PlatformDownloadPathService(
     sharedDownloads: sharedDownloads,
   );
-  final app = AppController();
-  await app.init();
+  final environment = AppEnvironment();
+  final startup = AppStartup(environment: environment, onChanged: () {});
+  await startup.initialize();
   final composition = AppCompositionRoot(
-    environment: app.environment,
-    reloadFromStorage: app.reloadFromStorage,
+    environment: environment,
+    reloadFromStorage: startup.reloadFromStorage,
     sharedDownloads: sharedDownloads,
     downloadPaths: downloadPaths,
   );
   // 系统「移除动画」：读一次并监听原生推送（华为等 ROM 的开关引擎看不到）
   SystemMotion.init();
-  final language = app.settingsState.store.language;
+  final language = environment.settingsState.store.language;
   final locale = language == 'zh'
       ? const Locale('zh')
       : language == 'en'

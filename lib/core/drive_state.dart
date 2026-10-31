@@ -63,7 +63,7 @@ class DriveState {
   }
 }
 
-/// 应用级网盘导航状态；阶段 3 过渡期由 `AppController` 转发。
+/// 应用级网盘导航状态。
 final driveStateProvider = Provider<DriveState>((ref) {
   throw StateError('driveStateProvider 必须由应用入口覆盖');
 });

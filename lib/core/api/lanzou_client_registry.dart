@@ -53,7 +53,7 @@ class LanzouClientRegistry {
   }
 }
 
-/// 应用级客户端注册表；与 `AppController` 共用同一实例，不使用 `autoDispose`。
+/// 应用级客户端注册表；与 `AppEnvironment` 共用同一实例，不使用 `autoDispose`。
 final lanzouClientRegistryProvider = Provider<LanzouClientRegistry>(
   (ref) => LanzouClientRegistry(),
 );
