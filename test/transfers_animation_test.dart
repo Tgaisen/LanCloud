@@ -12,6 +12,8 @@ import 'package:lancloud/ui/transfers_page.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
+import 'transfer_dependencies_test.dart' show buildTransferManager;
+
 void main() {
   setUp(() {
     // 全局动效状态在测试之间复位（否则「移除动画」会让入场动画直接到位）
@@ -23,7 +25,7 @@ void main() {
   testWidgets('切走再切回传输页：列表不重播入场动画', (tester) async {
     final app = AppController();
     addTearDown(app.dispose);
-    final manager = TransferManager(app);
+    final manager = buildTransferManager(app);
     manager.tasks.add(
       TransferTask(
         id: 't1',
