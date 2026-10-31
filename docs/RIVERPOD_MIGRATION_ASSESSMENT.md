@@ -892,6 +892,15 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > 新增 1 条唯一保存路径冲突测试，增量 64 个测试文件 / 365 个测试通过，
 > 当前总数为 728。下一步应直接在入口组装 `TransferDependencies`，再删除
 > `TransferDependenciesProvider` 兼容实现。
+>
+> 随后生产入口改为直接组装 `TransferDependencies`：传输存储、账号/客户端、
+> 下载端口和设置端口分别由已初始化的数据库、账号、设置及平台能力构造，
+> `transferManagerProvider` 不再读取 `AppController.transferDependencies`。
+> 存储、账号、设置和平台服务均沿用启动时的同一对象，任务恢复顺序不变。
+> `AppController` 的兼容 getter 暂时保留，因为现有传输测试仍通过
+> `TransferManager(app)` 使用该适配面；需先分批迁移测试夹具，再删除完整
+> 控制器依赖。增量分析 1 个文件无问题，目标测试文件 7 个测试通过，用例总数
+> 保持 728。
 
 ### 阶段 6：移除旧 Provider
 

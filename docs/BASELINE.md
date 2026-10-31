@@ -141,6 +141,8 @@
 | `tools\agent.cmd test`（移除 AppController 备份接口） | 增量 | **373 tests, all passed** | 约 68 s |
 | `tools\agent.cmd analyze`（DefaultTransferDownloadPort） | 增量 | No issues found | 约 15 s |
 | `tools\agent.cmd test`（DefaultTransferDownloadPort） | 增量 | **365 tests, all passed** | 约 59 s |
+| `tools\agent.cmd analyze`（入口直接组装传输依赖） | 增量 | No issues found | 约 17 s |
+| `tools\agent.cmd test`（入口直接组装传输依赖） | 增量 | **7 tests, all passed** | 约 14 s |
 | `tools\agent.cmd analyze`（网盘目录切片完成后） | 全量 | No issues found | 约 21 s |
 | `tools\agent.cmd test`（网盘目录切片完成后） | 全量 | **722 tests, all passed** | 约 110 s |
 | `tools\agent.cmd analyze`（拖放与 Cookie 行完成后） | 全量 | No issues found | 约 17 s |
@@ -500,6 +502,11 @@
   SAF 中转、临时文件清理和唯一保存路径从 `AppController` 移入生产端口；
   控制器仅保留兼容转发。新增 1 条路径冲突测试，增量 64 个测试文件 /
   365 个测试通过，当前总数由 727 增至 728。
+- 2026-10-31 生产入口直接组装 `TransferDependencies`，复用启动时已初始化的
+  数据库、账号、设置、下载目录和共享 Downloads 对象；不再读取
+  `AppController.transferDependencies`。`TransferManager(app)` 测试兼容面仍保留，
+  待分批迁移夹具后删除。增量分析 1 个文件无问题，目标测试文件 7 个测试通过，
+  用例总数保持 728。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release

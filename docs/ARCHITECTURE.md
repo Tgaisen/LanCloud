@@ -18,28 +18,31 @@
 6. `AppController().init()` — 状态初始化入口
 7. `SystemMotion.init()`、`NotificationService.init()`、`SharedInbox`、`IncomingLinks`
 8. `BackupService.maybeAutoBackup()`（不阻塞）
-9. 创建应用 `ProviderContainer`，恢复更新缓存后非阻塞执行
-   `UpdateService.maybeAutoCheck()`
+9. 入口用已初始化的数据库、账号、设置和平台能力直接构造
+   `TransferDependencies`，再创建应用 `ProviderContainer`；恢复更新缓存后
+   非阻塞执行 `UpdateService.maybeAutoCheck()`
 10. `runApp(UncontrolledProviderScope(...))` — 用 `AppController` 已初始化的
     状态覆盖 Riverpod 容器；启动前主动读取 `transferManagerProvider` 保持任务
     恢复顺序。`provider` 依赖与 `ChangeNotifierProvider` 均已移除。
 
 ## 状态层
 
-`AppController` 仍负责启动初始化和传输依赖装配，但其状态已全部通过 Riverpod
-覆盖为既有权威对象；UI 不再读取 `AppController`。`TransferManager` 同样只由
-Riverpod 容器提供。`core/update/` 的 `UpdateService` 是阶段 1 Riverpod 试点：
+`AppController` 仍负责启动初始化，但其状态已全部通过 Riverpod 覆盖为既有权威
+对象，UI 不再读取 `AppController`。生产入口已直接组装 `TransferDependencies`；
+`AppController` 的旧依赖 getter 只剩现有测试兼容用途。`TransferManager` 同样
+只由 Riverpod 容器提供。`core/update/` 的 `UpdateService` 是阶段 1 Riverpod
+试点：
 
 | 对象 | 文件 | 说明 |
 | --- | --- | --- |
-| `AppController` | `core/app_controller.dart` | 启动初始化与传输依赖装配；UI、备份和下载实现已解耦，仅保留兼容转发 |
+| `AppController` | `core/app_controller.dart` | 启动初始化；UI、备份与生产传输装配已解耦，仅保留测试兼容 getter |
 | `TransferManager` | `core/transfer/transfer_manager.dart` | 上传/下载任务队列 |
 | `TransferStore` | `core/transfer/transfer_store.dart` | 传输记录恢复/保存/删除与下载标记端口；`AppDbTransferStore` 适配既有数据库 |
 | `TransferAccountPort` | `core/transfer/transfer_account_port.dart` | 当前 UID、账号存在性、账号客户端与公开客户端端口；包装账号存储和客户端注册表 |
 | `TransferDownloadPort` | `core/transfer/transfer_download_port.dart` | 下载目标模式、SAF URI、中转路径与唯一保存路径端口 |
 | `DefaultTransferDownloadPort` | `core/transfer/transfer_download_port.dart` | 从实时设置、下载目录服务和公共 Downloads 能力组装生产下载端口 |
 | `TransferSettingsPort` | `core/transfer/transfer_settings_port.dart` | 并发数、进度/完成通知和传输设置读取端口 |
-| `TransferDependencies` | `core/transfer/transfer_dependencies.dart` | 四个传输端口组成的显式应用级依赖集合 |
+| `TransferDependencies` | `core/transfer/transfer_dependencies.dart` | 四个传输端口组成的显式应用级依赖集合；生产入口直接构造 |
 | `transferManagerProvider` | `core/transfer/transfer_manager_provider.dart` | 应用级、非 autoDispose 的 `TransferManager` 唯一实例；容器负责释放 |
 | `UpdateService` | `core/update/update_service.dart` | `Notifier<UpdateState>`；更新检查、缓存、失败冷却和一次性提醒的唯一所有者 |
 | `BackupService` | `core/backup/backup_service.dart` | 本地 / WebDAV 备份恢复服务；只依赖 `BackupDependencies`，应用入口通过 `backupServiceProvider` 暴露与自动备份共用的同一实例 |
