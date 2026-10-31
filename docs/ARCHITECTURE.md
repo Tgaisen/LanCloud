@@ -32,11 +32,12 @@ Riverpod 容器提供。`core/update/` 的 `UpdateService` 是阶段 1 Riverpod 
 
 | 对象 | 文件 | 说明 |
 | --- | --- | --- |
-| `AppController` | `core/app_controller.dart` | 启动初始化与传输依赖装配；UI 与备份服务消费面均已清零 |
+| `AppController` | `core/app_controller.dart` | 启动初始化与传输依赖装配；UI、备份和下载实现已解耦，仅保留兼容转发 |
 | `TransferManager` | `core/transfer/transfer_manager.dart` | 上传/下载任务队列 |
 | `TransferStore` | `core/transfer/transfer_store.dart` | 传输记录恢复/保存/删除与下载标记端口；`AppDbTransferStore` 适配既有数据库 |
 | `TransferAccountPort` | `core/transfer/transfer_account_port.dart` | 当前 UID、账号存在性、账号客户端与公开客户端端口；包装账号存储和客户端注册表 |
 | `TransferDownloadPort` | `core/transfer/transfer_download_port.dart` | 下载目标模式、SAF URI、中转路径与唯一保存路径端口 |
+| `DefaultTransferDownloadPort` | `core/transfer/transfer_download_port.dart` | 从实时设置、下载目录服务和公共 Downloads 能力组装生产下载端口 |
 | `TransferSettingsPort` | `core/transfer/transfer_settings_port.dart` | 并发数、进度/完成通知和传输设置读取端口 |
 | `TransferDependencies` | `core/transfer/transfer_dependencies.dart` | 四个传输端口组成的显式应用级依赖集合 |
 | `transferManagerProvider` | `core/transfer/transfer_manager_provider.dart` | 应用级、非 autoDispose 的 `TransferManager` 唯一实例；容器负责释放 |

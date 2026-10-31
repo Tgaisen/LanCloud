@@ -885,6 +885,13 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > `dependencies`，恢复弹窗也读取该窄依赖。临时兼容断言同步删除。增量
 > 66 个测试文件 / 373 个测试通过，用例总数由 728 调整为 727（删除的是兼容断言）。
 > 至此备份链路不再依赖完整 `AppController`。
+>
+> AppController 退役继续推进到下载边界：新增 `DefaultTransferDownloadPort`，
+> 把目标模式、固定目录、SAF 中转、过期临时文件清理和唯一保存路径从控制器移入
+> 生产端口。`AppController` 暂时保留同名兼容方法，但内部只转发到该端口。
+> 新增 1 条唯一保存路径冲突测试，增量 64 个测试文件 / 365 个测试通过，
+> 当前总数为 728。下一步应直接在入口组装 `TransferDependencies`，再删除
+> `TransferDependenciesProvider` 兼容实现。
 
 ### 阶段 6：移除旧 Provider
 
