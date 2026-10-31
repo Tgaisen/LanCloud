@@ -1,9 +1,15 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lancloud/core/account_state.dart';
 import 'package:lancloud/core/api/lanzou_client.dart';
+import 'package:lancloud/core/api/lanzou_client_registry.dart';
 import 'package:lancloud/core/api/models.dart';
 import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/cache_page_settings_state.dart';
+import 'package:lancloud/core/data/app_db_provider.dart';
+import 'package:lancloud/core/drive_state.dart';
+import 'package:lancloud/core/list_home_settings_state.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
@@ -64,13 +70,35 @@ class _FakeClient extends LanzouClient {
 }
 
 class _FakeApp extends AppController {
-  _FakeApp(this._client);
+  _FakeApp(this._client) {
+    accounts.activeUid = '1';
+  }
 
   final LanzouClient _client;
 
   @override
   LanzouClient get client => _client;
 }
+
+_overrides(
+  _FakeApp app,
+  TransferManager manager,
+  LanzouClient client,
+) => [
+  transferManagerProvider.overrideWithValue(manager),
+  lanzouClientRegistryProvider.overrideWithValue(
+    LanzouClientRegistry(factory: (_) => client),
+  ),
+  accountStateProvider.overrideWithValue(app.accountState),
+  appDbProvider.overrideWithValue(app.db),
+  driveStateProvider.overrideWithValue(app.drive),
+  cachePageSettingsStateProvider.overrideWithValue(app.cachePageSettings),
+  listHomeSettingsStateProvider.overrideWithValue(app.listHomeSettings),
+  navigationAppearanceSettingsStateProvider.overrideWithValue(
+    app.navigationAppearanceSettings,
+  ),
+  navigationStateProvider.overrideWithValue(app.navigation),
+];
 
 void main() {
   testWidgets('目录内容不满一屏时自动补页：进入即显示「已加载全部」', (tester) async {
@@ -84,13 +112,7 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          transferManagerProvider.overrideWithValue(manager),
-          navigationAppearanceSettingsStateProvider.overrideWithValue(
-            app.navigationAppearanceSettings,
-          ),
-          navigationStateProvider.overrideWithValue(app.navigation),
-        ],
+        overrides: _overrides(app, manager, client),
         child: MultiProvider(
           providers: [
             ChangeNotifierProvider<AppController>.value(value: app),
@@ -130,13 +152,7 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          transferManagerProvider.overrideWithValue(manager),
-          navigationAppearanceSettingsStateProvider.overrideWithValue(
-            app.navigationAppearanceSettings,
-          ),
-          navigationStateProvider.overrideWithValue(app.navigation),
-        ],
+        overrides: _overrides(app, manager, client),
         child: MultiProvider(
           providers: [
             ChangeNotifierProvider<AppController>.value(value: app),
@@ -186,13 +202,7 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          transferManagerProvider.overrideWithValue(manager),
-          navigationAppearanceSettingsStateProvider.overrideWithValue(
-            app.navigationAppearanceSettings,
-          ),
-          navigationStateProvider.overrideWithValue(app.navigation),
-        ],
+        overrides: _overrides(app, manager, client),
         child: MultiProvider(
           providers: [
             ChangeNotifierProvider<AppController>.value(value: app),

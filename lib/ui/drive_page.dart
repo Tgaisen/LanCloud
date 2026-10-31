@@ -8,11 +8,20 @@ import 'package:path/path.dart' as p;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:provider/provider.dart';
 
+import '../core/account_state.dart';
 import '../core/api/lanzou_client.dart';
+import '../core/api/lanzou_client_registry.dart';
 import '../core/api/models.dart';
 import '../core/app_controller.dart';
+import '../core/cache_page_settings_state.dart';
+import '../core/data/app_db.dart';
+import '../core/data/app_db_provider.dart';
 import '../core/drive_cache.dart';
+import '../core/drive_state.dart';
 import '../core/file_picker_channel.dart';
+import '../core/list_home_settings_state.dart';
+import '../core/navigation_appearance_settings_state.dart';
+import '../core/navigation_state.dart';
 import '../core/platform_support.dart';
 import '../core/transfer/transfer_manager.dart';
 import '../core/transfer/transfer_manager_provider.dart';
@@ -149,6 +158,13 @@ class _DrivePageState extends ConsumerState<DrivePage>
   /// 键盘是否弹出（悬浮底栏的 FAB 留白跟随它，见 didChangeMetrics）。
   final ValueNotifier<bool> _keyboardUp = ValueNotifier(false);
   late AppController _app;
+  late final AccountState _accounts;
+  late final NavigationState _navigation;
+  late final DriveState _drive;
+  late final AppDb _db;
+  late final CachePageSettingsState _cacheSettings;
+  late final ListHomeSettingsState _listHome;
+  late final NavigationAppearanceSettingsState _appearance;
 
   /// 传输管理器：注册与注销监听成对，dispose 时不能再读 context
   /// （元素正在卸载，InheritedWidget 查询会抛 "Null check operator used
@@ -166,7 +182,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
     if (route == null || route.isFirst) {
       return widget.tabIndex != null &&
           _appReady &&
-          _app.activeTab.value == widget.tabIndex;
+          _navigation.activeTab.value == widget.tabIndex;
     }
     return true;
   }
@@ -191,14 +207,22 @@ class _DrivePageState extends ConsumerState<DrivePage>
             .bottom >
         0;
     final app = context.read<AppController>();
-    _sortMode = app.settings.sortMode;
+    _app = app;
+    _accounts = ref.read(accountStateProvider);
+    _navigation = ref.read(navigationStateProvider);
+    _drive = ref.read(driveStateProvider);
+    _db = ref.read(appDbProvider);
+    _cacheSettings = ref.read(cachePageSettingsStateProvider);
+    _listHome = ref.read(listHomeSettingsStateProvider);
+    _appearance = ref.read(navigationAppearanceSettingsStateProvider);
+    _sortMode = _listHome.sortMode;
     _transfers = ref.read(transferManagerProvider)..addTaskListener(_onTaskDone);
     if (widget.initialName != null) {
       _path = [PathNode(id: widget.initialFolderId, name: widget.initialName!)];
     }
     _scroll.addListener(_onScroll);
-    app.driveFolderRequest.addListener(_onDriveFolderRequest);
-    if (app.driveFolderRequest.value != null) {
+    _drive.folderRequest.addListener(_onDriveFolderRequest);
+    if (_drive.folderRequest.value != null) {
       // 首页请求的目录：直接加载目标目录，不再先加载根目录
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => _onDriveFolderRequest(),
@@ -211,14 +235,14 @@ class _DrivePageState extends ConsumerState<DrivePage>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _app.removeDriveProbe(_dropProbe);
+    _drive.removeDriveProbe(_dropProbe);
     _keyboardUp.dispose();
-    _app.driveFolderRequest.removeListener(_onDriveFolderRequest);
+    _drive.folderRequest.removeListener(_onDriveFolderRequest);
     _transfers.removeTaskListener(_onTaskDone);
     if (_isShellPage) {
-      _app.onDriveBack = null;
+      _navigation.onDriveBack = null;
       // 外壳里的网盘页卸载后不再拦截返回，交回系统（预测性返回桌面）。
-      _app.driveCanHandleBack.value = false;
+      _navigation.driveCanHandleBack.value = false;
     }
     if (_selecting) {
       _app.setSelectionMode(false);
@@ -246,14 +270,14 @@ class _DrivePageState extends ConsumerState<DrivePage>
   bool _systemReduceMotion = false;
 
   bool get _animationsEnabled =>
-      context.read<AppController>().settings.transitionAnimations &&
+      _appearance.transitionAnimations &&
       !_systemReduceMotion;
 
   /// 首页选择“网盘页打开”时：跳转到请求的目录。
   void _onDriveFolderRequest() {
-    final folderId = _app.driveFolderRequest.value;
+    final folderId = _drive.folderRequest.value;
     if (folderId == null) return;
-    _app.driveFolderRequest.value = null;
+    _drive.folderRequest.value = null;
     if (!mounted) return;
     _openFolderById(folderId);
   }
@@ -263,7 +287,10 @@ class _DrivePageState extends ConsumerState<DrivePage>
     if (_directorySwitching || folderId == _folderId) return;
     _directorySwitching = true;
     try {
-      _app.animateBarsHide(0);
+      _navigation.animateBarsHide(
+        0,
+        reduceMotion: _systemReduceMotion,
+      );
       _rememberFolderOffset();
       await _animateDirectorySwitch(folderId);
       if (!mounted) return;
@@ -291,16 +318,23 @@ class _DrivePageState extends ConsumerState<DrivePage>
     _refreshInPlace();
   }
 
+  LanzouClient? _activeClient() {
+    final accounts = _accounts.store;
+    final uid = accounts.activeUid;
+    if (uid == null) return null;
+    return ref
+        .read(lanzouClientRegistryProvider)
+        .clientFor(uid, cookie: accounts.byUid(uid)?.cookie);
+  }
+
   /// 局部刷新：保持当前列表可见，拉取完成后按差异播放新增/移除动画。
   /// [refreshFolders] 为 true 时同时重新拉取文件夹列表（新建/移动之后需要）。
   Future<bool> _refreshInPlace({bool refreshFolders = false}) async {
-    final app = context.read<AppController>();
-    final client = app.client;
+    final client = _activeClient();
     if (client == null) return false;
     try {
       // 已经加载过几页就刷新几页，避免局部刷新把后面的条目吞掉
       final listing = await _fetchListing(
-        app,
         client,
         maxPages: math.max(_page, 1),
         withFolders: refreshFolders,
@@ -321,7 +355,6 @@ class _DrivePageState extends ConsumerState<DrivePage>
 
   /// 拉取当前目录快照；[maxPages] 控制最多加载多少页（默认按“全部加载”设置）。
   Future<_Listing> _fetchListing(
-    AppController app,
     LanzouClient client, {
     int? maxPages,
     bool withFolders = true,
@@ -329,7 +362,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
     final foldersResult = withFolders
         ? await client.listFolders(_folderId)
         : null;
-    final limit = maxPages ?? (app.settings.loadAllPages ? 60 : 1);
+    final limit = maxPages ?? (_cacheSettings.loadAllPages ? 60 : 1);
     final first = await client.listFilesPage(_folderId, 1);
     var files = first.files;
     var hasMore = first.hasMore;
@@ -507,11 +540,10 @@ class _DrivePageState extends ConsumerState<DrivePage>
   void didChangeDependencies() {
     super.didChangeDependencies();
     _systemReduceMotion = reduceMotionOf(context);
-    _app = context.read<AppController>();
     _appReady = true;
-    _app.addDriveProbe(_dropProbe); // 拖拽判定：当前网盘页是否可见
+    _drive.addDriveProbe(_dropProbe); // 拖拽判定：当前网盘页是否可见
     if (_isShellPage) {
-      _app.onDriveBack = _handleDriveBack;
+      _navigation.onDriveBack = _handleDriveBack;
     }
     // 首次挂载后同步一次返回能力（例如 initState 里同步命中的目录缓存）。
     // didChangeDependencies 发生在 build 期间，直接改 notifier 会让 RootShell
@@ -520,7 +552,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
       if (mounted) _publishCanHandleBack();
     });
     // 换账号兜底：页面状态如果被保留下来，也要丢掉上一个账号的目录内容
-    final uid = _app.activeUid;
+    final uid = _accounts.store.activeUid;
     if (_loadedUid == null) {
       _loadedUid = uid;
     } else if (_loadedUid != uid) {
@@ -573,7 +605,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
   /// 「退回桌面」的预测性返回动画。
   void _publishCanHandleBack() {
     if (!_appReady || !_isShellPage) return;
-    final notifier = _app.driveCanHandleBack;
+    final notifier = _navigation.driveCanHandleBack;
     final value = _canHandleBack;
     if (notifier.value != value) notifier.value = value;
   }
@@ -622,19 +654,17 @@ class _DrivePageState extends ConsumerState<DrivePage>
   );
 
   void _updateCacheSnapshot() {
-    final app = context.read<AppController>();
-    if (app.settings.cacheFolders) {
-      app.driveCache.put(_folderId, _snapshot());
+    if (_cacheSettings.cacheFolders) {
+      _drive.cache.put(_folderId, _snapshot());
     }
   }
 
   Future<void> _load({bool force = false}) async {
-    final app = context.read<AppController>();
-    final client = app.client;
+    final client = _activeClient();
     if (client == null) return;
 
-    final cached = app.settings.cacheFolders
-        ? app.driveCache.get(_folderId)
+    final cached = _cacheSettings.cacheFolders
+        ? _drive.cache.get(_folderId)
         : null;
     if (!force && cached != null) {
       _exitAnim.value = 0;
@@ -664,7 +694,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
       _error = null;
     });
     try {
-      final listing = await _fetchListing(app, client);
+      final listing = await _fetchListing(client);
       if (!mounted) return;
       _exitAnim.value = 0;
       setState(() {
@@ -690,8 +720,8 @@ class _DrivePageState extends ConsumerState<DrivePage>
       _playEnterAnimation();
       // 目录内容不足一屏时继续补页，让「已经到底了」立刻可见
       _fillViewportIfNeeded();
-      if (app.settings.cacheFolders) {
-        app.driveCache.put(_folderId, _snapshot());
+      if (_cacheSettings.cacheFolders) {
+        _drive.cache.put(_folderId, _snapshot());
       }
     } catch (e) {
       if (!mounted) return;
@@ -706,8 +736,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
   Future<void> _loadMore({bool auto = false}) async {
     if (_loading || _directorySwitching || _loadingMore || !_hasMore) return;
     if (_filter.isNotEmpty) return;
-    final app = context.read<AppController>();
-    final client = app.client;
+    final client = _activeClient();
     if (client == null) return;
     setState(() {
       _loadingMore = true;
@@ -723,8 +752,8 @@ class _DrivePageState extends ConsumerState<DrivePage>
         _loadingMore = false;
       });
       _autoRetriesLeft = _maxAutoRetries;
-      if (app.settings.cacheFolders) {
-        app.driveCache.put(_folderId, _snapshot());
+      if (_cacheSettings.cacheFolders) {
+        _drive.cache.put(_folderId, _snapshot());
       }
       // 内容还不满一屏时继续补页：否则「已经到底了」要等用户滑一下才出现
       _fillViewportIfNeeded();
@@ -772,7 +801,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
   }
 
   Future<void> _reloadAfterChange() async {
-    context.read<AppController>().driveCache.clear();
+    _drive.cache.clear();
     await _load(force: true);
   }
 
@@ -906,17 +935,16 @@ class _DrivePageState extends ConsumerState<DrivePage>
     if (_directorySwitching) return;
     _directorySwitching = true;
     try {
-      final app = context.read<AppController>();
-      await app.db.addRecent(
-        account: app.activeUid ?? '',
+      await _db.addRecent(
+        account: _accounts.store.activeUid ?? '',
         kind: 'folder',
         name: folder.name,
         ref: folder.id,
-        limit: app.settings.recentLimit,
+        limit: _listHome.recentLimit,
       );
       // 进入新目录时若顶/底栏处于收起状态，先带动画恢复显示，
       // 否则目录内容较少无法滚动时底栏就唤不出来。
-      app.animateBarsHide(0);
+      _navigation.animateBarsHide(0, reduceMotion: _systemReduceMotion);
       _rememberFolderOffset();
       await _animateDirectorySwitch(folder.id);
       if (!mounted) return;
@@ -938,8 +966,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
     if (_directorySwitching) return;
     _directorySwitching = true;
     try {
-      final app = context.read<AppController>();
-      app.animateBarsHide(0);
+      _navigation.animateBarsHide(0, reduceMotion: _systemReduceMotion);
       final newPath = index < 0 ? <PathNode>[] : _path.sublist(0, index + 1);
       final targetId = newPath.isEmpty ? '-1' : newPath.last.id;
       _rememberFolderOffset();
@@ -986,7 +1013,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
         // 而不是 jumpTo 造成的瞬间出现。
         final slideTopBar =
             _animationsEnabled &&
-            context.read<AppController>().settings.hideTopBar;
+            _appearance.hideTopBar;
         if (slideTopBar && to < from) {
           _scroll.animateTo(
             to,
@@ -1012,8 +1039,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
 
   /// 网盘菜单：底部弹窗承载布局、排序与列表操作。
   Future<void> _showDriveMenu() async {
-    final app = context.read<AppController>();
-    var grid = app.settings.gridView;
+    var grid = _cacheSettings.gridView;
     var sort = _sortMode;
     final isRoot = _folderId == '-1';
     await showAppSheet<void>(
@@ -1034,7 +1060,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
                   selected: grid ? 'grid' : 'list',
                   onSelected: (value) {
                     setSheetState(() => grid = value == 'grid');
-                    app.setGridView(grid);
+                    _cacheSettings.setGridView(grid);
                   },
                   labelOf: (value) => Text(
                     value == 'grid' ? context.l10n.grid : context.l10n.list,
@@ -1055,7 +1081,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
                   onSelected: (value) {
                     setSheetState(() => sort = value);
                     setState(() => _sortMode = value);
-                    app.setSortMode(value);
+                    _listHome.setSortMode(value);
                   },
                   labelOf: (value) => Text(switch (value) {
                     'name' => context.l10n.sortName,

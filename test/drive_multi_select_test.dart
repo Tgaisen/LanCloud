@@ -2,8 +2,14 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lancloud/core/account_state.dart';
+import 'package:lancloud/core/api/lanzou_client_registry.dart';
 import 'package:lancloud/core/api/models.dart';
 import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/cache_page_settings_state.dart';
+import 'package:lancloud/core/data/app_db_provider.dart';
+import 'package:lancloud/core/drive_state.dart';
+import 'package:lancloud/core/list_home_settings_state.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/core/data/account_store.dart';
@@ -47,6 +53,12 @@ Future<AppController> host(
     ProviderScope(
       overrides: [
         transferManagerProvider.overrideWithValue(manager),
+        accountStateProvider.overrideWithValue(app.accountState),
+        lanzouClientRegistryProvider.overrideWithValue(app.clientRegistry),
+        appDbProvider.overrideWithValue(app.db),
+        driveStateProvider.overrideWithValue(app.drive),
+        cachePageSettingsStateProvider.overrideWithValue(app.cachePageSettings),
+        listHomeSettingsStateProvider.overrideWithValue(app.listHomeSettings),
         navigationAppearanceSettingsStateProvider.overrideWithValue(
           app.navigationAppearanceSettings,
         ),

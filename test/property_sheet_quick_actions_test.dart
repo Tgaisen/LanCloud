@@ -4,9 +4,15 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lancloud/core/account_state.dart';
 import 'package:lancloud/core/api/lanzou_client.dart';
+import 'package:lancloud/core/api/lanzou_client_registry.dart';
 import 'package:lancloud/core/api/models.dart';
 import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/cache_page_settings_state.dart';
+import 'package:lancloud/core/data/app_db_provider.dart';
+import 'package:lancloud/core/drive_state.dart';
+import 'package:lancloud/core/list_home_settings_state.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
@@ -193,6 +199,7 @@ Future<void> _pumpDrive(
   Locale locale = const Locale('zh'),
 }) async {
   final transfers = manager ?? TransferManager(app);
+  app.accounts.activeUid = '';
   addTearDown(app.dispose);
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = viewSize;
@@ -202,6 +209,16 @@ Future<void> _pumpDrive(
     ProviderScope(
       overrides: [
         transferManagerProvider.overrideWithValue(transfers),
+        lanzouClientRegistryProvider.overrideWithValue(
+          LanzouClientRegistry(
+            factory: (uid) => uid == '0' ? app._public : app._client,
+          ),
+        ),
+        accountStateProvider.overrideWithValue(app.accountState),
+        appDbProvider.overrideWithValue(app.db),
+        driveStateProvider.overrideWithValue(app.drive),
+        cachePageSettingsStateProvider.overrideWithValue(app.cachePageSettings),
+        listHomeSettingsStateProvider.overrideWithValue(app.listHomeSettings),
         navigationAppearanceSettingsStateProvider.overrideWithValue(
           app.navigationAppearanceSettings,
         ),
