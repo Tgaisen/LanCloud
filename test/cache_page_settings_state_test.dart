@@ -1,10 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/cache_page_settings_state.dart';
 import 'package:lancloud/core/data/settings_store.dart';
 import 'package:lancloud/core/drive_cache.dart';
-import 'package:lancloud/core/settings_state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -26,10 +24,9 @@ void main() {
     expect(state.loadAllPages, isTrue);
   });
 
-  test('关闭目录缓存时旧 API 仍立即清空 DriveCache', () async {
-    final app = AppController(settingsState: SettingsState());
-    addTearDown(app.dispose);
-    app.driveCache.put(
+  test('关闭目录缓存时立即清空 DriveCache', () async {
+    final cache = DriveCache();
+    cache.put(
       '-1',
       CachedFolder(
         folders: const [],
@@ -39,12 +36,14 @@ void main() {
         hasMore: false,
       ),
     );
-    expect(app.driveCache.get('-1'), isNotNull);
+    final state = CachePageSettingsState(SettingsStore(), cache);
+    expect(state.cacheFolders, isTrue);
+    expect(cache.get('-1'), isNotNull);
 
-    await app.setCacheFolders(false);
+    await state.setCacheFolders(false);
 
-    expect(app.driveCache.get('-1'), isNull);
-    expect(app.settings.cacheFolders, isFalse);
+    expect(cache.get('-1'), isNull);
+    expect(state.cacheFolders, isFalse);
   });
 
   test('cachePageSettingsStateProvider 可被共享实例覆盖', () {

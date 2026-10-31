@@ -383,24 +383,4 @@ class AppController extends ChangeNotifier {
     await accountSession.removeAccount(uid, clearData: clearData);
   }
 
-  Future<void> setGridView(bool value) async {
-    await cachePageSettings.setGridView(value);
-    notifyListeners();
-  }
-
-  Future<void> setLaunchPage(String page) async {
-    await cachePageSettings.setLaunchPage(page);
-    notifyListeners();
-  }
-
-  Future<void> setCacheFolders(bool value) async {
-    await cachePageSettings.setCacheFolders(value);
-    notifyListeners();
-  }
-
-  Future<void> setLoadAllPages(bool value) async {
-    await cachePageSettings.setLoadAllPages(value);
-    notifyListeners();
-  }
-
 }
