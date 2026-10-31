@@ -119,6 +119,8 @@
 | `tools\agent.cmd test`（网盘目录加载与导航切片） | 增量 | **45 tests, all passed** | 约 25 s |
 | `tools\agent.cmd analyze`（网盘单条目菜单切片） | 增量 | No issues found | 约 29 s |
 | `tools\agent.cmd test`（网盘单条目菜单切片） | 增量 | **46 tests, all passed** | 约 36 s |
+| `tools\agent.cmd analyze`（网盘属性卡与直链切片） | 增量 | No issues found | 约 22 s |
+| `tools\agent.cmd test`（网盘属性卡与直链切片） | 增量 | **46 tests, all passed** | 约 28 s |
 | `tools\agent.cmd analyze`（网盘目录切片完成后） | 全量 | No issues found | 约 21 s |
 | `tools\agent.cmd test`（网盘目录切片完成后） | 全量 | **722 tests, all passed** | 约 110 s |
 | `tools\agent.cmd analyze`（拖放与 Cookie 行完成后） | 全量 | No issues found | 约 17 s |
@@ -434,8 +436,12 @@
 - 2026-10-31 `DrivePage` 单条目菜单切片将复制链接、二维码、修改信息、访问
   密码、移动、收藏和单条删除改为读取现有账号、数据库、客户端和目录 provider；
   新增“旧控制器客户端不可用时仍能完成复制、修改和删除”的回归测试。增量
-  5 个测试文件 / 46 个测试通过，当前总数由 722 增至 723。属性卡内部加载、
-  批量操作、下载直链和页面外壳仍待后续切片。
+  5 个测试文件 / 46 个测试通过，当前总数由 722 增至 723。
+- 2026-10-31 `DrivePage` 属性卡与直链切片将文件 / 文件夹属性卡加载、收藏态、
+  快速访问查询、自有文件下载和公开直链解析迁入 Riverpod；测试在旧
+  `AppController.client` 为空时继续覆盖属性、下载和直链。页面内旧读取由
+  20 处降至 11 处；增量 5 个测试文件 / 46 个测试通过，用例总数保持 723。
+  批量操作、新建目录和页面外壳仍待后续切片。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release

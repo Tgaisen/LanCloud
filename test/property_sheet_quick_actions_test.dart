@@ -407,6 +407,8 @@ void main() {
 
     await tester.tap(find.text('a.zip'));
     await _settleSheet(tester);
+    expect(client.shareFileCalls, 2);
+    expect(_toggleButton(tester, '复制链接').enabled, isTrue);
     await tester.tap(_sheetText('修改信息'));
     await _settleSheet(tester);
     await tester.enterText(find.byType(TextField).first, 'b.zip');
@@ -570,7 +572,11 @@ void main() {
   testWidgets('网盘文件属性弹窗：点下载先显示解析中环，解析失败恢复原状', (tester) async {
     final shareGate = _GatedClient();
     final directGate = _GatedPublic();
-    final app = _FakeApp(shareGate, publicClient: directGate);
+    final app = _FakeApp(
+      shareGate,
+      publicClient: directGate,
+      exposeLegacyClient: false,
+    );
     await _pumpDrive(tester, app);
     await tester.tap(find.text('a.zip'));
     await _settleSheet(tester);
@@ -886,7 +892,17 @@ void main() {
   });
 
   testWidgets('文件属性弹窗：复制链接弹出 MD3E 菜单（分享链接 / 下载直链）', (tester) async {
-    final app = _FakeApp(_FakeClient());
+    final clipboard = <MethodCall>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+          if (call.method == 'Clipboard.setData') clipboard.add(call);
+          return null;
+        });
+    addTearDown(
+      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, null),
+    );
+    final app = _FakeApp(_FakeClient(), exposeLegacyClient: false);
     await _pumpDrive(tester, app);
 
     await tester.tap(find.text('a.zip'));
@@ -911,6 +927,14 @@ void main() {
       reason: '菜单左缘要对准被点的那一段',
     );
     expect(item.top, greaterThan(button.bottom), reason: '菜单要贴在那一段下方');
+
+    await tester.tap(find.text('复制下载直链'));
+    await _settleSheet(tester);
+    expect(clipboard, hasLength(1));
+    expect(
+      '${(clipboard.single.arguments as Map)['text']}',
+      'https://cdn.example/a.zip',
+    );
   });
 
   testWidgets('文件属性弹窗：收藏态没加载出来前，收藏按钮置灰', (tester) async {
@@ -969,7 +993,7 @@ void main() {
 
   testWidgets('网盘页文件夹 ⋯ 菜单：六项操作，属性打开属性弹窗', (tester) async {
     final client = _FakeClient();
-    final app = _FakeApp(client);
+    final app = _FakeApp(client, exposeLegacyClient: false);
     await _pumpDrive(tester, app);
 
     await tester.tap(find.byTooltip('文件夹操作'));

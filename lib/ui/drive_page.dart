@@ -2343,14 +2343,15 @@ class _DrivePageState extends ConsumerState<DrivePage>
   /// 解析分享信息 + 直链并入队。返回值给属性弹窗用：false = 没入队
   /// （解析失败 / 未登录），调用方据此把「解析中」状态恢复原状。
   Future<bool> _downloadOwnFile(LzFile file, {ShareInfo? share}) async {
-    final app = context.read<AppController>();
     final transfers = _transfers;
-    final client = app.client;
+    final client = _activeClient();
     if (client == null) return false;
+    final publicClient = ref.read(lanzouClientRegistryProvider).publicClient;
+    final accountUid = _accounts.store.activeUid ?? '';
     try {
       final info = share ?? await client.shareInfoOfFile(file.id);
       if (!mounted) return false;
-      final direct = await app.publicClient.resolveFileShare(
+      final direct = await publicClient.resolveFileShare(
         info.url,
         pwd: info.pwd,
       );
@@ -2359,8 +2360,8 @@ class _DrivePageState extends ConsumerState<DrivePage>
         name: direct.name.isEmpty ? file.name : direct.name,
         referer: info.url,
         pwd: info.pwd,
-        via: app.publicClient,
-        refId: '${app.activeUid ?? ''}:${file.id}',
+        via: publicClient,
+        refId: '$accountUid:${file.id}',
       );
       if (!mounted) return true;
       // 属性弹窗不再关闭：反馈要走盖在弹窗之上的轻提示
@@ -2417,11 +2418,11 @@ class _DrivePageState extends ConsumerState<DrivePage>
     LzFile file, {
     ShareInfo? share,
   }) async {
-    final app = context.read<AppController>();
-    final client = app.client;
+    final client = _activeClient();
     if (client == null) return null;
+    final publicClient = ref.read(lanzouClientRegistryProvider).publicClient;
     final info = share ?? await client.shareInfoOfFile(file.id);
-    final direct = await app.publicClient.resolveFileShare(
+    final direct = await publicClient.resolveFileShare(
       info.url,
       pwd: info.pwd,
     );
@@ -4112,8 +4113,8 @@ class _FileInfoSheetState extends ConsumerState<_FileInfoSheet> {
   }
 
   Future<void> _refresh() async {
-    final app = context.read<AppController>();
-    final client = app.client;
+    final client = widget.page._activeClient();
+    final db = ref.read(appDbProvider);
     // 下载数：重新取文件所在分页的条目，命中后同步列表（找不到就沿用现值）
     final fresh = await widget.page._freshFileEntry(widget.file.id);
     if (!mounted) return;
@@ -4137,7 +4138,7 @@ class _FileInfoSheetState extends ConsumerState<_FileInfoSheet> {
         if (mounted) setState(() => _share = info);
         // 收藏表查不到（例如库不可用）就保持未知：收藏按钮继续置灰，
         // 但不影响已经拿到分享信息的几个按钮
-        final favorite = await app.db.isFavorite(info.url);
+        final favorite = await db.isFavorite(info.url);
         if (mounted) setState(() => _favorite = favorite);
       } catch (_) {}
     }
@@ -4181,9 +4182,9 @@ class _FileInfoSheetState extends ConsumerState<_FileInfoSheet> {
 
   /// 这个文件的下载标记：按「账号uid:文件id」查最近的下载任务（已取消的不算）。
   TransferTask? get _downloadTask {
-    final app = context.read<AppController>();
+    final activeUid = ref.read(accountStateProvider).store.activeUid ?? '';
     return ref.read(transferManagerProvider).downloadMarkOf(
-      driveDownloadKey(app.activeUid ?? '', _file.id),
+      driveDownloadKey(activeUid, _file.id),
     );
   }
 
@@ -4488,17 +4489,17 @@ class _FileInfoSheetState extends ConsumerState<_FileInfoSheet> {
 /// 文件夹属性弹窗顶部那一行常用操作（图标按钮组）。
 enum _FolderQuickAction { link, qr, favorite, quickAccess, password }
 
-class _FolderInfoSheet extends StatefulWidget {
+class _FolderInfoSheet extends ConsumerStatefulWidget {
   const _FolderInfoSheet({required this.folder, required this.page});
 
   final LzFolder folder;
   final _DrivePageState page;
 
   @override
-  State<_FolderInfoSheet> createState() => _FolderInfoSheetState();
+  ConsumerState<_FolderInfoSheet> createState() => _FolderInfoSheetState();
 }
 
-class _FolderInfoSheetState extends State<_FolderInfoSheet> {
+class _FolderInfoSheetState extends ConsumerState<_FolderInfoSheet> {
   late String _name = widget.folder.name;
   String? _desc;
   String? _stats;
@@ -4527,8 +4528,9 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
   /// 内容不该被一次本地库读取失败拖下水。
   Future<void> _loadPinned() async {
     try {
-      final pinned = await context.read<AppController>().db.isPinned(
-        context.read<AppController>().activeUid ?? '',
+      final activeUid = ref.read(accountStateProvider).store.activeUid ?? '';
+      final pinned = await ref.read(appDbProvider).isPinned(
+        activeUid,
         widget.folder.id,
       );
       if (mounted) setState(() => _pinned = pinned);
@@ -4536,9 +4538,10 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
   }
 
   Future<void> _toggleQuickAccess() async {
-    final app = context.read<AppController>();
+    final db = ref.read(appDbProvider);
+    final activeUid = ref.read(accountStateProvider).store.activeUid ?? '';
     if (_pinned == true) {
-      await app.db.removePin(widget.folder.id);
+      await db.removePin(widget.folder.id);
       if (mounted) setState(() => _pinned = false);
     } else {
       // 只存「所在目录」的相对路径：不含根目录前缀，也不含文件夹自身。
@@ -4549,8 +4552,8 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
       final parents = isCurrent
           ? ancestors.sublist(0, ancestors.length - 1)
           : ancestors;
-      await app.db.addPin(
-        account: app.activeUid ?? '',
+      await db.addPin(
+        account: activeUid,
         name: widget.folder.name,
         ref: widget.folder.id,
         path: parents.map((node) => node.name).join('/'),
@@ -4616,7 +4619,8 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
 
   Future<void> _fetch() async {
     final id = widget.folder.id;
-    final client = context.read<AppController>().client;
+    final client = widget.page._activeClient();
+    final db = ref.read(appDbProvider);
     // 简介：每次打开都现取，不做缓存
     try {
       final info = await client?.shareInfoOfFolder(id);
@@ -4629,9 +4633,7 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
           _hasPwd = info.pwd.isNotEmpty;
         });
         // 收藏态：收藏表按分享链接去重，用刚取回的分享信息查
-        final favorite = await context.read<AppController>().db.isFavorite(
-          info.url,
-        );
+        final favorite = await db.isFavorite(info.url);
         if (mounted) setState(() => _favorite = favorite);
       }
     } catch (_) {}
