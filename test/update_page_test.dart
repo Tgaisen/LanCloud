@@ -109,7 +109,7 @@ void main() {
     expect(find.text('构建信息'), findsOneWidget);
   });
 
-  testWidgets('更新页只依赖 Riverpod 作用域，不需要 AppController', (tester) async {
+  testWidgets('更新页只依赖 Riverpod 作用域', (tester) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     final settings = SettingsStore()..updateAutoCheck = true;
     final container = createUpdateContainer(

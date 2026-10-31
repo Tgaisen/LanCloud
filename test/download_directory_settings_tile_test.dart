@@ -53,7 +53,7 @@ Future<void> _pump(
 }
 
 void main() {
-  testWidgets('普通下载目录不依赖 AppController，并局部刷新', (tester) async {
+  testWidgets('普通下载目录使用 Riverpod 状态，并局部刷新', (tester) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     final store = SettingsStore();
     final state = DownloadDirectorySettingsState(store);

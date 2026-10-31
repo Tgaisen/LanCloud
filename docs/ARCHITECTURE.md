@@ -15,13 +15,13 @@
 3. `PlatformSupport.loadAndroidSdkInt()` — 预热，影响 WebView 合成方式
 4. `AppLog.instance.init()` — 接管 `FlutterError.onError` / `PlatformDispatcher.onError` / `debugPrint`
 5. `FlutterForegroundTask.init()`（仅移动端）— 传输期间后台保活
-6. `AppStartup.initialize()` — 状态初始化入口
-7. `SystemMotion.init()`、`NotificationService.init()`、`SharedInbox`、`IncomingLinks`
-8. `BackupService.maybeAutoBackup()`（不阻塞）
-9. `AppCompositionRoot` 用已初始化的 `AppEnvironment`、恢复回调和平台能力构造
+6. `AppEnvironment()` + `AppStartup.initialize()` — 组装并初始化应用级状态
+7. `AppCompositionRoot` 用已初始化的 `AppEnvironment`、恢复回调和平台能力构造
    `BackupService`、`TransferDependencies` 与应用 `ProviderContainer`；
-   恢复更新缓存后非阻塞执行 `UpdateService.maybeAutoCheck()`
-10. `runApp(UncontrolledProviderScope(...))` — 用 `AppEnvironment` 已初始化的
+8. `SystemMotion.init()`、`NotificationService.init()`、`SharedInbox`、`IncomingLinks`
+9. `BackupService.maybeAutoBackup()`（不阻塞）
+10. 创建更新容器、恢复传输管理器并初始化更新服务，再执行
+    `runApp(UncontrolledProviderScope(...))` — 用 `AppEnvironment` 已初始化的
     状态覆盖 Riverpod 容器；启动前主动读取 `transferManagerProvider` 保持任务
     恢复顺序。`provider` 依赖与 `ChangeNotifierProvider` 均已移除。
 
@@ -31,7 +31,7 @@
 状态同步。`AppCompositionRoot` 只组装已初始化对象与 Riverpod 覆盖，不接管
 平台服务启动；传输和下载装配已完全移出启动流程。
 `TransferManager` 同样只由 Riverpod 容器提供。`core/update/` 的
-`UpdateService` 是阶段 1 Riverpod 试点：
+`UpdateService` 使用 Riverpod `Notifier<UpdateState>`：
 
 | 对象 | 文件 | 说明 |
 | --- | --- | --- |
@@ -50,7 +50,7 @@
 | `BackupService` | `core/backup/backup_service.dart` | 本地 / WebDAV 备份恢复服务；只依赖 `BackupDependencies`，应用入口通过 `backupServiceProvider` 暴露与自动备份共用的同一实例 |
 | `BackupDependencies` | `core/backup/backup_dependencies.dart` | 备份所需的账号、设置、数据库和恢复后重载窄接口 |
 | `BackupStoreDependencies` | `core/backup/backup_dependencies.dart` | 用既有存储与显式重载回调组装备份依赖；生产启动直接使用该实现 |
-| `AppDb` | `core/data/app_db_provider.dart` | 阶段 2 首个叶子依赖；普通 `Provider` 暴露既有单例，不监听、不自动销毁 |
+| `AppDb` | `core/data/app_db_provider.dart` | 普通 `Provider` 暴露既有单例，不监听、不自动销毁 |
 | `LanzouClientRegistry` | `core/api/lanzou_client_registry.dart` | 按 uid 缓存账号客户端并保留独立公开客户端；Provider 与 `AppEnvironment` 共用同一注册表 |
 | `AppLog` | `core/app_log_provider.dart` | 启动时先初始化，再通过普通 `Provider` 暴露同一实例；更新服务已从容器读取 |
 | `NotificationService` | `core/notifications_provider.dart` | 初始化后通过普通 `Provider` 暴露同一单例；`TransferManager` 的进度与完成通知使用构造注入实例 |
@@ -60,19 +60,19 @@
 | `AppRuntimeState` | `core/app_runtime_state.dart` | 应用启动 ready、凭据重认证提示与系统少动效信号的唯一所有者；非 autoDispose |
 | `NavigationState` | `core/navigation_state.dart` | 多选、返回处理器、`driveCanHandleBack`、当前 Tab 和顶/底栏高频进度的唯一所有者 |
 | `DriveState` | `core/drive_state.dart` | 目录缓存、目录请求、当前位置和可见性探针的唯一所有者 |
-| `AccountState` | `core/account_state.dart` | 阶段 3：唯一持有 `AccountStore`；`accountStoreProvider` 从它派生，控制器内部直接读取同一 store |
+| `AccountState` | `core/account_state.dart` | 唯一持有 `AccountStore`；`accountStoreProvider` 从它派生 |
 | `AccountLogin` | `core/account_login.dart` | Cookie 登录验证、账号落盘、客户端缓存和网盘缓存切换；通过 `accountStateProvider` 通知账号变化 |
 | `AccountSession` | `core/account_session.dart` | 账号切换与移除的唯一业务入口；由 `AppEnvironment` 构造，页面通过 `accountSessionProvider` 读取 |
-| `SettingsState` | `core/settings_state.dart` | 阶段 3：唯一持有 `SettingsStore`；`settingsStoreProvider` 从它派生，控制器内部直接读取同一 store |
-| `UpdateSettingsState` | `core/update/update_settings_state.dart` | 阶段 3 设置子组：收窄更新通道与自动检查开关的读写边界，持久化仍由 `SettingsStore` 独占 |
-| `NotificationSettingsState` | `core/notification_settings_state.dart` | 阶段 3 设置子组：进度通知与完成通知开关的明确读写入口 |
-| `NavigationAppearanceSettingsState` | `core/navigation_appearance_settings_state.dart` | 阶段 3 设置子组：侧滑、顶/底栏隐藏、悬浮导航、转场与导航项显示开关 |
-| `ThemeSettingsState` | `core/theme_settings_state.dart` | 阶段 3 设置子组：主题模式/种子、OLED、动态取色与全局动画开关 |
-| `TransferConnectionSettingsState` | `core/transfer_connection_settings_state.dart` | 阶段 3 设置子组：请求间隔、并发数、API 域名、UA 与上传路径 |
-| `ListHomeSettingsState` | `core/list_home_settings_state.dart` | 阶段 3 设置子组：列表排序、首页折叠、最近使用上限与文件夹打开模式 |
-| `LanguageClipboardSettingsState` | `core/language_clipboard_settings_state.dart` | 阶段 3 设置子组：界面语言与复制分享链接提示 |
-| `CachePageSettingsState` | `core/cache_page_settings_state.dart` | 阶段 3 设置子组：网格视图、启动页、目录缓存和自动加载全部页面 |
-| `DownloadDirectorySettingsState` | `core/download_directory_settings_state.dart` | 阶段 3 设置子组：普通下载目录、SAF URI/标签、互斥写入和旧授权释放入口 |
+| `SettingsState` | `core/settings_state.dart` | 唯一持有 `SettingsStore`；`settingsStoreProvider` 从它派生 |
+| `UpdateSettingsState` | `core/update/update_settings_state.dart` | 设置子组：更新通道与自动检查开关的读写边界，持久化仍由 `SettingsStore` 独占 |
+| `NotificationSettingsState` | `core/notification_settings_state.dart` | 设置子组：进度通知与完成通知开关 |
+| `NavigationAppearanceSettingsState` | `core/navigation_appearance_settings_state.dart` | 设置子组：侧滑、顶/底栏隐藏、悬浮导航、转场与导航项显示开关 |
+| `ThemeSettingsState` | `core/theme_settings_state.dart` | 设置子组：主题模式/种子、OLED、动态取色与全局动画开关 |
+| `TransferConnectionSettingsState` | `core/transfer_connection_settings_state.dart` | 设置子组：请求间隔、并发数、API 域名、UA 与上传路径 |
+| `ListHomeSettingsState` | `core/list_home_settings_state.dart` | 设置子组：列表排序、首页折叠、最近使用上限与文件夹打开模式 |
+| `LanguageClipboardSettingsState` | `core/language_clipboard_settings_state.dart` | 设置子组：界面语言与复制分享链接提示 |
+| `CachePageSettingsState` | `core/cache_page_settings_state.dart` | 设置子组：网格视图、启动页、目录缓存和自动加载全部页面 |
+| `DownloadDirectorySettingsState` | `core/download_directory_settings_state.dart` | 设置子组：普通下载目录、SAF URI/标签、互斥写入和旧授权释放入口 |
 
 消费现状：`AppController` 已删除，`lib` 与 `test` 均不导入
 `package:provider`。传输页已从
@@ -97,10 +97,10 @@ provider；批量复制、下载、收藏、移动、简介、密码和删除同
 `TransferManager` 读取 / 整体订阅；`RootShell` 与首页共用
 `TransferRunningCount`，只在运行中 / 排队任务数变化时重建。
 启动装配和测试宿主也已移除 `ChangeNotifierProvider<TransferManager>`。
-阶段 6 的自动化代码迁移已完成：应用外壳改用既有 Riverpod 状态和
+自动化代码迁移已完成：应用外壳改用既有 Riverpod 状态和
 `AppRuntimeState`，本地快照桥只在相关字段变化时重建；启动装配不再注册旧
 `ChangeNotifierProvider`，`provider` 直接依赖和 lockfile 条目均已删除。
-Android、Windows 人工验收仍需执行后才能把阶段 6 标记为全部完成。
+Android、Windows 的功能级人工验收仍需单独记录。
 登录页已改用 `accountLoginProvider` 和 `accountStateProvider`；登录页与恢复页
 测试宿主均使用 `AppEnvironment` / `ProviderScope`。
 共享 `TopBarOverlay` / `TopBarOverlayScaffold` 只从

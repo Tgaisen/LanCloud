@@ -1,11 +1,31 @@
-# Provider → Riverpod 迁移评估报告
+# Provider → Riverpod 迁移评估与实施记录（已完成）
 
 > 评估日期：2026-10-30  
 > 对应版本：`26.1.0-pre.18+260100218`  
 > 评估范围：LanCloud 当前生产代码、测试与 Flutter 工具链  
-> 文档性质：迁移可行性评估与实施指南。
-> **2026-10-30 起阶段 0 与阶段 1 已批准执行**（范围与红线见 `AGENTS.md`），
-> 阶段 2 及以后仍需逐阶段批准。
+> 文档性质：迁移可行性评估、实施时间线与决策记录。
+>
+> **当前状态（2026-10-31）：迁移已完成。** `provider` 依赖与
+> `ChangeNotifierProvider` 已删除，`AppController` 已退役；应用级对象由
+> `AppEnvironment` 组装、`AppStartup` 编排初始化与恢复。全量静态分析为
+> 0 issue，完整测试 719 个全部通过。Android debug 已安装到真机，Windows
+> Release 已构建并启动；功能级人工验收仍需单独记录。
+>
+> 下文中的阶段审批状态、文件数、测试总数和“下一步”均为对应日期的历史快照，
+> 不再代表当前约束。当前架构以 `docs/ARCHITECTURE.md` 为准，当前回归值以
+> `docs/BASELINE.md` 为准。
+
+## 完成结论（2026-10-31）
+
+- 迁移收益不仅是 API 改名：根状态所有权、依赖注入、启动流程和测试夹具均得到拆分，
+  宽泛的 `AppController` 通知桥已删除。
+- 应用级生命周期对象统一由 `AppEnvironment` / Riverpod 容器持有，启动副作用由
+  `AppStartup` 显式编排，顺序可测试。
+- 高频滚动、动画和传输进度继续使用 `ValueNotifier`，没有为统一技术栈引入额外复制。
+- Riverpod 3.4.3 的 `Notifier`、`Provider`、`ProviderScope` 已成为当前方案；
+  `provider` 依赖与兼容层均已退出。
+- 决策：保留 Riverpod，暂不引入 `riverpod_generator` / `riverpod_lint` /
+  `build_runner`。若后续引入 codegen，单独评估依赖、生成文件和审查成本。
 
 ## 1. 结论摘要
 
@@ -902,7 +922,7 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > 控制器依赖。增量分析 1 个文件无问题，目标测试文件 7 个测试通过，用例总数
 > 保持 728。
 
-### 阶段 6：移除旧 Provider
+### 阶段 6：移除旧 Provider（已执行）
 
 只有在以下条件全部满足后才执行：
 
@@ -1012,7 +1032,7 @@ Riverpod 更合适。Riverpod 的优势是依赖组合与状态生命周期，�
 
 ## 10. 验收与决策门槛
 
-### 试点结束后继续迁移的条件
+### 试点结束后继续迁移的条件（历史决策依据）
 
 - 更新状态代码明显更简洁，而不只是换了 API 名字。
 - 自动更新、错误提示、缓存和一次性提醒行为不变。
@@ -1023,7 +1043,7 @@ Riverpod 更合适。Riverpod 的优势是依赖组合与状态生命周期，�
 如果以上条件不能同时成立，建议停止全量迁移，保留 Riverpod 作为新功能备选方案，并
 优先优化现有 Provider 状态结构。
 
-### 最终迁移验收项
+### 最终迁移验收项（执行清单）
 
 - `flutter analyze` 无问题。
 - 完整 `flutter test` 通过。

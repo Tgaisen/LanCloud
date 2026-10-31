@@ -9,7 +9,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  testWidgets('导航外观开关不依赖 AppController，并局部刷新', (tester) async {
+  testWidgets('导航外观开关使用 Riverpod 状态，并局部刷新', (tester) async {
     for (final setting in NavigationAppearanceSetting.values) {
       SharedPreferences.setMockInitialValues(<String, Object>{});
       final state = NavigationAppearanceSettingsState(SettingsStore());

@@ -10,7 +10,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  testWidgets('复制链接提示设置行不依赖 AppController', (tester) async {
+  testWidgets('复制链接提示设置行使用 Riverpod 状态', (tester) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     final settings = SettingsStore();
     final container = ProviderContainer(

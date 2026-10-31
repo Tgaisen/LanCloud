@@ -1,17 +1,19 @@
 # AGENTS.md — LanCloud（蓝云）
 
-蓝奏云第三方 Flutter 客户端。个人维护的**生产项目**：`lib` 约 4.7 万行 / 95 个文件，
-`test` 121 个文件 / 616 个测试。改动的默认要求是「不破坏现有行为」，不是「尽量多写」。
+蓝奏云第三方 Flutter 客户端。个人维护的**生产项目**：`lib` 44,481 行 / 145 个文件，
+`test` 22,435 行 / 163 个测试文件 / 719 个测试。改动的默认要求是
+「不破坏现有行为」，不是「尽量多写」。
 
 ## 动手前先读
 
 | 文档 | 什么时候读 |
 | --- | --- |
 | `docs/ARCHITECTURE.md` | **每次任务开始**。先查「需求 → 先读哪些文件」表，别整仓乱翻 |
-| `docs/BASELINE.md` | 需要判断某个红灯是不是你造成的 |
+| `docs/BASELINE.md` | 需要判断某个红灯是不是你造成的；当前基线与已知偏差 |
+| `docs/BASELINE_HISTORY.md` | 需要追溯历史增量结果或排障时间线 |
 | `docs/VERSIONING.md` | 任何涉及版本号的改动 |
 | `docs/PROTOCOL.md` | 改 `core/api/` 的网络与协议逻辑 |
-| `docs/RIVERPOD_MIGRATION_ASSESSMENT.md` | 任何触及状态管理（Provider / Riverpod / ChangeNotifier）的改动 |
+| `docs/RIVERPOD_MIGRATION_ASSESSMENT.md` | 需要了解 Riverpod 迁移决策与历史；当前状态约定以本文件和架构文档为准 |
 
 ## 工具链：唯一入口是 `tools\agent.cmd`
 
@@ -53,7 +55,7 @@ C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd help      # 全部动词
 ```
 lib/main.dart          启动装配（Provider、日志、通知、自动备份/更新）
 lib/app.dart           主题构建 + MaterialApp + RootShell（NavigationBar + PageView）
-lib/core/              逻辑与平台能力（32 个平铺文件）
+lib/core/              逻辑与平台能力（52 个平铺文件 + 5 个子系统目录）
 lib/core/api/          lanzou_client / models / acw_sc_v2
 lib/core/data/         app_db(sqflite) / settings_store / account_store / secure_storage
 lib/core/transfer/     transfer_manager
@@ -122,44 +124,24 @@ lib/l10n/              arb + 生成文件
   不要直接推 `main`，走分支 + PR。
 - 不要自行 `git commit`，除非明确要求。
 
-## Riverpod 试点（已授权，但范围严格受限）
+## 状态管理约定（迁移已完成）
 
-方案细节见 `docs/RIVERPOD_MIGRATION_ASSESSMENT.md`。
+Provider → Riverpod 迁移和 `AppController` 退役已于 2026-10-31 完成。当前架构与
+历史决策分别见 `docs/ARCHITECTURE.md` 和 `docs/RIVERPOD_MIGRATION_ASSESSMENT.md`。
 
-**只批准了阶段 0 + 阶段 1**，即 `core/update/` 的 `UpdateService` 试点。
-阶段 2 及以后（叶子依赖、状态拆分、UI 消费端、`TransferManager`、移除 Provider）
-**必须逐阶段取得人工批准**，不得自行推进。
-
-### 阶段 0：边界
-1. 保留 `main()` 在 `runApp()` 前完成 `AppStartup.initialize()` 的现有顺序。
-2. 双栈共存：Riverpod 只服务试点，其余页面继续用 Provider。
-3. 为同时需要两者的 Widget / 测试提供统一包装 helper；
-   **不要批量改 39 个 Provider 测试文件**，随功能迁移逐个改。
-4. 依赖升级、状态重构、UI 迁移**分成独立提交**，不要混在一起；分支要能整体回退。
-5. 不改变用户行为。
-
-### 阶段 1：UpdateService
-- 先把更新状态整理成明确的数据模型，再决定用 `Notifier` 还是 `AsyncNotifier`。
-- 必须保留的既有语义：更新通道、缓存有效期、12 小时自动检查、
-  **每个版本只提醒一次**。
-- 不新增会阻塞启动的 provider；应用级状态**不用 `autoDispose`**。
-- 本阶段不碰登录、传输、数据库、主题状态。
-
-### 全局红线
-- **单一状态所有者**：同一字段不允许在 Provider 与 Riverpod 两侧同时可写，
-  另一侧只能转发或读取。
-- 高频状态（滚动/动画/下载进度）继续用 `ValueNotifier` + `ValueListenableBuilder`，
-  不要为了「统一技术栈」机械替换。
-- 不引入 `riverpod_generator` / `riverpod_lint` / `build_runner`：codegen 延后，
-  不与首次迁移同时引入。
-- 选型以实际安装的 `flutter_riverpod` 版本为准（评估时为 3.4.3）。
-  **不要套用 2.x 时代的写法**（`StateNotifier` 那一套）；不确定就查官方文档或来问，不要猜。
-- 每个提交都要保持 `analyze` 0 issue + `agent.cmd test` 通过。
-
-### 停下来重新决策的条件
-试点做完后，如果收益主要是「换了 API 名字」而不是状态代码更小/更清晰，
-或者测试并没有更容易注入假数据 —— **停止后续迁移**，保留 Riverpod 作为新功能备选方案，
-改为优化现有 Provider 结构（`context.select` 收窄重建）。这个判断必须写进汇报。
+- `AppEnvironment` 唯一组装应用级状态与服务；`AppStartup` 编排启动与恢复同步。
+- 应用级状态由 Riverpod 管理，不使用 `autoDispose`；页面局部状态可使用
+  `autoDispose` / `family`。
+- `provider` / `ChangeNotifierProvider` / `AppController` 已删除，不得重新引入；
+  如需更换状态管理方案，先单独提出架构决策。
+- 高频滚动、动画和下载进度继续使用 `ValueNotifier` + `ValueListenableBuilder`。
+- 保持单一状态所有者，不允许同一字段存在两套可写来源。
+- 测试优先使用 `ProviderScope`、`ProviderContainer` 和 `AppEnvironment` 注入依赖，
+  不要再建立完整应用控制器式宿主。
+- 当前使用 `flutter_riverpod 3.4.3`，不要采用 2.x 的 `StateNotifier` 写法。
+- 暂不引入 `riverpod_generator` / `riverpod_lint` / `build_runner`；如需 codegen，
+  作为独立改动评估依赖和生成文件影响。
+- 每个提交保持 `analyze` 0 issue，并通过 `tools\agent.cmd test`。
 
 ## 进行中的决策（不要擅自执行）
 

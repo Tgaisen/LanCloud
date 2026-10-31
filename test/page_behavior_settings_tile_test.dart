@@ -31,7 +31,7 @@ Future<void> _pump(
 }
 
 void main() {
-  testWidgets('默认启动页不依赖 AppController，并局部刷新', (tester) async {
+  testWidgets('默认启动页使用 Riverpod 状态，并局部刷新', (tester) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     final store = SettingsStore();
     final state = CachePageSettingsState(store, DriveCache());
@@ -58,7 +58,7 @@ void main() {
     expect(find.text('网盘'), findsOneWidget);
   });
 
-  testWidgets('首页目录打开方式不依赖 AppController，并局部刷新', (tester) async {
+  testWidgets('首页目录打开方式使用 Riverpod 状态，并局部刷新', (tester) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     final store = SettingsStore();
     final state = ListHomeSettingsState(store);

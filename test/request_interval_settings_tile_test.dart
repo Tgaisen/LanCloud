@@ -19,7 +19,7 @@ void main() {
     () => LanzouClient.requestInterval = const Duration(milliseconds: 300),
   );
 
-  testWidgets('网络请求间隔不依赖 AppController，并同步客户端配置', (tester) async {
+  testWidgets('网络请求间隔使用 Riverpod 状态，并同步客户端配置', (tester) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     final store = SettingsStore();
     final state = TransferConnectionSettingsState(store);

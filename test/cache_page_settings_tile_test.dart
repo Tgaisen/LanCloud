@@ -10,7 +10,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  testWidgets('目录缓存开关不依赖 AppController，关闭时清空缓存', (tester) async {
+  testWidgets('目录缓存开关使用 Riverpod 状态，关闭时清空缓存', (tester) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     final settings = SettingsStore();
     final cache = DriveCache();

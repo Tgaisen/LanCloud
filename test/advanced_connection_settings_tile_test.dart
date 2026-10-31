@@ -51,7 +51,7 @@ void main() {
     LanzouClient.uploadPath = 'html5up.php';
   });
 
-  testWidgets('接口域名不依赖 AppController，并同步客户端配置', (tester) async {
+  testWidgets('接口域名使用 Riverpod 状态，并同步客户端配置', (tester) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     final store = SettingsStore();
     final state = await _pump(
@@ -74,7 +74,7 @@ void main() {
     expect(find.text('up.woozooo.com'), findsOneWidget);
   });
 
-  testWidgets('上传路径不依赖 AppController，并同步客户端配置', (tester) async {
+  testWidgets('上传路径使用 Riverpod 状态，并同步客户端配置', (tester) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     final store = SettingsStore();
     final state = await _pump(

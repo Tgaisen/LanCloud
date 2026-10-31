@@ -10,7 +10,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  testWidgets('最近使用上限不依赖 AppController，并在松手后裁剪', (tester) async {
+  testWidgets('最近使用上限使用 Riverpod 状态，并在松手后裁剪', (tester) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     final store = SettingsStore();
     final trims = <(String, int)>[];

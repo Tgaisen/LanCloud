@@ -39,7 +39,7 @@ Future<TransferConnectionSettingsState> _pump(
 }
 
 void main() {
-  testWidgets('上传并发数不依赖 AppController，松手后局部刷新', (tester) async {
+  testWidgets('上传并发数使用 Riverpod 状态，松手后局部刷新', (tester) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     final store = SettingsStore();
     final state = await _pump(
@@ -59,7 +59,7 @@ void main() {
     expect(find.text('3'), findsOneWidget);
   });
 
-  testWidgets('下载并发数不依赖 AppController，松手后局部刷新', (tester) async {
+  testWidgets('下载并发数使用 Riverpod 状态，松手后局部刷新', (tester) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     final store = SettingsStore();
     final state = await _pump(

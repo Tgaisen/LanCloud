@@ -42,7 +42,7 @@ void main() {
 
   tearDown(() => SystemMotion.motionMode.value = 'auto');
 
-  testWidgets('主题模式不依赖 AppController，并局部刷新', (tester) async {
+  testWidgets('主题模式使用 Riverpod 状态，并局部刷新', (tester) async {
     final (store, state) = await _pump(
       tester,
       (_) => const ThemeSettingsTile(type: ThemeSettingsTileType.mode),
@@ -68,7 +68,7 @@ void main() {
     );
   });
 
-  testWidgets('纯黑深色开关不依赖 AppController，并局部刷新', (tester) async {
+  testWidgets('纯黑深色开关使用 Riverpod 状态，并局部刷新', (tester) async {
     final (store, state) = await _pump(
       tester,
       (_) => const ThemeSettingsTile(type: ThemeSettingsTileType.oledBlack),
@@ -88,7 +88,7 @@ void main() {
     expect(tester.widget<SwitchListTile>(switchTile).value, isTrue);
   });
 
-  testWidgets('全局动画不依赖 AppController，并同步 SystemMotion', (tester) async {
+  testWidgets('全局动画使用 Riverpod 状态，并同步 SystemMotion', (tester) async {
     final (store, state) = await _pump(
       tester,
       (_) => const MotionSettingsTile(),
@@ -109,7 +109,7 @@ void main() {
     expect(find.text('禁用'), findsOneWidget);
   });
 
-  testWidgets('主题色弹窗不依赖 AppController，并保持动态色与 seed 互斥', (
+  testWidgets('主题色弹窗使用 Riverpod 状态，并保持动态色与 seed 互斥', (
     tester,
   ) async {
     final (store, state) = await _pump(

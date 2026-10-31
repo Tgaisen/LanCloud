@@ -375,7 +375,7 @@ void main() {
     expect(copied, contains('abcd'));
   });
 
-  testWidgets('网盘单条目菜单不依赖旧 AppController 客户端', (tester) async {
+  testWidgets('网盘单条目菜单使用 Riverpod 客户端', (tester) async {
     final client = _FakeClient();
     final app = _FakeApp(client);
     final clipboard = <MethodCall>[];
@@ -436,7 +436,7 @@ void main() {
     expect(client.deletedItems, [(id: 'f1', isFile: true)]);
   });
 
-  testWidgets('网盘批量操作不依赖旧 AppController 客户端', (tester) async {
+  testWidgets('网盘批量操作使用 Riverpod 客户端', (tester) async {
     final client = _FakeClient();
     final app = _FakeApp(client);
     final clipboard = <MethodCall>[];

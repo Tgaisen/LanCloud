@@ -9,7 +9,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  testWidgets('语言设置行不依赖 AppController，并局部刷新', (tester) async {
+  testWidgets('语言设置行使用 Riverpod 状态，并局部刷新', (tester) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     final store = SettingsStore();
     final state = LanguageClipboardSettingsState(store);
