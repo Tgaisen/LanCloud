@@ -209,26 +209,6 @@ class AppController extends ChangeNotifier {
     _refreshActiveAccountInfo();
   }
 
-  Future<void> setRequestInterval(int ms) async {
-    await transferConnectionSettings.setRequestInterval(ms);
-    notifyListeners();
-  }
-
-  Future<void> setApiHost(String host) async {
-    await transferConnectionSettings.setApiHost(host);
-    notifyListeners();
-  }
-
-  Future<void> setUserAgent(String value) async {
-    await transferConnectionSettings.setUserAgent(value);
-    notifyListeners();
-  }
-
-  Future<void> setUploadPath(String value) async {
-    await transferConnectionSettings.setUploadPath(value);
-    notifyListeners();
-  }
-
   /// 设置固定路径的下载目录（桌面端，或 Android 选中的公共目录——
   /// 公共目录无需授权、直接按路径写入）；已有 SAF 目录授权会一并释放。
   Future<void> setDownloadDir(String? dir) async {
@@ -342,16 +322,6 @@ class AppController extends ChangeNotifier {
     drive.dispose();
     runtimeState.dispose();
     super.dispose();
-  }
-
-  Future<void> setMaxUploads(int value) async {
-    await transferConnectionSettings.setMaxUploads(value);
-    notifyListeners();
-  }
-
-  Future<void> setMaxDownloads(int value) async {
-    await transferConnectionSettings.setMaxDownloads(value);
-    notifyListeners();
   }
 
   String? get activeUid => accounts.activeUid;
