@@ -64,10 +64,12 @@
 | `CachePageSettingsState` | `core/cache_page_settings_state.dart` | 阶段 3 设置子组：网格视图、启动页、目录缓存和自动加载全部页面 |
 | `DownloadDirectorySettingsState` | `core/download_directory_settings_state.dart` | 阶段 3 设置子组：普通下载目录、SAF URI/标签、互斥写入和旧授权释放入口 |
 
-消费现状：`context.read<…>` 约 117 处、`context.watch<…>` 0 处、
-`context.select<…>` 11 处。生产代码中的整体 `watch` 已清零；传输页已从
+消费现状：`context.read<AppController>` 96 处、`context.watch` 0 处、
+`context.select<AppController…>` 10 处。生产代码中的整体 `watch` 已清零；传输页已从
 Riverpod 读取应用级 `TransferManager`，并通过 `ListenableBuilder` 保留既有
-`notifyListeners()` 刷新语义。`RootShell` 也已从 Riverpod 取得同一管理器，
+`notifyListeners()` 刷新语义；多选回调、选择模式和顶栏进度改由
+`NavigationState` 驱动，顶栏收起开关由导航外观状态 revision 驱动。`RootShell`
+也已从 Riverpod 取得同一管理器，
 并用局部计数桥只在运行中 / 排队任务数变化时重建外壳；管理器的进度通知不会
 直接放大成整壳重建。“已下载”标记也从 Riverpod 读取管理器，继续只监听低频
 `marksRevision`；已下载任务的二级菜单和分享文件属性弹窗也已从 Riverpod 读取。
@@ -82,8 +84,8 @@ Riverpod 读取应用级 `TransferManager`，并通过 `ListenableBuilder` 保�
 启动装配和测试宿主也已移除 `ChangeNotifierProvider<TransferManager>`。
 阶段 6 准备已获授权：后续按页面迁移剩余 `AppController` Provider 消费端，
 但暂时保留 `provider` 依赖、根控制器注入和现有状态所有权，不执行最终移除。
-登录页已改用 `accountLoginProvider` 和 `accountStateProvider`；其测试宿主仍给
-尚未迁移的 `RestorePage` 子路由保留 AppController Provider。
+登录页已改用 `accountLoginProvider` 和 `accountStateProvider`；登录页与恢复页
+测试宿主均已移除 AppController Provider。
 共享 `TopBarOverlay` / `TopBarOverlayScaffold` 已优先从
 `NavigationAppearanceSettingsState.revision` 和 `NavigationState` 读取顶栏收起
 状态；缺少 Riverpod 应用级覆盖的旧测试宿主暂时回退 AppController。
@@ -135,8 +137,9 @@ User-Agent 也迁入 `AdvancedConnectionSettingsTile`；对应 setter 统一同�
 `refresh()` 通知根主题与语言更新。共享顶栏组件只订阅 `hideTopBar`，
 `BatchActionBar` 只订阅 `floatingNavBar`，正文、浮层和滚动进度仍由各自
 `ValueNotifier` 驱动。拖拽悬停提示只订阅网盘/收藏可见性快照；当前目录仍从
-`DriveLocation` 实时读取。恢复页也只订阅 `hideTopBar`，备份恢复状态机继续使用
-页面本地状态。首页不再整体监听 `AppController` / `TransferManager`，只订阅
+`DriveLocation` 实时读取。恢复页通过 `backupServiceProvider` 获取服务，并只从
+导航外观状态订阅 `hideTopBar`；备份恢复状态机继续使用页面本地状态。首页不再
+整体监听 `AppController` / `TransferManager`，只订阅
 `hideTopBar` 和运行中任务数；快速访问、最近使用和折叠状态继续由页面本地状态及
 `AppDb.revision` 驱动。网盘页只订阅网格、浮动导航和顶/底栏隐藏的配置快照；
 目录、`DriveLocation`、多选和批量操作保持原有状态机。

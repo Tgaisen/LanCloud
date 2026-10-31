@@ -760,6 +760,12 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > “我的”大屏备份窗格测试均通过 provider override 注入假服务；相关增量
 > 5 + 2 个测试文件、54 + 13 个测试通过。`BackupService` 内部仍暂时持有
 > `AppController`，留到后续生命周期拆分时处理。
+>
+> 传输页随后完成消费端迁移：多选退出回调与选择模式来自
+> `navigationStateProvider`，顶栏收起开关来自
+> `NavigationAppearanceSettingsState.revision`，滚动进度使用同一
+> `NavigationState.topBarHide`。四个直接测试宿主已移除旧
+> `ChangeNotifierProvider<AppController>`，增量 4 个测试文件 / 23 个测试通过。
 
 ### 阶段 6：移除旧 Provider
 
