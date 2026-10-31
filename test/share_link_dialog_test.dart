@@ -7,7 +7,7 @@ import 'package:lancloud/core/api/lanzou_client.dart';
 import 'package:lancloud/core/api/lanzou_client_registry.dart';
 import 'package:lancloud/core/api/models.dart';
 import 'package:lancloud/core/account_state.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/data/app_db_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/app_icons.dart' as app_icons;
@@ -58,15 +58,15 @@ Future<_FakeClient> _pumpDialog(
   Completer<void>? gate,
 }) async {
   final client = _FakeClient(error, gate: gate);
-  final app = AppController();
+  final environment = AppEnvironment();
   final clients = LanzouClientRegistry(factory: (_) => client);
-  addTearDown(app.dispose);
+  addTearDown(environment.dispose);
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
         lanzouClientRegistryProvider.overrideWithValue(clients),
-        accountStateProvider.overrideWithValue(app.accountState),
-        appDbProvider.overrideWithValue(app.db),
+        accountStateProvider.overrideWithValue(environment.accountState),
+        appDbProvider.overrideWithValue(environment.db),
       ],
       child: MaterialApp(
         localizationsDelegates: appLocalizationsDelegates,

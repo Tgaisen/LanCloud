@@ -1,17 +1,17 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/ui/common.dart';
 
-Widget host(AppController app, Widget child) => ProviderScope(
+Widget host(AppEnvironment environment, Widget child) => ProviderScope(
   overrides: [
     navigationAppearanceSettingsStateProvider.overrideWithValue(
-      app.navigationAppearanceSettings,
+      environment.navigationAppearanceSettings,
     ),
-    navigationStateProvider.overrideWithValue(app.navigation),
+    navigationStateProvider.overrideWithValue(environment.navigation),
   ],
   child: child,
 );
@@ -23,8 +23,8 @@ Future<void> pumpOverlayPage(
   required double bottomInset,
   bool bottomSafeInset = true,
 }) async {
-  final app = AppController();
-  addTearDown(app.dispose);
+  final environment = AppEnvironment();
+  addTearDown(environment.dispose);
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1.0;
   tester.view.padding = FakeViewPadding(bottom: bottomInset);
@@ -32,7 +32,7 @@ Future<void> pumpOverlayPage(
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
     host(
-      app,
+      environment,
       MaterialApp(
         home: TopBarOverlayScaffold(
           appBar: AppBar(title: const Text('设置')),
@@ -77,8 +77,8 @@ void main() {
   testWidgets('大屏卡片内的 AppBar 不会再让一次系统 inset', (tester) async {
     /// 返回 AppBar 右侧搜索按钮右边缘的 x（大屏下页面被套进 MD3E 卡片）
     Future<double> searchRight(double rightInset) async {
-      final app = AppController();
-      addTearDown(app.dispose);
+      final environment = AppEnvironment();
+      addTearDown(environment.dispose);
       tester.view.physicalSize = const Size(800, 600);
       tester.view.devicePixelRatio = 1.0;
       tester.view.padding = FakeViewPadding(right: rightInset);
@@ -86,7 +86,7 @@ void main() {
       addTearDown(tester.view.reset);
       await tester.pumpWidget(
         host(
-          app,
+          environment,
           MaterialApp(
             home: Md3ePageFrame(
               child: Scaffold(
@@ -116,8 +116,8 @@ void main() {
   });
 
   testWidgets('弹窗被 640dp 上限居中时，内容不再按挖孔 / 导航栏缩进', (tester) async {
-    final app = AppController();
-    addTearDown(app.dispose);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
     // 900dp 宽的窗口：弹窗按 MD3 上限 640dp 居中，离两侧系统栏很远
     tester.view.physicalSize = const Size(900, 600);
     tester.view.devicePixelRatio = 1.0;
@@ -126,7 +126,7 @@ void main() {
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
       host(
-        app,
+        environment,
         MaterialApp(
           home: Scaffold(
             body: Builder(
@@ -159,8 +159,8 @@ void main() {
       double left = 0,
       double right = 0,
     }) async {
-      final app = AppController();
-      addTearDown(app.dispose);
+      final environment = AppEnvironment();
+      addTearDown(environment.dispose);
       tester.view.physicalSize = const Size(400, 600);
       tester.view.devicePixelRatio = 1.0;
       tester.view.padding = FakeViewPadding(left: left, right: right);
@@ -168,7 +168,7 @@ void main() {
       addTearDown(tester.view.reset);
       await tester.pumpWidget(
         host(
-          app,
+          environment,
           MaterialApp(
             home: TopBarOverlayScaffold(
               appBar: AppBar(
@@ -210,8 +210,8 @@ void main() {
   });
 
   testWidgets('小屏通铺弹窗：弹窗窗体整体避开左右挖孔，内容不再缩进', (tester) async {
-    final app = AppController();
-    addTearDown(app.dispose);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
     // 440dp 宽的窗口：弹窗通铺整屏，左右各有挖孔
     tester.view.physicalSize = const Size(440, 600);
     tester.view.devicePixelRatio = 1.0;
@@ -220,7 +220,7 @@ void main() {
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
       host(
-        app,
+        environment,
         MaterialApp(
           home: Scaffold(
             body: Builder(

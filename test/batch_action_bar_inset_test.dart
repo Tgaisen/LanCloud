@@ -1,7 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/common.dart';
@@ -60,26 +60,26 @@ EdgeInsets barPadding(WidgetTester tester) {
 
 void main() {
   testWidgets('普通底栏：多选条贴在底栏上方 12dp', (tester) async {
-    final app = AppController();
-    app.settingsState.store.floatingNavBar = false;
-    addTearDown(app.dispose);
+    final environment = AppEnvironment();
+    environment.settingsState.store.floatingNavBar = false;
+    addTearDown(environment.dispose);
     // 普通底栏槽位 = 80 + 手势区
     await pumpRiverpodBar(
       tester,
-      appearance: app.navigationAppearanceSettings,
+      appearance: environment.navigationAppearanceSettings,
       shellBarHeight: 80 + _gestureInset,
     );
     expect(barPadding(tester).bottom, closeTo(80 + _gestureInset + 12, 0.01));
   });
 
   testWidgets('悬浮底栏：多选条按胶囊高度避让（不加 16dp 槽位留白）', (tester) async {
-    final app = AppController();
-    app.settingsState.store.floatingNavBar = true;
-    addTearDown(app.dispose);
+    final environment = AppEnvironment();
+    environment.settingsState.store.floatingNavBar = true;
+    addTearDown(environment.dispose);
     // 悬浮底栏槽位 = 108 + 手势区（胶囊 80 + 顶留白 16 + 底留白 12）
     await pumpRiverpodBar(
       tester,
-      appearance: app.navigationAppearanceSettings,
+      appearance: environment.navigationAppearanceSettings,
       shellBarHeight: 108 + _gestureInset,
     );
     // 期望值：108 + 手势区 - 16（槽位顶留白）+ 12（自身间距）
@@ -91,12 +91,12 @@ void main() {
 
   testWidgets('Riverpod 导航外观变化会更新多选条避让', (tester) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
-    final app = AppController();
-    app.settingsState.store.floatingNavBar = true;
-    addTearDown(app.dispose);
+    final environment = AppEnvironment();
+    environment.settingsState.store.floatingNavBar = true;
+    addTearDown(environment.dispose);
     await pumpRiverpodBar(
       tester,
-      appearance: app.navigationAppearanceSettings,
+      appearance: environment.navigationAppearanceSettings,
       shellBarHeight: 108 + _gestureInset,
     );
     expect(
@@ -104,7 +104,7 @@ void main() {
       closeTo(108 + _gestureInset - 16 + 12, 0.01),
     );
 
-    await app.navigationAppearanceSettings.setFloatingNavBar(false);
+    await environment.navigationAppearanceSettings.setFloatingNavBar(false);
     await tester.pumpAndSettle();
     expect(
       barPadding(tester).bottom,
