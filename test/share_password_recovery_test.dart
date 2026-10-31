@@ -8,6 +8,8 @@ import 'package:lancloud/core/api/lanzou_client_registry.dart';
 import 'package:lancloud/core/api/models.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/data/app_db.dart';
+import 'package:lancloud/core/navigation_appearance_settings_state.dart';
+import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
@@ -121,6 +123,10 @@ Future<void> _pumpFavorites(
       overrides: [
         transferManagerProvider.overrideWithValue(transfers),
         lanzouClientRegistryProvider.overrideWithValue(clients),
+        navigationAppearanceSettingsStateProvider.overrideWithValue(
+          app.navigationAppearanceSettings,
+        ),
+        navigationStateProvider.overrideWithValue(app.navigation),
       ],
       child: ChangeNotifierProvider<AppController>.value(
         value: app,
@@ -322,6 +328,10 @@ void main() {
         overrides: [
           transferManagerProvider.overrideWithValue(manager),
           lanzouClientRegistryProvider.overrideWithValue(clients),
+          navigationAppearanceSettingsStateProvider.overrideWithValue(
+            app.navigationAppearanceSettings,
+          ),
+          navigationStateProvider.overrideWithValue(app.navigation),
         ],
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
