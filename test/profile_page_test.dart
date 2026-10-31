@@ -124,7 +124,8 @@ void main() {
     tester,
   ) async {
     Future<int> tailSpacerCount({required bool floating}) async {
-      final app = AppController()..settings.floatingNavBar = floating;
+      final app = AppController();
+      app.settingsState.store.floatingNavBar = floating;
       tester.view.physicalSize = const Size(400, 600);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
@@ -645,7 +646,8 @@ void main() {
     tester.view.physicalSize = const Size(1200, 500);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    final app = AppController()..settings.hideTopBar = true;
+    final app = AppController();
+    app.settingsState.store.hideTopBar = true;
     addTearDown(app.dispose);
     await tester.pumpWidget(
       _TestProviders.value(

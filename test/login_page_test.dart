@@ -198,7 +198,8 @@ void main() {
   });
 
   testWidgets('恢复页顶栏随滚动渐变并收纳', (tester) async {
-    final app = AppController()..settings.hideTopBar = true;
+    final app = AppController();
+    app.settingsState.store.hideTopBar = true;
     tester.view.physicalSize = const Size(400, 640);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);

@@ -60,7 +60,8 @@ EdgeInsets barPadding(WidgetTester tester) {
 
 void main() {
   testWidgets('普通底栏：多选条贴在底栏上方 12dp', (tester) async {
-    final app = AppController()..settings.floatingNavBar = false;
+    final app = AppController();
+    app.settingsState.store.floatingNavBar = false;
     addTearDown(app.dispose);
     // 普通底栏槽位 = 80 + 手势区
     await pumpRiverpodBar(
@@ -72,7 +73,8 @@ void main() {
   });
 
   testWidgets('悬浮底栏：多选条按胶囊高度避让（不加 16dp 槽位留白）', (tester) async {
-    final app = AppController()..settings.floatingNavBar = true;
+    final app = AppController();
+    app.settingsState.store.floatingNavBar = true;
     addTearDown(app.dispose);
     // 悬浮底栏槽位 = 108 + 手势区（胶囊 80 + 顶留白 16 + 底留白 12）
     await pumpRiverpodBar(
@@ -89,7 +91,8 @@ void main() {
 
   testWidgets('Riverpod 导航外观变化会更新多选条避让', (tester) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
-    final app = AppController()..settings.floatingNavBar = true;
+    final app = AppController();
+    app.settingsState.store.floatingNavBar = true;
     addTearDown(app.dispose);
     await pumpRiverpodBar(
       tester,

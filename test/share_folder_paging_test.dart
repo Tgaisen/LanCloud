@@ -151,7 +151,8 @@ void main() {
 
   testWidgets('分享文件夹：开启「自动加载全部目录内容」后后台补齐全部分页', (tester) async {
     final client = _FakeClient();
-    final app = AppController()..settings.loadAllPages = true;
+    final app = AppController();
+    app.settingsState.store.loadAllPages = true;
     addTearDown(app.dispose);
     await pumpPage(tester, app: app, client: client, folder: _folder());
 
