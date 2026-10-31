@@ -59,6 +59,8 @@ void main() {
     final environment = AppEnvironment();
     addTearDown(environment.dispose);
     environment.runtimeState.secureStorageNeedsReauthentication.value = true;
+    var accountChanges = 0;
+    environment.accountState.addListener(() => accountChanges += 1);
     final startup = AppStartup(
       environment: environment,
       onChanged: () => order.add('changed'),
@@ -67,6 +69,7 @@ void main() {
         environment.accountState.store.accounts = [
           Account(uid: '1', cookie: 'cookie'),
         ];
+        environment.accountState.store.activeUid = '1';
       },
       loadSettings: () async => order.add('settings'),
       applyRuntimeSettings: () => order.add('runtime-settings'),
@@ -80,6 +83,7 @@ void main() {
       environment.runtimeState.secureStorageNeedsReauthentication.value,
       isFalse,
     );
+    expect(accountChanges, 1);
     expect(order, [
       'accounts',
       'settings',
