@@ -13,8 +13,8 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 BackupDependencies backupDependenciesFor(AppController app) =>
     BackupStoreDependencies(
-      accounts: app.accounts,
-      settings: app.settings,
+      accounts: app.accountState.store,
+      settings: app.settingsState.store,
       db: app.db,
       reloadCallback: app.reloadFromStorage,
     );
@@ -144,7 +144,7 @@ void main() {
   test('加密备份可以通过 restoreFromString 验证口令并恢复', () async {
     SharedPreferences.setMockInitialValues({});
     final app = AppController();
-    await app.settings.load();
+    await app.settingsState.store.load();
     final service = BackupService(
       backupDependenciesFor(app),
       webdav: _MemoryWebdavStore(),
@@ -153,7 +153,7 @@ void main() {
       'app': 'lancloud',
       'format': 3,
       'sections': ['settings'],
-      'settings': {...app.settings.toJson(), 'theme_mode': 'dark'},
+      'settings': {...app.settingsState.store.toJson(), 'theme_mode': 'dark'},
       'tables': <String, Object?>{},
     });
     final encryption = await BackupCrypto.encrypt(
@@ -172,7 +172,7 @@ void main() {
       throwsA(isA<BackupException>()),
     );
     await service.restoreFromString(content, passphrase: 'backup-secret');
-    expect(app.settings.themeMode, 'dark');
+    expect(app.settingsState.store.themeMode, 'dark');
   });
 
   test('WebDAV 上传：没选备份内容时提示先选', () async {
@@ -259,7 +259,7 @@ void main() {
   test('恢复 WebDAV 账号时一并恢复「备份内容」与「自动备份」开关', () async {
     SharedPreferences.setMockInitialValues({});
     final app = AppController();
-    await app.settings.load();
+    await app.settingsState.store.load();
     final store = _MemoryWebdavStore();
     await store.load();
     final service = BackupService(backupDependenciesFor(app), webdav: store);
@@ -329,15 +329,18 @@ void main() {
   test('恢复：设置项与收藏夹真的写回本机（回归：嵌套忙碌保护曾把恢复吞掉）', () async {
     SharedPreferences.setMockInitialValues({});
     final app = AppController();
-    await app.settings.load();
+    await app.settingsState.store.load();
     final service = BackupService(
       backupDependenciesFor(app),
       webdav: _MemoryWebdavStore(),
     );
 
     // 用当前配置做底，改一个开关当作"备份里的旧设置"
-    final settings = Map<String, Object?>.from(app.settings.toJson());
-    final restoredTransitions = !app.settings.transitionAnimations;
+    final settings = Map<String, Object?>.from(
+      app.settingsState.store.toJson(),
+    );
+    final restoredTransitions =
+        !app.settingsState.store.transitionAnimations;
     settings['transition_animations'] = restoredTransitions;
     final content = jsonEncode({
       'app': 'lancloud',
@@ -358,7 +361,10 @@ void main() {
 
     await service.restoreFromString(content);
 
-    expect(app.settings.transitionAnimations, restoredTransitions);
+    expect(
+      app.settingsState.store.transitionAnimations,
+      restoredTransitions,
+    );
     final favorites = await app.db.favorites();
     expect(favorites.map((f) => f.ref), contains('restored-ref'));
   });
@@ -366,7 +372,7 @@ void main() {
   test('仅恢复数据时不会导入 Cookie 或 WebDAV 密码', () async {
     SharedPreferences.setMockInitialValues({});
     final app = AppController();
-    await app.settings.load();
+    await app.settingsState.store.load();
     final store = _MemoryWebdavStore();
     await store.load();
     final service = BackupService(backupDependenciesFor(app), webdav: store);
@@ -380,7 +386,7 @@ void main() {
 
     await service.restoreFromString(content, restoreAccounts: false);
 
-    expect(app.accounts.accounts, isEmpty);
+    expect(app.accountState.store.accounts, isEmpty);
     expect(store.url, isEmpty);
     expect(store.password, isEmpty);
     expect(store.backupPassphrase, isEmpty);
