@@ -207,6 +207,8 @@
 | `tools\agent.cmd test`（移除 DriveState 转发兼容 API） | 增量 | **315 tests, all passed** | 约 51 s |
 | `tools\agent.cmd analyze`（移除 driveCache 转发 getter） | 增量 | No issues found | 约 7 s |
 | `tools\agent.cmd test`（移除 driveCache 转发 getter） | 增量 | **313 tests, all passed** | 约 51 s |
+| `tools\agent.cmd analyze`（客户端访问测试迁移） | 全量 | No issues found | 约 20 s |
+| `tools\agent.cmd test`（客户端访问测试迁移） | 增量 | **42 tests, all passed** | 约 26 s |
 | `tools\agent.cmd analyze`（网盘目录切片完成后） | 全量 | No issues found | 约 21 s |
 | `tools\agent.cmd test`（网盘目录切片完成后） | 全量 | **722 tests, all passed** | 约 110 s |
 | `tools\agent.cmd analyze`（拖放与 Cookie 行完成后） | 全量 | No issues found | 约 17 s |
@@ -702,6 +704,10 @@
 - 2026-10-31 移除 `driveCache` 转发 getter：控制器内部和两个页面测试统一
   使用 `drive.cache`，删除旧 `drive_cache.dart` 依赖。增量分析 1 个生产文件
   无问题，48 个受影响测试文件 / 313 个测试通过，用例总数保持 718。
+- 2026-10-31 客户端访问测试迁移完成：4 个 AppController 测试子类移除
+  `client/publicClient` 覆写和仅服务旧 getter 的 `exposeLegacyClient`；
+  fake 客户端仍通过私有字段注入 Riverpod 客户端注册表。全量分析无问题，
+  4 个测试文件 / 42 个测试通过，用例总数保持 718。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release
