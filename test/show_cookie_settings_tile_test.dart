@@ -36,7 +36,7 @@ void main() {
       Account(uid: '556911', cookie: 'c', nickname: '土豆'),
     );
     app.accounts.activeUid = '556911';
-    await app.setSortMode('name');
+    await app.listHomeSettings.setSortMode('name');
     await tester.pumpAndSettle();
     expect(tester.widget<ListTile>(tile).enabled, isFalse);
 

@@ -344,23 +344,6 @@ class AppController extends ChangeNotifier {
     super.dispose();
   }
 
-  Future<void> setSortMode(String value) async {
-    await listHomeSettings.setSortMode(value);
-  }
-
-  Future<void> setQuickExpanded(bool value) async {
-    await listHomeSettings.setQuickExpanded(value);
-  }
-
-  Future<void> setRecentsExpanded(bool value) async {
-    await listHomeSettings.setRecentsExpanded(value);
-  }
-
-  /// 设置最近使用条数（0 = 不记录），并立刻按新上限裁剪已有记录。
-  Future<void> setRecentLimit(int value) async {
-    await listHomeSettings.setRecentLimit(value);
-  }
-
   Future<void> setMaxUploads(int value) async {
     await transferConnectionSettings.setMaxUploads(value);
     notifyListeners();
@@ -438,10 +421,6 @@ class AppController extends ChangeNotifier {
   Future<void> setLaunchPage(String page) async {
     await cachePageSettings.setLaunchPage(page);
     notifyListeners();
-  }
-
-  Future<void> setHomeFolderOpenMode(String value) async {
-    await listHomeSettings.setHomeFolderOpenMode(value);
   }
 
   Future<void> setCacheFolders(bool value) async {
