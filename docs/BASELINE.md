@@ -219,6 +219,8 @@
 | `tools\agent.cmd test`（生产入口脱离存储 getter） | 增量 | **8 tests, all passed** | 约 14 s |
 | `tools\agent.cmd analyze`（存储访问测试批次 1） | 全量 | No issues found | 约 18 s |
 | `tools\agent.cmd test`（存储访问测试批次 1） | 增量 | **15 tests, all passed** | 约 15 s |
+| `tools\agent.cmd analyze`（存储访问测试批次 2） | 全量 | No issues found | 约 18 s |
+| `tools\agent.cmd test`（存储访问测试批次 2） | 增量 | **49 tests, all passed** | 约 28 s |
 | `tools\agent.cmd analyze`（网盘目录切片完成后） | 全量 | No issues found | 约 21 s |
 | `tools\agent.cmd test`（网盘目录切片完成后） | 全量 | **722 tests, all passed** | 约 110 s |
 | `tools\agent.cmd analyze`（拖放与 Cookie 行完成后） | 全量 | No issues found | 约 17 s |
@@ -739,6 +741,10 @@
   备份夹具改读 `accountState.store` / `settingsState.store`；删除
   `storage_store_providers_test` 中 2 条仅验证控制器 getter 的测试。全量分析
   无问题，4 个测试文件 / 15 个测试通过，用例总数由 718 调整为 716。
+- 2026-10-31 存储访问测试批次 2 完成：`backup_page_test`、
+  `backup_sections_test`、`login_page_test` 与
+  `restore_page_progress_test` 的备份依赖和设置断言改为直接读取状态 store。
+  全量分析无问题，4 个测试文件 / 49 个测试通过，用例总数保持 716。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release
