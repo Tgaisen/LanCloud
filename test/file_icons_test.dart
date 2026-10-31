@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/account_state.dart';
 import 'package:lancloud/core/api/lanzou_client_registry.dart';
 import 'package:lancloud/core/api/models.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/cache_page_settings_state.dart';
 import 'package:lancloud/core/data/app_db_provider.dart';
 import 'package:lancloud/core/drive_state.dart';
@@ -21,17 +21,20 @@ import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/drive_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'transfer_dependencies_test.dart' show buildTransferManager;
+import 'transfer_dependencies_test.dart' show buildTransferManagerForEnvironment;
 
 /// 网盘页挂载在目录缓存上（不进网络）：给个账号让 `app.client` 非空，
 /// 再塞一份根目录快照，`_load()` 直接命中缓存。
 Future<void> host(WidgetTester tester, {required bool grid}) async {
   SharedPreferences.setMockInitialValues({});
-  final app = AppController();
-  app.accountState.store.accounts = [Account(uid: '1', cookie: 'cookie')];
-  app.accountState.store.activeUid = '1';
-  app.settingsState.store.gridView = grid;
-  app.drive.cache.put(
+  final environment = AppEnvironment();
+  addTearDown(environment.dispose);
+  environment.accountState.store.accounts = [
+    Account(uid: '1', cookie: 'cookie'),
+  ];
+  environment.accountState.store.activeUid = '1';
+  environment.settingsState.store.gridView = grid;
+  environment.drive.cache.put(
     '-1',
     CachedFolder(
       folders: [LzFolder(id: 'f1', name: '测试文件夹', desc: '')],
@@ -41,21 +44,27 @@ Future<void> host(WidgetTester tester, {required bool grid}) async {
       hasMore: false,
     ),
   );
-  final manager = buildTransferManager(app);
+  final manager = buildTransferManagerForEnvironment(environment);
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
         transferManagerProvider.overrideWithValue(manager),
-        accountStateProvider.overrideWithValue(app.accountState),
-        lanzouClientRegistryProvider.overrideWithValue(app.clientRegistry),
-        appDbProvider.overrideWithValue(app.db),
-        driveStateProvider.overrideWithValue(app.drive),
-        cachePageSettingsStateProvider.overrideWithValue(app.cachePageSettings),
-        listHomeSettingsStateProvider.overrideWithValue(app.listHomeSettings),
-        navigationAppearanceSettingsStateProvider.overrideWithValue(
-          app.navigationAppearanceSettings,
+        accountStateProvider.overrideWithValue(environment.accountState),
+        lanzouClientRegistryProvider.overrideWithValue(
+          environment.clientRegistry,
         ),
-        navigationStateProvider.overrideWithValue(app.navigation),
+        appDbProvider.overrideWithValue(environment.db),
+        driveStateProvider.overrideWithValue(environment.drive),
+        cachePageSettingsStateProvider.overrideWithValue(
+          environment.cachePageSettings,
+        ),
+        listHomeSettingsStateProvider.overrideWithValue(
+          environment.listHomeSettings,
+        ),
+        navigationAppearanceSettingsStateProvider.overrideWithValue(
+          environment.navigationAppearanceSettings,
+        ),
+        navigationStateProvider.overrideWithValue(environment.navigation),
       ],
       child: MaterialApp(
         localizationsDelegates: appLocalizationsDelegates,

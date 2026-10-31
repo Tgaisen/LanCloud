@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/account_state.dart';
 import 'package:lancloud/core/api/lanzou_client_registry.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/data/app_db_provider.dart';
 import 'package:lancloud/core/drag_drop.dart';
 import 'package:lancloud/core/drive_state.dart';
@@ -15,12 +15,12 @@ import 'package:lancloud/ui/share_page.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
-Widget _host(AppController app, Widget home) => ProviderScope(
+Widget _host(AppEnvironment environment, Widget home) => ProviderScope(
   overrides: [
-    accountStateProvider.overrideWithValue(app.accountState),
-    lanzouClientRegistryProvider.overrideWithValue(app.clientRegistry),
-    appDbProvider.overrideWithValue(app.db),
-    driveStateProvider.overrideWithValue(app.drive),
+    accountStateProvider.overrideWithValue(environment.accountState),
+    lanzouClientRegistryProvider.overrideWithValue(environment.clientRegistry),
+    appDbProvider.overrideWithValue(environment.db),
+    driveStateProvider.overrideWithValue(environment.drive),
   ],
   child: MaterialApp(
     localizationsDelegates: appLocalizationsDelegates,
@@ -116,10 +116,11 @@ void main() {
   });
 
   testWidgets('其它页面拖入链接：走「打开链接」弹窗', (tester) async {
-    final app = AppController();
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
     await tester.pumpWidget(
       _host(
-        app,
+        environment,
         Builder(
           builder: (context) => Scaffold(
             body: Center(
@@ -150,15 +151,15 @@ void main() {
     // 让解析请求的定时器跑完，避免用例结束时报 pending timer
     await tester.pump(const Duration(seconds: 5));
     await tester.pumpAndSettle();
-    app.dispose();
   });
 
   testWidgets('收藏页拖入链接：先弹确认条，取消则不解析', (tester) async {
-    final app = AppController();
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
     DropOutcome? outcome;
     await tester.pumpWidget(
       _host(
-        app,
+        environment,
         Builder(
           builder: (context) => Scaffold(
             body: Center(
@@ -193,14 +194,14 @@ void main() {
     await tester.tap(find.text('取消'));
     await tester.pumpAndSettle();
     expect(outcome?.canceled, isTrue);
-    app.dispose();
   });
 
   testWidgets('没有可导入内容：提示不支持', (tester) async {
-    final app = AppController();
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
     await tester.pumpWidget(
       _host(
-        app,
+        environment,
         Builder(
           builder: (context) => Scaffold(
             body: Center(
@@ -225,15 +226,15 @@ void main() {
       find.text(AppLocalizationsZh().shareTargetUnsupported),
       findsOneWidget,
     );
-    app.dispose();
   });
 
   testWidgets('混合内容：文件这一步取消后，链接仍然继续处理', (tester) async {
-    final app = AppController();
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
     final l10n = AppLocalizationsZh();
     await tester.pumpWidget(
       _host(
-        app,
+        environment,
         Builder(
           builder: (context) => Scaffold(
             body: Center(
@@ -266,16 +267,16 @@ void main() {
     expect(find.text(l10n.notLoggedIn), findsOneWidget);
     expect(find.text(l10n.dropLinksCount(1)), findsOneWidget);
     expect(find.text(l10n.dropAddFavorites), findsOneWidget);
-    app.dispose();
   });
 
   testWidgets('其它页面拖入多条链接：可在弹窗里选择批量收藏或逐个打开', (tester) async {
-    final app = AppController();
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
     final l10n = AppLocalizationsZh();
     DropOutcome? outcome;
     await tester.pumpWidget(
       _host(
-        app,
+        environment,
         Builder(
           builder: (context) => Scaffold(
             body: Center(
@@ -311,6 +312,5 @@ void main() {
     await tester.tap(find.text(l10n.cancel));
     await tester.pumpAndSettle();
     expect(outcome?.canceled, isTrue);
-    app.dispose();
   });
 }

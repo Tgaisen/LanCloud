@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/account_state.dart';
 import 'package:lancloud/core/api/lanzou_client_registry.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/backup/backup_dependencies.dart';
 import 'package:lancloud/core/backup/backup_service.dart';
 import 'package:lancloud/core/backup/backup_service_provider.dart';
@@ -19,29 +19,31 @@ import 'package:lancloud/ui/m3e.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
-BackupDependencies backupDependenciesFor(AppController app) =>
+Future<void> _noopReload() async {}
+
+BackupDependencies backupDependenciesFor(AppEnvironment environment) =>
     BackupStoreDependencies(
-      accounts: app.accountState.store,
-      settings: app.settingsState.store,
-      db: app.db,
-      reloadCallback: app.reloadFromStorage,
+      accounts: environment.accountState.store,
+      settings: environment.settingsState.store,
+      db: environment.db,
+      reloadCallback: _noopReload,
     );
 
-Widget host(Widget home, {AppController? app}) {
-  final controller = app ?? AppController();
-  addTearDown(controller.dispose);
+Widget host(Widget home, {AppEnvironment? environment}) {
+  final current = environment ?? AppEnvironment();
+  addTearDown(current.dispose);
   return ProviderScope(
     overrides: [
-      accountStateProvider.overrideWithValue(controller.accountState),
-      lanzouClientRegistryProvider.overrideWithValue(controller.clientRegistry),
-      driveStateProvider.overrideWithValue(controller.drive),
+      accountStateProvider.overrideWithValue(current.accountState),
+      lanzouClientRegistryProvider.overrideWithValue(current.clientRegistry),
+      driveStateProvider.overrideWithValue(current.drive),
       backupServiceProvider.overrideWithValue(
-        BackupService(backupDependenciesFor(controller)),
+        BackupService(backupDependenciesFor(current)),
       ),
       navigationAppearanceSettingsStateProvider.overrideWithValue(
-        controller.navigationAppearanceSettings,
+        current.navigationAppearanceSettings,
       ),
-      navigationStateProvider.overrideWithValue(controller.navigation),
+      navigationStateProvider.overrideWithValue(current.navigation),
     ],
     child: MaterialApp(
       localizationsDelegates: appLocalizationsDelegates,
@@ -198,13 +200,13 @@ void main() {
   });
 
   testWidgets('恢复页顶栏随滚动渐变并收纳', (tester) async {
-    final app = AppController();
-    app.settingsState.store.hideTopBar = true;
+    final environment = AppEnvironment();
+    environment.settingsState.store.hideTopBar = true;
     tester.view.physicalSize = const Size(400, 640);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
-      host(const LoginPage(firstRun: true), app: app),
+      host(const LoginPage(firstRun: true), environment: environment),
     );
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(ListTile, '从已有备份恢复'));

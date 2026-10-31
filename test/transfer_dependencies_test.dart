@@ -139,30 +139,30 @@ void main() {
     final downloadPaths = PlatformDownloadPathService(
       sharedDownloads: sharedDownloads,
     );
-    final app = AppController();
-    addTearDown(app.dispose);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
 
-    expect(app.db, same(AppDb.instance));
-    final store = AppDbTransferStore(database: app.db);
+    expect(environment.db, same(AppDb.instance));
+    final store = AppDbTransferStore(database: environment.db);
     expect(store, isA<AppDbTransferStore>());
     expect(store.database, same(AppDb.instance));
     final accounts = AppTransferAccountPort(
-      accounts: app.accountState.store,
-      clients: app.clientRegistry,
+      accounts: environment.accountState.store,
+      clients: environment.clientRegistry,
     );
     expect(accounts, isA<AppTransferAccountPort>());
-    expect(accounts.accounts, same(app.accountState.store));
-    expect(accounts.clients, same(app.clientRegistry));
+    expect(accounts.accounts, same(environment.accountState.store));
+    expect(accounts.clients, same(environment.clientRegistry));
     final download = DefaultTransferDownloadPort(
       downloadPaths: downloadPaths,
       sharedDownloads: sharedDownloads,
-      settings: app.settingsState.store,
+      settings: environment.settingsState.store,
     );
     expect(download, isA<DefaultTransferDownloadPort>());
     expect(download.downloadPaths, same(downloadPaths));
     expect(download.sharedDownloads, same(sharedDownloads));
-    expect(download.settings, same(app.settingsState.store));
-    final settings = StoreTransferSettingsPort(app.settingsState.store);
+    expect(download.settings, same(environment.settingsState.store));
+    final settings = StoreTransferSettingsPort(environment.settingsState.store);
     final dependencies = TransferDependencies(
       store: store,
       accounts: accounts,
@@ -182,12 +182,11 @@ void main() {
     final downloadPaths = PlatformDownloadPathService(
       sharedDownloads: sharedDownloads,
     );
-    final app = AppController();
-    addTearDown(app.dispose);
-    final environment = app.environment;
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
     final composition = AppCompositionRoot(
       environment: environment,
-      reloadFromStorage: app.reloadFromStorage,
+      reloadFromStorage: () async {},
       sharedDownloads: sharedDownloads,
       downloadPaths: downloadPaths,
     );
