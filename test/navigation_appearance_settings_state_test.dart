@@ -1,10 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/data/settings_store.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
-import 'package:lancloud/core/settings_state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -32,24 +30,6 @@ void main() {
     expect(state.navShowFavorites, isTrue);
   });
 
-  test('关闭隐藏顶栏/底栏时旧 API 仍立即把进度归零', () async {
-    final app = AppController(settingsState: SettingsState());
-    addTearDown(app.dispose);
-    app.systemReduceMotion = true;
-    app.barsHide.value = 1;
-    app.topBarHide.value = 1;
-
-    await app.setHideTopBar(false);
-    expect(app.barsHide.value, 0);
-    expect(app.topBarHide.value, 0);
-
-    app.barsHide.value = 1;
-    app.topBarHide.value = 1;
-    await app.setHideBottomBar(false);
-    expect(app.barsHide.value, 0);
-    expect(app.topBarHide.value, 0);
-  });
-
   test('Riverpod 直属关闭隐藏栏时仍按少动效立即展开', () async {
     final navigation = NavigationState();
     addTearDown(navigation.dispose);
@@ -64,18 +44,6 @@ void main() {
     await state.setHideTopBar(false);
     expect(navigation.barsHide.value, 0);
     expect(navigation.topBarHide.value, 0);
-  });
-
-  test('Riverpod 侧设置变更会转发到旧 AppController 监听者', () async {
-    final app = AppController(settingsState: SettingsState());
-    addTearDown(app.dispose);
-    var notifications = 0;
-    app.addListener(() => notifications += 1);
-
-    await app.navigationAppearanceSettings.setFloatingNavBar(true);
-
-    expect(notifications, 1);
-    expect(app.settings.floatingNavBar, isTrue);
   });
 
   test('批量设置底栏显示项只产生一次 revision', () async {

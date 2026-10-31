@@ -229,10 +229,6 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setSwipeTabs(bool value) async {
-    await navigationAppearanceSettings.setSwipeTabs(value);
-  }
-
   /// 设置固定路径的下载目录（桌面端，或 Android 选中的公共目录——
   /// 公共目录无需授权、直接按路径写入）；已有 SAF 目录授权会一并释放。
   Future<void> setDownloadDir(String? dir) async {
@@ -346,22 +342,6 @@ class AppController extends ChangeNotifier {
     drive.dispose();
     runtimeState.dispose();
     super.dispose();
-  }
-
-  Future<void> setHideTopBar(bool value) async {
-    await navigationAppearanceSettings.setHideTopBar(value);
-  }
-
-  Future<void> setHideBottomBar(bool value) async {
-    await navigationAppearanceSettings.setHideBottomBar(value);
-  }
-
-  Future<void> setFloatingNavBar(bool value) async {
-    await navigationAppearanceSettings.setFloatingNavBar(value);
-  }
-
-  Future<void> setTransitionAnimations(bool value) async {
-    await navigationAppearanceSettings.setTransitionAnimations(value);
   }
 
   Future<void> setSortMode(String value) async {
@@ -495,17 +475,6 @@ class AppController extends ChangeNotifier {
   /// 复制到蓝奏云分享链接时是否提示打开。
   Future<void> setClipboardLinkPrompt(bool value) async {
     await languageClipboardSettings.setClipboardLinkPrompt(value);
-  }
-
-  /// 「传输」「收藏」是否显示在底栏。
-  Future<void> setNavShowTransfers(bool value) async {
-    await navigationAppearanceSettings.setNavShowTransfers(value);
-    notifyListeners();
-  }
-
-  Future<void> setNavShowFavorites(bool value) async {
-    await navigationAppearanceSettings.setNavShowFavorites(value);
-    notifyListeners();
   }
 
   Future<void> setThemeSeed(int value) async {
