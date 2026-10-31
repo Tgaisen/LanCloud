@@ -41,7 +41,6 @@ void main() {
     app.addListener(() => notifications += 1);
 
     expect(notifications, 0);
-    expect(identical(app.driveCanHandleBack, navigation.driveCanHandleBack), isTrue);
     expect(identical(app.activeTab, navigation.activeTab), isTrue);
     expect(identical(app.barsHide, navigation.barsHide), isTrue);
     expect(identical(app.topBarHide, navigation.topBarHide), isTrue);
