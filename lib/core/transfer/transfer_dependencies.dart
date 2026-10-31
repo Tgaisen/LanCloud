@@ -17,8 +17,3 @@ class TransferDependencies {
   final TransferDownloadPort download;
   final TransferSettingsPort settings;
 }
-
-/// 应用入口向 `TransferManager` 提供依赖集合。
-abstract interface class TransferDependenciesProvider {
-  TransferDependencies get transferDependencies;
-}

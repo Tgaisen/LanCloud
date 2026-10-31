@@ -33,17 +33,12 @@ import 'shared_downloads_gateway.dart';
 import 'system_motion.dart';
 import 'theme_settings_state.dart';
 import 'transfer_connection_settings_state.dart';
-import 'transfer/transfer_account_port.dart';
-import 'transfer/transfer_dependencies.dart';
 import 'transfer/transfer_download_port.dart';
-import 'transfer/transfer_settings_port.dart';
-import 'transfer/transfer_store.dart';
 import 'update/update_settings_state.dart';
 
 export 'drive_state.dart' show DriveLocation;
 
-class AppController extends ChangeNotifier
-    implements TransferDependenciesProvider {
+class AppController extends ChangeNotifier {
   AppController({
     SharedDownloadsGateway? sharedDownloads,
     DownloadPathService? downloadPaths,
@@ -109,27 +104,12 @@ class AppController extends ChangeNotifier
   SettingsStore get settings => settingsState.store;
 
   final AppDb db = AppDb.instance;
-  final TransferStore transferStore = AppDbTransferStore();
-  late final TransferAccountPort transferAccounts = AppTransferAccountPort(
-    accounts: accounts,
-    clients: clientRegistry,
-  );
-  late final DefaultTransferDownloadPort transferDownload =
+  late final DefaultTransferDownloadPort _transferDownload =
       DefaultTransferDownloadPort(
         downloadPaths: _downloadPaths,
         sharedDownloads: _sharedDownloads,
         settings: settings,
       );
-  late final TransferSettingsPort transferSettings = StoreTransferSettingsPort(
-    settings,
-  );
-  @override
-  late final TransferDependencies transferDependencies = TransferDependencies(
-    store: transferStore,
-    accounts: transferAccounts,
-    download: transferDownload,
-    settings: transferSettings,
-  );
   DriveCache get driveCache => drive.cache;
   final SharedDownloadsGateway _sharedDownloads;
   final DownloadPathService _downloadPaths;
@@ -526,19 +506,20 @@ class AppController extends ChangeNotifier
   /// 当前下载落盘方式。显式目录设置优先，未设置时 Android 10+ 默认走
   /// MediaStore 的公共 Downloads，Android 9 及以下退回应用专属目录。
   Future<DownloadTargetMode> downloadTargetMode() =>
-      transferDownload.targetMode();
+      _transferDownload.targetMode();
 
-  Future<Directory> downloadDirectory() => transferDownload.downloadDirectory();
+  Future<Directory> downloadDirectory() =>
+      _transferDownload.downloadDirectory();
 
   /// 当前生效的 SAF 下载目录（仅 Android 且用户授权过时非空）。
   ///
   /// 非空时下载走「先写到应用专属中转目录，再由原生写入授权目录」的流程，
   /// [downloadDirectory] / [uniqueSavePath] 只服务其它情况。
-  String? get safDownloadTree => transferDownload.safTreeUri;
+  String? get safDownloadTree => _transferDownload.safTreeUri;
 
   /// SAF 模式下的下载中转文件路径；任务 id 唯一，重试时清掉同名残留。
   Future<String> safTempFilePath(String taskId, String name) =>
-      transferDownload.safTempFilePath(taskId, name);
+      _transferDownload.safTempFilePath(taskId, name);
 
   Future<void> setGridView(bool value) async {
     await cachePageSettings.setGridView(value);
@@ -607,5 +588,5 @@ class AppController extends ChangeNotifier
   }
 
   Future<String> uniqueSavePath(String name) =>
-      transferDownload.uniqueSavePath(name);
+      _transferDownload.uniqueSavePath(name);
 }

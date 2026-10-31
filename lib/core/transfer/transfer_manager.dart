@@ -77,16 +77,6 @@ class TransferTask {
 }
 
 class TransferManager extends ChangeNotifier {
-  factory TransferManager(
-    TransferDependenciesProvider source, {
-    NotificationService? notifications,
-    SharedDownloadsGateway? sharedDownloads,
-  }) => TransferManager.withDependencies(
-    source.transferDependencies,
-    notifications: notifications,
-    sharedDownloads: sharedDownloads,
-  );
-
   TransferManager.withDependencies(
     this._dependencies, {
     NotificationService? notifications,

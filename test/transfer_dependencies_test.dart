@@ -74,16 +74,6 @@ class _FixedDownloadPathService implements DownloadPathService {
   Future<String> defaultDownloadDirPath() async => path;
 }
 
-class _FakeTransferDependenciesProvider
-    implements TransferDependenciesProvider {
-  _FakeTransferDependenciesProvider({
-    required this.transferDependencies,
-  });
-
-  @override
-  final TransferDependencies transferDependencies;
-}
-
 class _FakeTransferAccountPort implements TransferAccountPort {
   @override
   String? get activeUid => null;
@@ -249,14 +239,12 @@ void main() {
         'error': '',
       },
     ]);
-    final manager = TransferManager(
-      _FakeTransferDependenciesProvider(
-        transferDependencies: TransferDependencies(
-          store: store,
-          accounts: _FakeTransferAccountPort(),
-          download: _FakeTransferDownloadPort(),
-          settings: StoreTransferSettingsPort(SettingsStore()),
-        ),
+    final manager = TransferManager.withDependencies(
+      TransferDependencies(
+        store: store,
+        accounts: _FakeTransferAccountPort(),
+        download: _FakeTransferDownloadPort(),
+        settings: StoreTransferSettingsPort(SettingsStore()),
       ),
     );
     addTearDown(manager.dispose);
