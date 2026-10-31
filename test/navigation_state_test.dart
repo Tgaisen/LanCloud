@@ -40,17 +40,14 @@ void main() {
     var notifications = 0;
     app.addListener(() => notifications += 1);
 
-    app.setSelectionMode(true);
-    expect(app.selectionMode, isTrue);
-    expect(navigation.selectionMode, isTrue);
-    expect(notifications, 1);
+    expect(notifications, 0);
     expect(identical(app.driveCanHandleBack, navigation.driveCanHandleBack), isTrue);
     expect(identical(app.activeTab, navigation.activeTab), isTrue);
     expect(identical(app.barsHide, navigation.barsHide), isTrue);
     expect(identical(app.topBarHide, navigation.topBarHide), isTrue);
     app.onSwitchTab = (index) => notifications += index;
     app.switchTab(2);
-    expect(notifications, 3);
+    expect(notifications, 2);
   });
 
   test('navigationStateProvider 可以被入口共享实例覆盖', () {

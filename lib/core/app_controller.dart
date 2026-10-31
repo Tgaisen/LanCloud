@@ -113,8 +113,6 @@ class AppController extends ChangeNotifier {
   set secureStorageNeedsReauthentication(bool value) =>
       runtimeState.secureStorageNeedsReauthentication.value = value;
 
-  bool get selectionMode => navigation.selectionMode;
-
   VoidCallback? get onRequestExitSelection =>
       navigation.onRequestExitSelection;
   set onRequestExitSelection(VoidCallback? handler) =>
@@ -135,8 +133,6 @@ class AppController extends ChangeNotifier {
   /// 由外壳里的 [DrivePage] 实时上报。RootShell 用它决定返回手势交给系统
   /// （系统才会播放退回桌面的预测性返回动画）还是由 Flutter 拦截。
   ValueNotifier<bool> get driveCanHandleBack => navigation.driveCanHandleBack;
-
-  void setSelectionMode(bool value) => navigation.setSelectionMode(value);
 
   Future<void> init() async {
     await _inspectSecureStorageUpgrade();
