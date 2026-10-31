@@ -313,8 +313,6 @@ class AppController extends ChangeNotifier {
 
   String? get activeUid => accounts.activeUid;
 
-  Account? get activeAccount => accounts.active;
-
   LanzouClient? get client {
     final uid = activeUid;
     return uid == null ? null : clientFor(uid);
@@ -327,10 +325,6 @@ class AppController extends ChangeNotifier {
 
   /// 用于解析公开分享链接（不依赖登录态）。
   LanzouClient get publicClient => clientRegistry.publicClient;
-
-  Future<void> addAccountFromCookie(String rawCookie) async {
-    await accountLogin.addAccountFromCookie(rawCookie);
-  }
 
   /// 账号缺昵称 / 等级时，后台解析一次网页版个人中心并落盘。
   ///
@@ -358,16 +352,6 @@ class AppController extends ChangeNotifier {
       }
       if (changed) accountState.notifyAccountChanged();
     } catch (_) {}
-  }
-
-  Future<void> switchAccount(String uid) async {
-    await accountSession.switchAccount(uid);
-  }
-
-  /// 移除账号。[clearData] 为 true 时一并清掉本机里这个账号的使用数据
-  /// （快速访问、最近使用）。
-  Future<void> removeAccount(String uid, {bool clearData = false}) async {
-    await accountSession.removeAccount(uid, clearData: clearData);
   }
 
 }
