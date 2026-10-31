@@ -24,7 +24,6 @@ import 'navigation_appearance_settings_state.dart';
 import 'notification_settings_state.dart';
 import 'list_home_settings_state.dart';
 import 'language_clipboard_settings_state.dart';
-import 'saf_storage.dart';
 import 'settings_state.dart';
 import 'system_motion.dart';
 import 'theme_settings_state.dart';
@@ -207,18 +206,6 @@ class AppController extends ChangeNotifier {
     if (!settings.cacheFolders) driveCache.clear();
     notifyListeners();
     _refreshActiveAccountInfo();
-  }
-
-  /// 设置固定路径的下载目录（桌面端，或 Android 选中的公共目录——
-  /// 公共目录无需授权、直接按路径写入）；已有 SAF 目录授权会一并释放。
-  Future<void> setDownloadDir(String? dir) async {
-    await downloadDirectorySettings.selectDirectoryPath(dir);
-  }
-
-  /// 保存 SAF 授权目录（Android，见 [SafStorage.pickDirectory]）。
-  /// 原始的路径设置在 SAF 模式下不再使用，旧目录授权同时释放。
-  Future<void> setSafDownloadDir(SafDirectory dir) async {
-    await downloadDirectorySettings.selectSafariDirectory(dir);
   }
 
   /// 系统是否要求「少动效」（移除动画 / 减弱动态效果 / 读屏接管）。

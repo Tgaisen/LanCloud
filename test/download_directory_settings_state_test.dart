@@ -1,10 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/data/settings_store.dart';
 import 'package:lancloud/core/download_directory_settings_state.dart';
 import 'package:lancloud/core/saf_storage.dart';
-import 'package:lancloud/core/settings_state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -39,20 +37,23 @@ void main() {
     expect(state.revision.value, 3);
   });
 
-  test('AppController 普通目录与 SAF 设置仍互斥写入', () async {
-    final app = AppController(settingsState: SettingsState());
-    addTearDown(app.dispose);
+  test('普通目录与 SAF 设置互斥写入', () async {
+    final settings = SettingsStore();
+    final state = DownloadDirectorySettingsState(
+      settings,
+      releaseSaf: (_) async {},
+    );
 
-    await app.setDownloadDir('/downloads/custom');
-    expect(app.settings.downloadDir, '/downloads/custom');
-    expect(app.settings.downloadDirTree, isNull);
+    await state.selectDirectoryPath('/downloads/custom');
+    expect(settings.downloadDir, '/downloads/custom');
+    expect(settings.downloadDirTree, isNull);
 
-    await app.setSafDownloadDir(
+    await state.selectSafariDirectory(
       const SafDirectory(uri: 'content://tree/x', label: 'X'),
     );
-    expect(app.settings.downloadDir, isNull);
-    expect(app.settings.downloadDirTree, 'content://tree/x');
-    expect(app.settings.downloadDirLabel, 'X');
+    expect(settings.downloadDir, isNull);
+    expect(settings.downloadDirTree, 'content://tree/x');
+    expect(settings.downloadDirLabel, 'X');
   });
 
   test('downloadDirectorySettingsStateProvider 可被共享实例覆盖', () {
