@@ -132,10 +132,7 @@ void main() {
     final downloadPaths = PlatformDownloadPathService(
       sharedDownloads: sharedDownloads,
     );
-    final app = AppController(
-      sharedDownloads: sharedDownloads,
-      downloadPaths: downloadPaths,
-    );
+    final app = AppController();
     addTearDown(app.dispose);
 
     expect(app.db, same(AppDb.instance));
@@ -179,10 +176,7 @@ void main() {
     final downloadPaths = PlatformDownloadPathService(
       sharedDownloads: sharedDownloads,
     );
-    final app = AppController(
-      sharedDownloads: sharedDownloads,
-      downloadPaths: downloadPaths,
-    );
+    final app = AppController();
     addTearDown(app.dispose);
     final composition = AppCompositionRoot(
       app: app,

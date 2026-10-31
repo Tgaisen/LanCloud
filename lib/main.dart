@@ -88,10 +88,7 @@ Future<void> main() async {
   final downloadPaths = PlatformDownloadPathService(
     sharedDownloads: sharedDownloads,
   );
-  final app = AppController(
-    sharedDownloads: sharedDownloads,
-    downloadPaths: downloadPaths,
-  );
+  final app = AppController();
   await app.init();
   final composition = AppCompositionRoot(
     app: app,
