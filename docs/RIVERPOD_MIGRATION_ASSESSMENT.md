@@ -832,6 +832,16 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > 批量复制和删除仍可用”的回归测试；页面内旧 `AppController.read` 由 11 处降至
 > 4 处。相关增量 5 个测试文件 / 47 个测试通过，当前总数为 724。剩余旧读取仅为
 > 初始化兼容、新建目录和页面外壳，另有一个设置快照 select。
+>
+> DrivePage 页面外壳切片随后完成：设置快照改由 `CachePageSettingsState` 与
+> `NavigationAppearanceSettingsState` 的 revision 驱动，目录位置、栏位滚动、
+> 多选退出回调和下载键分别来自 `DriveState`、`NavigationState` 与
+> `AccountState`；新建目录也改走 `_activeClient()`。`_app` 字段及其兼容读取
+> 全部删除，DrivePage 不再导入 `AppController` 或 `provider`。四个本页测试
+> 宿主移除旧 `ChangeNotifierProvider<AppController>`。页面内旧读取与 select
+> 均清零；全仓 `AppController.read` 降至 11 处、select 降至 1 处，生产
+> `provider` 导入只剩 `app.dart` 与 `main.dart`。相关增量 5 个测试文件 /
+> 47 个测试通过，当前总数保持 724。
 
 ### 阶段 6：移除旧 Provider
 

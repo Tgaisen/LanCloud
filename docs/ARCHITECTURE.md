@@ -65,8 +65,8 @@
 | `CachePageSettingsState` | `core/cache_page_settings_state.dart` | 阶段 3 设置子组：网格视图、启动页、目录缓存和自动加载全部页面 |
 | `DownloadDirectorySettingsState` | `core/download_directory_settings_state.dart` | 阶段 3 设置子组：普通下载目录、SAF URI/标签、互斥写入和旧授权释放入口 |
 
-消费现状：`context.read<AppController>` 15 处、`context.watch` 0 处、
-`context.select<AppController…>` 2 处。生产代码中的整体 `watch` 已清零；传输页已从
+消费现状：`context.read<AppController>` 11 处、`context.watch` 0 处、
+`context.select<AppController…>` 1 处。生产代码中的整体 `watch` 已清零；传输页已从
 Riverpod 读取应用级 `TransferManager`，并通过 `ListenableBuilder` 保留既有
 `notifyListeners()` 刷新语义；多选回调、选择模式和顶栏进度改由
 `NavigationState` 驱动，顶栏收起开关由导航外观状态 revision 驱动。`RootShell`
@@ -78,7 +78,8 @@ Riverpod 读取应用级 `TransferManager`，并通过 `ListenableBuilder` 保�
 动画和排序已迁入 Riverpod；单条目菜单中的复制链接、修改信息、密码、收藏、
 删除、属性卡、自有文件下载和直链解析也已改用账号、数据库、客户端与目录
 provider；批量复制、下载、收藏、移动、简介、密码和删除同样改用现有状态依赖，
-页面内旧 `AppController.read` 降至 4 处。生命周期监听、批量下载
+新建目录、设置快照、栏位滚动与多选兼容也已完成迁移，页面不再导入
+`AppController` 或 `provider`。生命周期监听、批量下载
 和已下载菜单全部从 Riverpod 取得管理器。对应的四个
 直接测试宿主不再注册旧 `ChangeNotifierProvider<TransferManager>`。
 分享文件夹页的条目菜单也已从 Riverpod 读取已下载状态。
@@ -89,6 +90,8 @@ provider；批量复制、下载、收藏、移动、简介、密码和删除同
 启动装配和测试宿主也已移除 `ChangeNotifierProvider<TransferManager>`。
 阶段 6 准备已获授权：后续按页面迁移剩余 `AppController` Provider 消费端，
 但暂时保留 `provider` 依赖、根控制器注入和现有状态所有权，不执行最终移除。
+当前生产代码只剩 `app.dart` 与 `main.dart` 直接导入 `provider`；测试仍有三份
+宿主注册 `AppController` Provider，分别服务应用外壳、备份页和更新测试包装。
 登录页已改用 `accountLoginProvider` 和 `accountStateProvider`；登录页与恢复页
 测试宿主均已移除 AppController Provider。
 共享 `TopBarOverlay` / `TopBarOverlayScaffold` 只从
