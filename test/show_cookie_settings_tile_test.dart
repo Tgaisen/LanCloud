@@ -32,10 +32,10 @@ void main() {
     final tile = find.byType(ListTile);
     expect(tester.widget<ListTile>(tile).enabled, isFalse);
 
-    app.accounts.accounts.add(
+    app.accountState.store.accounts.add(
       Account(uid: '556911', cookie: 'c', nickname: '土豆'),
     );
-    app.accounts.activeUid = '556911';
+    app.accountState.store.activeUid = '556911';
     await app.listHomeSettings.setSortMode('name');
     await tester.pumpAndSettle();
     expect(tester.widget<ListTile>(tile).enabled, isFalse);

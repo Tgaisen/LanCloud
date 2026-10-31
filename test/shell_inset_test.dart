@@ -32,7 +32,7 @@ Widget _rootShellHost(
   TransferManager transfers,
 ) => ProviderScope(
   overrides: [
-    settingsStoreProvider.overrideWithValue(app.settings),
+    settingsStoreProvider.overrideWithValue(app.settingsState.store),
     accountStateProvider.overrideWithValue(app.accountState),
     accountSessionProvider.overrideWithValue(app.accountSession),
     appDbProvider.overrideWithValue(app.db),
@@ -148,10 +148,10 @@ void main() {
     final app = AppController();
     addTearDown(app.dispose);
     app.runtimeState.ready.value = true;
-    app.accounts.accounts.add(
+    app.accountState.store.accounts.add(
       Account(uid: '556911', cookie: 'c', nickname: '土豆'),
     );
-    app.accounts.activeUid = '556911';
+    app.accountState.store.activeUid = '556911';
     final transfers = buildTransferManager(app);
     addTearDown(transfers.dispose);
     await tester.pumpWidget(
@@ -184,10 +184,10 @@ void main() {
     final app = AppController();
     addTearDown(app.dispose);
     app.runtimeState.ready.value = true;
-    app.accounts.accounts.add(
+    app.accountState.store.accounts.add(
       Account(uid: '556911', cookie: 'c', nickname: '土豆'),
     );
-    app.accounts.activeUid = '556911';
+    app.accountState.store.activeUid = '556911';
     final transfers = buildTransferManager(app);
     addTearDown(transfers.dispose);
     transfers.tasks.add(

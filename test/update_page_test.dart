@@ -51,9 +51,9 @@ Future<({AppController app, UpdateService updates})> pumpUpdatePage(
 }) async {
   SharedPreferences.setMockInitialValues(<String, Object>{});
   final app = AppController();
-  app.settings.updateAutoCheck = autoCheck;
+  app.settingsState.store.updateAutoCheck = autoCheck;
   final container = createUpdateContainer(
-    settings: app.settings,
+    settings: app.settingsState.store,
     fetch: () => _fetchReleases(),
     clock: () => _now(),
   );
@@ -385,7 +385,7 @@ void main() {
     await tester.tap(find.text('正式版'));
     await tester.pumpAndSettle();
 
-    expect(harness.app.settings.updateChannel, 'stable');
+    expect(harness.app.settingsState.store.updateChannel, 'stable');
     expect(find.text('正式版'), findsOneWidget);
     // 旧通道的结果被清掉：回到未检测更新，且没有偷偷再请求
     expect(harness.updates.status, UpdateStatus.idle);
@@ -395,11 +395,11 @@ void main() {
 
   testWidgets('自动检查更新：开关可切换并落到设置', (tester) async {
     final harness = await pumpUpdatePage(tester);
-    expect(harness.app.settings.updateAutoCheck, isTrue);
+    expect(harness.app.settingsState.store.updateAutoCheck, isTrue);
 
     await tester.tap(find.text('自动检查更新'));
     await tester.pumpAndSettle();
-    expect(harness.app.settings.updateAutoCheck, isFalse);
+    expect(harness.app.settingsState.store.updateAutoCheck, isFalse);
   });
 
   testWidgets('iOS：卡片显示不支持，隐藏通道与自动检查（列表组 1 保留）', (tester) async {

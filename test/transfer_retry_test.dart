@@ -123,8 +123,10 @@ void main() {
     final app = AppController();
     addTearDown(app.dispose);
     // 上传要带账号 Cookie：内存里塞一个账号（不走安全存储）
-    app.accounts.accounts.add(Account(uid: '12345', cookie: 'phpdisk_info=x'));
-    app.accounts.activeUid = '12345';
+    app.accountState.store.accounts.add(
+      Account(uid: '12345', cookie: 'phpdisk_info=x'),
+    );
+    app.accountState.store.activeUid = '12345';
     final manager = buildTransferManager(app);
     final dir = Directory.systemTemp.createTempSync('lancloud-upload');
     addTearDown(() {
