@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/backup/backup_dependencies.dart';
 import 'package:lancloud/core/backup/backup_sections.dart';
 import 'package:lancloud/core/backup/backup_service.dart';
 import 'package:lancloud/core/backup/backup_service_provider.dart';
@@ -26,8 +27,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
+BackupDependencies backupDependenciesFor(AppController app) =>
+    BackupStoreDependencies(
+      accounts: app.accounts,
+      settings: app.settings,
+      db: app.db,
+      reloadCallback: app.reloadFromStorage,
+    );
+
 class _FakeBackupService extends BackupService {
-  _FakeBackupService(this.controller) : super(controller);
+  _FakeBackupService(this.controller)
+    : super(backupDependenciesFor(controller));
 
   final AppController controller;
 

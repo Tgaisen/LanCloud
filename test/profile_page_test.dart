@@ -6,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/backup/backup_dependencies.dart';
 import 'package:lancloud/core/backup/backup_service.dart';
 import 'package:lancloud/core/data/account_store.dart';
 import 'package:lancloud/core/update/release_info.dart';
@@ -23,8 +24,17 @@ import 'package:lancloud/l10n/delegates.dart';
 
 import 'update_test_scope_test.dart';
 
+BackupDependencies backupDependenciesFor(AppController app) =>
+    BackupStoreDependencies(
+      accounts: app.accounts,
+      settings: app.settings,
+      db: app.db,
+      reloadCallback: app.reloadFromStorage,
+    );
+
 class _NoopBackupService extends BackupService {
-  _NoopBackupService(super.app);
+  _NoopBackupService(AppController app)
+    : super(backupDependenciesFor(app));
 
   @override
   Future<void> init() async {}

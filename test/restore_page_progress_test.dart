@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/backup/backup_crypto.dart';
+import 'package:lancloud/core/backup/backup_dependencies.dart';
 import 'package:lancloud/core/backup/backup_service.dart';
 import 'package:lancloud/core/backup/backup_service_provider.dart';
 import 'package:lancloud/core/backup/webdav_client.dart';
@@ -17,8 +18,17 @@ import 'package:lancloud/ui/restore_page.dart';
 import 'package:local_auth_android/local_auth_android.dart';
 import 'package:material_ui/material_ui.dart';
 
+BackupDependencies backupDependenciesFor(AppController app) =>
+    BackupStoreDependencies(
+      accounts: app.accounts,
+      settings: app.settings,
+      db: app.db,
+      reloadCallback: app.reloadFromStorage,
+    );
+
 class _RestoreBackupService extends BackupService {
-  _RestoreBackupService(super.app, this.content);
+  _RestoreBackupService(AppController app, this.content)
+    : super(backupDependenciesFor(app));
 
   final String content;
 
