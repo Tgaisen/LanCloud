@@ -207,7 +207,7 @@ class _WebPageState extends State<WebPage> {
             ),
             IconButton(
               tooltip: l10n.openLink,
-              icon: const Icon(Icons.open_in_new),
+              icon: const Icon(Icons.open_in_browser),
               onPressed: () => openExternalUrl(Uri.parse(widget.url)),
             ),
           ],
