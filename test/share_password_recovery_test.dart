@@ -13,7 +13,6 @@ import 'package:lancloud/core/data/app_db_provider.dart';
 import 'package:lancloud/core/drive_state.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
-import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/delegates.dart';
@@ -21,6 +20,8 @@ import 'package:lancloud/ui/app_icons.dart' as app_icons;
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/favorites_page.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+
+import 'transfer_dependencies_test.dart' show buildTransferManager;
 
 /// 收藏里存的是旧提取码：只有新提取码能解析成功。
 class _StalePwdClient extends LanzouClient {
@@ -113,7 +114,7 @@ Future<void> _pumpFavorites(
   _FakeApp app, {
   required Finder item,
 }) async {
-  final transfers = TransferManager(app);
+  final transfers = buildTransferManager(app);
   final clients = LanzouClientRegistry(
     factory: (_) => app.dialogClient,
   );
@@ -322,7 +323,7 @@ void main() {
     final client = _PwdThenHangClient();
     final app = _FakeApp(client);
     addTearDown(app.dispose);
-    final manager = TransferManager(app);
+    final manager = buildTransferManager(app);
     final clients = LanzouClientRegistry(factory: (_) => app.dialogClient);
     var asked = 0;
     await tester.pumpWidget(
