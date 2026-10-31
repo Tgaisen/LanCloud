@@ -403,12 +403,4 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 复制到蓝奏云分享链接时是否提示打开。
-  Future<void> setClipboardLinkPrompt(bool value) async {
-    await languageClipboardSettings.setClipboardLinkPrompt(value);
-  }
-
-  Future<void> setLanguage(String value) async {
-    await languageClipboardSettings.setLanguage(value);
-  }
 }
