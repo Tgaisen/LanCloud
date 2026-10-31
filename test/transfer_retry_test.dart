@@ -9,6 +9,8 @@ import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+import 'transfer_dependencies_test.dart' show buildTransferManager;
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -38,7 +40,7 @@ void main() {
   test('重启后的下载任务：重试重新解析分享链接并重新入队', () async {
     final app = AppController();
     addTearDown(app.dispose);
-    final manager = TransferManager(app);
+    final manager = buildTransferManager(app);
     String? gotUrl;
     String? gotPwd;
     manager.debugResolveShare = (url, pwd) async {
@@ -63,7 +65,7 @@ void main() {
   test('重启后的下载任务：解析失败时保留提示，任务仍可再试', () async {
     final app = AppController();
     addTearDown(app.dispose);
-    final manager = TransferManager(app);
+    final manager = buildTransferManager(app);
     manager.debugResolveShare = (url, pwd) async {
       throw const LanzouException('文件不存在或已取消分享');
     };
@@ -80,7 +82,7 @@ void main() {
   test('没留分享链接的旧记录：仍然提示重新发起下载', () async {
     final app = AppController();
     addTearDown(app.dispose);
-    final manager = TransferManager(app);
+    final manager = buildTransferManager(app);
     final task = restartedTask(referer: '');
     manager.tasks.add(task);
 
@@ -93,7 +95,7 @@ void main() {
   test('本会话内失败的任务（直链还在）：重试不重新解析', () async {
     final app = AppController();
     addTearDown(app.dispose);
-    final manager = TransferManager(app);
+    final manager = buildTransferManager(app);
     var resolved = 0;
     manager.debugResolveShare = (url, pwd) async {
       resolved += 1;
@@ -123,7 +125,7 @@ void main() {
     // 上传要带账号 Cookie：内存里塞一个账号（不走安全存储）
     app.accounts.accounts.add(Account(uid: '12345', cookie: 'phpdisk_info=x'));
     app.accounts.activeUid = '12345';
-    final manager = TransferManager(app);
+    final manager = buildTransferManager(app);
     final dir = Directory.systemTemp.createTempSync('lancloud-upload');
     addTearDown(() {
       try {
@@ -152,7 +154,7 @@ void main() {
   test('重启后的上传任务：账号不可用时提示先登录（不再发出无 Cookie 请求）', () async {
     final app = AppController();
     addTearDown(app.dispose);
-    final manager = TransferManager(app);
+    final manager = buildTransferManager(app);
     final dir = Directory.systemTemp.createTempSync('lancloud-upload');
     addTearDown(() {
       try {
@@ -189,7 +191,7 @@ void main() {
     );
     addTearDown(() => app.db.deleteTransfer('u9'));
 
-    final manager = TransferManager(app);
+    final manager = buildTransferManager(app);
     TransferTask? restored;
     for (var i = 0; i < 100 && restored == null; i++) {
       await Future<void>.delayed(const Duration(milliseconds: 20));
@@ -205,7 +207,7 @@ void main() {
   test('重启后的上传任务：源文件被清掉时提示重新选择', () async {
     final app = AppController();
     addTearDown(app.dispose);
-    final manager = TransferManager(app);
+    final manager = buildTransferManager(app);
     final dir = Directory.systemTemp.createTempSync('lancloud-upload');
     addTearDown(() {
       try {
@@ -231,7 +233,7 @@ void main() {
   test('没留源文件路径的旧上传记录：仍提示重新上传', () async {
     final app = AppController();
     addTearDown(app.dispose);
-    final manager = TransferManager(app);
+    final manager = buildTransferManager(app);
     final task = TransferTask(
       id: 'u3',
       kind: TransferKind.upload,

@@ -8,6 +8,8 @@ import 'package:lancloud/ui/app_icons.dart';
 import 'package:lancloud/ui/download_mark.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'transfer_dependencies_test.dart' show buildTransferManager;
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -16,7 +18,7 @@ void main() {
   test('downloadMarkOf：网盘按 refId、分享按 referer 匹配，取最近一条', () {
     final app = AppController();
     addTearDown(app.dispose);
-    final manager = TransferManager(app);
+    final manager = buildTransferManager(app);
     final older = TransferTask(
       id: 'd1',
       kind: TransferKind.download,
@@ -51,7 +53,7 @@ void main() {
   test('downloadMarkOf：忽略已取消的任务', () {
     final app = AppController();
     addTearDown(app.dispose);
-    final manager = TransferManager(app);
+    final manager = buildTransferManager(app);
     final task = TransferTask(
       id: 'd1',
       kind: TransferKind.download,
@@ -69,7 +71,7 @@ void main() {
   test('marksRevision：入队 / 取消 / 删除任务会自增（供列表低频重建）', () {
     final app = AppController();
     addTearDown(app.dispose);
-    final manager = TransferManager(app);
+    final manager = buildTransferManager(app);
     final before = manager.marksRevision.value;
 
     manager.addDownload(
@@ -90,7 +92,7 @@ void main() {
   testWidgets('DownloadMarkIcon：有任务时显示，取消后消失', (tester) async {
     final app = AppController();
     addTearDown(app.dispose);
-    final manager = TransferManager(app);
+    final manager = buildTransferManager(app);
     final task = TransferTask(
       id: 'd1',
       kind: TransferKind.download,

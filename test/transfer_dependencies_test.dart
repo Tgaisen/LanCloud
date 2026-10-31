@@ -117,6 +117,22 @@ class _FakeTransferDownloadPort implements TransferDownloadPort {
       throw UnimplementedError('测试恢复流程不应写下载文件');
 }
 
+TransferManager buildTransferManager(AppController app) {
+  const sharedDownloads = PlatformSharedDownloadsGateway();
+  final downloadPaths = PlatformDownloadPathService(
+    sharedDownloads: sharedDownloads,
+  );
+  final composition = AppCompositionRoot(
+    app: app,
+    sharedDownloads: sharedDownloads,
+    downloadPaths: downloadPaths,
+  );
+  return TransferManager.withDependencies(
+    composition.transferDependencies,
+    sharedDownloads: sharedDownloads,
+  );
+}
+
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues(<String, Object>{}));
 

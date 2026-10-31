@@ -4,11 +4,13 @@ import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/ui/transfer_running_count.dart';
 import 'package:material_ui/material_ui.dart';
 
+import 'transfer_dependencies_test.dart' show buildTransferManager;
+
 void main() {
   testWidgets('仅运行中任务数变化时重建', (tester) async {
     final app = AppController();
     addTearDown(app.dispose);
-    final manager = TransferManager(app);
+    final manager = buildTransferManager(app);
     addTearDown(manager.dispose);
     manager.tasks.add(
       TransferTask(
