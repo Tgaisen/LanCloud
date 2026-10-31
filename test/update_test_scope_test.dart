@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/account_state.dart';
 import 'package:lancloud/core/account_session.dart';
-import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/backup/backup_service.dart';
 import 'package:lancloud/core/backup/backup_service_provider.dart';
@@ -41,17 +40,6 @@ ProviderContainer createUpdateContainer({
   );
 }
 
-/// 同时提供旧 Provider 与 Riverpod 试点作用域。
-Widget updateTestTree({
-  required AppController app,
-  required ProviderContainer container,
-  required Widget child,
-}) => updateEnvironmentTestTree(
-  environment: app.environment,
-  container: container,
-  child: child,
-);
-
 Widget updateEnvironmentTestTree({
   required AppEnvironment environment,
   required ProviderContainer container,
@@ -73,17 +61,6 @@ Widget updateEnvironmentTestTree({
     ),
   );
 }
-
-/// 同时提供旧 Provider 与页面已迁移状态使用的 Riverpod 作用域。
-Widget appTestTree({
-  required AppController app,
-  required Widget child,
-  BackupService? backupService,
-}) => appEnvironmentTestTree(
-  environment: app.environment,
-  child: child,
-  backupService: backupService,
-);
 
 /// 用应用环境提供页面已迁移状态使用的 Riverpod 作用域。
 Widget appEnvironmentTestTree({

@@ -5,7 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
+import 'package:lancloud/core/app_startup.dart';
 import 'package:lancloud/core/backup/backup_dependencies.dart';
 import 'package:lancloud/core/backup/backup_service.dart';
 import 'package:lancloud/core/data/account_store.dart';
@@ -24,17 +25,20 @@ import 'package:lancloud/l10n/delegates.dart';
 
 import 'update_test_scope_test.dart';
 
-BackupDependencies backupDependenciesFor(AppController app) =>
+Future<void> _reloadFromStorage(AppEnvironment environment) =>
+    AppStartup(environment: environment, onChanged: () {}).reloadFromStorage();
+
+BackupDependencies backupDependenciesFor(AppEnvironment environment) =>
     BackupStoreDependencies(
-      accounts: app.accountState.store,
-      settings: app.settingsState.store,
-      db: app.db,
-      reloadCallback: app.reloadFromStorage,
+      accounts: environment.accountState.store,
+      settings: environment.settingsState.store,
+      db: environment.db,
+      reloadCallback: () => _reloadFromStorage(environment),
     );
 
 class _NoopBackupService extends BackupService {
-  _NoopBackupService(AppController app)
-    : super(backupDependenciesFor(app));
+  _NoopBackupService(AppEnvironment environment)
+    : super(backupDependenciesFor(environment));
 
   @override
   Future<void> init() async {}
@@ -48,7 +52,7 @@ class _TestProviders extends StatelessWidget {
     this.backupService,
   });
 
-  final AppController value;
+  final AppEnvironment value;
   final Widget child;
   final ProviderContainer? container;
   final BackupService? backupService;
@@ -57,14 +61,14 @@ class _TestProviders extends StatelessWidget {
   Widget build(BuildContext context) {
     final updateContainer = container;
     if (updateContainer != null) {
-      return updateTestTree(
-        app: value,
+      return updateEnvironmentTestTree(
+        environment: value,
         container: updateContainer,
         child: child,
       );
     }
-    return appTestTree(
-      app: value,
+    return appEnvironmentTestTree(
+      environment: value,
       child: child,
       backupService: backupService,
     );
@@ -73,7 +77,7 @@ class _TestProviders extends StatelessWidget {
 
 void main() {
   testWidgets('「我的」视图：显示账号、网页版、设置与关于', (tester) async {
-    final app = AppController();
+    final app = AppEnvironment();
     await tester.pumpWidget(
       _TestProviders.value(
         value: app,
@@ -124,7 +128,7 @@ void main() {
     tester,
   ) async {
     Future<int> tailSpacerCount({required bool floating}) async {
-      final app = AppController();
+      final app = AppEnvironment();
       app.settingsState.store.floatingNavBar = floating;
       tester.view.physicalSize = const Size(400, 600);
       tester.view.devicePixelRatio = 1.0;
@@ -156,7 +160,7 @@ void main() {
   });
 
   testWidgets('「我的」切到别的标签页再切回来，滚动位置保留', (tester) async {
-    final app = AppController();
+    final app = AppEnvironment();
     addTearDown(app.dispose);
     // 视口做小一点，让「我的」内容可滚动
     tester.view.physicalSize = const Size(400, 300);
@@ -214,7 +218,7 @@ void main() {
     tester.view.physicalSize = const Size(1200, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    final app = AppController();
+    final app = AppEnvironment();
     addTearDown(app.dispose);
     final backupService = _NoopBackupService(app);
     await tester.pumpWidget(
@@ -336,7 +340,7 @@ void main() {
     tester.view.physicalSize = const Size(1200, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    final app = AppController();
+    final app = AppEnvironment();
     addTearDown(app.dispose);
     final backupService = _NoopBackupService(app);
     await tester.pumpWidget(
@@ -418,7 +422,7 @@ void main() {
     tester.view.physicalSize = const Size(841, 574);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    final app = AppController();
+    final app = AppEnvironment();
     addTearDown(app.dispose);
     await tester.pumpWidget(
       _TestProviders.value(
@@ -457,7 +461,7 @@ void main() {
     addTearDown(tester.view.reset);
 
     Future<double> paneWidth(Locale locale) async {
-      final app = AppController();
+      final app = AppEnvironment();
       addTearDown(app.dispose);
       await tester.pumpWidget(
         _TestProviders.value(
@@ -494,7 +498,7 @@ void main() {
     tester.view.physicalSize = const Size(1200, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    final app = AppController();
+    final app = AppEnvironment();
     addTearDown(app.dispose);
     final backupService = _NoopBackupService(app);
     await tester.pumpWidget(
@@ -646,7 +650,7 @@ void main() {
     tester.view.physicalSize = const Size(1200, 500);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    final app = AppController();
+    final app = AppEnvironment();
     app.settingsState.store.hideTopBar = true;
     addTearDown(app.dispose);
     await tester.pumpWidget(
@@ -680,7 +684,7 @@ void main() {
     tester.view.physicalSize = const Size(1200, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    final app = AppController();
+    final app = AppEnvironment();
     addTearDown(app.dispose);
     await tester.pumpWidget(
       _TestProviders.value(
@@ -727,7 +731,7 @@ void main() {
   });
 
   testWidgets('「我的」账号卡片：普通用户不显示等级卡片，会员等级显示', (tester) async {
-    Widget tree(AppController app) =>
+    Widget tree(AppEnvironment app) =>
         _TestProviders.value(
           value: app,
           child: MaterialApp(
@@ -738,7 +742,7 @@ void main() {
           ),
         );
 
-    final app = AppController();
+    final app = AppEnvironment();
     addTearDown(app.dispose);
     app.accountState.store.accounts.add(
       Account(uid: '556911', cookie: 'c', nickname: '土豆'),
@@ -773,7 +777,7 @@ void main() {
   });
 
   testWidgets('管理账号弹窗：两个列表组，容器色比弹窗底高一档、窗体边距 16dp', (tester) async {
-    final app = AppController();
+    final app = AppEnvironment();
     addTearDown(app.dispose);
     app.accountState.store.accounts.add(
       Account(uid: '556911', cookie: 'c', nickname: '土豆'),
@@ -826,7 +830,7 @@ void main() {
   testWidgets('移除账号弹窗：列表组复选行「清除使用数据」，勾选后确认即移除账号', (tester) async {
     // 移除账号会写安全存储：测试里换成内存实现
     FlutterSecureStorage.setMockInitialValues({});
-    final app = AppController();
+    final app = AppEnvironment();
     addTearDown(app.dispose);
     app.accountState.store.accounts.add(
       Account(uid: '556911', cookie: 'c', nickname: '土豆'),
@@ -881,7 +885,7 @@ void main() {
 
   testWidgets('「更新」条目：检测到新版本时显示「检测到更新」副标题（单栏 / 两栏）', (tester) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
-    final app = AppController();
+    final app = AppEnvironment();
     addTearDown(app.dispose);
     await app.settingsState.store.load();
     final container = createUpdateContainer(
