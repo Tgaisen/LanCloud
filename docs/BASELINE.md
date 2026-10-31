@@ -167,6 +167,8 @@
 | `tools\agent.cmd test`（传输选择夹具批次 10） | 增量 | **18 tests, all passed** | 约 26 s |
 | `tools\agent.cmd analyze`（移除传输依赖兼容层） | 增量 | No issues found | 约 9 s |
 | `tools\agent.cmd test`（移除传输依赖兼容层） | 增量 | **366 tests, all passed** | 约 68 s |
+| `tools\agent.cmd analyze`（下载兼容测试迁移） | 全量 | No issues found | 约 32 s |
+| `tools\agent.cmd test`（下载兼容测试迁移） | 增量 | **7 tests, all passed** | 约 15 s |
 | `tools\agent.cmd analyze`（网盘目录切片完成后） | 全量 | No issues found | 约 21 s |
 | `tools\agent.cmd test`（网盘目录切片完成后） | 全量 | **722 tests, all passed** | 约 110 s |
 | `tools\agent.cmd analyze`（拖放与 Cookie 行完成后） | 全量 | No issues found | 约 17 s |
@@ -577,6 +579,11 @@
   中存储、账号、设置端口和 `TransferDependencies` 聚合。控制器仅保留
   `_transferDownload` 以支持现有 SAF 目录兼容方法与测试。增量分析 3 个生产
   文件无问题，64 个受影响测试文件 / 366 个测试通过，用例总数保持 729。
+- 2026-10-31 下载兼容测试迁移完成：目录模式测试改为直接使用
+  `DownloadDirectorySettingsState`，默认目录和公共 Downloads 测试改为验证
+  `DownloadPathService` / `DefaultTransferDownloadPort`，不再读取
+  `AppController` 下载兼容方法。相关 3 个测试文件 / 7 个测试通过，用例总数
+  保持 729。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release
