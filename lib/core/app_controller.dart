@@ -16,7 +16,6 @@ import 'data/secure_storage.dart';
 import 'download_directory_settings_state.dart';
 import 'drive_state.dart';
 import 'cache_page_settings_state.dart';
-import 'dynamic_color_support.dart';
 import 'navigation_state.dart';
 import 'navigation_appearance_settings_state.dart';
 import 'notification_settings_state.dart';
@@ -112,7 +111,7 @@ class AppController extends ChangeNotifier {
     notifyListeners();
     _refreshActiveAccountInfo();
     // 设备支持动态取色且用户还没选过：默认开启（之后尊重用户选择）
-    unawaited(autoEnableDynamicColorIfSupported());
+    unawaited(themeSettings.enableDynamicColorIfUnset());
   }
 
   /// v11 会移除旧密文和旧加密后端的读取能力。必须在账号存储第一次读取前
@@ -130,17 +129,6 @@ class AppController extends ChangeNotifier {
       // 状态检查失败不阻断启动；真正的读取仍有插件自身兜底。
       AppLog.instance.error('secure_storage', error, stack);
     }
-  }
-
-  /// 首次启动时按设备支持情况自动开启动态取色。
-  /// 只影响「用户从未手动设置过」的情况；用户关掉后不会再被打开。
-  /// 抽成公开方法便于单独测试（不依赖 [init] 里的账号存储等）。
-  Future<void> autoEnableDynamicColorIfSupported() async {
-    if (settings.dynamicColorChosen || settings.dynamicColor) return;
-    if (!await DynamicColorSupport.isSupported()) return;
-    // 探测期间用户可能已经手动改过
-    if (settings.dynamicColorChosen || settings.dynamicColor) return;
-    await themeSettings.setDynamicColor(true);
   }
 
   void _applyRuntimeSettings() {
