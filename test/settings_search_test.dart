@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/account_state.dart';
 import 'package:lancloud/core/account_session.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/api/lanzou_client_registry.dart';
+import 'package:lancloud/core/data/app_db.dart';
 import 'package:lancloud/core/data/app_db_provider.dart';
+import 'package:lancloud/core/data/settings_store.dart';
 import 'package:lancloud/core/data/settings_store_provider.dart';
 import 'package:lancloud/core/drive_state.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
@@ -16,29 +18,45 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
-Future<AppController> _pump(
+Future<void> _pump(
   WidgetTester tester,
   Widget home, {
   Size size = const Size(420, 900),
 }) async {
   SharedPreferences.setMockInitialValues({});
-  final app = AppController();
-  addTearDown(app.dispose);
+  final settings = SettingsStore();
+  final accounts = AccountState();
+  final db = AppDb.instance;
+  final drive = DriveState();
+  final navigation = NavigationState();
+  final navigationAppearance = NavigationAppearanceSettingsState(
+    settings,
+    navigation: navigation,
+  );
+  final session = AccountSession(
+    accountState: accounts,
+    clients: LanzouClientRegistry(),
+    driveCache: drive.cache,
+    db: db,
+  );
+  addTearDown(accounts.dispose);
+  addTearDown(drive.dispose);
+  addTearDown(navigation.dispose);
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = size;
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
-        settingsStoreProvider.overrideWithValue(app.settings),
-        accountStateProvider.overrideWithValue(app.accountState),
-        accountSessionProvider.overrideWithValue(app.accountSession),
-        appDbProvider.overrideWithValue(app.db),
-        driveStateProvider.overrideWithValue(app.drive),
+        settingsStoreProvider.overrideWithValue(settings),
+        accountStateProvider.overrideWithValue(accounts),
+        accountSessionProvider.overrideWithValue(session),
+        appDbProvider.overrideWithValue(db),
+        driveStateProvider.overrideWithValue(drive),
         navigationAppearanceSettingsStateProvider.overrideWithValue(
-          app.navigationAppearanceSettings,
+          navigationAppearance,
         ),
-        navigationStateProvider.overrideWithValue(app.navigation),
+        navigationStateProvider.overrideWithValue(navigation),
       ],
       child: MaterialApp(
         localizationsDelegates: appLocalizationsDelegates,
@@ -49,7 +67,6 @@ Future<AppController> _pump(
     ),
   );
   await tester.pumpAndSettle();
-  return app;
 }
 
 void main() {

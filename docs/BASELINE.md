@@ -225,6 +225,8 @@
 | `tools\agent.cmd test`（存储访问测试批次 3） | 增量 | **42 tests, all passed** | 约 23 s |
 | `tools\agent.cmd analyze`（存储访问测试批次 3 完成后） | 全量 | No issues found | 约 18 s |
 | `tools\agent.cmd test`（存储访问测试批次 3 完成后） | 全量 | **716 tests, all passed** | 约 106 s |
+| `tools\agent.cmd analyze`（存储访问测试批次 4） | 全量 | No issues found | 约 24 s |
+| `tools\agent.cmd test`（存储访问测试批次 4） | 增量 | **20 tests, all passed** | 约 19 s |
 | `tools\agent.cmd analyze`（网盘目录切片完成后） | 全量 | No issues found | 约 21 s |
 | `tools\agent.cmd test`（网盘目录切片完成后） | 全量 | **722 tests, all passed** | 约 110 s |
 | `tools\agent.cmd analyze`（拖放与 Cookie 行完成后） | 全量 | No issues found | 约 17 s |
@@ -753,6 +755,12 @@
   `settings_layout_test`、`settings_md3e_test` 与 `settings_a11y_test` 的
   账号/设置读取改为状态 store。全量分析无问题，4 个测试文件 / 42 个测试通过，
   用例总数保持 716。
+- 2026-10-31 存储访问测试批次 4 完成：`accessibility_test`、
+  `permissions_settings_test`、`settings_search_test` 与 `update_prompt_test`
+  改为直接读取 `settingsState.store`；`settings_search_test` 与
+  `update_prompt_test` 同时移除 `AppController` 测试宿主。全仓测试中的
+  `app.accounts/settings` 由 29 行 / 13 个文件降至 23 行 / 9 个文件。全量分析
+  无问题，4 个测试文件 / 20 个测试通过，用例总数保持 716。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release

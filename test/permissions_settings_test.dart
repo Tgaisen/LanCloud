@@ -46,7 +46,7 @@ Future<AppController> pumpSettings(
   SettingsCategory category = SettingsCategory.behaviorPermissions,
 }) async {
   final app = AppController();
-  app.settings.hideTopBar = hideTopBar;
+  app.settingsState.store.hideTopBar = hideTopBar;
   addTearDown(app.dispose);
   await tester.pumpWidget(
     appTestTree(

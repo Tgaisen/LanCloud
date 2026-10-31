@@ -322,7 +322,7 @@ void main() {
       SemanticsAction.increase,
     );
     await tester.pumpAndSettle();
-    expect(app.settings.requestInterval, 150);
+    expect(app.settingsState.store.requestInterval, 150);
     expect(data().value, '150 ms');
 
     // 下滑：回到原档并写回
@@ -331,7 +331,7 @@ void main() {
       SemanticsAction.decrease,
     );
     await tester.pumpAndSettle();
-    expect(app.settings.requestInterval, 100);
+    expect(app.settingsState.store.requestInterval, 100);
     expect(data().value, '100 ms');
 
     handle.dispose();

@@ -1,5 +1,6 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/data/settings_store.dart';
 import 'package:lancloud/core/update/release_info.dart';
 import 'package:lancloud/core/update/update_service.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
@@ -24,24 +25,20 @@ ReleaseInfo _release(String version) => ReleaseInfo(
 late UpdateFetcher _fetchReleases;
 late UpdateClock _now;
 
-Future<({AppController app, UpdateService updates})> _pumpHost(
-  WidgetTester tester,
-) async {
+Future<UpdateService> _pumpHost(WidgetTester tester) async {
   SharedPreferences.setMockInitialValues(<String, Object>{});
-  final app = AppController();
-  await app.settings.load();
+  final settings = SettingsStore();
+  await settings.load();
   final container = createUpdateContainer(
-    settings: app.settings,
+    settings: settings,
     fetch: () => _fetchReleases(),
     clock: () => _now(),
   );
   final updates = container.read(updateServiceProvider.notifier);
   await updates.initialize();
-  addTearDown(app.dispose);
   addTearDown(container.dispose);
   await tester.pumpWidget(
-    updateTestTree(
-      app: app,
+    UncontrolledProviderScope(
       container: container,
       child: MaterialApp(
         localizationsDelegates: appLocalizationsDelegates,
@@ -54,7 +51,7 @@ Future<({AppController app, UpdateService updates})> _pumpHost(
     ),
   );
   await tester.pumpAndSettle();
-  return (app: app, updates: updates);
+  return updates;
 }
 
 void main() {
@@ -65,16 +62,16 @@ void main() {
 
   testWidgets('自动检测到新版本：在当前页主动弹一次更新弹窗', (tester) async {
     _fetchReleases = () async => [_release('99.0.0')];
-    final harness = await _pumpHost(tester);
+    final updates = await _pumpHost(tester);
 
-    await harness.updates.maybeAutoCheck();
+    await updates.maybeAutoCheck();
     await tester.pumpAndSettle();
 
     expect(find.text('检测到新版本 99.0.0'), findsOneWidget);
     // 弹窗正文同样走更新日志解析
     expect(find.text('• 新功能'), findsOneWidget);
     // 一次性提醒标记已消费
-    expect(harness.updates.autoUpdateNotice, isNull);
+    expect(updates.autoUpdateNotice, isNull);
 
     // 取消后本次会话不再重复弹
     await tester.tap(find.text('取消'));
@@ -86,13 +83,13 @@ void main() {
 
   testWidgets('手动检测不会主动弹窗，只更新状态', (tester) async {
     _fetchReleases = () async => [_release('99.0.0')];
-    final harness = await _pumpHost(tester);
+    final updates = await _pumpHost(tester);
 
-    await harness.updates.check();
+    await updates.check();
     await tester.pumpAndSettle();
 
-    expect(harness.updates.status, UpdateStatus.available);
-    expect(harness.updates.autoUpdateNotice, isNull);
+    expect(updates.status, UpdateStatus.available);
+    expect(updates.autoUpdateNotice, isNull);
     expect(find.byType(AlertDialog), findsNothing);
   });
 }
