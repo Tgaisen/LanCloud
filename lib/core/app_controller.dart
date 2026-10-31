@@ -9,9 +9,7 @@ import 'account_login.dart';
 import 'account_session.dart';
 import 'app_log.dart';
 import 'app_runtime_state.dart';
-import 'data/account_store.dart';
 import 'data/app_db.dart';
-import 'data/settings_store.dart';
 import 'data/secure_storage.dart';
 import 'download_directory_settings_state.dart';
 import 'drive_state.dart';
@@ -41,23 +39,30 @@ class AppController extends ChangeNotifier {
        accountState = accountState ?? AccountState(),
        settingsState = settingsState ?? SettingsState(),
        runtimeState = runtimeState ?? AppRuntimeState() {
-    updateSettings = UpdateSettingsState(settings);
-    notificationSettings = NotificationSettingsState(settings);
+    final accountStore = this.accountState.store;
+    final settingsStore = this.settingsState.store;
+    updateSettings = UpdateSettingsState(settingsStore);
+    notificationSettings = NotificationSettingsState(settingsStore);
     navigationAppearanceSettings = NavigationAppearanceSettingsState(
-      settings,
+      settingsStore,
       navigation: this.navigation,
       reduceMotion: () => _motionReduced,
     );
-    themeSettings = ThemeSettingsState(settings);
-    transferConnectionSettings = TransferConnectionSettingsState(settings);
-    listHomeSettings = ListHomeSettingsState(
-      settings,
-      trimRecents: db.trimRecents,
-      activeUid: () => accounts.activeUid,
+    themeSettings = ThemeSettingsState(settingsStore);
+    transferConnectionSettings = TransferConnectionSettingsState(
+      settingsStore,
     );
-    languageClipboardSettings = LanguageClipboardSettingsState(settings);
-    cachePageSettings = CachePageSettingsState(settings, this.drive.cache);
-    downloadDirectorySettings = DownloadDirectorySettingsState(settings);
+    listHomeSettings = ListHomeSettingsState(
+      settingsStore,
+      trimRecents: db.trimRecents,
+      activeUid: () => accountStore.activeUid,
+    );
+    languageClipboardSettings = LanguageClipboardSettingsState(settingsStore);
+    cachePageSettings = CachePageSettingsState(
+      settingsStore,
+      this.drive.cache,
+    );
+    downloadDirectorySettings = DownloadDirectorySettingsState(settingsStore);
     this.navigation.addListener(notifyListeners);
     navigationAppearanceSettings.revision.addListener(notifyListeners);
     themeSettings.revision.addListener(notifyListeners);
@@ -80,10 +85,6 @@ class AppController extends ChangeNotifier {
   late final CachePageSettingsState cachePageSettings;
   late final DownloadDirectorySettingsState downloadDirectorySettings;
 
-  AccountStore get accounts => accountState.store;
-
-  SettingsStore get settings => settingsState.store;
-
   final AppDb db = AppDb.instance;
   final NavigationState navigation;
   final DriveState drive;
@@ -103,10 +104,12 @@ class AppController extends ChangeNotifier {
 
   Future<void> init() async {
     await _inspectSecureStorageUpgrade();
-    await accounts.load();
-    await settings.load();
+    final accountStore = accountState.store;
+    final settingsStore = settingsState.store;
+    await accountStore.load();
+    await settingsStore.load();
     _applyRuntimeSettings();
-    await drive.cache.bindAccount(accounts.activeUid);
+    await drive.cache.bindAccount(accountStore.activeUid);
     runtimeState.ready.value = true;
     notifyListeners();
     _refreshActiveAccountInfo();
@@ -132,30 +135,33 @@ class AppController extends ChangeNotifier {
   }
 
   void _applyRuntimeSettings() {
+    final settingsStore = settingsState.store;
     LanzouClient.requestInterval = Duration(
-      milliseconds: settings.requestInterval,
+      milliseconds: settingsStore.requestInterval,
     );
-    LanzouClient.apiBase = lanzouApiBaseForHost(settings.apiHost);
-    LanzouClient.userAgent = settings.userAgent;
-    LanzouClient.uploadPath = settings.uploadPath;
+    LanzouClient.apiBase = lanzouApiBaseForHost(settingsStore.apiHost);
+    LanzouClient.userAgent = settingsStore.userAgent;
+    LanzouClient.uploadPath = settingsStore.uploadPath;
     // 设置页「全局动画」：同步给 SystemMotion，根 widget 监听它整树重建，
     // 各处 reduceMotionOf() 立刻按新值生效（备份恢复走同一入口）。
-    SystemMotion.motionMode.value = settings.motionMode;
+    SystemMotion.motionMode.value = settingsStore.motionMode;
   }
 
   /// 备份恢复后重新读取账号与设置，并重建网盘客户端。
   Future<void> reloadFromStorage() async {
-    await accounts.load();
-    if (accounts.accounts.isNotEmpty) {
+    final accountStore = accountState.store;
+    final settingsStore = settingsState.store;
+    await accountStore.load();
+    if (accountStore.accounts.isNotEmpty) {
       runtimeState.secureStorageNeedsReauthentication.value = false;
     }
-    await settings.load();
+    await settingsStore.load();
     _applyRuntimeSettings();
     themeSettings.refresh();
     languageClipboardSettings.refresh();
     clientRegistry.clearAccounts();
-    await drive.cache.bindAccount(accounts.activeUid);
-    if (!settings.cacheFolders) drive.cache.clear();
+    await drive.cache.bindAccount(accountStore.activeUid);
+    if (!settingsStore.cacheFolders) drive.cache.clear();
     notifyListeners();
     _refreshActiveAccountInfo();
   }
@@ -163,7 +169,7 @@ class AppController extends ChangeNotifier {
   /// 当前是否应该少动效：用户设置（全局动画）+ 系统信号合成后的结论。
   /// 控制器内的动画用它判断；widget 侧统一用 reduceMotionOf()。
   bool get _motionReduced {
-    switch (settings.motionMode) {
+    switch (settingsState.store.motionMode) {
       case 'on':
         return false;
       case 'off':
@@ -195,25 +201,26 @@ class AppController extends ChangeNotifier {
   /// 等级没取到（页面结构变了等）不写空值，下次启动再试；界面同时会按
   /// 普通用户「普」显示（见 Account.levelLabel）。
   Future<void> _refreshActiveAccountInfo() async {
-    final uid = accounts.activeUid;
+    final accountStore = accountState.store;
+    final uid = accountStore.activeUid;
     if (uid == null) return;
-    final account = accounts.byUid(uid);
+    final account = accountStore.byUid(uid);
     if (account == null ||
         (account.nickname.isNotEmpty && account.level.isNotEmpty)) {
       return;
     }
     try {
       final info = await clientRegistry
-          .clientFor(uid, cookie: accounts.byUid(uid)?.cookie)
+          .clientFor(uid, cookie: accountStore.byUid(uid)?.cookie)
           .fetchAccountInfo();
       var changed = false;
       final nickname = info.nickname ?? '';
       if (nickname.isNotEmpty) {
-        await accounts.setNickname(uid, nickname);
+        await accountStore.setNickname(uid, nickname);
         changed = true;
       }
       if (info.level.isNotEmpty) {
-        await accounts.setLevel(uid, info.level);
+        await accountStore.setLevel(uid, info.level);
         changed = true;
       }
       if (changed) accountState.notifyAccountChanged();
