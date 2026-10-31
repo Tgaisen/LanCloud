@@ -193,6 +193,8 @@
 | `tools\agent.cmd test`（移除账号转发兼容 API） | 增量 | **327 tests, all passed** | 约 54 s |
 | `tools\agent.cmd analyze`（导航多选测试迁移） | 全量 | No issues found | 约 25 s |
 | `tools\agent.cmd test`（导航多选测试迁移） | 增量 | **28 tests, all passed** | 约 24 s |
+| `tools\agent.cmd analyze`（移除导航多选兼容 API） | 增量 | No issues found | 约 7 s |
+| `tools\agent.cmd test`（移除导航多选兼容 API） | 增量 | **327 tests, all passed** | 约 49 s |
 | `tools\agent.cmd analyze`（网盘目录切片完成后） | 全量 | No issues found | 约 21 s |
 | `tools\agent.cmd test`（网盘目录切片完成后） | 全量 | **722 tests, all passed** | 约 110 s |
 | `tools\agent.cmd analyze`（拖放与 Cookie 行完成后） | 全量 | No issues found | 约 17 s |
@@ -660,6 +662,10 @@
   `app.selectionMode` 改读 `app.navigation.selectionMode`；旧导航兼容测试仍
   保留 1 处，待 API 删除片同步处理。全量分析无问题，3 个测试文件 / 28 个测试
   通过，用例总数保持 720。
+- 2026-10-31 移除导航多选兼容 API：删除 `AppController.selectionMode` 和
+  `setSelectionMode`，同步移除旧导航兼容测试中的 1 处断言并把后续通知期望
+  从 3 修正为 2。增量分析 1 个生产文件无问题，52 个受影响测试文件 / 327 个
+  测试通过，用例总数保持 720。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release
