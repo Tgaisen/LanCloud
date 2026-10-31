@@ -9,6 +9,14 @@ import 'package:lancloud/core/data/account_store.dart';
 import 'package:lancloud/core/data/app_db.dart';
 import 'package:lancloud/core/data/settings_store.dart';
 
+BackupDependencies backupDependenciesFor(AppController app) =>
+    BackupStoreDependencies(
+      accounts: app.accounts,
+      settings: app.settings,
+      db: app.db,
+      reloadCallback: app.reloadFromStorage,
+    );
+
 void main() {
   test('备份服务必须由应用入口覆盖并保持同一实例', () {
     final empty = ProviderContainer();
@@ -19,7 +27,7 @@ void main() {
     );
 
     final app = AppController();
-    final service = BackupService(app);
+    final service = BackupService(backupDependenciesFor(app));
     final container = ProviderContainer(
       overrides: [
         backupServiceProvider.overrideWithValue(service),

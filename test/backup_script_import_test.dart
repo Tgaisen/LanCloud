@@ -1,11 +1,20 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/backup/backup_dependencies.dart';
 import 'package:lancloud/core/backup/backup_service.dart';
 import 'package:lancloud/core/backup/webdav_client.dart';
 import 'package:lancloud/l10n/app_localizations_zh.dart';
 import 'package:lancloud/ui/home_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+
+BackupDependencies backupDependenciesFor(AppController app) =>
+    BackupStoreDependencies(
+      accounts: app.accounts,
+      settings: app.settings,
+      db: app.db,
+      reloadCallback: app.reloadFromStorage,
+    );
 
 /// 外部脚本生成的「只含收藏夹」备份：只要求 `app` / `format` / `tables`，
 /// 收藏行里 kind / name / ref（可选 pwd、title、size、created_at）就够。
@@ -26,7 +35,7 @@ void main() {
   test('外部脚本生成的收藏夹备份可以恢复（含分享文件夹密码）', () async {
     SharedPreferences.setMockInitialValues({});
     final app = AppController();
-    final service = BackupService(app);
+    final service = BackupService(backupDependenciesFor(app));
 
     expect(BackupService.containsFavorites(_scriptBackup), isTrue);
     await service.restoreFromString(_scriptBackup);
@@ -43,7 +52,7 @@ void main() {
 
   test('缺少 app 字段（比如写成 appname）会被判成不是本应用备份', () async {
     SharedPreferences.setMockInitialValues({});
-    final service = BackupService(AppController());
+    final service = BackupService(backupDependenciesFor(AppController()));
     final wrong = _scriptBackup.replaceFirst(
       '"app":"lancloud"',
       '"appname":"lancloud"',
@@ -72,7 +81,9 @@ void main() {
         '{"account":"556911","name":"示例","ref":"7654321","path":"根目录/abc/示例","created_at":1791288948000}'
         ']}}';
 
-    await BackupService(app).restoreFromString(pinsBackup);
+    await BackupService(
+      backupDependenciesFor(app),
+    ).restoreFromString(pinsBackup);
 
     final pins = await app.db.pins('556911');
     // created_at 大的排前面

@@ -3,12 +3,21 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/backup/backup_crypto.dart';
+import 'package:lancloud/core/backup/backup_dependencies.dart';
 import 'package:lancloud/core/backup/backup_sections.dart';
 import 'package:lancloud/core/backup/backup_service.dart';
 import 'package:lancloud/core/backup/webdav_client.dart';
 import 'package:lancloud/core/backup/webdav_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+
+BackupDependencies backupDependenciesFor(AppController app) =>
+    BackupStoreDependencies(
+      accounts: app.accounts,
+      settings: app.settings,
+      db: app.db,
+      reloadCallback: app.reloadFromStorage,
+    );
 
 /// 测试环境没有安全存储插件，密码改放内存。
 class _MemoryWebdavStore extends WebdavStore {
@@ -93,7 +102,7 @@ void main() {
 
   test('敏感分项没有口令时拒绝导出明文', () async {
     final service = BackupService(
-      AppController(),
+      backupDependenciesFor(AppController()),
       webdav: _MemoryWebdavStore(),
     );
     await expectLater(
@@ -114,7 +123,10 @@ void main() {
       ..username = 'user'
       ..password = 'webdav-secret'
       ..backupPassphrase = 'backup-secret';
-    final service = BackupService(AppController(), webdav: store);
+    final service = BackupService(
+      backupDependenciesFor(AppController()),
+      webdav: store,
+    );
     final encrypted = await service.encode(
       sections: {BackupSection.settings, BackupSection.webdavAccount},
       passphrase: 'backup-secret',
@@ -133,7 +145,10 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final app = AppController();
     await app.settings.load();
-    final service = BackupService(app, webdav: _MemoryWebdavStore());
+    final service = BackupService(
+      backupDependenciesFor(app),
+      webdav: _MemoryWebdavStore(),
+    );
     final plaintext = jsonEncode({
       'app': 'lancloud',
       'format': 3,
@@ -169,7 +184,10 @@ void main() {
       password: 'p',
       path: '/',
     );
-    final service = BackupService(AppController(), webdav: webdav);
+    final service = BackupService(
+      backupDependenciesFor(AppController()),
+      webdav: webdav,
+    );
     await expectLater(
       service.uploadNow(),
       throwsA(
@@ -213,7 +231,10 @@ void main() {
       ..path = '/LanCloud'
       ..autoBackup = true
       ..backupSections = {BackupSection.favorites, BackupSection.webdavAccount};
-    final service = BackupService(AppController(), webdav: store);
+    final service = BackupService(
+      backupDependenciesFor(AppController()),
+      webdav: store,
+    );
 
     final encrypted = await service.encode(
       sections: {BackupSection.webdavAccount},
@@ -241,7 +262,7 @@ void main() {
     await app.settings.load();
     final store = _MemoryWebdavStore();
     await store.load();
-    final service = BackupService(app, webdav: store);
+    final service = BackupService(backupDependenciesFor(app), webdav: store);
 
     const content =
         '{"app":"lancloud","format":2,"sections":["webdavAccount"],'
@@ -269,7 +290,7 @@ void main() {
   test('不勾 Cookie 不写 activeUid / accounts，勾 Cookie 才带上账号条目', () async {
     SharedPreferences.setMockInitialValues({});
     final service = BackupService(
-      AppController(),
+      backupDependenciesFor(AppController()),
       webdav: _MemoryWebdavStore(),
     );
 
@@ -309,7 +330,10 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final app = AppController();
     await app.settings.load();
-    final service = BackupService(app, webdav: _MemoryWebdavStore());
+    final service = BackupService(
+      backupDependenciesFor(app),
+      webdav: _MemoryWebdavStore(),
+    );
 
     // 用当前配置做底，改一个开关当作"备份里的旧设置"
     final settings = Map<String, Object?>.from(app.settings.toJson());
@@ -345,7 +369,7 @@ void main() {
     await app.settings.load();
     final store = _MemoryWebdavStore();
     await store.load();
-    final service = BackupService(app, webdav: store);
+    final service = BackupService(backupDependenciesFor(app), webdav: store);
     const content =
         '{"app":"lancloud","format":3,"sections":["cookies","webdavAccount"],'
         '"activeUid":"1","accounts":[{"uid":"1","cookie":"secret-cookie"}],'

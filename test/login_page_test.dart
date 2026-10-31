@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/account_state.dart';
 import 'package:lancloud/core/api/lanzou_client_registry.dart';
 import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/backup/backup_dependencies.dart';
 import 'package:lancloud/core/backup/backup_service.dart';
 import 'package:lancloud/core/backup/backup_service_provider.dart';
 import 'package:lancloud/core/drive_state.dart';
@@ -18,6 +19,14 @@ import 'package:lancloud/ui/m3e.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
+BackupDependencies backupDependenciesFor(AppController app) =>
+    BackupStoreDependencies(
+      accounts: app.accounts,
+      settings: app.settings,
+      db: app.db,
+      reloadCallback: app.reloadFromStorage,
+    );
+
 Widget host(Widget home, {AppController? app}) {
   final controller = app ?? AppController();
   addTearDown(controller.dispose);
@@ -26,7 +35,9 @@ Widget host(Widget home, {AppController? app}) {
       accountStateProvider.overrideWithValue(controller.accountState),
       lanzouClientRegistryProvider.overrideWithValue(controller.clientRegistry),
       driveStateProvider.overrideWithValue(controller.drive),
-      backupServiceProvider.overrideWithValue(BackupService(controller)),
+      backupServiceProvider.overrideWithValue(
+        BackupService(backupDependenciesFor(controller)),
+      ),
       navigationAppearanceSettingsStateProvider.overrideWithValue(
         controller.navigationAppearanceSettings,
       ),
