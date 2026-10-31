@@ -28,6 +28,14 @@ target_compile_definitions(${BINARY_NAME} PRIVATE "FLUTTER_VERSION_MINOR=${FLUTT
 target_compile_definitions(${BINARY_NAME} PRIVATE "FLUTTER_VERSION_PATCH=${FLUTTER_VERSION_PATCH}")
 target_compile_definitions(${BINARY_NAME} PRIVATE "FLUTTER_VERSION_BUILD=${FLUTTER_VERSION_BUILD}")
 
+# Build-mode marker shared by the native runner and Runner.rc. These definitions
+# select the window title, file properties, and embedded application icon.
+target_compile_definitions(${BINARY_NAME} PRIVATE
+  "$<$<CONFIG:Debug>:LANCLOUD_BUILD_MODE_DEBUG>"
+  "$<$<CONFIG:Profile>:LANCLOUD_BUILD_MODE_PROFILE>"
+  "$<$<CONFIG:Release>:LANCLOUD_BUILD_MODE_RELEASE>"
+)
+
 set(FLUTTER_ENGINE_VERSION "unknown")
 set(pubspec_file "${CMAKE_SOURCE_DIR}/../pubspec.yaml")
 if(EXISTS "${pubspec_file}")

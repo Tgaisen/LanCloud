@@ -10,6 +10,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../l10n/l10n.dart';
+import 'app_info.dart';
 import 'platform_support.dart';
 
 /// 通知服务：传输进度与完成提醒。
@@ -42,22 +43,28 @@ class NotificationService {
 
   /// Windows 通知在 HKCU\Software\Classes\AppUserModelId 下注册的标识，
   /// 决定通知里显示的应用名。
-  static const _windowsAppUserModelId = 'com.lancloud.lancloud';
+  static String get _windowsAppUserModelId =>
+      currentAppBuildMode == AppBuildMode.release
+      ? 'com.lancloud.lancloud'
+      : 'com.lancloud.lancloud.${currentAppBuildMode.name}';
 
   /// 通知点击回调的 CLSID（Windows 要求固定 GUID，随便生成一个后不再改）。
   static const _windowsCallbackGuid = '6f2d1c8a-0b7e-4a53-9e21-7c4f0d9b2a11';
 
   /// 通知注册信息所在的注册表键（相对 HKCU）。
-  static const _windowsAumidKey =
-      r'Software\Classes\AppUserModelId\com.lancloud.lancloud';
+  static String get _windowsAumidKey =>
+      r'Software\Classes\AppUserModelId\' + _windowsAppUserModelId;
 
   /// 传输完成 / 失败通知渠道。v2：默认不响铃、不振动（渠道建好后
   /// 系统不允许改声音，所以换新 id 让老安装也生效；用户仍可在
   /// 系统设置里自行改回响铃）。
   static const doneChannelId = 'transfers_done_v2';
 
-  /// 随包发布的 Windows 图标（和 exe 用的是同一份 app_icon.ico）。
-  static const _windowsIconAsset = 'windows/runner/resources/app_icon.ico';
+  /// 随包发布的 Windows 图标：Release 用原图，Profile / Debug 用 Code 角标图。
+  static String get _windowsIconAsset =>
+      currentAppBuildMode == AppBuildMode.release
+      ? 'windows/runner/resources/app_icon.ico'
+      : 'windows/runner/resources/app_icon_badge.ico';
 
   /// Windows 通知图标的磁盘路径。
   ///
@@ -69,7 +76,9 @@ class NotificationService {
     try {
       final dir = await getApplicationSupportDirectory();
       await dir.create(recursive: true);
-      final file = File(p.join(dir.path, 'app_icon.ico'));
+      final file = File(
+        p.join(dir.path, 'app_icon_${currentAppBuildMode.name}.ico'),
+      );
       final data = await rootBundle.load(_windowsIconAsset);
       await file.writeAsBytes(data.buffer.asUint8List(), flush: true);
       return file.path;
@@ -102,11 +111,17 @@ class NotificationService {
       try {
         i18n = await AppLocalizations.delegate.load(resolved);
       } catch (_) {}
-      const android = AndroidInitializationSettings('@mipmap/ic_launcher');
+      final android = AndroidInitializationSettings(
+        currentAppBuildMode == AppBuildMode.release
+            ? '@mipmap/ic_launcher'
+            : '@mipmap/ic_launcher_badged',
+      );
       // Windows 端必须显式给初始化参数，否则 initialize 直接抛 ArgumentError
       final windows = WindowsInitializationSettings(
-        // 通知里显示的应用名跟随界面语言（与 Android 的 app_name 一致）
-        appName: i18n?.appName ?? 'LanCloud',
+        // 通知里显示的应用名跟随界面语言和构建类型。
+        appName:
+            i18n?.currentAppDisplayName ??
+            appDisplayName('LanCloud', currentAppBuildMode),
         appUserModelId: _windowsAppUserModelId,
         guid: _windowsCallbackGuid,
         // 没有这个路径，Windows 的 toast 就不显示应用图标

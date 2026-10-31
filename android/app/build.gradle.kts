@@ -62,6 +62,16 @@ android {
     }
 
     buildTypes {
+        debug {
+            // debug 与 release 使用不同 applicationId，避免签名不同导致互相覆盖，
+            // 也允许在同一台设备上同时安装。
+            applicationIdSuffix = ".debug"
+        }
+        getByName("profile") {
+            // Flutter 插件会创建 profile build type；它继承 debug 的签名和能力，
+            // 但仍使用独立 applicationId，便于和 release / debug 同时安装。
+            applicationIdSuffix = ".profile"
+        }
         release {
             signingConfig = if (keystorePropertiesFile.exists()) {
                 signingConfigs.getByName("release")

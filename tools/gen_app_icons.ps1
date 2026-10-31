@@ -1,5 +1,7 @@
 ﻿# Generates LanCloud app icons: Android adaptive icons (foreground/monochrome
 # layers plus night background color), the iOS AppIcon set and the Windows .ico.
+# The Profile / Debug Windows badge icon is generated from app_icon.ico by
+# tools/gen_badged_windows_icon.ps1 at the end of this script.
 #
 # 首选路径：用矢量母版 assets/images/logo/icon_master.svg 在**每个目标尺寸**上单独栅格化
 # （零缩放，小尺寸最锐），需要 node + @resvg/resvg-js：
@@ -383,6 +385,11 @@ if ($svgFrames) {
     Save-Ico $icoPath $winSource $lightBg 0.72 $winBox $icoSizes -RadiusFraction 0.22
     $winSource.Dispose()
     Write-Host ("Windows  {0,-28} {1} sizes, up to {2}px" -f 'app_icon.ico', $icoSizes.Count, 256)
+}
+
+$badgedIconScript = Join-Path $PSScriptRoot 'gen_badged_windows_icon.ps1'
+if (Test-Path -LiteralPath $badgedIconScript) {
+    & $badgedIconScript -SourcePath $icoPath
 }
 
 $fg.Dispose(); $mono.Dispose()

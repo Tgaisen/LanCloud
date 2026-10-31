@@ -1,3 +1,5 @@
+import 'dart:ffi';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_info.dart';
 
@@ -19,5 +21,14 @@ void main() {
     expect(formatBuildTimeForDisplay('2026-10-20T12:10:51Z'), expected);
     // 解析失败：原样显示
     expect(formatBuildTimeForDisplay('not a time'), 'not a time');
+  });
+
+  test('构建类型名称与 ABI 显示', () {
+    expect(appDisplayName('蓝云', AppBuildMode.release), '蓝云');
+    expect(appDisplayName('蓝云', AppBuildMode.profile), '蓝云 Profile');
+    expect(appDisplayName('蓝云', AppBuildMode.debug), '蓝云 Debug');
+    expect(abiLabel(Abi.androidArm64), 'arm64-v8a');
+    expect(abiLabel(Abi.androidX64), 'x86_64');
+    expect(abiLabel(Abi.windowsX64), 'x64');
   });
 }

@@ -121,8 +121,9 @@ flutter:
     # 应用图标（首次启动页 / 关于页展示）
     - assets/images/logo/app_icon.png
     # Windows 通知图标：AUMID 的 IconUri 需要一个真实文件路径，运行时会把
-    # 这份 .ico 复制到应用数据目录（和 exe 图标是同一个源文件）
+    # 对应构建类型的 .ico 复制到应用数据目录。
     - windows/runner/resources/app_icon.ico
+    - windows/runner/resources/app_icon_badge.ico
 
   # 图标字体：Remix Icon 的 star-off-line 单字形子集，「取消收藏」菜单项用
   # （U+F59A；笔画粗细和 Material Symbols 一致）。许可证文本登记在

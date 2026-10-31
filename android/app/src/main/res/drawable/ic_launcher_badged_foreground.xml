@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 自适应图标前景：保留原有云朵，在右下角叠加 Code 构建标记。 -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@mipmap/ic_launcher_foreground" />
+    <item
+        android:width="26dp"
+        android:height="26dp"
+        android:bottom="17dp"
+        android:right="19dp"
+        android:gravity="bottom|end"
+        android:drawable="@drawable/ic_launcher_badge" />
+</layer-list>

@@ -78,7 +78,7 @@ class AboutContent extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               Text(
-                l10n.appName,
+                l10n.currentAppDisplayName,
                 textAlign: TextAlign.center,
                 style: context.m3eEmphasizedTheme.headlineMedium,
               ),
@@ -225,7 +225,7 @@ Future<void> showRelatedInfoDialog(BuildContext context) async {
   final l10n = context.l10n;
   final info = await DeviceInfo.load();
   if (!context.mounted) return;
-  final text = _relatedInfoText(info);
+  final text = _relatedInfoText(l10n, info);
   await showDialog<void>(
     context: context,
     builder: (dialogContext) => AlertDialog(
@@ -252,7 +252,7 @@ Future<void> showRelatedInfoDialog(BuildContext context) async {
   );
 }
 
-String _relatedInfoText(DeviceInfo info) {
+String _relatedInfoText(AppLocalizations l10n, DeviceInfo info) {
   String value(String text) => text.trim().isEmpty ? '—' : text.trim();
   final preRelease = appVersion.contains('-');
   return [
@@ -261,6 +261,7 @@ String _relatedInfoText(DeviceInfo info) {
     // Android 上系统里的实际安装码（拆分包按 ABI 加过偏移），
     // 反馈安装 / 升级问题时以这个为准
     if (info.versionCode != null) 'Version code: ${info.versionCode}',
+    'Package: ${value(info.packageAbi)} (${l10n.currentAppBuildModeLabel})',
     'Build time: ${value(buildTimeForDisplay())}',
     'Commit: ${value(gitCommit)}',
     'Device: ${value(info.device)}',
