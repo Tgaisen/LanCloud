@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/animation.dart';
 import 'package:flutter/foundation.dart';
 
 import 'api/lanzou_client.dart';
@@ -204,12 +203,6 @@ class AppController extends ChangeNotifier {
         SystemMotion.touchExploration.value;
   }
 
-  /// 顶栏/底栏滑动隐藏进度 0..1，由各页面按滚动距离驱动。
-  ValueNotifier<double> get barsHide => navigation.barsHide;
-
-  /// 顶栏收起进度 0..1。
-  ValueNotifier<double> get topBarHide => navigation.topBarHide;
-
   /// 首页“目录打开方式 = 网盘页”时请求打开的目录 id（消费后置空）。
   ValueNotifier<String?> get driveFolderRequest => drive.folderRequest;
 
@@ -232,27 +225,6 @@ class AppController extends ChangeNotifier {
   void removeDriveProbe(bool Function() probe) => drive.removeDriveProbe(probe);
 
   bool get driveVisible => drive.driveVisible;
-
-  /// 滚动驱动：1:1 跟随手指，立即生效并打断正在播放的程序化动画。
-  void setBarsHideFromScroll(double value) =>
-      navigation.setBarsHideFromScroll(value);
-
-  /// 顶栏滚动驱动：1:1 跟随手指（距离由各页面的顶栏高度决定）。
-  void setTopBarHideFromScroll(double value) =>
-      navigation.setTopBarHideFromScroll(value);
-
-  /// 程序化显示/隐藏：平滑过渡。
-  /// 例如加载新目录时把已收起的顶/底栏调出来，会滑动出现而不是瞬间弹出。
-  void animateBarsHide(
-    double target, {
-    Duration duration = const Duration(milliseconds: 240),
-    Curve curve = Curves.easeOutCubic,
-  }) => navigation.animateBarsHide(
-    target,
-    reduceMotion: motionReduced,
-    duration: duration,
-    curve: curve,
-  );
 
   @override
   void dispose() {
