@@ -1,60 +1,60 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/ui/app_scroll.dart';
 import 'package:lancloud/ui/common.dart';
 
 void main() {
   testWidgets('滚动驱动的收起进度立即生效', (tester) async {
-    final app = AppController();
-    app.setBarsHideFromScroll(0.4);
-    expect(app.barsHide.value, 0.4);
+    final navigation = NavigationState();
+    addTearDown(navigation.dispose);
+    navigation.setBarsHideFromScroll(0.4);
+    expect(navigation.barsHide.value, 0.4);
     // 越界输入会被夹紧
-    app.setBarsHideFromScroll(2);
-    expect(app.barsHide.value, 1);
-    app.dispose();
+    navigation.setBarsHideFromScroll(2);
+    expect(navigation.barsHide.value, 1);
   });
 
   testWidgets('程序化显示/隐藏是平滑过渡而不是瞬间跳变', (tester) async {
-    final app = AppController();
-    app.setBarsHideFromScroll(1);
-    app.animateBarsHide(0);
+    final navigation = NavigationState();
+    addTearDown(navigation.dispose);
+    navigation.setBarsHideFromScroll(1);
+    navigation.animateBarsHide(0, reduceMotion: false);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 120));
-    final mid = app.barsHide.value;
+    final mid = navigation.barsHide.value;
     expect(mid, greaterThan(0));
     expect(mid, lessThan(1));
     await tester.pump(const Duration(milliseconds: 300));
-    expect(app.barsHide.value, 0);
-    app.dispose();
+    expect(navigation.barsHide.value, 0);
   });
 
   testWidgets('滚动输入会打断程序化动画', (tester) async {
-    final app = AppController();
-    app.setBarsHideFromScroll(1);
-    app.animateBarsHide(0);
+    final navigation = NavigationState();
+    addTearDown(navigation.dispose);
+    navigation.setBarsHideFromScroll(1);
+    navigation.animateBarsHide(0, reduceMotion: false);
     await tester.pump();
-    app.setBarsHideFromScroll(0.7);
+    navigation.setBarsHideFromScroll(0.7);
     await tester.pump(const Duration(milliseconds: 300));
-    expect(app.barsHide.value, 0.7);
-    app.dispose();
+    expect(navigation.barsHide.value, 0.7);
   });
 
   // 系统「移除动画 / 减弱动态效果」（或读屏接管交互）时不做下滑过渡：
   // 顶栏 / 底栏直接到位，切换视图时不再有滑动观感。
   testWidgets('系统要求少动效时顶栏底栏直接到位', (tester) async {
-    final app = AppController()..systemReduceMotion = true;
-    app.setBarsHideFromScroll(1);
-    app.animateBarsHide(0);
+    final navigation = NavigationState();
+    addTearDown(navigation.dispose);
+    navigation.setBarsHideFromScroll(1);
+    navigation.animateBarsHide(0, reduceMotion: true);
     await tester.pump();
-    expect(app.barsHide.value, 0);
-    expect(app.topBarHide.value, 0);
+    expect(navigation.barsHide.value, 0);
+    expect(navigation.topBarHide.value, 0);
 
-    app.animateBarsHide(1);
+    navigation.animateBarsHide(1, reduceMotion: true);
     await tester.pump();
-    expect(app.barsHide.value, 1);
-    expect(app.topBarHide.value, 1);
-    app.dispose();
+    expect(navigation.barsHide.value, 1);
+    expect(navigation.topBarHide.value, 1);
   });
 
   testWidgets('全局滚动行为使用网盘页同款 BouncingScrollPhysics', (tester) async {

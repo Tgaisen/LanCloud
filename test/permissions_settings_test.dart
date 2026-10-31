@@ -136,7 +136,7 @@ void main() {
           .first,
     );
     expect(background.color.a, 1);
-    expect(app.topBarHide.value, 0);
+    expect(app.navigation.topBarHide.value, 0);
 
     // 滑回顶部恢复显示
     await tester.drag(find.byType(Scrollable).first, const Offset(0, 200));

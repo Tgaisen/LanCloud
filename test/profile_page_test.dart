@@ -666,12 +666,12 @@ void main() {
     // 上滑把顶栏收起
     await tester.drag(find.text('下载目录'), const Offset(0, -200));
     await tester.pumpAndSettle();
-    expect(app.topBarHide.value, greaterThan(0));
+    expect(app.navigation.topBarHide.value, greaterThan(0));
 
     // 切换类别：新视图要带着顶栏出现（不再保持收起）
     await tester.tap(find.text('外观与布局'));
     await tester.pumpAndSettle();
-    expect(app.topBarHide.value, 0);
+    expect(app.navigation.topBarHide.value, 0);
   });
 
   testWidgets('大屏右窗格切换动画：前进从右滑入、后退从左滑入', (tester) async {

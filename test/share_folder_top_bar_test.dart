@@ -253,6 +253,6 @@ void main() {
     await tester.pumpAndSettle();
     expect(barTop(), -kToolbarHeight);
     expect(contentOpacity(), closeTo(0, 0.01));
-    expect(app.topBarHide.value, 0);
+    expect(app.navigation.topBarHide.value, 0);
   });
 }
