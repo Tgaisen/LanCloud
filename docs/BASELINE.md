@@ -113,6 +113,8 @@
 | `tools\agent.cmd test`（ProfilePage 账号会话消费端） | 增量 | **359 tests, all passed** | 约 52 s |
 | `tools\agent.cmd test`（拖放动作依赖） | 增量 | **12 tests, all passed** | 约 15 s |
 | `tools\agent.cmd test`（显示 Cookie 纯 Riverpod） | 增量 | **1 test, all passed** | 约 13 s |
+| `tools\agent.cmd analyze`（拖放与 Cookie 行完成后） | 全量 | No issues found | 约 17 s |
+| `tools\agent.cmd test`（拖放与 Cookie 行完成后） | 全量 | **722 tests, all passed** | 约 99 s |
 | `tools\agent.cmd analyze`（账号会话消费端完成后） | 全量 | No issues found | 约 32 s |
 | `tools\agent.cmd test`（账号会话消费端完成后） | 全量 | **722 tests, all passed** | 约 99 s |
 
