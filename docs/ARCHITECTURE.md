@@ -18,9 +18,9 @@
 6. `AppController().init()` — 状态初始化入口
 7. `SystemMotion.init()`、`NotificationService.init()`、`SharedInbox`、`IncomingLinks`
 8. `BackupService.maybeAutoBackup()`（不阻塞）
-9. 入口用已初始化的数据库、账号、设置和平台能力直接构造
-   `TransferDependencies`，再创建应用 `ProviderContainer`；恢复更新缓存后
-   非阻塞执行 `UpdateService.maybeAutoCheck()`
+9. `AppCompositionRoot` 用已初始化的数据库、账号、设置和平台能力构造
+   `BackupService`、`TransferDependencies` 与应用 `ProviderContainer`；
+   恢复更新缓存后非阻塞执行 `UpdateService.maybeAutoCheck()`
 10. `runApp(UncontrolledProviderScope(...))` — 用 `AppController` 已初始化的
     状态覆盖 Riverpod 容器；启动前主动读取 `transferManagerProvider` 保持任务
     恢复顺序。`provider` 依赖与 `ChangeNotifierProvider` 均已移除。
@@ -28,13 +28,14 @@
 ## 状态层
 
 `AppController` 仍负责启动初始化，但其状态已全部通过 Riverpod 覆盖为既有权威
-对象，UI 不再读取 `AppController`。生产入口已直接组装 `TransferDependencies`；
-`AppController` 的旧依赖 getter 只剩现有测试兼容用途。`TransferManager` 同样
-只由 Riverpod 容器提供。`core/update/` 的 `UpdateService` 是阶段 1 Riverpod
-试点：
+对象，UI 不再读取 `AppController`。`AppCompositionRoot` 只组装已初始化对象与
+Riverpod 覆盖，不接管平台服务启动；`AppController` 的旧依赖 getter 只剩现有
+测试兼容用途。`TransferManager` 同样只由 Riverpod 容器提供。`core/update/`
+的 `UpdateService` 是阶段 1 Riverpod 试点：
 
 | 对象 | 文件 | 说明 |
 | --- | --- | --- |
+| `AppCompositionRoot` | `core/app_composition_root.dart` | 用已初始化应用对象组装备份、传输依赖和 Riverpod 容器；不触发启动副作用 |
 | `AppController` | `core/app_controller.dart` | 启动初始化；UI、备份与生产传输装配已解耦，仅保留测试兼容 getter |
 | `TransferManager` | `core/transfer/transfer_manager.dart` | 上传/下载任务队列 |
 | `TransferStore` | `core/transfer/transfer_store.dart` | 传输记录恢复/保存/删除与下载标记端口；`AppDbTransferStore` 适配既有数据库 |

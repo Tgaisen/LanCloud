@@ -143,6 +143,8 @@
 | `tools\agent.cmd test`（DefaultTransferDownloadPort） | 增量 | **365 tests, all passed** | 约 59 s |
 | `tools\agent.cmd analyze`（入口直接组装传输依赖） | 增量 | No issues found | 约 17 s |
 | `tools\agent.cmd test`（入口直接组装传输依赖） | 增量 | **7 tests, all passed** | 约 14 s |
+| `tools\agent.cmd analyze`（AppCompositionRoot） | 增量 | No issues found | 约 12 s |
+| `tools\agent.cmd test`（AppCompositionRoot） | 增量 | **8 tests, all passed** | 约 13 s |
 | `tools\agent.cmd analyze`（网盘目录切片完成后） | 全量 | No issues found | 约 21 s |
 | `tools\agent.cmd test`（网盘目录切片完成后） | 全量 | **722 tests, all passed** | 约 110 s |
 | `tools\agent.cmd analyze`（拖放与 Cookie 行完成后） | 全量 | No issues found | 约 17 s |
@@ -161,7 +163,7 @@
 | `lib` 总行数 | 约 4.4 万 |
 | `test` 测试文件 | 161（平铺，`<主题>_test.dart`） |
 | `test` 总行数 | 约 2.1 万 |
-| `test` 用例数 | 728（当前总数；新增默认下载端口路径测试） |
+| `test` 用例数 | 729（当前总数；728 全量 + 组合根新增 1 条，组合根状态尚未全量复验） |
 | `lib/ui` 页面与组件 | 54 个平铺文件 |
 | `lib/core` | 32 个平铺文件 + 5 个子系统目录 |
 | 文案（`app_zh.arb`） | 1357 行 |
@@ -507,6 +509,11 @@
   `AppController.transferDependencies`。`TransferManager(app)` 测试兼容面仍保留，
   待分批迁移夹具后删除。增量分析 1 个文件无问题，目标测试文件 7 个测试通过，
   用例总数保持 728。
+- 2026-10-31 新增 `AppCompositionRoot`，集中构造备份服务、四个传输端口和
+  Riverpod 容器覆盖；`main()` 仍先执行 `AppController().init()`，通知、自动
+  备份、传输恢复和 `runApp()` 的外部顺序不变。新增 1 条“组合根复用应用级状态
+  与依赖”测试；增量分析 2 个文件无问题，目标测试文件 8 个测试通过。当前总数
+  按 728 条全量基线加 1 条增量记为 729，本片尚未全量复验。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release
