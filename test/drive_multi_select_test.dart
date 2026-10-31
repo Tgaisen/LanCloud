@@ -34,9 +34,9 @@ Future<AppController> host(
 }) async {
   SharedPreferences.setMockInitialValues({});
   final app = AppController();
-  app.accounts.accounts = [Account(uid: '1', cookie: 'cookie')];
-  app.accounts.activeUid = '1';
-  app.settings.gridView = grid;
+  app.accountState.store.accounts = [Account(uid: '1', cookie: 'cookie')];
+  app.accountState.store.activeUid = '1';
+  app.settingsState.store.gridView = grid;
   app.drive.cache.put(
     '-1',
     CachedFolder(

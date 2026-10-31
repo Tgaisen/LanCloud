@@ -202,7 +202,7 @@ Future<void> _pumpDrive(
   Locale locale = const Locale('zh'),
 }) async {
   final transfers = manager ?? buildTransferManager(app);
-  app.accounts.activeUid = '';
+  app.accountState.store.activeUid = '';
   addTearDown(app.dispose);
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = viewSize;

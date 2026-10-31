@@ -73,7 +73,7 @@ class _FakeClient extends LanzouClient {
 
 class _FakeApp extends AppController {
   _FakeApp() {
-    accounts.activeUid = '1';
+    accountState.store.activeUid = '1';
   }
 }
 
@@ -180,7 +180,7 @@ void main() {
     final client = _FakeClient();
     final app = _FakeApp();
     // 关掉「最近使用」记录：测试环境没有数据库实现，进入目录时不必写库
-    app.settings.recentLimit = 0;
+    app.settingsState.store.recentLimit = 0;
     final manager = buildTransferManager(app);
     addTearDown(app.dispose);
     tester.view.devicePixelRatio = 1.0;
