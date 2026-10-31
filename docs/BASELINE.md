@@ -151,6 +151,8 @@
 | `tools\agent.cmd test`（传输测试夹具批次 2） | 增量 | **2 tests, all passed** | 约 15 s |
 | `tools\agent.cmd analyze`（传输测试夹具批次 3） | 全量 | No issues found | 约 17 s |
 | `tools\agent.cmd test`（传输测试夹具批次 3） | 增量 | **11 tests, all passed** | 约 16 s |
+| `tools\agent.cmd analyze`（网盘测试夹具批次 4） | 全量 | No issues found | 约 17 s |
+| `tools\agent.cmd test`（网盘测试夹具批次 4） | 增量 | **10 tests, all passed** | 约 17 s |
 | `tools\agent.cmd analyze`（网盘目录切片完成后） | 全量 | No issues found | 约 21 s |
 | `tools\agent.cmd test`（网盘目录切片完成后） | 全量 | **722 tests, all passed** | 约 110 s |
 | `tools\agent.cmd analyze`（拖放与 Cookie 行完成后） | 全量 | No issues found | 约 17 s |
@@ -532,6 +534,10 @@
   `file_icons_test` 的 2 处 `TransferManager(app)` 改用
   `buildTransferManager`，并移除替换后遗留的旧导入。相关 2 个测试文件 /
   11 个测试通过，用例总数保持 729。
+- 2026-10-31 网盘测试夹具第四批迁移完成：`drive_multi_select_test` 与
+  `drive_paging_test` 的 4 处 `TransferManager(app)` 改用
+  `buildTransferManager`。相关 2 个测试文件 / 10 个测试通过，用例总数保持
+  729。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release
