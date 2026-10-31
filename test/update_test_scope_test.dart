@@ -76,7 +76,7 @@ Widget appTestTree({
       accountStateProvider.overrideWithValue(app.accountState),
       accountSessionProvider.overrideWithValue(app.accountSession),
       appDbProvider.overrideWithValue(app.db),
-      settingsStoreProvider.overrideWithValue(app.settings),
+      settingsStoreProvider.overrideWithValue(app.settingsState.store),
       driveStateProvider.overrideWithValue(app.drive),
       cachePageSettingsStateProvider.overrideWithValue(app.cachePageSettings),
       navigationAppearanceSettingsStateProvider.overrideWithValue(
