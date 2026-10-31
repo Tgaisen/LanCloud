@@ -1,10 +1,12 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lancloud/core/account_state.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/backup/backup_service.dart';
 import 'package:lancloud/core/backup/backup_service_provider.dart';
 import 'package:lancloud/core/cache_page_settings_state.dart';
+import 'package:lancloud/core/data/app_db_provider.dart';
 import 'package:lancloud/core/data/settings_store.dart';
 import 'package:lancloud/core/data/settings_store_provider.dart';
 import 'package:lancloud/core/drive_state.dart';
@@ -62,6 +64,8 @@ Widget appTestTree({
     overrides: [
       if (backupService != null)
         backupServiceProvider.overrideWithValue(backupService),
+      accountStateProvider.overrideWithValue(app.accountState),
+      appDbProvider.overrideWithValue(app.db),
       settingsStoreProvider.overrideWithValue(app.settings),
       driveStateProvider.overrideWithValue(app.drive),
       cachePageSettingsStateProvider.overrideWithValue(app.cachePageSettings),

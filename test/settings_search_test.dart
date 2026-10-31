@@ -1,8 +1,13 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lancloud/core/account_state.dart';
 import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/data/app_db_provider.dart';
 import 'package:lancloud/core/data/settings_store_provider.dart';
+import 'package:lancloud/core/drive_state.dart';
+import 'package:lancloud/core/navigation_appearance_settings_state.dart';
+import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/profile_page.dart';
 import 'package:lancloud/ui/settings_page.dart';
@@ -24,7 +29,16 @@ Future<AppController> _pump(
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [settingsStoreProvider.overrideWithValue(app.settings)],
+      overrides: [
+        settingsStoreProvider.overrideWithValue(app.settings),
+        accountStateProvider.overrideWithValue(app.accountState),
+        appDbProvider.overrideWithValue(app.db),
+        driveStateProvider.overrideWithValue(app.drive),
+        navigationAppearanceSettingsStateProvider.overrideWithValue(
+          app.navigationAppearanceSettings,
+        ),
+        navigationStateProvider.overrideWithValue(app.navigation),
+      ],
       child: ChangeNotifierProvider<AppController>.value(
         value: app,
         child: MaterialApp(

@@ -1,14 +1,18 @@
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:path/path.dart' as p;
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../core/app_controller.dart';
+import '../core/account_state.dart';
 import '../core/app_cache.dart';
 import '../core/app_log.dart';
 import '../core/app_permissions.dart';
+import '../core/data/app_db_provider.dart';
+import '../core/data/settings_store.dart';
+import '../core/data/settings_store_provider.dart';
 import '../core/dynamic_color_support.dart';
+import '../core/drive_state.dart';
 import '../core/notifications.dart';
 import '../core/platform_support.dart';
 import '../core/system_file_saver.dart';
@@ -109,7 +113,7 @@ enum SettingsSection {
 
 /// 单个设置大类页：独立打开（小屏 push / 大屏单栏页）或嵌在「我的」右侧
 /// 详情窗格里。两种形态共用同一份条目与搜索逻辑，只是外壳不同。
-class SettingsCategoryPage extends StatefulWidget {
+class SettingsCategoryPage extends ConsumerStatefulWidget {
   const SettingsCategoryPage({
     super.key,
     required this.category,
@@ -146,7 +150,8 @@ class SettingsCategoryPage extends StatefulWidget {
   final ScrollController? scrollController;
 
   @override
-  State<SettingsCategoryPage> createState() => _SettingsCategoryPageState();
+  ConsumerState<SettingsCategoryPage> createState() =>
+      _SettingsCategoryPageState();
 }
 
 class _Entry {
@@ -169,17 +174,17 @@ class _Entry {
   /// 所属分组小节：决定它出现在哪个大类页的哪个小标题下。
   final SettingsSection section;
 
-  final Widget Function(BuildContext context, AppController app) build;
+  final Widget Function(BuildContext context) build;
 
   /// 是否显示（默认显示）。跟随当前主题等运行时状态的条件项用它。
-  final bool Function(BuildContext context, AppController app)? visible;
+  final bool Function(BuildContext context)? visible;
 
   /// 只出现在「高级覆盖项」二级页：本页列表不渲染，仅参与搜索
   /// （搜索结果里点击直达高级覆盖项页）。
   final bool inAdvancedPage;
 }
 
-class _SettingsCategoryPageState extends State<SettingsCategoryPage>
+class _SettingsCategoryPageState extends ConsumerState<SettingsCategoryPage>
     with WidgetsBindingObserver {
   bool _searching = false;
   bool? _notifGranted;
@@ -258,9 +263,9 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
     if (mounted) setState(() => _permissions = snapshot);
   }
 
-  List<_Entry> _entries(AppController app) {
+  List<_Entry> _entries(SettingsStore settings) {
     final l10n = context.l10n;
-    String themeModeName() => switch (app.settings.themeMode) {
+    String themeModeName() => switch (settings.themeMode) {
       'light' => l10n.light,
       'dark' => l10n.dark,
       _ => l10n.followSystem,
@@ -269,10 +274,10 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
       _Entry(
         id: 'language',
         title: l10n.language,
-        subtitle: languageLabel(l10n, app.settings.language),
+        subtitle: languageLabel(l10n, settings.language),
         keywords: const ['language', 'locale', 'zh', 'en', '语言', '中文', '英语'],
         section: SettingsSection.appearance,
-        build: (context, app) => const LanguageSettingsTile(),
+        build: (context) => const LanguageSettingsTile(),
       ),
       _Entry(
         id: 'theme_mode',
@@ -280,7 +285,7 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         subtitle: themeModeName(),
         keywords: l10n.themeModeKeywords.split(' '),
         section: SettingsSection.appearance,
-        build: (context, app) =>
+        build: (context) =>
             const ThemeSettingsTile(type: ThemeSettingsTileType.mode),
       ),
       _Entry(
@@ -291,9 +296,9 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         section: SettingsSection.appearance,
         // 纯黑只对深色界面有意义：深色模式、或「跟随系统」且系统是深色时
         // 才出现（等价于「当前实际是深色界面」）。
-        visible: (context, app) =>
+        visible: (context) =>
             Theme.of(context).brightness == Brightness.dark,
-        build: (context, app) =>
+        build: (context) =>
             const ThemeSettingsTile(type: ThemeSettingsTileType.oledBlack),
       ),
       _Entry(
@@ -301,16 +306,16 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         title: l10n.themeColor,
         // 开了动态取色就显示「动态取色」，否则显示当前颜色名
         //（动态取色也是弹窗里的一个选项，见 showThemeColorPicker）
-        subtitle: app.settings.dynamicColor
+        subtitle: settings.dynamicColor
             ? l10n.dynamicColor
-            : themeSeedLabel(l10n, app.settings.themeSeed),
+            : themeSeedLabel(l10n, settings.themeSeed),
         keywords: [
           ...l10n.themeColorKeywords.split(' '),
           ...l10n.dynamicColorKeywords.split(' '),
         ],
         section: SettingsSection.appearance,
         // 探测完成前按「支持」处理（与旧开关一致），避免闪一下置灰。
-        build: (context, app) => ThemeColorSettingsTile(
+        build: (context) => ThemeColorSettingsTile(
           dynamicSupported: _dynamicColorSupported ?? true,
         ),
       ),
@@ -320,7 +325,7 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         subtitle: '',
         keywords: l10n.hideTopBarKeywords.split(' '),
         section: SettingsSection.layout,
-        build: (context, app) => const NavigationAppearanceSettingsTile(
+        build: (context) => const NavigationAppearanceSettingsTile(
           setting: NavigationAppearanceSetting.hideTopBar,
         ),
       ),
@@ -330,7 +335,7 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         subtitle: '',
         keywords: l10n.hideBottomBarKeywords.split(' '),
         section: SettingsSection.layout,
-        build: (context, app) => const NavigationAppearanceSettingsTile(
+        build: (context) => const NavigationAppearanceSettingsTile(
           setting: NavigationAppearanceSetting.hideBottomBar,
         ),
       ),
@@ -340,7 +345,7 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         subtitle: '',
         keywords: l10n.floatingNavKeywords.split(' '),
         section: SettingsSection.appearance,
-        build: (context, app) => const NavigationAppearanceSettingsTile(
+        build: (context) => const NavigationAppearanceSettingsTile(
           setting: NavigationAppearanceSetting.floatingNav,
         ),
       ),
@@ -349,12 +354,12 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         title: l10n.navBarItems,
         subtitle: navItemsLabel(
           l10n,
-          transfers: app.settings.navShowTransfers,
-          favorites: app.settings.navShowFavorites,
+          transfers: settings.navShowTransfers,
+          favorites: settings.navShowFavorites,
         ),
         keywords: l10n.navBarItemsKeywords.split(' '),
         section: SettingsSection.layout,
-        build: (context, app) => const NavBarItemsSettingsTile(),
+        build: (context) => const NavBarItemsSettingsTile(),
       ),
       _Entry(
         id: 'swipe_tabs',
@@ -362,7 +367,7 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         subtitle: l10n.swipeTabsSubtitle,
         keywords: l10n.swipeTabsKeywords.split(' '),
         section: SettingsSection.layout,
-        build: (context, app) => const NavigationAppearanceSettingsTile(
+        build: (context) => const NavigationAppearanceSettingsTile(
           setting: NavigationAppearanceSetting.swipeTabs,
         ),
       ),
@@ -372,35 +377,35 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         subtitle: l10n.transitionAnimationsSubtitle,
         keywords: l10n.transitionAnimationsKeywords.split(' '),
         section: SettingsSection.appearance,
-        build: (context, app) => const NavigationAppearanceSettingsTile(
+        build: (context) => const NavigationAppearanceSettingsTile(
           setting: NavigationAppearanceSetting.transitionAnimations,
         ),
       ),
       _Entry(
         id: 'download_dir',
         title: l10n.downloadDir,
-        subtitle: app.settings.downloadDirTree ??
-            app.settings.downloadDir ??
+        subtitle: settings.downloadDirTree ??
+            settings.downloadDir ??
             l10n.defaultDownloadDir('…'),
         keywords: l10n.downloadDirKeywords.split(' '),
         section: SettingsSection.download,
-        build: (context, app) => const DownloadDirectorySettingsTile(),
+        build: (context) => const DownloadDirectorySettingsTile(),
       ),
       _Entry(
         id: 'launch_page',
         title: l10n.launchPage,
-        subtitle: launchPageLabel(l10n, app.settings.launchPage),
+        subtitle: launchPageLabel(l10n, settings.launchPage),
         keywords: l10n.launchPageKeywords.split(' '),
         section: SettingsSection.behavior,
-        build: (context, app) => const LaunchPageSettingsTile(),
+        build: (context) => const LaunchPageSettingsTile(),
       ),
       _Entry(
         id: 'home_folder_open',
         title: l10n.homeFolderOpen,
-        subtitle: homeFolderOpenLabel(l10n, app.settings.homeFolderOpenMode),
+        subtitle: homeFolderOpenLabel(l10n, settings.homeFolderOpenMode),
         keywords: l10n.homeFolderOpenKeywords.split(' '),
         section: SettingsSection.behavior,
-        build: (context, app) => const HomeFolderOpenSettingsTile(),
+        build: (context) => const HomeFolderOpenSettingsTile(),
       ),
       _Entry(
         id: 'cache_folders',
@@ -408,7 +413,7 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         subtitle: l10n.cacheFoldersSubtitle,
         keywords: l10n.cacheFoldersKeywords.split(' '),
         section: SettingsSection.behavior,
-        build: (context, app) =>
+        build: (context) =>
             const CachePageSettingsTile(cacheFolders: true),
       ),
       _Entry(
@@ -417,7 +422,7 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         subtitle: l10n.loadAllPagesSubtitle,
         keywords: l10n.loadAllPagesKeywords.split(' '),
         section: SettingsSection.behavior,
-        build: (context, app) =>
+        build: (context) =>
             const CachePageSettingsTile(cacheFolders: false),
       ),
       _Entry(
@@ -426,7 +431,7 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         subtitle: l10n.notifProgressSubtitle,
         keywords: l10n.notifProgressKeywords.split(' '),
         section: SettingsSection.notification,
-        build: (context, app) => NotificationSettingsTile(
+        build: (context) => NotificationSettingsTile(
           done: false,
           onPermissionChanged: (granted) {
             if (mounted) setState(() => _notifGranted = granted);
@@ -439,7 +444,7 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         subtitle: l10n.notifDoneSubtitle,
         keywords: l10n.notifDoneKeywords.split(' '),
         section: SettingsSection.notification,
-        build: (context, app) => NotificationSettingsTile(
+        build: (context) => NotificationSettingsTile(
           done: true,
           onPermissionChanged: (granted) {
             if (mounted) setState(() => _notifGranted = granted);
@@ -452,7 +457,7 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         subtitle: l10n.clipboardLinkPromptSubtitle,
         keywords: l10n.clipboardLinkPromptKeywords.split(' '),
         section: SettingsSection.reminder,
-        build: (context, app) => const ClipboardLinkPromptTile(),
+        build: (context) => const ClipboardLinkPromptTile(),
       ),
       // 三项系统权限（通知 / 安装应用 / 忽略电池优化）收进一个弹窗，
       // 设置页只留一个「管理权限」入口
@@ -467,7 +472,7 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
           ...l10n.notifPermissionKeywords.split(' '),
         ],
         section: SettingsSection.permissions,
-        build: (context, app) => ListTile(
+        build: (context) => ListTile(
           leading: const Icon(Icons.shield),
           title: Text(context.l10n.managePermissions),
           onTap: () => _showManagePermissions(context),
@@ -479,7 +484,7 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         subtitle: l10n.manageDefaultLinksSubtitle,
         keywords: l10n.manageDefaultLinksKeywords.split(' '),
         section: SettingsSection.permissions,
-        build: (context, app) => ListTile(
+        build: (context) => ListTile(
           leading: const Icon(Icons.link_outlined),
           title: Text(context.l10n.manageDefaultLinks),
           subtitle: Text(context.l10n.manageDefaultLinksSubtitle),
@@ -492,7 +497,7 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         subtitle: '',
         keywords: l10n.openSystemSettingsKeywords.split(' '),
         section: SettingsSection.permissions,
-        build: (context, app) => ListTile(
+        build: (context) => ListTile(
           leading: const Icon(Icons.page_info),
           title: Text(context.l10n.openSystemSettings),
           onTap: _openAppSettings,
@@ -501,28 +506,28 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
       _Entry(
         id: 'interval',
         title: l10n.requestInterval,
-        subtitle: l10n.requestIntervalSubtitle(app.settings.requestInterval),
+        subtitle: l10n.requestIntervalSubtitle(settings.requestInterval),
         keywords: l10n.requestIntervalKeywords.split(' '),
         section: SettingsSection.connection,
-        build: (context, app) => const RequestIntervalSettingsTile(),
+        build: (context) => const RequestIntervalSettingsTile(),
       ),
       _Entry(
         id: 'max_uploads',
         title: l10n.maxUploads,
-        subtitle: '${app.settings.maxUploads}',
+        subtitle: '${settings.maxUploads}',
         keywords: l10n.uploadKeywords.split(' '),
         section: SettingsSection.upload,
-        build: (context, app) => const TransferConcurrencySettingsTile(
+        build: (context) => const TransferConcurrencySettingsTile(
           setting: TransferConcurrencySetting.uploads,
         ),
       ),
       _Entry(
         id: 'max_downloads',
         title: l10n.maxDownloads,
-        subtitle: '${app.settings.maxDownloads}',
+        subtitle: '${settings.maxDownloads}',
         keywords: l10n.downloadKeywords.split(' '),
         section: SettingsSection.download,
-        build: (context, app) => const TransferConcurrencySettingsTile(
+        build: (context) => const TransferConcurrencySettingsTile(
           setting: TransferConcurrencySetting.downloads,
         ),
       ),
@@ -541,7 +546,7 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
           '覆盖',
         ],
         section: SettingsSection.connection,
-        build: (context, app) => ListTile(
+        build: (context) => ListTile(
           leading: const Icon(Icons.tune),
           title: Text(context.l10n.advanced),
           trailing: const Icon(Icons.chevron_right),
@@ -551,33 +556,33 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
       _Entry(
         id: 'api_host',
         title: l10n.apiHost,
-        subtitle: apiHostLabel(app.settings.apiHost),
+        subtitle: apiHostLabel(settings.apiHost),
         keywords: l10n.apiHostKeywords.split(' '),
         section: SettingsSection.connection,
         inAdvancedPage: true,
-        build: (context, app) => const AdvancedConnectionSettingsTile(
+        build: (context) => const AdvancedConnectionSettingsTile(
           setting: AdvancedConnectionSetting.apiHost,
         ),
       ),
       _Entry(
         id: 'upload_path',
         title: l10n.uploadPath,
-        subtitle: app.settings.uploadPath,
+        subtitle: settings.uploadPath,
         keywords: l10n.uploadPathKeywords.split(' '),
         section: SettingsSection.connection,
         inAdvancedPage: true,
-        build: (context, app) => const AdvancedConnectionSettingsTile(
+        build: (context) => const AdvancedConnectionSettingsTile(
           setting: AdvancedConnectionSetting.uploadPath,
         ),
       ),
       _Entry(
         id: 'user_agent',
         title: l10n.userAgent,
-        subtitle: userAgentLabel(l10n, app.settings.userAgent),
+        subtitle: userAgentLabel(l10n, settings.userAgent),
         keywords: l10n.userAgentKeywords.split(' '),
         section: SettingsSection.connection,
         inAdvancedPage: true,
-        build: (context, app) => const AdvancedConnectionSettingsTile(
+        build: (context) => const AdvancedConnectionSettingsTile(
           setting: AdvancedConnectionSetting.userAgent,
         ),
       ),
@@ -587,7 +592,7 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         subtitle: l10n.backupAndRestoreSubtitle,
         keywords: l10n.backupKeywords.split(' '),
         section: SettingsSection.backup,
-        build: (context, app) => ListTile(
+        build: (context) => ListTile(
           leading: const Icon(Icons.sync),
           title: Text(context.l10n.backupAndRestore),
           subtitle: Text(context.l10n.backupAndRestoreSubtitle),
@@ -598,12 +603,12 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
       _Entry(
         id: 'recent_limit',
         title: l10n.recentLimit,
-        subtitle: app.settings.recentLimit <= 0
+        subtitle: settings.recentLimit <= 0
             ? l10n.recentLimitOff
-            : l10n.recentLimitValue(app.settings.recentLimit),
+            : l10n.recentLimitValue(settings.recentLimit),
         keywords: l10n.recentLimitKeywords.split(' '),
         section: SettingsSection.data,
-        build: (context, app) => const RecentLimitSettingsTile(),
+        build: (context) => const RecentLimitSettingsTile(),
       ),
       _Entry(
         id: 'clear_cache',
@@ -611,7 +616,7 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         subtitle: l10n.clearCacheSubtitle,
         keywords: l10n.clearCacheKeywords.split(' '),
         section: SettingsSection.data,
-        build: (context, app) => ListTile(
+        build: (context) => ListTile(
           leading: const Icon(Icons.cleaning_services_outlined),
           title: Text(context.l10n.clearCache),
           onTap: () => _clearCache(context),
@@ -623,7 +628,7 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         subtitle: l10n.showCookieSubtitle,
         keywords: l10n.showCookieKeywords.split(' '),
         section: SettingsSection.privacy,
-        build: (context, app) => const ShowCookieSettingsTile(),
+        build: (context) => const ShowCookieSettingsTile(),
       ),
       _Entry(
         id: 'export_logs',
@@ -631,7 +636,7 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         subtitle: l10n.exportLogsSubtitle,
         keywords: l10n.exportLogsKeywords.split(' '),
         section: SettingsSection.privacy,
-        build: (context, app) => ListTile(
+        build: (context) => ListTile(
           leading: const Icon(Icons.article_outlined),
           title: Text(context.l10n.exportLogs),
           subtitle: Text(context.l10n.exportLogsSubtitle),
@@ -644,7 +649,7 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         subtitle: '',
         keywords: l10n.clearDataKeywords.split(' '),
         section: SettingsSection.privacy,
-        build: (context, app) => ListTile(
+        build: (context) => ListTile(
           leading: const Icon(Icons.ink_eraser),
           title: Text(context.l10n.clearData),
           onTap: () => _clearData(context),
@@ -653,10 +658,10 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
       _Entry(
         id: 'motion_mode',
         title: l10n.globalAnimations,
-        subtitle: motionModeLabel(l10n, app.settings.motionMode),
+        subtitle: motionModeLabel(l10n, settings.motionMode),
         keywords: l10n.motionModeKeywords.split(' '),
         section: SettingsSection.accessibility,
-        build: (context, app) => const MotionSettingsTile(),
+        build: (context) => const MotionSettingsTile(),
       ),
       _Entry(
         id: 'a11y_feedback',
@@ -664,7 +669,7 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         subtitle: '',
         keywords: l10n.a11yFeedbackKeywords.split(' '),
         section: SettingsSection.accessibility,
-        build: (context, app) => ListTile(
+        build: (context) => ListTile(
           leading: const Icon(Icons.mail_outlined),
           title: Text(context.l10n.a11yFeedback),
           onTap: () => _showA11yFeedbackDialog(context),
@@ -714,10 +719,10 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
 
   @override
   Widget build(BuildContext context) {
-    final app = context.read<AppController>();
+    final settings = ref.watch(settingsStoreProvider);
     final l10n = context.l10n;
-    final entries = _entries(app)
-        .where((e) => e.visible?.call(context, app) ?? true)
+    final entries = _entries(settings)
+        .where((e) => e.visible?.call(context) ?? true)
         .toList();
     final query = _searchText.trim().toLowerCase();
 
@@ -734,8 +739,8 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
 
     // 本页内容：正常态 = 各分组小节；搜索态 = 本页命中 + 「其他设置项」
     final children = _searchActive
-        ? _buildSearchResults(context, app, matching)
-        : _buildSections(context, app, entries);
+        ? _buildSearchResults(context, matching)
+        : _buildSections(context, entries);
 
     if (widget.embedded) return _buildEmbedded(children);
 
@@ -825,7 +830,6 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
   /// 本页的分组小节：每个小节 = 小标题 + 一组设置项列表。
   List<Widget> _buildSections(
     BuildContext context,
-    AppController app,
     List<_Entry> entries,
   ) {
     final widgets = <Widget>[];
@@ -840,7 +844,7 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         ..add(M3eSectionHeader(section.label(context.l10n)))
         ..add(
           SegmentedList(
-            children: [for (final entry in list) entry.build(context, app)],
+            children: [for (final entry in list) entry.build(context)],
           ),
         );
     }
@@ -918,7 +922,6 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
   /// 「清理缓存」：临时文件（拖拽 / 选文件 / 拍照副本、备份与日志导出残留、
   /// 网页缓存）+ 图片缓存 + 网盘目录列表缓存。账号、设置和已下载的文件不受影响。
   Future<void> _clearCache(BuildContext context) async {
-    final app = context.read<AppController>();
     final l10n = context.l10n;
     final navigator = Navigator.of(context);
     // 统计缓存大小要遍历整个缓存目录（Windows 上可能要好几秒）：先转圈再弹确认框
@@ -961,7 +964,7 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
       PaintingBinding.instance.imageCache
         ..clear()
         ..clearLiveImages();
-      app.driveCache.clear();
+      ref.read(driveCacheProvider).clear();
     } finally {
       // 出啥岔子都要把等待弹窗收掉，别把用户卡在转圈里
       navigator.pop();
@@ -977,7 +980,8 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
   /// 「清除数据」：多选要清除的数据（此账号的快速访问 / 最近使用、其它数据），
   /// 确认后一次性清掉。样式与其它选择弹窗一致（分组小标题 + 列表组复选行）。
   Future<void> _clearData(BuildContext context) async {
-    final app = context.read<AppController>();
+    final accountState = ref.read(accountStateProvider);
+    final db = ref.read(appDbProvider);
     final l10n = context.l10n;
     final selected = <_ClearDataOption>{};
     final ok = await showDialog<bool>(
@@ -1015,7 +1019,7 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // 「此账号」两项只有登录状态下才有意义
-                  if (app.activeUid != null)
+                  if (accountState.store.activeUid != null)
                     group(l10n.clearDataGroupAccount, const [
                       _ClearDataOption.quickAccess,
                       _ClearDataOption.recents,
@@ -1053,16 +1057,16 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
           .showSnackBar(SnackBar(content: Text(l10n.clearDataNothingSelected)));
       return;
     }
-    final uid = app.activeUid ?? '';
+    final uid = accountState.store.activeUid ?? '';
     try {
       if (selected.contains(_ClearDataOption.quickAccess)) {
-        await app.db.clearPins(uid);
+        await db.clearPins(uid);
       }
       if (selected.contains(_ClearDataOption.recents)) {
-        await app.db.clearRecents(uid);
+        await db.clearRecents(uid);
       }
       if (selected.contains(_ClearDataOption.otherAccounts)) {
-        await app.db.clearOtherUsageData(uid);
+        await db.clearOtherUsageData(uid);
       }
     } catch (_) {
       // 本地库出错时静默跳过：清除是尽力而为，不打断用户
@@ -1185,7 +1189,6 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
   /// 「其他设置项」，点击切换到对应设置页。
   List<Widget> _buildSearchResults(
     BuildContext context,
-    AppController app,
     List<_Entry> matching,
   ) {
     final l10n = context.l10n;
@@ -1215,7 +1218,7 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage>
         ..add(M3eSectionHeader(section.label(l10n)))
         ..add(
           SegmentedList(
-            children: [for (final entry in list) entry.build(context, app)],
+            children: [for (final entry in list) entry.build(context)],
           ),
         );
     }
