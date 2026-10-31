@@ -16,6 +16,8 @@ import 'package:lancloud/ui/transfers_page.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
+import 'transfer_dependencies_test.dart' show buildTransferManager;
+
 Widget _transferTestHost({
   required AppController app,
   required TransferManager manager,
@@ -45,7 +47,7 @@ TransferTask task(String id, String name, {required TransferStatus status}) {
 
 Future<(AppController, TransferManager)> host(WidgetTester tester) async {
   final app = AppController();
-  final manager = TransferManager(app);
+  final manager = buildTransferManager(app);
   manager.tasks.addAll([
     task('t1', 'a.zip', status: TransferStatus.failed),
     task('t2', 'b.zip', status: TransferStatus.failed),
@@ -88,7 +90,7 @@ double selectionBarOpacity(WidgetTester tester) => tester
 /// 把传输页作为独立页面（二级路由）打开，用于验证返回行为。
 Future<AppController> pushTransfers(WidgetTester tester) async {
   final app = AppController();
-  final manager = TransferManager(app);
+  final manager = buildTransferManager(app);
   manager.tasks.addAll([task('t1', 'a.zip', status: TransferStatus.failed)]);
   await tester.pumpWidget(
     _transferTestHost(
@@ -124,7 +126,7 @@ Future<AppController> pushTransfers(WidgetTester tester) async {
 void main() {
   testWidgets('进行中条目的进度条与标题同宽：避让左侧图标与右侧按钮', (tester) async {
     final app = AppController();
-    final manager = TransferManager(app);
+    final manager = buildTransferManager(app);
     manager.tasks.add(
       task('t1', 'a.zip', status: TransferStatus.running)
         ..received = 1
@@ -453,7 +455,7 @@ void main() {
 
   testWidgets('下载完成的项目：点击条目打开文件，⋯ 菜单给打开 / 分享 / 删除', (tester) async {
     final app = AppController();
-    final manager = TransferManager(app);
+    final manager = buildTransferManager(app);
     manager.tasks.add(
       TransferTask(
           id: 'd1',
@@ -526,7 +528,7 @@ void main() {
 
   testWidgets('失败下载的 ⋯ 菜单：重试可用，删除记录与文件连带删掉本地文件', (tester) async {
     final app = AppController();
-    final manager = TransferManager(app);
+    final manager = buildTransferManager(app);
     // widget 测试跑在 FakeAsync 里：测试体内的文件 I/O 必须走同步接口，
     // 否则 await 永远等不到真实事件循环上的回调
     final dir = Directory.systemTemp.createTempSync('lancloud-transfers');
@@ -595,7 +597,7 @@ void main() {
 
   testWidgets('上传条目的 ⋯ 菜单只有重试（失败时）与删除此条记录', (tester) async {
     final app = AppController();
-    final manager = TransferManager(app);
+    final manager = buildTransferManager(app);
     manager.tasks.addAll([
       task('u1', 'fail.zip', status: TransferStatus.failed),
       task('u2', 'ok.zip', status: TransferStatus.done),
@@ -630,7 +632,7 @@ void main() {
 
   testWidgets('批量删除：幸存条目复用元素，不重播出现动画', (tester) async {
     final app = AppController();
-    final manager = TransferManager(app);
+    final manager = buildTransferManager(app);
     for (var i = 1; i <= 5; i++) {
       manager.tasks.add(
         TransferTask(
@@ -697,7 +699,7 @@ void main() {
     tester.view.physicalSize = const Size(400, 600);
     addTearDown(tester.view.reset);
     final app = AppController();
-    final manager = TransferManager(app);
+    final manager = buildTransferManager(app);
     manager.tasks.addAll([
       for (var i = 0; i < 12; i++)
         task('t$i', 'file$i.zip', status: TransferStatus.done),
@@ -756,7 +758,7 @@ void main() {
 
   testWidgets('滑动时懒加载出来的条目不重播入场动画（与收藏页一致）', (tester) async {
     final app = AppController();
-    final manager = TransferManager(app);
+    final manager = buildTransferManager(app);
     for (var i = 0; i < 40; i++) {
       manager.tasks.add(task('t$i', 'file$i.zip', status: TransferStatus.done));
     }
