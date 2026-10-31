@@ -243,6 +243,8 @@
 | `tools\agent.cmd test`（AppEnvironment 状态组装） | 增量 | **299 tests, all passed** | 约 48 s |
 | `tools\agent.cmd analyze`（组合根使用 AppEnvironment） | 增量 | No issues found | 约 20 s |
 | `tools\agent.cmd test`（组合根使用 AppEnvironment） | 增量 | **299 tests, all passed** | 约 48 s |
+| `tools\agent.cmd analyze`（AppStartup 启动编排） | 增量 | No issues found | 约 14 s |
+| `tools\agent.cmd test`（AppStartup 启动编排） | 增量 | **301 tests, all passed** | 约 47 s |
 | `tools\agent.cmd analyze`（网盘目录切片完成后） | 全量 | No issues found | 约 21 s |
 | `tools\agent.cmd test`（网盘目录切片完成后） | 全量 | **722 tests, all passed** | 约 110 s |
 | `tools\agent.cmd analyze`（拖放与 Cookie 行完成后） | 全量 | No issues found | 约 17 s |
@@ -261,7 +263,7 @@
 | `lib` 总行数 | 约 4.4 万 |
 | `test` 测试文件 | 161（平铺，`<主题>_test.dart`） |
 | `test` 总行数 | 约 2.1 万 |
-| `test` 用例数 | 717（当前总数；含新增 AppEnvironment 同一性测试） |
+| `test` 用例数 | 719（当前总数；含 AppEnvironment 与 AppStartup 顺序测试） |
 | `lib/ui` 页面与组件 | 54 个平铺文件 |
 | `lib/core` | 32 个平铺文件 + 5 个子系统目录 |
 | 文案（`app_zh.arb`） | 1357 行 |
@@ -818,6 +820,12 @@
   `app.init()`，再把 `app.environment` 和恢复方法交给组合根；所有 Riverpod
   override 继续指向环境中的同一批状态与服务。增量分析 4 个文件无问题，44 个
   测试文件 / 299 个测试通过，用例总数保持 717。
+- 2026-10-31 新增 `AppStartup` 编排启动与备份恢复后的状态同步：
+  安全存储检查先于账号加载，账号/设置加载后才同步运行时配置，目录缓存绑定后
+  再设置 ready；账号资料刷新和动态取色探测保持非阻塞。`AppController.init()` /
+  `reloadFromStorage()` 仅委托同一个启动协调器。新增 2 条顺序与非阻塞测试；
+  增量分析 2 个生产文件无问题，45 个测试文件 / 301 个测试通过，用例总数由
+  717 增至 719。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release

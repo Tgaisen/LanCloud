@@ -37,7 +37,8 @@ Riverpod 覆盖，不接管平台服务启动；传输和下载装配已完全�
 | --- | --- | --- |
 | `AppCompositionRoot` | `core/app_composition_root.dart` | 用 `AppEnvironment` 与显式恢复回调组装备份、传输依赖和 Riverpod 容器；不触发启动副作用 |
 | `AppEnvironment` | `core/app_environment.dart` | 唯一组装导航、账号、设置、运行时、客户端与应用级服务，只保存实例，不触发启动副作用 |
-| `AppController` | `core/app_controller.dart` | 启动/恢复初始化；持有 `AppEnvironment` 并转发同一组状态，UI、备份、传输和下载装配均已解耦 |
+| `AppStartup` | `core/app_startup.dart` | 编排安全存储检查、账号/设置加载、运行时同步、目录绑定、ready、恢复重载与后台任务 |
+| `AppController` | `core/app_controller.dart` | 兼容门面：持有 `AppEnvironment` / `AppStartup`，转发同一组状态并桥接通知；UI、备份、传输和下载装配均已解耦 |
 | `TransferManager` | `core/transfer/transfer_manager.dart` | 上传/下载任务队列 |
 | `TransferStore` | `core/transfer/transfer_store.dart` | 传输记录恢复/保存/删除与下载标记端口；`AppDbTransferStore` 适配既有数据库 |
 | `TransferAccountPort` | `core/transfer/transfer_account_port.dart` | 当前 UID、账号存在性、账号客户端与公开客户端端口；包装账号存储和客户端注册表 |
