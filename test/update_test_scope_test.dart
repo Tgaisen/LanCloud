@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/account_state.dart';
 import 'package:lancloud/core/account_session.dart';
 import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/backup/backup_service.dart';
 import 'package:lancloud/core/backup/backup_service_provider.dart';
 import 'package:lancloud/core/cache_page_settings_state.dart';
@@ -68,34 +69,49 @@ Widget appTestTree({
   required AppController app,
   required Widget child,
   BackupService? backupService,
+}) => appEnvironmentTestTree(
+  environment: app.environment,
+  child: child,
+  backupService: backupService,
+);
+
+/// 用应用环境提供页面已迁移状态使用的 Riverpod 作用域。
+Widget appEnvironmentTestTree({
+  required AppEnvironment environment,
+  required Widget child,
+  BackupService? backupService,
 }) {
   return ProviderScope(
     overrides: [
       if (backupService != null)
         backupServiceProvider.overrideWithValue(backupService),
-      accountStateProvider.overrideWithValue(app.accountState),
-      accountSessionProvider.overrideWithValue(app.accountSession),
-      appDbProvider.overrideWithValue(app.db),
-      settingsStoreProvider.overrideWithValue(app.settingsState.store),
-      driveStateProvider.overrideWithValue(app.drive),
-      cachePageSettingsStateProvider.overrideWithValue(app.cachePageSettings),
-      navigationAppearanceSettingsStateProvider.overrideWithValue(
-        app.navigationAppearanceSettings,
+      accountStateProvider.overrideWithValue(environment.accountState),
+      accountSessionProvider.overrideWithValue(environment.accountSession),
+      appDbProvider.overrideWithValue(environment.db),
+      settingsStoreProvider.overrideWithValue(environment.settingsState.store),
+      driveStateProvider.overrideWithValue(environment.drive),
+      cachePageSettingsStateProvider.overrideWithValue(
+        environment.cachePageSettings,
       ),
-      navigationStateProvider.overrideWithValue(app.navigation),
-      themeSettingsStateProvider.overrideWithValue(app.themeSettings),
-      listHomeSettingsStateProvider.overrideWithValue(app.listHomeSettings),
+      navigationAppearanceSettingsStateProvider.overrideWithValue(
+        environment.navigationAppearanceSettings,
+      ),
+      navigationStateProvider.overrideWithValue(environment.navigation),
+      themeSettingsStateProvider.overrideWithValue(environment.themeSettings),
+      listHomeSettingsStateProvider.overrideWithValue(
+        environment.listHomeSettings,
+      ),
       transferConnectionSettingsStateProvider.overrideWithValue(
-        app.transferConnectionSettings,
+        environment.transferConnectionSettings,
       ),
       downloadDirectorySettingsStateProvider.overrideWithValue(
-        app.downloadDirectorySettings,
+        environment.downloadDirectorySettings,
       ),
       notificationSettingsStateProvider.overrideWithValue(
-        app.notificationSettings,
+        environment.notificationSettings,
       ),
       languageClipboardSettingsStateProvider.overrideWithValue(
-        app.languageClipboardSettings,
+        environment.languageClipboardSettings,
       ),
     ],
     child: child,

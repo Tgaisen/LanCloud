@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/data/account_store.dart';
 import 'package:lancloud/core/dynamic_color_support.dart';
 import 'package:lancloud/core/shared_downloads_storage.dart';
@@ -38,27 +38,27 @@ void mockDynamicColorSupport({required bool supported}) {
 }
 
 /// 打开某个设置大类页（设置拆成 5 页后，各用例只关心自己那一页）。
-Future<AppController> pumpSettings(
+Future<AppEnvironment> pumpSettings(
   WidgetTester tester,
   SettingsCategory category,
 ) async {
   SharedPreferences.setMockInitialValues({});
-  final app = AppController();
-  addTearDown(app.dispose);
+  final environment = AppEnvironment();
+  addTearDown(environment.dispose);
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = const Size(420, 900);
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
-    appTestTree(
-      app: app,
+    appEnvironmentTestTree(
+      environment: environment,
       // 主题跟随设置（同真实外壳）：切深色模式要真的变主题，
       // 「纯黑深色主题」这类跟随亮度的设置项才测得到
-      child: ListenableBuilder(
-        listenable: app,
-        builder: (context, _) => MaterialApp(
+      child: ValueListenableBuilder<int>(
+        valueListenable: environment.themeSettings.revision,
+        builder: (context, _, _) => MaterialApp(
           theme: ThemeData(brightness: Brightness.light),
           darkTheme: ThemeData(brightness: Brightness.dark),
-          themeMode: switch (app.settingsState.store.themeMode) {
+          themeMode: switch (environment.settingsState.store.themeMode) {
             'light' => ThemeMode.light,
             'dark' => ThemeMode.dark,
             _ => ThemeMode.system,
@@ -72,7 +72,7 @@ Future<AppController> pumpSettings(
     ),
   );
   await tester.pumpAndSettle();
-  return app;
+  return environment;
 }
 
 /// 某个设置项前面的图标。
@@ -214,7 +214,10 @@ void main() {
   testWidgets('主题色弹窗：第一项动态取色，选中/切色互相联动', (tester) async {
     mockDynamicColorSupport(supported: true);
     await DynamicColorSupport.isSupported(refresh: true);
-    final app = await pumpSettings(tester, SettingsCategory.appearanceLayout);
+    final environment = await pumpSettings(
+      tester,
+      SettingsCategory.appearanceLayout,
+    );
 
     await scrollTo(tester, '主题色');
     await tester.tap(find.text('主题色'));
@@ -233,7 +236,7 @@ void main() {
     // 选中动态取色：落盘，行副标题变成「动态取色」，尾部不再画色块
     await tester.tap(inDialog('动态取色'));
     await tester.pumpAndSettle();
-    expect(app.settingsState.store.dynamicColor, isTrue);
+    expect(environment.settingsState.store.dynamicColor, isTrue);
     expect(find.text('动态取色'), findsOneWidget);
     expect(
       find.descendant(
@@ -248,8 +251,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(inDialog('默认蓝'));
     await tester.pumpAndSettle();
-    expect(app.settingsState.store.dynamicColor, isFalse);
-    expect(app.settingsState.store.themeSeed, 0xFF2E6BE6);
+    expect(environment.settingsState.store.dynamicColor, isFalse);
+    expect(environment.settingsState.store.themeSeed, 0xFF2E6BE6);
     expect(find.text('默认蓝'), findsOneWidget);
     expect(
       find.descendant(
@@ -263,7 +266,10 @@ void main() {
   testWidgets('系统不支持动态取色：弹窗第一项置灰不可点', (tester) async {
     mockDynamicColorSupport(supported: false);
     await DynamicColorSupport.isSupported(refresh: true);
-    final app = await pumpSettings(tester, SettingsCategory.appearanceLayout);
+    final environment = await pumpSettings(
+      tester,
+      SettingsCategory.appearanceLayout,
+    );
 
     await scrollTo(tester, '主题色');
     await tester.tap(find.text('主题色'));
@@ -274,7 +280,7 @@ void main() {
     await tester.tap(find.text('动态取色'));
     await tester.pumpAndSettle();
     expect(find.byType(AlertDialog), findsOneWidget);
-    expect(app.settingsState.store.dynamicColor, isFalse);
+    expect(environment.settingsState.store.dynamicColor, isFalse);
   });
 
   testWidgets('数据组底部是「清理缓存」，点击弹出确认弹窗（取消不清理）', (tester) async {
@@ -311,7 +317,10 @@ void main() {
 
   // MD3 基准色等新增预设：主题色弹窗里能选到，并能写入设置
   testWidgets('主题色新增预设可选（经典紫 / 宝蓝 / 玫红 / 琥珀）', (tester) async {
-    final app = await pumpSettings(tester, SettingsCategory.appearanceLayout);
+    final environment = await pumpSettings(
+      tester,
+      SettingsCategory.appearanceLayout,
+    );
 
     // 主题色在第一组（外观）里，初始就在屏幕内；不要再 ensureVisible，
     // 否则会被滚到顶部、缩到浮层顶栏下面点不到
@@ -330,7 +339,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('经典紫'));
     await tester.pumpAndSettle();
-    expect(app.settingsState.store.themeSeed, 0xFF6750A4);
+    expect(environment.settingsState.store.themeSeed, 0xFF6750A4);
   });
 
   // 下载目录弹窗：分类提示 + 使用说明只在 Android 显示
@@ -450,13 +459,16 @@ void main() {
   });
 
   testWidgets('「清除数据」弹窗：两组分组小标题 + 复选列表，取消不清', (tester) async {
-    final app = await pumpSettings(tester, SettingsCategory.privacyData);
+    final environment = await pumpSettings(
+      tester,
+      SettingsCategory.privacyData,
+    );
     // 有登录账号才会显示「此账号」组
-    app.accountState.store.accounts.add(
+    environment.accountState.store.accounts.add(
       Account(uid: '556911', cookie: 'c'),
     );
-    app.accountState.store.activeUid = '556911';
-    app.notifyListeners();
+    environment.accountState.store.activeUid = '556911';
+    environment.accountState.notifyAccountChanged();
     await tester.pumpAndSettle();
 
     final entry = find.text('清除数据');

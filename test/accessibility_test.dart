@@ -2,7 +2,7 @@ import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/app_icons.dart';
 import 'package:lancloud/ui/common.dart';
@@ -273,14 +273,14 @@ void main() {
   testWidgets('设置页滑杆：读出滑杆角色与当前值，上/下滑调节并落盘', (tester) async {
     final handle = tester.ensureSemantics();
     SharedPreferences.setMockInitialValues({});
-    final app = AppController();
-    addTearDown(app.dispose);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
     tester.view.devicePixelRatio = 1.0;
     tester.view.physicalSize = const Size(420, 900);
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
-      appTestTree(
-        app: app,
+      appEnvironmentTestTree(
+        environment: environment,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
@@ -322,7 +322,7 @@ void main() {
       SemanticsAction.increase,
     );
     await tester.pumpAndSettle();
-    expect(app.settingsState.store.requestInterval, 150);
+    expect(environment.settingsState.store.requestInterval, 150);
     expect(data().value, '150 ms');
 
     // 下滑：回到原档并写回
@@ -331,7 +331,7 @@ void main() {
       SemanticsAction.decrease,
     );
     await tester.pumpAndSettle();
-    expect(app.settingsState.store.requestInterval, 100);
+    expect(environment.settingsState.store.requestInterval, 100);
     expect(data().value, '100 ms');
 
     handle.dispose();

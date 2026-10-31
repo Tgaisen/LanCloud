@@ -2,7 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
@@ -18,12 +18,12 @@ import 'update_test_scope_test.dart';
 /// 滚动条滑块长度就会一抖一抖。这里钉住修复：滚动过程中滚动范围恒定。
 void main() {
   testWidgets('设置页滚动范围全程恒定（滚动条滑块不会抖动）', (tester) async {
-    final app = AppController();
-    addTearDown(app.dispose);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
 
     await tester.pumpWidget(
-      appTestTree(
-        app: app,
+      appEnvironmentTestTree(
+        environment: environment,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
@@ -79,15 +79,15 @@ void main() {
       }
     });
 
-    final app = AppController();
-    addTearDown(app.dispose);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           navigationAppearanceSettingsStateProvider.overrideWithValue(
-            app.navigationAppearanceSettings,
+            environment.navigationAppearanceSettings,
           ),
-          navigationStateProvider.overrideWithValue(app.navigation),
+          navigationStateProvider.overrideWithValue(environment.navigation),
         ],
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,

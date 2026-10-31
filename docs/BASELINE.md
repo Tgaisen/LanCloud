@@ -245,6 +245,10 @@
 | `tools\agent.cmd test`（组合根使用 AppEnvironment） | 增量 | **299 tests, all passed** | 约 48 s |
 | `tools\agent.cmd analyze`（AppStartup 启动编排） | 增量 | No issues found | 约 14 s |
 | `tools\agent.cmd test`（AppStartup 启动编排） | 增量 | **301 tests, all passed** | 约 47 s |
+| `tools\agent.cmd analyze`（环境测试树批次 1） | 全量 | No issues found | 约 30 s |
+| `tools\agent.cmd test`（环境测试树批次 1） | 增量 | **17 tests, all passed** | 约 17 s |
+| `tools\agent.cmd analyze`（环境测试树批次 2） | 全量 | No issues found | 约 24 s |
+| `tools\agent.cmd test`（环境测试树批次 2） | 增量 | **42 tests, all passed** | 约 23 s |
 | `tools\agent.cmd analyze`（网盘目录切片完成后） | 全量 | No issues found | 约 21 s |
 | `tools\agent.cmd test`（网盘目录切片完成后） | 全量 | **722 tests, all passed** | 约 110 s |
 | `tools\agent.cmd analyze`（拖放与 Cookie 行完成后） | 全量 | No issues found | 约 17 s |
@@ -826,6 +830,18 @@
   `reloadFromStorage()` 仅委托同一个启动协调器。新增 2 条顺序与非阻塞测试；
   增量分析 2 个生产文件无问题，45 个测试文件 / 301 个测试通过，用例总数由
   717 增至 719。
+- 2026-10-31 环境测试树批次 1 完成：`appTestTree` 改为委托新增的
+  `appEnvironmentTestTree`；`accessibility_test`、
+  `permissions_settings_test` 与 `scroll_extent_stability_test` 直接构造
+  `AppEnvironment`，不再创建 `AppController`。全量分析无问题，4 个测试文件 /
+  17 个测试通过，用例总数保持 719；测试中的 `AppController` 引用现为
+  53 个文件 / 172 处。
+- 2026-10-31 环境测试树批次 2 完成：`settings_a11y_test`、
+  `settings_layout_test` 与 `settings_md3e_test` 改用
+  `AppEnvironment` 测试树；主题切换改监听 `ThemeSettingsState.revision`，
+  账号数据变更改由 `AccountState` 通知。合并工作树验证 7 个测试文件 /
+  42 个测试通过，用例总数保持 719；测试中的 `AppController` 引用现为
+  50 个文件 / 165 处。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release
