@@ -3,13 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/api/models.dart';
 import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/navigation_appearance_settings_state.dart';
+import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/m3e.dart';
 import 'package:lancloud/ui/share_folder_page.dart';
-import 'package:provider/provider.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
@@ -26,18 +27,21 @@ Future<AppController> pumpShareFolder(
   final transfers = TransferManager(app);
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [transferManagerProvider.overrideWithValue(transfers)],
-      child: ChangeNotifierProvider<AppController>.value(
-        value: app,
-        child: MaterialApp(
-          localizationsDelegates: appLocalizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          locale: const Locale('zh'),
-          home: ShareFolderPage(
-            folder: folder,
-            link: 'https://example.com/share',
-            pwd: '',
-          ),
+      overrides: [
+        transferManagerProvider.overrideWithValue(transfers),
+        navigationAppearanceSettingsStateProvider.overrideWithValue(
+          app.navigationAppearanceSettings,
+        ),
+        navigationStateProvider.overrideWithValue(app.navigation),
+      ],
+      child: MaterialApp(
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('zh'),
+        home: ShareFolderPage(
+          folder: folder,
+          link: 'https://example.com/share',
+          pwd: '',
         ),
       ),
     ),

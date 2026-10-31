@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/api/models.dart';
 import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/navigation_appearance_settings_state.dart';
+import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/core/data/account_store.dart';
 import 'package:lancloud/core/drive_cache.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
@@ -36,7 +38,13 @@ Future<void> host(WidgetTester tester, {required bool grid}) async {
   final manager = TransferManager(app);
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [transferManagerProvider.overrideWithValue(manager)],
+      overrides: [
+        transferManagerProvider.overrideWithValue(manager),
+        navigationAppearanceSettingsStateProvider.overrideWithValue(
+          app.navigationAppearanceSettings,
+        ),
+        navigationStateProvider.overrideWithValue(app.navigation),
+      ],
       child: MultiProvider(
         providers: [
           ChangeNotifierProvider<AppController>.value(value: app),
