@@ -24,7 +24,8 @@ Future<AppController> pumpShareFolder(
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = const Size(400, 600);
   addTearDown(tester.view.reset);
-  final app = AppController()..settings.hideTopBar = true;
+  final app = AppController();
+  app.settingsState.store.hideTopBar = true;
   addTearDown(app.dispose);
   final transfers = buildTransferManager(app);
   await tester.pumpWidget(
