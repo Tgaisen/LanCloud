@@ -2,13 +2,14 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/navigation_appearance_settings_state.dart';
+import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/transfers_page.dart';
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/m3e.dart';
-import 'package:provider/provider.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
@@ -27,15 +28,18 @@ void main() {
     );
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [transferManagerProvider.overrideWithValue(manager)],
-        child: ChangeNotifierProvider<AppController>.value(
-          value: app,
-          child: MaterialApp(
-            localizationsDelegates: appLocalizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            locale: const Locale('zh'),
-            home: const TransfersPage(),
+        overrides: [
+          transferManagerProvider.overrideWithValue(manager),
+          navigationAppearanceSettingsStateProvider.overrideWithValue(
+            app.navigationAppearanceSettings,
           ),
+          navigationStateProvider.overrideWithValue(app.navigation),
+        ],
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const TransfersPage(),
         ),
       ),
     );

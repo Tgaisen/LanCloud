@@ -5,13 +5,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/navigation_appearance_settings_state.dart';
+import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/m3e.dart';
 import 'package:lancloud/ui/transfers_page.dart';
-import 'package:provider/provider.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
@@ -21,11 +22,14 @@ Widget _transferTestHost({
   required Widget child,
 }) {
   return ProviderScope(
-    overrides: [transferManagerProvider.overrideWithValue(manager)],
-    child: ChangeNotifierProvider<AppController>.value(
-      value: app,
-      child: child,
-    ),
+    overrides: [
+      transferManagerProvider.overrideWithValue(manager),
+      navigationAppearanceSettingsStateProvider.overrideWithValue(
+        app.navigationAppearanceSettings,
+      ),
+      navigationStateProvider.overrideWithValue(app.navigation),
+    ],
+    child: child,
   );
 }
 
@@ -837,6 +841,8 @@ void main() {
           .backgroundColor,
       Colors.transparent,
     );
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
     bigApp.dispose();
 
     // 小屏：维持原来的 surface
@@ -849,6 +855,8 @@ void main() {
         ),
       ).colorScheme.surface,
     );
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
     smallApp.dispose();
   });
 }

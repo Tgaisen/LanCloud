@@ -2,9 +2,9 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart' hide Icons;
-import 'package:provider/provider.dart';
 
-import '../core/app_controller.dart';
+import '../core/navigation_appearance_settings_state.dart';
+import '../core/navigation_state.dart';
 import '../core/platform_support.dart';
 import '../core/saved_file.dart';
 import '../core/system_open.dart';
@@ -71,14 +71,8 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
   /// 正在播放删除动画的记录（动画播完再真正移除）
   final Set<String> _removing = {};
 
-  /// 外壳（AppController）：dispose 里不能再读 context，退出多选要用它。
-  AppController? _app;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _app = context.read<AppController>();
-  }
+  /// 外壳导航状态：dispose 里不能再读 context，退出多选要用它。
+  late final NavigationState _navigation;
 
   /// 整组入场动画：系统要求少动效时直接显示（不做错峰淡入 / 位移）。
   void _replayEnter() {
@@ -95,6 +89,7 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
   @override
   void initState() {
     super.initState();
+    _navigation = ref.read(navigationStateProvider);
     // 首次加载：整组播一次入场动画（之后只在切换上传 / 下载时重播）
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _replayEnter();
@@ -103,10 +98,9 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
 
   @override
   void dispose() {
-    if (_selecting && _app != null) {
-      final app = _app!;
-      app.setSelectionMode(false);
-      app.onRequestExitSelection = null;
+    if (_selecting) {
+      _navigation.setSelectionMode(false);
+      _navigation.onRequestExitSelection = null;
     }
     _tabAnim.dispose();
     _enter.dispose();
@@ -123,15 +117,14 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
     final wasSelecting = _selecting;
     if (!_selecting) {
       // 其它页面可能正处于多选：先退出，避免两处状态打架
-      context.read<AppController>().onRequestExitSelection?.call();
+      _navigation.onRequestExitSelection?.call();
     }
     setState(() {
       _selecting = true;
       if (taskId != null) _selected.add(taskId);
     });
-    final app = context.read<AppController>();
-    app.onRequestExitSelection = _exitSelection;
-    app.setSelectionMode(true);
+    _navigation.onRequestExitSelection = _exitSelection;
+    _navigation.setSelectionMode(true);
     if (!wasSelecting) announceEnteredMultiSelect(context);
   }
 
@@ -141,9 +134,8 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
       _selecting = false;
       _selected.clear();
     });
-    final app = context.read<AppController>();
-    app.onRequestExitSelection = null;
-    app.setSelectionMode(false);
+    _navigation.onRequestExitSelection = null;
+    _navigation.setSelectionMode(false);
   }
 
   void _toggleSelected(String id) {
@@ -426,17 +418,26 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final app = context.read<AppController>();
+    final appearance = ref.watch(navigationAppearanceSettingsStateProvider);
     final manager = ref.watch(transferManagerProvider);
     return ListenableBuilder(
-      listenable: manager,
-      builder: (context, _) => _buildPage(context, app, manager),
+      listenable: appearance.revision,
+      builder: (context, _) => ListenableBuilder(
+        listenable: manager,
+        builder: (context, _) => _buildPage(
+          context,
+          appearance.hideTopBar,
+          _navigation,
+          manager,
+        ),
+      ),
     );
   }
 
   Widget _buildPage(
     BuildContext context,
-    AppController app,
+    bool hideTopBar,
+    NavigationState navigation,
     TransferManager manager,
   ) {
     final scheme = Theme.of(context).colorScheme;
@@ -469,9 +470,9 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
             BodySideInset(
               child: ScrollTint(
                 hideDistance: headerHeight,
-                readBarsHidden: () => app.topBarHide.value,
-                onBarsHidden: app.settings.hideTopBar
-                    ? app.setTopBarHideFromScroll
+                readBarsHidden: () => navigation.topBarHide.value,
+                onBarsHidden: hideTopBar
+                    ? navigation.setTopBarHideFromScroll
                     : null,
                 // 列表快速滑动条（可拖拽）
                 child: FastScrollbar(
