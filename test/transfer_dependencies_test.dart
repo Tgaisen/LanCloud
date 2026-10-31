@@ -116,31 +116,50 @@ class _FakeTransferDownloadPort implements TransferDownloadPort {
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues(<String, Object>{}));
 
-  test('AppController 提供显式传输依赖集合', () {
+  test('生产传输依赖可从应用级对象直接组装', () {
     SharedPreferences.setMockInitialValues(<String, Object>{});
-    final app = AppController();
+    const sharedDownloads = PlatformSharedDownloadsGateway();
+    final downloadPaths = PlatformDownloadPathService(
+      sharedDownloads: sharedDownloads,
+    );
+    final app = AppController(
+      sharedDownloads: sharedDownloads,
+      downloadPaths: downloadPaths,
+    );
     addTearDown(app.dispose);
 
-    expect(app, isA<TransferDependenciesProvider>());
     expect(app.db, same(AppDb.instance));
-    final store = app.transferStore;
+    final store = AppDbTransferStore(database: app.db);
     expect(store, isA<AppDbTransferStore>());
-    if (store is AppDbTransferStore) {
-      expect(store.database, same(AppDb.instance));
-    }
-    final accounts = app.transferAccounts;
+    expect(store.database, same(AppDb.instance));
+    final accounts = AppTransferAccountPort(
+      accounts: app.accounts,
+      clients: app.clientRegistry,
+    );
     expect(accounts, isA<AppTransferAccountPort>());
-    if (accounts is AppTransferAccountPort) {
-      expect(accounts.accounts, same(app.accountState.store));
-      expect(accounts.clients, same(app.clientRegistry));
-    }
-    expect(app.transferDownload, isA<DefaultTransferDownloadPort>());
+    expect(accounts.accounts, same(app.accountState.store));
+    expect(accounts.clients, same(app.clientRegistry));
+    final download = DefaultTransferDownloadPort(
+      downloadPaths: downloadPaths,
+      sharedDownloads: sharedDownloads,
+      settings: app.settings,
+    );
+    expect(download, isA<DefaultTransferDownloadPort>());
+    expect(download.downloadPaths, same(downloadPaths));
+    expect(download.sharedDownloads, same(sharedDownloads));
+    expect(download.settings, same(app.settings));
     expect(app.settings, same(app.settingsState.store));
-    final dependencies = app.transferDependencies;
-    expect(dependencies.store, same(app.transferStore));
-    expect(dependencies.accounts, same(app.transferAccounts));
-    expect(dependencies.download, same(app.transferDownload));
-    expect(dependencies.settings, same(app.transferSettings));
+    final settings = StoreTransferSettingsPort(app.settings);
+    final dependencies = TransferDependencies(
+      store: store,
+      accounts: accounts,
+      download: download,
+      settings: settings,
+    );
+    expect(dependencies.store, same(store));
+    expect(dependencies.accounts, same(accounts));
+    expect(dependencies.download, same(download));
+    expect(dependencies.settings, same(settings));
   });
 
   test('TransferManager 可从注入的存储端口恢复任务', () async {

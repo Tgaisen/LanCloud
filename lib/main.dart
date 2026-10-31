@@ -38,7 +38,12 @@ import 'core/system_motion.dart';
 import 'core/theme_settings_state.dart';
 import 'core/transfer_connection_settings_state.dart';
 import 'core/third_party_licenses.dart';
+import 'core/transfer/transfer_account_port.dart';
+import 'core/transfer/transfer_dependencies.dart';
+import 'core/transfer/transfer_download_port.dart';
 import 'core/transfer/transfer_manager_provider.dart';
+import 'core/transfer/transfer_settings_port.dart';
+import 'core/transfer/transfer_store.dart';
 import 'core/update/update_service.dart';
 import 'core/update/update_settings_state.dart';
 
@@ -114,6 +119,19 @@ Future<void> main() async {
     downloadPaths: downloadPaths,
   );
   await app.init();
+  final transferDependencies = TransferDependencies(
+    store: AppDbTransferStore(database: app.db),
+    accounts: AppTransferAccountPort(
+      accounts: app.accounts,
+      clients: app.clientRegistry,
+    ),
+    download: DefaultTransferDownloadPort(
+      downloadPaths: downloadPaths,
+      sharedDownloads: sharedDownloads,
+      settings: app.settings,
+    ),
+    settings: StoreTransferSettingsPort(app.settings),
+  );
   // 系统「移除动画」：读一次并监听原生推送（华为等 ROM 的开关引擎看不到）
   SystemMotion.init();
   final language = app.settings.language;
@@ -172,7 +190,7 @@ Future<void> main() async {
       ),
       downloadPathServiceProvider.overrideWithValue(downloadPaths),
       sharedDownloadsGatewayProvider.overrideWithValue(sharedDownloads),
-      transferDependenciesProvider.overrideWithValue(app.transferDependencies),
+      transferDependenciesProvider.overrideWithValue(transferDependencies),
     ],
   );
   // 生产消费端已迁到 Riverpod，但仍要在 runApp 前主动创建管理器，
