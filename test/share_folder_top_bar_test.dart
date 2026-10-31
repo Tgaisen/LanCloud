@@ -14,6 +14,8 @@ import 'package:lancloud/ui/share_folder_page.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
+import 'transfer_dependencies_test.dart' show buildTransferManager;
+
 Future<AppController> pumpShareFolder(
   WidgetTester tester,
   FolderShareDetail folder,
@@ -24,7 +26,7 @@ Future<AppController> pumpShareFolder(
   addTearDown(tester.view.reset);
   final app = AppController()..settings.hideTopBar = true;
   addTearDown(app.dispose);
-  final transfers = TransferManager(app);
+  final transfers = buildTransferManager(app);
   await tester.pumpWidget(
     ProviderScope(
       overrides: [

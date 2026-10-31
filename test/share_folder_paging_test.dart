@@ -9,7 +9,6 @@ import 'package:lancloud/core/cache_page_settings_state.dart';
 import 'package:lancloud/core/data/app_db_provider.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
-import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/app_localizations_zh.dart';
@@ -17,6 +16,8 @@ import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/share_folder_page.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
+
+import 'transfer_dependencies_test.dart' show buildTransferManager;
 
 /// 记录分页请求的假客户端：第二页固定返回一个文件并到底。
 class _FakeClient extends LanzouClient {
@@ -98,7 +99,7 @@ Future<void> pumpPage(
   required LanzouClient client,
   required FolderShareDetail folder,
 }) async {
-  final transfers = TransferManager(app);
+  final transfers = buildTransferManager(app);
   final clients = LanzouClientRegistry(factory: (_) => client);
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = const Size(400, 700);

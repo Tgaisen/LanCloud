@@ -9,11 +9,12 @@ import 'package:lancloud/core/cache_page_settings_state.dart';
 import 'package:lancloud/core/data/app_db_provider.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
-import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/delegates.dart';
 import 'package:lancloud/ui/share_folder_page.dart';
+
+import 'transfer_dependencies_test.dart' show buildTransferManager;
 
 /// 截图里那种「子文件夹自带提取码」：密码不对时服务端回提取码错误，
 /// 输对了才返回子文件夹内容。
@@ -56,7 +57,7 @@ Future<void> _pumpPage(
   required LanzouClient client,
 }) async {
   final clients = LanzouClientRegistry(factory: (_) => client);
-  final transfers = TransferManager(app);
+  final transfers = buildTransferManager(app);
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = const Size(400, 700);
   addTearDown(tester.view.reset);
