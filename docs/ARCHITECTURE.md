@@ -18,7 +18,7 @@
 6. `AppController().init()` — 状态初始化入口
 7. `SystemMotion.init()`、`NotificationService.init()`、`SharedInbox`、`IncomingLinks`
 8. `BackupService.maybeAutoBackup()`（不阻塞）
-9. `AppCompositionRoot` 用已初始化的数据库、账号、设置和平台能力构造
+9. `AppCompositionRoot` 用已初始化的 `AppEnvironment`、恢复回调和平台能力构造
    `BackupService`、`TransferDependencies` 与应用 `ProviderContainer`；
    恢复更新缓存后非阻塞执行 `UpdateService.maybeAutoCheck()`
 10. `runApp(UncontrolledProviderScope(...))` — 用 `AppController` 已初始化的
@@ -35,8 +35,9 @@ Riverpod 覆盖，不接管平台服务启动；传输和下载装配已完全�
 
 | 对象 | 文件 | 说明 |
 | --- | --- | --- |
-| `AppCompositionRoot` | `core/app_composition_root.dart` | 用已初始化应用对象组装备份、传输依赖和 Riverpod 容器；不触发启动副作用 |
-| `AppController` | `core/app_controller.dart` | 启动初始化与应用级状态对象组装；UI、备份、传输和下载装配均已解耦 |
+| `AppCompositionRoot` | `core/app_composition_root.dart` | 用 `AppEnvironment` 与显式恢复回调组装备份、传输依赖和 Riverpod 容器；不触发启动副作用 |
+| `AppEnvironment` | `core/app_environment.dart` | 唯一组装导航、账号、设置、运行时、客户端与应用级服务，只保存实例，不触发启动副作用 |
+| `AppController` | `core/app_controller.dart` | 启动/恢复初始化；持有 `AppEnvironment` 并转发同一组状态，UI、备份、传输和下载装配均已解耦 |
 | `TransferManager` | `core/transfer/transfer_manager.dart` | 上传/下载任务队列 |
 | `TransferStore` | `core/transfer/transfer_store.dart` | 传输记录恢复/保存/删除与下载标记端口；`AppDbTransferStore` 适配既有数据库 |
 | `TransferAccountPort` | `core/transfer/transfer_account_port.dart` | 当前 UID、账号存在性、账号客户端与公开客户端端口；包装账号存储和客户端注册表 |

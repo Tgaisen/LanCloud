@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'account_state.dart';
 import 'account_session.dart';
-import 'app_controller.dart';
+import 'app_environment.dart';
 import 'app_log.dart';
 import 'app_log_provider.dart';
 import 'app_runtime_state.dart';
@@ -39,69 +39,79 @@ import 'update/update_settings_state.dart';
 /// 平台服务初始化仍由 `main()` 控制；本类只负责对象组合，不触发启动流程。
 final class AppCompositionRoot {
   AppCompositionRoot({
-    required this.app,
+    required this.environment,
+    required this.reloadFromStorage,
     required this.sharedDownloads,
     required this.downloadPaths,
   });
 
-  final AppController app;
+  final AppEnvironment environment;
+  final Future<void> Function() reloadFromStorage;
   final SharedDownloadsGateway sharedDownloads;
   final DownloadPathService downloadPaths;
 
   late final TransferDependencies transferDependencies = TransferDependencies(
-    store: AppDbTransferStore(database: app.db),
+    store: AppDbTransferStore(database: environment.db),
     accounts: AppTransferAccountPort(
-      accounts: app.accountState.store,
-      clients: app.clientRegistry,
+      accounts: environment.accountState.store,
+      clients: environment.clientRegistry,
     ),
     download: DefaultTransferDownloadPort(
       downloadPaths: downloadPaths,
       sharedDownloads: sharedDownloads,
-      settings: app.settingsState.store,
+      settings: environment.settingsState.store,
     ),
-    settings: StoreTransferSettingsPort(app.settingsState.store),
+    settings: StoreTransferSettingsPort(environment.settingsState.store),
   );
 
   late final BackupService backupService = BackupService.of(
     BackupStoreDependencies(
-      accounts: app.accountState.store,
-      settings: app.settingsState.store,
-      db: app.db,
-      reloadCallback: app.reloadFromStorage,
+      accounts: environment.accountState.store,
+      settings: environment.settingsState.store,
+      db: environment.db,
+      reloadCallback: reloadFromStorage,
     ),
   );
 
   ProviderContainer createContainer() {
     return ProviderContainer(
       overrides: [
-        appDbProvider.overrideWithValue(app.db),
+        appDbProvider.overrideWithValue(environment.db),
         appLogProvider.overrideWithValue(AppLog.instance),
         backupServiceProvider.overrideWithValue(backupService),
-        lanzouClientRegistryProvider.overrideWithValue(app.clientRegistry),
-        navigationStateProvider.overrideWithValue(app.navigation),
-        driveStateProvider.overrideWithValue(app.drive),
-        appRuntimeStateProvider.overrideWithValue(app.runtimeState),
-        accountStateProvider.overrideWithValue(app.accountState),
-        accountSessionProvider.overrideWithValue(app.accountSession),
-        settingsStateProvider.overrideWithValue(app.settingsState),
-        updateSettingsStateProvider.overrideWithValue(app.updateSettings),
+        lanzouClientRegistryProvider.overrideWithValue(
+          environment.clientRegistry,
+        ),
+        navigationStateProvider.overrideWithValue(environment.navigation),
+        driveStateProvider.overrideWithValue(environment.drive),
+        appRuntimeStateProvider.overrideWithValue(environment.runtimeState),
+        accountStateProvider.overrideWithValue(environment.accountState),
+        accountSessionProvider.overrideWithValue(environment.accountSession),
+        settingsStateProvider.overrideWithValue(environment.settingsState),
+        updateSettingsStateProvider.overrideWithValue(
+          environment.updateSettings,
+        ),
         navigationAppearanceSettingsStateProvider.overrideWithValue(
-          app.navigationAppearanceSettings,
+          environment.navigationAppearanceSettings,
         ),
         notificationSettingsStateProvider.overrideWithValue(
-          app.notificationSettings,
+          environment.notificationSettings,
         ),
-        themeSettingsStateProvider.overrideWithValue(app.themeSettings),
+        themeSettingsStateProvider.overrideWithValue(environment.themeSettings),
         transferConnectionSettingsStateProvider.overrideWithValue(
-          app.transferConnectionSettings,
+          environment.transferConnectionSettings,
         ),
-        listHomeSettingsStateProvider.overrideWithValue(app.listHomeSettings),
+        listHomeSettingsStateProvider.overrideWithValue(
+          environment.listHomeSettings,
+        ),
         languageClipboardSettingsStateProvider.overrideWithValue(
-          app.languageClipboardSettings,
+          environment.languageClipboardSettings,
         ),
-        cachePageSettingsStateProvider.overrideWithValue(app.cachePageSettings),
+        cachePageSettingsStateProvider.overrideWithValue(
+          environment.cachePageSettings,
+        ),
         downloadDirectorySettingsStateProvider.overrideWithValue(
-          app.downloadDirectorySettings,
+          environment.downloadDirectorySettings,
         ),
         notificationServiceProvider.overrideWithValue(
           NotificationService.instance,

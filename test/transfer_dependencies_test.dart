@@ -112,8 +112,10 @@ TransferManager buildTransferManager(AppController app) {
   final downloadPaths = PlatformDownloadPathService(
     sharedDownloads: sharedDownloads,
   );
+  final environment = app.environment;
   final composition = AppCompositionRoot(
-    app: app,
+    environment: environment,
+    reloadFromStorage: app.reloadFromStorage,
     sharedDownloads: sharedDownloads,
     downloadPaths: downloadPaths,
   );
@@ -177,15 +179,17 @@ void main() {
     );
     final app = AppController();
     addTearDown(app.dispose);
+    final environment = app.environment;
     final composition = AppCompositionRoot(
-      app: app,
+      environment: environment,
+      reloadFromStorage: app.reloadFromStorage,
       sharedDownloads: sharedDownloads,
       downloadPaths: downloadPaths,
     );
     final container = composition.createContainer();
     addTearDown(container.dispose);
 
-    expect(container.read(appDbProvider), same(app.db));
+    expect(container.read(appDbProvider), same(environment.db));
     expect(
       container.read(backupServiceProvider),
       same(composition.backupService),
@@ -200,17 +204,17 @@ void main() {
     );
     expect(
       (composition.transferDependencies.store as AppDbTransferStore).database,
-      same(app.db),
+      same(environment.db),
     );
     expect(
       composition.backupService.dependencies.accounts,
-      same(app.accountState.store),
+      same(environment.accountState.store),
     );
     expect(
       composition.backupService.dependencies.settings,
-      same(app.settingsState.store),
+      same(environment.settingsState.store),
     );
-    expect(composition.backupService.dependencies.db, same(app.db));
+    expect(composition.backupService.dependencies.db, same(environment.db));
   });
 
   test('TransferManager 可从注入的存储端口恢复任务', () async {

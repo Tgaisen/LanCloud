@@ -239,6 +239,10 @@
 | `tools\agent.cmd test`（存储访问测试批次 9） | 增量 | **6 tests, all passed** | 约 16 s |
 | `tools\agent.cmd analyze`（移除控制器存储 getter） | 增量 | No issues found | 约 16 s |
 | `tools\agent.cmd test`（移除控制器存储 getter） | 增量 | **298 tests, all passed** | 约 50 s |
+| `tools\agent.cmd analyze`（AppEnvironment 状态组装） | 增量 | No issues found | 约 14 s |
+| `tools\agent.cmd test`（AppEnvironment 状态组装） | 增量 | **299 tests, all passed** | 约 48 s |
+| `tools\agent.cmd analyze`（组合根使用 AppEnvironment） | 增量 | No issues found | 约 20 s |
+| `tools\agent.cmd test`（组合根使用 AppEnvironment） | 增量 | **299 tests, all passed** | 约 48 s |
 | `tools\agent.cmd analyze`（网盘目录切片完成后） | 全量 | No issues found | 约 21 s |
 | `tools\agent.cmd test`（网盘目录切片完成后） | 全量 | **722 tests, all passed** | 约 110 s |
 | `tools\agent.cmd analyze`（拖放与 Cookie 行完成后） | 全量 | No issues found | 约 17 s |
@@ -257,7 +261,7 @@
 | `lib` 总行数 | 约 4.4 万 |
 | `test` 测试文件 | 161（平铺，`<主题>_test.dart`） |
 | `test` 总行数 | 约 2.1 万 |
-| `test` 用例数 | 716（当前总数；累计删除旧兼容测试） |
+| `test` 用例数 | 717（当前总数；含新增 AppEnvironment 同一性测试） |
 | `lib/ui` 页面与组件 | 54 个平铺文件 |
 | `lib/core` | 32 个平铺文件 + 5 个子系统目录 |
 | 文案（`app_zh.arb`） | 1357 行 |
@@ -804,6 +808,16 @@
   安全存储检查、账号/设置加载、运行时同步、目录缓存绑定和后台刷新的顺序不变。
   增量分析 1 个文件无问题，43 个受影响测试文件 / 298 个测试通过，用例总数保持
   716。
+- 2026-10-31 新增 `AppEnvironment`，把导航、账号、设置、运行时、客户端、
+  `AccountLogin`、`AccountSession` 和各设置子组的构造从 `AppController` 移出。
+  控制器只持有环境并转发同一组实例，启动副作用、监听与恢复流程仍留在控制器。
+  新增 1 条环境/控制器实例同一性测试；增量分析 2 个生产文件无问题，44 个测试
+  文件 / 299 个测试通过，用例总数由 716 增至 717。
+- 2026-10-31 `AppCompositionRoot` 改为直接接收 `AppEnvironment` 与显式的
+  `reloadFromStorage` 回调，不再依赖完整 `AppController`。`main()` 仍先执行
+  `app.init()`，再把 `app.environment` 和恢复方法交给组合根；所有 Riverpod
+  override 继续指向环境中的同一批状态与服务。增量分析 4 个文件无问题，44 个
+  测试文件 / 299 个测试通过，用例总数保持 717。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release

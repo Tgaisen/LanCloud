@@ -7,6 +7,7 @@ import 'api/lanzou_client_registry.dart';
 import 'account_state.dart';
 import 'account_login.dart';
 import 'account_session.dart';
+import 'app_environment.dart';
 import 'app_log.dart';
 import 'app_runtime_state.dart';
 import 'data/app_db.dart';
@@ -34,35 +35,13 @@ class AppController extends ChangeNotifier {
     AccountState? accountState,
     SettingsState? settingsState,
     AppRuntimeState? runtimeState,
-  }) : navigation = navigation ?? NavigationState(),
-       drive = drive ?? DriveState(),
-       accountState = accountState ?? AccountState(),
-       settingsState = settingsState ?? SettingsState(),
-       runtimeState = runtimeState ?? AppRuntimeState() {
-    final accountStore = this.accountState.store;
-    final settingsStore = this.settingsState.store;
-    updateSettings = UpdateSettingsState(settingsStore);
-    notificationSettings = NotificationSettingsState(settingsStore);
-    navigationAppearanceSettings = NavigationAppearanceSettingsState(
-      settingsStore,
-      navigation: this.navigation,
-      reduceMotion: () => _motionReduced,
-    );
-    themeSettings = ThemeSettingsState(settingsStore);
-    transferConnectionSettings = TransferConnectionSettingsState(
-      settingsStore,
-    );
-    listHomeSettings = ListHomeSettingsState(
-      settingsStore,
-      trimRecents: db.trimRecents,
-      activeUid: () => accountStore.activeUid,
-    );
-    languageClipboardSettings = LanguageClipboardSettingsState(settingsStore);
-    cachePageSettings = CachePageSettingsState(
-      settingsStore,
-      this.drive.cache,
-    );
-    downloadDirectorySettings = DownloadDirectorySettingsState(settingsStore);
+  }) : environment = AppEnvironment(
+         navigation: navigation,
+         drive: drive,
+         accountState: accountState,
+         settingsState: settingsState,
+         runtimeState: runtimeState,
+       ) {
     this.navigation.addListener(notifyListeners);
     navigationAppearanceSettings.revision.addListener(notifyListeners);
     themeSettings.revision.addListener(notifyListeners);
@@ -72,35 +51,33 @@ class AppController extends ChangeNotifier {
     this.accountState.addListener(notifyListeners);
   }
 
-  final AccountState accountState;
-  final SettingsState settingsState;
-  final AppRuntimeState runtimeState;
-  late final UpdateSettingsState updateSettings;
-  late final NotificationSettingsState notificationSettings;
-  late final NavigationAppearanceSettingsState navigationAppearanceSettings;
-  late final ThemeSettingsState themeSettings;
-  late final TransferConnectionSettingsState transferConnectionSettings;
-  late final ListHomeSettingsState listHomeSettings;
-  late final LanguageClipboardSettingsState languageClipboardSettings;
-  late final CachePageSettingsState cachePageSettings;
-  late final DownloadDirectorySettingsState downloadDirectorySettings;
+  final AppEnvironment environment;
 
-  final AppDb db = AppDb.instance;
-  final NavigationState navigation;
-  final DriveState drive;
+  AccountState get accountState => environment.accountState;
+  SettingsState get settingsState => environment.settingsState;
+  AppRuntimeState get runtimeState => environment.runtimeState;
+  UpdateSettingsState get updateSettings => environment.updateSettings;
+  NotificationSettingsState get notificationSettings =>
+      environment.notificationSettings;
+  NavigationAppearanceSettingsState get navigationAppearanceSettings =>
+      environment.navigationAppearanceSettings;
+  ThemeSettingsState get themeSettings => environment.themeSettings;
+  TransferConnectionSettingsState get transferConnectionSettings =>
+      environment.transferConnectionSettings;
+  ListHomeSettingsState get listHomeSettings => environment.listHomeSettings;
+  LanguageClipboardSettingsState get languageClipboardSettings =>
+      environment.languageClipboardSettings;
+  CachePageSettingsState get cachePageSettings => environment.cachePageSettings;
+  DownloadDirectorySettingsState get downloadDirectorySettings =>
+      environment.downloadDirectorySettings;
 
-  final LanzouClientRegistry clientRegistry = LanzouClientRegistry();
-  late final AccountLogin accountLogin = AccountLogin(
-    accountState: accountState,
-    clients: clientRegistry,
-    driveCache: drive.cache,
-  );
-  late final AccountSession accountSession = AccountSession(
-    accountState: accountState,
-    clients: clientRegistry,
-    driveCache: drive.cache,
-    db: db,
-  );
+  AppDb get db => environment.db;
+  NavigationState get navigation => environment.navigation;
+  DriveState get drive => environment.drive;
+
+  LanzouClientRegistry get clientRegistry => environment.clientRegistry;
+  AccountLogin get accountLogin => environment.accountLogin;
+  AccountSession get accountSession => environment.accountSession;
 
   Future<void> init() async {
     await _inspectSecureStorageUpgrade();
@@ -166,20 +143,6 @@ class AppController extends ChangeNotifier {
     _refreshActiveAccountInfo();
   }
 
-  /// 当前是否应该少动效：用户设置（全局动画）+ 系统信号合成后的结论。
-  /// 控制器内的动画用它判断；widget 侧统一用 reduceMotionOf()。
-  bool get _motionReduced {
-    switch (settingsState.store.motionMode) {
-      case 'on':
-        return false;
-      case 'off':
-        return true;
-    }
-    return runtimeState.systemReduceMotion.value ||
-        SystemMotion.reduceMotion.value ||
-        SystemMotion.touchExploration.value;
-  }
-
   @override
   void dispose() {
     accountState.removeListener(notifyListeners);
@@ -189,10 +152,7 @@ class AppController extends ChangeNotifier {
     languageClipboardSettings.revision.removeListener(notifyListeners);
     listHomeSettings.revision.removeListener(notifyListeners);
     downloadDirectorySettings.revision.removeListener(notifyListeners);
-    accountState.dispose();
-    navigation.dispose();
-    drive.dispose();
-    runtimeState.dispose();
+    environment.dispose();
     super.dispose();
   }
 

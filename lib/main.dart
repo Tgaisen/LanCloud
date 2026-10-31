@@ -91,7 +91,8 @@ Future<void> main() async {
   final app = AppController();
   await app.init();
   final composition = AppCompositionRoot(
-    app: app,
+    environment: app.environment,
+    reloadFromStorage: app.reloadFromStorage,
     sharedDownloads: sharedDownloads,
     downloadPaths: downloadPaths,
   );
