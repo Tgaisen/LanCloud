@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/account_state.dart';
-import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/data/account_store.dart';
 import 'package:lancloud/core/data/account_store_provider.dart';
 import 'package:lancloud/core/data/settings_store.dart';
@@ -31,21 +30,4 @@ void main() {
     expect(identical(container.read(accountStoreProvider), accounts), isTrue);
   });
 
-  test('AppController.accounts 转发到同一 AccountState', () {
-    final accountState = AccountState();
-    final app = AppController(accountState: accountState);
-    addTearDown(app.dispose);
-
-    expect(identical(app.accountState, accountState), isTrue);
-    expect(identical(app.accounts, accountState.store), isTrue);
-  });
-
-  test('AppController.settings 转发到同一 SettingsState', () {
-    final settingsState = SettingsState();
-    final app = AppController(settingsState: settingsState);
-    addTearDown(app.dispose);
-
-    expect(identical(app.settingsState, settingsState), isTrue);
-    expect(identical(app.settings, settingsState.store), isTrue);
-  });
 }

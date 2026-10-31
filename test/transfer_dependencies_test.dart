@@ -140,7 +140,7 @@ void main() {
     expect(store, isA<AppDbTransferStore>());
     expect(store.database, same(AppDb.instance));
     final accounts = AppTransferAccountPort(
-      accounts: app.accounts,
+      accounts: app.accountState.store,
       clients: app.clientRegistry,
     );
     expect(accounts, isA<AppTransferAccountPort>());
@@ -149,14 +149,13 @@ void main() {
     final download = DefaultTransferDownloadPort(
       downloadPaths: downloadPaths,
       sharedDownloads: sharedDownloads,
-      settings: app.settings,
+      settings: app.settingsState.store,
     );
     expect(download, isA<DefaultTransferDownloadPort>());
     expect(download.downloadPaths, same(downloadPaths));
     expect(download.sharedDownloads, same(sharedDownloads));
-    expect(download.settings, same(app.settings));
-    expect(app.settings, same(app.settingsState.store));
-    final settings = StoreTransferSettingsPort(app.settings);
+    expect(download.settings, same(app.settingsState.store));
+    final settings = StoreTransferSettingsPort(app.settingsState.store);
     final dependencies = TransferDependencies(
       store: store,
       accounts: accounts,
@@ -205,11 +204,11 @@ void main() {
     );
     expect(
       composition.backupService.dependencies.accounts,
-      same(app.accounts),
+      same(app.accountState.store),
     );
     expect(
       composition.backupService.dependencies.settings,
-      same(app.settings),
+      same(app.settingsState.store),
     );
     expect(composition.backupService.dependencies.db, same(app.db));
   });

@@ -11,8 +11,8 @@ import 'package:lancloud/core/data/settings_store.dart';
 
 BackupDependencies backupDependenciesFor(AppController app) =>
     BackupStoreDependencies(
-      accounts: app.accounts,
-      settings: app.settings,
+      accounts: app.accountState.store,
+      settings: app.settingsState.store,
       db: app.db,
       reloadCallback: app.reloadFromStorage,
     );
