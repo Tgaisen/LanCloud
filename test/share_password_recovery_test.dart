@@ -3,11 +3,14 @@ import 'dart:async';
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lancloud/core/account_state.dart';
 import 'package:lancloud/core/api/lanzou_client.dart';
 import 'package:lancloud/core/api/lanzou_client_registry.dart';
 import 'package:lancloud/core/api/models.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/data/app_db.dart';
+import 'package:lancloud/core/data/app_db_provider.dart';
+import 'package:lancloud/core/drive_state.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
@@ -17,7 +20,6 @@ import 'package:lancloud/l10n/delegates.dart';
 import 'package:lancloud/ui/app_icons.dart' as app_icons;
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/favorites_page.dart';
-import 'package:provider/provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 /// 收藏里存的是旧提取码：只有新提取码能解析成功。
@@ -123,19 +125,19 @@ Future<void> _pumpFavorites(
       overrides: [
         transferManagerProvider.overrideWithValue(transfers),
         lanzouClientRegistryProvider.overrideWithValue(clients),
+        accountStateProvider.overrideWithValue(app.accountState),
+        appDbProvider.overrideWithValue(app.db),
+        driveStateProvider.overrideWithValue(app.drive),
         navigationAppearanceSettingsStateProvider.overrideWithValue(
           app.navigationAppearanceSettings,
         ),
         navigationStateProvider.overrideWithValue(app.navigation),
       ],
-      child: ChangeNotifierProvider<AppController>.value(
-        value: app,
-        child: MaterialApp(
-          localizationsDelegates: appLocalizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          locale: const Locale('zh'),
-          home: const FavoritesPage(),
-        ),
+      child: MaterialApp(
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('zh'),
+        home: const FavoritesPage(),
       ),
     ),
   );

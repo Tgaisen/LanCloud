@@ -1,31 +1,35 @@
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lancloud/core/account_state.dart';
+import 'package:lancloud/core/api/lanzou_client_registry.dart';
 import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/data/app_db_provider.dart';
+import 'package:lancloud/core/drive_state.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/app_icons.dart';
 import 'package:lancloud/ui/favorites_page.dart';
-import 'package:provider/provider.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
 Widget _host(AppController app, Widget home) => ProviderScope(
   overrides: [
+    accountStateProvider.overrideWithValue(app.accountState),
+    lanzouClientRegistryProvider.overrideWithValue(app.clientRegistry),
+    appDbProvider.overrideWithValue(app.db),
+    driveStateProvider.overrideWithValue(app.drive),
     navigationAppearanceSettingsStateProvider.overrideWithValue(
       app.navigationAppearanceSettings,
     ),
     navigationStateProvider.overrideWithValue(app.navigation),
   ],
-  child: ChangeNotifierProvider<AppController>.value(
-    value: app,
-    child: MaterialApp(
-      localizationsDelegates: appLocalizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      locale: const Locale('zh'),
-      home: home,
-    ),
+  child: MaterialApp(
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    locale: const Locale('zh'),
+    home: home,
   ),
 );
 

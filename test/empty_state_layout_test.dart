@@ -1,8 +1,12 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lancloud/core/account_state.dart';
+import 'package:lancloud/core/api/lanzou_client_registry.dart';
 import 'package:lancloud/core/api/models.dart';
 import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/data/app_db_provider.dart';
+import 'package:lancloud/core/drive_state.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
@@ -12,7 +16,6 @@ import 'package:lancloud/l10n/delegates.dart';
 import 'package:lancloud/ui/favorites_page.dart';
 import 'package:lancloud/ui/share_folder_page.dart';
 import 'package:lancloud/ui/transfers_page.dart';
-import 'package:provider/provider.dart';
 
 /// 空白提示（暂无任务 / 还没有收藏 …）应该在可见区域里居中显示，
 /// 并且**不可滚动**：之前末尾多补了一截底栏 / 导航栏留白，
@@ -72,8 +75,17 @@ void main() {
     final app = AppController();
     addTearDown(app.dispose);
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
-        value: app,
+      ProviderScope(
+        overrides: [
+          accountStateProvider.overrideWithValue(app.accountState),
+          lanzouClientRegistryProvider.overrideWithValue(app.clientRegistry),
+          appDbProvider.overrideWithValue(app.db),
+          driveStateProvider.overrideWithValue(app.drive),
+          navigationAppearanceSettingsStateProvider.overrideWithValue(
+            app.navigationAppearanceSettings,
+          ),
+          navigationStateProvider.overrideWithValue(app.navigation),
+        ],
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
@@ -93,8 +105,17 @@ void main() {
     final app = AppController();
     addTearDown(app.dispose);
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
-        value: app,
+      ProviderScope(
+        overrides: [
+          accountStateProvider.overrideWithValue(app.accountState),
+          lanzouClientRegistryProvider.overrideWithValue(app.clientRegistry),
+          appDbProvider.overrideWithValue(app.db),
+          driveStateProvider.overrideWithValue(app.drive),
+          navigationAppearanceSettingsStateProvider.overrideWithValue(
+            app.navigationAppearanceSettings,
+          ),
+          navigationStateProvider.overrideWithValue(app.navigation),
+        ],
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
