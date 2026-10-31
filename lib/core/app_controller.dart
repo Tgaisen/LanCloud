@@ -177,7 +177,7 @@ class AppController extends ChangeNotifier {
     if (!await DynamicColorSupport.isSupported()) return;
     // 探测期间用户可能已经手动改过
     if (settings.dynamicColorChosen || settings.dynamicColor) return;
-    await setDynamicColor(true);
+    await themeSettings.setDynamicColor(true);
   }
 
   void _applyRuntimeSettings() {
@@ -403,31 +403,9 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setThemeMode(String mode) async {
-    await themeSettings.setThemeMode(mode);
-  }
-
-  /// 设置页「全局动画」：auto / on / off（见 [SystemMotion.motionMode]）。
-  Future<void> setMotionMode(String mode) async {
-    await themeSettings.setMotionMode(mode);
-  }
-
-  Future<void> setOledBlack(bool value) async {
-    await themeSettings.setOledBlack(value);
-  }
-
-  /// 动态取色（跟随系统壁纸，Android 12+）。
-  Future<void> setDynamicColor(bool value) async {
-    await themeSettings.setDynamicColor(value);
-  }
-
   /// 复制到蓝奏云分享链接时是否提示打开。
   Future<void> setClipboardLinkPrompt(bool value) async {
     await languageClipboardSettings.setClipboardLinkPrompt(value);
-  }
-
-  Future<void> setThemeSeed(int value) async {
-    await themeSettings.setThemeSeed(value);
   }
 
   Future<void> setLanguage(String value) async {
