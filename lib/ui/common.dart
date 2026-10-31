@@ -7,15 +7,13 @@ import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/misc.dart' show ProviderException;
 import 'package:local_auth_android/local_auth_android.dart';
 import 'package:local_auth_darwin/local_auth_darwin.dart';
-import 'package:provider/provider.dart';
 
 import '../core/api/lanzou_client.dart';
 import '../core/api/lanzou_client_registry.dart';
-import '../core/app_controller.dart';
 import '../core/data/app_db_provider.dart';
+import '../core/drive_state.dart';
 import '../core/navigation_appearance_settings_state.dart';
 import '../core/navigation_state.dart';
 import '../core/transfer/transfer_manager_provider.dart';
@@ -1088,8 +1086,8 @@ class FadeIn extends StatelessWidget {
   }
 }
 
-/// 顶栏浮层：和底栏共用同一套收起进度（[AppController.barsHide]），
-/// 滚动向下时整体上滑隐藏、调出时（[AppController.animateBarsHide]）下滑显示。
+/// 顶栏浮层：和底栏共用同一套收起进度（[NavigationState.barsHide]），
+/// 滚动向下时整体上滑隐藏、调出时（[NavigationState.animateBarsHide]）下滑显示。
 ///
 /// 顶栏不参与列表布局，因此推动它不会改变页面的滚动位置；
 /// 页面需要在列表顶部留出等高的占位（见各页面的 spacer sliver）。
@@ -1113,34 +1111,22 @@ class TopBarOverlay extends StatelessWidget {
   /// 1:1 跟随手指淡出，底色始终保持不透明。
   final WidgetBuilder builder;
 
-  /// 收起进度来源；为空时用外壳的 [AppController.topBarHide]
+  /// 收起进度来源；为空时用外壳的 [NavigationState.topBarHide]
   /// （底栏视图共用），独立页面传各自的进度，互不影响。
   final ValueListenable<double>? progress;
 
   @override
   Widget build(BuildContext context) {
-    try {
-      final container = ProviderScope.containerOf(context);
-      final appearance = container.read(
-        navigationAppearanceSettingsStateProvider,
-      );
-      final hide =
-          progress ?? container.read(navigationStateProvider).topBarHide;
-      return ListenableBuilder(
-        listenable: appearance.revision,
-        builder: (context, _) =>
-            _buildOverlay(context, appearance.hideTopBar, hide),
-      );
-    } on StateError {
-      // 迁移期兼容尚未挂 ProviderScope 的旧测试宿主。
-    } on ProviderException {
-      // ProviderScope 存在但应用级状态未覆盖时，同样回退旧测试宿主。
-    }
-    final app = context.read<AppController>();
-    return _buildOverlay(
-      context,
-      context.select<AppController, bool>((app) => app.settings.hideTopBar),
-      progress ?? app.topBarHide,
+    final container = ProviderScope.containerOf(context);
+    final appearance = container.read(
+      navigationAppearanceSettingsStateProvider,
+    );
+    final hide =
+        progress ?? container.read(navigationStateProvider).topBarHide;
+    return ListenableBuilder(
+      listenable: appearance.revision,
+      builder: (context, _) =>
+          _buildOverlay(context, appearance.hideTopBar, hide),
     );
   }
 
@@ -1277,31 +1263,23 @@ class TopBarOverlayScaffold extends StatefulWidget {
 }
 
 class _TopBarOverlayScaffoldState extends State<TopBarOverlayScaffold> {
-  /// 页面自己的收起进度：不动外壳的 [AppController.topBarHide]，
+  /// 页面自己的收起进度：不动外壳的 [NavigationState.topBarHide]，
   /// 否则返回标签页时会把它们的顶栏一起带走。
   final ValueNotifier<double> _hide = ValueNotifier<double>(0);
 
   /// 页面没传 [TopBarOverlayScaffold.controller] 时兜一个：快速滑动条
   /// 必须和滚动视图共用同一个 controller 才能拖拽。
   final ScrollController _fallbackScroll = ScrollController();
-  NavigationAppearanceSettingsState? _appearance;
+  late NavigationAppearanceSettingsState _appearance;
 
   ScrollController get _scroll => widget.controller ?? _fallbackScroll;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    try {
-      _appearance = ProviderScope.containerOf(
-        context,
-      ).read(navigationAppearanceSettingsStateProvider);
-    } on StateError {
-      // 迁移期兼容尚未挂 ProviderScope 的旧测试宿主。
-      _appearance = null;
-    } on ProviderException {
-      // ProviderScope 存在但应用级状态未覆盖时，同样回退旧测试宿主。
-      _appearance = null;
-    }
+    _appearance = ProviderScope.containerOf(
+      context,
+    ).read(navigationAppearanceSettingsStateProvider);
   }
 
   @override
@@ -1313,19 +1291,10 @@ class _TopBarOverlayScaffoldState extends State<TopBarOverlayScaffold> {
 
   @override
   Widget build(BuildContext context) {
-    final appearance = _appearance;
-    if (appearance == null) {
-      return _buildScaffold(
-        context,
-        context.select<AppController, bool>(
-          (app) => app.settings.hideTopBar,
-        ),
-      );
-    }
     return ValueListenableBuilder<int>(
-      valueListenable: appearance.revision,
+      valueListenable: _appearance.revision,
       builder: (context, _, _) =>
-          _buildScaffold(context, appearance.hideTopBar),
+          _buildScaffold(context, _appearance.hideTopBar),
     );
   }
 
@@ -2736,25 +2705,13 @@ class BatchActionBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    try {
-      final appearance = ProviderScope.containerOf(
-        context,
-      ).read(navigationAppearanceSettingsStateProvider);
-      return ListenableBuilder(
-        listenable: appearance.revision,
-        builder: (context, _) =>
-            _buildBar(context, appearance.floatingNavBar),
-      );
-    } on StateError {
-      // 迁移期兼容尚未挂 ProviderScope 的旧测试宿主。
-    } on ProviderException {
-      // ProviderScope 存在但应用级状态未覆盖时，同样回退旧测试宿主。
-    }
-    return _buildBar(
+    final appearance = ProviderScope.containerOf(
       context,
-      context.select<AppController, bool>(
-        (app) => app.settings.floatingNavBar,
-      ),
+    ).read(navigationAppearanceSettingsStateProvider);
+    return ListenableBuilder(
+      listenable: appearance.revision,
+      builder: (context, _) =>
+          _buildBar(context, appearance.floatingNavBar),
     );
   }
 

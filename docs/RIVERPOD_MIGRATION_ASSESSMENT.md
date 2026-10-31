@@ -787,6 +787,12 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 >
 > “显示 Cookie”设置行随后移除旧 Provider 回退，成为纯
 > `ConsumerWidget + AccountState` 组件；相应测试不再依赖 AppController。
+>
+> 共享 `TopBarOverlay` / `TopBarOverlayScaffold` / `BatchActionBar` 随后删除
+> AppController 回退分支，只接受应用级
+> `navigationAppearanceSettingsStateProvider` 与 `navigationStateProvider`。
+> 对应测试宿主随组件迁移补齐 override，不再依赖双栈兼容路径；相关增量
+> 54 个测试文件 / 302 个测试通过。
 
 ### 阶段 6：移除旧 Provider
 
