@@ -5,6 +5,8 @@ import 'package:lancloud/app.dart';
 import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/data/account_store.dart';
 import 'package:lancloud/core/data/settings_store_provider.dart';
+import 'package:lancloud/core/navigation_appearance_settings_state.dart';
+import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
@@ -22,6 +24,10 @@ Widget _rootShellHost(
   overrides: [
     settingsStoreProvider.overrideWithValue(app.settings),
     transferManagerProvider.overrideWithValue(transfers),
+    navigationAppearanceSettingsStateProvider.overrideWithValue(
+      app.navigationAppearanceSettings,
+    ),
+    navigationStateProvider.overrideWithValue(app.navigation),
   ],
   child: ChangeNotifierProvider<AppController>.value(
     value: app,

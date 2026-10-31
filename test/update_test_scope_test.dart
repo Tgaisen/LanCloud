@@ -14,6 +14,7 @@ import 'package:lancloud/core/download_directory_settings_state.dart';
 import 'package:lancloud/core/language_clipboard_settings_state.dart';
 import 'package:lancloud/core/list_home_settings_state.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
+import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/core/notification_settings_state.dart';
 import 'package:lancloud/core/theme_settings_state.dart';
 import 'package:lancloud/core/transfer_connection_settings_state.dart';
@@ -47,9 +48,17 @@ Widget updateTestTree({
 }) {
   return UncontrolledProviderScope(
     container: container,
-    child: ChangeNotifierProvider<AppController>.value(
-      value: app,
-      child: child,
+    child: ProviderScope(
+      overrides: [
+        navigationAppearanceSettingsStateProvider.overrideWithValue(
+          app.navigationAppearanceSettings,
+        ),
+        navigationStateProvider.overrideWithValue(app.navigation),
+      ],
+      child: ChangeNotifierProvider<AppController>.value(
+        value: app,
+        child: child,
+      ),
     ),
   );
 }
@@ -72,6 +81,7 @@ Widget appTestTree({
       navigationAppearanceSettingsStateProvider.overrideWithValue(
         app.navigationAppearanceSettings,
       ),
+      navigationStateProvider.overrideWithValue(app.navigation),
       themeSettingsStateProvider.overrideWithValue(app.themeSettings),
       listHomeSettingsStateProvider.overrideWithValue(app.listHomeSettings),
       transferConnectionSettingsStateProvider.overrideWithValue(

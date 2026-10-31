@@ -5,9 +5,12 @@ import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
-import '../core/app_controller.dart';
+import '../core/account_state.dart';
 import '../core/api/lanzou_client.dart';
+import '../core/app_controller.dart';
 import '../core/backup/backup_sections.dart';
+import '../core/navigation_appearance_settings_state.dart';
+import '../core/navigation_state.dart';
 import '../core/update/update_service.dart';
 import '../l10n/l10n.dart';
 import 'about_page.dart';
@@ -28,17 +31,17 @@ enum _ProfileDeepPage { backupOptions, licenseDetail }
 
 /// 「我的」视图：账号卡片 + 网页版/回收站 + 设置/关于。
 /// 既作为底栏视图，也可作为独立路由打开。
-class ProfilePage extends StatefulWidget {
+class ProfilePage extends riverpod.ConsumerStatefulWidget {
   const ProfilePage({super.key, this.tabIndex});
 
   /// 外壳中的 page 视图下标；作为独立路由打开时为 null。
   final int? tabIndex;
 
   @override
-  State<ProfilePage> createState() => _ProfilePageState();
+  riverpod.ConsumerState<ProfilePage> createState() => _ProfilePageState();
 }
 
-class _ProfilePageState extends State<ProfilePage>
+class _ProfilePageState extends riverpod.ConsumerState<ProfilePage>
     with AutomaticKeepAliveClientMixin {
   /// 切到别的视图再切回来时保留本页状态（含列表滚动位置）。
   /// 「我的」在底栏最边上，PageView 只会保活相邻页，不声明就每次都会重建。
@@ -116,23 +119,18 @@ class _ProfilePageState extends State<ProfilePage>
   ScrollController _paneScroll(Object key) =>
       _paneScrolls.putIfAbsent(key, () => ScrollController());
 
-  /// 外壳（AppController）引用：用于注册 [AppController.onProfileBack]。
-  AppController? _profileBackHost;
+  /// 外壳导航状态：用于注册返回处理器。
+  late final NavigationState _navigation;
 
   @override
   void initState() {
     super.initState();
+    _navigation = ref.read(navigationStateProvider);
     _subPageProgress.addListener(_onSubPageProgress);
   }
 
   void _onSubPageProgress() {
     if (mounted) setState(() {});
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _profileBackHost = context.read<AppController>();
   }
 
   @override
@@ -146,8 +144,8 @@ class _ProfilePageState extends State<ProfilePage>
     _backupOptionsController?.dispose();
     _paneFocus.dispose();
     // 别把已经失效的回调留在外壳上
-    if (_profileBackHost?.onProfileBack == _handleProfileBack) {
-      _profileBackHost!.onProfileBack = null;
+    if (_navigation.onProfileBack == _handleProfileBack) {
+      _navigation.onProfileBack = null;
     }
     for (final controller in _paneScrolls.values) {
       controller.dispose();
@@ -158,11 +156,11 @@ class _ProfilePageState extends State<ProfilePage>
   }
 
   void _openWeb(BuildContext context, String url, String title) {
-    final app = context.read<AppController>();
+    final account = ref.read(accountStateProvider).store.active;
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) =>
-            WebPage(title: title, url: url, cookie: app.activeAccount?.cookie),
+            WebPage(title: title, url: url, cookie: account?.cookie),
       ),
     );
   }
@@ -329,7 +327,7 @@ class _ProfilePageState extends State<ProfilePage>
   /// 「滑动时收起顶栏」开着时，否则新视图会带着收起的顶栏出现，
   /// 用户看不到标题 / 搜索 / 返回。
   void _showTopBar() {
-    _profileBackHost?.animateBarsHide(0);
+    _navigation.animateBarsHide(0, reduceMotion: reduceMotionOf(context));
   }
 
   /// 右窗格换了内容之后，把键盘焦点带进右窗格：列表-详情布局里内容换了焦点
@@ -376,14 +374,12 @@ class _ProfilePageState extends State<ProfilePage>
 
   /// 让外壳的返回键先落在本页（退出搜索 / 关闭二级设置页）：
   /// 与网盘页处理「返回上一级 / 退出搜索」是同一套机制
-  ///（见 AppController.onProfileBack）。
+  ///（见 NavigationState.onProfileBack）。
   void _publishProfileBack() {
-    final app = _profileBackHost;
-    if (app == null) return;
     final active =
         widget.tabIndex != null &&
         (_searching || _subPage != null || _deepPage != null);
-    app.onProfileBack = active ? _handleProfileBack : null;
+    _navigation.onProfileBack = active ? _handleProfileBack : null;
   }
 
   /// 返回键：搜索 > 二级页 > 交给外壳（回默认视图）。
@@ -419,10 +415,22 @@ class _ProfilePageState extends State<ProfilePage>
   @override
   Widget build(BuildContext context) {
     super.build(context); // AutomaticKeepAliveClientMixin 要求
-    final app = context.read<AppController>();
-    final hideTopBar = context.select<AppController, bool>(
-      (app) => app.settings.hideTopBar,
+    final appearance = ref.watch(navigationAppearanceSettingsStateProvider);
+    return ListenableBuilder(
+      listenable: appearance.revision,
+      builder: (context, _) => _buildPage(
+        context,
+        appearance.hideTopBar,
+        _navigation,
+      ),
     );
+  }
+
+  Widget _buildPage(
+    BuildContext context,
+    bool hideTopBar,
+    NavigationState navigation,
+  ) {
     final l10n = context.l10n;
     final scheme = Theme.of(context).colorScheme;
     final headerHeight = MediaQuery.paddingOf(context).top + kToolbarHeight;
@@ -460,9 +468,15 @@ class _ProfilePageState extends State<ProfilePage>
         child: Stack(
           children: [
             if (wide)
-              _buildTwoPane(context, app, headerHeight, paneWidth, hideTopBar)
+              _buildTwoPane(
+                context,
+                navigation,
+                headerHeight,
+                paneWidth,
+                hideTopBar,
+              )
             else
-              _buildSinglePane(context, app, headerHeight, hideTopBar),
+              _buildSinglePane(context, navigation, headerHeight, hideTopBar),
             // 顶栏浮层：与底栏共用收起进度
             Positioned(
               // 两栏时顶栏只盖在右卡片那一列上（内容 + 底色）：
@@ -573,16 +587,16 @@ class _ProfilePageState extends State<ProfilePage>
   /// （与 M3 一致：单栏下选中项离开列表、以页面承载详情）。
   Widget _buildSinglePane(
     BuildContext context,
-    AppController app,
+    NavigationState navigation,
     double headerHeight,
     bool hideTopBar,
   ) {
     return BodySideInset(
       child: ScrollTint(
         hideDistance: headerHeight,
-        readBarsHidden: () => app.topBarHide.value,
+        readBarsHidden: () => navigation.topBarHide.value,
         onBarsHidden: hideTopBar
-            ? app.setTopBarHideFromScroll
+            ? navigation.setTopBarHideFromScroll
             : null,
         // 列表快速滑动条（可拖拽）
         child: FastScrollbar(
@@ -731,7 +745,7 @@ class _ProfilePageState extends State<ProfilePage>
   /// 右窗格 = 选中项的详情（子），默认选中账号。
   Widget _buildTwoPane(
     BuildContext context,
-    AppController app,
+    NavigationState navigation,
     double headerHeight,
     double paneWidth,
     bool hideTopBar,
@@ -801,7 +815,7 @@ class _ProfilePageState extends State<ProfilePage>
                 child: Padding(
                   padding: EdgeInsets.only(bottom: shellBodyCardGap(context)),
                   child: ValueListenableBuilder<double>(
-                    valueListenable: app.topBarHide,
+                    valueListenable: navigation.topBarHide,
                     builder: (context, hide, content) {
                       final t = hideTopBar ? hide.clamp(0.0, 1.0) : 0.0;
                       return Stack(
@@ -828,9 +842,9 @@ class _ProfilePageState extends State<ProfilePage>
                     },
                     child: ScrollTint(
                       hideDistance: headerHeight,
-                      readBarsHidden: () => app.topBarHide.value,
+                      readBarsHidden: () => navigation.topBarHide.value,
                       onBarsHidden: hideTopBar
-                          ? app.setTopBarHideFromScroll
+                          ? navigation.setTopBarHideFromScroll
                           : null,
                       // 切换详情（账号 / 各设置类别 / 二级页 / 关于）：
                       // forward/backward 式滑动 + 淡入淡出——在列表里往下选
