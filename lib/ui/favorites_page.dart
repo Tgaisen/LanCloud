@@ -880,10 +880,8 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
                   curve: Curves.easeInOut,
                   child: Material(
                     elevation: 0,
-                    // 大屏（底栏变侧栏）时和网盘页多选条同色；小屏保持原样
-                    color: isLargeLayout(context)
-                        ? scheme.surfaceContainer
-                        : scheme.surface,
+                    // 与网盘页多选条一致：小屏随滚动渐变，大屏保持侧栏同色
+                    color: topBarBackgroundColor(context, scheme),
                     child: SizedBox(
                       height: headerHeight,
                       child: AppBar(

@@ -600,10 +600,8 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
                   curve: Curves.easeInOut,
                   child: Material(
                     elevation: 0,
-                    // 大屏（底栏变侧栏）时和网盘页多选条同色；小屏保持原样
-                    color: isLargeLayout(context)
-                        ? scheme.surfaceContainer
-                        : scheme.surface,
+                    // 与网盘页多选条一致：小屏随滚动渐变，大屏保持侧栏同色
+                    color: topBarBackgroundColor(context, scheme),
                     // 显式高度：Stack 的 Positioned 不提供高度约束
                     child: SizedBox(
                       height:

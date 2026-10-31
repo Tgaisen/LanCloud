@@ -476,8 +476,10 @@ class _RootShellState extends ConsumerState<RootShell>
   late PageController _pageController = PageController(initialPage: _index);
   bool _pagerSyncPending = false;
 
-  /// 连续重建分页器的次数：一直连不上就放弃，避免每帧重建。
-  int _pagerRebuilds = 0;
+  /// 分页器重排后尚未挂载的检查次数。宽窄布局切换会先卸载旧父级、
+  /// 再把同一个 PageView 挂到新父级，期间控制器可能短暂没有客户端；
+  /// 等后续帧自然挂载即可，不能在这里换 key 重建整棵页面树。
+  int _pagerAttachChecks = 0;
 
   /// 大屏正文卡片顶边的高度过渡：不同视图的顶栏高度不一样（网盘有路径栏、
   /// 传输有分段条），切换视图时平滑移动；滚动收起仍按 [NavigationState.topBarHide]
@@ -585,13 +587,13 @@ class _RootShellState extends ConsumerState<RootShell>
   /// 不让位，由页面自己给右卡片补这一档（见 [shellBodyCardGap]）。
   Widget _withBodyCardGap(BuildContext context, int viewId, Widget child) {
     final gap = shellBodyCardGap(context);
-    if (gap == 0) return child;
-    if (viewId == _viewProfile &&
-        MediaQuery.sizeOf(context).width >= kProfileTwoPaneBreakpoint) {
-      return child;
-    }
+    final pageHandlesGap =
+        viewId == _viewProfile &&
+        MediaQuery.sizeOf(context).width >= kProfileTwoPaneBreakpoint;
+    // 固定保留这一层 Padding：小屏 gap=0 时也仍要占同一元素槽位。
+    // 否则宽窄布局切换会把“页面”换成“Padding(页面)”，页面 State 被重建。
     return Padding(
-      padding: EdgeInsets.only(bottom: gap),
+      padding: EdgeInsets.only(bottom: pageHandlesGap || gap == 0 ? 0 : gap),
       child: child,
     );
   }
@@ -700,14 +702,15 @@ class _RootShellState extends ConsumerState<RootShell>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _pagerSyncPending = false;
       if (!mounted || _programmaticJump) return;
-      // 控制器没连上分页器（换账号 / 重新挂载后失效）：整体重建一次
+      // 控制器暂时还没连上分页器：宽窄布局切换期间是正常的跨父级移动，
+      // 等下一帧再检查。这里若换 key 重建分页器，会销毁所有标签页状态。
       if (!_pageController.hasClients) {
-        if (_pagerRebuilds >= 3) return;
-        _pagerRebuilds++;
-        _rebuildPager();
+        if (_pagerAttachChecks >= 3) return;
+        _pagerAttachChecks++;
+        _schedulePagerSync();
         return;
       }
-      _pagerRebuilds = 0;
+      _pagerAttachChecks = 0;
       final position = _pageController.position;
       // 用户滑动 / 补间动画进行中不打断
       if (position.isScrollingNotifier.value) return;
@@ -716,16 +719,6 @@ class _RootShellState extends ConsumerState<RootShell>
         _pageController.jumpToPage(_index);
       }
     });
-  }
-
-  /// 兜底：用新的控制器重建分页器，并直接停在当前视图。
-  void _rebuildPager() {
-    final previous = _pageController;
-    setState(() {
-      _pageController = PageController(initialPage: _index);
-      _pageViewKey = GlobalKey();
-    });
-    WidgetsBinding.instance.addPostFrameCallback((_) => previous.dispose());
   }
 
   int get _defaultViewId =>
@@ -1141,6 +1134,7 @@ class _RootShellState extends ConsumerState<RootShell>
     // PopScope.canPop=false 时不做预测动画）。其余情况（多选 / 网盘
     // 子目录或搜索 / 非默认视图 / 传输中的退出确认）交给 _handleBack 处理。
     final currentView = _currentViewId;
+    final largeLayout = width >= kLargeLayoutBreakpoint;
     return ValueListenableBuilder<bool>(
       valueListenable: _navigation.driveCanHandleBack,
       builder: (context, driveCanHandleBack, child) {
@@ -1162,93 +1156,95 @@ class _RootShellState extends ConsumerState<RootShell>
           child: child!,
         );
       },
-      child: width >= kLargeLayoutBreakpoint
-          ? Scaffold(
-              backgroundColor: scheme.surfaceContainer,
-              body: Row(
-                children: [
-                  NavigationRail(
-                    backgroundColor: Colors.transparent,
-                    selectedIndex: _index,
-                    // 统一用非展开样式：图标在上、文字在下，栏宽 72dp。
-                    // 展开样式（extended）要 256dp，对这几个短标题太宽了。
-                    extended: false,
-                    // 手机横屏 / 平板等侧栏形态下按钮组在栏内垂直居中；
-                    // NavigationRail 默认 -1 贴顶，高屏上会离屏幕上半部太远。
-                    groupAlignment: 0,
-                    labelType: NavigationRailLabelType.all,
-                    onDestinationSelected: (i) => _goTo(_ids[i]),
-                    destinations: [
-                      for (final id in _ids)
-                        NavigationRailDestination(
-                          icon: iconFor(id, selected: false),
-                          selectedIcon: iconFor(id, selected: true),
-                          label: Text(_labelFor(id, l10n)),
-                        ),
-                    ],
-                  ),
-                  // 主视图：顶栏留在导航区（surfaceContainer），
-                  // 圆角的 surface 卡片从顶栏下方开始，页面背景透明；
-                  // 顶栏收起时卡片顶边跟着上移，内容始终被顶栏或卡片盖住
-                  Expanded(
-                    child: AnimatedBuilder(
-                      // 滚动收起进度 + 切换视图时卡片顶边的高度过渡
-                      animation: Listenable.merge([
-                        _navigation.topBarHide,
-                        _cardTopAnim,
-                      ]),
-                      builder: (context, _) {
-                        final hide = _navigation.topBarHide.value;
-                        final t = shell.hideTopBar ? hide.clamp(0.0, 1.0) : 0.0;
-                        return Stack(
-                          children: [
-                            Positioned(
-                              left: 0,
-                              top: _animatedCardTop * (1 - t),
-                              // 卡片四周的 8dp 留白之外，再让开系统导航栏：
-                              // 横屏时它可能在底部（手势导航）或在右侧（三键导航），
-                              // 否则卡片底部/右侧会被系统栏压住
-                              right: 8 + systemPadding.right,
-                              bottom: 8 + systemPadding.bottom,
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(16),
-                                child: ColoredBox(color: bodyColor),
-                              ),
-                            ),
-                            Positioned(
-                              left: 0,
-                              top: 0,
-                              right: 8 + systemPadding.right,
-                              // 卡片自己让开了 8dp + 系统导航栏；正文只让系统
-                              // 导航栏，底部那 8dp 由页面自己让
-                              //（见 _withBodyCardGap）——「我的」页两栏态的
-                              // 左窗格是导航区，要一直通到窗口底边
-                              bottom: systemPadding.bottom,
-                              // 卡片已经按 left/right inset 让过位了，
-                              // 页面内（AppBar / SafeArea / Scrollbar）不要再让一次
-                              child: MediaQuery.removePadding(
-                                context: context,
-                                removeLeft: true,
-                                removeRight: true,
-                                removeBottom: true,
-                                child: keyed,
-                              ),
-                            ),
-                          ],
-                        );
-                      },
+      // 宽窄布局必须共用同一条元素路径。旋转 / 分屏 / 折叠时只改变约束和
+      // 侧栏、底栏的显示，不能把 PageView 从 Scaffold.body 搬到另一层 Row，
+      // 否则即使带 GlobalKey，整棵页面子树也会被重建，所有页面 State 归零。
+      child: Scaffold(
+        backgroundColor: largeLayout ? scheme.surfaceContainer : null,
+        // 小屏正文绘制到底栏下方：滑动时内容从底栏后穿过，
+        // 底栏跟随滚动下沉 / 收起时正文也不会跟着重排。
+        extendBody: !largeLayout,
+        body: Row(
+          children: [
+            if (largeLayout)
+              NavigationRail(
+                backgroundColor: Colors.transparent,
+                selectedIndex: _index,
+                // 统一用非展开样式：图标在上、文字在下，栏宽 72dp。
+                // 展开样式（extended）要 256dp，对这几个短标题太宽了。
+                extended: false,
+                // 手机横屏 / 平板等侧栏形态下按钮组在栏内垂直居中；
+                // NavigationRail 默认 -1 贴顶，高屏上会离屏幕上半部太远。
+                groupAlignment: 0,
+                labelType: NavigationRailLabelType.all,
+                onDestinationSelected: (i) => _goTo(_ids[i]),
+                destinations: [
+                  for (final id in _ids)
+                    NavigationRailDestination(
+                      icon: iconFor(id, selected: false),
+                      selectedIcon: iconFor(id, selected: true),
+                      label: Text(_labelFor(id, l10n)),
                     ),
-                  ),
                 ],
               ),
-            )
-          : Scaffold(
-              body: keyed,
-              // 正文绘制到底栏下方：滑动时内容从底栏后穿过，
-              // 底栏跟随滚动下沉 / 收起时正文也不会跟着重排。
-              extendBody: true,
-              // 底栏跟随滚动按比例下沉；完全收起后腾出布局空间
-              bottomNavigationBar: ValueListenableBuilder<double>(
+            Expanded(
+              // 侧栏只在宽布局出现；给正文区固定 key，避免 Row 增加子项时
+              // 把正文当成“换到下一个 child”重新挂载。
+              key: const ValueKey('shell-page-area'),
+              child: AnimatedBuilder(
+                // 滚动收起进度 + 切换视图时卡片顶边的高度过渡
+                animation: largeLayout
+                    ? Listenable.merge([_navigation.topBarHide, _cardTopAnim])
+                    : const AlwaysStoppedAnimation<double>(0),
+                child: keyed,
+                builder: (context, pageView) {
+                  final hide = _navigation.topBarHide.value;
+                  final t = shell.hideTopBar ? hide.clamp(0.0, 1.0) : 0.0;
+                  return Stack(
+                    children: [
+                      if (largeLayout)
+                        Positioned(
+                          left: 0,
+                          top: _animatedCardTop * (1 - t),
+                          // 卡片四周的 8dp 留白之外，再让开系统导航栏：
+                          // 横屏时它可能在底部（手势导航）或在右侧（三键导航），
+                          // 否则卡片底部/右侧会被系统栏压住
+                          right: 8 + systemPadding.right,
+                          bottom: 8 + systemPadding.bottom,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: ColoredBox(color: bodyColor),
+                          ),
+                        ),
+                      Positioned(
+                        left: 0,
+                        top: 0,
+                        right: largeLayout ? 8 + systemPadding.right : 0,
+                        // 大屏正文只让系统导航栏，底部那 8dp 由页面自己让
+                        //（见 _withBodyCardGap）——「我的」页两栏态的
+                        // 左窗格是导航区，要一直通到窗口底边
+                        bottom: largeLayout ? systemPadding.bottom : 0,
+                        // 卡片已经按 left/right inset 让过位了，
+                        // 页面内（AppBar / SafeArea / Scrollbar）不要再让一次
+                        child: MediaQuery.removePadding(
+                          context: context,
+                          removeLeft: largeLayout,
+                          removeRight: largeLayout,
+                          removeBottom: largeLayout,
+                          child: pageView!,
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+        // 底栏跟随滚动按比例下沉；完全收起后腾出布局空间
+        bottomNavigationBar: largeLayout
+            ? null
+            : ValueListenableBuilder<double>(
                 valueListenable: _navigation.barsHide,
                 builder: (context, hide, child) => SizedBox(
                   height: shell.hideBottomBar
@@ -1300,7 +1296,7 @@ class _RootShellState extends ConsumerState<RootShell>
                   ),
                 ),
               ),
-            ),
+      ),
     );
   }
 }

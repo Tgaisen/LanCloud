@@ -10,7 +10,7 @@
 | 命令 | 口径 | 结果 | 耗时 |
 | --- | --- | --- | --- |
 | `tools\agent.cmd analyze` | 全量 | No issues found | 约 27 s |
-| `tools\agent.cmd test` | 全量 | **720 tests, all passed** | 约 128 s |
+| `tools\agent.cmd test` | 全量 | **722 tests, all passed** | 约 99 s |
 
 当前分析结果为 0 issue 是硬基线。出现红灯时，先判断是否为本次改动引入；
 不要把增量结果当成全量结论。
@@ -23,7 +23,7 @@
 | `lib` 总行数 | 44,481 |
 | `test` 测试文件 | 163（全部为 `*_test.dart`，平铺） |
 | `test` 总行数 | 22,435 |
-| `test` 用例数 | 720 |
+| `test` 用例数 | 722 |
 | `lib/ui` 平铺文件 | 55 |
 | `lib/core` | 52 个平铺文件 + 5 个子系统目录 |
 | 文案（`app_zh.arb`） | 1,357 行 |
@@ -40,7 +40,7 @@
 
 ## 测试安全网
 
-- 当前 720 个测试是主要自动化安全网；项目仍没有 `integration_test` 和 golden test。
+- 当前 722 个测试是主要自动化安全网；项目仍没有 `integration_test` 和 golden test。
 - `tools\agent.cmd analyze|test` 默认走增量；全量结果必须按上表单独记录。
 - `tools\agent.cmd` 已内置 `--no-pub`；需要安装依赖时使用 `agent.cmd pubget`。
 
