@@ -263,6 +263,8 @@
 | `tools\agent.cmd test`（环境测试树批次 8） | 增量 | **23 tests, all passed** | 约 20 s |
 | `tools\agent.cmd analyze`（环境测试树批次 9） | 全量 | No issues found | 约 27 s |
 | `tools\agent.cmd test`（环境测试树批次 9） | 增量 | **40 tests, all passed** | 约 19 s |
+| `tools\agent.cmd analyze`（环境测试树批次 10） | 全量 | No issues found | 约 25 s |
+| `tools\agent.cmd test`（环境测试树批次 10） | 增量 | **26 tests, all passed** | 约 23 s |
 | `tools\agent.cmd analyze`（网盘目录切片完成后） | 全量 | No issues found | 约 21 s |
 | `tools\agent.cmd test`（网盘目录切片完成后） | 全量 | **722 tests, all passed** | 约 110 s |
 | `tools\agent.cmd analyze`（拖放与 Cookie 行完成后） | 全量 | No issues found | 约 17 s |
@@ -893,6 +895,11 @@
   旧传输 helper 暂只为 `transfers_selection_test` 保留。全量分析无问题，
   4 个测试文件 / 40 个测试通过，用例总数保持 719；测试中的 `AppController`
   引用现为 25 个文件 / 86 处。
+- 2026-10-31 环境测试树批次 10 完成：`transfers_selection_test` 改用
+  `AppEnvironment`，随后删除最后一个旧 `buildTransferManager(AppController)`
+  兼容入口，`transfer_dependencies_test` 不再引用控制器。全量分析无问题，
+  2 个测试文件 / 26 个测试通过，用例总数保持 719；测试中的 `AppController`
+  引用现为 23 个文件 / 72 处。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release
