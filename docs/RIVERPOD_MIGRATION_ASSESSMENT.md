@@ -766,6 +766,11 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > `NavigationAppearanceSettingsState.revision`，滚动进度使用同一
 > `NavigationState.topBarHide`。四个直接测试宿主已移除旧
 > `ChangeNotifierProvider<AppController>`，增量 4 个测试文件 / 23 个测试通过。
+>
+> 设置页随后完成生产消费端迁移：搜索元数据来自 `settingsStoreProvider`，
+> 清缓存使用 `driveCacheProvider`，清数据使用 `accountStateProvider` 与
+> `appDbProvider`；`_Entry` 的构建回调同时去掉未使用的 AppController 参数。
+> 相关增量 8 个测试文件 / 46 个测试通过。
 
 ### 阶段 6：移除旧 Provider
 

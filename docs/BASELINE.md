@@ -108,6 +108,7 @@
 | `tools\agent.cmd analyze`（备份恢复消费端完成后） | 全量 | No issues found | 约 25 s |
 | `tools\agent.cmd test`（备份恢复消费端完成后） | 全量 | **720 tests, all passed** | 约 113 s |
 | `tools\agent.cmd test`（传输页导航依赖） | 增量 | **23 tests, all passed** | 约 12 s |
+| `tools\agent.cmd test`（设置页搜索与事件依赖） | 增量 | **46 tests, all passed** | 约 25 s |
 
 工具链：Flutter 3.47.7（stable）/ Dart 3.13.5 / DevTools 2.60.0。
 静态检查：`analysis_options.yaml` 已开启 `strict-casts` / `strict-inference` / `strict-raw-types`。
@@ -380,6 +381,10 @@
 - 2026-10-31 `TransfersPage` 的多选回调、`NavigationState` 和顶栏收起进度改从
   Riverpod 读取；4 个直接测试文件不再注册旧 `AppController` Provider。增量
   4 个测试文件 / 23 个测试通过，用例总数保持 720。
+- 2026-10-31 `SettingsCategoryPage` 的搜索元数据、清缓存和清数据依赖改从
+  `settingsStoreProvider`、`driveCacheProvider`、`accountStateProvider` 与
+  `appDbProvider` 读取；生产文件不再引用 `AppController`。增量 8 个测试文件 /
+  46 个测试通过，用例总数保持 720。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release

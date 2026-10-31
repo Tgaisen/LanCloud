@@ -64,7 +64,7 @@
 | `CachePageSettingsState` | `core/cache_page_settings_state.dart` | 阶段 3 设置子组：网格视图、启动页、目录缓存和自动加载全部页面 |
 | `DownloadDirectorySettingsState` | `core/download_directory_settings_state.dart` | 阶段 3 设置子组：普通下载目录、SAF URI/标签、互斥写入和旧授权释放入口 |
 
-消费现状：`context.read<AppController>` 96 处、`context.watch` 0 处、
+消费现状：`context.read<AppController>` 93 处、`context.watch` 0 处、
 `context.select<AppController…>` 10 处。生产代码中的整体 `watch` 已清零；传输页已从
 Riverpod 读取应用级 `TransferManager`，并通过 `ListenableBuilder` 保留既有
 `notifyListeners()` 刷新语义；多选回调、选择模式和顶栏进度改由
@@ -102,8 +102,9 @@ Riverpod 读取应用级 `TransferManager`，并通过 `ListenableBuilder` 保�
 迁入 `ThemeSettingsTile`，“主题色”迁入 `ThemeColorSettingsTile`；主题色弹窗
 通过 `showThemeColorPicker` 返回类型化选择。`ThemeSettingsState.revision`
 同样由旧控制器转发，因此根主题在应用外壳迁移前仍会立即更新。设置页主体不再
-监听 `AppController`，仅用 `context.read` 读取搜索元数据和事件依赖；
-“显示 Cookie”行用 `context.select` 只订阅当前 UID。“语言”已迁入
+读取 `AppController`：搜索元数据来自 `SettingsStore`，清缓存来自
+`DriveCache`，清数据来自 `AccountState` 与 `AppDb`。“显示 Cookie”行优先
+监听 `AccountState`，仅对旧测试宿主回退当前 UID 订阅。“语言”已迁入
 `LanguageSettingsTile`，弹窗返回语言值后通过
 `LanguageClipboardSettingsState` 写入；其 revision 由旧控制器转发，根
 `MaterialApp.locale` 仍会立即切换。“默认启动页”和“首页目录打开方式”已迁入
