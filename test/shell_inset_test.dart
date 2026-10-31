@@ -5,7 +5,7 @@ import 'package:lancloud/app.dart';
 import 'package:lancloud/core/account_state.dart';
 import 'package:lancloud/core/account_session.dart';
 import 'package:lancloud/core/api/lanzou_client_registry.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/app_runtime_state.dart';
 import 'package:lancloud/core/cache_page_settings_state.dart';
 import 'package:lancloud/core/data/account_store.dart';
@@ -25,30 +25,34 @@ import 'package:lancloud/ui/profile_page.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
-import 'transfer_dependencies_test.dart' show buildTransferManager;
+import 'transfer_dependencies_test.dart' show buildTransferManagerForEnvironment;
 
 Widget _rootShellHost(
-  AppController app,
+  AppEnvironment environment,
   TransferManager transfers,
 ) => ProviderScope(
   overrides: [
-    settingsStoreProvider.overrideWithValue(app.settingsState.store),
-    accountStateProvider.overrideWithValue(app.accountState),
-    accountSessionProvider.overrideWithValue(app.accountSession),
-    appDbProvider.overrideWithValue(app.db),
-    driveStateProvider.overrideWithValue(app.drive),
-    appRuntimeStateProvider.overrideWithValue(app.runtimeState),
-    cachePageSettingsStateProvider.overrideWithValue(app.cachePageSettings),
-    languageClipboardSettingsStateProvider.overrideWithValue(
-      app.languageClipboardSettings,
+    settingsStoreProvider.overrideWithValue(environment.settingsState.store),
+    accountStateProvider.overrideWithValue(environment.accountState),
+    accountSessionProvider.overrideWithValue(environment.accountSession),
+    appDbProvider.overrideWithValue(environment.db),
+    driveStateProvider.overrideWithValue(environment.drive),
+    appRuntimeStateProvider.overrideWithValue(environment.runtimeState),
+    cachePageSettingsStateProvider.overrideWithValue(
+      environment.cachePageSettings,
     ),
-    lanzouClientRegistryProvider.overrideWithValue(app.clientRegistry),
-    listHomeSettingsStateProvider.overrideWithValue(app.listHomeSettings),
+    languageClipboardSettingsStateProvider.overrideWithValue(
+      environment.languageClipboardSettings,
+    ),
+    lanzouClientRegistryProvider.overrideWithValue(environment.clientRegistry),
+    listHomeSettingsStateProvider.overrideWithValue(
+      environment.listHomeSettings,
+    ),
     transferManagerProvider.overrideWithValue(transfers),
     navigationAppearanceSettingsStateProvider.overrideWithValue(
-      app.navigationAppearanceSettings,
+      environment.navigationAppearanceSettings,
     ),
-    navigationStateProvider.overrideWithValue(app.navigation),
+    navigationStateProvider.overrideWithValue(environment.navigation),
   ],
   child: MaterialApp(
     localizationsDelegates: appLocalizationsDelegates,
@@ -145,17 +149,17 @@ void main() {
     tester.view.physicalSize = const Size(1200, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    final app = AppController();
-    addTearDown(app.dispose);
-    app.runtimeState.ready.value = true;
-    app.accountState.store.accounts.add(
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
+    environment.runtimeState.ready.value = true;
+    environment.accountState.store.accounts.add(
       Account(uid: '556911', cookie: 'c', nickname: '土豆'),
     );
-    app.accountState.store.activeUid = '556911';
-    final transfers = buildTransferManager(app);
+    environment.accountState.store.activeUid = '556911';
+    final transfers = buildTransferManagerForEnvironment(environment);
     addTearDown(transfers.dispose);
     await tester.pumpWidget(
-      _rootShellHost(app, transfers),
+      _rootShellHost(environment, transfers),
     );
     await tester.pumpAndSettle();
 
@@ -181,14 +185,14 @@ void main() {
     tester.view.physicalSize = const Size(400, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    final app = AppController();
-    addTearDown(app.dispose);
-    app.runtimeState.ready.value = true;
-    app.accountState.store.accounts.add(
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
+    environment.runtimeState.ready.value = true;
+    environment.accountState.store.accounts.add(
       Account(uid: '556911', cookie: 'c', nickname: '土豆'),
     );
-    app.accountState.store.activeUid = '556911';
-    final transfers = buildTransferManager(app);
+    environment.accountState.store.activeUid = '556911';
+    final transfers = buildTransferManagerForEnvironment(environment);
     addTearDown(transfers.dispose);
     transfers.tasks.add(
       TransferTask(
@@ -199,7 +203,7 @@ void main() {
       )..status = TransferStatus.running,
     );
 
-    await tester.pumpWidget(_rootShellHost(app, transfers));
+    await tester.pumpWidget(_rootShellHost(environment, transfers));
     await tester.pumpAndSettle();
     expect(
       find.descendant(of: find.byType(Badge), matching: find.text('1')),

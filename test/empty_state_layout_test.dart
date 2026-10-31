@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/account_state.dart';
 import 'package:lancloud/core/api/lanzou_client_registry.dart';
 import 'package:lancloud/core/api/models.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/data/app_db_provider.dart';
 import 'package:lancloud/core/drive_state.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
@@ -16,7 +16,7 @@ import 'package:lancloud/ui/favorites_page.dart';
 import 'package:lancloud/ui/share_folder_page.dart';
 import 'package:lancloud/ui/transfers_page.dart';
 
-import 'transfer_dependencies_test.dart' show buildTransferManager;
+import 'transfer_dependencies_test.dart' show buildTransferManagerForEnvironment;
 
 /// 空白提示（暂无任务 / 还没有收藏 …）应该在可见区域里居中显示，
 /// 并且**不可滚动**：之前末尾多补了一截底栏 / 导航栏留白，
@@ -45,17 +45,17 @@ void main() {
 
   testWidgets('传输页空状态居中且不可滚动', (tester) async {
     useBottomInset(tester);
-    final app = AppController();
-    final manager = buildTransferManager(app);
-    addTearDown(app.dispose);
+    final environment = AppEnvironment();
+    final manager = buildTransferManagerForEnvironment(environment);
+    addTearDown(environment.dispose);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           transferManagerProvider.overrideWithValue(manager),
           navigationAppearanceSettingsStateProvider.overrideWithValue(
-            app.navigationAppearanceSettings,
+            environment.navigationAppearanceSettings,
           ),
-          navigationStateProvider.overrideWithValue(app.navigation),
+          navigationStateProvider.overrideWithValue(environment.navigation),
         ],
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
@@ -73,19 +73,21 @@ void main() {
 
   testWidgets('收藏页空状态居中且不可滚动', (tester) async {
     useBottomInset(tester);
-    final app = AppController();
-    addTearDown(app.dispose);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          accountStateProvider.overrideWithValue(app.accountState),
-          lanzouClientRegistryProvider.overrideWithValue(app.clientRegistry),
-          appDbProvider.overrideWithValue(app.db),
-          driveStateProvider.overrideWithValue(app.drive),
-          navigationAppearanceSettingsStateProvider.overrideWithValue(
-            app.navigationAppearanceSettings,
+          accountStateProvider.overrideWithValue(environment.accountState),
+          lanzouClientRegistryProvider.overrideWithValue(
+            environment.clientRegistry,
           ),
-          navigationStateProvider.overrideWithValue(app.navigation),
+          appDbProvider.overrideWithValue(environment.db),
+          driveStateProvider.overrideWithValue(environment.drive),
+          navigationAppearanceSettingsStateProvider.overrideWithValue(
+            environment.navigationAppearanceSettings,
+          ),
+          navigationStateProvider.overrideWithValue(environment.navigation),
         ],
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
@@ -103,19 +105,21 @@ void main() {
 
   testWidgets('分享浏览页空状态居中且不可滚动', (tester) async {
     useBottomInset(tester);
-    final app = AppController();
-    addTearDown(app.dispose);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          accountStateProvider.overrideWithValue(app.accountState),
-          lanzouClientRegistryProvider.overrideWithValue(app.clientRegistry),
-          appDbProvider.overrideWithValue(app.db),
-          driveStateProvider.overrideWithValue(app.drive),
-          navigationAppearanceSettingsStateProvider.overrideWithValue(
-            app.navigationAppearanceSettings,
+          accountStateProvider.overrideWithValue(environment.accountState),
+          lanzouClientRegistryProvider.overrideWithValue(
+            environment.clientRegistry,
           ),
-          navigationStateProvider.overrideWithValue(app.navigation),
+          appDbProvider.overrideWithValue(environment.db),
+          driveStateProvider.overrideWithValue(environment.drive),
+          navigationAppearanceSettingsStateProvider.overrideWithValue(
+            environment.navigationAppearanceSettings,
+          ),
+          navigationStateProvider.overrideWithValue(environment.navigation),
         ],
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,

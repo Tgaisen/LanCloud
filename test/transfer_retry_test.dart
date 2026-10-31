@@ -3,13 +3,13 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/api/lanzou_client.dart' show LanzouException;
 import 'package:lancloud/core/api/models.dart' show DirectFile;
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/data/account_store.dart' show Account;
 import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-import 'transfer_dependencies_test.dart' show buildTransferManager;
+import 'transfer_dependencies_test.dart' show buildTransferManagerForEnvironment;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -38,9 +38,9 @@ void main() {
   }
 
   test('重启后的下载任务：重试重新解析分享链接并重新入队', () async {
-    final app = AppController();
-    addTearDown(app.dispose);
-    final manager = buildTransferManager(app);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
+    final manager = buildTransferManagerForEnvironment(environment);
     String? gotUrl;
     String? gotPwd;
     manager.debugResolveShare = (url, pwd) async {
@@ -63,9 +63,9 @@ void main() {
   });
 
   test('重启后的下载任务：解析失败时保留提示，任务仍可再试', () async {
-    final app = AppController();
-    addTearDown(app.dispose);
-    final manager = buildTransferManager(app);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
+    final manager = buildTransferManagerForEnvironment(environment);
     manager.debugResolveShare = (url, pwd) async {
       throw const LanzouException('文件不存在或已取消分享');
     };
@@ -80,9 +80,9 @@ void main() {
   });
 
   test('没留分享链接的旧记录：仍然提示重新发起下载', () async {
-    final app = AppController();
-    addTearDown(app.dispose);
-    final manager = buildTransferManager(app);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
+    final manager = buildTransferManagerForEnvironment(environment);
     final task = restartedTask(referer: '');
     manager.tasks.add(task);
 
@@ -93,9 +93,9 @@ void main() {
   });
 
   test('本会话内失败的任务（直链还在）：重试不重新解析', () async {
-    final app = AppController();
-    addTearDown(app.dispose);
-    final manager = buildTransferManager(app);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
+    final manager = buildTransferManagerForEnvironment(environment);
     var resolved = 0;
     manager.debugResolveShare = (url, pwd) async {
       resolved += 1;
@@ -120,14 +120,14 @@ void main() {
   });
 
   test('重启后的上传任务：源文件 + 账号都在时直接重新入队', () async {
-    final app = AppController();
-    addTearDown(app.dispose);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
     // 上传要带账号 Cookie：内存里塞一个账号（不走安全存储）
-    app.accountState.store.accounts.add(
+    environment.accountState.store.accounts.add(
       Account(uid: '12345', cookie: 'phpdisk_info=x'),
     );
-    app.accountState.store.activeUid = '12345';
-    final manager = buildTransferManager(app);
+    environment.accountState.store.activeUid = '12345';
+    final manager = buildTransferManagerForEnvironment(environment);
     final dir = Directory.systemTemp.createTempSync('lancloud-upload');
     addTearDown(() {
       try {
@@ -154,9 +154,9 @@ void main() {
   });
 
   test('重启后的上传任务：账号不可用时提示先登录（不再发出无 Cookie 请求）', () async {
-    final app = AppController();
-    addTearDown(app.dispose);
-    final manager = buildTransferManager(app);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
+    final manager = buildTransferManagerForEnvironment(environment);
     final dir = Directory.systemTemp.createTempSync('lancloud-upload');
     addTearDown(() {
       try {
@@ -182,18 +182,18 @@ void main() {
   });
 
   test('重启恢复：任务带回原账号（上传鉴权用）', () async {
-    final app = AppController();
-    addTearDown(app.dispose);
-    await app.db.saveTransfer(
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
+    await environment.db.saveTransfer(
       id: 'u9',
       kind: 'upload',
       name: 'a.zip',
       status: 'running',
       account: '12345',
     );
-    addTearDown(() => app.db.deleteTransfer('u9'));
+    addTearDown(() => environment.db.deleteTransfer('u9'));
 
-    final manager = buildTransferManager(app);
+    final manager = buildTransferManagerForEnvironment(environment);
     TransferTask? restored;
     for (var i = 0; i < 100 && restored == null; i++) {
       await Future<void>.delayed(const Duration(milliseconds: 20));
@@ -207,9 +207,9 @@ void main() {
   });
 
   test('重启后的上传任务：源文件被清掉时提示重新选择', () async {
-    final app = AppController();
-    addTearDown(app.dispose);
-    final manager = buildTransferManager(app);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
+    final manager = buildTransferManagerForEnvironment(environment);
     final dir = Directory.systemTemp.createTempSync('lancloud-upload');
     addTearDown(() {
       try {
@@ -233,9 +233,9 @@ void main() {
   });
 
   test('没留源文件路径的旧上传记录：仍提示重新上传', () async {
-    final app = AppController();
-    addTearDown(app.dispose);
-    final manager = buildTransferManager(app);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
+    final manager = buildTransferManagerForEnvironment(environment);
     final task = TransferTask(
       id: 'u3',
       kind: TransferKind.upload,
