@@ -213,6 +213,8 @@
 | `tools\agent.cmd test`（移除客户端访问兼容 API） | 增量 | **313 tests, all passed** | 约 51 s |
 | `tools\agent.cmd analyze`（移除运行时状态兼容 API） | 增量 | No issues found | 约 7 s |
 | `tools\agent.cmd test`（移除运行时状态兼容 API） | 增量 | **313 tests, all passed** | 约 49 s |
+| `tools\agent.cmd analyze`（动态取色默认探测迁移） | 增量 | No issues found | 约 7 s |
+| `tools\agent.cmd test`（动态取色默认探测迁移） | 增量 | **317 tests, all passed** | 约 50 s |
 | `tools\agent.cmd analyze`（网盘目录切片完成后） | 全量 | No issues found | 约 21 s |
 | `tools\agent.cmd test`（网盘目录切片完成后） | 全量 | **722 tests, all passed** | 约 110 s |
 | `tools\agent.cmd analyze`（拖放与 Cookie 行完成后） | 全量 | No issues found | 约 17 s |
@@ -721,6 +723,10 @@
   覆盖 `AppRuntimeState`，外壳测试直接设置 `app.runtimeState.ready`。增量
   分析 1 个生产文件无问题，48 个受影响测试文件 / 313 个测试通过，用例总数
   保持 718。
+- 2026-10-31 动态取色默认探测迁入 `ThemeSettingsState`：增加可注入的平台支持
+  回调 `enableDynamicColorIfUnset()`，`AppController.init()` 直接调用状态；
+  原有 3 条测试改为状态级测试。增量分析 2 个生产文件无问题，49 个受影响测试
+  文件 / 317 个测试通过，用例总数保持 718。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release
