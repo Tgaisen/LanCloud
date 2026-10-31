@@ -364,16 +364,6 @@ class AppController extends ChangeNotifier {
     await navigationAppearanceSettings.setTransitionAnimations(value);
   }
 
-  Future<void> setNotifyProgress(bool value) async {
-    await notificationSettings.setNotifyProgress(value);
-    notifyListeners();
-  }
-
-  Future<void> setNotifyDone(bool value) async {
-    await notificationSettings.setNotifyDone(value);
-    notifyListeners();
-  }
-
   Future<void> setSortMode(String value) async {
     await listHomeSettings.setSortMode(value);
   }

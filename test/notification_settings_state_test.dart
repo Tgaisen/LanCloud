@@ -1,9 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/data/settings_store.dart';
 import 'package:lancloud/core/notification_settings_state.dart';
-import 'package:lancloud/core/settings_state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -21,20 +19,6 @@ void main() {
     expect(state.notifyDone, isFalse);
     expect(settings.notifyProgress, isFalse);
     expect(settings.notifyDone, isFalse);
-  });
-
-  test('AppController 旧通知设置 API 保持通知行为', () async {
-    final app = AppController(settingsState: SettingsState());
-    addTearDown(app.dispose);
-    var notifications = 0;
-    app.addListener(() => notifications += 1);
-
-    await app.setNotifyProgress(false);
-    await app.setNotifyDone(false);
-
-    expect(app.settings.notifyProgress, isFalse);
-    expect(app.settings.notifyDone, isFalse);
-    expect(notifications, 2);
   });
 
   test('notificationSettingsStateProvider 可被共享实例覆盖', () {
