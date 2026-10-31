@@ -868,6 +868,12 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > 和启动顺序不变。新增 1 条接口兼容测试，增量 66 个测试文件 / 373 个测试通过，
 > 当前总数为 727。下一步是把 `main.dart` 与测试改为直接构造 `BackupDependencies`
 > 实现，再从 `AppController` 移除该兼容实现。
+>
+> 随后新增 `BackupStoreDependencies`，生产入口直接用账号、设置、数据库和
+> `reloadFromStorage` 回调组装备份依赖；备份服务和启动自动备份均不再走
+> `AppController` 的接口实现。新增 1 条适配器转发测试，增量 1 个测试文件 /
+> 3 个测试通过，当前总数为 728。剩余工作是把测试夹具改为同一适配器，再从
+> `AppController` 删除 `BackupDependencies` 接口与 `@override` 兼容成员。
 
 ### 阶段 6：移除旧 Provider
 

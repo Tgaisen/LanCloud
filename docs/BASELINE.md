@@ -131,6 +131,8 @@
 | `tools\agent.cmd test`（RootShell 与移除 Provider） | 增量 | **382 tests, all passed** | 约 74 s |
 | `tools\agent.cmd analyze`（BackupDependencies） | 增量 | No issues found | 约 19 s |
 | `tools\agent.cmd test`（BackupDependencies） | 增量 | **373 tests, all passed** | 约 72 s |
+| `tools\agent.cmd analyze`（BackupStoreDependencies） | 增量 | No issues found | 约 20 s |
+| `tools\agent.cmd test`（BackupStoreDependencies） | 增量 | **3 tests, all passed** | 约 14 s |
 | `tools\agent.cmd analyze`（网盘目录切片完成后） | 全量 | No issues found | 约 21 s |
 | `tools\agent.cmd test`（网盘目录切片完成后） | 全量 | **722 tests, all passed** | 约 110 s |
 | `tools\agent.cmd analyze`（拖放与 Cookie 行完成后） | 全量 | No issues found | 约 17 s |
@@ -149,7 +151,7 @@
 | `lib` 总行数 | 约 4.4 万 |
 | `test` 测试文件 | 161（平铺，`<主题>_test.dart`） |
 | `test` 总行数 | 约 2.1 万 |
-| `test` 用例数 | 727（当前总数；阶段 6 及 AppController 退役已新增 12 条测试） |
+| `test` 用例数 | 728（当前总数；阶段 6 及 AppController 退役已新增 13 条测试） |
 | `lib/ui` 页面与组件 | 54 个平铺文件 |
 | `lib/core` | 32 个平铺文件 + 5 个子系统目录 |
 | 文案（`app_zh.arb`） | 1357 行 |
@@ -474,6 +476,10 @@
 - 2026-10-31 AppController 退役首片新增 `BackupDependencies`，备份服务不再直接
   依赖完整控制器；`AppController` 暂时实现该接口以保持调用兼容。新增 1 条
   接口兼容测试，增量 66 个测试文件 / 373 个测试通过，当前总数由 726 增至 727。
+- 2026-10-31 新增 `BackupStoreDependencies`，生产入口直接使用既有存储与显式
+  重载回调组装备份服务；新增 1 条适配器转发测试，增量 1 个测试文件 /
+  3 个测试通过，当前总数由 727 增至 728。测试夹具与 `AppController` 接口移除
+  仍待后续切片。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release

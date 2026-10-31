@@ -43,6 +43,7 @@ Riverpod 容器提供。`core/update/` 的 `UpdateService` 是阶段 1 Riverpod 
 | `UpdateService` | `core/update/update_service.dart` | `Notifier<UpdateState>`；更新检查、缓存、失败冷却和一次性提醒的唯一所有者 |
 | `BackupService` | `core/backup/backup_service.dart` | 本地 / WebDAV 备份恢复服务；只依赖 `BackupDependencies`，应用入口通过 `backupServiceProvider` 暴露与自动备份共用的同一实例 |
 | `BackupDependencies` | `core/backup/backup_dependencies.dart` | 备份所需的账号、设置、数据库和恢复后重载窄接口；退役期由 `AppController` 实现 |
+| `BackupStoreDependencies` | `core/backup/backup_dependencies.dart` | 用既有存储与显式重载回调组装备份依赖；生产启动直接使用该实现 |
 | `AppDb` | `core/data/app_db_provider.dart` | 阶段 2 首个叶子依赖；普通 `Provider` 暴露既有单例，不监听、不自动销毁 |
 | `LanzouClientRegistry` | `core/api/lanzou_client_registry.dart` | 按 uid 缓存账号客户端并保留独立公开客户端；Provider 与 `AppController` 共用同一注册表 |
 | `AppLog` | `core/app_log_provider.dart` | 启动时先初始化，再通过普通 `Provider` 暴露同一实例；更新服务已从容器读取 |
