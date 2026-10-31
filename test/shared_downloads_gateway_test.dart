@@ -1,9 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/data/settings_store.dart';
+import 'package:lancloud/core/download_path_service.dart';
 import 'package:lancloud/core/shared_downloads_gateway.dart';
 import 'package:lancloud/core/shared_downloads_storage.dart';
+import 'package:lancloud/core/transfer/transfer_download_port.dart';
 
 class _FakeSharedDownloads implements SharedDownloadsGateway {
   _FakeSharedDownloads({required this.supported, this.directoryPath});
@@ -32,29 +34,33 @@ class _FakeSharedDownloads implements SharedDownloadsGateway {
 }
 
 void main() {
-  test('AppController 使用注入的公共 Downloads 能力解析默认目录', () async {
+  test('目录服务使用注入的公共 Downloads 能力解析默认目录', () async {
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
     addTearDown(() => debugDefaultTargetPlatformOverride = null);
     const path = '/storage/emulated/0/Download/LanCloud';
-    final app = AppController(
+    final service = PlatformDownloadPathService(
       sharedDownloads: _FakeSharedDownloads(
         supported: true,
         directoryPath: path,
       ),
     );
-    addTearDown(app.dispose);
 
-    expect(await app.defaultDownloadDirPath(), path);
+    expect(await service.defaultDownloadDirPath(), path);
   });
 
-  test('AppController 在 Android 未设置目录时查询注入能力', () async {
+  test('默认下载端口在 Android 未设置目录时查询注入能力', () async {
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
     addTearDown(() => debugDefaultTargetPlatformOverride = null);
     final gateway = _FakeSharedDownloads(supported: true);
-    final app = AppController(sharedDownloads: gateway);
-    addTearDown(app.dispose);
+    final port = DefaultTransferDownloadPort(
+      downloadPaths: PlatformDownloadPathService(
+        sharedDownloads: gateway,
+      ),
+      sharedDownloads: gateway,
+      settings: SettingsStore(),
+    );
 
-    await app.downloadTargetMode();
+    await port.targetMode();
 
     expect(gateway.supportChecks, 1);
   });

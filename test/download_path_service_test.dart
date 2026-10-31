@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/download_path_service.dart';
 import 'package:lancloud/core/shared_downloads_gateway.dart';
 import 'package:lancloud/core/shared_downloads_storage.dart';
@@ -32,14 +31,11 @@ class _FakeSharedDownloads implements SharedDownloadsGateway {
 }
 
 void main() {
-  test('AppController 使用注入的默认目录服务', () async {
+  test('默认目录服务返回注入路径', () async {
     const path = '/virtual/LanCloud';
-    final app = AppController(
-      downloadPaths: const _FakePathService(path),
-    );
-    addTearDown(app.dispose);
+    const service = _FakePathService(path);
 
-    expect(await app.defaultDownloadDirPath(), path);
+    expect(await service.defaultDownloadDirPath(), path);
   });
 
   test('downloadPathServiceProvider 可以被测试实现覆盖', () {

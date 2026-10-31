@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/data/settings_store.dart';
+import 'package:lancloud/core/download_directory_settings_state.dart';
 import 'package:lancloud/core/saf_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -26,23 +27,24 @@ void main() {
   });
 
   test('选择 SAF 目录后切到公共目录：清掉授权并释放旧目录', () async {
-    final app = AppController();
-    addTearDown(app.dispose);
-    await app.settings.load();
+    final settings = SettingsStore();
+    await settings.load();
+    final state = DownloadDirectorySettingsState(settings);
+    addTearDown(state.revision.dispose);
 
-    await app.setSafDownloadDir(
+    await state.selectSafariDirectory(
       const SafDirectory(
         uri: 'content://tree/primary%3ABaiduNetdisk',
         label: '/storage/emulated/0/BaiduNetdisk',
       ),
     );
-    expect(app.safDownloadTree, 'content://tree/primary%3ABaiduNetdisk');
-    expect(app.settings.downloadDir, isNull);
+    expect(state.safariTreeUri, 'content://tree/primary%3ABaiduNetdisk');
+    expect(settings.downloadDir, isNull);
 
     // Android 11+ 下选了 Download：公共目录直接按路径写入
-    await app.setDownloadDir('/storage/emulated/0/Download');
-    expect(app.safDownloadTree, isNull);
-    expect(app.settings.downloadDir, '/storage/emulated/0/Download');
+    await state.selectDirectoryPath('/storage/emulated/0/Download');
+    expect(state.safariTreeUri, isNull);
+    expect(settings.downloadDir, '/storage/emulated/0/Download');
     expect(
       calls.any(
         (c) =>
@@ -55,18 +57,19 @@ void main() {
   });
 
   test('选择 SAF 目录：清掉原有的固定路径设置', () async {
-    final app = AppController();
-    addTearDown(app.dispose);
-    await app.settings.load();
+    final settings = SettingsStore();
+    await settings.load();
+    final state = DownloadDirectorySettingsState(settings);
+    addTearDown(state.revision.dispose);
 
-    await app.setDownloadDir('/storage/emulated/0/Download');
-    await app.setSafDownloadDir(
+    await state.selectDirectoryPath('/storage/emulated/0/Download');
+    await state.selectSafariDirectory(
       const SafDirectory(
         uri: 'content://tree/primary%3ABaiduNetdisk',
         label: '/storage/emulated/0/BaiduNetdisk',
       ),
     );
-    expect(app.settings.downloadDir, isNull);
-    expect(app.safDownloadTree, 'content://tree/primary%3ABaiduNetdisk');
+    expect(settings.downloadDir, isNull);
+    expect(state.safariTreeUri, 'content://tree/primary%3ABaiduNetdisk');
   });
 }
