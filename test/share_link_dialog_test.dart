@@ -1,16 +1,19 @@
 import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/api/lanzou_client.dart';
+import 'package:lancloud/core/api/lanzou_client_registry.dart';
 import 'package:lancloud/core/api/models.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/account_state.dart';
+import 'package:lancloud/core/app_environment.dart';
+import 'package:lancloud/core/data/app_db_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/app_icons.dart' as app_icons;
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/m3e.dart';
 import 'package:lancloud/ui/share_page.dart';
-import 'package:provider/provider.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
@@ -49,26 +52,22 @@ class _FakeClient extends LanzouClient {
   }
 }
 
-class _FakeApp extends AppController {
-  _FakeApp(this._client);
-
-  final LanzouClient _client;
-
-  @override
-  LanzouClient get publicClient => _client;
-}
-
 Future<_FakeClient> _pumpDialog(
   WidgetTester tester,
   LanzouException error, {
   Completer<void>? gate,
 }) async {
   final client = _FakeClient(error, gate: gate);
-  final app = _FakeApp(client);
-  addTearDown(app.dispose);
+  final environment = AppEnvironment();
+  final clients = LanzouClientRegistry(factory: (_) => client);
+  addTearDown(environment.dispose);
   await tester.pumpWidget(
-    ChangeNotifierProvider<AppController>.value(
-      value: app,
+    ProviderScope(
+      overrides: [
+        lanzouClientRegistryProvider.overrideWithValue(clients),
+        accountStateProvider.overrideWithValue(environment.accountState),
+        appDbProvider.overrideWithValue(environment.db),
+      ],
       child: MaterialApp(
         localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,

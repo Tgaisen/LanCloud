@@ -1,29 +1,30 @@
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/app_icons.dart';
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/m3e.dart';
 import 'package:lancloud/ui/settings_page.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
-Future<AppController> pumpSettings(
+import 'update_test_scope_test.dart';
+
+Future<AppEnvironment> pumpSettings(
   WidgetTester tester, [
   SettingsCategory category = SettingsCategory.appearanceLayout,
 ]) async {
   SharedPreferences.setMockInitialValues({});
-  final app = AppController();
-  addTearDown(app.dispose);
+  final environment = AppEnvironment();
+  addTearDown(environment.dispose);
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = const Size(420, 900);
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
-    ChangeNotifierProvider<AppController>.value(
-      value: app,
+    appEnvironmentTestTree(
+      environment: environment,
       child: MaterialApp(
         localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
@@ -33,7 +34,7 @@ Future<AppController> pumpSettings(
     ),
   );
   await tester.pumpAndSettle();
-  return app;
+  return environment;
 }
 
 /// 弹窗里的某一行（选择项）：返回包着色块的那个 Material。
@@ -49,7 +50,7 @@ Finder pickRow(String label) => find
 
 void main() {
   testWidgets('主题模式：行内 tonal 按钮组，选中项带对勾，点一下即切换', (tester) async {
-    final app = await pumpSettings(tester);
+    final environment = await pumpSettings(tester);
 
     final group = find.byType(M3eConnectedButtonGroup<String>);
     expect(group, findsOneWidget);
@@ -69,7 +70,7 @@ void main() {
       find.descendant(of: group, matching: find.text('深色')).first,
     );
     await tester.pumpAndSettle();
-    expect(app.settings.themeMode, 'dark');
+    expect(environment.settingsState.store.themeMode, 'dark');
     expect(
       tester.widget<M3eConnectedButtonGroup<String>>(group).selected,
       'dark',
@@ -77,7 +78,10 @@ void main() {
   });
 
   testWidgets('网络请求间隔：行内滑杆（离散档位），拖动松手后落盘', (tester) async {
-    final app = await pumpSettings(tester, SettingsCategory.transferConnection);
+    final environment = await pumpSettings(
+      tester,
+      SettingsCategory.transferConnection,
+    );
 
     final entry = find.text('网络请求间隔');
     await tester.ensureVisible(entry);
@@ -117,12 +121,12 @@ void main() {
     // 拖到最右 → 最大档 1000ms，松手才写设置
     await tester.drag(slider, const Offset(600, 0));
     await tester.pumpAndSettle();
-    expect(app.settings.requestInterval, 1000);
+    expect(environment.settingsState.store.requestInterval, 1000);
     expect(find.text('1000 ms'), findsOneWidget);
   });
 
   testWidgets('单选弹窗：列表组 + radio 指示器，选中项 tonal 强调色，点击即生效', (tester) async {
-    final app = await pumpSettings(tester);
+    final environment = await pumpSettings(tester);
 
     await tester.tap(find.text('语言'));
     await tester.pumpAndSettle();
@@ -172,11 +176,11 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(app.settings.language, 'en');
+    expect(environment.settingsState.store.language, 'en');
   });
 
   testWidgets('多选弹窗：底栏显示项也是列表组 + tonal 选中态，确认后生效', (tester) async {
-    final app = await pumpSettings(tester);
+    final environment = await pumpSettings(tester);
 
     final entry = find.text('底栏显示项');
     await tester.ensureVisible(entry);
@@ -218,7 +222,7 @@ void main() {
 
     await tester.tap(find.text('确定'));
     await tester.pumpAndSettle();
-    expect(app.settings.navShowTransfers, isTrue);
+    expect(environment.settingsState.store.navShowTransfers, isTrue);
   });
 
   testWidgets('设置页分组小标题：title 角色 + 强调字重，与列表项左边对齐', (tester) async {
@@ -252,11 +256,11 @@ void main() {
 
   testWidgets('高级覆盖项：提示卡片带 info 图标，容器用次级容器色 + 16dp 圆角', (tester) async {
     SharedPreferences.setMockInitialValues({});
-    final app = AppController();
-    addTearDown(app.dispose);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
-        value: app,
+      appEnvironmentTestTree(
+        environment: environment,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,

@@ -2,10 +2,11 @@ import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/api/lanzou_client.dart';
-import '../core/app_controller.dart';
+import '../core/account_login.dart';
+import '../core/account_state.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
@@ -128,14 +129,14 @@ Future<bool> showCookieLoginDialog(BuildContext context) async {
   return ok == true;
 }
 
-class _CookieLoginDialog extends StatefulWidget {
+class _CookieLoginDialog extends ConsumerStatefulWidget {
   const _CookieLoginDialog();
 
   @override
-  State<_CookieLoginDialog> createState() => _CookieLoginDialogState();
+  ConsumerState<_CookieLoginDialog> createState() => _CookieLoginDialogState();
 }
 
-class _CookieLoginDialogState extends State<_CookieLoginDialog> {
+class _CookieLoginDialogState extends ConsumerState<_CookieLoginDialog> {
   final TextEditingController _controller = TextEditingController();
   bool _busy = false;
   String? _error;
@@ -158,7 +159,7 @@ class _CookieLoginDialogState extends State<_CookieLoginDialog> {
       _error = null;
     });
     try {
-      await context.read<AppController>().addAccountFromCookie(cookie);
+      await ref.read(accountLoginProvider).addAccountFromCookie(cookie);
       if (mounted) {
         Navigator.of(context).pop(true);
       }
@@ -248,7 +249,7 @@ class _CookieLoginDialogState extends State<_CookieLoginDialog> {
 }
 
 /// 无账号时的兜底页面（已同意协议但未登录）。
-class LoginPage extends StatelessWidget {
+class LoginPage extends ConsumerWidget {
   const LoginPage({
     super.key,
     this.firstRun = false,
@@ -260,21 +261,21 @@ class LoginPage extends StatelessWidget {
   /// 安全存储跨大版本后不可迁移时，明确说明为什么回到了登录页。
   final bool credentialsResetNotice;
 
-  Future<void> _restore(BuildContext context) async {
+  Future<void> _restore(BuildContext context, WidgetRef ref) async {
     final result = await Navigator.of(context).push<RestorePageResult>(
       MaterialPageRoute(builder: (_) => const RestorePage()),
     );
     if (!context.mounted) return;
     // 完整恢复会由 RootShell 自动切到主界面；仅恢复数据时仍停留在这里。
     if (result == RestorePageResult.restored &&
-        context.read<AppController>().activeUid == null) {
+        ref.read(accountStateProvider).store.activeUid == null) {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(context.l10n.restoreDataDone)));
     }
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final safeInsets = systemUiSafeInsets(context);
@@ -347,7 +348,7 @@ class LoginPage extends StatelessWidget {
           ),
           const SizedBox(height: 20),
         ],
-        LoginEntries(onRestore: firstRun ? () => _restore(context) : null),
+        LoginEntries(onRestore: firstRun ? () => _restore(context, ref) : null),
       ],
     );
 

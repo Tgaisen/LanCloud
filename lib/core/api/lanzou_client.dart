@@ -111,7 +111,7 @@ class LanzouClient {
       InterceptorsWrapper(
         onRequest: (options, handler) async {
           if (requestInterval > Duration.zero) {
-            await Future.delayed(requestInterval);
+            await Future<void>.delayed(requestInterval);
           }
           final cookie = _cookieHeaderFor(options.uri.host);
           if (cookie.isNotEmpty) options.headers['Cookie'] = cookie;
@@ -218,6 +218,19 @@ class LanzouClient {
       '接口返回格式异常',
       code: LanzouErrorCode.invalidResponse,
     );
+  }
+
+  Map<String, dynamic> _requireMap(
+    Object? value, {
+    required String message,
+    required LanzouErrorCode code,
+  }) {
+    if (value is! Map) throw LanzouException(message, code: code);
+    try {
+      return Map<String, dynamic>.from(value);
+    } on TypeError {
+      throw LanzouException(message, code: code);
+    }
   }
 
   String? _match(String source, List<String> patterns) {
@@ -585,7 +598,11 @@ class LanzouClient {
       data: {'task': 18, 'folder_id': folderId},
       options: _options(),
     );
-    final info = (_asMap(infoResp.data)['info'] as Map).cast<String, dynamic>();
+    final info = _requireMap(
+      _asMap(infoResp.data)['info'],
+      message: '无法读取文件夹信息',
+      code: LanzouErrorCode.readFolderInfoFailed,
+    );
     final name = '${info['name'] ?? ''}';
     await setFolderInfo(folderId, name: name, desc: desc);
   }
@@ -757,7 +774,11 @@ class LanzouClient {
       data: {'task': 22, 'file_id': fileId},
       options: _options(),
     );
-    final info = (_asMap(resp.data)['info'] as Map).cast<String, dynamic>();
+    final info = _requireMap(
+      _asMap(resp.data)['info'],
+      message: '无法获取该文件的分享信息',
+      code: LanzouErrorCode.fileShareInfoFailed,
+    );
     final fId = '${info['f_id'] ?? ''}';
     if (fId.isEmpty || fId == 'i') {
       throw const LanzouException(
@@ -802,7 +823,11 @@ class LanzouClient {
         detail: '${map['info'] ?? ''}',
       );
     }
-    final info = (map['info'] as Map).cast<String, dynamic>();
+    final info = _requireMap(
+      map['info'],
+      message: '无法获取该文件夹的分享信息',
+      code: LanzouErrorCode.folderShareInfoFailed,
+    );
     return ShareInfo(
       url: '${info['new_url'] ?? ''}',
       pwd: '${info['onof']}' == '1' ? '${info['pwd']}' : '',
@@ -1421,7 +1446,7 @@ class LanzouClient {
       } catch (e) {
         // 空响应 / 挑战页这类解析失败同样是「一时拿不到」
         if (lastAttempt) rethrow;
-        await Future.delayed(Duration(milliseconds: 400 * attempt));
+        await Future<void>.delayed(Duration(milliseconds: 400 * attempt));
         continue;
       }
       final zt = '${map['zt']}';
@@ -1471,7 +1496,7 @@ class LanzouClient {
       rep = hint == null ? rep + 1 : (int.tryParse(hint.group(1)!) ?? rep + 1);
       // zt=4 / 未知状态 / 「请刷新」：稍等后按新的 rep 重试同一页
       if (lastAttempt) break;
-      await Future.delayed(Duration(milliseconds: 400 * attempt));
+      await Future<void>.delayed(Duration(milliseconds: 400 * attempt));
     }
     throw const LanzouException(
       '获取分享文件列表失败',

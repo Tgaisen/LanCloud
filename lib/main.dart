@@ -4,19 +4,23 @@ import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app.dart';
-import 'core/app_controller.dart';
+import 'core/app_composition_root.dart';
+import 'core/app_environment.dart';
 import 'core/app_log.dart';
-import 'core/backup/backup_service.dart';
+import 'core/app_startup.dart';
+import 'core/download_path_service.dart';
 import 'core/incoming_links.dart';
 import 'core/notifications.dart';
 import 'core/platform_support.dart';
 import 'core/share_inbox.dart';
+import 'core/shared_downloads_gateway.dart';
 import 'core/system_motion.dart';
 import 'core/third_party_licenses.dart';
-import 'core/transfer/transfer_manager.dart';
+import 'core/transfer/transfer_manager_provider.dart';
+import 'core/update/update_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -81,11 +85,22 @@ Future<void> main() async {
       ),
     );
   }
-  final app = AppController();
-  await app.init();
+  const sharedDownloads = PlatformSharedDownloadsGateway();
+  final downloadPaths = PlatformDownloadPathService(
+    sharedDownloads: sharedDownloads,
+  );
+  final environment = AppEnvironment();
+  final startup = AppStartup(environment: environment, onChanged: () {});
+  await startup.initialize();
+  final composition = AppCompositionRoot(
+    environment: environment,
+    reloadFromStorage: startup.reloadFromStorage,
+    sharedDownloads: sharedDownloads,
+    downloadPaths: downloadPaths,
+  );
   // 系统「移除动画」：读一次并监听原生推送（华为等 ROM 的开关引擎看不到）
   SystemMotion.init();
-  final language = app.settings.language;
+  final language = environment.settingsState.store.language;
   final locale = language == 'zh'
       ? const Locale('zh')
       : language == 'en'
@@ -96,15 +111,18 @@ Future<void> main() async {
   await SharedInbox.instance.init();
   await IncomingLinks.instance.init();
   // 自动备份：按每天/每周频率在启动时补一次，失败只记录不打扰。
-  unawaited(BackupService.of(app).maybeAutoBackup());
-  // 自动检查更新：在 12 小时有效期内不请求；失败静默（见 UpdateService）。
-  unawaited(app.updates.maybeAutoCheck());
+  unawaited(composition.backupService.maybeAutoBackup());
+  // Riverpod 更新试点：沿用已加载的设置对象，先恢复缓存再非阻塞检查更新。
+  final updateContainer = composition.createContainer();
+  // 生产消费端已迁到 Riverpod，但仍要在 runApp 前主动创建管理器，
+  // 保持任务恢复与后台服务的启动顺序不变。
+  updateContainer.read(transferManagerProvider);
+  final updates = updateContainer.read(updateServiceProvider.notifier);
+  await updates.initialize();
+  unawaited(updates.maybeAutoCheck());
   runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider.value(value: app),
-        ChangeNotifierProvider.value(value: TransferManager(app)),
-      ],
+    UncontrolledProviderScope(
+      container: updateContainer,
       child: const LanCloudApp(),
     ),
   );

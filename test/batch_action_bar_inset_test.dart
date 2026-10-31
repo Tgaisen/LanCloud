@@ -1,39 +1,43 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
+import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/common.dart';
-import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
 /// 外壳底栏高度（与 app.dart 保持一致）：悬浮 108 + 手势区，普通 80 + 手势区。
 const double _gestureInset = 24;
 
-Future<void> pumpBar(
+Widget barApp(double shellBarHeight) => MaterialApp(
+  localizationsDelegates: appLocalizationsDelegates,
+  supportedLocales: AppLocalizations.supportedLocales,
+  locale: const Locale('zh'),
+  home: MediaQuery(
+    data: MediaQueryData(padding: EdgeInsets.only(bottom: shellBarHeight)),
+    child: const Scaffold(
+      body: Align(
+        alignment: Alignment.bottomCenter,
+        child: BatchActionBar(children: []),
+      ),
+    ),
+  ),
+);
+
+Future<void> pumpRiverpodBar(
   WidgetTester tester, {
-  required AppController app,
+  required NavigationAppearanceSettingsState appearance,
   required double shellBarHeight,
 }) async {
   await tester.pumpWidget(
-    ChangeNotifierProvider<AppController>.value(
-      value: app,
-      child: MaterialApp(
-        localizationsDelegates: appLocalizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        locale: const Locale('zh'),
-        home: MediaQuery(
-          data: MediaQueryData(
-            padding: EdgeInsets.only(bottom: shellBarHeight),
-          ),
-          child: const Scaffold(
-            body: Align(
-              alignment: Alignment.bottomCenter,
-              child: BatchActionBar(children: []),
-            ),
-          ),
-        ),
-      ),
+    ProviderScope(
+      overrides: [
+        navigationAppearanceSettingsStateProvider.overrideWithValue(appearance),
+      ],
+      child: barApp(shellBarHeight),
     ),
   );
   await tester.pumpAndSettle();
@@ -54,22 +58,52 @@ EdgeInsets barPadding(WidgetTester tester) {
 
 void main() {
   testWidgets('普通底栏：多选条贴在底栏上方 12dp', (tester) async {
-    final app = AppController()..settings.floatingNavBar = false;
-    addTearDown(app.dispose);
+    final environment = AppEnvironment();
+    environment.settingsState.store.floatingNavBar = false;
+    addTearDown(environment.dispose);
     // 普通底栏槽位 = 80 + 手势区
-    await pumpBar(tester, app: app, shellBarHeight: 80 + _gestureInset);
+    await pumpRiverpodBar(
+      tester,
+      appearance: environment.navigationAppearanceSettings,
+      shellBarHeight: 80 + _gestureInset,
+    );
     expect(barPadding(tester).bottom, closeTo(80 + _gestureInset + 12, 0.01));
   });
 
   testWidgets('悬浮底栏：多选条按胶囊高度避让（不加 16dp 槽位留白）', (tester) async {
-    final app = AppController()..settings.floatingNavBar = true;
-    addTearDown(app.dispose);
+    final environment = AppEnvironment();
+    environment.settingsState.store.floatingNavBar = true;
+    addTearDown(environment.dispose);
     // 悬浮底栏槽位 = 108 + 手势区（胶囊 80 + 顶留白 16 + 底留白 12）
-    await pumpBar(tester, app: app, shellBarHeight: 108 + _gestureInset);
+    await pumpRiverpodBar(
+      tester,
+      appearance: environment.navigationAppearanceSettings,
+      shellBarHeight: 108 + _gestureInset,
+    );
     // 期望值：108 + 手势区 - 16（槽位顶留白）+ 12（自身间距）
     expect(
       barPadding(tester).bottom,
       closeTo(108 + _gestureInset - 16 + 12, 0.01),
     );
+  });
+
+  testWidgets('Riverpod 导航外观变化会更新多选条避让', (tester) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final environment = AppEnvironment();
+    environment.settingsState.store.floatingNavBar = true;
+    addTearDown(environment.dispose);
+    await pumpRiverpodBar(
+      tester,
+      appearance: environment.navigationAppearanceSettings,
+      shellBarHeight: 108 + _gestureInset,
+    );
+    expect(
+      barPadding(tester).bottom,
+      closeTo(108 + _gestureInset - 16 + 12, 0.01),
+    );
+
+    await environment.navigationAppearanceSettings.setFloatingNavBar(false);
+    await tester.pumpAndSettle();
+    expect(barPadding(tester).bottom, closeTo(108 + _gestureInset + 12, 0.01));
   });
 }

@@ -1,19 +1,20 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/data/settings_store.dart';
 import 'package:lancloud/core/system_motion.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/app_localizations_zh.dart';
 import 'package:lancloud/ui/reduce_motion.dart';
 import 'package:lancloud/ui/settings_page.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher_platform_interface/link.dart';
 import 'package:url_launcher_platform_interface/url_launcher_platform_interface.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
+
+import 'update_test_scope_test.dart';
 
 /// 文案以中文本地化为准，避免改文案就要改测试。
 final _zh = AppLocalizationsZh();
@@ -35,13 +36,13 @@ class _FakeUrlLauncher extends UrlLauncherPlatform {
 late _FakeUrlLauncher _launcher;
 late UrlLauncherPlatform _originalLauncher;
 
-Future<AppController> _pumpSettings(WidgetTester tester) async {
+Future<AppEnvironment> _pumpSettings(WidgetTester tester) async {
   SharedPreferences.setMockInitialValues({});
-  final app = AppController();
-  addTearDown(app.dispose);
+  final environment = AppEnvironment();
+  addTearDown(environment.dispose);
   await tester.pumpWidget(
-    ChangeNotifierProvider<AppController>.value(
-      value: app,
+    appEnvironmentTestTree(
+      environment: environment,
       child: MaterialApp(
         localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
@@ -54,7 +55,7 @@ Future<AppController> _pumpSettings(WidgetTester tester) async {
     ),
   );
   await tester.pumpAndSettle();
-  return app;
+  return environment;
 }
 
 Future<void> _scrollTo(WidgetTester tester, String text) async {
@@ -84,7 +85,7 @@ void main() {
   });
 
   testWidgets('无障碍小节在行为之下、权限之上，包含全局动画与无障碍相关问题', (tester) async {
-    final app = await _pumpSettings(tester);
+    final environment = await _pumpSettings(tester);
     await _scrollTo(tester, _zh.a11yFeedback);
     // 继续滚到最底：行为 / 无障碍 / 权限 三组同屏，顺序以此为准
     await tester.drag(find.byType(Scrollable).first, const Offset(0, -1200));
@@ -101,13 +102,13 @@ void main() {
 
     // 两个入口：全局动画（副标题＝当前档）与无障碍相关问题
     expect(find.text(_zh.globalAnimations), findsOneWidget);
-    expect(app.settings.motionMode, 'auto');
+    expect(environment.settingsState.store.motionMode, 'auto');
     expect(find.text(_zh.motionModeAuto), findsOneWidget);
     expect(find.text(_zh.a11yFeedback), findsOneWidget);
   });
 
   testWidgets('全局动画：单选弹窗三个选项，选择后落盘并同步读屏信号', (tester) async {
-    final app = await _pumpSettings(tester);
+    final environment = await _pumpSettings(tester);
     await _scrollTo(tester, _zh.globalAnimations);
 
     Finder inDialog(String text) => find.descendant(
@@ -126,7 +127,7 @@ void main() {
 
     await tester.tap(inDialog(_zh.motionModeDisabled));
     await tester.pumpAndSettle();
-    expect(app.settings.motionMode, 'off');
+    expect(environment.settingsState.store.motionMode, 'off');
     expect(SystemMotion.motionMode.value, 'off');
     // 行副标题更新为当前档
     expect(find.text(_zh.motionModeDisabled), findsOneWidget);
@@ -136,7 +137,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(inDialog(_zh.motionModeEnabled));
     await tester.pumpAndSettle();
-    expect(app.settings.motionMode, 'on');
+    expect(environment.settingsState.store.motionMode, 'on');
     expect(SystemMotion.motionMode.value, 'on');
     expect(find.text(_zh.motionModeEnabled), findsOneWidget);
   });

@@ -2,16 +2,39 @@ import 'dart:io';
 
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
+import 'package:lancloud/core/navigation_appearance_settings_state.dart';
+import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
+import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/m3e.dart';
 import 'package:lancloud/ui/transfers_page.dart';
-import 'package:provider/provider.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
+
+import 'transfer_dependencies_test.dart'
+    show buildTransferManagerForEnvironment;
+
+Widget _transferTestHost({
+  required AppEnvironment app,
+  required TransferManager manager,
+  required Widget child,
+}) {
+  return ProviderScope(
+    overrides: [
+      transferManagerProvider.overrideWithValue(manager),
+      navigationAppearanceSettingsStateProvider.overrideWithValue(
+        app.navigationAppearanceSettings,
+      ),
+      navigationStateProvider.overrideWithValue(app.navigation),
+    ],
+    child: child,
+  );
+}
 
 TransferTask task(String id, String name, {required TransferStatus status}) {
   return TransferTask(
@@ -23,20 +46,18 @@ TransferTask task(String id, String name, {required TransferStatus status}) {
   )..status = status;
 }
 
-Future<(AppController, TransferManager)> host(WidgetTester tester) async {
-  final app = AppController();
-  final manager = TransferManager(app);
+Future<(AppEnvironment, TransferManager)> host(WidgetTester tester) async {
+  final app = AppEnvironment();
+  final manager = buildTransferManagerForEnvironment(app);
   manager.tasks.addAll([
     task('t1', 'a.zip', status: TransferStatus.failed),
     task('t2', 'b.zip', status: TransferStatus.failed),
     task('t3', 'c.zip', status: TransferStatus.done),
   ]);
   await tester.pumpWidget(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider<AppController>.value(value: app),
-        ChangeNotifierProvider<TransferManager>.value(value: manager),
-      ],
+    _transferTestHost(
+      app: app,
+      manager: manager,
       child: MaterialApp(
         localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
@@ -68,16 +89,14 @@ double selectionBarOpacity(WidgetTester tester) => tester
     .opacity;
 
 /// 把传输页作为独立页面（二级路由）打开，用于验证返回行为。
-Future<AppController> pushTransfers(WidgetTester tester) async {
-  final app = AppController();
-  final manager = TransferManager(app);
+Future<AppEnvironment> pushTransfers(WidgetTester tester) async {
+  final app = AppEnvironment();
+  final manager = buildTransferManagerForEnvironment(app);
   manager.tasks.addAll([task('t1', 'a.zip', status: TransferStatus.failed)]);
   await tester.pumpWidget(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider<AppController>.value(value: app),
-        ChangeNotifierProvider<TransferManager>.value(value: manager),
-      ],
+    _transferTestHost(
+      app: app,
+      manager: manager,
       child: MaterialApp(
         localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
@@ -107,19 +126,17 @@ Future<AppController> pushTransfers(WidgetTester tester) async {
 
 void main() {
   testWidgets('进行中条目的进度条与标题同宽：避让左侧图标与右侧按钮', (tester) async {
-    final app = AppController();
-    final manager = TransferManager(app);
+    final app = AppEnvironment();
+    final manager = buildTransferManagerForEnvironment(app);
     manager.tasks.add(
       task('t1', 'a.zip', status: TransferStatus.running)
         ..received = 1
         ..total = 2,
     );
     await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider<AppController>.value(value: app),
-          ChangeNotifierProvider<TransferManager>.value(value: manager),
-        ],
+      _transferTestHost(
+        app: app,
+        manager: manager,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
@@ -147,11 +164,11 @@ void main() {
 
     await tester.longPress(find.text('a.zip'));
     await tester.pumpAndSettle();
-    expect(app.selectionMode, isTrue);
+    expect(app.navigation.selectionMode, isTrue);
 
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
-    expect(app.selectionMode, isFalse);
+    expect(app.navigation.selectionMode, isFalse);
     expect(find.byType(TransfersPage), findsOneWidget);
 
     await tester.binding.handlePopRoute();
@@ -165,14 +182,14 @@ void main() {
     // 上传条目点不开，点击不做任何反应，也不会进入多选
     await tester.tap(find.text('a.zip'));
     await tester.pumpAndSettle();
-    expect(app.selectionMode, isFalse);
+    expect(app.navigation.selectionMode, isFalse);
     expect(selectionBarOpacity(tester), 0);
 
     await tester.longPress(find.text('a.zip'));
     await tester.pumpAndSettle();
     expect(selectionBarOpacity(tester), 1);
     expect(find.text('已选择 1 项'), findsOneWidget);
-    expect(app.selectionMode, isTrue);
+    expect(app.navigation.selectionMode, isTrue);
   });
 
   // 回归：播报必须挂在「真正进入多选」上。多选条在页面里常驻（透明度切换），
@@ -236,7 +253,7 @@ void main() {
 
     await tester.longPress(find.text('a.zip'));
     await tester.pumpAndSettle();
-    expect(app.selectionMode, isTrue);
+    expect(app.navigation.selectionMode, isTrue);
     expect(tester.getSize(item).height, height);
     expect(
       tester
@@ -319,13 +336,13 @@ void main() {
     await tester.tap(multiSelect);
     await tester.pumpAndSettle();
     await tester.pump(const Duration(milliseconds: 400));
-    expect(app.selectionMode, isTrue);
+    expect(app.navigation.selectionMode, isTrue);
     // 先用顶栏进多选（未选中任何条目），也要有提示
     expect(announcements, ['进入多选']);
 
     await tester.tap(find.byTooltip('退出多选'));
     await tester.pumpAndSettle();
-    expect(app.selectionMode, isFalse);
+    expect(app.navigation.selectionMode, isFalse);
     app.dispose();
   });
 
@@ -357,7 +374,7 @@ void main() {
     // 退出多选
     await tester.tap(find.byTooltip('退出多选'));
     await tester.pumpAndSettle();
-    expect(app.selectionMode, isFalse);
+    expect(app.navigation.selectionMode, isFalse);
     expect(manager.tasks.length, 3);
     app.dispose();
   });
@@ -387,7 +404,7 @@ void main() {
     expect(find.text('a.zip'), findsNothing);
     expect(find.text('c.zip'), findsNothing);
     expect(find.text('b.zip'), findsOneWidget);
-    expect(app.selectionMode, isFalse);
+    expect(app.navigation.selectionMode, isFalse);
     app.dispose();
   });
 
@@ -438,8 +455,8 @@ void main() {
       find.descendant(of: find.byType(M3eMenuRow), matching: find.text(label));
 
   testWidgets('下载完成的项目：点击条目打开文件，⋯ 菜单给打开 / 分享 / 删除', (tester) async {
-    final app = AppController();
-    final manager = TransferManager(app);
+    final app = AppEnvironment();
+    final manager = buildTransferManagerForEnvironment(app);
     manager.tasks.add(
       TransferTask(
           id: 'd1',
@@ -463,11 +480,9 @@ void main() {
           .setMockMethodCallHandler(shareChannel, null),
     );
     await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider<AppController>.value(value: app),
-          ChangeNotifierProvider<TransferManager>.value(value: manager),
-        ],
+      _transferTestHost(
+        app: app,
+        manager: manager,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
@@ -513,8 +528,8 @@ void main() {
   });
 
   testWidgets('失败下载的 ⋯ 菜单：重试可用，删除记录与文件连带删掉本地文件', (tester) async {
-    final app = AppController();
-    final manager = TransferManager(app);
+    final app = AppEnvironment();
+    final manager = buildTransferManagerForEnvironment(app);
     // widget 测试跑在 FakeAsync 里：测试体内的文件 I/O 必须走同步接口，
     // 否则 await 永远等不到真实事件循环上的回调
     final dir = Directory.systemTemp.createTempSync('lancloud-transfers');
@@ -537,11 +552,9 @@ void main() {
           ..savedPath = file.path;
     manager.tasks.add(failed);
     await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider<AppController>.value(value: app),
-          ChangeNotifierProvider<TransferManager>.value(value: manager),
-        ],
+      _transferTestHost(
+        app: app,
+        manager: manager,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
@@ -584,18 +597,16 @@ void main() {
   });
 
   testWidgets('上传条目的 ⋯ 菜单只有重试（失败时）与删除此条记录', (tester) async {
-    final app = AppController();
-    final manager = TransferManager(app);
+    final app = AppEnvironment();
+    final manager = buildTransferManagerForEnvironment(app);
     manager.tasks.addAll([
       task('u1', 'fail.zip', status: TransferStatus.failed),
       task('u2', 'ok.zip', status: TransferStatus.done),
     ]);
     await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider<AppController>.value(value: app),
-          ChangeNotifierProvider<TransferManager>.value(value: manager),
-        ],
+      _transferTestHost(
+        app: app,
+        manager: manager,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
@@ -621,8 +632,8 @@ void main() {
   });
 
   testWidgets('批量删除：幸存条目复用元素，不重播出现动画', (tester) async {
-    final app = AppController();
-    final manager = TransferManager(app);
+    final app = AppEnvironment();
+    final manager = buildTransferManagerForEnvironment(app);
     for (var i = 1; i <= 5; i++) {
       manager.tasks.add(
         TransferTask(
@@ -636,11 +647,9 @@ void main() {
       );
     }
     await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider<AppController>.value(value: app),
-          ChangeNotifierProvider<TransferManager>.value(value: manager),
-        ],
+      _transferTestHost(
+        app: app,
+        manager: manager,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
@@ -690,19 +699,17 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     tester.view.physicalSize = const Size(400, 600);
     addTearDown(tester.view.reset);
-    final app = AppController();
-    final manager = TransferManager(app);
+    final app = AppEnvironment();
+    final manager = buildTransferManagerForEnvironment(app);
     manager.tasks.addAll([
       for (var i = 0; i < 12; i++)
         task('t$i', 'file$i.zip', status: TransferStatus.done),
     ]);
 
     Widget host(Widget home, {GlobalKey<NavigatorState>? navKey}) =>
-        MultiProvider(
-          providers: [
-            ChangeNotifierProvider<AppController>.value(value: app),
-            ChangeNotifierProvider<TransferManager>.value(value: manager),
-          ],
+        _transferTestHost(
+          app: app,
+          manager: manager,
           child: MaterialApp(
             navigatorKey: navKey,
             localizationsDelegates: appLocalizationsDelegates,
@@ -751,17 +758,15 @@ void main() {
   });
 
   testWidgets('滑动时懒加载出来的条目不重播入场动画（与收藏页一致）', (tester) async {
-    final app = AppController();
-    final manager = TransferManager(app);
+    final app = AppEnvironment();
+    final manager = buildTransferManagerForEnvironment(app);
     for (var i = 0; i < 40; i++) {
       manager.tasks.add(task('t$i', 'file$i.zip', status: TransferStatus.done));
     }
     await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider<AppController>.value(value: app),
-          ChangeNotifierProvider<TransferManager>.value(value: manager),
-        ],
+      _transferTestHost(
+        app: app,
+        manager: manager,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
@@ -798,7 +803,7 @@ void main() {
   // 大屏（宽度 ≥ 640dp，底栏变侧栏）时多选条要和网盘页同色（surfaceContainer）；
   // 小屏维持 surface。AppBar 自己必须透明，否则它会把外层 Material 的颜色盖住。
   testWidgets('多选条底色：大屏用 surfaceContainer、小屏用 surface', (tester) async {
-    Future<(AppController, Color?, Color?)> pumpAt(Size size) async {
+    Future<(AppEnvironment, Color?, Color?)> pumpAt(Size size) async {
       tester.view.devicePixelRatio = 1.0;
       tester.view.physicalSize = size;
       final (app, _) = await host(tester);
@@ -839,6 +844,8 @@ void main() {
           .backgroundColor,
       Colors.transparent,
     );
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
     bigApp.dispose();
 
     // 小屏：维持原来的 surface
@@ -851,6 +858,8 @@ void main() {
         ),
       ).colorScheme.surface,
     );
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
     smallApp.dispose();
   });
 }

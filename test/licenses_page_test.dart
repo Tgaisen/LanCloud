@@ -1,11 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart' hide Icons;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
+import 'package:lancloud/core/navigation_appearance_settings_state.dart';
+import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/licenses_page.dart';
-import 'package:provider/provider.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
@@ -25,11 +27,16 @@ Copyright (c) 2026 LanCloud
   });
 
   testWidgets('许可页用应用自己的顶栏，没有 Flutter 默认页头，且能打开包详情', (tester) async {
-    final app = AppController();
-    addTearDown(app.dispose);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
-        value: app,
+      ProviderScope(
+        overrides: [
+          navigationAppearanceSettingsStateProvider.overrideWithValue(
+            environment.navigationAppearanceSettings,
+          ),
+          navigationStateProvider.overrideWithValue(environment.navigation),
+        ],
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,

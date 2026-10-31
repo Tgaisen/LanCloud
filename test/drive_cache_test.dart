@@ -66,4 +66,20 @@ void main() {
     expect(cached.folders.single.desc, '说明', reason: '其它字段不应被改掉');
     expect(cached.path.single.name, '新名字');
   });
+
+  test('解析缓存时忽略不是映射的坏条目', () {
+    final cached = CachedFolder.fromJson({
+      'folders': [
+        {'id': '1', 'name': '保留', 'desc': ''},
+        'broken',
+      ],
+      'files': const <Object?>[],
+      'path': const <Object?>[],
+      'page': 1,
+      'hasMore': false,
+    });
+
+    expect(cached.folders.single.id, '1');
+    expect(cached.folders.single.name, '保留');
+  });
 }

@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
 import 'package:lancloud/core/data/settings_store.dart';
+import 'package:lancloud/core/drive_state.dart';
+import 'package:lancloud/core/navigation_state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -16,15 +17,18 @@ void main() {
     expect(reloaded.homeFolderOpenMode, 'page');
   });
 
-  test('openFolderInDrive 记录目标目录并请求切到网盘视图', () {
-    final app = AppController();
+  test('目录请求记录目标目录并切到网盘视图', () {
+    final drive = DriveState();
+    final navigation = NavigationState();
+    addTearDown(drive.dispose);
+    addTearDown(navigation.dispose);
     int? switched;
-    app.onSwitchTab = (index) => switched = index;
+    navigation.onSwitchTab = (index) => switched = index;
 
-    app.openFolderInDrive('folder-1');
+    drive.folderRequest.value = 'folder-1';
+    navigation.switchTab(1);
 
-    expect(app.driveFolderRequest.value, 'folder-1');
+    expect(drive.folderRequest.value, 'folder-1');
     expect(switched, 1);
-    app.dispose();
   });
 }

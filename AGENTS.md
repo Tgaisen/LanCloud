@@ -1,44 +1,61 @@
 # AGENTS.md — LanCloud（蓝云）
 
-蓝奏云第三方 Flutter 客户端。个人维护的**生产项目**：`lib` 约 4.7 万行 / 95 个文件，
-`test` 121 个文件 / 616 个测试。改动的默认要求是「不破坏现有行为」，不是「尽量多写」。
+蓝奏云第三方 Flutter 客户端。个人维护的**生产项目**：`lib` 44,481 行 / 145 个文件，
+`test` 22,435 行 / 163 个测试文件 / 719 个测试。改动的默认要求是
+「不破坏现有行为」，不是「尽量多写」。
 
 ## 动手前先读
 
 | 文档 | 什么时候读 |
 | --- | --- |
 | `docs/ARCHITECTURE.md` | **每次任务开始**。先查「需求 → 先读哪些文件」表，别整仓乱翻 |
-| `docs/BASELINE.md` | 需要判断某个红灯是不是你造成的 |
+| `docs/BASELINE.md` | 需要判断某个红灯是不是你造成的；当前基线与已知偏差 |
+| `docs/BASELINE_HISTORY.md` | 需要追溯历史增量结果或排障时间线 |
 | `docs/VERSIONING.md` | 任何涉及版本号的改动 |
 | `docs/PROTOCOL.md` | 改 `core/api/` 的网络与协议逻辑 |
+| `docs/RIVERPOD_MIGRATION_ASSESSMENT.md` | 需要了解 Riverpod 迁移决策与历史；当前状态约定以本文件和架构文档为准 |
 
-## 工具链：唯一入口是 `tools\flutter.cmd`
+## 工具链：唯一入口是 `tools\agent.cmd`
 
-它钉住了 `JAVA_HOME=C:\dev\java17`、`ANDROID_HOME`、`PUB_HOSTED_URL`。
-**不要直接调用 `flutter` 或 `dart` 跑项目任务**——会用到另一套环境（`flutter doctor`
-报的是 Android Studio 自带的 JDK 25），出问题极难排查。
+`tools\agent.cmd` 是唯一入口。它内部调用 `tools\flutter.cmd`，后者钉住了
+`JAVA_HOME=C:\dev\java17`、`ANDROID_HOME`、`PUB_HOSTED_URL`。
+**不要直接调用 `flutter` / `dart`，也不要绕过 agent.cmd 去调 flutter.cmd 跑日常任务**
+——会用到另一套环境（`flutter doctor` 报的是 Android Studio 自带的 JDK 25），出问题极难排查。
 
 ```powershell
-.\tools\flutter.cmd analyze --no-pub                        # 全量，约 58s
-.\tools\flutter.cmd analyze --no-pub lib\ui\x.dart lib\core\y.dart   # 增量，秒级
-.\tools\flutter.cmd test --no-pub                            # 全量，616 个，约 92s
-.\tools\flutter.cmd test --no-pub test\account_store_test.dart        # 单文件
-.\tools\flutter.cmd gen-l10n                                 # 改完 arb 之后
+C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd analyze   # 有未提交改动→只分析它们；否则全量
+C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd test      # 自动推断受影响的测试；推断不出→全量
+C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd gen       # 改完 arb 之后
+C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd help      # 全部动词
 ```
 
-- 一律带 `--no-pub`：隐式 `pub get` 又慢又需要联网，沙箱里会直接失败。
-- 全量分析/测试留给人工兜底；你改完只需跑**增量分析 + 受影响的单测**。
+其他动词：`pubget`、`build-apk`、`install`、`logcat`、`devices`，
+其余名字（`run`、`doctor`、`emulators`…）透传给 flutter。
+
+- **原样执行，不要追加 `| Select-Object`、`2>&1`、`;` 等修饰，也不要带参数。**
+  免批准规则对「整条 PowerShell 脚本」做整串相等匹配（Codex 不拆分 `pwsh -Command`
+  里的脚本），所以 `agent.cmd analyze lib\ui\x.dart` 这种带参数的写法同样不匹配，
+  会弹一次批准。日常请用无参形式——动作由脚本自己判断（看 git 改动 / 推断测试）。
+  需要更少/更多输出时改脚本，不要在命令行上过滤，否则规则文件会重新膨胀。
+- 规则文件：`~/.codex/rules/default.rules`。里面每条规则都带 `match`/`not_match`
+  内联测试，**写错会在加载时直接报错**。改完用
+  `codex execpolicy check --rules <该文件> -- <pwsh 路径> -Command "<命令>"`
+  自检，并重启 Codex 生效。新增 `agent.cmd` 动词时必须同步加一条规则。
+- 一律 `--no-pub`（脚本已内置）：隐式 `pub get` 又慢又需要联网，沙箱里会直接失败。
+  确实需要装依赖时用 `agent.cmd pubget`。
+- 全量分析/测试留给人工兜底；你改完只需跑这两个无参命令（已是增量的）。
 - 改版本只能 `dart run tool/bump_version.dart`（同时改 `pubspec.yaml` 与
   `lib/core/app_info.dart`，有测试校验）。禁止手改这两个文件的版本行，
   禁止用 `--build-number` 顶 versionCode。
 - `tool/` 放 Dart 脚本，`tools/` 放 PowerShell 脚本。不要另建第三种位置。
+  新增 `tools\agent.cmd` 动词时，必须同时在 `~/.codex/rules/default.rules` 加一条规则。
 
 ## 结构
 
 ```
 lib/main.dart          启动装配（Provider、日志、通知、自动备份/更新）
 lib/app.dart           主题构建 + MaterialApp + RootShell（NavigationBar + PageView）
-lib/core/              逻辑与平台能力（32 个平铺文件）
+lib/core/              逻辑与平台能力（52 个平铺文件 + 5 个子系统目录）
 lib/core/api/          lanzou_client / models / acw_sc_v2
 lib/core/data/         app_db(sqflite) / settings_store / account_store / secure_storage
 lib/core/transfer/     transfer_manager
@@ -59,15 +76,22 @@ lib/l10n/              arb + 生成文件
 ## 代码约定（从现有代码归纳，不是理想规范）
 
 - **语言**：注释、提交信息、UI 文案用中文；标识符用英文。
-- **状态**：应用级只有 `AppController` 与 `TransferManager` 两个 `ChangeNotifier`。
-  新增 UI 需要订阅状态时优先 `context.select(...)` 或 `ValueListenableBuilder`：
-  全仓 `context.select` 目前为 0、`read` 约 150、`watch` 约 17，重建面已经偏大，别再放大。
+- **状态**：应用级对象由 `AppEnvironment` 组装，启动/恢复流程由 `AppStartup`
+  编排；`TransferManager` 仍由 Riverpod 管理。新增 UI 需要订阅状态时优先
+  Riverpod `select(...)` 或 `ValueListenableBuilder`，不要再建立新的宽泛全局通知。
 - **弹层**：必须写成 `Future<结果类型?> showXxx(BuildContext context)`，返回带类型的结果；
   参考 `showAppSheet`、`showM3eMenu`、`showLoginSheet`、`showBackupUnlockDialog`。
   **禁止**在 widget 里内联 `showDialog(...)` 临时拼装。
 - **导航**：没有路由库，不要引入 `go_router` / `auto_route`。跨页面用 `Navigator.push`。
 - **平台分支**：只走 `core/platform_support.dart`，不要在 UI 里裸写 `Platform.isAndroid`。
 - **文案**：一律 `AppLocalizations.of(context)!.xxx`，禁止硬编码用户可见字符串。
+- **不要让静态分析变红，也不要「压」掉它**：`analysis_options.yaml` 已开启
+  `strict-casts` / `strict-inference` / `strict-raw-types`，全仓当前 0 issue，这个基线要保持。
+  **禁止**为过检查而加 `// ignore:`、改成 `dynamic`、或把类型断言换成 `as dynamic`。
+  确需豁免时，`ignore` 注释必须写明具体理由，并在汇报里单独说明。
+- **JSON 解码边界**：`core/api/` 里对 payload 的显式 `as Map` / `as List` 是开发者主动断言，
+  不要为了"消除告警"去全量改成 `is` 判断——`strict-casts` 只管 `dynamic` 的隐式下转型，
+  显式 `as` 本来就不报。若要做运行时加固，只在解码入口加结构校验，不要散落到调用点。
 
 ## 不要碰
 
@@ -80,11 +104,12 @@ lib/l10n/              arb + 生成文件
 
 ## 完成定义（DoD）
 
-1. 改动文件的增量 `analyze` 无新增 issue
-2. 跑过受影响单测：`.\tools\flutter.cmd test --no-pub test\<主题>_test.dart`
+1. 跑过 `tools\agent.cmd analyze`（有未提交改动时即增量），无新增 issue
+2. 跑过 `tools\agent.cmd test` 并通过；它推断不出受影响文件时会跑全量，属正常
 3. 触及 `core/api/`、`core/data/`、`core/transfer/`、`core/backup/`、`core/update/`
    的改动**必须**带测试（新增或更新）
-4. 汇报格式：**改了哪些文件 → 为什么 → 用哪条命令验证、结果如何 → 遗留风险**
+4. 若用例总数发生变化，同步 `docs/BASELINE.md` 里的用例数与耗时（标明全量/增量口径）
+5. 汇报格式：**改了哪些文件 → 为什么 → 用哪条命令验证、结果如何 → 遗留风险**
 
 没做到 1–3 就别说「完成」。
 
@@ -99,11 +124,27 @@ lib/l10n/              arb + 生成文件
   不要直接推 `main`，走分支 + PR。
 - 不要自行 `git commit`，除非明确要求。
 
+## 状态管理约定（迁移已完成）
+
+Provider → Riverpod 迁移和 `AppController` 退役已于 2026-10-31 完成。当前架构与
+历史决策分别见 `docs/ARCHITECTURE.md` 和 `docs/RIVERPOD_MIGRATION_ASSESSMENT.md`。
+
+- `AppEnvironment` 唯一组装应用级状态与服务；`AppStartup` 编排启动与恢复同步。
+- 应用级状态由 Riverpod 管理，不使用 `autoDispose`；页面局部状态可使用
+  `autoDispose` / `family`。
+- `provider` / `ChangeNotifierProvider` / `AppController` 已删除，不得重新引入；
+  如需更换状态管理方案，先单独提出架构决策。
+- 高频滚动、动画和下载进度继续使用 `ValueNotifier` + `ValueListenableBuilder`。
+- 保持单一状态所有者，不允许同一字段存在两套可写来源。
+- 测试优先使用 `ProviderScope`、`ProviderContainer` 和 `AppEnvironment` 注入依赖，
+  不要再建立完整应用控制器式宿主。
+- 当前使用 `flutter_riverpod 3.4.3`，不要采用 2.x 的 `StateNotifier` 写法。
+- 暂不引入 `riverpod_generator` / `riverpod_lint` / `build_runner`；如需 codegen，
+  作为独立改动评估依赖和生成文件影响。
+- 每个提交保持 `analyze` 0 issue，并通过 `tools\agent.cmd test`。
+
 ## 进行中的决策（不要擅自执行）
 
-- **Provider → Riverpod：仅评估，未决定迁移。** 见 `docs/RIVERPOD_MIGRATION_ASSESSMENT.md`。
-  评估结论是「先在 `UpdateService` 做小范围试点」，且涉及 21 个生产文件 + 39 个测试文件。
-  在人工明确批准前，不得开工。
 - **OHOS 适配**：见 `docs/OHOS_ADAPTATION.md`，仓库当前未跟踪 `ohos/` 目录。
 
 ## 术语

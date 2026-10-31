@@ -1,14 +1,15 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/app_permissions.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/app_localizations_zh.dart';
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/settings_page.dart';
-import 'package:provider/provider.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
+
+import 'update_test_scope_test.dart';
 
 /// 文案以中文本地化为准，避免改文案就要改测试。
 final _zh = AppLocalizationsZh();
@@ -39,17 +40,17 @@ class _FakePermissions extends AppPermissions {
 
 late _FakePermissions _fake;
 
-Future<AppController> pumpSettings(
+Future<AppEnvironment> pumpSettings(
   WidgetTester tester, {
   bool hideTopBar = false,
   SettingsCategory category = SettingsCategory.behaviorPermissions,
 }) async {
-  final app = AppController();
-  app.settings.hideTopBar = hideTopBar;
-  addTearDown(app.dispose);
+  final environment = AppEnvironment();
+  environment.settingsState.store.hideTopBar = hideTopBar;
+  addTearDown(environment.dispose);
   await tester.pumpWidget(
-    ChangeNotifierProvider<AppController>.value(
-      value: app,
+    appEnvironmentTestTree(
+      environment: environment,
       child: MaterialApp(
         localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
@@ -59,7 +60,7 @@ Future<AppController> pumpSettings(
     ),
   );
   await tester.pumpAndSettle();
-  return app;
+  return environment;
 }
 
 Future<void> scrollToSetting(WidgetTester tester, String text) async {
@@ -103,7 +104,7 @@ void main() {
   });
 
   testWidgets('设置页顶栏同样是浮层：上滑随手指渐隐，底色不渐隐', (tester) async {
-    final app = await pumpSettings(tester, hideTopBar: true);
+    final environment = await pumpSettings(tester, hideTopBar: true);
 
     double barTop() =>
         tester.getTopLeft(find.byType(AppBar, skipOffstage: false)).dy;
@@ -135,7 +136,7 @@ void main() {
           .first,
     );
     expect(background.color.a, 1);
-    expect(app.topBarHide.value, 0);
+    expect(environment.navigation.topBarHide.value, 0);
 
     // 滑回顶部恢复显示
     await tester.drag(find.byType(Scrollable).first, const Offset(0, 200));

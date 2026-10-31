@@ -64,7 +64,7 @@ class SettingsStore {
   bool dynamicColor = false;
 
   /// 用户是否手动设置过动态取色。false 表示还没选过：
-  /// 启动时若设备支持会自动开启（见 AppController.init）。
+  /// 启动时若设备支持会自动开启（见 AppStartup.initialize）。
   bool dynamicColorChosen = false;
   int themeSeed = 0xFF2E6BE6;
   int requestInterval = 100;
@@ -109,7 +109,7 @@ class SettingsStore {
   bool navShowFavorites = false;
 
   /// 全局动画：auto = 跟随无障碍功能自动禁用（默认），on = 始终启用，
-  /// off = 始终禁用。见 AppController.setMotionMode / reduceMotionOf()。
+  /// off = 始终禁用。见 ThemeSettingsState.setMotionMode / reduceMotionOf()。
   String motionMode = 'auto';
 
   /// 更新通道：stable = 正式版、beta = 测试版。默认与安装版本的类型一致

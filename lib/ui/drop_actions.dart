@@ -1,11 +1,15 @@
+import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart' hide Icons;
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/account_state.dart';
 import '../core/api/lanzou_client.dart';
-import '../core/app_controller.dart';
+import '../core/api/lanzou_client_registry.dart';
+import '../core/data/app_db_provider.dart';
 import '../core/drag_drop.dart';
+import '../core/drive_state.dart';
 import '../core/lanzou_link.dart';
-import '../core/transfer/transfer_manager.dart';
+import '../core/transfer/transfer_manager_provider.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
@@ -151,29 +155,38 @@ void showDropSummary(BuildContext context, DropOutcome outcome) {
 ///
 /// 挂在 App 顶层（Navigator 之上），所以包括设置、分享浏览这些二级页面
 /// 在内的所有页面都能看到；内容常驻在树里，靠滑入 / 淡出过渡。
-class DropHoverBanner extends StatelessWidget {
+class DropHoverBanner extends ConsumerWidget {
   const DropHoverBanner({super.key});
 
-  String _hintText(AppController app, AppLocalizations l10n, DropHover hover) {
+  String _hintText(
+    ValueListenable<DriveLocation> location,
+    AppLocalizations l10n,
+    DropHover hover, {
+    required bool driveVisible,
+    required bool favoritesVisible,
+  }) {
     if (hover.isMixed) return l10n.dropHoverMixed;
     if (hover.hasFiles) {
-      return app.driveVisible
-          ? l10n.dropHoverUpload(drivePathLabel(l10n, app.driveLocation.value))
+      return driveVisible
+          ? l10n.dropHoverUpload(drivePathLabel(l10n, location.value))
           : l10n.dropHoverPickFolder;
     }
-    return app.favoritesVisible
-        ? l10n.dropHoverFavorite
-        : l10n.dropHoverOpenLink;
+    return favoritesVisible ? l10n.dropHoverFavorite : l10n.dropHoverOpenLink;
   }
 
   @override
-  Widget build(BuildContext context) {
-    final app = context.watch<AppController>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final drive = ref.watch(driveStateProvider);
+    final visibility = (drive: drive.driveVisible, fav: drive.favoritesVisible);
     final l10n = context.l10n;
     final scheme = Theme.of(context).colorScheme;
-    return ValueListenableBuilder<DropHover?>(
-      valueListenable: DragDropChannel.instance.hover,
-      builder: (context, hover, _) {
+    return ListenableBuilder(
+      listenable: Listenable.merge([
+        DragDropChannel.instance.hover,
+        drive.location,
+      ]),
+      builder: (context, _) {
+        final hover = DragDropChannel.instance.hover.value;
         final visible = hover != null && !hover.isEmpty;
         return Align(
           alignment: Alignment.topCenter,
@@ -212,7 +225,13 @@ class DropHoverBanner extends StatelessWidget {
                               child: Text(
                                 hover == null
                                     ? ''
-                                    : _hintText(app, l10n, hover),
+                                    : _hintText(
+                                        drive.location,
+                                        l10n,
+                                        hover,
+                                        driveVisible: visibility.drive,
+                                        favoritesVisible: visibility.fav,
+                                      ),
                                 style: Theme.of(context).textTheme.bodyMedium
                                     ?.copyWith(color: scheme.onInverseSurface),
                               ),
@@ -240,10 +259,15 @@ Future<DropOutcome?> _handleDroppedFiles(
   List<DropFile> files, {
   required DropFileTarget target,
 }) async {
-  final app = context.read<AppController>();
+  final container = ProviderScope.containerOf(context, listen: false);
+  final accounts = container.read(accountStateProvider).store;
+  final registry = container.read(lanzouClientRegistryProvider);
   final l10n = context.l10n;
-  final client = app.client;
-  if (client == null || app.activeUid == null) {
+  final uid = accounts.activeUid;
+  final client = uid == null
+      ? null
+      : registry.clientFor(uid, cookie: accounts.byUid(uid)?.cookie);
+  if (client == null || uid == null) {
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(l10n.notLoggedIn)));
     return null;
@@ -252,7 +276,7 @@ Future<DropOutcome?> _handleDroppedFiles(
   String? folderId;
   String? rename;
   if (target == DropFileTarget.currentFolder) {
-    final location = app.driveLocation.value;
+    final location = container.read(driveStateProvider).location.value;
     final choice = await _confirmUploadToCurrentFolder(
       context,
       files,
@@ -277,7 +301,7 @@ Future<DropOutcome?> _handleDroppedFiles(
   }
 
   if (!context.mounted) return null;
-  final transfers = context.read<TransferManager>();
+  final transfers = container.read(transferManagerProvider);
   var uploaded = 0;
   var failed = 0;
   for (final file in files) {
@@ -378,8 +402,9 @@ Future<DropOutcome> _addFavoritesFromLinks(
   BuildContext context,
   List<LanzouLink> links,
 ) async {
-  final app = context.read<AppController>();
-  final client = app.publicClient;
+  final container = ProviderScope.containerOf(context, listen: false);
+  final client = container.read(lanzouClientRegistryProvider).publicClient;
+  final db = container.read(appDbProvider);
   var favorited = 0;
   var duplicated = 0;
   var failed = 0;
@@ -387,7 +412,7 @@ Future<DropOutcome> _addFavoritesFromLinks(
 
   for (final link in links) {
     if (!context.mounted) break;
-    if (await app.db.isFavorite(link.url)) {
+    if (await db.isFavorite(link.url)) {
       duplicated += 1;
       continue;
     }
@@ -398,7 +423,7 @@ Future<DropOutcome> _addFavoritesFromLinks(
           link.url,
           pwd: link.pwd ?? '',
         );
-        await app.db.addFavorite(
+        await db.addFavorite(
           kind: 'shareFile',
           name: file.name,
           ref: link.url,
@@ -415,7 +440,7 @@ Future<DropOutcome> _addFavoritesFromLinks(
           link.url,
           pwd: link.pwd ?? '',
         );
-        await app.db.addFavorite(
+        await db.addFavorite(
           kind: 'shareFolder',
           name: folder.name,
           ref: link.url,

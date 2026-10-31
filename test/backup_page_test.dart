@@ -3,13 +3,19 @@ import 'dart:io';
 
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
+import 'package:lancloud/core/app_startup.dart';
+import 'package:lancloud/core/backup/backup_dependencies.dart';
 import 'package:lancloud/core/backup/backup_sections.dart';
 import 'package:lancloud/core/backup/backup_service.dart';
+import 'package:lancloud/core/backup/backup_service_provider.dart';
 import 'package:lancloud/core/backup/webdav_client.dart';
 import 'package:lancloud/core/backup/webdav_store.dart';
 import 'package:lancloud/core/cookie_auth.dart';
+import 'package:lancloud/core/navigation_appearance_settings_state.dart';
+import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/app_localizations_zh.dart';
 import 'package:lancloud/ui/app_icons.dart' as app_icons;
@@ -18,13 +24,26 @@ import 'package:lancloud/ui/backup_options_page.dart';
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/m3e.dart';
 import 'package:local_auth_android/local_auth_android.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
+Future<void> _reloadFromStorage(AppEnvironment environment) =>
+    AppStartup(environment: environment, onChanged: () {}).reloadFromStorage();
+
+BackupDependencies backupDependenciesFor(AppEnvironment environment) =>
+    BackupStoreDependencies(
+      accounts: environment.accountState.store,
+      settings: environment.settingsState.store,
+      db: environment.db,
+      reloadCallback: () => _reloadFromStorage(environment),
+    );
+
 class _FakeBackupService extends BackupService {
-  _FakeBackupService(super.app);
+  _FakeBackupService(this.environment)
+    : super(backupDependenciesFor(environment));
+
+  final AppEnvironment environment;
 
   final _FakeWebdavStore _store = _FakeWebdavStore();
 
@@ -164,7 +183,8 @@ void main() {
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
-    fake = _FakeBackupService(AppController());
+    fake = _FakeBackupService(AppEnvironment());
+    addTearDown(fake.environment.dispose);
     // 备份包含 Cookie 需要生物验证，测试里直接放行
     fakeAuth = _FakeCookieAuth(CookieAuthResult.ok);
     CookieAuth.instance = fakeAuth;
@@ -181,18 +201,24 @@ void main() {
   tearDown(() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(saveChannel, null);
-    BackupService.instance = null;
     CookieAuth.instance = CookieAuth();
   });
 
   Future<void> pumpPage(WidgetTester tester) async {
-    BackupService.instance = fake;
     tester.view.physicalSize = const Size(1080, 3600);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
-        value: fake.app,
+      ProviderScope(
+        overrides: [
+          backupServiceProvider.overrideWithValue(fake),
+          navigationAppearanceSettingsStateProvider.overrideWithValue(
+            fake.environment.navigationAppearanceSettings,
+          ),
+          navigationStateProvider.overrideWithValue(
+            fake.environment.navigation,
+          ),
+        ],
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,

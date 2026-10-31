@@ -1,12 +1,21 @@
 import 'package:material_ui/material_ui.dart' hide Icons;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/api/lanzou_client.dart';
+import 'package:lancloud/core/api/lanzou_client_registry.dart';
 import 'package:lancloud/core/api/models.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
+import 'package:lancloud/core/cache_page_settings_state.dart';
+import 'package:lancloud/core/data/app_db_provider.dart';
+import 'package:lancloud/core/navigation_appearance_settings_state.dart';
+import 'package:lancloud/core/navigation_state.dart';
+import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/delegates.dart';
 import 'package:lancloud/ui/share_folder_page.dart';
-import 'package:provider/provider.dart';
+
+import 'transfer_dependencies_test.dart'
+    show buildTransferManagerForEnvironment;
 
 /// 截图里那种「子文件夹自带提取码」：密码不对时服务端回提取码错误，
 /// 输对了才返回子文件夹内容。
@@ -36,15 +45,6 @@ class _LockedSubfolderClient extends LanzouClient {
   }
 }
 
-class _FakeApp extends AppController {
-  _FakeApp(this._client);
-
-  final LanzouClient _client;
-
-  @override
-  LanzouClient get publicClient => _client;
-}
-
 FolderShareDetail _parentFolder() => FolderShareDetail(
   name: '测试分享',
   folders: [
@@ -52,13 +52,30 @@ FolderShareDetail _parentFolder() => FolderShareDetail(
   ],
 );
 
-Future<void> _pumpPage(WidgetTester tester, AppController app) async {
+Future<void> _pumpPage(
+  WidgetTester tester, {
+  required AppEnvironment environment,
+  required LanzouClient client,
+}) async {
+  final clients = LanzouClientRegistry(factory: (_) => client);
+  final transfers = buildTransferManagerForEnvironment(environment);
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = const Size(400, 700);
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
-    ChangeNotifierProvider<AppController>.value(
-      value: app,
+    ProviderScope(
+      overrides: [
+        transferManagerProvider.overrideWithValue(transfers),
+        lanzouClientRegistryProvider.overrideWithValue(clients),
+        appDbProvider.overrideWithValue(environment.db),
+        cachePageSettingsStateProvider.overrideWithValue(
+          environment.cachePageSettings,
+        ),
+        navigationAppearanceSettingsStateProvider.overrideWithValue(
+          environment.navigationAppearanceSettings,
+        ),
+        navigationStateProvider.overrideWithValue(environment.navigation),
+      ],
       child: MaterialApp(
         localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
@@ -77,9 +94,9 @@ Future<void> _pumpPage(WidgetTester tester, AppController app) async {
 void main() {
   testWidgets('子文件夹自带提取码：弹出「此文件夹需要密码」，输对后进入', (tester) async {
     final client = _LockedSubfolderClient();
-    final app = _FakeApp(client);
-    addTearDown(app.dispose);
-    await _pumpPage(tester, app);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
+    await _pumpPage(tester, environment: environment, client: client);
 
     await tester.tap(find.text('作者的其他APP﹣密码gmi9'));
     await tester.pumpAndSettle();
@@ -107,9 +124,9 @@ void main() {
 
   testWidgets('子文件夹密码弹窗：留空提交提示请输入提取码，取消不发请求', (tester) async {
     final client = _LockedSubfolderClient();
-    final app = _FakeApp(client);
-    addTearDown(app.dispose);
-    await _pumpPage(tester, app);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
+    await _pumpPage(tester, environment: environment, client: client);
 
     await tester.tap(find.text('作者的其他APP﹣密码gmi9'));
     await tester.pumpAndSettle();

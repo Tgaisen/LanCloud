@@ -153,4 +153,23 @@ void main() {
     expect(adapter.requests.last['rep'], '1', reason: '要把服务端给的 N 填回 rep');
     expect(result.hasMore, isFalse);
   });
+
+  test('持续返回 zt=4 时按上限重试后返回统一错误', () async {
+    final client = LanzouClient(uid: '0');
+    final adapter = _ScriptedAdapter(['{"zt":4}']);
+    client.dio.httpClientAdapter = adapter;
+
+    await expectLater(
+      client.fetchShareFolderFiles(_paging(), 2),
+      throwsA(
+        isA<LanzouException>().having(
+          (e) => e.code,
+          'code',
+          LanzouErrorCode.shareFileListFailed,
+        ),
+      ),
+    );
+
+    expect(adapter.requests.length, 4, reason: '首次请求加 3 次退避重试');
+  });
 }

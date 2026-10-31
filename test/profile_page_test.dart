@@ -3,8 +3,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
+import 'package:lancloud/core/app_startup.dart';
+import 'package:lancloud/core/backup/backup_dependencies.dart';
+import 'package:lancloud/core/backup/backup_service.dart';
 import 'package:lancloud/core/data/account_store.dart';
 import 'package:lancloud/core/update/release_info.dart';
 import 'package:lancloud/core/update/update_service.dart';
@@ -15,18 +19,67 @@ import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/licenses_page.dart';
 import 'package:lancloud/ui/m3e.dart';
 import 'package:lancloud/ui/profile_page.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
-void main() {
-  tearDown(() => UpdateService.debugFetchReleases = null);
+import 'update_test_scope_test.dart';
 
+Future<void> _reloadFromStorage(AppEnvironment environment) =>
+    AppStartup(environment: environment, onChanged: () {}).reloadFromStorage();
+
+BackupDependencies backupDependenciesFor(AppEnvironment environment) =>
+    BackupStoreDependencies(
+      accounts: environment.accountState.store,
+      settings: environment.settingsState.store,
+      db: environment.db,
+      reloadCallback: () => _reloadFromStorage(environment),
+    );
+
+class _NoopBackupService extends BackupService {
+  _NoopBackupService(AppEnvironment environment)
+    : super(backupDependenciesFor(environment));
+
+  @override
+  Future<void> init() async {}
+}
+
+class _TestProviders extends StatelessWidget {
+  const _TestProviders.value({
+    required this.value,
+    required this.child,
+    this.container,
+    this.backupService,
+  });
+
+  final AppEnvironment value;
+  final Widget child;
+  final ProviderContainer? container;
+  final BackupService? backupService;
+
+  @override
+  Widget build(BuildContext context) {
+    final updateContainer = container;
+    if (updateContainer != null) {
+      return updateEnvironmentTestTree(
+        environment: value,
+        container: updateContainer,
+        child: child,
+      );
+    }
+    return appEnvironmentTestTree(
+      environment: value,
+      child: child,
+      backupService: backupService,
+    );
+  }
+}
+
+void main() {
   testWidgets('「我的」视图：显示账号、网页版、设置与关于', (tester) async {
-    final app = AppController();
+    final app = AppEnvironment();
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
+      _TestProviders.value(
         value: app,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
@@ -75,12 +128,13 @@ void main() {
     tester,
   ) async {
     Future<int> tailSpacerCount({required bool floating}) async {
-      final app = AppController()..settings.floatingNavBar = floating;
+      final app = AppEnvironment();
+      app.settingsState.store.floatingNavBar = floating;
       tester.view.physicalSize = const Size(400, 600);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
       await tester.pumpWidget(
-        ChangeNotifierProvider<AppController>.value(
+        _TestProviders.value(
           value: app,
           child: MaterialApp(
             localizationsDelegates: appLocalizationsDelegates,
@@ -106,7 +160,7 @@ void main() {
   });
 
   testWidgets('「我的」切到别的标签页再切回来，滚动位置保留', (tester) async {
-    final app = AppController();
+    final app = AppEnvironment();
     addTearDown(app.dispose);
     // 视口做小一点，让「我的」内容可滚动
     tester.view.physicalSize = const Size(400, 300);
@@ -115,7 +169,7 @@ void main() {
     final pager = PageController(initialPage: 2);
     addTearDown(pager.dispose);
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
+      _TestProviders.value(
         value: app,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
@@ -164,11 +218,13 @@ void main() {
     tester.view.physicalSize = const Size(1200, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    final app = AppController();
+    final app = AppEnvironment();
     addTearDown(app.dispose);
+    final backupService = _NoopBackupService(app);
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
+      _TestProviders.value(
         value: app,
+        backupService: backupService,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
@@ -284,11 +340,13 @@ void main() {
     tester.view.physicalSize = const Size(1200, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    final app = AppController();
+    final app = AppEnvironment();
     addTearDown(app.dispose);
+    final backupService = _NoopBackupService(app);
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
+      _TestProviders.value(
         value: app,
+        backupService: backupService,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
@@ -364,10 +422,10 @@ void main() {
     tester.view.physicalSize = const Size(841, 574);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    final app = AppController();
+    final app = AppEnvironment();
     addTearDown(app.dispose);
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
+      _TestProviders.value(
         value: app,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
@@ -403,10 +461,10 @@ void main() {
     addTearDown(tester.view.reset);
 
     Future<double> paneWidth(Locale locale) async {
-      final app = AppController();
+      final app = AppEnvironment();
       addTearDown(app.dispose);
       await tester.pumpWidget(
-        ChangeNotifierProvider<AppController>.value(
+        _TestProviders.value(
           value: app,
           child: MaterialApp(
             localizationsDelegates: appLocalizationsDelegates,
@@ -440,11 +498,13 @@ void main() {
     tester.view.physicalSize = const Size(1200, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    final app = AppController();
+    final app = AppEnvironment();
     addTearDown(app.dispose);
+    final backupService = _NoopBackupService(app);
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
+      _TestProviders.value(
         value: app,
+        backupService: backupService,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
@@ -590,10 +650,11 @@ void main() {
     tester.view.physicalSize = const Size(1200, 500);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    final app = AppController()..settings.hideTopBar = true;
+    final app = AppEnvironment();
+    app.settingsState.store.hideTopBar = true;
     addTearDown(app.dispose);
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
+      _TestProviders.value(
         value: app,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
@@ -611,22 +672,22 @@ void main() {
     // 上滑把顶栏收起
     await tester.drag(find.text('下载目录'), const Offset(0, -200));
     await tester.pumpAndSettle();
-    expect(app.topBarHide.value, greaterThan(0));
+    expect(app.navigation.topBarHide.value, greaterThan(0));
 
     // 切换类别：新视图要带着顶栏出现（不再保持收起）
     await tester.tap(find.text('外观与布局'));
     await tester.pumpAndSettle();
-    expect(app.topBarHide.value, 0);
+    expect(app.navigation.topBarHide.value, 0);
   });
 
   testWidgets('大屏右窗格切换动画：前进从右滑入、后退从左滑入', (tester) async {
     tester.view.physicalSize = const Size(1200, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    final app = AppController();
+    final app = AppEnvironment();
     addTearDown(app.dispose);
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
+      _TestProviders.value(
         value: app,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
@@ -670,23 +731,22 @@ void main() {
   });
 
   testWidgets('「我的」账号卡片：普通用户不显示等级卡片，会员等级显示', (tester) async {
-    Widget tree(AppController app) =>
-        ChangeNotifierProvider<AppController>.value(
-          value: app,
-          child: MaterialApp(
-            localizationsDelegates: appLocalizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            locale: const Locale('zh'),
-            home: const ProfilePage(),
-          ),
-        );
+    Widget tree(AppEnvironment app) => _TestProviders.value(
+      value: app,
+      child: MaterialApp(
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('zh'),
+        home: const ProfilePage(),
+      ),
+    );
 
-    final app = AppController();
+    final app = AppEnvironment();
     addTearDown(app.dispose);
-    app.accounts.accounts.add(
+    app.accountState.store.accounts.add(
       Account(uid: '556911', cookie: 'c', nickname: '土豆'),
     );
-    app.accounts.activeUid = '556911';
+    app.accountState.store.activeUid = '556911';
     await tester.pumpWidget(tree(app));
     await tester.pumpAndSettle();
 
@@ -703,27 +763,27 @@ void main() {
     expect(find.text('普'), findsNothing);
 
     // 截取到会员等级后显示小卡片
-    app.accounts.byUid('556911')!.level = '白';
-    app.notifyListeners();
+    app.accountState.store.byUid('556911')!.level = '白';
+    app.accountState.notifyAccountChanged();
     await tester.pumpAndSettle();
     expect(find.text('白'), findsOneWidget);
 
     // 调成普通用户「普」：卡片隐藏
-    app.accounts.byUid('556911')!.level = '普';
-    app.notifyListeners();
+    app.accountState.store.byUid('556911')!.level = '普';
+    app.accountState.notifyAccountChanged();
     await tester.pumpAndSettle();
     expect(find.text('普'), findsNothing);
   });
 
   testWidgets('管理账号弹窗：两个列表组，容器色比弹窗底高一档、窗体边距 16dp', (tester) async {
-    final app = AppController();
+    final app = AppEnvironment();
     addTearDown(app.dispose);
-    app.accounts.accounts.add(
+    app.accountState.store.accounts.add(
       Account(uid: '556911', cookie: 'c', nickname: '土豆'),
     );
-    app.accounts.activeUid = '556911';
+    app.accountState.store.activeUid = '556911';
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
+      _TestProviders.value(
         value: app,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
@@ -769,14 +829,14 @@ void main() {
   testWidgets('移除账号弹窗：列表组复选行「清除使用数据」，勾选后确认即移除账号', (tester) async {
     // 移除账号会写安全存储：测试里换成内存实现
     FlutterSecureStorage.setMockInitialValues({});
-    final app = AppController();
+    final app = AppEnvironment();
     addTearDown(app.dispose);
-    app.accounts.accounts.add(
+    app.accountState.store.accounts.add(
       Account(uid: '556911', cookie: 'c', nickname: '土豆'),
     );
-    app.accounts.activeUid = '556911';
+    app.accountState.store.activeUid = '556911';
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
+      _TestProviders.value(
         value: app,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
@@ -807,7 +867,7 @@ void main() {
     // 取消：账号还在
     await tester.tap(find.text('取消'));
     await tester.pumpAndSettle();
-    expect(app.accounts.accounts, hasLength(1));
+    expect(app.accountState.store.accounts, hasLength(1));
 
     // 重新打开并确认移除：账号从本机删掉
     await tester.tap(find.text('切换'));
@@ -818,35 +878,41 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('移除'));
     await tester.pumpAndSettle();
-    expect(app.accounts.accounts, isEmpty);
-    expect(app.accounts.activeUid, isNull);
+    expect(app.accountState.store.accounts, isEmpty);
+    expect(app.accountState.store.activeUid, isNull);
   });
 
   testWidgets('「更新」条目：检测到新版本时显示「检测到更新」副标题（单栏 / 两栏）', (tester) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
-    UpdateService.debugFetchReleases = () async => [
-      ReleaseInfo(
-        tag: 'v99.0.0',
-        version: '99.0.0',
-        body: '',
-        htmlUrl: '',
-        prerelease: false,
-        draft: false,
-        publishedAt: null,
-        assets: const [],
-      ),
-    ];
-    final app = AppController();
+    final app = AppEnvironment();
     addTearDown(app.dispose);
-    await app.settings.load();
-    await app.updates.bind(app.settings);
-    await app.updates.check();
-    expect(app.updates.status, UpdateStatus.available);
+    await app.settingsState.store.load();
+    final container = createUpdateContainer(
+      settings: app.settingsState.store,
+      fetch: () async => [
+        ReleaseInfo(
+          tag: 'v99.0.0',
+          version: '99.0.0',
+          body: '',
+          htmlUrl: '',
+          prerelease: false,
+          draft: false,
+          publishedAt: null,
+          assets: const [],
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+    final updates = container.read(updateServiceProvider.notifier);
+    await updates.initialize();
+    await updates.check();
+    expect(updates.status, UpdateStatus.available);
 
     Future<void> pumpProfile() async {
       await tester.pumpWidget(
-        ChangeNotifierProvider<AppController>.value(
+        _TestProviders.value(
           value: app,
+          container: container,
           child: MaterialApp(
             localizationsDelegates: appLocalizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,

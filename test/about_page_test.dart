@@ -1,31 +1,39 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/app_info.dart';
+import 'package:lancloud/core/navigation_appearance_settings_state.dart';
+import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/about_page.dart';
 import 'package:lancloud/ui/app_icons.dart' as app_icons;
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/m3e.dart';
-import 'package:provider/provider.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
+Widget host(AppEnvironment environment, Widget home) => ProviderScope(
+  overrides: [
+    navigationAppearanceSettingsStateProvider.overrideWithValue(
+      environment.navigationAppearanceSettings,
+    ),
+    navigationStateProvider.overrideWithValue(environment.navigation),
+  ],
+  child: MaterialApp(
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    locale: const Locale('zh'),
+    home: home,
+  ),
+);
+
 void main() {
   testWidgets('关于页显示版本、协议入口与免责声明', (tester) async {
-    final app = AppController();
-    await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
-        value: app,
-        child: MaterialApp(
-          localizationsDelegates: appLocalizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          locale: const Locale('zh'),
-          home: const AboutPage(),
-        ),
-      ),
-    );
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
+    await tester.pumpWidget(host(environment, const AboutPage()));
     await tester.pumpAndSettle();
 
     expect(find.text('蓝云'), findsOneWidget);
@@ -71,22 +79,12 @@ void main() {
     }
     // 用 TopBarOverlayScaffold 的页面都带快速滑动条
     expect(find.byType(FastScrollbar), findsOneWidget);
-    app.dispose();
   });
 
   testWidgets('关于页可以打开隐私政策弹窗', (tester) async {
-    final app = AppController();
-    await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
-        value: app,
-        child: MaterialApp(
-          localizationsDelegates: appLocalizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          locale: const Locale('zh'),
-          home: const AboutPage(),
-        ),
-      ),
-    );
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
+    await tester.pumpWidget(host(environment, const AboutPage()));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('隐私政策'));
@@ -94,7 +92,6 @@ void main() {
 
     expect(find.byType(AlertDialog), findsOneWidget);
     expect(find.textContaining('WebDAV'), findsWidgets);
-    app.dispose();
   });
 
   testWidgets('关于页：提交 Issue 与相关信息同组；相关信息弹窗展示构建与设备信息', (tester) async {
@@ -117,18 +114,9 @@ void main() {
           .setMockMethodCallHandler(channel, null),
     );
 
-    final app = AppController();
-    await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
-        value: app,
-        child: MaterialApp(
-          localizationsDelegates: appLocalizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          locale: const Locale('zh'),
-          home: const AboutPage(),
-        ),
-      ),
-    );
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
+    await tester.pumpWidget(host(environment, const AboutPage()));
     await tester.pumpAndSettle();
 
     // 构建信息已搬到更新页：关于页不再有入口
@@ -164,6 +152,5 @@ void main() {
     expect(text, contains('System: Android 12 (31)'));
     expect(text, contains('System build: NOH-AN00 4.2.0.196(C00E182R8P6)'));
     expect(text, contains('Architecture: arm64-v8a, armeabi-v7a, armeabi'));
-    app.dispose();
   });
 }

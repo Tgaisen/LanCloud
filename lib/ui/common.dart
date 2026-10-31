@@ -6,13 +6,17 @@ import 'package:flutter/gestures.dart';
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_auth_android/local_auth_android.dart';
 import 'package:local_auth_darwin/local_auth_darwin.dart';
-import 'package:provider/provider.dart';
 
 import '../core/api/lanzou_client.dart';
-import '../core/app_controller.dart';
-import '../core/transfer/transfer_manager.dart';
+import '../core/api/lanzou_client_registry.dart';
+import '../core/data/app_db_provider.dart';
+import '../core/drive_state.dart';
+import '../core/navigation_appearance_settings_state.dart';
+import '../core/navigation_state.dart';
+import '../core/transfer/transfer_manager_provider.dart';
 import '../l10n/l10n.dart';
 import 'app_scroll.dart';
 import 'app_icons.dart';
@@ -1082,8 +1086,8 @@ class FadeIn extends StatelessWidget {
   }
 }
 
-/// 顶栏浮层：和底栏共用同一套收起进度（[AppController.barsHide]），
-/// 滚动向下时整体上滑隐藏、调出时（[AppController.animateBarsHide]）下滑显示。
+/// 顶栏浮层：和底栏共用同一套收起进度（[NavigationState.barsHide]），
+/// 滚动向下时整体上滑隐藏、调出时（[NavigationState.animateBarsHide]）下滑显示。
 ///
 /// 顶栏不参与列表布局，因此推动它不会改变页面的滚动位置；
 /// 页面需要在列表顶部留出等高的占位（见各页面的 spacer sliver）。
@@ -1107,19 +1111,34 @@ class TopBarOverlay extends StatelessWidget {
   /// 1:1 跟随手指淡出，底色始终保持不透明。
   final WidgetBuilder builder;
 
-  /// 收起进度来源；为空时用外壳的 [AppController.topBarHide]
+  /// 收起进度来源；为空时用外壳的 [NavigationState.topBarHide]
   /// （底栏视图共用），独立页面传各自的进度，互不影响。
   final ValueListenable<double>? progress;
 
   @override
   Widget build(BuildContext context) {
-    final app = context.watch<AppController>();
+    final container = ProviderScope.containerOf(context);
+    final appearance = container.read(
+      navigationAppearanceSettingsStateProvider,
+    );
+    final hide = progress ?? container.read(navigationStateProvider).topBarHide;
+    return ListenableBuilder(
+      listenable: appearance.revision,
+      builder: (context, _) =>
+          _buildOverlay(context, appearance.hideTopBar, hide),
+    );
+  }
+
+  Widget _buildOverlay(
+    BuildContext context,
+    bool hideTopBar,
+    ValueListenable<double> hide,
+  ) {
     return ValueListenableBuilder<double>(
-      // 顶栏用独立的收起进度（距离 = 顶栏自身高度，才能 1:1 跟手）
-      valueListenable: progress ?? app.topBarHide,
-      builder: (context, hide, _) {
+      valueListenable: hide,
+      builder: (context, value, _) {
         // 只有开启「顶栏收起」时才跟随收起进度
-        final t = app.settings.hideTopBar ? hide.clamp(0.0, 1.0) : 0.0;
+        final t = hideTopBar ? value.clamp(0.0, 1.0) : 0.0;
         return IgnorePointer(
           ignoring: t >= 0.999,
           child: Transform.translate(
@@ -1243,15 +1262,23 @@ class TopBarOverlayScaffold extends StatefulWidget {
 }
 
 class _TopBarOverlayScaffoldState extends State<TopBarOverlayScaffold> {
-  /// 页面自己的收起进度：不动外壳的 [AppController.topBarHide]，
+  /// 页面自己的收起进度：不动外壳的 [NavigationState.topBarHide]，
   /// 否则返回标签页时会把它们的顶栏一起带走。
   final ValueNotifier<double> _hide = ValueNotifier<double>(0);
 
   /// 页面没传 [TopBarOverlayScaffold.controller] 时兜一个：快速滑动条
   /// 必须和滚动视图共用同一个 controller 才能拖拽。
   final ScrollController _fallbackScroll = ScrollController();
+  late NavigationAppearanceSettingsState _appearance;
 
   ScrollController get _scroll => widget.controller ?? _fallbackScroll;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _appearance = ProviderScope.containerOf(context)
+        .read(navigationAppearanceSettingsStateProvider);
+  }
 
   @override
   void dispose() {
@@ -1262,14 +1289,21 @@ class _TopBarOverlayScaffoldState extends State<TopBarOverlayScaffold> {
 
   @override
   Widget build(BuildContext context) {
-    final app = context.watch<AppController>();
+    return ValueListenableBuilder<int>(
+      valueListenable: _appearance.revision,
+      builder: (context, _, _) =>
+          _buildScaffold(context, _appearance.hideTopBar),
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context, bool hideTopBar) {
     final scheme = Theme.of(context).colorScheme;
     final topInset =
         MediaQuery.paddingOf(context).top + widget.appBar.preferredSize.height;
     return ScrollTint(
       hideDistance: topInset,
       readBarsHidden: () => _hide.value,
-      onBarsHidden: app.settings.hideTopBar
+      onBarsHidden: hideTopBar
           ? (value) {
               _hide.value = value;
             }
@@ -2669,14 +2703,21 @@ class BatchActionBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final appearance = ProviderScope.containerOf(context)
+        .read(navigationAppearanceSettingsStateProvider);
+    return ListenableBuilder(
+      listenable: appearance.revision,
+      builder: (context, _) => _buildBar(context, appearance.floatingNavBar),
+    );
+  }
+
+  Widget _buildBar(BuildContext context, bool floatingNavBar) {
     final scheme = Theme.of(context).colorScheme;
     // 外壳开了 extendBody 后，底栏槽位高度会写进正文的 padding.bottom：
     // 普通底栏 = 80 + 系统手势区，悬浮底栏 = 108 + 系统手势区（含 16dp 顶留白）。
     // 按整槽避让时悬浮样式的多选条会离胶囊多出 16dp，这里回退成胶囊实际高度，
     // 两种样式的间距保持一致（都是 12dp）。
-    final app = context.watch<AppController>();
-    final floatingNavInShell =
-        inRootShell(context) && app.settings.floatingNavBar;
+    final floatingNavInShell = inRootShell(context) && floatingNavBar;
     final bottomInset = math.max(
       0.0,
       MediaQuery.paddingOf(context).bottom -
@@ -4584,7 +4625,8 @@ Future<void> showLoadingDialog(BuildContext context, String text) {
 /// 查一个分享条目（`ref` = 分享链接）是否已收藏。查不到（例如库不可用）按未收藏。
 Future<bool> isFavoritedByRef(BuildContext context, String ref) async {
   try {
-    return await context.read<AppController>().db.isFavorite(ref);
+    final container = ProviderScope.containerOf(context, listen: false);
+    return await container.read(appDbProvider).isFavorite(ref);
   } catch (_) {
     return false;
   }
@@ -4601,15 +4643,18 @@ Future<bool?> toggleFavoriteByRef(
   String size = '',
   String sharer = '',
 }) async {
-  final app = context.read<AppController>();
+  final db = ProviderScope.containerOf(
+    context,
+    listen: false,
+  ).read(appDbProvider);
   final l10n = context.l10n;
   try {
-    if (await app.db.isFavorite(ref)) {
-      await app.db.removeFavorite(ref);
+    if (await db.isFavorite(ref)) {
+      await db.removeFavorite(ref);
       if (context.mounted) showAppToast(context, l10n.unfavorited);
       return false;
     }
-    await app.db.addFavorite(
+    await db.addFavorite(
       kind: kind,
       name: name,
       ref: ref,
@@ -4642,8 +4687,9 @@ Future<bool> downloadShareFile(
   /// 属性弹窗传这个回调：补密码后继续下载，并把新密码同步到收藏夹。
   Future<String?> Function()? askPassword,
 }) async {
-  final app = context.read<AppController>();
-  final transfers = context.read<TransferManager>();
+  final container = ProviderScope.containerOf(context, listen: false);
+  final client = container.read(lanzouClientRegistryProvider).publicClient;
+  final transfers = container.read(transferManagerProvider);
   final navigator = Navigator.of(context);
   final messenger = ScaffoldMessenger.of(context);
   final l10n = context.l10n;
@@ -4662,17 +4708,14 @@ Future<bool> downloadShareFile(
   while (true) {
     String? passwordError;
     try {
-      final direct = await app.publicClient.resolveFileShare(
-        url,
-        pwd: currentPwd,
-      );
+      final direct = await client.resolveFileShare(url, pwd: currentPwd);
       if (showLoading) navigator.pop();
       transfers.addDownload(
         url: direct.url,
         name: direct.name.isEmpty ? (fallbackName ?? 'download') : direct.name,
         referer: url,
         pwd: currentPwd,
-        via: app.publicClient,
+        via: client,
       );
       notify(l10n.addedToQueue);
       return true;
@@ -4713,8 +4756,9 @@ Future<void> downloadShareFiles(
   String pwd = '',
 }) async {
   if (urls.isEmpty || urls.length != names.length) return;
-  final app = context.read<AppController>();
-  final transfers = context.read<TransferManager>();
+  final container = ProviderScope.containerOf(context, listen: false);
+  final client = container.read(lanzouClientRegistryProvider).publicClient;
+  final transfers = container.read(transferManagerProvider);
   final messenger = ScaffoldMessenger.of(context);
   final l10n = context.l10n;
   var added = 0;
@@ -4727,16 +4771,13 @@ Future<void> downloadShareFiles(
       for (var i = 0; i < urls.length; i++) {
         report(i + 1, names[i]);
         try {
-          final direct = await app.publicClient.resolveFileShare(
-            urls[i],
-            pwd: pwd,
-          );
+          final direct = await client.resolveFileShare(urls[i], pwd: pwd);
           transfers.addDownload(
             url: direct.url,
             name: direct.name.isEmpty ? names[i] : direct.name,
             referer: urls[i],
             pwd: pwd,
-            via: app.publicClient,
+            via: client,
           );
           added += 1;
         } catch (_) {

@@ -1,9 +1,14 @@
 import 'package:material_ui/material_ui.dart' hide Icons;
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/account_state.dart';
 import '../core/api/lanzou_client.dart';
+import '../core/api/lanzou_client_registry.dart';
 import '../core/api/models.dart';
-import '../core/app_controller.dart';
+import '../core/data/app_db_provider.dart';
+import '../core/drive_state.dart';
+import '../core/navigation_appearance_settings_state.dart';
+import '../core/navigation_state.dart';
 import 'download_mark.dart';
 import '../core/data/app_db.dart';
 import '../l10n/l10n.dart';
@@ -20,17 +25,17 @@ import 'share_password_dialog.dart';
 enum _FavoriteItemAction { open, copyLink, edit, unfavorite }
 
 /// 收藏视图：独立底栏页，布局与传输页一致（分组 + 多选删除）。
-class FavoritesPage extends StatefulWidget {
+class FavoritesPage extends ConsumerStatefulWidget {
   const FavoritesPage({super.key, this.tabIndex});
 
   /// 外壳中的 page 视图下标；作为独立路由打开时为 null（不响应切换通知）。
   final int? tabIndex;
 
   @override
-  State<FavoritesPage> createState() => _FavoritesPageState();
+  ConsumerState<FavoritesPage> createState() => _FavoritesPageState();
 }
 
-class _FavoritesPageState extends State<FavoritesPage>
+class _FavoritesPageState extends ConsumerState<FavoritesPage>
     with AutomaticKeepAliveClientMixin, SingleTickerProviderStateMixin {
   static const _anim = Duration(milliseconds: 200);
 
@@ -56,21 +61,21 @@ class _FavoritesPageState extends State<FavoritesPage>
   String _sort = 'time';
 
   late final AppDb _db;
-  AppController? _app;
+  late final NavigationState _navigation;
+  late final DriveState _drive;
 
   /// 拖拽判定用的探针：当前是否"可见地"处于收藏页（底栏 tab 或独立路由）。
   late final bool Function() _dropProbe = _visibleAsDropTarget;
 
   bool _visibleAsDropTarget() {
     if (!mounted) return false;
-    final app = _app;
-    if (app == null) return false;
     final route = ModalRoute.of(context);
     // 被别的页面（例如从收藏打开的子目录）盖住时不算
     if (route != null && !route.isCurrent) return false;
     // 底栏形态：只有当前激活的 tab 才算；独立页面：在最上层就算
     if (route == null || route.isFirst) {
-      return widget.tabIndex != null && app.activeTab.value == widget.tabIndex;
+      return widget.tabIndex != null &&
+          _navigation.activeTab.value == widget.tabIndex;
     }
     return true;
   }
@@ -87,31 +92,23 @@ class _FavoritesPageState extends State<FavoritesPage>
   @override
   void initState() {
     super.initState();
-    final app = context.read<AppController>();
-    _db = app.db;
+    _db = ref.read(appDbProvider);
+    _navigation = ref.read(navigationStateProvider);
+    _drive = ref.read(driveStateProvider);
     _db.revision.addListener(_load);
-    app.activeTab.addListener(_onActiveTabChanged);
-    app.addFavoritesProbe(_dropProbe);
+    _navigation.activeTab.addListener(_onActiveTabChanged);
+    _drive.addFavoritesProbe(_dropProbe);
     _load();
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _app = context.read<AppController>();
   }
 
   @override
   void dispose() {
     _db.revision.removeListener(_load);
-    final app = _app;
-    if (app != null) {
-      app.removeFavoritesProbe(_dropProbe);
-      app.activeTab.removeListener(_onActiveTabChanged);
-      if (_selecting) {
-        app.setSelectionMode(false);
-        app.onRequestExitSelection = null;
-      }
+    _drive.removeFavoritesProbe(_dropProbe);
+    _navigation.activeTab.removeListener(_onActiveTabChanged);
+    if (_selecting) {
+      _navigation.setSelectionMode(false);
+      _navigation.onRequestExitSelection = null;
     }
     _scroll.dispose();
     _search.dispose();
@@ -121,9 +118,8 @@ class _FavoritesPageState extends State<FavoritesPage>
 
   /// 切到本视图时重新读取收藏（可能在别处新增/删除了收藏）。
   void _onActiveTabChanged() {
-    final app = _app;
-    if (app == null || widget.tabIndex == null) return;
-    if (app.activeTab.value == widget.tabIndex) _load();
+    if (widget.tabIndex == null) return;
+    if (_navigation.activeTab.value == widget.tabIndex) _load();
   }
 
   Future<void> _load() async {
@@ -253,15 +249,14 @@ class _FavoritesPageState extends State<FavoritesPage>
     final wasSelecting = _selecting;
     if (!_selecting) {
       // 其它页面可能正处于多选：先退出，避免两处状态打架
-      context.read<AppController>().onRequestExitSelection?.call();
+      _navigation.onRequestExitSelection?.call();
     }
     setState(() {
       _selecting = true;
       if (id != null) _selected.add(id);
     });
-    final app = context.read<AppController>();
-    app.onRequestExitSelection = _exitSelection;
-    app.setSelectionMode(true);
+    _navigation.onRequestExitSelection = _exitSelection;
+    _navigation.setSelectionMode(true);
     if (!wasSelecting) announceEnteredMultiSelect(context);
   }
 
@@ -271,9 +266,8 @@ class _FavoritesPageState extends State<FavoritesPage>
       _selecting = false;
       _selected.clear();
     });
-    final app = context.read<AppController>();
-    app.onRequestExitSelection = null;
-    app.setSelectionMode(false);
+    _navigation.onRequestExitSelection = null;
+    _navigation.setSelectionMode(false);
   }
 
   void _toggleSelected(int id) {
@@ -403,13 +397,14 @@ class _FavoritesPageState extends State<FavoritesPage>
   /// 打开收藏的分享文件夹：先用收藏里的提取码解析；提取码失效时弹
   /// 「此文件夹需要密码」，验证通过后把新密码写回收藏，再进入浏览页。
   Future<void> _openFolder(FavoriteItem item) async {
-    final app = context.read<AppController>();
+    final client = ref.read(lanzouClientRegistryProvider).publicClient;
+    final accounts = ref.read(accountStateProvider).store;
     final l10n = context.l10n;
     showLoadingDialog(context, l10n.resolving);
     FolderShareDetail? detail;
     var pwd = item.pwd;
     try {
-      detail = await app.publicClient.resolveFolderShare(item.ref, pwd: pwd);
+      detail = await client.resolveFolderShare(item.ref, pwd: pwd);
     } on NeedPasswordException {
       detail = null;
     } on WrongPasswordException {
@@ -439,8 +434,8 @@ class _FavoritesPageState extends State<FavoritesPage>
       if (!mounted) return;
     }
     // 与「打开链接」打开文件夹一致：进入浏览页前记一条最近使用
-    await app.db.addRecent(
-      account: app.activeUid ?? '',
+    await _db.addRecent(
+      account: accounts.activeUid ?? '',
       kind: 'shareFolder',
       name: detail.name,
       ref: item.ref,
@@ -448,7 +443,7 @@ class _FavoritesPageState extends State<FavoritesPage>
     );
     if (!mounted) return;
     await Navigator.of(context).push(
-      MaterialPageRoute(
+      MaterialPageRoute<void>(
         builder: (_) =>
             ShareFolderPage(folder: detail!, link: item.ref, pwd: pwd),
       ),
@@ -463,7 +458,6 @@ class _FavoritesPageState extends State<FavoritesPage>
     FavoriteItem item,
     BuildContext anchorContext,
   ) async {
-    final app = context.read<AppController>();
     final anchor = m3eMenuAnchorOf(anchorContext);
     if (anchor == null) return;
     final _FavoriteItemAction? action = await showM3eMenu<_FavoriteItemAction>(
@@ -512,12 +506,11 @@ class _FavoritesPageState extends State<FavoritesPage>
         setState(() => _removing.add(item.id));
         await Future<void>.delayed(const Duration(milliseconds: 220));
         if (!mounted) return;
-        await app.db.removeFavoriteById(item.id);
+        await _db.removeFavoriteById(item.id);
     }
   }
 
   Future<void> _editFavorite(FavoriteItem item) async {
-    final app = context.read<AppController>();
     final l10n = context.l10n;
     final titleController = TextEditingController(text: item.title);
     final linkController = TextEditingController(text: item.ref);
@@ -573,7 +566,7 @@ class _FavoritesPageState extends State<FavoritesPage>
                   return;
                 }
                 Navigator.of(dialogContext).pop();
-                app.db.updateFavorite(
+                _db.updateFavorite(
                   item.id,
                   title: titleController.text.trim(),
                   ref: link,
@@ -646,7 +639,19 @@ class _FavoritesPageState extends State<FavoritesPage>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final app = context.read<AppController>();
+    final appearance = ref.watch(navigationAppearanceSettingsStateProvider);
+    return ListenableBuilder(
+      listenable: appearance.revision,
+      builder: (context, _) =>
+          _buildPage(context, appearance.hideTopBar, _navigation),
+    );
+  }
+
+  Widget _buildPage(
+    BuildContext context,
+    bool hideTopBar,
+    NavigationState navigation,
+  ) {
     final scheme = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     final headerHeight = MediaQuery.paddingOf(context).top + kToolbarHeight;
@@ -678,9 +683,9 @@ class _FavoritesPageState extends State<FavoritesPage>
             BodySideInset(
               child: ScrollTint(
                 hideDistance: headerHeight,
-                readBarsHidden: () => app.topBarHide.value,
-                onBarsHidden: app.settings.hideTopBar
-                    ? app.setTopBarHideFromScroll
+                readBarsHidden: () => navigation.topBarHide.value,
+                onBarsHidden: hideTopBar
+                    ? navigation.setTopBarHideFromScroll
                     : null,
                 // 列表快速滑动条（可拖拽）
                 child: FastScrollbar(

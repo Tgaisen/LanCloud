@@ -1,19 +1,50 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/account_state.dart';
+import 'package:lancloud/core/api/lanzou_client_registry.dart';
+import 'package:lancloud/core/app_environment.dart';
+import 'package:lancloud/core/backup/backup_dependencies.dart';
+import 'package:lancloud/core/backup/backup_service.dart';
+import 'package:lancloud/core/backup/backup_service_provider.dart';
+import 'package:lancloud/core/drive_state.dart';
+import 'package:lancloud/core/navigation_appearance_settings_state.dart';
+import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/app_icons.dart' as app_icons;
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/login_page.dart';
 import 'package:lancloud/ui/m3e.dart';
-import 'package:provider/provider.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
-Widget host(Widget home) {
-  return ChangeNotifierProvider<AppController>.value(
-    value: AppController(),
+Future<void> _noopReload() async {}
+
+BackupDependencies backupDependenciesFor(AppEnvironment environment) =>
+    BackupStoreDependencies(
+      accounts: environment.accountState.store,
+      settings: environment.settingsState.store,
+      db: environment.db,
+      reloadCallback: _noopReload,
+    );
+
+Widget host(Widget home, {AppEnvironment? environment}) {
+  final current = environment ?? AppEnvironment();
+  addTearDown(current.dispose);
+  return ProviderScope(
+    overrides: [
+      accountStateProvider.overrideWithValue(current.accountState),
+      lanzouClientRegistryProvider.overrideWithValue(current.clientRegistry),
+      driveStateProvider.overrideWithValue(current.drive),
+      backupServiceProvider.overrideWithValue(
+        BackupService(backupDependenciesFor(current)),
+      ),
+      navigationAppearanceSettingsStateProvider.overrideWithValue(
+        current.navigationAppearanceSettings,
+      ),
+      navigationStateProvider.overrideWithValue(current.navigation),
+    ],
     child: MaterialApp(
       localizationsDelegates: appLocalizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
@@ -169,21 +200,13 @@ void main() {
   });
 
   testWidgets('恢复页顶栏随滚动渐变并收纳', (tester) async {
-    final app = AppController()..settings.hideTopBar = true;
-    addTearDown(app.dispose);
+    final environment = AppEnvironment();
+    environment.settingsState.store.hideTopBar = true;
     tester.view.physicalSize = const Size(400, 640);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
-        value: app,
-        child: MaterialApp(
-          localizationsDelegates: appLocalizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          locale: const Locale('zh'),
-          home: const LoginPage(firstRun: true),
-        ),
-      ),
+      host(const LoginPage(firstRun: true), environment: environment),
     );
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(ListTile, '从已有备份恢复'));

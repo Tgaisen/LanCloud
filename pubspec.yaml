@@ -20,7 +20,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # versionCode = YY*10^7 + Drop*10^5 + Hotfix*10^4 + ABI*10^3 + Stage*10^2 + Seq
 # （这里存 ABI=0 的基准号；ABI 位由 android/app/build.gradle.kts 构建时加上）。
 # 详见 docs/VERSIONING.md；改完记得同步 lib/core/app_info.dart（有测试校验）。
-version: 26.1.0-pre.19+260100219
+version: 26.1.0-pre.30+260100230
 
 environment:
   sdk: ^3.13.3
@@ -41,7 +41,6 @@ dependencies:
   intl: any
 
   dio: ^5.11.1
-  provider: ^6.1.5+1
   sqflite: ^2.4.5
   # 桌面端（Windows）用 FFI 实现跑 SQLite；Android/iOS 仍走 sqflite 原生实现
   sqflite_common_ffi: ^2.4.5
@@ -90,6 +89,8 @@ dependencies:
   material_ui: ">=1.6.0 <1.8.0"
   cupertino_ui: ^1.1.4
   cryptography: ^2.9.0
+  # 应用级状态与依赖注入统一使用 Riverpod。
+  flutter_riverpod: ^3.4.3
 dev_dependencies:
   flutter_test:
     sdk: flutter

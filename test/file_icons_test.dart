@@ -1,27 +1,41 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lancloud/core/account_state.dart';
+import 'package:lancloud/core/api/lanzou_client_registry.dart';
 import 'package:lancloud/core/api/models.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
+import 'package:lancloud/core/cache_page_settings_state.dart';
+import 'package:lancloud/core/data/app_db_provider.dart';
+import 'package:lancloud/core/drive_state.dart';
+import 'package:lancloud/core/list_home_settings_state.dart';
+import 'package:lancloud/core/navigation_appearance_settings_state.dart';
+import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/core/data/account_store.dart';
 import 'package:lancloud/core/drive_cache.dart';
-import 'package:lancloud/core/transfer/transfer_manager.dart';
+import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/delegates.dart';
 import 'package:lancloud/ui/app_icons.dart' as app_icons;
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/drive_page.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'transfer_dependencies_test.dart'
+    show buildTransferManagerForEnvironment;
 
 /// 网盘页挂载在目录缓存上（不进网络）：给个账号让 `app.client` 非空，
 /// 再塞一份根目录快照，`_load()` 直接命中缓存。
 Future<void> host(WidgetTester tester, {required bool grid}) async {
   SharedPreferences.setMockInitialValues({});
-  final app = AppController();
-  app.accounts.accounts = [Account(uid: '1', cookie: 'cookie')];
-  app.accounts.activeUid = '1';
-  app.settings.gridView = grid;
-  app.driveCache.put(
+  final environment = AppEnvironment();
+  addTearDown(environment.dispose);
+  environment.accountState.store.accounts = [
+    Account(uid: '1', cookie: 'cookie'),
+  ];
+  environment.accountState.store.activeUid = '1';
+  environment.settingsState.store.gridView = grid;
+  environment.drive.cache.put(
     '-1',
     CachedFolder(
       folders: [LzFolder(id: 'f1', name: '测试文件夹', desc: '')],
@@ -31,12 +45,27 @@ Future<void> host(WidgetTester tester, {required bool grid}) async {
       hasMore: false,
     ),
   );
-  final manager = TransferManager(app);
+  final manager = buildTransferManagerForEnvironment(environment);
   await tester.pumpWidget(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider<AppController>.value(value: app),
-        ChangeNotifierProvider<TransferManager>.value(value: manager),
+    ProviderScope(
+      overrides: [
+        transferManagerProvider.overrideWithValue(manager),
+        accountStateProvider.overrideWithValue(environment.accountState),
+        lanzouClientRegistryProvider.overrideWithValue(
+          environment.clientRegistry,
+        ),
+        appDbProvider.overrideWithValue(environment.db),
+        driveStateProvider.overrideWithValue(environment.drive),
+        cachePageSettingsStateProvider.overrideWithValue(
+          environment.cachePageSettings,
+        ),
+        listHomeSettingsStateProvider.overrideWithValue(
+          environment.listHomeSettings,
+        ),
+        navigationAppearanceSettingsStateProvider.overrideWithValue(
+          environment.navigationAppearanceSettings,
+        ),
+        navigationStateProvider.overrideWithValue(environment.navigation),
       ],
       child: MaterialApp(
         localizationsDelegates: appLocalizationsDelegates,

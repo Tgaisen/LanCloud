@@ -1,9 +1,11 @@
 import 'package:material_ui/material_ui.dart' hide Icons;
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/api/lanzou_client.dart';
+import '../core/api/lanzou_client_registry.dart';
 import '../core/api/models.dart';
-import '../core/app_controller.dart';
+import '../core/account_state.dart';
+import '../core/data/app_db_provider.dart';
 import '../core/lanzou_link.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
@@ -32,7 +34,7 @@ Future<void> openShareSheet(
   );
 }
 
-class ShareLinkDialog extends StatefulWidget {
+class ShareLinkDialog extends ConsumerStatefulWidget {
   const ShareLinkDialog({
     super.key,
     this.initialLink,
@@ -47,10 +49,10 @@ class ShareLinkDialog extends StatefulWidget {
   final bool addFavoriteOnResolve;
 
   @override
-  State<ShareLinkDialog> createState() => _ShareLinkDialogState();
+  ConsumerState<ShareLinkDialog> createState() => _ShareLinkDialogState();
 }
 
-class _ShareLinkDialogState extends State<ShareLinkDialog> {
+class _ShareLinkDialogState extends ConsumerState<ShareLinkDialog> {
   late final TextEditingController _linkController = TextEditingController(
     text: widget.initialLink ?? '',
   );
@@ -108,7 +110,7 @@ class _ShareLinkDialogState extends State<ShareLinkDialog> {
       _linkError = null;
       _pwdError = null;
     });
-    final client = context.read<AppController>().publicClient;
+    final client = ref.read(lanzouClientRegistryProvider).publicClient;
     final navigator = Navigator.of(context);
     try {
       if (_looksLikeFolder(link)) {
@@ -128,7 +130,7 @@ class _ShareLinkDialogState extends State<ShareLinkDialog> {
         }
         navigator.pop();
         await navigator.push(
-          MaterialPageRoute(
+          MaterialPageRoute<void>(
             builder: (_) =>
                 ShareFolderPage(folder: folder, link: link, pwd: pwd),
           ),
@@ -173,7 +175,7 @@ class _ShareLinkDialogState extends State<ShareLinkDialog> {
           }
           navigator.pop();
           await navigator.push(
-            MaterialPageRoute(
+            MaterialPageRoute<void>(
               builder: (_) =>
                   ShareFolderPage(folder: folder, link: link, pwd: pwd),
             ),
@@ -206,9 +208,10 @@ class _ShareLinkDialogState extends State<ShareLinkDialog> {
     String link,
     String pwd,
   ) async {
-    final app = context.read<AppController>();
-    await app.db.addRecent(
-      account: app.activeUid ?? '',
+    final account = ref.read(accountStateProvider).store.activeUid ?? '';
+    final db = ref.read(appDbProvider);
+    await db.addRecent(
+      account: account,
       kind: kind,
       name: name,
       ref: link,
@@ -226,11 +229,11 @@ class _ShareLinkDialogState extends State<ShareLinkDialog> {
     String size = '',
   }) async {
     final l10n = context.l10n;
-    final app = context.read<AppController>();
+    final db = ref.read(appDbProvider);
     final navigator = Navigator.of(context);
     // 弹窗关闭后原 context 失效，关弹窗与提示改用 Navigator 自己的宿主
     final messenger = ScaffoldMessenger.of(navigator.context);
-    await app.db.addFavorite(
+    await db.addFavorite(
       kind: kind,
       name: name,
       ref: link,

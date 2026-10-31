@@ -2,9 +2,11 @@ import 'dart:async';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/app_info.dart';
+import 'package:lancloud/core/data/settings_store.dart';
 import 'package:lancloud/core/system_motion.dart';
 import 'package:lancloud/core/update/release_info.dart';
 import 'package:lancloud/core/update/update_service.dart';
@@ -14,8 +16,9 @@ import 'package:lancloud/ui/app_icons.dart' as app_icons;
 import 'package:lancloud/ui/m3e.dart';
 import 'package:lancloud/ui/update_page.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'update_test_scope_test.dart';
 
 ReleaseInfo rel(String version, {String body = ''}) => ReleaseInfo(
   tag: 'v$version',
@@ -37,20 +40,31 @@ DioException httpError(int status) => DioException(
   ),
 );
 
+late UpdateFetcher _fetchReleases;
+late UpdateClock _now;
+
 /// 打开独立的更新页（与「关于」页同样的独立页形态）。
-Future<AppController> pumpUpdatePage(
+Future<({AppEnvironment environment, UpdateService updates})> pumpUpdatePage(
   WidgetTester tester, {
   bool autoCheck = true,
   Locale locale = const Locale('zh'),
 }) async {
   SharedPreferences.setMockInitialValues(<String, Object>{});
-  final app = AppController();
-  app.settings.updateAutoCheck = autoCheck;
-  await app.updates.bind(app.settings);
-  addTearDown(app.dispose);
+  final environment = AppEnvironment();
+  environment.settingsState.store.updateAutoCheck = autoCheck;
+  final container = createUpdateContainer(
+    settings: environment.settingsState.store,
+    fetch: () => _fetchReleases(),
+    clock: () => _now(),
+  );
+  final updates = container.read(updateServiceProvider.notifier);
+  await updates.initialize();
+  addTearDown(environment.dispose);
+  addTearDown(container.dispose);
   await tester.pumpWidget(
-    ChangeNotifierProvider<AppController>.value(
-      value: app,
+    updateEnvironmentTestTree(
+      environment: environment,
+      container: container,
       child: MaterialApp(
         localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
@@ -60,7 +74,7 @@ Future<AppController> pumpUpdatePage(
     ),
   );
   await tester.pumpAndSettle();
-  return app;
+  return (environment: environment, updates: updates);
 }
 
 Finder dialogButton(String label) => find.descendant(
@@ -70,13 +84,8 @@ Finder dialogButton(String label) => find.descendant(
 
 void main() {
   setUp(() {
-    UpdateService.debugFetchReleases = null;
-    UpdateService.debugNow = DateTime.now;
-  });
-
-  tearDown(() {
-    UpdateService.debugFetchReleases = null;
-    UpdateService.debugNow = DateTime.now;
+    _fetchReleases = () async => const [];
+    _now = DateTime.now;
   });
 
   testWidgets('更新页：未检测状态与列表组', (tester) async {
@@ -100,8 +109,38 @@ void main() {
     expect(find.text('构建信息'), findsOneWidget);
   });
 
+  testWidgets('更新页只依赖 Riverpod 作用域', (tester) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final settings = SettingsStore()..updateAutoCheck = true;
+    final container = createUpdateContainer(
+      settings: settings,
+      fetch: () => _fetchReleases(),
+      clock: () => _now(),
+    );
+    addTearDown(container.dispose);
+    await container.read(updateServiceProvider.notifier).initialize();
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const Scaffold(
+            body: SingleChildScrollView(child: UpdateContent()),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('未检测更新'), findsOneWidget);
+    expect(find.text('自动检查更新'), findsOneWidget);
+  });
+
   testWidgets('检测到新版本：卡片、更新弹窗与两个动作', (tester) async {
-    UpdateService.debugFetchReleases = () async => [
+    _fetchReleases = () async => [
       rel(
         '99.0.0',
         body:
@@ -113,12 +152,12 @@ void main() {
             '- Android：优先 arm64-v8a',
       ),
     ];
-    final app = await pumpUpdatePage(tester);
+    final harness = await pumpUpdatePage(tester);
 
     await tester.tap(find.widgetWithText(FilledButton, '检测更新'));
     await tester.pumpAndSettle();
 
-    expect(app.updates.status, UpdateStatus.available);
+    expect(harness.updates.status, UpdateStatus.available);
     expect(find.text('检测到新版本'), findsOneWidget);
     expect(find.text('99.0.0'), findsOneWidget);
     expect(find.widgetWithText(FilledButton, '更新'), findsOneWidget);
@@ -186,7 +225,7 @@ void main() {
     tester.view.physicalSize = const Size(360, 720);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    UpdateService.debugFetchReleases = () async => throw httpError(403);
+    _fetchReleases = () async => throw httpError(403);
     await pumpUpdatePage(tester, locale: const Locale('en'));
 
     await tester.tap(find.widgetWithText(FilledButton, 'Check for updates'));
@@ -204,7 +243,7 @@ void main() {
 
   testWidgets('检测开始时状态区高度平滑收起：副标题区域做布局动画', (tester) async {
     // 第一次检测成功 → 「已是最新版本」带副标题
-    UpdateService.debugFetchReleases = () async => [rel('1.0.0')];
+    _fetchReleases = () async => [rel('1.0.0')];
     await pumpUpdatePage(tester);
     await tester.tap(find.widgetWithText(FilledButton, '检测更新'));
     await tester.pumpAndSettle();
@@ -225,7 +264,7 @@ void main() {
 
     // 第二次检测挂起，停在「检测中」观察布局动画（副标题收起、按钮上移）
     final completer = Completer<List<ReleaseInfo>>();
-    UpdateService.debugFetchReleases = () => completer.future;
+    _fetchReleases = () => completer.future;
     final before = tester
         .getRect(find.widgetWithText(FilledButton, '重新检测'))
         .top;
@@ -258,13 +297,13 @@ void main() {
     SystemMotion.motionMode.value = 'off';
     addTearDown(() => SystemMotion.motionMode.value = 'auto');
 
-    UpdateService.debugFetchReleases = () async => [rel('1.0.0')];
+    _fetchReleases = () async => [rel('1.0.0')];
     await pumpUpdatePage(tester);
     await tester.tap(find.widgetWithText(FilledButton, '检测更新'));
     await tester.pumpAndSettle();
 
     final completer = Completer<List<ReleaseInfo>>();
-    UpdateService.debugFetchReleases = () => completer.future;
+    _fetchReleases = () => completer.future;
     await tester.tap(find.widgetWithText(FilledButton, '重新检测'));
     await tester.pump();
     final instant = tester
@@ -283,7 +322,7 @@ void main() {
 
   testWidgets('检测中：按钮置灰，圆环立即替换图标', (tester) async {
     final completer = Completer<List<ReleaseInfo>>();
-    UpdateService.debugFetchReleases = () => completer.future;
+    _fetchReleases = () => completer.future;
     await pumpUpdatePage(tester);
 
     await tester.tap(find.widgetWithText(FilledButton, '检测更新'));
@@ -309,14 +348,14 @@ void main() {
   });
 
   testWidgets('检测失败：错误码、重新检测，手动检测失败给提示条', (tester) async {
-    UpdateService.debugFetchReleases = () async => throw httpError(403);
-    final app = await pumpUpdatePage(tester);
+    _fetchReleases = () async => throw httpError(403);
+    final harness = await pumpUpdatePage(tester);
 
     await tester.tap(find.widgetWithText(FilledButton, '检测更新'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(app.updates.status, UpdateStatus.failed);
+    expect(harness.updates.status, UpdateStatus.failed);
     // 卡片标题 + 提示条各一处
     expect(find.text('检测更新失败'), findsNWidgets(2));
     expect(find.text('无法连接至 GitHub (HTTP 403)'), findsOneWidget);
@@ -330,14 +369,14 @@ void main() {
 
   testWidgets('更新通道：单选弹窗；切换后清掉旧结果', (tester) async {
     var calls = 0;
-    UpdateService.debugFetchReleases = () async {
+    _fetchReleases = () async {
       calls++;
       return [rel('99.0.0')];
     };
-    final app = await pumpUpdatePage(tester, autoCheck: false);
+    final harness = await pumpUpdatePage(tester, autoCheck: false);
     await tester.tap(find.widgetWithText(FilledButton, '检测更新'));
     await tester.pumpAndSettle();
-    expect(app.updates.status, UpdateStatus.available);
+    expect(harness.updates.status, UpdateStatus.available);
     expect(calls, 1);
 
     await tester.tap(find.text('更新通道'));
@@ -346,29 +385,29 @@ void main() {
     await tester.tap(find.text('正式版'));
     await tester.pumpAndSettle();
 
-    expect(app.settings.updateChannel, 'stable');
+    expect(harness.environment.settingsState.store.updateChannel, 'stable');
     expect(find.text('正式版'), findsOneWidget);
     // 旧通道的结果被清掉：回到未检测更新，且没有偷偷再请求
-    expect(app.updates.status, UpdateStatus.idle);
+    expect(harness.updates.status, UpdateStatus.idle);
     expect(find.text('未检测更新'), findsOneWidget);
     expect(calls, 1);
   });
 
   testWidgets('自动检查更新：开关可切换并落到设置', (tester) async {
-    final app = await pumpUpdatePage(tester);
-    expect(app.settings.updateAutoCheck, isTrue);
+    final harness = await pumpUpdatePage(tester);
+    expect(harness.environment.settingsState.store.updateAutoCheck, isTrue);
 
     await tester.tap(find.text('自动检查更新'));
     await tester.pumpAndSettle();
-    expect(app.settings.updateAutoCheck, isFalse);
+    expect(harness.environment.settingsState.store.updateAutoCheck, isFalse);
   });
 
   testWidgets('iOS：卡片显示不支持，隐藏通道与自动检查（列表组 1 保留）', (tester) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
     try {
-      final app = await pumpUpdatePage(tester);
+      final harness = await pumpUpdatePage(tester);
 
-      expect(app.updates.supported, isFalse);
+      expect(harness.updates.supported, isFalse);
       expect(find.text('当前平台不支持检测更新'), findsOneWidget);
       // 卡片没有按钮
       expect(find.byType(FilledButton), findsNothing);

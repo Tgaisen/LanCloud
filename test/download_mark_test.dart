@@ -1,11 +1,15 @@
 import 'package:material_ui/material_ui.dart' hide Icons;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
+import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/ui/app_icons.dart';
 import 'package:lancloud/ui/download_mark.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'transfer_dependencies_test.dart'
+    show buildTransferManagerForEnvironment;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -13,9 +17,9 @@ void main() {
   setUp(() => SharedPreferences.setMockInitialValues(<String, Object>{}));
 
   test('downloadMarkOf：网盘按 refId、分享按 referer 匹配，取最近一条', () {
-    final app = AppController();
-    addTearDown(app.dispose);
-    final manager = TransferManager(app);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
+    final manager = buildTransferManagerForEnvironment(environment);
     final older = TransferTask(
       id: 'd1',
       kind: TransferKind.download,
@@ -48,9 +52,9 @@ void main() {
   });
 
   test('downloadMarkOf：忽略已取消的任务', () {
-    final app = AppController();
-    addTearDown(app.dispose);
-    final manager = TransferManager(app);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
+    final manager = buildTransferManagerForEnvironment(environment);
     final task = TransferTask(
       id: 'd1',
       kind: TransferKind.download,
@@ -66,9 +70,9 @@ void main() {
   });
 
   test('marksRevision：入队 / 取消 / 删除任务会自增（供列表低频重建）', () {
-    final app = AppController();
-    addTearDown(app.dispose);
-    final manager = TransferManager(app);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
+    final manager = buildTransferManagerForEnvironment(environment);
     final before = manager.marksRevision.value;
 
     manager.addDownload(
@@ -87,9 +91,9 @@ void main() {
   });
 
   testWidgets('DownloadMarkIcon：有任务时显示，取消后消失', (tester) async {
-    final app = AppController();
-    addTearDown(app.dispose);
-    final manager = TransferManager(app);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
+    final manager = buildTransferManagerForEnvironment(environment);
     final task = TransferTask(
       id: 'd1',
       kind: TransferKind.download,
@@ -100,8 +104,8 @@ void main() {
     manager.tasks.add(task);
 
     await tester.pumpWidget(
-      ChangeNotifierProvider<TransferManager>.value(
-        value: manager,
+      ProviderScope(
+        overrides: [transferManagerProvider.overrideWithValue(manager)],
         child: const MaterialApp(
           home: Scaffold(
             body: Center(child: DownloadMarkIcon(markKey: '1:f1')),

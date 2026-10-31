@@ -1,15 +1,34 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/account_state.dart';
+import 'package:lancloud/core/api/lanzou_client_registry.dart';
+import 'package:lancloud/core/app_environment.dart';
+import 'package:lancloud/core/data/app_db_provider.dart';
 import 'package:lancloud/core/drag_drop.dart';
+import 'package:lancloud/core/drive_state.dart';
 import 'package:lancloud/core/lanzou_link.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/app_localizations_zh.dart';
 import 'package:lancloud/ui/drop_actions.dart';
 import 'package:lancloud/ui/share_page.dart';
-import 'package:provider/provider.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
+
+Widget _host(AppEnvironment environment, Widget home) => ProviderScope(
+  overrides: [
+    accountStateProvider.overrideWithValue(environment.accountState),
+    lanzouClientRegistryProvider.overrideWithValue(environment.clientRegistry),
+    appDbProvider.overrideWithValue(environment.db),
+    driveStateProvider.overrideWithValue(environment.drive),
+  ],
+  child: MaterialApp(
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    locale: const Locale('zh'),
+    home: home,
+  ),
+);
 
 void main() {
   test('parseAll：一段文本里提取多条链接、去重，密码按就近原则', () {
@@ -73,7 +92,8 @@ void main() {
   test('payloadFrom：原生没给内容时返回空 payload', () {
     expect(DragDropChannel.payloadFrom(null).hasFiles, isFalse);
     expect(
-      DragDropChannel.payloadFrom({'texts': [], 'files': []}).hasText,
+      DragDropChannel.payloadFrom({'texts': <Object?>[], 'files': <Object?>[]})
+          .hasText,
       isFalse,
     );
   });
@@ -94,30 +114,26 @@ void main() {
   });
 
   testWidgets('其它页面拖入链接：走「打开链接」弹窗', (tester) async {
-    final app = AppController();
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
-        value: app,
-        child: MaterialApp(
-          localizationsDelegates: appLocalizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          locale: const Locale('zh'),
-          home: Builder(
-            builder: (context) => Scaffold(
-              body: Center(
-                child: TextButton(
-                  onPressed: () async {
-                    await handleExternalDrop(
-                      context,
-                      const DropPayload(
-                        texts: ['https://wwa.lanzoua.com/iabc123'],
-                      ),
-                      onDrivePage: false,
-                      onFavoritesPage: false,
-                    );
-                  },
-                  child: const Text('drop'),
-                ),
+      _host(
+        environment,
+        Builder(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: TextButton(
+                onPressed: () async {
+                  await handleExternalDrop(
+                    context,
+                    const DropPayload(
+                      texts: ['https://wwa.lanzoua.com/iabc123'],
+                    ),
+                    onDrivePage: false,
+                    onFavoritesPage: false,
+                  );
+                },
+                child: const Text('drop'),
               ),
             ),
           ),
@@ -133,38 +149,33 @@ void main() {
     // 让解析请求的定时器跑完，避免用例结束时报 pending timer
     await tester.pump(const Duration(seconds: 5));
     await tester.pumpAndSettle();
-    app.dispose();
   });
 
   testWidgets('收藏页拖入链接：先弹确认条，取消则不解析', (tester) async {
-    final app = AppController();
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
     DropOutcome? outcome;
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
-        value: app,
-        child: MaterialApp(
-          localizationsDelegates: appLocalizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          locale: const Locale('zh'),
-          home: Builder(
-            builder: (context) => Scaffold(
-              body: Center(
-                child: TextButton(
-                  onPressed: () async {
-                    outcome = await handleExternalDrop(
-                      context,
-                      const DropPayload(
-                        texts: [
-                          'https://wwa.lanzoua.com/iabc123\n'
-                              'https://wwa.lanzoua.com/iabc456',
-                        ],
-                      ),
-                      onDrivePage: false,
-                      onFavoritesPage: true,
-                    );
-                  },
-                  child: const Text('drop'),
-                ),
+      _host(
+        environment,
+        Builder(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: TextButton(
+                onPressed: () async {
+                  outcome = await handleExternalDrop(
+                    context,
+                    const DropPayload(
+                      texts: [
+                        'https://wwa.lanzoua.com/iabc123\n'
+                            'https://wwa.lanzoua.com/iabc456',
+                      ],
+                    ),
+                    onDrivePage: false,
+                    onFavoritesPage: true,
+                  );
+                },
+                child: const Text('drop'),
               ),
             ),
           ),
@@ -181,30 +192,25 @@ void main() {
     await tester.tap(find.text('取消'));
     await tester.pumpAndSettle();
     expect(outcome?.canceled, isTrue);
-    app.dispose();
   });
 
   testWidgets('没有可导入内容：提示不支持', (tester) async {
-    final app = AppController();
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
-        value: app,
-        child: MaterialApp(
-          localizationsDelegates: appLocalizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          locale: const Locale('zh'),
-          home: Builder(
-            builder: (context) => Scaffold(
-              body: Center(
-                child: TextButton(
-                  onPressed: () => handleExternalDrop(
-                    context,
-                    const DropPayload(texts: ['普通文本']),
-                    onDrivePage: false,
-                    onFavoritesPage: false,
-                  ),
-                  child: const Text('drop'),
+      _host(
+        environment,
+        Builder(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: TextButton(
+                onPressed: () => handleExternalDrop(
+                  context,
+                  const DropPayload(texts: ['普通文本']),
+                  onDrivePage: false,
+                  onFavoritesPage: false,
                 ),
+                child: const Text('drop'),
               ),
             ),
           ),
@@ -218,34 +224,29 @@ void main() {
       find.text(AppLocalizationsZh().shareTargetUnsupported),
       findsOneWidget,
     );
-    app.dispose();
   });
 
   testWidgets('混合内容：文件这一步取消后，链接仍然继续处理', (tester) async {
-    final app = AppController();
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
     final l10n = AppLocalizationsZh();
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
-        value: app,
-        child: MaterialApp(
-          localizationsDelegates: appLocalizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          locale: const Locale('zh'),
-          home: Builder(
-            builder: (context) => Scaffold(
-              body: Center(
-                child: TextButton(
-                  onPressed: () => handleExternalDrop(
-                    context,
-                    const DropPayload(
-                      texts: ['https://wwa.lanzoua.com/iabc123'],
-                      files: [DropFile(uri: 'content://a/1', name: 'a.zip')],
-                    ),
-                    onDrivePage: false,
-                    onFavoritesPage: true,
+      _host(
+        environment,
+        Builder(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: TextButton(
+                onPressed: () => handleExternalDrop(
+                  context,
+                  const DropPayload(
+                    texts: ['https://wwa.lanzoua.com/iabc123'],
+                    files: [DropFile(uri: 'content://a/1', name: 'a.zip')],
                   ),
-                  child: const Text('drop'),
+                  onDrivePage: false,
+                  onFavoritesPage: true,
                 ),
+                child: const Text('drop'),
               ),
             ),
           ),
@@ -264,39 +265,34 @@ void main() {
     expect(find.text(l10n.notLoggedIn), findsOneWidget);
     expect(find.text(l10n.dropLinksCount(1)), findsOneWidget);
     expect(find.text(l10n.dropAddFavorites), findsOneWidget);
-    app.dispose();
   });
 
   testWidgets('其它页面拖入多条链接：可在弹窗里选择批量收藏或逐个打开', (tester) async {
-    final app = AppController();
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
     final l10n = AppLocalizationsZh();
     DropOutcome? outcome;
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
-        value: app,
-        child: MaterialApp(
-          localizationsDelegates: appLocalizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          locale: const Locale('zh'),
-          home: Builder(
-            builder: (context) => Scaffold(
-              body: Center(
-                child: TextButton(
-                  onPressed: () async {
-                    outcome = await handleExternalDrop(
-                      context,
-                      const DropPayload(
-                        texts: [
-                          'https://wwa.lanzoua.com/iabc123\n'
-                              'https://wwa.lanzoua.com/iabc456',
-                        ],
-                      ),
-                      onDrivePage: false,
-                      onFavoritesPage: false,
-                    );
-                  },
-                  child: const Text('drop'),
-                ),
+      _host(
+        environment,
+        Builder(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: TextButton(
+                onPressed: () async {
+                  outcome = await handleExternalDrop(
+                    context,
+                    const DropPayload(
+                      texts: [
+                        'https://wwa.lanzoua.com/iabc123\n'
+                            'https://wwa.lanzoua.com/iabc456',
+                      ],
+                    ),
+                    onDrivePage: false,
+                    onFavoritesPage: false,
+                  );
+                },
+                child: const Text('drop'),
               ),
             ),
           ),
@@ -314,6 +310,5 @@ void main() {
     await tester.tap(find.text(l10n.cancel));
     await tester.pumpAndSettle();
     expect(outcome?.canceled, isTrue);
-    app.dispose();
   });
 }

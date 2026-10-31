@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
-import '../app_controller.dart';
+import 'backup_dependencies.dart';
 import 'backup_crypto.dart';
 import 'backup_sections.dart';
 import 'webdav_client.dart';
@@ -71,13 +71,13 @@ class BackupPreview {
 
 /// 备份与恢复：本地 JSON 文件 + WebDAV 云端。
 class BackupService {
-  BackupService(this.app, {WebdavStore? webdav})
+  BackupService(this.dependencies, {WebdavStore? webdav})
     : webdav = webdav ?? WebdavStore();
 
   static BackupService? _instance;
 
-  static BackupService of(AppController app) =>
-      _instance ??= BackupService(app);
+  static BackupService of(BackupDependencies dependencies) =>
+      _instance ??= BackupService(dependencies);
 
   /// 测试注入用。
   static set instance(BackupService? value) => _instance = value;
@@ -86,7 +86,7 @@ class BackupService {
   static const latestName = 'lancloud-latest.json';
   static const maxRemoteFiles = 5;
 
-  final AppController app;
+  final BackupDependencies dependencies;
   final WebdavStore webdav;
 
   /// 本次运行是否已通过敏感内容备份验证：首次通过后不再重复验证。
@@ -110,12 +110,14 @@ class BackupService {
       'createdAt': DateTime.now().millisecondsSinceEpoch,
       'includeCookies': includeCookies,
       'sections': [for (final section in sections) section.id]..sort(),
-      if (includeCookies) 'activeUid': app.accounts.activeUid,
+      if (includeCookies) 'activeUid': dependencies.accounts.activeUid,
       if (includeCookies)
-        'accounts': app.accounts.exportAccounts(includeCookies: includeCookies),
+        'accounts': dependencies.accounts.exportAccounts(
+          includeCookies: includeCookies,
+        ),
       if (sections.contains(BackupSection.settings))
-        'settings': app.settings.toJson(),
-      'tables': await app.db.exportTables(
+        'settings': dependencies.settings.toJson(),
+      'tables': await dependencies.db.exportTables(
         favorites: sections.contains(BackupSection.favorites),
         pins: sections.contains(BackupSection.quick),
         recents: sections.contains(BackupSection.recents),
@@ -172,18 +174,18 @@ class BackupService {
     final decoded = _decode(plaintext);
     final settings = decoded['settings'];
     if (settings is Map) {
-      await app.settings.applyJson(settings.cast<String, Object?>());
+      await dependencies.settings.applyJson(settings.cast<String, Object?>());
     }
     final accounts = decoded['accounts'];
     if (restoreAccounts && accounts is List) {
-      await app.accounts.importAccounts(
+      await dependencies.accounts.importAccounts(
         accounts,
         activeSnapshot: '${decoded['activeUid'] ?? ''}',
       );
     }
     final tables = decoded['tables'];
     if (tables is Map) {
-      await app.db.importTables(
+      await dependencies.db.importTables(
         tables.cast<String, dynamic>(),
         mergeFavorites: mergeFavorites,
       );
@@ -209,7 +211,7 @@ class BackupService {
       final autoBackup = webdavData['autoBackup'];
       if (autoBackup is bool) await webdav.setAutoBackup(autoBackup);
     }
-    await app.reloadFromStorage();
+    await dependencies.reloadFromStorage();
   }
 
   /// 解析并校验备份，返回不落盘的摘要供恢复向导展示。

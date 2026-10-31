@@ -1,25 +1,29 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
+import 'package:lancloud/core/navigation_appearance_settings_state.dart';
+import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/licenses_page.dart';
 import 'package:lancloud/ui/settings_page.dart';
-import 'package:provider/provider.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
+
+import 'update_test_scope_test.dart';
 
 /// 设置页各分组的条目高度差异很大（开关 / 二级入口 / 图标），
 /// 如果用 SliverList 懒布局，maxScrollExtent 会随滑动不断被"平均高度"修正，
 /// 滚动条滑块长度就会一抖一抖。这里钉住修复：滚动过程中滚动范围恒定。
 void main() {
   testWidgets('设置页滚动范围全程恒定（滚动条滑块不会抖动）', (tester) async {
-    final app = AppController();
-    addTearDown(app.dispose);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
 
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
-        value: app,
+      appEnvironmentTestTree(
+        environment: environment,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
@@ -75,11 +79,16 @@ void main() {
       }
     });
 
-    final app = AppController();
-    addTearDown(app.dispose);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
-        value: app,
+      ProviderScope(
+        overrides: [
+          navigationAppearanceSettingsStateProvider.overrideWithValue(
+            environment.navigationAppearanceSettings,
+          ),
+          navigationStateProvider.overrideWithValue(environment.navigation),
+        ],
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,

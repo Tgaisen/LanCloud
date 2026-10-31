@@ -1,20 +1,29 @@
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter/foundation.dart' show listEquals, visibleForTesting;
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:path/path.dart' as p;
-import 'package:provider/provider.dart';
 
-import 'core/app_controller.dart';
+import 'core/account_state.dart';
 import 'core/agreements.dart';
+import 'core/app_runtime_state.dart';
+import 'core/api/lanzou_client_registry.dart';
+import 'core/cache_page_settings_state.dart';
 import 'core/drag_drop.dart';
+import 'core/drive_state.dart';
 import 'core/incoming_links.dart';
 import 'core/lanzou_link.dart';
+import 'core/language_clipboard_settings_state.dart';
+import 'core/navigation_appearance_settings_state.dart';
+import 'core/navigation_state.dart';
 import 'core/notifications.dart';
 import 'core/platform_support.dart';
 import 'core/share_inbox.dart';
 import 'core/system_motion.dart';
+import 'core/theme_settings_state.dart';
 import 'core/transfer/transfer_manager.dart';
+import 'core/transfer/transfer_manager_provider.dart';
 import 'core/window_frame.dart';
 import 'l10n/delegates.dart';
 import 'l10n/l10n.dart';
@@ -35,6 +44,7 @@ import 'ui/scroll_tint.dart';
 import 'ui/share_page.dart';
 import 'ui/system_ui.dart';
 import 'ui/transfers_page.dart';
+import 'ui/transfer_running_count.dart';
 import 'ui/app_icons.dart';
 import 'ui/update_prompt.dart';
 
@@ -50,27 +60,23 @@ ThemeData withResponsiveSnackBarWidth(ThemeData theme, double viewportWidth) {
   );
 }
 
-class LanCloudApp extends StatefulWidget {
+class LanCloudApp extends ConsumerStatefulWidget {
   const LanCloudApp({super.key});
 
   static const seed = Color(0xFF2E6BE6);
 
   @override
-  State<LanCloudApp> createState() => _LanCloudAppState();
+  ConsumerState<LanCloudApp> createState() => _LanCloudAppState();
 }
 
-class _LanCloudAppState extends State<LanCloudApp> {
+class _LanCloudAppState extends ConsumerState<LanCloudApp> {
   /// 根 Navigator：给 Windows 鼠标侧键「后退」用（maybePop 与系统返回键同效）。
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
   @override
   Widget build(BuildContext context) {
-    final app = context.watch<AppController>();
-    final seed = Color(app.settings.themeSeed);
-    final oledDark = app.settings.oledBlack;
-    final useDynamicColor = app.settings.dynamicColor;
-    final mode = app.settings.themeMode;
-    final language = app.settings.language;
+    final themeSettings = ref.watch(themeSettingsStateProvider);
+    final languageSettings = ref.watch(languageClipboardSettingsStateProvider);
     // MD3 动态取色：系统壁纸取色（Android 12+），不支持时返回 null。
     // 外面这层只在系统「移除动画」开关 / 用户「全局动画」设置变化时重建整棵树，
     // 让各处的 reduceMotionOf 立刻生效（其余时候不会重复构建）。
@@ -79,79 +85,88 @@ class _LanCloudAppState extends State<LanCloudApp> {
         SystemMotion.reduceMotion,
         SystemMotion.touchExploration,
         SystemMotion.motionMode,
+        themeSettings.revision,
+        languageSettings.revision,
         // 第一次检测到鼠标时重建一次，让「点图标块 = 多选」各处生效
         PointerSupport.hasMouse,
       ]),
-      builder: (context, _) => DynamicColorBuilder(
-        builder: (lightDynamic, darkDynamic) {
-          ThemeData buildTheme(Brightness brightness) => buildLanCloudTheme(
-            brightness: brightness,
-            seed: seed,
-            oledDark: oledDark,
-            dynamicScheme: useDynamicColor
-                ? (brightness == Brightness.dark ? darkDynamic : lightDynamic)
-                : null,
-          );
-          return MaterialApp(
-            navigatorKey: _navigatorKey,
-            // 系统「最近任务」里的应用名（桌面图标名由 Android 资源 app_name 决定，
-            // 任务卡片这里是 Flutter 的 Title 设置的，要跟着语言走）
-            onGenerateTitle: (context) => context.l10n.appName,
-            debugShowCheckedModeBanner: false,
-            locale: language == 'zh'
-                ? const Locale('zh')
-                : language == 'en'
-                ? const Locale('en')
-                : null,
-            supportedLocales: AppLocalizations.supportedLocales,
-            localizationsDelegates: appLocalizationsDelegates,
-            theme: buildTheme(Brightness.light),
-            darkTheme: buildTheme(Brightness.dark),
-            themeMode: mode == 'light'
-                ? ThemeMode.light
-                : mode == 'dark'
-                ? ThemeMode.dark
-                : ThemeMode.system,
-            // 全局 BouncingScrollPhysics（网盘页同款）
-            scrollBehavior: const AppScrollBehavior(),
-            // 系统栏（状态栏 / 导航栏）样式跟随主题明暗：
-            // Android 15+ 导航栏强制透明，能调的只有图标明暗与是否加系统遮罩。
-            builder: (context, child) => Theme(
-              data: withResponsiveSnackBarWidth(
-                Theme.of(context),
-                MediaQuery.sizeOf(context).width,
-              ),
-              child: MousePresenceDetector(
-                child: MouseBackButtonListener(
-                  // Windows 鼠标侧键「后退」= 系统返回键（与 Android 返回同一条路径）
-                  enabled: PlatformSupport.isWindows,
-                  onBack: () => _navigatorKey.currentState?.maybePop(),
-                  child: AnnotatedRegion<SystemUiOverlayStyle>(
-                    value: systemUiOverlayStyleFor(
-                      Theme.of(context).brightness,
-                    ),
-                    // M3E：强调排版落到顶栏标题 / 弹窗标题 / 主要按钮 / 导航选中项，
-                    // 挂在 Navigator 之上（弹窗、对话框同样能取到）。
-                    child: M3eComponentStyles(
-                      // 桌面端在窗口这一层接住拖拽（Android 走原生通道，这里原样透传）
-                      child: DesktopDropTarget(
-                        child: Stack(
-                          children: [
-                            child ?? const SizedBox.shrink(),
-                            // 拖拽悬停提示条挂在 Navigator 之上：二级页面也能看到
-                            const DropHoverBanner(),
-                          ],
+      builder: (context, _) {
+        final seed = Color(themeSettings.themeSeed);
+        final oledDark = themeSettings.oledBlack;
+        final useDynamicColor = themeSettings.dynamicColor;
+        final mode = themeSettings.themeMode;
+        final language = languageSettings.language;
+        return DynamicColorBuilder(
+          builder: (lightDynamic, darkDynamic) {
+            ThemeData buildTheme(Brightness brightness) => buildLanCloudTheme(
+              brightness: brightness,
+              seed: seed,
+              oledDark: oledDark,
+              dynamicScheme: useDynamicColor
+                  ? (brightness == Brightness.dark ? darkDynamic : lightDynamic)
+                  : null,
+            );
+            return MaterialApp(
+              navigatorKey: _navigatorKey,
+              // 系统「最近任务」里的应用名（桌面图标名由 Android 资源 app_name 决定，
+              // 任务卡片这里是 Flutter 的 Title 设置的，要跟着语言走）
+              onGenerateTitle: (context) => context.l10n.appName,
+              debugShowCheckedModeBanner: false,
+              locale: language == 'zh'
+                  ? const Locale('zh')
+                  : language == 'en'
+                  ? const Locale('en')
+                  : null,
+              supportedLocales: AppLocalizations.supportedLocales,
+              localizationsDelegates: appLocalizationsDelegates,
+              theme: buildTheme(Brightness.light),
+              darkTheme: buildTheme(Brightness.dark),
+              themeMode: mode == 'light'
+                  ? ThemeMode.light
+                  : mode == 'dark'
+                  ? ThemeMode.dark
+                  : ThemeMode.system,
+              // 全局 BouncingScrollPhysics（网盘页同款）
+              scrollBehavior: const AppScrollBehavior(),
+              // 系统栏（状态栏 / 导航栏）样式跟随主题明暗：
+              // Android 15+ 导航栏强制透明，能调的只有图标明暗与是否加系统遮罩。
+              builder: (context, child) => Theme(
+                data: withResponsiveSnackBarWidth(
+                  Theme.of(context),
+                  MediaQuery.sizeOf(context).width,
+                ),
+                child: MousePresenceDetector(
+                  child: MouseBackButtonListener(
+                    // Windows 鼠标侧键「后退」= 系统返回键（与 Android 返回同一条路径）
+                    enabled: PlatformSupport.isWindows,
+                    onBack: () => _navigatorKey.currentState?.maybePop(),
+                    child: AnnotatedRegion<SystemUiOverlayStyle>(
+                      value: systemUiOverlayStyleFor(
+                        Theme.of(context).brightness,
+                      ),
+                      // M3E：强调排版落到顶栏标题 / 弹窗标题 / 主要按钮 / 导航选中项，
+                      // 挂在 Navigator 之上（弹窗、对话框同样能取到）。
+                      child: M3eComponentStyles(
+                        // 桌面端在窗口这一层接住拖拽（Android 走原生通道，这里原样透传）
+                        child: DesktopDropTarget(
+                          child: Stack(
+                            children: [
+                              child ?? const SizedBox.shrink(),
+                              // 拖拽悬停提示条挂在 Navigator 之上：二级页面也能看到
+                              const DropHoverBanner(),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-            home: const AgreementGate(),
-          );
-        },
-      ),
+              home: const AgreementGate(),
+            );
+          },
+        );
+      },
     );
   }
 }
@@ -319,7 +334,7 @@ class _AgreementGateState extends State<AgreementGate> {
 /// 才交给系统；其余情况必须由 Flutter 拦下来做应用内导航（切默认视图 /
 /// 返回上级目录 / 退出多选）或传输中的退出确认，此时按官方语义不做预测动画。
 ///
-/// [selectionMode] 由 AppController 统一维护：网盘 / 传输 / 收藏页的多选
+/// [selectionMode] 由 NavigationState 统一维护：网盘 / 传输 / 收藏页的多选
 /// 都会把它置为 true，所以这三页（在底栏显示时）的多选都会被拦下来。
 @visibleForTesting
 bool canHandBackToSystem({
@@ -333,14 +348,100 @@ bool canHandBackToSystem({
     atDefaultView &&
     !driveCanHandleBack;
 
-class RootShell extends StatefulWidget {
+class RootShell extends ConsumerStatefulWidget {
   const RootShell({super.key});
 
   @override
-  State<RootShell> createState() => _RootShellState();
+  ConsumerState<RootShell> createState() => _RootShellState();
 }
 
-class _RootShellState extends State<RootShell>
+typedef _ShellStateSnapshot = ({
+  bool ready,
+  String? activeUid,
+  bool secureStorageNeedsReauthentication,
+  bool showTransfers,
+  bool showFavorites,
+  bool floatingNavBar,
+  bool swipeTabs,
+  bool hideTopBar,
+  bool hideBottomBar,
+  bool selectionMode,
+});
+
+class _ShellStateBuilder extends StatefulWidget {
+  const _ShellStateBuilder({
+    required this.runtime,
+    required this.accounts,
+    required this.navigation,
+    required this.appearance,
+    required this.builder,
+  });
+
+  final AppRuntimeState runtime;
+  final AccountState accounts;
+  final NavigationState navigation;
+  final NavigationAppearanceSettingsState appearance;
+  final Widget Function(BuildContext context, _ShellStateSnapshot shell)
+  builder;
+
+  @override
+  State<_ShellStateBuilder> createState() => _ShellStateBuilderState();
+}
+
+class _ShellStateBuilderState extends State<_ShellStateBuilder> {
+  late _ShellStateSnapshot _shell = _readShell();
+
+  _ShellStateSnapshot _readShell() => (
+    ready: widget.runtime.ready.value,
+    activeUid: widget.accounts.store.activeUid,
+    secureStorageNeedsReauthentication:
+        widget.runtime.secureStorageNeedsReauthentication.value,
+    showTransfers: widget.appearance.navShowTransfers,
+    showFavorites: widget.appearance.navShowFavorites,
+    floatingNavBar: widget.appearance.floatingNavBar,
+    swipeTabs: widget.appearance.swipeTabs,
+    hideTopBar: widget.appearance.hideTopBar,
+    hideBottomBar: widget.appearance.hideBottomBar,
+    selectionMode: widget.navigation.selectionMode,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _addListeners();
+  }
+
+  void _addListeners() {
+    widget.runtime.ready.addListener(_onChanged);
+    widget.runtime.secureStorageNeedsReauthentication.addListener(_onChanged);
+    widget.accounts.addListener(_onChanged);
+    widget.navigation.addListener(_onChanged);
+    widget.appearance.revision.addListener(_onChanged);
+  }
+
+  void _onChanged() {
+    final next = _readShell();
+    if (next == _shell) return;
+    setState(() => _shell = next);
+  }
+
+  @override
+  void dispose() {
+    widget.runtime.ready.removeListener(_onChanged);
+    widget.runtime.secureStorageNeedsReauthentication.removeListener(
+      _onChanged,
+    );
+    widget.accounts.removeListener(_onChanged);
+    widget.navigation.removeListener(_onChanged);
+    widget.appearance.revision.removeListener(_onChanged);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.builder(context, _shell);
+}
+
+class _RootShellState extends ConsumerState<RootShell>
     with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   /// 视图 id：0 首页 / 1 网盘 / 2 传输 / 3 收藏 / 4 我的。
   /// id 固定不变，底栏顺序由 [_ids] 决定（传输、收藏可隐藏）。
@@ -358,8 +459,14 @@ class _RootShellState extends State<RootShell>
   bool _programmaticJump = false;
   Size? _lastSize;
 
-  /// dispose 里不能再读 context（元素正在卸载），控制器在这里存一份。
-  AppController? _app;
+  late final AppRuntimeState _runtime;
+  late final AccountState _accounts;
+  late final NavigationState _navigation;
+  late final NavigationAppearanceSettingsState _appearance;
+  late final CachePageSettingsState _cacheSettings;
+  late final LanguageClipboardSettingsState _languageSettings;
+  late final LanzouClientRegistry _clients;
+  late final DriveState _drive;
   // 横竖屏切换跨越 640px 布局阈值时，PageView 会在 Scaffold.body 与
   // Row/NavigationRail 两个不同深度的父级之间移动；ValueKey 无法跨父级
   // 保留元素，重建后像素偏移会落到错误的页。GlobalKey 可让 PageView 只
@@ -373,7 +480,7 @@ class _RootShellState extends State<RootShell>
   int _pagerRebuilds = 0;
 
   /// 大屏正文卡片顶边的高度过渡：不同视图的顶栏高度不一样（网盘有路径栏、
-  /// 传输有分段条），切换视图时平滑移动；滚动收起仍按 [AppController.topBarHide]
+  /// 传输有分段条），切换视图时平滑移动；滚动收起仍按 [NavigationState.topBarHide]
   /// 1:1 跟手，不参与这段动画。
   late final AnimationController _cardTopAnim = AnimationController(
     vsync: this,
@@ -408,11 +515,9 @@ class _RootShellState extends State<RootShell>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final app = context.read<AppController>();
-    _app = app;
     // 系统「移除动画 / 减弱动态效果」：控制器里读不到 MediaQuery，
     // 这里同步一份，供顶栏/底栏收起动画直接到位
-    app.systemReduceMotion = reduceMotionOf(context);
+    _runtime.systemReduceMotion.value = reduceMotionOf(context);
     _syncWindowFrame();
     // 旋转后视口尺寸变化，PageView 的像素偏移会对应到错误的页，
     // 这里在布局结束后校正回当前标签，避免“底栏指向原视图但内容回到首页”。
@@ -430,7 +535,7 @@ class _RootShellState extends State<RootShell>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _app?.onSwitchTab = null;
+    _navigation.onSwitchTab = null;
     NotificationService.onOpenTransfers = null;
     SharedInbox.instance.onText = null;
     SharedInbox.instance.onFiles = null;
@@ -444,11 +549,14 @@ class _RootShellState extends State<RootShell>
   }
 
   /// 当前底栏显示项：首页 / 网盘 + （可选的）传输 / 收藏 + 我的。
-  List<int> _enabledIds(AppController app) => <int>[
+  List<int> _enabledIds({
+    required bool showTransfers,
+    required bool showFavorites,
+  }) => <int>[
     _viewHome,
     _viewDrive,
-    if (app.settings.navShowTransfers) _viewTransfers,
-    if (app.settings.navShowFavorites) _viewFavorites,
+    if (showTransfers) _viewTransfers,
+    if (showFavorites) _viewFavorites,
     _viewProfile,
   ];
 
@@ -513,12 +621,13 @@ class _RootShellState extends State<RootShell>
     }
     if (i == _index) return;
     // 切换视图（含底栏、侧栏、程序化跳转）时退出多选
-    final app = context.read<AppController>();
-    if (app.selectionMode) app.onRequestExitSelection?.call();
+    if (_navigation.selectionMode) {
+      _navigation.onRequestExitSelection?.call();
+    }
     // 切换视图时收起输入法，避免返回该页时键盘又弹出来
     FocusManager.instance.primaryFocus?.unfocus();
     // 切换视图时把被收起的顶/底栏带动画调出来
-    app.animateBarsHide(0);
+    _navigation.animateBarsHide(0, reduceMotion: reduceMotionOf(context));
     setState(() => _index = i);
     _programmaticJump = true;
     if (_pageController.hasClients) {
@@ -551,11 +660,11 @@ class _RootShellState extends State<RootShell>
   void _openView(int viewId) {
     Navigator.of(context).push(
       // 大屏（横屏 / 平板）下独立打开的标签页也套 MD3E 卡片：
-      // 顶栏高度与外壳里一致，顶栏收起进度共用 app.topBarHide
+      // 顶栏高度与外壳里一致，顶栏收起进度共用 NavigationState.topBarHide
       MaterialPageRoute<void>(
         builder: (_) => Md3ePageFrame(
           topBarHeight: _topBarHeightFor(viewId),
-          hide: context.read<AppController>().topBarHide,
+          hide: _navigation.topBarHide,
           child: _pageFor(viewId),
         ),
       ),
@@ -570,7 +679,6 @@ class _RootShellState extends State<RootShell>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _navConfigPending = false;
       if (!mounted) return;
-      final app = context.read<AppController>();
       final current = _ids.isEmpty
           ? target.first
           : _ids[_index.clamp(0, _ids.length - 1)];
@@ -579,7 +687,7 @@ class _RootShellState extends State<RootShell>
         _ids = target;
         _index = next;
       });
-      app.activeTab.value = target[next];
+      _navigation.activeTab.value = target[next];
       if (_pageController.hasClients) _pageController.jumpToPage(next);
     });
   }
@@ -621,9 +729,7 @@ class _RootShellState extends State<RootShell>
   }
 
   int get _defaultViewId =>
-      context.read<AppController>().settings.launchPage == 'drive'
-      ? _viewDrive
-      : _viewHome;
+      _cacheSettings.launchPage == 'drive' ? _viewDrive : _viewHome;
 
   /// 当前视图 id（底栏配置还没就绪时按首页算）。
   int get _currentViewId => _ids.isEmpty ? _viewHome : _ids[_index];
@@ -632,9 +738,19 @@ class _RootShellState extends State<RootShell>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    final app = context.read<AppController>();
-    _ids = _enabledIds(app);
-    app.onSwitchTab = _goTo;
+    _runtime = ref.read(appRuntimeStateProvider);
+    _accounts = ref.read(accountStateProvider);
+    _navigation = ref.read(navigationStateProvider);
+    _appearance = ref.read(navigationAppearanceSettingsStateProvider);
+    _cacheSettings = ref.read(cachePageSettingsStateProvider);
+    _languageSettings = ref.read(languageClipboardSettingsStateProvider);
+    _clients = ref.read(lanzouClientRegistryProvider);
+    _drive = ref.read(driveStateProvider);
+    _ids = _enabledIds(
+      showTransfers: _appearance.navShowTransfers,
+      showFavorites: _appearance.navShowFavorites,
+    );
+    _navigation.onSwitchTab = _goTo;
     NotificationService.onOpenTransfers = () => _goTo(_viewTransfers);
     SharedInbox.instance.onText = _handleSharedText;
     SharedInbox.instance.onFiles = _handleSharedFiles;
@@ -661,7 +777,7 @@ class _RootShellState extends State<RootShell>
     }
     _index = _ids.indexOf(_defaultViewId).clamp(0, _ids.length - 1);
     // 记录初始视图，便于页面判断自己是否被激活
-    app.activeTab.value = _ids[_index];
+    _navigation.activeTab.value = _ids[_index];
   }
 
   /// 冷启动时要额外打开的视图（例如从传输通知进来），可能在底栏外。
@@ -692,12 +808,11 @@ class _RootShellState extends State<RootShell>
   /// 拖拽落下：按「内容类型 + 当前视图」交给统一的处理入口。
   Future<void> _handleDrop(DropPayload payload) async {
     if (!mounted) return;
-    final app = context.read<AppController>();
     final outcome = await handleExternalDrop(
       context,
       payload,
-      onDrivePage: app.driveVisible,
-      onFavoritesPage: app.favoritesVisible,
+      onDrivePage: _drive.driveVisible,
+      onFavoritesPage: _drive.favoritesVisible,
     );
     if (!mounted || outcome == null) return;
     showDropSummary(context, outcome);
@@ -706,10 +821,9 @@ class _RootShellState extends State<RootShell>
   /// 回到前台时看看剪贴板里有没有蓝奏云分享链接（类似淘口令）。
   Future<void> _checkClipboard() async {
     if (!mounted) return;
-    final app = context.read<AppController>();
-    if (!app.settings.clipboardLinkPrompt) return;
+    if (!_languageSettings.clipboardLinkPrompt) return;
     // 没有账号时（首次启动 / 登录页）不打扰
-    if (app.activeUid == null) return;
+    if (_accounts.store.activeUid == null) return;
     final messenger = ScaffoldMessenger.of(context);
     final l10n = context.l10n;
     // 回到前台的一瞬间剪贴板可能还读不到，稍等一下再取
@@ -758,9 +872,12 @@ class _RootShellState extends State<RootShell>
       WindowFrame.setDark(Theme.of(context).brightness == Brightness.dark);
 
   Future<void> _handleSharedFiles(List<String> files) async {
-    final app = context.read<AppController>();
-    final client = app.client;
-    if (client == null || app.activeUid == null) {
+    final store = _accounts.store;
+    final uid = store.activeUid;
+    final client = uid == null
+        ? null
+        : _clients.clientFor(uid, cookie: store.byUid(uid)?.cookie);
+    if (client == null || uid == null) {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(context.l10n.notLoggedIn)));
       return;
@@ -772,7 +889,7 @@ class _RootShellState extends State<RootShell>
       initialName: files.length == 1 ? p.basename(files.first) : null,
     );
     if (target == null || !mounted) return;
-    final transfers = context.read<TransferManager>();
+    final transfers = ref.read(transferManagerProvider);
     var added = 0;
     for (final path in files) {
       final editedName = target.fileName;
@@ -801,8 +918,8 @@ class _RootShellState extends State<RootShell>
     if (files.isNotEmpty) _handleSharedFiles(files);
   }
 
-  List<TransferTask> get _activeTasks => context
-      .read<TransferManager>()
+  List<TransferTask> get _activeTasks => ref
+      .read(transferManagerProvider)
       .tasks
       .where(
         (t) =>
@@ -812,23 +929,22 @@ class _RootShellState extends State<RootShell>
       .toList();
 
   Future<bool> _handleBack() async {
-    final app = context.read<AppController>();
     final defaultView = _defaultViewId;
-    final transfers = context.read<TransferManager>();
+    final transfers = ref.read(transferManagerProvider);
     final active = _activeTasks;
-    if (app.selectionMode) {
-      app.onRequestExitSelection?.call();
+    if (_navigation.selectionMode) {
+      _navigation.onRequestExitSelection?.call();
       return false;
     }
     final currentView = _currentViewId;
     // 网盘视图：先让页面处理（返回上一级目录）
-    if (currentView == _viewDrive && app.onDriveBack != null) {
-      final handled = await app.onDriveBack!();
+    if (currentView == _viewDrive && _navigation.onDriveBack != null) {
+      final handled = await _navigation.onDriveBack!();
       if (handled) return false;
     }
     // 我的视图：先让页面处理（退出搜索 / 关闭二级设置页）
-    if (currentView == _viewProfile && app.onProfileBack != null) {
-      final handled = await app.onProfileBack!();
+    if (currentView == _viewProfile && _navigation.onProfileBack != null) {
+      final handled = await _navigation.onProfileBack!();
       if (handled) return false;
     }
     if (currentView != defaultView) {
@@ -863,12 +979,28 @@ class _RootShellState extends State<RootShell>
 
   @override
   Widget build(BuildContext context) {
-    final app = context.watch<AppController>();
-    final transfers = context.watch<TransferManager>();
+    final manager = ref.watch(transferManagerProvider);
+    return _ShellStateBuilder(
+      runtime: _runtime,
+      accounts: _accounts,
+      navigation: _navigation,
+      appearance: _appearance,
+      builder: (context, shell) => TransferRunningCount(
+        manager: manager,
+        builder: (context, running) => _buildShell(context, shell, running),
+      ),
+    );
+  }
+
+  Widget _buildShell(
+    BuildContext context,
+    _ShellStateSnapshot shell,
+    int running,
+  ) {
     final l10n = context.l10n;
     NotificationService.i18n = l10n;
-    if (app.activeUid != _pageViewUid) {
-      _pageViewUid = app.activeUid;
+    if (shell.activeUid != _pageViewUid) {
+      _pageViewUid = shell.activeUid;
       _pageViewKey = GlobalKey();
       // 换账号会重建分页器：新控制器直接以当前视图为初始页，
       // 否则会回到首页并与底栏高亮错位（点当前的底栏项没反应）。
@@ -876,34 +1008,32 @@ class _RootShellState extends State<RootShell>
       _pageController = PageController(initialPage: _index);
       WidgetsBinding.instance.addPostFrameCallback((_) => previous.dispose());
     }
-    if (!app.ready) {
+    if (!shell.ready) {
       return const Scaffold(body: Center(child: M3eLoadingIndicator(size: 48)));
     }
-    if (app.activeUid == null) {
+    if (shell.activeUid == null) {
       return LoginPage(
         firstRun: true,
-        credentialsResetNotice: app.secureStorageNeedsReauthentication,
+        credentialsResetNotice: shell.secureStorageNeedsReauthentication,
       );
     }
     // 底栏显示项变化时，下一帧按新页序重建
     if (_ids.isEmpty) {
-      _ids = _enabledIds(app);
+      _ids = _enabledIds(
+        showTransfers: shell.showTransfers,
+        showFavorites: shell.showFavorites,
+      );
     } else {
-      final ids = _enabledIds(app);
+      final ids = _enabledIds(
+        showTransfers: shell.showTransfers,
+        showFavorites: shell.showFavorites,
+      );
       if (!listEquals(ids, _ids)) {
         _syncNavConfig(ids);
       } else {
         _schedulePagerSync();
       }
     }
-
-    final running = transfers.tasks
-        .where(
-          (t) =>
-              t.status == TransferStatus.running ||
-              t.status == TransferStatus.queued,
-        )
-        .length;
 
     // 底栏整体高度：悬浮样式含上下留白，用于 1:1 跟随滚动的收起距离，
     // 再加上系统手势区（导航栏）的高度。普通底栏由 NavigationBar 自己
@@ -915,26 +1045,27 @@ class _RootShellState extends State<RootShell>
     // 不能跟着抽动一下——用 viewPadding（系统栏原始值，键盘弹出时保持不变）。
     // 底栏此时本来就被输入法盖着，多留这一段不会露出空白。
     final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
-    final barHeight =
-        (app.settings.floatingNavBar ? 108.0 : 80.0) + bottomInset;
+    final barHeight = (shell.floatingNavBar ? 108.0 : 80.0) + bottomInset;
     final keyed = KeyedSubtree(
-      key: ValueKey('shell-${app.activeUid}'),
+      key: ValueKey('shell-${shell.activeUid}'),
       // 横向滑动切换视图；设置里可关闭手势（只能点底栏切换）
       child: PageView(
         key: _pageViewKey,
         controller: _pageController,
-        physics: app.settings.swipeTabs
+        physics: shell.swipeTabs
             ? const PageScrollPhysics()
             : const NeverScrollableScrollPhysics(),
         onPageChanged: (i) {
           // 程序化跳转经过中间页时保持指示器停留在目标，避免底栏按钮闪烁
           if (_programmaticJump && i != _index) return;
           // 横滑切换视图时同样退出多选
-          if (app.selectionMode) app.onRequestExitSelection?.call();
+          if (shell.selectionMode) {
+            _navigation.onRequestExitSelection?.call();
+          }
           FocusManager.instance.primaryFocus?.unfocus();
           // 视图真正切换后：恢复底栏并通知页面把折叠的顶栏调出来
-          app.animateBarsHide(0);
-          app.activeTab.value = _ids[i];
+          _navigation.animateBarsHide(0, reduceMotion: reduceMotionOf(context));
+          _navigation.activeTab.value = _ids[i];
           setState(() => _index = i);
         },
         children: [
@@ -948,10 +1079,9 @@ class _RootShellState extends State<RootShell>
                 id,
                 ScrollTint(
                   hideDistance: barHeight,
-                  readBarsHidden: () => app.barsHide.value,
-                  onBarsHidden:
-                      (app.settings.hideTopBar || app.settings.hideBottomBar)
-                      ? app.setBarsHideFromScroll
+                  readBarsHidden: () => _navigation.barsHide.value,
+                  onBarsHidden: (shell.hideTopBar || shell.hideBottomBar)
+                      ? _navigation.setBarsHideFromScroll
                       : null,
                   child: _pageFor(id),
                 ),
@@ -984,7 +1114,7 @@ class _RootShellState extends State<RootShell>
     }
     // 大屏（MD3E）：侧栏等导航区用 surfaceContainer，主视图是圆角的 surface 卡片
     final bodyColor = Theme.of(context).scaffoldBackgroundColor;
-    final floatingNav = app.settings.floatingNavBar;
+    final floatingNav = shell.floatingNavBar;
     final navBar = NavigationBar(
       selectedIndex: _index,
       // 底栏高度按 viewPadding 算（键盘弹出 / 收起时不变），NavigationBar 自己
@@ -992,8 +1122,8 @@ class _RootShellState extends State<RootShell>
       // 整条底栏的内容会缩掉导航栏的高度（外框不缩、里面按钮缩）。
       maintainBottomViewPadding: true,
       onDestinationSelected: (pos) {
-        if (app.selectionMode) {
-          app.onRequestExitSelection?.call();
+        if (shell.selectionMode) {
+          _navigation.onRequestExitSelection?.call();
         }
         _goTo(_ids[pos]);
       },
@@ -1012,10 +1142,10 @@ class _RootShellState extends State<RootShell>
     // 子目录或搜索 / 非默认视图 / 传输中的退出确认）交给 _handleBack 处理。
     final currentView = _currentViewId;
     return ValueListenableBuilder<bool>(
-      valueListenable: app.driveCanHandleBack,
+      valueListenable: _navigation.driveCanHandleBack,
       builder: (context, driveCanHandleBack, child) {
         final canPop = canHandBackToSystem(
-          selectionMode: app.selectionMode,
+          selectionMode: shell.selectionMode,
           hasActiveTransfers: running > 0,
           atDefaultView: currentView == _defaultViewId,
           driveCanHandleBack: currentView == _viewDrive && driveCanHandleBack,
@@ -1064,14 +1194,12 @@ class _RootShellState extends State<RootShell>
                     child: AnimatedBuilder(
                       // 滚动收起进度 + 切换视图时卡片顶边的高度过渡
                       animation: Listenable.merge([
-                        app.topBarHide,
+                        _navigation.topBarHide,
                         _cardTopAnim,
                       ]),
                       builder: (context, _) {
-                        final hide = app.topBarHide.value;
-                        final t = app.settings.hideTopBar
-                            ? hide.clamp(0.0, 1.0)
-                            : 0.0;
+                        final hide = _navigation.topBarHide.value;
+                        final t = shell.hideTopBar ? hide.clamp(0.0, 1.0) : 0.0;
                         return Stack(
                           children: [
                             Positioned(
@@ -1121,9 +1249,9 @@ class _RootShellState extends State<RootShell>
               extendBody: true,
               // 底栏跟随滚动按比例下沉；完全收起后腾出布局空间
               bottomNavigationBar: ValueListenableBuilder<double>(
-                valueListenable: app.barsHide,
+                valueListenable: _navigation.barsHide,
                 builder: (context, hide, child) => SizedBox(
-                  height: app.settings.hideBottomBar
+                  height: shell.hideBottomBar
                       ? barHeight * (1 - hide)
                       : barHeight,
                   child: ClipRect(

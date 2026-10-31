@@ -5,15 +5,24 @@ import 'package:file_picker/file_picker.dart';
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:lpinyin/lpinyin.dart';
 import 'package:path/path.dart' as p;
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/account_state.dart';
 import '../core/api/lanzou_client.dart';
+import '../core/api/lanzou_client_registry.dart';
 import '../core/api/models.dart';
-import '../core/app_controller.dart';
+import '../core/cache_page_settings_state.dart';
+import '../core/data/app_db.dart';
+import '../core/data/app_db_provider.dart';
 import '../core/drive_cache.dart';
+import '../core/drive_state.dart';
 import '../core/file_picker_channel.dart';
+import '../core/list_home_settings_state.dart';
+import '../core/navigation_appearance_settings_state.dart';
+import '../core/navigation_state.dart';
 import '../core/platform_support.dart';
 import '../core/transfer/transfer_manager.dart';
+import '../core/transfer/transfer_manager_provider.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
@@ -44,7 +53,7 @@ enum _FolderMenuAction {
   delete,
 }
 
-class DrivePage extends StatefulWidget {
+class DrivePage extends ConsumerStatefulWidget {
   const DrivePage({
     super.key,
     this.initialFolderId = '-1',
@@ -59,10 +68,10 @@ class DrivePage extends StatefulWidget {
   final int? tabIndex;
 
   @override
-  State<DrivePage> createState() => _DrivePageState();
+  ConsumerState<DrivePage> createState() => _DrivePageState();
 }
 
-class _DrivePageState extends State<DrivePage>
+class _DrivePageState extends ConsumerState<DrivePage>
     with
         TickerProviderStateMixin,
         AutomaticKeepAliveClientMixin,
@@ -139,7 +148,13 @@ class _DrivePageState extends State<DrivePage>
 
   /// 键盘是否弹出（悬浮底栏的 FAB 留白跟随它，见 didChangeMetrics）。
   final ValueNotifier<bool> _keyboardUp = ValueNotifier(false);
-  late AppController _app;
+  late final AccountState _accounts;
+  late final NavigationState _navigation;
+  late final DriveState _drive;
+  late final AppDb _db;
+  late final CachePageSettingsState _cacheSettings;
+  late final ListHomeSettingsState _listHome;
+  late final NavigationAppearanceSettingsState _appearance;
 
   /// 传输管理器：注册与注销监听成对，dispose 时不能再读 context
   /// （元素正在卸载，InheritedWidget 查询会抛 "Null check operator used
@@ -156,15 +171,14 @@ class _DrivePageState extends State<DrivePage>
     // 底栏形态：只有当前激活的 tab 才算；独立页面：在最上层就算
     if (route == null || route.isFirst) {
       return widget.tabIndex != null &&
-          _appReady &&
-          _app.activeTab.value == widget.tabIndex;
+          _dependenciesReady &&
+          _navigation.activeTab.value == widget.tabIndex;
     }
     return true;
   }
 
-  /// didChangeDependencies 之前（例如 initState 里同步命中的目录缓存）
-  /// 还不能访问 _app，用这个标记兜底。
-  bool _appReady = false;
+  /// didChangeDependencies 之前还不能启用目录可见性探针，用这个标记兜底。
+  bool _dependenciesReady = false;
 
   @override
   void initState() {
@@ -181,15 +195,22 @@ class _DrivePageState extends State<DrivePage>
             .viewInsets
             .bottom >
         0;
-    final app = context.read<AppController>();
-    _sortMode = app.settings.sortMode;
-    _transfers = context.read<TransferManager>()..addTaskListener(_onTaskDone);
+    _accounts = ref.read(accountStateProvider);
+    _navigation = ref.read(navigationStateProvider);
+    _drive = ref.read(driveStateProvider);
+    _db = ref.read(appDbProvider);
+    _cacheSettings = ref.read(cachePageSettingsStateProvider);
+    _listHome = ref.read(listHomeSettingsStateProvider);
+    _appearance = ref.read(navigationAppearanceSettingsStateProvider);
+    _sortMode = _listHome.sortMode;
+    _transfers = ref.read(transferManagerProvider)
+      ..addTaskListener(_onTaskDone);
     if (widget.initialName != null) {
       _path = [PathNode(id: widget.initialFolderId, name: widget.initialName!)];
     }
     _scroll.addListener(_onScroll);
-    app.driveFolderRequest.addListener(_onDriveFolderRequest);
-    if (app.driveFolderRequest.value != null) {
+    _drive.folderRequest.addListener(_onDriveFolderRequest);
+    if (_drive.folderRequest.value != null) {
       // 首页请求的目录：直接加载目标目录，不再先加载根目录
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => _onDriveFolderRequest(),
@@ -202,18 +223,18 @@ class _DrivePageState extends State<DrivePage>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _app.removeDriveProbe(_dropProbe);
+    _drive.removeDriveProbe(_dropProbe);
     _keyboardUp.dispose();
-    _app.driveFolderRequest.removeListener(_onDriveFolderRequest);
+    _drive.folderRequest.removeListener(_onDriveFolderRequest);
     _transfers.removeTaskListener(_onTaskDone);
     if (_isShellPage) {
-      _app.onDriveBack = null;
+      _navigation.onDriveBack = null;
       // 外壳里的网盘页卸载后不再拦截返回，交回系统（预测性返回桌面）。
-      _app.driveCanHandleBack.value = false;
+      _navigation.driveCanHandleBack.value = false;
     }
     if (_selecting) {
-      _app.setSelectionMode(false);
-      _app.onRequestExitSelection = null;
+      _navigation.setSelectionMode(false);
+      _navigation.onRequestExitSelection = null;
     }
     _selAnim.dispose();
     _enterAnim.dispose();
@@ -237,14 +258,13 @@ class _DrivePageState extends State<DrivePage>
   bool _systemReduceMotion = false;
 
   bool get _animationsEnabled =>
-      context.read<AppController>().settings.transitionAnimations &&
-      !_systemReduceMotion;
+      _appearance.transitionAnimations && !_systemReduceMotion;
 
   /// 首页选择“网盘页打开”时：跳转到请求的目录。
   void _onDriveFolderRequest() {
-    final folderId = _app.driveFolderRequest.value;
+    final folderId = _drive.folderRequest.value;
     if (folderId == null) return;
-    _app.driveFolderRequest.value = null;
+    _drive.folderRequest.value = null;
     if (!mounted) return;
     _openFolderById(folderId);
   }
@@ -254,7 +274,7 @@ class _DrivePageState extends State<DrivePage>
     if (_directorySwitching || folderId == _folderId) return;
     _directorySwitching = true;
     try {
-      _app.animateBarsHide(0);
+      _navigation.animateBarsHide(0, reduceMotion: _systemReduceMotion);
       _rememberFolderOffset();
       await _animateDirectorySwitch(folderId);
       if (!mounted) return;
@@ -282,16 +302,23 @@ class _DrivePageState extends State<DrivePage>
     _refreshInPlace();
   }
 
+  LanzouClient? _activeClient() {
+    final accounts = _accounts.store;
+    final uid = accounts.activeUid;
+    if (uid == null) return null;
+    return ref
+        .read(lanzouClientRegistryProvider)
+        .clientFor(uid, cookie: accounts.byUid(uid)?.cookie);
+  }
+
   /// 局部刷新：保持当前列表可见，拉取完成后按差异播放新增/移除动画。
   /// [refreshFolders] 为 true 时同时重新拉取文件夹列表（新建/移动之后需要）。
   Future<bool> _refreshInPlace({bool refreshFolders = false}) async {
-    final app = context.read<AppController>();
-    final client = app.client;
+    final client = _activeClient();
     if (client == null) return false;
     try {
       // 已经加载过几页就刷新几页，避免局部刷新把后面的条目吞掉
       final listing = await _fetchListing(
-        app,
         client,
         maxPages: math.max(_page, 1),
         withFolders: refreshFolders,
@@ -312,7 +339,6 @@ class _DrivePageState extends State<DrivePage>
 
   /// 拉取当前目录快照；[maxPages] 控制最多加载多少页（默认按“全部加载”设置）。
   Future<_Listing> _fetchListing(
-    AppController app,
     LanzouClient client, {
     int? maxPages,
     bool withFolders = true,
@@ -320,7 +346,7 @@ class _DrivePageState extends State<DrivePage>
     final foldersResult = withFolders
         ? await client.listFolders(_folderId)
         : null;
-    final limit = maxPages ?? (app.settings.loadAllPages ? 60 : 1);
+    final limit = maxPages ?? (_cacheSettings.loadAllPages ? 60 : 1);
     final first = await client.listFilesPage(_folderId, 1);
     var files = first.files;
     var hasMore = first.hasMore;
@@ -498,11 +524,10 @@ class _DrivePageState extends State<DrivePage>
   void didChangeDependencies() {
     super.didChangeDependencies();
     _systemReduceMotion = reduceMotionOf(context);
-    _app = context.read<AppController>();
-    _appReady = true;
-    _app.addDriveProbe(_dropProbe); // 拖拽判定：当前网盘页是否可见
+    _dependenciesReady = true;
+    _drive.addDriveProbe(_dropProbe); // 拖拽判定：当前网盘页是否可见
     if (_isShellPage) {
-      _app.onDriveBack = _handleDriveBack;
+      _navigation.onDriveBack = _handleDriveBack;
     }
     // 首次挂载后同步一次返回能力（例如 initState 里同步命中的目录缓存）。
     // didChangeDependencies 发生在 build 期间，直接改 notifier 会让 RootShell
@@ -511,7 +536,7 @@ class _DrivePageState extends State<DrivePage>
       if (mounted) _publishCanHandleBack();
     });
     // 换账号兜底：页面状态如果被保留下来，也要丢掉上一个账号的目录内容
-    final uid = _app.activeUid;
+    final uid = _accounts.store.activeUid;
     if (_loadedUid == null) {
       _loadedUid = uid;
     } else if (_loadedUid != uid) {
@@ -559,12 +584,12 @@ class _DrivePageState extends State<DrivePage>
   /// 当前网盘页是否要自己消费返回手势：多选 > 搜索栏 > 上一级目录。
   bool get _canHandleBack => _selecting || _searching || _path.isNotEmpty;
 
-  /// 上报给 RootShell（见 AppController.driveCanHandleBack）：需要消费返回时
+  /// 上报给 RootShell（见 NavigationState.driveCanHandleBack）：需要消费返回时
   /// 置 true，由 Flutter 拦截手势；false 时交给系统，系统才会播放
   /// 「退回桌面」的预测性返回动画。
   void _publishCanHandleBack() {
-    if (!_appReady || !_isShellPage) return;
-    final notifier = _app.driveCanHandleBack;
+    if (!_dependenciesReady || !_isShellPage) return;
+    final notifier = _navigation.driveCanHandleBack;
     final value = _canHandleBack;
     if (notifier.value != value) notifier.value = value;
   }
@@ -613,19 +638,17 @@ class _DrivePageState extends State<DrivePage>
   );
 
   void _updateCacheSnapshot() {
-    final app = context.read<AppController>();
-    if (app.settings.cacheFolders) {
-      app.driveCache.put(_folderId, _snapshot());
+    if (_cacheSettings.cacheFolders) {
+      _drive.cache.put(_folderId, _snapshot());
     }
   }
 
   Future<void> _load({bool force = false}) async {
-    final app = context.read<AppController>();
-    final client = app.client;
+    final client = _activeClient();
     if (client == null) return;
 
-    final cached = app.settings.cacheFolders
-        ? app.driveCache.get(_folderId)
+    final cached = _cacheSettings.cacheFolders
+        ? _drive.cache.get(_folderId)
         : null;
     if (!force && cached != null) {
       _exitAnim.value = 0;
@@ -655,7 +678,7 @@ class _DrivePageState extends State<DrivePage>
       _error = null;
     });
     try {
-      final listing = await _fetchListing(app, client);
+      final listing = await _fetchListing(client);
       if (!mounted) return;
       _exitAnim.value = 0;
       setState(() {
@@ -681,8 +704,8 @@ class _DrivePageState extends State<DrivePage>
       _playEnterAnimation();
       // 目录内容不足一屏时继续补页，让「已经到底了」立刻可见
       _fillViewportIfNeeded();
-      if (app.settings.cacheFolders) {
-        app.driveCache.put(_folderId, _snapshot());
+      if (_cacheSettings.cacheFolders) {
+        _drive.cache.put(_folderId, _snapshot());
       }
     } catch (e) {
       if (!mounted) return;
@@ -697,8 +720,7 @@ class _DrivePageState extends State<DrivePage>
   Future<void> _loadMore({bool auto = false}) async {
     if (_loading || _directorySwitching || _loadingMore || !_hasMore) return;
     if (_filter.isNotEmpty) return;
-    final app = context.read<AppController>();
-    final client = app.client;
+    final client = _activeClient();
     if (client == null) return;
     setState(() {
       _loadingMore = true;
@@ -714,8 +736,8 @@ class _DrivePageState extends State<DrivePage>
         _loadingMore = false;
       });
       _autoRetriesLeft = _maxAutoRetries;
-      if (app.settings.cacheFolders) {
-        app.driveCache.put(_folderId, _snapshot());
+      if (_cacheSettings.cacheFolders) {
+        _drive.cache.put(_folderId, _snapshot());
       }
       // 内容还不满一屏时继续补页：否则「已经到底了」要等用户滑一下才出现
       _fillViewportIfNeeded();
@@ -763,7 +785,7 @@ class _DrivePageState extends State<DrivePage>
   }
 
   Future<void> _reloadAfterChange() async {
-    context.read<AppController>().driveCache.clear();
+    _drive.cache.clear();
     await _load(force: true);
   }
 
@@ -812,8 +834,8 @@ class _DrivePageState extends State<DrivePage>
       if (folderId != null) _selectedFolders.add(folderId);
     });
     _selAnim.forward();
-    _app.onRequestExitSelection = _exitSelection;
-    _app.setSelectionMode(true);
+    _navigation.onRequestExitSelection = _exitSelection;
+    _navigation.setSelectionMode(true);
     // 只在「刚进入多选」时播报，继续长按其它条目不再重复
     if (!wasSelecting) announceEnteredMultiSelect(context);
   }
@@ -825,8 +847,8 @@ class _DrivePageState extends State<DrivePage>
       _selectedFolders.clear();
     });
     _selAnim.reverse();
-    _app.onRequestExitSelection = null;
-    _app.setSelectionMode(false);
+    _navigation.onRequestExitSelection = null;
+    _navigation.setSelectionMode(false);
   }
 
   /// 切换单个文件 / 文件夹的选中态；选中数归零时自动退出多选。
@@ -897,17 +919,16 @@ class _DrivePageState extends State<DrivePage>
     if (_directorySwitching) return;
     _directorySwitching = true;
     try {
-      final app = context.read<AppController>();
-      await app.db.addRecent(
-        account: app.activeUid ?? '',
+      await _db.addRecent(
+        account: _accounts.store.activeUid ?? '',
         kind: 'folder',
         name: folder.name,
         ref: folder.id,
-        limit: app.settings.recentLimit,
+        limit: _listHome.recentLimit,
       );
       // 进入新目录时若顶/底栏处于收起状态，先带动画恢复显示，
       // 否则目录内容较少无法滚动时底栏就唤不出来。
-      app.animateBarsHide(0);
+      _navigation.animateBarsHide(0, reduceMotion: _systemReduceMotion);
       _rememberFolderOffset();
       await _animateDirectorySwitch(folder.id);
       if (!mounted) return;
@@ -929,8 +950,7 @@ class _DrivePageState extends State<DrivePage>
     if (_directorySwitching) return;
     _directorySwitching = true;
     try {
-      final app = context.read<AppController>();
-      app.animateBarsHide(0);
+      _navigation.animateBarsHide(0, reduceMotion: _systemReduceMotion);
       final newPath = index < 0 ? <PathNode>[] : _path.sublist(0, index + 1);
       final targetId = newPath.isEmpty ? '-1' : newPath.last.id;
       _rememberFolderOffset();
@@ -975,9 +995,7 @@ class _DrivePageState extends State<DrivePage>
         final from = _scroll.position.pixels;
         // 回到列表顶部时让悬浮顶栏顺势滑下来（下移显示），
         // 而不是 jumpTo 造成的瞬间出现。
-        final slideTopBar =
-            _animationsEnabled &&
-            context.read<AppController>().settings.hideTopBar;
+        final slideTopBar = _animationsEnabled && _appearance.hideTopBar;
         if (slideTopBar && to < from) {
           _scroll.animateTo(
             to,
@@ -1003,8 +1021,7 @@ class _DrivePageState extends State<DrivePage>
 
   /// 网盘菜单：底部弹窗承载布局、排序与列表操作。
   Future<void> _showDriveMenu() async {
-    final app = context.read<AppController>();
-    var grid = app.settings.gridView;
+    var grid = _cacheSettings.gridView;
     var sort = _sortMode;
     final isRoot = _folderId == '-1';
     await showAppSheet<void>(
@@ -1025,7 +1042,7 @@ class _DrivePageState extends State<DrivePage>
                   selected: grid ? 'grid' : 'list',
                   onSelected: (value) {
                     setSheetState(() => grid = value == 'grid');
-                    app.setGridView(grid);
+                    _cacheSettings.setGridView(grid);
                   },
                   labelOf: (value) => Text(
                     value == 'grid' ? context.l10n.grid : context.l10n.list,
@@ -1046,7 +1063,7 @@ class _DrivePageState extends State<DrivePage>
                   onSelected: (value) {
                     setSheetState(() => sort = value);
                     setState(() => _sortMode = value);
-                    app.setSortMode(value);
+                    _listHome.setSortMode(value);
                   },
                   labelOf: (value) => Text(switch (value) {
                     'name' => context.l10n.sortName,
@@ -1146,7 +1163,7 @@ class _DrivePageState extends State<DrivePage>
     final files = await FilePicker.pickFiles();
     if (files.isEmpty) return;
     if (!mounted) return;
-    final transfers = context.read<TransferManager>();
+    final transfers = _transfers;
     var skipped = 0;
     var added = 0;
     for (final file in files) {
@@ -1189,7 +1206,7 @@ class _DrivePageState extends State<DrivePage>
     try {
       final paths = await ProviderFilePicker.pickFiles();
       if (paths.isEmpty || !mounted) return;
-      final transfers = context.read<TransferManager>();
+      final transfers = _transfers;
       var added = 0;
       var skipped = 0;
       for (final path in paths) {
@@ -1236,11 +1253,7 @@ class _DrivePageState extends State<DrivePage>
     // 名称为空由弹窗自己的 error state 拦住，到这里一定非空
     final name = result.name;
     try {
-      await context.read<AppController>().client?.mkdir(
-        _folderId,
-        name,
-        desc: result.desc,
-      );
+      await _activeClient()?.mkdir(_folderId, name, desc: result.desc);
       // 局部刷新：只重新拉取文件夹列表，新文件夹淡入出现
       final ok = await _refreshInPlace(refreshFolders: true);
       if (!ok) await _reloadAfterChange();
@@ -1281,9 +1294,9 @@ class _DrivePageState extends State<DrivePage>
     final l10n = context.l10n;
     if (!await _confirmDelete(l10n.deleteConfirmMessage(count))) return;
     if (!mounted) return;
-    final app = context.read<AppController>();
-    final client = app.client;
+    final client = _activeClient();
     if (client == null) return;
+    final activeUid = _accounts.store.activeUid ?? '';
     final fileIds = _selectedFiles.toList();
     final folderIds = _selectedFolders.toList();
     final fileNames = {for (final f in _files) f.id: f.name};
@@ -1305,11 +1318,9 @@ class _DrivePageState extends State<DrivePage>
           }
         },
       );
-      await app.db.removeDownloaded([
-        for (final id in fileIds) '${app.activeUid ?? ''}:$id',
-      ]);
+      await _db.removeDownloaded([for (final id in fileIds) '$activeUid:$id']);
       // 删掉的目录若固定在快速访问里，一并移除
-      if (folderIds.isNotEmpty) await app.db.removePins(folderIds);
+      if (folderIds.isNotEmpty) await _db.removePins(folderIds);
       if (!mounted) return;
       _exitSelection();
       await _removeItemsWithAnimation(
@@ -1325,8 +1336,10 @@ class _DrivePageState extends State<DrivePage>
 
   Future<void> _batchDownload() async {
     if (_selectedFiles.isEmpty) return;
-    final app = context.read<AppController>();
-    final transfers = context.read<TransferManager>();
+    final transfers = _transfers;
+    final client = _activeClient();
+    final publicClient = ref.read(lanzouClientRegistryProvider).publicClient;
+    final activeUid = _accounts.store.activeUid ?? '';
     final l10n = context.l10n;
     final ids = _selectedFiles.toList();
     final names = {for (final file in _files) file.id: file.name};
@@ -1342,8 +1355,8 @@ class _DrivePageState extends State<DrivePage>
           final name = names[id] ?? '';
           report(i + 1, name);
           try {
-            final info = await app.client!.shareInfoOfFile(id);
-            final direct = await app.publicClient.resolveFileShare(
+            final info = await client!.shareInfoOfFile(id);
+            final direct = await publicClient.resolveFileShare(
               info.url,
               pwd: info.pwd,
             );
@@ -1352,8 +1365,8 @@ class _DrivePageState extends State<DrivePage>
               name: direct.name.isEmpty ? name : direct.name,
               referer: info.url,
               pwd: info.pwd,
-              via: app.publicClient,
-              refId: '${app.activeUid ?? ''}:$id',
+              via: publicClient,
+              refId: '$activeUid:$id',
             );
           } catch (_) {
             failed += 1;
@@ -1379,7 +1392,7 @@ class _DrivePageState extends State<DrivePage>
     final fileIds = _selectedFiles.toList();
     final folderIds = _selectedFolders.toList();
     if (fileIds.isEmpty && folderIds.isEmpty) return;
-    final app = context.read<AppController>();
+    final client = _activeClient();
     final l10n = context.l10n;
     final lines = <String>[];
     final fileNames = {for (final f in _files) f.id: f.name};
@@ -1394,7 +1407,7 @@ class _DrivePageState extends State<DrivePage>
           final name = fileNames[id] ?? '';
           report(++done, name);
           try {
-            final info = await app.client!.shareInfoOfFile(id);
+            final info = await client!.shareInfoOfFile(id);
             lines.add(
               info.pwd.isEmpty
                   ? '$name ${info.url}'
@@ -1406,7 +1419,7 @@ class _DrivePageState extends State<DrivePage>
           final name = folderNames[id] ?? '';
           report(++done, name);
           try {
-            final info = await app.client!.shareInfoOfFolder(id);
+            final info = await client!.shareInfoOfFolder(id);
             final linkName = info.name.isEmpty ? name : info.name;
             lines.add(
               info.pwd.isEmpty
@@ -1428,9 +1441,9 @@ class _DrivePageState extends State<DrivePage>
   }
 
   Future<void> _batchFavorite() async {
-    final app = context.read<AppController>();
-    final client = app.client;
-    final sharer = app.activeAccount?.nickname ?? '';
+    final client = _activeClient();
+    final db = _db;
+    final sharer = _accounts.store.active?.nickname ?? '';
     final fileIds = _selectedFiles.toList();
     final folderIds = _selectedFolders.toList();
     var count = 0;
@@ -1449,7 +1462,7 @@ class _DrivePageState extends State<DrivePage>
             report(++done, file?.name ?? '');
             try {
               final info = await client.shareInfoOfFile(id);
-              await app.db.addFavorite(
+              await db.addFavorite(
                 kind: 'shareFile',
                 name: file?.name ?? '',
                 ref: info.url,
@@ -1467,7 +1480,7 @@ class _DrivePageState extends State<DrivePage>
             report(++done, folder?.name ?? '');
             try {
               final info = await client.shareInfoOfFolder(id);
-              await app.db.addFavorite(
+              await db.addFavorite(
                 kind: 'shareFolder',
                 name: folder?.name ?? '',
                 ref: info.url,
@@ -1526,8 +1539,7 @@ class _DrivePageState extends State<DrivePage>
   }
 
   Future<void> _batchMove() async {
-    final app = context.read<AppController>();
-    final client = app.client;
+    final client = _activeClient();
     if (client == null) return;
     final fileIds = _selectedFiles.toList();
     final folderIds = _selectedFolders.toList();
@@ -1590,7 +1602,7 @@ class _DrivePageState extends State<DrivePage>
       builder: (_) => const _EditDescDialog(),
     );
     if (desc == null || !mounted) return;
-    final client = context.read<AppController>().client;
+    final client = _activeClient();
     if (client == null) return;
     final fileIds = _selectedFiles.toList();
     final folderIds = _selectedFolders.toList();
@@ -1666,10 +1678,9 @@ class _DrivePageState extends State<DrivePage>
   }
 
   Future<void> _batchSetPasswd() async {
-    final app = context.read<AppController>();
     final fileIds = _selectedFiles.toList();
     final folderIds = _selectedFolders.toList();
-    final freeTier = app.activeAccount?.isFreeTier ?? false;
+    final freeTier = _accounts.store.active?.isFreeTier ?? false;
     // 批量不逐项取密码，默认按“启用”打开（留空即关闭）。
     // 文件提取码限 2-6 位、文件夹可到 12 位：只选一种时一个输入框就够；
     // 两种都选时分成两个输入框（文件夹一个、文件一个），各按自己的规则填写。
@@ -1693,7 +1704,7 @@ class _DrivePageState extends State<DrivePage>
       filePwd = pwd;
       folderPwd = pwd;
     }
-    final client = app.client;
+    final client = _activeClient();
     if (client == null) return;
     final fileNames = {for (final f in _files) f.id: f.name};
     final folderNames = {for (final f in _folders) f.id: f.name};
@@ -1780,7 +1791,7 @@ class _DrivePageState extends State<DrivePage>
   /// [share] 是属性弹窗已经取回来的分享信息（打开弹窗时为了收藏判定取过），
   /// 传进来就不再重复请求。
   Future<void> _showFileQr(LzFile file, {ShareInfo? share}) async {
-    final client = context.read<AppController>().client;
+    final client = _activeClient();
     if (client == null) return;
     try {
       final info = share ?? await client.shareInfoOfFile(file.id);
@@ -1795,7 +1806,7 @@ class _DrivePageState extends State<DrivePage>
 
   /// 显示文件夹的分享链接二维码；[share] 同上，属性弹窗取过就直接用。
   Future<void> _showFolderQr(LzFolder folder, {ShareInfo? share}) async {
-    final client = context.read<AppController>().client;
+    final client = _activeClient();
     if (client == null) return;
     try {
       final info = share ?? await client.shareInfoOfFolder(folder.id);
@@ -1833,7 +1844,7 @@ class _DrivePageState extends State<DrivePage>
   ///
   /// 只扫描已经加载的前几页；找不到或出错时返回 null，由调用方沿用现有信息。
   Future<LzFile?> _freshFileEntry(String fileId) async {
-    final client = context.read<AppController>().client;
+    final client = _activeClient();
     if (client == null) return null;
     final maxPage = math.max(1, math.min(_page, 3));
     for (var page = 1; page <= maxPage; page++) {
@@ -1928,7 +1939,7 @@ class _DrivePageState extends State<DrivePage>
   /// ⋯ 菜单里的「修改信息」：列表项没有简介正文，先取一次再开弹窗——
   /// 否则输入框是空的，用户只改名就会把简介覆盖掉。取不到就按空简介处理。
   Future<void> _editFileInfoFromMenu(LzFile file) async {
-    final client = context.read<AppController>().client;
+    final client = _activeClient();
     var desc = '';
     if (client != null) {
       try {
@@ -1940,8 +1951,7 @@ class _DrivePageState extends State<DrivePage>
   }
 
   Future<void> _moveSingleFile(LzFile file) async {
-    final app = context.read<AppController>();
-    final client = app.client;
+    final client = _activeClient();
     if (client == null) return;
     final target = await showFolderPicker(
       context,
@@ -1966,7 +1976,7 @@ class _DrivePageState extends State<DrivePage>
   }
 
   Future<void> _singleSetPasswd(LzFile file) async {
-    final client = context.read<AppController>().client;
+    final client = _activeClient();
     if (client == null) return;
     // 先取当前是否启用与密码，用于预填开关和输入框
     final navigator = Navigator.of(context);
@@ -1984,8 +1994,7 @@ class _DrivePageState extends State<DrivePage>
       context,
       enabled: currentPwd.isNotEmpty,
       pwd: currentPwd,
-      freeTier:
-          context.read<AppController>().activeAccount?.isFreeTier ?? false,
+      freeTier: _accounts.store.active?.isFreeTier ?? false,
     );
     if (result == null || !mounted) return;
     final pwd = result.enabled ? result.pwd : '';
@@ -2055,14 +2064,14 @@ class _DrivePageState extends State<DrivePage>
     _pulseItems(folderIds: {folderId});
     // 缓存里也要改名，否则再进入该目录时路径栏会显示旧名称
     if (name != null) {
-      context.read<AppController>().driveCache.renameFolder(folderId, name);
+      _drive.cache.renameFolder(folderId, name);
     }
     _updateCacheSnapshot();
   }
 
   /// 文件夹访问密码：先取当前是否启用与密码，再弹开关 + 密码框。
   Future<void> _setFolderPasswd(LzFolder folder) async {
-    final client = context.read<AppController>().client;
+    final client = _activeClient();
     if (client == null) return;
     final navigator = Navigator.of(context);
     showLoadingDialog(context, context.l10n.resolving);
@@ -2081,8 +2090,7 @@ class _DrivePageState extends State<DrivePage>
       pwd: currentPwd,
       // 文件夹提取码可以到 12 位（文件仍限 2-6 位）
       maxLength: 12,
-      freeTier:
-          context.read<AppController>().activeAccount?.isFreeTier ?? false,
+      freeTier: _accounts.store.active?.isFreeTier ?? false,
     );
     if (result == null || !mounted) return;
     final pwd = result.enabled ? result.pwd : '';
@@ -2114,10 +2122,9 @@ class _DrivePageState extends State<DrivePage>
     LzFile file, {
     required String desc,
   }) async {
-    final app = context.read<AppController>();
-    final client = app.client;
+    final client = _activeClient();
     if (client == null) return null;
-    final freeTier = app.activeAccount?.isFreeTier ?? false;
+    final freeTier = _accounts.store.active?.isFreeTier ?? false;
     final result = await showDialog<({String name, String desc})>(
       context: context,
       builder: (_) => _ItemFormDialog(
@@ -2171,7 +2178,7 @@ class _DrivePageState extends State<DrivePage>
 
   /// 修改文件夹信息（名称 + 简介），成功后返回新值给调用方刷新弹窗。
   Future<({String name, String desc})?> _editFolderInfo(LzFolder folder) async {
-    final client = context.read<AppController>().client;
+    final client = _activeClient();
     if (client == null) return null;
     // 控制器由弹窗自己持有：退场动画期间 TextField 仍会重建，
     // 在 showDialog 返回后立刻 dispose 会触发
@@ -2286,7 +2293,7 @@ class _DrivePageState extends State<DrivePage>
   /// ⋯ 菜单里的「修改信息」：列表项带的简介可能是截断过的，先取一次最新全文
   /// （与文件的修改信息同一个口径），取不到就沿用列表里的值。
   Future<void> _editFolderInfoFromMenu(LzFolder folder) async {
-    final client = context.read<AppController>().client;
+    final client = _activeClient();
     var desc = folder.desc;
     if (client != null) {
       try {
@@ -2312,14 +2319,15 @@ class _DrivePageState extends State<DrivePage>
   /// 解析分享信息 + 直链并入队。返回值给属性弹窗用：false = 没入队
   /// （解析失败 / 未登录），调用方据此把「解析中」状态恢复原状。
   Future<bool> _downloadOwnFile(LzFile file, {ShareInfo? share}) async {
-    final app = context.read<AppController>();
-    final transfers = context.read<TransferManager>();
-    final client = app.client;
+    final transfers = _transfers;
+    final client = _activeClient();
     if (client == null) return false;
+    final publicClient = ref.read(lanzouClientRegistryProvider).publicClient;
+    final accountUid = _accounts.store.activeUid ?? '';
     try {
       final info = share ?? await client.shareInfoOfFile(file.id);
       if (!mounted) return false;
-      final direct = await app.publicClient.resolveFileShare(
+      final direct = await publicClient.resolveFileShare(
         info.url,
         pwd: info.pwd,
       );
@@ -2328,8 +2336,8 @@ class _DrivePageState extends State<DrivePage>
         name: direct.name.isEmpty ? file.name : direct.name,
         referer: info.url,
         pwd: info.pwd,
-        via: app.publicClient,
-        refId: '${app.activeUid ?? ''}:${file.id}',
+        via: publicClient,
+        refId: '$accountUid:${file.id}',
       );
       if (!mounted) return true;
       // 属性弹窗不再关闭：反馈要走盖在弹窗之上的轻提示
@@ -2343,7 +2351,7 @@ class _DrivePageState extends State<DrivePage>
   }
 
   Future<void> _copyShareLink(LzFile file, {ShareInfo? share}) async {
-    final client = context.read<AppController>().client;
+    final client = _activeClient();
     if (client == null) return;
     try {
       final info = share ?? await client.shareInfoOfFile(file.id);
@@ -2362,7 +2370,7 @@ class _DrivePageState extends State<DrivePage>
   }
 
   Future<void> _copyFolderShareLink(LzFolder folder, {ShareInfo? share}) async {
-    final client = context.read<AppController>().client;
+    final client = _activeClient();
     if (client == null) return;
     try {
       final info = share ?? await client.shareInfoOfFolder(folder.id);
@@ -2386,14 +2394,11 @@ class _DrivePageState extends State<DrivePage>
     LzFile file, {
     ShareInfo? share,
   }) async {
-    final app = context.read<AppController>();
-    final client = app.client;
+    final client = _activeClient();
     if (client == null) return null;
+    final publicClient = ref.read(lanzouClientRegistryProvider).publicClient;
     final info = share ?? await client.shareInfoOfFile(file.id);
-    final direct = await app.publicClient.resolveFileShare(
-      info.url,
-      pwd: info.pwd,
-    );
+    final direct = await publicClient.resolveFileShare(info.url, pwd: info.pwd);
     return direct.url;
   }
 
@@ -2436,12 +2441,11 @@ class _DrivePageState extends State<DrivePage>
   ///
   /// 返回是否成功：调用方（属性弹窗）要按结果回滚按钮的选中态。
   Future<bool> _unfavoriteFile(LzFile file) async {
-    final app = context.read<AppController>();
-    final client = app.client;
+    final client = _activeClient();
     if (client == null) return false;
     try {
       final info = await client.shareInfoOfFile(file.id);
-      await app.db.removeFavorite(info.url);
+      await _db.removeFavorite(info.url);
       if (!mounted) return false;
       showAppToast(context, context.l10n.unfavorited);
       return true;
@@ -2454,12 +2458,11 @@ class _DrivePageState extends State<DrivePage>
 
   /// 取消收藏文件夹。
   Future<bool> _unfavoriteFolder(LzFolder folder) async {
-    final app = context.read<AppController>();
-    final client = app.client;
+    final client = _activeClient();
     if (client == null) return false;
     try {
       final info = await client.shareInfoOfFolder(folder.id);
-      await app.db.removeFavorite(info.url);
+      await _db.removeFavorite(info.url);
       if (!mounted) return false;
       showAppToast(context, context.l10n.unfavorited);
       return true;
@@ -2472,18 +2475,17 @@ class _DrivePageState extends State<DrivePage>
 
   /// 收藏文件。返回是否成功，供属性弹窗按结果回滚选中态。
   Future<bool> _favoriteFile(LzFile file) async {
-    final app = context.read<AppController>();
-    final client = app.client;
+    final client = _activeClient();
     if (client == null) return false;
     try {
       final info = await client.shareInfoOfFile(file.id);
-      await app.db.addFavorite(
+      await _db.addFavorite(
         kind: 'shareFile',
         name: file.name,
         ref: info.url,
         pwd: info.pwd,
         size: file.size,
-        sharer: app.activeAccount?.nickname ?? '',
+        sharer: _accounts.store.active?.nickname ?? '',
       );
       if (!mounted) return false;
       showAppToast(context, context.l10n.favorited);
@@ -2497,17 +2499,16 @@ class _DrivePageState extends State<DrivePage>
 
   /// 收藏文件夹。返回是否成功，供属性弹窗按结果回滚选中态。
   Future<bool> _favoriteFolder(LzFolder folder) async {
-    final app = context.read<AppController>();
-    final client = app.client;
+    final client = _activeClient();
     if (client == null) return false;
     try {
       final info = await client.shareInfoOfFolder(folder.id);
-      await app.db.addFavorite(
+      await _db.addFavorite(
         kind: 'shareFolder',
         name: folder.name,
         ref: info.url,
         pwd: info.pwd,
-        sharer: app.activeAccount?.nickname ?? '',
+        sharer: _accounts.store.active?.nickname ?? '',
       );
       if (!mounted) return false;
       showAppToast(context, context.l10n.favorited);
@@ -2523,12 +2524,13 @@ class _DrivePageState extends State<DrivePage>
     final l10n = context.l10n;
     if (!await _confirmDelete(l10n.deleteConfirmSingle(file.name))) return;
     if (!mounted) return;
-    final app = context.read<AppController>();
-    final client = app.client;
+    final client = _activeClient();
     if (client == null) return;
     try {
       await client.deleteItem(id: file.id, isFile: true);
-      await app.db.removeDownloaded(['${app.activeUid ?? ''}:${file.id}']);
+      await _db.removeDownloaded([
+        '${_accounts.store.activeUid ?? ''}:${file.id}',
+      ]);
       if (!mounted) return;
       await _removeItemsWithAnimation(fileIds: {file.id});
     } catch (e) {
@@ -2542,8 +2544,7 @@ class _DrivePageState extends State<DrivePage>
     final l10n = context.l10n;
     if (!await _confirmDelete(l10n.deleteConfirmSingle(folder.name))) return;
     if (!mounted) return;
-    final app = context.read<AppController>();
-    final client = app.client;
+    final client = _activeClient();
     if (client == null) return;
     // 删的是当前所在目录：删除成功后这个目录已经不存在了，要退回上一级
     final deletingCurrent = folder.id == _folderId;
@@ -2551,10 +2552,10 @@ class _DrivePageState extends State<DrivePage>
       await client.deleteItem(id: folder.id, isFile: false);
       if (!mounted) return;
       // 删除的目录如果固定在快速访问里，一并移除
-      await app.db.removePin(folder.id);
+      await _db.removePin(folder.id);
       if (deletingCurrent) {
         // 不清缓存的话，退回父目录会读到仍包含这一项的旧快照
-        app.driveCache.clear();
+        _drive.cache.clear();
         await _jumpTo(_path.length - 2);
         return;
       }
@@ -2569,26 +2570,36 @@ class _DrivePageState extends State<DrivePage>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final app = context.watch<AppController>();
     // 发布当前目录：拖拽文件落下来时的确认条要显示"上传到 根目录/abc"
-    app.driveLocation.value = DriveLocation(
+    _drive.location.value = DriveLocation(
       id: _folderId,
       path: [for (final node in _path) node.name].join('/'),
     );
-    final grid = app.settings.gridView;
-    final selectedCount = _selectedFiles.length + _selectedFolders.length;
-    final headerHeight =
-        MediaQuery.paddingOf(context).top + kToolbarHeight + 46;
-    // 底部被占住的高度（外壳底栏 / 系统导航栏），用来把 FAB 抬到它上面。
-    // 必须在页面上下文里读：FAB 槽位的 MediaQuery 已经把底部内边距清掉了。
-    final bottomObstruction = bottomObstructionHeight(context);
-    // 悬浮胶囊只在外壳里有；独立页面按系统导航栏避让即可。
-    final floatingNavInShell =
-        inRootShell(context) && app.settings.floatingNavBar;
 
     return AnimatedBuilder(
-      animation: Listenable.merge([_selAnim, _exitAnim]),
+      animation: Listenable.merge([
+        _selAnim,
+        _exitAnim,
+        _cacheSettings.revision,
+        _appearance.revision,
+      ]),
       builder: (context, _) {
+        final viewSettings = (
+          gridView: _cacheSettings.gridView,
+          floatingNavBar: _appearance.floatingNavBar,
+          hideTopBar: _appearance.hideTopBar,
+          hideBottomBar: _appearance.hideBottomBar,
+        );
+        final grid = viewSettings.gridView;
+        final selectedCount = _selectedFiles.length + _selectedFolders.length;
+        final headerHeight =
+            MediaQuery.paddingOf(context).top + kToolbarHeight + 46;
+        // 底部被占住的高度（外壳底栏 / 系统导航栏），用来把 FAB 抬到它上面。
+        // 必须在页面上下文里读：FAB 槽位的 MediaQuery 已经把底部内边距清掉了。
+        final bottomObstruction = bottomObstructionHeight(context);
+        // 悬浮胶囊只在外壳里有；独立页面按系统导航栏避让即可。
+        final floatingNavInShell =
+            inRootShell(context) && viewSettings.floatingNavBar;
         return Scaffold(
           // 大屏外壳里的页面：背景交给外壳的圆角卡片
           backgroundColor: transparentPageBackground(context)
@@ -2600,7 +2611,7 @@ class _DrivePageState extends State<DrivePage>
           body: Stack(
             children: [
               // 小屏：正文区整体让开左右挖孔 / 侧边导航栏；顶栏（浮层）保持原样
-              BodySideInset(child: _buildBody(grid)),
+              BodySideInset(child: _buildBody(grid, viewSettings.hideTopBar)),
               // 顶栏浮层：与底栏共用收起进度，切换视图时会下滑出现
               Positioned(
                 left: 0,
@@ -2695,11 +2706,11 @@ class _DrivePageState extends State<DrivePage>
             ],
           ),
           floatingActionButton: ValueListenableBuilder<double>(
-            valueListenable: app.barsHide,
+            valueListenable: _navigation.barsHide,
             builder: (context, hide, child) {
               // 只跟随“底栏收起”设置：底栏跟随滚动时 FAB 也同步下滑，
               // 多选等程序化隐藏则用补间动画，方向统一为上滑显示、下滑消失。
-              final follow = app.settings.hideBottomBar
+              final follow = viewSettings.hideBottomBar
                   ? hide.clamp(0.0, 1.0)
                   : 0.0;
               return ValueListenableBuilder<bool>(
@@ -2822,16 +2833,13 @@ class _DrivePageState extends State<DrivePage>
   }
 
   /// 顶栏不参与列表布局，列表顶部留出等高占位。
-  Widget _buildBody(bool grid) {
+  Widget _buildBody(bool grid, bool hideTopBar) {
     final headerInset =
         MediaQuery.of(context).padding.top + kToolbarHeight + 46;
-    final app = context.read<AppController>();
     return ScrollTint(
       hideDistance: headerInset,
-      readBarsHidden: () => app.topBarHide.value,
-      onBarsHidden: app.settings.hideTopBar
-          ? app.setTopBarHideFromScroll
-          : null,
+      readBarsHidden: () => _navigation.topBarHide.value,
+      onBarsHidden: hideTopBar ? _navigation.setTopBarHideFromScroll : null,
       // 列表快速滑动条（可拖拽）
       child: FastScrollbar(
         controller: _scroll,
@@ -3139,7 +3147,10 @@ class _DrivePageState extends State<DrivePage>
     required bool animate,
   }) {
     final selected = _selectedFiles.contains(file.id);
-    final downloadKey = driveDownloadKey(_app.activeUid ?? '', file.id);
+    final downloadKey = driveDownloadKey(
+      _accounts.store.activeUid ?? '',
+      file.id,
+    );
     final item = _AnimatedListItem(
       key: ValueKey('$_folderId-l-${file.id}'),
       index: index,
@@ -4020,20 +4031,20 @@ class _FolderNameDialogState extends State<_FolderNameDialog> {
 
 /// 文件属性弹窗：简介与下载数变动快，不读缓存——打开时先展示列表里的
 /// 现有信息，随后重新拉取最新简介与所在分页的最新条目渐入更新。
-class _FileInfoSheet extends StatefulWidget {
+class _FileInfoSheet extends ConsumerStatefulWidget {
   const _FileInfoSheet({required this.file, required this.page});
 
   final LzFile file;
   final _DrivePageState page;
 
   @override
-  State<_FileInfoSheet> createState() => _FileInfoSheetState();
+  ConsumerState<_FileInfoSheet> createState() => _FileInfoSheetState();
 }
 
 /// 文件属性弹窗顶部那一行常用操作（图标按钮组）。
 enum _FileQuickAction { download, link, qr, favorite, password }
 
-class _FileInfoSheetState extends State<_FileInfoSheet> {
+class _FileInfoSheetState extends ConsumerState<_FileInfoSheet> {
   late LzFile _file = widget.file;
 
   /// 当前名称（「修改信息」里可以改名，改完头部和后续操作都用新的）。
@@ -4075,8 +4086,8 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
   }
 
   Future<void> _refresh() async {
-    final app = context.read<AppController>();
-    final client = app.client;
+    final client = widget.page._activeClient();
+    final db = ref.read(appDbProvider);
     // 下载数：重新取文件所在分页的条目，命中后同步列表（找不到就沿用现值）
     final fresh = await widget.page._freshFileEntry(widget.file.id);
     if (!mounted) return;
@@ -4100,7 +4111,7 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
         if (mounted) setState(() => _share = info);
         // 收藏表查不到（例如库不可用）就保持未知：收藏按钮继续置灰，
         // 但不影响已经拿到分享信息的几个按钮
-        final favorite = await app.db.isFavorite(info.url);
+        final favorite = await db.isFavorite(info.url);
         if (mounted) setState(() => _favorite = favorite);
       } catch (_) {}
     }
@@ -4144,10 +4155,10 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
 
   /// 这个文件的下载标记：按「账号uid:文件id」查最近的下载任务（已取消的不算）。
   TransferTask? get _downloadTask {
-    final app = context.read<AppController>();
-    return context.read<TransferManager>().downloadMarkOf(
-      driveDownloadKey(app.activeUid ?? '', _file.id),
-    );
+    final activeUid = ref.read(accountStateProvider).store.activeUid ?? '';
+    return ref
+        .read(transferManagerProvider)
+        .downloadMarkOf(driveDownloadKey(activeUid, _file.id));
   }
 
   /// 「已下载」二级菜单：挂在下载按钮所在的那一段下方（和复制链接同一套锚点）。
@@ -4279,6 +4290,7 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
     final page = widget.page;
     final file = _file;
     final scheme = Theme.of(context).colorScheme;
+    final transfers = ref.read(transferManagerProvider);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -4307,8 +4319,8 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
             // （只重建这一行，弹窗关掉就停）
             child: ListenableBuilder(
               listenable: Listenable.merge([
-                context.read<TransferManager>(),
-                context.read<TransferManager>().marksRevision,
+                transfers,
+                transfers.marksRevision,
               ]),
               builder: (BuildContext context, _) {
                 final scheme = Theme.of(context).colorScheme;
@@ -4453,17 +4465,17 @@ class _FileInfoSheetState extends State<_FileInfoSheet> {
 /// 文件夹属性弹窗顶部那一行常用操作（图标按钮组）。
 enum _FolderQuickAction { link, qr, favorite, quickAccess, password }
 
-class _FolderInfoSheet extends StatefulWidget {
+class _FolderInfoSheet extends ConsumerStatefulWidget {
   const _FolderInfoSheet({required this.folder, required this.page});
 
   final LzFolder folder;
   final _DrivePageState page;
 
   @override
-  State<_FolderInfoSheet> createState() => _FolderInfoSheetState();
+  ConsumerState<_FolderInfoSheet> createState() => _FolderInfoSheetState();
 }
 
-class _FolderInfoSheetState extends State<_FolderInfoSheet> {
+class _FolderInfoSheetState extends ConsumerState<_FolderInfoSheet> {
   late String _name = widget.folder.name;
   String? _desc;
   String? _stats;
@@ -4492,18 +4504,19 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
   /// 内容不该被一次本地库读取失败拖下水。
   Future<void> _loadPinned() async {
     try {
-      final pinned = await context.read<AppController>().db.isPinned(
-        context.read<AppController>().activeUid ?? '',
-        widget.folder.id,
-      );
+      final activeUid = ref.read(accountStateProvider).store.activeUid ?? '';
+      final pinned = await ref
+          .read(appDbProvider)
+          .isPinned(activeUid, widget.folder.id);
       if (mounted) setState(() => _pinned = pinned);
     } catch (_) {}
   }
 
   Future<void> _toggleQuickAccess() async {
-    final app = context.read<AppController>();
+    final db = ref.read(appDbProvider);
+    final activeUid = ref.read(accountStateProvider).store.activeUid ?? '';
     if (_pinned == true) {
-      await app.db.removePin(widget.folder.id);
+      await db.removePin(widget.folder.id);
       if (mounted) setState(() => _pinned = false);
     } else {
       // 只存「所在目录」的相对路径：不含根目录前缀，也不含文件夹自身。
@@ -4514,8 +4527,8 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
       final parents = isCurrent
           ? ancestors.sublist(0, ancestors.length - 1)
           : ancestors;
-      await app.db.addPin(
-        account: app.activeUid ?? '',
+      await db.addPin(
+        account: activeUid,
         name: widget.folder.name,
         ref: widget.folder.id,
         path: parents.map((node) => node.name).join('/'),
@@ -4581,7 +4594,8 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
 
   Future<void> _fetch() async {
     final id = widget.folder.id;
-    final client = context.read<AppController>().client;
+    final client = widget.page._activeClient();
+    final db = ref.read(appDbProvider);
     // 简介：每次打开都现取，不做缓存
     try {
       final info = await client?.shareInfoOfFolder(id);
@@ -4594,9 +4608,7 @@ class _FolderInfoSheetState extends State<_FolderInfoSheet> {
           _hasPwd = info.pwd.isNotEmpty;
         });
         // 收藏态：收藏表按分享链接去重，用刚取回的分享信息查
-        final favorite = await context.read<AppController>().db.isFavorite(
-          info.url,
-        );
+        final favorite = await db.isFavorite(info.url);
         if (mounted) setState(() => _favorite = favorite);
       }
     } catch (_) {}

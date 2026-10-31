@@ -1,10 +1,12 @@
 import 'package:material_ui/material_ui.dart' hide Icons;
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/api/lanzou_client.dart';
+import '../core/api/lanzou_client_registry.dart';
 import '../core/api/models.dart';
-import '../core/app_controller.dart';
-import '../core/transfer/transfer_manager.dart';
+import '../core/cache_page_settings_state.dart';
+import '../core/data/app_db_provider.dart';
+import '../core/transfer/transfer_manager_provider.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
@@ -21,7 +23,7 @@ import 'share_password_dialog.dart';
 enum _ShareItemAction { open, download, copyLink, favorite }
 
 /// 分享文件夹浏览页：布局类似网盘页，支持子文件夹与多选批量操作。
-class ShareFolderPage extends StatefulWidget {
+class ShareFolderPage extends ConsumerStatefulWidget {
   const ShareFolderPage({
     super.key,
     required this.folder,
@@ -34,10 +36,10 @@ class ShareFolderPage extends StatefulWidget {
   final String pwd;
 
   @override
-  State<ShareFolderPage> createState() => _ShareFolderPageState();
+  ConsumerState<ShareFolderPage> createState() => _ShareFolderPageState();
 }
 
-class _ShareFolderPageState extends State<ShareFolderPage>
+class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
     with SingleTickerProviderStateMixin {
   bool _selecting = false;
   bool _searching = false;
@@ -80,7 +82,7 @@ class _ShareFolderPageState extends State<ShareFolderPage>
     if (widget.folder.hasMore) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        if (context.read<AppController>().settings.loadAllPages) {
+        if (ref.read(cachePageSettingsStateProvider).loadAllPages) {
           _autoLoadAll();
         } else {
           _fillViewportIfNeeded();
@@ -115,8 +117,8 @@ class _ShareFolderPageState extends State<ShareFolderPage>
       _loadFailed = false;
     });
     try {
-      final next = await context
-          .read<AppController>()
+      final next = await ref
+          .read(lanzouClientRegistryProvider)
           .publicClient
           .fetchShareFolderFiles(paging, _page + 1);
       if (!mounted) return;
@@ -192,7 +194,9 @@ class _ShareFolderPageState extends State<ShareFolderPage>
         continue;
       }
       failures = 0;
-      if (_hasMore) await Future.delayed(const Duration(milliseconds: 600));
+      if (_hasMore) {
+        await Future<void>.delayed(const Duration(milliseconds: 600));
+      }
     }
     _autoLoading = false;
   }
@@ -299,12 +303,12 @@ class _ShareFolderPageState extends State<ShareFolderPage>
   }
 
   Future<void> _favoriteSelected() async {
-    final app = context.read<AppController>();
+    final db = ref.read(appDbProvider);
     final files = _files
         .where((f) => !f.invalid && _selected.contains(f.url))
         .toList();
     for (final file in files) {
-      await app.db.addFavorite(
+      await db.addFavorite(
         kind: 'shareFile',
         name: file.name,
         ref: file.url,
@@ -387,7 +391,11 @@ class _ShareFolderPageState extends State<ShareFolderPage>
     // 取消下载 / 重新下载这些操作都在属性弹窗里
     final alreadyAdded =
         file != null &&
-        context.read<TransferManager>().downloadMarkOf(file.url) != null;
+        ProviderScope.containerOf(
+              context,
+              listen: false,
+            ).read(transferManagerProvider).downloadMarkOf(file.url) !=
+            null;
     // 收藏项要显示「收藏 / 取消收藏」：ref 就是分享链接，先查本地收藏表
     final favorited = await isFavoritedByRef(context, url);
     if (!mounted) return;
@@ -489,7 +497,7 @@ class _ShareFolderPageState extends State<ShareFolderPage>
       );
 
   Future<void> _openSubfolder(SubFolder sub) async {
-    final app = context.read<AppController>();
+    final client = ref.read(lanzouClientRegistryProvider).publicClient;
     final l10n = context.l10n;
     showLoadingDialog(context, l10n.resolving);
     // 子文件夹可能是独立分享、带自己的提取码：先按父文件夹的提取码试一次
@@ -498,7 +506,7 @@ class _ShareFolderPageState extends State<ShareFolderPage>
     FolderShareDetail? detail;
     var pwd = widget.pwd;
     try {
-      detail = await app.publicClient.resolveFolderShare(sub.url, pwd: pwd);
+      detail = await client.resolveFolderShare(sub.url, pwd: pwd);
     } on NeedPasswordException {
       detail = null;
     } on WrongPasswordException {
@@ -523,7 +531,7 @@ class _ShareFolderPageState extends State<ShareFolderPage>
       pwd = result.pwd;
     }
     await Navigator.of(context).push(
-      MaterialPageRoute(
+      MaterialPageRoute<void>(
         builder: (_) =>
             ShareFolderPage(folder: detail!, link: sub.url, pwd: pwd),
       ),

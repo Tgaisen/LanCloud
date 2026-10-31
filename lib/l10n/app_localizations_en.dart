@@ -1396,14 +1396,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notifProgressKeywords => 'notification progress transfer';
 
   @override
-  String get notifDone => 'Completion alerts';
+  String get notifDone => 'Transfer completion notifications';
 
   @override
   String get notifDoneSubtitle =>
       'Notify when a download or upload finishes or fails';
 
   @override
-  String get notifDoneKeywords => 'notification complete alert';
+  String get notifDoneKeywords => 'notification complete transfer alert';
 
   @override
   String get notifPermission => 'Notification permission';

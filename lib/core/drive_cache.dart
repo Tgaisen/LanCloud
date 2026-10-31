@@ -29,16 +29,16 @@ class CachedFolder {
 
   factory CachedFolder.fromJson(Map<String, dynamic> j) => CachedFolder(
     folders: (j['folders'] as List? ?? const [])
-        .whereType<Map>()
-        .map((e) => LzFolder.fromJson(e.cast<String, dynamic>()))
+        .whereType<Map<String, dynamic>>()
+        .map(LzFolder.fromJson)
         .toList(),
     files: (j['files'] as List? ?? const [])
-        .whereType<Map>()
-        .map((e) => LzFile.fromJson(e.cast<String, dynamic>()))
+        .whereType<Map<String, dynamic>>()
+        .map(LzFile.fromJson)
         .toList(),
     path: (j['path'] as List? ?? const [])
-        .whereType<Map>()
-        .map((e) => PathNode.fromJson(e.cast<String, dynamic>()))
+        .whereType<Map<String, dynamic>>()
+        .map(PathNode.fromJson)
         .toList(),
     page: (j['page'] as num?)?.toInt() ?? 1,
     hasMore: j['hasMore'] as bool? ?? false,

@@ -1,9 +1,9 @@
 import 'package:material_ui/material_ui.dart' hide Icons;
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/api/lanzou_client.dart';
+import '../core/api/lanzou_client_registry.dart';
 import '../core/api/models.dart';
-import '../core/app_controller.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
@@ -16,7 +16,10 @@ Future<PasswordResult<FolderShareDetail>?> showFolderPasswordDialog(
   BuildContext context, {
   required String url,
 }) {
-  final client = context.read<AppController>().publicClient;
+  final client = ProviderScope.containerOf(
+    context,
+    listen: false,
+  ).read(lanzouClientRegistryProvider).publicClient;
   return showDialog<PasswordResult<FolderShareDetail>>(
     context: context,
     builder: (_) => _SharePasswordDialog<FolderShareDetail>(
@@ -32,7 +35,10 @@ Future<PasswordResult<DirectFile>?> showFilePasswordDialog(
   BuildContext context, {
   required String url,
 }) {
-  final client = context.read<AppController>().publicClient;
+  final client = ProviderScope.containerOf(
+    context,
+    listen: false,
+  ).read(lanzouClientRegistryProvider).publicClient;
   return showDialog<PasswordResult<DirectFile>>(
     context: context,
     builder: (_) => _SharePasswordDialog<DirectFile>(

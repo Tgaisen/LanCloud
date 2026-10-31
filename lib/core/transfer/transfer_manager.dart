@@ -8,13 +8,13 @@ import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import '../../l10n/l10n.dart';
 import '../api/lanzou_client.dart';
 import '../api/models.dart';
-import '../app_controller.dart';
 import '../download_target.dart';
 import '../notifications.dart';
 import '../platform_support.dart';
 import '../saf_storage.dart';
 import '../saved_file.dart';
-import '../shared_downloads_storage.dart';
+import '../shared_downloads_gateway.dart';
+import 'transfer_dependencies.dart';
 
 enum TransferKind { upload, download }
 
@@ -77,20 +77,28 @@ class TransferTask {
 }
 
 class TransferManager extends ChangeNotifier {
-  TransferManager(this._app) {
+  TransferManager.withDependencies(
+    this._dependencies, {
+    NotificationService? notifications,
+    SharedDownloadsGateway? sharedDownloads,
+  }) : _notifications = notifications ?? NotificationService.instance,
+       _sharedDownloads =
+           sharedDownloads ?? const PlatformSharedDownloadsGateway() {
     _restore();
   }
 
   static const int maxUploads = 1;
   static const int maxDownloads = 3;
 
-  final AppController _app;
+  final TransferDependencies _dependencies;
+  final NotificationService _notifications;
+  final SharedDownloadsGateway _sharedDownloads;
   final List<TransferTask> tasks = [];
   final List<void Function(TransferTask)> _taskListeners = [];
   int _seq = 0;
   bool _serviceRunning = false;
 
-  /// 测试注入：重启后重试时用来重新解析直链；默认走 [AppController.publicClient]。
+  /// 测试注入：重启后重试时用来重新解析直链；默认走账号端口的公开客户端。
   @visibleForTesting
   Future<DirectFile> Function(String shareUrl, String pwd)? debugResolveShare;
 
@@ -126,7 +134,7 @@ class TransferManager extends ChangeNotifier {
 
   Future<void> _restore() async {
     try {
-      final rows = await _app.db.loadTransfers();
+      final rows = await _dependencies.store.loadTransfers();
       for (final row in rows) {
         final kind = '${row['kind']}' == 'upload'
             ? TransferKind.upload
@@ -148,7 +156,7 @@ class TransferManager extends ChangeNotifier {
           name: '${row['name']}',
           // 上传要带账号 Cookie；老记录没存账号时退回到当前激活账号
           accountUid: '${row['account'] ?? ''}'.isEmpty
-              ? (_app.activeUid ?? '')
+              ? (_dependencies.accounts.activeUid ?? '')
               : '${row['account']}',
           folderId: '${row['folder_id'] ?? ''}',
           localFilePath: '${row['local_path'] ?? ''}',
@@ -175,7 +183,7 @@ class TransferManager extends ChangeNotifier {
   Future<void> _persist(TransferTask task) async {
     if (task.removed) return;
     try {
-      await _app.db.saveTransfer(
+      await _dependencies.store.saveTransfer(
         id: task.id,
         kind: task.kind == TransferKind.upload ? 'upload' : 'download',
         name: task.name,
@@ -204,7 +212,7 @@ class TransferManager extends ChangeNotifier {
     Stream<List<int>> Function()? streamFactory,
     int size = 0,
   }) {
-    final uid = _app.activeUid ?? '';
+    final uid = _dependencies.accounts.activeUid ?? '';
     final task = TransferTask(
       id: 'u${DateTime.now().millisecondsSinceEpoch}_${_seq++}',
       kind: TransferKind.upload,
@@ -235,7 +243,9 @@ class TransferManager extends ChangeNotifier {
       id: 'd${DateTime.now().millisecondsSinceEpoch}_${_seq++}',
       kind: TransferKind.download,
       name: name,
-      accountUid: accountUid.isEmpty ? (_app.activeUid ?? '') : accountUid,
+      accountUid: accountUid.isEmpty
+          ? (_dependencies.accounts.activeUid ?? '')
+          : accountUid,
       url: url,
       referer: referer,
       pwd: pwd,
@@ -316,13 +326,13 @@ class TransferManager extends ChangeNotifier {
       try {
         final direct =
             await (debugResolveShare?.call(task.referer, task.pwd) ??
-                _app.publicClient.resolveFileShare(
+                _dependencies.accounts.publicClient.resolveFileShare(
                   task.referer,
                   pwd: task.pwd,
                 ));
         if (task.removed) return null;
         task.url = direct.url;
-        task.via = _app.publicClient;
+        task.via = _dependencies.accounts.publicClient;
       } catch (e) {
         if (task.removed) return null;
         final message = i18n?.retryResolveFailed('$e') ?? '重新解析下载链接失败：$e';
@@ -357,7 +367,7 @@ class TransferManager extends ChangeNotifier {
           t.status == TransferStatus.canceled,
     );
     for (final id in removed) {
-      _app.db.deleteTransfer(id).catchError((_) {});
+      _dependencies.store.deleteTransfer(id).catchError((_) {});
     }
     _bumpMarks();
     notifyListeners();
@@ -372,7 +382,7 @@ class TransferManager extends ChangeNotifier {
       task.cancelToken.cancel('removed');
     }
     tasks.remove(task);
-    _app.db.deleteTransfer(id).catchError((_) {});
+    _dependencies.store.deleteTransfer(id).catchError((_) {});
     _bumpMarks();
     notifyListeners();
     _pump();
@@ -393,7 +403,7 @@ class TransferManager extends ChangeNotifier {
       removed.add(id);
     }
     if (removed.isEmpty) return;
-    _app.db.deleteTransfers(removed).catchError((_) {});
+    _dependencies.store.deleteTransfers(removed).catchError((_) {});
     _bumpMarks();
     notifyListeners();
     _pump();
@@ -424,11 +434,11 @@ class TransferManager extends ChangeNotifier {
     for (final task in tasks) {
       if (task.status != TransferStatus.queued) continue;
       if (task.kind == TransferKind.upload &&
-          runningUploads < _app.settings.maxUploads) {
+          runningUploads < _dependencies.settings.maxUploads) {
         runningUploads += 1;
         _start(task);
       } else if (task.kind == TransferKind.download &&
-          runningDownloads < _app.settings.maxDownloads) {
+          runningDownloads < _dependencies.settings.maxDownloads) {
         runningDownloads += 1;
         _start(task);
       }
@@ -479,7 +489,7 @@ class TransferManager extends ChangeNotifier {
       if (task.kind == TransferKind.download &&
           task.refId != null &&
           task.status == TransferStatus.done) {
-        await _app.db.markDownloaded(
+        await _dependencies.store.markDownloaded(
           ref: task.refId!,
           name: task.name,
           path: task.savedPath ?? '',
@@ -515,8 +525,8 @@ class TransferManager extends ChangeNotifier {
 
   /// 汇总所有运行中任务的进度，节流更新通知栏进度。
   void _syncProgressNotification() {
-    final ns = NotificationService.instance;
-    if (!_app.settings.notifyProgress) {
+    final ns = _notifications;
+    if (!_dependencies.settings.notifyProgress) {
       ns.cancelProgress();
       return;
     }
@@ -545,8 +555,8 @@ class TransferManager extends ChangeNotifier {
   }
 
   void _notifyFinished(TransferTask task) {
-    if (!_app.settings.notifyDone) return;
-    final ns = NotificationService.instance;
+    if (!_dependencies.settings.notifyDone) return;
+    final ns = _notifications;
     if (task.status == TransferStatus.done) {
       ns.showDone(upload: task.kind == TransferKind.upload, name: task.name);
     } else if (task.status == TransferStatus.failed) {
@@ -558,9 +568,9 @@ class TransferManager extends ChangeNotifier {
   /// 账号不在账号列表里（被移除 / 已登出）时返回空串。
   String _uploadAccountUid(TransferTask task) {
     final uid = task.accountUid.isEmpty
-        ? (_app.activeUid ?? '')
+        ? (_dependencies.accounts.activeUid ?? '')
         : task.accountUid;
-    if (uid.isEmpty || _app.accounts.byUid(uid) == null) return '';
+    if (uid.isEmpty || !_dependencies.accounts.hasAccount(uid)) return '';
     return uid;
   }
 
@@ -571,7 +581,7 @@ class TransferManager extends ChangeNotifier {
         NotificationService.i18n?.uploadNeedLogin ?? '请先登录后再上传',
       );
     }
-    final client = _app.clientFor(uid);
+    final client = _dependencies.accounts.clientFor(uid);
     await client.uploadFile(
       name: task.name,
       folderId: task.folderId,
@@ -591,15 +601,15 @@ class TransferManager extends ChangeNotifier {
   Future<void> _runDownload(TransferTask task) async {
     // SAF 目录和公共 Downloads 都先下到应用专属中转目录，完成后由原生
     // 流式写入目标；固定路径 / 应用专属目录仍可直接写。
-    final target = await _app.downloadTargetMode();
+    final target = await _dependencies.download.targetMode();
     final treeUri = target == DownloadTargetMode.safDirectory
-        ? _app.safDownloadTree
+        ? _dependencies.download.safTreeUri
         : null;
     final staged =
         treeUri != null || target == DownloadTargetMode.sharedDownloads;
     final path = staged
-        ? await _app.safTempFilePath(task.id, task.name)
-        : await _app.uniqueSavePath(task.name);
+        ? await _dependencies.download.safTempFilePath(task.id, task.name)
+        : await _dependencies.download.uniqueSavePath(task.name);
     try {
       final dio = task.via?.dio ?? Dio();
       await dio.download(
@@ -678,7 +688,7 @@ class TransferManager extends ChangeNotifier {
     // 下载阶段已到 100%，复制阶段重新从 0 开始显示
     task.received = 0;
     try {
-      final saved = await SharedDownloadsStorage.save(
+      final saved = await _sharedDownloads.save(
         sourcePath: path,
         fileName: task.name,
         mime: mimeForFileName(task.name),

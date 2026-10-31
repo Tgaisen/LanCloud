@@ -3,32 +3,49 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../app_info.dart';
-import '../app_log.dart';
+import '../app_log_provider.dart';
 import '../data/settings_store.dart';
+import '../data/settings_store_provider.dart';
 import '../platform_support.dart';
 import 'release_info.dart';
+import 'update_state.dart';
 
-/// 更新检测状态（更新页卡片上显示的几种情况）。
-enum UpdateStatus {
-  /// 未检测更新：不在更新信息有效期内，本次启动也还没检测过。
-  idle,
+export 'update_state.dart';
 
-  /// 正在检测更新。
-  checking,
+/// 可注入的「现在」时间源，供有效期与失败冷却判断使用。
+typedef UpdateClock = DateTime Function();
 
-  /// 已是最新版本：有效期内，远端没有比当前安装版本更新的版本。
-  upToDate,
+/// 可注入的 Release 拉取函数，测试无需访问真实网络。
+typedef UpdateFetcher = Future<List<ReleaseInfo>> Function();
 
-  /// 检测到新版本：有效期内，远端有更新的版本。
-  available,
+/// 更新服务的时间源。
+final updateClockProvider = Provider<UpdateClock>((ref) => DateTime.now);
 
-  /// 检测更新失败：不在有效期内，且本次启动检测过但失败。
-  failed,
-}
+/// GitHub Release 数据源。
+final updateFetcherProvider = Provider<UpdateFetcher>(
+  (ref) => _fetchGitHubReleases,
+);
+
+/// 当前平台是否有可安装的更新产物。
+final updateSupportedProvider = Provider<bool>(
+  (ref) => PlatformSupport.isAndroid || PlatformSupport.isWindows,
+);
+
+/// 应用级更新状态；固定常驻，不使用 `autoDispose`。
+final updateServiceProvider = NotifierProvider<UpdateService, UpdateState>(
+  UpdateService.new,
+);
+
+/// 由更新状态与当前时间派生的卡片状态。
+final updateStatusProvider = Provider<UpdateStatus>((ref) {
+  if (!ref.watch(updateSupportedProvider)) return UpdateStatus.idle;
+  final state = ref.watch(updateServiceProvider);
+  return state.statusAt(ref.read(updateClockProvider)());
+});
 
 /// 更新检测服务：拉取 GitHub Release、缓存结果、维护卡片要显示的状态。
 ///
@@ -42,12 +59,12 @@ enum UpdateStatus {
 /// 请求 GitHub REST API（未认证限 60 次/小时/IP，国内还有可达性问题）：
 /// 靠 12 小时有效期 + 失败冷却把请求压到最低；失败对用户静默（自动检测）
 /// 或只体现在卡片状态上，细节写进运行日志。
-class UpdateService extends ChangeNotifier {
+class UpdateService extends Notifier<UpdateState> {
   /// 更新信息有效期：检测成功那一刻起 12 小时。
-  static const Duration validFor = Duration(hours: 12);
+  static const Duration validFor = UpdatePolicy.validFor;
 
   /// 失败冷却：自动检测失败后 1 小时内不再自动重试（手动检测不受限制）。
-  static const Duration retryCooldown = Duration(hours: 1);
+  static const Duration retryCooldown = UpdatePolicy.retryCooldown;
 
   /// GitHub Release 列表接口。用列表而不是 `/releases/latest`：
   /// latest 只返回正式版，仓库全是预发布时直接 404；列表还能按通道自己挑。
@@ -60,97 +77,75 @@ class UpdateService extends ChangeNotifier {
   static const _keyLastAttempt = 'update_last_attempt_at';
   static const _keyCache = 'update_cache';
 
-  SettingsStore? _settings;
-  bool _bound = false;
-  bool _checking = false;
-  bool _failedThisSession = false;
-  String? _failureCode;
-  ReleaseInfo? _cached;
-  DateTime? _lastCheckAt;
-  DateTime? _lastAttemptAt;
+  bool _initialized = false;
 
-  /// 自动检测到新版本时记下的版本名：界面据此主动弹一次更新弹窗；
-  /// 手动检测不会设置。界面处理完调用 [clearAutoUpdateNotice]。
-  String? _autoUpdateNotice;
+  SettingsStore get _settings => ref.read(settingsStoreProvider);
 
-  /// 测试注入用：替换真实网络请求。
-  @visibleForTesting
-  static Future<List<ReleaseInfo>> Function()? debugFetchReleases;
+  DateTime get _now => ref.read(updateClockProvider)();
 
-  /// 测试注入用：替换「现在」的时间源（有效期 / 冷却判断）。
-  @visibleForTesting
-  static DateTime Function() debugNow = DateTime.now;
-
-  DateTime get _now => debugNow();
+  @override
+  UpdateState build() => const UpdateState();
 
   /// 当前平台有没有可用的更新包：Android（按 ABI 分装）与 Windows（便携
   /// 版 zip）有；iOS 没有产物，也不算更新通道（页面按 [supported] 降级）。
-  bool get supported => PlatformSupport.isAndroid || PlatformSupport.isWindows;
+  bool get supported => ref.read(updateSupportedProvider);
 
-  bool get checking => _checking;
+  bool get checking => state.checking;
 
   /// 最近一次检测成功的时间（跨重启保留）。
-  DateTime? get lastCheckAt => _lastCheckAt;
+  DateTime? get lastCheckAt => state.lastCheckAt;
 
   /// 最近一次检测失败的简短原因（`TIMEOUT` / `NETWORK` / `HTTP 403` 这类），
   /// 卡片副标题里的「连接错误码」。
-  String? get failureCode => _failureCode;
+  String? get failureCode => state.failureCode;
 
   /// 最近一次检测成功时远端的最新版本（可能比当前安装版本旧甚至为空）。
-  ReleaseInfo? get latestRelease => _cached;
+  ReleaseInfo? get latestRelease => state.cachedRelease;
 
-  String? get remoteVersion => _cached?.version;
+  String? get remoteVersion => state.cachedRelease?.version;
 
-  String? get autoUpdateNotice => _autoUpdateNotice;
+  String? get autoUpdateNotice => state.autoUpdateNotice;
 
   void clearAutoUpdateNotice() {
-    if (_autoUpdateNotice == null) return;
-    _autoUpdateNotice = null;
-    notifyListeners();
+    if (state.autoUpdateNotice == null) return;
+    state = state.copyWith(clearAutoUpdateNotice: true);
   }
 
   /// 检测结果是否还在有效期内。
-  bool get inValidity {
-    final last = _lastCheckAt;
-    return last != null && _now.difference(last) < validFor;
-  }
+  bool get inValidity => state.inValidityAt(_now);
 
   /// 有效期内检测到的远端版本比当前安装版本新。
-  bool get hasUpdate {
-    final release = _cached;
-    return release != null &&
-        compareVersionNames(release.version, appVersion) > 0;
-  }
+  bool get hasUpdate => state.hasUpdate;
 
   /// 卡片当前要显示的状态（五种情况按需求定义）。
-  UpdateStatus get status {
-    if (!supported) return UpdateStatus.idle;
-    if (_checking) return UpdateStatus.checking;
-    if (inValidity) {
-      return hasUpdate ? UpdateStatus.available : UpdateStatus.upToDate;
-    }
-    if (_failedThisSession) return UpdateStatus.failed;
-    return UpdateStatus.idle;
-  }
+  UpdateStatus get status =>
+      supported ? state.statusAt(_now) : UpdateStatus.idle;
 
-  /// 绑定设置（读取更新通道 / 自动检查开关），并从磁盘恢复缓存。
-  /// 首次调用读缓存；之后只更新设置引用（备份恢复后 settings 会换一份）。
-  Future<void> bind(SettingsStore settings) async {
-    _settings = settings;
-    if (_bound) return;
-    _bound = true;
+  /// 从磁盘恢复缓存；启动时只执行一次，不发起网络请求。
+  Future<void> initialize() async {
+    if (_initialized) return;
+    _initialized = true;
     try {
       final prefs = await SharedPreferences.getInstance();
+      var next = state;
       final checkAt = prefs.getInt(_keyLastCheck);
       if (checkAt != null) {
-        _lastCheckAt = DateTime.fromMillisecondsSinceEpoch(checkAt);
+        next = next.copyWith(
+          lastCheckAt: DateTime.fromMillisecondsSinceEpoch(checkAt),
+        );
       }
       final attemptAt = prefs.getInt(_keyLastAttempt);
       if (attemptAt != null) {
-        _lastAttemptAt = DateTime.fromMillisecondsSinceEpoch(attemptAt);
+        next = next.copyWith(
+          lastAttemptAt: DateTime.fromMillisecondsSinceEpoch(attemptAt),
+        );
       }
       final raw = prefs.getString(_keyCache);
-      if (raw != null) _cached = ReleaseInfo.tryFromJson(raw);
+      final cached = raw == null ? null : ReleaseInfo.tryFromJson(raw);
+      if (cached != null) {
+        next = next.copyWith(cachedRelease: cached);
+      }
+      state = next;
     } catch (_) {
       // 存储不可用（测试 / 异常）：当作没有缓存
     }
@@ -160,17 +155,16 @@ class UpdateService extends ChangeNotifier {
   Future<void> maybeAutoCheck() async {
     if (!supported) return;
     final settings = _settings;
-    if (settings == null || !settings.updateAutoCheck) return;
+    if (!settings.updateAutoCheck) return;
     if (inValidity) return;
-    final lastAttempt = _lastAttemptAt;
+    final lastAttempt = state.lastAttemptAt;
     if (lastAttempt != null && _now.difference(lastAttempt) < retryCooldown) {
       return;
     }
     final ok = await check();
     // 自动检测到新版本：留一个一次性标记，界面在任意页面提醒一次
     if (ok && status == UpdateStatus.available) {
-      _autoUpdateNotice = remoteVersion;
-      notifyListeners();
+      state = state.copyWith(autoUpdateNotice: remoteVersion);
     }
   }
 
@@ -178,36 +172,47 @@ class UpdateService extends ChangeNotifier {
   /// 会补一条提示，自动检测失败静默（状态留在卡片上，细节进日志）。
   Future<bool> check() async {
     final settings = _settings;
-    if (!supported || settings == null || _checking) return false;
-    _checking = true;
-    _failedThisSession = false;
-    notifyListeners();
+    if (!supported || state.checking) return false;
+    state = state.copyWith(checking: true);
     var ok = false;
+    ReleaseInfo? latest;
+    String? failure;
     try {
-      final releases = await _fetch();
-      _cached = pickLatest(releases, channel: settings.updateChannel);
-      _lastCheckAt = _now;
-      _failureCode = null;
+      final releases = await ref.read(updateFetcherProvider)();
+      latest = pickLatest(releases, channel: settings.updateChannel);
       ok = true;
     } catch (error) {
-      _failedThisSession = true;
-      _failureCode = failureCodeOf(error);
+      failure = failureCodeOf(error);
       // 失败细节进运行日志（用户可在设置里导出），界面只显示状态
-      AppLog.instance.error('update', error, null);
-    } finally {
-      _lastAttemptAt = _now;
-      await _persist();
-      _checking = false;
-      notifyListeners();
+      ref.read(appLogProvider).error('update', error, null);
     }
+    final checkedAt = ok ? _now : null;
+    final attemptedAt = _now;
+    await _persist(
+      lastCheckAt: checkedAt,
+      lastAttemptAt: attemptedAt,
+      cachedRelease: latest,
+      writeCache: ok,
+    );
+    var next = state.copyWith(checking: false, lastAttemptAt: attemptedAt);
+    if (ok) {
+      next = next.copyWith(
+        cachedRelease: latest,
+        clearCachedRelease: latest == null,
+        lastCheckAt: checkedAt,
+        clearFailureCode: true,
+      );
+    } else {
+      next = next.copyWith(failureCode: failure);
+    }
+    state = next;
     return ok;
   }
 
   /// 切换更新通道：清掉上一通道的检测结果（缓存与「上次检测于」），
   /// 开着自动检查时立即重新检测一次。
   Future<void> onChannelChanged() async {
-    _cached = null;
-    _lastCheckAt = null;
+    state = state.copyWith(clearCachedRelease: true, clearLastCheckAt: true);
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_keyCache);
@@ -215,8 +220,7 @@ class UpdateService extends ChangeNotifier {
     } catch (_) {
       // 存储不可用：内存里已经清掉，行为一致
     }
-    notifyListeners();
-    if (_settings?.updateAutoCheck ?? false) {
+    if (_settings.updateAutoCheck) {
       unawaited(check());
     }
   }
@@ -224,7 +228,7 @@ class UpdateService extends ChangeNotifier {
   /// 「更新」按钮要打开的下载地址：优先当前平台 / 架构对应的安装包；
   /// 认不出 ABI、资产缺失或平台不支持时退回 Release 页面（用户自己挑）。
   Future<String> downloadUrl() async {
-    final release = _cached;
+    final release = state.cachedRelease;
     if (release == null) return '';
     if (PlatformSupport.isAndroid) {
       final abis = await PlatformSupport.loadSupportedAbis() ?? const [];
@@ -237,53 +241,52 @@ class UpdateService extends ChangeNotifier {
     return release.htmlUrl;
   }
 
-  Future<List<ReleaseInfo>> _fetch() async {
-    final override = debugFetchReleases;
-    if (override != null) return override();
-    final dio = Dio(
-      BaseOptions(
-        connectTimeout: const Duration(seconds: 10),
-        receiveTimeout: const Duration(seconds: 15),
-        headers: {
-          // GitHub 要求请求带 User-Agent；顺带让对方能识别流量来源
-          'User-Agent': 'LanCloud/$appVersion (+$projectUrl)',
-          'Accept': 'application/vnd.github+json',
-        },
-      ),
-    );
-    final response = await dio.get<List<dynamic>>(
-      releasesApi,
-      queryParameters: {'per_page': '$_perPage'},
-    );
-    final data = response.data ?? const [];
-    return [
-      for (final item in data)
-        if (item is Map) ReleaseInfo.fromJson(Map<String, dynamic>.from(item)),
-    ];
-  }
-
-  Future<void> _persist() async {
+  Future<void> _persist({
+    required DateTime? lastCheckAt,
+    required DateTime lastAttemptAt,
+    required ReleaseInfo? cachedRelease,
+    required bool writeCache,
+  }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      if (_lastCheckAt != null) {
-        await prefs.setInt(_keyLastCheck, _lastCheckAt!.millisecondsSinceEpoch);
+      if (lastCheckAt != null) {
+        await prefs.setInt(_keyLastCheck, lastCheckAt.millisecondsSinceEpoch);
       }
-      if (_lastAttemptAt != null) {
-        await prefs.setInt(
-          _keyLastAttempt,
-          _lastAttemptAt!.millisecondsSinceEpoch,
-        );
-      }
-      final release = _cached;
-      if (release == null) {
-        await prefs.remove(_keyCache);
-      } else {
-        await prefs.setString(_keyCache, jsonEncode(release.toJson()));
+      await prefs.setInt(_keyLastAttempt, lastAttemptAt.millisecondsSinceEpoch);
+      if (writeCache) {
+        if (cachedRelease == null) {
+          await prefs.remove(_keyCache);
+        } else {
+          await prefs.setString(_keyCache, jsonEncode(cachedRelease.toJson()));
+        }
       }
     } catch (_) {
       // 写不进去（存储异常）不影响本次会话的显示
     }
   }
+}
+
+Future<List<ReleaseInfo>> _fetchGitHubReleases() async {
+  final dio = Dio(
+    BaseOptions(
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 15),
+      headers: {
+        // GitHub 要求请求带 User-Agent；顺带让对方能识别流量来源
+        'User-Agent': 'LanCloud/$appVersion (+$projectUrl)',
+        'Accept': 'application/vnd.github+json',
+      },
+    ),
+  );
+  final response = await dio.get<List<dynamic>>(
+    UpdateService.releasesApi,
+    queryParameters: {'per_page': '${UpdateService._perPage}'},
+  );
+  final data = response.data ?? const [];
+  return [
+    for (final item in data)
+      if (item is Map) ReleaseInfo.fromJson(Map<String, dynamic>.from(item)),
+  ];
 }
 
 /// 失败原因 → 卡片副标题里那个简短的「连接错误码」。

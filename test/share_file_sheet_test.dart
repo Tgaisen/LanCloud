@@ -1,18 +1,23 @@
 import 'dart:async';
 
 import 'package:material_ui/material_ui.dart' hide Icons;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/api/lanzou_client.dart';
+import 'package:lancloud/core/api/lanzou_client_registry.dart';
 import 'package:lancloud/core/api/models.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
+import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/app_icons.dart';
 import 'package:lancloud/ui/m3e.dart';
 import 'package:lancloud/ui/share_file_sheet.dart';
-import 'package:provider/provider.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
+
+import 'transfer_dependencies_test.dart'
+    show buildTransferManagerForEnvironment;
 
 /// 解析一定失败的假客户端：测试里不联网；错误信息不含「不存在 / 取消」，
 /// 所以不会被判成失效（失效会让整张表的入口置灰，测不了点击行为）。
@@ -29,14 +34,16 @@ class _NoNetClient extends LanzouClient {
   }
 }
 
-class _FakeApp extends AppController {
+class _FakeApp {
   _FakeApp([LanzouClient? publicClient])
     : _public = publicClient ?? _NoNetClient();
 
+  final AppEnvironment environment = AppEnvironment();
   final LanzouClient _public;
 
-  @override
-  LanzouClient get publicClient => _public;
+  LanzouClient get sheetClient => _public;
+
+  void dispose() => environment.dispose();
 }
 
 /// 第一次解析（弹窗加载）立刻失败，之后的解析（点击下载）挂起等测试放行。
@@ -93,20 +100,22 @@ class _DescClient extends LanzouClient {
   }
 }
 
-Future<void> pumpSheet(
+Future<void> _pumpSheet(
   WidgetTester tester,
-  AppController app, {
+  _FakeApp app, {
   TransferManager? manager,
   bool invalid = false,
   String size = '1 MB',
 }) async {
-  final transfers = manager ?? TransferManager(app);
+  final transfers =
+      manager ?? buildTransferManagerForEnvironment(app.environment);
+  final clients = LanzouClientRegistry(factory: (_) => app.sheetClient);
   addTearDown(app.dispose);
   await tester.pumpWidget(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider<AppController>.value(value: app),
-        ChangeNotifierProvider<TransferManager>.value(value: transfers),
+    ProviderScope(
+      overrides: [
+        transferManagerProvider.overrideWithValue(transfers),
+        lanzouClientRegistryProvider.overrideWithValue(clients),
       ],
       child: MaterialApp(
         localizationsDelegates: appLocalizationsDelegates,
@@ -129,13 +138,13 @@ Future<void> pumpSheet(
 
 void main() {
   testWidgets('分享文件属性弹窗：文件页有简介时显示在信息卡里', (tester) async {
-    await pumpSheet(tester, _FakeApp(_DescClient()));
+    await _pumpSheet(tester, _FakeApp(_DescClient()));
     expect(find.text('这是文件简介'), findsOneWidget);
   });
 
   testWidgets('分享文件属性弹窗：大小以列表值为准，不被文件页解析值覆盖', (tester) async {
     // 列表给的 31.5 M 是文件夹接口的真实大小；文件页解析出的 22 是错的
-    await pumpSheet(tester, _FakeApp(_SizeClient('22')), size: '31.5 M');
+    await _pumpSheet(tester, _FakeApp(_SizeClient('22')), size: '31.5 M');
 
     expect(find.textContaining('31.5 MB'), findsOneWidget);
     expect(find.textContaining('22.0 MB'), findsNothing);
@@ -144,7 +153,7 @@ void main() {
   // 分享文件夹浏览页里点文件弹出的这张表就是「项目菜单」：只留下载 / 复制链接 /
   // 二维码 / 收藏，「打开链接」按需求去掉（浏览器的入口在别处）。
   testWidgets('分享文件属性弹窗：没有「打开链接」，其余入口都在', (tester) async {
-    await pumpSheet(tester, AppController(), invalid: true);
+    await _pumpSheet(tester, _FakeApp(), invalid: true);
 
     expect(find.text('打开链接'), findsNothing);
     expect(find.text('下载'), findsOneWidget);
@@ -155,7 +164,7 @@ void main() {
 
   testWidgets('分享文件属性弹窗：已加入下载时是「已下载」+ 进度环，点击弹二级菜单', (tester) async {
     final app = _FakeApp();
-    final manager = TransferManager(app);
+    final manager = buildTransferManagerForEnvironment(app.environment);
     manager.tasks.add(
       TransferTask(
           id: 'd1',
@@ -168,7 +177,7 @@ void main() {
         ..total = 100
         ..received = 40,
     );
-    await pumpSheet(tester, app, manager: manager);
+    await _pumpSheet(tester, app, manager: manager);
 
     // 下载中：文本「下载中」+ 确定态进度环（40%）
     expect(find.text('下载中'), findsOneWidget);
@@ -212,7 +221,7 @@ void main() {
 
   testWidgets('分享文件属性弹窗：各下载状态的文案与图标', (tester) async {
     final app = _FakeApp();
-    final manager = TransferManager(app);
+    final manager = buildTransferManagerForEnvironment(app.environment);
     final task =
         TransferTask(
             id: 'd1',
@@ -224,7 +233,7 @@ void main() {
           ..status = TransferStatus.queued
           ..total = 100;
     // 先不开态渲染（排队中的不确定态环会一直转，pumpAndSettle 等不到静止）
-    await pumpSheet(tester, app, manager: manager);
+    await _pumpSheet(tester, app, manager: manager);
     manager.tasks.add(task);
     manager.marksRevision.value += 1;
     await tester.pump();
@@ -268,7 +277,11 @@ void main() {
   testWidgets('分享文件属性弹窗：解析中显示不确定态环，解析失败恢复原状', (tester) async {
     final gate = _GateSecondPublic();
     final app = _FakeApp(gate);
-    await pumpSheet(tester, app, manager: TransferManager(app));
+    await _pumpSheet(
+      tester,
+      app,
+      manager: buildTransferManagerForEnvironment(app.environment),
+    );
     final l10n = AppLocalizations.of(
       tester.element(find.byType(ShareFileInfoSheet)),
     );
@@ -296,7 +309,7 @@ void main() {
 
   testWidgets('二级菜单：这条任务的下载状态变更时自动收起', (tester) async {
     final app = _FakeApp();
-    final manager = TransferManager(app);
+    final manager = buildTransferManagerForEnvironment(app.environment);
     final task =
         TransferTask(
             id: 'd1',
@@ -309,7 +322,7 @@ void main() {
           ..total = 100
           ..received = 30;
     manager.tasks.add(task);
-    await pumpSheet(tester, app, manager: manager);
+    await _pumpSheet(tester, app, manager: manager);
 
     await tester.tap(find.text('下载中'));
     await tester.pump();
@@ -328,7 +341,7 @@ void main() {
   testWidgets('分享文件属性弹窗：点「重新下载」立刻进入解析中状态', (tester) async {
     final gate = _GateSecondPublic();
     final app = _FakeApp(gate);
-    final manager = TransferManager(app);
+    final manager = buildTransferManagerForEnvironment(app.environment);
     manager.tasks.add(
       TransferTask(
         id: 'd1',
@@ -338,7 +351,7 @@ void main() {
         referer: 'https://example.com/abcdef',
       )..status = TransferStatus.failed,
     );
-    await pumpSheet(tester, app, manager: manager);
+    await _pumpSheet(tester, app, manager: manager);
     final l10n = AppLocalizations.of(
       tester.element(find.byType(ShareFileInfoSheet)),
     );

@@ -1346,13 +1346,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get notifProgressKeywords => '通知 进度 传输';
 
   @override
-  String get notifDone => '传输完成提醒';
+  String get notifDone => '传输完成通知';
 
   @override
-  String get notifDoneSubtitle => '下载或上传完成、失败时提醒';
+  String get notifDoneSubtitle => '下载或上传完成、失败时通知';
 
   @override
-  String get notifDoneKeywords => '通知 完成 提醒';
+  String get notifDoneKeywords => '通知 完成 提醒 传输';
 
   @override
   String get notifPermission => '通知权限';

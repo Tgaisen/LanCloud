@@ -1,16 +1,67 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/app.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/account_state.dart';
+import 'package:lancloud/core/account_session.dart';
+import 'package:lancloud/core/api/lanzou_client_registry.dart';
+import 'package:lancloud/core/app_environment.dart';
+import 'package:lancloud/core/app_runtime_state.dart';
+import 'package:lancloud/core/cache_page_settings_state.dart';
 import 'package:lancloud/core/data/account_store.dart';
+import 'package:lancloud/core/data/app_db_provider.dart';
+import 'package:lancloud/core/data/settings_store_provider.dart';
+import 'package:lancloud/core/drive_state.dart';
+import 'package:lancloud/core/language_clipboard_settings_state.dart';
+import 'package:lancloud/core/list_home_settings_state.dart';
+import 'package:lancloud/core/navigation_appearance_settings_state.dart';
+import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
+import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/app_icons.dart' as app_icons;
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/profile_page.dart';
-import 'package:provider/provider.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
+
+import 'transfer_dependencies_test.dart'
+    show buildTransferManagerForEnvironment;
+
+Widget _rootShellHost(
+  AppEnvironment environment,
+  TransferManager transfers,
+) => ProviderScope(
+  overrides: [
+    settingsStoreProvider.overrideWithValue(environment.settingsState.store),
+    accountStateProvider.overrideWithValue(environment.accountState),
+    accountSessionProvider.overrideWithValue(environment.accountSession),
+    appDbProvider.overrideWithValue(environment.db),
+    driveStateProvider.overrideWithValue(environment.drive),
+    appRuntimeStateProvider.overrideWithValue(environment.runtimeState),
+    cachePageSettingsStateProvider.overrideWithValue(
+      environment.cachePageSettings,
+    ),
+    languageClipboardSettingsStateProvider.overrideWithValue(
+      environment.languageClipboardSettings,
+    ),
+    lanzouClientRegistryProvider.overrideWithValue(environment.clientRegistry),
+    listHomeSettingsStateProvider.overrideWithValue(
+      environment.listHomeSettings,
+    ),
+    transferManagerProvider.overrideWithValue(transfers),
+    navigationAppearanceSettingsStateProvider.overrideWithValue(
+      environment.navigationAppearanceSettings,
+    ),
+    navigationStateProvider.overrideWithValue(environment.navigation),
+  ],
+  child: MaterialApp(
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    locale: const Locale('zh'),
+    home: const RootShell(),
+  ),
+);
 
 /// 外壳页面末尾要补的底栏留白 = 底栏总高度（含系统导航栏）。
 /// CustomScrollView 不会自动消费 MediaQuery 的 padding，各页都得显式补这一段，
@@ -99,28 +150,16 @@ void main() {
     tester.view.physicalSize = const Size(1200, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    final app = AppController();
-    addTearDown(app.dispose);
-    app.ready = true;
-    app.accounts.accounts.add(
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
+    environment.runtimeState.ready.value = true;
+    environment.accountState.store.accounts.add(
       Account(uid: '556911', cookie: 'c', nickname: '土豆'),
     );
-    app.accounts.activeUid = '556911';
-    final transfers = TransferManager(app);
-    await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider<AppController>.value(value: app),
-          ChangeNotifierProvider<TransferManager>.value(value: transfers),
-        ],
-        child: MaterialApp(
-          localizationsDelegates: appLocalizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          locale: const Locale('zh'),
-          home: const RootShell(),
-        ),
-      ),
-    );
+    environment.accountState.store.activeUid = '556911';
+    final transfers = buildTransferManagerForEnvironment(environment);
+    addTearDown(transfers.dispose);
+    await tester.pumpWidget(_rootShellHost(environment, transfers));
     await tester.pumpAndSettle();
 
     expect(find.byIcon(app_icons.Icons.browse_outlined), findsWidgets);
@@ -139,6 +178,43 @@ void main() {
     expect(panes, findsNWidgets(2));
     expect(tester.getRect(panes.at(0)).bottom, 800);
     expect(tester.getRect(panes.at(1)).bottom, 792);
+  });
+
+  testWidgets('外壳任务角标随运行中任务数更新', (tester) async {
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
+    environment.runtimeState.ready.value = true;
+    environment.accountState.store.accounts.add(
+      Account(uid: '556911', cookie: 'c', nickname: '土豆'),
+    );
+    environment.accountState.store.activeUid = '556911';
+    final transfers = buildTransferManagerForEnvironment(environment);
+    addTearDown(transfers.dispose);
+    transfers.tasks.add(
+      TransferTask(
+        id: 't1',
+        kind: TransferKind.upload,
+        name: 'a.zip',
+        accountUid: '556911',
+      )..status = TransferStatus.running,
+    );
+
+    await tester.pumpWidget(_rootShellHost(environment, transfers));
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(of: find.byType(Badge), matching: find.text('1')),
+      findsOneWidget,
+    );
+
+    transfers.cancel('t1');
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(of: find.byType(Badge), matching: find.text('1')),
+      findsNothing,
+    );
   });
 
   testWidgets('外壳 + 小屏底栏：留白 = 底栏总高度（含系统导航栏）', (tester) async {

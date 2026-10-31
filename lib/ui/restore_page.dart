@@ -3,14 +3,15 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:material_ui/material_ui.dart' hide Icons;
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/api/lanzou_client.dart';
-import '../core/app_controller.dart';
 import '../core/backup/backup_service.dart';
+import '../core/backup/backup_service_provider.dart';
 import '../core/backup/webdav_client.dart';
 import '../core/backup/webdav_store.dart';
 import '../core/cookie_auth.dart';
+import '../core/navigation_appearance_settings_state.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'backup_unlock_dialog.dart';
@@ -32,14 +33,14 @@ enum _RestoreSource { local, cloud }
 ///
 /// 向导只读取和检查备份，用户确认后才调用 [BackupService.restoreFromString]。
 /// 如果 Cookie 失效、蓝奏云不可达或备份本来就不含 Cookie，仍可只恢复数据。
-class RestorePage extends StatefulWidget {
+class RestorePage extends ConsumerStatefulWidget {
   const RestorePage({super.key});
 
   @override
-  State<RestorePage> createState() => _RestorePageState();
+  ConsumerState<RestorePage> createState() => _RestorePageState();
 }
 
-class _RestorePageState extends State<RestorePage> {
+class _RestorePageState extends ConsumerState<RestorePage> {
   final TextEditingController _url = TextEditingController();
   final TextEditingController _username = TextEditingController();
   final TextEditingController _password = TextEditingController();
@@ -68,7 +69,7 @@ class _RestorePageState extends State<RestorePage> {
   @override
   void initState() {
     super.initState();
-    _service = BackupService.of(context.read<AppController>());
+    _service = ref.read(backupServiceProvider);
   }
 
   @override
@@ -363,8 +364,15 @@ class _RestorePageState extends State<RestorePage> {
 
   @override
   Widget build(BuildContext context) {
+    final appearance = ref.watch(navigationAppearanceSettingsStateProvider);
+    return ListenableBuilder(
+      listenable: appearance.revision,
+      builder: (context, _) => _buildPage(context, appearance.hideTopBar),
+    );
+  }
+
+  Widget _buildPage(BuildContext context, bool hideTopBar) {
     final l10n = context.l10n;
-    final app = context.watch<AppController>();
     final safeInsets = systemUiSafeInsets(context);
     final large = isLargeLayout(context);
     // 大屏时 Md3eBodyCard 已经让开窗口边缘与系统导航栏，内容内不再重复加。
@@ -383,9 +391,7 @@ class _RestorePageState extends State<RestorePage> {
       child: ScrollTint(
         hideDistance: safeInsets.top + kToolbarHeight + 4,
         readBarsHidden: () => _topBarHide.value,
-        onBarsHidden: app.settings.hideTopBar
-            ? (value) => _topBarHide.value = value
-            : null,
+        onBarsHidden: hideTopBar ? (value) => _topBarHide.value = value : null,
         child: Builder(
           builder: (context) {
             final scheme = Theme.of(context).colorScheme;

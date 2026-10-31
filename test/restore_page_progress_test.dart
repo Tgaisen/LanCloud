@@ -1,22 +1,38 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
+import 'package:lancloud/core/app_startup.dart';
 import 'package:lancloud/core/backup/backup_crypto.dart';
+import 'package:lancloud/core/backup/backup_dependencies.dart';
 import 'package:lancloud/core/backup/backup_service.dart';
+import 'package:lancloud/core/backup/backup_service_provider.dart';
 import 'package:lancloud/core/backup/webdav_client.dart';
 import 'package:lancloud/core/cookie_auth.dart';
+import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/delegates.dart';
 import 'package:lancloud/ui/m3e.dart';
 import 'package:lancloud/ui/restore_page.dart';
 import 'package:local_auth_android/local_auth_android.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:provider/provider.dart';
+
+Future<void> _reloadFromStorage(AppEnvironment environment) =>
+    AppStartup(environment: environment, onChanged: () {}).reloadFromStorage();
+
+BackupDependencies backupDependenciesFor(AppEnvironment environment) =>
+    BackupStoreDependencies(
+      accounts: environment.accountState.store,
+      settings: environment.settingsState.store,
+      db: environment.db,
+      reloadCallback: () => _reloadFromStorage(environment),
+    );
 
 class _RestoreBackupService extends BackupService {
-  _RestoreBackupService(super.app, this.content);
+  _RestoreBackupService(AppEnvironment environment, this.content)
+    : super(backupDependenciesFor(environment));
 
   final String content;
 
@@ -52,8 +68,8 @@ class _GatedCookieAuth extends CookieAuth {
 
 void main() {
   testWidgets('首次恢复时解密弹窗关闭后才显示顶栏进度条', (tester) async {
-    final app = AppController();
-    addTearDown(app.dispose);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
     final plaintext = jsonEncode({
       'app': 'lancloud',
       'format': 3,
@@ -77,12 +93,10 @@ void main() {
       'format': 3,
       'encryption': encryption,
     });
-    final service = _RestoreBackupService(app, encrypted);
+    final service = _RestoreBackupService(environment, encrypted);
     final auth = _GatedCookieAuth();
-    BackupService.instance = service;
     CookieAuth.instance = auth;
     addTearDown(() {
-      BackupService.instance = null;
       CookieAuth.instance = CookieAuth();
     });
 
@@ -90,8 +104,13 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
-      ChangeNotifierProvider<AppController>.value(
-        value: app,
+      ProviderScope(
+        overrides: [
+          backupServiceProvider.overrideWithValue(service),
+          navigationAppearanceSettingsStateProvider.overrideWithValue(
+            environment.navigationAppearanceSettings,
+          ),
+        ],
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,

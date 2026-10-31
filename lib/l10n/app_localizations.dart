@@ -2573,19 +2573,19 @@ abstract class AppLocalizations {
   /// No description provided for @notifDone.
   ///
   /// In zh, this message translates to:
-  /// **'传输完成提醒'**
+  /// **'传输完成通知'**
   String get notifDone;
 
   /// No description provided for @notifDoneSubtitle.
   ///
   /// In zh, this message translates to:
-  /// **'下载或上传完成、失败时提醒'**
+  /// **'下载或上传完成、失败时通知'**
   String get notifDoneSubtitle;
 
   /// No description provided for @notifDoneKeywords.
   ///
   /// In zh, this message translates to:
-  /// **'通知 完成 提醒'**
+  /// **'通知 完成 提醒 传输'**
   String get notifDoneKeywords;
 
   /// No description provided for @notifPermission.

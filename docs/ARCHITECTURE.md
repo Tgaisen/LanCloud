@@ -6,7 +6,7 @@
 ## 一句话
 
 蓝奏云第三方 Flutter 客户端。单进程、无后端；网络协议在 `lib/core/api/`，
-状态在 2 个应用级 `ChangeNotifier`，页面在 `lib/ui/`（平铺）。
+状态与依赖注入由 Riverpod 管理，页面在 `lib/ui/`（平铺）。
 
 ## 启动顺序（`lib/main.dart`，按实际代码）
 
@@ -15,23 +15,154 @@
 3. `PlatformSupport.loadAndroidSdkInt()` — 预热，影响 WebView 合成方式
 4. `AppLog.instance.init()` — 接管 `FlutterError.onError` / `PlatformDispatcher.onError` / `debugPrint`
 5. `FlutterForegroundTask.init()`（仅移动端）— 传输期间后台保活
-6. `AppController().init()` — 状态初始化入口
-7. `SystemMotion.init()`、`NotificationService.init()`、`SharedInbox`、`IncomingLinks`
-8. `BackupService.maybeAutoBackup()`、`UpdateService.maybeAutoCheck()`（均不阻塞）
-9. `runApp(MultiProvider(...))` — 注入 `AppController` + `TransferManager`
+6. `AppEnvironment()` + `AppStartup.initialize()` — 组装并初始化应用级状态
+7. `AppCompositionRoot` 用已初始化的 `AppEnvironment`、恢复回调和平台能力构造
+   `BackupService`、`TransferDependencies` 与应用 `ProviderContainer`；
+8. `SystemMotion.init()`、`NotificationService.init()`、`SharedInbox`、`IncomingLinks`
+9. `BackupService.maybeAutoBackup()`（不阻塞）
+10. 创建更新容器、恢复传输管理器并初始化更新服务，再执行
+    `runApp(UncontrolledProviderScope(...))` — 用 `AppEnvironment` 已初始化的
+    状态覆盖 Riverpod 容器；启动前主动读取 `transferManagerProvider` 保持任务
+    恢复顺序。`provider` 依赖与 `ChangeNotifierProvider` 均已移除。
 
 ## 状态层
 
-应用级只有两个 `ChangeNotifier`，都在 `main.dart` 注入：
+`AppEnvironment` 唯一组装应用级状态与服务，`AppStartup` 负责启动和恢复后的
+状态同步。`AppCompositionRoot` 只组装已初始化对象与 Riverpod 覆盖，不接管
+平台服务启动；传输和下载装配已完全移出启动流程。
+`TransferManager` 同样只由 Riverpod 容器提供。`core/update/` 的
+`UpdateService` 使用 Riverpod `Notifier<UpdateState>`：
 
 | 对象 | 文件 | 说明 |
 | --- | --- | --- |
-| `AppController` | `core/app_controller.dart`（637 行） | 账号、网盘、设置等大部分状态。职责偏宽，是已知问题 |
+| `AppCompositionRoot` | `core/app_composition_root.dart` | 用 `AppEnvironment` 与显式恢复回调组装备份、传输依赖和 Riverpod 容器；不触发启动副作用 |
+| `AppEnvironment` | `core/app_environment.dart` | 唯一组装导航、账号、设置、运行时、客户端与应用级服务，只保存实例，不触发启动副作用 |
+| `AppStartup` | `core/app_startup.dart` | 编排安全存储检查、账号/设置加载、运行时同步、目录绑定、ready、恢复重载与后台任务 |
 | `TransferManager` | `core/transfer/transfer_manager.dart` | 上传/下载任务队列 |
+| `TransferStore` | `core/transfer/transfer_store.dart` | 传输记录恢复/保存/删除与下载标记端口；`AppDbTransferStore` 适配既有数据库 |
+| `TransferAccountPort` | `core/transfer/transfer_account_port.dart` | 当前 UID、账号存在性、账号客户端与公开客户端端口；包装账号存储和客户端注册表 |
+| `TransferDownloadPort` | `core/transfer/transfer_download_port.dart` | 下载目标模式、SAF URI、中转路径与唯一保存路径端口 |
+| `DefaultTransferDownloadPort` | `core/transfer/transfer_download_port.dart` | 从实时设置、下载目录服务和公共 Downloads 能力组装生产下载端口 |
+| `TransferSettingsPort` | `core/transfer/transfer_settings_port.dart` | 并发数、进度/完成通知和传输设置读取端口 |
+| `TransferDependencies` | `core/transfer/transfer_dependencies.dart` | 四个传输端口组成的显式应用级依赖集合；生产入口直接构造 |
+| `transferManagerProvider` | `core/transfer/transfer_manager_provider.dart` | 应用级、非 autoDispose 的 `TransferManager` 唯一实例；容器负责释放 |
+| `UpdateService` | `core/update/update_service.dart` | `Notifier<UpdateState>`；更新检查、缓存、失败冷却和一次性提醒的唯一所有者 |
+| `BackupService` | `core/backup/backup_service.dart` | 本地 / WebDAV 备份恢复服务；只依赖 `BackupDependencies`，应用入口通过 `backupServiceProvider` 暴露与自动备份共用的同一实例 |
+| `BackupDependencies` | `core/backup/backup_dependencies.dart` | 备份所需的账号、设置、数据库和恢复后重载窄接口 |
+| `BackupStoreDependencies` | `core/backup/backup_dependencies.dart` | 用既有存储与显式重载回调组装备份依赖；生产启动直接使用该实现 |
+| `AppDb` | `core/data/app_db_provider.dart` | 普通 `Provider` 暴露既有单例，不监听、不自动销毁 |
+| `LanzouClientRegistry` | `core/api/lanzou_client_registry.dart` | 按 uid 缓存账号客户端并保留独立公开客户端；Provider 与 `AppEnvironment` 共用同一注册表 |
+| `AppLog` | `core/app_log_provider.dart` | 启动时先初始化，再通过普通 `Provider` 暴露同一实例；更新服务已从容器读取 |
+| `NotificationService` | `core/notifications_provider.dart` | 初始化后通过普通 `Provider` 暴露同一单例；`TransferManager` 的进度与完成通知使用构造注入实例 |
+| `SharedDownloadsGateway` | `core/shared_downloads_gateway.dart` | 公共 Downloads 能力接口；生产实现委托原 MethodChannel，目录解析与传输保存改用注入实例 |
+| `SettingsStore` / `AccountStore` | `core/data/*_store_provider.dart` | 普通 `Provider` 暴露已加载的可写存储，不当作监听状态；更新服务已统一读取 `settingsStoreProvider` |
+| `DownloadPathService` | `core/download_path_service.dart` | 无状态默认下载目录解析；由 `DefaultTransferDownloadPort` 和启动组合根使用 |
+| `AppRuntimeState` | `core/app_runtime_state.dart` | 应用启动 ready、凭据重认证提示与系统少动效信号的唯一所有者；非 autoDispose |
+| `NavigationState` | `core/navigation_state.dart` | 多选、返回处理器、`driveCanHandleBack`、当前 Tab 和顶/底栏高频进度的唯一所有者 |
+| `DriveState` | `core/drive_state.dart` | 目录缓存、目录请求、当前位置和可见性探针的唯一所有者 |
+| `AccountState` | `core/account_state.dart` | 唯一持有 `AccountStore`；`accountStoreProvider` 从它派生 |
+| `AccountLogin` | `core/account_login.dart` | Cookie 登录验证、账号落盘、客户端缓存和网盘缓存切换；通过 `accountStateProvider` 通知账号变化 |
+| `AccountSession` | `core/account_session.dart` | 账号切换与移除的唯一业务入口；由 `AppEnvironment` 构造，页面通过 `accountSessionProvider` 读取 |
+| `SettingsState` | `core/settings_state.dart` | 唯一持有 `SettingsStore`；`settingsStoreProvider` 从它派生 |
+| `UpdateSettingsState` | `core/update/update_settings_state.dart` | 设置子组：更新通道与自动检查开关的读写边界，持久化仍由 `SettingsStore` 独占 |
+| `NotificationSettingsState` | `core/notification_settings_state.dart` | 设置子组：进度通知与完成通知开关 |
+| `NavigationAppearanceSettingsState` | `core/navigation_appearance_settings_state.dart` | 设置子组：侧滑、顶/底栏隐藏、悬浮导航、转场与导航项显示开关 |
+| `ThemeSettingsState` | `core/theme_settings_state.dart` | 设置子组：主题模式/种子、OLED、动态取色与全局动画开关 |
+| `TransferConnectionSettingsState` | `core/transfer_connection_settings_state.dart` | 设置子组：请求间隔、并发数、API 域名、UA 与上传路径 |
+| `ListHomeSettingsState` | `core/list_home_settings_state.dart` | 设置子组：列表排序、首页折叠、最近使用上限与文件夹打开模式 |
+| `LanguageClipboardSettingsState` | `core/language_clipboard_settings_state.dart` | 设置子组：界面语言与复制分享链接提示 |
+| `CachePageSettingsState` | `core/cache_page_settings_state.dart` | 设置子组：网格视图、启动页、目录缓存和自动加载全部页面 |
+| `DownloadDirectorySettingsState` | `core/download_directory_settings_state.dart` | 设置子组：普通下载目录、SAF URI/标签、互斥写入和旧授权释放入口 |
 
-消费现状（全仓库统计）：`context.read<…>` 约 150 处、`context.watch<…>` 约 17 处、
-`context.select<…>` **0 处**。也就是说重建粒度天然偏大 —— 新增 UI 时用 `select`
-或 `ValueListenableBuilder` 收窄订阅范围，不要继续放大。
+消费现状：`AppController` 已删除，`lib` 与 `test` 均不导入
+`package:provider`。传输页已从
+Riverpod 读取应用级 `TransferManager`，并通过 `ListenableBuilder` 保留既有
+`notifyListeners()` 刷新语义；多选回调、选择模式和顶栏进度改由
+`NavigationState` 驱动，顶栏收起开关由导航外观状态 revision 驱动。`RootShell`
+也已从 Riverpod 取得同一管理器，
+并用局部计数桥只在运行中 / 排队任务数变化时重建外壳；管理器的进度通知不会
+直接放大成整壳重建。“已下载”标记也从 Riverpod 读取管理器，继续只监听低频
+`marksRevision`；已下载任务的二级菜单和分享文件属性弹窗也已从 Riverpod 读取。
+`DrivePage` 已改用 `ConsumerStatefulWidget`；目录加载、缓存、导航、返回能力、
+动画和排序已迁入 Riverpod；单条目菜单中的复制链接、修改信息、密码、收藏、
+删除、属性卡、自有文件下载和直链解析也已改用账号、数据库、客户端与目录
+provider；批量复制、下载、收藏、移动、简介、密码和删除同样改用现有状态依赖，
+新建目录、设置快照、栏位滚动与多选兼容也已完成迁移，页面只依赖 Riverpod。
+生命周期监听、批量下载
+和已下载菜单全部从 Riverpod 取得管理器。对应的四个
+直接测试宿主不再注册旧 `ChangeNotifierProvider<TransferManager>`。
+分享文件夹页的条目菜单也已从 Riverpod 读取已下载状态。
+共享的单文件与批量分享下载入口均已改为从 Riverpod 读取管理器。
+拖放上传入口也已迁入 Riverpod。生产代码已无旧 Provider 的
+`TransferManager` 读取 / 整体订阅；`RootShell` 与首页共用
+`TransferRunningCount`，只在运行中 / 排队任务数变化时重建。
+启动装配和测试宿主也已移除 `ChangeNotifierProvider<TransferManager>`。
+自动化代码迁移已完成：应用外壳改用既有 Riverpod 状态和
+`AppRuntimeState`，本地快照桥只在相关字段变化时重建；启动装配不再注册旧
+`ChangeNotifierProvider`，`provider` 直接依赖和 lockfile 条目均已删除。
+Android、Windows 的功能级人工验收仍需单独记录。
+登录页已改用 `accountLoginProvider` 和 `accountStateProvider`；登录页与恢复页
+测试宿主均使用 `AppEnvironment` / `ProviderScope`。
+共享 `TopBarOverlay` / `TopBarOverlayScaffold` 只从
+`NavigationAppearanceSettingsState.revision` 和 `NavigationState` 读取顶栏收起
+状态，旧 Provider 回退已删除。
+`UpdateContent` 的更新状态与更新设置均从 Riverpod
+读取；设置 store 的变更通过局部 revision 触发。其余新增 UI 仍应优先用
+`select` 或 `ValueListenableBuilder` 收窄订阅范围，不要继续放大。
+设置页的“复制分享链接后提示”行也已迁为独立 Riverpod Widget。进度通知和完成
+通知开关迁入 `NotificationSettingsTile`，权限申请通过可注入回调处理；“目录缓存”
+和“自动加载全部页面”迁入 `CachePageSettingsTile`，由
+`CachePageSettingsState.revision` 局部刷新。关闭目录缓存时清空 `DriveCache`
+的逻辑已收拢到该状态。“悬浮导航”“滑动切页”
+和“转场动画”迁入 `NavigationAppearanceSettingsTile`；其 revision 直接驱动
+外壳刷新。“主题模式”和“纯黑深色”
+迁入 `ThemeSettingsTile`，“主题色”迁入 `ThemeColorSettingsTile`；主题色弹窗
+通过 `showThemeColorPicker` 返回类型化选择。`ThemeSettingsState.revision`
+直接驱动根主题更新。设置页主体只读取 Riverpod 状态：搜索元数据来自
+`SettingsStore`，清缓存来自
+`DriveCache`，清数据来自 `AccountState` 与 `AppDb`。“显示 Cookie”行已改为
+纯 Riverpod 组件并直接监听 `AccountState`。“语言”已迁入
+`LanguageSettingsTile`，弹窗返回语言值后通过
+`LanguageClipboardSettingsState` 写入；其 revision 直接驱动根
+`MaterialApp.locale` 会立即切换。“默认启动页”和“首页目录打开方式”已迁入
+`page_behavior_settings_tile.dart`，分别通过 `CachePageSettingsState` 与
+`ListHomeSettingsState` 局部刷新。“全局动画”迁入 `MotionSettingsTile`，
+`ThemeSettingsState.setMotionMode` 同时更新 `SystemMotion.motionMode`。
+“底栏显示项”迁入 `NavBarItemsSettingsTile`，多选弹窗返回
+类型化草稿，确认后通过 `NavigationAppearanceSettingsState.setNavItems`
+一次写入并只递增一次 revision。设置滑杆已抽成公共
+`SettingsSliderTile`；“上传并发数”和“下载并发数”迁入
+`TransferConcurrencySettingsTile`，通过 `TransferConnectionSettingsState.revision`
+局部刷新，传输调度仍实时读取设置值。“最近使用条数”迁入
+`RecentLimitSettingsTile`；`ListHomeSettingsState.setRecentLimit` 统一执行
+落盘、当前账号 `AppDb.trimRecents` 和 revision 通知。“网络请求间隔”迁入
+`RequestIntervalSettingsTile`；`TransferConnectionSettingsState.setRequestInterval`
+同时持久化并同步 `LanzouClient.requestInterval`。接口域名、上传路径和自定义
+User-Agent 也迁入 `AdvancedConnectionSettingsTile`；对应 setter 统一同步
+`LanzouClient.apiBase`、`uploadPath` 和 `userAgent`。
+“隐藏顶/底栏”也已迁入 `NavigationAppearanceSettingsTile`；关闭时的栏位展开动画
+由 `NavigationAppearanceSettingsState` 调用注入的 `NavigationState` 执行，并沿用
+`AppEnvironment.motionReduced` 的少动效判断。“下载目录”迁入
+`DownloadDirectorySettingsTile`；默认路径
+解析、目录分类和系统选择器保留在 UI，普通路径与 SAF 字段的互斥写入、旧授权释放
+由 `DownloadDirectorySettingsState` 独占。“我的”页主体已改用 `context.read`，
+仅对 `hideTopBar` 做窄 `context.select`；账号卡片单独订阅登录态、昵称和会员等级，
+不再因无关应用状态变化重建整页。`RootShell` 使用外壳配置快照和
+一个外壳配置快照 `context.select` 读取，运行中任务数则从 Riverpod 管理器做
+过滤计数，不再因任意账户、传输进度或通知列表变化重建整棵页面分页器。应用根
+`LanCloudApp` 也已改为
+`ConsumerStatefulWidget`，直接监听 `ThemeSettingsState.revision` 和
+`LanguageClipboardSettingsState.revision`；备份恢复后的设置重载通过显式
+`refresh()` 通知根主题与语言更新。共享顶栏组件只订阅 `hideTopBar`，
+`BatchActionBar` 只订阅 `floatingNavBar`，正文、浮层和滚动进度仍由各自
+`ValueNotifier` 驱动。拖拽悬停提示直接订阅 `DriveState` 的网盘/收藏可见性；
+当前目录仍从 `DriveLocation` 实时读取。恢复页通过 `backupServiceProvider`
+获取服务，并只从
+导航外观状态订阅 `hideTopBar`；备份恢复状态机继续使用页面本地状态。首页不再
+整体监听应用状态 / `TransferManager`；顶栏、切页、数据库、账号客户端
+和运行中任务数均来自 Riverpod，快速访问与最近使用继续由页面本地状态及
+`AppDb.revision` 驱动。网盘页只订阅网格、浮动导航和顶/底栏隐藏的配置快照；
+目录、`DriveLocation`、多选和批量操作保持原有状态机。
 
 ## 导航与弹层
 
@@ -87,7 +218,9 @@
 
 ## 平台
 
-- 有平台目录：`android/`、`ios/`、`windows/`
+- 有平台目录：`android/`、`ios/`、`windows/`。当前产品范围只验收 Android 与
+  Windows；`ios/` 目录继续保留，但暂无适配或验收计划，不作为 Riverpod
+  迁移门禁。
 - **没有** `web/`、`macos/`、`linux/`，不要创建，也不要写只在 web 生效的分支
 - OHOS 适配见 `docs/OHOS_ADAPTATION.md`；仓库当前未跟踪 `ohos/` 目录，相关改动先问
 
