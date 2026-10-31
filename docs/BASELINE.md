@@ -133,6 +133,10 @@
 | `tools\agent.cmd test`（BackupDependencies） | 增量 | **373 tests, all passed** | 约 72 s |
 | `tools\agent.cmd analyze`（BackupStoreDependencies） | 增量 | No issues found | 约 20 s |
 | `tools\agent.cmd test`（BackupStoreDependencies） | 增量 | **3 tests, all passed** | 约 14 s |
+| `tools\agent.cmd analyze`（备份测试夹具批次 1） | 全量 | No issues found | 约 29 s |
+| `tools\agent.cmd test`（备份测试夹具批次 1） | 增量 | **31 tests, all passed** | 约 24 s |
+| `tools\agent.cmd analyze`（备份测试夹具批次 2） | 全量 | No issues found | 约 19 s |
+| `tools\agent.cmd test`（备份测试夹具批次 2） | 增量 | **72 tests, all passed** | 约 29 s |
 | `tools\agent.cmd analyze`（网盘目录切片完成后） | 全量 | No issues found | 约 21 s |
 | `tools\agent.cmd test`（网盘目录切片完成后） | 全量 | **722 tests, all passed** | 约 110 s |
 | `tools\agent.cmd analyze`（拖放与 Cookie 行完成后） | 全量 | No issues found | 约 17 s |
@@ -480,6 +484,10 @@
   重载回调组装备份服务；新增 1 条适配器转发测试，增量 1 个测试文件 /
   3 个测试通过，当前总数由 727 增至 728。测试夹具与 `AppController` 接口移除
   仍待后续切片。
+- 2026-10-31 备份测试夹具分两批迁到 `BackupStoreDependencies`：批次 1 覆盖
+  备份脚本/分项/provider/登录页，4 个测试文件 31 个测试通过；批次 2 覆盖备份页/
+  “我的”/恢复进度，7 个受影响测试文件 72 个测试通过。当前仅剩最终删除
+  `AppController` 接口实现的兼容断言。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release

@@ -874,6 +874,11 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > `AppController` 的接口实现。新增 1 条适配器转发测试，增量 1 个测试文件 /
 > 3 个测试通过，当前总数为 728。剩余工作是把测试夹具改为同一适配器，再从
 > `AppController` 删除 `BackupDependencies` 接口与 `@override` 兼容成员。
+>
+> 备份测试夹具已分两批迁移完成：备份脚本/分项/provider/登录页，以及备份页/
+> “我的”/恢复进度测试都改用 `BackupStoreDependencies` 构造服务。全仓已无
+> `BackupService(AppController)` 或 `super.app` 用法，仅保留一条
+> “AppController 满足 BackupDependencies”的临时兼容断言，供最终删除接口时移除。
 
 ### 阶段 6：移除旧 Provider
 
