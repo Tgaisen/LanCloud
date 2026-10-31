@@ -15,7 +15,6 @@ import 'data/settings_store.dart';
 import 'data/secure_storage.dart';
 import 'download_directory_settings_state.dart';
 import 'drive_state.dart';
-import 'drive_cache.dart';
 import 'cache_page_settings_state.dart';
 import 'dynamic_color_support.dart';
 import 'navigation_state.dart';
@@ -87,7 +86,6 @@ class AppController extends ChangeNotifier {
   SettingsStore get settings => settingsState.store;
 
   final AppDb db = AppDb.instance;
-  DriveCache get driveCache => drive.cache;
   final NavigationState navigation;
   final DriveState drive;
 
@@ -95,12 +93,12 @@ class AppController extends ChangeNotifier {
   late final AccountLogin accountLogin = AccountLogin(
     accountState: accountState,
     clients: clientRegistry,
-    driveCache: driveCache,
+    driveCache: drive.cache,
   );
   late final AccountSession accountSession = AccountSession(
     accountState: accountState,
     clients: clientRegistry,
-    driveCache: driveCache,
+    driveCache: drive.cache,
     db: db,
   );
 
@@ -117,7 +115,7 @@ class AppController extends ChangeNotifier {
     await accounts.load();
     await settings.load();
     _applyRuntimeSettings();
-    await driveCache.bindAccount(accounts.activeUid);
+    await drive.cache.bindAccount(accounts.activeUid);
     ready = true;
     notifyListeners();
     _refreshActiveAccountInfo();
@@ -176,8 +174,8 @@ class AppController extends ChangeNotifier {
     themeSettings.refresh();
     languageClipboardSettings.refresh();
     clientRegistry.clearAccounts();
-    await driveCache.bindAccount(accounts.activeUid);
-    if (!settings.cacheFolders) driveCache.clear();
+    await drive.cache.bindAccount(accounts.activeUid);
+    if (!settings.cacheFolders) drive.cache.clear();
     notifyListeners();
     _refreshActiveAccountInfo();
   }

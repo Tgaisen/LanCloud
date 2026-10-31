@@ -37,7 +37,7 @@ Future<AppController> host(
   app.accounts.accounts = [Account(uid: '1', cookie: 'cookie')];
   app.accounts.activeUid = '1';
   app.settings.gridView = grid;
-  app.driveCache.put(
+  app.drive.cache.put(
     '-1',
     CachedFolder(
       folders: [LzFolder(id: 'f1', name: '测试文件夹', desc: '')],
