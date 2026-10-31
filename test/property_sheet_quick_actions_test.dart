@@ -136,18 +136,10 @@ class _FakeApp extends AppController {
   _FakeApp(
     this._client, {
     LanzouClient? publicClient,
-    this.exposeLegacyClient = true,
   }) : _public = publicClient ?? _FakePublic();
 
   final LanzouClient _client;
   final LanzouClient _public;
-  final bool exposeLegacyClient;
-
-  @override
-  LanzouClient? get client => exposeLegacyClient ? _client : null;
-
-  @override
-  LanzouClient get publicClient => _public;
 }
 
 /// 直链解析：默认立刻成功，测试里不打网络。
@@ -376,7 +368,7 @@ void main() {
 
   testWidgets('网盘单条目菜单不依赖旧 AppController 客户端', (tester) async {
     final client = _FakeClient();
-    final app = _FakeApp(client, exposeLegacyClient: false);
+    final app = _FakeApp(client);
     final clipboard = <MethodCall>[];
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(SystemChannels.platform, (call) async {
@@ -437,7 +429,7 @@ void main() {
 
   testWidgets('网盘批量操作不依赖旧 AppController 客户端', (tester) async {
     final client = _FakeClient();
-    final app = _FakeApp(client, exposeLegacyClient: false);
+    final app = _FakeApp(client);
     final clipboard = <MethodCall>[];
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(SystemChannels.platform, (call) async {
@@ -613,7 +605,6 @@ void main() {
     final app = _FakeApp(
       shareGate,
       publicClient: directGate,
-      exposeLegacyClient: false,
     );
     await _pumpDrive(tester, app);
     await tester.tap(find.text('a.zip'));
@@ -940,7 +931,7 @@ void main() {
       () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(SystemChannels.platform, null),
     );
-    final app = _FakeApp(_FakeClient(), exposeLegacyClient: false);
+    final app = _FakeApp(_FakeClient());
     await _pumpDrive(tester, app);
 
     await tester.tap(find.text('a.zip'));
@@ -1031,7 +1022,7 @@ void main() {
 
   testWidgets('网盘页文件夹 ⋯ 菜单：六项操作，属性打开属性弹窗', (tester) async {
     final client = _FakeClient();
-    final app = _FakeApp(client, exposeLegacyClient: false);
+    final app = _FakeApp(client);
     await _pumpDrive(tester, app);
 
     await tester.tap(find.byTooltip('文件夹操作'));

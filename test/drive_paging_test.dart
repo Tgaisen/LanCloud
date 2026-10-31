@@ -72,14 +72,9 @@ class _FakeClient extends LanzouClient {
 }
 
 class _FakeApp extends AppController {
-  _FakeApp(this._client) {
+  _FakeApp() {
     accounts.activeUid = '1';
   }
-
-  final LanzouClient _client;
-
-  @override
-  LanzouClient get client => _client;
 }
 
 List<Override> _overrides(
@@ -105,7 +100,7 @@ List<Override> _overrides(
 void main() {
   testWidgets('目录内容不满一屏时自动补页：进入即显示「已加载全部」', (tester) async {
     final client = _FakeClient();
-    final app = _FakeApp(client);
+    final app = _FakeApp();
     final manager = buildTransferManager(app);
     addTearDown(app.dispose);
     tester.view.devicePixelRatio = 1.0;
@@ -140,7 +135,7 @@ void main() {
   // 否则刷新后又变成「看起来没到底」。
   testWidgets('下拉刷新后依然自动补页并显示「已加载全部」', (tester) async {
     final client = _FakeClient();
-    final app = _FakeApp(client);
+    final app = _FakeApp();
     final manager = buildTransferManager(app);
     addTearDown(app.dispose);
     tester.view.devicePixelRatio = 1.0;
@@ -183,7 +178,7 @@ void main() {
   // 切换期间的补页检查会被 _directorySwitching 挡住，切换结束后必须再补一次。
   testWidgets('从根目录进入子目录后也会自动补页并显示「已加载全部」', (tester) async {
     final client = _FakeClient();
-    final app = _FakeApp(client);
+    final app = _FakeApp();
     // 关掉「最近使用」记录：测试环境没有数据库实现，进入目录时不必写库
     app.settings.recentLimit = 0;
     final manager = buildTransferManager(app);

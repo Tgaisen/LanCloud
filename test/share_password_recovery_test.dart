@@ -103,9 +103,6 @@ class _FakeApp extends AppController {
 
   final LanzouClient _client;
 
-  @override
-  LanzouClient get publicClient => _client;
-
   LanzouClient get dialogClient => _client;
 }
 

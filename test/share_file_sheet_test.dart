@@ -39,9 +39,6 @@ class _FakeApp extends AppController {
 
   final LanzouClient _public;
 
-  @override
-  LanzouClient get publicClient => _public;
-
   LanzouClient get sheetClient => _public;
 }
 
