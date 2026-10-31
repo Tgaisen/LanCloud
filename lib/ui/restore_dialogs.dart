@@ -112,7 +112,7 @@ Future<bool> confirmAndRestore(
   final preview = BackupService.inspect(plaintext);
   var existingFavorites = 1;
   try {
-    existingFavorites = (await service.app.db.favorites()).length;
+    existingFavorites = (await service.dependencies.db.favorites()).length;
   } catch (_) {
     // 读取失败时保留合并选项，优先避免覆盖现有收藏。
   }

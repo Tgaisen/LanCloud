@@ -38,16 +38,6 @@ void main() {
     expect(container.read(backupServiceProvider), same(service));
   });
 
-  test('AppController 通过同一存储满足 BackupDependencies', () {
-    final app = AppController();
-    addTearDown(app.dispose);
-    final dependencies = app as BackupDependencies;
-
-    expect(dependencies.accounts, same(app.accounts));
-    expect(dependencies.settings, same(app.settings));
-    expect(dependencies.db, same(app.db));
-  });
-
   test('BackupStoreDependencies 直接转发存储与重载回调', () async {
     final accounts = AccountStore();
     final settings = SettingsStore();
