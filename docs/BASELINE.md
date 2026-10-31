@@ -211,6 +211,8 @@
 | `tools\agent.cmd test`（客户端访问测试迁移） | 增量 | **42 tests, all passed** | 约 26 s |
 | `tools\agent.cmd analyze`（移除客户端访问兼容 API） | 增量 | No issues found | 约 7 s |
 | `tools\agent.cmd test`（移除客户端访问兼容 API） | 增量 | **313 tests, all passed** | 约 51 s |
+| `tools\agent.cmd analyze`（移除运行时状态兼容 API） | 增量 | No issues found | 约 7 s |
+| `tools\agent.cmd test`（移除运行时状态兼容 API） | 增量 | **313 tests, all passed** | 约 49 s |
 | `tools\agent.cmd analyze`（网盘目录切片完成后） | 全量 | No issues found | 约 21 s |
 | `tools\agent.cmd test`（网盘目录切片完成后） | 全量 | **722 tests, all passed** | 约 110 s |
 | `tools\agent.cmd analyze`（拖放与 Cookie 行完成后） | 全量 | No issues found | 约 17 s |
@@ -714,6 +716,11 @@
   `clientFor` 和 `publicClient`；内部状态回调与账号资料刷新改为直接读取
   `AccountStore` / `LanzouClientRegistry`。增量分析 1 个生产文件无问题，
   48 个受影响测试文件 / 313 个测试通过，用例总数保持 718。
+- 2026-10-31 移除运行时状态兼容 API：删除控制器 `ready`、安全存储重认证和
+  系统少动效 getter/setter；`motionReduced` 收为私有计算。运行时测试改为直接
+  覆盖 `AppRuntimeState`，外壳测试直接设置 `app.runtimeState.ready`。增量
+  分析 1 个生产文件无问题，48 个受影响测试文件 / 313 个测试通过，用例总数
+  保持 718。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release
