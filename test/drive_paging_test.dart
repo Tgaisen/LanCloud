@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/account_state.dart';
 import 'package:lancloud/core/api/lanzou_client.dart';
@@ -80,7 +81,7 @@ class _FakeApp extends AppController {
   LanzouClient get client => _client;
 }
 
-_overrides(
+List<Override> _overrides(
   _FakeApp app,
   TransferManager manager,
   LanzouClient client,
