@@ -784,6 +784,9 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > 目录，文件上传从 `AccountState + LanzouClientRegistry + DriveState` 组合
 > 客户端，批量收藏从客户端注册表和 `appDbProvider` 获取依赖。拖放测试不再
 > 注册旧 `AppController` Provider；增量 1 个测试文件 / 12 个测试通过。
+>
+> “显示 Cookie”设置行随后移除旧 Provider 回退，成为纯
+> `ConsumerWidget + AccountState` 组件；相应测试不再依赖 AppController。
 
 ### 阶段 6：移除旧 Provider
 

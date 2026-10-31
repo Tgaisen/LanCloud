@@ -112,6 +112,7 @@
 | `tools\agent.cmd test`（AccountSession 服务） | 增量 | **361 tests, all passed** | 约 53 s |
 | `tools\agent.cmd test`（ProfilePage 账号会话消费端） | 增量 | **359 tests, all passed** | 约 52 s |
 | `tools\agent.cmd test`（拖放动作依赖） | 增量 | **12 tests, all passed** | 约 15 s |
+| `tools\agent.cmd test`（显示 Cookie 纯 Riverpod） | 增量 | **1 test, all passed** | 约 13 s |
 | `tools\agent.cmd analyze`（账号会话消费端完成后） | 全量 | No issues found | 约 32 s |
 | `tools\agent.cmd test`（账号会话消费端完成后） | 全量 | **722 tests, all passed** | 约 99 s |
 
@@ -401,6 +402,9 @@
   `driveStateProvider`、`accountStateProvider`、客户端注册表和
   `appDbProvider` 读取；拖放测试移除 5 个旧 `AppController` Provider 注册。
   增量 1 个测试文件 / 12 个测试通过，用例总数保持 722。
+- 2026-10-31 `ShowCookieSettingsTile` 删除旧 Provider 回退，改为纯
+  `ConsumerWidget + AccountState` 监听；增量 1 个测试文件 / 1 个测试通过，
+  用例总数保持 722。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release
