@@ -26,8 +26,8 @@ import 'update_test_scope_test.dart';
 
 BackupDependencies backupDependenciesFor(AppController app) =>
     BackupStoreDependencies(
-      accounts: app.accounts,
-      settings: app.settings,
+      accounts: app.accountState.store,
+      settings: app.settingsState.store,
       db: app.db,
       reloadCallback: app.reloadFromStorage,
     );
@@ -738,10 +738,10 @@ void main() {
 
     final app = AppController();
     addTearDown(app.dispose);
-    app.accounts.accounts.add(
+    app.accountState.store.accounts.add(
       Account(uid: '556911', cookie: 'c', nickname: '土豆'),
     );
-    app.accounts.activeUid = '556911';
+    app.accountState.store.activeUid = '556911';
     await tester.pumpWidget(tree(app));
     await tester.pumpAndSettle();
 
@@ -758,13 +758,13 @@ void main() {
     expect(find.text('普'), findsNothing);
 
     // 截取到会员等级后显示小卡片
-    app.accounts.byUid('556911')!.level = '白';
+    app.accountState.store.byUid('556911')!.level = '白';
     app.accountState.notifyAccountChanged();
     await tester.pumpAndSettle();
     expect(find.text('白'), findsOneWidget);
 
     // 调成普通用户「普」：卡片隐藏
-    app.accounts.byUid('556911')!.level = '普';
+    app.accountState.store.byUid('556911')!.level = '普';
     app.accountState.notifyAccountChanged();
     await tester.pumpAndSettle();
     expect(find.text('普'), findsNothing);
@@ -773,10 +773,10 @@ void main() {
   testWidgets('管理账号弹窗：两个列表组，容器色比弹窗底高一档、窗体边距 16dp', (tester) async {
     final app = AppController();
     addTearDown(app.dispose);
-    app.accounts.accounts.add(
+    app.accountState.store.accounts.add(
       Account(uid: '556911', cookie: 'c', nickname: '土豆'),
     );
-    app.accounts.activeUid = '556911';
+    app.accountState.store.activeUid = '556911';
     await tester.pumpWidget(
       _TestProviders.value(
         value: app,
@@ -826,10 +826,10 @@ void main() {
     FlutterSecureStorage.setMockInitialValues({});
     final app = AppController();
     addTearDown(app.dispose);
-    app.accounts.accounts.add(
+    app.accountState.store.accounts.add(
       Account(uid: '556911', cookie: 'c', nickname: '土豆'),
     );
-    app.accounts.activeUid = '556911';
+    app.accountState.store.activeUid = '556911';
     await tester.pumpWidget(
       _TestProviders.value(
         value: app,
@@ -862,7 +862,7 @@ void main() {
     // 取消：账号还在
     await tester.tap(find.text('取消'));
     await tester.pumpAndSettle();
-    expect(app.accounts.accounts, hasLength(1));
+    expect(app.accountState.store.accounts, hasLength(1));
 
     // 重新打开并确认移除：账号从本机删掉
     await tester.tap(find.text('切换'));
@@ -873,17 +873,17 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('移除'));
     await tester.pumpAndSettle();
-    expect(app.accounts.accounts, isEmpty);
-    expect(app.accounts.activeUid, isNull);
+    expect(app.accountState.store.accounts, isEmpty);
+    expect(app.accountState.store.activeUid, isNull);
   });
 
   testWidgets('「更新」条目：检测到新版本时显示「检测到更新」副标题（单栏 / 两栏）', (tester) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     final app = AppController();
     addTearDown(app.dispose);
-    await app.settings.load();
+    await app.settingsState.store.load();
     final container = createUpdateContainer(
-      settings: app.settings,
+      settings: app.settingsState.store,
       fetch: () async => [
         ReleaseInfo(
           tag: 'v99.0.0',

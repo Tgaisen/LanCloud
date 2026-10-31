@@ -70,7 +70,7 @@ void main() {
       find.descendant(of: group, matching: find.text('深色')).first,
     );
     await tester.pumpAndSettle();
-    expect(app.settings.themeMode, 'dark');
+    expect(app.settingsState.store.themeMode, 'dark');
     expect(
       tester.widget<M3eConnectedButtonGroup<String>>(group).selected,
       'dark',
@@ -118,7 +118,7 @@ void main() {
     // 拖到最右 → 最大档 1000ms，松手才写设置
     await tester.drag(slider, const Offset(600, 0));
     await tester.pumpAndSettle();
-    expect(app.settings.requestInterval, 1000);
+    expect(app.settingsState.store.requestInterval, 1000);
     expect(find.text('1000 ms'), findsOneWidget);
   });
 
@@ -173,7 +173,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(app.settings.language, 'en');
+    expect(app.settingsState.store.language, 'en');
   });
 
   testWidgets('多选弹窗：底栏显示项也是列表组 + tonal 选中态，确认后生效', (tester) async {
@@ -219,7 +219,7 @@ void main() {
 
     await tester.tap(find.text('确定'));
     await tester.pumpAndSettle();
-    expect(app.settings.navShowTransfers, isTrue);
+    expect(app.settingsState.store.navShowTransfers, isTrue);
   });
 
   testWidgets('设置页分组小标题：title 角色 + 强调字重，与列表项左边对齐', (tester) async {

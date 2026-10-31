@@ -102,7 +102,7 @@ void main() {
 
     // 两个入口：全局动画（副标题＝当前档）与无障碍相关问题
     expect(find.text(_zh.globalAnimations), findsOneWidget);
-    expect(app.settings.motionMode, 'auto');
+    expect(app.settingsState.store.motionMode, 'auto');
     expect(find.text(_zh.motionModeAuto), findsOneWidget);
     expect(find.text(_zh.a11yFeedback), findsOneWidget);
   });
@@ -127,7 +127,7 @@ void main() {
 
     await tester.tap(inDialog(_zh.motionModeDisabled));
     await tester.pumpAndSettle();
-    expect(app.settings.motionMode, 'off');
+    expect(app.settingsState.store.motionMode, 'off');
     expect(SystemMotion.motionMode.value, 'off');
     // 行副标题更新为当前档
     expect(find.text(_zh.motionModeDisabled), findsOneWidget);
@@ -137,7 +137,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(inDialog(_zh.motionModeEnabled));
     await tester.pumpAndSettle();
-    expect(app.settings.motionMode, 'on');
+    expect(app.settingsState.store.motionMode, 'on');
     expect(SystemMotion.motionMode.value, 'on');
     expect(find.text(_zh.motionModeEnabled), findsOneWidget);
   });
