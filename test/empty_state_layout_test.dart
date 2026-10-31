@@ -9,13 +9,14 @@ import 'package:lancloud/core/data/app_db_provider.dart';
 import 'package:lancloud/core/drive_state.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
-import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/delegates.dart';
 import 'package:lancloud/ui/favorites_page.dart';
 import 'package:lancloud/ui/share_folder_page.dart';
 import 'package:lancloud/ui/transfers_page.dart';
+
+import 'transfer_dependencies_test.dart' show buildTransferManager;
 
 /// 空白提示（暂无任务 / 还没有收藏 …）应该在可见区域里居中显示，
 /// 并且**不可滚动**：之前末尾多补了一截底栏 / 导航栏留白，
@@ -45,7 +46,7 @@ void main() {
   testWidgets('传输页空状态居中且不可滚动', (tester) async {
     useBottomInset(tester);
     final app = AppController();
-    final manager = TransferManager(app);
+    final manager = buildTransferManager(app);
     addTearDown(app.dispose);
     await tester.pumpWidget(
       ProviderScope(
