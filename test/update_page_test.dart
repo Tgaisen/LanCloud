@@ -4,7 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/app_info.dart';
 import 'package:lancloud/core/data/settings_store.dart';
 import 'package:lancloud/core/system_motion.dart';
@@ -44,26 +44,26 @@ late UpdateFetcher _fetchReleases;
 late UpdateClock _now;
 
 /// 打开独立的更新页（与「关于」页同样的独立页形态）。
-Future<({AppController app, UpdateService updates})> pumpUpdatePage(
+Future<({AppEnvironment environment, UpdateService updates})> pumpUpdatePage(
   WidgetTester tester, {
   bool autoCheck = true,
   Locale locale = const Locale('zh'),
 }) async {
   SharedPreferences.setMockInitialValues(<String, Object>{});
-  final app = AppController();
-  app.settingsState.store.updateAutoCheck = autoCheck;
+  final environment = AppEnvironment();
+  environment.settingsState.store.updateAutoCheck = autoCheck;
   final container = createUpdateContainer(
-    settings: app.settingsState.store,
+    settings: environment.settingsState.store,
     fetch: () => _fetchReleases(),
     clock: () => _now(),
   );
   final updates = container.read(updateServiceProvider.notifier);
   await updates.initialize();
-  addTearDown(app.dispose);
+  addTearDown(environment.dispose);
   addTearDown(container.dispose);
   await tester.pumpWidget(
-    updateTestTree(
-      app: app,
+    updateEnvironmentTestTree(
+      environment: environment,
       container: container,
       child: MaterialApp(
         localizationsDelegates: appLocalizationsDelegates,
@@ -74,7 +74,7 @@ Future<({AppController app, UpdateService updates})> pumpUpdatePage(
     ),
   );
   await tester.pumpAndSettle();
-  return (app: app, updates: updates);
+  return (environment: environment, updates: updates);
 }
 
 Finder dialogButton(String label) => find.descendant(
@@ -385,7 +385,7 @@ void main() {
     await tester.tap(find.text('正式版'));
     await tester.pumpAndSettle();
 
-    expect(harness.app.settingsState.store.updateChannel, 'stable');
+    expect(harness.environment.settingsState.store.updateChannel, 'stable');
     expect(find.text('正式版'), findsOneWidget);
     // 旧通道的结果被清掉：回到未检测更新，且没有偷偷再请求
     expect(harness.updates.status, UpdateStatus.idle);
@@ -395,11 +395,11 @@ void main() {
 
   testWidgets('自动检查更新：开关可切换并落到设置', (tester) async {
     final harness = await pumpUpdatePage(tester);
-    expect(harness.app.settingsState.store.updateAutoCheck, isTrue);
+    expect(harness.environment.settingsState.store.updateAutoCheck, isTrue);
 
     await tester.tap(find.text('自动检查更新'));
     await tester.pumpAndSettle();
-    expect(harness.app.settingsState.store.updateAutoCheck, isFalse);
+    expect(harness.environment.settingsState.store.updateAutoCheck, isFalse);
   });
 
   testWidgets('iOS：卡片显示不支持，隐藏通道与自动检查（列表组 1 保留）', (tester) async {

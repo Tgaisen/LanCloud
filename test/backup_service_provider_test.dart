@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show ProviderException;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/backup/backup_dependencies.dart';
 import 'package:lancloud/core/backup/backup_service.dart';
 import 'package:lancloud/core/backup/backup_service_provider.dart';
@@ -9,12 +9,14 @@ import 'package:lancloud/core/data/account_store.dart';
 import 'package:lancloud/core/data/app_db.dart';
 import 'package:lancloud/core/data/settings_store.dart';
 
-BackupDependencies backupDependenciesFor(AppController app) =>
+Future<void> _noopReload() async {}
+
+BackupDependencies backupDependenciesFor(AppEnvironment environment) =>
     BackupStoreDependencies(
-      accounts: app.accountState.store,
-      settings: app.settingsState.store,
-      db: app.db,
-      reloadCallback: app.reloadFromStorage,
+      accounts: environment.accountState.store,
+      settings: environment.settingsState.store,
+      db: environment.db,
+      reloadCallback: _noopReload,
     );
 
 void main() {
@@ -26,14 +28,14 @@ void main() {
       throwsA(isA<ProviderException>()),
     );
 
-    final app = AppController();
-    final service = BackupService(backupDependenciesFor(app));
+    final environment = AppEnvironment();
+    final service = BackupService(backupDependenciesFor(environment));
     final container = ProviderContainer(
       overrides: [
         backupServiceProvider.overrideWithValue(service),
       ],
     );
-    addTearDown(app.dispose);
+    addTearDown(environment.dispose);
     addTearDown(container.dispose);
     expect(container.read(backupServiceProvider), same(service));
   });

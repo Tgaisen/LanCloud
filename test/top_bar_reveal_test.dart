@@ -1,7 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/ui/common.dart';
@@ -105,7 +105,7 @@ Color barBackground(WidgetTester tester) => tester
     )
     .color;
 
-Widget navigationHost(AppController app, Widget home) => ProviderScope(
+Widget navigationHost(AppEnvironment app, Widget home) => ProviderScope(
   overrides: [
     navigationAppearanceSettingsStateProvider.overrideWithValue(
       app.navigationAppearanceSettings,
@@ -188,7 +188,7 @@ class FramedTabProbePage extends StatelessWidget {
 
 void main() {
   testWidgets('独立打开的标签页：顶栏底色随滚动变色（与外壳里一致）', (tester) async {
-    final app = AppController();
+    final app = AppEnvironment();
     addTearDown(app.dispose);
     tester.view.physicalSize = const Size(400, 600);
     tester.view.devicePixelRatio = 1.0;
@@ -209,7 +209,7 @@ void main() {
 
   testWidgets('独立页面顶栏 1:1 跟随滚动：内容渐隐、底色不渐隐，不动外壳进度', (tester) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
-    final app = AppController();
+    final app = AppEnvironment();
     addTearDown(app.dispose);
     await app.navigationAppearanceSettings.setHideTopBar(true);
     await tester.pumpWidget(
@@ -247,7 +247,7 @@ void main() {
 
   testWidgets('顶栏与手指 1:1 跟随：滑动多少就上移多少，且不影响列表位置', (tester) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
-    final app = AppController();
+    final app = AppEnvironment();
     addTearDown(app.dispose);
     await app.navigationAppearanceSettings.setHideTopBar(true);
     await tester.pumpWidget(
@@ -284,7 +284,7 @@ void main() {
 
   testWidgets('回到顶部恢复显示；关闭“顶栏收起”时顶栏不跟随进度', (tester) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
-    final app = AppController();
+    final app = AppEnvironment();
     addTearDown(app.dispose);
     await app.navigationAppearanceSettings.setHideTopBar(true);
     await tester.pumpWidget(
@@ -310,7 +310,7 @@ void main() {
 
   testWidgets('独立页面顶栏从 Riverpod 导航外观状态读取收起开关', (tester) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
-    final app = AppController();
+    final app = AppEnvironment();
     addTearDown(app.dispose);
     await tester.pumpWidget(
       navigationHost(app, const ScaffoldProbePage()),

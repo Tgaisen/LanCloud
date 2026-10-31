@@ -46,18 +46,28 @@ Widget updateTestTree({
   required AppController app,
   required ProviderContainer container,
   required Widget child,
+}) => updateEnvironmentTestTree(
+  environment: app.environment,
+  container: container,
+  child: child,
+);
+
+Widget updateEnvironmentTestTree({
+  required AppEnvironment environment,
+  required ProviderContainer container,
+  required Widget child,
 }) {
   return UncontrolledProviderScope(
     container: container,
     child: ProviderScope(
       overrides: [
-        accountStateProvider.overrideWithValue(app.accountState),
-        appDbProvider.overrideWithValue(app.db),
-        accountSessionProvider.overrideWithValue(app.accountSession),
+        accountStateProvider.overrideWithValue(environment.accountState),
+        appDbProvider.overrideWithValue(environment.db),
+        accountSessionProvider.overrideWithValue(environment.accountSession),
         navigationAppearanceSettingsStateProvider.overrideWithValue(
-          app.navigationAppearanceSettings,
+          environment.navigationAppearanceSettings,
         ),
-        navigationStateProvider.overrideWithValue(app.navigation),
+        navigationStateProvider.overrideWithValue(environment.navigation),
       ],
       child: child,
     ),
