@@ -19,6 +19,8 @@ import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/delegates.dart';
 import 'package:lancloud/ui/drive_page.dart';
 
+import 'transfer_dependencies_test.dart' show buildTransferManager;
+
 /// 第一页只有几条、且服务端说「还有下一页」的目录：真机上必须自动补一页，
 /// 才能知道已经到底（否则要用户滑一下才出现「已加载全部」）。
 class _FakeClient extends LanzouClient {
@@ -104,7 +106,7 @@ void main() {
   testWidgets('目录内容不满一屏时自动补页：进入即显示「已加载全部」', (tester) async {
     final client = _FakeClient();
     final app = _FakeApp(client);
-    final manager = TransferManager(app);
+    final manager = buildTransferManager(app);
     addTearDown(app.dispose);
     tester.view.devicePixelRatio = 1.0;
     tester.view.physicalSize = const Size(420, 900);
@@ -139,7 +141,7 @@ void main() {
   testWidgets('下拉刷新后依然自动补页并显示「已加载全部」', (tester) async {
     final client = _FakeClient();
     final app = _FakeApp(client);
-    final manager = TransferManager(app);
+    final manager = buildTransferManager(app);
     addTearDown(app.dispose);
     tester.view.devicePixelRatio = 1.0;
     tester.view.physicalSize = const Size(420, 900);
@@ -184,7 +186,7 @@ void main() {
     final app = _FakeApp(client);
     // 关掉「最近使用」记录：测试环境没有数据库实现，进入目录时不必写库
     app.settings.recentLimit = 0;
-    final manager = TransferManager(app);
+    final manager = buildTransferManager(app);
     addTearDown(app.dispose);
     tester.view.devicePixelRatio = 1.0;
     tester.view.physicalSize = const Size(420, 900);

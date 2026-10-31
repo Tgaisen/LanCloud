@@ -14,7 +14,6 @@ import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/core/data/account_store.dart';
 import 'package:lancloud/core/drive_cache.dart';
-import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/app_icons.dart' as app_icons;
@@ -23,6 +22,8 @@ import 'package:lancloud/ui/drive_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
+
+import 'transfer_dependencies_test.dart' show buildTransferManager;
 
 /// 网盘页挂载在目录缓存上（不进网络）：给个账号让 `app.client` 非空，
 /// 再塞一份根目录快照，`_load()` 直接命中缓存。
@@ -47,7 +48,7 @@ Future<AppController> host(
       hasMore: false,
     ),
   );
-  final manager = TransferManager(app);
+  final manager = buildTransferManager(app);
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
