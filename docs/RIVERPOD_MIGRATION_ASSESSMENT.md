@@ -842,6 +842,19 @@ Riverpod 与 Provider 由同一作者维护。Riverpod 官方把它描述为更�
 > 均清零；全仓 `AppController.read` 降至 11 处、select 降至 1 处，生产
 > `provider` 导入只剩 `app.dart` 与 `main.dart`。相关增量 5 个测试文件 /
 > 47 个测试通过，当前总数保持 724。
+>
+> 阶段 6 收尾随后完成。`AppRuntimeState` 接管应用 ready、凭据重认证提示和系统
+> 少动效信号，`AppController` 只转发同一实例并通过 provider 覆盖暴露。
+> `RootShell` 改用 `AppRuntimeState`、`AccountState`、`NavigationState`、导航
+> 外观/缓存/剪贴板设置与客户端注册表；本地快照桥仅在外壳相关字段变化时重建。
+> `app.dart`、`main.dart` 和最后 3 个测试包装移除旧 AppController Provider。
+> 随后确认 `lib` 与 `test` 无 `package:provider/provider.dart` 导入，并删除
+> `pubspec.yaml` / `pubspec.lock` 中的 `provider` 依赖。
+>
+> 自动化验证结果：`AppRuntimeState` 切片 64 个测试文件 / 363 个测试通过；
+> 外壳与依赖移除后 70 个测试文件 / 382 个测试通过。新增 2 条运行时状态测试，
+> 当前总数为 726。阶段 6 的代码与依赖迁移已完成，但 Android / Windows 的启动、
+> 返回手势、后台传输和备份恢复人工验收尚未执行，因此仍不宣告阶段 6 最终完成。
 
 ### 阶段 6：移除旧 Provider
 

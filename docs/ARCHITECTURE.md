@@ -6,7 +6,7 @@
 ## 一句话
 
 蓝奏云第三方 Flutter 客户端。单进程、无后端；网络协议在 `lib/core/api/`，
-状态在 2 个应用级 `ChangeNotifier`，页面在 `lib/ui/`（平铺）。
+状态与依赖注入由 Riverpod 管理，页面在 `lib/ui/`（平铺）。
 
 ## 启动顺序（`lib/main.dart`，按实际代码）
 
@@ -18,21 +18,21 @@
 6. `AppController().init()` — 状态初始化入口
 7. `SystemMotion.init()`、`NotificationService.init()`、`SharedInbox`、`IncomingLinks`
 8. `BackupService.maybeAutoBackup()`（不阻塞）
-9. 创建更新试点 `ProviderContainer`，恢复更新缓存后非阻塞执行
+9. 创建应用 `ProviderContainer`，恢复更新缓存后非阻塞执行
    `UpdateService.maybeAutoCheck()`
-10. `runApp(UncontrolledProviderScope(...))` — Riverpod 作用域包裹旧
-    `ChangeNotifierProvider<AppController>`；启动前主动读取
-    `transferManagerProvider` 保持任务恢复顺序，旧 Provider 不再注册传输管理器
+10. `runApp(UncontrolledProviderScope(...))` — 用 `AppController` 已初始化的
+    状态覆盖 Riverpod 容器；启动前主动读取 `transferManagerProvider` 保持任务
+    恢复顺序。`provider` 依赖与 `ChangeNotifierProvider` 均已移除。
 
 ## 状态层
 
-旧 Provider 栈只剩应用级 `AppController`，仍在 `main.dart` 注入；
-`TransferManager` 已只由 Riverpod 容器提供。`core/update/` 的 `UpdateService`
-是阶段 1 Riverpod 试点：
+`AppController` 仍负责启动初始化和传输依赖装配，但其状态已全部通过 Riverpod
+覆盖为既有权威对象；UI 不再读取 `AppController`。`TransferManager` 同样只由
+Riverpod 容器提供。`core/update/` 的 `UpdateService` 是阶段 1 Riverpod 试点：
 
 | 对象 | 文件 | 说明 |
 | --- | --- | --- |
-| `AppController` | `core/app_controller.dart`（637 行） | 账号、网盘、设置等大部分状态。职责偏宽，是已知问题 |
+| `AppController` | `core/app_controller.dart` | 启动初始化与传输依赖装配；账号、网盘、设置等状态已拆到独立状态对象 |
 | `TransferManager` | `core/transfer/transfer_manager.dart` | 上传/下载任务队列 |
 | `TransferStore` | `core/transfer/transfer_store.dart` | 传输记录恢复/保存/删除与下载标记端口；`AppDbTransferStore` 适配既有数据库 |
 | `TransferAccountPort` | `core/transfer/transfer_account_port.dart` | 当前 UID、账号存在性、账号客户端与公开客户端端口；包装账号存储和客户端注册表 |
@@ -49,6 +49,7 @@
 | `SharedDownloadsGateway` | `core/shared_downloads_gateway.dart` | 公共 Downloads 能力接口；生产实现委托原 MethodChannel，目录解析与传输保存改用注入实例 |
 | `SettingsStore` / `AccountStore` | `core/data/*_store_provider.dart` | 普通 `Provider` 暴露已加载的可写存储，不当作监听状态；更新服务已统一读取 `settingsStoreProvider` |
 | `DownloadPathService` | `core/download_path_service.dart` | 无状态默认下载目录解析；依赖 `SharedDownloadsGateway`，`AppController` 原方法签名保持不变 |
+| `AppRuntimeState` | `core/app_runtime_state.dart` | 应用启动 ready、凭据重认证提示与系统少动效信号的唯一所有者；非 autoDispose |
 | `NavigationState` | `core/navigation_state.dart` | 阶段 3：多选、返回处理器、`driveCanHandleBack`、当前 Tab 和顶/底栏高频进度的唯一所有者；旧 `AppController` 仅转发 |
 | `DriveState` | `core/drive_state.dart` | 阶段 3：目录缓存、目录请求、当前位置和可见性探针的唯一所有者；`DriveLocation` 继续由旧控制器导出 |
 | `AccountState` | `core/account_state.dart` | 阶段 3：唯一持有 `AccountStore`；`accountStoreProvider` 与旧 `AppController.accounts` 均从它派生 |
@@ -65,8 +66,8 @@
 | `CachePageSettingsState` | `core/cache_page_settings_state.dart` | 阶段 3 设置子组：网格视图、启动页、目录缓存和自动加载全部页面 |
 | `DownloadDirectorySettingsState` | `core/download_directory_settings_state.dart` | 阶段 3 设置子组：普通下载目录、SAF URI/标签、互斥写入和旧授权释放入口 |
 
-消费现状：`context.read<AppController>` 11 处、`context.watch` 0 处、
-`context.select<AppController…>` 1 处。生产代码中的整体 `watch` 已清零；传输页已从
+消费现状：生产代码中 `context.read/watch/select<AppController>` 均为 0，
+`lib` 与 `test` 也不再导入 `package:provider`。传输页已从
 Riverpod 读取应用级 `TransferManager`，并通过 `ListenableBuilder` 保留既有
 `notifyListeners()` 刷新语义；多选回调、选择模式和顶栏进度改由
 `NavigationState` 驱动，顶栏收起开关由导航外观状态 revision 驱动。`RootShell`
@@ -88,10 +89,10 @@ provider；批量复制、下载、收藏、移动、简介、密码和删除同
 `TransferManager` 读取 / 整体订阅；`RootShell` 与首页共用
 `TransferRunningCount`，只在运行中 / 排队任务数变化时重建。
 启动装配和测试宿主也已移除 `ChangeNotifierProvider<TransferManager>`。
-阶段 6 准备已获授权：后续按页面迁移剩余 `AppController` Provider 消费端，
-但暂时保留 `provider` 依赖、根控制器注入和现有状态所有权，不执行最终移除。
-当前生产代码只剩 `app.dart` 与 `main.dart` 直接导入 `provider`；测试仍有三份
-宿主注册 `AppController` Provider，分别服务应用外壳、备份页和更新测试包装。
+阶段 6 的自动化代码迁移已完成：应用外壳改用既有 Riverpod 状态和
+`AppRuntimeState`，本地快照桥只在相关字段变化时重建；启动装配不再注册旧
+`ChangeNotifierProvider`，`provider` 直接依赖和 lockfile 条目均已删除。
+Android、Windows 人工验收仍需执行后才能把阶段 6 标记为全部完成。
 登录页已改用 `accountLoginProvider` 和 `accountStateProvider`；登录页与恢复页
 测试宿主均已移除 AppController Provider。
 共享 `TopBarOverlay` / `TopBarOverlayScaffold` 只从

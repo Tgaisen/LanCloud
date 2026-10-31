@@ -41,7 +41,6 @@ dependencies:
   intl: any
 
   dio: ^5.11.1
-  provider: ^6.1.5+1
   sqflite: ^2.4.5
   # 桌面端（Windows）用 FFI 实现跑 SQLite；Android/iOS 仍走 sqflite 原生实现
   sqflite_common_ffi: ^2.4.5
@@ -90,8 +89,7 @@ dependencies:
   material_ui: ">=1.6.0 <1.8.0"
   cupertino_ui: ^1.1.4
   cryptography: ^2.9.0
-  # Riverpod 目前只服务 UpdateService 试点（阶段 0/1），与 provider 双栈并存。
-  # 范围与红线见 AGENTS.md，方案见 docs/RIVERPOD_MIGRATION_ASSESSMENT.md。
+  # 应用级状态与依赖注入统一使用 Riverpod。
   flutter_riverpod: ^3.4.3
 dev_dependencies:
   flutter_test:

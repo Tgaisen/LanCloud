@@ -125,6 +125,10 @@
 | `tools\agent.cmd test`（网盘批量操作切片） | 增量 | **47 tests, all passed** | 约 27 s |
 | `tools\agent.cmd analyze`（网盘页面外壳切片） | 增量 | No issues found | 约 17 s |
 | `tools\agent.cmd test`（网盘页面外壳切片） | 增量 | **47 tests, all passed** | 约 27 s |
+| `tools\agent.cmd analyze`（AppRuntimeState） | 增量 | No issues found | 约 15 s |
+| `tools\agent.cmd test`（AppRuntimeState） | 增量 | **363 tests, all passed** | 约 66 s |
+| `tools\agent.cmd analyze`（RootShell 与移除 Provider） | 增量 | No issues found | 约 30 s |
+| `tools\agent.cmd test`（RootShell 与移除 Provider） | 增量 | **382 tests, all passed** | 约 74 s |
 | `tools\agent.cmd analyze`（网盘目录切片完成后） | 全量 | No issues found | 约 21 s |
 | `tools\agent.cmd test`（网盘目录切片完成后） | 全量 | **722 tests, all passed** | 约 110 s |
 | `tools\agent.cmd analyze`（拖放与 Cookie 行完成后） | 全量 | No issues found | 约 17 s |
@@ -139,11 +143,11 @@
 
 | 指标 | 数量 |
 | --- | ---: |
-| `lib` Dart 文件 | 131 |
+| `lib` Dart 文件 | 142 |
 | `lib` 总行数 | 约 4.4 万 |
-| `test` 测试文件 | 155（平铺，`<主题>_test.dart`） |
+| `test` 测试文件 | 161（平铺，`<主题>_test.dart`） |
 | `test` 总行数 | 约 2.1 万 |
-| `test` 用例数 | 724（当前总数；阶段 6 准备已新增 9 条测试） |
+| `test` 用例数 | 726（当前总数；阶段 6 准备已新增 11 条测试） |
 | `lib/ui` 页面与组件 | 54 个平铺文件 |
 | `lib/core` | 32 个平铺文件 + 5 个子系统目录 |
 | 文案（`app_zh.arb`） | 1357 行 |
@@ -454,6 +458,14 @@
   `_app` 与 `provider` 导入已从页面删除。四个本页测试宿主移除旧
   `ChangeNotifierProvider<AppController>`。增量 5 个测试文件 / 47 个测试通过，
   用例总数保持 724；生产 `provider` 导入剩余 `app.dart` 与 `main.dart`。
+- 2026-10-31 新增 `AppRuntimeState`，唯一持有 ready、凭据重认证提示和系统少动效
+  信号；`AppController` 仅转发同一实例。新增 2 条状态/ provider 覆盖测试，
+  增量 64 个测试文件 / 363 个测试通过，当前总数由 724 增至 726。
+- 2026-10-31 `RootShell` 完成最终 Riverpod 消费迁移，使用本地快照桥限制重建；
+  `app.dart`、`main.dart` 与最后 3 个测试包装移除旧 AppController Provider。
+  随后删除 `provider` 依赖并刷新 lockfile。`lib` / `test` 均无旧 Provider 导入；
+  增量 70 个测试文件 / 382 个测试通过，用例总数保持 726。Android / Windows
+  人工验收仍未执行，阶段 6 不提前标记为全部完成。
 - 2026-10-30 人工复验：Android `NOH AN00` / Android 12 / arm64，debug 覆盖安装
   保留数据；首页、我的、设置页、缓存/自动加载开关、深浅主题、并发/请求间隔和
   Android 下载目录提示正常，进程日志无本轮相关异常。Windows 10 x64 Release
