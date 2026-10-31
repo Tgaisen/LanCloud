@@ -4,11 +4,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/app.dart';
 import 'package:lancloud/core/account_state.dart';
 import 'package:lancloud/core/account_session.dart';
+import 'package:lancloud/core/api/lanzou_client_registry.dart';
 import 'package:lancloud/core/app_controller.dart';
+import 'package:lancloud/core/app_runtime_state.dart';
+import 'package:lancloud/core/cache_page_settings_state.dart';
 import 'package:lancloud/core/data/account_store.dart';
 import 'package:lancloud/core/data/app_db_provider.dart';
 import 'package:lancloud/core/data/settings_store_provider.dart';
 import 'package:lancloud/core/drive_state.dart';
+import 'package:lancloud/core/language_clipboard_settings_state.dart';
 import 'package:lancloud/core/list_home_settings_state.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
@@ -18,7 +22,6 @@ import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/app_icons.dart' as app_icons;
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/profile_page.dart';
-import 'package:provider/provider.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
@@ -32,6 +35,12 @@ Widget _rootShellHost(
     accountSessionProvider.overrideWithValue(app.accountSession),
     appDbProvider.overrideWithValue(app.db),
     driveStateProvider.overrideWithValue(app.drive),
+    appRuntimeStateProvider.overrideWithValue(app.runtimeState),
+    cachePageSettingsStateProvider.overrideWithValue(app.cachePageSettings),
+    languageClipboardSettingsStateProvider.overrideWithValue(
+      app.languageClipboardSettings,
+    ),
+    lanzouClientRegistryProvider.overrideWithValue(app.clientRegistry),
     listHomeSettingsStateProvider.overrideWithValue(app.listHomeSettings),
     transferManagerProvider.overrideWithValue(transfers),
     navigationAppearanceSettingsStateProvider.overrideWithValue(
@@ -39,14 +48,11 @@ Widget _rootShellHost(
     ),
     navigationStateProvider.overrideWithValue(app.navigation),
   ],
-  child: ChangeNotifierProvider<AppController>.value(
-    value: app,
-    child: MaterialApp(
-      localizationsDelegates: appLocalizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      locale: const Locale('zh'),
-      home: const RootShell(),
-    ),
+  child: MaterialApp(
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    locale: const Locale('zh'),
+    home: const RootShell(),
   ),
 );
 

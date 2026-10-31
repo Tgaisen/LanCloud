@@ -22,7 +22,6 @@ import 'package:lancloud/ui/backup_options_page.dart';
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/m3e.dart';
 import 'package:local_auth_android/local_auth_android.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
@@ -201,14 +200,11 @@ void main() {
           ),
           navigationStateProvider.overrideWithValue(fake.app.navigation),
         ],
-        child: ChangeNotifierProvider<AppController>.value(
-          value: fake.app,
-          child: MaterialApp(
-            localizationsDelegates: appLocalizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            locale: const Locale('zh'),
-            home: const BackupPage(),
-          ),
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const BackupPage(),
         ),
       ),
     );

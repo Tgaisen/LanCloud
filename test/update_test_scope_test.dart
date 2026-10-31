@@ -21,7 +21,6 @@ import 'package:lancloud/core/theme_settings_state.dart';
 import 'package:lancloud/core/transfer_connection_settings_state.dart';
 import 'package:lancloud/core/update/release_info.dart';
 import 'package:lancloud/core/update/update_service.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 Future<List<ReleaseInfo>> _noReleases() async => const [];
@@ -59,10 +58,7 @@ Widget updateTestTree({
         ),
         navigationStateProvider.overrideWithValue(app.navigation),
       ],
-      child: ChangeNotifierProvider<AppController>.value(
-        value: app,
-        child: child,
-      ),
+      child: child,
     ),
   );
 }
@@ -102,10 +98,7 @@ Widget appTestTree({
         app.languageClipboardSettings,
       ),
     ],
-    child: ChangeNotifierProvider<AppController>.value(
-      value: app,
-      child: child,
-    ),
+    child: child,
   );
 }
 

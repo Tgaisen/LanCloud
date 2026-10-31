@@ -5,7 +5,6 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:provider/provider.dart';
 
 import 'app.dart';
 import 'core/account_state.dart';
@@ -14,6 +13,7 @@ import 'core/app_controller.dart';
 import 'core/cache_page_settings_state.dart';
 import 'core/app_log.dart';
 import 'core/app_log_provider.dart';
+import 'core/app_runtime_state.dart';
 import 'core/backup/backup_service.dart';
 import 'core/backup/backup_service_provider.dart';
 import 'core/api/lanzou_client_registry.dart';
@@ -137,6 +137,7 @@ Future<void> main() async {
       lanzouClientRegistryProvider.overrideWithValue(app.clientRegistry),
       navigationStateProvider.overrideWithValue(app.navigation),
       driveStateProvider.overrideWithValue(app.drive),
+      appRuntimeStateProvider.overrideWithValue(app.runtimeState),
       accountStateProvider.overrideWithValue(app.accountState),
       accountSessionProvider.overrideWithValue(app.accountSession),
       settingsStateProvider.overrideWithValue(app.settingsState),
@@ -174,13 +175,9 @@ Future<void> main() async {
   await updates.initialize();
   unawaited(updates.maybeAutoCheck());
   runApp(
-    // Provider 与 Riverpod 双栈仍共存；TransferManager 已只由 Riverpod 提供。
     UncontrolledProviderScope(
       container: updateContainer,
-      child: ChangeNotifierProvider.value(
-        value: app,
-        child: const LanCloudApp(),
-      ),
+      child: const LanCloudApp(),
     ),
   );
 }
