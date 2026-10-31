@@ -13,3 +13,27 @@ abstract interface class BackupDependencies {
 
   Future<void> reloadFromStorage();
 }
+
+/// 用现有存储和一次重载回调组装备份依赖，不依赖完整应用控制器。
+final class BackupStoreDependencies implements BackupDependencies {
+  BackupStoreDependencies({
+    required this.accounts,
+    required this.settings,
+    required this.db,
+    required this.reloadCallback,
+  });
+
+  @override
+  final AccountStore accounts;
+
+  @override
+  final SettingsStore settings;
+
+  @override
+  final AppDb db;
+
+  final Future<void> Function() reloadCallback;
+
+  @override
+  Future<void> reloadFromStorage() => reloadCallback();
+}
