@@ -12,6 +12,7 @@ import 'account_state.dart';
 import 'account_login.dart';
 import 'account_session.dart';
 import 'app_log.dart';
+import 'app_runtime_state.dart';
 import 'data/account_store.dart';
 import 'data/app_db.dart';
 import 'data/settings_store.dart';
@@ -53,6 +54,7 @@ class AppController extends ChangeNotifier
     DriveState? drive,
     AccountState? accountState,
     SettingsState? settingsState,
+    AppRuntimeState? runtimeState,
   }) : _sharedDownloads =
            sharedDownloads ?? const PlatformSharedDownloadsGateway(),
        _downloadPaths =
@@ -64,7 +66,8 @@ class AppController extends ChangeNotifier
        navigation = navigation ?? NavigationState(),
        drive = drive ?? DriveState(),
        accountState = accountState ?? AccountState(),
-       settingsState = settingsState ?? SettingsState() {
+       settingsState = settingsState ?? SettingsState(),
+       runtimeState = runtimeState ?? AppRuntimeState() {
     updateSettings = UpdateSettingsState(settings);
     notificationSettings = NotificationSettingsState(settings);
     navigationAppearanceSettings = NavigationAppearanceSettingsState(
@@ -93,6 +96,7 @@ class AppController extends ChangeNotifier
 
   final AccountState accountState;
   final SettingsState settingsState;
+  final AppRuntimeState runtimeState;
   late final UpdateSettingsState updateSettings;
   late final NotificationSettingsState notificationSettings;
   late final NavigationAppearanceSettingsState navigationAppearanceSettings;
@@ -147,8 +151,14 @@ class AppController extends ChangeNotifier
     db: db,
   );
 
-  bool ready = false;
-  bool secureStorageNeedsReauthentication = false;
+  bool get ready => runtimeState.ready.value;
+  set ready(bool value) => runtimeState.ready.value = value;
+
+  bool get secureStorageNeedsReauthentication =>
+      runtimeState.secureStorageNeedsReauthentication.value;
+  set secureStorageNeedsReauthentication(bool value) =>
+      runtimeState.secureStorageNeedsReauthentication.value = value;
+
   bool get selectionMode => navigation.selectionMode;
 
   VoidCallback? get onRequestExitSelection =>
@@ -293,7 +303,9 @@ class AppController extends ChangeNotifier
   /// 系统是否要求「少动效」（移除动画 / 减弱动态效果 / 读屏接管）。
   /// 由外壳在 didChangeDependencies 里同步：控制器里拿不到 MediaQuery，
   /// 但顶栏/底栏的滑出这类装饰性动画要跟着系统设置走。
-  bool systemReduceMotion = false;
+  bool get systemReduceMotion => runtimeState.systemReduceMotion.value;
+  set systemReduceMotion(bool value) =>
+      runtimeState.systemReduceMotion.value = value;
 
   /// 当前是否应该少动效：用户设置（全局动画）+ 系统信号合成后的结论。
   /// 控制器内的动画用它判断；widget 侧统一用 reduceMotionOf()。
@@ -387,6 +399,7 @@ class AppController extends ChangeNotifier
     accountState.dispose();
     navigation.dispose();
     drive.dispose();
+    runtimeState.dispose();
     super.dispose();
   }
 
