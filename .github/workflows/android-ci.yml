@@ -4,20 +4,11 @@ name: "CI: Android"
 # release 构建，覆盖 R8 等只在 release 阶段出现的问题。缺少发布签名时沿用
 # 项目现有的 debug 签名降级，只作编译校验，不读取任何发布签名 secrets。
 on:
-  pull_request:
-    paths:
-      - "android/**"
-      - "pubspec.yaml"
-      - "pubspec.lock"
-      - ".github/workflows/android-ci.yml"
+  workflow_call:
   workflow_dispatch:
 
 permissions:
   contents: read
-
-concurrency:
-  group: android-ci-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
 
 env:
   PUB_HOSTED_URL: https://pub.dev
@@ -49,8 +40,49 @@ jobs:
           flutter-version-file: pubspec.yaml
           channel: stable
           cache: true
+          pub-cache: ${{ github.event_name == 'push' }}
       - uses: gradle/actions/setup-gradle@v6
       - name: 获取锁定依赖
         run: flutter pub get --enforce-lockfile
       - name: 构建 Android release APK
-        run: flutter build apk --release --no-pub --target-platform android-arm64
+        run: flutter build apk --release --no-pub --split-per-abi
+      - uses: actions/upload-artifact@v7
+        with:
+          name: android-release-apks
+          path: build/app/outputs/flutter-apk/app-*-release.apk
+          if-no-files-found: error
+          retention-days: 3
+          compression-level: 0
+
+  smoke:
+    name: Android release 冷启动冒烟
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: android-release-apks
+          path: apk
+      - name: 启用 KVM
+        shell: bash
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: 启动模拟器并检查冷启动
+        uses: ReactiveCircus/android-emulator-runner@4c44018e59b437e86cdfc41da381398f93ed8808 # v2
+        with:
+          api-level: 31
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
+          script: |
+            adb install -r "$GITHUB_WORKSPACE/apk/app-x86_64-release.apk"
+            adb logcat -c
+            adb shell am start -W -n com.lancloud.lancloud/.MainActivity
+            sleep 15
+            if ! adb shell pidof com.lancloud.lancloud; then adb logcat -d -t 400 | tail -n 200; exit 1; fi

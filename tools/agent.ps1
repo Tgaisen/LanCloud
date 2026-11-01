@@ -117,10 +117,10 @@ switch ($Verb) {
     if (-not $targets) { $targets = Get-DirtyDart | Where-Object { $_ -like 'lib*' } }
     if ($targets.Count -gt 0) {
       Write-Output "增量分析 $($targets.Count) 个文件"
-      Invoke-Flutter -FlutterArgs (@('analyze', '--no-pub') + $targets) -OnlyIssues -Tail 2
+      Invoke-Flutter -FlutterArgs (@('analyze', '--fatal-infos', '--no-pub') + $targets) -OnlyIssues -Tail 2
     } else {
       Write-Output '无未提交的 lib 改动，跑全量（冷缓存约 1 分钟）'
-      Invoke-Flutter -FlutterArgs @('analyze', '--no-pub') -OnlyIssues -Tail 2
+      Invoke-Flutter -FlutterArgs @('analyze', '--fatal-infos', '--no-pub') -OnlyIssues -Tail 2
     }
   }
   'test' {

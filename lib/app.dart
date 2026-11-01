@@ -348,6 +348,9 @@ bool canHandBackToSystem({
     atDefaultView &&
     !driveCanHandleBack;
 
+const double _floatingNavigationTopGap = 16;
+const double _floatingNavigationBottomGap = 12;
+
 class RootShell extends ConsumerStatefulWidget {
   const RootShell({super.key});
 
@@ -1031,14 +1034,19 @@ class _RootShellState extends ConsumerState<RootShell>
     // 底栏整体高度：悬浮样式含上下留白，用于 1:1 跟随滚动的收起距离，
     // 再加上系统手势区（导航栏）的高度。普通底栏由 NavigationBar 自己
     // 用 SafeArea 把这份内边距垫在内容下方；悬浮样式则算进下留白，
-    // 让 80dp 高的胶囊浮在系统导航栏上方。两种样式外层都不能把高度写死，
-    // 否则这份内边距会从内容里扣，图标和文字被压扁。
+    // 让 64dp 高的胶囊浮在系统导航栏上方。底栏槽位高度由组件和上下留白
+    // 共同推导，否则这份内边距会从内容里扣，图标和文字被压扁。
     final systemPadding = MediaQuery.paddingOf(context);
     // 键盘弹出时 padding.bottom 会归零（导航栏那一段被输入法盖住），但底栏高度
     // 不能跟着抽动一下——用 viewPadding（系统栏原始值，键盘弹出时保持不变）。
     // 底栏此时本来就被输入法盖着，多留这一段不会露出空白。
     final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
-    final barHeight = (shell.floatingNavBar ? 108.0 : 80.0) + bottomInset;
+    final floatingBarHeight =
+        M3eFloatingNavigationBar.containerHeight +
+        _floatingNavigationTopGap +
+        _floatingNavigationBottomGap;
+    final barHeight =
+        (shell.floatingNavBar ? floatingBarHeight : 80.0) + bottomInset;
     final keyed = KeyedSubtree(
       key: ValueKey('shell-${shell.activeUid}'),
       // 横向滑动切换视图；设置里可关闭手势（只能点底栏切换）
@@ -1108,24 +1116,24 @@ class _RootShellState extends ConsumerState<RootShell>
     // 大屏（MD3E）：侧栏等导航区用 surfaceContainer，主视图是圆角的 surface 卡片
     final bodyColor = Theme.of(context).scaffoldBackgroundColor;
     final floatingNav = shell.floatingNavBar;
-    final navBar = NavigationBar(
+    final navBar = M3eShellNavigationBar(
+      floating: floatingNav,
       selectedIndex: _index,
-      // 底栏高度按 viewPadding 算（键盘弹出 / 收起时不变），NavigationBar 自己
-      // 也要跟着用 viewPadding 垫底部：默认用 padding，键盘弹出时那一段归零，
-      // 整条底栏的内容会缩掉导航栏的高度（外框不缩、里面按钮缩）。
-      maintainBottomViewPadding: true,
       onDestinationSelected: (pos) {
         if (shell.selectionMode) {
           _navigation.onRequestExitSelection?.call();
         }
         _goTo(_ids[pos]);
       },
-      destinations: [
+      items: [
         for (final id in _ids)
-          NavigationDestination(
+          M3eShellNavigationItem(
             icon: iconFor(id, selected: false),
             selectedIcon: iconFor(id, selected: true),
             label: _labelFor(id, l10n),
+            semanticsLabel: id == _viewTransfers && running > 0
+                ? '${_labelFor(id, l10n)}，${l10n.notifProgressBody(running)}'
+                : null,
           ),
       ],
     );
@@ -1246,35 +1254,46 @@ class _RootShellState extends ConsumerState<RootShell>
             ? null
             : ValueListenableBuilder<double>(
                 valueListenable: _navigation.barsHide,
-                builder: (context, hide, child) => SizedBox(
-                  height: shell.hideBottomBar
-                      ? barHeight * (1 - hide)
-                      : barHeight,
-                  child: ClipRect(
-                    child: OverflowBox(
-                      alignment: Alignment.topCenter,
-                      // minHeight 必须等于完整高度：否则底栏会被压扁（内容缩放）而不是滑出
-                      minHeight: barHeight,
-                      maxHeight: barHeight,
-                      child: child,
+                builder: (context, hide, child) {
+                  final fullyHidden = shell.hideBottomBar && hide >= 0.999;
+                  return ExcludeFocus(
+                    excluding: fullyHidden,
+                    child: ExcludeSemantics(
+                      excluding: fullyHidden,
+                      child: SizedBox(
+                        height: shell.hideBottomBar
+                            ? barHeight * (1 - hide)
+                            : barHeight,
+                        child: ClipRect(
+                          child: OverflowBox(
+                            alignment: Alignment.topCenter,
+                            // minHeight 必须等于完整高度：否则底栏会被压扁（内容缩放）而不是滑出
+                            minHeight: barHeight,
+                            maxHeight: barHeight,
+                            child: child,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
+                  );
+                },
                 child: Padding(
                   padding: floatingNav
-                      ? const EdgeInsets.only(top: 16)
+                      ? const EdgeInsets.only(top: _floatingNavigationTopGap)
                       : EdgeInsets.zero,
                   child: Container(
+                    alignment: floatingNav ? Alignment.center : null,
                     margin: floatingNav
                         // 底部留白要加上系统导航栏的高度：胶囊本身保持
-                        // 80dp 浮在导航栏上方，而不是把导航栏那段也算进胶囊
+                        // 64dp 浮在导航栏上方，而不是把导航栏那段也算进胶囊
                         // （否则胶囊下沿会拖出一截空白色）。
-                        ? EdgeInsets.fromLTRB(12, 0, 12, 12 + bottomInset)
+                        ? EdgeInsets.fromLTRB(
+                            12,
+                            0,
+                            12,
+                            _floatingNavigationBottomGap + bottomInset,
+                          )
                         : EdgeInsets.zero,
-                    decoration: floatingNav
-                        ? BoxDecoration(borderRadius: BorderRadius.circular(28))
-                        : null,
-                    clipBehavior: floatingNav ? Clip.antiAlias : Clip.none,
                     // 悬浮样式把系统手势区的内边距从胶囊里摘掉，改由上面
                     // 的下留白承担；普通底栏仍由 NavigationBar 自己垫在内容下方。
                     // top 也要去掉：这里不再经过 Scaffold 的底栏槽位（槽位会

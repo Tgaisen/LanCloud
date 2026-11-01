@@ -61,9 +61,11 @@ if (!$SkipTests) {
     'format', '--output=none', '--set-exit-if-changed', 'lib', 'test', 'tool'
   ) -DryRun:$DryRun
   Info 'flutter analyze'
-  Invoke-ReleaseTool -Exe $flutter -Arguments @('analyze') -DryRun:$DryRun
+  Invoke-ReleaseTool -Exe $flutter -Arguments @(
+    'analyze', '--fatal-infos', '--no-pub'
+  ) -DryRun:$DryRun
   Info 'flutter test'
-  Invoke-ReleaseTool -Exe $flutter -Arguments @('test') -DryRun:$DryRun
+  Invoke-ReleaseTool -Exe $flutter -Arguments @('test', '--no-pub') -DryRun:$DryRun
 }
 
 # 构建信息注入「关于 - 构建信息」弹窗：构建时间 + 提交号
@@ -106,20 +108,22 @@ foreach ($abi in @('arm64-v8a', 'armeabi-v7a', 'x86_64')) {
 }
 
 if (!$DryRun) {
-  Info "校验签名指纹（$ExpectedCertSha256）"
-  $certOutput = Invoke-ReleaseTool -Exe $apksigner -Arguments @(
-    'verify', '--print-certs', $assets[0]
-  ) -Capture -Quiet
-  $certText = ($certOutput -join "`n")
-  $certMatch = [regex]::Match($certText, 'SHA-256 digest:\s*([0-9a-fA-F]+)')
-  if (!$certMatch.Success) {
-    Fail 'apksigner 没有输出证书指纹'
+  foreach ($asset in $assets) {
+    Info "校验签名指纹：$(Split-Path -Leaf $asset)"
+    $certOutput = Invoke-ReleaseTool -Exe $apksigner -Arguments @(
+      'verify', '--print-certs', $asset
+    ) -Capture -Quiet
+    $certText = ($certOutput -join "`n")
+    $certMatch = [regex]::Match($certText, 'SHA-256 digest:\s*([0-9a-fA-F]+)')
+    if (!$certMatch.Success) {
+      Fail "apksigner 没有输出证书指纹：$asset"
+    }
+    $actual = $certMatch.Groups[1].Value.ToUpperInvariant()
+    if ($actual -ne $ExpectedCertSha256.ToUpperInvariant()) {
+      Fail "签名指纹不一致，可能漏配 key.properties（会退回 debug 签名）：`n  文件 $asset`n  实际 $actual"
+    }
   }
-  $actual = $certMatch.Groups[1].Value.ToUpperInvariant()
-  if ($actual -ne $ExpectedCertSha256.ToUpperInvariant()) {
-    Fail "签名指纹不一致，可能漏配 key.properties（会退回 debug 签名）：`n  实际 $actual"
-  }
-  Info '签名指纹正确'
+  Info '全部 APK 签名指纹正确'
 
   $summaryRows = @()
   foreach ($asset in $assets) {

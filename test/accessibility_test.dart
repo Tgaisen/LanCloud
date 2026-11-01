@@ -8,6 +8,7 @@ import 'package:lancloud/ui/app_icons.dart';
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/m3e.dart';
 import 'package:lancloud/ui/settings_page.dart';
+import 'package:m3e_core/m3e_core.dart' show M3EHorizontalFloatingToolbar;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
@@ -84,6 +85,216 @@ List<SemanticsNode> semanticsNodes(WidgetTester tester) {
 }
 
 void main() {
+  const navigationItems = <M3eShellNavigationItem>[
+    M3eShellNavigationItem(
+      icon: Icon(Icons.home_outlined),
+      selectedIcon: Icon(Icons.home_outlined),
+      label: '首页',
+    ),
+    M3eShellNavigationItem(
+      icon: Icon(Icons.folder_outlined),
+      selectedIcon: Icon(Icons.folder),
+      label: '网盘',
+    ),
+    M3eShellNavigationItem(
+      icon: Icon(Icons.swap_vert_outlined),
+      selectedIcon: Icon(Icons.swap_vert),
+      label: '传输',
+    ),
+    M3eShellNavigationItem(
+      icon: Icon(Icons.star_border),
+      selectedIcon: Icon(Icons.star_outline),
+      label: '收藏',
+    ),
+    M3eShellNavigationItem(
+      icon: Icon(Icons.person_outline),
+      selectedIcon: Icon(Icons.person),
+      label: '我的',
+    ),
+  ];
+
+  testWidgets('悬浮导航开关动态切换原生 NavigationBar 与 M3E 工具栏', (tester) async {
+    var floating = false;
+    late StateSetter setHostState;
+    await tester.pumpWidget(
+      host(
+        StatefulBuilder(
+          builder: (context, setState) {
+            setHostState = setState;
+            return SizedBox(
+              width: 360,
+              child: M3eShellNavigationBar(
+                floating: floating,
+                items: navigationItems,
+                selectedIndex: 0,
+                onDestinationSelected: (_) {},
+              ),
+            );
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.byType(M3EHorizontalFloatingToolbar), findsNothing);
+
+    setHostState(() => floating = true);
+    await tester.pumpAndSettle();
+    expect(find.byType(NavigationBar), findsNothing);
+    expect(find.byType(M3EHorizontalFloatingToolbar), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    setHostState(() => floating = false);
+    await tester.pumpAndSettle();
+    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.byType(M3EHorizontalFloatingToolbar), findsNothing);
+  });
+
+  testWidgets('M3E 悬浮导航：五项不溢出，名称、Tab 位置和选中态完整', (tester) async {
+    final handle = tester.ensureSemantics();
+    var selectedIndex = 0;
+    await tester.pumpWidget(
+      host(
+        SizedBox(
+          width: 360,
+          child: StatefulBuilder(
+            builder: (context, setState) => M3eShellNavigationBar(
+              floating: true,
+              items: navigationItems,
+              selectedIndex: selectedIndex,
+              onDestinationSelected: (index) {
+                setState(() => selectedIndex = index);
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    final home = tester
+        .getSemantics(find.byKey(const ValueKey('m3e-nav-tab-0-of-5')))
+        .getSemanticsData();
+    final drive = tester
+        .getSemantics(find.byKey(const ValueKey('m3e-nav-tab-1-of-5')))
+        .getSemanticsData();
+    expect(home.label, contains('首页'));
+    expect(home.label, contains('1'));
+    expect(home.flagsCollection.isSelected.name, 'isTrue');
+    expect(home.flagsCollection.isButton, isTrue);
+    expect(home.hasAction(SemanticsAction.tap), isTrue);
+    expect(drive.label, contains('网盘'));
+    expect(drive.flagsCollection.isSelected.name, 'isFalse');
+
+    final owner = tester.binding.renderViews.first.owner!.semanticsOwner!;
+    final driveNode = tester.getSemantics(
+      find.byKey(const ValueKey('m3e-nav-tab-1-of-5')),
+    );
+    owner.performAction(driveNode.id, SemanticsAction.tap);
+    await tester.pumpAndSettle();
+
+    expect(selectedIndex, 1);
+    expect(
+      tester
+          .getSemantics(find.byKey(const ValueKey('m3e-nav-tab-1-of-5')))
+          .getSemanticsData()
+          .flagsCollection
+          .isSelected
+          .name,
+      'isTrue',
+    );
+    handle.dispose();
+  });
+
+  testWidgets('M3E 悬浮导航：宽度跟随内容且不绘制阴影', (tester) async {
+    await tester.pumpWidget(
+      host(
+        SizedBox(
+          width: 360,
+          child: Center(
+            child: M3eShellNavigationBar(
+              floating: true,
+              items: navigationItems.take(3).toList(growable: false),
+              selectedIndex: 0,
+              onDestinationSelected: (_) {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final toolbarFinder = find.byType(M3EHorizontalFloatingToolbar);
+    final toolbar = tester.widget<M3EHorizontalFloatingToolbar>(toolbarFinder);
+    final scheme = Theme.of(tester.element(toolbarFinder)).colorScheme;
+    expect(tester.getSize(toolbarFinder).width, lessThan(300));
+    expect(
+      toolbar.decoration?.contentPadding,
+      const EdgeInsets.symmetric(horizontal: 8),
+    );
+    expect(toolbar.decoration?.motion, M3EMotion.expressiveSpatialFast);
+    expect(
+      toolbar.decoration?.colors?.toolbarContainerColor,
+      scheme.primaryContainer,
+    );
+    expect(toolbar.decoration?.expandedShadowElevation, 0);
+    expect(toolbar.decoration?.collapsedShadowElevation, 0);
+    expect(
+      (tester
+                  .widget<Ink>(
+                    find.byKey(const ValueKey('m3e-nav-visual-0-of-3')),
+                  )
+                  .decoration
+              as BoxDecoration)
+          .color,
+      scheme.surfaceContainer,
+    );
+    expect(
+      tester
+          .widget<IconTheme>(find.byKey(const ValueKey('m3e-nav-icon-0-of-3')))
+          .data
+          .color,
+      scheme.onSurface,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('M3E 悬浮导航：从最后一项切换时动画全程不溢出', (tester) async {
+    var selectedIndex = 2;
+    await tester.pumpWidget(
+      host(
+        SizedBox(
+          width: 360,
+          child: Center(
+            child: StatefulBuilder(
+              builder: (context, setState) => M3eShellNavigationBar(
+                floating: true,
+                items: navigationItems.take(3).toList(growable: false),
+                selectedIndex: selectedIndex,
+                onDestinationSelected: (index) {
+                  setState(() => selectedIndex = index);
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('m3e-nav-tab-0-of-3')));
+    await tester.pump();
+    for (var i = 0; i < 12; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(tester.takeException(), isNull);
+    }
+    await tester.pumpAndSettle();
+
+    expect(selectedIndex, 0);
+  });
+
   // 首页快捷操作栏：图标按钮的文字标签在可点区域下面，必须显式合成语义节点，
   // 否则 TalkBack 聚焦到按钮上读不出名称（读屏用户反馈过的问题）。
   testWidgets('快捷操作按钮读出名称且可激活', (tester) async {

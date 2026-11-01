@@ -1,17 +1,11 @@
 name: "CI: Workflow Lint"
 
 on:
-  pull_request:
-    paths:
-      - ".github/**"
+  workflow_call:
   workflow_dispatch:
 
 permissions:
   contents: read
-
-concurrency:
-  group: workflow-lint-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
 
 jobs:
   lint:
@@ -27,3 +21,26 @@ jobs:
       - name: 检查 YAML 语法
         run: |
           ruby -e 'require "yaml"; Dir[".github/**/*.{yml,yaml}"].sort.each { |file| YAML.load_file(file); puts "OK #{file}" }'
+      - name: 检查 PowerShell 语法
+        shell: pwsh
+        run: |
+          $failed = $false
+          $files = Get-ChildItem -Path tools -Recurse -File -Include '*.ps1', '*.psm1'
+          foreach ($file in $files) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              $file.FullName,
+              [ref]$tokens,
+              [ref]$errors
+            ) | Out-Null
+            foreach ($error in $errors) {
+              Write-Error "$($file.FullName):$($error.Extent.StartLineNumber): $($error.Message)"
+            }
+            if ($errors.Count -gt 0) {
+              $failed = $true
+            }
+          }
+          if ($failed) {
+            exit 1
+          }

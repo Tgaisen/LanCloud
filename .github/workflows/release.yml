@@ -45,6 +45,7 @@ jobs:
           flutter-version-file: pubspec.yaml
           channel: stable
           cache: true
+          pub-cache: ${{ github.event_name == 'push' }}
       - name: 获取依赖
         run: flutter pub get --enforce-lockfile
       - name: 发布前校验
@@ -88,6 +89,7 @@ jobs:
           flutter-version-file: pubspec.yaml
           channel: stable
           cache: true
+          pub-cache: ${{ github.event_name == 'push' }}
       - uses: gradle/actions/setup-gradle@v6
       - name: 获取依赖
         run: flutter pub get --enforce-lockfile
@@ -168,17 +170,13 @@ jobs:
           flutter-version-file: pubspec.yaml
           channel: stable
           cache: true
+          pub-cache: ${{ github.event_name == 'push' }}
       - name: 获取依赖
         run: flutter pub get --enforce-lockfile
       - name: 准备 NuGet CLI
         shell: pwsh
         run: |
-          $nugetDir = Join-Path $env:RUNNER_TEMP 'nuget'
-          New-Item -ItemType Directory -Force -Path $nugetDir | Out-Null
-          Invoke-WebRequest `
-            -Uri 'https://dist.nuget.org/win-x86-commandline/latest/nuget.exe' `
-            -OutFile (Join-Path $nugetDir 'nuget.exe')
-          Add-Content -Path $env:GITHUB_PATH -Value $nugetDir
+          ./tools/release/install_nuget.ps1
       - name: 构建 Windows 便携版
         shell: pwsh
         run: |
@@ -186,6 +184,21 @@ jobs:
             -SkipTests `
             -SkipPubGet `
             -CI
+      - name: Windows 便携版启动冒烟
+        shell: pwsh
+        run: |
+          $packageDir = Get-ChildItem `
+            -LiteralPath 'outputs' `
+            -Directory `
+            -Filter 'LanCloud_windows_*_x64_portable' |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+          if (!$packageDir) {
+            throw '找不到 Windows 便携版目录'
+          }
+          ./tools/release/smoke_windows.ps1 `
+            -Executable (Join-Path $packageDir.FullName 'lancloud.exe') `
+            -TimeoutSeconds 15
       - uses: actions/upload-artifact@v7
         with:
           name: windows-portable

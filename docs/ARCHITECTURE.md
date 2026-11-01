@@ -168,7 +168,9 @@ User-Agent 也迁入 `AdvancedConnectionSettingsTile`；对应 setter 统一同�
 
 - 根：`app.dart` 的 `LanCloudApp`（含 `MaterialApp`、主题、`locale`）
   → `AgreementGate`（首启条款门）→ `UpdatePromptHost` → `RootShell`
-- `RootShell`：`NavigationBar` + `PageView` 的外壳。主 tab 页为
+- `RootShell`：`PageView` 外壳；小屏按“悬浮底栏”开关在原生
+  `NavigationBar` 与 M3E 横向悬浮工具栏之间切换，大屏（≥640dp）统一使用
+  `NavigationRail`。主 tab 页为
   `ui/home_page.dart`、`ui/drive_page.dart`、`ui/transfers_page.dart`、`ui/profile_page.dart`
   （以 `app.dart` 里 `RootShell` 的实际实现为准）
 - **没有路由库**（无 `go_router` / `auto_route`），不要引入。跨页面用 `Navigator.push`，
@@ -195,7 +197,7 @@ User-Agent 也迁入 `AdvancedConnectionSettingsTile`；对应 setter 统一同�
 | `core/platform_support.dart` | 平台判定与 Android SDK 级别，所有平台分支的唯一入口 |
 | `core/cookie_auth.dart` | 登录态与 cookie |
 | `core/lanzou_link.dart` | 分享链接解析 |
-| `ui/m3e.dart` | MD3E 组件统一出口（`export` + 薄封装），页面只从这里取 MD3E 控件 |
+| `ui/m3e.dart` | MD3E 组件统一出口（`export` + 薄封装）与外壳悬浮导航栏；页面只从这里取 MD3E 控件 |
 | `ui/common.dart` | 跨页面共用的小组件与常量 |
 | `app.dart` | 主题构建（`buildTheme` / `buildLanCloudTheme`）、`MaterialApp`、`RootShell` |
 

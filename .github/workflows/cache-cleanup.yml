@@ -1,0 +1,68 @@
+name: "CI: Cache Cleanup"
+
+on:
+  schedule:
+    # 每周一 10:17（Asia/Shanghai）；GitHub Actions 的 cron 使用 UTC。
+    - cron: "17 2 * * 1"
+  workflow_dispatch:
+    inputs:
+      older_than_days:
+        description: 删除超过多少天的 PR 缓存
+        type: number
+        default: 14
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: cache-cleanup
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    name: 清理旧 PR 缓存
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 删除过期的 PR merge ref 缓存
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          CACHE_MIN_AGE_DAYS: ${{ inputs.older_than_days || 14 }}
+        run: |
+          $days = [int]$env:CACHE_MIN_AGE_DAYS
+          if ($days -lt 1) {
+            throw 'CACHE_MIN_AGE_DAYS 必须大于等于 1'
+          }
+          $cutoff = (Get-Date).ToUniversalTime().AddDays(-$days)
+          $raw = gh cache list `
+            --repo $env:GH_REPO `
+            --limit 100 `
+            --json id,createdAt,ref
+          if ($LASTEXITCODE -ne 0) {
+            throw '无法读取 Actions 缓存列表'
+          }
+          $caches = @($raw | ConvertFrom-Json)
+          $targets = @($caches | Where-Object {
+            $_.ref -like 'refs/pull/*' -and
+            [DateTimeOffset]::Parse($_.createdAt) -lt $cutoff
+          })
+
+          foreach ($cache in $targets) {
+            Write-Host "删除缓存：$($cache.id) $($cache.ref)"
+            gh cache delete $cache.id --repo $env:GH_REPO
+            if ($LASTEXITCODE -ne 0) {
+              throw "删除缓存失败：$($cache.id)"
+            }
+          }
+
+          $summary = @"
+          ### Actions 缓存清理
+
+          删除超过 $days 天的 PR 缓存：$($targets.Count) 个
+          "@
+          if ($env:GITHUB_STEP_SUMMARY) {
+            Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value $summary -Encoding utf8
+          }

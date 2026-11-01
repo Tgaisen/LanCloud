@@ -18,32 +18,61 @@ env:
 
 jobs:
   changes:
-    name: 判断是否需要代码检查
+    name: 判断检查范围
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
       code: ${{ steps.filter.outputs.code }}
+      android: ${{ steps.filter.outputs.android }}
+      windows: ${{ steps.filter.outputs.windows }}
+      workflow: ${{ steps.filter.outputs.workflow }}
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - name: 过滤纯文档改动
+      - name: 按改动路径选择检查
         id: filter
         shell: bash
         run: |
           if [[ "${{ github.event_name }}" != "pull_request" ]]; then
-            echo "code=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          files="$(git diff --name-only \
-            "${{ github.event.pull_request.base.sha }}" \
-            "${{ github.event.pull_request.head.sha }}")"
-          if printf '%s\n' "$files" | grep -Ev \
-            '^(docs/|assets/images/screenshots/|\.github/)|\.md$|(^|/)LICENSE$'; then
-            echo "code=true" >> "$GITHUB_OUTPUT"
+            code=true
+            android=false
+            windows=false
+            workflow=false
           else
-            echo "code=false" >> "$GITHUB_OUTPUT"
+            files="$(git diff --name-only \
+              "${{ github.event.pull_request.base.sha }}" \
+              "${{ github.event.pull_request.head.sha }}")"
+            if printf '%s\n' "$files" | grep -Ev \
+              '^(docs/|tools/|assets/images/screenshots/|\.github/)|\.md$|(^|/)LICENSE$'; then
+              code=true
+            else
+              code=false
+            fi
+            if printf '%s\n' "$files" | grep -Eq \
+              '^(android/|pubspec\.yaml$|pubspec\.lock$|\.github/workflows/(ci|android-ci)\.yml$)'; then
+              android=true
+            else
+              android=false
+            fi
+            if printf '%s\n' "$files" | grep -Eq \
+              '^(windows/|pubspec\.yaml$|pubspec\.lock$|\.github/workflows/(ci|windows-ci)\.yml$)'; then
+              windows=true
+            else
+              windows=false
+            fi
+            if printf '%s\n' "$files" | grep -Eq '^(\.github/|tools/)'; then
+              workflow=true
+            else
+              workflow=false
+            fi
           fi
+          {
+            echo "code=$code"
+            echo "android=$android"
+            echo "windows=$windows"
+            echo "workflow=$workflow"
+          } >> "$GITHUB_OUTPUT"
 
   check:
     name: 代码检查
@@ -58,17 +87,50 @@ jobs:
           flutter-version-file: pubspec.yaml
           channel: stable
           cache: true
+          pub-cache: ${{ github.event_name == 'push' }}
       - run: flutter pub get --enforce-lockfile
+      - name: 检查本地化生成文件
+        shell: bash
+        run: |
+          flutter gen-l10n
+          git diff --exit-code -- \
+            lib/l10n/app_localizations.dart \
+            lib/l10n/app_localizations_en.dart \
+            lib/l10n/app_localizations_zh.dart
       - name: 代码格式检查（dart format）
         run: dart format --output=none --set-exit-if-changed lib test tool
       - name: 静态分析（flutter analyze）
-        run: flutter analyze
+        run: flutter analyze --fatal-infos --no-pub
       - name: 单元测试（flutter test）
-        run: flutter test
+        run: flutter test --no-pub
+
+  android:
+    name: Android release 构建检查
+    needs: changes
+    if: needs.changes.outputs.android == 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/android-ci.yml
+
+  windows:
+    name: Windows release 构建检查
+    needs: changes
+    if: needs.changes.outputs.windows == 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/windows-ci.yml
+
+  workflow_lint:
+    name: Workflow Lint
+    needs: changes
+    if: needs.changes.outputs.workflow == 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/workflow-lint.yml
 
   required:
     name: CI required
-    needs: [changes, check]
+    needs: [changes, check, android, windows, workflow_lint]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -80,8 +142,13 @@ jobs:
             echo "changes job failed: ${{ needs.changes.result }}"
             exit 1
           fi
-          if [[ "${{ needs.check.result }}" != "success" &&
-                "${{ needs.check.result }}" != "skipped" ]]; then
-            echo "check job failed: ${{ needs.check.result }}"
-            exit 1
-          fi
+          for result in \
+            "${{ needs.check.result }}" \
+            "${{ needs.android.result }}" \
+            "${{ needs.windows.result }}" \
+            "${{ needs.workflow_lint.result }}"; do
+            if [[ "$result" != "success" && "$result" != "skipped" ]]; then
+              echo "required job failed: $result"
+              exit 1
+            fi
+          done

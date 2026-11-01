@@ -46,7 +46,7 @@ CI，本地一键发布也复用同一组脚本。
 2. 提交并推送到 `main`。
 3. 等待 `Release` workflow 的校验、Android、Windows、发布四个任务全部成功。
 4. 打开 [Releases](https://github.com/Tgaisen/LanCloud/releases)，检查四个
-   产物和发布说明，确认后点击发布。
+   二进制产物、`SHA256SUMS.txt` 和发布说明，确认后点击发布。
 
 如果构建失败，修复后重新运行整个 workflow；详见下面的常见问题。
 
@@ -84,8 +84,8 @@ GitHub 不允许重新读取 secret 原文。配置完成后，最直接的验�
 两步都成功；后者会实际检查证书 SHA-256。
 
 不要把 keystore、`key.properties`、Base64 文本或密码提交到仓库。
-Android 构建结束后会用 `apksigner` 校验证书 SHA-256，指纹不匹配会直接失败，
-避免漏配签名时把 debug 签名的包发出去。
+Android 构建结束后会逐个用 `apksigner` 校验三个 APK 的证书 SHA-256，
+任一指纹不匹配都会直接失败，避免漏配签名时把 debug 签名的包发出去。
 
 上传完成后请删除临时生成的 Base64 文本（例如
 `android/app/keystore.base64.txt`）。该路径已经加入 `.gitignore`，但它仍然是
@@ -102,6 +102,10 @@ Android 构建结束后会用 `apksigner` 校验证书 SHA-256，指纹不匹配
 如果以后需要临时切换到 Pub 镜像，必须同时修改 workflow 的
 `PUB_HOSTED_URL` 并重新生成 `pubspec.lock`；只改环境变量而不重建 lockfile
 会使 `--enforce-lockfile` 失败。
+
+Flutter SDK 缓存会在 PR 中复用，但按 `pubspec.lock` 生成、绑定到 PR merge ref
+的 Pub 缓存只在 `push` 事件写入，避免每个 PR 都留下一份约 120 MB 的一次性
+缓存。PR 获取依赖略慢，仓库缓存总额更稳定。
 
 `pubspec.yaml` 要求 `shared_preferences_android` 至少为 `2.5.2`。2.5.0/2.5.1
 的 release/R8 构建会丢掉 JNI 使用的 Kotlin 挂起方法签名，启动时
@@ -127,8 +131,8 @@ Dependabot 配置位于 [`.github/dependabot.yml`](../.github/dependabot.yml)，
 
 Dependabot 只负责创建或更新 PR，不自动合并。Pub 依赖 PR 会运行现有
 `CI: Flutter`；改动 `android/`、`pubspec.yaml` 或 `pubspec.lock` 的 PR
-还会运行 `CI: Android` 的 release/R8 构建，避免 Gradle 和插件升级只通过
-静态分析。
+会在同一个 workflow 中额外运行 Android release/R8 构建，避免 Gradle 和
+插件升级只通过静态分析。
 该检查不读取发布签名 secrets；本地和 CI 缺少正式签名时按项目现有逻辑生成
 debug 签名 APK，只用于编译验证，不会上传或发布。
 
@@ -143,10 +147,18 @@ minor/patch 更新互相阻塞。
 
 ## Actions 质量检查
 
-- `CI: Workflow Lint` 在 `.github/**` 改动时运行 Actionlint 和 YAML 语法检查。
+- `CI: Flutter` 会根据改动路径统一调度 Flutter、Android、Windows 和
+  Workflow Lint；只有全部命中或跳过都符合预期时，`CI required` 才会成功。
+- Workflow Lint 在 `.github/**` 或 `tools/**` 改动时运行 Actionlint、YAML
+  语法检查，并用 PowerShell Parser 检查 `tools` 下的脚本语法。
+- 纯文档、`.github/**` 或 `tools/**` 改动不会额外运行完整的 Flutter
+  format/analyze/test，相关脚本由 Workflow Lint 覆盖。
 - `CI: Dependency Review` 在每个 PR 检查新引入的依赖漏洞，高危问题会阻止合并。
-- `CI: Windows` 在 `windows/**`、`pubspec.yaml` 或 `pubspec.lock` 改动时执行
-  Windows release 构建，避免原生插件问题拖到正式发版才暴露。
+- `CI: Cache Cleanup` 每周删除超过 14 天、属于 PR merge ref 的一次性缓存，
+  保留 main 分支和长期 Flutter SDK 缓存。
+- `CI: Flutter` 在 `windows/**`、`pubspec.yaml`、`pubspec.lock` 或对应
+  workflow 改动时执行 Windows release 构建，避免原生插件问题拖到正式发版
+  才暴露。
 - 仓库默认 `GITHUB_TOKEN` 权限应为只读；只有创建 Release 的任务显式申请
   `contents: write`。
 
@@ -157,9 +169,13 @@ minor/patch 更新互相阻塞。
 - Android 在 `ubuntu-latest` 构建，安装 JDK 17、Android SDK Platform 37.0、
   build-tools 36.0.0、NDK 28.2.13676358 和 CMake 3.22.1。Android 15/17
   启动白屏已定位为依赖解析问题，不是 Linux 构建链问题，因此不需要固定到
-  Windows runner。
+  Windows runner。原生或依赖相关 PR 会用 x86_64 release APK 在 API 31
+  模拟器上执行冷启动冒烟。
 - Windows 在 `windows-latest` 构建，workflow 会启用开发者模式并准备 NuGet，
-  以支持 Flutter 插件符号链接和 WebView2 SDK。
+  以支持 Flutter 插件符号链接和 WebView2 SDK。CI 构建和 Release 便携包都会
+  启动进程并检查存活 15 秒，提前退出会打印日志并失败。
+- NuGet CLI 固定为 `7.9.0` 并在执行前校验 SHA-256；不使用可变 URL
+  `.../latest/nuget.exe`。
 - 首次运行需要下载 SDK、Gradle、Flutter 引擎等冷缓存内容，通常比后续运行慢；
   当前实测整条 Release workflow 约 13–20 分钟。任务显示进行中但暂时没有
   新日志时，先等待构建步骤完成。
@@ -168,14 +184,18 @@ minor/patch 更新互相阻塞。
 
 ## 产物
 
-成功后会得到四个文件：
+成功后会得到四个二进制产物和一个校验和文件：
 
 ```text
 LanCloud_android_<版本>_arm64-v8a.apk
 LanCloud_android_<版本>_armeabi-v7a.apk
 LanCloud_android_<版本>_x86_64.apk
 LanCloud_windows_<版本>_x64_portable.zip
+SHA256SUMS.txt
 ```
+
+`SHA256SUMS.txt` 按标准 `sha256sum` 格式记录全部二进制产物的 SHA-256，并在
+上传后与 Release 中的文件清单一起核对。
 
 Windows 产物是绿色便携版，解压后运行；内嵌网页功能仍需要系统安装 WebView2
 运行时。构建目录中的 `lancloud.exe.WebView2` 属于本机运行数据，不会被打进
@@ -241,9 +261,9 @@ workflow。
 `tools/release/build_windows.ps1` 开头的提示安装 C++ 工作负载和 NuGet；
 CI 使用托管 runner，不需要本地配置。
 
-**Release 是 draft，怎么发布**：打开 Releases 页面，检查四个产物和发布说明
-（默认自动生成）后点击发布。draft 不会被普通用户看到，也不会被更新检查
-当作正式版本。
+**Release 是 draft，怎么发布**：打开 Releases 页面，检查四个二进制产物、
+`SHA256SUMS.txt` 和发布说明（默认自动生成）后点击发布。draft 不会被普通
+用户看到，也不会被更新检查当作正式版本。
 
 **构建很慢或看起来没有日志**：首次运行要下载 SDK、Gradle 和 Flutter 引擎，
 构建步骤可能长时间没有新日志。当前实测整条流程约 13–20 分钟，先看 job

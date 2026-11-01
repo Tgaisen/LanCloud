@@ -475,12 +475,12 @@ void main() {
     expect(value, barHeight);
   });
 
-  testWidgets('外壳 + 悬浮底栏：同样按底栏总高度（108 + 系统导航栏）', (tester) async {
+  testWidgets('外壳 + 悬浮底栏：同样按底栏总高度（92 + 系统导航栏）', (tester) async {
     tester.view.physicalSize = const Size(400, 600);
     tester.view.devicePixelRatio = 1;
     tester.view.padding = const FakeViewPadding(bottom: 24);
     addTearDown(tester.view.reset);
-    const barHeight = 108.0 + 24.0;
+    const barHeight = 92.0 + 24.0;
     double? value;
 
     await tester.pumpWidget(

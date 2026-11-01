@@ -206,9 +206,11 @@ if (!$SkipTests) {
     'format', '--output=none', '--set-exit-if-changed', 'lib', 'test', 'tool'
   ) -DryRun:$DryRun
   Info 'flutter analyze'
-  Invoke-ReleaseTool -Exe $flutter -Arguments @('analyze') -DryRun:$DryRun
+  Invoke-ReleaseTool -Exe $flutter -Arguments @(
+    'analyze', '--fatal-infos', '--no-pub'
+  ) -DryRun:$DryRun
   Info 'flutter test'
-  Invoke-ReleaseTool -Exe $flutter -Arguments @('test') -DryRun:$DryRun
+  Invoke-ReleaseTool -Exe $flutter -Arguments @('test', '--no-pub') -DryRun:$DryRun
 }
 
 Info '校验完成'
