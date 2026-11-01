@@ -11,16 +11,24 @@ import 'saf_storage.dart';
 /// - Android / iOS：open_filex（FileProvider / UIDocumentInteractionController）
 /// - 桌面端：open_filex 没有 Windows 实现，交给资源管理器按文件关联打开
 ///   （等价于在资源管理器里双击该文件）
-Future<void> openFileWithSystem(String path) async {
+Future<bool> openFileWithSystem(String path) async {
   if (PlatformSupport.isAndroid && SafStorage.isContentUri(path)) {
-    await SafStorage.openFile(path);
-    return;
+    return SafStorage.openFile(path);
   }
   if (!PlatformSupport.isDesktop) {
-    await OpenFilex.open(path);
-    return;
+    try {
+      final result = await OpenFilex.open(path);
+      return result.type == ResultType.done;
+    } catch (_) {
+      return false;
+    }
   }
-  await _shellOpen(path);
+  try {
+    await _shellOpen(path);
+    return true;
+  } catch (_) {
+    return false;
+  }
 }
 
 /// 在资源管理器里定位文件（桌面端的「分享」退化成这个）。

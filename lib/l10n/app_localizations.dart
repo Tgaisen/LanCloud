@@ -848,11 +848,23 @@ abstract class AppLocalizations {
   /// **'重试'**
   String get retry;
 
+  /// No description provided for @cancelTask.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消任务'**
+  String get cancelTask;
+
   /// No description provided for @cancelDownload.
   ///
   /// In zh, this message translates to:
   /// **'取消下载'**
   String get cancelDownload;
+
+  /// No description provided for @openFileFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有可打开此文件的应用'**
+  String get openFileFailed;
 
   /// No description provided for @redownload.
   ///

@@ -451,6 +451,7 @@ class TransferManager extends ChangeNotifier {
     if (task == null) return;
     task.removed = true;
     if (task.status == TransferStatus.running) {
+      task.status = TransferStatus.canceled;
       task.cancelToken.cancel('removed');
     } else {
       unawaited(_deletePartial(task));
@@ -471,6 +472,7 @@ class TransferManager extends ChangeNotifier {
       if (task == null) continue;
       task.removed = true;
       if (task.status == TransferStatus.running) {
+        task.status = TransferStatus.canceled;
         task.cancelToken.cancel('removed');
       } else {
         unawaited(_deletePartial(task));

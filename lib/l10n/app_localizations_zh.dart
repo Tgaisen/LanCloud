@@ -410,7 +410,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get retry => '重试';
 
   @override
+  String get cancelTask => '取消任务';
+
+  @override
   String get cancelDownload => '取消下载';
+
+  @override
+  String get openFileFailed => '没有可打开此文件的应用';
 
   @override
   String get redownload => '重新下载';

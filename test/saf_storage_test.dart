@@ -154,6 +154,19 @@ void main() {
     );
   });
 
+  test('openFile：把 content URI 交给原生打开', () async {
+    final calls = mockSafNative();
+    final opened = await SafStorage.openFile(
+      'content://doc/primary%3ADownload%2Fa.zip',
+    );
+    expect(opened, isTrue);
+    expect(calls.single.method, 'openFile');
+    expect(
+      calls.single.arguments['uri'],
+      'content://doc/primary%3ADownload%2Fa.zip',
+    );
+  });
+
   test('isContentUri 只认 content:// 前缀', () {
     expect(SafStorage.isContentUri('content://doc/x'), isTrue);
     expect(SafStorage.isContentUri('/storage/emulated/0/a.zip'), isFalse);

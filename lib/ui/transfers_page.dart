@@ -37,7 +37,7 @@ class TransfersPage extends ConsumerStatefulWidget {
   const TransfersPage({super.key, this.openFile});
 
   /// 打开已下载文件；默认交给系统「打开」，测试注入以免真的调起系统应用。
-  final Future<void> Function(String path)? openFile;
+  final Future<bool> Function(String path)? openFile;
 
   @override
   ConsumerState<TransfersPage> createState() => _TransfersPageState();
@@ -310,8 +310,13 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
   }
 
   /// 打开已下载的文件（与点击条目同一个入口，测试注入的 openFile 也走这里）。
-  Future<void> _openTaskFile(String path) =>
-      (widget.openFile ?? openFileWithSystem)(path);
+  Future<bool> _openTaskFile(String path) async {
+    try {
+      return await (widget.openFile ?? openFileWithSystem)(path);
+    } catch (_) {
+      return false;
+    }
+  }
 
   /// 条目 ⋯ 菜单：按条目状态给出可用动作。
   ///
@@ -399,7 +404,11 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
     if (!mounted || action == null) return;
     switch (action) {
       case _TransferMenuAction.open:
-        await _openTaskFile(path!);
+        final opened = await _openTaskFile(path!);
+        if (!opened && mounted) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(l10n.openFileFailed)));
+        }
       case _TransferMenuAction.share:
         await SystemShare.shareFile(
           path!,
@@ -740,11 +749,11 @@ class _TransferListSliver extends StatelessWidget {
   final void Function(TransferTask task, BuildContext anchorContext) onMenu;
 
   /// 打开已下载的文件（外壳注入，默认交给系统默认程序）。
-  final Future<void> Function(String path) openFile;
+  final Future<bool> Function(String path) openFile;
 
   /// 点击条目：多选中切换选中；否则只有「下载完成」的条目能打开文件，
   /// 上传条目（以及进行中 / 失败的下载）点击不做任何反应。
-  void _handleTap(TransferTask task) {
+  Future<void> _handleTap(BuildContext context, TransferTask task) async {
     if (selecting) {
       onToggle(task.id);
       return;
@@ -753,7 +762,11 @@ class _TransferListSliver extends StatelessWidget {
     if (task.kind == TransferKind.download &&
         task.status == TransferStatus.done &&
         path != null) {
-      openFile(path);
+      final opened = await openFile(path);
+      if (!opened && context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(context.l10n.openFileFailed)));
+      }
     }
   }
 
@@ -821,7 +834,7 @@ class _TransferListSliver extends StatelessWidget {
                   removing: removing.contains(active[index].id),
                   selecting: selecting,
                   selected: selected.contains(active[index].id),
-                  onTap: () => _handleTap(active[index]),
+                  onTap: () => _handleTap(context, active[index]),
                   onLongPress: () => onLongPress(taskId: active[index].id),
                   onMenu: (anchorContext) =>
                       onMenu(active[index], anchorContext),
@@ -856,7 +869,7 @@ class _TransferListSliver extends StatelessWidget {
                   removing: removing.contains(finished[index].id),
                   selecting: selecting,
                   selected: selected.contains(finished[index].id),
-                  onTap: () => _handleTap(finished[index]),
+                  onTap: () => _handleTap(context, finished[index]),
                   onLongPress: () => onLongPress(taskId: finished[index].id),
                   onMenu: (anchorContext) =>
                       onMenu(finished[index], anchorContext),
@@ -971,12 +984,6 @@ class _TransferTile extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (task.kind == TransferKind.upload && active)
-                M3eIconButton(
-                  tooltip: l10n.cancel,
-                  icon: Icons.close,
-                  onPressed: () => manager.cancel(task.id),
-                ),
               if (task.kind == TransferKind.download && active)
                 M3eIconButton(
                   tooltip: l10n.pauseDownload,
@@ -989,15 +996,20 @@ class _TransferTile extends StatelessWidget {
                   icon: Icons.play_arrow,
                   onPressed: () => manager.resume(task.id),
                 ),
-              // 完成 / 失败 / 删除这些操作都收进 ⋯ 菜单（菜单项按状态给出），
-              // 行里只留「取消」这颗抢时间的按钮
-              Builder(
-                builder: (BuildContext buttonContext) => M3eIconButton(
-                  tooltip: l10n.moreActions,
-                  icon: Icons.more_vert,
-                  onPressed: () => onMenu(buttonContext),
+              if (active || paused)
+                M3eIconButton(
+                  tooltip: l10n.cancelTask,
+                  icon: Icons.close,
+                  onPressed: () => manager.removeTask(task.id),
                 ),
-              ),
+              if (!active && !paused)
+                Builder(
+                  builder: (BuildContext buttonContext) => M3eIconButton(
+                    tooltip: l10n.moreActions,
+                    icon: Icons.more_vert,
+                    onPressed: () => onMenu(buttonContext),
+                  ),
+                ),
             ],
           ),
         ),

@@ -1,6 +1,7 @@
 package com.lancloud.lancloud
 
 import android.Manifest
+import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ClipDescription
 import android.content.ContentValues
@@ -1205,12 +1206,10 @@ class MainActivity : FlutterFragmentActivity() {
                 setDataAndType(uri, mime)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
             }
-            if (intent.resolveActivity(packageManager) == null) {
-                result.success(false)
-                return
-            }
             startActivity(intent)
             result.success(true)
+        } catch (_: ActivityNotFoundException) {
+            result.success(false)
         } catch (e: Exception) {
             result.error("open_failed", e.message, null)
         }

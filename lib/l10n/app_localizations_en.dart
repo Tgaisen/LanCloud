@@ -432,7 +432,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get retry => 'Retry';
 
   @override
+  String get cancelTask => 'Cancel task';
+
+  @override
   String get cancelDownload => 'Cancel download';
+
+  @override
+  String get openFileFailed => 'No app can open this file';
 
   @override
   String get redownload => 'Download again';
