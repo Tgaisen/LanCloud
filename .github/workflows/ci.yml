@@ -35,38 +35,44 @@ jobs:
         shell: bash
         run: |
           if [[ "${{ github.event_name }}" != "pull_request" ]]; then
-            echo "code=true" >> "$GITHUB_OUTPUT"
-            echo "android=false" >> "$GITHUB_OUTPUT"
-            echo "windows=false" >> "$GITHUB_OUTPUT"
-            echo "workflow=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          files="$(git diff --name-only \
-            "${{ github.event.pull_request.base.sha }}" \
-            "${{ github.event.pull_request.head.sha }}")"
-          if printf '%s\n' "$files" | grep -Ev \
-            '^(docs/|tools/|assets/images/screenshots/|\.github/)|\.md$|(^|/)LICENSE$'; then
-            echo "code=true" >> "$GITHUB_OUTPUT"
+            code=true
+            android=false
+            windows=false
+            workflow=false
           else
-            echo "code=false" >> "$GITHUB_OUTPUT"
+            files="$(git diff --name-only \
+              "${{ github.event.pull_request.base.sha }}" \
+              "${{ github.event.pull_request.head.sha }}")"
+            if printf '%s\n' "$files" | grep -Ev \
+              '^(docs/|tools/|assets/images/screenshots/|\.github/)|\.md$|(^|/)LICENSE$'; then
+              code=true
+            else
+              code=false
+            fi
+            if printf '%s\n' "$files" | grep -Eq \
+              '^(android/|pubspec\.yaml$|pubspec\.lock$|\.github/workflows/(ci|android-ci)\.yml$)'; then
+              android=true
+            else
+              android=false
+            fi
+            if printf '%s\n' "$files" | grep -Eq \
+              '^(windows/|pubspec\.yaml$|pubspec\.lock$|\.github/workflows/(ci|windows-ci)\.yml$)'; then
+              windows=true
+            else
+              windows=false
+            fi
+            if printf '%s\n' "$files" | grep -Eq '^(\.github/|tools/)'; then
+              workflow=true
+            else
+              workflow=false
+            fi
           fi
-          if printf '%s\n' "$files" | grep -Eq \
-            '^(android/|pubspec\.yaml$|pubspec\.lock$|\.github/workflows/(ci|android-ci)\.yml$)'; then
-            echo "android=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "android=false" >> "$GITHUB_OUTPUT"
-          fi
-          if printf '%s\n' "$files" | grep -Eq \
-            '^(windows/|pubspec\.yaml$|pubspec\.lock$|\.github/workflows/(ci|windows-ci)\.yml$)'; then
-            echo "windows=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "windows=false" >> "$GITHUB_OUTPUT"
-          fi
-          if printf '%s\n' "$files" | grep -Eq '^(\.github/|tools/)'; then
-            echo "workflow=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "workflow=false" >> "$GITHUB_OUTPUT"
-          fi
+          {
+            echo "code=$code"
+            echo "android=$android"
+            echo "windows=$windows"
+            echo "workflow=$workflow"
+          } >> "$GITHUB_OUTPUT"
 
   check:
     name: 代码检查
