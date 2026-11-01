@@ -992,42 +992,40 @@ class _TransferTile extends StatelessWidget {
         // 桌面端右键：与 ⋯ 菜单同一套操作（多选时不响应，和 ⋯ 一起隐藏）
         onSecondaryTap: selecting || saving ? null : () => onMenu(rowContext),
         // 多选期间隐藏行内操作（避免误触），但保留占位：条目高度不跳
-        trailing: saving
-            ? null
-            : HideKeepingSpace(
-                hidden: selecting,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (task.kind == TransferKind.download && active)
-                      M3eIconButton(
-                        tooltip: l10n.pauseDownload,
-                        icon: Icons.pause,
-                        onPressed: () => manager.pause(task.id),
-                      ),
-                    if (paused)
-                      M3eIconButton(
-                        tooltip: l10n.resumeDownload,
-                        icon: Icons.play_arrow,
-                        onPressed: () => manager.resume(task.id),
-                      ),
-                    if (active || paused)
-                      M3eIconButton(
-                        tooltip: l10n.cancelTask,
-                        icon: Icons.close,
-                        onPressed: () => manager.removeTask(task.id),
-                      ),
-                    if (!active && !paused)
-                      Builder(
-                        builder: (BuildContext buttonContext) => M3eIconButton(
-                          tooltip: l10n.moreActions,
-                          icon: Icons.more_vert,
-                          onPressed: () => onMenu(buttonContext),
-                        ),
-                      ),
-                  ],
+        trailing: HideKeepingSpace(
+          hidden: selecting,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (task.kind == TransferKind.download && (active || saving))
+                M3eIconButton(
+                  tooltip: l10n.pauseDownload,
+                  icon: Icons.pause,
+                  onPressed: saving ? null : () => manager.pause(task.id),
                 ),
-              ),
+              if (paused)
+                M3eIconButton(
+                  tooltip: l10n.resumeDownload,
+                  icon: Icons.play_arrow,
+                  onPressed: () => manager.resume(task.id),
+                ),
+              if (active || paused || saving)
+                M3eIconButton(
+                  tooltip: l10n.cancelTask,
+                  icon: Icons.close,
+                  onPressed: saving ? null : () => manager.removeTask(task.id),
+                ),
+              if (!active && !paused && !saving)
+                Builder(
+                  builder: (BuildContext buttonContext) => M3eIconButton(
+                    tooltip: l10n.moreActions,
+                    icon: Icons.more_vert,
+                    onPressed: () => onMenu(buttonContext),
+                  ),
+                ),
+            ],
+          ),
+        ),
         bottom: active || paused || saving
             ? M3eLinearProgressIndicator(
                 // 运行中的长任务用波浪进度条；暂停后保持静态，避免误以为仍在传。

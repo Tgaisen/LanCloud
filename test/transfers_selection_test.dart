@@ -205,7 +205,7 @@ void main() {
     expect(progress.wavy, isFalse);
   });
 
-  testWidgets('正在保存的下载显示复制进度且不提供任务操作', (tester) async {
+  testWidgets('正在保存的下载保留按钮占位但禁用暂停与取消', (tester) async {
     final app = AppEnvironment();
     final manager = buildTransferManagerForEnvironment(app);
     manager.tasks.add(
@@ -240,10 +240,22 @@ void main() {
     await tester.pump(const Duration(milliseconds: 350));
 
     expect(find.textContaining('正在保存'), findsOneWidget);
-    expect(find.byTooltip('暂停下载'), findsNothing);
     expect(find.byTooltip('继续下载'), findsNothing);
-    expect(find.byTooltip('取消任务'), findsNothing);
     expect(find.byTooltip('更多操作'), findsNothing);
+    final pause = tester.widget<M3eIconButton>(
+      find.ancestor(
+        of: find.byTooltip('暂停下载'),
+        matching: find.byType(M3eIconButton),
+      ),
+    );
+    final cancel = tester.widget<M3eIconButton>(
+      find.ancestor(
+        of: find.byTooltip('取消任务'),
+        matching: find.byType(M3eIconButton),
+      ),
+    );
+    expect(pause.onPressed, isNull);
+    expect(cancel.onPressed, isNull);
     final progress = tester.widget<M3eLinearProgressIndicator>(
       find.byType(M3eLinearProgressIndicator),
     );
