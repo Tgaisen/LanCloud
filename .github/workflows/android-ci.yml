@@ -81,15 +81,8 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
           script: |
-            set -euo pipefail
             adb install -r "$GITHUB_WORKSPACE/apk/app-x86_64-release.apk"
             adb logcat -c
             adb shell am start -W -n com.lancloud.lancloud/.MainActivity
             sleep 15
-            pid="$(adb shell pidof com.lancloud.lancloud || true)"
-            pid="${pid//[[:space:]]/}"
-            if [[ -z "$pid" ]]; then
-              adb logcat -d -t 400 | tail -n 200
-              exit 1
-            fi
-            echo "LanCloud Android release 冷启动通过（PID $pid）"
+            if ! adb shell pidof com.lancloud.lancloud; then adb logcat -d -t 400 | tail -n 200; exit 1; fi
