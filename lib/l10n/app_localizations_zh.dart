@@ -1072,6 +1072,16 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String addedDownloadsSkipped(int ok, int skipped) {
+    return '已加入 $ok 个下载任务，跳过 $skipped 个已下载文件';
+  }
+
+  @override
+  String addedDownloadsPartialSkipped(int ok, int skipped, int failed) {
+    return '已加入 $ok 个下载任务，跳过 $skipped 个已下载文件，$failed 个解析失败';
+  }
+
+  @override
   String retriedDownloads(int count) {
     return '已重新加入 $count 个下载任务';
   }

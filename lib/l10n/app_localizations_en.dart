@@ -1116,6 +1116,16 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String addedDownloadsSkipped(int ok, int skipped) {
+    return 'Added $ok download tasks; skipped $skipped already-downloaded files';
+  }
+
+  @override
+  String addedDownloadsPartialSkipped(int ok, int skipped, int failed) {
+    return 'Added $ok download tasks; skipped $skipped already-downloaded files; $failed failed to resolve';
+  }
+
+  @override
   String retriedDownloads(int count) {
     return 'Re-queued $count download tasks';
   }

@@ -364,6 +364,8 @@
   "resolvingBatch": "Resolving and adding to the download queue ({count} total)",
   "addedDownloads": "Added {count} download tasks",
   "addedDownloadsPartial": "Added {ok} download tasks; {failed} failed to resolve",
+  "addedDownloadsSkipped": "Added {ok} download tasks; skipped {skipped} already-downloaded files",
+  "addedDownloadsPartialSkipped": "Added {ok} download tasks; skipped {skipped} already-downloaded files; {failed} failed to resolve",
   "retriedDownloads": "Re-queued {count} download tasks",
   "retriedDownloadsPartial": "Re-queued {ok} download tasks; {failed} failed",
   "noLinksToCopy": "No share links to copy",

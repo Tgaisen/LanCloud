@@ -14,6 +14,29 @@ import 'm3e.dart';
 /// 网盘文件的「已下载」标记 key：与下载任务的 `refId`（"账号uid:文件id"）一致。
 String driveDownloadKey(String uid, String fileId) => '$uid:$fileId';
 
+/// 网盘批量下载前是否需要跳过：已写入下载历史，或当前队列中已有同一文件。
+///
+/// 失败 / 已取消的任务不算已下载，允许批量操作重新发起。
+bool shouldSkipDriveBatchDownload({
+  required String ref,
+  required Set<String> downloadedRefs,
+  required TransferManager transfers,
+}) {
+  if (downloadedRefs.contains(ref)) return true;
+  return transfers.tasks.any((task) {
+    if (task.kind != TransferKind.download) return false;
+    if (task.refId != ref && task.referer != ref) return false;
+    return switch (task.status) {
+      TransferStatus.queued ||
+      TransferStatus.running ||
+      TransferStatus.paused ||
+      TransferStatus.saving ||
+      TransferStatus.done => true,
+      TransferStatus.failed || TransferStatus.canceled => false,
+    };
+  });
+}
+
 /// 「已添加下载」小标记：有匹配任务（已取消的不算）时显示一个 `download_done`
 /// 小图标，位置风格和网盘文件的密码锁图标一致。
 ///

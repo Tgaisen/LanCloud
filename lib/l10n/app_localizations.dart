@@ -2078,6 +2078,18 @@ abstract class AppLocalizations {
   /// **'已加入 {ok} 个下载任务，{failed} 个解析失败'**
   String addedDownloadsPartial(int ok, int failed);
 
+  /// No description provided for @addedDownloadsSkipped.
+  ///
+  /// In zh, this message translates to:
+  /// **'已加入 {ok} 个下载任务，跳过 {skipped} 个已下载文件'**
+  String addedDownloadsSkipped(int ok, int skipped);
+
+  /// No description provided for @addedDownloadsPartialSkipped.
+  ///
+  /// In zh, this message translates to:
+  /// **'已加入 {ok} 个下载任务，跳过 {skipped} 个已下载文件，{failed} 个解析失败'**
+  String addedDownloadsPartialSkipped(int ok, int skipped, int failed);
+
   /// No description provided for @retriedDownloads.
   ///
   /// In zh, this message translates to:

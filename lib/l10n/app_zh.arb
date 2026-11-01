@@ -584,6 +584,31 @@
       }
     }
   },
+  "addedDownloadsSkipped": "已加入 {ok} 个下载任务，跳过 {skipped} 个已下载文件",
+  "@addedDownloadsSkipped": {
+    "placeholders": {
+      "ok": {
+        "type": "int"
+      },
+      "skipped": {
+        "type": "int"
+      }
+    }
+  },
+  "addedDownloadsPartialSkipped": "已加入 {ok} 个下载任务，跳过 {skipped} 个已下载文件，{failed} 个解析失败",
+  "@addedDownloadsPartialSkipped": {
+    "placeholders": {
+      "ok": {
+        "type": "int"
+      },
+      "skipped": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
   "retriedDownloads": "已重新加入 {count} 个下载任务",
   "@retriedDownloads": {
     "placeholders": {
