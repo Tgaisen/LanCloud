@@ -51,6 +51,7 @@ app.*.map.json
 devtools_options.yaml
 
 # Android Studio will place build artifacts here
+/android/.kotlin/
 /android/app/debug
 /android/app/profile
 /android/app/release

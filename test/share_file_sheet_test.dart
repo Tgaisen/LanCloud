@@ -187,7 +187,7 @@ void main() {
     );
     expect(ring.value, closeTo(0.4, 0.001));
 
-    // 点它：二级菜单按状态给可用项（进行中：只有「取消下载」可点）
+    // 点它：二级菜单按状态给可用项（进行中：暂停与取消下载可点）
     await tester.tap(find.text('下载中'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
@@ -197,6 +197,7 @@ void main() {
     expect(rows.map((r) => r.label).toList(), [
       '打开',
       '分享',
+      '暂停下载',
       '取消下载',
       '删除记录与文件',
       '重新下载',
@@ -204,9 +205,10 @@ void main() {
     expect(rows[0].enabled, isFalse);
     expect(rows[1].enabled, isFalse);
     expect(rows[2].enabled, isTrue);
+    expect(rows[3].enabled, isTrue);
     // 还没落盘：删除记录与文件不可用
-    expect(rows[3].enabled, isFalse);
     expect(rows[4].enabled, isFalse);
+    expect(rows[5].enabled, isFalse);
 
     // 取消下载：标记消失，入口回到「下载」
     await tester.tap(
@@ -255,6 +257,21 @@ void main() {
     manager.marksRevision.value += 1;
     await tester.pump();
     expect(find.text('下载中'), findsOneWidget);
+
+    // 正在保存：文案切换，进度环继续显示复制进度
+    task.status = TransferStatus.saving;
+    task.received = 75;
+    manager.marksRevision.value += 1;
+    await tester.pump();
+    expect(find.text('正在保存'), findsOneWidget);
+    expect(
+      tester
+          .widget<M3eCircularProgressIndicator>(
+            find.byType(M3eCircularProgressIndicator),
+          )
+          .value,
+      closeTo(0.75, 0.001),
+    );
 
     // 已完成：勾图标、「已下载」、无环
     task.status = TransferStatus.done;
@@ -327,7 +344,7 @@ void main() {
     await tester.tap(find.text('下载中'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
-    expect(find.byType(M3eMenuRow), findsNWidgets(5));
+    expect(find.byType(M3eMenuRow), findsNWidgets(6));
 
     // 这条任务完成（状态变了）：菜单自动收起，别让用户对着旧选项点
     task.status = TransferStatus.done;

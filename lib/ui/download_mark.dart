@@ -14,6 +14,29 @@ import 'm3e.dart';
 /// 网盘文件的「已下载」标记 key：与下载任务的 `refId`（"账号uid:文件id"）一致。
 String driveDownloadKey(String uid, String fileId) => '$uid:$fileId';
 
+/// 网盘批量下载前是否需要跳过：已写入下载历史，或当前队列中已有同一文件。
+///
+/// 失败 / 已取消的任务不算已下载，允许批量操作重新发起。
+bool shouldSkipDriveBatchDownload({
+  required String ref,
+  required Set<String> downloadedRefs,
+  required TransferManager transfers,
+}) {
+  if (downloadedRefs.contains(ref)) return true;
+  return transfers.tasks.any((task) {
+    if (task.kind != TransferKind.download) return false;
+    if (task.refId != ref && task.referer != ref) return false;
+    return switch (task.status) {
+      TransferStatus.queued ||
+      TransferStatus.running ||
+      TransferStatus.paused ||
+      TransferStatus.saving ||
+      TransferStatus.done => true,
+      TransferStatus.failed || TransferStatus.canceled => false,
+    };
+  });
+}
+
 /// 「已添加下载」小标记：有匹配任务（已取消的不算）时显示一个 `download_done`
 /// 小图标，位置风格和网盘文件的密码锁图标一致。
 ///
@@ -48,13 +71,16 @@ class DownloadMarkIcon extends StatelessWidget {
     return ListenableBuilder(
       listenable: manager.marksRevision,
       builder: (BuildContext context, _) {
-        if (manager.downloadMarkOf(markKey) == null) {
+        final task = manager.downloadMarkOf(markKey);
+        if (task == null) {
           return const SizedBox.shrink();
         }
         return Padding(
           padding: EdgeInsetsDirectional.only(start: gap),
           child: Icon(
-            Icons.download_done,
+            task.status == TransferStatus.saving
+                ? Icons.save
+                : Icons.download_done,
             size: size,
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
@@ -64,7 +90,15 @@ class DownloadMarkIcon extends StatelessWidget {
   }
 }
 
-enum _DownloadMenuAction { open, share, stop, deleteFile, redownload }
+enum _DownloadMenuAction {
+  open,
+  share,
+  pause,
+  resume,
+  stop,
+  deleteFile,
+  redownload,
+}
 
 /// 「已下载」入口的二级菜单（两步菜单：点入口后弹这一层）：
 /// 打开 / 分享（桌面端为在资源管理器定位）/ 取消下载或删除任务记录 / 重新下载。
@@ -78,6 +112,7 @@ Future<void> showDownloadTaskMenu(
   required TransferTask task,
   required Future<void> Function() onRedownload,
 }) async {
+  if (task.status == TransferStatus.saving) return;
   final manager = ProviderScope.containerOf(
     context,
     listen: false,
@@ -86,6 +121,7 @@ Future<void> showDownloadTaskMenu(
   final bool running =
       task.status == TransferStatus.queued ||
       task.status == TransferStatus.running;
+  final bool paused = task.status == TransferStatus.paused;
   final String? savedPath = task.savedPath;
   final bool hasFile =
       task.status == TransferStatus.done &&
@@ -119,10 +155,24 @@ Future<void> showDownloadTaskMenu(
       ),
       // 进行中才是「取消下载」，其余状态是删掉这条任务记录（M3 规范：不用的
       // 操作置灰或换说法，而不是留一个点了没反应的入口）
+      if (running)
+        M3eMenuItem(
+          value: _DownloadMenuAction.pause,
+          label: l10n.pauseDownload,
+          icon: Icons.pause,
+        ),
+      if (paused)
+        M3eMenuItem(
+          value: _DownloadMenuAction.resume,
+          label: l10n.resumeDownload,
+          icon: Icons.play_arrow,
+        ),
       M3eMenuItem(
         value: _DownloadMenuAction.stop,
-        label: running ? l10n.cancelDownload : l10n.deleteDownloadRecord,
-        icon: running ? Icons.close : Icons.playlist_remove,
+        label: running || paused
+            ? l10n.cancelDownload
+            : l10n.deleteDownloadRecord,
+        icon: running || paused ? Icons.close : Icons.playlist_remove,
       ),
       // 连文件一起删：删完标记消失，属性弹窗恢复「下载」原状
       M3eMenuItem(
@@ -142,7 +192,11 @@ Future<void> showDownloadTaskMenu(
   if (action == null || !context.mounted) return;
   switch (action) {
     case _DownloadMenuAction.open:
-      await openFileWithSystem(savedPath!);
+      final opened = await openFileWithSystem(savedPath!, name: task.name);
+      if (!opened && context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(l10n.openFileFailed)));
+      }
     case _DownloadMenuAction.share:
       if (desktop) {
         await revealInExplorer(savedPath!);
@@ -153,8 +207,16 @@ Future<void> showDownloadTaskMenu(
           mime: _shareMimeFor(task.name),
         );
       }
+    case _DownloadMenuAction.pause:
+      manager.pause(task.id);
+    case _DownloadMenuAction.resume:
+      final message = await manager.resume(task.id);
+      if (message != null && context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(message)));
+      }
     case _DownloadMenuAction.stop:
-      if (running) {
+      if (running || paused) {
         manager.cancel(task.id);
       } else {
         manager.removeTask(task.id);

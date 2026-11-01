@@ -154,18 +154,40 @@ void main() {
     );
   });
 
+  test('openFile：把 content URI 交给原生打开', () async {
+    final calls = mockSafNative();
+    final opened = await SafStorage.openFile(
+      'content://doc/primary%3ADownload%2Fa.zip',
+      mime: 'application/zip',
+      displayName: 'a.zip',
+    );
+    expect(opened, isTrue);
+    expect(calls.single.method, 'openFile');
+    expect(
+      calls.single.arguments['uri'],
+      'content://doc/primary%3ADownload%2Fa.zip',
+    );
+    expect(calls.single.arguments['mime'], 'application/zip');
+    expect(calls.single.arguments['displayName'], 'a.zip');
+  });
+
   test('isContentUri 只认 content:// 前缀', () {
     expect(SafStorage.isContentUri('content://doc/x'), isTrue);
     expect(SafStorage.isContentUri('/storage/emulated/0/a.zip'), isFalse);
     expect(SafStorage.isContentUri(''), isFalse);
   });
 
-  test('mimeForFileName：APK / 压缩包 / 未知类型', () {
+  test('mimeForFileName：APK / 压缩包 / Office / 未知类型', () {
     expect(
       mimeForFileName('app.apk'),
       'application/vnd.android.package-archive',
     );
     expect(mimeForFileName('a.zip'), 'application/zip');
+    expect(
+      mimeForFileName('report.docx'),
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    );
+    expect(mimeForFileName('sheet.xlsx'), contains('spreadsheetml'));
     expect(mimeForFileName('noext'), 'application/octet-stream');
     expect(mimeForFileName('a.unknownext'), 'application/octet-stream');
   });

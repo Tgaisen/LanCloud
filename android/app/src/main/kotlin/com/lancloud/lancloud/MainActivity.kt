@@ -1,6 +1,7 @@
 package com.lancloud.lancloud
 
 import android.Manifest
+import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ClipDescription
 import android.content.ContentValues
@@ -26,6 +27,7 @@ import android.view.DragAndDropPermissions
 import android.view.View
 import android.view.ViewGroup
 import android.view.accessibility.AccessibilityManager
+import android.webkit.MimeTypeMap
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.browser.customtabs.CustomTabsClient
 import androidx.browser.customtabs.CustomTabsIntent
@@ -920,7 +922,7 @@ class MainActivity : FlutterFragmentActivity() {
             }
             "exportFile" -> exportToSafTree(call, result)
             "deleteFile" -> deleteSafDocument(call.argument<String>("uri"), result)
-            "openFile" -> openSafDocument(call.argument<String>("uri"), result)
+            "openFile" -> openSafDocument(call, result)
             else -> result.notImplemented()
         }
     }
@@ -1193,26 +1195,81 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     /// 用系统默认程序打开 SAF 文件（把读权限转授给目标应用）。
-    private fun openSafDocument(uriStr: String?, result: MethodChannel.Result) {
+    private fun openSafDocument(call: MethodCall, result: MethodChannel.Result) {
+        val uriStr = call.argument<String>("uri")
         if (uriStr.isNullOrEmpty()) {
             result.error("bad_args", "uri required", null)
             return
         }
         try {
             val uri = Uri.parse(uriStr)
-            val mime = contentResolver.getType(uri) ?: "*/*"
+            val displayName =
+                call.argument<String>("displayName").orEmpty().ifBlank {
+                    queryDisplayName(uri).orEmpty()
+                }
+            val mime = chooseOpenMime(
+                supplied = call.argument<String>("mime").orEmpty(),
+                resolved = contentResolver.getType(uri).orEmpty(),
+                displayName = displayName,
+            )
             val intent = Intent(Intent.ACTION_VIEW).apply {
                 setDataAndType(uri, mime)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            if (intent.resolveActivity(packageManager) == null) {
-                result.success(false)
-                return
+                clipData = ClipData.newRawUri(
+                    displayName.ifBlank { "file" },
+                    uri,
+                )
+                if (displayName.isNotBlank()) {
+                    putExtra(Intent.EXTRA_TITLE, displayName)
+                }
             }
             startActivity(intent)
             result.success(true)
+        } catch (_: ActivityNotFoundException) {
+            result.success(false)
         } catch (e: Exception) {
             result.error("open_failed", e.message, null)
+        }
+    }
+
+    private fun chooseOpenMime(
+        supplied: String,
+        resolved: String,
+        displayName: String,
+    ): String {
+        val guessed = mimeForFileName(displayName)
+        return sequenceOf(supplied, guessed, resolved)
+            .firstOrNull(::isSpecificMime)
+            ?: resolved.ifBlank { supplied.ifBlank { "*/*" } }
+    }
+
+    private fun isSpecificMime(value: String): Boolean =
+        value.isNotBlank() &&
+            value != "*/*" &&
+            value != "application/octet-stream"
+
+    private fun mimeForFileName(name: String): String {
+        val extension = name
+            .substringAfterLast('.', "")
+            .lowercase()
+        if (extension.isEmpty()) return ""
+        return when (extension) {
+            "apk" -> "application/vnd.android.package-archive"
+            "zip" -> "application/zip"
+            "rar" -> "application/vnd.rar"
+            "7z" -> "application/x-7z-compressed"
+            "doc" -> "application/msword"
+            "docx" ->
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            "xls" -> "application/vnd.ms-excel"
+            "xlsx" ->
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            "ppt" -> "application/vnd.ms-powerpoint"
+            "pptx" ->
+                "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+            else -> MimeTypeMap.getSingleton()
+                .getMimeTypeFromExtension(extension)
+                .orEmpty()
         }
     }
 

@@ -1343,6 +1343,13 @@ class _DrivePageState extends ConsumerState<DrivePage>
     final l10n = context.l10n;
     final ids = _selectedFiles.toList();
     final names = {for (final file in _files) file.id: file.name};
+    var downloadedRefs = <String>{};
+    try {
+      downloadedRefs = await _db.downloadedRefs();
+    } catch (_) {}
+    if (!mounted) return;
+    var added = 0;
+    var skipped = 0;
     var failed = 0;
     final messenger = ScaffoldMessenger.of(context);
     await runBatchWithProgress(
@@ -1353,7 +1360,16 @@ class _DrivePageState extends ConsumerState<DrivePage>
         for (var i = 0; i < ids.length; i++) {
           final id = ids[i];
           final name = names[id] ?? '';
+          final ref = '$activeUid:$id';
           report(i + 1, name);
+          if (shouldSkipDriveBatchDownload(
+            ref: ref,
+            downloadedRefs: downloadedRefs,
+            transfers: transfers,
+          )) {
+            skipped += 1;
+            continue;
+          }
           try {
             final info = await client!.shareInfoOfFile(id);
             final direct = await publicClient.resolveFileShare(
@@ -1366,8 +1382,9 @@ class _DrivePageState extends ConsumerState<DrivePage>
               referer: info.url,
               pwd: info.pwd,
               via: publicClient,
-              refId: '$activeUid:$id',
+              refId: ref,
             );
+            added += 1;
           } catch (_) {
             failed += 1;
           }
@@ -1376,15 +1393,13 @@ class _DrivePageState extends ConsumerState<DrivePage>
     );
     if (!mounted) return;
     _exitSelection();
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          failed == 0
-              ? l10n.addedDownloads(ids.length)
-              : l10n.addedDownloadsPartial(ids.length - failed, failed),
-        ),
-      ),
-    );
+    final summary = switch ((skipped, failed)) {
+      (0, 0) => l10n.addedDownloads(added),
+      (0, _) => l10n.addedDownloadsPartial(added, failed),
+      (_, 0) => l10n.addedDownloadsSkipped(added, skipped),
+      _ => l10n.addedDownloadsPartialSkipped(added, skipped, failed),
+    };
+    messenger.showSnackBar(SnackBar(content: Text(summary)));
   }
 
   /// 批量复制分享链接（提取码一起复制）。
@@ -4331,6 +4346,8 @@ class _FileInfoSheetState extends ConsumerState<_FileInfoSheet> {
                     : switch (mark?.status) {
                         TransferStatus.queued => l10n.waitingToDownload,
                         TransferStatus.running => l10n.downloading,
+                        TransferStatus.paused => l10n.paused,
+                        TransferStatus.saving => l10n.saving,
                         TransferStatus.done => l10n.downloaded,
                         TransferStatus.failed => l10n.downloadFailed,
                         _ => l10n.download,
@@ -4369,6 +4386,14 @@ class _FileInfoSheetState extends ConsumerState<_FileInfoSheet> {
                         ),
                         // 下载中：确定态；大小未知时退回不确定态
                         TransferStatus.running => ring(
+                          color: scheme.onSecondary,
+                          value: (mark?.total ?? 0) > 0 ? mark?.progress : null,
+                        ),
+                        TransferStatus.paused => ring(
+                          color: scheme.onSecondary,
+                          value: (mark?.total ?? 0) > 0 ? mark?.progress : null,
+                        ),
+                        TransferStatus.saving => ring(
                           color: scheme.onSecondary,
                           value: (mark?.total ?? 0) > 0 ? mark?.progress : null,
                         ),

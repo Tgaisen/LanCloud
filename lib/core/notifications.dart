@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 
 import 'package:ffi/ffi.dart';
 import 'package:flutter/widgets.dart';
@@ -13,6 +14,65 @@ import '../l10n/l10n.dart';
 import 'app_info.dart';
 import 'platform_support.dart';
 
+enum NotificationActionKind { transfers, openFile }
+
+/// 通知点击后的类型化动作。
+///
+/// 兼容旧版本保存的 `transfers` payload；下载完成通知使用 JSON，避免
+/// Windows 路径中的空格、中文和反斜杠破坏解析。
+class NotificationAction {
+  const NotificationAction._({
+    required this.kind,
+    this.path = '',
+    this.name = '',
+  });
+
+  static const transfers = NotificationAction._(
+    kind: NotificationActionKind.transfers,
+  );
+
+  factory NotificationAction.openFile({
+    required String path,
+    required String name,
+  }) => NotificationAction._(
+    kind: NotificationActionKind.openFile,
+    path: path,
+    name: name,
+  );
+
+  final NotificationActionKind kind;
+  final String path;
+  final String name;
+
+  String encode() {
+    if (kind == NotificationActionKind.transfers) return 'transfers';
+    return jsonEncode(<String, String>{
+      'action': 'openFile',
+      'path': path,
+      'name': name,
+    });
+  }
+
+  static NotificationAction? decode(String? payload) {
+    if (payload == 'transfers') return transfers;
+    if (payload == null || payload.isEmpty) return null;
+    try {
+      final value = jsonDecode(payload);
+      if (value is! Map<String, Object?>) return null;
+      if (value['action'] != 'openFile') return null;
+      final path = value['path'];
+      if (path is! String || path.isEmpty) return null;
+      final name = value['name'];
+      return NotificationAction.openFile(
+        path: path,
+        name: name is String ? name : '',
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+}
+
 /// 通知服务：传输进度与完成提醒。
 ///
 /// 通知文案通过 [i18n] 跟随界面语言，由 RootShell 在每次构建时刷新；
@@ -25,11 +85,28 @@ class NotificationService {
   /// 当前界面语言（用于通知文案）。
   static AppLocalizations? i18n;
 
-  /// 点击传输相关通知时回调（跳转传输视图），由 RootShell 注入。
-  static void Function()? onOpenTransfers;
+  /// 点击通知时回调，由 RootShell 注入。
+  static void Function(NotificationAction action)? onAction;
 
-  /// 冷启动由通知拉起且目标是传输视图。
-  static bool pendingTransfers = false;
+  /// 应用尚未装配好回调时暂存通知动作。
+  static NotificationAction? _pendingAction;
+
+  static NotificationAction? takePendingAction() {
+    final action = _pendingAction;
+    _pendingAction = null;
+    return action;
+  }
+
+  static void _handlePayload(String? payload) {
+    final action = NotificationAction.decode(payload);
+    if (action == null) return;
+    final callback = onAction;
+    if (callback == null) {
+      _pendingAction = action;
+    } else {
+      callback(action);
+    }
+  }
 
   static const _progressId = 1000;
 
@@ -130,7 +207,7 @@ class NotificationService {
       await _plugin.initialize(
         settings: InitializationSettings(android: android, windows: windows),
         onDidReceiveNotificationResponse: (response) {
-          if (response.payload == 'transfers') onOpenTransfers?.call();
+          _handlePayload(response.payload);
         },
       );
       final androidImpl = _plugin
@@ -169,11 +246,11 @@ class NotificationService {
   Future<void> consumeLaunchDetails() async {
     try {
       final details = await _plugin.getNotificationAppLaunchDetails();
-      pendingTransfers =
-          (details?.didNotificationLaunchApp ?? false) &&
-          details?.notificationResponse?.payload == 'transfers';
+      if (details?.didNotificationLaunchApp ?? false) {
+        _handlePayload(details?.notificationResponse?.payload);
+      }
     } catch (_) {
-      pendingTransfers = false;
+      // 读取启动详情失败时保持无待处理动作。
     }
   }
 
@@ -228,7 +305,7 @@ class NotificationService {
       id: _progressId,
       title: strings?.notifProgressTitle ?? '传输中',
       body: body,
-      payload: 'transfers',
+      payload: NotificationAction.transfers.encode(),
       notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
           progressChannelId,
@@ -253,16 +330,23 @@ class NotificationService {
     _plugin.cancel(id: _progressId);
   }
 
-  void showDone({required bool upload, required String name}) {
+  void showDone({
+    required bool upload,
+    required String name,
+    String? savedPath,
+  }) {
     if (!_ready) return;
     final strings = i18n;
+    final payload = !upload && savedPath != null && savedPath.isNotEmpty
+        ? NotificationAction.openFile(path: savedPath, name: name).encode()
+        : NotificationAction.transfers.encode();
     _plugin.show(
       id: _doneId++,
       title: upload
           ? (strings?.notifUploadDone ?? '上传完成')
           : (strings?.notifDownloadDone ?? '下载完成'),
       body: name,
-      payload: 'transfers',
+      payload: payload,
       notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
           doneChannelId,
@@ -284,7 +368,7 @@ class NotificationService {
       id: _doneId++,
       title: strings?.notifFailed ?? '传输失败',
       body: error.isEmpty ? name : '$name · $error',
-      payload: 'transfers',
+      payload: NotificationAction.transfers.encode(),
       notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
           doneChannelId,

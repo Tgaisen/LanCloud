@@ -69,6 +69,60 @@ void main() {
     expect(manager.downloadMarkOf('1:f1'), isNull);
   });
 
+  test('shouldSkipDriveBatchDownload：历史、进行中和保存中跳过，失败不跳过', () {
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
+    final manager = buildTransferManagerForEnvironment(environment);
+    expect(
+      shouldSkipDriveBatchDownload(
+        ref: '1:f1',
+        downloadedRefs: const {'1:f1'},
+        transfers: manager,
+      ),
+      isTrue,
+    );
+
+    final task = TransferTask(
+      id: 'd1',
+      kind: TransferKind.download,
+      name: 'a.zip',
+      accountUid: '1',
+      refId: '1:f1',
+    )..status = TransferStatus.failed;
+    manager.tasks.add(task);
+    for (final status in [
+      TransferStatus.queued,
+      TransferStatus.running,
+      TransferStatus.paused,
+      TransferStatus.saving,
+      TransferStatus.done,
+    ]) {
+      task.status = status;
+      expect(
+        shouldSkipDriveBatchDownload(
+          ref: '1:f1',
+          downloadedRefs: const {},
+          transfers: manager,
+        ),
+        isTrue,
+        reason: status.name,
+      );
+    }
+
+    for (final status in [TransferStatus.failed, TransferStatus.canceled]) {
+      task.status = status;
+      expect(
+        shouldSkipDriveBatchDownload(
+          ref: '1:f1',
+          downloadedRefs: const {},
+          transfers: manager,
+        ),
+        isFalse,
+        reason: status.name,
+      );
+    }
+  });
+
   test('marksRevision：入队 / 取消 / 删除任务会自增（供列表低频重建）', () {
     final environment = AppEnvironment();
     addTearDown(environment.dispose);

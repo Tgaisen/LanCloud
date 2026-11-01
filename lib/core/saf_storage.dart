@@ -144,9 +144,18 @@ class SafStorage {
 
   /// 用系统默认程序打开 content URI（读权限会转授给目标应用）。
   /// 打不开（没有可处理的应用等）返回 false，与 open_filex 的口径一致。
-  static Future<bool> openFile(String uri) async {
+  static Future<bool> openFile(
+    String uri, {
+    String? mime,
+    String? displayName,
+  }) async {
     try {
-      final ok = await _channel.invokeMethod<bool>('openFile', {'uri': uri});
+      final ok = await _channel.invokeMethod<bool>('openFile', {
+        'uri': uri,
+        if (mime != null && mime.isNotEmpty) 'mime': mime,
+        if (displayName != null && displayName.isNotEmpty)
+          'displayName': displayName,
+      });
       return ok ?? false;
     } catch (_) {
       return false;

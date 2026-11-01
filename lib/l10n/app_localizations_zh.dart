@@ -381,6 +381,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get downloading => '下载中';
 
   @override
+  String get paused => '已暂停';
+
+  @override
+  String get saving => '正在保存';
+
+  @override
+  String get pauseDownload => '暂停下载';
+
+  @override
+  String get resumeDownload => '继续下载';
+
+  @override
   String get completed => '已完成';
 
   @override
@@ -401,7 +413,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get retry => '重试';
 
   @override
+  String get cancelTask => '取消任务';
+
+  @override
   String get cancelDownload => '取消下载';
+
+  @override
+  String get openFileFailed => '没有可打开此文件的应用';
 
   @override
   String get redownload => '重新下载';
@@ -1051,6 +1069,16 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String addedDownloadsPartial(int ok, int failed) {
     return '已加入 $ok 个下载任务，$failed 个解析失败';
+  }
+
+  @override
+  String addedDownloadsSkipped(int ok, int skipped) {
+    return '已加入 $ok 个下载任务，跳过 $skipped 个已下载文件';
+  }
+
+  @override
+  String addedDownloadsPartialSkipped(int ok, int skipped, int failed) {
+    return '已加入 $ok 个下载任务，跳过 $skipped 个已下载文件，$failed 个解析失败';
   }
 
   @override

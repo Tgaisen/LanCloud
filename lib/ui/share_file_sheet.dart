@@ -222,11 +222,15 @@ class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
                       resolving ||
                       status == TransferStatus.queued ||
                       status == TransferStatus.running;
+                  final paused = status == TransferStatus.paused;
+                  final saving = status == TransferStatus.saving;
                   final title = resolving
                       ? l10n.resolving
                       : switch (status) {
                           TransferStatus.queued => l10n.waitingToDownload,
                           TransferStatus.running => l10n.downloading,
+                          TransferStatus.paused => l10n.paused,
+                          TransferStatus.saving => l10n.saving,
                           TransferStatus.done => l10n.downloaded,
                           TransferStatus.failed => l10n.downloadFailed,
                           _ => l10n.download,
@@ -237,16 +241,20 @@ class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
                       leading: Icon(switch (status) {
                         TransferStatus.done => Icons.download_done,
                         TransferStatus.failed => Icons.file_download_off,
+                        TransferStatus.paused => Icons.pause_circle_outline,
+                        TransferStatus.saving => Icons.save,
                         _ => Icons.download_outlined,
                       }),
                       title: Text(title),
-                      trailing: !active
+                      trailing: !active && !paused && !saving
                           ? null
                           : M3eCircularProgressIndicator(
                               // 下载中显示确定进度；解析中 / 排队中 / 大小未知
                               // 都是不确定态
                               value:
-                                  status == TransferStatus.running &&
+                                  (status == TransferStatus.running ||
+                                          status == TransferStatus.paused ||
+                                          status == TransferStatus.saving) &&
                                       (mark?.total ?? 0) > 0
                                   ? mark?.progress
                                   : null,

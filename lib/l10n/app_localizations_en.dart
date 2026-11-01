@@ -403,6 +403,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get downloading => 'Downloading';
 
   @override
+  String get paused => 'Paused';
+
+  @override
+  String get saving => 'Saving';
+
+  @override
+  String get pauseDownload => 'Pause download';
+
+  @override
+  String get resumeDownload => 'Resume download';
+
+  @override
   String get completed => 'Completed';
 
   @override
@@ -423,7 +435,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get retry => 'Retry';
 
   @override
+  String get cancelTask => 'Cancel task';
+
+  @override
   String get cancelDownload => 'Cancel download';
+
+  @override
+  String get openFileFailed => 'No app can open this file';
 
   @override
   String get redownload => 'Download again';
@@ -1095,6 +1113,16 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String addedDownloadsPartial(int ok, int failed) {
     return 'Added $ok download tasks; $failed failed to resolve';
+  }
+
+  @override
+  String addedDownloadsSkipped(int ok, int skipped) {
+    return 'Added $ok download tasks; skipped $skipped already-downloaded files';
+  }
+
+  @override
+  String addedDownloadsPartialSkipped(int ok, int skipped, int failed) {
+    return 'Added $ok download tasks; skipped $skipped already-downloaded files; $failed failed to resolve';
   }
 
   @override

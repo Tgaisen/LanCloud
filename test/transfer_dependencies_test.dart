@@ -98,8 +98,11 @@ class _FakeTransferDownloadPort implements TransferDownloadPort {
   String? get safTreeUri => null;
 
   @override
-  Future<String> safTempFilePath(String taskId, String name) async =>
-      throw UnimplementedError('测试恢复流程不应写下载文件');
+  Future<String> partialFilePath(
+    String taskId,
+    String name, {
+    required bool staged,
+  }) async => throw UnimplementedError('测试恢复流程不应写下载文件');
 
   @override
   Future<String> uniqueSavePath(String name) async =>
@@ -265,13 +268,21 @@ void main() {
     final port = CallbackTransferDownloadPort(
       targetMode: () async => DownloadTargetMode.safDirectory,
       safTreeUri: () => 'content://tree/example',
-      safTempFilePath: (taskId, name) async => '/tmp/$taskId$name',
+      partialFilePath: (taskId, name, {required staged}) async =>
+          staged ? '/tmp/$taskId.part' : '/downloads/$taskId.part',
       uniqueSavePath: (name) async => '/downloads/$name',
     );
 
     expect(await port.targetMode(), DownloadTargetMode.safDirectory);
     expect(port.safTreeUri, 'content://tree/example');
-    expect(await port.safTempFilePath('t1', 'a.bin'), '/tmp/t1a.bin');
+    expect(
+      await port.partialFilePath('t1', 'a.bin', staged: true),
+      '/tmp/t1.part',
+    );
+    expect(
+      await port.partialFilePath('t1', 'a.bin', staged: false),
+      '/downloads/t1.part',
+    );
     expect(await port.uniqueSavePath('a.bin'), '/downloads/a.bin');
   });
 

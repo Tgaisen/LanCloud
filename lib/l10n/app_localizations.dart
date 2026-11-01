@@ -794,6 +794,30 @@ abstract class AppLocalizations {
   /// **'下载中'**
   String get downloading;
 
+  /// No description provided for @paused.
+  ///
+  /// In zh, this message translates to:
+  /// **'已暂停'**
+  String get paused;
+
+  /// No description provided for @saving.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在保存'**
+  String get saving;
+
+  /// No description provided for @pauseDownload.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂停下载'**
+  String get pauseDownload;
+
+  /// No description provided for @resumeDownload.
+  ///
+  /// In zh, this message translates to:
+  /// **'继续下载'**
+  String get resumeDownload;
+
   /// No description provided for @completed.
   ///
   /// In zh, this message translates to:
@@ -830,11 +854,23 @@ abstract class AppLocalizations {
   /// **'重试'**
   String get retry;
 
+  /// No description provided for @cancelTask.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消任务'**
+  String get cancelTask;
+
   /// No description provided for @cancelDownload.
   ///
   /// In zh, this message translates to:
   /// **'取消下载'**
   String get cancelDownload;
+
+  /// No description provided for @openFileFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有可打开此文件的应用'**
+  String get openFileFailed;
 
   /// No description provided for @redownload.
   ///
@@ -2041,6 +2077,18 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'已加入 {ok} 个下载任务，{failed} 个解析失败'**
   String addedDownloadsPartial(int ok, int failed);
+
+  /// No description provided for @addedDownloadsSkipped.
+  ///
+  /// In zh, this message translates to:
+  /// **'已加入 {ok} 个下载任务，跳过 {skipped} 个已下载文件'**
+  String addedDownloadsSkipped(int ok, int skipped);
+
+  /// No description provided for @addedDownloadsPartialSkipped.
+  ///
+  /// In zh, this message translates to:
+  /// **'已加入 {ok} 个下载任务，跳过 {skipped} 个已下载文件，{failed} 个解析失败'**
+  String addedDownloadsPartialSkipped(int ok, int skipped, int failed);
 
   /// No description provided for @retriedDownloads.
   ///
