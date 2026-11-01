@@ -23,9 +23,9 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 26.1.0-pre.30+260100230
 
 environment:
-  sdk: ^3.13.3
+  sdk: ^3.13.7
   # GitHub Actions 通过 flutter-version-file 读取该版本，避免多处手动同步。
-  flutter: 3.47.7
+  flutter: 3.47.9
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -50,14 +50,11 @@ dependencies:
   path: ^1.9.1
   path_provider: ^2.1.6
   shared_preferences: ^2.5.5
-  # 2.5.2 增加 consumer R8 rules，保留 Pigeon JNI 反射使用的 Kotlin 类，
-  # 修复 2.5.0 / 2.5.1 在 Android release 启动时的 NoSuchMethodError。
-  # https://github.com/flutter/flutter/issues/194649
   shared_preferences_android: ^2.5.4
-  # 项目仍处于 pre 阶段，允许跳过 v10 的旧安全存储数据；v11 会在读取前
-  # 上报不可迁移状态，应用据此回到登录页，并关闭缺密码的 WebDAV 功能。
   flutter_secure_storage: ^11.2.0
-  file_picker: ^13.3.0
+  file_picker: ">=13.3.0 <13.3.1"
+  # 13.3.1 起 dbus 依赖 0.8.0，而 desktop_drop 0.8.4 依赖 0.7.10，冲突。
+  # 等 file_picker 跟进 cross_file 0.4 后再处理。
   open_filex: ^5.0.0
   url_launcher: ^6.3.2
   flutter_inappwebview: 6.2.0-beta.3

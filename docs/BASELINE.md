@@ -34,7 +34,7 @@
 
 ## 工具链与依赖
 
-- Flutter `3.47.7` stable / Dart `3.13.5` / DevTools `2.60.0`。
+- Flutter `3.47.9` stable / Dart `3.13.7` / DevTools `2.60.0`。
 - `flutter_riverpod: ^3.4.3`。
 - `provider` 依赖和 `ChangeNotifierProvider` 已移除。
 - `AppController` 已删除；应用级对象由 `AppEnvironment` 组装，
@@ -67,7 +67,7 @@
 - Windows 构建出现 `flutter_inappwebview_windows` 的 CMake `CMP0175` 开发警告；
   当前不影响构建与启动，继续跟随插件升级观察。
 - Windows OverlayPortal/UIA 上游间歇风险继续观察，不误判为业务回归。
-- 开发环境 Flutter `3.47.7`，`pubspec.lock` 已记录相同 SDK 注记。
+- 开发环境 Flutter `3.47.9`，`pubspec.lock` 已记录相同 SDK 注记。
 
 ## 维护约定
 
