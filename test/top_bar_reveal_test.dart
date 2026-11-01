@@ -186,7 +186,131 @@ class FramedTabProbePage extends StatelessWidget {
   }
 }
 
+/// 模拟隐藏底栏后独立打开的网盘 / 传输 / 收藏页：页面自身持有搜索、
+/// 多选和滚动状态。
+class SecondaryPageStateProbe extends StatefulWidget {
+  const SecondaryPageStateProbe({super.key});
+
+  @override
+  State<SecondaryPageStateProbe> createState() =>
+      SecondaryPageStateProbeState();
+}
+
+class SecondaryPageStateProbeState extends State<SecondaryPageStateProbe> {
+  final TextEditingController search = TextEditingController();
+  bool selecting = false;
+
+  @override
+  void dispose() {
+    search.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: search),
+            Text(selecting ? '已进入多选' : '普通状态'),
+            TextButton(
+              onPressed: () => setState(() => selecting = true),
+              child: const Text('进入多选'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 void main() {
+  testWidgets('独立二级页面跨宽窄布局保持搜索与多选状态', (tester) async {
+    final app = AppEnvironment();
+    addTearDown(app.dispose);
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      navigationHost(
+        app,
+        const Md3ePageFrame(child: SecondaryPageStateProbe()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), '保留我');
+    await tester.tap(find.text('进入多选'));
+    await tester.pumpAndSettle();
+
+    final stateBeforeResize = tester.state<SecondaryPageStateProbeState>(
+      find.byType(SecondaryPageStateProbe),
+    );
+    expect(stateBeforeResize.search.text, '保留我');
+    expect(stateBeforeResize.selecting, isTrue);
+
+    tester.view.physicalSize = const Size(900, 800);
+    await tester.pumpAndSettle();
+    expect(
+      tester.state<SecondaryPageStateProbeState>(
+        find.byType(SecondaryPageStateProbe),
+      ),
+      same(stateBeforeResize),
+    );
+    expect(stateBeforeResize.search.text, '保留我');
+    expect(find.text('已进入多选'), findsOneWidget);
+
+    tester.view.physicalSize = const Size(400, 800);
+    await tester.pumpAndSettle();
+    expect(
+      tester.state<SecondaryPageStateProbeState>(
+        find.byType(SecondaryPageStateProbe),
+      ),
+      same(stateBeforeResize),
+    );
+    expect(find.text('已进入多选'), findsOneWidget);
+  });
+
+  testWidgets('独立页面跨宽窄布局保持滚动位置', (tester) async {
+    final app = AppEnvironment();
+    addTearDown(app.dispose);
+    tester.view.physicalSize = const Size(400, 600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(navigationHost(app, const ScaffoldProbePage()));
+    await tester.pumpAndSettle();
+    final state = tester.state<ScaffoldProbePageState>(
+      find.byType(ScaffoldProbePage),
+    );
+    expect(
+      tester
+          .widget<ColoredBox>(
+            find.descendant(
+              of: find.byType(BodySideInset),
+              matching: find.byType(ColoredBox),
+            ),
+          )
+          .color,
+      Colors.transparent,
+    );
+    state.scroll.jumpTo(300);
+    await tester.pumpAndSettle();
+    expect(state.scroll.offset, 300);
+
+    // 折叠 / 横屏时左右系统 inset 可能出现；正文让位包装也必须保持同一元素。
+    tester.view.padding = const FakeViewPadding(left: 24, right: 24);
+    tester.view.physicalSize = const Size(900, 800);
+    await tester.pumpAndSettle();
+    expect(state.scroll.offset, 300);
+
+    tester.view.physicalSize = const Size(400, 600);
+    await tester.pumpAndSettle();
+    expect(state.scroll.offset, 300);
+  });
+
   testWidgets('独立打开的标签页：顶栏底色随滚动变色（与外壳里一致）', (tester) async {
     final app = AppEnvironment();
     addTearDown(app.dispose);

@@ -98,6 +98,7 @@ class Icons {
   static const IconData more_vert = Symbols.more_vert;
   static const IconData movie_outlined = Symbols.movie;
   static const IconData music_note_outlined = Symbols.music_note;
+  static const IconData open_in_browser = Symbols.open_in_browser;
   static const IconData open_in_new = Symbols.open_in_new;
   static const IconData palette_outlined = Symbols.palette;
   static const IconData photo_library_outlined = Symbols.photo_library;

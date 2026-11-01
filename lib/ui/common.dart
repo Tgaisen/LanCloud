@@ -165,7 +165,6 @@ class Md3eBodyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!isLargeLayout(context)) return child;
     final listenable = hide;
     if (listenable == null) {
       return _build(context, 0);
@@ -177,39 +176,49 @@ class Md3eBodyCard extends StatelessWidget {
   }
 
   Widget _build(BuildContext context, double hidden) {
+    final large = isLargeLayout(context);
     final systemPadding = MediaQuery.paddingOf(context);
-    final card = Positioned(
-      // 左侧同样留 8dp + 系统 inset：横屏时挖孔可能在左边，不能贴边
-      left: 8 + systemPadding.left,
-      top: topBarHeight * (1 - hidden),
-      right: 8 + systemPadding.right,
-      bottom: 8 + systemPadding.bottom,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        // 与外壳里的标签页一致：跟随主题背景（OLED 纯黑时也是黑）
-        child: ColoredBox(color: Theme.of(context).scaffoldBackgroundColor),
-      ),
-    );
+    final Widget? card = large
+        ? Positioned(
+            key: const ValueKey('md3e-card-background'),
+            // 左侧同样留 8dp + 系统 inset：横屏时挖孔可能在左边，不能贴边
+            left: 8 + systemPadding.left,
+            top: topBarHeight * (1 - hidden),
+            right: 8 + systemPadding.right,
+            bottom: 8 + systemPadding.bottom,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              // 与外壳里的标签页一致：跟随主题背景（OLED 纯黑时也是黑）
+              child: ColoredBox(
+                color: Theme.of(context).scaffoldBackgroundColor,
+              ),
+            ),
+          )
+        : null;
     // 正文与卡片用同一组内边距，内容不会画到卡片外面
     final content = Positioned(
-      left: 8 + systemPadding.left,
+      key: const ValueKey('md3e-content'),
+      left: large ? 8 + systemPadding.left : 0,
       top: 0,
-      right: 8 + systemPadding.right,
-      bottom: 8 + systemPadding.bottom,
+      right: large ? 8 + systemPadding.right : 0,
+      bottom: large ? 8 + systemPadding.bottom : 0,
       // 卡片已经按 left/right/bottom inset 让过位了，内容里不要再让一次：
       // AppBar / SafeArea / Scrollbar 都会读这些 padding，否则会二次留白。
       // 顶部保留：状态栏高度仍由页面自己的顶栏使用。
       child: MediaQuery.removePadding(
         context: context,
-        removeLeft: true,
-        removeRight: true,
-        removeBottom: true,
+        removeLeft: large,
+        removeRight: large,
+        removeBottom: large,
         child: clipContent
-            ? ClipRRect(borderRadius: BorderRadius.circular(16), child: child)
+            ? ClipRRect(
+                borderRadius: BorderRadius.circular(large ? 16 : 0),
+                child: child,
+              )
             : child,
       ),
     );
-    return Stack(children: [card, content]);
+    return Stack(children: [?card, content]);
   }
 }
 
@@ -226,10 +235,14 @@ class BodySideInset extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final padding = MediaQuery.paddingOf(context);
-    if (padding.left == 0 && padding.right == 0) return child;
+    final hasSideInset = padding.left > 0 || padding.right > 0;
+    // 即使当前没有左右 inset 也保留这层包装。横竖屏 / 折叠切换时
+    // 左右 inset 可能从 0 变为非 0，直接替换 child 会重建整页正文。
     return ColoredBox(
-      // 让位后露出的窄条用页面底色填上，避免透出底层的黑边
-      color: Theme.of(context).scaffoldBackgroundColor,
+      // 只有真的让出侧边空间时才铺底色；否则会盖住大屏圆角卡片。
+      color: hasSideInset
+          ? Theme.of(context).scaffoldBackgroundColor
+          : Colors.transparent,
       child: Padding(
         padding: EdgeInsets.only(left: padding.left, right: padding.right),
         // 正文区已经让过位了，里面的控件不要再读这两个 inset（会二次留白）
@@ -283,11 +296,15 @@ class Md3ePageFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!isLargeLayout(context)) return ScrollTint(child: child);
+    final large = isLargeLayout(context);
+    final scheme = Theme.of(context).colorScheme;
+    // 宽窄布局共用这一条稳定路径：切换时只改背景、边距与圆角。
+    // 页面若被移到新的 Scaffold / Stack 分支，二级页自身的搜索、多选和
+    // ScrollController 都会随 State 一起重建。
     return Md3eFramedScope(
-      child: Scaffold(
-        backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
-        body: Md3eBodyCard(
+      child: Material(
+        color: large ? scheme.surfaceContainer : Colors.transparent,
+        child: Md3eBodyCard(
           topBarHeight: topBarHeight,
           hide: hide,
           child: ScrollTint(child: child),

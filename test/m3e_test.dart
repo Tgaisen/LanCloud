@@ -72,6 +72,10 @@ void main() {
     expect(find.byType(M3ELinearWavyProgressIndicator), findsOneWidget);
     expect(find.byType(M3ECircularProgressIndicator), findsOneWidget);
     expect(find.bySemanticsLabel('加载中'), findsOneWidget);
+    expect(
+      tester.widget<M3eLoadingIndicator>(find.byType(M3eLoadingIndicator)).size,
+      kM3ePageLoadingIndicatorSize,
+    );
   });
 
   testWidgets('线性进度条：平直按线宽传，波浪按容器高度传', (tester) async {

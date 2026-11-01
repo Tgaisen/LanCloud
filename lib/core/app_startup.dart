@@ -69,6 +69,10 @@ final class AppStartup {
     await _bindDriveCache(accountStore.activeUid);
     if (!settingsStore.cacheFolders) environment.drive.cache.clear();
     onChanged();
+    // RootShell 单独监听 AccountState 决定显示登录页还是主界面。恢复备份后
+    // 上面重新读取的是存储里的 activeUid，必须在这里通知，否则设置虽然已恢复，
+    // 外壳仍停留在恢复前的登录页。
+    environment.accountState.notifyAccountChanged();
     unawaited(_refreshActiveAccount());
   }
 
