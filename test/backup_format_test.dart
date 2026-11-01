@@ -75,6 +75,7 @@ void main() {
     await store.load();
     await store.setThemeMode('dark');
     await store.setOledBlack(true);
+    await store.setDynamicColor(false);
     await store.setRequestInterval(150);
     await store.setHideTopBar(true);
     await store.setHomeFolderOpenMode('drive');
@@ -87,6 +88,8 @@ void main() {
 
     expect(target.themeMode, 'dark');
     expect(target.oledBlack, isTrue);
+    expect(target.dynamicColor, isFalse);
+    expect(target.dynamicColorChosen, isTrue);
     expect(target.requestInterval, 150);
     expect(target.hideTopBar, isTrue);
     expect(target.homeFolderOpenMode, 'drive');

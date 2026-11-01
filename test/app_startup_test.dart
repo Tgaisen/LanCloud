@@ -75,6 +75,8 @@ void main() {
       applyRuntimeSettings: () => order.add('runtime-settings'),
       bindDriveCache: (uid) async => order.add('bind-cache'),
       refreshActiveAccountInfo: () async => order.add('refresh-account'),
+      normalizeDynamicColorAfterRestore: () async =>
+          order.add('normalize-dynamic-color'),
     );
 
     await startup.reloadFromStorage();
@@ -87,6 +89,7 @@ void main() {
     expect(order, [
       'accounts',
       'settings',
+      'normalize-dynamic-color',
       'runtime-settings',
       'bind-cache',
       'changed',

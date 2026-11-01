@@ -37,6 +37,7 @@ class Icons {
   static const IconData code_outlined = Symbols.code;
   static const IconData cloud_off = Symbols.cloud_off;
   static const IconData cloud_outlined = Symbols.cloud;
+  static const IconData colors = Symbols.colors;
   static const IconData cloud_download = Symbols.cloud_download;
   static const IconData cloud_done = Symbols.cloud_done;
   static const IconData cloud_upload_outlined = Symbols.cloud_upload;

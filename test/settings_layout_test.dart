@@ -29,6 +29,9 @@ void mockDynamicColorSupport({required bool supported}) {
               ? Int32List.fromList(List<int>.filled(65, 0x2E6BE6))
               : null;
         }
+        if (call.method == 'getAccentColor') {
+          return supported ? 0xFF0078D4 : null;
+        }
         return null;
       });
   addTearDown(
@@ -281,6 +284,50 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(AlertDialog), findsOneWidget);
     expect(environment.settingsState.store.dynamicColor, isFalse);
+  });
+
+  testWidgets('Windows 主题色弹窗：强调色选项显示为跟随系统', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    try {
+      mockDynamicColorSupport(supported: true);
+      expect(await DynamicColorSupport.isSupported(refresh: true), isTrue);
+      final environment = await pumpSettings(
+        tester,
+        SettingsCategory.appearanceLayout,
+      );
+
+      await scrollTo(tester, '主题色');
+      await tester.tap(find.text('主题色'));
+      await tester.pumpAndSettle();
+
+      Finder inDialog(String text) => find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text(text),
+      );
+
+      expect(inDialog('跟随系统'), findsOneWidget);
+      expect(inDialog('修改系统主题色后需重启应用生效'), findsOneWidget);
+      expect(inDialog('动态取色'), findsNothing);
+      final followSystemTile = find.widgetWithText(M3ePickTile, '跟随系统');
+      final leadingIcon = tester.widget<Icon>(
+        find.descendant(of: followSystemTile, matching: find.byType(Icon)),
+      );
+      expect(leadingIcon.icon, Icons.colors);
+
+      await tester.tap(inDialog('跟随系统'));
+      await tester.pumpAndSettle();
+      expect(environment.settingsState.store.dynamicColor, isTrue);
+      expect(
+        find.descendant(
+          of: find.widgetWithText(ListTile, '主题色'),
+          matching: find.text('跟随系统'),
+        ),
+        findsOneWidget,
+      );
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+      await DynamicColorSupport.isSupported(refresh: true);
+    }
   });
 
   testWidgets('数据组底部是「清理缓存」，点击弹出确认弹窗（取消不清理）', (tester) async {
