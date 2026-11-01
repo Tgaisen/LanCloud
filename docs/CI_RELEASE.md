@@ -158,7 +158,8 @@ minor/patch 更新互相阻塞。
   保留 main 分支和长期 Flutter SDK 缓存。
 - `CI: Flutter` 在 `windows/**`、`pubspec.yaml`、`pubspec.lock` 或对应
   workflow 改动时执行 Windows release 构建，避免原生插件问题拖到正式发版
-  才暴露。
+  才暴露。该 job 会上传与正式发布结构一致的 `windows-portable` 便携版
+  Artifact，保留 3 天。
 - 仓库默认 `GITHUB_TOKEN` 权限应为只读；只有创建 Release 的任务显式申请
   `contents: write`。
 

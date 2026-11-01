@@ -75,7 +75,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
   check:
-    name: 代码检查
+    name: 代码检查（Ubuntu）
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
