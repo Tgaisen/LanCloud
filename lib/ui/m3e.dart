@@ -237,6 +237,7 @@ class M3eShellNavigationBar extends StatelessWidget {
     required this.items,
     required this.selectedIndex,
     required this.onDestinationSelected,
+    this.springMotion = core.M3EMotion.expressiveSpatialFast,
   }) : assert(items.length > 0),
        assert(selectedIndex >= 0 && selectedIndex < items.length);
 
@@ -244,6 +245,7 @@ class M3eShellNavigationBar extends StatelessWidget {
   final List<M3eShellNavigationItem> items;
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
+  final core.M3EMotion springMotion;
 
   @override
   Widget build(BuildContext context) {
@@ -266,6 +268,7 @@ class M3eShellNavigationBar extends StatelessWidget {
       items: items,
       selectedIndex: selectedIndex,
       onDestinationSelected: onDestinationSelected,
+      springMotion: springMotion,
     );
   }
 }
@@ -284,6 +287,7 @@ class M3eFloatingNavigationBar extends StatelessWidget {
     this.preferredSelectedWidth = 110,
     this.itemSpacing = 8,
     this.iconLabelGap = 4,
+    this.springMotion = core.M3EMotion.expressiveSpatialFast,
   }) : assert(items.length > 0),
        assert(selectedIndex >= 0 && selectedIndex < items.length);
 
@@ -300,6 +304,7 @@ class M3eFloatingNavigationBar extends StatelessWidget {
   final double preferredSelectedWidth;
   final double itemSpacing;
   final double iconLabelGap;
+  final core.M3EMotion springMotion;
 
   @override
   Widget build(BuildContext context) {
@@ -334,37 +339,45 @@ class M3eFloatingNavigationBar extends StatelessWidget {
               ),
               shape: const StadiumBorder(),
               containerSize: containerHeight,
+              motion: springMotion,
               expandedShadowElevation: 0,
               collapsedShadowElevation: 0,
             ),
             content: SizedBox(
               width: tabWidth,
               height: _tabHeight,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  for (var i = 0; i < items.length; i++) ...[
-                    if (i > 0) SizedBox(width: itemSpacing),
-                    _M3eFloatingNavigationTab(
-                      item: items[i],
-                      slotIndex: i,
-                      slotCount: items.length,
-                      selected: i == selectedIndex,
-                      collapsedWidth: widths.collapsed,
-                      selectedWidth: widths.selected,
-                      iconLabelGap: iconLabelGap,
-                      reduceMotion: reduceMotion,
-                      selectedBackground: scheme.surface,
-                      selectedForeground: scheme.primary,
-                      unselectedForeground: scheme.onPrimaryContainer,
-                      tabPositionLabel: localizations.tabLabel(
-                        tabIndex: i + 1,
-                        tabCount: items.length,
+              // 新旧选中项切换时会短暂同时处于中间宽度。稳定布局固定为
+              // 一个选中项宽，若两个弹簧进度相差一帧，FittedBox 会整体
+              // 微缩到可用宽度，避免 Row 产生亚像素溢出警告。
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    for (var i = 0; i < items.length; i++) ...[
+                      if (i > 0) SizedBox(width: itemSpacing),
+                      _M3eFloatingNavigationTab(
+                        item: items[i],
+                        slotIndex: i,
+                        slotCount: items.length,
+                        selected: i == selectedIndex,
+                        collapsedWidth: widths.collapsed,
+                        selectedWidth: widths.selected,
+                        iconLabelGap: iconLabelGap,
+                        springMotion: springMotion,
+                        reduceMotion: reduceMotion,
+                        selectedBackground: scheme.surfaceContainer,
+                        selectedForeground: scheme.onSurface,
+                        unselectedForeground: scheme.onPrimaryContainer,
+                        tabPositionLabel: localizations.tabLabel(
+                          tabIndex: i + 1,
+                          tabCount: items.length,
+                        ),
+                        onTap: () => onDestinationSelected(i),
                       ),
-                      onTap: () => onDestinationSelected(i),
-                    ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           );
@@ -399,7 +412,7 @@ class M3eFloatingNavigationBar extends StatelessWidget {
   }
 }
 
-class _M3eFloatingNavigationTab extends StatelessWidget {
+class _M3eFloatingNavigationTab extends StatefulWidget {
   const _M3eFloatingNavigationTab({
     required this.item,
     required this.slotIndex,
@@ -408,6 +421,7 @@ class _M3eFloatingNavigationTab extends StatelessWidget {
     required this.collapsedWidth,
     required this.selectedWidth,
     required this.iconLabelGap,
+    required this.springMotion,
     required this.reduceMotion,
     required this.selectedBackground,
     required this.selectedForeground,
@@ -423,6 +437,7 @@ class _M3eFloatingNavigationTab extends StatelessWidget {
   final double collapsedWidth;
   final double selectedWidth;
   final double iconLabelGap;
+  final core.M3EMotion springMotion;
   final bool reduceMotion;
   final Color selectedBackground;
   final Color selectedForeground;
@@ -431,44 +446,90 @@ class _M3eFloatingNavigationTab extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  State<_M3eFloatingNavigationTab> createState() =>
+      _M3eFloatingNavigationTabState();
+}
+
+class _M3eFloatingNavigationTabState extends State<_M3eFloatingNavigationTab>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController.unbounded(
+    vsync: this,
+    value: widget.selected ? 1 : 0,
+  );
+
+  @override
+  void didUpdateWidget(covariant _M3eFloatingNavigationTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final target = widget.selected ? 1.0 : 0.0;
+    if (widget.reduceMotion) {
+      _controller
+        ..stop()
+        ..value = target;
+      return;
+    }
+    if (widget.selected == oldWidget.selected) return;
+    _controller.animateWith(
+      SpringSimulation(
+        SpringDescription.withDampingRatio(
+          ratio: widget.springMotion.damping,
+          stiffness: widget.springMotion.stiffness,
+          mass: 1,
+        ),
+        _controller.value,
+        target,
+        0,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final label = item.semanticsLabel ?? item.label;
+    final label = widget.item.semanticsLabel ?? widget.item.label;
     return Semantics(
-      key: ValueKey('m3e-nav-tab-$slotIndex-of-$slotCount'),
+      key: ValueKey('m3e-nav-tab-${widget.slotIndex}-of-${widget.slotCount}'),
       container: true,
       role: SemanticsRole.tab,
-      selected: selected,
+      selected: widget.selected,
       enabled: true,
       button: true,
-      label: '$label\n$tabPositionLabel',
-      onTap: onTap,
+      label: '$label\n${widget.tabPositionLabel}',
+      onTap: widget.onTap,
       child: ExcludeSemantics(
         child: Tooltip(
-          message: item.label,
+          message: widget.item.label,
           excludeFromSemantics: true,
           preferBelow: false,
-          child: TweenAnimationBuilder<double>(
-            tween: Tween<double>(end: selected ? 1 : 0),
-            duration: reduceMotion
-                ? Duration.zero
-                : const Duration(milliseconds: 240),
-            curve: Curves.easeOutCubic,
-            builder: (context, value, _) {
-              final progress = value.clamp(0.0, 1.0).toDouble();
+          child: AnimatedBuilder(
+            animation: _controller,
+            builder: (context, _) {
+              final progress = _controller.value.clamp(0.0, 1.0).toDouble();
               final width =
-                  collapsedWidth + (selectedWidth - collapsedWidth) * progress;
+                  widget.collapsedWidth +
+                  (widget.selectedWidth - widget.collapsedWidth) * progress;
               final background = Color.lerp(
-                selectedBackground.withValues(alpha: 0),
-                selectedBackground,
+                widget.selectedBackground.withValues(alpha: 0),
+                widget.selectedBackground,
                 progress,
               )!;
               final foreground = Color.lerp(
-                unselectedForeground,
-                selectedForeground,
+                widget.unselectedForeground,
+                widget.selectedForeground,
                 progress,
               )!;
-              final labelMaxWidth = math.max(0.0, width - 24 - iconLabelGap);
+              final labelMaxWidth = math.max(
+                0.0,
+                width - 24 - widget.iconLabelGap,
+              );
               return Ink(
+                key: ValueKey(
+                  'm3e-nav-visual-${widget.slotIndex}-of-${widget.slotCount}',
+                ),
                 width: width,
                 height: M3eFloatingNavigationBar._tabHeight,
                 decoration: BoxDecoration(
@@ -481,14 +542,19 @@ class _M3eFloatingNavigationTab extends StatelessWidget {
                   borderRadius: BorderRadius.circular(
                     M3eFloatingNavigationBar._tabHeight / 2,
                   ),
-                  onTap: onTap,
+                  onTap: widget.onTap,
                   child: Center(
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         IconTheme.merge(
+                          key: ValueKey(
+                            'm3e-nav-icon-${widget.slotIndex}-of-${widget.slotCount}',
+                          ),
                           data: IconThemeData(color: foreground, size: 24),
-                          child: selected ? item.selectedIcon : item.icon,
+                          child: widget.selected
+                              ? widget.item.selectedIcon
+                              : widget.item.icon,
                         ),
                         if (progress > 0.01)
                           ClipRect(
@@ -498,13 +564,15 @@ class _M3eFloatingNavigationTab extends StatelessWidget {
                               child: Opacity(
                                 opacity: progress,
                                 child: Padding(
-                                  padding: EdgeInsets.only(left: iconLabelGap),
+                                  padding: EdgeInsets.only(
+                                    left: widget.iconLabelGap,
+                                  ),
                                   child: ConstrainedBox(
                                     constraints: BoxConstraints(
                                       maxWidth: labelMaxWidth,
                                     ),
                                     child: Text(
-                                      item.label,
+                                      widget.item.label,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: Theme.of(context)

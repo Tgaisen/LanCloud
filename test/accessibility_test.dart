@@ -228,14 +228,71 @@ void main() {
 
     final toolbarFinder = find.byType(M3EHorizontalFloatingToolbar);
     final toolbar = tester.widget<M3EHorizontalFloatingToolbar>(toolbarFinder);
+    final scheme = Theme.of(tester.element(toolbarFinder)).colorScheme;
     expect(tester.getSize(toolbarFinder).width, lessThan(300));
     expect(
       toolbar.decoration?.contentPadding,
       const EdgeInsets.symmetric(horizontal: 8),
     );
+    expect(toolbar.decoration?.motion, M3EMotion.expressiveSpatialFast);
+    expect(
+      toolbar.decoration?.colors?.toolbarContainerColor,
+      scheme.primaryContainer,
+    );
     expect(toolbar.decoration?.expandedShadowElevation, 0);
     expect(toolbar.decoration?.collapsedShadowElevation, 0);
+    expect(
+      (tester
+                  .widget<Ink>(
+                    find.byKey(const ValueKey('m3e-nav-visual-0-of-3')),
+                  )
+                  .decoration
+              as BoxDecoration)
+          .color,
+      scheme.surfaceContainer,
+    );
+    expect(
+      tester
+          .widget<IconTheme>(find.byKey(const ValueKey('m3e-nav-icon-0-of-3')))
+          .data
+          .color,
+      scheme.onSurface,
+    );
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('M3E 悬浮导航：从最后一项切换时动画全程不溢出', (tester) async {
+    var selectedIndex = 2;
+    await tester.pumpWidget(
+      host(
+        SizedBox(
+          width: 360,
+          child: Center(
+            child: StatefulBuilder(
+              builder: (context, setState) => M3eShellNavigationBar(
+                floating: true,
+                items: navigationItems.take(3).toList(growable: false),
+                selectedIndex: selectedIndex,
+                onDestinationSelected: (index) {
+                  setState(() => selectedIndex = index);
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('m3e-nav-tab-0-of-3')));
+    await tester.pump();
+    for (var i = 0; i < 12; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(tester.takeException(), isNull);
+    }
+    await tester.pumpAndSettle();
+
+    expect(selectedIndex, 0);
   });
 
   // 首页快捷操作栏：图标按钮的文字标签在可点区域下面，必须显式合成语义节点，
