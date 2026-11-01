@@ -40,11 +40,32 @@ jobs:
         shell: pwsh
         run: |
           ./tools/release/install_nuget.ps1
-      - name: 构建 Windows release
-        run: flutter build windows --release --no-pub
-      - name: Windows release 启动冒烟
+      - name: 构建 Windows 便携版
         shell: pwsh
         run: |
+          ./tools/release/build_windows.ps1 `
+            -SkipTests `
+            -SkipPubGet `
+            -CI
+      - name: Windows 便携版启动冒烟
+        shell: pwsh
+        run: |
+          $packageDir = Get-ChildItem `
+            -LiteralPath 'outputs' `
+            -Directory `
+            -Filter 'LanCloud_windows_*_x64_portable' |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+          if (!$packageDir) {
+            throw '找不到 Windows 便携版目录'
+          }
           ./tools/release/smoke_windows.ps1 `
-            -Executable 'build/windows/x64/runner/Release/lancloud.exe' `
+            -Executable (Join-Path $packageDir.FullName 'lancloud.exe') `
             -TimeoutSeconds 15
+      - uses: actions/upload-artifact@v7
+        with:
+          name: windows-portable
+          path: outputs/LanCloud_windows_*_x64_portable.zip
+          if-no-files-found: error
+          retention-days: 3
+          compression-level: 0
