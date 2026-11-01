@@ -124,6 +124,7 @@ class Icons {
   static const IconData restore_from_trash_outlined =
       Symbols.restore_from_trash;
   static const IconData search = Symbols.search;
+  static const IconData save = Symbols.save;
   static const IconData security = Symbols.security;
   static const IconData select_all = Symbols.select_all;
   static const IconData settings_outlined = Symbols.settings;

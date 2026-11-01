@@ -21,7 +21,7 @@ import 'transfer_dependencies.dart';
 
 enum TransferKind { upload, download }
 
-enum TransferStatus { queued, running, paused, done, failed, canceled }
+enum TransferStatus { queued, running, paused, saving, done, failed, canceled }
 
 class TransferTask {
   TransferTask({
@@ -155,7 +155,8 @@ class TransferManager extends ChangeNotifier {
         );
         var error = '${row['error'] ?? ''}';
         if (status == TransferStatus.running ||
-            status == TransferStatus.queued) {
+            status == TransferStatus.queued ||
+            status == TransferStatus.saving) {
           status = TransferStatus.failed;
           error = NotificationService.i18n?.taskInterrupted ?? '应用已退出，任务中断';
         }
@@ -278,6 +279,9 @@ class TransferManager extends ChangeNotifier {
         task.status == TransferStatus.paused) {
       task.status = TransferStatus.canceled;
       unawaited(_deletePartial(task));
+    } else if (task.status == TransferStatus.saving) {
+      // 平台复制无法中途停止；保留写入中的文件，复制返回后再清理目标。
+      task.status = TransferStatus.canceled;
     }
     _bumpMarks();
     _persist(task);
@@ -450,9 +454,12 @@ class TransferManager extends ChangeNotifier {
     final task = _find(id);
     if (task == null) return;
     task.removed = true;
-    if (task.status == TransferStatus.running) {
+    if (task.status == TransferStatus.running ||
+        task.status == TransferStatus.saving) {
       task.status = TransferStatus.canceled;
-      task.cancelToken.cancel('removed');
+      if (!task.cancelToken.isCancelled) {
+        task.cancelToken.cancel('removed');
+      }
     } else {
       unawaited(_deletePartial(task));
     }
@@ -471,9 +478,12 @@ class TransferManager extends ChangeNotifier {
       final task = _find(id);
       if (task == null) continue;
       task.removed = true;
-      if (task.status == TransferStatus.running) {
+      if (task.status == TransferStatus.running ||
+          task.status == TransferStatus.saving) {
         task.status = TransferStatus.canceled;
-        task.cancelToken.cancel('removed');
+        if (!task.cancelToken.isCancelled) {
+          task.cancelToken.cancel('removed');
+        }
       } else {
         unawaited(_deletePartial(task));
       }
@@ -531,7 +541,8 @@ class TransferManager extends ChangeNotifier {
     final active = tasks.any(
       (t) =>
           t.status == TransferStatus.running ||
-          t.status == TransferStatus.queued,
+          t.status == TransferStatus.queued ||
+          t.status == TransferStatus.saving,
     );
     if (active && !_serviceRunning) {
       _serviceRunning = true;
@@ -634,7 +645,11 @@ class TransferManager extends ChangeNotifier {
       return;
     }
     final running = tasks
-        .where((t) => t.status == TransferStatus.running)
+        .where(
+          (t) =>
+              t.status == TransferStatus.running ||
+              t.status == TransferStatus.saving,
+        )
         .toList();
     if (running.isEmpty) {
       ns.cancelProgress();
@@ -778,7 +793,13 @@ class TransferManager extends ChangeNotifier {
           task.cancelToken.isCancelled) {
         return;
       }
+      task.status = TransferStatus.saving;
       task.exporting = true;
+      task.received = 0;
+      _bumpMarks();
+      notifyListeners();
+      _syncProgressNotification();
+      await _persist(task);
       if (treeUri != null) {
         await _exportToSafDir(task, treeUri, path);
       } else {

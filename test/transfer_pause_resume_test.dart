@@ -7,6 +7,8 @@ import 'package:lancloud/core/api/lanzou_client.dart';
 import 'package:lancloud/core/api/models.dart';
 import 'package:lancloud/core/data/settings_store.dart';
 import 'package:lancloud/core/download_target.dart';
+import 'package:lancloud/core/shared_downloads_gateway.dart';
+import 'package:lancloud/core/shared_downloads_storage.dart';
 import 'package:lancloud/core/transfer/resumable_downloader.dart';
 import 'package:lancloud/core/transfer/transfer_account_port.dart';
 import 'package:lancloud/core/transfer/transfer_dependencies.dart';
@@ -157,6 +159,73 @@ void main() {
       expect(await resumeFuture, isNull);
       expect(task.status, TransferStatus.canceled);
     });
+
+    test('should 在中转文件复制期间显示保存状态并禁止暂停', () async {
+      final tempDir = Directory.systemTemp.createTempSync(
+        'lancloud-transfer-saving',
+      );
+      addTearDown(() async {
+        try {
+          await tempDir.delete(recursive: true);
+        } catch (_) {}
+      });
+      final payload = List<int>.generate(4096, (index) => index % 193);
+      final shared = _BlockingSharedDownloads(payload.length);
+      final manager = TransferManager.withDependencies(
+        TransferDependencies(
+          store: _FakeTransferStore(),
+          accounts: _FakeTransferAccountPort(),
+          download: _FakeTransferDownloadPort(
+            tempDir.path,
+            mode: DownloadTargetMode.sharedDownloads,
+          ),
+          settings: StoreTransferSettingsPort(SettingsStore()),
+        ),
+        downloader: _ImmediateDownloader(payload),
+        sharedDownloads: shared,
+      );
+      addTearDown(manager.dispose);
+
+      manager.addDownload(
+        url: 'https://cdn.example/file',
+        name: 'archive.zip',
+        size: payload.length,
+      );
+      final task = manager.tasks.single;
+      await shared.started.future;
+
+      expect(task.status, TransferStatus.saving);
+      await _waitFor(() => task.received == 256);
+      manager.pause(task.id);
+      expect(task.status, TransferStatus.saving);
+
+      shared.release.complete();
+      await _waitFor(() => task.status == TransferStatus.done);
+      expect(task.savedPath, 'content://saved/archive.zip');
+    });
+
+    test('should 将应用中退出时残留的保存状态恢复为失败', () async {
+      final manager = TransferManager.withDependencies(
+        TransferDependencies(
+          store: _FakeTransferStore([
+            {
+              'id': 'd1',
+              'kind': 'download',
+              'name': 'archive.zip',
+              'status': 'saving',
+            },
+          ]),
+          accounts: _FakeTransferAccountPort(),
+          download: const _FakeTransferDownloadPort(''),
+          settings: StoreTransferSettingsPort(SettingsStore()),
+        ),
+      );
+      addTearDown(manager.dispose);
+
+      await _waitFor(() => manager.tasks.isNotEmpty);
+      expect(manager.tasks.single.status, TransferStatus.failed);
+      expect(manager.tasks.single.error, '应用已退出，任务中断');
+    });
   });
 }
 
@@ -247,10 +316,67 @@ class _ExpiredLinkDownloader implements TransferDownloader {
   }
 }
 
-class _FakeTransferStore implements TransferStore {
+class _ImmediateDownloader implements TransferDownloader {
+  _ImmediateDownloader(this.payload);
+
+  final List<int> payload;
+
   @override
-  Future<List<Map<String, Object?>>> loadTransfers() async =>
-      const <Map<String, Object?>>[];
+  Future<TransferDownloadResult> download({
+    required Dio dio,
+    required String url,
+    required String partialPath,
+    required int expectedTotal,
+    required CancelToken cancelToken,
+    required Map<String, String> headers,
+    required Duration receiveTimeout,
+    required TransferDownloadProgress onProgress,
+  }) async {
+    await File(partialPath).writeAsBytes(payload);
+    onProgress(payload.length, payload.length);
+    return TransferDownloadResult(total: payload.length, resumed: false);
+  }
+}
+
+class _BlockingSharedDownloads implements SharedDownloadsGateway {
+  _BlockingSharedDownloads(this.total);
+
+  final int total;
+  final Completer<void> started = Completer<void>();
+  final Completer<void> release = Completer<void>();
+
+  @override
+  Future<String?> defaultDirectoryPath() async => null;
+
+  @override
+  Future<bool> isSupported() async => true;
+
+  @override
+  Future<SharedDownloadedFile> save({
+    required String sourcePath,
+    required String fileName,
+    required String mime,
+    String jobId = '',
+    void Function(int copied, int total)? onProgress,
+  }) async {
+    started.complete();
+    onProgress?.call(256, total);
+    await release.future;
+    onProgress?.call(total, total);
+    return SharedDownloadedFile(
+      uri: 'content://saved/$fileName',
+      name: fileName,
+    );
+  }
+}
+
+class _FakeTransferStore implements TransferStore {
+  _FakeTransferStore([this.rows = const <Map<String, Object?>>[]]);
+
+  final List<Map<String, Object?>> rows;
+
+  @override
+  Future<List<Map<String, Object?>>> loadTransfers() async => rows;
 
   @override
   Future<void> saveTransfer({
@@ -300,9 +426,13 @@ class _FakeTransferAccountPort implements TransferAccountPort {
 }
 
 class _FakeTransferDownloadPort implements TransferDownloadPort {
-  const _FakeTransferDownloadPort(this.directory);
+  const _FakeTransferDownloadPort(
+    this.directory, {
+    this.mode = DownloadTargetMode.fixedDirectory,
+  });
 
   final String directory;
+  final DownloadTargetMode mode;
 
   @override
   Future<String> partialFilePath(
@@ -315,8 +445,7 @@ class _FakeTransferDownloadPort implements TransferDownloadPort {
   String? get safTreeUri => null;
 
   @override
-  Future<DownloadTargetMode> targetMode() async =>
-      DownloadTargetMode.fixedDirectory;
+  Future<DownloadTargetMode> targetMode() async => mode;
 
   @override
   Future<String> uniqueSavePath(String name) async => p.join(directory, name);

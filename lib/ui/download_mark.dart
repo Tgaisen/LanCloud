@@ -48,13 +48,16 @@ class DownloadMarkIcon extends StatelessWidget {
     return ListenableBuilder(
       listenable: manager.marksRevision,
       builder: (BuildContext context, _) {
-        if (manager.downloadMarkOf(markKey) == null) {
+        final task = manager.downloadMarkOf(markKey);
+        if (task == null) {
           return const SizedBox.shrink();
         }
         return Padding(
           padding: EdgeInsetsDirectional.only(start: gap),
           child: Icon(
-            Icons.download_done,
+            task.status == TransferStatus.saving
+                ? Icons.save
+                : Icons.download_done,
             size: size,
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
@@ -86,6 +89,7 @@ Future<void> showDownloadTaskMenu(
   required TransferTask task,
   required Future<void> Function() onRedownload,
 }) async {
+  if (task.status == TransferStatus.saving) return;
   final manager = ProviderScope.containerOf(
     context,
     listen: false,

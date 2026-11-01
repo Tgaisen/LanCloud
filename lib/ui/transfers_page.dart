@@ -323,6 +323,7 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
   /// [anchorContext] 是那颗 ⋯ 按钮（桌面端右键时是整行）的 context——
   /// 菜单贴它下方右对齐弹出。
   Future<void> _taskMenu(TransferTask task, BuildContext anchorContext) async {
+    if (task.status == TransferStatus.saving) return;
     final anchor = m3eMenuAnchorOf(anchorContext);
     if (anchor == null) return;
     final l10n = context.l10n;
@@ -793,7 +794,8 @@ class _TransferListSliver extends StatelessWidget {
     bool isActive(TransferTask t) =>
         t.status == TransferStatus.queued ||
         t.status == TransferStatus.running ||
-        t.status == TransferStatus.paused;
+        t.status == TransferStatus.paused ||
+        t.status == TransferStatus.saving;
     final active = tasks.where(isActive).toList();
     final finished = tasks
         .where((t) => !isActive(t))
@@ -920,6 +922,8 @@ class _TransferTile extends StatelessWidget {
             : l10n.downloading;
       case TransferStatus.paused:
         return l10n.paused;
+      case TransferStatus.saving:
+        return l10n.saving;
       case TransferStatus.done:
         return l10n.completed;
       case TransferStatus.failed:
@@ -931,7 +935,10 @@ class _TransferTile extends StatelessWidget {
 
   String _sizeText(AppLocalizations l10n) {
     if (task.total <= 0) {
-      return task.status == TransferStatus.running ? l10n.unknownSize : '';
+      return task.status == TransferStatus.running ||
+              task.status == TransferStatus.saving
+          ? l10n.unknownSize
+          : '';
     }
     if (task.received >= task.total) return formatBytes(task.total);
     return '${formatBytes(task.received)} / ${formatBytes(task.total)}';
@@ -952,6 +959,7 @@ class _TransferTile extends StatelessWidget {
         task.status == TransferStatus.running ||
         task.status == TransferStatus.queued;
     final paused = task.status == TransferStatus.paused;
+    final saving = task.status == TransferStatus.saving;
     // 与首页 / 收藏共用同一套列表项布局，圆角由外层 SegmentedList 控制
     // 菜单要贴在被点的那颗 ⋯（桌面端右键时是整行）下方，所以这里得拿到两个 context
     return Builder(
@@ -977,43 +985,45 @@ class _TransferTile extends StatelessWidget {
           onLongPress: onLongPress,
         ),
         // 桌面端右键：与 ⋯ 菜单同一套操作（多选时不响应，和 ⋯ 一起隐藏）
-        onSecondaryTap: selecting ? null : () => onMenu(rowContext),
+        onSecondaryTap: selecting || saving ? null : () => onMenu(rowContext),
         // 多选期间隐藏行内操作（避免误触），但保留占位：条目高度不跳
-        trailing: HideKeepingSpace(
-          hidden: selecting,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (task.kind == TransferKind.download && active)
-                M3eIconButton(
-                  tooltip: l10n.pauseDownload,
-                  icon: Icons.pause,
-                  onPressed: () => manager.pause(task.id),
+        trailing: saving
+            ? null
+            : HideKeepingSpace(
+                hidden: selecting,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (task.kind == TransferKind.download && active)
+                      M3eIconButton(
+                        tooltip: l10n.pauseDownload,
+                        icon: Icons.pause,
+                        onPressed: () => manager.pause(task.id),
+                      ),
+                    if (paused)
+                      M3eIconButton(
+                        tooltip: l10n.resumeDownload,
+                        icon: Icons.play_arrow,
+                        onPressed: () => manager.resume(task.id),
+                      ),
+                    if (active || paused)
+                      M3eIconButton(
+                        tooltip: l10n.cancelTask,
+                        icon: Icons.close,
+                        onPressed: () => manager.removeTask(task.id),
+                      ),
+                    if (!active && !paused)
+                      Builder(
+                        builder: (BuildContext buttonContext) => M3eIconButton(
+                          tooltip: l10n.moreActions,
+                          icon: Icons.more_vert,
+                          onPressed: () => onMenu(buttonContext),
+                        ),
+                      ),
+                  ],
                 ),
-              if (paused)
-                M3eIconButton(
-                  tooltip: l10n.resumeDownload,
-                  icon: Icons.play_arrow,
-                  onPressed: () => manager.resume(task.id),
-                ),
-              if (active || paused)
-                M3eIconButton(
-                  tooltip: l10n.cancelTask,
-                  icon: Icons.close,
-                  onPressed: () => manager.removeTask(task.id),
-                ),
-              if (!active && !paused)
-                Builder(
-                  builder: (BuildContext buttonContext) => M3eIconButton(
-                    tooltip: l10n.moreActions,
-                    icon: Icons.more_vert,
-                    onPressed: () => onMenu(buttonContext),
-                  ),
-                ),
-            ],
-          ),
-        ),
-        bottom: active || paused
+              ),
+        bottom: active || paused || saving
             ? M3eLinearProgressIndicator(
                 // 运行中的长任务用波浪进度条；暂停后保持静态，避免误以为仍在传。
                 // 进度 / 轨道用 M3 的默认角色（primary / secondary container），

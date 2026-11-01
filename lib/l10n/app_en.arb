@@ -122,6 +122,7 @@
   "uploading": "Uploading",
   "downloading": "Downloading",
   "paused": "Paused",
+  "saving": "Saving",
   "pauseDownload": "Pause download",
   "resumeDownload": "Resume download",
   "completed": "Completed",

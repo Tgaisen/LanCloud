@@ -205,6 +205,52 @@ void main() {
     expect(progress.wavy, isFalse);
   });
 
+  testWidgets('正在保存的下载显示复制进度且不提供任务操作', (tester) async {
+    final app = AppEnvironment();
+    final manager = buildTransferManagerForEnvironment(app);
+    manager.tasks.add(
+      TransferTask(
+          id: 'd1',
+          kind: TransferKind.download,
+          name: 'saving.zip',
+          accountUid: '',
+        )
+        ..status = TransferStatus.saving
+        ..total = 100
+        ..received = 60,
+    );
+    await tester.pumpWidget(
+      _transferTestHost(
+        app: app,
+        manager: manager,
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const TransfersPage(),
+        ),
+      ),
+    );
+    final downloadTab = find.descendant(
+      of: find.byType(M3eConnectedButtonGroup<int>),
+      matching: find.byIcon(app_icons.Icons.download),
+    );
+    await tester.tap(downloadTab.first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(find.textContaining('正在保存'), findsOneWidget);
+    expect(find.byTooltip('暂停下载'), findsNothing);
+    expect(find.byTooltip('继续下载'), findsNothing);
+    expect(find.byTooltip('取消任务'), findsNothing);
+    expect(find.byTooltip('更多操作'), findsNothing);
+    final progress = tester.widget<M3eLinearProgressIndicator>(
+      find.byType(M3eLinearProgressIndicator),
+    );
+    expect(progress.value, closeTo(0.6, 0.001));
+    expect(progress.wavy, isTrue);
+  });
+
   testWidgets('进行中任务使用取消按钮：上传仅一个，下载保留暂停', (tester) async {
     final app = AppEnvironment();
     final manager = buildTransferManagerForEnvironment(app);

@@ -920,7 +920,8 @@ class _RootShellState extends ConsumerState<RootShell>
       .where(
         (t) =>
             t.status == TransferStatus.running ||
-            t.status == TransferStatus.queued,
+            t.status == TransferStatus.queued ||
+            t.status == TransferStatus.saving,
       )
       .toList();
 

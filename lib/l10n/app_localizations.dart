@@ -800,6 +800,12 @@ abstract class AppLocalizations {
   /// **'已暂停'**
   String get paused;
 
+  /// No description provided for @saving.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在保存'**
+  String get saving;
+
   /// No description provided for @pauseDownload.
   ///
   /// In zh, this message translates to:

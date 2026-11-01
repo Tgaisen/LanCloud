@@ -258,6 +258,21 @@ void main() {
     await tester.pump();
     expect(find.text('下载中'), findsOneWidget);
 
+    // 正在保存：文案切换，进度环继续显示复制进度
+    task.status = TransferStatus.saving;
+    task.received = 75;
+    manager.marksRevision.value += 1;
+    await tester.pump();
+    expect(find.text('正在保存'), findsOneWidget);
+    expect(
+      tester
+          .widget<M3eCircularProgressIndicator>(
+            find.byType(M3eCircularProgressIndicator),
+          )
+          .value,
+      closeTo(0.75, 0.001),
+    );
+
     // 已完成：勾图标、「已下载」、无环
     task.status = TransferStatus.done;
     task.savedPath = '/tmp/a.zip';

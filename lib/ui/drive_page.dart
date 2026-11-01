@@ -4332,6 +4332,7 @@ class _FileInfoSheetState extends ConsumerState<_FileInfoSheet> {
                         TransferStatus.queued => l10n.waitingToDownload,
                         TransferStatus.running => l10n.downloading,
                         TransferStatus.paused => l10n.paused,
+                        TransferStatus.saving => l10n.saving,
                         TransferStatus.done => l10n.downloaded,
                         TransferStatus.failed => l10n.downloadFailed,
                         _ => l10n.download,
@@ -4374,6 +4375,10 @@ class _FileInfoSheetState extends ConsumerState<_FileInfoSheet> {
                           value: (mark?.total ?? 0) > 0 ? mark?.progress : null,
                         ),
                         TransferStatus.paused => ring(
+                          color: scheme.onSecondary,
+                          value: (mark?.total ?? 0) > 0 ? mark?.progress : null,
+                        ),
+                        TransferStatus.saving => ring(
                           color: scheme.onSecondary,
                           value: (mark?.total ?? 0) > 0 ? mark?.progress : null,
                         ),

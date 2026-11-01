@@ -38,7 +38,7 @@
 | `AppCompositionRoot` | `core/app_composition_root.dart` | 用 `AppEnvironment` 与显式恢复回调组装备份、传输依赖和 Riverpod 容器；不触发启动副作用 |
 | `AppEnvironment` | `core/app_environment.dart` | 唯一组装导航、账号、设置、运行时、客户端与应用级服务，只保存实例，不触发启动副作用 |
 | `AppStartup` | `core/app_startup.dart` | 编排安全存储检查、账号/设置加载、运行时同步、目录绑定、ready、恢复重载与后台任务 |
-| `TransferManager` | `core/transfer/transfer_manager.dart` | 上传/下载任务队列、暂停/继续、进度与重试 |
+| `TransferManager` | `core/transfer/transfer_manager.dart` | 上传/下载任务队列、暂停/继续、保存阶段、进度与重试 |
 | `TransferStore` | `core/transfer/transfer_store.dart` | 传输记录恢复/保存/删除与下载标记端口；`AppDbTransferStore` 适配既有数据库 |
 | `DioTransferDownloader` / `TransferDownloader` | `core/transfer/resumable_downloader.dart` | 用稳定 `.part` 文件、HTTP Range 与 `Content-Range` 校验实现断点续传；服务端不支持时回退完整下载 |
 | `TransferAccountPort` | `core/transfer/transfer_account_port.dart` | 当前 UID、账号存在性、账号客户端与公开客户端端口；包装账号存储和客户端注册表 |
@@ -192,7 +192,7 @@ User-Agent 也迁入 `AdvancedConnectionSettingsTile`；对应 setter 统一同�
 | `core/data/settings_store.dart` | 设置项，`shared_preferences` |
 | `core/data/account_store.dart`、`core/data/secure_storage.dart` | 账号与凭据，`flutter_secure_storage` |
 | `core/data/account_data.dart` | 账号模型 |
-| `core/transfer/transfer_manager.dart` | 任务队列、暂停/继续、进度、重试；网络续传委托给 `resumable_downloader.dart` |
+| `core/transfer/transfer_manager.dart` | 任务队列、暂停/继续、保存阶段、进度、重试；网络续传委托给 `resumable_downloader.dart` |
 | `core/backup/` | 本地备份与恢复：`backup_service`（编排）、`backup_crypto`（加解密）、`backup_sections`、`webdav_client` / `webdav_store` |
 | `core/update/` | 更新检查：`update_service`、`release_info`、`changelog` |
 | `core/platform_support.dart` | 平台判定与 Android SDK 级别，所有平台分支的唯一入口 |
