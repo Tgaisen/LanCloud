@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter/foundation.dart' show listEquals, visibleForTesting;
 import 'package:flutter/services.dart';
@@ -21,6 +23,7 @@ import 'core/notifications.dart';
 import 'core/platform_support.dart';
 import 'core/share_inbox.dart';
 import 'core/system_motion.dart';
+import 'core/system_open.dart';
 import 'core/theme_settings_state.dart';
 import 'core/transfer/transfer_manager.dart';
 import 'core/transfer/transfer_manager_provider.dart';
@@ -541,7 +544,7 @@ class _RootShellState extends ConsumerState<RootShell>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _navigation.onSwitchTab = null;
-    NotificationService.onOpenTransfers = null;
+    NotificationService.onAction = null;
     SharedInbox.instance.onText = null;
     SharedInbox.instance.onFiles = null;
     SharedInbox.instance.dispose();
@@ -747,7 +750,7 @@ class _RootShellState extends ConsumerState<RootShell>
       showFavorites: _appearance.navShowFavorites,
     );
     _navigation.onSwitchTab = _goTo;
-    NotificationService.onOpenTransfers = () => _goTo(_viewTransfers);
+    NotificationService.onAction = _handleNotificationAction;
     SharedInbox.instance.onText = _handleSharedText;
     SharedInbox.instance.onFiles = _handleSharedFiles;
     SharedInbox.instance.attach();
@@ -761,23 +764,32 @@ class _RootShellState extends ConsumerState<RootShell>
       IncomingLinks.instance.pending = null;
       if (url != null) _handleIncomingLink(url);
       _checkClipboard();
-      if (_pendingStartView != null) {
-        final view = _pendingStartView!;
-        _pendingStartView = null;
-        _goTo(view);
+      final notificationAction = NotificationService.takePendingAction();
+      if (notificationAction != null) {
+        _handleNotificationAction(notificationAction);
       }
     });
-    if (NotificationService.pendingTransfers) {
-      NotificationService.pendingTransfers = false;
-      _pendingStartView = _viewTransfers;
-    }
     _index = _ids.indexOf(_defaultViewId).clamp(0, _ids.length - 1);
     // 记录初始视图，便于页面判断自己是否被激活
     _navigation.activeTab.value = _ids[_index];
   }
 
-  /// 冷启动时要额外打开的视图（例如从传输通知进来），可能在底栏外。
-  int? _pendingStartView;
+  void _handleNotificationAction(NotificationAction action) {
+    switch (action.kind) {
+      case NotificationActionKind.transfers:
+        _goTo(_viewTransfers);
+      case NotificationActionKind.openFile:
+        unawaited(_openFileFromNotification(action));
+    }
+  }
+
+  Future<void> _openFileFromNotification(NotificationAction action) async {
+    final opened = await openFileWithSystem(action.path, name: action.name);
+    if (opened || !mounted) return;
+    _goTo(_viewTransfers);
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(context.l10n.openFileFailed)));
+  }
 
   void _handleSharedText(String text) {
     final link = LanzouLink.parse(text);

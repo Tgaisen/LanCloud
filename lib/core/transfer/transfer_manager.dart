@@ -676,7 +676,11 @@ class TransferManager extends ChangeNotifier {
     if (!_dependencies.settings.notifyDone) return;
     final ns = _notifications;
     if (task.status == TransferStatus.done) {
-      ns.showDone(upload: task.kind == TransferKind.upload, name: task.name);
+      ns.showDone(
+        upload: task.kind == TransferKind.upload,
+        name: task.name,
+        savedPath: task.kind == TransferKind.download ? task.savedPath : null,
+      );
     } else if (task.status == TransferStatus.failed) {
       ns.showFailed(name: task.name, error: task.error ?? '');
     }
