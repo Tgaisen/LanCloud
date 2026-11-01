@@ -23,6 +23,7 @@ final class AppStartup {
     Future<void> Function(String? uid)? bindDriveCache,
     this.refreshActiveAccountInfo,
     this.enableDynamicColorIfUnset,
+    this.normalizeDynamicColorAfterRestore,
   }) : _secureStorageUpgradeCheck =
            secureStorageUpgradeCheck ?? checkSecureStorageUpgradeOnce,
        _loadAccounts = loadAccounts ?? environment.accountState.store.load,
@@ -34,6 +35,7 @@ final class AppStartup {
   final void Function()? applyRuntimeSettings;
   final Future<void> Function()? refreshActiveAccountInfo;
   final Future<void> Function()? enableDynamicColorIfUnset;
+  final Future<void> Function()? normalizeDynamicColorAfterRestore;
   final Future<SecureStorageUpgradeStatus?> Function()
   _secureStorageUpgradeCheck;
   final Future<void> Function() _loadAccounts;
@@ -62,6 +64,7 @@ final class AppStartup {
       environment.runtimeState.secureStorageNeedsReauthentication.value = false;
     }
     await _loadSettings();
+    await _normalizeDynamicColorAfterRestore();
     _syncRuntimeSettings();
     environment.themeSettings.refresh();
     environment.languageClipboardSettings.refresh();
@@ -114,6 +117,11 @@ final class AppStartup {
   Future<void> _enableDynamicColor() {
     return enableDynamicColorIfUnset?.call() ??
         environment.themeSettings.enableDynamicColorIfUnset();
+  }
+
+  Future<void> _normalizeDynamicColorAfterRestore() {
+    return normalizeDynamicColorAfterRestore?.call() ??
+        environment.themeSettings.normalizeDynamicColorAfterRestore();
   }
 
   Future<void> _refreshActiveAccount() {

@@ -573,6 +573,7 @@
   "scanNotLanzou": "No LanCloud share link found",
   "dynamicColor": "Dynamic color",
   "dynamicColorSubtitle": "Use colors from the system wallpaper (Android 12+)",
+  "followSystemColorRestartHint": "Restart the app after changing the system theme color",
   "dynamicColorUnsupported": "Dynamic color is not supported on this system",
   "dynamicColorKeywords": "dynamic color monet wallpaper theme",
   "clipboardLinkPrompt": "Detect clipboard links",

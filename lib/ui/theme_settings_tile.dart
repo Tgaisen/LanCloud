@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart' hide Icons;
 
+import '../core/platform_support.dart';
 import '../core/theme_settings_state.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
@@ -28,6 +29,17 @@ String themeSeedLabel(AppLocalizations l10n, int seed) => switch (seed) {
   0xFF8B5000 => l10n.colorAmber,
   _ => l10n.custom,
 };
+
+/// 主题色设置行当前选择的显示名称。
+String themeColorSettingLabel(
+  AppLocalizations l10n, {
+  required bool dynamicColor,
+  required int seed,
+}) => dynamicColor
+    ? PlatformSupport.isWindows
+          ? l10n.followSystem
+          : l10n.dynamicColor
+    : themeSeedLabel(l10n, seed);
 
 /// 将全局动画模式映射为当前语言下的名称。
 String motionModeLabel(AppLocalizations l10n, String mode) => switch (mode) {
@@ -57,6 +69,13 @@ Future<ThemeColorSelection?> showThemeColorPicker(
   };
   // 不支持时动态取色按未选中处理（也点不动）。
   final dynamicSelected = dynamicSupported && dynamicColor;
+  final isWindows = PlatformSupport.isWindows;
+  final dynamicLabel = isWindows ? l10n.followSystem : l10n.dynamicColor;
+  final dynamicSubtitle = !dynamicSupported
+      ? l10n.dynamicColorUnsupported
+      : isWindows
+      ? l10n.followSystemColorRestartHint
+      : l10n.dynamicColorSubtitle;
   return showDialog<ThemeColorSelection>(
     context: context,
     builder: (dialogContext) => AlertDialog(
@@ -72,14 +91,14 @@ Future<ThemeColorSelection?> showThemeColorPicker(
             DialogListGroup(
               children: [
                 M3ePickTile(
-                  label: l10n.dynamicColor,
-                  subtitle: dynamicSupported
-                      ? l10n.dynamicColorSubtitle
-                      : l10n.dynamicColorUnsupported,
+                  label: dynamicLabel,
+                  subtitle: dynamicSubtitle,
                   selected: dynamicSelected,
                   singleSelect: true,
                   enabled: dynamicSupported,
-                  leading: const Icon(Icons.wallpaper_outlined),
+                  leading: Icon(
+                    isWindows ? Icons.colors : Icons.wallpaper_outlined,
+                  ),
                   onTap: () => Navigator.of(
                     dialogContext,
                   ).pop<ThemeColorSelection>((dynamicColor: true, seed: null)),
@@ -245,9 +264,11 @@ class ThemeColorSettingsTile extends ConsumerWidget {
           leading: const Icon(Icons.palette_outlined),
           title: Text(l10n.themeColor),
           subtitle: Text(
-            dynamicColor
-                ? l10n.dynamicColor
-                : themeSeedLabel(l10n, settings.themeSeed),
+            themeColorSettingLabel(
+              l10n,
+              dynamicColor: dynamicColor,
+              seed: settings.themeSeed,
+            ),
           ),
           // 动态取色时没有固定颜色可展示，尾部不再画色块。
           trailing: dynamicColor

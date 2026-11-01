@@ -3086,6 +3086,12 @@ abstract class AppLocalizations {
   /// **'跟随系统壁纸取色'**
   String get dynamicColorSubtitle;
 
+  /// No description provided for @followSystemColorRestartHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'修改系统主题色后需重启应用生效'**
+  String get followSystemColorRestartHint;
+
   /// No description provided for @dynamicColorUnsupported.
   ///
   /// In zh, this message translates to:
