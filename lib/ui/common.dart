@@ -1855,7 +1855,12 @@ class BatchAction extends StatelessWidget {
     // MD3E standard 图标按钮：容器底色跟外层悬浮条一致（不画可见容器，
     // 只有状态层）+ 按下形状形变；没有可见文字，tooltip 同时充当读屏名称，
     // 禁用时读作「下载，已停用」（M3eIconButton 内部已处理语义）。
-    return M3eIconButton(icon: icon, tooltip: label, onPressed: onPressed);
+    return M3eIconButton(
+      icon: icon,
+      tooltip: label,
+      onPressed: onPressed,
+      enablePressedMorph: false,
+    );
   }
 }
 
@@ -2699,15 +2704,13 @@ class HideKeepingSpace extends StatelessWidget {
   }
 }
 
-/// 多选底部操作栏（MD3E）：菜单同款的悬浮卡片 + 一排图标按钮。
+/// 多选底部操作栏（MD3E）：胶囊 + 一排圆形图标按钮。
 ///
 /// **参考 M3 规范**：密集排布的操作组成一行图标按钮（图标含义明确，
-/// tooltip 描述动作）；卡片沿用弹出菜单的样式——`surface container low`
-/// 底色、16dp 圆角、elevation 3（M3 给菜单的是 level 2，这里与
-/// `showM3eMenu` 保持一致用 3）。
+/// tooltip 描述动作）；容器使用 `surface container highest` 和胶囊形圆角。
 /// **本应用的设计决定（非 M3 规范）**：卡片宽度跟随按钮组、水平居中
-/// （不再永远占满屏幕）；按钮之间留 [kM3EIconButtonSpacing]（与属性弹窗
-/// 那排常用操作同值）。
+/// （不再永远占满屏幕）；M3E 图标按钮的 48dp 触控目标比 40dp 可见容器
+/// 四周各多 4dp，因此容器内边距取 4dp、按钮间距取 0dp，视觉间距均为 8dp。
 /// 网盘、传输、收藏、分享浏览页共用，样式保持一致。
 class BatchActionBar extends StatelessWidget {
   const BatchActionBar({super.key, required this.children});
@@ -2717,6 +2720,8 @@ class BatchActionBar extends StatelessWidget {
   /// 悬浮底栏槽位里的上留白：胶囊本身 80dp 高，槽位另有 16dp 顶留白，
   /// 多选条按整槽避让就会比贴着胶囊多出一截空白。
   static const double _floatingNavTopGap = 16;
+  static const double _contentPadding = 4;
+  static const double _buttonSpacing = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -2747,19 +2752,24 @@ class BatchActionBar extends StatelessWidget {
       child: Align(
         alignment: Alignment.center,
         child: Material(
-          // 与弹出菜单（showM3eMenu）同一套卡片：底色 / 圆角 / 阴影
-          color: scheme.surfaceContainerLow,
-          elevation: 3,
+          key: const ValueKey('batch-action-bar-surface'),
+          color: scheme.surfaceContainerHighest,
+          elevation: 0,
           surfaceTintColor: Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
+          shape: const StadiumBorder(),
           clipBehavior: Clip.antiAlias,
           child: Padding(
-            padding: const EdgeInsets.all(kM3EIconButtonSpacing),
+            key: const ValueKey('batch-action-bar-content'),
+            padding: const EdgeInsets.symmetric(
+              horizontal: _contentPadding,
+              vertical: _contentPadding,
+            ),
             child: Row(
+              key: const ValueKey('batch-action-bar-row'),
               mainAxisSize: MainAxisSize.min,
               children: [
                 for (var i = 0; i < children.length; i++) ...[
-                  if (i > 0) const SizedBox(width: kM3EIconButtonSpacing),
+                  if (i > 0) const SizedBox(width: _buttonSpacing),
                   children[i],
                 ],
               ],

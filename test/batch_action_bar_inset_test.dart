@@ -5,6 +5,7 @@ import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/common.dart';
+import 'package:lancloud/ui/m3e.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
@@ -57,6 +58,79 @@ EdgeInsets barPadding(WidgetTester tester) {
 }
 
 void main() {
+  testWidgets('多选条使用胶囊、8dp 间距和圆形按钮波纹', (tester) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          navigationAppearanceSettingsStateProvider.overrideWithValue(
+            environment.navigationAppearanceSettings,
+          ),
+        ],
+        child: MaterialApp(
+          home: const Scaffold(
+            body: Align(
+              alignment: Alignment.bottomCenter,
+              child: BatchActionBar(
+                children: [
+                  BatchAction(
+                    icon: Icons.download_outlined,
+                    label: '下载',
+                    onPressed: null,
+                  ),
+                  BatchAction(icon: Icons.copy, label: '复制', onPressed: null),
+                  BatchAction(
+                    icon: Icons.delete_outline,
+                    label: '删除',
+                    onPressed: null,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final surface = tester.widget<Material>(
+      find.byKey(const ValueKey('batch-action-bar-surface')),
+    );
+    final scheme = Theme.of(tester.element(find.byType(BatchActionBar)))
+        .colorScheme;
+    expect(surface.color, scheme.surfaceContainerHighest);
+    expect(surface.elevation, 0);
+    expect(surface.shape, const StadiumBorder());
+
+    final content = tester.widget<Padding>(
+      find.byKey(const ValueKey('batch-action-bar-content')),
+    );
+    expect(
+      content.padding,
+      const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+    );
+    expect(
+      tester
+          .getSize(find.byKey(const ValueKey('batch-action-bar-surface')))
+          .height,
+      56,
+    );
+
+    final row = tester.widget<Row>(
+      find.byKey(const ValueKey('batch-action-bar-row')),
+    );
+    expect((row.children[1] as SizedBox).width, 0);
+    expect((row.children[3] as SizedBox).width, 0);
+    expect(
+      tester
+          .widgetList<M3eIconButton>(find.byType(M3eIconButton))
+          .every((button) => !button.enablePressedMorph),
+      isTrue,
+    );
+  });
+
   testWidgets('普通底栏：多选条贴在底栏上方 12dp', (tester) async {
     final environment = AppEnvironment();
     environment.settingsState.store.floatingNavBar = false;

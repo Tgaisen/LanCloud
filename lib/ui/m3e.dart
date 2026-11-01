@@ -1488,6 +1488,7 @@ class M3eIconButton extends StatefulWidget {
     this.selected = false,
     this.containerColor,
     this.iconColor,
+    this.enablePressedMorph = true,
   }) : assert(icon != null || iconBuilder != null, 'icon 和 iconBuilder 至少给一个');
 
   /// 默认图标；用 [iconBuilder] 自定义时可以不传。
@@ -1512,6 +1513,11 @@ class M3eIconButton extends StatefulWidget {
   /// 图标颜色；null = on surface variant（standard 风格）。给了可见容器时
   /// 一般传与容器配对 on 色（例如 secondaryContainer → onSecondaryContainer）。
   final Color? iconColor;
+
+  /// 按下时是否执行 M3E“圆 → 8dp 方角”形状形变。
+  ///
+  /// 胶囊内按钮需要保持圆形波纹时关闭；其他标准图标按钮保持默认开启。
+  final bool enablePressedMorph;
 
   @override
   State<M3eIconButton> createState() => _M3eIconButtonState();
@@ -1544,6 +1550,9 @@ class _M3eIconButtonState extends State<M3eIconButton>
   @override
   void didUpdateWidget(covariant M3eIconButton oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (!widget.enablePressedMorph) {
+      _press.controller.value = 0;
+    }
     if (widget.selected != oldWidget.selected) {
       _selection.setMorphed(context, widget.selected);
     }
@@ -1592,7 +1601,11 @@ class _M3eIconButtonState extends State<M3eIconButton>
                 );
                 final shape = RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(
-                    m3eLerpRadius(rest, _pressedRadius, _press.value),
+                    m3eLerpRadius(
+                      rest,
+                      _pressedRadius,
+                      widget.enablePressedMorph ? _press.value : 0,
+                    ),
                   ),
                 );
                 return Material(
@@ -1601,8 +1614,9 @@ class _M3eIconButtonState extends State<M3eIconButton>
                   clipBehavior: Clip.antiAlias,
                   child: InkResponse(
                     onTap: widget.onPressed,
-                    onHighlightChanged: (pressed) =>
-                        _press.setMorphed(context, pressed),
+                    onHighlightChanged: widget.enablePressedMorph
+                        ? (pressed) => _press.setMorphed(context, pressed)
+                        : null,
                     containedInkWell: true,
                     customBorder: shape,
                     hoverColor: layer.withValues(alpha: 0.08),
