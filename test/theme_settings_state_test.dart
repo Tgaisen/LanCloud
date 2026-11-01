@@ -46,4 +46,27 @@ void main() {
       isTrue,
     );
   });
+
+  test('恢复备份后系统不支持系统主题色：回退默认蓝并记为已选择', () async {
+    SharedPreferences.setMockInitialValues({
+      'dynamic_color': true,
+      'theme_seed': 0xFF7B4DFF,
+    });
+    final settings = SettingsStore();
+    await settings.load();
+    final state = ThemeSettingsState(
+      settings,
+      dynamicColorSupported: ({bool refresh = false}) async {
+        expect(refresh, isTrue);
+        return false;
+      },
+    );
+
+    await state.normalizeDynamicColorAfterRestore();
+
+    expect(state.dynamicColor, isFalse);
+    expect(state.dynamicColorChosen, isTrue);
+    expect(state.themeSeed, 0xFF2E6BE6);
+    expect(state.revision.value, 2);
+  });
 }

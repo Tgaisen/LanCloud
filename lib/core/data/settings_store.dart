@@ -415,6 +415,7 @@ class SettingsStore {
     _keyThemeMode: themeMode,
     _keyOled: oledBlack,
     _keyDynamicColor: dynamicColor,
+    _keyDynamicColorChosen: dynamicColorChosen,
     _keySeed: themeSeed,
     _keyInterval: requestInterval,
     _keyMaxUp: maxUploads,

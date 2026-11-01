@@ -11,7 +11,7 @@ void main() {
     await settings.load();
     final state = ThemeSettingsState(
       settings,
-      dynamicColorSupported: () async => true,
+      dynamicColorSupported: ({bool refresh = false}) async => true,
     );
 
     await state.enableDynamicColorIfUnset();
@@ -25,7 +25,7 @@ void main() {
     await settings.load();
     final state = ThemeSettingsState(
       settings,
-      dynamicColorSupported: () async => false,
+      dynamicColorSupported: ({bool refresh = false}) async => false,
     );
 
     await state.enableDynamicColorIfUnset();
@@ -43,7 +43,7 @@ void main() {
     await settings.load();
     final state = ThemeSettingsState(
       settings,
-      dynamicColorSupported: () async => true,
+      dynamicColorSupported: ({bool refresh = false}) async => true,
     );
 
     await state.enableDynamicColorIfUnset();
