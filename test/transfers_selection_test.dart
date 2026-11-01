@@ -10,6 +10,7 @@ import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
+import 'package:lancloud/ui/app_icons.dart' as app_icons;
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/m3e.dart';
 import 'package:lancloud/ui/transfers_page.dart';
@@ -157,6 +158,48 @@ void main() {
     // 右边缘不越过右侧按钮
     expect(bar.right, lessThanOrEqualTo(cancel.left));
     expect(bar.width, greaterThan(0));
+  });
+
+  testWidgets('暂停的下载显示静态进度与继续按钮', (tester) async {
+    final app = AppEnvironment();
+    final manager = buildTransferManagerForEnvironment(app);
+    manager.tasks.add(
+      TransferTask(
+          id: 'd1',
+          kind: TransferKind.download,
+          name: 'paused.zip',
+          accountUid: '',
+        )
+        ..status = TransferStatus.paused
+        ..total = 100
+        ..received = 40,
+    );
+    await tester.pumpWidget(
+      _transferTestHost(
+        app: app,
+        manager: manager,
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const TransfersPage(),
+        ),
+      ),
+    );
+    final downloadTab = find.descendant(
+      of: find.byType(M3eConnectedButtonGroup<int>),
+      matching: find.byIcon(app_icons.Icons.download),
+    );
+    await tester.tap(downloadTab.first);
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('已暂停'), findsOneWidget);
+    expect(find.byTooltip('继续下载'), findsOneWidget);
+    final progress = tester.widget<M3eLinearProgressIndicator>(
+      find.byType(M3eLinearProgressIndicator),
+    );
+    expect(progress.value, closeTo(0.4, 0.001));
+    expect(progress.wavy, isFalse);
   });
 
   testWidgets('独立页面：多选时返回只退出多选，不退出页面', (tester) async {

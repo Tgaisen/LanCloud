@@ -381,6 +381,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get downloading => '下载中';
 
   @override
+  String get paused => '已暂停';
+
+  @override
+  String get pauseDownload => '暂停下载';
+
+  @override
+  String get resumeDownload => '继续下载';
+
+  @override
   String get completed => '已完成';
 
   @override

@@ -25,6 +25,9 @@ import 'scroll_tint.dart';
 enum _TransferMenuAction {
   open,
   share,
+  pause,
+  resume,
+  cancel,
   retry,
   removeRecord,
   removeRecordAndFile,
@@ -322,6 +325,10 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
     final path = task.savedPath;
     final done = task.status == TransferStatus.done && path != null;
     final failed = task.status == TransferStatus.failed;
+    final paused = task.status == TransferStatus.paused;
+    final active =
+        task.status == TransferStatus.queued ||
+        task.status == TransferStatus.running;
     // 「删除记录与文件」只在任务停下之后给：正在写的半截文件删掉会打断下载器
     final stopped =
         task.status != TransferStatus.running &&
@@ -352,6 +359,24 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
             label: l10n.retry,
             icon: Icons.refresh,
           ),
+        if (task.kind == TransferKind.download && active)
+          M3eMenuItem(
+            value: _TransferMenuAction.pause,
+            label: l10n.pauseDownload,
+            icon: Icons.pause,
+          ),
+        if (task.kind == TransferKind.download && paused)
+          M3eMenuItem(
+            value: _TransferMenuAction.resume,
+            label: l10n.resumeDownload,
+            icon: Icons.play_arrow,
+          ),
+        if (task.kind == TransferKind.download && (active || paused))
+          M3eMenuItem(
+            value: _TransferMenuAction.cancel,
+            label: l10n.cancelDownload,
+            icon: Icons.close,
+          ),
         M3eMenuItem(
           value: _TransferMenuAction.removeRecord,
           // 下载任务叫「删除下载记录」；上传没有本地文件语义，沿用「删除此条记录」
@@ -381,6 +406,17 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
           subject: task.name,
           mime: _shareMimeFor(task.name),
         );
+      case _TransferMenuAction.pause:
+        manager.pause(task.id);
+      case _TransferMenuAction.resume:
+        final message = await manager.resume(task.id);
+        if (!mounted) return;
+        if (message != null) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(message)));
+        }
+      case _TransferMenuAction.cancel:
+        manager.cancel(task.id);
       case _TransferMenuAction.retry:
         final message = await manager.retry(task.id);
         if (!mounted) return;
@@ -742,7 +778,9 @@ class _TransferListSliver extends StatelessWidget {
       );
     }
     bool isActive(TransferTask t) =>
-        t.status == TransferStatus.queued || t.status == TransferStatus.running;
+        t.status == TransferStatus.queued ||
+        t.status == TransferStatus.running ||
+        t.status == TransferStatus.paused;
     final active = tasks.where(isActive).toList();
     final finished = tasks
         .where((t) => !isActive(t))
@@ -867,6 +905,8 @@ class _TransferTile extends StatelessWidget {
         return task.kind == TransferKind.upload
             ? l10n.uploading
             : l10n.downloading;
+      case TransferStatus.paused:
+        return l10n.paused;
       case TransferStatus.done:
         return l10n.completed;
       case TransferStatus.failed:
@@ -898,6 +938,7 @@ class _TransferTile extends StatelessWidget {
     final active =
         task.status == TransferStatus.running ||
         task.status == TransferStatus.queued;
+    final paused = task.status == TransferStatus.paused;
     // 与首页 / 收藏共用同一套列表项布局，圆角由外层 SegmentedList 控制
     // 菜单要贴在被点的那颗 ⋯（桌面端右键时是整行）下方，所以这里得拿到两个 context
     return Builder(
@@ -930,11 +971,23 @@ class _TransferTile extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (active)
+              if (task.kind == TransferKind.upload && active)
                 M3eIconButton(
                   tooltip: l10n.cancel,
                   icon: Icons.close,
                   onPressed: () => manager.cancel(task.id),
+                ),
+              if (task.kind == TransferKind.download && active)
+                M3eIconButton(
+                  tooltip: l10n.pauseDownload,
+                  icon: Icons.pause,
+                  onPressed: () => manager.pause(task.id),
+                ),
+              if (paused)
+                M3eIconButton(
+                  tooltip: l10n.resumeDownload,
+                  icon: Icons.play_arrow,
+                  onPressed: () => manager.resume(task.id),
                 ),
               // 完成 / 失败 / 删除这些操作都收进 ⋯ 菜单（菜单项按状态给出），
               // 行里只留「取消」这颗抢时间的按钮
@@ -948,13 +1001,13 @@ class _TransferTile extends StatelessWidget {
             ],
           ),
         ),
-        bottom: active
+        bottom: active || paused
             ? M3eLinearProgressIndicator(
-                // 传输是长任务：用 MD3E 波浪进度条，等待时不那么呆板。
+                // 运行中的长任务用波浪进度条；暂停后保持静态，避免误以为仍在传。
                 // 进度 / 轨道用 M3 的默认角色（primary / secondary container），
                 // 不再另外指定颜色。
                 value: task.progress,
-                wavy: true,
+                wavy: !paused,
               )
             : null,
       ),

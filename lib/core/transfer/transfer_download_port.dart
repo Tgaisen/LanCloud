@@ -14,7 +14,11 @@ import '../shared_downloads_gateway.dart';
 abstract interface class TransferDownloadPort {
   Future<DownloadTargetMode> targetMode();
   String? get safTreeUri;
-  Future<String> safTempFilePath(String taskId, String name);
+  Future<String> partialFilePath(
+    String taskId,
+    String name, {
+    required bool staged,
+  });
   Future<String> uniqueSavePath(String name);
 }
 
@@ -70,15 +74,13 @@ class DefaultTransferDownloadPort implements TransferDownloadPort {
   }
 
   @override
-  Future<String> safTempFilePath(String taskId, String name) async {
-    final dir = await _safTempDirectory();
-    final file = File(p.join(dir.path, '$taskId${p.extension(name)}'));
-    if (await file.exists()) {
-      try {
-        await file.delete();
-      } catch (_) {}
-    }
-    return file.path;
+  Future<String> partialFilePath(
+    String taskId,
+    String name, {
+    required bool staged,
+  }) async {
+    final dir = staged ? await _safTempDirectory() : await downloadDirectory();
+    return p.join(dir.path, '$taskId.part');
   }
 
   Future<Directory> _safTempDirectory() async {
@@ -99,6 +101,8 @@ class DefaultTransferDownloadPort implements TransferDownloadPort {
       final cutoff = DateTime.now().subtract(const Duration(hours: 24));
       await for (final entity in dir.list(followLinks: false)) {
         if (entity is! File) continue;
+        // 新格式是可能需要长期保留的断点文件；任务删除时会主动清理。
+        if (p.extension(entity.path) == '.part') continue;
         try {
           final stat = await entity.stat();
           if (stat.modified.isBefore(cutoff)) await entity.delete();
@@ -127,26 +131,35 @@ class CallbackTransferDownloadPort implements TransferDownloadPort {
   factory CallbackTransferDownloadPort({
     required Future<DownloadTargetMode> Function() targetMode,
     required String? Function() safTreeUri,
-    required Future<String> Function(String taskId, String name)
-    safTempFilePath,
+    required Future<String> Function(
+      String taskId,
+      String name, {
+      required bool staged,
+    })
+    partialFilePath,
     required Future<String> Function(String name) uniqueSavePath,
   }) => CallbackTransferDownloadPort._(
     targetMode,
     safTreeUri,
-    safTempFilePath,
+    partialFilePath,
     uniqueSavePath,
   );
 
   CallbackTransferDownloadPort._(
     this._targetMode,
     this._safTreeUri,
-    this._safTempFilePath,
+    this._partialFilePath,
     this._uniqueSavePath,
   );
 
   final Future<DownloadTargetMode> Function() _targetMode;
   final String? Function() _safTreeUri;
-  final Future<String> Function(String taskId, String name) _safTempFilePath;
+  final Future<String> Function(
+    String taskId,
+    String name, {
+    required bool staged,
+  })
+  _partialFilePath;
   final Future<String> Function(String name) _uniqueSavePath;
 
   @override
@@ -156,8 +169,11 @@ class CallbackTransferDownloadPort implements TransferDownloadPort {
   String? get safTreeUri => _safTreeUri();
 
   @override
-  Future<String> safTempFilePath(String taskId, String name) =>
-      _safTempFilePath(taskId, name);
+  Future<String> partialFilePath(
+    String taskId,
+    String name, {
+    required bool staged,
+  }) => _partialFilePath(taskId, name, staged: staged);
 
   @override
   Future<String> uniqueSavePath(String name) => _uniqueSavePath(name);

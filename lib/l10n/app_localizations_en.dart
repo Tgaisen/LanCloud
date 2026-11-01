@@ -403,6 +403,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get downloading => 'Downloading';
 
   @override
+  String get paused => 'Paused';
+
+  @override
+  String get pauseDownload => 'Pause download';
+
+  @override
+  String get resumeDownload => 'Resume download';
+
+  @override
   String get completed => 'Completed';
 
   @override

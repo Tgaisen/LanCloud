@@ -38,8 +38,9 @@
 | `AppCompositionRoot` | `core/app_composition_root.dart` | 用 `AppEnvironment` 与显式恢复回调组装备份、传输依赖和 Riverpod 容器；不触发启动副作用 |
 | `AppEnvironment` | `core/app_environment.dart` | 唯一组装导航、账号、设置、运行时、客户端与应用级服务，只保存实例，不触发启动副作用 |
 | `AppStartup` | `core/app_startup.dart` | 编排安全存储检查、账号/设置加载、运行时同步、目录绑定、ready、恢复重载与后台任务 |
-| `TransferManager` | `core/transfer/transfer_manager.dart` | 上传/下载任务队列 |
+| `TransferManager` | `core/transfer/transfer_manager.dart` | 上传/下载任务队列、暂停/继续、进度与重试 |
 | `TransferStore` | `core/transfer/transfer_store.dart` | 传输记录恢复/保存/删除与下载标记端口；`AppDbTransferStore` 适配既有数据库 |
+| `DioTransferDownloader` / `TransferDownloader` | `core/transfer/resumable_downloader.dart` | 用稳定 `.part` 文件、HTTP Range 与 `Content-Range` 校验实现断点续传；服务端不支持时回退完整下载 |
 | `TransferAccountPort` | `core/transfer/transfer_account_port.dart` | 当前 UID、账号存在性、账号客户端与公开客户端端口；包装账号存储和客户端注册表 |
 | `TransferDownloadPort` | `core/transfer/transfer_download_port.dart` | 下载目标模式、SAF URI、中转路径与唯一保存路径端口 |
 | `DefaultTransferDownloadPort` | `core/transfer/transfer_download_port.dart` | 从实时设置、下载目录服务和公共 Downloads 能力组装生产下载端口 |
@@ -191,7 +192,7 @@ User-Agent 也迁入 `AdvancedConnectionSettingsTile`；对应 setter 统一同�
 | `core/data/settings_store.dart` | 设置项，`shared_preferences` |
 | `core/data/account_store.dart`、`core/data/secure_storage.dart` | 账号与凭据，`flutter_secure_storage` |
 | `core/data/account_data.dart` | 账号模型 |
-| `core/transfer/transfer_manager.dart` | 任务队列、进度、重试 |
+| `core/transfer/transfer_manager.dart` | 任务队列、暂停/继续、进度、重试；网络续传委托给 `resumable_downloader.dart` |
 | `core/backup/` | 本地备份与恢复：`backup_service`（编排）、`backup_crypto`（加解密）、`backup_sections`、`webdav_client` / `webdav_store` |
 | `core/update/` | 更新检查：`update_service`、`release_info`、`changelog` |
 | `core/platform_support.dart` | 平台判定与 Android SDK 级别，所有平台分支的唯一入口 |
@@ -205,7 +206,7 @@ User-Agent 也迁入 `AdvancedConnectionSettingsTile`；对应 setter 统一同�
 
 | 需求 | 先读 |
 | --- | --- |
-| 下载 / 传输队列 | `core/transfer/transfer_manager.dart`、`core/download_target.dart`、`core/download_dir.dart`、`core/saved_file.dart`、`ui/transfers_page.dart`、`ui/download_mark.dart` |
+| 下载 / 传输队列 | `core/transfer/transfer_manager.dart`、`core/transfer/resumable_downloader.dart`、`core/download_target.dart`、`core/download_dir.dart`、`core/saved_file.dart`、`ui/transfers_page.dart`、`ui/download_mark.dart` |
 | 上传 / 文件选择 / 保存 | `core/file_picker_channel.dart`、`core/system_file_saver.dart`、`core/shared_downloads_storage.dart`、`ui/drop_actions.dart` |
 | 登录 / 鉴权 / 反爬 | `core/cookie_auth.dart`、`core/api/acw_sc_v2.dart`、`ui/login_page.dart`、`ui/web_login_page.dart`、`ui/cookie_sheet.dart` |
 | 分享链接 / 提取码 | `core/lanzou_link.dart`、`ui/share_page.dart`、`ui/share_file_sheet.dart`、`ui/share_folder_page.dart`、`ui/share_password_dialog.dart` |

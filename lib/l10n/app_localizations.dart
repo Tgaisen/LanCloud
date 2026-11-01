@@ -794,6 +794,24 @@ abstract class AppLocalizations {
   /// **'下载中'**
   String get downloading;
 
+  /// No description provided for @paused.
+  ///
+  /// In zh, this message translates to:
+  /// **'已暂停'**
+  String get paused;
+
+  /// No description provided for @pauseDownload.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂停下载'**
+  String get pauseDownload;
+
+  /// No description provided for @resumeDownload.
+  ///
+  /// In zh, this message translates to:
+  /// **'继续下载'**
+  String get resumeDownload;
+
   /// No description provided for @completed.
   ///
   /// In zh, this message translates to:

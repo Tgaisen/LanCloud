@@ -64,7 +64,15 @@ class DownloadMarkIcon extends StatelessWidget {
   }
 }
 
-enum _DownloadMenuAction { open, share, stop, deleteFile, redownload }
+enum _DownloadMenuAction {
+  open,
+  share,
+  pause,
+  resume,
+  stop,
+  deleteFile,
+  redownload,
+}
 
 /// 「已下载」入口的二级菜单（两步菜单：点入口后弹这一层）：
 /// 打开 / 分享（桌面端为在资源管理器定位）/ 取消下载或删除任务记录 / 重新下载。
@@ -86,6 +94,7 @@ Future<void> showDownloadTaskMenu(
   final bool running =
       task.status == TransferStatus.queued ||
       task.status == TransferStatus.running;
+  final bool paused = task.status == TransferStatus.paused;
   final String? savedPath = task.savedPath;
   final bool hasFile =
       task.status == TransferStatus.done &&
@@ -119,10 +128,24 @@ Future<void> showDownloadTaskMenu(
       ),
       // 进行中才是「取消下载」，其余状态是删掉这条任务记录（M3 规范：不用的
       // 操作置灰或换说法，而不是留一个点了没反应的入口）
+      if (running)
+        M3eMenuItem(
+          value: _DownloadMenuAction.pause,
+          label: l10n.pauseDownload,
+          icon: Icons.pause,
+        ),
+      if (paused)
+        M3eMenuItem(
+          value: _DownloadMenuAction.resume,
+          label: l10n.resumeDownload,
+          icon: Icons.play_arrow,
+        ),
       M3eMenuItem(
         value: _DownloadMenuAction.stop,
-        label: running ? l10n.cancelDownload : l10n.deleteDownloadRecord,
-        icon: running ? Icons.close : Icons.playlist_remove,
+        label: running || paused
+            ? l10n.cancelDownload
+            : l10n.deleteDownloadRecord,
+        icon: running || paused ? Icons.close : Icons.playlist_remove,
       ),
       // 连文件一起删：删完标记消失，属性弹窗恢复「下载」原状
       M3eMenuItem(
@@ -153,8 +176,16 @@ Future<void> showDownloadTaskMenu(
           mime: _shareMimeFor(task.name),
         );
       }
+    case _DownloadMenuAction.pause:
+      manager.pause(task.id);
+    case _DownloadMenuAction.resume:
+      final message = await manager.resume(task.id);
+      if (message != null && context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(message)));
+      }
     case _DownloadMenuAction.stop:
-      if (running) {
+      if (running || paused) {
         manager.cancel(task.id);
       } else {
         manager.removeTask(task.id);

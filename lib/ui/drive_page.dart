@@ -4331,6 +4331,7 @@ class _FileInfoSheetState extends ConsumerState<_FileInfoSheet> {
                     : switch (mark?.status) {
                         TransferStatus.queued => l10n.waitingToDownload,
                         TransferStatus.running => l10n.downloading,
+                        TransferStatus.paused => l10n.paused,
                         TransferStatus.done => l10n.downloaded,
                         TransferStatus.failed => l10n.downloadFailed,
                         _ => l10n.download,
@@ -4369,6 +4370,10 @@ class _FileInfoSheetState extends ConsumerState<_FileInfoSheet> {
                         ),
                         // 下载中：确定态；大小未知时退回不确定态
                         TransferStatus.running => ring(
+                          color: scheme.onSecondary,
+                          value: (mark?.total ?? 0) > 0 ? mark?.progress : null,
+                        ),
+                        TransferStatus.paused => ring(
                           color: scheme.onSecondary,
                           value: (mark?.total ?? 0) > 0 ? mark?.progress : null,
                         ),

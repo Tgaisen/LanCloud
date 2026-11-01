@@ -196,6 +196,9 @@
   "queued": "排队中",
   "uploading": "上传中",
   "downloading": "下载中",
+  "paused": "已暂停",
+  "pauseDownload": "暂停下载",
+  "resumeDownload": "继续下载",
   "completed": "已完成",
   "failedWithError": "失败：{error}",
   "@failedWithError": {
