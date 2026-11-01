@@ -23,9 +23,9 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 26.1.0-pre.30+260100230
 
 environment:
-  sdk: ^3.13.3
+  sdk: 3.13.7
   # GitHub Actions 通过 flutter-version-file 读取该版本，避免多处手动同步。
-  flutter: 3.47.7
+  flutter: 3.47.9
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -57,7 +57,7 @@ dependencies:
   # 项目仍处于 pre 阶段，允许跳过 v10 的旧安全存储数据；v11 会在读取前
   # 上报不可迁移状态，应用据此回到登录页，并关闭缺密码的 WebDAV 功能。
   flutter_secure_storage: ^11.2.0
-  file_picker: ^13.1.0
+  file_picker: ^13.3.0
   open_filex: ^5.0.0
   url_launcher: ^6.3.2
   flutter_inappwebview: 6.2.0-beta.3
