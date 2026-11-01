@@ -110,6 +110,19 @@ if (!$DryRun) {
       Fail "产物缺失：$asset"
     }
   }
+
+  $checksumLines = foreach ($asset in $Assets) {
+    $hash = Get-FileSha256 -Path $asset
+    $name = Split-Path -Leaf $asset
+    "$hash  $name"
+  }
+  $checksumPath = Join-Path $AssetsDir 'SHA256SUMS.txt'
+  [IO.File]::WriteAllText(
+    $checksumPath,
+    (($checksumLines -join "`n") + "`n"),
+    [Text.UTF8Encoding]::new($false)
+  )
+  $Assets += $checksumPath
 }
 
 Info "发布版本 $($version.Name)（tag $Tag）"
