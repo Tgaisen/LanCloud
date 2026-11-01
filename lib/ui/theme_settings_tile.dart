@@ -30,6 +30,17 @@ String themeSeedLabel(AppLocalizations l10n, int seed) => switch (seed) {
   _ => l10n.custom,
 };
 
+/// 主题色设置行当前选择的显示名称。
+String themeColorSettingLabel(
+  AppLocalizations l10n, {
+  required bool dynamicColor,
+  required int seed,
+}) => dynamicColor
+    ? PlatformSupport.isWindows
+          ? l10n.followSystem
+          : l10n.dynamicColor
+    : themeSeedLabel(l10n, seed);
+
 /// 将全局动画模式映射为当前语言下的名称。
 String motionModeLabel(AppLocalizations l10n, String mode) => switch (mode) {
   'on' => l10n.motionModeEnabled,
@@ -253,9 +264,11 @@ class ThemeColorSettingsTile extends ConsumerWidget {
           leading: const Icon(Icons.palette_outlined),
           title: Text(l10n.themeColor),
           subtitle: Text(
-            dynamicColor
-                ? l10n.dynamicColor
-                : themeSeedLabel(l10n, settings.themeSeed),
+            themeColorSettingLabel(
+              l10n,
+              dynamicColor: dynamicColor,
+              seed: settings.themeSeed,
+            ),
           ),
           // 动态取色时没有固定颜色可展示，尾部不再画色块。
           trailing: dynamicColor

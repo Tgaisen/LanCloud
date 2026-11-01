@@ -306,7 +306,7 @@ void main() {
       );
 
       expect(inDialog('跟随系统'), findsOneWidget);
-      expect(inDialog('修改主题色后需重启应用生效'), findsOneWidget);
+      expect(inDialog('修改系统主题色后需重启应用生效'), findsOneWidget);
       expect(inDialog('动态取色'), findsNothing);
       final followSystemTile = find.widgetWithText(M3ePickTile, '跟随系统');
       final leadingIcon = tester.widget<Icon>(
@@ -317,6 +317,13 @@ void main() {
       await tester.tap(inDialog('跟随系统'));
       await tester.pumpAndSettle();
       expect(environment.settingsState.store.dynamicColor, isTrue);
+      expect(
+        find.descendant(
+          of: find.widgetWithText(ListTile, '主题色'),
+          matching: find.text('跟随系统'),
+        ),
+        findsOneWidget,
+      );
     } finally {
       debugDefaultTargetPlatformOverride = null;
       await DynamicColorSupport.isSupported(refresh: true);

@@ -303,11 +303,11 @@ class _SettingsCategoryPageState extends ConsumerState<SettingsCategoryPage>
       _Entry(
         id: 'theme_seed',
         title: l10n.themeColor,
-        // 开了动态取色就显示「动态取色」，否则显示当前颜色名
-        //（动态取色也是弹窗里的一个选项，见 showThemeColorPicker）
-        subtitle: settings.dynamicColor
-            ? l10n.dynamicColor
-            : themeSeedLabel(l10n, settings.themeSeed),
+        subtitle: themeColorSettingLabel(
+          l10n,
+          dynamicColor: settings.dynamicColor,
+          seed: settings.themeSeed,
+        ),
         keywords: [
           ...l10n.themeColorKeywords.split(' '),
           ...l10n.dynamicColorKeywords.split(' '),

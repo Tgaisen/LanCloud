@@ -3089,7 +3089,7 @@ abstract class AppLocalizations {
   /// No description provided for @followSystemColorRestartHint.
   ///
   /// In zh, this message translates to:
-  /// **'修改主题色后需重启应用生效'**
+  /// **'修改系统主题色后需重启应用生效'**
   String get followSystemColorRestartHint;
 
   /// No description provided for @dynamicColorUnsupported.
