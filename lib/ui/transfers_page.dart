@@ -33,11 +33,13 @@ enum _TransferMenuAction {
   removeRecordAndFile,
 }
 
+typedef TransferFileOpener = Future<bool> Function(String path, {String? name});
+
 class TransfersPage extends ConsumerStatefulWidget {
   const TransfersPage({super.key, this.openFile});
 
   /// 打开已下载文件；默认交给系统「打开」，测试注入以免真的调起系统应用。
-  final Future<bool> Function(String path)? openFile;
+  final TransferFileOpener? openFile;
 
   @override
   ConsumerState<TransfersPage> createState() => _TransfersPageState();
@@ -310,9 +312,12 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
   }
 
   /// 打开已下载的文件（与点击条目同一个入口，测试注入的 openFile 也走这里）。
-  Future<bool> _openTaskFile(String path) async {
+  Future<bool> _openTaskFile(TransferTask task) async {
     try {
-      return await (widget.openFile ?? openFileWithSystem)(path);
+      return await (widget.openFile ?? openFileWithSystem)(
+        task.savedPath!,
+        name: task.name,
+      );
     } catch (_) {
       return false;
     }
@@ -405,7 +410,7 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
     if (!mounted || action == null) return;
     switch (action) {
       case _TransferMenuAction.open:
-        final opened = await _openTaskFile(path!);
+        final opened = await _openTaskFile(task);
         if (!opened && mounted) {
           ScaffoldMessenger.of(context)
               .showSnackBar(SnackBar(content: Text(l10n.openFileFailed)));
@@ -750,7 +755,7 @@ class _TransferListSliver extends StatelessWidget {
   final void Function(TransferTask task, BuildContext anchorContext) onMenu;
 
   /// 打开已下载的文件（外壳注入，默认交给系统默认程序）。
-  final Future<bool> Function(String path) openFile;
+  final TransferFileOpener openFile;
 
   /// 点击条目：多选中切换选中；否则只有「下载完成」的条目能打开文件，
   /// 上传条目（以及进行中 / 失败的下载）点击不做任何反应。
@@ -763,7 +768,7 @@ class _TransferListSliver extends StatelessWidget {
     if (task.kind == TransferKind.download &&
         task.status == TransferStatus.done &&
         path != null) {
-      final opened = await openFile(path);
+      final opened = await openFile(path, name: task.name);
       if (!opened && context.mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(context.l10n.openFileFailed)));

@@ -618,6 +618,7 @@ void main() {
         ..savedPath = '/tmp/tool.apk',
     );
     final opened = <String>[];
+    final openedNames = <String?>[];
     final shared = <MethodCall>[];
     const shareChannel = MethodChannel('lancloud/share');
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -638,8 +639,9 @@ void main() {
           supportedLocales: AppLocalizations.supportedLocales,
           locale: const Locale('zh'),
           home: TransfersPage(
-            openFile: (path) async {
+            openFile: (path, {String? name}) async {
               opened.add(path);
+              openedNames.add(name);
               return true;
             },
           ),
@@ -666,6 +668,7 @@ void main() {
     await tester.tap(menuItem('打开'));
     await tester.pumpAndSettle();
     expect(opened, ['/tmp/tool.apk']);
+    expect(openedNames, ['tool.apk']);
 
     await openRowMenu(tester, 'tool.apk');
     await tester.tap(menuItem('分享'));
@@ -682,6 +685,7 @@ void main() {
     await tester.tap(find.text('tool.apk'));
     await tester.pumpAndSettle();
     expect(opened, ['/tmp/tool.apk', '/tmp/tool.apk']);
+    expect(openedNames, ['tool.apk', 'tool.apk']);
     // 点击条目只打开文件，不会进入多选
     expect(selectionBarOpacity(tester), 0);
     app.dispose();
@@ -708,7 +712,7 @@ void main() {
           localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           locale: const Locale('zh'),
-          home: TransfersPage(openFile: (path) async => false),
+          home: TransfersPage(openFile: (path, {String? name}) async => false),
         ),
       ),
     );

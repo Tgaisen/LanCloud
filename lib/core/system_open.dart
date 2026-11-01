@@ -4,16 +4,22 @@ import 'package:open_filex/open_filex.dart';
 
 import 'platform_support.dart';
 import 'saf_storage.dart';
+import 'saved_file.dart';
 
 /// 用系统默认程序打开本地文件。
 ///
-/// - Android Content URI（SAF / MediaStore）：交给原生带上读权限转授打开；
+/// - Android Content URI（SAF / MediaStore）：按 [name] 推断 MIME，交给原生
+///   带上读权限转授打开；
 /// - Android / iOS：open_filex（FileProvider / UIDocumentInteractionController）
 /// - 桌面端：open_filex 没有 Windows 实现，交给资源管理器按文件关联打开
 ///   （等价于在资源管理器里双击该文件）
-Future<bool> openFileWithSystem(String path) async {
+Future<bool> openFileWithSystem(String path, {String? name}) async {
   if (PlatformSupport.isAndroid && SafStorage.isContentUri(path)) {
-    return SafStorage.openFile(path);
+    return SafStorage.openFile(
+      path,
+      mime: name == null ? null : mimeForFileName(name),
+      displayName: name,
+    );
   }
   if (!PlatformSupport.isDesktop) {
     try {

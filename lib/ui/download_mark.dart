@@ -169,7 +169,7 @@ Future<void> showDownloadTaskMenu(
   if (action == null || !context.mounted) return;
   switch (action) {
     case _DownloadMenuAction.open:
-      final opened = await openFileWithSystem(savedPath!);
+      final opened = await openFileWithSystem(savedPath!, name: task.name);
       if (!opened && context.mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(l10n.openFileFailed)));
