@@ -282,7 +282,7 @@ class M3eFloatingNavigationBar extends StatelessWidget {
     required this.onDestinationSelected,
     this.collapsedWidth = 48,
     this.preferredSelectedWidth = 110,
-    this.itemSpacing = 2,
+    this.itemSpacing = 8,
     this.iconLabelGap = 4,
   }) : assert(items.length > 0),
        assert(selectedIndex >= 0 && selectedIndex < items.length);
