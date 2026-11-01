@@ -1809,7 +1809,7 @@ class _M3eMenuRoute<T> extends PopupRoute<T> {
   }
 
   /// M3 菜单：宽度 112–280、项高 48、上下内边距 8、离屏幕边缘 12。
-  static const double _minWidth = 112;
+  static const double _minWidth = 140;
   static const double _maxWidth = 280;
   static const double _maxHeight = 320;
   static const double _rowHeight = 48;
