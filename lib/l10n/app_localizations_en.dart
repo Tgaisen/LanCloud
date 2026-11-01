@@ -1684,6 +1684,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Use colors from the system wallpaper (Android 12+)';
 
   @override
+  String get followSystemColorRestartHint =>
+      'Restart the app after changing the system theme color';
+
+  @override
   String get dynamicColorUnsupported =>
       'Dynamic color is not supported on this system';
 

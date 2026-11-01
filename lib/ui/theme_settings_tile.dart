@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart' hide Icons;
 
+import '../core/platform_support.dart';
 import '../core/theme_settings_state.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
@@ -57,6 +58,13 @@ Future<ThemeColorSelection?> showThemeColorPicker(
   };
   // 不支持时动态取色按未选中处理（也点不动）。
   final dynamicSelected = dynamicSupported && dynamicColor;
+  final isWindows = PlatformSupport.isWindows;
+  final dynamicLabel = isWindows ? l10n.followSystem : l10n.dynamicColor;
+  final dynamicSubtitle = !dynamicSupported
+      ? l10n.dynamicColorUnsupported
+      : isWindows
+      ? l10n.followSystemColorRestartHint
+      : l10n.dynamicColorSubtitle;
   return showDialog<ThemeColorSelection>(
     context: context,
     builder: (dialogContext) => AlertDialog(
@@ -72,14 +80,14 @@ Future<ThemeColorSelection?> showThemeColorPicker(
             DialogListGroup(
               children: [
                 M3ePickTile(
-                  label: l10n.dynamicColor,
-                  subtitle: dynamicSupported
-                      ? l10n.dynamicColorSubtitle
-                      : l10n.dynamicColorUnsupported,
+                  label: dynamicLabel,
+                  subtitle: dynamicSubtitle,
                   selected: dynamicSelected,
                   singleSelect: true,
                   enabled: dynamicSupported,
-                  leading: const Icon(Icons.wallpaper_outlined),
+                  leading: Icon(
+                    isWindows ? Icons.colors : Icons.wallpaper_outlined,
+                  ),
                   onTap: () => Navigator.of(
                     dialogContext,
                   ).pop<ThemeColorSelection>((dynamicColor: true, seed: null)),

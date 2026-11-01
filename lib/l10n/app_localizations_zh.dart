@@ -1621,6 +1621,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get dynamicColorSubtitle => '跟随系统壁纸取色';
 
   @override
+  String get followSystemColorRestartHint => '修改主题色后需重启应用生效';
+
+  @override
   String get dynamicColorUnsupported => '当前系统不支持动态取色';
 
   @override
