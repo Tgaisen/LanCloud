@@ -757,6 +757,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get downloadKeywords => 'download concurrent';
 
   @override
+  String get singleFileDownloadConnections =>
+      'Multi-connection downloads (per file)';
+
+  @override
+  String get singleFileDownloadConnectionsKeywords =>
+      'multi-thread segmented single-file connection parallel download speed';
+
+  @override
+  String get singleFileDownloadConnectionsSubtitle =>
+      'Only applies to files larger than 16 MiB; more connections increase rate-limit and data-usage risks';
+
+  @override
   String get apiHost => 'Drive API domain';
 
   @override

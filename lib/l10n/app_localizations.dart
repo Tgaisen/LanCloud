@@ -1454,6 +1454,24 @@ abstract class AppLocalizations {
   /// **'下载 并发'**
   String get downloadKeywords;
 
+  /// No description provided for @singleFileDownloadConnections.
+  ///
+  /// In zh, this message translates to:
+  /// **'多线程下载（单文件连接数）'**
+  String get singleFileDownloadConnections;
+
+  /// No description provided for @singleFileDownloadConnectionsKeywords.
+  ///
+  /// In zh, this message translates to:
+  /// **'多线程 分片 单文件 连接 并发 下载 加速'**
+  String get singleFileDownloadConnectionsKeywords;
+
+  /// No description provided for @singleFileDownloadConnectionsSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'仅对 16 MiB 以上的文件生效；连接越多，风控和流量风险越高'**
+  String get singleFileDownloadConnectionsSubtitle;
+
   /// No description provided for @apiHost.
   ///
   /// In zh, this message translates to:

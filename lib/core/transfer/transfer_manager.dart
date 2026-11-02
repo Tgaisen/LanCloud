@@ -84,14 +84,20 @@ class TransferTask {
 
 class TransferManager extends ChangeNotifier {
   TransferManager.withDependencies(
-    this._dependencies, {
+    TransferDependencies dependencies, {
     NotificationService? notifications,
     SharedDownloadsGateway? sharedDownloads,
     TransferDownloader? downloader,
-  }) : _notifications = notifications ?? NotificationService.instance,
+  }) : _dependencies = dependencies,
+       _notifications = notifications ?? NotificationService.instance,
        _sharedDownloads =
            sharedDownloads ?? const PlatformSharedDownloadsGateway(),
-       _downloader = downloader ?? const DioTransferDownloader() {
+       _downloader =
+           downloader ??
+           DioTransferDownloader(
+             segmentConnectionsProvider: () =>
+                 dependencies.settings.downloadConnections,
+           ) {
     _restore();
   }
 

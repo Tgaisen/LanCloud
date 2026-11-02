@@ -289,16 +289,21 @@ void main() {
       expect(await metadata.exists(), isTrue);
 
       failPartialResponse = false;
-      final result = await downloader.download(
-        dio: dio,
-        url: url,
-        partialPath: partialFile.path,
-        expectedTotal: payload.length,
-        cancelToken: CancelToken(),
-        headers: const <String, String>{},
-        receiveTimeout: const Duration(seconds: 5),
-        onProgress: (_, _) {},
-      );
+      final result =
+          await const DioTransferDownloader(
+            segmentConnections: 1,
+            segmentSize: 2048,
+            minimumSegmentedBytes: 1,
+          ).download(
+            dio: dio,
+            url: url,
+            partialPath: partialFile.path,
+            expectedTotal: payload.length,
+            cancelToken: CancelToken(),
+            headers: const <String, String>{},
+            receiveTimeout: const Duration(seconds: 5),
+            onProgress: (_, _) {},
+          );
 
       final resumedFirst = ranges[2]!.firstWhere(
         (range) => range.endsWith('-2047'),
@@ -384,6 +389,19 @@ void main() {
       expect(await partialFile.readAsBytes(), payload);
       expect(result.total, payload.length);
       expect(result.resumed, isFalse);
+    });
+
+    test('should 每次下载开始时读取最新的连接数配置', () {
+      var configured = 3;
+      final downloader = DioTransferDownloader(
+        segmentConnectionsProvider: () => configured,
+      );
+
+      expect(downloader.segmentConnections, 3);
+      configured = 0;
+      expect(downloader.segmentConnections, 1);
+      configured = 9;
+      expect(downloader.segmentConnections, 4);
     });
   });
 }

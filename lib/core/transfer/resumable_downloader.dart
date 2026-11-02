@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 
 typedef TransferDownloadProgress = void Function(int received, int total);
+typedef SegmentConnectionsProvider = int Function();
 
 class TransferDownloadResult {
   const TransferDownloadResult({required this.total, required this.resumed});
@@ -44,16 +45,28 @@ abstract interface class TransferDownloader {
 /// 会清掉分片状态并回退到单连接下载。
 class DioTransferDownloader implements TransferDownloader {
   const DioTransferDownloader({
-    this.segmentConnections = 1,
+    int segmentConnections = 1,
+    this.segmentConnectionsProvider,
     this.segmentSize = 8 * 1024 * 1024,
     this.minimumSegmentedBytes = 16 * 1024 * 1024,
   }) : assert(segmentConnections >= 1 && segmentConnections <= 4),
+       _segmentConnections = segmentConnections,
        assert(segmentSize > 0),
        assert(minimumSegmentedBytes > 0);
 
-  final int segmentConnections;
+  final int _segmentConnections;
+  final SegmentConnectionsProvider? segmentConnectionsProvider;
   final int segmentSize;
   final int minimumSegmentedBytes;
+
+  /// 每次下载开始时读取一次，设置变化只影响后续下载或恢复。
+  int get segmentConnections {
+    final configured =
+        segmentConnectionsProvider?.call() ?? _segmentConnections;
+    if (configured < 1) return 1;
+    if (configured > 4) return 4;
+    return configured;
+  }
 
   static const int _maxSegments = 64;
   static const int _checkpointBytes = 1024 * 1024;
@@ -94,8 +107,11 @@ class DioTransferDownloader implements TransferDownloader {
   }) async {
     final metadataFile = File(metadataPathFor(partialPath));
     final hasSegmentedState = await metadataFile.exists();
-    if (segmentConnections <= 1 ||
-        (expectedTotal > 0 && expectedTotal < minimumSegmentedBytes)) {
+    final connections = segmentConnections;
+    if ((connections <= 1 && !hasSegmentedState) ||
+        (!hasSegmentedState &&
+            expectedTotal > 0 &&
+            expectedTotal < minimumSegmentedBytes)) {
       if (hasSegmentedState) await deleteState(partialPath);
       return _downloadSequential(
         dio: dio,
@@ -139,6 +155,7 @@ class DioTransferDownloader implements TransferDownloader {
         cancelToken: cancelToken,
         headers: headers,
         receiveTimeout: receiveTimeout,
+        connections: connections,
         onProgress: onProgress,
       );
     } on _RestartSequential {
@@ -207,6 +224,7 @@ class DioTransferDownloader implements TransferDownloader {
     required CancelToken cancelToken,
     required Map<String, String> headers,
     required Duration receiveTimeout,
+    required int connections,
     required TransferDownloadProgress onProgress,
   }) async {
     final file = File(partialPath);
@@ -261,6 +279,7 @@ class DioTransferDownloader implements TransferDownloader {
           cancelToken: cancelToken,
           headers: headers,
           receiveTimeout: receiveTimeout,
+          connections: connections,
           manifest: manifest,
           writer: writer,
         );
@@ -287,6 +306,7 @@ class DioTransferDownloader implements TransferDownloader {
     required CancelToken cancelToken,
     required Map<String, String> headers,
     required Duration receiveTimeout,
+    required int connections,
     required _SegmentManifest manifest,
     required _SegmentWriter writer,
   }) async {
@@ -325,7 +345,7 @@ class DioTransferDownloader implements TransferDownloader {
 
     try {
       await Future.wait(<Future<void>>[
-        for (var i = 0; i < segmentConnections; i++) worker(),
+        for (var i = 0; i < connections; i++) worker(),
       ]);
     } catch (_) {}
 

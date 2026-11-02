@@ -77,6 +77,7 @@ void main() {
     await store.setOledBlack(true);
     await store.setDynamicColor(false);
     await store.setRequestInterval(150);
+    await store.setDownloadConnections(4);
     await store.setHideTopBar(true);
     await store.setHomeFolderOpenMode('drive');
 
@@ -91,6 +92,7 @@ void main() {
     expect(target.dynamicColor, isFalse);
     expect(target.dynamicColorChosen, isTrue);
     expect(target.requestInterval, 150);
+    expect(target.downloadConnections, 4);
     expect(target.hideTopBar, isTrue);
     expect(target.homeFolderOpenMode, 'drive');
   });

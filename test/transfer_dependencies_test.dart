@@ -308,12 +308,14 @@ void main() {
     final store = SettingsStore()
       ..maxUploads = 2
       ..maxDownloads = 4
+      ..downloadConnections = 3
       ..notifyProgress = false
       ..notifyDone = false;
     final port = StoreTransferSettingsPort(store);
 
     expect(port.maxUploads, 2);
     expect(port.maxDownloads, 4);
+    expect(port.downloadConnections, 3);
     expect(port.notifyProgress, isFalse);
     expect(port.notifyDone, isFalse);
   });
