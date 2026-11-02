@@ -655,10 +655,18 @@ void main() {
     await tester.pumpAndSettle();
     expect(selectionBarOpacity(tester), 1);
 
-    // 按钮组内部会重复构建 label（用于测量/动画），按位置点右半边的「下载」
+    // 下载在前；按钮组内部会重复构建 label（用于测量/动画），按位置点左侧。
     final group = tester.getRect(find.byType(M3eConnectedButtonGroup<int>));
+    expect(
+      tester
+          .widget<M3eConnectedButtonGroup<int>>(
+            find.byType(M3eConnectedButtonGroup<int>),
+          )
+          .values,
+      const [1, 0],
+    );
     await tester.tapAt(
-      Offset(group.left + group.width * 0.75, group.center.dy),
+      Offset(group.left + group.width * 0.25, group.center.dy),
     );
     await tester.pumpAndSettle();
 

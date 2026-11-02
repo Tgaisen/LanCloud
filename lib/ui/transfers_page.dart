@@ -735,7 +735,9 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
                           child: SizedBox(
                             width: double.infinity,
                             child: M3eConnectedButtonGroup<int>(
-                              values: const [0, 1],
+                              // 下载更高频，固定在左侧；默认选中项仍保持上传，
+                              // 避免改变进入传输页后的既有行为。
+                              values: const [1, 0],
                               selected: _tab,
                               onSelected: (value) {
                                 if (value == _tab) return;
@@ -751,13 +753,13 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
                                 _replayEnter();
                               },
                               labelOf: (value) => Text(
-                                value == 0 ? l10n.upload : l10n.download,
+                                value == 1 ? l10n.download : l10n.upload,
                               ),
                               iconOf: (value) => Icon(
-                                value == 0 ? Icons.upload : Icons.download,
+                                value == 1 ? Icons.download : Icons.upload,
                               ),
                               semanticLabel:
-                                  '${l10n.upload} / ${l10n.download}',
+                                  '${l10n.download} / ${l10n.upload}',
                             ),
                           ),
                         ),

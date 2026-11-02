@@ -30,6 +30,9 @@ void main() {
     await tester.pumpWidget(host(segments(1)));
     await tester.pumpAndSettle();
 
+    // 短路径也要撑满可用宽度，否则横向回弹手势区会随内容提前结束。
+    expect(tester.getSize(find.byType(SingleChildScrollView)).width, 400);
+
     // 一路进到第 4 层：内容早已超出 400 宽
     await tester.pumpWidget(host(segments(4)));
     await tester.pumpAndSettle();
