@@ -1028,11 +1028,13 @@ class _TransferTile extends StatelessWidget {
         ),
         bottom: active || paused || saving
             ? M3eLinearProgressIndicator(
-                // 运行中的长任务用波浪进度条；暂停后保持静态，避免误以为仍在传。
+                // 运行中的长任务用波浪进度条；暂停后保持静态，排队恢复的任务
+                // 保留波形但不滚动，避免误以为正在下载。
                 // 进度 / 轨道用 M3 的默认角色（primary / secondary container），
                 // 不再另外指定颜色。
                 value: task.progress,
                 wavy: !paused,
+                waveSpeed: task.status == TransferStatus.queued ? 0 : null,
               )
             : null,
       ),

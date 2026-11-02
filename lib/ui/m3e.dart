@@ -676,6 +676,7 @@ class M3eLinearProgressIndicator extends StatelessWidget {
     this.color,
     this.backgroundColor,
     this.wavy = false,
+    this.waveSpeed,
   });
 
   /// 0.0–1.0 的确定进度；为空表示不确定进度。
@@ -690,6 +691,9 @@ class M3eLinearProgressIndicator extends StatelessWidget {
   final Color? color;
   final Color? backgroundColor;
   final bool wavy;
+
+  /// 波浪滚动速度；为空时沿用 m3e_core 默认值，0 表示保留波形但停止滚动。
+  final double? waveSpeed;
 
   @override
   Widget build(BuildContext context) {
@@ -712,6 +716,7 @@ class M3eLinearProgressIndicator extends StatelessWidget {
       height: height ?? 10,
       color: color,
       backgroundColor: backgroundColor,
+      waveSpeed: waveSpeed ?? core.M3EProgressIndicatorDefaults.linearWaveSpeed,
     );
   }
 }

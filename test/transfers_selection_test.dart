@@ -205,6 +205,49 @@ void main() {
     expect(progress.wavy, isFalse);
   });
 
+  testWidgets('恢复后仍在排队的下载保留进度但停止波浪动画', (tester) async {
+    final app = AppEnvironment();
+    final manager = buildTransferManagerForEnvironment(app);
+    manager.tasks.add(
+      TransferTask(
+          id: 'd1',
+          kind: TransferKind.download,
+          name: 'queued.zip',
+          accountUid: '',
+        )
+        ..status = TransferStatus.queued
+        ..total = 100
+        ..received = 40,
+    );
+    await tester.pumpWidget(
+      _transferTestHost(
+        app: app,
+        manager: manager,
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const TransfersPage(),
+        ),
+      ),
+    );
+    final downloadTab = find.descendant(
+      of: find.byType(M3eConnectedButtonGroup<int>),
+      matching: find.byIcon(app_icons.Icons.download),
+    );
+    await tester.tap(downloadTab.first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(find.textContaining('排队中'), findsOneWidget);
+    final progress = tester.widget<M3eLinearProgressIndicator>(
+      find.byType(M3eLinearProgressIndicator),
+    );
+    expect(progress.value, closeTo(0.4, 0.001));
+    expect(progress.wavy, isTrue);
+    expect(progress.waveSpeed, 0);
+  });
+
   testWidgets('正在保存的下载保留按钮占位但禁用暂停与取消', (tester) async {
     final app = AppEnvironment();
     final manager = buildTransferManagerForEnvironment(app);
