@@ -622,6 +622,32 @@ void main() {
     app.dispose();
   });
 
+  testWidgets('进入多选时隐藏分栏按钮但保留动作槽位', (tester) async {
+    final (app, _) = await host(tester);
+    final clearButton = find.byKey(const ValueKey('transfers-clear-finished'));
+    final header = find.ancestor(
+      of: clearButton,
+      matching: find.byType(SectionHeader),
+    );
+    final heightBefore = tester.getSize(header).height;
+    expect(clearButton.hitTestable(), findsOneWidget);
+
+    await tester.longPress(find.text('a.zip'));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.getSize(header).height,
+      moreOrLessEquals(heightBefore, epsilon: 0.1),
+    );
+    expect(clearButton, findsOneWidget);
+    expect(clearButton.hitTestable(), findsNothing);
+
+    await tester.tap(find.byTooltip('退出多选'));
+    await tester.pumpAndSettle();
+    expect(clearButton.hitTestable(), findsOneWidget);
+    app.dispose();
+  });
+
   // 多选期间切换上传 / 下载：不禁用按钮组，切换后自动退出多选。
   testWidgets('多选时切换上传 / 下载会退出多选', (tester) async {
     await host(tester);

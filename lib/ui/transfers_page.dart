@@ -967,45 +967,43 @@ class _TransferListSliver extends StatelessWidget {
         .length;
     final pausable = active.where(_isPausableDownload).length;
     final activeActions = <Widget>[];
-    if (!selecting) {
-      if (kind == TransferKind.upload) {
-        activeActions.add(
-          _actionButton(
-            key: 'transfers-cancel-all',
-            label: l10n.cancelAll,
-            onPressed: onCancelActive,
-          ),
-        );
-      } else if (paused == 0) {
-        activeActions.add(
-          _actionButton(
-            key: 'transfers-pause-all',
-            label: l10n.pauseAll,
-            onPressed: pausable == 0 ? null : onPauseAll,
-          ),
-        );
-      } else if (pausable > 0) {
-        activeActions.add(
-          _actionButton(
-            key: 'transfers-resume-all',
-            label: l10n.resumeAll,
-            onPressed: bulkResumeRunning ? null : onResumeAll,
-          ),
-        );
-      } else {
-        activeActions.addAll([
-          _actionButton(
-            key: 'transfers-cancel-all',
-            label: l10n.cancelAll,
-            onPressed: onCancelActive,
-          ),
-          _actionButton(
-            key: 'transfers-resume-all',
-            label: l10n.resumeAll,
-            onPressed: bulkResumeRunning ? null : onResumeAll,
-          ),
-        ]);
-      }
+    if (kind == TransferKind.upload) {
+      activeActions.add(
+        _actionButton(
+          key: 'transfers-cancel-all',
+          label: l10n.cancelAll,
+          onPressed: onCancelActive,
+        ),
+      );
+    } else if (paused == 0) {
+      activeActions.add(
+        _actionButton(
+          key: 'transfers-pause-all',
+          label: l10n.pauseAll,
+          onPressed: pausable == 0 ? null : onPauseAll,
+        ),
+      );
+    } else if (pausable > 0) {
+      activeActions.add(
+        _actionButton(
+          key: 'transfers-resume-all',
+          label: l10n.resumeAll,
+          onPressed: bulkResumeRunning ? null : onResumeAll,
+        ),
+      );
+    } else {
+      activeActions.addAll([
+        _actionButton(
+          key: 'transfers-cancel-all',
+          label: l10n.cancelAll,
+          onPressed: onCancelActive,
+        ),
+        _actionButton(
+          key: 'transfers-resume-all',
+          label: l10n.resumeAll,
+          onPressed: bulkResumeRunning ? null : onResumeAll,
+        ),
+      ]);
     }
     return SliverPadding(
       // 与收藏页一致：外层 12 + SegmentedList 自带 4
@@ -1018,7 +1016,10 @@ class _TransferListSliver extends StatelessWidget {
               child: SectionHeader(
                 title: l10n.inProgress,
                 count: active.length,
-                actions: activeActions,
+                actions: [
+                  for (final action in activeActions)
+                    HideKeepingSpace(hidden: selecting, child: action),
+                ],
               ),
             ),
             // MD3E 连接式列表（懒加载）：组外侧 16dp / 组内相邻 4dp，和收藏页同款
@@ -1056,15 +1057,16 @@ class _TransferListSliver extends StatelessWidget {
               child: SectionHeader(
                 title: l10n.finished,
                 count: finished.length,
-                actions: selecting
-                    ? const <Widget>[]
-                    : [
-                        _actionButton(
-                          key: 'transfers-clear-finished',
-                          label: l10n.clearAll,
-                          onPressed: onClearFinished,
-                        ),
-                      ],
+                actions: [
+                  HideKeepingSpace(
+                    hidden: selecting,
+                    child: _actionButton(
+                      key: 'transfers-clear-finished',
+                      label: l10n.clearAll,
+                      onPressed: onClearFinished,
+                    ),
+                  ),
+                ],
               ),
             ),
             SegmentedSliverList(
