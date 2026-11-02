@@ -83,7 +83,7 @@ dependencies:
   m3e_core: ^1.1.5
   # 1.8 新增的 RoundedPolygon 与 m3e_core 1.1.4 的同名类型冲突；
   # 待 m3e_core 适配后再放开 <1.8.0。
-  material_ui: ">=1.6.0 <1.8.0"
+  material_ui: ^1.9.0
   cupertino_ui: ^1.1.5
   cryptography: ^2.9.0
   # 应用级状态与依赖注入统一使用 Riverpod。
