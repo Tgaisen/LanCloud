@@ -76,4 +76,25 @@ void main() {
     expect(state.revision.value, 1);
     expect(find.text('5'), findsOneWidget);
   });
+
+  testWidgets('单文件下载连接数使用 Riverpod 状态，松手后局部刷新', (tester) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final store = SettingsStore();
+    final state = await _pump(
+      tester,
+      store,
+      TransferConcurrencySetting.singleFileConnections,
+    );
+
+    await tester.drag(find.byType(M3ESlider), const Offset(600, 0));
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 10)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(store.downloadConnections, 4);
+    expect(state.revision.value, 1);
+    expect(find.text('4'), findsOneWidget);
+    expect(find.text('线程越多，风控和流量风险越高'), findsOneWidget);
+  });
 }

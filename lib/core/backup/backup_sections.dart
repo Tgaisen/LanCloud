@@ -12,7 +12,7 @@ enum BackupSection {
   /// 账号信息：快速访问
   quick('quick'),
 
-  /// 账号信息：最近使用（已下载标记属于使用记录，跟着它一起）
+  /// 账号信息：快速访问与最近使用。
   recents('recents'),
 
   /// 敏感信息：Cookie（等同于登录凭据）

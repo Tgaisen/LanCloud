@@ -1296,7 +1296,6 @@ class _DrivePageState extends ConsumerState<DrivePage>
     if (!mounted) return;
     final client = _activeClient();
     if (client == null) return;
-    final activeUid = _accounts.store.activeUid ?? '';
     final fileIds = _selectedFiles.toList();
     final folderIds = _selectedFolders.toList();
     final fileNames = {for (final f in _files) f.id: f.name};
@@ -1318,7 +1317,6 @@ class _DrivePageState extends ConsumerState<DrivePage>
           }
         },
       );
-      await _db.removeDownloaded([for (final id in fileIds) '$activeUid:$id']);
       // 删掉的目录若固定在快速访问里，一并移除
       if (folderIds.isNotEmpty) await _db.removePins(folderIds);
       if (!mounted) return;
@@ -1338,16 +1336,10 @@ class _DrivePageState extends ConsumerState<DrivePage>
     if (_selectedFiles.isEmpty) return;
     final transfers = _transfers;
     final client = _activeClient();
-    final publicClient = ref.read(lanzouClientRegistryProvider).publicClient;
     final activeUid = _accounts.store.activeUid ?? '';
     final l10n = context.l10n;
     final ids = _selectedFiles.toList();
     final names = {for (final file in _files) file.id: file.name};
-    var downloadedRefs = <String>{};
-    try {
-      downloadedRefs = await _db.downloadedRefs();
-    } catch (_) {}
-    if (!mounted) return;
     var added = 0;
     var skipped = 0;
     var failed = 0;
@@ -1362,26 +1354,17 @@ class _DrivePageState extends ConsumerState<DrivePage>
           final name = names[id] ?? '';
           final ref = '$activeUid:$id';
           report(i + 1, name);
-          if (shouldSkipDriveBatchDownload(
-            ref: ref,
-            downloadedRefs: downloadedRefs,
-            transfers: transfers,
-          )) {
+          if (shouldSkipDriveBatchDownload(ref: ref, transfers: transfers)) {
             skipped += 1;
             continue;
           }
           try {
-            final info = await client!.shareInfoOfFile(id);
-            final direct = await publicClient.resolveFileShare(
-              info.url,
-              pwd: info.pwd,
-            );
+            final info = await client!.shareInfoOfFile(id, withDetails: false);
             transfers.addDownload(
-              url: direct.url,
-              name: direct.name.isEmpty ? name : direct.name,
+              url: '',
+              name: info.name.isEmpty ? name : info.name,
               referer: info.url,
               pwd: info.pwd,
-              via: publicClient,
               refId: ref,
             );
             added += 1;
@@ -2543,9 +2526,6 @@ class _DrivePageState extends ConsumerState<DrivePage>
     if (client == null) return;
     try {
       await client.deleteItem(id: file.id, isFile: true);
-      await _db.removeDownloaded([
-        '${_accounts.store.activeUid ?? ''}:${file.id}',
-      ]);
       if (!mounted) return;
       await _removeItemsWithAnimation(fileIds: {file.id});
     } catch (e) {
@@ -3494,7 +3474,7 @@ class _FileTile extends StatelessWidget {
 
   final LzFile file;
 
-  /// 「已下载」标记的匹配键；多选期间沿用同一个 key。
+  /// 「已加入下载」标记的匹配键；多选期间沿用同一个 key。
   final String downloadKey;
 
   final bool selected;
@@ -3637,7 +3617,7 @@ class _DriveRow extends StatelessWidget {
   final String subtitle;
   final String menuTooltip;
 
-  /// 「已下载」标记的匹配键；文件夹没有下载任务，传 null。
+  /// 「已加入下载」标记的匹配键；文件夹没有下载任务，传 null。
   final String? downloadKey;
 
   final VoidCallback onTap;
@@ -3813,7 +3793,7 @@ class _FileRow extends StatelessWidget {
 
   final LzFile file;
 
-  /// 「已下载」标记的匹配键。
+  /// 「已加入下载」标记的匹配键。
   final String downloadKey;
 
   final bool selected;
@@ -4168,7 +4148,7 @@ class _FileInfoSheetState extends ConsumerState<_FileInfoSheet> {
     setState(() => _resolvingDownload = false);
   }
 
-  /// 这个文件的下载标记：按「账号uid:文件id」查最近的下载任务（已取消的不算）。
+  /// 这个文件的「已加入下载」标记：按「账号uid:文件id」查传输任务。
   TransferTask? get _downloadTask {
     final activeUid = ref.read(accountStateProvider).store.activeUid ?? '';
     return ref
@@ -4176,7 +4156,7 @@ class _FileInfoSheetState extends ConsumerState<_FileInfoSheet> {
         .downloadMarkOf(driveDownloadKey(activeUid, _file.id));
   }
 
-  /// 「已下载」二级菜单：挂在下载按钮所在的那一段下方（和复制链接同一套锚点）。
+  /// 「已加入下载」二级菜单：挂在下载按钮所在的那一段下方（和复制链接同一套锚点）。
   Future<void> _openDownloadMenu(TransferTask task) async {
     final RenderBox? group =
         _quickActionGroupKey.currentContext?.findRenderObject() as RenderBox?;
@@ -4345,7 +4325,9 @@ class _FileInfoSheetState extends ConsumerState<_FileInfoSheet> {
                     ? l10n.resolving
                     : switch (mark?.status) {
                         TransferStatus.queued => l10n.waitingToDownload,
+                        TransferStatus.resolving => l10n.resolving,
                         TransferStatus.running => l10n.downloading,
+                        TransferStatus.resuming => l10n.resumingDownload,
                         TransferStatus.paused => l10n.paused,
                         TransferStatus.saving => l10n.saving,
                         TransferStatus.done => l10n.downloaded,
@@ -4384,10 +4366,16 @@ class _FileInfoSheetState extends ConsumerState<_FileInfoSheet> {
                         TransferStatus.queued => ring(
                           color: scheme.onSecondary,
                         ),
+                        TransferStatus.resolving => ring(
+                          color: scheme.onSecondary,
+                        ),
                         // 下载中：确定态；大小未知时退回不确定态
                         TransferStatus.running => ring(
                           color: scheme.onSecondary,
                           value: (mark?.total ?? 0) > 0 ? mark?.progress : null,
+                        ),
+                        TransferStatus.resuming => ring(
+                          color: scheme.onSecondary,
                         ),
                         TransferStatus.paused => ring(
                           color: scheme.onSecondary,

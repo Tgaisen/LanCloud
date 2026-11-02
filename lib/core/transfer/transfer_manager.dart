@@ -21,7 +21,17 @@ import 'transfer_dependencies.dart';
 
 enum TransferKind { upload, download }
 
-enum TransferStatus { queued, running, paused, saving, done, failed, canceled }
+enum TransferStatus {
+  queued,
+  resolving,
+  running,
+  resuming,
+  paused,
+  saving,
+  done,
+  failed,
+  canceled,
+}
 
 class TransferTask {
   TransferTask({
@@ -68,6 +78,7 @@ class TransferTask {
 
   int total;
   int received = 0;
+  DateTime _lastProgressNotification = DateTime.fromMillisecondsSinceEpoch(0);
   TransferStatus status = TransferStatus.queued;
   String? error;
   String? savedPath;
@@ -80,18 +91,31 @@ class TransferTask {
 
   double get progress =>
       total > 0 ? (received / total).clamp(0, 1).toDouble() : 0;
+
+  bool shouldNotifyProgress(DateTime now, Duration interval) {
+    if (now.difference(_lastProgressNotification) < interval) return false;
+    _lastProgressNotification = now;
+    return true;
+  }
 }
 
 class TransferManager extends ChangeNotifier {
   TransferManager.withDependencies(
-    this._dependencies, {
+    TransferDependencies dependencies, {
     NotificationService? notifications,
     SharedDownloadsGateway? sharedDownloads,
     TransferDownloader? downloader,
-  }) : _notifications = notifications ?? NotificationService.instance,
+    this._progressUpdateInterval = const Duration(seconds: 1),
+  }) : _dependencies = dependencies,
+       _notifications = notifications ?? NotificationService.instance,
        _sharedDownloads =
            sharedDownloads ?? const PlatformSharedDownloadsGateway(),
-       _downloader = downloader ?? const DioTransferDownloader() {
+       _downloader =
+           downloader ??
+           DioTransferDownloader(
+             segmentConnectionsProvider: () =>
+                 dependencies.settings.downloadConnections,
+           ) {
     _restore();
   }
 
@@ -99,6 +123,7 @@ class TransferManager extends ChangeNotifier {
   static const int maxDownloads = 3;
 
   final TransferDependencies _dependencies;
+  final Duration _progressUpdateInterval;
   final NotificationService _notifications;
   final SharedDownloadsGateway _sharedDownloads;
   final TransferDownloader _downloader;
@@ -111,11 +136,21 @@ class TransferManager extends ChangeNotifier {
   @visibleForTesting
   Future<DirectFile> Function(String shareUrl, String pwd)? debugResolveShare;
 
-  /// 「已下载」标记的低频版本号：任务增删 / 状态变化时自增，下载中的进度
+  /// 「已加入下载」标记的低频版本号：任务增删 / 状态变化时自增，下载中的进度
   /// 更新**不**触发。列表里的下载标记监听它，避免长列表跟着进度高频重建。
   final ValueNotifier<int> marksRevision = ValueNotifier(0);
 
   void _bumpMarks() => marksRevision.value += 1;
+
+  void _reportProgress(TransferTask task, int received, int total) {
+    task.received = received;
+    if (total > 0) task.total = total;
+    if (!task.shouldNotifyProgress(DateTime.now(), _progressUpdateInterval)) {
+      return;
+    }
+    notifyListeners();
+    _syncProgressNotification();
+  }
 
   /// 某个文件的下载状态（用于「已添加下载」标记）：找最近一条匹配的下载任务，
   /// 已取消的不算。
@@ -153,9 +188,15 @@ class TransferManager extends ChangeNotifier {
           (s) => s.name == originalStatus,
           orElse: () => TransferStatus.failed,
         );
+        if (status == TransferStatus.canceled) {
+          await _dependencies.store.deleteTransfer('${row['id']}');
+          continue;
+        }
         var error = '${row['error'] ?? ''}';
         if (status == TransferStatus.running ||
             status == TransferStatus.queued ||
+            status == TransferStatus.resolving ||
+            status == TransferStatus.resuming ||
             status == TransferStatus.saving) {
           status = TransferStatus.failed;
           error = NotificationService.i18n?.taskInterrupted ?? '应用已退出，任务中断';
@@ -269,25 +310,8 @@ class TransferManager extends ChangeNotifier {
     _pump();
   }
 
-  void cancel(String id) {
-    final task = _find(id);
-    if (task == null) return;
-    if (task.status == TransferStatus.running) {
-      task.cancelToken.cancel('user canceled');
-      task.status = TransferStatus.canceled;
-    } else if (task.status == TransferStatus.queued ||
-        task.status == TransferStatus.paused) {
-      task.status = TransferStatus.canceled;
-      unawaited(_deletePartial(task));
-    } else if (task.status == TransferStatus.saving) {
-      // 平台复制无法中途停止；保留写入中的文件，复制返回后再清理目标。
-      task.status = TransferStatus.canceled;
-    }
-    _bumpMarks();
-    _persist(task);
-    notifyListeners();
-    _pump();
-  }
+  /// 取消下载或上传等同于删除任务记录；取消后不再保留“已下载”状态。
+  void cancel(String id) => removeTask(id);
 
   /// 暂停下载。只中止网络读取，已写入的 `.part` 文件保留供继续。
   void pause(String id) {
@@ -312,6 +336,34 @@ class TransferManager extends ChangeNotifier {
     _syncProgressNotification();
   }
 
+  /// 批量暂停下载：每批只持久化和通知一次，避免整页随任务数反复重建。
+  void pauseDownloads(Iterable<String> ids) {
+    var changed = false;
+    for (final id in ids.toSet()) {
+      final task = _find(id);
+      if (task == null ||
+          task.kind != TransferKind.download ||
+          (task.status != TransferStatus.running &&
+              task.status != TransferStatus.queued) ||
+          task.exporting) {
+        continue;
+      }
+      task.status = TransferStatus.paused;
+      if (task.cancelToken.isCancelled) {
+        task.cancelToken = CancelToken();
+      } else {
+        task.cancelToken.cancel('user paused');
+      }
+      _persist(task);
+      changed = true;
+    }
+    if (!changed) return;
+    _bumpMarks();
+    notifyListeners();
+    _pump();
+    _syncProgressNotification();
+  }
+
   /// 继续暂停的下载；断点位置由下载器读取 `.part` 文件长度确定。
   Future<String?> resume(String id) async {
     final task = _find(id);
@@ -320,14 +372,22 @@ class TransferManager extends ChangeNotifier {
         task.status != TransferStatus.paused) {
       return null;
     }
-    final expectedStatus = task.status;
+    task.status = TransferStatus.resuming;
+    task.error = null;
+    _bumpMarks();
+    _persist(task);
+    notifyListeners();
     final message = await _ensureDownloadUrl(task);
+    if (task.removed) return null;
     if (message != null) {
+      task.status = TransferStatus.paused;
+      task.error = message;
+      _bumpMarks();
       _persist(task);
       notifyListeners();
       return message;
     }
-    if (task.removed || task.status != expectedStatus) return null;
+    if (task.status != TransferStatus.resuming) return null;
     task.autoRefreshTried = false;
     task.status = TransferStatus.queued;
     task.error = null;
@@ -336,6 +396,19 @@ class TransferManager extends ChangeNotifier {
     notifyListeners();
     _pump();
     return null;
+  }
+
+  /// 批量恢复暂停的下载，返回无法恢复的任务数。
+  ///
+  /// 恢复可能需要重新解析直链，因此仍然逐项执行；单项 [resume] 会负责每次
+  /// 状态变化的持久化与通知。
+  Future<int> resumeDownloads(Iterable<String> ids) async {
+    var failed = 0;
+    for (final id in ids.toSet()) {
+      final message = await resume(id);
+      if (message != null) failed += 1;
+    }
+    return failed;
   }
 
   /// 重试失败任务。
@@ -428,25 +501,20 @@ class TransferManager extends ChangeNotifier {
     }
   }
 
-  void clearFinished() {
+  /// 清空指定类型的已结束任务，返回被移除的任务快照供调用方处理本地文件。
+  List<TransferTask> clearFinished(TransferKind kind) {
     final removed = tasks
         .where(
           (t) =>
-              t.status == TransferStatus.done ||
-              t.status == TransferStatus.canceled,
+              t.kind == kind &&
+              (t.status == TransferStatus.done ||
+                  t.status == TransferStatus.failed ||
+                  t.status == TransferStatus.canceled),
         )
-        .map((t) => t.id)
-        .toList();
-    tasks.removeWhere(
-      (t) =>
-          t.status == TransferStatus.done ||
-          t.status == TransferStatus.canceled,
-    );
-    for (final id in removed) {
-      _dependencies.store.deleteTransfer(id).catchError((_) {});
-    }
-    _bumpMarks();
-    notifyListeners();
+        .toList(growable: false);
+    if (removed.isEmpty) return const <TransferTask>[];
+    removeTasks([for (final task in removed) task.id]);
+    return removed;
   }
 
   /// 删除一条传输记录：进行中的先取消，避免残留记录被写回。
@@ -516,7 +584,9 @@ class TransferManager extends ChangeNotifier {
         .where(
           (t) =>
               t.kind == TransferKind.download &&
-              t.status == TransferStatus.running,
+              (t.status == TransferStatus.running ||
+                  t.status == TransferStatus.resolving ||
+                  t.status == TransferStatus.resuming),
         )
         .length;
     for (final task in tasks) {
@@ -542,6 +612,8 @@ class TransferManager extends ChangeNotifier {
       (t) =>
           t.status == TransferStatus.running ||
           t.status == TransferStatus.queued ||
+          t.status == TransferStatus.resolving ||
+          t.status == TransferStatus.resuming ||
           t.status == TransferStatus.saving,
     );
     if (active && !_serviceRunning) {
@@ -563,7 +635,11 @@ class TransferManager extends ChangeNotifier {
 
   Future<void> _start(TransferTask task) async {
     if (task.cancelToken.isCancelled) task.cancelToken = CancelToken();
-    task.status = TransferStatus.running;
+    final needsResolution =
+        task.kind == TransferKind.download && task.url.isEmpty;
+    task.status = needsResolution
+        ? TransferStatus.resolving
+        : TransferStatus.running;
     task.error = null;
     _bumpMarks();
     _persist(task);
@@ -573,20 +649,26 @@ class TransferManager extends ChangeNotifier {
       if (task.kind == TransferKind.upload) {
         await _runUpload(task);
       } else {
+        if (needsResolution) {
+          final message = await _ensureDownloadUrl(task);
+          if (task.removed || task.status != TransferStatus.resolving) return;
+          if (message != null) {
+            task.status = TransferStatus.failed;
+            task.error = message;
+            return;
+          }
+          task.status = TransferStatus.running;
+          task.error = null;
+          _bumpMarks();
+          _persist(task);
+          notifyListeners();
+          _syncProgressNotification();
+        }
         await _runDownload(task);
       }
       if (task.status != TransferStatus.canceled &&
           task.status != TransferStatus.paused) {
         task.status = TransferStatus.done;
-      }
-      if (task.kind == TransferKind.download &&
-          task.refId != null &&
-          task.status == TransferStatus.done) {
-        await _dependencies.store.markDownloaded(
-          ref: task.refId!,
-          name: task.name,
-          path: task.savedPath ?? '',
-        );
       }
     } on DioException catch (e) {
       if (task.status == TransferStatus.paused) {
@@ -648,6 +730,8 @@ class TransferManager extends ChangeNotifier {
         .where(
           (t) =>
               t.status == TransferStatus.running ||
+              t.status == TransferStatus.resolving ||
+              t.status == TransferStatus.resuming ||
               t.status == TransferStatus.saving,
         )
         .toList();
@@ -711,12 +795,7 @@ class TransferManager extends ChangeNotifier {
       streamFactory: task.streamFactory,
       size: task.sourceSize > 0 ? task.sourceSize : null,
       cancelToken: task.cancelToken,
-      onProgress: (sent, total) {
-        task.received = sent;
-        if (total > 0) task.total = total;
-        notifyListeners();
-        _syncProgressNotification();
-      },
+      onProgress: (sent, total) => _reportProgress(task, sent, total),
     );
   }
 
@@ -756,12 +835,7 @@ class TransferManager extends ChangeNotifier {
           if (task.referer.isNotEmpty) 'Referer': task.referer,
         },
         receiveTimeout: const Duration(hours: 2),
-        onProgress: (received, total) {
-          task.received = received;
-          if (total > 0) task.total = total;
-          notifyListeners();
-          _syncProgressNotification();
-        },
+        onProgress: (received, total) => _reportProgress(task, received, total),
       );
       if (result.total > 0) task.total = result.total;
       // 被风控拦截时会保存成校验页，这里识别并清理
@@ -855,8 +929,7 @@ class TransferManager extends ChangeNotifier {
 
   Future<void> _deletePartialPath(TransferTask task, String path) async {
     try {
-      final partial = File(path);
-      if (await partial.exists()) await partial.delete();
+      await DioTransferDownloader.deleteState(path);
       if (task.partialPath == path) task.partialPath = null;
     } catch (_) {}
   }
@@ -872,12 +945,7 @@ class TransferManager extends ChangeNotifier {
         fileName: task.name,
         mime: mimeForFileName(task.name),
         jobId: task.id,
-        onProgress: (copied, total) {
-          task.received = copied;
-          if (total > 0) task.total = total;
-          notifyListeners();
-          _syncProgressNotification();
-        },
+        onProgress: (copied, total) => _reportProgress(task, copied, total),
       );
       task.savedPath = saved.uri;
     } on PlatformException catch (e) {
@@ -904,12 +972,7 @@ class TransferManager extends ChangeNotifier {
         fileName: task.name,
         mime: mimeForFileName(task.name),
         jobId: task.id,
-        onProgress: (copied, total) {
-          task.received = copied;
-          if (total > 0) task.total = total;
-          notifyListeners();
-          _syncProgressNotification();
-        },
+        onProgress: (copied, total) => _reportProgress(task, copied, total),
       );
       task.savedPath = saved.uri;
     } on PlatformException catch (e) {

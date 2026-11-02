@@ -1,5 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lancloud/core/file_open_result.dart';
 import 'package:lancloud/core/saf_storage.dart';
 import 'package:lancloud/core/saved_file.dart';
 
@@ -12,6 +13,7 @@ const _codec = StandardMethodCodec();
 List<MethodCall> mockSafNative({
   Map<Object?, Object?>? pickResult,
   Map<Object?, Object?>? exportResult,
+  Map<Object?, Object?>? openResult,
   Future<Object?> Function(MethodCall call)? onExport,
 }) {
   final calls = <MethodCall>[];
@@ -25,8 +27,9 @@ List<MethodCall> mockSafNative({
             if (onExport != null) return onExport(call);
             return exportResult;
           case 'deleteFile':
-          case 'openFile':
             return true;
+          case 'openFile':
+            return openResult ?? <Object?, Object?>{'ok': true};
         }
         return null;
       });
@@ -161,7 +164,7 @@ void main() {
       mime: 'application/zip',
       displayName: 'a.zip',
     );
-    expect(opened, isTrue);
+    expect(opened.isSuccess, isTrue);
     expect(calls.single.method, 'openFile');
     expect(
       calls.single.arguments['uri'],
@@ -170,6 +173,24 @@ void main() {
     expect(calls.single.arguments['mime'], 'application/zip');
     expect(calls.single.arguments['displayName'], 'a.zip');
   });
+
+  for (final (reason, failure) in <(String, FileOpenFailure)>[
+    ('file_not_found', FileOpenFailure.fileNotFound),
+    ('permission_denied', FileOpenFailure.permissionDenied),
+    ('no_app', FileOpenFailure.noAssociatedApp),
+    ('system_error', FileOpenFailure.systemError),
+  ]) {
+    test('openFile：$reason 映射为 $failure', () async {
+      mockSafNative(
+        openResult: <Object?, Object?>{'ok': false, 'reason': reason},
+      );
+
+      final opened = await SafStorage.openFile('content://doc/x');
+
+      expect(opened.isSuccess, isFalse);
+      expect(opened.failure, failure);
+    });
+  }
 
   test('isContentUri 只认 content:// 前缀', () {
     expect(SafStorage.isContentUri('content://doc/x'), isTrue);

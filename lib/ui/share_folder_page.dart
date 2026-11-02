@@ -827,7 +827,7 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
                                 trailing: file.invalid
                                     ? null
                                     : _itemMenuButton(file: file),
-                                // 已加入下载的分享文件：显示「已下载」小标记
+                                // 已加入下载的分享文件：显示「已加入下载」小标记
                                 badge: DownloadMarkIcon(
                                   markKey: file.url,
                                   size: 16,

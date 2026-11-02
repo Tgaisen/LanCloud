@@ -101,7 +101,10 @@ class _FakeClient extends LanzouClient {
   }
 
   @override
-  Future<ShareInfo> shareInfoOfFile(String fileId) async {
+  Future<ShareInfo> shareInfoOfFile(
+    String fileId, {
+    bool withDetails = true,
+  }) async {
     shareFileCalls += 1;
     return ShareInfo(
       url: fileUrl,
@@ -175,7 +178,8 @@ class _GatedClient extends _FakeClient {
   final Completer<ShareInfo> share = Completer<ShareInfo>();
 
   @override
-  Future<ShareInfo> shareInfoOfFile(String fileId) => share.future;
+  Future<ShareInfo> shareInfoOfFile(String fileId, {bool withDetails = true}) =>
+      share.future;
 }
 
 /// 弹窗里那一行图标按钮：按 tooltip 找到对应按钮。
@@ -494,17 +498,17 @@ void main() {
     );
 
     await _pumpDrive(tester, app, manager: manager);
-    // 列表卡片上先有「已下载」小标记
+    // 列表卡片上先有「已加入下载」小标记
     expect(find.byIcon(Icons.download_done), findsOneWidget);
 
     await tester.tap(find.text('a.zip'));
     await _settleSheet(tester);
-    // 下载按钮变 checked、tooltip 变「已下载」
-    expect(_toggleButton(tester, '已下载').checked, isTrue);
+    // 下载按钮变 checked、tooltip 变「已加入下载」
+    expect(_toggleButton(tester, '已加入下载').checked, isTrue);
 
     // 点它弹二级菜单：已完成 → 打开 / 分享可用，取消位换成删除记录，
     // 重新下载与「删除记录与文件」也可用
-    await tester.tap(find.byTooltip('已下载'));
+    await tester.tap(find.byTooltip('已加入下载'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
     final rows = tester
@@ -557,7 +561,7 @@ void main() {
     await _pumpDrive(tester, app, manager: manager);
     await tester.tap(find.text('a.zip'));
     await _settleSheet(tester);
-    await tester.tap(find.byTooltip('已下载'));
+    await tester.tap(find.byTooltip('已加入下载'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
     await tester.tap(

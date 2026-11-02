@@ -330,10 +330,12 @@ class M3eFloatingNavigationBar extends StatelessWidget {
               widths.selected +
               widths.collapsed * otherCount +
               itemSpacing * otherCount;
+          // 导航区域保持中性表面色，避免与内容多选使用的 primaryContainer
+          // 混成同一大片强调色；当前目的地只在内部用次级容器标出。
           return core.M3EHorizontalFloatingToolbar(
             expanded: true,
             decoration: core.M3EFloatingToolbarDecoration(
-              colors: core.M3EFloatingToolbarDefaults.vibrantColors(context),
+              colors: core.M3EFloatingToolbarDefaults.standardColors(context),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: _horizontalPadding,
               ),
@@ -366,9 +368,9 @@ class M3eFloatingNavigationBar extends StatelessWidget {
                         iconLabelGap: iconLabelGap,
                         springMotion: springMotion,
                         reduceMotion: reduceMotion,
-                        selectedBackground: scheme.surfaceContainer,
-                        selectedForeground: scheme.onSurface,
-                        unselectedForeground: scheme.onPrimaryContainer,
+                        selectedBackground: scheme.secondaryContainer,
+                        selectedForeground: scheme.onSecondaryContainer,
+                        unselectedForeground: scheme.onSurfaceVariant,
                         tabPositionLabel: localizations.tabLabel(
                           tabIndex: i + 1,
                           tabCount: items.length,
@@ -676,6 +678,7 @@ class M3eLinearProgressIndicator extends StatelessWidget {
     this.color,
     this.backgroundColor,
     this.wavy = false,
+    this.waveSpeed,
   });
 
   /// 0.0–1.0 的确定进度；为空表示不确定进度。
@@ -690,6 +693,9 @@ class M3eLinearProgressIndicator extends StatelessWidget {
   final Color? color;
   final Color? backgroundColor;
   final bool wavy;
+
+  /// 波浪滚动速度；为空时沿用 m3e_core 默认值，0 表示保留波形但停止滚动。
+  final double? waveSpeed;
 
   @override
   Widget build(BuildContext context) {
@@ -712,6 +718,7 @@ class M3eLinearProgressIndicator extends StatelessWidget {
       height: height ?? 10,
       color: color,
       backgroundColor: backgroundColor,
+      waveSpeed: waveSpeed ?? core.M3EProgressIndicatorDefaults.linearWaveSpeed,
     );
   }
 }

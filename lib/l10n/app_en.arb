@@ -113,6 +113,52 @@
   "clearFinished": "Clear finished",
   "clearFinishedConfirmTitle": "Clear finished records",
   "clearFinishedConfirmMessage": "This will clear finished transfer records. Continue?",
+  "cancelAll": "Cancel all",
+  "pauseAll": "Pause all",
+  "resumeAll": "Resume all",
+  "clearAll": "Clear",
+  "cancelInProgressTransfers": "Cancel in-progress transfers",
+  "cancelAllUploadsConfirmMessage": "Cancel and remove all {count} in-progress uploads?",
+  "@cancelAllUploadsConfirmMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cancelAllDownloadsConfirmMessage": "Cancel and remove all {count} in-progress downloads and delete downloaded files?",
+  "@cancelAllDownloadsConfirmMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "clearFinishedTransfers": "Clear finished transfers",
+  "clearFinishedUploadsConfirmMessage": "Clear all {count} finished upload records?",
+  "@clearFinishedUploadsConfirmMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "clearFinishedDownloadsConfirmMessage": "Clear all {count} finished download records?",
+  "@clearFinishedDownloadsConfirmMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "resumeAllPartialFailed": "{count} downloads could not be resumed. Please try again later.",
+  "@resumeAllPartialFailed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "upload": "Upload",
   "noUploads": "No upload tasks",
   "noDownloads": "No download tasks",
@@ -121,6 +167,7 @@
   "queued": "Queued",
   "uploading": "Uploading",
   "downloading": "Downloading",
+  "resumingDownload": "Resuming",
   "paused": "Paused",
   "saving": "Saving",
   "pauseDownload": "Pause download",
@@ -134,6 +181,9 @@
   "cancelTask": "Cancel task",
   "cancelDownload": "Cancel download",
   "openFileFailed": "No app can open this file",
+  "openFileMissing": "The file no longer exists or has been moved",
+  "openFilePermissionDenied": "File access is no longer permitted. Choosing a download directory only affects future tasks; please download this file again.",
+  "openFileSystemError": "The system could not open this file. Please try again later.",
   "redownload": "Download again",
   "deleteDownloadRecord": "Delete download record",
   "waitingToDownload": "Waiting",
@@ -236,6 +286,9 @@
   "uploadKeywords": "upload concurrent",
   "maxDownloads": "Concurrent downloads",
   "downloadKeywords": "download concurrent",
+  "singleFileDownloadConnections": "Max download threads",
+  "singleFileDownloadConnectionsKeywords": "multi-thread segmented single-file connection parallel download speed",
+  "singleFileDownloadConnectionsSubtitle": "More threads increase rate-limit and data-usage risks",
   "apiHost": "Drive API domain",
   "apiHostKeywords": "domain api connection error pc up",
   "uploadPath": "Upload endpoint path",
@@ -364,8 +417,8 @@
   "resolvingBatch": "Resolving and adding to the download queue ({count} total)",
   "addedDownloads": "Added {count} download tasks",
   "addedDownloadsPartial": "Added {ok} download tasks; {failed} failed to resolve",
-  "addedDownloadsSkipped": "Added {ok} download tasks; skipped {skipped} already-downloaded files",
-  "addedDownloadsPartialSkipped": "Added {ok} download tasks; skipped {skipped} already-downloaded files; {failed} failed to resolve",
+  "addedDownloadsSkipped": "Added {ok} download tasks; skipped {skipped} files already in the transfer list",
+  "addedDownloadsPartialSkipped": "Added {ok} download tasks; skipped {skipped} files already in the transfer list; {failed} failed to resolve",
   "retriedDownloads": "Re-queued {count} download tasks",
   "retriedDownloadsPartial": "Re-queued {ok} download tasks; {failed} failed",
   "noLinksToCopy": "No share links to copy",
@@ -442,7 +495,7 @@
   "filterResult": "Filtered results",
   "folderActions": "Folder actions",
   "fileActions": "File actions",
-  "downloaded": "Downloaded",
+  "downloaded": "Added to downloads",
   "folder": "Folder",
   "fileCount": "{count} files",
   "openFolder": "Open folder",
