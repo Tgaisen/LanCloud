@@ -43,7 +43,8 @@ function Invoke-Flutter {
   param(
     [string[]]$FlutterArgs,
     [int]$Tail = 15,
-    [switch]$OnlyIssues
+    [switch]$OnlyIssues,
+    [switch]$FailureDetails
   )
   $raw = & $flutter @FlutterArgs 2>&1
   $script:ExitCode = $LASTEXITCODE
@@ -56,6 +57,24 @@ function Invoke-Flutter {
   if ($OnlyIssues) {
     $hits = $lines | Where-Object { $_ -match '(error|warning|info)\s+\u2022' }
     if ($hits) { $hits | Select-Object -First 40 | ForEach-Object { $_.Trim() } }
+  }
+  if ($script:ExitCode -ne 0 -and $FailureDetails) {
+    $lineArray = @($lines)
+    $indexes = New-Object System.Collections.Generic.List[int]
+    $pattern = '(^e:\s|error:|FAILURE:|What went wrong|Execution failed|Caused by:|Unresolved reference|Compilation error|Exception:|Could not (resolve|find)|BUILD FAILED)'
+    for ($i = 0; $i -lt $lineArray.Count; $i++) {
+      if ($lineArray[$i] -notmatch $pattern) { continue }
+      $from = [Math]::Max(0, $i - 2)
+      $to = [Math]::Min($lineArray.Count - 1, $i + 6)
+      for ($j = $from; $j -le $to; $j++) {
+        if ($indexes -notcontains $j) { $indexes.Add($j) }
+      }
+    }
+    if ($indexes.Count -gt 0) {
+      Write-Output '---- failure details ----'
+      $indexes.Sort()
+      foreach ($index in $indexes) { $lineArray[$index] }
+    }
   }
   $lines | Select-Object -Last $Tail
   Write-Output "---- exit=$($script:ExitCode)"
@@ -157,7 +176,7 @@ switch ($Verb) {
     if (-not $hasBuildMode) {
       $extra = @('--debug') + $extra
     }
-    Invoke-Flutter -FlutterArgs ((@('build', 'apk', '--no-pub') + $extra)) -Tail 8
+    Invoke-Flutter -FlutterArgs ((@('build', 'apk', '--no-pub') + $extra)) -Tail 20 -FailureDetails
   }
   'install' {
     $apk = Get-ChildItem (Join-Path $root 'build\app\outputs\flutter-apk') -Filter '*.apk' -ErrorAction SilentlyContinue |

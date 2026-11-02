@@ -20,6 +20,15 @@
   `{info, text:[{id,name_all,time,size,downs,onof,is_des}]}`；`info==0` 表示没有更多页。
 - 文件夹列表：POST `doupload.php?uid=<ylogin>` `{task:47, folder_id:<id>}` → `{text:[{fol_id,name,onof,folder_des}], info:[{folderid,name}]}`（info 为路径）。
 
+## 文件详情（doupload.php）
+- 读取详情/简介：POST doupload.php `{task:12, file_id:<id>}`。
+  本客户端按 `{text:<展示名称>, info:<文件简介>}` 读取；`text` 可覆盖列表接口里的名称，
+  `info` 为空表示没有简介。
+- task 12 属于补充信息，失败不应阻断分享 URL 获取或下载直链解析。
+  `shareInfoOfFile()` 默认用 task 12 补充名称和简介；批量下载只需要基础分享信息，
+  会跳过该请求以减少每个文件的网络往返。
+- 写入简介使用 task 11，见下方“管理操作”。
+
 ## 上传
 - POST https://pc.woozooo.com/fileup.php，multipart：
   `task=1, vie=2, ve=2, id=WU_FILE_0, folder_id_bb_n=<folder_id>, name=<文件名>` + 文件字段。

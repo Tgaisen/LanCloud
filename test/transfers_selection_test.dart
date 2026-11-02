@@ -1,10 +1,13 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lancloud/core/api/models.dart';
 import 'package:lancloud/core/app_environment.dart';
+import 'package:lancloud/core/file_open_result.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
@@ -68,6 +71,30 @@ Future<(AppEnvironment, TransferManager)> host(WidgetTester tester) async {
     ),
   );
   await tester.pumpAndSettle();
+  return (app, manager);
+}
+
+Future<(AppEnvironment, TransferManager)> hostWithTasks(
+  WidgetTester tester,
+  List<TransferTask> tasks,
+) async {
+  final app = AppEnvironment();
+  final manager = buildTransferManagerForEnvironment(app);
+  manager.tasks.addAll(tasks);
+  await tester.pumpWidget(
+    _transferTestHost(
+      app: app,
+      manager: manager,
+      child: MaterialApp(
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('zh'),
+        home: const TransfersPage(),
+      ),
+    ),
+  );
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 700));
   return (app, manager);
 }
 
@@ -146,7 +173,7 @@ void main() {
         ),
       ),
     );
-    // 进行中的条目用 MD3E 波浪进度条（波浪持续滚动），不能等它 settle。
+    // 上传运行中也显示进度，但不使用下载专属的波浪动画。
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
 
@@ -158,6 +185,14 @@ void main() {
     // 右边缘不越过右侧按钮
     expect(bar.right, lessThanOrEqualTo(cancel.left));
     expect(bar.width, greaterThan(0));
+    expect(
+      tester
+          .widget<M3eLinearProgressIndicator>(
+            find.byType(M3eLinearProgressIndicator),
+          )
+          .wavy,
+      isFalse,
+    );
   });
 
   testWidgets('暂停的下载显示静态进度与继续按钮', (tester) async {
@@ -198,6 +233,152 @@ void main() {
     expect(find.byTooltip('继续下载'), findsOneWidget);
     expect(find.byTooltip('取消任务'), findsOneWidget);
     expect(find.byTooltip('更多操作'), findsNothing);
+    final progress = tester.widget<M3eLinearProgressIndicator>(
+      find.byType(M3eLinearProgressIndicator),
+    );
+    expect(progress.value, closeTo(0.4, 0.001));
+    expect(progress.wavy, isFalse);
+  });
+
+  testWidgets('恢复解析期间显示恢复中且暂停按钮禁用', (tester) async {
+    final (app, manager) = await hostWithTasks(tester, [
+      TransferTask(
+          id: 'd1',
+          kind: TransferKind.download,
+          name: 'paused.zip',
+          accountUid: '',
+          referer: 'https://example.com/share',
+        )
+        ..status = TransferStatus.paused
+        ..total = 100
+        ..received = 40,
+    ]);
+    app.settingsState.store.maxDownloads = 0;
+    final resolvingStarted = Completer<void>();
+    final resolving = Completer<DirectFile>();
+    manager.debugResolveShare = (url, pwd) {
+      resolvingStarted.complete();
+      return resolving.future;
+    };
+    await tester.tap(find.text('下载').hitTestable());
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    await tester.tap(find.byTooltip('继续下载'));
+    await tester.pump();
+    await resolvingStarted.future;
+    await tester.pump();
+
+    expect(manager.tasks.single.status, TransferStatus.resuming);
+    expect(find.textContaining('恢复中'), findsOneWidget);
+    expect(find.byTooltip('继续下载'), findsNothing);
+    final pause = tester.widget<M3eIconButton>(
+      find.ancestor(
+        of: find.byTooltip('暂停下载'),
+        matching: find.byType(M3eIconButton),
+      ),
+    );
+    expect(pause.onPressed, isNull);
+    final progress = tester.widget<M3eLinearProgressIndicator>(
+      find.byType(M3eLinearProgressIndicator),
+    );
+    expect(progress.wavy, isFalse);
+
+    resolving.complete(
+      DirectFile(name: 'paused.zip', url: 'https://cdn.example/paused.zip'),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(manager.tasks.single.status, TransferStatus.queued);
+    final resumedPause = tester.widget<M3eIconButton>(
+      find.ancestor(
+        of: find.byTooltip('暂停下载'),
+        matching: find.byType(M3eIconButton),
+      ),
+    );
+    expect(resumedPause.onPressed, isNotNull);
+    expect(
+      tester
+          .widget<M3eLinearProgressIndicator>(
+            find.byType(M3eLinearProgressIndicator),
+          )
+          .wavy,
+      isFalse,
+    );
+    app.dispose();
+  });
+
+  testWidgets('批量任务解析直链时显示解析中且暂停按钮禁用', (tester) async {
+    final (app, _) = await hostWithTasks(tester, [
+      TransferTask(
+          id: 'd1',
+          kind: TransferKind.download,
+          name: 'resolving.zip',
+          accountUid: '',
+        )
+        ..status = TransferStatus.resolving
+        ..total = 100
+        ..received = 40,
+    ]);
+    await tester.tap(find.text('下载').hitTestable());
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(find.textContaining('解析中'), findsOneWidget);
+    final pause = tester.widget<M3eIconButton>(
+      find.ancestor(
+        of: find.byTooltip('暂停下载'),
+        matching: find.byType(M3eIconButton),
+      ),
+    );
+    expect(pause.onPressed, isNull);
+    expect(
+      tester
+          .widget<M3eLinearProgressIndicator>(
+            find.byType(M3eLinearProgressIndicator),
+          )
+          .wavy,
+      isFalse,
+    );
+    app.dispose();
+  });
+
+  testWidgets('恢复后仍在排队的下载保留进度但停止波浪动画', (tester) async {
+    final app = AppEnvironment();
+    final manager = buildTransferManagerForEnvironment(app);
+    manager.tasks.add(
+      TransferTask(
+          id: 'd1',
+          kind: TransferKind.download,
+          name: 'queued.zip',
+          accountUid: '',
+        )
+        ..status = TransferStatus.queued
+        ..total = 100
+        ..received = 40,
+    );
+    await tester.pumpWidget(
+      _transferTestHost(
+        app: app,
+        manager: manager,
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const TransfersPage(),
+        ),
+      ),
+    );
+    final downloadTab = find.descendant(
+      of: find.byType(M3eConnectedButtonGroup<int>),
+      matching: find.byIcon(app_icons.Icons.download),
+    );
+    await tester.tap(downloadTab.first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(find.textContaining('排队中'), findsOneWidget);
     final progress = tester.widget<M3eLinearProgressIndicator>(
       find.byType(M3eLinearProgressIndicator),
     );
@@ -260,7 +441,7 @@ void main() {
       find.byType(M3eLinearProgressIndicator),
     );
     expect(progress.value, closeTo(0.6, 0.001));
-    expect(progress.wavy, isTrue);
+    expect(progress.wavy, isFalse);
   });
 
   testWidgets('进行中任务使用取消按钮：上传仅一个，下载保留暂停', (tester) async {
@@ -318,6 +499,14 @@ void main() {
     expect(find.byTooltip('暂停下载'), findsOneWidget);
     expect(find.byTooltip('取消任务'), findsOneWidget);
     expect(find.byTooltip('更多操作'), findsNothing);
+    expect(
+      tester
+          .widget<M3eLinearProgressIndicator>(
+            find.byType(M3eLinearProgressIndicator),
+          )
+          .wavy,
+      isTrue,
+    );
     app.dispose();
   });
 
@@ -464,8 +653,8 @@ void main() {
     expect(selectionBarOpacity(tester), 0);
   });
 
-  // 顶栏入口：「清除已完成」在左、多选在右，点一下直接进多选。
-  testWidgets('顶栏多选按钮在「清除已完成」右侧，点击进入多选并播报', (tester) async {
+  // 顶栏只保留多选入口；分栏右侧负责各自的清空操作。
+  testWidgets('顶栏多选按钮点击进入多选并播报', (tester) async {
     final announcements = <String>[];
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockDecodedMessageHandler<dynamic>(SystemChannels.accessibility, (
@@ -490,10 +679,7 @@ void main() {
 
     final multiSelect = find.byTooltip('多选');
     expect(multiSelect, findsOneWidget);
-    expect(
-      tester.getCenter(multiSelect).dx,
-      greaterThan(tester.getCenter(find.byTooltip('清除已完成')).dx),
-    );
+    expect(find.byTooltip('清除已完成'), findsNothing);
 
     await tester.tap(multiSelect);
     await tester.pumpAndSettle();
@@ -570,27 +756,204 @@ void main() {
     app.dispose();
   });
 
-  testWidgets('「清除已完成」先弹确认：取消保留、清除只移除已结束记录', (tester) async {
+  testWidgets('上传已结束分栏：清空先确认并移除完成和失败记录', (tester) async {
     final (app, manager) = await host(tester);
 
-    await tester.tap(find.byTooltip('清除已完成'));
+    await tester.tap(find.byKey(const ValueKey('transfers-clear-finished')));
     await tester.pumpAndSettle();
-    // 确认弹窗：标题 / 文案与网盘页删除确认同款（默认 MD3 弹窗）
-    expect(find.text('清除已完成记录'), findsOneWidget);
-    expect(find.text('将清除已完成的传输记录，继续吗？'), findsOneWidget);
+    expect(find.text('清空已结束任务'), findsOneWidget);
+    expect(find.text('将清空全部 3 条已结束的上传任务记录，继续吗？'), findsOneWidget);
+    expect(find.text('同时删除文件'), findsNothing);
 
     // 取消：记录原样
     await tester.tap(find.text('取消'));
     await tester.pumpAndSettle();
     expect(manager.tasks, hasLength(3));
 
-    // 清除：done 的 c.zip 被移除，失败项保留
-    await tester.tap(find.byTooltip('清除已完成'));
+    // 清空：完成与失败记录都属于已结束分栏。
+    await tester.tap(find.byKey(const ValueKey('transfers-clear-finished')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('清除'));
+    await tester.tap(find.byKey(const ValueKey('transfer-delete-confirm')));
     await tester.pumpAndSettle();
-    expect(manager.tasks.map((t) => t.id).toList(), ['t1', 't2']);
-    expect(find.text('c.zip'), findsNothing);
+    expect(manager.tasks, isEmpty);
+    expect(find.text('暂无上传任务'), findsOneWidget);
+    app.dispose();
+  });
+
+  testWidgets('上传进行中分栏：全部取消先确认且不显示删除文件', (tester) async {
+    final (app, manager) = await hostWithTasks(tester, [
+      task('u1', 'running.zip', status: TransferStatus.running),
+      task('u2', 'queued.zip', status: TransferStatus.queued),
+      task('u3', 'finished.zip', status: TransferStatus.done),
+    ]);
+
+    await tester.tap(find.byKey(const ValueKey('transfers-cancel-all')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('取消进行中任务'), findsOneWidget);
+    expect(find.text('将取消并移除全部 2 个进行中的上传任务，继续吗？'), findsOneWidget);
+    expect(find.text('同时删除文件'), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('transfer-delete-confirm')));
+    await tester.pumpAndSettle();
+    expect(manager.tasks.map((item) => item.id), ['u3']);
+    expect(find.text('running.zip'), findsNothing);
+    expect(find.text('finished.zip'), findsOneWidget);
+    app.dispose();
+  });
+
+  testWidgets('下载进行中分栏：部分暂停时只显示全部恢复', (tester) async {
+    final (app, manager) = await hostWithTasks(tester, [
+      TransferTask(
+        id: 'd1',
+        kind: TransferKind.download,
+        name: 'running.zip',
+        accountUid: '',
+        url: 'https://cdn.example/running.zip',
+      )..status = TransferStatus.running,
+      TransferTask(
+        id: 'd2',
+        kind: TransferKind.download,
+        name: 'paused.zip',
+        accountUid: '',
+        url: 'https://cdn.example/paused.zip',
+      )..status = TransferStatus.paused,
+    ]);
+    app.settingsState.store.maxDownloads = 0;
+    await tester.tap(find.text('下载').hitTestable());
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(find.byKey(const ValueKey('transfers-pause-all')), findsNothing);
+    expect(find.byKey(const ValueKey('transfers-cancel-all')), findsNothing);
+    expect(find.byKey(const ValueKey('transfers-resume-all')), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('transfers-resume-all')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(manager.tasks.last.status, TransferStatus.queued);
+    app.dispose();
+  });
+
+  testWidgets('下载进行中分栏：全部暂停后并排显示取消和恢复', (tester) async {
+    final (app, manager) = await hostWithTasks(tester, [
+      TransferTask(
+        id: 'd1',
+        kind: TransferKind.download,
+        name: 'running.zip',
+        accountUid: '',
+      )..status = TransferStatus.running,
+      TransferTask(
+        id: 'd2',
+        kind: TransferKind.download,
+        name: 'queued.zip',
+        accountUid: '',
+      )..status = TransferStatus.queued,
+    ]);
+    await tester.tap(find.text('下载').hitTestable());
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    final pauseButton = find.byKey(const ValueKey('transfers-pause-all'));
+    expect(pauseButton, findsOneWidget);
+    expect(
+      tester.widget<TextButton>(pauseButton).style?.minimumSize?.resolve({}),
+      const Size(0, 32),
+    );
+    final header = find.ancestor(
+      of: pauseButton,
+      matching: find.byType(SectionHeader),
+    );
+    expect(tester.getSize(header).height, lessThanOrEqualTo(48));
+    await tester.tap(pauseButton);
+    await tester.pumpAndSettle();
+
+    expect(manager.tasks.map((item) => item.status), [
+      TransferStatus.paused,
+      TransferStatus.paused,
+    ]);
+    expect(find.byKey(const ValueKey('transfers-cancel-all')), findsOneWidget);
+    expect(find.byKey(const ValueKey('transfers-resume-all')), findsOneWidget);
+    app.dispose();
+  });
+
+  testWidgets('下载进行中分栏：全部取消不显示文件选项并默认删除文件', (tester) async {
+    final dir = Directory.systemTemp.createTempSync('lancloud-cancel-active');
+    addTearDown(() {
+      try {
+        dir.deleteSync(recursive: true);
+      } catch (_) {}
+    });
+    final file = File('${dir.path}/paused.zip');
+    file.writeAsStringSync('partial');
+    final (app, manager) = await hostWithTasks(tester, [
+      TransferTask(
+          id: 'd1',
+          kind: TransferKind.download,
+          name: 'paused.zip',
+          accountUid: '',
+        )
+        ..status = TransferStatus.paused
+        ..savedPath = file.path,
+    ]);
+    await tester.tap(find.text('下载').hitTestable());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('transfers-cancel-all')));
+    await tester.pumpAndSettle();
+    expect(find.text('将取消并移除全部 1 个进行中的下载任务，并删除已下载的文件，继续吗？'), findsOneWidget);
+    expect(find.text('同时删除文件'), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('transfer-delete-confirm')));
+    await tester.pump();
+    expect(manager.tasks, isEmpty);
+
+    for (var i = 0; i < 3 && file.existsSync(); i++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 50)),
+      );
+      await tester.pump();
+    }
+    expect(file.existsSync(), isFalse);
+    app.dispose();
+  });
+
+  testWidgets('下载已结束分栏：可清空记录并同时删除文件', (tester) async {
+    final dir = Directory.systemTemp.createTempSync('lancloud-clear-finished');
+    addTearDown(() {
+      try {
+        dir.deleteSync(recursive: true);
+      } catch (_) {}
+    });
+    final file = File('${dir.path}/finished.zip');
+    file.writeAsStringSync('downloaded');
+    final (app, manager) = await hostWithTasks(tester, [
+      TransferTask(
+          id: 'd1',
+          kind: TransferKind.download,
+          name: 'finished.zip',
+          accountUid: '',
+        )
+        ..status = TransferStatus.done
+        ..savedPath = file.path,
+    ]);
+    await tester.tap(find.text('下载').hitTestable());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('transfers-clear-finished')));
+    await tester.pumpAndSettle();
+    expect(find.text('同时删除文件'), findsOneWidget);
+    await tester.tap(find.text('同时删除文件'));
+    await tester.tap(find.byKey(const ValueKey('transfer-delete-confirm')));
+    await tester.pump();
+
+    expect(manager.tasks, isEmpty);
+    for (var i = 0; i < 3 && file.existsSync(); i++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 50)),
+      );
+      await tester.pump();
+    }
+    expect(file.existsSync(), isFalse);
     app.dispose();
   });
 
@@ -654,7 +1017,7 @@ void main() {
             openFile: (path, {String? name}) async {
               opened.add(path);
               openedNames.add(name);
-              return true;
+              return const FileOpenResult.success();
             },
           ),
         ),
@@ -703,44 +1066,54 @@ void main() {
     app.dispose();
   });
 
-  testWidgets('下载完成但系统打不开时显示明确提示', (tester) async {
-    final app = AppEnvironment();
-    final manager = buildTransferManagerForEnvironment(app);
-    manager.tasks.add(
-      TransferTask(
-          id: 'd1',
-          kind: TransferKind.download,
-          name: 'broken.zip',
-          accountUid: '',
-        )
-        ..status = TransferStatus.done
-        ..savedPath = '/tmp/broken.zip',
-    );
-    await tester.pumpWidget(
-      _transferTestHost(
-        app: app,
-        manager: manager,
-        child: MaterialApp(
-          localizationsDelegates: appLocalizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          locale: const Locale('zh'),
-          home: TransfersPage(openFile: (path, {String? name}) async => false),
+  for (final (failure, message) in <(FileOpenFailure, String)>[
+    (FileOpenFailure.fileNotFound, '文件不存在，可能已被移动或删除'),
+    (FileOpenFailure.permissionDenied, '文件访问权限已失效；重新选择下载目录只影响之后的任务，请重新下载该文件'),
+    (FileOpenFailure.noAssociatedApp, '没有可打开此文件的应用'),
+    (FileOpenFailure.systemError, '系统无法打开该文件，请稍后重试'),
+  ]) {
+    testWidgets('下载打开失败时显示 $failure 对应提示', (tester) async {
+      final app = AppEnvironment();
+      final manager = buildTransferManagerForEnvironment(app);
+      manager.tasks.add(
+        TransferTask(
+            id: 'd1',
+            kind: TransferKind.download,
+            name: 'broken.zip',
+            accountUid: '',
+          )
+          ..status = TransferStatus.done
+          ..savedPath = '/tmp/broken.zip',
+      );
+      await tester.pumpWidget(
+        _transferTestHost(
+          app: app,
+          manager: manager,
+          child: MaterialApp(
+            localizationsDelegates: appLocalizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            locale: const Locale('zh'),
+            home: TransfersPage(
+              openFile: (path, {String? name}) async =>
+                  FileOpenResult.failed(failure),
+            ),
+          ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    final downloadTab = find.descendant(
-      of: find.byType(M3eConnectedButtonGroup<int>),
-      matching: find.byIcon(app_icons.Icons.download),
-    );
-    await tester.tap(downloadTab.first);
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
+      final downloadTab = find.descendant(
+        of: find.byType(M3eConnectedButtonGroup<int>),
+        matching: find.byIcon(app_icons.Icons.download),
+      );
+      await tester.tap(downloadTab.first);
+      await tester.pumpAndSettle();
 
-    await tester.tap(find.text('broken.zip'));
-    await tester.pump();
-    expect(find.text('没有可打开此文件的应用'), findsOneWidget);
-    app.dispose();
-  });
+      await tester.tap(find.text('broken.zip'));
+      await tester.pump();
+      expect(find.text(message), findsOneWidget);
+      app.dispose();
+    });
+  }
 
   testWidgets('失败下载的 ⋯ 菜单：重试可用，删除记录与文件连带删掉本地文件', (tester) async {
     final app = AppEnvironment();

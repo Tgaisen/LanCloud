@@ -357,6 +357,49 @@ class AppLocalizationsZh extends AppLocalizations {
   String get clearFinishedConfirmMessage => '将清除已完成的传输记录，继续吗？';
 
   @override
+  String get cancelAll => '全部取消';
+
+  @override
+  String get pauseAll => '全部暂停';
+
+  @override
+  String get resumeAll => '全部恢复';
+
+  @override
+  String get clearAll => '清空';
+
+  @override
+  String get cancelInProgressTransfers => '取消进行中任务';
+
+  @override
+  String cancelAllUploadsConfirmMessage(int count) {
+    return '将取消并移除全部 $count 个进行中的上传任务，继续吗？';
+  }
+
+  @override
+  String cancelAllDownloadsConfirmMessage(int count) {
+    return '将取消并移除全部 $count 个进行中的下载任务，并删除已下载的文件，继续吗？';
+  }
+
+  @override
+  String get clearFinishedTransfers => '清空已结束任务';
+
+  @override
+  String clearFinishedUploadsConfirmMessage(int count) {
+    return '将清空全部 $count 条已结束的上传任务记录，继续吗？';
+  }
+
+  @override
+  String clearFinishedDownloadsConfirmMessage(int count) {
+    return '将清空全部 $count 条已结束的下载任务记录，继续吗？';
+  }
+
+  @override
+  String resumeAllPartialFailed(int count) {
+    return '$count 个下载任务恢复失败，请稍后重试。';
+  }
+
+  @override
   String get upload => '上传';
 
   @override
@@ -379,6 +422,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get downloading => '下载中';
+
+  @override
+  String get resumingDownload => '恢复中';
 
   @override
   String get paused => '已暂停';
@@ -420,6 +466,15 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get openFileFailed => '没有可打开此文件的应用';
+
+  @override
+  String get openFileMissing => '文件不存在，可能已被移动或删除';
+
+  @override
+  String get openFilePermissionDenied => '文件访问权限已失效；重新选择下载目录只影响之后的任务，请重新下载该文件';
+
+  @override
+  String get openFileSystemError => '系统无法打开该文件，请稍后重试';
 
   @override
   String get redownload => '重新下载';
@@ -721,6 +776,15 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get downloadKeywords => '下载 并发';
+
+  @override
+  String get singleFileDownloadConnections => '最高下载线程';
+
+  @override
+  String get singleFileDownloadConnectionsKeywords => '多线程 分片 单文件 连接 并发 下载 加速';
+
+  @override
+  String get singleFileDownloadConnectionsSubtitle => '线程越多，风控和流量风险越高';
 
   @override
   String get apiHost => '网盘接口域名';
@@ -1073,12 +1137,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String addedDownloadsSkipped(int ok, int skipped) {
-    return '已加入 $ok 个下载任务，跳过 $skipped 个已下载文件';
+    return '已加入 $ok 个下载任务，跳过 $skipped 个已在传输列表的文件';
   }
 
   @override
   String addedDownloadsPartialSkipped(int ok, int skipped, int failed) {
-    return '已加入 $ok 个下载任务，跳过 $skipped 个已下载文件，$failed 个解析失败';
+    return '已加入 $ok 个下载任务，跳过 $skipped 个已在传输列表的文件，$failed 个解析失败';
   }
 
   @override
@@ -1336,7 +1400,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get fileActions => '文件操作';
 
   @override
-  String get downloaded => '已下载';
+  String get downloaded => '已加入下载';
 
   @override
   String get folder => '文件夹';

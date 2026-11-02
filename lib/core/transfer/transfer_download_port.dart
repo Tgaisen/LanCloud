@@ -102,7 +102,10 @@ class DefaultTransferDownloadPort implements TransferDownloadPort {
       await for (final entity in dir.list(followLinks: false)) {
         if (entity is! File) continue;
         // 新格式是可能需要长期保留的断点文件；任务删除时会主动清理。
-        if (p.extension(entity.path) == '.part') continue;
+        if (p.extension(entity.path) == '.part' ||
+            p.basename(entity.path).endsWith('.part.json')) {
+          continue;
+        }
         try {
           final stat = await entity.stat();
           if (stat.modified.isBefore(cutoff)) await entity.delete();

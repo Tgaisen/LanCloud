@@ -14,6 +14,7 @@ import 'core/api/lanzou_client_registry.dart';
 import 'core/cache_page_settings_state.dart';
 import 'core/drag_drop.dart';
 import 'core/drive_state.dart';
+import 'core/file_open_result.dart';
 import 'core/incoming_links.dart';
 import 'core/lanzou_link.dart';
 import 'core/language_clipboard_settings_state.dart';
@@ -33,6 +34,7 @@ import 'l10n/l10n.dart';
 import 'ui/drive_page.dart';
 import 'ui/desktop_drop_target.dart';
 import 'ui/drop_actions.dart';
+import 'ui/file_open_feedback.dart';
 import 'ui/first_run_terms.dart';
 import 'ui/favorites_page.dart';
 import 'ui/home_page.dart';
@@ -785,10 +787,18 @@ class _RootShellState extends ConsumerState<RootShell>
 
   Future<void> _openFileFromNotification(NotificationAction action) async {
     final opened = await openFileWithSystem(action.path, name: action.name);
-    if (opened || !mounted) return;
+    if (opened.isSuccess || !mounted) return;
     _goTo(_viewTransfers);
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(context.l10n.openFileFailed)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          fileOpenFailureMessage(
+            context.l10n,
+            opened.failure ?? FileOpenFailure.systemError,
+          ),
+        ),
+      ),
+    );
   }
 
   void _handleSharedText(String text) {
@@ -933,6 +943,8 @@ class _RootShellState extends ConsumerState<RootShell>
         (t) =>
             t.status == TransferStatus.running ||
             t.status == TransferStatus.queued ||
+            t.status == TransferStatus.resolving ||
+            t.status == TransferStatus.resuming ||
             t.status == TransferStatus.saving,
       )
       .toList();

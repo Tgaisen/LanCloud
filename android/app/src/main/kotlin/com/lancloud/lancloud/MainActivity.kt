@@ -38,6 +38,7 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import java.io.File
 import java.io.FileInputStream
+import java.io.FileNotFoundException
 import java.io.IOException
 
 // local_auth（生物识别）要求宿主 Activity 必须是 FragmentActivity。
@@ -1201,12 +1202,64 @@ class MainActivity : FlutterFragmentActivity() {
             result.error("bad_args", "uri required", null)
             return
         }
+        val isContentUri = uriStr.startsWith("content://")
+        val localFile = if (isContentUri) null else File(uriStr)
+        val uri: Uri
+        if (localFile == null) {
+            uri = Uri.parse(uriStr)
+        } else {
+            if (!localFile.exists()) {
+                reportOpenResult(result, "file_not_found")
+                return
+            }
+            if (!localFile.canRead()) {
+                reportOpenResult(result, "permission_denied")
+                return
+            }
+            uri = try {
+                FileProvider.getUriForFile(
+                    this,
+                    "$packageName.fileProvider",
+                    localFile,
+                )
+            } catch (e: SecurityException) {
+                Log.e(TAG, "openSafDocument FileProvider permission denied: $localFile", e)
+                reportOpenResult(result, "permission_denied")
+                return
+            } catch (e: Exception) {
+                Log.e(TAG, "openSafDocument FileProvider failed: $localFile", e)
+                reportOpenResult(result, "system_error")
+                return
+            }
+        }
         try {
-            val uri = Uri.parse(uriStr)
-            val displayName =
-                call.argument<String>("displayName").orEmpty().ifBlank {
+            contentResolver.openFileDescriptor(uri, "r")?.use {
+                // 仅验证当前应用仍能读取该 URI。
+            } ?: run {
+                reportOpenResult(result, "file_not_found")
+                return
+            }
+        } catch (e: FileNotFoundException) {
+            Log.e(TAG, "openSafDocument file missing: $uri", e)
+            reportOpenResult(result, "file_not_found")
+            return
+        } catch (e: SecurityException) {
+            Log.e(TAG, "openSafDocument URI permission denied: $uri", e)
+            reportOpenResult(result, "permission_denied")
+            return
+        } catch (e: Exception) {
+            Log.e(TAG, "openSafDocument URI validation failed: $uri", e)
+            reportOpenResult(result, "system_error")
+            return
+        }
+        try {
+            val displayName = call.argument<String>("displayName").orEmpty().ifBlank {
+                if (localFile == null) {
                     queryDisplayName(uri).orEmpty()
+                } else {
+                    localFile.name
                 }
+            }
             val mime = chooseOpenMime(
                 supplied = call.argument<String>("mime").orEmpty(),
                 resolved = contentResolver.getType(uri).orEmpty(),
@@ -1215,21 +1268,36 @@ class MainActivity : FlutterFragmentActivity() {
             val intent = Intent(Intent.ACTION_VIEW).apply {
                 setDataAndType(uri, mime)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
-                clipData = ClipData.newRawUri(
-                    displayName.ifBlank { "file" },
-                    uri,
-                )
-                if (displayName.isNotBlank()) {
-                    putExtra(Intent.EXTRA_TITLE, displayName)
-                }
+                clipData = ClipData.newRawUri(displayName.ifBlank { "file" }, uri)
+                if (displayName.isNotBlank()) putExtra(Intent.EXTRA_TITLE, displayName)
             }
             startActivity(intent)
-            result.success(true)
         } catch (_: ActivityNotFoundException) {
-            result.success(false)
+            reportOpenResult(result, "no_app")
+            return
+        } catch (e: SecurityException) {
+            Log.e(TAG, "openSafDocument launch permission denied: $uri", e)
+            reportOpenResult(result, "permission_denied")
+            return
         } catch (e: Exception) {
-            result.error("open_failed", e.message, null)
+            Log.e(TAG, "openSafDocument launch failed: $uri", e)
+            reportOpenResult(result, "system_error")
+            return
         }
+        reportOpenResult(result)
+    }
+
+    private fun reportOpenResult(
+        result: MethodChannel.Result,
+        reason: String? = null,
+    ) {
+        result.success(
+            if (reason == null) {
+                mapOf("ok" to true)
+            } else {
+                mapOf("ok" to false, "reason" to reason)
+            },
+        )
     }
 
     private fun chooseOpenMime(

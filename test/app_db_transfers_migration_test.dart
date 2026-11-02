@@ -69,12 +69,30 @@ void main() {
       'error': '网络错误',
       'created_at': 1,
     });
+    await legacy.insert('transfers', {
+      'id': 'd2',
+      'kind': 'download',
+      'name': 'canceled.zip',
+      'status': 'canceled',
+      'created_at': 2,
+    });
+    await legacy.insert('downloads', {
+      'ref': '123:f1',
+      'name': 'a.zip',
+      'path': '/tmp/a.zip',
+      'created_at': 1,
+    });
     await legacy.close();
 
     final db = AppDb.instance;
     final rows = await db.loadTransfers();
     expect(rows, hasLength(1));
     expect('${rows.single['name']}', 'a.zip');
+    final downloadsTable = await (await db.db).rawQuery(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
+      ['downloads'],
+    );
+    expect(downloadsTable, isEmpty);
     // 旧记录没有这些字段：新列默认空串
     expect('${rows.single['referer'] ?? ''}', '');
     expect('${rows.single['pwd'] ?? ''}', '');

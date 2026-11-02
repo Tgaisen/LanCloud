@@ -21,6 +21,7 @@ class SettingsStore {
   static const _keyInterval = 'request_interval';
   static const _keyMaxUp = 'max_uploads';
   static const _keyMaxDown = 'max_downloads';
+  static const _keyDownloadConnections = 'download_connections';
   static const _keyApiHost = 'api_host';
   static const _keyUserAgent = 'user_agent';
   static const _keyUploadPath = 'upload_path';
@@ -70,6 +71,9 @@ class SettingsStore {
   int requestInterval = 100;
   int maxUploads = 1;
   int maxDownloads = 3;
+
+  /// 单个下载任务使用的连接数；1 表示沿用单流下载。
+  int downloadConnections = 2;
   String apiHost = 'pc';
   String userAgent = '';
 
@@ -143,6 +147,9 @@ class SettingsStore {
     requestInterval = prefs.getInt(_keyInterval) ?? 100;
     maxUploads = prefs.getInt(_keyMaxUp) ?? 1;
     maxDownloads = prefs.getInt(_keyMaxDown) ?? 3;
+    downloadConnections = normalizeDownloadConnections(
+      prefs.getInt(_keyDownloadConnections) ?? 2,
+    );
     apiHost = prefs.getString(_keyApiHost) ?? 'pc';
     userAgent = prefs.getString(_keyUserAgent) ?? '';
     uploadPath = prefs.getString(_keyUploadPath) ?? 'html5up.php';
@@ -306,6 +313,12 @@ class SettingsStore {
     await prefs.setInt(_keyMaxDown, value);
   }
 
+  Future<void> setDownloadConnections(int value) async {
+    downloadConnections = normalizeDownloadConnections(value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_keyDownloadConnections, downloadConnections);
+  }
+
   Future<void> setThemeMode(String mode) async {
     themeMode = mode;
     final prefs = await SharedPreferences.getInstance();
@@ -420,6 +433,7 @@ class SettingsStore {
     _keyInterval: requestInterval,
     _keyMaxUp: maxUploads,
     _keyMaxDown: maxDownloads,
+    _keyDownloadConnections: downloadConnections,
     _keyApiHost: apiHost,
     _keyUserAgent: userAgent,
     _keyUploadPath: uploadPath,
@@ -464,5 +478,11 @@ class SettingsStore {
       }
     }
     await load();
+  }
+
+  static int normalizeDownloadConnections(int value) {
+    if (value < 1) return 1;
+    if (value > 4) return 4;
+    return value;
   }
 }
