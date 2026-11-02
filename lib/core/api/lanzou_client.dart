@@ -768,7 +768,10 @@ class LanzouClient {
     }
   }
 
-  Future<ShareInfo> shareInfoOfFile(String fileId) async {
+  Future<ShareInfo> shareInfoOfFile(
+    String fileId, {
+    bool withDetails = true,
+  }) async {
     final resp = await dio.post<String>(
       '$apiBase/doupload.php',
       data: {'task': 22, 'file_id': fileId},
@@ -788,17 +791,19 @@ class LanzouClient {
     }
     var name = '${info['name'] ?? ''}';
     var desc = '';
-    try {
-      final extra = _asMap(
-        (await dio.post<String>(
-          '$apiBase/doupload.php',
-          data: {'task': 12, 'file_id': fileId},
-          options: _options(),
-        )).data,
-      );
-      name = '${extra['text'] ?? name}';
-      desc = '${extra['info'] ?? ''}';
-    } catch (_) {}
+    if (withDetails) {
+      try {
+        final extra = _asMap(
+          (await dio.post<String>(
+            '$apiBase/doupload.php',
+            data: {'task': 12, 'file_id': fileId},
+            options: _options(),
+          )).data,
+        );
+        name = '${extra['text'] ?? name}';
+        desc = '${extra['info'] ?? ''}';
+      } catch (_) {}
+    }
     return ShareInfo(
       url: '${info['is_newd']}/$fId',
       pwd: '${info['onof']}' == '1' ? '${info['pwd']}' : '',

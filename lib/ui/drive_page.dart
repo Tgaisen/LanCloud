@@ -1336,7 +1336,6 @@ class _DrivePageState extends ConsumerState<DrivePage>
     if (_selectedFiles.isEmpty) return;
     final transfers = _transfers;
     final client = _activeClient();
-    final publicClient = ref.read(lanzouClientRegistryProvider).publicClient;
     final activeUid = _accounts.store.activeUid ?? '';
     final l10n = context.l10n;
     final ids = _selectedFiles.toList();
@@ -1360,17 +1359,12 @@ class _DrivePageState extends ConsumerState<DrivePage>
             continue;
           }
           try {
-            final info = await client!.shareInfoOfFile(id);
-            final direct = await publicClient.resolveFileShare(
-              info.url,
-              pwd: info.pwd,
-            );
+            final info = await client!.shareInfoOfFile(id, withDetails: false);
             transfers.addDownload(
-              url: direct.url,
-              name: direct.name.isEmpty ? name : direct.name,
+              url: '',
+              name: info.name.isEmpty ? name : info.name,
               referer: info.url,
               pwd: info.pwd,
-              via: publicClient,
               refId: ref,
             );
             added += 1;
@@ -4331,6 +4325,7 @@ class _FileInfoSheetState extends ConsumerState<_FileInfoSheet> {
                     ? l10n.resolving
                     : switch (mark?.status) {
                         TransferStatus.queued => l10n.waitingToDownload,
+                        TransferStatus.resolving => l10n.resolving,
                         TransferStatus.running => l10n.downloading,
                         TransferStatus.resuming => l10n.resumingDownload,
                         TransferStatus.paused => l10n.paused,
@@ -4369,6 +4364,9 @@ class _FileInfoSheetState extends ConsumerState<_FileInfoSheet> {
                       checkedIconWidget: switch (mark?.status) {
                         // 排队中：不确定态，等调度
                         TransferStatus.queued => ring(
+                          color: scheme.onSecondary,
+                        ),
+                        TransferStatus.resolving => ring(
                           color: scheme.onSecondary,
                         ),
                         // 下载中：确定态；大小未知时退回不确定态

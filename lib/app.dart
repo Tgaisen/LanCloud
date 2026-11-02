@@ -933,6 +933,7 @@ class _RootShellState extends ConsumerState<RootShell>
         (t) =>
             t.status == TransferStatus.running ||
             t.status == TransferStatus.queued ||
+            t.status == TransferStatus.resolving ||
             t.status == TransferStatus.resuming ||
             t.status == TransferStatus.saving,
       )

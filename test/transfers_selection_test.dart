@@ -292,6 +292,33 @@ void main() {
     app.dispose();
   });
 
+  testWidgets('批量任务解析直链时显示解析中且暂停按钮禁用', (tester) async {
+    final (app, _) = await hostWithTasks(tester, [
+      TransferTask(
+          id: 'd1',
+          kind: TransferKind.download,
+          name: 'resolving.zip',
+          accountUid: '',
+        )
+        ..status = TransferStatus.resolving
+        ..total = 100
+        ..received = 40,
+    ]);
+    await tester.tap(find.text('下载').hitTestable());
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(find.textContaining('解析中'), findsOneWidget);
+    final pause = tester.widget<M3eIconButton>(
+      find.ancestor(
+        of: find.byTooltip('暂停下载'),
+        matching: find.byType(M3eIconButton),
+      ),
+    );
+    expect(pause.onPressed, isNull);
+    app.dispose();
+  });
+
   testWidgets('恢复后仍在排队的下载保留进度但停止波浪动画', (tester) async {
     final app = AppEnvironment();
     final manager = buildTransferManagerForEnvironment(app);

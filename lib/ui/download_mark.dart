@@ -106,8 +106,9 @@ Future<void> showDownloadTaskMenu(
   final bool running =
       task.status == TransferStatus.queued ||
       task.status == TransferStatus.running;
+  final bool resolving = task.status == TransferStatus.resolving;
   final bool resuming = task.status == TransferStatus.resuming;
-  final bool transferActive = running || resuming;
+  final bool transferActive = running || resolving || resuming;
   final bool paused = task.status == TransferStatus.paused;
   final String? savedPath = task.savedPath;
   final bool hasFile =

@@ -122,6 +122,7 @@ typedef TransferFileOpener = Future<bool> Function(String path, {String? name});
 
 bool _isInProgressTask(TransferTask task) =>
     task.status == TransferStatus.queued ||
+    task.status == TransferStatus.resolving ||
     task.status == TransferStatus.running ||
     task.status == TransferStatus.resuming ||
     task.status == TransferStatus.paused ||
@@ -440,6 +441,7 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
     final path = task.savedPath;
     final done = task.status == TransferStatus.done && path != null;
     final failed = task.status == TransferStatus.failed;
+    final resolving = task.status == TransferStatus.resolving;
     final resuming = task.status == TransferStatus.resuming;
     final paused = task.status == TransferStatus.paused;
     final active =
@@ -449,6 +451,7 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
     final stopped =
         task.status != TransferStatus.running &&
         task.status != TransferStatus.queued &&
+        task.status != TransferStatus.resolving &&
         task.status != TransferStatus.resuming;
     final desktop = PlatformSupport.isDesktop;
     final _TransferMenuAction? action = await showM3eMenu<_TransferMenuAction>(
@@ -489,7 +492,7 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
             icon: Icons.play_arrow,
           ),
         if (task.kind == TransferKind.download &&
-            (active || resuming || paused))
+            (active || resolving || resuming || paused))
           M3eMenuItem(
             value: _TransferMenuAction.cancel,
             label: l10n.cancelDownload,
@@ -1107,6 +1110,8 @@ class _TransferTile extends StatelessWidget {
     switch (task.status) {
       case TransferStatus.queued:
         return l10n.queued;
+      case TransferStatus.resolving:
+        return l10n.resolving;
       case TransferStatus.running:
         return task.kind == TransferKind.upload
             ? l10n.uploading
@@ -1129,6 +1134,7 @@ class _TransferTile extends StatelessWidget {
   String _sizeText(AppLocalizations l10n) {
     if (task.total <= 0) {
       return task.status == TransferStatus.running ||
+              task.status == TransferStatus.resolving ||
               task.status == TransferStatus.resuming ||
               task.status == TransferStatus.saving
           ? l10n.unknownSize
@@ -1152,6 +1158,7 @@ class _TransferTile extends StatelessWidget {
     final active =
         task.status == TransferStatus.running ||
         task.status == TransferStatus.queued;
+    final resolving = task.status == TransferStatus.resolving;
     final resuming = task.status == TransferStatus.resuming;
     final paused = task.status == TransferStatus.paused;
     final saving = task.status == TransferStatus.saving;
@@ -1188,7 +1195,7 @@ class _TransferTile extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (task.kind == TransferKind.download &&
-                  (active || resuming || saving))
+                  (active || resolving || resuming || saving))
                 M3eIconButton(
                   tooltip: l10n.pauseDownload,
                   icon: Icons.pause,
@@ -1200,13 +1207,13 @@ class _TransferTile extends StatelessWidget {
                   icon: Icons.play_arrow,
                   onPressed: () => manager.resume(task.id),
                 ),
-              if (active || resuming || paused || saving)
+              if (active || resolving || resuming || paused || saving)
                 M3eIconButton(
                   tooltip: l10n.cancelTask,
                   icon: Icons.close,
                   onPressed: saving ? null : () => manager.removeTask(task.id),
                 ),
-              if (!active && !resuming && !paused && !saving)
+              if (!active && !resolving && !resuming && !paused && !saving)
                 Builder(
                   builder: (BuildContext buttonContext) => M3eIconButton(
                     tooltip: l10n.moreActions,
@@ -1217,13 +1224,13 @@ class _TransferTile extends StatelessWidget {
             ],
           ),
         ),
-        bottom: active || resuming || paused || saving
+        bottom: active || resolving || resuming || paused || saving
             ? M3eLinearProgressIndicator(
                 // 运行中的长任务用波浪进度条；暂停后保持静态，排队恢复的任务
                 // 保留波形但不滚动，避免误以为正在下载。
                 // 进度 / 轨道用 M3 的默认角色（primary / secondary container），
                 // 不再另外指定颜色。
-                value: task.progress,
+                value: resolving ? null : task.progress,
                 wavy: !paused && !resuming,
                 waveSpeed: task.status == TransferStatus.queued ? 0 : null,
               )

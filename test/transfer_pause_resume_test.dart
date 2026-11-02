@@ -71,6 +71,53 @@ void main() {
       expect(downloader.calls, 2);
     });
 
+    test('should 在 TransferManager 内解析缺失直链后开始下载', () async {
+      final tempDir = Directory.systemTemp.createTempSync(
+        'lancloud-transfer-resolve',
+      );
+      addTearDown(() async {
+        try {
+          await tempDir.delete(recursive: true);
+        } catch (_) {}
+      });
+      final payload = List<int>.generate(512, (index) => index % 191);
+      final manager = TransferManager.withDependencies(
+        TransferDependencies(
+          store: _FakeTransferStore(),
+          accounts: _FakeTransferAccountPort(),
+          download: _FakeTransferDownloadPort(tempDir.path),
+          settings: StoreTransferSettingsPort(
+            SettingsStore()..maxDownloads = 1,
+          ),
+        ),
+        downloader: _ImmediateDownloader(payload),
+      );
+      addTearDown(manager.dispose);
+      final resolvingStarted = Completer<void>();
+      final resolving = Completer<DirectFile>();
+      manager.debugResolveShare = (url, pwd) {
+        resolvingStarted.complete();
+        return resolving.future;
+      };
+
+      manager.addDownload(
+        url: '',
+        name: 'archive.zip',
+        referer: 'https://example.com/share',
+      );
+      final task = manager.tasks.single;
+      await resolvingStarted.future;
+
+      expect(task.status, TransferStatus.resolving);
+      resolving.complete(
+        DirectFile(name: 'archive.zip', url: 'https://cdn.example/archive.zip'),
+      );
+
+      await _waitFor(() => task.status == TransferStatus.done);
+      expect(task.url, 'https://cdn.example/archive.zip');
+      expect(await File(task.savedPath!).readAsBytes(), payload);
+    });
+
     test('should 批量暂停下载且忽略上传、已暂停和保存中的任务', () {
       final settings = SettingsStore()..maxDownloads = 0;
       final manager = TransferManager.withDependencies(

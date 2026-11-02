@@ -221,6 +221,7 @@ class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
                   final active =
                       resolving ||
                       status == TransferStatus.queued ||
+                      status == TransferStatus.resolving ||
                       status == TransferStatus.running ||
                       status == TransferStatus.resuming;
                   final paused = status == TransferStatus.paused;
@@ -229,6 +230,7 @@ class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
                       ? l10n.resolving
                       : switch (status) {
                           TransferStatus.queued => l10n.waitingToDownload,
+                          TransferStatus.resolving => l10n.resolving,
                           TransferStatus.running => l10n.downloading,
                           TransferStatus.resuming => l10n.resumingDownload,
                           TransferStatus.paused => l10n.paused,

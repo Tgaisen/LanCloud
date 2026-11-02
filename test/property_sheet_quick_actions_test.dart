@@ -101,7 +101,10 @@ class _FakeClient extends LanzouClient {
   }
 
   @override
-  Future<ShareInfo> shareInfoOfFile(String fileId) async {
+  Future<ShareInfo> shareInfoOfFile(
+    String fileId, {
+    bool withDetails = true,
+  }) async {
     shareFileCalls += 1;
     return ShareInfo(
       url: fileUrl,
@@ -175,7 +178,8 @@ class _GatedClient extends _FakeClient {
   final Completer<ShareInfo> share = Completer<ShareInfo>();
 
   @override
-  Future<ShareInfo> shareInfoOfFile(String fileId) => share.future;
+  Future<ShareInfo> shareInfoOfFile(String fileId, {bool withDetails = true}) =>
+      share.future;
 }
 
 /// 弹窗里那一行图标按钮：按 tooltip 找到对应按钮。

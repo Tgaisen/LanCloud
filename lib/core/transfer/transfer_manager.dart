@@ -23,6 +23,7 @@ enum TransferKind { upload, download }
 
 enum TransferStatus {
   queued,
+  resolving,
   running,
   resuming,
   paused,
@@ -194,6 +195,7 @@ class TransferManager extends ChangeNotifier {
         var error = '${row['error'] ?? ''}';
         if (status == TransferStatus.running ||
             status == TransferStatus.queued ||
+            status == TransferStatus.resolving ||
             status == TransferStatus.resuming ||
             status == TransferStatus.saving) {
           status = TransferStatus.failed;
@@ -582,7 +584,9 @@ class TransferManager extends ChangeNotifier {
         .where(
           (t) =>
               t.kind == TransferKind.download &&
-              t.status == TransferStatus.running,
+              (t.status == TransferStatus.running ||
+                  t.status == TransferStatus.resolving ||
+                  t.status == TransferStatus.resuming),
         )
         .length;
     for (final task in tasks) {
@@ -608,6 +612,7 @@ class TransferManager extends ChangeNotifier {
       (t) =>
           t.status == TransferStatus.running ||
           t.status == TransferStatus.queued ||
+          t.status == TransferStatus.resolving ||
           t.status == TransferStatus.resuming ||
           t.status == TransferStatus.saving,
     );
@@ -630,7 +635,11 @@ class TransferManager extends ChangeNotifier {
 
   Future<void> _start(TransferTask task) async {
     if (task.cancelToken.isCancelled) task.cancelToken = CancelToken();
-    task.status = TransferStatus.running;
+    final needsResolution =
+        task.kind == TransferKind.download && task.url.isEmpty;
+    task.status = needsResolution
+        ? TransferStatus.resolving
+        : TransferStatus.running;
     task.error = null;
     _bumpMarks();
     _persist(task);
@@ -640,6 +649,21 @@ class TransferManager extends ChangeNotifier {
       if (task.kind == TransferKind.upload) {
         await _runUpload(task);
       } else {
+        if (needsResolution) {
+          final message = await _ensureDownloadUrl(task);
+          if (task.removed || task.status != TransferStatus.resolving) return;
+          if (message != null) {
+            task.status = TransferStatus.failed;
+            task.error = message;
+            return;
+          }
+          task.status = TransferStatus.running;
+          task.error = null;
+          _bumpMarks();
+          _persist(task);
+          notifyListeners();
+          _syncProgressNotification();
+        }
         await _runDownload(task);
       }
       if (task.status != TransferStatus.canceled &&
@@ -706,6 +730,7 @@ class TransferManager extends ChangeNotifier {
         .where(
           (t) =>
               t.status == TransferStatus.running ||
+              t.status == TransferStatus.resolving ||
               t.status == TransferStatus.resuming ||
               t.status == TransferStatus.saving,
         )
