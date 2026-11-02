@@ -172,7 +172,7 @@ void main() {
         ),
       ),
     );
-    // 进行中的条目用 MD3E 波浪进度条（波浪持续滚动），不能等它 settle。
+    // 上传运行中也显示进度，但不使用下载专属的波浪动画。
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
 
@@ -184,6 +184,14 @@ void main() {
     // 右边缘不越过右侧按钮
     expect(bar.right, lessThanOrEqualTo(cancel.left));
     expect(bar.width, greaterThan(0));
+    expect(
+      tester
+          .widget<M3eLinearProgressIndicator>(
+            find.byType(M3eLinearProgressIndicator),
+          )
+          .wavy,
+      isFalse,
+    );
   });
 
   testWidgets('暂停的下载显示静态进度与继续按钮', (tester) async {
@@ -289,6 +297,14 @@ void main() {
       ),
     );
     expect(resumedPause.onPressed, isNotNull);
+    expect(
+      tester
+          .widget<M3eLinearProgressIndicator>(
+            find.byType(M3eLinearProgressIndicator),
+          )
+          .wavy,
+      isFalse,
+    );
     app.dispose();
   });
 
@@ -316,6 +332,14 @@ void main() {
       ),
     );
     expect(pause.onPressed, isNull);
+    expect(
+      tester
+          .widget<M3eLinearProgressIndicator>(
+            find.byType(M3eLinearProgressIndicator),
+          )
+          .wavy,
+      isFalse,
+    );
     app.dispose();
   });
 
@@ -358,8 +382,7 @@ void main() {
       find.byType(M3eLinearProgressIndicator),
     );
     expect(progress.value, closeTo(0.4, 0.001));
-    expect(progress.wavy, isTrue);
-    expect(progress.waveSpeed, 0);
+    expect(progress.wavy, isFalse);
   });
 
   testWidgets('正在保存的下载保留按钮占位但禁用暂停与取消', (tester) async {
@@ -417,7 +440,7 @@ void main() {
       find.byType(M3eLinearProgressIndicator),
     );
     expect(progress.value, closeTo(0.6, 0.001));
-    expect(progress.wavy, isTrue);
+    expect(progress.wavy, isFalse);
   });
 
   testWidgets('进行中任务使用取消按钮：上传仅一个，下载保留暂停', (tester) async {
@@ -475,6 +498,14 @@ void main() {
     expect(find.byTooltip('暂停下载'), findsOneWidget);
     expect(find.byTooltip('取消任务'), findsOneWidget);
     expect(find.byTooltip('更多操作'), findsNothing);
+    expect(
+      tester
+          .widget<M3eLinearProgressIndicator>(
+            find.byType(M3eLinearProgressIndicator),
+          )
+          .wavy,
+      isTrue,
+    );
     app.dispose();
   });
 
