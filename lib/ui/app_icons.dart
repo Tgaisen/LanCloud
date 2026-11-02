@@ -22,6 +22,7 @@ class Icons {
   static const IconData badge_outlined = Symbols.badge;
   static const IconData battery_alert_outlined = Symbols.battery_alert;
   static const IconData battery_0_bar = Symbols.battery_0_bar;
+  static const IconData bolt_boost = Symbols.bolt_boost;
   static const IconData bottom_navigation = Symbols.bottom_navigation;
   static const IconData browse_outlined = Symbols.browse;
   static const IconData bug_report_outlined = Symbols.bug_report;

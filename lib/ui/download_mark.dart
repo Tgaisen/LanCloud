@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/file_open_result.dart';
 import '../core/platform_support.dart';
 import '../core/saved_file.dart';
 import '../core/system_open.dart';
@@ -9,35 +10,21 @@ import '../core/transfer/transfer_manager.dart';
 import '../core/transfer/transfer_manager_provider.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
+import 'file_open_feedback.dart';
 import 'm3e.dart';
 
-/// 网盘文件的「已下载」标记 key：与下载任务的 `refId`（"账号uid:文件id"）一致。
+/// 网盘文件的「已加入下载」标记 key：与下载任务的 `refId`（"账号uid:文件id"）一致。
 String driveDownloadKey(String uid, String fileId) => '$uid:$fileId';
 
-/// 网盘批量下载前是否需要跳过：已写入下载历史，或当前队列中已有同一文件。
+/// 网盘批量下载前是否需要跳过：同一文件当前已在传输列表中。
 ///
-/// 失败 / 已取消的任务不算已下载，允许批量操作重新发起。
+/// 失败任务仍算“已加入下载”，应去传输页重试；取消会直接移除任务记录。
 bool shouldSkipDriveBatchDownload({
   required String ref,
-  required Set<String> downloadedRefs,
   required TransferManager transfers,
-}) {
-  if (downloadedRefs.contains(ref)) return true;
-  return transfers.tasks.any((task) {
-    if (task.kind != TransferKind.download) return false;
-    if (task.refId != ref && task.referer != ref) return false;
-    return switch (task.status) {
-      TransferStatus.queued ||
-      TransferStatus.running ||
-      TransferStatus.paused ||
-      TransferStatus.saving ||
-      TransferStatus.done => true,
-      TransferStatus.failed || TransferStatus.canceled => false,
-    };
-  });
-}
+}) => transfers.downloadMarkOf(ref) != null;
 
-/// 「已添加下载」小标记：有匹配任务（已取消的不算）时显示一个 `download_done`
+/// 「已加入下载」小标记：有匹配任务（已取消的不算）时显示一个 `download_done`
 /// 小图标，位置风格和网盘文件的密码锁图标一致。
 ///
 /// 只监听 [TransferManager.marksRevision]（低频）：下载进度更新不会让长列表
@@ -100,7 +87,7 @@ enum _DownloadMenuAction {
   redownload,
 }
 
-/// 「已下载」入口的二级菜单（两步菜单：点入口后弹这一层）：
+/// 「已加入下载」入口的二级菜单（两步菜单：点入口后弹这一层）：
 /// 打开 / 分享（桌面端为在资源管理器定位）/ 取消下载或删除任务记录 / 重新下载。
 ///
 /// [task] 是当前匹配到的下载任务（[TransferManager.downloadMarkOf]）；
@@ -121,6 +108,9 @@ Future<void> showDownloadTaskMenu(
   final bool running =
       task.status == TransferStatus.queued ||
       task.status == TransferStatus.running;
+  final bool resolving = task.status == TransferStatus.resolving;
+  final bool resuming = task.status == TransferStatus.resuming;
+  final bool transferActive = running || resolving || resuming;
   final bool paused = task.status == TransferStatus.paused;
   final String? savedPath = task.savedPath;
   final bool hasFile =
@@ -169,10 +159,10 @@ Future<void> showDownloadTaskMenu(
         ),
       M3eMenuItem(
         value: _DownloadMenuAction.stop,
-        label: running || paused
+        label: transferActive || paused
             ? l10n.cancelDownload
             : l10n.deleteDownloadRecord,
-        icon: running || paused ? Icons.close : Icons.playlist_remove,
+        icon: transferActive || paused ? Icons.close : Icons.playlist_remove,
       ),
       // 连文件一起删：删完标记消失，属性弹窗恢复「下载」原状
       M3eMenuItem(
@@ -185,7 +175,7 @@ Future<void> showDownloadTaskMenu(
         value: _DownloadMenuAction.redownload,
         label: l10n.redownload,
         icon: Icons.refresh,
-        enabled: !running,
+        enabled: !transferActive,
       ),
     ],
   );
@@ -193,9 +183,17 @@ Future<void> showDownloadTaskMenu(
   switch (action) {
     case _DownloadMenuAction.open:
       final opened = await openFileWithSystem(savedPath!, name: task.name);
-      if (!opened && context.mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(l10n.openFileFailed)));
+      if (!opened.isSuccess && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              fileOpenFailureMessage(
+                l10n,
+                opened.failure ?? FileOpenFailure.systemError,
+              ),
+            ),
+          ),
+        );
       }
     case _DownloadMenuAction.share:
       if (desktop) {
@@ -216,7 +214,7 @@ Future<void> showDownloadTaskMenu(
             .showSnackBar(SnackBar(content: Text(message)));
       }
     case _DownloadMenuAction.stop:
-      if (running || paused) {
+      if (transferActive || paused) {
         manager.cancel(task.id);
       } else {
         manager.removeTask(task.id);

@@ -746,6 +746,72 @@ abstract class AppLocalizations {
   /// **'将清除已完成的传输记录，继续吗？'**
   String get clearFinishedConfirmMessage;
 
+  /// No description provided for @cancelAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部取消'**
+  String get cancelAll;
+
+  /// No description provided for @pauseAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部暂停'**
+  String get pauseAll;
+
+  /// No description provided for @resumeAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部恢复'**
+  String get resumeAll;
+
+  /// No description provided for @clearAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空'**
+  String get clearAll;
+
+  /// No description provided for @cancelInProgressTransfers.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消进行中任务'**
+  String get cancelInProgressTransfers;
+
+  /// No description provided for @cancelAllUploadsConfirmMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'将取消并移除全部 {count} 个进行中的上传任务，继续吗？'**
+  String cancelAllUploadsConfirmMessage(int count);
+
+  /// No description provided for @cancelAllDownloadsConfirmMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'将取消并移除全部 {count} 个进行中的下载任务，并删除已下载的文件，继续吗？'**
+  String cancelAllDownloadsConfirmMessage(int count);
+
+  /// No description provided for @clearFinishedTransfers.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空已结束任务'**
+  String get clearFinishedTransfers;
+
+  /// No description provided for @clearFinishedUploadsConfirmMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'将清空全部 {count} 条已结束的上传任务记录，继续吗？'**
+  String clearFinishedUploadsConfirmMessage(int count);
+
+  /// No description provided for @clearFinishedDownloadsConfirmMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'将清空全部 {count} 条已结束的下载任务记录，继续吗？'**
+  String clearFinishedDownloadsConfirmMessage(int count);
+
+  /// No description provided for @resumeAllPartialFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 个下载任务恢复失败，请稍后重试。'**
+  String resumeAllPartialFailed(int count);
+
   /// No description provided for @upload.
   ///
   /// In zh, this message translates to:
@@ -793,6 +859,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'下载中'**
   String get downloading;
+
+  /// No description provided for @resumingDownload.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复中'**
+  String get resumingDownload;
 
   /// No description provided for @paused.
   ///
@@ -871,6 +943,24 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'没有可打开此文件的应用'**
   String get openFileFailed;
+
+  /// No description provided for @openFileMissing.
+  ///
+  /// In zh, this message translates to:
+  /// **'文件不存在，可能已被移动或删除'**
+  String get openFileMissing;
+
+  /// No description provided for @openFilePermissionDenied.
+  ///
+  /// In zh, this message translates to:
+  /// **'文件访问权限已失效；重新选择下载目录只影响之后的任务，请重新下载该文件'**
+  String get openFilePermissionDenied;
+
+  /// No description provided for @openFileSystemError.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统无法打开该文件，请稍后重试'**
+  String get openFileSystemError;
 
   /// No description provided for @redownload.
   ///
@@ -1453,6 +1543,24 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'下载 并发'**
   String get downloadKeywords;
+
+  /// No description provided for @singleFileDownloadConnections.
+  ///
+  /// In zh, this message translates to:
+  /// **'最高下载线程'**
+  String get singleFileDownloadConnections;
+
+  /// No description provided for @singleFileDownloadConnectionsKeywords.
+  ///
+  /// In zh, this message translates to:
+  /// **'多线程 分片 单文件 连接 并发 下载 加速'**
+  String get singleFileDownloadConnectionsKeywords;
+
+  /// No description provided for @singleFileDownloadConnectionsSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'线程越多，风控和流量风险越高'**
+  String get singleFileDownloadConnectionsSubtitle;
 
   /// No description provided for @apiHost.
   ///
@@ -2081,13 +2189,13 @@ abstract class AppLocalizations {
   /// No description provided for @addedDownloadsSkipped.
   ///
   /// In zh, this message translates to:
-  /// **'已加入 {ok} 个下载任务，跳过 {skipped} 个已下载文件'**
+  /// **'已加入 {ok} 个下载任务，跳过 {skipped} 个已在传输列表的文件'**
   String addedDownloadsSkipped(int ok, int skipped);
 
   /// No description provided for @addedDownloadsPartialSkipped.
   ///
   /// In zh, this message translates to:
-  /// **'已加入 {ok} 个下载任务，跳过 {skipped} 个已下载文件，{failed} 个解析失败'**
+  /// **'已加入 {ok} 个下载任务，跳过 {skipped} 个已在传输列表的文件，{failed} 个解析失败'**
   String addedDownloadsPartialSkipped(int ok, int skipped, int failed);
 
   /// No description provided for @retriedDownloads.
@@ -2549,7 +2657,7 @@ abstract class AppLocalizations {
   /// No description provided for @downloaded.
   ///
   /// In zh, this message translates to:
-  /// **'已下载'**
+  /// **'已加入下载'**
   String get downloaded;
 
   /// No description provided for @folder.

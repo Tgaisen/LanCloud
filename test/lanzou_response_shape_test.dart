@@ -117,4 +117,28 @@ void main() {
     expect(info.name, 'archive.zip');
     expect(info.desc, '说明');
   });
+
+  test('批量分享信息可跳过 task 12 详情请求', () async {
+    final setup = _clientWith([
+      jsonEncode({
+        'info': {
+          'is_newd': 'https://pan.lanzouo.com',
+          'f_id': 'iabc123',
+          'onof': 0,
+          'pwd': '',
+          'name': 'fallback.zip',
+        },
+      }),
+    ]);
+
+    final info = await setup.client.shareInfoOfFile(
+      'file-id',
+      withDetails: false,
+    );
+
+    expect(info.name, 'fallback.zip');
+    expect(info.desc, isEmpty);
+    expect(setup.adapter.requests, hasLength(1));
+    expect(setup.adapter.requests.single.data, containsPair('task', 22));
+  });
 }

@@ -58,7 +58,7 @@ void main() {
           children: [
             M3eLoadingIndicator(semanticsLabel: '加载中'),
             M3eLinearProgressIndicator(value: 0.5),
-            M3eLinearProgressIndicator(value: 0.5, wavy: true),
+            M3eLinearProgressIndicator(value: 0.5, wavy: true, waveSpeed: 0),
             M3eCircularProgressIndicator(value: 0.25),
           ],
         ),
@@ -67,6 +67,14 @@ void main() {
     await tester.pump(const Duration(milliseconds: 32));
 
     expect(tester.takeException(), isNull);
+    expect(
+      tester
+          .widget<M3ELinearWavyProgressIndicator>(
+            find.byType(M3ELinearWavyProgressIndicator),
+          )
+          .waveSpeed,
+      0,
+    );
     expect(find.byType(M3ELoadingIndicator), findsOneWidget);
     expect(find.byType(M3ELinearProgressIndicator), findsOneWidget);
     expect(find.byType(M3ELinearWavyProgressIndicator), findsOneWidget);

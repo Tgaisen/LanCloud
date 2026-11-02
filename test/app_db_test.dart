@@ -254,9 +254,10 @@ void main() {
     );
     expect(
       (await db.exportTables()).keys,
-      containsAll(<String>['favorites', 'pins', 'recents', 'downloads']),
+      containsAll(<String>['favorites', 'pins', 'recents']),
     );
-    // 已下载标记跟着「最近使用」，单独备份收藏时不导出
+    expect((await db.exportTables()).keys, isNot(contains('downloads')));
+    // 单独备份收藏时不导出其它使用数据
     expect(
       (await db.exportTables(
         favorites: true,

@@ -67,20 +67,17 @@ void main() {
     expect(manager.downloadMarkOf('1:f1'), isNotNull);
     manager.cancel('d1');
     expect(manager.downloadMarkOf('1:f1'), isNull);
+    expect(manager.tasks, isEmpty);
+    expect(
+      shouldSkipDriveBatchDownload(ref: '1:f1', transfers: manager),
+      isFalse,
+    );
   });
 
-  test('shouldSkipDriveBatchDownload：历史、进行中和保存中跳过，失败不跳过', () {
+  test('shouldSkipDriveBatchDownload：只按传输列表判断，失败任务也跳过', () {
     final environment = AppEnvironment();
     addTearDown(environment.dispose);
     final manager = buildTransferManagerForEnvironment(environment);
-    expect(
-      shouldSkipDriveBatchDownload(
-        ref: '1:f1',
-        downloadedRefs: const {'1:f1'},
-        transfers: manager,
-      ),
-      isTrue,
-    );
 
     final task = TransferTask(
       id: 'd1',
@@ -96,31 +93,21 @@ void main() {
       TransferStatus.paused,
       TransferStatus.saving,
       TransferStatus.done,
+      TransferStatus.failed,
     ]) {
       task.status = status;
       expect(
-        shouldSkipDriveBatchDownload(
-          ref: '1:f1',
-          downloadedRefs: const {},
-          transfers: manager,
-        ),
+        shouldSkipDriveBatchDownload(ref: '1:f1', transfers: manager),
         isTrue,
         reason: status.name,
       );
     }
 
-    for (final status in [TransferStatus.failed, TransferStatus.canceled]) {
-      task.status = status;
-      expect(
-        shouldSkipDriveBatchDownload(
-          ref: '1:f1',
-          downloadedRefs: const {},
-          transfers: manager,
-        ),
-        isFalse,
-        reason: status.name,
-      );
-    }
+    task.status = TransferStatus.canceled;
+    expect(
+      shouldSkipDriveBatchDownload(ref: '1:f1', transfers: manager),
+      isFalse,
+    );
   });
 
   test('marksRevision：入队 / 取消 / 删除任务会自增（供列表低频重建）', () {
@@ -141,7 +128,7 @@ void main() {
     manager.cancel(task.id);
     expect(manager.marksRevision.value, before + 3);
     manager.removeTask(task.id);
-    expect(manager.marksRevision.value, before + 4);
+    expect(manager.marksRevision.value, before + 3);
   });
 
   testWidgets('DownloadMarkIcon：有任务时显示，取消后消失', (tester) async {

@@ -205,7 +205,7 @@ class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
             margin: SheetListGroup.endMargin,
             children: [
               // 下载状态原位显示：解析中 / 等待中 / 下载中在行尾显示进度环，
-              // 已下载 / 下载失败换图标与文案；已加入下载后点击弹二级菜单
+              // 已加入下载 / 下载失败换图标与文案；已加入后点击弹二级菜单
               // （打开 / 分享 / 取消下载 / 重新下载）
               ListenableBuilder(
                 // 进度更新走 manager（环要动）；标记集合变化走低频 revision，
@@ -221,14 +221,18 @@ class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
                   final active =
                       resolving ||
                       status == TransferStatus.queued ||
-                      status == TransferStatus.running;
+                      status == TransferStatus.resolving ||
+                      status == TransferStatus.running ||
+                      status == TransferStatus.resuming;
                   final paused = status == TransferStatus.paused;
                   final saving = status == TransferStatus.saving;
                   final title = resolving
                       ? l10n.resolving
                       : switch (status) {
                           TransferStatus.queued => l10n.waitingToDownload,
+                          TransferStatus.resolving => l10n.resolving,
                           TransferStatus.running => l10n.downloading,
+                          TransferStatus.resuming => l10n.resumingDownload,
                           TransferStatus.paused => l10n.paused,
                           TransferStatus.saving => l10n.saving,
                           TransferStatus.done => l10n.downloaded,

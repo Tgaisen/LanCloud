@@ -25,17 +25,20 @@ void main() {
     final settings = SettingsStore();
     final state = TransferConnectionSettingsState(settings);
 
+    expect(settings.downloadConnections, 2);
     await state.setRequestInterval(250);
     await state.setMaxUploads(2);
     await state.setMaxDownloads(4);
+    await state.setDownloadConnections(3);
     await state.setApiHost('up');
     await state.setUserAgent('test-agent');
     await state.setUploadPath('fileup.php');
 
-    expect(state.revision.value, 6);
+    expect(state.revision.value, 7);
     expect(state.requestInterval, 250);
     expect(state.maxUploads, 2);
     expect(state.maxDownloads, 4);
+    expect(state.downloadConnections, 3);
     expect(state.apiHost, 'up');
     expect(state.userAgent, 'test-agent');
     expect(state.uploadPath, 'fileup.php');

@@ -4,6 +4,7 @@ import '../data/settings_store.dart';
 abstract interface class TransferSettingsPort {
   int get maxUploads;
   int get maxDownloads;
+  int get downloadConnections;
   bool get notifyProgress;
   bool get notifyDone;
 }
@@ -19,6 +20,9 @@ class StoreTransferSettingsPort implements TransferSettingsPort {
 
   @override
   int get maxDownloads => store.maxDownloads;
+
+  @override
+  int get downloadConnections => store.downloadConnections;
 
   @override
   bool get notifyProgress => store.notifyProgress;

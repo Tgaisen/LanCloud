@@ -8,8 +8,8 @@ import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'settings_slider_tile.dart';
 
-/// 上传或下载并发数设置。
-enum TransferConcurrencySetting { uploads, downloads }
+/// 上传、任务下载或单文件连接数设置。
+enum TransferConcurrencySetting { uploads, downloads, singleFileConnections }
 
 /// 传输并发数滑杆；松手时通过唯一设置状态写入。
 class TransferConcurrencySettingsTile extends ConsumerWidget {
@@ -37,10 +37,19 @@ class TransferConcurrencySettingsTile extends ConsumerWidget {
             values: const [1, 2, 3, 4, 5],
             current: settings.maxDownloads,
           ),
+          TransferConcurrencySetting.singleFileConnections => (
+            icon: Icons.bolt_boost,
+            title: l10n.singleFileDownloadConnections,
+            values: const [1, 2, 3, 4],
+            current: settings.downloadConnections,
+          ),
         };
         return SettingsSliderTile<int>(
           icon: config.icon,
           title: config.title,
+          subtitle: setting == TransferConcurrencySetting.singleFileConnections
+              ? l10n.singleFileDownloadConnectionsSubtitle
+              : null,
           values: config.values,
           current: config.current,
           labelOf: (value) => '$value',
@@ -54,6 +63,8 @@ class TransferConcurrencySettingsTile extends ConsumerWidget {
     return switch (setting) {
       TransferConcurrencySetting.uploads => settings.setMaxUploads(value),
       TransferConcurrencySetting.downloads => settings.setMaxDownloads(value),
+      TransferConcurrencySetting.singleFileConnections =>
+        settings.setDownloadConnections(value),
     };
   }
 }

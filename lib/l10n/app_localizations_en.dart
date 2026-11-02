@@ -379,6 +379,49 @@ class AppLocalizationsEn extends AppLocalizations {
       'This will clear finished transfer records. Continue?';
 
   @override
+  String get cancelAll => 'Cancel all';
+
+  @override
+  String get pauseAll => 'Pause all';
+
+  @override
+  String get resumeAll => 'Resume all';
+
+  @override
+  String get clearAll => 'Clear';
+
+  @override
+  String get cancelInProgressTransfers => 'Cancel in-progress transfers';
+
+  @override
+  String cancelAllUploadsConfirmMessage(int count) {
+    return 'Cancel and remove all $count in-progress uploads?';
+  }
+
+  @override
+  String cancelAllDownloadsConfirmMessage(int count) {
+    return 'Cancel and remove all $count in-progress downloads and delete downloaded files?';
+  }
+
+  @override
+  String get clearFinishedTransfers => 'Clear finished transfers';
+
+  @override
+  String clearFinishedUploadsConfirmMessage(int count) {
+    return 'Clear all $count finished upload records?';
+  }
+
+  @override
+  String clearFinishedDownloadsConfirmMessage(int count) {
+    return 'Clear all $count finished download records?';
+  }
+
+  @override
+  String resumeAllPartialFailed(int count) {
+    return '$count downloads could not be resumed. Please try again later.';
+  }
+
+  @override
   String get upload => 'Upload';
 
   @override
@@ -401,6 +444,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get downloading => 'Downloading';
+
+  @override
+  String get resumingDownload => 'Resuming';
 
   @override
   String get paused => 'Paused';
@@ -442,6 +488,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get openFileFailed => 'No app can open this file';
+
+  @override
+  String get openFileMissing => 'The file no longer exists or has been moved';
+
+  @override
+  String get openFilePermissionDenied =>
+      'File access is no longer permitted. Choosing a download directory only affects future tasks; please download this file again.';
+
+  @override
+  String get openFileSystemError =>
+      'The system could not open this file. Please try again later.';
 
   @override
   String get redownload => 'Download again';
@@ -755,6 +812,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get downloadKeywords => 'download concurrent';
+
+  @override
+  String get singleFileDownloadConnections => 'Max download threads';
+
+  @override
+  String get singleFileDownloadConnectionsKeywords =>
+      'multi-thread segmented single-file connection parallel download speed';
+
+  @override
+  String get singleFileDownloadConnectionsSubtitle =>
+      'More threads increase rate-limit and data-usage risks';
 
   @override
   String get apiHost => 'Drive API domain';
@@ -1117,12 +1185,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String addedDownloadsSkipped(int ok, int skipped) {
-    return 'Added $ok download tasks; skipped $skipped already-downloaded files';
+    return 'Added $ok download tasks; skipped $skipped files already in the transfer list';
   }
 
   @override
   String addedDownloadsPartialSkipped(int ok, int skipped, int failed) {
-    return 'Added $ok download tasks; skipped $skipped already-downloaded files; $failed failed to resolve';
+    return 'Added $ok download tasks; skipped $skipped files already in the transfer list; $failed failed to resolve';
   }
 
   @override
@@ -1385,7 +1453,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get fileActions => 'File actions';
 
   @override
-  String get downloaded => 'Downloaded';
+  String get downloaded => 'Added to downloads';
 
   @override
   String get folder => 'Folder';
