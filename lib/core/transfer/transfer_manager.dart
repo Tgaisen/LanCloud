@@ -855,8 +855,7 @@ class TransferManager extends ChangeNotifier {
 
   Future<void> _deletePartialPath(TransferTask task, String path) async {
     try {
-      final partial = File(path);
-      if (await partial.exists()) await partial.delete();
+      await DioTransferDownloader.deleteState(path);
       if (task.partialPath == path) task.partialPath = null;
     } catch (_) {}
   }

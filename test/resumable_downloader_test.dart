@@ -155,6 +155,236 @@ void main() {
       expect(await partialFile.readAsBytes(), payload);
       expect(result.total, payload.length);
     });
+
+    test('should 用多个精确 Range 并发下载分片', () async {
+      final payload = List<int>.generate(4096, (index) => index % 233);
+      final ranges = <String>[];
+      final bothStarted = Completer<void>();
+      final release = Completer<void>();
+      var active = 0;
+      var maxActive = 0;
+      final server = await _startServer((request) async {
+        final range = request.headers.value('range');
+        if (range == null) {
+          fail('分片请求必须带 Range');
+        }
+        ranges.add(range);
+        if (range == 'bytes=0-0') {
+          await _writeResponse(
+            request.response,
+            payload.sublist(0, 1),
+            statusCode: HttpStatus.partialContent,
+            contentRange: 'bytes 0-0/${payload.length}',
+          );
+          return;
+        }
+
+        final bounds = _rangeBounds(range);
+        active += 1;
+        if (active > maxActive) maxActive = active;
+        if (active == 2 && !bothStarted.isCompleted) bothStarted.complete();
+        await release.future;
+        active -= 1;
+        await _writeResponse(
+          request.response,
+          payload.sublist(bounds.start, bounds.end + 1),
+          statusCode: HttpStatus.partialContent,
+          contentRange: 'bytes ${bounds.start}-${bounds.end}/${payload.length}',
+        );
+      });
+      addTearDown(() => server.close(force: true));
+
+      final download =
+          const DioTransferDownloader(
+            segmentConnections: 2,
+            segmentSize: 2048,
+            minimumSegmentedBytes: 1,
+          ).download(
+            dio: dio,
+            url: 'http://${server.address.host}:${server.port}/file',
+            partialPath: partialFile.path,
+            expectedTotal: payload.length,
+            cancelToken: CancelToken(),
+            headers: const <String, String>{},
+            receiveTimeout: const Duration(seconds: 5),
+            onProgress: (_, _) {},
+          );
+
+      await bothStarted.future.timeout(const Duration(seconds: 2));
+      release.complete();
+      final result = await download;
+
+      expect(maxActive, 2);
+      expect(ranges.where((range) => range != 'bytes=0-0').toSet(), <String>{
+        'bytes=0-2047',
+        'bytes=2048-4095',
+      });
+      expect(await partialFile.readAsBytes(), payload);
+      expect(result.total, payload.length);
+      expect(result.resumed, isFalse);
+      final metadata = File(
+        DioTransferDownloader.metadataPathFor(partialFile.path),
+      );
+      expect(await metadata.exists(), isTrue);
+      await DioTransferDownloader.deleteState(partialFile.path);
+      expect(await partialFile.exists(), isFalse);
+      expect(await metadata.exists(), isFalse);
+    });
+
+    test('should 从分片检查点继续下载', () async {
+      final payload = List<int>.generate(4096, (index) => index % 229);
+      final ranges = <int, List<String>>{1: <String>[], 2: <String>[]};
+      var failPartialResponse = true;
+      final server = await _startServer((request) async {
+        final range = request.headers.value('range');
+        if (range == null) fail('分片请求必须带 Range');
+        ranges[failPartialResponse ? 1 : 2]!.add(range);
+        if (range == 'bytes=0-0') {
+          await _writeResponse(
+            request.response,
+            payload.sublist(0, 1),
+            statusCode: HttpStatus.partialContent,
+            contentRange: 'bytes 0-0/${payload.length}',
+          );
+          return;
+        }
+
+        final bounds = _rangeBounds(range);
+        final end = failPartialResponse
+            ? (bounds.start + 512 < bounds.end
+                  ? bounds.start + 512
+                  : bounds.end)
+            : bounds.end;
+        await _writeResponse(
+          request.response,
+          payload.sublist(bounds.start, end + 1),
+          statusCode: HttpStatus.partialContent,
+          contentRange: 'bytes ${bounds.start}-${bounds.end}/${payload.length}',
+        );
+      });
+      addTearDown(() => server.close(force: true));
+      const downloader = DioTransferDownloader(
+        segmentConnections: 2,
+        segmentSize: 2048,
+        minimumSegmentedBytes: 1,
+      );
+      final url = 'http://${server.address.host}:${server.port}/file';
+
+      await expectLater(
+        downloader.download(
+          dio: dio,
+          url: url,
+          partialPath: partialFile.path,
+          expectedTotal: payload.length,
+          cancelToken: CancelToken(),
+          headers: const <String, String>{},
+          receiveTimeout: const Duration(seconds: 5),
+          onProgress: (_, _) {},
+        ),
+        throwsA(anything),
+      );
+      final metadata = File(
+        DioTransferDownloader.metadataPathFor(partialFile.path),
+      );
+      expect(await metadata.exists(), isTrue);
+
+      failPartialResponse = false;
+      final result = await downloader.download(
+        dio: dio,
+        url: url,
+        partialPath: partialFile.path,
+        expectedTotal: payload.length,
+        cancelToken: CancelToken(),
+        headers: const <String, String>{},
+        receiveTimeout: const Duration(seconds: 5),
+        onProgress: (_, _) {},
+      );
+
+      final resumedFirst = ranges[2]!.firstWhere(
+        (range) => range.endsWith('-2047'),
+      );
+      expect(_rangeBounds(resumedFirst).start, greaterThan(0));
+      expect(await partialFile.readAsBytes(), payload);
+      expect(result.total, payload.length);
+      expect(result.resumed, isTrue);
+    });
+
+    test('should 在探测不支持 Range 时回退单流下载', () async {
+      final payload = List<int>.generate(4096, (index) => index % 227);
+      final ranges = <String?>[];
+      final server = await _startServer((request) async {
+        ranges.add(request.headers.value('range'));
+        await _writeResponse(request.response, payload);
+      });
+      addTearDown(() => server.close(force: true));
+
+      final result =
+          await const DioTransferDownloader(
+            segmentConnections: 2,
+            segmentSize: 2048,
+            minimumSegmentedBytes: 1,
+          ).download(
+            dio: dio,
+            url: 'http://${server.address.host}:${server.port}/file',
+            partialPath: partialFile.path,
+            expectedTotal: payload.length,
+            cancelToken: CancelToken(),
+            headers: const <String, String>{},
+            receiveTimeout: const Duration(seconds: 5),
+            onProgress: (_, _) {},
+          );
+
+      expect(ranges, <String?>['bytes=0-0', null]);
+      expect(await partialFile.readAsBytes(), payload);
+      expect(result.total, payload.length);
+      expect(result.resumed, isFalse);
+      expect(
+        await File(DioTransferDownloader.metadataPathFor(partialFile.path))
+            .exists(),
+        isFalse,
+      );
+    });
+
+    test('should 在分片请求不再返回 206 时回退单流下载', () async {
+      final payload = List<int>.generate(4096, (index) => index % 211);
+      final ranges = <String?>[];
+      final server = await _startServer((request) async {
+        final range = request.headers.value('range');
+        ranges.add(range);
+        if (range == 'bytes=0-0') {
+          await _writeResponse(
+            request.response,
+            payload.sublist(0, 1),
+            statusCode: HttpStatus.partialContent,
+            contentRange: 'bytes 0-0/${payload.length}',
+          );
+          return;
+        }
+        await _writeResponse(request.response, payload);
+      });
+      addTearDown(() => server.close(force: true));
+
+      final result =
+          await const DioTransferDownloader(
+            segmentConnections: 2,
+            segmentSize: 4096,
+            minimumSegmentedBytes: 1,
+          ).download(
+            dio: dio,
+            url: 'http://${server.address.host}:${server.port}/file',
+            partialPath: partialFile.path,
+            expectedTotal: payload.length,
+            cancelToken: CancelToken(),
+            headers: const <String, String>{},
+            receiveTimeout: const Duration(seconds: 5),
+            onProgress: (_, _) {},
+          );
+
+      expect(ranges, <String?>['bytes=0-0', 'bytes=0-4095', null]);
+      expect(await partialFile.readAsBytes(), payload);
+      expect(result.total, payload.length);
+      expect(result.resumed, isFalse);
+    });
   });
 }
 
@@ -188,4 +418,10 @@ Future<void> _writeResponse(
   }
   response.add(payload);
   await response.close();
+}
+
+({int start, int end}) _rangeBounds(String range) {
+  final match = RegExp(r'^bytes=(\d+)-(\d+)$').firstMatch(range);
+  if (match == null) throw FormatException('无效 Range：$range');
+  return (start: int.parse(match.group(1)!), end: int.parse(match.group(2)!));
 }
