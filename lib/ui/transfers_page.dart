@@ -158,7 +158,8 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
     with AutomaticKeepAliveClientMixin, TickerProviderStateMixin {
   static const _anim = Duration(milliseconds: 200);
 
-  int _tab = 0;
+  /// 传输页默认展示下载列表。
+  int _tab = 1;
 
   /// 上传 / 下载切换时列表淡入
   late final AnimationController _tabAnim = AnimationController(
@@ -735,8 +736,7 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
                           child: SizedBox(
                             width: double.infinity,
                             child: M3eConnectedButtonGroup<int>(
-                              // 下载更高频，固定在左侧；默认选中项仍保持上传，
-                              // 避免改变进入传输页后的既有行为。
+                              // 下载更高频，固定在左侧并作为默认页面。
                               values: const [1, 0],
                               selected: _tab,
                               onSelected: (value) {

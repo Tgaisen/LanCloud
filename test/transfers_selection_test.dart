@@ -71,6 +71,8 @@ Future<(AppEnvironment, TransferManager)> host(WidgetTester tester) async {
     ),
   );
   await tester.pumpAndSettle();
+  await tester.tap(find.text('上传').hitTestable());
+  await tester.pumpAndSettle();
   return (app, manager);
 }
 
@@ -95,6 +97,8 @@ Future<(AppEnvironment, TransferManager)> hostWithTasks(
   );
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 700));
+  await tester.tap(find.text('上传').hitTestable());
+  await tester.pumpAndSettle();
   return (app, manager);
 }
 
@@ -149,8 +153,16 @@ Future<AppEnvironment> pushTransfers(WidgetTester tester) async {
   );
   await tester.tap(find.text('打开传输'));
   await tester.pumpAndSettle();
+  await tester.tap(find.text('上传').hitTestable());
+  await tester.pumpAndSettle();
   return app;
 }
+
+int selectedTransferTab(WidgetTester tester) => tester
+    .widget<M3eConnectedButtonGroup<int>>(
+      find.byType(M3eConnectedButtonGroup<int>),
+    )
+    .selected;
 
 void main() {
   testWidgets('进行中条目的进度条与标题同宽：避让左侧图标与右侧按钮', (tester) async {
@@ -175,6 +187,8 @@ void main() {
     );
     // 上传运行中也显示进度，但不使用下载专属的波浪动画。
     await tester.pump();
+    expect(selectedTransferTab(tester), 1, reason: '传输页默认应进入下载');
+    await tester.tap(find.text('上传').hitTestable());
     await tester.pump(const Duration(milliseconds: 350));
 
     final title = tester.getRect(find.text('a.zip'));
@@ -480,6 +494,8 @@ void main() {
         ),
       ),
     );
+    await tester.tap(find.text('上传').hitTestable());
+    await tester.pumpAndSettle();
     await tester.pump();
 
     expect(find.byTooltip('取消任务'), findsOneWidget);
@@ -1238,6 +1254,8 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await tester.tap(find.text('上传').hitTestable());
+    await tester.pumpAndSettle();
 
     // 失败的上传项：重试 + 删除此条记录，没有打开 / 分享 / 删除记录与文件
     await openRowMenu(tester, 'fail.zip');
@@ -1325,7 +1343,12 @@ void main() {
     final manager = buildTransferManagerForEnvironment(app);
     manager.tasks.addAll([
       for (var i = 0; i < 12; i++)
-        task('t$i', 'file$i.zip', status: TransferStatus.done),
+        TransferTask(
+          id: 't$i',
+          kind: TransferKind.download,
+          name: 'file$i.zip',
+          accountUid: '',
+        )..status = TransferStatus.done,
     ]);
 
     Widget host(Widget home, {GlobalKey<NavigatorState>? navKey}) =>
@@ -1398,6 +1421,7 @@ void main() {
       ),
     );
     // 等首次入场动画播完（共享进度到 1）
+    await tester.tap(find.text('上传').hitTestable());
     await tester.pumpAndSettle();
 
     // 滑到列表后段：这些条目是懒构建出来的

@@ -53,10 +53,10 @@ Future<(AppEnvironment, TransferManager)> _pumpTransfers(
     ),
   );
   await tester.pumpAndSettle();
-  if (kind == TransferKind.download) {
-    await tester.tap(find.text('下载').hitTestable());
-    await tester.pumpAndSettle();
-  }
+  await tester.tap(
+    find.text(kind == TransferKind.download ? '下载' : '上传').hitTestable(),
+  );
+  await tester.pumpAndSettle();
   return (environment, manager);
 }
 

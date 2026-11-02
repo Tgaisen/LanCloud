@@ -68,7 +68,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('暂无上传任务'), findsOneWidget);
+    expect(find.text('暂无下载任务'), findsOneWidget);
     expect(maxScrollExtent(tester), 0);
   });
 
