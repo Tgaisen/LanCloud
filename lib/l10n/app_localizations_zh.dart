@@ -723,14 +723,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get downloadKeywords => '下载 并发';
 
   @override
-  String get singleFileDownloadConnections => '多线程下载（单文件连接数）';
+  String get singleFileDownloadConnections => '最高下载线程';
 
   @override
   String get singleFileDownloadConnectionsKeywords => '多线程 分片 单文件 连接 并发 下载 加速';
 
   @override
-  String get singleFileDownloadConnectionsSubtitle =>
-      '仅对 16 MiB 以上的文件生效；连接越多，风控和流量风险越高';
+  String get singleFileDownloadConnectionsSubtitle => '线程越多，风控和流量风险越高';
 
   @override
   String get apiHost => '网盘接口域名';

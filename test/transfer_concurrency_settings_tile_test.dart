@@ -95,6 +95,6 @@ void main() {
     expect(store.downloadConnections, 4);
     expect(state.revision.value, 1);
     expect(find.text('4'), findsOneWidget);
-    expect(find.textContaining('16 MiB'), findsOneWidget);
+    expect(find.text('线程越多，风控和流量风险越高'), findsOneWidget);
   });
 }

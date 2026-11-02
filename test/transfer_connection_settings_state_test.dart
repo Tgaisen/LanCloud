@@ -25,6 +25,7 @@ void main() {
     final settings = SettingsStore();
     final state = TransferConnectionSettingsState(settings);
 
+    expect(settings.downloadConnections, 2);
     await state.setRequestInterval(250);
     await state.setMaxUploads(2);
     await state.setMaxDownloads(4);

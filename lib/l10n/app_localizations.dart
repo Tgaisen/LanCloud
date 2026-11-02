@@ -1457,7 +1457,7 @@ abstract class AppLocalizations {
   /// No description provided for @singleFileDownloadConnections.
   ///
   /// In zh, this message translates to:
-  /// **'多线程下载（单文件连接数）'**
+  /// **'最高下载线程'**
   String get singleFileDownloadConnections;
 
   /// No description provided for @singleFileDownloadConnectionsKeywords.
@@ -1469,7 +1469,7 @@ abstract class AppLocalizations {
   /// No description provided for @singleFileDownloadConnectionsSubtitle.
   ///
   /// In zh, this message translates to:
-  /// **'仅对 16 MiB 以上的文件生效；连接越多，风控和流量风险越高'**
+  /// **'线程越多，风控和流量风险越高'**
   String get singleFileDownloadConnectionsSubtitle;
 
   /// No description provided for @apiHost.

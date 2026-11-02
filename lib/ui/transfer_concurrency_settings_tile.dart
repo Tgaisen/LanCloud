@@ -38,7 +38,7 @@ class TransferConcurrencySettingsTile extends ConsumerWidget {
             current: settings.maxDownloads,
           ),
           TransferConcurrencySetting.singleFileConnections => (
-            icon: Icons.speed,
+            icon: Icons.bolt_boost,
             title: l10n.singleFileDownloadConnections,
             values: const [1, 2, 3, 4],
             current: settings.downloadConnections,

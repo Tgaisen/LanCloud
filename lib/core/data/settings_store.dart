@@ -73,7 +73,7 @@ class SettingsStore {
   int maxDownloads = 3;
 
   /// 单个下载任务使用的连接数；1 表示沿用单流下载。
-  int downloadConnections = 1;
+  int downloadConnections = 2;
   String apiHost = 'pc';
   String userAgent = '';
 
@@ -148,7 +148,7 @@ class SettingsStore {
     maxUploads = prefs.getInt(_keyMaxUp) ?? 1;
     maxDownloads = prefs.getInt(_keyMaxDown) ?? 3;
     downloadConnections = normalizeDownloadConnections(
-      prefs.getInt(_keyDownloadConnections) ?? 1,
+      prefs.getInt(_keyDownloadConnections) ?? 2,
     );
     apiHost = prefs.getString(_keyApiHost) ?? 'pc';
     userAgent = prefs.getString(_keyUserAgent) ?? '';
