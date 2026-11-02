@@ -80,9 +80,11 @@ void main() {
     );
 
     expect(withResponsiveSnackBarWidth(theme, 420).snackBarTheme.width, isNull);
+    final wide = withResponsiveSnackBarWidth(theme, 800);
+    expect(wide.snackBarTheme.width, isNull);
     expect(
-      withResponsiveSnackBarWidth(theme, 800).snackBarTheme.width,
-      kSnackBarMaxWidth,
+      wide.snackBarTheme.insetPadding,
+      const EdgeInsets.fromLTRB(100, 5, 100, 10),
     );
   });
 }

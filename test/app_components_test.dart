@@ -102,5 +102,15 @@ void main() {
     );
     expect(tester.getSize(material).width, kSnackBarMaxWidth);
     expect(tester.getCenter(material).dx, 500);
+
+    // SnackBar 的 Hero 外层 ClipRect 仍需覆盖整屏，给左右阴影留出绘制空间。
+    final clip = find
+        .ancestor(of: material, matching: find.byType(ClipRect))
+        .first;
+    expect(tester.getSize(clip).width, 1000);
+    expect(
+      tester.getRect(material).left,
+      greaterThan(tester.getRect(clip).left),
+    );
   });
 }

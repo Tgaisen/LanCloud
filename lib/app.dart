@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter/foundation.dart' show listEquals, visibleForTesting;
@@ -57,11 +58,28 @@ import 'ui/update_prompt.dart';
 /// 的默认左右安全边距；否则固定宽度会被屏幕约束压到贴边。
 const double kSnackBarMaxWidth = 600;
 
+/// M3 浮动 SnackBar 的默认左右安全边距。
+const double _kSnackBarMinHorizontalInset = 15;
+
 /// 按当前视口宽度应用 SnackBar 宽度约束。
 ThemeData withResponsiveSnackBarWidth(ThemeData theme, double viewportWidth) {
   if (viewportWidth < kLargeLayoutBreakpoint) return theme;
+  // 固定 width 会让 SnackBar 外层的 ClipRect 也收缩到该宽度，600dp 时
+  // Material 阴影正好落在裁切边界外。改用左右外边距限制内容宽度，让
+  // ClipRect 保持整屏宽，同时内容仍不超过 600dp。
+  final horizontalInset = math.max(
+    _kSnackBarMinHorizontalInset,
+    (viewportWidth - kSnackBarMaxWidth) / 2,
+  );
   return theme.copyWith(
-    snackBarTheme: theme.snackBarTheme.copyWith(width: kSnackBarMaxWidth),
+    snackBarTheme: theme.snackBarTheme.copyWith(
+      insetPadding: EdgeInsets.fromLTRB(
+        horizontalInset,
+        5,
+        horizontalInset,
+        10,
+      ),
+    ),
   );
 }
 

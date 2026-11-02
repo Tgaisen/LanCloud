@@ -158,7 +158,8 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
     with AutomaticKeepAliveClientMixin, TickerProviderStateMixin {
   static const _anim = Duration(milliseconds: 200);
 
-  int _tab = 0;
+  /// 传输页默认展示下载列表。
+  int _tab = 1;
 
   /// 上传 / 下载切换时列表淡入
   late final AnimationController _tabAnim = AnimationController(
@@ -735,7 +736,8 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
                           child: SizedBox(
                             width: double.infinity,
                             child: M3eConnectedButtonGroup<int>(
-                              values: const [0, 1],
+                              // 下载更高频，固定在左侧并作为默认页面。
+                              values: const [1, 0],
                               selected: _tab,
                               onSelected: (value) {
                                 if (value == _tab) return;
@@ -751,13 +753,13 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
                                 _replayEnter();
                               },
                               labelOf: (value) => Text(
-                                value == 0 ? l10n.upload : l10n.download,
+                                value == 1 ? l10n.download : l10n.upload,
                               ),
                               iconOf: (value) => Icon(
-                                value == 0 ? Icons.upload : Icons.download,
+                                value == 1 ? Icons.download : Icons.upload,
                               ),
                               semanticLabel:
-                                  '${l10n.upload} / ${l10n.download}',
+                                  '${l10n.download} / ${l10n.upload}',
                             ),
                           ),
                         ),

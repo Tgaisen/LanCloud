@@ -30,10 +30,9 @@ void main() {
     manager.tasks.add(
       TransferTask(
         id: 't1',
-        kind: TransferKind.upload,
+        kind: TransferKind.download,
         name: 'a.zip',
         accountUid: '',
-        localFilePath: '/tmp/a.zip',
       )..status = TransferStatus.done,
     );
     await tester.pumpWidget(

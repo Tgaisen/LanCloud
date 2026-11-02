@@ -2689,10 +2689,10 @@ class _PathBarState extends State<PathBar> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    // Align：路径栏放进 AppBar 的 bottom 槽位时拿到的是松约束，
-    // 不套一层就会整条缩到中间/右边去
-    return Align(
-      alignment: Alignment.centerLeft,
+    // 撑满可用宽度：AppBar bottom / Row 给路径栏的是松约束。若滚动视口跟着
+    // 内容收缩，短路径下的 BouncingScrollPhysics 手势区域也会提前截断。
+    return SizedBox(
+      width: double.infinity,
       child: SingleChildScrollView(
         controller: _scroll,
         scrollDirection: Axis.horizontal,
