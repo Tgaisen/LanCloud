@@ -1794,17 +1794,20 @@ class _SheetDragPhysics extends ClampingScrollPhysics {
 /// 分组标题 + 数量 chip（传输、收藏等列表视图共用）。
 ///
 /// [actions] 放在标题右侧，窄屏或大字号时可在自身区域换行，不截断按钮文案。
+/// [compact] 只影响垂直留白；移动端传输页可用它保留紧凑分栏高度。
 class SectionHeader extends StatelessWidget {
   const SectionHeader({
     super.key,
     required this.title,
     required this.count,
     this.actions = const <Widget>[],
+    this.compact = false,
   });
 
   final String title;
   final int count;
   final List<Widget> actions;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -1830,14 +1833,9 @@ class SectionHeader extends StatelessWidget {
       ],
     );
     return Padding(
-      // 有右侧操作时由按钮自身的 48dp 触控目标撑起行高，不再额外叠加
-      // 分栏上下留白；无操作的传统分组标题保持原间距。
-      padding: EdgeInsets.fromLTRB(
-        4,
-        actions.isEmpty ? 16 : 0,
-        4,
-        actions.isEmpty ? 8 : 0,
-      ),
+      padding: compact
+          ? const EdgeInsets.fromLTRB(4, 0, 4, 0)
+          : const EdgeInsets.fromLTRB(4, 16, 4, 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [

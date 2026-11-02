@@ -664,6 +664,33 @@ void main() {
     app.dispose();
   });
 
+  testWidgets('非紧凑分栏的上下留白不受右侧操作影响', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SectionHeader(
+            title: '进行中',
+            count: 1,
+            actions: [TextButton(onPressed: () {}, child: const Text('全部暂停'))],
+          ),
+        ),
+      ),
+    );
+
+    final header = tester.widget<SectionHeader>(find.byType(SectionHeader));
+    final padding = tester.widget<Padding>(
+      find
+          .descendant(
+            of: find.byType(SectionHeader),
+            matching: find.byType(Padding),
+          )
+          .first,
+    );
+
+    expect(header.compact, isFalse);
+    expect(padding.padding, const EdgeInsets.fromLTRB(4, 16, 4, 8));
+  });
+
   // 多选期间切换上传 / 下载：不禁用按钮组，切换后自动退出多选。
   testWidgets('多选时切换上传 / 下载会退出多选', (tester) async {
     await host(tester);

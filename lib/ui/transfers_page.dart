@@ -1018,6 +1018,7 @@ class _TransferListSliver extends StatelessWidget {
               child: SectionHeader(
                 title: l10n.inProgress,
                 count: active.length,
+                compact: !PlatformSupport.isDesktop,
                 actions: [
                   for (final action in activeActions)
                     HideKeepingSpace(hidden: selecting, child: action),
@@ -1059,6 +1060,7 @@ class _TransferListSliver extends StatelessWidget {
               child: SectionHeader(
                 title: l10n.finished,
                 count: finished.length,
+                compact: !PlatformSupport.isDesktop,
                 actions: [
                   HideKeepingSpace(
                     hidden: selecting,
