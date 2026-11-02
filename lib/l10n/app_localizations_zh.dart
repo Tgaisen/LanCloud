@@ -1082,12 +1082,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String addedDownloadsSkipped(int ok, int skipped) {
-    return '已加入 $ok 个下载任务，跳过 $skipped 个已下载文件';
+    return '已加入 $ok 个下载任务，跳过 $skipped 个已在传输列表的文件';
   }
 
   @override
   String addedDownloadsPartialSkipped(int ok, int skipped, int failed) {
-    return '已加入 $ok 个下载任务，跳过 $skipped 个已下载文件，$failed 个解析失败';
+    return '已加入 $ok 个下载任务，跳过 $skipped 个已在传输列表的文件，$failed 个解析失败';
   }
 
   @override
@@ -1345,7 +1345,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get fileActions => '文件操作';
 
   @override
-  String get downloaded => '已下载';
+  String get downloaded => '已加入下载';
 
   @override
   String get folder => '文件夹';

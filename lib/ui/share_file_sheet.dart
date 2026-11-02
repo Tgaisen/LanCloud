@@ -205,7 +205,7 @@ class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
             margin: SheetListGroup.endMargin,
             children: [
               // 下载状态原位显示：解析中 / 等待中 / 下载中在行尾显示进度环，
-              // 已下载 / 下载失败换图标与文案；已加入下载后点击弹二级菜单
+              // 已加入下载 / 下载失败换图标与文案；已加入后点击弹二级菜单
               // （打开 / 分享 / 取消下载 / 重新下载）
               ListenableBuilder(
                 // 进度更新走 manager（环要动）；标记集合变化走低频 revision，

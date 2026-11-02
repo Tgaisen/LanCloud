@@ -587,7 +587,7 @@
       }
     }
   },
-  "addedDownloadsSkipped": "已加入 {ok} 个下载任务，跳过 {skipped} 个已下载文件",
+  "addedDownloadsSkipped": "已加入 {ok} 个下载任务，跳过 {skipped} 个已在传输列表的文件",
   "@addedDownloadsSkipped": {
     "placeholders": {
       "ok": {
@@ -598,7 +598,7 @@
       }
     }
   },
-  "addedDownloadsPartialSkipped": "已加入 {ok} 个下载任务，跳过 {skipped} 个已下载文件，{failed} 个解析失败",
+  "addedDownloadsPartialSkipped": "已加入 {ok} 个下载任务，跳过 {skipped} 个已在传输列表的文件，{failed} 个解析失败",
   "@addedDownloadsPartialSkipped": {
     "placeholders": {
       "ok": {
@@ -794,7 +794,7 @@
   "filterResult": "筛选结果",
   "folderActions": "文件夹操作",
   "fileActions": "文件操作",
-  "downloaded": "已下载",
+  "downloaded": "已加入下载",
   "folder": "文件夹",
   "fileCount": "{count} 个文件",
   "@fileCount": {

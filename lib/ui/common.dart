@@ -2017,7 +2017,7 @@ class Md3ListItem extends StatefulWidget {
   /// 尾部操作（⋯、重试、打开等）。
   final Widget? trailing;
 
-  /// 尾部操作前的小标记（例如「已下载」小图标）；没有就传 null。
+  /// 尾部操作前的小标记（例如「已加入下载」小图标）；没有就传 null。
   final Widget? badge;
 
   /// 多选选中态：整行填主色容器，圆角由外层分组控制。

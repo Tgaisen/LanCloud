@@ -203,7 +203,8 @@ void main() {
       );
 
       expect(await resumeFuture, isNull);
-      expect(task.status, TransferStatus.canceled);
+      expect(task.removed, isTrue);
+      expect(manager.tasks, isEmpty);
     });
 
     test('should 在中转文件复制期间显示保存状态并禁止暂停', () async {
@@ -479,13 +480,6 @@ class _FakeTransferStore implements TransferStore {
 
   @override
   Future<void> deleteTransfers(List<String> ids) async {}
-
-  @override
-  Future<void> markDownloaded({
-    required String ref,
-    required String name,
-    String path = '',
-  }) async {}
 }
 
 class _FakeTransferAccountPort implements TransferAccountPort {

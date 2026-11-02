@@ -56,13 +56,6 @@ class _FakeTransferStore implements TransferStore {
 
   @override
   Future<void> deleteTransfers(List<String> ids) async {}
-
-  @override
-  Future<void> markDownloaded({
-    required String ref,
-    required String name,
-    String path = '',
-  }) async {}
 }
 
 class _FixedDownloadPathService implements DownloadPathService {
@@ -230,6 +223,13 @@ void main() {
         'pwd': '',
         'ref': '',
         'saved_path': '/tmp/example',
+        'error': '',
+      },
+      {
+        'id': 'd2',
+        'kind': 'download',
+        'name': '已取消文件',
+        'status': 'canceled',
         'error': '',
       },
     ]);

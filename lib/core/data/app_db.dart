@@ -98,7 +98,7 @@ class AppDb {
     final path = p.join(await _databaseDirectory(), 'lancloud.db');
     return openDatabase(
       path,
-      version: 10,
+      version: 11,
       onCreate: (db, version) async {
         await db.execute(
           'CREATE TABLE favorites('
@@ -130,13 +130,6 @@ class AppDb {
           'account TEXT NOT NULL,'
           'name TEXT NOT NULL,'
           'ref TEXT NOT NULL,'
-          'path TEXT DEFAULT "",'
-          'created_at INTEGER NOT NULL)',
-        );
-        await db.execute(
-          'CREATE TABLE downloads('
-          'ref TEXT PRIMARY KEY,'
-          'name TEXT DEFAULT "",'
           'path TEXT DEFAULT "",'
           'created_at INTEGER NOT NULL)',
         );
@@ -257,6 +250,11 @@ class AppDb {
             'ALTER TABLE transfers ADD COLUMN account TEXT DEFAULT ""',
           );
         }
+        if (oldVersion < 11) {
+          // “已加入下载”以 transfers 为唯一状态源，不再保留独立下载历史。
+          await db.execute('DROP TABLE IF EXISTS downloads');
+          await db.execute("DELETE FROM transfers WHERE status = 'canceled'");
+        }
       },
     );
   }
@@ -373,39 +371,6 @@ class AppDb {
       where: 'id IN ($placeholders)',
       whereArgs: ids,
     );
-  }
-
-  // ---------------------------------------------------------------- downloads
-
-  Future<void> markDownloaded({
-    required String ref,
-    required String name,
-    String path = '',
-  }) async {
-    final database = await db;
-    await database.insert('downloads', {
-      'ref': ref,
-      'name': name,
-      'path': path,
-      'created_at': DateTime.now().millisecondsSinceEpoch,
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
-  }
-
-  Future<void> removeDownloaded(List<String> refs) async {
-    if (refs.isEmpty) return;
-    final database = await db;
-    final placeholders = List.filled(refs.length, '?').join(',');
-    await database.delete(
-      'downloads',
-      where: 'ref IN ($placeholders)',
-      whereArgs: refs,
-    );
-  }
-
-  Future<Set<String>> downloadedRefs() async {
-    final database = await db;
-    final rows = await database.query('downloads', columns: ['ref']);
-    return rows.map((r) => '${r['ref']}').toSet();
   }
 
   // ---------------------------------------------------------------- favorites
@@ -755,7 +720,6 @@ class AppDb {
   /// 快速访问（pins）与最近使用（recents）按账号分组，其余表平铺。
   /// 传输列表不参与备份（迁移意义不大）。
   /// 导出本地表；按备份内容裁剪。
-  /// 已下载标记属于使用记录，跟着「最近使用」一起。
   Future<Map<String, Object?>> exportTables({
     bool favorites = true,
     bool pins = true,
@@ -766,7 +730,6 @@ class AppDb {
       if (favorites) 'favorites': await database.query('favorites'),
       if (pins) 'pins': groupByAccount(await database.query('pins')),
       if (recents) 'recents': groupByAccount(await database.query('recents')),
-      if (recents) 'downloads': await database.query('downloads'),
     };
   }
 
@@ -784,7 +747,6 @@ class AppDb {
     ],
     'pins': ['id', 'account', 'name', 'ref', 'path', 'created_at'],
     'recents': ['id', 'account', 'kind', 'name', 'ref', 'pwd', 'opened_at'],
-    'downloads': ['ref', 'name', 'path', 'created_at'],
   };
 
   /// 恢复：整表替换备份里的数据，忽略未知列与非 Map 行。

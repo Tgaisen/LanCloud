@@ -126,7 +126,7 @@ class TransferManager extends ChangeNotifier {
   @visibleForTesting
   Future<DirectFile> Function(String shareUrl, String pwd)? debugResolveShare;
 
-  /// 「已下载」标记的低频版本号：任务增删 / 状态变化时自增，下载中的进度
+  /// 「已加入下载」标记的低频版本号：任务增删 / 状态变化时自增，下载中的进度
   /// 更新**不**触发。列表里的下载标记监听它，避免长列表跟着进度高频重建。
   final ValueNotifier<int> marksRevision = ValueNotifier(0);
 
@@ -178,6 +178,10 @@ class TransferManager extends ChangeNotifier {
           (s) => s.name == originalStatus,
           orElse: () => TransferStatus.failed,
         );
+        if (status == TransferStatus.canceled) {
+          await _dependencies.store.deleteTransfer('${row['id']}');
+          continue;
+        }
         var error = '${row['error'] ?? ''}';
         if (status == TransferStatus.running ||
             status == TransferStatus.queued ||
@@ -294,25 +298,8 @@ class TransferManager extends ChangeNotifier {
     _pump();
   }
 
-  void cancel(String id) {
-    final task = _find(id);
-    if (task == null) return;
-    if (task.status == TransferStatus.running) {
-      task.cancelToken.cancel('user canceled');
-      task.status = TransferStatus.canceled;
-    } else if (task.status == TransferStatus.queued ||
-        task.status == TransferStatus.paused) {
-      task.status = TransferStatus.canceled;
-      unawaited(_deletePartial(task));
-    } else if (task.status == TransferStatus.saving) {
-      // 平台复制无法中途停止；保留写入中的文件，复制返回后再清理目标。
-      task.status = TransferStatus.canceled;
-    }
-    _bumpMarks();
-    _persist(task);
-    notifyListeners();
-    _pump();
-  }
+  /// 取消下载或上传等同于删除任务记录；取消后不再保留“已下载”状态。
+  void cancel(String id) => removeTask(id);
 
   /// 暂停下载。只中止网络读取，已写入的 `.part` 文件保留供继续。
   void pause(String id) {
@@ -603,15 +590,6 @@ class TransferManager extends ChangeNotifier {
       if (task.status != TransferStatus.canceled &&
           task.status != TransferStatus.paused) {
         task.status = TransferStatus.done;
-      }
-      if (task.kind == TransferKind.download &&
-          task.refId != null &&
-          task.status == TransferStatus.done) {
-        await _dependencies.store.markDownloaded(
-          ref: task.refId!,
-          name: task.name,
-          path: task.savedPath ?? '',
-        );
       }
     } on DioException catch (e) {
       if (task.status == TransferStatus.paused) {

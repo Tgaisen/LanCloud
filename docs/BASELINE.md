@@ -10,9 +10,9 @@
 | 命令 | 口径 | 结果 | 耗时 |
 | --- | --- | --- | --- |
 | `tools\agent.cmd analyze` | 全量 | No issues found | 约 27 s |
-| `tools\agent.cmd analyze` | 增量（本次改动，6 个文件） | No issues found | 约 17 s |
+| `tools\agent.cmd analyze` | 增量（本次改动，13 个文件） | No issues found | 约 14 s |
 | `tools\agent.cmd test` | 全量（最近一次完整运行） | **724 tests, all passed** | 约 100 s |
-| `tools\agent.cmd test` | 增量（本次改动，87 个测试文件） | **445 tests, all passed** | 约 74 s |
+| `tools\agent.cmd test` | 增量（本次改动，98 个测试文件） | **500 tests, all passed** | 约 78 s |
 
 当前分析结果为 0 issue 是硬基线。出现红灯时，先判断是否为本次改动引入；
 不要把增量结果当成全量结论。

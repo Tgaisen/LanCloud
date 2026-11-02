@@ -2099,13 +2099,13 @@ abstract class AppLocalizations {
   /// No description provided for @addedDownloadsSkipped.
   ///
   /// In zh, this message translates to:
-  /// **'已加入 {ok} 个下载任务，跳过 {skipped} 个已下载文件'**
+  /// **'已加入 {ok} 个下载任务，跳过 {skipped} 个已在传输列表的文件'**
   String addedDownloadsSkipped(int ok, int skipped);
 
   /// No description provided for @addedDownloadsPartialSkipped.
   ///
   /// In zh, this message translates to:
-  /// **'已加入 {ok} 个下载任务，跳过 {skipped} 个已下载文件，{failed} 个解析失败'**
+  /// **'已加入 {ok} 个下载任务，跳过 {skipped} 个已在传输列表的文件，{failed} 个解析失败'**
   String addedDownloadsPartialSkipped(int ok, int skipped, int failed);
 
   /// No description provided for @retriedDownloads.
@@ -2567,7 +2567,7 @@ abstract class AppLocalizations {
   /// No description provided for @downloaded.
   ///
   /// In zh, this message translates to:
-  /// **'已下载'**
+  /// **'已加入下载'**
   String get downloaded;
 
   /// No description provided for @folder.

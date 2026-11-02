@@ -1128,12 +1128,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String addedDownloadsSkipped(int ok, int skipped) {
-    return 'Added $ok download tasks; skipped $skipped already-downloaded files';
+    return 'Added $ok download tasks; skipped $skipped files already in the transfer list';
   }
 
   @override
   String addedDownloadsPartialSkipped(int ok, int skipped, int failed) {
-    return 'Added $ok download tasks; skipped $skipped already-downloaded files; $failed failed to resolve';
+    return 'Added $ok download tasks; skipped $skipped files already in the transfer list; $failed failed to resolve';
   }
 
   @override
@@ -1396,7 +1396,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get fileActions => 'File actions';
 
   @override
-  String get downloaded => 'Downloaded';
+  String get downloaded => 'Added to downloads';
 
   @override
   String get folder => 'Folder';
