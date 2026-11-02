@@ -424,6 +424,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get downloading => '下载中';
 
   @override
+  String get resumingDownload => '恢复中';
+
+  @override
   String get paused => '已暂停';
 
   @override

@@ -242,6 +242,7 @@
   "queued": "排队中",
   "uploading": "上传中",
   "downloading": "下载中",
+  "resumingDownload": "恢复中",
   "paused": "已暂停",
   "saving": "正在保存",
   "pauseDownload": "暂停下载",

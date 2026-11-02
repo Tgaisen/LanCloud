@@ -330,6 +330,7 @@ void main() {
 
       final resumeFuture = manager.resume(task.id);
       await resolvingStarted.future;
+      expect(task.status, TransferStatus.resuming);
       manager.cancel(task.id);
       resolving.complete(
         DirectFile(name: 'archive.zip', url: 'https://cdn.example/file'),

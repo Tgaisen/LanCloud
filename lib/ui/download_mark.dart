@@ -106,6 +106,8 @@ Future<void> showDownloadTaskMenu(
   final bool running =
       task.status == TransferStatus.queued ||
       task.status == TransferStatus.running;
+  final bool resuming = task.status == TransferStatus.resuming;
+  final bool transferActive = running || resuming;
   final bool paused = task.status == TransferStatus.paused;
   final String? savedPath = task.savedPath;
   final bool hasFile =
@@ -154,10 +156,10 @@ Future<void> showDownloadTaskMenu(
         ),
       M3eMenuItem(
         value: _DownloadMenuAction.stop,
-        label: running || paused
+        label: transferActive || paused
             ? l10n.cancelDownload
             : l10n.deleteDownloadRecord,
-        icon: running || paused ? Icons.close : Icons.playlist_remove,
+        icon: transferActive || paused ? Icons.close : Icons.playlist_remove,
       ),
       // 连文件一起删：删完标记消失，属性弹窗恢复「下载」原状
       M3eMenuItem(
@@ -170,7 +172,7 @@ Future<void> showDownloadTaskMenu(
         value: _DownloadMenuAction.redownload,
         label: l10n.redownload,
         icon: Icons.refresh,
-        enabled: !running,
+        enabled: !transferActive,
       ),
     ],
   );
@@ -201,7 +203,7 @@ Future<void> showDownloadTaskMenu(
             .showSnackBar(SnackBar(content: Text(message)));
       }
     case _DownloadMenuAction.stop:
-      if (running || paused) {
+      if (transferActive || paused) {
         manager.cancel(task.id);
       } else {
         manager.removeTask(task.id);

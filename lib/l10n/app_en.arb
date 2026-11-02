@@ -167,6 +167,7 @@
   "queued": "Queued",
   "uploading": "Uploading",
   "downloading": "Downloading",
+  "resumingDownload": "Resuming",
   "paused": "Paused",
   "saving": "Saving",
   "pauseDownload": "Pause download",

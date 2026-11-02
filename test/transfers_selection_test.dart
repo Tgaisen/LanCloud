@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lancloud/core/api/models.dart';
 import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
@@ -227,6 +229,67 @@ void main() {
     );
     expect(progress.value, closeTo(0.4, 0.001));
     expect(progress.wavy, isFalse);
+  });
+
+  testWidgets('恢复解析期间显示恢复中且暂停按钮禁用', (tester) async {
+    final (app, manager) = await hostWithTasks(tester, [
+      TransferTask(
+          id: 'd1',
+          kind: TransferKind.download,
+          name: 'paused.zip',
+          accountUid: '',
+          referer: 'https://example.com/share',
+        )
+        ..status = TransferStatus.paused
+        ..total = 100
+        ..received = 40,
+    ]);
+    app.settingsState.store.maxDownloads = 0;
+    final resolvingStarted = Completer<void>();
+    final resolving = Completer<DirectFile>();
+    manager.debugResolveShare = (url, pwd) {
+      resolvingStarted.complete();
+      return resolving.future;
+    };
+    await tester.tap(find.text('下载').hitTestable());
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    await tester.tap(find.byTooltip('继续下载'));
+    await tester.pump();
+    await resolvingStarted.future;
+    await tester.pump();
+
+    expect(manager.tasks.single.status, TransferStatus.resuming);
+    expect(find.textContaining('恢复中'), findsOneWidget);
+    expect(find.byTooltip('继续下载'), findsNothing);
+    final pause = tester.widget<M3eIconButton>(
+      find.ancestor(
+        of: find.byTooltip('暂停下载'),
+        matching: find.byType(M3eIconButton),
+      ),
+    );
+    expect(pause.onPressed, isNull);
+    final progress = tester.widget<M3eLinearProgressIndicator>(
+      find.byType(M3eLinearProgressIndicator),
+    );
+    expect(progress.wavy, isFalse);
+
+    resolving.complete(
+      DirectFile(name: 'paused.zip', url: 'https://cdn.example/paused.zip'),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(manager.tasks.single.status, TransferStatus.queued);
+    final resumedPause = tester.widget<M3eIconButton>(
+      find.ancestor(
+        of: find.byTooltip('暂停下载'),
+        matching: find.byType(M3eIconButton),
+      ),
+    );
+    expect(resumedPause.onPressed, isNotNull);
+    app.dispose();
   });
 
   testWidgets('恢复后仍在排队的下载保留进度但停止波浪动画', (tester) async {

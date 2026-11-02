@@ -2,7 +2,7 @@ import 'package:flutter/widgets.dart';
 
 import '../core/transfer/transfer_manager.dart';
 
-/// 只订阅运行中 / 排队 / 正在保存的任务数。
+/// 只订阅运行中 / 排队 / 恢复中 / 正在保存的任务数。
 ///
 /// `TransferManager` 仍以 `ChangeNotifier` 高频报告进度，普通 Riverpod
 /// `Provider` 不会转发这些通知；这里过滤掉同数量的更新，只在任务数变化时
@@ -29,6 +29,7 @@ class _TransferRunningCountState extends State<TransferRunningCount> {
         (task) =>
             task.status == TransferStatus.running ||
             task.status == TransferStatus.queued ||
+            task.status == TransferStatus.resuming ||
             task.status == TransferStatus.saving,
       )
       .length;

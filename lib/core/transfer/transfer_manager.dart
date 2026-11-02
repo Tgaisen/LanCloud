@@ -21,7 +21,16 @@ import 'transfer_dependencies.dart';
 
 enum TransferKind { upload, download }
 
-enum TransferStatus { queued, running, paused, saving, done, failed, canceled }
+enum TransferStatus {
+  queued,
+  running,
+  resuming,
+  paused,
+  saving,
+  done,
+  failed,
+  canceled,
+}
 
 class TransferTask {
   TransferTask({
@@ -185,6 +194,7 @@ class TransferManager extends ChangeNotifier {
         var error = '${row['error'] ?? ''}';
         if (status == TransferStatus.running ||
             status == TransferStatus.queued ||
+            status == TransferStatus.resuming ||
             status == TransferStatus.saving) {
           status = TransferStatus.failed;
           error = NotificationService.i18n?.taskInterrupted ?? '应用已退出，任务中断';
@@ -360,14 +370,22 @@ class TransferManager extends ChangeNotifier {
         task.status != TransferStatus.paused) {
       return null;
     }
-    final expectedStatus = task.status;
+    task.status = TransferStatus.resuming;
+    task.error = null;
+    _bumpMarks();
+    _persist(task);
+    notifyListeners();
     final message = await _ensureDownloadUrl(task);
+    if (task.removed) return null;
     if (message != null) {
+      task.status = TransferStatus.paused;
+      task.error = message;
+      _bumpMarks();
       _persist(task);
       notifyListeners();
       return message;
     }
-    if (task.removed || task.status != expectedStatus) return null;
+    if (task.status != TransferStatus.resuming) return null;
     task.autoRefreshTried = false;
     task.status = TransferStatus.queued;
     task.error = null;
@@ -590,6 +608,7 @@ class TransferManager extends ChangeNotifier {
       (t) =>
           t.status == TransferStatus.running ||
           t.status == TransferStatus.queued ||
+          t.status == TransferStatus.resuming ||
           t.status == TransferStatus.saving,
     );
     if (active && !_serviceRunning) {
@@ -687,6 +706,7 @@ class TransferManager extends ChangeNotifier {
         .where(
           (t) =>
               t.status == TransferStatus.running ||
+              t.status == TransferStatus.resuming ||
               t.status == TransferStatus.saving,
         )
         .toList();

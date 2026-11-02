@@ -123,6 +123,7 @@ typedef TransferFileOpener = Future<bool> Function(String path, {String? name});
 bool _isInProgressTask(TransferTask task) =>
     task.status == TransferStatus.queued ||
     task.status == TransferStatus.running ||
+    task.status == TransferStatus.resuming ||
     task.status == TransferStatus.paused ||
     task.status == TransferStatus.saving;
 
@@ -439,6 +440,7 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
     final path = task.savedPath;
     final done = task.status == TransferStatus.done && path != null;
     final failed = task.status == TransferStatus.failed;
+    final resuming = task.status == TransferStatus.resuming;
     final paused = task.status == TransferStatus.paused;
     final active =
         task.status == TransferStatus.queued ||
@@ -446,7 +448,8 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
     // 「删除记录与文件」只在任务停下之后给：正在写的半截文件删掉会打断下载器
     final stopped =
         task.status != TransferStatus.running &&
-        task.status != TransferStatus.queued;
+        task.status != TransferStatus.queued &&
+        task.status != TransferStatus.resuming;
     final desktop = PlatformSupport.isDesktop;
     final _TransferMenuAction? action = await showM3eMenu<_TransferMenuAction>(
       context: context,
@@ -485,7 +488,8 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
             label: l10n.resumeDownload,
             icon: Icons.play_arrow,
           ),
-        if (task.kind == TransferKind.download && (active || paused))
+        if (task.kind == TransferKind.download &&
+            (active || resuming || paused))
           M3eMenuItem(
             value: _TransferMenuAction.cancel,
             label: l10n.cancelDownload,
@@ -1107,6 +1111,8 @@ class _TransferTile extends StatelessWidget {
         return task.kind == TransferKind.upload
             ? l10n.uploading
             : l10n.downloading;
+      case TransferStatus.resuming:
+        return l10n.resumingDownload;
       case TransferStatus.paused:
         return l10n.paused;
       case TransferStatus.saving:
@@ -1123,6 +1129,7 @@ class _TransferTile extends StatelessWidget {
   String _sizeText(AppLocalizations l10n) {
     if (task.total <= 0) {
       return task.status == TransferStatus.running ||
+              task.status == TransferStatus.resuming ||
               task.status == TransferStatus.saving
           ? l10n.unknownSize
           : '';
@@ -1145,6 +1152,7 @@ class _TransferTile extends StatelessWidget {
     final active =
         task.status == TransferStatus.running ||
         task.status == TransferStatus.queued;
+    final resuming = task.status == TransferStatus.resuming;
     final paused = task.status == TransferStatus.paused;
     final saving = task.status == TransferStatus.saving;
     // 与首页 / 收藏共用同一套列表项布局，圆角由外层 SegmentedList 控制
@@ -1179,11 +1187,12 @@ class _TransferTile extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (task.kind == TransferKind.download && (active || saving))
+              if (task.kind == TransferKind.download &&
+                  (active || resuming || saving))
                 M3eIconButton(
                   tooltip: l10n.pauseDownload,
                   icon: Icons.pause,
-                  onPressed: saving ? null : () => manager.pause(task.id),
+                  onPressed: active ? () => manager.pause(task.id) : null,
                 ),
               if (paused)
                 M3eIconButton(
@@ -1191,13 +1200,13 @@ class _TransferTile extends StatelessWidget {
                   icon: Icons.play_arrow,
                   onPressed: () => manager.resume(task.id),
                 ),
-              if (active || paused || saving)
+              if (active || resuming || paused || saving)
                 M3eIconButton(
                   tooltip: l10n.cancelTask,
                   icon: Icons.close,
                   onPressed: saving ? null : () => manager.removeTask(task.id),
                 ),
-              if (!active && !paused && !saving)
+              if (!active && !resuming && !paused && !saving)
                 Builder(
                   builder: (BuildContext buttonContext) => M3eIconButton(
                     tooltip: l10n.moreActions,
@@ -1208,14 +1217,14 @@ class _TransferTile extends StatelessWidget {
             ],
           ),
         ),
-        bottom: active || paused || saving
+        bottom: active || resuming || paused || saving
             ? M3eLinearProgressIndicator(
                 // 运行中的长任务用波浪进度条；暂停后保持静态，排队恢复的任务
                 // 保留波形但不滚动，避免误以为正在下载。
                 // 进度 / 轨道用 M3 的默认角色（primary / secondary container），
                 // 不再另外指定颜色。
                 value: task.progress,
-                wavy: !paused,
+                wavy: !paused && !resuming,
                 waveSpeed: task.status == TransferStatus.queued ? 0 : null,
               )
             : null,

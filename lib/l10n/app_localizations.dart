@@ -860,6 +860,12 @@ abstract class AppLocalizations {
   /// **'下载中'**
   String get downloading;
 
+  /// No description provided for @resumingDownload.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复中'**
+  String get resumingDownload;
+
   /// No description provided for @paused.
   ///
   /// In zh, this message translates to:
