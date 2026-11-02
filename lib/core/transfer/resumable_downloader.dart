@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 
@@ -69,7 +70,8 @@ class DioTransferDownloader implements TransferDownloader {
   }
 
   static const int _maxSegments = 64;
-  static const int _checkpointBytes = 1024 * 1024;
+  static const int _writeBatchBytes = 512 * 1024;
+  static const int _checkpointBytes = 4 * 1024 * 1024;
   static const int _segmentAttempts = 2;
 
   static final RegExp _contentRangePattern = RegExp(
@@ -451,25 +453,42 @@ class DioTransferDownloader implements TransferDownloader {
     }
 
     var received = 0;
+    var written = 0;
     final expectedLength = remaining;
-    await for (final chunk in body.stream) {
-      if (cancelToken.isCancelled) {
-        throw DioException.requestCancelled(
-          requestOptions: response.requestOptions,
-          reason: cancelToken.cancelError,
-        );
-      }
-      if (received + chunk.length > expectedLength) {
-        throw const _RestartSequential();
-      }
+    final pending = BytesBuilder(copy: false);
+
+    Future<void> flushPending() async {
+      if (pending.length == 0) return;
+      final bytes = pending.takeBytes();
       await writer.write(
         segment: segment,
-        offset: start + received,
-        bytes: chunk,
+        offset: start + written,
+        bytes: bytes,
       );
-      received += chunk.length;
+      written += bytes.length;
     }
-    if (received != expectedLength) {
+
+    try {
+      await for (final chunk in body.stream) {
+        if (cancelToken.isCancelled) {
+          throw DioException.requestCancelled(
+            requestOptions: response.requestOptions,
+            reason: cancelToken.cancelError,
+          );
+        }
+        if (received + chunk.length > expectedLength) {
+          throw const _RestartSequential();
+        }
+        pending.add(chunk);
+        received += chunk.length;
+        if (pending.length >= _writeBatchBytes) {
+          await flushPending();
+        }
+      }
+    } finally {
+      await flushPending();
+    }
+    if (received != expectedLength || written != expectedLength) {
       throw const _IncompleteSegment();
     }
   }
@@ -577,7 +596,17 @@ class DioTransferDownloader implements TransferDownloader {
       final output = await file.open(
         mode: offset > 0 ? FileMode.append : FileMode.write,
       );
-      var received = 0;
+      var written = 0;
+      final pending = BytesBuilder(copy: false);
+
+      Future<void> flushPending() async {
+        if (pending.length == 0) return;
+        final bytes = pending.takeBytes();
+        await output.writeFrom(bytes);
+        written += bytes.length;
+        onProgress(offset + written, total);
+      }
+
       try {
         await for (final chunk in body.stream) {
           if (cancelToken.isCancelled) {
@@ -586,10 +615,15 @@ class DioTransferDownloader implements TransferDownloader {
               reason: cancelToken.cancelError,
             );
           }
-          await output.writeFrom(chunk);
-          received += chunk.length;
-          onProgress(offset + received, total);
+          pending.add(chunk);
+          if (pending.length >= _writeBatchBytes) {
+            await flushPending();
+          }
         }
+      } finally {
+        await flushPending();
+      }
+      try {
         await output.flush();
       } finally {
         await output.close();

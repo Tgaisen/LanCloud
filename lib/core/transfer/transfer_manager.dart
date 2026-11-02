@@ -68,6 +68,7 @@ class TransferTask {
 
   int total;
   int received = 0;
+  DateTime _lastProgressNotification = DateTime.fromMillisecondsSinceEpoch(0);
   TransferStatus status = TransferStatus.queued;
   String? error;
   String? savedPath;
@@ -80,6 +81,12 @@ class TransferTask {
 
   double get progress =>
       total > 0 ? (received / total).clamp(0, 1).toDouble() : 0;
+
+  bool shouldNotifyProgress(DateTime now, Duration interval) {
+    if (now.difference(_lastProgressNotification) < interval) return false;
+    _lastProgressNotification = now;
+    return true;
+  }
 }
 
 class TransferManager extends ChangeNotifier {
@@ -88,6 +95,7 @@ class TransferManager extends ChangeNotifier {
     NotificationService? notifications,
     SharedDownloadsGateway? sharedDownloads,
     TransferDownloader? downloader,
+    this._progressUpdateInterval = const Duration(seconds: 1),
   }) : _dependencies = dependencies,
        _notifications = notifications ?? NotificationService.instance,
        _sharedDownloads =
@@ -105,6 +113,7 @@ class TransferManager extends ChangeNotifier {
   static const int maxDownloads = 3;
 
   final TransferDependencies _dependencies;
+  final Duration _progressUpdateInterval;
   final NotificationService _notifications;
   final SharedDownloadsGateway _sharedDownloads;
   final TransferDownloader _downloader;
@@ -122,6 +131,16 @@ class TransferManager extends ChangeNotifier {
   final ValueNotifier<int> marksRevision = ValueNotifier(0);
 
   void _bumpMarks() => marksRevision.value += 1;
+
+  void _reportProgress(TransferTask task, int received, int total) {
+    task.received = received;
+    if (total > 0) task.total = total;
+    if (!task.shouldNotifyProgress(DateTime.now(), _progressUpdateInterval)) {
+      return;
+    }
+    notifyListeners();
+    _syncProgressNotification();
+  }
 
   /// 某个文件的下载状态（用于「已添加下载」标记）：找最近一条匹配的下载任务，
   /// 已取消的不算。
@@ -717,12 +736,7 @@ class TransferManager extends ChangeNotifier {
       streamFactory: task.streamFactory,
       size: task.sourceSize > 0 ? task.sourceSize : null,
       cancelToken: task.cancelToken,
-      onProgress: (sent, total) {
-        task.received = sent;
-        if (total > 0) task.total = total;
-        notifyListeners();
-        _syncProgressNotification();
-      },
+      onProgress: (sent, total) => _reportProgress(task, sent, total),
     );
   }
 
@@ -762,12 +776,7 @@ class TransferManager extends ChangeNotifier {
           if (task.referer.isNotEmpty) 'Referer': task.referer,
         },
         receiveTimeout: const Duration(hours: 2),
-        onProgress: (received, total) {
-          task.received = received;
-          if (total > 0) task.total = total;
-          notifyListeners();
-          _syncProgressNotification();
-        },
+        onProgress: (received, total) => _reportProgress(task, received, total),
       );
       if (result.total > 0) task.total = result.total;
       // 被风控拦截时会保存成校验页，这里识别并清理
@@ -877,12 +886,7 @@ class TransferManager extends ChangeNotifier {
         fileName: task.name,
         mime: mimeForFileName(task.name),
         jobId: task.id,
-        onProgress: (copied, total) {
-          task.received = copied;
-          if (total > 0) task.total = total;
-          notifyListeners();
-          _syncProgressNotification();
-        },
+        onProgress: (copied, total) => _reportProgress(task, copied, total),
       );
       task.savedPath = saved.uri;
     } on PlatformException catch (e) {
@@ -909,12 +913,7 @@ class TransferManager extends ChangeNotifier {
         fileName: task.name,
         mime: mimeForFileName(task.name),
         jobId: task.id,
-        onProgress: (copied, total) {
-          task.received = copied;
-          if (total > 0) task.total = total;
-          notifyListeners();
-          _syncProgressNotification();
-        },
+        onProgress: (copied, total) => _reportProgress(task, copied, total),
       );
       task.savedPath = saved.uri;
     } on PlatformException catch (e) {

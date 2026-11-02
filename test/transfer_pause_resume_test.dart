@@ -71,6 +71,52 @@ void main() {
       expect(downloader.calls, 2);
     });
 
+    test('should 将高频进度通知限制为每秒一次', () async {
+      final tempDir = Directory.systemTemp.createTempSync(
+        'lancloud-transfer-progress',
+      );
+      addTearDown(() async {
+        try {
+          await tempDir.delete(recursive: true);
+        } catch (_) {}
+      });
+      final payload = List<int>.generate(128, (index) => index);
+      final downloader = _BurstProgressDownloader(payload);
+      final manager = TransferManager.withDependencies(
+        TransferDependencies(
+          store: _FakeTransferStore(),
+          accounts: _FakeTransferAccountPort(),
+          download: _FakeTransferDownloadPort(tempDir.path),
+          settings: StoreTransferSettingsPort(
+            SettingsStore()..maxDownloads = 1,
+          ),
+        ),
+        downloader: downloader,
+        progressUpdateInterval: const Duration(hours: 1),
+      );
+      addTearDown(manager.dispose);
+      var notifications = 0;
+      manager.addListener(() => notifications += 1);
+
+      manager.addDownload(
+        url: 'https://cdn.example/file',
+        name: 'archive.zip',
+        size: payload.length,
+      );
+      final task = manager.tasks.single;
+      await downloader.started.future;
+      final beforeBurst = notifications;
+
+      downloader.emitProgress.complete();
+      await downloader.progressBurst.future;
+
+      expect(task.received, payload.length);
+      expect(notifications, beforeBurst + 1);
+
+      downloader.finish.complete();
+      await _waitFor(() => task.status == TransferStatus.done);
+    });
+
     test('should 在直链失效后重新解析并继续原临时文件', () async {
       final tempDir = Directory.systemTemp.createTempSync(
         'lancloud-transfer-refresh',
@@ -334,6 +380,38 @@ class _ImmediateDownloader implements TransferDownloader {
   }) async {
     await File(partialPath).writeAsBytes(payload);
     onProgress(payload.length, payload.length);
+    return TransferDownloadResult(total: payload.length, resumed: false);
+  }
+}
+
+class _BurstProgressDownloader implements TransferDownloader {
+  _BurstProgressDownloader(this.payload);
+
+  final List<int> payload;
+  final Completer<void> started = Completer<void>();
+  final Completer<void> emitProgress = Completer<void>();
+  final Completer<void> progressBurst = Completer<void>();
+  final Completer<void> finish = Completer<void>();
+
+  @override
+  Future<TransferDownloadResult> download({
+    required Dio dio,
+    required String url,
+    required String partialPath,
+    required int expectedTotal,
+    required CancelToken cancelToken,
+    required Map<String, String> headers,
+    required Duration receiveTimeout,
+    required TransferDownloadProgress onProgress,
+  }) async {
+    started.complete();
+    await emitProgress.future;
+    onProgress(1, payload.length);
+    onProgress(2, payload.length);
+    onProgress(payload.length, payload.length);
+    progressBurst.complete();
+    await finish.future;
+    await File(partialPath).writeAsBytes(payload);
     return TransferDownloadResult(total: payload.length, resumed: false);
   }
 }

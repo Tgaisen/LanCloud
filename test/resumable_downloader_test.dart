@@ -25,11 +25,11 @@ void main() {
     });
 
     test('should 下载完整文件并报告总大小', () async {
-      final payload = List<int>.generate(4096, (index) => index % 251);
+      final payload = List<int>.generate(1024 * 1024, (index) => index % 251);
       final requestedRange = Completer<String?>();
       final server = await _startServer((request) async {
         requestedRange.complete(request.headers.value('range'));
-        await _writeResponse(request.response, payload);
+        await _writeResponse(request.response, payload, chunkSize: 16 * 1024);
       });
       addTearDown(() => server.close(force: true));
       final progress = <int>[];
@@ -50,6 +50,7 @@ void main() {
       expect(result.total, payload.length);
       expect(result.resumed, isFalse);
       expect(progress.last, payload.length);
+      expect(progress.length, lessThan(5));
     });
 
     test('should 从已有 .part 文件发送 Range 并追加剩余内容', () async {
@@ -403,6 +404,53 @@ void main() {
       configured = 9;
       expect(downloader.segmentConnections, 4);
     });
+
+    test('should 将分片网络小块批量写入磁盘', () async {
+      final payload = List<int>.generate(512 * 1024, (index) => index % 239);
+      final server = await _startServer((request) async {
+        final range = request.headers.value('range');
+        if (range == null) fail('分片请求必须带 Range');
+        if (range == 'bytes=0-0') {
+          await _writeResponse(
+            request.response,
+            payload.sublist(0, 1),
+            statusCode: HttpStatus.partialContent,
+            contentRange: 'bytes 0-0/${payload.length}',
+          );
+          return;
+        }
+        final bounds = _rangeBounds(range);
+        await _writeResponse(
+          request.response,
+          payload.sublist(bounds.start, bounds.end + 1),
+          statusCode: HttpStatus.partialContent,
+          contentRange: 'bytes ${bounds.start}-${bounds.end}/${payload.length}',
+          chunkSize: 16 * 1024,
+        );
+      });
+      addTearDown(() => server.close(force: true));
+      final progress = <int>[];
+
+      final result =
+          await const DioTransferDownloader(
+            segmentConnections: 2,
+            segmentSize: 256 * 1024,
+            minimumSegmentedBytes: 1,
+          ).download(
+            dio: dio,
+            url: 'http://${server.address.host}:${server.port}/file',
+            partialPath: partialFile.path,
+            expectedTotal: payload.length,
+            cancelToken: CancelToken(),
+            headers: const <String, String>{},
+            receiveTimeout: const Duration(seconds: 5),
+            onProgress: (received, _) => progress.add(received),
+          );
+
+      expect(await partialFile.readAsBytes(), payload);
+      expect(result.total, payload.length);
+      expect(progress.length, lessThanOrEqualTo(6));
+    });
   });
 }
 
@@ -427,6 +475,7 @@ Future<void> _writeResponse(
   List<int> payload, {
   int statusCode = HttpStatus.ok,
   String? contentRange,
+  int? chunkSize,
 }) async {
   response.statusCode = statusCode;
   response.headers.contentType = ContentType.binary;
@@ -434,7 +483,17 @@ Future<void> _writeResponse(
   if (contentRange != null) {
     response.headers.set(HttpHeaders.contentRangeHeader, contentRange);
   }
-  response.add(payload);
+  if (chunkSize == null) {
+    response.add(payload);
+  } else {
+    for (var start = 0; start < payload.length; start += chunkSize) {
+      final end = start + chunkSize < payload.length
+          ? start + chunkSize
+          : payload.length;
+      response.add(payload.sublist(start, end));
+      await response.flush();
+    }
+  }
   await response.close();
 }
 
