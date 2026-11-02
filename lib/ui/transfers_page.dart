@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart' hide Icons;
 
+import '../core/file_open_result.dart';
 import '../core/navigation_appearance_settings_state.dart';
 import '../core/navigation_state.dart';
 import '../core/platform_support.dart';
@@ -14,6 +15,7 @@ import '../core/transfer/transfer_manager_provider.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
+import 'file_open_feedback.dart';
 import 'm3e.dart';
 import 'reduce_motion.dart';
 import 'scroll_tint.dart';
@@ -118,7 +120,10 @@ Future<TransferDeleteResult?> showTransferDeleteDialog(
   );
 }
 
-typedef TransferFileOpener = Future<bool> Function(String path, {String? name});
+typedef TransferFileOpener = Future<FileOpenResult> Function(
+  String path, {
+  String? name,
+});
 
 bool _isInProgressTask(TransferTask task) =>
     task.status == TransferStatus.queued ||
@@ -417,14 +422,14 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
   }
 
   /// 打开已下载的文件（与点击条目同一个入口，测试注入的 openFile 也走这里）。
-  Future<bool> _openTaskFile(TransferTask task) async {
+  Future<FileOpenResult> _openTaskFile(TransferTask task) async {
     try {
       return await (widget.openFile ?? openFileWithSystem)(
         task.savedPath!,
         name: task.name,
       );
     } catch (_) {
-      return false;
+      return const FileOpenResult.failed(FileOpenFailure.systemError);
     }
   }
 
@@ -521,9 +526,17 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
     switch (action) {
       case _TransferMenuAction.open:
         final opened = await _openTaskFile(task);
-        if (!opened && mounted) {
-          ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text(l10n.openFileFailed)));
+        if (!opened.isSuccess && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                fileOpenFailureMessage(
+                  l10n,
+                  opened.failure ?? FileOpenFailure.systemError,
+                ),
+              ),
+            ),
+          );
         }
       case _TransferMenuAction.share:
         await SystemShare.shareFile(
@@ -896,9 +909,17 @@ class _TransferListSliver extends StatelessWidget {
         task.status == TransferStatus.done &&
         path != null) {
       final opened = await openFile(path, name: task.name);
-      if (!opened && context.mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(context.l10n.openFileFailed)));
+      if (!opened.isSuccess && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              fileOpenFailureMessage(
+                context.l10n,
+                opened.failure ?? FileOpenFailure.systemError,
+              ),
+            ),
+          ),
+        );
       }
     }
   }

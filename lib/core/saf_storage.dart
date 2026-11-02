@@ -1,5 +1,6 @@
 import 'package:flutter/services.dart';
 
+import 'file_open_result.dart';
 import 'platform_support.dart';
 
 /// 一个被授权的 SAF 目录（用户通过系统目录选择器授予持久化读写权限）。
@@ -142,23 +143,37 @@ class SafStorage {
     return ok ?? false;
   }
 
-  /// 用系统默认程序打开 content URI（读权限会转授给目标应用）。
-  /// 打不开（没有可处理的应用等）返回 false，与 open_filex 的口径一致。
-  static Future<bool> openFile(
+  /// 用系统默认程序打开本地路径或 content URI（读权限会转授给目标应用）。
+  static Future<FileOpenResult> openFile(
     String uri, {
     String? mime,
     String? displayName,
   }) async {
     try {
-      final ok = await _channel.invokeMethod<bool>('openFile', {
-        'uri': uri,
-        if (mime != null && mime.isNotEmpty) 'mime': mime,
-        if (displayName != null && displayName.isNotEmpty)
-          'displayName': displayName,
+      final res = await _channel.invokeMethod<Map<Object?, Object?>>(
+        'openFile',
+        {
+          'uri': uri,
+          if (mime != null && mime.isNotEmpty) 'mime': mime,
+          if (displayName != null && displayName.isNotEmpty)
+            'displayName': displayName,
+        },
+      );
+      if (res?['ok'] == true) return const FileOpenResult.success();
+      return FileOpenResult.failed(switch ('${res?['reason'] ?? ''}') {
+        'file_not_found' => FileOpenFailure.fileNotFound,
+        'permission_denied' => FileOpenFailure.permissionDenied,
+        'no_app' => FileOpenFailure.noAssociatedApp,
+        _ => FileOpenFailure.systemError,
       });
-      return ok ?? false;
+    } on PlatformException catch (error) {
+      return FileOpenResult.failed(
+        error.code == 'permission_denied'
+            ? FileOpenFailure.permissionDenied
+            : FileOpenFailure.systemError,
+      );
     } catch (_) {
-      return false;
+      return const FileOpenResult.failed(FileOpenFailure.systemError);
     }
   }
 }

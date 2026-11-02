@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/api/models.dart';
 import 'package:lancloud/core/app_environment.dart';
+import 'package:lancloud/core/file_open_result.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
@@ -1016,7 +1017,7 @@ void main() {
             openFile: (path, {String? name}) async {
               opened.add(path);
               openedNames.add(name);
-              return true;
+              return const FileOpenResult.success();
             },
           ),
         ),
@@ -1065,44 +1066,54 @@ void main() {
     app.dispose();
   });
 
-  testWidgets('下载完成但系统打不开时显示明确提示', (tester) async {
-    final app = AppEnvironment();
-    final manager = buildTransferManagerForEnvironment(app);
-    manager.tasks.add(
-      TransferTask(
-          id: 'd1',
-          kind: TransferKind.download,
-          name: 'broken.zip',
-          accountUid: '',
-        )
-        ..status = TransferStatus.done
-        ..savedPath = '/tmp/broken.zip',
-    );
-    await tester.pumpWidget(
-      _transferTestHost(
-        app: app,
-        manager: manager,
-        child: MaterialApp(
-          localizationsDelegates: appLocalizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          locale: const Locale('zh'),
-          home: TransfersPage(openFile: (path, {String? name}) async => false),
+  for (final (failure, message) in <(FileOpenFailure, String)>[
+    (FileOpenFailure.fileNotFound, '文件不存在，可能已被移动或删除'),
+    (FileOpenFailure.permissionDenied, '文件访问权限已失效；重新选择下载目录只影响之后的任务，请重新下载该文件'),
+    (FileOpenFailure.noAssociatedApp, '没有可打开此文件的应用'),
+    (FileOpenFailure.systemError, '系统无法打开该文件，请稍后重试'),
+  ]) {
+    testWidgets('下载打开失败时显示 $failure 对应提示', (tester) async {
+      final app = AppEnvironment();
+      final manager = buildTransferManagerForEnvironment(app);
+      manager.tasks.add(
+        TransferTask(
+            id: 'd1',
+            kind: TransferKind.download,
+            name: 'broken.zip',
+            accountUid: '',
+          )
+          ..status = TransferStatus.done
+          ..savedPath = '/tmp/broken.zip',
+      );
+      await tester.pumpWidget(
+        _transferTestHost(
+          app: app,
+          manager: manager,
+          child: MaterialApp(
+            localizationsDelegates: appLocalizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            locale: const Locale('zh'),
+            home: TransfersPage(
+              openFile: (path, {String? name}) async =>
+                  FileOpenResult.failed(failure),
+            ),
+          ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    final downloadTab = find.descendant(
-      of: find.byType(M3eConnectedButtonGroup<int>),
-      matching: find.byIcon(app_icons.Icons.download),
-    );
-    await tester.tap(downloadTab.first);
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
+      final downloadTab = find.descendant(
+        of: find.byType(M3eConnectedButtonGroup<int>),
+        matching: find.byIcon(app_icons.Icons.download),
+      );
+      await tester.tap(downloadTab.first);
+      await tester.pumpAndSettle();
 
-    await tester.tap(find.text('broken.zip'));
-    await tester.pump();
-    expect(find.text('没有可打开此文件的应用'), findsOneWidget);
-    app.dispose();
-  });
+      await tester.tap(find.text('broken.zip'));
+      await tester.pump();
+      expect(find.text(message), findsOneWidget);
+      app.dispose();
+    });
+  }
 
   testWidgets('失败下载的 ⋯ 菜单：重试可用，删除记录与文件连带删掉本地文件', (tester) async {
     final app = AppEnvironment();

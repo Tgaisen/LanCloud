@@ -490,6 +490,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get openFileFailed => 'No app can open this file';
 
   @override
+  String get openFileMissing => 'The file no longer exists or has been moved';
+
+  @override
+  String get openFilePermissionDenied =>
+      'File access is no longer permitted. Choosing a download directory only affects future tasks; please download this file again.';
+
+  @override
+  String get openFileSystemError =>
+      'The system could not open this file. Please try again later.';
+
+  @override
   String get redownload => 'Download again';
 
   @override

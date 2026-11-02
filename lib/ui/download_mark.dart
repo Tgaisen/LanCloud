@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/file_open_result.dart';
 import '../core/platform_support.dart';
 import '../core/saved_file.dart';
 import '../core/system_open.dart';
@@ -9,6 +10,7 @@ import '../core/transfer/transfer_manager.dart';
 import '../core/transfer/transfer_manager_provider.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
+import 'file_open_feedback.dart';
 import 'm3e.dart';
 
 /// 网盘文件的「已加入下载」标记 key：与下载任务的 `refId`（"账号uid:文件id"）一致。
@@ -181,9 +183,17 @@ Future<void> showDownloadTaskMenu(
   switch (action) {
     case _DownloadMenuAction.open:
       final opened = await openFileWithSystem(savedPath!, name: task.name);
-      if (!opened && context.mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(l10n.openFileFailed)));
+      if (!opened.isSuccess && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              fileOpenFailureMessage(
+                l10n,
+                opened.failure ?? FileOpenFailure.systemError,
+              ),
+            ),
+          ),
+        );
       }
     case _DownloadMenuAction.share:
       if (desktop) {

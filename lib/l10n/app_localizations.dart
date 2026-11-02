@@ -944,6 +944,24 @@ abstract class AppLocalizations {
   /// **'没有可打开此文件的应用'**
   String get openFileFailed;
 
+  /// No description provided for @openFileMissing.
+  ///
+  /// In zh, this message translates to:
+  /// **'文件不存在，可能已被移动或删除'**
+  String get openFileMissing;
+
+  /// No description provided for @openFilePermissionDenied.
+  ///
+  /// In zh, this message translates to:
+  /// **'文件访问权限已失效；重新选择下载目录只影响之后的任务，请重新下载该文件'**
+  String get openFilePermissionDenied;
+
+  /// No description provided for @openFileSystemError.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统无法打开该文件，请稍后重试'**
+  String get openFileSystemError;
+
   /// No description provided for @redownload.
   ///
   /// In zh, this message translates to:

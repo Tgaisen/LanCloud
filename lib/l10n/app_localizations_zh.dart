@@ -468,6 +468,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get openFileFailed => '没有可打开此文件的应用';
 
   @override
+  String get openFileMissing => '文件不存在，可能已被移动或删除';
+
+  @override
+  String get openFilePermissionDenied => '文件访问权限已失效；重新选择下载目录只影响之后的任务，请重新下载该文件';
+
+  @override
+  String get openFileSystemError => '系统无法打开该文件，请稍后重试';
+
+  @override
   String get redownload => '重新下载';
 
   @override
