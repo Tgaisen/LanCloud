@@ -39,7 +39,7 @@
 | `AppEnvironment` | `core/app_environment.dart` | 唯一组装导航、账号、设置、运行时、客户端与应用级服务，只保存实例，不触发启动副作用 |
 | `AppStartup` | `core/app_startup.dart` | 编排安全存储检查、账号/设置加载、运行时同步、目录绑定、ready、恢复重载与后台任务 |
 | `TransferManager` | `core/transfer/transfer_manager.dart` | 上传/下载任务队列、暂停/继续、保存阶段、进度与重试 |
-| `TransferStore` | `core/transfer/transfer_store.dart` | 传输记录恢复/保存/删除与下载标记端口；`AppDbTransferStore` 适配既有数据库 |
+| `TransferStore` | `core/transfer/transfer_store.dart` | 传输记录恢复、保存与删除端口；`AppDbTransferStore` 适配既有数据库 |
 | `DioTransferDownloader` / `TransferDownloader` | `core/transfer/resumable_downloader.dart` | 用稳定 `.part` 文件、HTTP Range 与 `Content-Range` 校验实现断点续传；服务端不支持时回退完整下载 |
 | `TransferAccountPort` | `core/transfer/transfer_account_port.dart` | 当前 UID、账号存在性、账号客户端与公开客户端端口；包装账号存储和客户端注册表 |
 | `TransferDownloadPort` | `core/transfer/transfer_download_port.dart` | 下载目标模式、SAF URI、中转路径与唯一保存路径端口 |

@@ -237,8 +237,9 @@ void main() {
     expect(toolbar.decoration?.motion, M3EMotion.expressiveSpatialFast);
     expect(
       toolbar.decoration?.colors?.toolbarContainerColor,
-      scheme.primaryContainer,
+      scheme.surfaceContainer,
     );
+    expect(toolbar.decoration?.colors?.toolbarContentColor, scheme.onSurface);
     expect(toolbar.decoration?.expandedShadowElevation, 0);
     expect(toolbar.decoration?.collapsedShadowElevation, 0);
     expect(
@@ -249,14 +250,21 @@ void main() {
                   .decoration
               as BoxDecoration)
           .color,
-      scheme.surfaceContainer,
+      scheme.secondaryContainer,
     );
     expect(
       tester
           .widget<IconTheme>(find.byKey(const ValueKey('m3e-nav-icon-0-of-3')))
           .data
           .color,
-      scheme.onSurface,
+      scheme.onSecondaryContainer,
+    );
+    expect(
+      tester
+          .widget<IconTheme>(find.byKey(const ValueKey('m3e-nav-icon-1-of-3')))
+          .data
+          .color,
+      scheme.onSurfaceVariant,
     );
     expect(tester.takeException(), isNull);
   });

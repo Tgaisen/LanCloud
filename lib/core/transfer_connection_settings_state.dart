@@ -19,6 +19,7 @@ class TransferConnectionSettingsState {
   int get requestInterval => store.requestInterval;
   int get maxUploads => store.maxUploads;
   int get maxDownloads => store.maxDownloads;
+  int get downloadConnections => store.downloadConnections;
   String get apiHost => store.apiHost;
   String get userAgent => store.userAgent;
   String get uploadPath => store.uploadPath;
@@ -36,6 +37,11 @@ class TransferConnectionSettingsState {
 
   Future<void> setMaxDownloads(int value) async {
     await store.setMaxDownloads(value);
+    revision.value += 1;
+  }
+
+  Future<void> setDownloadConnections(int value) async {
+    await store.setDownloadConnections(value);
     revision.value += 1;
   }
 

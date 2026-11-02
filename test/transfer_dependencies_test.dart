@@ -56,13 +56,6 @@ class _FakeTransferStore implements TransferStore {
 
   @override
   Future<void> deleteTransfers(List<String> ids) async {}
-
-  @override
-  Future<void> markDownloaded({
-    required String ref,
-    required String name,
-    String path = '',
-  }) async {}
 }
 
 class _FixedDownloadPathService implements DownloadPathService {
@@ -232,6 +225,13 @@ void main() {
         'saved_path': '/tmp/example',
         'error': '',
       },
+      {
+        'id': 'd2',
+        'kind': 'download',
+        'name': '已取消文件',
+        'status': 'canceled',
+        'error': '',
+      },
     ]);
     final manager = TransferManager.withDependencies(
       TransferDependencies(
@@ -308,12 +308,14 @@ void main() {
     final store = SettingsStore()
       ..maxUploads = 2
       ..maxDownloads = 4
+      ..downloadConnections = 3
       ..notifyProgress = false
       ..notifyDone = false;
     final port = StoreTransferSettingsPort(store);
 
     expect(port.maxUploads, 2);
     expect(port.maxDownloads, 4);
+    expect(port.downloadConnections, 3);
     expect(port.notifyProgress, isFalse);
     expect(port.notifyDone, isFalse);
   });

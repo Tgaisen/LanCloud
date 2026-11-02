@@ -2,19 +2,20 @@ import 'dart:io';
 
 import 'package:open_filex/open_filex.dart';
 
+import 'file_open_result.dart';
 import 'platform_support.dart';
 import 'saf_storage.dart';
 import 'saved_file.dart';
 
 /// 用系统默认程序打开本地文件。
 ///
-/// - Android Content URI（SAF / MediaStore）：按 [name] 推断 MIME，交给原生
-///   带上读权限转授打开；
-/// - Android / iOS：open_filex（FileProvider / UIDocumentInteractionController）
+/// - Android 普通路径 / Content URI：统一交给原生 FileProvider，带上读权限
+///   转授打开，避免 open_filex 在 Android 11+ 申请宽泛存储权限；
+/// - iOS：open_filex（UIDocumentInteractionController）
 /// - 桌面端：open_filex 没有 Windows 实现，交给资源管理器按文件关联打开
 ///   （等价于在资源管理器里双击该文件）
-Future<bool> openFileWithSystem(String path, {String? name}) async {
-  if (PlatformSupport.isAndroid && SafStorage.isContentUri(path)) {
+Future<FileOpenResult> openFileWithSystem(String path, {String? name}) async {
+  if (PlatformSupport.isAndroid) {
     return SafStorage.openFile(
       path,
       mime: name == null ? null : mimeForFileName(name),
@@ -24,16 +25,38 @@ Future<bool> openFileWithSystem(String path, {String? name}) async {
   if (!PlatformSupport.isDesktop) {
     try {
       final result = await OpenFilex.open(path);
-      return result.type == ResultType.done;
+      return switch (result.type) {
+        ResultType.done => const FileOpenResult.success(),
+        ResultType.fileNotFound => const FileOpenResult.failed(
+          FileOpenFailure.fileNotFound,
+        ),
+        ResultType.permissionDenied => const FileOpenResult.failed(
+          FileOpenFailure.permissionDenied,
+        ),
+        ResultType.noAppToOpen => const FileOpenResult.failed(
+          FileOpenFailure.noAssociatedApp,
+        ),
+        ResultType.error => const FileOpenResult.failed(
+          FileOpenFailure.systemError,
+        ),
+      };
     } catch (_) {
-      return false;
+      return const FileOpenResult.failed(FileOpenFailure.systemError);
     }
+  }
+  if (!await File(path).exists()) {
+    return const FileOpenResult.failed(FileOpenFailure.fileNotFound);
   }
   try {
     await _shellOpen(path);
-    return true;
+    return const FileOpenResult.success();
+  } on FileSystemException catch (error) {
+    return FileOpenResult.failed(switch (error.osError?.errorCode) {
+      5 || 13 => FileOpenFailure.permissionDenied,
+      _ => FileOpenFailure.systemError,
+    });
   } catch (_) {
-    return false;
+    return const FileOpenResult.failed(FileOpenFailure.systemError);
   }
 }
 

@@ -23,12 +23,6 @@ abstract interface class TransferStore {
 
   Future<void> deleteTransfer(String id);
   Future<void> deleteTransfers(List<String> ids);
-
-  Future<void> markDownloaded({
-    required String ref,
-    required String name,
-    String path = '',
-  });
 }
 
 /// 把既有 [AppDb] 适配为传输持久化端口。
@@ -80,11 +74,4 @@ class AppDbTransferStore implements TransferStore {
   @override
   Future<void> deleteTransfers(List<String> ids) =>
       database.deleteTransfers(ids);
-
-  @override
-  Future<void> markDownloaded({
-    required String ref,
-    required String name,
-    String path = '',
-  }) => database.markDownloaded(ref: ref, name: name, path: path);
 }

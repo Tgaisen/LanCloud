@@ -529,6 +529,16 @@ class _SettingsCategoryPageState extends ConsumerState<SettingsCategoryPage>
           setting: TransferConcurrencySetting.downloads,
         ),
       ),
+      _Entry(
+        id: 'single_file_download_connections',
+        title: l10n.singleFileDownloadConnections,
+        subtitle: '${settings.downloadConnections}',
+        keywords: l10n.singleFileDownloadConnectionsKeywords.split(' '),
+        section: SettingsSection.download,
+        build: (context) => const TransferConcurrencySettingsTile(
+          setting: TransferConcurrencySetting.singleFileConnections,
+        ),
+      ),
       // 高级覆盖项入口：排在「连接」组最后（不再单占一组）
       _Entry(
         id: 'advanced',
