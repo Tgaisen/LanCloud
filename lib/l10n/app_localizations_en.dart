@@ -379,6 +379,49 @@ class AppLocalizationsEn extends AppLocalizations {
       'This will clear finished transfer records. Continue?';
 
   @override
+  String get cancelAll => 'Cancel all';
+
+  @override
+  String get pauseAll => 'Pause all';
+
+  @override
+  String get resumeAll => 'Resume all';
+
+  @override
+  String get clearAll => 'Clear';
+
+  @override
+  String get cancelInProgressTransfers => 'Cancel in-progress transfers';
+
+  @override
+  String cancelAllUploadsConfirmMessage(int count) {
+    return 'Cancel and remove all $count in-progress uploads?';
+  }
+
+  @override
+  String cancelAllDownloadsConfirmMessage(int count) {
+    return 'Cancel and remove all $count in-progress downloads and delete downloaded files?';
+  }
+
+  @override
+  String get clearFinishedTransfers => 'Clear finished transfers';
+
+  @override
+  String clearFinishedUploadsConfirmMessage(int count) {
+    return 'Clear all $count finished upload records?';
+  }
+
+  @override
+  String clearFinishedDownloadsConfirmMessage(int count) {
+    return 'Clear all $count finished download records?';
+  }
+
+  @override
+  String resumeAllPartialFailed(int count) {
+    return '$count downloads could not be resumed. Please try again later.';
+  }
+
+  @override
   String get upload => 'Upload';
 
   @override

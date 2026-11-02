@@ -324,6 +324,34 @@ class TransferManager extends ChangeNotifier {
     _syncProgressNotification();
   }
 
+  /// 批量暂停下载：每批只持久化和通知一次，避免整页随任务数反复重建。
+  void pauseDownloads(Iterable<String> ids) {
+    var changed = false;
+    for (final id in ids.toSet()) {
+      final task = _find(id);
+      if (task == null ||
+          task.kind != TransferKind.download ||
+          (task.status != TransferStatus.running &&
+              task.status != TransferStatus.queued) ||
+          task.exporting) {
+        continue;
+      }
+      task.status = TransferStatus.paused;
+      if (task.cancelToken.isCancelled) {
+        task.cancelToken = CancelToken();
+      } else {
+        task.cancelToken.cancel('user paused');
+      }
+      _persist(task);
+      changed = true;
+    }
+    if (!changed) return;
+    _bumpMarks();
+    notifyListeners();
+    _pump();
+    _syncProgressNotification();
+  }
+
   /// 继续暂停的下载；断点位置由下载器读取 `.part` 文件长度确定。
   Future<String?> resume(String id) async {
     final task = _find(id);
@@ -348,6 +376,19 @@ class TransferManager extends ChangeNotifier {
     notifyListeners();
     _pump();
     return null;
+  }
+
+  /// 批量恢复暂停的下载，返回无法恢复的任务数。
+  ///
+  /// 恢复可能需要重新解析直链，因此仍然逐项执行；单项 [resume] 会负责每次
+  /// 状态变化的持久化与通知。
+  Future<int> resumeDownloads(Iterable<String> ids) async {
+    var failed = 0;
+    for (final id in ids.toSet()) {
+      final message = await resume(id);
+      if (message != null) failed += 1;
+    }
+    return failed;
   }
 
   /// 重试失败任务。
@@ -440,25 +481,20 @@ class TransferManager extends ChangeNotifier {
     }
   }
 
-  void clearFinished() {
+  /// 清空指定类型的已结束任务，返回被移除的任务快照供调用方处理本地文件。
+  List<TransferTask> clearFinished(TransferKind kind) {
     final removed = tasks
         .where(
           (t) =>
-              t.status == TransferStatus.done ||
-              t.status == TransferStatus.canceled,
+              t.kind == kind &&
+              (t.status == TransferStatus.done ||
+                  t.status == TransferStatus.failed ||
+                  t.status == TransferStatus.canceled),
         )
-        .map((t) => t.id)
-        .toList();
-    tasks.removeWhere(
-      (t) =>
-          t.status == TransferStatus.done ||
-          t.status == TransferStatus.canceled,
-    );
-    for (final id in removed) {
-      _dependencies.store.deleteTransfer(id).catchError((_) {});
-    }
-    _bumpMarks();
-    notifyListeners();
+        .toList(growable: false);
+    if (removed.isEmpty) return const <TransferTask>[];
+    removeTasks([for (final task in removed) task.id]);
+    return removed;
   }
 
   /// 删除一条传输记录：进行中的先取消，避免残留记录被写回。

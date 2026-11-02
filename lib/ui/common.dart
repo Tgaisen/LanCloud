@@ -1792,38 +1792,70 @@ class _SheetDragPhysics extends ClampingScrollPhysics {
 }
 
 /// 分组标题 + 数量 chip（传输、收藏等列表视图共用）。
+///
+/// [actions] 放在标题右侧，窄屏或大字号时可在自身区域换行，不截断按钮文案。
 class SectionHeader extends StatelessWidget {
-  const SectionHeader({super.key, required this.title, required this.count});
+  const SectionHeader({
+    super.key,
+    required this.title,
+    required this.count,
+    this.actions = const <Widget>[],
+  });
 
   final String title;
   final int count;
+  final List<Widget> actions;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final titleBlock = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          title,
+          style: context.m3eEmphasizedTheme.titleSmall?.copyWith(
+            color: scheme.primary,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          decoration: BoxDecoration(
+            color: scheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text('$count', style: Theme.of(context).textTheme.labelSmall),
+        ),
+      ],
+    );
     return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 16, 4, 8),
+      // 有右侧操作时由按钮自身的 48dp 触控目标撑起行高，不再额外叠加
+      // 分栏上下留白；无操作的传统分组标题保持原间距。
+      padding: EdgeInsets.fromLTRB(
+        4,
+        actions.isEmpty ? 16 : 0,
+        4,
+        actions.isEmpty ? 8 : 0,
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text(
-            title,
-            style: context.m3eEmphasizedTheme.titleSmall?.copyWith(
-              color: scheme.primary,
+          titleBlock,
+          if (actions.isNotEmpty) ...[
+            const SizedBox(width: 8),
+            Expanded(
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: Wrap(
+                  alignment: WrapAlignment.end,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  runSpacing: 4,
+                  children: actions,
+                ),
+              ),
             ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: scheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              '$count',
-              style: Theme.of(context).textTheme.labelSmall,
-            ),
-          ),
+          ],
         ],
       ),
     );

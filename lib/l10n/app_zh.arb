@@ -188,6 +188,52 @@
   "clearFinished": "清除已完成",
   "clearFinishedConfirmTitle": "清除已完成记录",
   "clearFinishedConfirmMessage": "将清除已完成的传输记录，继续吗？",
+  "cancelAll": "全部取消",
+  "pauseAll": "全部暂停",
+  "resumeAll": "全部恢复",
+  "clearAll": "清空",
+  "cancelInProgressTransfers": "取消进行中任务",
+  "cancelAllUploadsConfirmMessage": "将取消并移除全部 {count} 个进行中的上传任务，继续吗？",
+  "@cancelAllUploadsConfirmMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cancelAllDownloadsConfirmMessage": "将取消并移除全部 {count} 个进行中的下载任务，并删除已下载的文件，继续吗？",
+  "@cancelAllDownloadsConfirmMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "clearFinishedTransfers": "清空已结束任务",
+  "clearFinishedUploadsConfirmMessage": "将清空全部 {count} 条已结束的上传任务记录，继续吗？",
+  "@clearFinishedUploadsConfirmMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "clearFinishedDownloadsConfirmMessage": "将清空全部 {count} 条已结束的下载任务记录，继续吗？",
+  "@clearFinishedDownloadsConfirmMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "resumeAllPartialFailed": "{count} 个下载任务恢复失败，请稍后重试。",
+  "@resumeAllPartialFailed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "upload": "上传",
   "noUploads": "暂无上传任务",
   "noDownloads": "暂无下载任务",

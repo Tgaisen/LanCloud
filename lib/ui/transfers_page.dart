@@ -33,7 +33,109 @@ enum _TransferMenuAction {
   removeRecordAndFile,
 }
 
+enum TransferDeleteReason { selected, cancelActive, clearFinished }
+
+class TransferDeleteResult {
+  const TransferDeleteResult({required this.deleteFiles});
+
+  final bool deleteFiles;
+}
+
+/// 传输记录删除确认。仅在下载场景显示“同时删除文件”，并把无选择掩码的
+/// 批量操作与多选删除使用各自面向用户的文案。
+Future<TransferDeleteResult?> showTransferDeleteDialog(
+  BuildContext context, {
+  required TransferKind kind,
+  required int count,
+  required TransferDeleteReason reason,
+  required bool showDeleteFiles,
+}) {
+  final l10n = context.l10n;
+  final title = switch (reason) {
+    TransferDeleteReason.selected => l10n.transferDeleteConfirmTitle,
+    TransferDeleteReason.cancelActive => l10n.cancelInProgressTransfers,
+    TransferDeleteReason.clearFinished => l10n.clearFinishedTransfers,
+  };
+  final message = switch (reason) {
+    TransferDeleteReason.selected => l10n.transferDeleteConfirmMessage(count),
+    TransferDeleteReason.cancelActive =>
+      kind == TransferKind.upload
+          ? l10n.cancelAllUploadsConfirmMessage(count)
+          : l10n.cancelAllDownloadsConfirmMessage(count),
+    TransferDeleteReason.clearFinished =>
+      kind == TransferKind.upload
+          ? l10n.clearFinishedUploadsConfirmMessage(count)
+          : l10n.clearFinishedDownloadsConfirmMessage(count),
+  };
+  final confirmLabel = switch (reason) {
+    TransferDeleteReason.selected => l10n.delete,
+    TransferDeleteReason.cancelActive => l10n.cancelAll,
+    TransferDeleteReason.clearFinished => l10n.clearAll,
+  };
+  var deleteFiles = false;
+  return showDialog<TransferDeleteResult>(
+    context: context,
+    builder: (dialogContext) => StatefulBuilder(
+      builder: (dialogContext, setDialogState) => AlertDialog(
+        title: Text(title),
+        // M3 对话框内容边距 24dp；列表组外边距 0，组沿落在 24dp 上
+        contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(message),
+            if (showDeleteFiles) ...[
+              const SizedBox(height: 16),
+              DialogListGroup(
+                children: [
+                  M3ePickTile(
+                    label: l10n.deleteFilesToo,
+                    selected: deleteFiles,
+                    onTap: () =>
+                        setDialogState(() => deleteFiles = !deleteFiles),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            key: const ValueKey('transfer-delete-confirm'),
+            onPressed: () => Navigator.of(dialogContext).pop(
+              TransferDeleteResult(deleteFiles: showDeleteFiles && deleteFiles),
+            ),
+            child: Text(confirmLabel),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 typedef TransferFileOpener = Future<bool> Function(String path, {String? name});
+
+bool _isInProgressTask(TransferTask task) =>
+    task.status == TransferStatus.queued ||
+    task.status == TransferStatus.running ||
+    task.status == TransferStatus.paused ||
+    task.status == TransferStatus.saving;
+
+bool _isFinishedTask(TransferTask task) =>
+    task.status == TransferStatus.done ||
+    task.status == TransferStatus.failed ||
+    task.status == TransferStatus.canceled;
+
+bool _isPausableDownload(TransferTask task) =>
+    task.kind == TransferKind.download &&
+    (task.status == TransferStatus.queued ||
+        task.status == TransferStatus.running) &&
+    !task.exporting;
 
 class TransfersPage extends ConsumerStatefulWidget {
   const TransfersPage({super.key, this.openFile});
@@ -71,6 +173,7 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
   );
   final ScrollController _scroll = ScrollController();
   bool _selecting = false;
+  bool _bulkResumeRunning = false;
   final Set<String> _selected = {};
 
   /// 正在播放删除动画的记录（动画播完再真正移除）
@@ -181,91 +284,91 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
     if (_selected.isEmpty) _exitSelection();
   }
 
-  /// 清除已完成前的确认：默认 MD3 弹窗 + 消极（取消）/ 积极（清除）按钮，
-  /// 与网盘页的确认删除同款。
-  Future<void> _clearFinished() async {
-    final l10n = context.l10n;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(l10n.clearFinishedConfirmTitle),
-        content: Text(l10n.clearFinishedConfirmMessage),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(l10n.clear),
-          ),
-        ],
-      ),
+  Future<void> _cancelActive() async {
+    final manager = ref.read(transferManagerProvider);
+    final tasks = _tasksOf(manager)
+        .where(_isInProgressTask)
+        .toList(growable: false);
+    if (tasks.isEmpty) return;
+    final result = await showTransferDeleteDialog(
+      context,
+      kind: _kind,
+      count: tasks.length,
+      reason: TransferDeleteReason.cancelActive,
+      showDeleteFiles: false,
     );
-    if (ok != true || !mounted) return;
-    ref.read(transferManagerProvider).clearFinished();
+    if (result == null || !mounted) return;
+    manager.removeTasks([for (final task in tasks) task.id]);
+    // “全部取消”按用户预期连带清理下载文件。
+    if (_kind == TransferKind.download) await _deleteTaskFiles(tasks);
+  }
+
+  Future<void> _clearFinishedSection() async {
+    final manager = ref.read(transferManagerProvider);
+    final tasks = _tasksOf(manager)
+        .where(_isFinishedTask)
+        .toList(growable: false);
+    if (tasks.isEmpty) return;
+    final result = await showTransferDeleteDialog(
+      context,
+      kind: _kind,
+      count: tasks.length,
+      reason: TransferDeleteReason.clearFinished,
+      showDeleteFiles: _kind == TransferKind.download,
+    );
+    if (result == null || !mounted) return;
+    final removed = manager.clearFinished(_kind);
+    if (result.deleteFiles) await _deleteTaskFiles(removed);
+  }
+
+  void _pauseAll() {
+    final manager = ref.read(transferManagerProvider);
+    final ids = _tasksOf(manager)
+        .where(_isPausableDownload)
+        .map((task) => task.id)
+        .toList(growable: false);
+    manager.pauseDownloads(ids);
+  }
+
+  Future<void> _resumeAll() async {
+    if (_bulkResumeRunning) return;
+    final manager = ref.read(transferManagerProvider);
+    final ids = _tasksOf(manager)
+        .where((task) => task.status == TransferStatus.paused)
+        .map((task) => task.id)
+        .toList(growable: false);
+    if (ids.isEmpty) return;
+    setState(() => _bulkResumeRunning = true);
+    final failed = await manager.resumeDownloads(ids);
+    if (!mounted) return;
+    setState(() => _bulkResumeRunning = false);
+    if (failed > 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.resumeAllPartialFailed(failed))),
+      );
+    }
   }
 
   /// 删除选中的传输记录（进行中的会先取消）。
   Future<void> _deleteSelected() async {
     if (_selected.isEmpty) return;
-    final l10n = context.l10n;
-    final count = _selected.length;
-    var deleteFiles = false;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (dialogContext, setDialogState) => AlertDialog(
-          title: Text(l10n.transferDeleteConfirmTitle),
-          // M3 对话框内容边距 24dp；列表组外边距 0，组沿落在 24dp 上
-          contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(l10n.transferDeleteConfirmMessage(count)),
-              const SizedBox(height: 16),
-              // 复选行放进列表组（与选择弹窗同一套样式）
-              DialogListGroup(
-                children: [
-                  M3ePickTile(
-                    label: l10n.deleteFilesToo,
-                    selected: deleteFiles,
-                    onTap: () =>
-                        setDialogState(() => deleteFiles = !deleteFiles),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: Text(l10n.cancel),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: Text(l10n.delete),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (ok != true || !mounted) return;
     final manager = ref.read(transferManagerProvider);
     final tasks = manager.tasks.where((t) => _selected.contains(t.id)).toList();
-    final ids = _selected.toList();
+    if (tasks.isEmpty) return;
+    final result = await showTransferDeleteDialog(
+      context,
+      kind: _kind,
+      count: tasks.length,
+      reason: TransferDeleteReason.selected,
+      showDeleteFiles: _kind == TransferKind.download,
+    );
+    if (result == null || !mounted) return;
+    final ids = [for (final task in tasks) task.id];
     _exitSelection();
     // 批量删除不逐条播动画：一次落库、一次通知，列表整体刷新一遍
     manager.removeTasks(ids);
     // 下载到本地的文件由本应用写入：普通路径直接删，SAF 文件走系统授权删
-    if (deleteFiles) {
-      for (final task in tasks) {
-        final path = task.savedPath;
-        if (path == null || path.isEmpty) continue;
-        await deleteSavedFile(path);
-      }
-    }
+    if (result.deleteFiles) await _deleteTaskFiles(tasks);
   }
 
   /// 重试选中的失败项（其它状态忽略）。
@@ -460,10 +563,16 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
   }
 
   /// 删掉下载下来的本地文件（文件由本应用写入，删除属于正常操作）。
-  Future<void> _deleteTaskFile(TransferTask task) async {
-    final path = task.savedPath;
-    if (path == null || path.isEmpty) return;
-    await deleteSavedFile(path);
+  Future<void> _deleteTaskFile(TransferTask task) => _deleteTaskFiles([task]);
+
+  Future<void> _deleteTaskFiles(Iterable<TransferTask> tasks) async {
+    final paths = <String>{
+      for (final task in tasks)
+        if (task.savedPath case final path? when path.isNotEmpty) path,
+    };
+    for (final path in paths) {
+      await deleteSavedFile(path);
+    }
   }
 
   @override
@@ -548,6 +657,11 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
                           onLongPress: _enterSelection,
                           onMenu: _taskMenu,
                           openFile: widget.openFile ?? openFileWithSystem,
+                          onCancelActive: _cancelActive,
+                          onClearFinished: _clearFinishedSection,
+                          onPauseAll: _pauseAll,
+                          onResumeAll: _resumeAll,
+                          bulkResumeRunning: _bulkResumeRunning,
                         ),
                       ),
                       // 底栏盖在正文上方（extendBody）时，补足列表末尾留白
@@ -585,11 +699,6 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
                           : const AppBarBackButton(),
                       title: Text(l10n.transfers),
                       actions: [
-                        IconButton(
-                          tooltip: l10n.clearFinished,
-                          icon: const Icon(Icons.delete_sweep_outlined),
-                          onPressed: _clearFinished,
-                        ),
                         IconButton(
                           tooltip: l10n.multiSelect,
                           icon: const Icon(Icons.checklist),
@@ -735,6 +844,11 @@ class _TransferListSliver extends StatelessWidget {
     required this.onLongPress,
     required this.onMenu,
     required this.openFile,
+    required this.onCancelActive,
+    required this.onClearFinished,
+    required this.onPauseAll,
+    required this.onResumeAll,
+    required this.bulkResumeRunning,
   });
 
   final TransferKind kind;
@@ -757,6 +871,12 @@ class _TransferListSliver extends StatelessWidget {
   /// 打开已下载的文件（外壳注入，默认交给系统默认程序）。
   final TransferFileOpener openFile;
 
+  final VoidCallback onCancelActive;
+  final VoidCallback onClearFinished;
+  final VoidCallback onPauseAll;
+  final VoidCallback onResumeAll;
+  final bool bulkResumeRunning;
+
   /// 点击条目：多选中切换选中；否则只有「下载完成」的条目能打开文件，
   /// 上传条目（以及进行中 / 失败的下载）点击不做任何反应。
   Future<void> _handleTap(BuildContext context, TransferTask task) async {
@@ -774,6 +894,22 @@ class _TransferListSliver extends StatelessWidget {
             .showSnackBar(SnackBar(content: Text(context.l10n.openFileFailed)));
       }
     }
+  }
+
+  Widget _actionButton({
+    required String key,
+    required String label,
+    required VoidCallback? onPressed,
+  }) {
+    return TextButton(
+      key: ValueKey(key),
+      onPressed: onPressed,
+      style: TextButton.styleFrom(
+        minimumSize: const Size(0, 32),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+      ),
+      child: Text(label, maxLines: 1, softWrap: false),
+    );
   }
 
   @override
@@ -796,17 +932,53 @@ class _TransferListSliver extends StatelessWidget {
         ),
       );
     }
-    bool isActive(TransferTask t) =>
-        t.status == TransferStatus.queued ||
-        t.status == TransferStatus.running ||
-        t.status == TransferStatus.paused ||
-        t.status == TransferStatus.saving;
-    final active = tasks.where(isActive).toList();
-    final finished = tasks
-        .where((t) => !isActive(t))
-        .toList()
-        .reversed
-        .toList();
+    final active = tasks.where(_isInProgressTask).toList();
+    final finished = tasks.where(_isFinishedTask).toList().reversed.toList();
+    final paused = active
+        .where((task) => task.status == TransferStatus.paused)
+        .length;
+    final pausable = active.where(_isPausableDownload).length;
+    final activeActions = <Widget>[];
+    if (!selecting) {
+      if (kind == TransferKind.upload) {
+        activeActions.add(
+          _actionButton(
+            key: 'transfers-cancel-all',
+            label: l10n.cancelAll,
+            onPressed: onCancelActive,
+          ),
+        );
+      } else if (paused == 0) {
+        activeActions.add(
+          _actionButton(
+            key: 'transfers-pause-all',
+            label: l10n.pauseAll,
+            onPressed: pausable == 0 ? null : onPauseAll,
+          ),
+        );
+      } else if (pausable > 0) {
+        activeActions.add(
+          _actionButton(
+            key: 'transfers-resume-all',
+            label: l10n.resumeAll,
+            onPressed: bulkResumeRunning ? null : onResumeAll,
+          ),
+        );
+      } else {
+        activeActions.addAll([
+          _actionButton(
+            key: 'transfers-cancel-all',
+            label: l10n.cancelAll,
+            onPressed: onCancelActive,
+          ),
+          _actionButton(
+            key: 'transfers-resume-all',
+            label: l10n.resumeAll,
+            onPressed: bulkResumeRunning ? null : onResumeAll,
+          ),
+        ]);
+      }
+    }
     return SliverPadding(
       // 与收藏页一致：外层 12 + SegmentedList 自带 4
       // 底部留白与首页 / 网盘 / 收藏保持一致
@@ -818,6 +990,7 @@ class _TransferListSliver extends StatelessWidget {
               child: SectionHeader(
                 title: l10n.inProgress,
                 count: active.length,
+                actions: activeActions,
               ),
             ),
             // MD3E 连接式列表（懒加载）：组外侧 16dp / 组内相邻 4dp，和收藏页同款
@@ -855,6 +1028,15 @@ class _TransferListSliver extends StatelessWidget {
               child: SectionHeader(
                 title: l10n.finished,
                 count: finished.length,
+                actions: selecting
+                    ? const <Widget>[]
+                    : [
+                        _actionButton(
+                          key: 'transfers-clear-finished',
+                          label: l10n.clearAll,
+                          onPressed: onClearFinished,
+                        ),
+                      ],
               ),
             ),
             SegmentedSliverList(

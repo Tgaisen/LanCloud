@@ -113,6 +113,52 @@
   "clearFinished": "Clear finished",
   "clearFinishedConfirmTitle": "Clear finished records",
   "clearFinishedConfirmMessage": "This will clear finished transfer records. Continue?",
+  "cancelAll": "Cancel all",
+  "pauseAll": "Pause all",
+  "resumeAll": "Resume all",
+  "clearAll": "Clear",
+  "cancelInProgressTransfers": "Cancel in-progress transfers",
+  "cancelAllUploadsConfirmMessage": "Cancel and remove all {count} in-progress uploads?",
+  "@cancelAllUploadsConfirmMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cancelAllDownloadsConfirmMessage": "Cancel and remove all {count} in-progress downloads and delete downloaded files?",
+  "@cancelAllDownloadsConfirmMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "clearFinishedTransfers": "Clear finished transfers",
+  "clearFinishedUploadsConfirmMessage": "Clear all {count} finished upload records?",
+  "@clearFinishedUploadsConfirmMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "clearFinishedDownloadsConfirmMessage": "Clear all {count} finished download records?",
+  "@clearFinishedDownloadsConfirmMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "resumeAllPartialFailed": "{count} downloads could not be resumed. Please try again later.",
+  "@resumeAllPartialFailed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "upload": "Upload",
   "noUploads": "No upload tasks",
   "noDownloads": "No download tasks",

@@ -357,6 +357,49 @@ class AppLocalizationsZh extends AppLocalizations {
   String get clearFinishedConfirmMessage => '将清除已完成的传输记录，继续吗？';
 
   @override
+  String get cancelAll => '全部取消';
+
+  @override
+  String get pauseAll => '全部暂停';
+
+  @override
+  String get resumeAll => '全部恢复';
+
+  @override
+  String get clearAll => '清空';
+
+  @override
+  String get cancelInProgressTransfers => '取消进行中任务';
+
+  @override
+  String cancelAllUploadsConfirmMessage(int count) {
+    return '将取消并移除全部 $count 个进行中的上传任务，继续吗？';
+  }
+
+  @override
+  String cancelAllDownloadsConfirmMessage(int count) {
+    return '将取消并移除全部 $count 个进行中的下载任务，并删除已下载的文件，继续吗？';
+  }
+
+  @override
+  String get clearFinishedTransfers => '清空已结束任务';
+
+  @override
+  String clearFinishedUploadsConfirmMessage(int count) {
+    return '将清空全部 $count 条已结束的上传任务记录，继续吗？';
+  }
+
+  @override
+  String clearFinishedDownloadsConfirmMessage(int count) {
+    return '将清空全部 $count 条已结束的下载任务记录，继续吗？';
+  }
+
+  @override
+  String resumeAllPartialFailed(int count) {
+    return '$count 个下载任务恢复失败，请稍后重试。';
+  }
+
+  @override
   String get upload => '上传';
 
   @override

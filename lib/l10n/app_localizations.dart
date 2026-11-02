@@ -746,6 +746,72 @@ abstract class AppLocalizations {
   /// **'将清除已完成的传输记录，继续吗？'**
   String get clearFinishedConfirmMessage;
 
+  /// No description provided for @cancelAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部取消'**
+  String get cancelAll;
+
+  /// No description provided for @pauseAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部暂停'**
+  String get pauseAll;
+
+  /// No description provided for @resumeAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部恢复'**
+  String get resumeAll;
+
+  /// No description provided for @clearAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空'**
+  String get clearAll;
+
+  /// No description provided for @cancelInProgressTransfers.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消进行中任务'**
+  String get cancelInProgressTransfers;
+
+  /// No description provided for @cancelAllUploadsConfirmMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'将取消并移除全部 {count} 个进行中的上传任务，继续吗？'**
+  String cancelAllUploadsConfirmMessage(int count);
+
+  /// No description provided for @cancelAllDownloadsConfirmMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'将取消并移除全部 {count} 个进行中的下载任务，并删除已下载的文件，继续吗？'**
+  String cancelAllDownloadsConfirmMessage(int count);
+
+  /// No description provided for @clearFinishedTransfers.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空已结束任务'**
+  String get clearFinishedTransfers;
+
+  /// No description provided for @clearFinishedUploadsConfirmMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'将清空全部 {count} 条已结束的上传任务记录，继续吗？'**
+  String clearFinishedUploadsConfirmMessage(int count);
+
+  /// No description provided for @clearFinishedDownloadsConfirmMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'将清空全部 {count} 条已结束的下载任务记录，继续吗？'**
+  String clearFinishedDownloadsConfirmMessage(int count);
+
+  /// No description provided for @resumeAllPartialFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 个下载任务恢复失败，请稍后重试。'**
+  String resumeAllPartialFailed(int count);
+
   /// No description provided for @upload.
   ///
   /// In zh, this message translates to:
