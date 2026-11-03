@@ -1685,8 +1685,9 @@ class M3eMenuItem<T> {
 ///
 /// [anchor] 是被点控件的全局矩形：菜单贴它下方弹出（[items] 顺序即显示顺序），
 /// 默认左缘对齐；[alignEnd] 为真时右缘对齐——贴右侧的 ⋯ 按钮用这个，菜单不会
-/// 被屏幕右上角夹歪。上下空间不够时翻到锚点上方；左右夹在屏幕边缘内。选中返回
-/// 那一项的 [M3eMenuItem.value]，点别处 / 按返回收起返回 null。
+/// 被屏幕右上角夹歪。鼠标右键传入 [pointerPosition] 时，菜单改为从该全局坐标
+/// 弹出，并忽略 [alignEnd]；上下 / 左右空间不够时自动翻到鼠标另一侧。
+/// 选中返回那一项的 [M3eMenuItem.value]，点别处 / 按返回收起返回 null。
 ///
 /// 观感跟主题走：容器 surfaceContainerLow、16dp 圆角、项高 48dp、图标 24dp，
 /// 颜色由 ambient `ColorScheme` 推出，所以深浅色切换跟着变。
@@ -1699,6 +1700,7 @@ class M3eMenuItem<T> {
 Future<T?> showM3eMenu<T>({
   required BuildContext context,
   required Rect anchor,
+  Offset? pointerPosition,
   required List<M3eMenuItem<T>> items,
   bool alignEnd = false,
   Listenable? closeOn,
@@ -1712,6 +1714,7 @@ Future<T?> showM3eMenu<T>({
   return Navigator.of(context, rootNavigator: true).push<T>(
     _M3eMenuRoute<T>(
       anchor: anchor,
+      pointerPosition: pointerPosition,
       items: items,
       alignEnd: alignEnd,
       reduceMotion: reduceMotion,
@@ -1779,6 +1782,7 @@ class M3eMenuRow extends StatelessWidget {
 class _M3eMenuRoute<T> extends PopupRoute<T> {
   _M3eMenuRoute({
     required this.anchor,
+    required this.pointerPosition,
     required this.items,
     required this.alignEnd,
     required this.reduceMotion,
@@ -1788,6 +1792,7 @@ class _M3eMenuRoute<T> extends PopupRoute<T> {
   });
 
   final Rect anchor;
+  final Offset? pointerPosition;
   final List<M3eMenuItem<T>> items;
   final bool alignEnd;
   final bool reduceMotion;
@@ -1842,34 +1847,41 @@ class _M3eMenuRoute<T> extends PopupRoute<T> {
   @override
   bool get barrierDismissible => true;
 
-  /// MD3 默认的菜单动效：展开 400ms、收起 150ms；少动效时直接跳过。
+  /// M3E popup 弹簧需要在约 450ms 内展开到位；少动效时直接跳过。
   @override
   Duration get transitionDuration =>
-      reduceMotion ? Duration.zero : const Duration(milliseconds: 400);
+      reduceMotion ? Duration.zero : _popupDuration;
 
   @override
   Duration get reverseTransitionDuration =>
-      reduceMotion ? Duration.zero : const Duration(milliseconds: 150);
+      reduceMotion ? Duration.zero : const Duration(milliseconds: 220);
 
-  /// 错开占展开进度的比例：第一项从 0 开始，最后一项从 [_staggerSpan] 开始，
-  /// 全部在动画结束时到位。
-  static const double _staggerSpan = 0.35;
+  /// 与 m3e_core 的 `M3EMenuAnimationStyle.popup` 默认值一致：
+  /// 空间弹簧 800 / 0.6（允许 overshoot），效果弹簧 3800 / 1.0（透明度不弹）。
+  static const Duration _popupDuration = Duration(milliseconds: 450);
 
-  /// 项目沿轴线的入场位移（dp）：从锚点那一侧滑到自己的位置。
-  static const double _itemSlide = 8;
+  static final SpringSimulation _spatialSpring = SpringSimulation(
+    SpringDescription.withDampingRatio(mass: 1, stiffness: 800, ratio: 0.6),
+    0,
+    1,
+    0,
+  );
 
-  /// 单个项目在当前进度下的「出现程度」：0 = 还没出现，1 = 到位。
-  ///
-  /// 展开时按索引错开；收起（150ms）不叠错开——整块一起走更利落。
-  double _itemProgress(Animation<double> animation, int index) {
-    if (reduceMotion || items.length <= 1) return animation.value;
-    if (animation.status == AnimationStatus.reverse) return animation.value;
-    final double start = _staggerSpan * index / (items.length - 1);
-    final double t = ((animation.value - start) / (1 - _staggerSpan)).clamp(
-      0.0,
-      1.0,
-    );
-    return Curves.easeOutCubic.transform(t);
+  static final SpringSimulation _effectsSpring = SpringSimulation(
+    SpringDescription.withDampingRatio(mass: 1, stiffness: 3800, ratio: 1),
+    0,
+    1,
+    0,
+  );
+
+  double _springProgress(SpringSimulation spring, Animation<double> animation) {
+    if (reduceMotion) return animation.value;
+    if (animation.value >= 1) return 1;
+    final double seconds =
+        animation.value *
+        _popupDuration.inMicroseconds /
+        Duration.microsecondsPerSecond;
+    return spring.x(seconds);
   }
 
   /// 菜单宽度按内容算（M3：112–280dp），不跟锚点宽度绑定：
@@ -1921,6 +1933,11 @@ class _M3eMenuRoute<T> extends PopupRoute<T> {
     final Size screen = media.size;
     final EdgeInsets viewPadding = media.padding;
     final ColorScheme scheme = Theme.of(context).colorScheme;
+    final Offset? pointer = pointerPosition;
+    final Rect effectiveAnchor = pointer == null
+        ? anchor
+        : Rect.fromLTWH(pointer.dx, pointer.dy, 0, 0);
+    final double anchorGap = pointer == null ? _anchorGap : 0;
 
     final double topLimit = viewPadding.top + _screenPadding;
     final double bottomLimit =
@@ -1934,8 +1951,8 @@ class _M3eMenuRoute<T> extends PopupRoute<T> {
         items.length * rowHeight +
         (items.length - 1) * _itemGap +
         _verticalPadding * 2;
-    final double below = bottomLimit - (anchor.bottom + _anchorGap);
-    final double above = (anchor.top - _anchorGap) - topLimit;
+    final double below = bottomLimit - (effectiveAnchor.bottom + anchorGap);
+    final double above = (effectiveAnchor.top - anchorGap) - topLimit;
     // 先试锚点下方；放不下且上方更宽敞时才翻到上方，避免菜单贴屏幕边
     final bool opensAbove = below < contentHeight && above > below;
     final double available = opensAbove ? above : below;
@@ -1943,23 +1960,27 @@ class _M3eMenuRoute<T> extends PopupRoute<T> {
     // 内容（不留多余空白），放不下才在里面滚。
     final double maxHeight = available.clamp(0.0, _maxHeight);
     final double width = _contentWidth(context, screen);
-    final double left = (alignEnd ? anchor.right - width : anchor.left).clamp(
+    final bool opensLeft =
+        pointer != null && pointer.dx + width + _screenPadding > screen.width;
+    final double preferredLeft = pointer != null
+        ? (opensLeft ? pointer.dx - width : pointer.dx)
+        : (alignEnd ? effectiveAnchor.right - width : effectiveAnchor.left);
+    final double left = preferredLeft.clamp(
       _screenPadding,
       screen.width - _screenPadding - width,
     );
     // 贴住锚点那一侧：向上开时钉住底边、向下开时钉住顶边，卡片高度变化也不会
     // 和锚点之间飘出空隙
-    final double? top = opensAbove ? null : anchor.bottom + _anchorGap;
+    final double? top = opensAbove ? null : effectiveAnchor.bottom + anchorGap;
     final double? bottom = opensAbove
-        ? screen.height - anchor.top + _anchorGap
+        ? screen.height - effectiveAnchor.top + anchorGap
         : null;
 
-    // 动画围绕锚点那一侧展开：菜单在锚点下方时顶端固定、向下长出来，反之亦然
+    // popup 从锚点 / 鼠标所在的那一角整体弹性放大，收起时回到同一点。
+    final bool anchorAtEnd = pointer == null ? alignEnd : opensLeft;
     final Alignment anchorCorner = opensAbove
-        ? (alignEnd ? Alignment.bottomRight : Alignment.bottomLeft)
-        : (alignEnd ? Alignment.topRight : Alignment.topLeft);
-    // 项目沿轴线滑入：在锚点下方时从「更靠近锚点」的位置滑下来
-    final double itemSlide = opensAbove ? _itemSlide : -_itemSlide;
+        ? (anchorAtEnd ? Alignment.bottomRight : Alignment.bottomLeft)
+        : (anchorAtEnd ? Alignment.topRight : Alignment.topLeft);
     return Stack(
       children: [
         Positioned(
@@ -1970,20 +1991,26 @@ class _M3eMenuRoute<T> extends PopupRoute<T> {
           child: AnimatedBuilder(
             animation: animation,
             builder: (BuildContext context, Widget? child) {
-              final double t = reduceMotion
+              final double spatial = _springProgress(_spatialSpring, animation);
+              final double effects = _springProgress(
+                _effectsSpring,
+                animation,
+              ).clamp(0.0, 1.0);
+              final double scale = reduceMotion
                   ? 1
-                  : Curves.easeOutCubic.transform(animation.value);
+                  : 0.8 + 0.2 * math.max(0, spatial);
               return Opacity(
-                opacity: t,
-                // 轴向展开：只沿竖直方向长出来，横向不变
+                opacity: reduceMotion ? 1 : effects,
                 child: Transform(
+                  key: const ValueKey('m3e-menu-popup-surface'),
                   alignment: anchorCorner,
-                  transform: Matrix4.diagonal3Values(1, 0.8 + 0.2 * t, 1),
+                  transform: Matrix4.diagonal3Values(scale, scale, 1),
                   child: child,
                 ),
               );
             },
             child: Material(
+              key: const ValueKey('m3e-menu-card'),
               color: scheme.surfaceContainerLow,
               // M3 给菜单的是 elevation level 2；这里按需求用 3
               elevation: 3,
@@ -2022,26 +2049,13 @@ class _M3eMenuRoute<T> extends PopupRoute<T> {
                           for (int i = 0; i < items.length; i++) ...[
                             // 项目之间留间隔，头尾不额外留（M3E 的块状项目）
                             if (i > 0) const SizedBox(height: _itemGap),
-                            AnimatedBuilder(
-                              animation: animation,
-                              builder: (BuildContext context, Widget? row) {
-                                final double p = _itemProgress(animation, i);
-                                return Opacity(
-                                  opacity: p,
-                                  child: Transform.translate(
-                                    offset: Offset(0, itemSlide * (1 - p)),
-                                    child: row,
-                                  ),
-                                );
-                              },
-                              child: M3eMenuRow(
-                                icon: items[i].icon,
-                                iconFill: items[i].iconFill,
-                                label: items[i].label,
-                                enabled: items[i].enabled,
-                                onTap: () =>
-                                    Navigator.of(context).pop(items[i].value),
-                              ),
+                            M3eMenuRow(
+                              icon: items[i].icon,
+                              iconFill: items[i].iconFill,
+                              label: items[i].label,
+                              enabled: items[i].enabled,
+                              onTap: () =>
+                                  Navigator.of(context).pop(items[i].value),
                             ),
                           ],
                         ],
