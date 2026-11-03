@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -1055,6 +1057,55 @@ void main() {
 
   Finder menuItem(String label) =>
       find.descendant(of: find.byType(M3eMenuRow), matching: find.text(label));
+
+  testWidgets('Android 外接鼠标：右键菜单仅对带 ⋯ 的已结束任务开放', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+
+    final (app, _) = await hostWithTasks(tester, [
+      task('running', 'running.zip', status: TransferStatus.running)
+        ..received = 40
+        ..total = 100,
+      task('done', 'done.zip', status: TransferStatus.done),
+    ]);
+    final runningRow = find.ancestor(
+      of: find.text('running.zip'),
+      matching: find.byType(Md3ListItem),
+    );
+    final doneRow = find.ancestor(
+      of: find.text('done.zip'),
+      matching: find.byType(Md3ListItem),
+    );
+
+    try {
+      expect(
+        find.descendant(of: runningRow, matching: find.byTooltip('更多操作')),
+        findsNothing,
+      );
+      expect(
+        find.descendant(of: doneRow, matching: find.byTooltip('更多操作')),
+        findsOneWidget,
+      );
+
+      await tester.tap(
+        runningRow,
+        buttons: kSecondaryMouseButton,
+        kind: PointerDeviceKind.mouse,
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(M3eMenuRow), findsNothing);
+
+      await tester.tap(
+        doneRow,
+        buttons: kSecondaryMouseButton,
+        kind: PointerDeviceKind.mouse,
+      );
+      await tester.pumpAndSettle();
+      expect(menuLabels(tester), ['删除此条记录']);
+    } finally {
+      app.dispose();
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
 
   testWidgets('下载完成的项目：点击条目打开文件，⋯ 菜单给打开 / 分享 / 删除', (tester) async {
     final app = AppEnvironment();

@@ -2041,7 +2041,7 @@ class Md3ListItem extends StatefulWidget {
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
 
-  /// 次要点击（桌面端右键）：一般与尾部 ⋯ 菜单一致。
+  /// 次要点击（任意平台鼠标右键）：一般与尾部 ⋯ 菜单一致。
   final VoidCallback? onSecondaryTap;
 
   /// 尾部操作（⋯、重试、打开等）。
@@ -2170,7 +2170,7 @@ class _Md3ListItemState extends State<Md3ListItem>
       child: InkWell(
         onTap: widget.onTap,
         onLongPress: widget.onLongPress,
-        // 桌面端右键 = 点 ⋯ 菜单（同一套操作）
+        // 任意平台鼠标右键 = 点 ⋯ 菜单（同一套操作）
         onSecondaryTap: widget.onSecondaryTap,
         child: ColoredBox(
           color: widget.selected ? scheme.primaryContainer : Colors.transparent,
