@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -136,6 +137,29 @@ class _MemberRenameClient extends _FakeClient {
   }
 }
 
+class _ManyFilesClient extends _FakeClient {
+  @override
+  Future<({List<LzFile> files, bool hasMore})> listFilesPage(
+    String folderId,
+    int page,
+  ) async => (
+    files: folderId == '-1' && page == 1
+        ? [
+            for (var i = 1; i <= 3; i++)
+              LzFile(
+                id: 'f$i',
+                name: 'file$i.zip',
+                size: '1 M',
+                time: '',
+                downs: 0,
+                hasPwd: false,
+              ),
+          ]
+        : const <LzFile>[],
+    hasMore: false,
+  );
+}
+
 class _FakeApp {
   _FakeApp(this._client, {LanzouClient? publicClient})
     : _public = publicClient ?? _FakePublic();
@@ -267,6 +291,40 @@ Future<void> _settleSheet(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets('网盘列表模式在宽窗口下仍保持单列', (tester) async {
+    final app = _FakeApp(_ManyFilesClient());
+    app.environment.cachePageSettings.store.gridView = false;
+    await _pumpDrive(tester, app, viewSize: const Size(1200, 800));
+
+    final first = tester.getTopLeft(find.text('file1.zip'));
+    final second = tester.getTopLeft(find.text('file2.zip'));
+    final third = tester.getTopLeft(find.text('file3.zip'));
+    expect(second.dx, first.dx);
+    expect(third.dx, first.dx);
+    expect(second.dy, greaterThan(first.dy));
+    expect(third.dy, greaterThan(second.dy));
+    expect(find.byType(AdaptiveSliverRows), findsNothing);
+  });
+
+  testWidgets('网盘条目鼠标右键：菜单从鼠标坐标展开', (tester) async {
+    final app = _FakeApp(_FakeClient());
+    await _pumpDrive(tester, app);
+    final file = find.text('a.zip');
+    final pointer = tester.getCenter(file);
+
+    await tester.tap(
+      file,
+      buttons: kSecondaryMouseButton,
+      kind: PointerDeviceKind.mouse,
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+
+    final menu = tester.getRect(find.byKey(const ValueKey('m3e-menu-card')));
+    expect(menu.topLeft, pointer);
+    expect(find.byType(M3eMenuRow), findsNWidgets(6));
+  });
+
   testWidgets('网盘页文件 ⋯ 菜单：六项操作，属性打开属性弹窗', (tester) async {
     final app = _FakeApp(_FakeClient());
     await _pumpDrive(tester, app);

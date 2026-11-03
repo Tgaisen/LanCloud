@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -165,6 +167,33 @@ int selectedTransferTab(WidgetTester tester) => tester
     .selected;
 
 void main() {
+  testWidgets('传输列表按密集条目最小宽度铺两栏，不挤成三栏', (tester) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(856, 700);
+    addTearDown(tester.view.reset);
+    final (app, _) = await hostWithTasks(tester, [
+      task('t1', 'a.zip', status: TransferStatus.done),
+      task('t2', 'b.zip', status: TransferStatus.done),
+      task('t3', 'c.zip', status: TransferStatus.done),
+    ]);
+
+    final rows = [
+      for (final name in ['c.zip', 'b.zip', 'a.zip'])
+        find.ancestor(of: find.text(name), matching: find.byType(Md3ListItem)),
+    ];
+    final first = tester.getTopLeft(rows[0]);
+    final second = tester.getTopLeft(rows[1]);
+    final third = tester.getTopLeft(rows[2]);
+    expect(second.dy, first.dy);
+    expect(second.dx, greaterThan(first.dx));
+    expect(third.dy, greaterThan(first.dy));
+    expect(
+      tester.getSize(rows[0]).width,
+      greaterThanOrEqualTo(kAdaptiveDenseListItemMinWidth),
+    );
+    app.dispose();
+  });
+
   testWidgets('进行中条目的进度条与标题同宽：避让左侧图标与右侧按钮', (tester) async {
     final app = AppEnvironment();
     final manager = buildTransferManagerForEnvironment(app);
@@ -1055,6 +1084,60 @@ void main() {
 
   Finder menuItem(String label) =>
       find.descendant(of: find.byType(M3eMenuRow), matching: find.text(label));
+
+  testWidgets('Android 外接鼠标：右键菜单仅对带 ⋯ 的已结束任务开放', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+
+    final (app, _) = await hostWithTasks(tester, [
+      task('running', 'running.zip', status: TransferStatus.running)
+        ..received = 40
+        ..total = 100,
+      task('done', 'done.zip', status: TransferStatus.done),
+    ]);
+    final runningRow = find.ancestor(
+      of: find.text('running.zip'),
+      matching: find.byType(Md3ListItem),
+    );
+    final doneRow = find.ancestor(
+      of: find.text('done.zip'),
+      matching: find.byType(Md3ListItem),
+    );
+
+    try {
+      expect(
+        find.descendant(of: runningRow, matching: find.byTooltip('更多操作')),
+        findsNothing,
+      );
+      expect(
+        find.descendant(of: doneRow, matching: find.byTooltip('更多操作')),
+        findsOneWidget,
+      );
+
+      await tester.tap(
+        runningRow,
+        buttons: kSecondaryMouseButton,
+        kind: PointerDeviceKind.mouse,
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(M3eMenuRow), findsNothing);
+
+      final doneCenter = tester.getCenter(doneRow);
+      await tester.tap(
+        doneRow,
+        buttons: kSecondaryMouseButton,
+        kind: PointerDeviceKind.mouse,
+      );
+      await tester.pumpAndSettle();
+      expect(menuLabels(tester), ['删除此条记录']);
+      final menuCard = tester.getRect(
+        find.byKey(const ValueKey('m3e-menu-card')),
+      );
+      expect(menuCard.topLeft, doneCenter);
+    } finally {
+      app.dispose();
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
 
   testWidgets('下载完成的项目：点击条目打开文件，⋯ 菜单给打开 / 分享 / 删除', (tester) async {
     final app = AppEnvironment();

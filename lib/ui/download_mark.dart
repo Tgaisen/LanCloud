@@ -35,6 +35,7 @@ class DownloadMarkIcon extends StatelessWidget {
     required this.markKey,
     this.size = 16,
     this.gap = 4,
+    this.trailingGap = 0,
   });
 
   /// 匹配键：网盘文件用 [driveDownloadKey]，分享文件用分享链接。
@@ -43,6 +44,9 @@ class DownloadMarkIcon extends StatelessWidget {
 
   /// 图标左侧留白；没有标记时整块（含留白）不占位。
   final double gap;
+
+  /// 图标右侧留白；用于网格卡片把状态角标作为一组左对齐。
+  final double trailingGap;
 
   @override
   Widget build(BuildContext context) {
@@ -63,7 +67,7 @@ class DownloadMarkIcon extends StatelessWidget {
           return const SizedBox.shrink();
         }
         return Padding(
-          padding: EdgeInsetsDirectional.only(start: gap),
+          padding: EdgeInsetsDirectional.only(start: gap, end: trailingGap),
           child: Icon(
             task.status == TransferStatus.saving
                 ? Icons.save

@@ -43,6 +43,7 @@ function Invoke-Flutter {
   param(
     [string[]]$FlutterArgs,
     [int]$Tail = 15,
+    [int]$FailureTail = 160,
     [switch]$OnlyIssues,
     [switch]$FailureDetails
   )
@@ -76,7 +77,13 @@ function Invoke-Flutter {
       foreach ($index in $indexes) { $lineArray[$index] }
     }
   }
-  $lines | Select-Object -Last $Tail
+  $effectiveTail =
+    if ($script:ExitCode -ne 0 -and $FailureDetails) {
+      [Math]::Max($Tail, $FailureTail)
+    } else {
+      $Tail
+    }
+  $lines | Select-Object -Last $effectiveTail
   Write-Output "---- exit=$($script:ExitCode)"
 }
 
@@ -147,10 +154,10 @@ switch ($Verb) {
     if (-not $targets) { $targets = @(Resolve-Tests -Dirty @(Get-DirtyDart)) }
     if ($targets.Count -gt 0) {
       Write-Output "运行 $($targets.Count) 个受影响的测试文件"
-      Invoke-Flutter -FlutterArgs (@('test', '--no-pub') + $targets) -Tail 12
+      Invoke-Flutter -FlutterArgs (@('test', '--no-pub') + $targets) -Tail 16 -FailureDetails
     } else {
       Write-Output '推断不出受影响的测试文件，跑全量（约 1.5 分钟）'
-      Invoke-Flutter -FlutterArgs @('test', '--no-pub') -Tail 12
+      Invoke-Flutter -FlutterArgs @('test', '--no-pub') -Tail 16 -FailureDetails
     }
   }
   'format' {

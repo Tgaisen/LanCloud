@@ -456,13 +456,15 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
   /// 菜单贴它下方右对齐弹出。
   Future<void> _itemOptions(
     FavoriteItem item,
-    BuildContext anchorContext,
-  ) async {
+    BuildContext anchorContext, {
+    Offset? pointerPosition,
+  }) async {
     final anchor = m3eMenuAnchorOf(anchorContext);
     if (anchor == null) return;
     final _FavoriteItemAction? action = await showM3eMenu<_FavoriteItemAction>(
       context: context,
       anchor: anchor,
+      pointerPosition: pointerPosition,
       // ⋯ 贴着右边缘：菜单右缘对齐，免得被屏幕右上角夹歪
       alignEnd: true,
       items: [
@@ -618,7 +620,8 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
         // 桌面端右键：与 ⋯ 菜单同一套操作（多选时不响应，和 ⋯ 一起隐藏）
         onSecondaryTap: _selecting
             ? null
-            : () => _itemOptions(item, rowContext),
+            : (Offset position) =>
+                  _itemOptions(item, rowContext, pointerPosition: position),
         // 已加入下载的分享文件：标题右侧显示一个「已加入下载」小标记
         badge: isFolder ? null : DownloadMarkIcon(markKey: item.ref, size: 16),
         // 多选时隐藏 ⋯，但保留占位：条目高度不会跳

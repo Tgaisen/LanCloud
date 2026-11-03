@@ -156,15 +156,14 @@ void main() {
     await tester.pumpWidget(
       hostWith((setState) {
         setHost = setState;
-        return Row(
+        return SegmentedList(
+          adaptive: true,
           children: [
-            Expanded(
-              child: Md3ListItem(
-                icon: Icons.folder_outlined,
-                title: 'A',
-                animateIn: false,
-                removing: removing,
-              ),
+            Md3ListItem(
+              icon: Icons.folder_outlined,
+              title: 'A',
+              animateIn: false,
+              removing: removing,
             ),
           ],
         );

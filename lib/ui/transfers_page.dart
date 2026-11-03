@@ -436,9 +436,13 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
 
   /// 条目 ⋯ 菜单：按条目状态给出可用动作。
   ///
-  /// [anchorContext] 是那颗 ⋯ 按钮（桌面端右键时是整行）的 context——
+  /// [anchorContext] 是那颗 ⋯ 按钮（鼠标右键时是整行）的 context——
   /// 菜单贴它下方右对齐弹出。
-  Future<void> _taskMenu(TransferTask task, BuildContext anchorContext) async {
+  Future<void> _taskMenu(
+    TransferTask task,
+    BuildContext anchorContext, {
+    Offset? pointerPosition,
+  }) async {
     if (task.status == TransferStatus.saving) return;
     final anchor = m3eMenuAnchorOf(anchorContext);
     if (anchor == null) return;
@@ -463,6 +467,7 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
     final _TransferMenuAction? action = await showM3eMenu<_TransferMenuAction>(
       context: context,
       anchor: anchor,
+      pointerPosition: pointerPosition,
       // ⋯ 贴着右边缘：菜单右缘对齐，免得被屏幕右上角夹歪
       alignEnd: true,
       items: [
@@ -887,8 +892,13 @@ class _TransferListSliver extends StatelessWidget {
   final void Function(String id) onToggle;
   final void Function({String? taskId}) onLongPress;
 
-  /// 点 ⋯ / 桌面端右键：打开条目菜单（锚点是行或⋯按钮的 context）。
-  final void Function(TransferTask task, BuildContext anchorContext) onMenu;
+  /// 点 ⋯ / 鼠标右键：打开条目菜单（锚点是行或⋯按钮的 context）。
+  final void Function(
+    TransferTask task,
+    BuildContext anchorContext, {
+    Offset? pointerPosition,
+  })
+  onMenu;
 
   /// 打开已下载的文件（外壳注入，默认交给系统默认程序）。
   final TransferFileOpener openFile;
@@ -1028,6 +1038,7 @@ class _TransferListSliver extends StatelessWidget {
             // MD3E 连接式列表（懒加载）：组外侧 16dp / 组内相邻 4dp，和收藏页同款
             SegmentedSliverList(
               adaptive: true,
+              minItemWidth: kAdaptiveDenseListItemMinWidth,
               // 幸存条目按 key 复用元素，删除后不重播出现动画
               findChildIndexCallback: childIndexLookup(
                 active,
@@ -1048,8 +1059,11 @@ class _TransferListSliver extends StatelessWidget {
                   selected: selected.contains(active[index].id),
                   onTap: () => _handleTap(context, active[index]),
                   onLongPress: () => onLongPress(taskId: active[index].id),
-                  onMenu: (anchorContext) =>
-                      onMenu(active[index], anchorContext),
+                  onMenu: (anchorContext, {pointerPosition}) => onMenu(
+                    active[index],
+                    anchorContext,
+                    pointerPosition: pointerPosition,
+                  ),
                 ),
               ),
             ),
@@ -1075,6 +1089,7 @@ class _TransferListSliver extends StatelessWidget {
             ),
             SegmentedSliverList(
               adaptive: true,
+              minItemWidth: kAdaptiveDenseListItemMinWidth,
               findChildIndexCallback: childIndexLookup(
                 finished,
                 (t) => ValueKey('transfer-${t.id}'),
@@ -1094,8 +1109,11 @@ class _TransferListSliver extends StatelessWidget {
                   selected: selected.contains(finished[index].id),
                   onTap: () => _handleTap(context, finished[index]),
                   onLongPress: () => onLongPress(taskId: finished[index].id),
-                  onMenu: (anchorContext) =>
-                      onMenu(finished[index], anchorContext),
+                  onMenu: (anchorContext, {pointerPosition}) => onMenu(
+                    finished[index],
+                    anchorContext,
+                    pointerPosition: pointerPosition,
+                  ),
                 ),
               ),
             ),
@@ -1128,8 +1146,9 @@ class _TransferTile extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onLongPress;
 
-  /// 点 ⋯ / 桌面端右键：打开条目菜单（锚点分别为按钮 / 整行）。
-  final void Function(BuildContext anchorContext) onMenu;
+  /// 点 ⋯ / 鼠标右键：打开条目菜单（锚点分别为按钮 / 整行）。
+  final void Function(BuildContext anchorContext, {Offset? pointerPosition})
+  onMenu;
   final int index;
   final bool removing;
 
@@ -1189,8 +1208,9 @@ class _TransferTile extends StatelessWidget {
     final resuming = task.status == TransferStatus.resuming;
     final paused = task.status == TransferStatus.paused;
     final saving = task.status == TransferStatus.saving;
+    final finished = _isFinishedTask(task);
     // 与首页 / 收藏共用同一套列表项布局，圆角由外层 SegmentedList 控制
-    // 菜单要贴在被点的那颗 ⋯（桌面端右键时是整行）下方，所以这里得拿到两个 context
+    // 菜单要贴在被点的那颗 ⋯（鼠标右键时是整行）下方，所以这里得拿到两个 context
     return Builder(
       builder: (BuildContext rowContext) => Md3ListItem(
         key: ValueKey('transfer-${task.id}'),
@@ -1213,8 +1233,11 @@ class _TransferTile extends StatelessWidget {
           onTap: onTap,
           onLongPress: onLongPress,
         ),
-        // 桌面端右键：与 ⋯ 菜单同一套操作（多选时不响应，和 ⋯ 一起隐藏）
-        onSecondaryTap: selecting || saving ? null : () => onMenu(rowContext),
+        // 右键与 ⋯ 菜单可用性一致：多选和进行中任务都不响应。
+        onSecondaryTap: selecting || !finished
+            ? null
+            : (Offset position) =>
+                  onMenu(rowContext, pointerPosition: position),
         // 多选期间隐藏行内操作（避免误触），但保留占位：条目高度不跳
         trailing: HideKeepingSpace(
           hidden: selecting,
@@ -1240,7 +1263,7 @@ class _TransferTile extends StatelessWidget {
                   icon: Icons.close,
                   onPressed: saving ? null : () => manager.removeTask(task.id),
                 ),
-              if (!active && !resolving && !resuming && !paused && !saving)
+              if (finished)
                 Builder(
                   builder: (BuildContext buttonContext) => M3eIconButton(
                     tooltip: l10n.moreActions,

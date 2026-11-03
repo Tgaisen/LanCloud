@@ -3,12 +3,12 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
-import 'package:material_ui/material_ui.dart' hide Icons;
-import 'package:flutter/semantics.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_auth_android/local_auth_android.dart';
 import 'package:local_auth_darwin/local_auth_darwin.dart';
+import 'package:material_ui/material_ui.dart' hide Icons;
 
 import '../core/api/lanzou_client.dart';
 import '../core/api/lanzou_client_registry.dart';
@@ -58,17 +58,51 @@ enum ProfileSubPage {
 bool isLargeLayout(BuildContext context) =>
     MediaQuery.sizeOf(context).width >= kLargeLayoutBreakpoint;
 
-/// M3 窗口宽度档位（Window size classes）对应的列表列数：
-/// Compact（<600dp）1 列、Medium（600–839dp）2 列、Expanded / Extra-large（≥840dp）3 列。
-int adaptiveColumnsForWidth(double width) {
-  if (width >= 840) return 3;
-  if (width >= 600) return 2;
-  return 1;
+/// 普通 `Md3ListItem` 能完整容纳图标、文字和一个尾部操作的最小列宽。
+///
+/// 这是应用自己的内容约束，不是 M3 规定的固定列宽。
+const double kAdaptiveListItemMinWidth = 320;
+
+/// 带进度和两个行内操作的密集条目（例如传输任务）的最小列宽。
+const double kAdaptiveDenseListItemMinWidth = 360;
+
+/// 列表自适应布局最多三栏，避免宽窗口出现难以扫读的过多列。
+const int kAdaptiveListMaxColumns = 3;
+
+/// 按实际可用宽度计算能放下多少个完整条目。
+///
+/// M3 只给出窗口断点和自适应原则，不规定列表在某个断点必须固定几栏；
+/// 这里以条目内容的最小可用宽度为准，再限制最多 [maxColumns] 栏。
+int adaptiveColumnsForWidth(
+  double width, {
+  double minItemWidth = kAdaptiveListItemMinWidth,
+  double spacing = 8,
+  int maxColumns = kAdaptiveListMaxColumns,
+}) {
+  assert(minItemWidth > 0);
+  assert(spacing >= 0);
+  assert(maxColumns >= 1);
+  if (!width.isFinite || width <= 0) return 1;
+  final columns = ((width + spacing) / (minItemWidth + spacing)).floor();
+  return columns.clamp(1, maxColumns).toInt();
 }
 
-/// 当前窗口宽度对应的列表列数（[adaptiveColumnsForWidth] 的 BuildContext 版本）。
-int adaptiveColumns(BuildContext context) =>
-    adaptiveColumnsForWidth(MediaQuery.sizeOf(context).width);
+/// 把列表布局实际采用的列数传给条目，供动画等局部行为读取。
+class _AdaptiveColumnsScope extends InheritedWidget {
+  const _AdaptiveColumnsScope({required this.columns, required super.child});
+
+  final int columns;
+
+  static int of(BuildContext context) =>
+      context
+          .dependOnInheritedWidgetOfExactType<_AdaptiveColumnsScope>()
+          ?.columns ??
+      1;
+
+  @override
+  bool updateShouldNotify(_AdaptiveColumnsScope oldWidget) =>
+      columns != oldWidget.columns;
+}
 
 /// 大屏外壳里的页面（侧栏布局的第一个路由），或外面套了 [Md3ePageFrame]
 /// 的独立页面：背景由圆角卡片绘制，页面自己必须透明，否则会盖住卡片。
@@ -2041,8 +2075,8 @@ class Md3ListItem extends StatefulWidget {
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
 
-  /// 次要点击（桌面端右键）：一般与尾部 ⋯ 菜单一致。
-  final VoidCallback? onSecondaryTap;
+  /// 次要点击（任意平台鼠标右键）：回调参数是该次点击的全局坐标。
+  final ValueChanged<Offset>? onSecondaryTap;
 
   /// 尾部操作（⋯、重试、打开等）。
   final Widget? trailing;
@@ -2170,8 +2204,11 @@ class _Md3ListItemState extends State<Md3ListItem>
       child: InkWell(
         onTap: widget.onTap,
         onLongPress: widget.onLongPress,
-        // 桌面端右键 = 点 ⋯ 菜单（同一套操作）
-        onSecondaryTap: widget.onSecondaryTap,
+        // 任意平台鼠标右键 = 点 ⋯ 菜单（同一套操作），并保留鼠标坐标。
+        onSecondaryTapUp: widget.onSecondaryTap == null
+            ? null
+            : (TapUpDetails details) =>
+                  widget.onSecondaryTap!(details.globalPosition),
         child: ColoredBox(
           color: widget.selected ? scheme.primaryContainer : Colors.transparent,
           child: Padding(
@@ -2262,7 +2299,7 @@ class _Md3ListItemState extends State<Md3ListItem>
         final pulseT = _pulseCtrl.value;
         // 多列（网格）时不收起高度：行高由同行其它条目决定，硬收会让卡片
         // 被压扁得很奇怪；与网盘网格一致，只做淡出 + 轻微缩小。
-        final collapse = adaptiveColumns(context) <= 1;
+        final collapse = _AdaptiveColumnsScope.of(context) <= 1;
         var result = child!;
         // 修改后的高亮闪烁（与网盘列表一致：主色 16% → 0）
         if (pulseT > 0 && pulseT < 1) {
@@ -3340,48 +3377,68 @@ BorderRadius connectedItemRadius({
   );
 }
 
-/// 行优先把 [children] 铺成自适应多列（列数见 [adaptiveColumns]）：
+/// 行优先把 [children] 铺成自适应多列（列数见 [adaptiveColumnsForWidth]）：
 /// 行内等宽、顶部对齐，行间距 / 列间距为 [spacing]；单列时不额外包装，保持原样。
 class AdaptiveListRows extends StatelessWidget {
-  const AdaptiveListRows({super.key, required this.children, this.spacing = 8});
+  const AdaptiveListRows({
+    super.key,
+    required this.children,
+    this.spacing = 8,
+    this.minItemWidth = kAdaptiveListItemMinWidth,
+    this.maxColumns = kAdaptiveListMaxColumns,
+  });
 
   final List<Widget> children;
   final double spacing;
+  final double minItemWidth;
+  final int maxColumns;
 
   @override
   Widget build(BuildContext context) {
-    final columns = adaptiveColumns(context);
-    if (columns <= 1 || children.isEmpty) {
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: children,
-      );
-    }
-    final rows = <Widget>[];
-    for (var start = 0; start < children.length; start += columns) {
-      if (rows.isNotEmpty) rows.add(SizedBox(height: spacing));
-      rows.add(
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final columns = adaptiveColumnsForWidth(
+          constraints.maxWidth,
+          minItemWidth: minItemWidth,
           spacing: spacing,
-          children: [
-            for (var i = 0; i < columns; i++)
-              Expanded(
-                // 把条目的 key 提到格子这一层：数据增删时按 key 匹配元素，
-                // 动画状态跟着条目走，而不是被同位置的下一条目复用
-                key: start + i < children.length
-                    ? children[start + i].key
-                    : null,
-                child: start + i < children.length
-                    ? children[start + i]
-                    : const SizedBox.shrink(),
-              ),
-          ],
-        ),
-      );
-    }
-    return Column(mainAxisSize: MainAxisSize.min, children: rows);
+          maxColumns: maxColumns,
+        );
+        if (columns <= 1 || children.isEmpty) {
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: children,
+          );
+        }
+        final rows = <Widget>[];
+        for (var start = 0; start < children.length; start += columns) {
+          if (rows.isNotEmpty) rows.add(SizedBox(height: spacing));
+          rows.add(
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              spacing: spacing,
+              children: [
+                for (var i = 0; i < columns; i++)
+                  Expanded(
+                    // 把条目的 key 提到格子这一层：数据增删时按 key 匹配元素，
+                    // 动画状态跟着条目走，而不是被同位置的下一条目复用
+                    key: start + i < children.length
+                        ? children[start + i].key
+                        : null,
+                    child: start + i < children.length
+                        ? _AdaptiveColumnsScope(
+                            columns: columns,
+                            child: children[start + i],
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+              ],
+            ),
+          );
+        }
+        return Column(mainAxisSize: MainAxisSize.min, children: rows);
+      },
+    );
   }
 }
 
@@ -3392,36 +3449,55 @@ class AdaptiveSliverRows extends StatelessWidget {
     required this.itemCount,
     required this.itemBuilder,
     this.spacing = 8,
+    this.minItemWidth = kAdaptiveListItemMinWidth,
+    this.maxColumns = kAdaptiveListMaxColumns,
   });
 
   final int itemCount;
   final Widget Function(BuildContext context, int index) itemBuilder;
   final double spacing;
+  final double minItemWidth;
+  final int maxColumns;
 
   @override
   Widget build(BuildContext context) {
-    final columns = adaptiveColumns(context);
-    if (columns <= 1) {
-      return SliverList.builder(itemCount: itemCount, itemBuilder: itemBuilder);
-    }
-    final rowCount = (itemCount + columns - 1) ~/ columns;
-    return SliverList.builder(
-      itemCount: rowCount,
-      itemBuilder: (context, row) => Padding(
-        padding: EdgeInsets.only(bottom: row == rowCount - 1 ? 0 : spacing),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return SliverLayoutBuilder(
+      builder: (BuildContext context, SliverConstraints constraints) {
+        final columns = adaptiveColumnsForWidth(
+          constraints.crossAxisExtent,
+          minItemWidth: minItemWidth,
           spacing: spacing,
-          children: [
-            for (var i = 0; i < columns; i++)
-              Expanded(
-                child: row * columns + i < itemCount
-                    ? itemBuilder(context, row * columns + i)
-                    : const SizedBox.shrink(),
-              ),
-          ],
-        ),
-      ),
+          maxColumns: maxColumns,
+        );
+        if (columns <= 1) {
+          return SliverList.builder(
+            itemCount: itemCount,
+            itemBuilder: itemBuilder,
+          );
+        }
+        final rowCount = (itemCount + columns - 1) ~/ columns;
+        return SliverList.builder(
+          itemCount: rowCount,
+          itemBuilder: (context, row) => Padding(
+            padding: EdgeInsets.only(bottom: row == rowCount - 1 ? 0 : spacing),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              spacing: spacing,
+              children: [
+                for (var i = 0; i < columns; i++)
+                  Expanded(
+                    child: row * columns + i < itemCount
+                        ? _AdaptiveColumnsScope(
+                            columns: columns,
+                            child: itemBuilder(context, row * columns + i),
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -3443,6 +3519,8 @@ class SegmentedList extends StatefulWidget {
     this.gap = 2,
     this.adaptive = false,
     this.adaptiveSpacing = 8,
+    this.minItemWidth = kAdaptiveListItemMinWidth,
+    this.maxColumns = kAdaptiveListMaxColumns,
   });
 
   final List<Widget> children;
@@ -3462,12 +3540,18 @@ class SegmentedList extends StatefulWidget {
   /// 条目之间的空白间隔（替代分割线）。
   final double gap;
 
-  /// 大窗口（≥600dp）时按 [adaptiveColumns] 把条目铺成 2–3 列，
+  /// 可用宽度能放下多个 [minItemWidth] 时把条目铺成最多 [maxColumns] 列，
   /// 每个条目独立成卡（组外侧圆角）；单列时保持原来的连接式整组样式。
   final bool adaptive;
 
   /// 多列时的行 / 列间距。
   final double adaptiveSpacing;
+
+  /// 多列布局中每个条目至少需要的宽度。
+  final double minItemWidth;
+
+  /// 多列布局的最大列数。
+  final int maxColumns;
 
   @override
   State<SegmentedList> createState() => _SegmentedListState();
@@ -3536,27 +3620,7 @@ class _SegmentedListState extends State<SegmentedList> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final count = widget.children.length;
-    if (widget.adaptive && adaptiveColumns(context) > 1) {
-      // 多列：每个条目独立成卡（四周都是外侧圆角，按下时整体放大），
-      // 行优先铺开；条目自带的底色已经负责区分，不需要再套分组容器。
-      return ListEnterGate(
-        itemCount: count,
-        child: Padding(
-          padding: widget.margin,
-          child: AdaptiveListRows(
-            spacing: widget.adaptiveSpacing,
-            children: [
-              for (var i = 0; i < count; i++)
-                _item(context, scheme, i, 1, standalone: true),
-            ],
-          ),
-        ),
-      );
-    }
+  Widget _singleColumn(BuildContext context, ColorScheme scheme, int count) {
     return ListEnterGate(
       itemCount: count,
       child: Padding(
@@ -3572,6 +3636,46 @@ class _SegmentedListState extends State<SegmentedList> {
           ],
         ),
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final count = widget.children.length;
+    if (!widget.adaptive) {
+      return _singleColumn(context, scheme, count);
+    }
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final margin = widget.margin.resolve(Directionality.of(context));
+        final columns = adaptiveColumnsForWidth(
+          math.max(0, constraints.maxWidth - margin.horizontal),
+          minItemWidth: widget.minItemWidth,
+          spacing: widget.adaptiveSpacing,
+          maxColumns: widget.maxColumns,
+        );
+        if (widget.adaptive && columns > 1) {
+          // 多列：每个条目独立成卡（四周都是外侧圆角，按下时整体放大），
+          // 行优先铺开；条目自带的底色已经负责区分，不需要再套分组容器。
+          return ListEnterGate(
+            itemCount: count,
+            child: Padding(
+              padding: widget.margin,
+              child: AdaptiveListRows(
+                spacing: widget.adaptiveSpacing,
+                minItemWidth: widget.minItemWidth,
+                maxColumns: widget.maxColumns,
+                children: [
+                  for (var i = 0; i < count; i++)
+                    _item(context, scheme, i, 1, standalone: true),
+                ],
+              ),
+            ),
+          );
+        }
+        return _singleColumn(context, scheme, count);
+      },
     );
   }
 }
@@ -3668,7 +3772,7 @@ class SliverColumn extends StatelessWidget {
 ///
 /// 单列时视觉与 [SegmentedList] 完全一致：组外侧 [outerRadius]、
 /// 组内相邻处 [innerRadius]、条目间隔 [gap]、按下时 shape morphing；
-/// 大窗口（≥600dp）时同样按 [adaptiveColumns] 铺成 2–3 列、每个条目独立成卡。
+/// 可用宽度足够时同样按 [adaptiveColumnsForWidth] 铺成多列、每个条目独立成卡。
 class SegmentedSliverList extends StatefulWidget {
   const SegmentedSliverList({
     super.key,
@@ -3684,6 +3788,8 @@ class SegmentedSliverList extends StatefulWidget {
     this.gap = 2,
     this.adaptive = false,
     this.adaptiveSpacing = 8,
+    this.minItemWidth = kAdaptiveListItemMinWidth,
+    this.maxColumns = kAdaptiveListMaxColumns,
   });
 
   final int itemCount;
@@ -3709,11 +3815,17 @@ class SegmentedSliverList extends StatefulWidget {
   final double pressedRadius;
   final double gap;
 
-  /// 大窗口时是否按 [adaptiveColumns] 铺成多列（每个条目独立成卡）。
+  /// 可用宽度足够时是否铺成多列（每个条目独立成卡）。
   final bool adaptive;
 
   /// 多列时的行 / 列间距。
   final double adaptiveSpacing;
+
+  /// 多列布局中每个条目至少需要的宽度。
+  final double minItemWidth;
+
+  /// 多列布局的最大列数。
+  final int maxColumns;
 
   @override
   State<SegmentedSliverList> createState() => _SegmentedSliverListState();
@@ -3742,17 +3854,25 @@ class _SegmentedSliverListState extends State<SegmentedSliverList> {
   );
 
   /// 多列时的一格：key 挂在行内直接子节点上，同一行内的条目能按 key 复用。
-  Widget _adaptiveCell(BuildContext context, ColorScheme scheme, int index) {
+  Widget _adaptiveCell(
+    BuildContext context,
+    ColorScheme scheme,
+    int index,
+    int columns,
+  ) {
     final child = widget.itemBuilder(context, index);
     return Expanded(
       key: child.key,
-      child: _itemBox(
-        context,
-        scheme,
-        index,
-        1,
-        standalone: true,
-        child: child,
+      child: _AdaptiveColumnsScope(
+        columns: columns,
+        child: _itemBox(
+          context,
+          scheme,
+          index,
+          1,
+          standalone: true,
+          child: child,
+        ),
       ),
     );
   }
@@ -3789,49 +3909,13 @@ class _SegmentedSliverListState extends State<SegmentedSliverList> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final count = widget.itemCount;
-    final trailing = widget.trailing;
-    final extra = trailing == null ? 0 : 1;
-    if (widget.adaptive && adaptiveColumns(context) > 1) {
-      // 多列：每个条目独立成卡（四周都是外侧圆角），行优先铺开并逐行懒构建
-      final columns = adaptiveColumns(context);
-      final rows = (count + columns - 1) ~/ columns;
-      return ListEnterGate(
-        itemCount: count,
-        child: SliverPadding(
-          padding: widget.margin,
-          sliver: SliverList.builder(
-            itemCount: rows + extra,
-            findChildIndexCallback: widget.findChildIndexCallback,
-            itemBuilder: (context, row) => Padding(
-              padding: EdgeInsets.only(
-                bottom: row >= rows - 1 ? 0 : widget.adaptiveSpacing,
-              ),
-              child: row == rows && trailing != null
-                  ? trailing
-                  : Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      spacing: widget.adaptiveSpacing,
-                      children: [
-                        for (var column = 0; column < columns; column++)
-                          if (row * columns + column < count)
-                            _adaptiveCell(
-                              context,
-                              scheme,
-                              row * columns + column,
-                            )
-                          else
-                            const Expanded(child: SizedBox.shrink()),
-                      ],
-                    ),
-            ),
-          ),
-        ),
-      );
-    }
+  Widget _singleColumnSliver(
+    BuildContext context,
+    ColorScheme scheme,
+    int count,
+    Widget? trailing,
+    int extra,
+  ) {
     return ListEnterGate(
       itemCount: count,
       child: SliverPadding(
@@ -3853,6 +3937,66 @@ class _SegmentedSliverListState extends State<SegmentedSliverList> {
           },
         ),
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final count = widget.itemCount;
+    final trailing = widget.trailing;
+    final extra = trailing == null ? 0 : 1;
+    if (!widget.adaptive) {
+      return _singleColumnSliver(context, scheme, count, trailing, extra);
+    }
+    return SliverLayoutBuilder(
+      builder: (BuildContext context, SliverConstraints constraints) {
+        final margin = widget.margin.resolve(Directionality.of(context));
+        final columns = adaptiveColumnsForWidth(
+          math.max(0, constraints.crossAxisExtent - margin.horizontal),
+          minItemWidth: widget.minItemWidth,
+          spacing: widget.adaptiveSpacing,
+          maxColumns: widget.maxColumns,
+        );
+        if (widget.adaptive && columns > 1) {
+          // 多列：每个条目独立成卡（四周都是外侧圆角），行优先铺开并逐行懒构建
+          final rows = (count + columns - 1) ~/ columns;
+          return ListEnterGate(
+            itemCount: count,
+            child: SliverPadding(
+              padding: widget.margin,
+              sliver: SliverList.builder(
+                itemCount: rows + extra,
+                findChildIndexCallback: widget.findChildIndexCallback,
+                itemBuilder: (context, row) => Padding(
+                  padding: EdgeInsets.only(
+                    bottom: row >= rows - 1 ? 0 : widget.adaptiveSpacing,
+                  ),
+                  child: row == rows && trailing != null
+                      ? trailing
+                      : Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          spacing: widget.adaptiveSpacing,
+                          children: [
+                            for (var column = 0; column < columns; column++)
+                              if (row * columns + column < count)
+                                _adaptiveCell(
+                                  context,
+                                  scheme,
+                                  row * columns + column,
+                                  columns,
+                                )
+                              else
+                                const Expanded(child: SizedBox.shrink()),
+                          ],
+                        ),
+                ),
+              ),
+            ),
+          );
+        }
+        return _singleColumnSliver(context, scheme, count, trailing, extra);
+      },
     );
   }
 }

@@ -379,6 +379,7 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
   /// 菜单贴它下方右对齐弹出。
   Future<void> _showItemMenu({
     required BuildContext anchorContext,
+    Offset? pointerPosition,
     SubFolder? folder,
     ShareFileItem? file,
   }) async {
@@ -402,6 +403,7 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
     final _ShareItemAction? action = await showM3eMenu<_ShareItemAction>(
       context: context,
       anchor: anchor,
+      pointerPosition: pointerPosition,
       // ⋯ 贴着右边缘：菜单右缘对齐，免得被屏幕右上角夹歪
       alignEnd: true,
       items: [
@@ -753,8 +755,9 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
                                 onTap: () => _openSubfolder(sub),
                                 onSecondaryTap: _selecting
                                     ? null
-                                    : () => _showItemMenu(
+                                    : (Offset position) => _showItemMenu(
                                         anchorContext: rowContext,
+                                        pointerPosition: position,
                                         folder: sub,
                                       ),
                                 trailing: _itemMenuButton(folder: sub),
@@ -834,8 +837,9 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
                                 ),
                                 onSecondaryTap: _selecting || file.invalid
                                     ? null
-                                    : () => _showItemMenu(
+                                    : (Offset position) => _showItemMenu(
                                         anchorContext: rowContext,
+                                        pointerPosition: position,
                                         file: file,
                                       ),
                               ),

@@ -3,8 +3,8 @@ import 'dart:ffi';
 import 'package:flutter/foundation.dart';
 
 /// 应用信息：发版时与 pubspec.yaml 的 version 一起更新（版本号规范见 README）。
-const String appVersion = '26.1.0-pre.30';
-const int appBuild = 260100230;
+const String appVersion = '26.1.0-pre.31';
+const int appBuild = 260100231;
 
 /// 当前构建类型。发布包不显示后缀，Profile / Debug 统一追加构建标记。
 enum AppBuildMode { debug, profile, release }
