@@ -3012,9 +3012,10 @@ class _DrivePageState extends ConsumerState<DrivePage>
         else
           SliverPadding(
             padding: listTopPadding,
-            sliver: AdaptiveSliverRows(
+            // 列表模式保持单列：多栏浏览由显式网格模式承担，避免用户选了
+            // 列表却在大窗口里被自动改成三列按钮卡片。
+            sliver: SliverList.builder(
               itemCount: folders.length,
-              spacing: 0,
               itemBuilder: (context, index) => _folderItem(
                 folders[index],
                 index,
@@ -3048,9 +3049,8 @@ class _DrivePageState extends ConsumerState<DrivePage>
         else
           SliverPadding(
             padding: filesTopPadding,
-            sliver: AdaptiveSliverRows(
+            sliver: SliverList.builder(
               itemCount: files.length,
-              spacing: 0,
               itemBuilder: (context, index) => _fileItem(
                 files[index],
                 index,

@@ -167,6 +167,33 @@ int selectedTransferTab(WidgetTester tester) => tester
     .selected;
 
 void main() {
+  testWidgets('传输列表按密集条目最小宽度铺两栏，不挤成三栏', (tester) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(856, 700);
+    addTearDown(tester.view.reset);
+    final (app, _) = await hostWithTasks(tester, [
+      task('t1', 'a.zip', status: TransferStatus.done),
+      task('t2', 'b.zip', status: TransferStatus.done),
+      task('t3', 'c.zip', status: TransferStatus.done),
+    ]);
+
+    final rows = [
+      for (final name in ['c.zip', 'b.zip', 'a.zip'])
+        find.ancestor(of: find.text(name), matching: find.byType(Md3ListItem)),
+    ];
+    final first = tester.getTopLeft(rows[0]);
+    final second = tester.getTopLeft(rows[1]);
+    final third = tester.getTopLeft(rows[2]);
+    expect(second.dy, first.dy);
+    expect(second.dx, greaterThan(first.dx));
+    expect(third.dy, greaterThan(first.dy));
+    expect(
+      tester.getSize(rows[0]).width,
+      greaterThanOrEqualTo(kAdaptiveDenseListItemMinWidth),
+    );
+    app.dispose();
+  });
+
   testWidgets('进行中条目的进度条与标题同宽：避让左侧图标与右侧按钮', (tester) async {
     final app = AppEnvironment();
     final manager = buildTransferManagerForEnvironment(app);

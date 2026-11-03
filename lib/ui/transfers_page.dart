@@ -1038,6 +1038,7 @@ class _TransferListSliver extends StatelessWidget {
             // MD3E 连接式列表（懒加载）：组外侧 16dp / 组内相邻 4dp，和收藏页同款
             SegmentedSliverList(
               adaptive: true,
+              minItemWidth: kAdaptiveDenseListItemMinWidth,
               // 幸存条目按 key 复用元素，删除后不重播出现动画
               findChildIndexCallback: childIndexLookup(
                 active,
@@ -1088,6 +1089,7 @@ class _TransferListSliver extends StatelessWidget {
             ),
             SegmentedSliverList(
               adaptive: true,
+              minItemWidth: kAdaptiveDenseListItemMinWidth,
               findChildIndexCallback: childIndexLookup(
                 finished,
                 (t) => ValueKey('transfer-${t.id}'),

@@ -13,16 +13,30 @@ Widget host(Widget child) => MaterialApp(
 );
 
 void main() {
-  test('列数按 M3 窗口档位：<600 → 1 列，600–839 → 2 列，≥840 → 3 列', () {
+  test('列数按可用宽度和最小条目宽度计算，并限制最多三列', () {
     expect(adaptiveColumnsForWidth(320), 1);
-    expect(adaptiveColumnsForWidth(599), 1);
-    expect(adaptiveColumnsForWidth(600), 2);
-    expect(adaptiveColumnsForWidth(839), 2);
-    expect(adaptiveColumnsForWidth(840), 3);
+    expect(adaptiveColumnsForWidth(647), 1);
+    expect(adaptiveColumnsForWidth(648), 2);
+    expect(adaptiveColumnsForWidth(975), 2);
+    expect(adaptiveColumnsForWidth(976), 3);
     expect(adaptiveColumnsForWidth(1280), 3);
+    expect(
+      adaptiveColumnsForWidth(
+        1095,
+        minItemWidth: kAdaptiveDenseListItemMinWidth,
+      ),
+      2,
+    );
+    expect(
+      adaptiveColumnsForWidth(
+        1096,
+        minItemWidth: kAdaptiveDenseListItemMinWidth,
+      ),
+      3,
+    );
   });
 
-  testWidgets('SegmentedList(adaptive) 按窗口宽度铺成 1 / 2 / 3 列', (tester) async {
+  testWidgets('SegmentedList(adaptive) 按实际宽度铺成 1 / 2 / 3 列', (tester) async {
     addTearDown(tester.view.reset);
 
     Future<List<Offset>> pumpWidth(double width) async {
@@ -58,11 +72,39 @@ void main() {
     expect(medium[2].dy, greaterThan(medium[0].dy));
 
     // Expanded：3 列，三项同一行
-    final expanded = await pumpWidth(900);
+    final expanded = await pumpWidth(1000);
     expect(expanded[0].dy, expanded[1].dy);
     expect(expanded[1].dy, expanded[2].dy);
     expect(expanded[0].dx, lessThan(expanded[1].dx));
     expect(expanded[1].dx, lessThan(expanded[2].dx));
+  });
+
+  testWidgets('嵌套页面的局部宽度优先于整个窗口宽度', (tester) async {
+    useWindow(tester, 1000);
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      host(
+        SizedBox(
+          width: 700,
+          child: SegmentedList(
+            adaptive: true,
+            children: const [
+              SizedBox(height: 48, child: Center(child: Text('甲'))),
+              SizedBox(height: 48, child: Center(child: Text('乙'))),
+              SizedBox(height: 48, child: Center(child: Text('丙'))),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final first = tester.getTopLeft(find.text('甲'));
+    final second = tester.getTopLeft(find.text('乙'));
+    final third = tester.getTopLeft(find.text('丙'));
+    expect(first.dy, second.dy);
+    expect(second.dx, greaterThan(first.dx));
+    expect(third.dy, greaterThan(first.dy));
   });
 
   testWidgets('AdaptiveSliverRows：宽窗口按行铺开，窄窗口退化为单列', (tester) async {
@@ -95,7 +137,7 @@ void main() {
     expect(compact[1].dy, greaterThan(compact[0].dy));
     expect(compact[0].dx, compact[1].dx);
 
-    final expanded = await pumpWidth(900);
+    final expanded = await pumpWidth(1000);
     expect(expanded[0].dy, expanded[1].dy);
     expect(expanded[1].dy, expanded[2].dy);
     // 第 4 项换到第二行
