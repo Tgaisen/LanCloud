@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -267,6 +268,25 @@ Future<void> _settleSheet(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets('网盘条目鼠标右键：菜单从鼠标坐标展开', (tester) async {
+    final app = _FakeApp(_FakeClient());
+    await _pumpDrive(tester, app);
+    final file = find.text('a.zip');
+    final pointer = tester.getCenter(file);
+
+    await tester.tap(
+      file,
+      buttons: kSecondaryMouseButton,
+      kind: PointerDeviceKind.mouse,
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+
+    final menu = tester.getRect(find.byKey(const ValueKey('m3e-menu-card')));
+    expect(menu.topLeft, pointer);
+    expect(find.byType(M3eMenuRow), findsNWidgets(6));
+  });
+
   testWidgets('网盘页文件 ⋯ 菜单：六项操作，属性打开属性弹窗', (tester) async {
     final app = _FakeApp(_FakeClient());
     await _pumpDrive(tester, app);

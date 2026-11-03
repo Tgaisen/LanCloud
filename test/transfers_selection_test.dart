@@ -1094,6 +1094,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(M3eMenuRow), findsNothing);
 
+      final doneCenter = tester.getCenter(doneRow);
       await tester.tap(
         doneRow,
         buttons: kSecondaryMouseButton,
@@ -1101,6 +1102,10 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(menuLabels(tester), ['删除此条记录']);
+      final menuCard = tester.getRect(
+        find.byKey(const ValueKey('m3e-menu-card')),
+      );
+      expect(menuCard.topLeft, doneCenter);
     } finally {
       app.dispose();
       debugDefaultTargetPlatformOverride = null;

@@ -157,8 +157,12 @@ class _HomePageState extends ConsumerState<HomePage>
           ),
         ),
         // 桌面端右键：与 ⋯ 菜单同一套操作
-        onSecondaryTap: () =>
-            _showPinMenu(item, first: first, anchorContext: rowContext),
+        onSecondaryTap: (Offset position) => _showPinMenu(
+          item,
+          first: first,
+          anchorContext: rowContext,
+          pointerPosition: position,
+        ),
         onTap: () => _openItem(context, 'folder', item.ref, item.name, ''),
       ),
     );
@@ -191,7 +195,8 @@ class _HomePageState extends ConsumerState<HomePage>
           ),
         ),
         // 桌面端右键：与 ⋯ 菜单同一套操作
-        onSecondaryTap: () => _showRecentMenu(item, rowContext),
+        onSecondaryTap: (Offset position) =>
+            _showRecentMenu(item, rowContext, pointerPosition: position),
         onTap: () =>
             _openItem(context, item.kind, item.ref, item.name, item.pwd),
       ),
@@ -206,6 +211,7 @@ class _HomePageState extends ConsumerState<HomePage>
     PinItem item, {
     required bool first,
     required BuildContext anchorContext,
+    Offset? pointerPosition,
   }) async {
     final l10n = context.l10n;
     final anchor = m3eMenuAnchorOf(anchorContext);
@@ -213,6 +219,7 @@ class _HomePageState extends ConsumerState<HomePage>
     final _QuickPinAction? action = await showM3eMenu<_QuickPinAction>(
       context: context,
       anchor: anchor,
+      pointerPosition: pointerPosition,
       // ⋯ 贴着右边缘：菜单右缘对齐，免得被屏幕右上角夹歪
       alignEnd: true,
       items: [
@@ -254,8 +261,9 @@ class _HomePageState extends ConsumerState<HomePage>
   /// [anchorContext] 是那颗 ⋯ 按钮（桌面端右键时是整行）的 context。
   Future<void> _showRecentMenu(
     RecentItem item,
-    BuildContext anchorContext,
-  ) async {
+    BuildContext anchorContext, {
+    Offset? pointerPosition,
+  }) async {
     final l10n = context.l10n;
     final anchor = m3eMenuAnchorOf(anchorContext);
     if (anchor == null) return;
@@ -270,6 +278,7 @@ class _HomePageState extends ConsumerState<HomePage>
     final _RecentAction? action = await showM3eMenu<_RecentAction>(
       context: context,
       anchor: anchor,
+      pointerPosition: pointerPosition,
       // ⋯ 贴着右边缘：菜单右缘对齐，免得被屏幕右上角夹歪
       alignEnd: true,
       items: [

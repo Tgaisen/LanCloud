@@ -1871,7 +1871,11 @@ class _DrivePageState extends ConsumerState<DrivePage>
   /// 点 ⋯：MD3E 弹出菜单（属性 / 复制链接 / 访问密码 / 修改信息 / 移动 / 删除）。
   ///
   /// [buttonContext] 是那颗 ⋯ 按钮的 context——菜单贴它下方右对齐弹出。
-  Future<void> _fileMenu(LzFile file, BuildContext buttonContext) async {
+  Future<void> _fileMenu(
+    LzFile file,
+    BuildContext buttonContext, {
+    Offset? pointerPosition,
+  }) async {
     if (_selecting) {
       _toggleFileSelection(file.id);
       return;
@@ -1882,6 +1886,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
     final _FileMenuAction? action = await showM3eMenu<_FileMenuAction>(
       context: context,
       anchor: anchor,
+      pointerPosition: pointerPosition,
       // ⋯ 贴着右边缘：菜单右缘对齐，免得被屏幕右上角夹歪
       alignEnd: true,
       items: [
@@ -2214,7 +2219,11 @@ class _DrivePageState extends ConsumerState<DrivePage>
   ///
   /// [buttonContext] 是那颗 ⋯ 按钮的 context（桌面端右键时是整行）——
   /// 菜单贴它下方右对齐弹出。
-  Future<void> _folderMenu(LzFolder folder, BuildContext buttonContext) async {
+  Future<void> _folderMenu(
+    LzFolder folder,
+    BuildContext buttonContext, {
+    Offset? pointerPosition,
+  }) async {
     if (_selecting) {
       _toggleFolderSelection(folder.id);
       return;
@@ -2225,6 +2234,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
     final _FolderMenuAction? action = await showM3eMenu<_FolderMenuAction>(
       context: context,
       anchor: anchor,
+      pointerPosition: pointerPosition,
       // ⋯ 贴着右边缘：菜单右缘对齐，免得被屏幕右上角夹歪
       alignEnd: true,
       items: [
@@ -3114,7 +3124,11 @@ class _DrivePageState extends ConsumerState<DrivePage>
               selected: selected,
               selecting: _selecting,
               onTap: () => _openFolder(folder),
-              onMenu: (buttonContext) => _folderMenu(folder, buttonContext),
+              onMenu: (buttonContext, {pointerPosition}) => _folderMenu(
+                folder,
+                buttonContext,
+                pointerPosition: pointerPosition,
+              ),
               onLongPress: () => _enterSelection(folderId: folder.id),
             )
           : _FolderRow(
@@ -3122,7 +3136,11 @@ class _DrivePageState extends ConsumerState<DrivePage>
               selected: selected,
               selecting: _selecting,
               onTap: () => _openFolder(folder),
-              onMenu: (buttonContext) => _folderMenu(folder, buttonContext),
+              onMenu: (buttonContext, {pointerPosition}) => _folderMenu(
+                folder,
+                buttonContext,
+                pointerPosition: pointerPosition,
+              ),
               onLongPress: () => _enterSelection(folderId: folder.id),
             ),
     );
@@ -3167,7 +3185,11 @@ class _DrivePageState extends ConsumerState<DrivePage>
               selected: selected,
               selecting: _selecting,
               onTap: () => _fileActions(file),
-              onMenu: (buttonContext) => _fileMenu(file, buttonContext),
+              onMenu: (buttonContext, {pointerPosition}) => _fileMenu(
+                file,
+                buttonContext,
+                pointerPosition: pointerPosition,
+              ),
               onLongPress: () => _enterSelection(fileId: file.id),
             )
           : _FileRow(
@@ -3176,7 +3198,11 @@ class _DrivePageState extends ConsumerState<DrivePage>
               selected: selected,
               selecting: _selecting,
               onTap: () => _fileActions(file),
-              onMenu: (buttonContext) => _fileMenu(file, buttonContext),
+              onMenu: (buttonContext, {pointerPosition}) => _fileMenu(
+                file,
+                buttonContext,
+                pointerPosition: pointerPosition,
+              ),
               onLongPress: () => _enterSelection(fileId: file.id),
             ),
     );
@@ -3373,8 +3399,9 @@ class _FolderTile extends StatelessWidget {
   final bool selecting;
   final VoidCallback onTap;
 
-  /// ⋯（或桌面端右键）触发；回调带上那颗按钮的 context，菜单贴它弹出。
-  final void Function(BuildContext buttonContext) onMenu;
+  /// ⋯（或鼠标右键）触发；鼠标右键时额外带上全局坐标。
+  final void Function(BuildContext buttonContext, {Offset? pointerPosition})
+  onMenu;
   final VoidCallback onLongPress;
 
   @override
@@ -3394,8 +3421,11 @@ class _FolderTile extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           onLongPress: onLongPress,
-          // 桌面端右键 = 点 ⋯ 菜单（同一套操作；多选时和 ⋯ 一起失效）
-          onSecondaryTap: selecting ? null : () => onMenu(context),
+          // 鼠标右键 = 点 ⋯ 菜单（同一套操作；多选时和 ⋯ 一起失效）
+          onSecondaryTapUp: selecting
+              ? null
+              : (TapUpDetails details) =>
+                    onMenu(context, pointerPosition: details.globalPosition),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(10, 8, 4, 10),
             child: Column(
@@ -3483,8 +3513,9 @@ class _FileTile extends StatelessWidget {
   final bool selecting;
   final VoidCallback onTap;
 
-  /// ⋯（或桌面端右键）触发；回调带上那颗按钮的 context，菜单贴它弹出。
-  final void Function(BuildContext buttonContext) onMenu;
+  /// ⋯（或鼠标右键）触发；鼠标右键时额外带上全局坐标。
+  final void Function(BuildContext buttonContext, {Offset? pointerPosition})
+  onMenu;
   final VoidCallback onLongPress;
 
   @override
@@ -3504,8 +3535,11 @@ class _FileTile extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           onLongPress: onLongPress,
-          // 桌面端右键 = 点 ⋯ 菜单（同一套操作；多选时和 ⋯ 一起失效）
-          onSecondaryTap: selecting ? null : () => onMenu(context),
+          // 鼠标右键 = 点 ⋯ 菜单（同一套操作；多选时和 ⋯ 一起失效）
+          onSecondaryTapUp: selecting
+              ? null
+              : (TapUpDetails details) =>
+                    onMenu(context, pointerPosition: details.globalPosition),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(10, 8, 4, 10),
             child: Column(
@@ -3622,8 +3656,9 @@ class _DriveRow extends StatelessWidget {
 
   final VoidCallback onTap;
 
-  /// ⋯（或桌面端右键）触发；回调带上那颗按钮的 context，菜单贴它弹出。
-  final void Function(BuildContext buttonContext) onMenu;
+  /// ⋯（或鼠标右键）触发；鼠标右键时额外带上全局坐标。
+  final void Function(BuildContext buttonContext, {Offset? pointerPosition})
+  onMenu;
   final VoidCallback onLongPress;
 
   final bool locked;
@@ -3651,8 +3686,11 @@ class _DriveRow extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           onLongPress: onLongPress,
-          // 桌面端右键 = 点 ⋯ 菜单（同一套操作；多选时和 ⋯ 一起失效）
-          onSecondaryTap: selecting ? null : () => onMenu(context),
+          // 鼠标右键 = 点 ⋯ 菜单（同一套操作；多选时和 ⋯ 一起失效）
+          onSecondaryTapUp: selecting
+              ? null
+              : (TapUpDetails details) =>
+                    onMenu(context, pointerPosition: details.globalPosition),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(10, 8, 2, 8),
             child: Row(
@@ -3758,8 +3796,9 @@ class _FolderRow extends StatelessWidget {
   final bool selecting;
   final VoidCallback onTap;
 
-  /// ⋯（或桌面端右键）触发；回调带上那颗按钮的 context，菜单贴它弹出。
-  final void Function(BuildContext buttonContext) onMenu;
+  /// ⋯（或鼠标右键）触发；鼠标右键时额外带上全局坐标。
+  final void Function(BuildContext buttonContext, {Offset? pointerPosition})
+  onMenu;
   final VoidCallback onLongPress;
 
   @override
@@ -3800,8 +3839,9 @@ class _FileRow extends StatelessWidget {
   final bool selecting;
   final VoidCallback onTap;
 
-  /// ⋯（或桌面端右键）触发；回调带上那颗按钮的 context，菜单贴它弹出。
-  final void Function(BuildContext buttonContext) onMenu;
+  /// ⋯（或鼠标右键）触发；鼠标右键时额外带上全局坐标。
+  final void Function(BuildContext buttonContext, {Offset? pointerPosition})
+  onMenu;
   final VoidCallback onLongPress;
 
   @override
