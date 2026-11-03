@@ -269,6 +269,8 @@ ThemeData buildLanCloudTheme({
         animationDuration: const Duration(milliseconds: 240),
       ),
     ),
+    // 统一使用 Android 12+ 风格的柔边波纹
+    splashFactory: InkSparkle.splashFactory,
   );
   // Material Symbols 可变轴：weight 400 / grade 0 / optical size 24（fill 0）。
   // 必须用 copyWith 保留主题默认图标颜色——直接传一个"只有轴、没有颜色"的
