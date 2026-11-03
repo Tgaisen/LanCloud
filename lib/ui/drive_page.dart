@@ -3600,7 +3600,13 @@ class _FileTile extends StatelessWidget {
                 // 卡片边缘。图标跟着 bodySmall 的字号走（12dp），和大小文本观感一致。
                 Row(
                   children: [
-                    DownloadMarkIcon(markKey: downloadKey, size: 12),
+                    // 网格状态行从标题左缘开始；与密码锁之间仍保留 4dp。
+                    DownloadMarkIcon(
+                      markKey: downloadKey,
+                      size: 12,
+                      gap: 0,
+                      trailingGap: 4,
+                    ),
                     if (file.hasPwd) ...[
                       const Icon(Icons.lock_outline, size: 12),
                       const SizedBox(width: 4),

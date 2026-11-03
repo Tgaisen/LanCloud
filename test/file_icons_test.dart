@@ -13,6 +13,7 @@ import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/core/data/account_store.dart';
 import 'package:lancloud/core/drive_cache.dart';
+import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/delegates.dart';
@@ -26,7 +27,12 @@ import 'transfer_dependencies_test.dart'
 
 /// 网盘页挂载在目录缓存上（不进网络）：给个账号让 `app.client` 非空，
 /// 再塞一份根目录快照，`_load()` 直接命中缓存。
-Future<void> host(WidgetTester tester, {required bool grid}) async {
+Future<void> host(
+  WidgetTester tester, {
+  required bool grid,
+  bool fileHasPwd = false,
+  bool markDownloaded = false,
+}) async {
   SharedPreferences.setMockInitialValues({});
   final environment = AppEnvironment();
   addTearDown(environment.dispose);
@@ -39,13 +45,32 @@ Future<void> host(WidgetTester tester, {required bool grid}) async {
     '-1',
     CachedFolder(
       folders: [LzFolder(id: 'f1', name: '测试文件夹', desc: '')],
-      files: [LzFile(id: 'l1', name: '测试文件.zip', size: '1M', time: '')],
+      files: [
+        LzFile(
+          id: 'l1',
+          name: '测试文件.zip',
+          size: '1M',
+          time: '',
+          hasPwd: fileHasPwd,
+        ),
+      ],
       path: const [],
       page: 1,
       hasMore: false,
     ),
   );
   final manager = buildTransferManagerForEnvironment(environment);
+  if (markDownloaded) {
+    manager.tasks.add(
+      TransferTask(
+        id: 'd1',
+        kind: TransferKind.download,
+        name: '测试文件.zip',
+        accountUid: '1',
+        refId: '1:l1',
+      )..status = TransferStatus.done,
+    );
+  }
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
@@ -363,6 +388,18 @@ void main() {
           .first,
     );
     expect(card.color, scheme.surfaceContainerLow);
+  });
+
+  testWidgets('网盘页网格：已下载与密码角标从标题左缘开始排列', (tester) async {
+    await host(tester, grid: true, fileHasPwd: true, markDownloaded: true);
+
+    final title = tester.getTopLeft(find.text('测试文件.zip'));
+    final downloaded = tester.getTopLeft(
+      find.byIcon(app_icons.Icons.download_done),
+    );
+    final lock = tester.getTopLeft(find.byIcon(app_icons.Icons.lock_outline));
+    expect(downloaded.dx, closeTo(title.dx, 0.1));
+    expect(lock.dx, greaterThan(downloaded.dx));
   });
 
   testWidgets('网盘页列表：文件夹 / 文件图标块同底色', (tester) async {
