@@ -1171,7 +1171,10 @@ class _TransferTile extends StatelessWidget {
       case TransferStatus.done:
         return l10n.completed;
       case TransferStatus.failed:
-        return l10n.failedWithError(task.error ?? l10n.unknownError);
+        return l10n.transferFailure(
+          upload: task.kind == TransferKind.upload,
+          error: task.error,
+        );
       case TransferStatus.canceled:
         return l10n.canceled;
     }
