@@ -7,7 +7,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
 import '../../l10n/l10n.dart';
-import '../app_info.dart';
 import '../api/lanzou_client.dart';
 import '../api/models.dart';
 import '../download_target.dart';
@@ -102,7 +101,7 @@ class TransferTask {
 class TransferManager extends ChangeNotifier {
   TransferManager.withDependencies(
     TransferDependencies dependencies, {
-    NotificationService? notifications,
+    TransferNotificationSink? notifications,
     SharedDownloadsGateway? sharedDownloads,
     TransferDownloader? downloader,
     this._progressUpdateInterval = const Duration(seconds: 1),
@@ -124,13 +123,14 @@ class TransferManager extends ChangeNotifier {
 
   final TransferDependencies _dependencies;
   final Duration _progressUpdateInterval;
-  final NotificationService _notifications;
+  final TransferNotificationSink _notifications;
   final SharedDownloadsGateway _sharedDownloads;
   final TransferDownloader _downloader;
   final List<TransferTask> tasks = [];
   final List<void Function(TransferTask)> _taskListeners = [];
   int _seq = 0;
   bool _serviceRunning = false;
+  int _serviceTaskCount = 0;
 
   /// 测试注入：重启后重试时用来重新解析直链；默认走账号端口的公开客户端。
   @visibleForTesting
@@ -149,7 +149,7 @@ class TransferManager extends ChangeNotifier {
       return;
     }
     notifyListeners();
-    _syncProgressNotification();
+    _syncTaskNotification(task);
   }
 
   /// 某个文件的下载状态（用于「已添加下载」标记）：找最近一条匹配的下载任务，
@@ -189,6 +189,7 @@ class TransferManager extends ChangeNotifier {
           orElse: () => TransferStatus.failed,
         );
         if (status == TransferStatus.canceled) {
+          _notifications.cancelTransferTask('${row['id']}');
           await _dependencies.store.deleteTransfer('${row['id']}');
           continue;
         }
@@ -224,6 +225,7 @@ class TransferManager extends ChangeNotifier {
         tasks.add(task);
         if (task.status.name != originalStatus) {
           await _persist(task);
+          _notifications.cancelTransferTask(task.id);
         }
       }
       _bumpMarks();
@@ -333,12 +335,13 @@ class TransferManager extends ChangeNotifier {
     _persist(task);
     notifyListeners();
     _pump();
-    _syncProgressNotification();
+    _syncTaskNotification(task);
   }
 
   /// 批量暂停下载：每批只持久化和通知一次，避免整页随任务数反复重建。
   void pauseDownloads(Iterable<String> ids) {
     var changed = false;
+    final changedTasks = <TransferTask>[];
     for (final id in ids.toSet()) {
       final task = _find(id);
       if (task == null ||
@@ -356,12 +359,15 @@ class TransferManager extends ChangeNotifier {
       }
       _persist(task);
       changed = true;
+      changedTasks.add(task);
     }
     if (!changed) return;
     _bumpMarks();
     notifyListeners();
     _pump();
-    _syncProgressNotification();
+    for (final task in changedTasks) {
+      _syncTaskNotification(task);
+    }
   }
 
   /// 继续暂停的下载；断点位置由下载器读取 `.part` 文件长度确定。
@@ -377,6 +383,7 @@ class TransferManager extends ChangeNotifier {
     _bumpMarks();
     _persist(task);
     notifyListeners();
+    _syncTaskNotification(task);
     final message = await _ensureDownloadUrl(task);
     if (task.removed) return null;
     if (message != null) {
@@ -385,6 +392,7 @@ class TransferManager extends ChangeNotifier {
       _bumpMarks();
       _persist(task);
       notifyListeners();
+      _syncTaskNotification(task);
       return message;
     }
     if (task.status != TransferStatus.resuming) return null;
@@ -394,6 +402,7 @@ class TransferManager extends ChangeNotifier {
     _bumpMarks();
     _persist(task);
     notifyListeners();
+    _syncTaskNotification(task);
     _pump();
     return null;
   }
@@ -461,6 +470,7 @@ class TransferManager extends ChangeNotifier {
     _bumpMarks();
     _persist(task);
     notifyListeners();
+    _syncTaskNotification(task);
     _pump();
     return null;
   }
@@ -532,6 +542,7 @@ class TransferManager extends ChangeNotifier {
       unawaited(_deletePartial(task));
     }
     tasks.remove(task);
+    _notifications.cancelTransferTask(task.id);
     _dependencies.store.deleteTransfer(id).catchError((_) {});
     _bumpMarks();
     notifyListeners();
@@ -556,6 +567,7 @@ class TransferManager extends ChangeNotifier {
         unawaited(_deletePartial(task));
       }
       tasks.remove(task);
+      _notifications.cancelTransferTask(task.id);
       removed.add(id);
     }
     if (removed.isEmpty) return;
@@ -608,30 +620,44 @@ class TransferManager extends ChangeNotifier {
   void _syncForegroundService() {
     // 前台服务是 Android / iOS 的能力，桌面端不需要（也没有这个插件）。
     if (!PlatformSupport.isMobile) return;
-    final active = tasks.any(
-      (t) =>
-          t.status == TransferStatus.running ||
-          t.status == TransferStatus.queued ||
-          t.status == TransferStatus.resolving ||
-          t.status == TransferStatus.resuming ||
-          t.status == TransferStatus.saving,
-    );
-    if (active && !_serviceRunning) {
+    final activeCount = tasks
+        .where((task) => _isActiveTransferStatus(task.status))
+        .length;
+    final i18n = NotificationService.i18n;
+    final title = i18n?.notifProgressTitle ?? '传输中';
+    final text =
+        i18n?.notifProgressBody(activeCount) ??
+        '$activeCount tasks in progress';
+    if (activeCount > 0 && !_serviceRunning) {
       _serviceRunning = true;
-      final i18n = NotificationService.i18n;
+      _serviceTaskCount = activeCount;
       FlutterForegroundTask.startService(
         serviceId: 1000,
         serviceTypes: const [ForegroundServiceTypes.dataSync],
-        notificationTitle:
-            i18n?.currentAppDisplayName ??
-            appDisplayName('蓝云', currentAppBuildMode),
-        notificationText: i18n?.notifProgressTitle ?? '传输中',
+        notificationTitle: title,
+        notificationText: text,
       );
-    } else if (!active && _serviceRunning) {
+    } else if (activeCount > 0 &&
+        _serviceRunning &&
+        _serviceTaskCount != activeCount) {
+      _serviceTaskCount = activeCount;
+      FlutterForegroundTask.updateService(
+        notificationTitle: title,
+        notificationText: text,
+      );
+    } else if (activeCount == 0 && _serviceRunning) {
       _serviceRunning = false;
+      _serviceTaskCount = 0;
       FlutterForegroundTask.stopService();
     }
   }
+
+  static bool _isActiveTransferStatus(TransferStatus status) =>
+      status == TransferStatus.queued ||
+      status == TransferStatus.resolving ||
+      status == TransferStatus.running ||
+      status == TransferStatus.resuming ||
+      status == TransferStatus.saving;
 
   Future<void> _start(TransferTask task) async {
     if (task.cancelToken.isCancelled) task.cancelToken = CancelToken();
@@ -644,7 +670,7 @@ class TransferManager extends ChangeNotifier {
     _bumpMarks();
     _persist(task);
     notifyListeners();
-    _syncProgressNotification();
+    _syncTaskNotification(task);
     try {
       if (task.kind == TransferKind.upload) {
         await _runUpload(task);
@@ -662,7 +688,7 @@ class TransferManager extends ChangeNotifier {
           _bumpMarks();
           _persist(task);
           notifyListeners();
-          _syncProgressNotification();
+          _syncTaskNotification(task);
         }
         await _runDownload(task);
       }
@@ -709,8 +735,7 @@ class TransferManager extends ChangeNotifier {
       _persist(task);
       notifyListeners();
       _pump();
-      _notifyFinished(task);
-      _syncProgressNotification();
+      _syncTaskNotification(task);
       if (task.status == TransferStatus.done) {
         for (final listener in _taskListeners) {
           listener(task);
@@ -719,55 +744,50 @@ class TransferManager extends ChangeNotifier {
     }
   }
 
-  /// 汇总所有运行中任务的进度，节流更新通知栏进度。
-  void _syncProgressNotification() {
-    final ns = _notifications;
-    if (!_dependencies.settings.notifyProgress) {
-      ns.cancelProgress();
+  /// 按任务和设置同步单条通知。进行中任务受“传输进度通知”控制，
+  /// 完成 / 失败受“传输完成通知”控制。
+  void _syncTaskNotification(TransferTask task) {
+    final state = switch (task.status) {
+      TransferStatus.resolving => TransferNotificationState.resolving,
+      TransferStatus.resuming => TransferNotificationState.resuming,
+      TransferStatus.running =>
+        task.kind == TransferKind.upload
+            ? TransferNotificationState.uploading
+            : TransferNotificationState.downloading,
+      TransferStatus.paused => TransferNotificationState.paused,
+      TransferStatus.saving => TransferNotificationState.saving,
+      TransferStatus.done => TransferNotificationState.done,
+      TransferStatus.failed => TransferNotificationState.failed,
+      TransferStatus.queued || TransferStatus.canceled => null,
+    };
+    if (task.removed || state == null) {
+      _notifications.cancelTransferTask(task.id);
       return;
     }
-    final running = tasks
-        .where(
-          (t) =>
-              t.status == TransferStatus.running ||
-              t.status == TransferStatus.resolving ||
-              t.status == TransferStatus.resuming ||
-              t.status == TransferStatus.saving,
-        )
-        .toList();
-    if (running.isEmpty) {
-      ns.cancelProgress();
+    final terminal =
+        state == TransferNotificationState.done ||
+        state == TransferNotificationState.failed;
+    final enabled = terminal
+        ? _dependencies.settings.notifyDone
+        : _dependencies.settings.notifyProgress;
+    if (!enabled) {
+      _notifications.cancelTransferTask(task.id);
       return;
     }
-    var total = 0;
-    var received = 0;
-    var known = 0;
-    for (final t in running) {
-      received += t.received;
-      if (t.total > 0) {
-        total += t.total;
-        known += 1;
-      }
-    }
-    ns.showProgress(
-      count: running.length,
-      percent: total > 0 ? (received * 100) ~/ total : 0,
-      indeterminate: known == 0,
-    );
-  }
-
-  void _notifyFinished(TransferTask task) {
-    if (!_dependencies.settings.notifyDone) return;
-    final ns = _notifications;
-    if (task.status == TransferStatus.done) {
-      ns.showDone(
-        upload: task.kind == TransferKind.upload,
+    _notifications.showTransferTask(
+      TransferNotificationSnapshot(
+        taskId: task.id,
         name: task.name,
-        savedPath: task.kind == TransferKind.download ? task.savedPath : null,
-      );
-    } else if (task.status == TransferStatus.failed) {
-      ns.showFailed(name: task.name, error: task.error ?? '');
-    }
+        kind: task.kind == TransferKind.upload
+            ? TransferNotificationKind.upload
+            : TransferNotificationKind.download,
+        state: state,
+        received: task.received,
+        total: task.total,
+        savedPath: task.savedPath,
+        error: task.error,
+      ),
+    );
   }
 
   /// 上传要用的账号 uid：任务自带账号优先，老记录退回到当前激活账号；
@@ -876,7 +896,7 @@ class TransferManager extends ChangeNotifier {
       task.received = 0;
       _bumpMarks();
       notifyListeners();
-      _syncProgressNotification();
+      _syncTaskNotification(task);
       await _persist(task);
       if (treeUri != null) {
         await _exportToSafDir(task, treeUri, path);

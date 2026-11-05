@@ -1,5 +1,5 @@
-import 'dart:io';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:ffi/ffi.dart';
 import 'package:flutter/widgets.dart';
@@ -15,6 +15,53 @@ import 'app_info.dart';
 import 'platform_support.dart';
 
 enum NotificationActionKind { transfers, openFile }
+
+enum TransferNotificationKind { download, upload }
+
+enum TransferNotificationState {
+  resolving,
+  resuming,
+  downloading,
+  uploading,
+  paused,
+  saving,
+  done,
+  failed,
+}
+
+/// 单个传输任务在通知栏中的状态快照。
+class TransferNotificationSnapshot {
+  const TransferNotificationSnapshot({
+    required this.taskId,
+    required this.name,
+    required this.kind,
+    required this.state,
+    required this.received,
+    required this.total,
+    this.savedPath,
+    this.error,
+  });
+
+  final String taskId;
+  final String name;
+  final TransferNotificationKind kind;
+  final TransferNotificationState state;
+  final int received;
+  final int total;
+  final String? savedPath;
+  final String? error;
+
+  bool get isTerminal =>
+      state == TransferNotificationState.done ||
+      state == TransferNotificationState.failed;
+}
+
+/// 传输管理器依赖的通知能力，测试可注入记录实现。
+abstract interface class TransferNotificationSink {
+  void showTransferTask(TransferNotificationSnapshot snapshot);
+
+  void cancelTransferTask(String taskId);
+}
 
 /// 通知点击后的类型化动作。
 ///
@@ -77,7 +124,7 @@ class NotificationAction {
 ///
 /// 通知文案通过 [i18n] 跟随界面语言，由 RootShell 在每次构建时刷新；
 /// 初始化时也会按当前设置的语言加载一次。
-class NotificationService {
+class NotificationService implements TransferNotificationSink {
   NotificationService._();
 
   static final NotificationService instance = NotificationService._();
@@ -108,13 +155,9 @@ class NotificationService {
     }
   }
 
-  static const _progressId = 1000;
-
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
   bool _ready = false;
-  int _doneId = 1001;
-  DateTime _lastProgress = DateTime.fromMillisecondsSinceEpoch(0);
 
   static const progressChannelId = 'transfers_progress';
 
@@ -280,106 +323,121 @@ class NotificationService {
     }
   }
 
-  /// 传输中的汇总进度通知（约每秒节流一次）。
-  void showProgress({
-    required int count,
-    required int percent,
-    bool indeterminate = false,
-  }) {
-    if (!_ready || count <= 0) return;
-    // Windows 的 toast 没有「常驻进度」概念，每次刷新都会变成一条新通知，
-    // 桌面端只保留「完成 / 失败」提醒，不做进度通知。
-    if (PlatformSupport.isDesktop) return;
-    if (!indeterminate) {
-      final now = DateTime.now();
-      if (now.difference(_lastProgress) < const Duration(seconds: 1)) return;
-      _lastProgress = now;
-    }
-    final strings = i18n;
-    final body = [
-      strings?.notifProgressBody(count) ?? '$count tasks in progress',
-      if (!indeterminate) '$percent%',
-    ].join(' · ');
-    final clamped = percent < 0 ? 0 : (percent > 100 ? 100 : percent);
-    _plugin.show(
-      id: _progressId,
-      title: strings?.notifProgressTitle ?? '传输中',
-      body: body,
-      payload: NotificationAction.transfers.encode(),
-      notificationDetails: NotificationDetails(
-        android: AndroidNotificationDetails(
-          progressChannelId,
-          strings?.notifChannelProgress ?? '传输进度',
-          importance: Importance.low,
-          priority: Priority.low,
-          playSound: false,
-          enableVibration: false,
-          onlyAlertOnce: true,
-          ongoing: true,
-          showProgress: true,
-          maxProgress: 100,
-          progress: indeterminate ? 0 : clamped,
-          indeterminate: indeterminate,
-        ),
-      ),
-    );
-  }
-
-  void cancelProgress() {
+  @override
+  void showTransferTask(TransferNotificationSnapshot task) {
     if (!_ready) return;
-    _plugin.cancel(id: _progressId);
-  }
+    // Windows toast 没有常驻进度语义，桌面端仍只显示完成 / 失败提醒。
+    if (PlatformSupport.isDesktop && !task.isTerminal) return;
 
-  void showDone({
-    required bool upload,
-    required String name,
-    String? savedPath,
-  }) {
-    if (!_ready) return;
     final strings = i18n;
-    final payload = !upload && savedPath != null && savedPath.isNotEmpty
-        ? NotificationAction.openFile(path: savedPath, name: name).encode()
+    final hasTotal = task.total > 0;
+    final showProgress = switch (task.state) {
+      TransferNotificationState.done ||
+      TransferNotificationState.failed => false,
+      TransferNotificationState.paused => hasTotal,
+      _ => true,
+    };
+    final indeterminate = switch (task.state) {
+      TransferNotificationState.resolving ||
+      TransferNotificationState.resuming => true,
+      TransferNotificationState.downloading ||
+      TransferNotificationState.uploading ||
+      TransferNotificationState.saving => !hasTotal,
+      _ => false,
+    };
+    final ongoing = switch (task.state) {
+      TransferNotificationState.resolving ||
+      TransferNotificationState.resuming ||
+      TransferNotificationState.downloading ||
+      TransferNotificationState.uploading ||
+      TransferNotificationState.saving => true,
+      _ => false,
+    };
+    final percent = hasTotal
+        ? ((task.received * 100) ~/ task.total).clamp(0, 100)
+        : 0;
+    final payload =
+        task.state == TransferNotificationState.done &&
+            task.kind == TransferNotificationKind.download &&
+            task.savedPath != null &&
+            task.savedPath!.isNotEmpty
+        ? NotificationAction.openFile(
+            path: task.savedPath!,
+            name: task.name,
+          ).encode()
         : NotificationAction.transfers.encode();
+    final channelId = task.isTerminal ? doneChannelId : progressChannelId;
+    final channelName = task.isTerminal
+        ? (strings?.notifChannelDone ?? '传输完成')
+        : (strings?.notifChannelProgress ?? '传输进度');
+
     _plugin.show(
-      id: _doneId++,
-      title: upload
-          ? (strings?.notifUploadDone ?? '上传完成')
-          : (strings?.notifDownloadDone ?? '下载完成'),
-      body: name,
+      id: notificationIdFor(task.taskId),
+      title: task.name,
+      body: _taskBody(task, strings),
       payload: payload,
       notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
-          doneChannelId,
-          strings?.notifChannelDone ?? '传输完成',
-          importance: Importance.defaultImportance,
-          priority: Priority.high,
+          channelId,
+          channelName,
+          importance: task.isTerminal
+              ? Importance.defaultImportance
+              : Importance.low,
+          priority: task.isTerminal ? Priority.high : Priority.low,
           playSound: false,
           enableVibration: false,
-          autoCancel: true,
+          onlyAlertOnce: true,
+          ongoing: ongoing,
+          autoCancel: !ongoing,
+          showProgress: showProgress,
+          maxProgress: 100,
+          progress: showProgress && !indeterminate ? percent : 0,
+          indeterminate: showProgress && indeterminate,
         ),
       ),
     );
   }
 
-  void showFailed({required String name, String error = ''}) {
+  @override
+  void cancelTransferTask(String taskId) {
     if (!_ready) return;
-    final strings = i18n;
-    _plugin.show(
-      id: _doneId++,
-      title: strings?.notifFailed ?? '传输失败',
-      body: error.isEmpty ? name : '$name · $error',
-      payload: NotificationAction.transfers.encode(),
-      notificationDetails: NotificationDetails(
-        android: AndroidNotificationDetails(
-          doneChannelId,
-          strings?.notifChannelDone ?? '传输完成',
-          importance: Importance.defaultImportance,
-          priority: Priority.high,
-          playSound: false,
-          enableVibration: false,
-          autoCancel: true,
-        ),
-      ),
-    );
+    _plugin.cancel(id: notificationIdFor(taskId));
+  }
+
+  /// 任务字符串 ID 到 Android 32 位通知 ID 的稳定映射。
+  @visibleForTesting
+  static int notificationIdFor(String taskId) {
+    var hash = 0x811c9dc5;
+    for (final codeUnit in taskId.codeUnits) {
+      hash = ((hash ^ codeUnit) * 0x01000193) & 0x7fffffff;
+    }
+    return 10000 + hash % 1000000000;
+  }
+
+  String _taskBody(
+    TransferNotificationSnapshot task,
+    AppLocalizations? strings,
+  ) => switch (task.state) {
+    TransferNotificationState.resolving => strings?.resolving ?? '解析中',
+    TransferNotificationState.resuming => strings?.resumingDownload ?? '恢复中',
+    TransferNotificationState.downloading => strings?.downloading ?? '下载中',
+    TransferNotificationState.uploading => strings?.uploading ?? '上传中',
+    TransferNotificationState.paused => strings?.paused ?? '已暂停',
+    TransferNotificationState.saving => strings?.saving ?? '正在保存',
+    TransferNotificationState.done => strings?.completed ?? '已完成',
+    TransferNotificationState.failed => _failedBody(task, strings),
+  };
+
+  String _failedBody(
+    TransferNotificationSnapshot task,
+    AppLocalizations? strings,
+  ) {
+    final error = task.error?.trim() ?? '';
+    if (error.isEmpty) {
+      return task.kind == TransferNotificationKind.download
+          ? (strings?.downloadFailed ?? '下载失败')
+          : (strings?.notifFailed ?? '传输失败');
+    }
+    return strings?.failedWithError(error) ?? '失败：$error';
   }
 }

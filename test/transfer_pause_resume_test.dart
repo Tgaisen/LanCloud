@@ -7,6 +7,7 @@ import 'package:lancloud/core/api/lanzou_client.dart';
 import 'package:lancloud/core/api/models.dart';
 import 'package:lancloud/core/data/settings_store.dart';
 import 'package:lancloud/core/download_target.dart';
+import 'package:lancloud/core/notifications.dart';
 import 'package:lancloud/core/shared_downloads_gateway.dart';
 import 'package:lancloud/core/shared_downloads_storage.dart';
 import 'package:lancloud/core/transfer/resumable_downloader.dart';
@@ -81,6 +82,7 @@ void main() {
         } catch (_) {}
       });
       final payload = List<int>.generate(512, (index) => index % 191);
+      final notifications = _RecordingNotificationSink();
       final manager = TransferManager.withDependencies(
         TransferDependencies(
           store: _FakeTransferStore(),
@@ -90,6 +92,7 @@ void main() {
             SettingsStore()..maxDownloads = 1,
           ),
         ),
+        notifications: notifications,
         downloader: _ImmediateDownloader(payload),
       );
       addTearDown(manager.dispose);
@@ -109,6 +112,10 @@ void main() {
       await resolvingStarted.future;
 
       expect(task.status, TransferStatus.resolving);
+      expect(
+        notifications.snapshots.last.state,
+        TransferNotificationState.resolving,
+      );
       resolving.complete(
         DirectFile(name: 'archive.zip', url: 'https://cdn.example/archive.zip'),
       );
@@ -399,6 +406,7 @@ void main() {
       });
       final payload = List<int>.generate(4096, (index) => index % 193);
       final shared = _BlockingSharedDownloads(payload.length);
+      final notifications = _RecordingNotificationSink();
       final manager = TransferManager.withDependencies(
         TransferDependencies(
           store: _FakeTransferStore(),
@@ -409,6 +417,7 @@ void main() {
           ),
           settings: StoreTransferSettingsPort(SettingsStore()),
         ),
+        notifications: notifications,
         downloader: _ImmediateDownloader(payload),
         sharedDownloads: shared,
       );
@@ -423,6 +432,10 @@ void main() {
       await shared.started.future;
 
       expect(task.status, TransferStatus.saving);
+      expect(
+        notifications.snapshots.last.state,
+        TransferNotificationState.saving,
+      );
       await _waitFor(() => task.received == 256);
       manager.pause(task.id);
       expect(task.status, TransferStatus.saving);
@@ -430,6 +443,177 @@ void main() {
       shared.release.complete();
       await _waitFor(() => task.status == TransferStatus.done);
       expect(task.savedPath, 'content://saved/archive.zip');
+    });
+
+    test('should 关闭进度通知时只保留独立完成通知', () async {
+      final tempDir = Directory.systemTemp.createTempSync(
+        'lancloud-transfer-notify-done',
+      );
+      addTearDown(() async {
+        try {
+          await tempDir.delete(recursive: true);
+        } catch (_) {}
+      });
+      final payload = List<int>.generate(256, (index) => index);
+      final notifications = _RecordingNotificationSink();
+      final manager = TransferManager.withDependencies(
+        TransferDependencies(
+          store: _FakeTransferStore(),
+          accounts: _FakeTransferAccountPort(),
+          download: _FakeTransferDownloadPort(tempDir.path),
+          settings: StoreTransferSettingsPort(
+            SettingsStore()
+              ..maxDownloads = 1
+              ..notifyProgress = false
+              ..notifyDone = true,
+          ),
+        ),
+        notifications: notifications,
+        downloader: _ImmediateDownloader(payload),
+      );
+      addTearDown(manager.dispose);
+
+      manager.addDownload(
+        url: 'https://cdn.example/file',
+        name: 'archive.zip',
+        size: payload.length,
+      );
+      final task = manager.tasks.single;
+      await _waitFor(() => task.status == TransferStatus.done);
+
+      expect(notifications.cancellations, contains(task.id));
+      expect(
+        notifications.snapshots
+            .where((snapshot) => snapshot.taskId == task.id)
+            .single
+            .state,
+        TransferNotificationState.done,
+      );
+    });
+
+    test('should 关闭完成通知时在任务结束后移除进度通知', () async {
+      final tempDir = Directory.systemTemp.createTempSync(
+        'lancloud-transfer-notify-progress',
+      );
+      addTearDown(() async {
+        try {
+          await tempDir.delete(recursive: true);
+        } catch (_) {}
+      });
+      final payload = List<int>.generate(256, (index) => index);
+      final notifications = _RecordingNotificationSink();
+      final manager = TransferManager.withDependencies(
+        TransferDependencies(
+          store: _FakeTransferStore(),
+          accounts: _FakeTransferAccountPort(),
+          download: _FakeTransferDownloadPort(tempDir.path),
+          settings: StoreTransferSettingsPort(
+            SettingsStore()
+              ..maxDownloads = 1
+              ..notifyProgress = true
+              ..notifyDone = false,
+          ),
+        ),
+        notifications: notifications,
+        downloader: _ImmediateDownloader(payload),
+      );
+      addTearDown(manager.dispose);
+
+      manager.addDownload(
+        url: 'https://cdn.example/file',
+        name: 'archive.zip',
+        size: payload.length,
+      );
+      final task = manager.tasks.single;
+      await _waitFor(() => task.status == TransferStatus.done);
+
+      expect(
+        notifications.snapshots.map((snapshot) => snapshot.state),
+        contains(TransferNotificationState.downloading),
+      );
+      expect(
+        notifications.snapshots.map((snapshot) => snapshot.state),
+        isNot(contains(TransferNotificationState.done)),
+      );
+      expect(notifications.cancellations.last, task.id);
+    });
+
+    test('should 暂停时保留当前任务的实际通知进度', () async {
+      final tempDir = Directory.systemTemp.createTempSync(
+        'lancloud-transfer-notify-paused',
+      );
+      addTearDown(() async {
+        try {
+          await tempDir.delete(recursive: true);
+        } catch (_) {}
+      });
+      final payload = List<int>.generate(1024, (index) => index % 191);
+      final downloader = _PausingDownloader(payload);
+      final notifications = _RecordingNotificationSink();
+      final manager = TransferManager.withDependencies(
+        TransferDependencies(
+          store: _FakeTransferStore(),
+          accounts: _FakeTransferAccountPort(),
+          download: _FakeTransferDownloadPort(tempDir.path),
+          settings: StoreTransferSettingsPort(
+            SettingsStore()..maxDownloads = 1,
+          ),
+        ),
+        notifications: notifications,
+        downloader: downloader,
+      );
+      addTearDown(manager.dispose);
+
+      manager.addDownload(
+        url: 'https://cdn.example/file',
+        name: 'archive.zip',
+        size: payload.length,
+      );
+      final task = manager.tasks.single;
+      await downloader.started.future;
+
+      manager.pause(task.id);
+      await downloader.paused.future;
+
+      final paused = notifications.snapshots.last;
+      expect(paused.taskId, task.id);
+      expect(paused.state, TransferNotificationState.paused);
+      expect(paused.received, payload.length ~/ 2);
+      expect(paused.total, payload.length);
+    });
+
+    test('should 失败时显示可关闭的独立失败通知', () async {
+      final tempDir = Directory.systemTemp.createTempSync(
+        'lancloud-transfer-notify-failed',
+      );
+      addTearDown(() async {
+        try {
+          await tempDir.delete(recursive: true);
+        } catch (_) {}
+      });
+      final notifications = _RecordingNotificationSink();
+      final manager = TransferManager.withDependencies(
+        TransferDependencies(
+          store: _FakeTransferStore(),
+          accounts: _FakeTransferAccountPort(),
+          download: _FakeTransferDownloadPort(tempDir.path),
+          settings: StoreTransferSettingsPort(
+            SettingsStore()..maxDownloads = 1,
+          ),
+        ),
+        notifications: notifications,
+        downloader: const _FailingDownloader(),
+      );
+      addTearDown(manager.dispose);
+
+      manager.addDownload(url: 'https://cdn.example/file', name: 'archive.zip');
+      final task = manager.tasks.single;
+      await _waitFor(() => task.status == TransferStatus.failed);
+
+      final failed = notifications.snapshots.last;
+      expect(failed.taskId, task.id);
+      expect(failed.state, TransferNotificationState.failed);
+      expect(failed.error, isNotEmpty);
     });
 
     test('should 将应用中退出时残留的保存状态恢复为失败', () async {
@@ -566,6 +750,27 @@ class _ImmediateDownloader implements TransferDownloader {
   }
 }
 
+class _FailingDownloader implements TransferDownloader {
+  const _FailingDownloader();
+
+  @override
+  Future<TransferDownloadResult> download({
+    required Dio dio,
+    required String url,
+    required String partialPath,
+    required int expectedTotal,
+    required CancelToken cancelToken,
+    required Map<String, String> headers,
+    required Duration receiveTimeout,
+    required TransferDownloadProgress onProgress,
+  }) {
+    throw DioException.connectionError(
+      requestOptions: RequestOptions(path: url),
+      reason: 'Connection closed while receiving data',
+    );
+  }
+}
+
 class _BurstProgressDownloader implements TransferDownloader {
   _BurstProgressDownloader(this.payload);
 
@@ -595,6 +800,22 @@ class _BurstProgressDownloader implements TransferDownloader {
     await finish.future;
     await File(partialPath).writeAsBytes(payload);
     return TransferDownloadResult(total: payload.length, resumed: false);
+  }
+}
+
+class _RecordingNotificationSink implements TransferNotificationSink {
+  final List<TransferNotificationSnapshot> snapshots =
+      <TransferNotificationSnapshot>[];
+  final List<String> cancellations = <String>[];
+
+  @override
+  void showTransferTask(TransferNotificationSnapshot snapshot) {
+    snapshots.add(snapshot);
+  }
+
+  @override
+  void cancelTransferTask(String taskId) {
+    cancellations.add(taskId);
   }
 }
 

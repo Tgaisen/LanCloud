@@ -45,4 +45,14 @@ void main() {
       expect(NotificationAction.decode('{"action":"unknown"}'), isNull);
     });
   });
+
+  test('任务通知 ID 对同一任务稳定，不同任务相互独立', () {
+    final first = NotificationService.notificationIdFor('d1760000000000_1');
+    final again = NotificationService.notificationIdFor('d1760000000000_1');
+    final second = NotificationService.notificationIdFor('d1760000000000_2');
+
+    expect(first, again);
+    expect(first, isNot(second));
+    expect(first, greaterThanOrEqualTo(10000));
+  });
 }
