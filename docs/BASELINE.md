@@ -10,14 +10,14 @@
 | 命令 | 口径 | 结果 | 耗时 |
 | --- | --- | --- | --- |
 | `tools\agent.cmd analyze` | 全量 | No issues found | 约 27 s |
-| `tools\agent.cmd analyze` | 增量（本次改动，1 个 lib 文件） | No issues found | 约 16 s |
+| `tools\agent.cmd analyze` | 增量（本次改动，4 个 lib 文件） | No issues found | 约 16 s |
 | `tools\agent.cmd test` | 全量（最近一次完整运行） | **724 tests, all passed** | 约 100 s |
-| `tools\agent.cmd test` | 增量（本次改动，14 个测试文件） | **144 tests, all passed** | 约 25 s |
+| `tools\agent.cmd test` | 增量（本次改动，65 个测试文件） | **383 tests, all passed** | 约 66 s |
 
 当前分析结果为 0 issue 是硬基线。出现红灯时，先判断是否为本次改动引入；
 不要把增量结果当成全量结论。
 
-当前全量用例总数应为 795（含本次新增上传完成清理通知测试）；
+当前全量用例总数应为 796（含本次新增失败通知文案归一化测试）；
 全量结果待下一次人工兜底时刷新。
 
 ## 规模

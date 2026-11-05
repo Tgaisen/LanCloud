@@ -469,6 +469,16 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String uploadFailedWithError(String error) {
+    return 'Upload failed: $error';
+  }
+
+  @override
+  String downloadFailedWithError(String error) {
+    return 'Download failed: $error';
+  }
+
+  @override
   String get unknownError => 'Unknown error';
 
   @override
@@ -1496,7 +1506,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get notifDoneSubtitle =>
-      'Notify when a download or upload finishes or fails';
+      'Notify when a download finishes or a transfer fails';
 
   @override
   String get notifDoneKeywords => 'notification complete transfer alert';

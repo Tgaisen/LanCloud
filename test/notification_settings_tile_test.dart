@@ -38,7 +38,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('传输完成通知'), findsOneWidget);
-    expect(find.text('下载或上传完成、失败时通知'), findsOneWidget);
+    expect(find.text('下载完成或传输失败时通知'), findsOneWidget);
     final switchTile = find.byType(SwitchListTile);
     expect(tester.widget<SwitchListTile>(switchTile).value, isTrue);
 

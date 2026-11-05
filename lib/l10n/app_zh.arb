@@ -256,6 +256,22 @@
       }
     }
   },
+  "uploadFailedWithError": "上传失败：{error}",
+  "@uploadFailedWithError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadFailedWithError": "下载失败：{error}",
+  "@downloadFailedWithError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "unknownError": "未知错误",
   "canceled": "已取消",
   "unknownSize": "未知大小",
@@ -864,7 +880,7 @@
   "notifProgressSubtitle": "传输进行中在通知栏显示进度",
   "notifProgressKeywords": "通知 进度 传输",
   "notifDone": "传输完成通知",
-  "notifDoneSubtitle": "下载或上传完成、失败时通知",
+  "notifDoneSubtitle": "下载完成或传输失败时通知",
   "notifDoneKeywords": "通知 完成 提醒 传输",
   "notifPermission": "通知权限",
   "notifPermissionKeywords": "通知 权限 授权",

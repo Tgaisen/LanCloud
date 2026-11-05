@@ -1,5 +1,7 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/notifications.dart';
+import 'package:lancloud/l10n/l10n.dart';
 
 void main() {
   group('NotificationAction', () {
@@ -54,5 +56,35 @@ void main() {
     expect(first, again);
     expect(first, isNot(second));
     expect(first, greaterThanOrEqualTo(10000));
+  });
+
+  test('失败通知区分上传下载且不重复失败前缀', () {
+    final zh = lookupAppLocalizations(const Locale('zh'));
+    final en = lookupAppLocalizations(const Locale('en'));
+
+    expect(
+      NotificationService.failureBodyFor(
+        kind: TransferNotificationKind.upload,
+        error: '失败：上传失败：server busy',
+        strings: zh,
+      ),
+      '上传失败：server busy',
+    );
+    expect(
+      NotificationService.failureBodyFor(
+        kind: TransferNotificationKind.download,
+        error: '失败：获取下载地址失败：HTTP 403',
+        strings: zh,
+      ),
+      '下载失败：HTTP 403',
+    );
+    expect(
+      NotificationService.failureBodyFor(
+        kind: TransferNotificationKind.upload,
+        error: 'Failed: Upload failed: server busy',
+        strings: en,
+      ),
+      'Upload failed: server busy',
+    );
   });
 }

@@ -425,19 +425,50 @@ class NotificationService implements TransferNotificationSink {
     TransferNotificationState.paused => strings?.paused ?? '已暂停',
     TransferNotificationState.saving => strings?.saving ?? '正在保存',
     TransferNotificationState.done => strings?.completed ?? '已完成',
-    TransferNotificationState.failed => _failedBody(task, strings),
+    TransferNotificationState.failed => failureBodyFor(
+      kind: task.kind,
+      error: task.error,
+      strings: strings,
+    ),
   };
 
-  String _failedBody(
-    TransferNotificationSnapshot task,
+  @visibleForTesting
+  static String failureBodyFor({
+    required TransferNotificationKind kind,
+    required String? error,
     AppLocalizations? strings,
-  ) {
-    final error = task.error?.trim() ?? '';
-    if (error.isEmpty) {
-      return task.kind == TransferNotificationKind.download
-          ? (strings?.downloadFailed ?? '下载失败')
-          : (strings?.notifFailed ?? '传输失败');
+  }) {
+    var detail = error?.trim() ?? '';
+    final genericPrefixes = <String>{
+      '失败：',
+      '失败:',
+      'Failed: ',
+      if (strings != null) strings.failedWithError(''),
+    };
+    var stripped = true;
+    while (stripped) {
+      stripped = false;
+      for (final prefix in genericPrefixes) {
+        if (detail.startsWith(prefix)) {
+          detail = detail.substring(prefix.length).trimLeft();
+          stripped = true;
+        }
+      }
     }
-    return strings?.failedWithError(error) ?? '失败：$error';
+    final chineseFailurePrefix = RegExp(r'^[^：:\r\n]{1,32}失败[：:]\s*');
+    while (chineseFailurePrefix.hasMatch(detail)) {
+      detail = detail.replaceFirst(chineseFailurePrefix, '');
+    }
+    final englishFailurePrefix = RegExp(
+      r'^[^:\r\n]{1,48}failed:\s*',
+      caseSensitive: false,
+    );
+    while (englishFailurePrefix.hasMatch(detail)) {
+      detail = detail.replaceFirst(englishFailurePrefix, '');
+    }
+    if (detail.isEmpty) detail = strings?.unknownError ?? '未知错误';
+    return kind == TransferNotificationKind.upload
+        ? (strings?.uploadFailedWithError(detail) ?? '上传失败：$detail')
+        : (strings?.downloadFailedWithError(detail) ?? '下载失败：$detail');
   }
 }

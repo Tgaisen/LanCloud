@@ -902,6 +902,18 @@ abstract class AppLocalizations {
   /// **'失败：{error}'**
   String failedWithError(String error);
 
+  /// No description provided for @uploadFailedWithError.
+  ///
+  /// In zh, this message translates to:
+  /// **'上传失败：{error}'**
+  String uploadFailedWithError(String error);
+
+  /// No description provided for @downloadFailedWithError.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载失败：{error}'**
+  String downloadFailedWithError(String error);
+
   /// No description provided for @unknownError.
   ///
   /// In zh, this message translates to:
@@ -2735,7 +2747,7 @@ abstract class AppLocalizations {
   /// No description provided for @notifDoneSubtitle.
   ///
   /// In zh, this message translates to:
-  /// **'下载或上传完成、失败时通知'**
+  /// **'下载完成或传输失败时通知'**
   String get notifDoneSubtitle;
 
   /// No description provided for @notifDoneKeywords.
