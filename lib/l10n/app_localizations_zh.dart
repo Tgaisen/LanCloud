@@ -447,6 +447,16 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String uploadFailedWithError(String error) {
+    return '上传失败：$error';
+  }
+
+  @override
+  String downloadFailedWithError(String error) {
+    return '下载失败：$error';
+  }
+
+  @override
   String get unknownError => '未知错误';
 
   @override
@@ -1441,7 +1451,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get notifDone => '传输完成通知';
 
   @override
-  String get notifDoneSubtitle => '下载或上传完成、失败时通知';
+  String get notifDoneSubtitle => '下载完成或传输失败时通知';
 
   @override
   String get notifDoneKeywords => '通知 完成 提醒 传输';

@@ -48,6 +48,12 @@ class DioTransferDownloader implements TransferDownloader {
   const DioTransferDownloader({
     int segmentConnections = 1,
     this.segmentConnectionsProvider,
+    this.transientRetryDelays = const <Duration>[
+      Duration(seconds: 1),
+      Duration(seconds: 2),
+      Duration(seconds: 4),
+      Duration(seconds: 8),
+    ],
     this.segmentSize = 8 * 1024 * 1024,
     this.minimumSegmentedBytes = 16 * 1024 * 1024,
   }) : assert(segmentConnections >= 1 && segmentConnections <= 4),
@@ -57,6 +63,7 @@ class DioTransferDownloader implements TransferDownloader {
 
   final int _segmentConnections;
   final SegmentConnectionsProvider? segmentConnectionsProvider;
+  final List<Duration> transientRetryDelays;
   final int segmentSize;
   final int minimumSegmentedBytes;
 
@@ -98,6 +105,51 @@ class DioTransferDownloader implements TransferDownloader {
 
   @override
   Future<TransferDownloadResult> download({
+    required Dio dio,
+    required String url,
+    required String partialPath,
+    required int expectedTotal,
+    required CancelToken cancelToken,
+    required Map<String, String> headers,
+    required Duration receiveTimeout,
+    required TransferDownloadProgress onProgress,
+  }) async {
+    for (var retry = 0; ; retry++) {
+      try {
+        return await _downloadOnce(
+          dio: dio,
+          url: url,
+          partialPath: partialPath,
+          expectedTotal: expectedTotal,
+          cancelToken: cancelToken,
+          headers: headers,
+          receiveTimeout: receiveTimeout,
+          onProgress: onProgress,
+        );
+      } on Object catch (error, stackTrace) {
+        final transient = switch (error) {
+          DioException dioError => _isTransient(dioError),
+          HttpException() || SocketException() => true,
+          _ => false,
+        };
+        if (cancelToken.isCancelled ||
+            retry >= transientRetryDelays.length ||
+            !transient) {
+          Error.throwWithStackTrace(error, stackTrace);
+        }
+        final delay = transientRetryDelays[retry];
+        if (delay > Duration.zero) await Future<void>.delayed(delay);
+        if (cancelToken.isCancelled) {
+          throw DioException.requestCancelled(
+            requestOptions: RequestOptions(path: url),
+            reason: cancelToken.cancelError,
+          );
+        }
+      }
+    }
+  }
+
+  Future<TransferDownloadResult> _downloadOnce({
     required Dio dio,
     required String url,
     required String partialPath,
@@ -621,12 +673,15 @@ class DioTransferDownloader implements TransferDownloader {
           }
         }
       } finally {
-        await flushPending();
-      }
-      try {
-        await output.flush();
-      } finally {
-        await output.close();
+        try {
+          await flushPending();
+        } finally {
+          try {
+            await output.flush();
+          } finally {
+            await output.close();
+          }
+        }
       }
 
       final actualTotal = await file.length();
