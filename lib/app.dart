@@ -927,19 +927,36 @@ class _RootShellState extends ConsumerState<RootShell>
       initialName: files.length == 1 ? p.basename(files.first) : null,
     );
     if (target == null || !mounted) return;
+    await client.fetchAccountInfo();
+    if (!mounted) return;
     final transfers = ref.read(transferManagerProvider);
     var added = 0;
+    var skipped = 0;
     for (final path in files) {
       final editedName = target.fileName;
       final name =
           files.length == 1 && editedName != null && editedName.isNotEmpty
           ? editedName
           : p.basename(path);
-      transfers.addUpload(name: name, folderId: target.folderId, path: path);
-      added += 1;
+      final result = transfers.addUpload(
+        name: name,
+        folderId: target.folderId,
+        path: path,
+      );
+      if (result == UploadAddResult.queued) {
+        added += 1;
+      } else {
+        skipped += 1;
+      }
     }
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(context.l10n.shareReceivedFiles(added))),
+      SnackBar(
+        content: Text(
+          skipped > 0
+              ? context.l10n.shareReceivedFilesSkipped(files.length, skipped)
+              : context.l10n.shareReceivedFiles(added),
+        ),
+      ),
     );
   }
 

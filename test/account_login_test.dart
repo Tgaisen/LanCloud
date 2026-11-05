@@ -6,6 +6,7 @@ import 'package:lancloud/core/api/lanzou_client.dart';
 import 'package:lancloud/core/api/lanzou_client_registry.dart';
 import 'package:lancloud/core/data/account_store.dart';
 import 'package:lancloud/core/drive_cache.dart';
+import 'package:lancloud/core/upload_policy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class _MemoryStorage extends FlutterSecureStorage {
@@ -63,8 +64,12 @@ class _FakeClient extends LanzouClient {
   Future<bool> verify() async => valid;
 
   @override
-  Future<({String? nickname, String level})> fetchAccountInfo() async =>
-      (nickname: '测试账号', level: '会员');
+  Future<({String? nickname, String level, LanzouUploadPolicy uploadPolicy})>
+  fetchAccountInfo({bool refresh = false}) async => (
+    nickname: '测试账号',
+    level: '会员',
+    uploadPolicy: LanzouUploadPolicy.fallback,
+  );
 }
 
 AccountLogin _login({

@@ -151,6 +151,15 @@
       }
     }
   },
+  "clearSkippedUploads": "Clear skipped upload records",
+  "clearSkippedUploadsConfirmMessage": "Clear all {count} skipped upload records?",
+  "@clearSkippedUploadsConfirmMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "resumeAllPartialFailed": "{count} downloads could not be resumed. Please try again later.",
   "@resumeAllPartialFailed": {
     "placeholders": {
@@ -163,6 +172,7 @@
   "noUploads": "No upload tasks",
   "noDownloads": "No download tasks",
   "inProgress": "In progress",
+  "skippedUploads": "Skipped",
   "finished": "Finished",
   "queued": "Queued",
   "uploading": "Uploading",
@@ -286,6 +296,12 @@
   "requestIntervalKeywords": "interval rate limit throttling request",
   "maxUploads": "Concurrent uploads",
   "uploadKeywords": "upload concurrent",
+  "skipOversizeUploads": "Skip files over the size limit",
+  "skipOversizeUploadsSubtitle": "Do not start files larger than your account's per-file limit",
+  "skipOversizeUploadsKeywords": "upload skip oversized size limit",
+  "skipUnsupportedUploads": "Skip unsupported files",
+  "skipUnsupportedUploadsSubtitle": "Do not start file types outside LanZou's allowed list",
+  "skipUnsupportedUploadsKeywords": "upload skip file type extension supported",
   "maxDownloads": "Concurrent downloads",
   "downloadKeywords": "download concurrent",
   "singleFileDownloadConnections": "Max download threads",
@@ -378,8 +394,11 @@
   "newFolder": "New folder",
   "uploadFile": "Upload files",
   "uploadFileSubtitle": "Pick files from this device or other apps",
-  "uploadSkipped": "Added {added} upload tasks and skipped {skipped} files larger than 100 MB",
+  "uploadSkipped": "Added {added} upload tasks; {skipped} were skipped",
   "uploadAdded": "Added {count} upload tasks",
+  "uploadSkippedReasonOversize": "File exceeds the {limit} limit",
+  "uploadSkippedReasonUnsupported": "This type of file cannot be uploaded",
+  "uploadAnyway": "Upload anyway",
   "nameLabel": "Name",
   "nameLabelMember": "Name (membership required to rename)",
   "pleaseEnterName": "Enter a name",
@@ -565,6 +584,17 @@
   "@shareReceivedFiles": {
     "placeholders": {
       "count": {"type": "int"}
+    }
+  },
+  "shareReceivedFilesSkipped": "Received {added} files; {skipped} were skipped",
+  "@shareReceivedFilesSkipped": {
+    "placeholders": {
+      "added": {
+        "type": "int"
+      },
+      "skipped": {
+        "type": "int"
+      }
     }
   },
   "shareTargetUnsupported": "Unrecognized shared content",
@@ -864,6 +894,14 @@
   "@dropUploaded": {
     "placeholders": {
       "count": {"type": "int"}
+    }
+  },
+  "dropSkippedUploads": "{count} file(s) were skipped",
+  "@dropSkippedUploads": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
     }
   },
   "dropFavorited": "Added {count} to favorites",

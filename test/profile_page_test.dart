@@ -280,7 +280,10 @@ void main() {
     await tester.pumpAndSettle();
 
     // 进二级页：焦点回右窗格（新内容），标题换成二级页名
-    await tester.tap(find.widgetWithText(ListTile, '高级覆盖项'));
+    final advancedTile = find.widgetWithText(ListTile, '高级覆盖项');
+    await tester.ensureVisible(advancedTile);
+    await tester.pumpAndSettle();
+    await tester.tap(advancedTile);
     await tester.pumpAndSettle();
     expect(focusedPaneLabel(), 'profile-detail-pane');
     expect(paneTitleSemantics(tester, '高级覆盖项').label, '高级覆盖项');
@@ -316,7 +319,10 @@ void main() {
 
     await tester.tap(find.text('传输与连接'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(ListTile, '高级覆盖项'));
+    final advancedTile = find.widgetWithText(ListTile, '高级覆盖项');
+    await tester.ensureVisible(advancedTile);
+    await tester.pumpAndSettle();
+    await tester.tap(advancedTile);
     await tester.pumpAndSettle();
     Finder appBarTitle(String text) =>
         find.descendant(of: find.byType(AppBar), matching: find.text(text));
@@ -534,7 +540,10 @@ void main() {
     // 传输与连接 → 高级覆盖项：在右窗格内打开（左窗格还在 == 不是整页 push）
     await tester.tap(find.text('传输与连接'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(ListTile, '高级覆盖项'));
+    final advancedTile = find.widgetWithText(ListTile, '高级覆盖项');
+    await tester.ensureVisible(advancedTile);
+    await tester.pumpAndSettle();
+    await tester.tap(advancedTile);
     await tester.pumpAndSettle();
     expect(appBarTitle('高级覆盖项'), findsOneWidget);
     expect(find.text('正常情况下不宜更改这些选项，否则可能导致相关功能故障'), findsOneWidget);

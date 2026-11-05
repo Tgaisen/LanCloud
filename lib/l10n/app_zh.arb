@@ -226,6 +226,15 @@
       }
     }
   },
+  "clearSkippedUploads": "清空被跳过的上传记录",
+  "clearSkippedUploadsConfirmMessage": "将清空全部 {count} 条被跳过的上传任务记录，继续吗？",
+  "@clearSkippedUploadsConfirmMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "resumeAllPartialFailed": "{count} 个下载任务恢复失败，请稍后重试。",
   "@resumeAllPartialFailed": {
     "placeholders": {
@@ -238,6 +247,7 @@
   "noUploads": "暂无上传任务",
   "noDownloads": "暂无下载任务",
   "inProgress": "进行中",
+  "skippedUploads": "被跳过",
   "finished": "已结束",
   "queued": "排队中",
   "uploading": "上传中",
@@ -412,6 +422,12 @@
   "requestIntervalKeywords": "间隔 限流 风控 请求",
   "maxUploads": "同时上传数量",
   "uploadKeywords": "上传 并发",
+  "skipOversizeUploads": "跳过超过限制大小的文件",
+  "skipOversizeUploadsSubtitle": "超过账号允许的单文件大小时不自动上传",
+  "skipOversizeUploadsKeywords": "上传 跳过 超限 大小 限制",
+  "skipUnsupportedUploads": "跳过不支持上传的文件",
+  "skipUnsupportedUploadsSubtitle": "文件类型不在蓝奏云允许列表中时不自动上传",
+  "skipUnsupportedUploadsKeywords": "上传 跳过 文件类型 扩展名 支持",
   "maxDownloads": "同时下载数量",
   "downloadKeywords": "下载 并发",
   "singleFileDownloadConnections": "最高下载线程",
@@ -553,7 +569,7 @@
   "newFolder": "新建文件夹",
   "uploadFile": "上传文件",
   "uploadFileSubtitle": "从本机或其他应用中选择文件",
-  "uploadSkipped": "已加入 {added} 个上传任务，跳过 {skipped} 个超过 100MB 的文件",
+  "uploadSkipped": "已加入 {added} 个上传任务，其中 {skipped} 个被跳过",
   "@uploadSkipped": {
     "placeholders": {
       "added": {
@@ -564,6 +580,16 @@
       }
     }
   },
+  "uploadSkippedReasonOversize": "文件超过 {limit} 限制",
+  "@uploadSkippedReasonOversize": {
+    "placeholders": {
+      "limit": {
+        "type": "String"
+      }
+    }
+  },
+  "uploadSkippedReasonUnsupported": "此类文件不允许上传",
+  "uploadAnyway": "仍然上传",
   "uploadAdded": "已加入 {count} 个上传任务",
   "@uploadAdded": {
     "placeholders": {
@@ -947,6 +973,17 @@
       }
     }
   },
+  "shareReceivedFilesSkipped": "已接收 {added} 个文件，其中 {skipped} 个被跳过",
+  "@shareReceivedFilesSkipped": {
+    "placeholders": {
+      "added": {
+        "type": "int"
+      },
+      "skipped": {
+        "type": "int"
+      }
+    }
+  },
   "shareTargetUnsupported": "无法识别的分享内容",
   "uploadHere": "上传到此",
   "uploadFromApp": "从应用上传",
@@ -1274,6 +1311,14 @@
   "dropHoverMixed": "松开后处理所选内容",
   "dropUploaded": "已上传 {count} 个文件",
   "@dropUploaded": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dropSkippedUploads": "{count} 个文件被跳过",
+  "@dropSkippedUploads": {
     "placeholders": {
       "count": {
         "type": "int"

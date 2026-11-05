@@ -1405,6 +1405,35 @@ void main() {
     app.dispose();
   });
 
+  testWidgets('被跳过的上传单独分栏，菜单可仍然上传或删除记录', (tester) async {
+    final (app, manager) = await hostWithTasks(tester, [
+      task('u1', 'large.zip', status: TransferStatus.skipped)
+        ..error = '此类文件不允许上传'
+        ..total = 10 * 1024 * 1024,
+    ]);
+
+    expect(find.text('被跳过'), findsWidgets);
+    expect(find.text('此类文件不允许上传·10.0 MB'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('transfers-clear-skipped')),
+      findsOneWidget,
+    );
+
+    await openRowMenu(tester, 'large.zip');
+    expect(menuLabels(tester), ['仍然上传', '删除此条记录']);
+    await tester.tapAt(const Offset(5, 5));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('transfers-clear-skipped')));
+    await tester.pumpAndSettle();
+    expect(find.text('将清空全部 1 条被跳过的上传任务记录，继续吗？'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('transfer-delete-confirm')));
+    await tester.pumpAndSettle();
+    expect(manager.tasks, isEmpty);
+    expect(find.text('large.zip'), findsNothing);
+    app.dispose();
+  });
+
   testWidgets('批量删除：幸存条目复用元素，不重播出现动画', (tester) async {
     final app = AppEnvironment();
     final manager = buildTransferManagerForEnvironment(app);

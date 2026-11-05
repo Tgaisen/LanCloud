@@ -417,6 +417,14 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get clearSkippedUploads => 'Clear skipped upload records';
+
+  @override
+  String clearSkippedUploadsConfirmMessage(int count) {
+    return 'Clear all $count skipped upload records?';
+  }
+
+  @override
   String resumeAllPartialFailed(int count) {
     return '$count downloads could not be resumed. Please try again later.';
   }
@@ -432,6 +440,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get inProgress => 'In progress';
+
+  @override
+  String get skippedUploads => 'Skipped';
 
   @override
   String get finished => 'Finished';
@@ -818,6 +829,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get uploadKeywords => 'upload concurrent';
 
   @override
+  String get skipOversizeUploads => 'Skip files over the size limit';
+
+  @override
+  String get skipOversizeUploadsSubtitle =>
+      'Do not start files larger than your account\'s per-file limit';
+
+  @override
+  String get skipOversizeUploadsKeywords => 'upload skip oversized size limit';
+
+  @override
+  String get skipUnsupportedUploads => 'Skip unsupported files';
+
+  @override
+  String get skipUnsupportedUploadsSubtitle =>
+      'Do not start file types outside LanZou\'s allowed list';
+
+  @override
+  String get skipUnsupportedUploadsKeywords =>
+      'upload skip file type extension supported';
+
+  @override
   String get maxDownloads => 'Concurrent downloads';
 
   @override
@@ -1084,8 +1116,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String uploadSkipped(int added, int skipped) {
-    return 'Added $added upload tasks and skipped $skipped files larger than 100 MB';
+    return 'Added $added upload tasks; $skipped were skipped';
   }
+
+  @override
+  String uploadSkippedReasonOversize(String limit) {
+    return 'File exceeds the $limit limit';
+  }
+
+  @override
+  String get uploadSkippedReasonUnsupported =>
+      'This type of file cannot be uploaded';
+
+  @override
+  String get uploadAnyway => 'Upload anyway';
 
   @override
   String uploadAdded(int count) {
@@ -1625,6 +1669,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String shareReceivedFiles(int count) {
     return 'Received $count files; starting upload';
+  }
+
+  @override
+  String shareReceivedFilesSkipped(int added, int skipped) {
+    return 'Received $added files; $skipped were skipped';
   }
 
   @override
@@ -2354,6 +2403,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String dropUploaded(int count) {
     return 'Uploaded $count file(s)';
+  }
+
+  @override
+  String dropSkippedUploads(int count) {
+    return '$count file(s) were skipped';
   }
 
   @override

@@ -25,6 +25,8 @@ class SettingsStore {
   static const _keyApiHost = 'api_host';
   static const _keyUserAgent = 'user_agent';
   static const _keyUploadPath = 'upload_path';
+  static const _keySkipOversizeUploads = 'skip_oversize_uploads';
+  static const _keySkipUnsupportedUploads = 'skip_unsupported_uploads';
   static const _keySwipeTabs = 'swipe_tabs';
   static const _keyHideBars = 'hide_bars_on_scroll';
   static const _keyHideBarsMode = 'hide_bars_mode';
@@ -79,6 +81,12 @@ class SettingsStore {
 
   /// 上传接口路径（HTML5 上传接口名），主机跟随「网盘接口域名」。
   String uploadPath = 'html5up.php';
+
+  /// 上传时把超过账号单文件上限的任务标记为「被跳过」，默认开启。
+  bool skipOversizeUploads = true;
+
+  /// 上传时把不在账号白名单内的任务标记为「被跳过」，默认开启。
+  bool skipUnsupportedUploads = true;
   bool swipeTabs = false;
   bool hideTopBar = false;
   bool hideBottomBar = false;
@@ -153,6 +161,8 @@ class SettingsStore {
     apiHost = prefs.getString(_keyApiHost) ?? 'pc';
     userAgent = prefs.getString(_keyUserAgent) ?? '';
     uploadPath = prefs.getString(_keyUploadPath) ?? 'html5up.php';
+    skipOversizeUploads = prefs.getBool(_keySkipOversizeUploads) ?? true;
+    skipUnsupportedUploads = prefs.getBool(_keySkipUnsupportedUploads) ?? true;
     swipeTabs = prefs.getBool(_keySwipeTabs) ?? false;
     final legacyMode = prefs.getString(_keyHideBarsMode);
     if (legacyMode != null) {
@@ -293,6 +303,18 @@ class SettingsStore {
     uploadPath = value.trim().isEmpty ? 'html5up.php' : value.trim();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyUploadPath, uploadPath);
+  }
+
+  Future<void> setSkipOversizeUploads(bool value) async {
+    skipOversizeUploads = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keySkipOversizeUploads, value);
+  }
+
+  Future<void> setSkipUnsupportedUploads(bool value) async {
+    skipUnsupportedUploads = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keySkipUnsupportedUploads, value);
   }
 
   Future<void> setRequestInterval(int value) async {
@@ -437,6 +459,8 @@ class SettingsStore {
     _keyApiHost: apiHost,
     _keyUserAgent: userAgent,
     _keyUploadPath: uploadPath,
+    _keySkipOversizeUploads: skipOversizeUploads,
+    _keySkipUnsupportedUploads: skipUnsupportedUploads,
     _keySwipeTabs: swipeTabs,
     _keyHideTopBar: hideTopBar,
     _keyHideBottomBar: hideBottomBar,

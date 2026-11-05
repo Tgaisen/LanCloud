@@ -1,0 +1,219 @@
+import 'dart:async';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:lancloud/core/api/lanzou_client.dart';
+import 'package:lancloud/core/data/settings_store.dart';
+import 'package:lancloud/core/download_target.dart';
+import 'package:lancloud/core/transfer/transfer_account_port.dart';
+import 'package:lancloud/core/transfer/transfer_dependencies.dart';
+import 'package:lancloud/core/transfer/transfer_download_port.dart';
+import 'package:lancloud/core/transfer/transfer_manager.dart';
+import 'package:lancloud/core/transfer/transfer_settings_port.dart';
+import 'package:lancloud/core/transfer/transfer_store.dart';
+import 'package:lancloud/core/upload_policy.dart';
+
+class _MemoryStore implements TransferStore {
+  final Map<String, Map<String, Object?>> rows = {};
+
+  @override
+  Future<List<Map<String, Object?>>> loadTransfers() async => [];
+
+  @override
+  Future<void> saveTransfer({
+    required String id,
+    required String kind,
+    required String name,
+    required String status,
+    int total = 0,
+    int received = 0,
+    String error = '',
+    String savedPath = '',
+    String ref = '',
+    String folderId = '',
+    String referer = '',
+    String pwd = '',
+    String localPath = '',
+    String account = '',
+  }) async {
+    rows[id] = {
+      'kind': kind,
+      'name': name,
+      'status': status,
+      'total': total,
+      'error': error,
+    };
+  }
+
+  @override
+  Future<void> deleteTransfer(String id) async {
+    rows.remove(id);
+  }
+
+  @override
+  Future<void> deleteTransfers(List<String> ids) async {
+    for (final id in ids) {
+      rows.remove(id);
+    }
+  }
+}
+
+class _NoDownload implements TransferDownloadPort {
+  @override
+  Future<DownloadTargetMode> targetMode() async =>
+      DownloadTargetMode.fixedDirectory;
+
+  @override
+  String? get safTreeUri => null;
+
+  @override
+  Future<String> partialFilePath(
+    String taskId,
+    String name, {
+    required bool staged,
+  }) async => throw UnimplementedError();
+
+  @override
+  Future<String> uniqueSavePath(String name) async =>
+      throw UnimplementedError();
+}
+
+class _UploadAccountPort implements TransferAccountPort {
+  _UploadAccountPort(this.client);
+
+  final LanzouClient client;
+
+  @override
+  String? get activeUid => 'u1';
+
+  @override
+  bool hasAccount(String uid) => uid == 'u1';
+
+  @override
+  LanzouClient clientFor(String uid) => client;
+
+  @override
+  LanzouClient get publicClient => client;
+}
+
+class _FixedPolicyClient extends LanzouClient {
+  _FixedPolicyClient(this.policy) : super(uid: 'u1');
+
+  final LanzouUploadPolicy policy;
+
+  @override
+  LanzouUploadPolicy get uploadPolicy => policy;
+}
+
+TransferManager _manager({
+  required SettingsStore settings,
+  required TransferStore store,
+  required LanzouUploadPolicy policy,
+}) {
+  return TransferManager.withDependencies(
+    TransferDependencies(
+      store: store,
+      accounts: _UploadAccountPort(_FixedPolicyClient(policy)),
+      download: _NoDownload(),
+      settings: StoreTransferSettingsPort(settings),
+    ),
+  );
+}
+
+void main() {
+  test('上传筛选保留超限和不支持类型的任务为被跳过状态', () async {
+    final store = _MemoryStore();
+    final settings = SettingsStore()..maxUploads = 0;
+    final manager = _manager(
+      settings: settings,
+      store: store,
+      policy: const LanzouUploadPolicy(
+        maxFileBytes: 10,
+        allowedExtensions: {'zip'},
+      ),
+    );
+    addTearDown(manager.dispose);
+
+    expect(
+      manager.addUpload(name: 'large.zip', folderId: 'f', size: 11),
+      UploadAddResult.skippedOversize,
+    );
+    expect(
+      manager.addUpload(name: 'photo.bin', folderId: 'f', size: 1),
+      UploadAddResult.skippedUnsupported,
+    );
+
+    expect(manager.tasks, hasLength(2));
+    expect(
+      manager.tasks.map((task) => task.status),
+      everyElement(TransferStatus.skipped),
+    );
+    expect(manager.tasks.first.error, contains('10 B'));
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+    expect(
+      store.rows.values.map((row) => row['status']),
+      everyElement('skipped'),
+    );
+  });
+
+  test('仍然上传会绕过筛选进入队列，清空只删除被跳过记录', () async {
+    final settings = SettingsStore()..maxUploads = 0;
+    final manager = _manager(
+      settings: settings,
+      store: _MemoryStore(),
+      policy: const LanzouUploadPolicy(
+        maxFileBytes: 100,
+        allowedExtensions: {'txt'},
+      ),
+    );
+    addTearDown(manager.dispose);
+
+    expect(
+      manager.addUpload(
+        name: 'data.csv',
+        folderId: 'f',
+        streamFactory: () => Stream<List<int>>.value(const <int>[1]),
+        size: 1,
+      ),
+      UploadAddResult.skippedUnsupported,
+    );
+    final skipped = manager.tasks.single;
+    expect(await manager.uploadSkipped(skipped.id), isNull);
+    expect(skipped.status, TransferStatus.queued);
+    expect(skipped.error, isNull);
+
+    expect(
+      manager.addUpload(
+        name: 'large.txt',
+        folderId: 'f',
+        streamFactory: () => Stream<List<int>>.value(const <int>[1]),
+        size: 101,
+      ),
+      UploadAddResult.skippedOversize,
+    );
+    expect(manager.clearSkippedUploads(), hasLength(1));
+    expect(manager.tasks, hasLength(1));
+    expect(manager.tasks.single, same(skipped));
+  });
+
+  test('关闭筛选后任务直接进入队列', () {
+    final settings = SettingsStore()
+      ..maxUploads = 0
+      ..skipOversizeUploads = false
+      ..skipUnsupportedUploads = false;
+    final manager = _manager(
+      settings: settings,
+      store: _MemoryStore(),
+      policy: const LanzouUploadPolicy(
+        maxFileBytes: 1,
+        allowedExtensions: {'txt'},
+      ),
+    );
+    addTearDown(manager.dispose);
+
+    expect(
+      manager.addUpload(name: 'large.csv', folderId: 'f', size: 2),
+      UploadAddResult.queued,
+    );
+    expect(manager.tasks.single.status, TransferStatus.queued);
+  });
+}

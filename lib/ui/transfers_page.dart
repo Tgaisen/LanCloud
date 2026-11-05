@@ -31,11 +31,17 @@ enum _TransferMenuAction {
   resume,
   cancel,
   retry,
+  uploadAnyway,
   removeRecord,
   removeRecordAndFile,
 }
 
-enum TransferDeleteReason { selected, cancelActive, clearFinished }
+enum TransferDeleteReason {
+  selected,
+  cancelActive,
+  clearFinished,
+  clearSkipped,
+}
 
 class TransferDeleteResult {
   const TransferDeleteResult({required this.deleteFiles});
@@ -57,6 +63,7 @@ Future<TransferDeleteResult?> showTransferDeleteDialog(
     TransferDeleteReason.selected => l10n.transferDeleteConfirmTitle,
     TransferDeleteReason.cancelActive => l10n.cancelInProgressTransfers,
     TransferDeleteReason.clearFinished => l10n.clearFinishedTransfers,
+    TransferDeleteReason.clearSkipped => l10n.clearSkippedUploads,
   };
   final message = switch (reason) {
     TransferDeleteReason.selected => l10n.transferDeleteConfirmMessage(count),
@@ -68,11 +75,15 @@ Future<TransferDeleteResult?> showTransferDeleteDialog(
       kind == TransferKind.upload
           ? l10n.clearFinishedUploadsConfirmMessage(count)
           : l10n.clearFinishedDownloadsConfirmMessage(count),
+    TransferDeleteReason.clearSkipped => l10n.clearSkippedUploadsConfirmMessage(
+      count,
+    ),
   };
   final confirmLabel = switch (reason) {
     TransferDeleteReason.selected => l10n.delete,
     TransferDeleteReason.cancelActive => l10n.cancelAll,
     TransferDeleteReason.clearFinished => l10n.clearAll,
+    TransferDeleteReason.clearSkipped => l10n.clearAll,
   };
   var deleteFiles = false;
   return showDialog<TransferDeleteResult>(
@@ -137,6 +148,9 @@ bool _isFinishedTask(TransferTask task) =>
     task.status == TransferStatus.done ||
     task.status == TransferStatus.failed ||
     task.status == TransferStatus.canceled;
+
+bool _isSkippedUpload(TransferTask task) =>
+    task.kind == TransferKind.upload && task.status == TransferStatus.skipped;
 
 bool _isPausableDownload(TransferTask task) =>
     task.kind == TransferKind.download &&
@@ -329,6 +343,23 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
     if (result.deleteFiles) await _deleteTaskFiles(removed);
   }
 
+  Future<void> _clearSkippedSection() async {
+    final manager = ref.read(transferManagerProvider);
+    final tasks = _tasksOf(manager)
+        .where(_isSkippedUpload)
+        .toList(growable: false);
+    if (tasks.isEmpty) return;
+    final result = await showTransferDeleteDialog(
+      context,
+      kind: TransferKind.upload,
+      count: tasks.length,
+      reason: TransferDeleteReason.clearSkipped,
+      showDeleteFiles: false,
+    );
+    if (result == null || !mounted) return;
+    manager.clearSkippedUploads();
+  }
+
   void _pauseAll() {
     final manager = ref.read(transferManagerProvider);
     final ids = _tasksOf(manager)
@@ -454,6 +485,7 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
     final resolving = task.status == TransferStatus.resolving;
     final resuming = task.status == TransferStatus.resuming;
     final paused = task.status == TransferStatus.paused;
+    final skipped = _isSkippedUpload(task);
     final active =
         task.status == TransferStatus.queued ||
         task.status == TransferStatus.running;
@@ -489,6 +521,12 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
             value: _TransferMenuAction.retry,
             label: l10n.retry,
             icon: Icons.refresh,
+          ),
+        if (skipped)
+          M3eMenuItem(
+            value: _TransferMenuAction.uploadAnyway,
+            label: l10n.uploadAnyway,
+            icon: Icons.upload,
           ),
         if (task.kind == TransferKind.download && active)
           M3eMenuItem(
@@ -563,6 +601,13 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
         manager.cancel(task.id);
       case _TransferMenuAction.retry:
         final message = await manager.retry(task.id);
+        if (!mounted) return;
+        if (message != null) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(message)));
+        }
+      case _TransferMenuAction.uploadAnyway:
+        final message = await manager.uploadSkipped(task.id);
         if (!mounted) return;
         if (message != null) {
           ScaffoldMessenger.of(context)
@@ -685,6 +730,7 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
                           openFile: widget.openFile ?? openFileWithSystem,
                           onCancelActive: _cancelActive,
                           onClearFinished: _clearFinishedSection,
+                          onClearSkipped: _clearSkippedSection,
                           onPauseAll: _pauseAll,
                           onResumeAll: _resumeAll,
                           bulkResumeRunning: _bulkResumeRunning,
@@ -873,6 +919,7 @@ class _TransferListSliver extends StatelessWidget {
     required this.openFile,
     required this.onCancelActive,
     required this.onClearFinished,
+    required this.onClearSkipped,
     required this.onPauseAll,
     required this.onResumeAll,
     required this.bulkResumeRunning,
@@ -905,6 +952,7 @@ class _TransferListSliver extends StatelessWidget {
 
   final VoidCallback onCancelActive;
   final VoidCallback onClearFinished;
+  final VoidCallback onClearSkipped;
   final VoidCallback onPauseAll;
   final VoidCallback onResumeAll;
   final bool bulkResumeRunning;
@@ -973,6 +1021,7 @@ class _TransferListSliver extends StatelessWidget {
       );
     }
     final active = tasks.where(_isInProgressTask).toList();
+    final skipped = tasks.where(_isSkippedUpload).toList().reversed.toList();
     final finished = tasks.where(_isFinishedTask).toList().reversed.toList();
     final paused = active
         .where((task) => task.status == TransferStatus.paused)
@@ -1061,6 +1110,55 @@ class _TransferListSliver extends StatelessWidget {
                   onLongPress: () => onLongPress(taskId: active[index].id),
                   onMenu: (anchorContext, {pointerPosition}) => onMenu(
                     active[index],
+                    anchorContext,
+                    pointerPosition: pointerPosition,
+                  ),
+                ),
+              ),
+            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 20)),
+          ],
+          if (skipped.isNotEmpty) ...[
+            SliverToBoxAdapter(
+              child: SectionHeader(
+                title: l10n.skippedUploads,
+                count: skipped.length,
+                compact: !PlatformSupport.isDesktop,
+                actions: [
+                  HideKeepingSpace(
+                    hidden: selecting,
+                    child: _actionButton(
+                      key: 'transfers-clear-skipped',
+                      label: l10n.clearAll,
+                      onPressed: onClearSkipped,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SegmentedSliverList(
+              adaptive: true,
+              minItemWidth: kAdaptiveDenseListItemMinWidth,
+              findChildIndexCallback: childIndexLookup(
+                skipped,
+                (t) => ValueKey('transfer-${t.id}'),
+              ),
+              itemCount: skipped.length,
+              itemBuilder: (context, index) => ListEnterAnimation(
+                key: ValueKey('transfer-${skipped[index].id}'),
+                progress: enter,
+                index: index,
+                child: _TransferTile(
+                  task: skipped[index],
+                  manager: manager,
+                  index: index,
+                  removing: removing.contains(skipped[index].id),
+                  selecting: selecting,
+                  selected: selected.contains(skipped[index].id),
+                  onTap: () => _handleTap(context, skipped[index]),
+                  onLongPress: () => onLongPress(taskId: skipped[index].id),
+                  onMenu: (anchorContext, {pointerPosition}) => onMenu(
+                    skipped[index],
                     anchorContext,
                     pointerPosition: pointerPosition,
                   ),
@@ -1168,6 +1266,8 @@ class _TransferTile extends StatelessWidget {
         return l10n.paused;
       case TransferStatus.saving:
         return l10n.saving;
+      case TransferStatus.skipped:
+        return l10n.skippedUploads;
       case TransferStatus.done:
         return l10n.completed;
       case TransferStatus.failed:
@@ -1196,6 +1296,11 @@ class _TransferTile extends StatelessWidget {
   String _statusLine(AppLocalizations l10n) {
     final status = _statusText(l10n);
     if (task.status == TransferStatus.failed) return status;
+    if (task.status == TransferStatus.skipped) {
+      final reason = task.error?.trim() ?? '';
+      if (reason.isEmpty) return status;
+      return task.total > 0 ? '$reason·${formatBytes(task.total)}' : reason;
+    }
     final size = _sizeText(l10n);
     return size.isEmpty ? status : '$status · $size';
   }
@@ -1211,6 +1316,7 @@ class _TransferTile extends StatelessWidget {
     final resuming = task.status == TransferStatus.resuming;
     final paused = task.status == TransferStatus.paused;
     final saving = task.status == TransferStatus.saving;
+    final skipped = _isSkippedUpload(task);
     final finished = _isFinishedTask(task);
     // 与首页 / 收藏共用同一套列表项布局，圆角由外层 SegmentedList 控制
     // 菜单要贴在被点的那颗 ⋯（鼠标右键时是整行）下方，所以这里得拿到两个 context
@@ -1237,7 +1343,7 @@ class _TransferTile extends StatelessWidget {
           onLongPress: onLongPress,
         ),
         // 右键与 ⋯ 菜单可用性一致：多选和进行中任务都不响应。
-        onSecondaryTap: selecting || !finished
+        onSecondaryTap: selecting || (!finished && !skipped)
             ? null
             : (Offset position) =>
                   onMenu(rowContext, pointerPosition: position),
@@ -1266,7 +1372,7 @@ class _TransferTile extends StatelessWidget {
                   icon: Icons.close,
                   onPressed: saving ? null : () => manager.removeTask(task.id),
                 ),
-              if (finished)
+              if (finished || skipped)
                 Builder(
                   builder: (BuildContext buttonContext) => M3eIconButton(
                     tooltip: l10n.moreActions,

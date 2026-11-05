@@ -35,6 +35,7 @@ import 'request_interval_settings_tile.dart';
 import 'show_cookie_settings_tile.dart';
 import 'theme_settings_tile.dart';
 import 'transfer_concurrency_settings_tile.dart';
+import 'upload_filter_settings_tile.dart';
 
 /// 「清除数据」弹窗里可勾选的清除项。
 enum _ClearDataOption { quickAccess, recents, otherAccounts, logs, registry }
@@ -517,6 +518,26 @@ class _SettingsCategoryPageState extends ConsumerState<SettingsCategoryPage>
         section: SettingsSection.upload,
         build: (context) => const TransferConcurrencySettingsTile(
           setting: TransferConcurrencySetting.uploads,
+        ),
+      ),
+      _Entry(
+        id: 'skip_oversize_uploads',
+        title: l10n.skipOversizeUploads,
+        subtitle: l10n.skipOversizeUploadsSubtitle,
+        keywords: l10n.skipOversizeUploadsKeywords.split(' '),
+        section: SettingsSection.upload,
+        build: (context) => const UploadFilterSettingsTile(
+          setting: UploadFilterSetting.oversize,
+        ),
+      ),
+      _Entry(
+        id: 'skip_unsupported_uploads',
+        title: l10n.skipUnsupportedUploads,
+        subtitle: l10n.skipUnsupportedUploadsSubtitle,
+        keywords: l10n.skipUnsupportedUploadsKeywords.split(' '),
+        section: SettingsSection.upload,
+        build: (context) => const UploadFilterSettingsTile(
+          setting: UploadFilterSetting.unsupported,
         ),
       ),
       _Entry(

@@ -31,8 +31,6 @@ import 'm3e.dart';
 import 'reduce_motion.dart';
 import 'scroll_tint.dart';
 
-const int kFreeUploadLimit = 100 * 1024 * 1024;
-
 /// 目录进入动画：总时长要容纳常见一屏条目的错峰起点；单项动画与步长
 /// 仍保持原来的 232 / 26ms，后续条目再按列表数量缩放到可用时间内。
 const Duration _driveEnterDuration = Duration(milliseconds: 720);
@@ -1163,38 +1161,38 @@ class _DrivePageState extends ConsumerState<DrivePage>
     final files = await FilePicker.pickFiles();
     if (files.isEmpty) return;
     if (!mounted) return;
+    await _activeClient()?.fetchAccountInfo();
+    if (!mounted) return;
     final transfers = _transfers;
     var skipped = 0;
     var added = 0;
     for (final file in files) {
       final path = file.path;
       if (path == null) continue;
-      var size = file.lengthSync();
-      if (size == null) {
-        try {
-          size = await File(path).length();
-        } catch (_) {
-          continue;
-        }
-      }
-      if (size > kFreeUploadLimit) {
-        skipped += 1;
+      final int size;
+      try {
+        size = await File(path).length();
+      } catch (_) {
         continue;
       }
-      transfers.addUpload(
+      final result = transfers.addUpload(
         name: file.name,
         folderId: _folderId,
         path: path,
         size: size,
       );
-      added += 1;
+      if (result == UploadAddResult.queued) {
+        added += 1;
+      } else {
+        skipped += 1;
+      }
     }
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
           skipped > 0
-              ? context.l10n.uploadSkipped(added, skipped)
+              ? context.l10n.uploadSkipped(added + skipped, skipped)
               : context.l10n.uploadAdded(added),
         ),
       ),
@@ -1206,29 +1204,31 @@ class _DrivePageState extends ConsumerState<DrivePage>
     try {
       final paths = await ProviderFilePicker.pickFiles();
       if (paths.isEmpty || !mounted) return;
+      await _activeClient()?.fetchAccountInfo();
+      if (!mounted) return;
       final transfers = _transfers;
       var added = 0;
       var skipped = 0;
       for (final path in paths) {
         final size = await File(path).length();
-        if (size > kFreeUploadLimit) {
-          skipped += 1;
-          continue;
-        }
-        transfers.addUpload(
+        final result = transfers.addUpload(
           name: p.basename(path),
           folderId: _folderId,
           path: path,
           size: size,
         );
-        added += 1;
+        if (result == UploadAddResult.queued) {
+          added += 1;
+        } else {
+          skipped += 1;
+        }
       }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             skipped > 0
-                ? context.l10n.uploadSkipped(added, skipped)
+                ? context.l10n.uploadSkipped(added + skipped, skipped)
                 : context.l10n.uploadTasksAdded(added),
           ),
         ),

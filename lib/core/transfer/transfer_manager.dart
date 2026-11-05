@@ -15,10 +15,13 @@ import '../platform_support.dart';
 import '../saf_storage.dart';
 import '../saved_file.dart';
 import '../shared_downloads_gateway.dart';
+import '../upload_policy.dart';
 import 'resumable_downloader.dart';
 import 'transfer_dependencies.dart';
 
 enum TransferKind { upload, download }
+
+enum UploadAddResult { queued, skippedOversize, skippedUnsupported }
 
 enum TransferStatus {
   queued,
@@ -27,6 +30,7 @@ enum TransferStatus {
   resuming,
   paused,
   saving,
+  skipped,
   done,
   failed,
   canceled,
@@ -258,7 +262,7 @@ class TransferManager extends ChangeNotifier {
   List<TransferTask> byKind(TransferKind kind) =>
       tasks.where((t) => t.kind == kind).toList();
 
-  void addUpload({
+  UploadAddResult addUpload({
     required String name,
     required String folderId,
     String path = '',
@@ -266,6 +270,23 @@ class TransferManager extends ChangeNotifier {
     int size = 0,
   }) {
     final uid = _dependencies.accounts.activeUid ?? '';
+    var effectiveSize = size;
+    if (effectiveSize <= 0 && path.isNotEmpty) {
+      try {
+        effectiveSize = File(path).lengthSync();
+      } catch (_) {}
+    }
+    var uploadPolicy = LanzouUploadPolicy.fallback;
+    if (uid.isNotEmpty && _dependencies.accounts.hasAccount(uid)) {
+      try {
+        uploadPolicy = _dependencies.accounts.clientFor(uid).uploadPolicy;
+      } catch (_) {}
+    }
+    final skipReason = _uploadSkipResult(
+      name: name,
+      size: effectiveSize,
+      policy: uploadPolicy,
+    );
     final task = TransferTask(
       id: 'u${DateTime.now().millisecondsSinceEpoch}_${_seq++}',
       kind: TransferKind.upload,
@@ -275,11 +296,43 @@ class TransferManager extends ChangeNotifier {
       localFilePath: path,
       streamFactory: streamFactory,
       sourceSize: size,
-    )..total = size;
+    )..total = effectiveSize;
+    if (skipReason != null) {
+      task.status = TransferStatus.skipped;
+      task.error = switch (skipReason) {
+        UploadAddResult.skippedOversize =>
+          NotificationService.i18n?.uploadSkippedReasonOversize(
+                uploadPolicy.limitLabel,
+              ) ??
+              '超过单文件大小限制（${uploadPolicy.limitLabel}）',
+        UploadAddResult.skippedUnsupported =>
+          NotificationService.i18n?.uploadSkippedReasonUnsupported ??
+              '文件类型不在允许上传列表中',
+        UploadAddResult.queued => null,
+      };
+    }
     tasks.add(task);
+    _bumpMarks();
     _persist(task);
     notifyListeners();
     _pump();
+    return skipReason ?? UploadAddResult.queued;
+  }
+
+  UploadAddResult? _uploadSkipResult({
+    required String name,
+    required int size,
+    required LanzouUploadPolicy policy,
+  }) {
+    if (_dependencies.settings.skipOversizeUploads &&
+        size > policy.maxFileBytes) {
+      return UploadAddResult.skippedOversize;
+    }
+    if (_dependencies.settings.skipUnsupportedUploads &&
+        !policy.allowsFile(name)) {
+      return UploadAddResult.skippedUnsupported;
+    }
+    return null;
   }
 
   void addDownload({
@@ -429,29 +482,9 @@ class TransferManager extends ChangeNotifier {
     final task = _find(id);
     if (task == null || task.status != TransferStatus.failed) return null;
     final expectedStatus = task.status;
-    final i18n = NotificationService.i18n;
     if (task.kind == TransferKind.upload) {
-      if (task.localFilePath.isNotEmpty) {
-        // 源文件路径已持久化，重启后一般还在缓存目录里；被清理掉时提示重选
-        if (!File(task.localFilePath).existsSync()) {
-          final message = i18n?.retryUploadFileGone ?? '源文件已不存在，请重新选择文件上传';
-          task.error = message;
-          _persist(task);
-          notifyListeners();
-          return message;
-        }
-      } else if (task.streamFactory == null) {
-        // 旧记录没留源文件路径，来源也只是一次性的流：没法继续
-        final message = i18n?.retryUploadUnavailable ?? '应用重启后无法继续该上传，请重新上传';
-        task.error = message;
-        _persist(task);
-        notifyListeners();
-        return message;
-      }
-      // 上传必须带账号 Cookie：账号被移除、或记录里没有可用账号时先拦下，
-      // 别发出请求让服务端回 "login not"
-      if (_uploadAccountUid(task).isEmpty) {
-        final message = i18n?.uploadNeedLogin ?? '请先登录后再上传';
+      final message = _uploadSourceError(task);
+      if (message != null) {
         task.error = message;
         _persist(task);
         notifyListeners();
@@ -471,6 +504,52 @@ class TransferManager extends ChangeNotifier {
     _persist(task);
     notifyListeners();
     _syncTaskNotification(task);
+    _pump();
+    return null;
+  }
+
+  String? _uploadSourceError(TransferTask task) {
+    final i18n = NotificationService.i18n;
+    if (task.localFilePath.isNotEmpty) {
+      // 源文件路径已持久化，重启后一般还在缓存目录里；被清理掉时提示重选
+      if (!File(task.localFilePath).existsSync()) {
+        return i18n?.retryUploadFileGone ?? '源文件已不存在，请重新选择文件上传';
+      }
+    } else if (task.streamFactory == null) {
+      // 旧记录没留源文件路径，来源也只是一次性的流：没法继续
+      return i18n?.retryUploadUnavailable ?? '应用重启后无法继续该上传，请重新上传';
+    }
+    // 上传必须带账号 Cookie：账号被移除、或记录里没有可用账号时先拦下，
+    // 别发出请求让服务端回 "login not"
+    if (_uploadAccountUid(task).isEmpty) {
+      return i18n?.uploadNeedLogin ?? '请先登录后再上传';
+    }
+    return null;
+  }
+
+  /// 用户确认仍然上传后，绕过登录时抓到的上传筛选规则。
+  Future<String?> uploadSkipped(String id) async {
+    final task = _find(id);
+    if (task == null ||
+        task.kind != TransferKind.upload ||
+        task.status != TransferStatus.skipped) {
+      return null;
+    }
+    final message = _uploadSourceError(task);
+    if (message != null) {
+      task.error = message;
+      _persist(task);
+      notifyListeners();
+      return message;
+    }
+    task.status = TransferStatus.queued;
+    task.error = null;
+    task.received = 0;
+    task.autoRefreshTried = false;
+    if (task.cancelToken.isCancelled) task.cancelToken = CancelToken();
+    _bumpMarks();
+    _persist(task);
+    notifyListeners();
     _pump();
     return null;
   }
@@ -520,6 +599,20 @@ class TransferManager extends ChangeNotifier {
               (t.status == TransferStatus.done ||
                   t.status == TransferStatus.failed ||
                   t.status == TransferStatus.canceled),
+        )
+        .toList(growable: false);
+    if (removed.isEmpty) return const <TransferTask>[];
+    removeTasks([for (final task in removed) task.id]);
+    return removed;
+  }
+
+  /// 清空「被跳过」的上传记录。
+  List<TransferTask> clearSkippedUploads() {
+    final removed = tasks
+        .where(
+          (task) =>
+              task.kind == TransferKind.upload &&
+              task.status == TransferStatus.skipped,
         )
         .toList(growable: false);
     if (removed.isEmpty) return const <TransferTask>[];
@@ -762,6 +855,7 @@ class TransferManager extends ChangeNotifier {
             : TransferNotificationState.downloading,
       TransferStatus.paused => TransferNotificationState.paused,
       TransferStatus.saving => TransferNotificationState.saving,
+      TransferStatus.skipped => null,
       TransferStatus.done => TransferNotificationState.done,
       TransferStatus.failed => TransferNotificationState.failed,
       TransferStatus.queued || TransferStatus.canceled => null,

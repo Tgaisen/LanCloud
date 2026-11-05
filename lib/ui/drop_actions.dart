@@ -9,6 +9,7 @@ import '../core/data/app_db_provider.dart';
 import '../core/drag_drop.dart';
 import '../core/drive_state.dart';
 import '../core/lanzou_link.dart';
+import '../core/transfer/transfer_manager.dart';
 import '../core/transfer/transfer_manager_provider.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
@@ -44,6 +45,7 @@ DropLinkTarget dropLinkTarget({required bool onFavoritesPage}) =>
 class DropOutcome {
   const DropOutcome({
     this.uploaded = 0,
+    this.skippedUploads = 0,
     this.favorited = 0,
     this.needsPassword = 0,
     this.duplicated = 0,
@@ -55,6 +57,7 @@ class DropOutcome {
   static const userCanceled = DropOutcome(canceled: true);
 
   final int uploaded;
+  final int skippedUploads;
   final int favorited;
   final int needsPassword;
   final int duplicated;
@@ -62,10 +65,15 @@ class DropOutcome {
   final bool canceled;
 
   bool get isEmpty =>
-      uploaded == 0 && favorited == 0 && needsPassword == 0 && duplicated == 0;
+      uploaded == 0 &&
+      skippedUploads == 0 &&
+      favorited == 0 &&
+      needsPassword == 0 &&
+      duplicated == 0;
 
   DropOutcome merge(DropOutcome other) => DropOutcome(
     uploaded: uploaded + other.uploaded,
+    skippedUploads: skippedUploads + other.skippedUploads,
     favorited: favorited + other.favorited,
     needsPassword: needsPassword + other.needsPassword,
     duplicated: duplicated + other.duplicated,
@@ -140,6 +148,8 @@ void showDropSummary(BuildContext context, DropOutcome outcome) {
   final l10n = context.l10n;
   final parts = <String>[
     if (outcome.uploaded > 0) l10n.dropUploaded(outcome.uploaded),
+    if (outcome.skippedUploads > 0)
+      l10n.dropSkippedUploads(outcome.skippedUploads),
     if (outcome.favorited > 0) l10n.dropFavorited(outcome.favorited),
     if (outcome.needsPassword > 0)
       l10n.dropNeedsPassword(outcome.needsPassword),
@@ -301,8 +311,11 @@ Future<DropOutcome?> _handleDroppedFiles(
   }
 
   if (!context.mounted) return null;
+  await client.fetchAccountInfo();
+  if (!context.mounted) return null;
   final transfers = container.read(transferManagerProvider);
   var uploaded = 0;
+  var skippedUploads = 0;
   var failed = 0;
   for (final file in files) {
     if (!context.mounted) break;
@@ -319,10 +332,22 @@ Future<DropOutcome?> _handleDroppedFiles(
     final name = files.length == 1 && rename != null && rename.isNotEmpty
         ? rename
         : (file.name.isEmpty ? 'file' : file.name);
-    transfers.addUpload(name: name, folderId: folderId, path: path);
-    uploaded += 1;
+    final result = transfers.addUpload(
+      name: name,
+      folderId: folderId,
+      path: path,
+    );
+    if (result == UploadAddResult.queued) {
+      uploaded += 1;
+    } else {
+      skippedUploads += 1;
+    }
   }
-  return DropOutcome(uploaded: uploaded, failed: failed);
+  return DropOutcome(
+    uploaded: uploaded,
+    skippedUploads: skippedUploads,
+    failed: failed,
+  );
 }
 
 enum _UploadChoice { currentFolder, pickFolder, cancel }

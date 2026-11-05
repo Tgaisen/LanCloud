@@ -806,6 +806,18 @@ abstract class AppLocalizations {
   /// **'将清空全部 {count} 条已结束的下载任务记录，继续吗？'**
   String clearFinishedDownloadsConfirmMessage(int count);
 
+  /// No description provided for @clearSkippedUploads.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空被跳过的上传记录'**
+  String get clearSkippedUploads;
+
+  /// No description provided for @clearSkippedUploadsConfirmMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'将清空全部 {count} 条被跳过的上传任务记录，继续吗？'**
+  String clearSkippedUploadsConfirmMessage(int count);
+
   /// No description provided for @resumeAllPartialFailed.
   ///
   /// In zh, this message translates to:
@@ -835,6 +847,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'进行中'**
   String get inProgress;
+
+  /// No description provided for @skippedUploads.
+  ///
+  /// In zh, this message translates to:
+  /// **'被跳过'**
+  String get skippedUploads;
 
   /// No description provided for @finished.
   ///
@@ -1544,6 +1562,42 @@ abstract class AppLocalizations {
   /// **'上传 并发'**
   String get uploadKeywords;
 
+  /// No description provided for @skipOversizeUploads.
+  ///
+  /// In zh, this message translates to:
+  /// **'跳过超过限制大小的文件'**
+  String get skipOversizeUploads;
+
+  /// No description provided for @skipOversizeUploadsSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'超过账号允许的单文件大小时不自动上传'**
+  String get skipOversizeUploadsSubtitle;
+
+  /// No description provided for @skipOversizeUploadsKeywords.
+  ///
+  /// In zh, this message translates to:
+  /// **'上传 跳过 超限 大小 限制'**
+  String get skipOversizeUploadsKeywords;
+
+  /// No description provided for @skipUnsupportedUploads.
+  ///
+  /// In zh, this message translates to:
+  /// **'跳过不支持上传的文件'**
+  String get skipUnsupportedUploads;
+
+  /// No description provided for @skipUnsupportedUploadsSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'文件类型不在蓝奏云允许列表中时不自动上传'**
+  String get skipUnsupportedUploadsSubtitle;
+
+  /// No description provided for @skipUnsupportedUploadsKeywords.
+  ///
+  /// In zh, this message translates to:
+  /// **'上传 跳过 文件类型 扩展名 支持'**
+  String get skipUnsupportedUploadsKeywords;
+
   /// No description provided for @maxDownloads.
   ///
   /// In zh, this message translates to:
@@ -2015,8 +2069,26 @@ abstract class AppLocalizations {
   /// No description provided for @uploadSkipped.
   ///
   /// In zh, this message translates to:
-  /// **'已加入 {added} 个上传任务，跳过 {skipped} 个超过 100MB 的文件'**
+  /// **'已加入 {added} 个上传任务，其中 {skipped} 个被跳过'**
   String uploadSkipped(int added, int skipped);
+
+  /// No description provided for @uploadSkippedReasonOversize.
+  ///
+  /// In zh, this message translates to:
+  /// **'文件超过 {limit} 限制'**
+  String uploadSkippedReasonOversize(String limit);
+
+  /// No description provided for @uploadSkippedReasonUnsupported.
+  ///
+  /// In zh, this message translates to:
+  /// **'此类文件不允许上传'**
+  String get uploadSkippedReasonUnsupported;
+
+  /// No description provided for @uploadAnyway.
+  ///
+  /// In zh, this message translates to:
+  /// **'仍然上传'**
+  String get uploadAnyway;
 
   /// No description provided for @uploadAdded.
   ///
@@ -2959,6 +3031,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'已接收 {count} 个文件，开始上传'**
   String shareReceivedFiles(int count);
+
+  /// No description provided for @shareReceivedFilesSkipped.
+  ///
+  /// In zh, this message translates to:
+  /// **'已接收 {added} 个文件，其中 {skipped} 个被跳过'**
+  String shareReceivedFilesSkipped(int added, int skipped);
 
   /// No description provided for @shareTargetUnsupported.
   ///
@@ -4243,6 +4321,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'已上传 {count} 个文件'**
   String dropUploaded(int count);
+
+  /// No description provided for @dropSkippedUploads.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 个文件被跳过'**
+  String dropSkippedUploads(int count);
 
   /// No description provided for @dropFavorited.
   ///

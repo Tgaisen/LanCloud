@@ -69,7 +69,8 @@
 | `NotificationSettingsState` | `core/notification_settings_state.dart` | 设置子组：进度通知与完成通知开关 |
 | `NavigationAppearanceSettingsState` | `core/navigation_appearance_settings_state.dart` | 设置子组：侧滑、顶/底栏隐藏、悬浮导航、转场与导航项显示开关 |
 | `ThemeSettingsState` | `core/theme_settings_state.dart` | 设置子组：主题模式/种子、OLED、动态取色与全局动画开关 |
-| `TransferConnectionSettingsState` | `core/transfer_connection_settings_state.dart` | 设置子组：请求间隔、并发数、API 域名、UA 与上传路径 |
+| `TransferConnectionSettingsState` | `core/transfer_connection_settings_state.dart` | 设置子组：请求间隔、并发数、API 域名、UA、上传路径与上传前筛选 |
+| `LanzouUploadPolicy` | `core/upload_policy.dart` | 从账号页取得的单文件上限 / 扩展名白名单及内置回退值；筛选任务进入 `skipped` 后不自动调度 |
 | `ListHomeSettingsState` | `core/list_home_settings_state.dart` | 设置子组：列表排序、首页折叠、最近使用上限与文件夹打开模式 |
 | `LanguageClipboardSettingsState` | `core/language_clipboard_settings_state.dart` | 设置子组：界面语言与复制分享链接提示 |
 | `CachePageSettingsState` | `core/cache_page_settings_state.dart` | 设置子组：网格视图、启动页、目录缓存和自动加载全部页面 |

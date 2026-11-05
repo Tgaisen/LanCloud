@@ -1,9 +1,45 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/api/lanzou_client.dart';
 import 'package:lancloud/core/data/account_store.dart';
+import 'package:lancloud/core/upload_policy.dart';
 
-/// 网页版个人中心（myfile.php?item=1）里的昵称与用户等级。
+/// 新版个人中心的上传规则，以及旧版昵称 / 等级解析兼容。
 void main() {
+  test('新版个人中心从 utcn 地址提取用户名', () {
+    const html = '''
+      function utcn(){
+        url ='https://yxxdz.lanzoue.com/u/excited233?t2';
+      }
+    ''';
+    expect(LanzouClient.parseProfileNickname(html), 'excited233');
+  });
+
+  test('上传限制从网页读取，格式异常时回退 100 MB', () {
+    const html = '单个文件大小<span>2G</span></div>';
+    expect(LanzouClient.parseUploadLimitBytes(html), 2 * 1024 * 1024 * 1024);
+    expect(
+      LanzouClient.parseUploadLimitBytes('单个文件大小<span>未知</span>'),
+      kFallbackUploadLimitBytes,
+    );
+  });
+
+  test('允许上传类型从 mf2 区块读取，缺失时使用完整内置列表', () {
+    const html = '''
+      <div class="mf">
+        <div class="mf1">允许上传类型: </div>
+        <div class="mf2">doc,docx,zip<br>apk,7z,png</div>
+      </div>
+    ''';
+    expect(
+      LanzouClient.parseAllowedUploadExtensions(html),
+      containsAll(<String>['doc', 'docx', 'zip', 'apk', '7z', 'png']),
+    );
+    expect(
+      LanzouClient.parseAllowedUploadExtensions('<div></div>'),
+      containsAll(<String>['brushset', 'mobileconfig', 'imazingapp']),
+    );
+  });
+
   test('昵称旁边的等级标记：普通用户是「普」', () {
     const html =
         '<div class="c_topr">土豆<span class="ulv1">普</span><a>退出</a></div>';

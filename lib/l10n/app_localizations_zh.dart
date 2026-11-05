@@ -395,6 +395,14 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get clearSkippedUploads => '清空被跳过的上传记录';
+
+  @override
+  String clearSkippedUploadsConfirmMessage(int count) {
+    return '将清空全部 $count 条被跳过的上传任务记录，继续吗？';
+  }
+
+  @override
   String resumeAllPartialFailed(int count) {
     return '$count 个下载任务恢复失败，请稍后重试。';
   }
@@ -410,6 +418,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get inProgress => '进行中';
+
+  @override
+  String get skippedUploads => '被跳过';
 
   @override
   String get finished => '已结束';
@@ -782,6 +793,24 @@ class AppLocalizationsZh extends AppLocalizations {
   String get uploadKeywords => '上传 并发';
 
   @override
+  String get skipOversizeUploads => '跳过超过限制大小的文件';
+
+  @override
+  String get skipOversizeUploadsSubtitle => '超过账号允许的单文件大小时不自动上传';
+
+  @override
+  String get skipOversizeUploadsKeywords => '上传 跳过 超限 大小 限制';
+
+  @override
+  String get skipUnsupportedUploads => '跳过不支持上传的文件';
+
+  @override
+  String get skipUnsupportedUploadsSubtitle => '文件类型不在蓝奏云允许列表中时不自动上传';
+
+  @override
+  String get skipUnsupportedUploadsKeywords => '上传 跳过 文件类型 扩展名 支持';
+
+  @override
   String get maxDownloads => '同时下载数量';
 
   @override
@@ -1036,8 +1065,19 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String uploadSkipped(int added, int skipped) {
-    return '已加入 $added 个上传任务，跳过 $skipped 个超过 100MB 的文件';
+    return '已加入 $added 个上传任务，其中 $skipped 个被跳过';
   }
+
+  @override
+  String uploadSkippedReasonOversize(String limit) {
+    return '文件超过 $limit 限制';
+  }
+
+  @override
+  String get uploadSkippedReasonUnsupported => '此类文件不允许上传';
+
+  @override
+  String get uploadAnyway => '仍然上传';
 
   @override
   String uploadAdded(int count) {
@@ -1564,6 +1604,11 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String shareReceivedFiles(int count) {
     return '已接收 $count 个文件，开始上传';
+  }
+
+  @override
+  String shareReceivedFilesSkipped(int added, int skipped) {
+    return '已接收 $added 个文件，其中 $skipped 个被跳过';
   }
 
   @override
@@ -2244,6 +2289,11 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String dropUploaded(int count) {
     return '已上传 $count 个文件';
+  }
+
+  @override
+  String dropSkippedUploads(int count) {
+    return '$count 个文件被跳过';
   }
 
   @override

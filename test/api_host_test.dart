@@ -3,10 +3,14 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/api/lanzou_client.dart';
+import 'package:lancloud/core/upload_policy.dart';
 
 /// 记录请求地址的假适配器（返回空响应，调用方自己会兜底）。
 class _UrlAdapter implements HttpClientAdapter {
+  _UrlAdapter({this.body = ''});
+
   final List<Uri> uris = [];
+  final String body;
 
   @override
   Future<ResponseBody> fetch(
@@ -16,7 +20,7 @@ class _UrlAdapter implements HttpClientAdapter {
   ) async {
     uris.add(options.uri);
     return ResponseBody.fromString(
-      '',
+      body,
       200,
       headers: {
         Headers.contentTypeHeader: [Headers.jsonContentType],
@@ -81,16 +85,48 @@ void main() {
       final adapter = _UrlAdapter();
       client.dio.httpClientAdapter = adapter;
 
-      await client.fetchAccountInfo();
+      final info = await client.fetchAccountInfo();
+      expect(info.nickname, '用户');
+      expect(info.uploadPolicy.maxFileBytes, kFallbackUploadLimitBytes);
       await client.folderStats('f1');
 
-      expect(adapter.uris.length, 2);
+      expect(adapter.uris.length, 3);
       // 昵称 / 等级截取、文件夹统计都走当前配置的域名
       expect(adapter.uris[0].host, '$host.woozooo.com');
-      expect(adapter.uris[0].path, '/myfile.php');
-      expect(adapter.uris[0].queryParameters['item'], '1');
+      expect(adapter.uris[0].path, '/mydisk.php');
+      expect(adapter.uris[0].queryParameters['item'], 'profile');
+      expect(adapter.uris[0].queryParameters['action'], 'mypower');
       expect(adapter.uris[1].host, '$host.woozooo.com');
-      expect(adapter.uris[1].queryParameters['folder_id'], 'f1');
+      expect(adapter.uris[1].path, '/myfile.php');
+      expect(adapter.uris[1].queryParameters['item'], '1');
+      expect(adapter.uris[2].host, '$host.woozooo.com');
+      expect(adapter.uris[2].queryParameters['folder_id'], 'f1');
     }
+  });
+
+  test('新版个人中心一次请求同时取昵称、大小上限与扩展名', () async {
+    final client = LanzouClient(uid: '1');
+    final adapter = _UrlAdapter(
+      body: '''
+        function utcn(){
+          url ='https://yxxdz.lanzoue.com/u/excited233?t2';
+        }
+        单个文件大小<span>200M</span></div>
+        <div class="mf1">允许上传类型: </div>
+        <div class="mf2">doc,zip<br>apk,txt</div>
+      ''',
+    );
+    client.dio.httpClientAdapter = adapter;
+
+    final info = await client.fetchAccountInfo();
+
+    expect(adapter.uris, hasLength(1));
+    expect(info.nickname, 'excited233');
+    expect(info.uploadPolicy.maxFileBytes, 200 * 1024 * 1024);
+    expect(info.uploadPolicy.allowedExtensions, {'doc', 'zip', 'apk', 'txt'});
+    expect(client.uploadPolicy, same(info.uploadPolicy));
+
+    await client.fetchAccountInfo();
+    expect(adapter.uris, hasLength(1));
   });
 }
