@@ -74,3 +74,48 @@ extension LanzouErrorL10n on AppLocalizations {
     };
   }
 }
+
+extension TransferFailureL10n on AppLocalizations {
+  /// 传输页和通知栏共用的失败文案，保证上传 / 下载状态只显示一层前缀。
+  String transferFailure({required bool upload, required String? error}) =>
+      formatTransferFailure(this, upload: upload, error: error);
+}
+
+String formatTransferFailure(
+  AppLocalizations? strings, {
+  required bool upload,
+  required String? error,
+}) {
+  var detail = error?.trim() ?? '';
+  final genericPrefixes = <String>{
+    '失败：',
+    '失败:',
+    'Failed: ',
+    if (strings != null) strings.failedWithError(''),
+  };
+  var stripped = true;
+  while (stripped) {
+    stripped = false;
+    for (final prefix in genericPrefixes) {
+      if (detail.startsWith(prefix)) {
+        detail = detail.substring(prefix.length).trimLeft();
+        stripped = true;
+      }
+    }
+  }
+  final chineseFailurePrefix = RegExp(r'^[^：:\r\n]{1,32}失败[：:]\s*');
+  while (chineseFailurePrefix.hasMatch(detail)) {
+    detail = detail.replaceFirst(chineseFailurePrefix, '');
+  }
+  final englishFailurePrefix = RegExp(
+    r'^[^:\r\n]{1,48}failed:\s*',
+    caseSensitive: false,
+  );
+  while (englishFailurePrefix.hasMatch(detail)) {
+    detail = detail.replaceFirst(englishFailurePrefix, '');
+  }
+  if (detail.isEmpty) detail = strings?.unknownError ?? '未知错误';
+  return upload
+      ? (strings?.uploadFailedWithError(detail) ?? '上传失败：$detail')
+      : (strings?.downloadFailedWithError(detail) ?? '下载失败：$detail');
+}

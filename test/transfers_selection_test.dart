@@ -42,10 +42,15 @@ Widget _transferTestHost({
   );
 }
 
-TransferTask task(String id, String name, {required TransferStatus status}) {
+TransferTask task(
+  String id,
+  String name, {
+  required TransferStatus status,
+  TransferKind kind = TransferKind.upload,
+}) {
   return TransferTask(
     id: id,
-    kind: TransferKind.upload,
+    kind: kind,
     name: name,
     accountUid: '',
     localFilePath: '/tmp/$name',
@@ -167,6 +172,25 @@ int selectedTransferTab(WidgetTester tester) => tester
     .selected;
 
 void main() {
+  testWidgets('失败副标题区分上传下载且不重复失败前缀', (tester) async {
+    final (app, _) = await hostWithTasks(tester, [
+      task('u1', 'upload.zip', status: TransferStatus.failed)
+        ..error = '失败：上传失败：server busy',
+      task(
+        'd1',
+        'download.zip',
+        status: TransferStatus.failed,
+        kind: TransferKind.download,
+      )..error = '失败：获取下载地址失败：HTTP 403',
+    ]);
+
+    expect(find.text('上传失败：server busy'), findsOneWidget);
+    await tester.tap(find.text('下载').hitTestable());
+    await tester.pumpAndSettle();
+    expect(find.text('下载失败：HTTP 403'), findsOneWidget);
+    app.dispose();
+  });
+
   testWidgets('传输列表按密集条目最小宽度铺两栏，不挤成三栏', (tester) async {
     tester.view.devicePixelRatio = 1.0;
     tester.view.physicalSize = const Size(856, 700);
