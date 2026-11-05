@@ -582,6 +582,39 @@ void main() {
       expect(paused.total, payload.length);
     });
 
+    test('should 上传完成后自动移除任务通知', () async {
+      final notifications = _RecordingNotificationSink();
+      final manager = TransferManager.withDependencies(
+        TransferDependencies(
+          store: _FakeTransferStore(),
+          accounts: _ImmediateUploadAccountPort(),
+          download: const _FakeTransferDownloadPort(''),
+          settings: StoreTransferSettingsPort(SettingsStore()),
+        ),
+        notifications: notifications,
+      );
+      addTearDown(manager.dispose);
+
+      manager.addUpload(
+        name: 'upload.zip',
+        folderId: '-1',
+        streamFactory: () => Stream<List<int>>.value(<int>[1, 2]),
+        size: 2,
+      );
+      final task = manager.tasks.single;
+      await _waitFor(() => task.status == TransferStatus.done);
+
+      expect(
+        notifications.snapshots.map((snapshot) => snapshot.state),
+        contains(TransferNotificationState.uploading),
+      );
+      expect(
+        notifications.snapshots.map((snapshot) => snapshot.state),
+        isNot(contains(TransferNotificationState.done)),
+      );
+      expect(notifications.cancellations.last, task.id);
+    });
+
     test('should 失败时显示可关闭的独立失败通知', () async {
       final tempDir = Directory.systemTemp.createTempSync(
         'lancloud-transfer-notify-failed',
@@ -768,6 +801,40 @@ class _FailingDownloader implements TransferDownloader {
       requestOptions: RequestOptions(path: url),
       reason: 'Connection closed while receiving data',
     );
+  }
+}
+
+class _ImmediateUploadAccountPort implements TransferAccountPort {
+  final LanzouClient _client = _ImmediateUploadClient();
+
+  @override
+  String? get activeUid => 'u1';
+
+  @override
+  bool hasAccount(String uid) => uid == 'u1';
+
+  @override
+  LanzouClient clientFor(String uid) => _client;
+
+  @override
+  LanzouClient get publicClient => throw UnimplementedError('上传测试不需要公开客户端');
+}
+
+class _ImmediateUploadClient extends LanzouClient {
+  _ImmediateUploadClient() : super(uid: 'u1');
+
+  @override
+  Future<void> uploadFile({
+    required String name,
+    required String folderId,
+    String? path,
+    Stream<List<int>> Function()? streamFactory,
+    int? size,
+    void Function(int sent, int total)? onProgress,
+    CancelToken? cancelToken,
+  }) async {
+    final total = size ?? 0;
+    onProgress?.call(total, total);
   }
 }
 

@@ -747,6 +747,12 @@ class TransferManager extends ChangeNotifier {
   /// 按任务和设置同步单条通知。进行中任务受“传输进度通知”控制，
   /// 完成 / 失败受“传输完成通知”控制。
   void _syncTaskNotification(TransferTask task) {
+    // 上传完成后留通知意义不大；失败通知仍然保留，方便用户判断原因。
+    if (task.kind == TransferKind.upload &&
+        task.status == TransferStatus.done) {
+      _notifications.cancelTransferTask(task.id);
+      return;
+    }
     final state = switch (task.status) {
       TransferStatus.resolving => TransferNotificationState.resolving,
       TransferStatus.resuming => TransferNotificationState.resuming,
