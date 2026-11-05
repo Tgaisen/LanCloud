@@ -1,6 +1,6 @@
 # 回归基线
 
-> 当前快照日期：2026-11-03。
+> 当前快照日期：2026-11-05。
 >
 > 本文件只记录当前仓库状态；逐次迁移和增量测试历史见
 > [BASELINE_HISTORY.md](BASELINE_HISTORY.md)。
@@ -10,14 +10,14 @@
 | 命令 | 口径 | 结果 | 耗时 |
 | --- | --- | --- | --- |
 | `tools\agent.cmd analyze` | 全量 | No issues found | 约 27 s |
-| `tools\agent.cmd analyze` | 增量（本次改动，2 个文件） | No issues found | 约 24 s |
+| `tools\agent.cmd analyze` | 增量（本次改动，1 个 lib 文件） | No issues found | 约 11 s |
 | `tools\agent.cmd test` | 全量（最近一次完整运行） | **724 tests, all passed** | 约 100 s |
-| `tools\agent.cmd test` | 增量（本次改动，6 个测试文件） | **56 tests, all passed** | 约 20 s |
+| `tools\agent.cmd test` | 增量（本次改动，2 个测试文件） | **21 tests, all passed** | 约 15 s |
 
 当前分析结果为 0 issue 是硬基线。出现红灯时，先判断是否为本次改动引入；
 不要把增量结果当成全量结论。
 
-当前全量用例总数应为 788（含本次新增网格角标对齐测试）；
+当前全量用例总数应为 789（含本次新增连接中断自动续传测试）；
 全量结果待下一次人工兜底时刷新。
 
 ## 规模

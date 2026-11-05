@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -155,6 +156,35 @@ void main() {
       expect(ranges, <String?>['bytes=$half-', null]);
       expect(await partialFile.readAsBytes(), payload);
       expect(result.total, payload.length);
+    });
+
+    test('should 在连接中途关闭后自动从断点重试', () async {
+      final payload = List<int>.generate(32 * 1024, (index) => index % 217);
+      final firstPart = 4096;
+      final adapter = _InterruptedDownloadAdapter(
+        payload: payload,
+        firstPart: firstPart,
+      );
+      dio.httpClientAdapter = adapter;
+
+      final result =
+          await const DioTransferDownloader(
+            transientRetryDelays: <Duration>[Duration.zero],
+          ).download(
+            dio: dio,
+            url: 'https://cdn.example/file',
+            partialPath: partialFile.path,
+            expectedTotal: payload.length,
+            cancelToken: CancelToken(),
+            headers: const <String, String>{},
+            receiveTimeout: const Duration(seconds: 5),
+            onProgress: (_, _) {},
+          );
+
+      expect(adapter.ranges, <String?>[null, 'bytes=$firstPart-']);
+      expect(await partialFile.readAsBytes(), payload);
+      expect(result.total, payload.length);
+      expect(result.resumed, isTrue);
     });
 
     test('should 用多个精确 Range 并发下载分片', () async {
@@ -501,4 +531,54 @@ Future<void> _writeResponse(
   final match = RegExp(r'^bytes=(\d+)-(\d+)$').firstMatch(range);
   if (match == null) throw FormatException('无效 Range：$range');
   return (start: int.parse(match.group(1)!), end: int.parse(match.group(2)!));
+}
+
+class _InterruptedDownloadAdapter implements HttpClientAdapter {
+  _InterruptedDownloadAdapter({required this.payload, required this.firstPart});
+
+  final List<int> payload;
+  final int firstPart;
+  final List<String?> ranges = <String?>[];
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    final range = options.headers['Range'] as String?;
+    ranges.add(range);
+    if (range == null) {
+      return ResponseBody(
+        _interruptedBody(),
+        HttpStatus.ok,
+        headers: <String, List<String>>{
+          Headers.contentLengthHeader: <String>['${payload.length}'],
+          Headers.contentTypeHeader: <String>['application/octet-stream'],
+        },
+      );
+    }
+
+    final match = RegExp(r'^bytes=(\d+)-$').firstMatch(range);
+    final start = int.parse(match!.group(1)!);
+    return ResponseBody(
+      Stream<Uint8List>.value(Uint8List.fromList(payload.sublist(start))),
+      HttpStatus.partialContent,
+      headers: <String, List<String>>{
+        Headers.contentLengthHeader: <String>['${payload.length - start}'],
+        HttpHeaders.contentRangeHeader: <String>[
+          'bytes $start-${payload.length - 1}/${payload.length}',
+        ],
+        Headers.contentTypeHeader: <String>['application/octet-stream'],
+      },
+    );
+  }
+
+  Stream<Uint8List> _interruptedBody() async* {
+    yield Uint8List.fromList(payload.sublist(0, firstPart));
+    throw const HttpException('Connection closed while receiving data');
+  }
+
+  @override
+  void close({bool force = false}) {}
 }
