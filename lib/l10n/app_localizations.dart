@@ -1088,12 +1088,6 @@ abstract class AppLocalizations {
   /// **'修改后的文件名不能为空'**
   String get renameEmptyName;
 
-  /// No description provided for @renameDuplicateNames.
-  ///
-  /// In zh, this message translates to:
-  /// **'修改后的文件名不能重复'**
-  String get renameDuplicateNames;
-
   /// No description provided for @renamedUploads.
   ///
   /// In zh, this message translates to:

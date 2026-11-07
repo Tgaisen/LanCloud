@@ -19,13 +19,7 @@ class UploadRenameChange {
   final String newName;
 }
 
-enum UploadRenameError {
-  emptySearch,
-  invalidPattern,
-  noMatches,
-  emptyName,
-  duplicateNames,
-}
+enum UploadRenameError { emptySearch, invalidPattern, noMatches, emptyName }
 
 /// 批量重命名预览；错误存在时不能应用。
 class UploadRenamePreview {
@@ -74,15 +68,12 @@ class UploadRenameRule {
     }
 
     final targetList = targets.toList(growable: false);
-    final nameCounts = <String, int>{};
     final changes = <UploadRenameChange>[];
     for (final target in targetList) {
       final newName = _replace(target.name, expression);
       if (newName.trim().isEmpty) {
         return const UploadRenamePreview.failure(UploadRenameError.emptyName);
       }
-      final normalized = newName.toLowerCase();
-      nameCounts.update(normalized, (count) => count + 1, ifAbsent: () => 1);
       if (newName != target.name) {
         changes.add(
           UploadRenameChange(
@@ -96,13 +87,6 @@ class UploadRenameRule {
 
     if (changes.isEmpty) {
       return const UploadRenamePreview.failure(UploadRenameError.noMatches);
-    }
-    if (changes.any(
-      (change) => (nameCounts[change.newName.toLowerCase()] ?? 0) > 1,
-    )) {
-      return const UploadRenamePreview.failure(
-        UploadRenameError.duplicateNames,
-      );
     }
     return UploadRenamePreview.ready(changes);
   }

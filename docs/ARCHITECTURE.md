@@ -71,7 +71,7 @@
 | `ThemeSettingsState` | `core/theme_settings_state.dart` | 设置子组：主题模式/种子、OLED、动态取色与全局动画开关 |
 | `TransferConnectionSettingsState` | `core/transfer_connection_settings_state.dart` | 设置子组：请求间隔、并发数、API 域名、UA、上传路径、自动开始与上传前筛选 |
 | `LanzouUploadPolicy` | `core/upload_policy.dart` | 从账号页取得的单文件上限 / 扩展名白名单及内置回退值；筛选任务进入 `skipped` 后不自动调度 |
-| `UploadRenameRule` | `core/transfer/upload_rename.dart` | 上传任务批量查找替换、正则、大小写与重名校验；只产出预览，不直接修改任务 |
+| `UploadRenameRule` | `core/transfer/upload_rename.dart` | 上传任务批量查找替换、正则、大小写与空名称校验；只产出预览，不直接修改任务 |
 | `ListHomeSettingsState` | `core/list_home_settings_state.dart` | 设置子组：列表排序、首页折叠、最近使用上限与文件夹打开模式 |
 | `LanguageClipboardSettingsState` | `core/language_clipboard_settings_state.dart` | 设置子组：界面语言与复制分享链接提示 |
 | `CachePageSettingsState` | `core/cache_page_settings_state.dart` | 设置子组：网格视图、启动页、目录缓存和自动加载全部页面 |

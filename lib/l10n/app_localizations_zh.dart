@@ -550,9 +550,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get renameEmptyName => '修改后的文件名不能为空';
 
   @override
-  String get renameDuplicateNames => '修改后的文件名不能重复';
-
-  @override
   String renamedUploads(int count) {
     return '已修改 $count 个上传任务的名称';
   }

@@ -1658,10 +1658,11 @@ class _TransferTile extends StatelessWidget {
                   onPressed: saving ? null : () => manager.removeTask(task.id),
                 ),
               if (pending)
-                TextButton(
+                M3eIconButton(
                   key: ValueKey('upload-start-${task.id}'),
+                  tooltip: l10n.upload,
+                  icon: Icons.upload,
                   onPressed: () => manager.startUploads([task.id]),
-                  child: Text(l10n.upload),
                 ),
               if (terminal || skipped || pending)
                 Builder(

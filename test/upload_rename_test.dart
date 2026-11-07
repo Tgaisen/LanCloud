@@ -82,7 +82,7 @@ void main() {
     );
   });
 
-  test('修改后名称重复会阻止应用，既包括已修改项也包括未修改项', () {
+  test('允许修改后与同批其他任务同名', () {
     const collisions = [
       UploadRenameTarget(id: 'a', name: 'old.zip'),
       UploadRenameTarget(id: 'b', name: 'target.zip'),
@@ -94,6 +94,7 @@ void main() {
       matchCase: false,
     ).preview(collisions);
 
-    expect(preview.error, UploadRenameError.duplicateNames);
+    expect(preview.error, isNull);
+    expect(preview.changes.single.newName, 'target.zip');
   });
 }

@@ -572,9 +572,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get renameEmptyName => 'The new file name cannot be empty';
 
   @override
-  String get renameDuplicateNames => 'The new file names must be unique';
-
-  @override
   String renamedUploads(int count) {
     return 'Renamed $count upload tasks';
   }

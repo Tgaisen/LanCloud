@@ -226,7 +226,6 @@
   "invalidRegularExpression": "Invalid regular expression",
   "renameNoMatches": "No file names will change",
   "renameEmptyName": "The new file name cannot be empty",
-  "renameDuplicateNames": "The new file names must be unique",
   "renamedUploads": "Renamed {count} upload tasks",
   "@renamedUploads": {
     "placeholders": {

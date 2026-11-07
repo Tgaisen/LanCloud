@@ -155,7 +155,6 @@ class _BatchUploadRenameDialogState extends State<_BatchUploadRenameDialog> {
     UploadRenameError.invalidPattern => l10n.invalidRegularExpression,
     UploadRenameError.noMatches => l10n.renameNoMatches,
     UploadRenameError.emptyName => l10n.renameEmptyName,
-    UploadRenameError.duplicateNames => l10n.renameDuplicateNames,
     null => '',
   };
 
@@ -169,16 +168,24 @@ class _BatchUploadRenameDialogState extends State<_BatchUploadRenameDialog> {
         title: Text(l10n.renamePreview),
         content: SizedBox(
           width: dialogFormWidth(context),
-          height: math.min(360, MediaQuery.sizeOf(context).height * 0.52),
-          child: SingleChildScrollView(
-            child: DialogListGroup(
-              children: [
-                for (final change in preview.changes)
-                  ListTile(
-                    key: ValueKey('upload-rename-preview-${change.id}'),
-                    title: Text('${change.originalName} → ${change.newName}'),
-                  ),
-              ],
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: math.min(
+                360,
+                MediaQuery.sizeOf(context).height * 0.52,
+              ),
+            ),
+            child: SingleChildScrollView(
+              key: const ValueKey('upload-batch-rename-preview-list'),
+              child: DialogListGroup(
+                children: [
+                  for (final change in preview.changes)
+                    ListTile(
+                      key: ValueKey('upload-rename-preview-${change.id}'),
+                      title: Text('${change.originalName} → ${change.newName}'),
+                    ),
+                ],
+              ),
             ),
           ),
         ),

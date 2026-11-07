@@ -1771,7 +1771,15 @@ void main() {
 
     expect(find.text('待开始'), findsWidgets);
     expect(find.textContaining('12 B'), findsOneWidget);
-    expect(find.byKey(const ValueKey('upload-start-u1')), findsOneWidget);
+    final uploadButton = find.byKey(const ValueKey('upload-start-u1'));
+    expect(uploadButton, findsOneWidget);
+    expect(
+      find.descendant(
+        of: uploadButton,
+        matching: find.byIcon(app_icons.Icons.upload),
+      ),
+      findsOneWidget,
+    );
 
     await openRowMenu(tester, 'waiting.txt');
     expect(menuLabels(tester), ['重命名', '取消上传']);
@@ -1878,6 +1886,14 @@ void main() {
 
     expect(find.text('one_old.txt → one_new.txt'), findsOneWidget);
     expect(find.text('two_old.txt → two_new.txt'), findsOneWidget);
+    expect(
+      tester
+          .getSize(
+            find.byKey(const ValueKey('upload-batch-rename-preview-list')),
+          )
+          .height,
+      lessThan(300),
+    );
     await tester.tap(find.byKey(const ValueKey('upload-batch-rename-back')));
     await tester.pumpAndSettle();
     expect(
