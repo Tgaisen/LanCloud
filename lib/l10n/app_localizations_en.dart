@@ -536,9 +536,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get redownload => 'Download again';
 
   @override
-  String get deleteDownloadRecord => 'Delete download record';
-
-  @override
   String get waitingToDownload => 'Waiting';
 
   @override

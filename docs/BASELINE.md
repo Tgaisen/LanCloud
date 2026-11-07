@@ -10,9 +10,9 @@
 | 命令 | 口径 | 结果 | 耗时 |
 | --- | --- | --- | --- |
 | `tools\agent.cmd analyze` | 全量 | No issues found | 约 27 s |
-| `tools\agent.cmd analyze` | 增量（本次改动，6 个 lib 文件） | No issues found | 约 12 s |
+| `tools\agent.cmd analyze` | 增量（本次改动，5 个 lib 文件） | No issues found | 约 15 s |
 | `tools\agent.cmd test` | 全量（最近一次完整运行） | **724 tests, all passed** | 约 100 s |
-| `tools\agent.cmd test` | 增量（本次改动，69 个测试文件） | **412 tests, all passed** | 约 62 s |
+| `tools\agent.cmd test` | 增量（本次改动，63 个测试文件） | **372 tests, all passed** | 约 72 s |
 
 当前分析结果为 0 issue 是硬基线。出现红灯时，先判断是否为本次改动引入；
 不要把增量结果当成全量结论。
@@ -31,7 +31,7 @@
 | `test` 用例数 | 813 |
 | `lib/ui` 平铺文件 | 57 |
 | `lib/core` | 54 个平铺文件 + 5 个子系统目录 |
-| 文案（`app_zh.arb`） | 1,517 行 |
+| 文案（`app_zh.arb`） | 1,516 行 |
 
 ## 工具链与依赖
 

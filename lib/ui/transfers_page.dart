@@ -573,10 +573,7 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
           ),
         M3eMenuItem(
           value: _TransferMenuAction.removeRecord,
-          // 下载任务叫「删除下载记录」；上传没有本地文件语义，沿用「删除此条记录」
-          label: task.kind == TransferKind.download
-              ? l10n.deleteDownloadRecord
-              : l10n.deleteRecord,
+          label: l10n.deleteRecord,
           icon: Icons.playlist_remove,
         ),
         if (task.kind == TransferKind.download &&

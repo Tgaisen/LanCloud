@@ -207,7 +207,6 @@
   "openFilePermissionDenied": "File access is no longer permitted. Choosing a download directory only affects future tasks; please download this file again.",
   "openFileSystemError": "The system could not open this file. Please try again later.",
   "redownload": "Download again",
-  "deleteDownloadRecord": "Delete download record",
   "waitingToDownload": "Waiting",
   "downloadFailed": "Download failed",
   "batchRetry": "Retry all",

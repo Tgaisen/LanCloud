@@ -165,7 +165,7 @@ Future<void> showDownloadTaskMenu(
         value: _DownloadMenuAction.stop,
         label: transferActive || paused
             ? l10n.cancelDownload
-            : l10n.deleteDownloadRecord,
+            : l10n.deleteRecord,
         icon: transferActive || paused ? Icons.close : Icons.playlist_remove,
       ),
       // 连文件一起删：删完标记消失，属性弹窗恢复「下载」原状

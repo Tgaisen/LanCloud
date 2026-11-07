@@ -575,7 +575,7 @@ void main() {
     expect(rows.map((r) => r.label).toList(), [
       '打开',
       '分享',
-      '删除下载记录',
+      '删除此条记录',
       '删除记录与文件',
       '重新下载',
     ]);
@@ -585,7 +585,7 @@ void main() {
     await tester.tap(
       find.descendant(
         of: find.byType(M3eMenuRow),
-        matching: find.text('删除下载记录'),
+        matching: find.text('删除此条记录'),
       ),
     );
     await tester.pump();
