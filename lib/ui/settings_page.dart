@@ -18,6 +18,7 @@ import '../core/platform_support.dart';
 import '../core/system_file_saver.dart';
 import '../l10n/l10n.dart';
 import 'advanced_connection_settings_tile.dart';
+import 'auto_start_upload_settings_tile.dart';
 import 'app_icons.dart';
 import 'backup_page.dart';
 import 'cache_page_settings_tile.dart';
@@ -519,6 +520,14 @@ class _SettingsCategoryPageState extends ConsumerState<SettingsCategoryPage>
         build: (context) => const TransferConcurrencySettingsTile(
           setting: TransferConcurrencySetting.uploads,
         ),
+      ),
+      _Entry(
+        id: 'auto_start_uploads',
+        title: l10n.autoStartUploads,
+        subtitle: l10n.autoStartUploadsSubtitle,
+        keywords: l10n.autoStartUploadsKeywords.split(' '),
+        section: SettingsSection.upload,
+        build: (context) => const AutoStartUploadSettingsTile(),
       ),
       _Entry(
         id: 'skip_oversize_uploads',

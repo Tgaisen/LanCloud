@@ -19,12 +19,20 @@ import '../upload_policy.dart';
 import 'resumable_downloader.dart';
 import 'transfer_dependencies.dart';
 import 'transfer_issue.dart';
+import 'upload_rename.dart';
 
 enum TransferKind { upload, download }
 
-enum UploadAddResult { queued, skippedOversize, skippedUnsupported }
+enum UploadAddResult { pending, queued, skippedOversize, skippedUnsupported }
+
+extension UploadAddResultStatus on UploadAddResult {
+  /// 任务已成功保存；具体是待开始还是排队中由自动开始设置决定。
+  bool get accepted =>
+      this == UploadAddResult.pending || this == UploadAddResult.queued;
+}
 
 enum TransferStatus {
+  pending,
   queued,
   resolving,
   running,
@@ -57,7 +65,7 @@ class TransferTask {
 
   final String id;
   final TransferKind kind;
-  final String name;
+  String name;
   final String accountUid;
   final String folderId;
   final String localFilePath;
@@ -277,12 +285,7 @@ class TransferManager extends ChangeNotifier {
         effectiveSize = File(path).lengthSync();
       } catch (_) {}
     }
-    var uploadPolicy = LanzouUploadPolicy.fallback;
-    if (uid.isNotEmpty && _dependencies.accounts.hasAccount(uid)) {
-      try {
-        uploadPolicy = _dependencies.accounts.clientFor(uid).uploadPolicy;
-      } catch (_) {}
-    }
+    final uploadPolicy = _uploadPolicyFor(uid);
     final skipReason = _uploadSkipResult(
       name: name,
       size: effectiveSize,
@@ -296,7 +299,7 @@ class TransferManager extends ChangeNotifier {
       folderId: folderId,
       localFilePath: path,
       streamFactory: streamFactory,
-      sourceSize: size,
+      sourceSize: effectiveSize,
     )..total = effectiveSize;
     if (skipReason != null) {
       task.status = TransferStatus.skipped;
@@ -308,15 +311,31 @@ class TransferManager extends ChangeNotifier {
         UploadAddResult.skippedUnsupported => const TransferIssue(
           TransferIssueCode.skippedUnsupported,
         ).encode(),
-        UploadAddResult.queued => null,
+        UploadAddResult.pending || UploadAddResult.queued => null,
       };
+    } else if (!_dependencies.settings.autoStartUploads) {
+      task.status = TransferStatus.pending;
     }
     tasks.add(task);
     _bumpMarks();
     _persist(task);
     notifyListeners();
     _pump();
-    return skipReason ?? UploadAddResult.queued;
+    return skipReason ??
+        (_dependencies.settings.autoStartUploads
+            ? UploadAddResult.queued
+            : UploadAddResult.pending);
+  }
+
+  LanzouUploadPolicy _uploadPolicyFor(String uid) {
+    if (uid.isEmpty || !_dependencies.accounts.hasAccount(uid)) {
+      return LanzouUploadPolicy.fallback;
+    }
+    try {
+      return _dependencies.accounts.clientFor(uid).uploadPolicy;
+    } catch (_) {
+      return LanzouUploadPolicy.fallback;
+    }
   }
 
   UploadAddResult? _uploadSkipResult({
@@ -580,6 +599,84 @@ class TransferManager extends ChangeNotifier {
     return null;
   }
 
+  /// 应用单条或批量上传任务重命名，并重新检查待开始 / 被跳过状态。
+  ///
+  /// 通过当前上传规则的任务统一回到「待开始」，避免改名后直接绕过用户
+  /// 关闭自动开始上传的选择；仍不符合规则的任务继续留在「被跳过」。
+  int renameUploads(Iterable<UploadRenameChange> changes) {
+    var changed = 0;
+    for (final change in changes) {
+      final task = _find(change.id);
+      if (task == null ||
+          task.kind != TransferKind.upload ||
+          (task.status != TransferStatus.pending &&
+              task.status != TransferStatus.skipped) ||
+          change.newName.trim().isEmpty ||
+          change.newName == task.name) {
+        continue;
+      }
+
+      task.name = change.newName;
+      final policy = _uploadPolicyFor(_policyUidFor(task));
+      final skipReason = _uploadSkipResult(
+        name: task.name,
+        size: _sourceSizeOf(task),
+        policy: policy,
+      );
+      if (skipReason == null) {
+        task.status = TransferStatus.pending;
+        task.error = null;
+      } else {
+        task.status = TransferStatus.skipped;
+        task.error = _encodedSkipReason(skipReason, policy);
+      }
+      _persist(task);
+      changed += 1;
+    }
+    if (changed == 0) return 0;
+    _bumpMarks();
+    notifyListeners();
+    return changed;
+  }
+
+  /// 手动开始待开始的上传任务，返回实际转入调度的数量。
+  ///
+  /// 源文件或账号不可用的任务不会入队：永久失效转为失败，登录等可恢复问题
+  /// 继续保留在待开始，等待用户处理后再次点击上传。
+  int startUploads(Iterable<String> ids) {
+    var started = 0;
+    var changed = false;
+    for (final id in ids.toSet()) {
+      final task = _find(id);
+      if (task == null ||
+          task.kind != TransferKind.upload ||
+          task.status != TransferStatus.pending) {
+        continue;
+      }
+      final issue = _uploadSourceIssue(task);
+      if (issue != null) {
+        if (issue.permanent) task.status = TransferStatus.failed;
+        task.error = issue.issue.encode();
+        _persist(task);
+        changed = true;
+        continue;
+      }
+      task.status = TransferStatus.queued;
+      task.error = null;
+      task.received = 0;
+      task.autoRefreshTried = false;
+      if (task.cancelToken.isCancelled) task.cancelToken = CancelToken();
+      _persist(task);
+      started += 1;
+      changed = true;
+    }
+    if (!changed) return 0;
+    _bumpMarks();
+    notifyListeners();
+    _pump();
+    return started;
+  }
+
   Future<String?> _ensureDownloadUrl(TransferTask task) async {
     if (task.kind != TransferKind.download || task.url.isNotEmpty) return null;
     final i18n = NotificationService.i18n;
@@ -648,6 +745,41 @@ class TransferManager extends ChangeNotifier {
     if (removed.isEmpty) return const <TransferTask>[];
     removeTasks([for (final task in removed) task.id]);
     return removed;
+  }
+
+  /// 清空待开始的上传记录。
+  List<TransferTask> clearPendingUploads() {
+    final removed = tasks
+        .where(
+          (task) =>
+              task.kind == TransferKind.upload &&
+              task.status == TransferStatus.pending,
+        )
+        .toList(growable: false);
+    if (removed.isEmpty) return const <TransferTask>[];
+    removeTasks([for (final task in removed) task.id]);
+    return removed;
+  }
+
+  String _policyUidFor(TransferTask task) {
+    if (task.accountUid.isNotEmpty) return task.accountUid;
+    return _dependencies.accounts.activeUid ?? '';
+  }
+
+  int _sourceSizeOf(TransferTask task) =>
+      task.sourceSize > 0 ? task.sourceSize : task.total;
+
+  String _encodedSkipReason(UploadAddResult reason, LanzouUploadPolicy policy) {
+    return switch (reason) {
+      UploadAddResult.skippedOversize => TransferIssue(
+        TransferIssueCode.skippedOversize,
+        policy.limitLabel,
+      ).encode(),
+      UploadAddResult.skippedUnsupported => const TransferIssue(
+        TransferIssueCode.skippedUnsupported,
+      ).encode(),
+      UploadAddResult.pending || UploadAddResult.queued => '',
+    };
   }
 
   /// 删除一条传输记录：进行中的先取消，避免残留记录被写回。
@@ -888,7 +1020,9 @@ class TransferManager extends ChangeNotifier {
       TransferStatus.skipped => null,
       TransferStatus.done => TransferNotificationState.done,
       TransferStatus.failed => TransferNotificationState.failed,
-      TransferStatus.queued || TransferStatus.canceled => null,
+      TransferStatus.pending ||
+      TransferStatus.queued ||
+      TransferStatus.canceled => null,
     };
     if (task.removed || state == null) {
       _notifications.cancelTransferTask(task.id);

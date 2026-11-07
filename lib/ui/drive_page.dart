@@ -1181,7 +1181,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
         path: path,
         size: size,
       );
-      if (result == UploadAddResult.queued) {
+      if (result.accepted) {
         added += 1;
       } else {
         skipped += 1;
@@ -1217,7 +1217,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
           path: path,
           size: size,
         );
-        if (result == UploadAddResult.queued) {
+        if (result.accepted) {
           added += 1;
         } else {
           skipped += 1;

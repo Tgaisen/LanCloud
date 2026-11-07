@@ -818,6 +818,18 @@ abstract class AppLocalizations {
   /// **'将清空全部 {count} 条被跳过的上传任务记录，继续吗？'**
   String clearSkippedUploadsConfirmMessage(int count);
 
+  /// No description provided for @clearPendingUploads.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空待开始上传'**
+  String get clearPendingUploads;
+
+  /// No description provided for @clearPendingUploadsConfirmMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'将清空全部 {count} 条待开始的上传任务记录，继续吗？'**
+  String clearPendingUploadsConfirmMessage(int count);
+
   /// No description provided for @clearFailedTransfers.
   ///
   /// In zh, this message translates to:
@@ -859,6 +871,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'进行中'**
   String get inProgress;
+
+  /// No description provided for @pendingUploads.
+  ///
+  /// In zh, this message translates to:
+  /// **'待开始'**
+  String get pendingUploads;
 
   /// No description provided for @skippedUploads.
   ///
@@ -985,6 +1003,102 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'取消下载'**
   String get cancelDownload;
+
+  /// No description provided for @cancelUpload.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消上传'**
+  String get cancelUpload;
+
+  /// No description provided for @rename.
+  ///
+  /// In zh, this message translates to:
+  /// **'重命名'**
+  String get rename;
+
+  /// No description provided for @modify.
+  ///
+  /// In zh, this message translates to:
+  /// **'修改'**
+  String get modify;
+
+  /// No description provided for @preview.
+  ///
+  /// In zh, this message translates to:
+  /// **'预览'**
+  String get preview;
+
+  /// No description provided for @batchRename.
+  ///
+  /// In zh, this message translates to:
+  /// **'批量重命名'**
+  String get batchRename;
+
+  /// No description provided for @renamePreview.
+  ///
+  /// In zh, this message translates to:
+  /// **'重命名预览'**
+  String get renamePreview;
+
+  /// No description provided for @findContent.
+  ///
+  /// In zh, this message translates to:
+  /// **'查找内容'**
+  String get findContent;
+
+  /// No description provided for @replaceWith.
+  ///
+  /// In zh, this message translates to:
+  /// **'替换为'**
+  String get replaceWith;
+
+  /// No description provided for @useRegularExpression.
+  ///
+  /// In zh, this message translates to:
+  /// **'正则表达式'**
+  String get useRegularExpression;
+
+  /// No description provided for @matchCase.
+  ///
+  /// In zh, this message translates to:
+  /// **'区分大小写'**
+  String get matchCase;
+
+  /// No description provided for @searchContentRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入查找内容'**
+  String get searchContentRequired;
+
+  /// No description provided for @invalidRegularExpression.
+  ///
+  /// In zh, this message translates to:
+  /// **'正则表达式无效'**
+  String get invalidRegularExpression;
+
+  /// No description provided for @renameNoMatches.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有名称会被修改'**
+  String get renameNoMatches;
+
+  /// No description provided for @renameEmptyName.
+  ///
+  /// In zh, this message translates to:
+  /// **'修改后的文件名不能为空'**
+  String get renameEmptyName;
+
+  /// No description provided for @renameDuplicateNames.
+  ///
+  /// In zh, this message translates to:
+  /// **'修改后的文件名不能重复'**
+  String get renameDuplicateNames;
+
+  /// No description provided for @renamedUploads.
+  ///
+  /// In zh, this message translates to:
+  /// **'已修改 {count} 个上传任务的名称'**
+  String renamedUploads(int count);
 
   /// No description provided for @openFileFailed.
   ///
@@ -1579,6 +1693,24 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'上传 并发'**
   String get uploadKeywords;
+
+  /// No description provided for @autoStartUploads.
+  ///
+  /// In zh, this message translates to:
+  /// **'自动开始上传'**
+  String get autoStartUploads;
+
+  /// No description provided for @autoStartUploadsSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'关闭后需在传输列表手动开始上传，上传前可修改任务队列'**
+  String get autoStartUploadsSubtitle;
+
+  /// No description provided for @autoStartUploadsKeywords.
+  ///
+  /// In zh, this message translates to:
+  /// **'上传 自动开始 待开始 手动 队列'**
+  String get autoStartUploadsKeywords;
 
   /// No description provided for @skipOversizeUploads.
   ///

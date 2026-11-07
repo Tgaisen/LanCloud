@@ -38,7 +38,7 @@
 | `AppCompositionRoot` | `core/app_composition_root.dart` | 用 `AppEnvironment` 与显式恢复回调组装备份、传输依赖和 Riverpod 容器；不触发启动副作用 |
 | `AppEnvironment` | `core/app_environment.dart` | 唯一组装导航、账号、设置、运行时、客户端与应用级服务，只保存实例，不触发启动副作用 |
 | `AppStartup` | `core/app_startup.dart` | 编排安全存储检查、账号/设置加载、运行时同步、目录绑定、ready、恢复重载与后台任务 |
-| `TransferManager` | `core/transfer/transfer_manager.dart` | 上传/下载任务队列、暂停/继续、保存阶段、进度与重试 |
+| `TransferManager` | `core/transfer/transfer_manager.dart` | 上传/下载任务队列、待开始/手动开始、重命名、暂停/继续、保存阶段、进度与重试 |
 | `TransferStore` | `core/transfer/transfer_store.dart` | 传输记录恢复、保存与删除端口；`AppDbTransferStore` 适配既有数据库 |
 | `DioTransferDownloader` / `TransferDownloader` | `core/transfer/resumable_downloader.dart` | 用稳定 `.part` 文件、HTTP Range 与 `Content-Range` 校验实现断点续传；服务端不支持时回退完整下载 |
 | `TransferAccountPort` | `core/transfer/transfer_account_port.dart` | 当前 UID、账号存在性、账号客户端与公开客户端端口；包装账号存储和客户端注册表 |
@@ -69,8 +69,9 @@
 | `NotificationSettingsState` | `core/notification_settings_state.dart` | 设置子组：进度通知与完成通知开关 |
 | `NavigationAppearanceSettingsState` | `core/navigation_appearance_settings_state.dart` | 设置子组：侧滑、顶/底栏隐藏、悬浮导航、转场与导航项显示开关 |
 | `ThemeSettingsState` | `core/theme_settings_state.dart` | 设置子组：主题模式/种子、OLED、动态取色与全局动画开关 |
-| `TransferConnectionSettingsState` | `core/transfer_connection_settings_state.dart` | 设置子组：请求间隔、并发数、API 域名、UA、上传路径与上传前筛选 |
+| `TransferConnectionSettingsState` | `core/transfer_connection_settings_state.dart` | 设置子组：请求间隔、并发数、API 域名、UA、上传路径、自动开始与上传前筛选 |
 | `LanzouUploadPolicy` | `core/upload_policy.dart` | 从账号页取得的单文件上限 / 扩展名白名单及内置回退值；筛选任务进入 `skipped` 后不自动调度 |
+| `UploadRenameRule` | `core/transfer/upload_rename.dart` | 上传任务批量查找替换、正则、大小写与重名校验；只产出预览，不直接修改任务 |
 | `ListHomeSettingsState` | `core/list_home_settings_state.dart` | 设置子组：列表排序、首页折叠、最近使用上限与文件夹打开模式 |
 | `LanguageClipboardSettingsState` | `core/language_clipboard_settings_state.dart` | 设置子组：界面语言与复制分享链接提示 |
 | `CachePageSettingsState` | `core/cache_page_settings_state.dart` | 设置子组：网格视图、启动页、目录缓存和自动加载全部页面 |

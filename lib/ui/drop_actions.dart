@@ -337,7 +337,7 @@ Future<DropOutcome?> _handleDroppedFiles(
       folderId: folderId,
       path: path,
     );
-    if (result == UploadAddResult.queued) {
+    if (result.accepted) {
       uploaded += 1;
     } else {
       skippedUploads += 1;

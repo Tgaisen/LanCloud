@@ -83,6 +83,9 @@ class Icons {
   static const IconData info_outline = Symbols.info;
   static const IconData ink_eraser = Symbols.ink_eraser;
   static const IconData insert_drive_file_outlined = Symbols.insert_drive_file;
+
+  /// Remix Icon 的 input-field（U+F479），用于上传任务重命名。
+  static const IconData input_field = IconData(0xf479, fontFamily: 'RemixIcon');
   static const IconData install_mobile = Symbols.install_mobile;
   static const IconData keep_off = Symbols.keep_off;
   static const IconData key_outlined = Symbols.key;
@@ -144,7 +147,7 @@ class Icons {
 
   /// 「取消收藏」用的星形划斜杠（描边）：来自 Remix Icon 图标集的
   /// star-off-line（U+F59A），笔画粗细与 Material Symbols 一致。
-  /// 字形随仓库自带的单字形字体子集（assets/fonts/remixicon_subset.ttf，
+  /// 字形随仓库自带的双字形字体子集（assets/fonts/remixicon_subset.ttf，
   /// 见 pubspec），许可证见设置-关于-开源许可。
   static const IconData star_off_line = IconData(
     0xf59a,

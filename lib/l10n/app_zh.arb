@@ -235,6 +235,15 @@
       }
     }
   },
+  "clearPendingUploads": "清空待开始上传",
+  "clearPendingUploadsConfirmMessage": "将清空全部 {count} 条待开始的上传任务记录，继续吗？",
+  "@clearPendingUploadsConfirmMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "clearFailedTransfers": "清空失败任务",
   "clearFailedConfirmMessage": "将清空全部 {count} 条失败任务记录，继续吗？",
   "@clearFailedConfirmMessage": {
@@ -256,6 +265,7 @@
   "noUploads": "暂无上传任务",
   "noDownloads": "暂无下载任务",
   "inProgress": "进行中",
+  "pendingUploads": "待开始",
   "skippedUploads": "被跳过",
   "finished": "已完成",
   "failed": "失败",
@@ -298,6 +308,29 @@
   "retry": "重试",
   "cancelTask": "取消任务",
   "cancelDownload": "取消下载",
+  "cancelUpload": "取消上传",
+  "rename": "重命名",
+  "modify": "修改",
+  "preview": "预览",
+  "batchRename": "批量重命名",
+  "renamePreview": "重命名预览",
+  "findContent": "查找内容",
+  "replaceWith": "替换为",
+  "useRegularExpression": "正则表达式",
+  "matchCase": "区分大小写",
+  "searchContentRequired": "请输入查找内容",
+  "invalidRegularExpression": "正则表达式无效",
+  "renameNoMatches": "没有名称会被修改",
+  "renameEmptyName": "修改后的文件名不能为空",
+  "renameDuplicateNames": "修改后的文件名不能重复",
+  "renamedUploads": "已修改 {count} 个上传任务的名称",
+  "@renamedUploads": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "openFileFailed": "没有可打开此文件的应用",
   "openFileMissing": "文件不存在，可能已被移动或删除",
   "openFilePermissionDenied": "文件访问权限已失效；重新选择下载目录只影响之后的任务，请重新下载该文件",
@@ -432,6 +465,9 @@
   "requestIntervalKeywords": "间隔 限流 风控 请求",
   "maxUploads": "同时上传数量",
   "uploadKeywords": "上传 并发",
+  "autoStartUploads": "自动开始上传",
+  "autoStartUploadsSubtitle": "关闭后需在传输列表手动开始上传，上传前可修改任务队列",
+  "autoStartUploadsKeywords": "上传 自动开始 待开始 手动 队列",
   "skipOversizeUploads": "跳过超过限制大小的文件",
   "skipOversizeUploadsSubtitle": "超过账号允许的单文件大小时不自动上传",
   "skipOversizeUploadsKeywords": "上传 跳过 超限 大小 限制",

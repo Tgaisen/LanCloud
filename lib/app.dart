@@ -943,7 +943,7 @@ class _RootShellState extends ConsumerState<RootShell>
         folderId: target.folderId,
         path: path,
       );
-      if (result == UploadAddResult.queued) {
+      if (result.accepted) {
         added += 1;
       } else {
         skipped += 1;

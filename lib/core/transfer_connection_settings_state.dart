@@ -25,6 +25,7 @@ class TransferConnectionSettingsState {
   String get uploadPath => store.uploadPath;
   bool get skipOversizeUploads => store.skipOversizeUploads;
   bool get skipUnsupportedUploads => store.skipUnsupportedUploads;
+  bool get autoStartUploads => store.autoStartUploads;
 
   Future<void> setRequestInterval(int value) async {
     await store.setRequestInterval(value);
@@ -72,6 +73,11 @@ class TransferConnectionSettingsState {
 
   Future<void> setSkipUnsupportedUploads(bool value) async {
     await store.setSkipUnsupportedUploads(value);
+    revision.value += 1;
+  }
+
+  Future<void> setAutoStartUploads(bool value) async {
+    await store.setAutoStartUploads(value);
     revision.value += 1;
   }
 }

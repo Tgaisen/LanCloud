@@ -425,6 +425,14 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get clearPendingUploads => 'Clear pending uploads';
+
+  @override
+  String clearPendingUploadsConfirmMessage(int count) {
+    return 'Clear all $count upload records waiting to start?';
+  }
+
+  @override
   String get clearFailedTransfers => 'Clear failed transfers';
 
   @override
@@ -448,6 +456,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get inProgress => 'In progress';
+
+  @override
+  String get pendingUploads => 'Waiting to start';
 
   @override
   String get skippedUploads => 'Skipped';
@@ -517,6 +528,56 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get cancelDownload => 'Cancel download';
+
+  @override
+  String get cancelUpload => 'Cancel upload';
+
+  @override
+  String get rename => 'Rename';
+
+  @override
+  String get modify => 'Modify';
+
+  @override
+  String get preview => 'Preview';
+
+  @override
+  String get batchRename => 'Batch rename';
+
+  @override
+  String get renamePreview => 'Rename preview';
+
+  @override
+  String get findContent => 'Find';
+
+  @override
+  String get replaceWith => 'Replace with';
+
+  @override
+  String get useRegularExpression => 'Regular expression';
+
+  @override
+  String get matchCase => 'Match case';
+
+  @override
+  String get searchContentRequired => 'Enter text to find';
+
+  @override
+  String get invalidRegularExpression => 'Invalid regular expression';
+
+  @override
+  String get renameNoMatches => 'No file names will change';
+
+  @override
+  String get renameEmptyName => 'The new file name cannot be empty';
+
+  @override
+  String get renameDuplicateNames => 'The new file names must be unique';
+
+  @override
+  String renamedUploads(int count) {
+    return 'Renamed $count upload tasks';
+  }
 
   @override
   String get openFileFailed => 'No app can open this file';
@@ -839,6 +900,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get uploadKeywords => 'upload concurrent';
+
+  @override
+  String get autoStartUploads => 'Start uploads automatically';
+
+  @override
+  String get autoStartUploadsSubtitle =>
+      'When off, start uploads manually from the transfer list and edit the queue first';
+
+  @override
+  String get autoStartUploadsKeywords =>
+      'upload auto start pending manual queue';
 
   @override
   String get skipOversizeUploads => 'Skip files over the size limit';

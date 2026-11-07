@@ -11,13 +11,21 @@ import 'package:lancloud/core/transfer/transfer_issue.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/core/transfer/transfer_settings_port.dart';
 import 'package:lancloud/core/transfer/transfer_store.dart';
+import 'package:lancloud/core/transfer/upload_rename.dart';
 import 'package:lancloud/core/upload_policy.dart';
 
 class _MemoryStore implements TransferStore {
+  _MemoryStore([Iterable<Map<String, Object?>> initial = const []]) {
+    for (final row in initial) {
+      rows['${row['id']}'] = Map<String, Object?>.from(row);
+    }
+  }
+
   final Map<String, Map<String, Object?>> rows = {};
 
   @override
-  Future<List<Map<String, Object?>>> loadTransfers() async => [];
+  Future<List<Map<String, Object?>>> loadTransfers() async =>
+      rows.values.toList(growable: false);
 
   @override
   Future<void> saveTransfer({
@@ -277,5 +285,127 @@ void main() {
       UploadAddResult.queued,
     );
     expect(manager.tasks.single.status, TransferStatus.queued);
+  });
+
+  test('关闭自动开始后新任务进入待开始，手动上传后进入队列', () async {
+    final store = _MemoryStore();
+    final settings = SettingsStore()
+      ..maxUploads = 0
+      ..autoStartUploads = false;
+    final manager = _manager(
+      settings: settings,
+      store: store,
+      policy: const LanzouUploadPolicy(
+        maxFileBytes: 100,
+        allowedExtensions: {'txt'},
+      ),
+    );
+    addTearDown(manager.dispose);
+
+    expect(
+      manager.addUpload(
+        name: 'data.txt',
+        folderId: 'f',
+        streamFactory: () => Stream<List<int>>.value(const <int>[1]),
+        size: 1,
+      ),
+      UploadAddResult.pending,
+    );
+    final task = manager.tasks.single;
+    expect(task.status, TransferStatus.pending);
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+    expect(store.rows[task.id]?['status'], 'pending');
+
+    expect(manager.startUploads([task.id]), 1);
+    expect(task.status, TransferStatus.queued);
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+    expect(store.rows[task.id]?['status'], 'queued');
+  });
+
+  test('改名后会按当前筛选重新决定待开始或被跳过', () async {
+    final store = _MemoryStore();
+    final settings = SettingsStore()..maxUploads = 0;
+    final manager = _manager(
+      settings: settings,
+      store: store,
+      policy: const LanzouUploadPolicy(
+        maxFileBytes: 100,
+        allowedExtensions: {'txt'},
+      ),
+    );
+    addTearDown(manager.dispose);
+
+    expect(
+      manager.addUpload(
+        name: 'data.csv',
+        folderId: 'f',
+        streamFactory: () => Stream<List<int>>.value(const <int>[1]),
+        size: 1,
+      ),
+      UploadAddResult.skippedUnsupported,
+    );
+    expect(
+      manager.addUpload(
+        name: 'large.txt',
+        folderId: 'f',
+        streamFactory: () => Stream<List<int>>.value(const <int>[1]),
+        size: 101,
+      ),
+      UploadAddResult.skippedOversize,
+    );
+    final unsupported = manager.tasks[0];
+    final oversize = manager.tasks[1];
+
+    expect(
+      manager.renameUploads([
+        UploadRenameChange(
+          id: unsupported.id,
+          originalName: unsupported.name,
+          newName: 'data.txt',
+        ),
+        UploadRenameChange(
+          id: oversize.id,
+          originalName: oversize.name,
+          newName: 'renamed.txt',
+        ),
+      ]),
+      2,
+    );
+    expect(unsupported.name, 'data.txt');
+    expect(unsupported.status, TransferStatus.pending);
+    expect(unsupported.error, isNull);
+    expect(oversize.name, 'renamed.txt');
+    expect(oversize.status, TransferStatus.skipped);
+    expect(
+      TransferIssue.decode(oversize.error)?.code,
+      TransferIssueCode.skippedOversize,
+    );
+
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+    expect(store.rows[unsupported.id]?['name'], 'data.txt');
+    expect(store.rows[unsupported.id]?['status'], 'pending');
+    expect(store.rows[oversize.id]?['status'], 'skipped');
+  });
+
+  test('重启恢复时待开始保持为待开始', () async {
+    final store = _MemoryStore([
+      {
+        'id': 'u1',
+        'kind': 'upload',
+        'name': 'pending.txt',
+        'status': 'pending',
+        'account': 'u1',
+        'total': 1,
+      },
+    ]);
+    final manager = _manager(
+      settings: SettingsStore(),
+      store: store,
+      policy: LanzouUploadPolicy.fallback,
+    );
+    addTearDown(manager.dispose);
+
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+    expect(manager.tasks.single.status, TransferStatus.pending);
   });
 }

@@ -122,8 +122,8 @@ flutter:
     - windows/runner/resources/app_icon.ico
     - windows/runner/resources/app_icon_badge.ico
 
-  # 图标字体：Remix Icon 的 star-off-line 单字形子集，「取消收藏」菜单项用
-  # （U+F59A；笔画粗细和 Material Symbols 一致）。许可证文本登记在
+  # 图标字体：Remix Icon 的 star-off-line / input-field 双字形子集。
+  # 「取消收藏」和上传任务重命名分别使用 U+F59A、U+F479；许可证文本登记在
   # lib/core/third_party_licenses.dart。需要更多 Remix 字形时：拿完整的
   # remixicon.ttf 重新子集化（subset-font）后替换本文件。
   fonts:

@@ -13,6 +13,7 @@ import '../core/system_share.dart';
 import '../core/transfer/transfer_manager.dart';
 import '../core/transfer/transfer_manager_provider.dart';
 import '../core/transfer/transfer_issue.dart';
+import '../core/transfer/upload_rename.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
@@ -20,6 +21,7 @@ import 'file_open_feedback.dart';
 import 'm3e.dart';
 import 'reduce_motion.dart';
 import 'scroll_tint.dart';
+import 'transfer_rename_dialogs.dart';
 
 /// 传输条目 ⋯ 菜单里的动作。
 ///
@@ -31,6 +33,7 @@ enum _TransferMenuAction {
   pause,
   resume,
   cancel,
+  rename,
   retry,
   uploadAnyway,
   removeRecord,
@@ -43,6 +46,7 @@ enum TransferDeleteReason {
   clearCompleted,
   clearFailed,
   clearSkipped,
+  clearPending,
 }
 
 class TransferDeleteResult {
@@ -67,6 +71,7 @@ Future<TransferDeleteResult?> showTransferDeleteDialog(
     TransferDeleteReason.clearCompleted => l10n.clearFinishedTransfers,
     TransferDeleteReason.clearFailed => l10n.clearFailedTransfers,
     TransferDeleteReason.clearSkipped => l10n.clearSkippedUploads,
+    TransferDeleteReason.clearPending => l10n.clearPendingUploads,
   };
   final message = switch (reason) {
     TransferDeleteReason.selected => l10n.transferDeleteConfirmMessage(count),
@@ -82,6 +87,9 @@ Future<TransferDeleteResult?> showTransferDeleteDialog(
     TransferDeleteReason.clearSkipped => l10n.clearSkippedUploadsConfirmMessage(
       count,
     ),
+    TransferDeleteReason.clearPending => l10n.clearPendingUploadsConfirmMessage(
+      count,
+    ),
   };
   final confirmLabel = switch (reason) {
     TransferDeleteReason.selected => l10n.delete,
@@ -89,6 +97,7 @@ Future<TransferDeleteResult?> showTransferDeleteDialog(
     TransferDeleteReason.clearCompleted => l10n.clearAll,
     TransferDeleteReason.clearFailed => l10n.clearAll,
     TransferDeleteReason.clearSkipped => l10n.clearAll,
+    TransferDeleteReason.clearPending => l10n.clearAll,
   };
   var deleteFiles = false;
   return showDialog<TransferDeleteResult>(
@@ -158,6 +167,9 @@ List<TransferTask> _newestFirst(Iterable<TransferTask> tasks) =>
 
 bool _isSkippedUpload(TransferTask task) =>
     task.kind == TransferKind.upload && task.status == TransferStatus.skipped;
+
+bool _isPendingUpload(TransferTask task) =>
+    task.kind == TransferKind.upload && task.status == TransferStatus.pending;
 
 bool _isPausableDownload(TransferTask task) =>
     task.kind == TransferKind.download &&
@@ -384,6 +396,73 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
     manager.clearSkippedUploads();
   }
 
+  Future<void> _clearPendingSection() async {
+    final manager = ref.read(transferManagerProvider);
+    final tasks = _tasksOf(manager)
+        .where(_isPendingUpload)
+        .toList(growable: false);
+    if (tasks.isEmpty) return;
+    final result = await showTransferDeleteDialog(
+      context,
+      kind: TransferKind.upload,
+      count: tasks.length,
+      reason: TransferDeleteReason.clearPending,
+      showDeleteFiles: false,
+    );
+    if (result == null || !mounted) return;
+    manager.clearPendingUploads();
+  }
+
+  Future<void> _renameTask(TransferTask task) async {
+    final name = await showSingleUploadRenameDialog(context, task: task);
+    if (name == null || !mounted) return;
+    final applied = ref.read(transferManagerProvider).renameUploads([
+      UploadRenameChange(id: task.id, originalName: task.name, newName: name),
+    ]);
+    if (applied == 0 || !mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(context.l10n.renamedUploads(applied))),
+    );
+  }
+
+  Future<void> _renameSelected() async {
+    final tasks = ref
+        .read(transferManagerProvider)
+        .tasks
+        .where(
+          (task) =>
+              _selected.contains(task.id) &&
+              (task.status == TransferStatus.pending ||
+                  task.status == TransferStatus.skipped),
+        )
+        .toList(growable: false);
+    if (tasks.isEmpty) return;
+    final changes = await showBatchUploadRenameDialog(context, tasks: tasks);
+    if (changes == null || !mounted) return;
+    final applied = ref.read(transferManagerProvider).renameUploads(changes);
+    _exitSelection();
+    if (applied == 0 || !mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(context.l10n.renamedUploads(applied))),
+    );
+  }
+
+  void _uploadSelected() {
+    final ids = ref
+        .read(transferManagerProvider)
+        .tasks
+        .where(
+          (task) =>
+              _selected.contains(task.id) &&
+              task.status == TransferStatus.pending,
+        )
+        .map((task) => task.id)
+        .toList(growable: false);
+    if (ids.isEmpty) return;
+    _exitSelection();
+    ref.read(transferManagerProvider).startUploads(ids);
+  }
+
   void _pauseAll() {
     final manager = ref.read(transferManagerProvider);
     final ids = _tasksOf(manager)
@@ -510,6 +589,7 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
     final resuming = task.status == TransferStatus.resuming;
     final paused = task.status == TransferStatus.paused;
     final skipped = _isSkippedUpload(task);
+    final pending = _isPendingUpload(task);
     final active =
         task.status == TransferStatus.queued ||
         task.status == TransferStatus.running;
@@ -546,6 +626,12 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
             label: l10n.retry,
             icon: Icons.refresh,
           ),
+        if (pending || skipped)
+          M3eMenuItem(
+            value: _TransferMenuAction.rename,
+            label: l10n.rename,
+            icon: Icons.input_field,
+          ),
         if (skipped)
           M3eMenuItem(
             value: _TransferMenuAction.uploadAnyway,
@@ -571,11 +657,18 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
             label: l10n.cancelDownload,
             icon: Icons.close,
           ),
-        M3eMenuItem(
-          value: _TransferMenuAction.removeRecord,
-          label: l10n.deleteRecord,
-          icon: Icons.playlist_remove,
-        ),
+        if (pending)
+          M3eMenuItem(
+            value: _TransferMenuAction.cancel,
+            label: l10n.cancelUpload,
+            icon: Icons.close,
+          )
+        else
+          M3eMenuItem(
+            value: _TransferMenuAction.removeRecord,
+            label: l10n.deleteRecord,
+            icon: Icons.playlist_remove,
+          ),
         if (task.kind == TransferKind.download &&
             stopped &&
             path != null &&
@@ -620,6 +713,8 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
         }
       case _TransferMenuAction.cancel:
         manager.cancel(task.id);
+      case _TransferMenuAction.rename:
+        await _renameTask(task);
       case _TransferMenuAction.retry:
         final message = await manager.retry(task.id);
         if (!mounted) return;
@@ -694,6 +789,26 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
         MediaQuery.paddingOf(context).top + kToolbarHeight + 58;
     final tasks = _tasksOf(manager);
     final selectedCount = _selected.length;
+    final uploadTab = _kind == TransferKind.upload;
+    final pendingCount = uploadTab
+        ? tasks
+              .where(
+                (task) =>
+                    _selected.contains(task.id) &&
+                    task.status == TransferStatus.pending,
+              )
+              .length
+        : 0;
+    final renameCount = uploadTab
+        ? tasks
+              .where(
+                (task) =>
+                    _selected.contains(task.id) &&
+                    (task.status == TransferStatus.pending ||
+                        task.status == TransferStatus.skipped),
+              )
+              .length
+        : 0;
     final retryCount = tasks
         .where(
           (t) => _selected.contains(t.id) && t.status == TransferStatus.failed,
@@ -753,6 +868,7 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
                           onClearCompleted: _clearCompletedSection,
                           onClearFailed: _clearFailedSection,
                           onClearSkipped: _clearSkippedSection,
+                          onClearPending: _clearPendingSection,
                           onPauseAll: _pauseAll,
                           onResumeAll: _resumeAll,
                           bulkResumeRunning: _bulkResumeRunning,
@@ -904,6 +1020,18 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
                   curve: Curves.easeInOut,
                   child: BatchActionBar(
                     children: [
+                      if (uploadTab) ...[
+                        BatchAction(
+                          icon: Icons.input_field,
+                          label: l10n.rename,
+                          onPressed: renameCount == 0 ? null : _renameSelected,
+                        ),
+                        BatchAction(
+                          icon: Icons.upload,
+                          label: l10n.upload,
+                          onPressed: pendingCount == 0 ? null : _uploadSelected,
+                        ),
+                      ],
                       BatchAction(
                         icon: Icons.delete_outline,
                         label: l10n.delete,
@@ -943,6 +1071,7 @@ class _TransferListSliver extends StatelessWidget {
     required this.onClearCompleted,
     required this.onClearFailed,
     required this.onClearSkipped,
+    required this.onClearPending,
     required this.onPauseAll,
     required this.onResumeAll,
     required this.bulkResumeRunning,
@@ -977,6 +1106,7 @@ class _TransferListSliver extends StatelessWidget {
   final VoidCallback onClearCompleted;
   final VoidCallback onClearFailed;
   final VoidCallback onClearSkipped;
+  final VoidCallback onClearPending;
   final VoidCallback onPauseAll;
   final VoidCallback onResumeAll;
   final bool bulkResumeRunning;
@@ -1044,6 +1174,7 @@ class _TransferListSliver extends StatelessWidget {
         ),
       );
     }
+    final pending = _newestFirst(tasks.where(_isPendingUpload));
     final active = _newestFirst(tasks.where(_isInProgressTask));
     final skipped = _newestFirst(tasks.where(_isSkippedUpload));
     final failed = _newestFirst(tasks.where(_isFailedTask));
@@ -1097,6 +1228,55 @@ class _TransferListSliver extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
       sliver: SliverMainAxisGroup(
         slivers: [
+          if (pending.isNotEmpty) ...[
+            SliverToBoxAdapter(
+              child: SectionHeader(
+                title: l10n.pendingUploads,
+                count: pending.length,
+                compact: !PlatformSupport.isDesktop,
+                actions: [
+                  HideKeepingSpace(
+                    hidden: selecting,
+                    child: _actionButton(
+                      key: 'transfers-clear-pending',
+                      label: l10n.clearAll,
+                      onPressed: onClearPending,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SegmentedSliverList(
+              adaptive: true,
+              minItemWidth: kAdaptiveDenseListItemMinWidth,
+              findChildIndexCallback: childIndexLookup(
+                pending,
+                (t) => ValueKey('transfer-${t.id}'),
+              ),
+              itemCount: pending.length,
+              itemBuilder: (context, index) => ListEnterAnimation(
+                key: ValueKey('transfer-${pending[index].id}'),
+                progress: enter,
+                index: index,
+                child: _TransferTile(
+                  task: pending[index],
+                  manager: manager,
+                  index: index,
+                  removing: removing.contains(pending[index].id),
+                  selecting: selecting,
+                  selected: selected.contains(pending[index].id),
+                  onTap: () => _handleTap(context, pending[index]),
+                  onLongPress: () => onLongPress(taskId: pending[index].id),
+                  onMenu: (anchorContext, {pointerPosition}) => onMenu(
+                    pending[index],
+                    anchorContext,
+                    pointerPosition: pointerPosition,
+                  ),
+                ),
+              ),
+            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 20)),
+          ],
           if (active.isNotEmpty) ...[
             SliverToBoxAdapter(
               child: SectionHeader(
@@ -1344,6 +1524,8 @@ class _TransferTile extends StatelessWidget {
 
   String _statusText(AppLocalizations l10n) {
     switch (task.status) {
+      case TransferStatus.pending:
+        return l10n.pendingUploads;
       case TransferStatus.queued:
         return l10n.queued;
       case TransferStatus.resolving:
@@ -1379,6 +1561,7 @@ class _TransferTile extends StatelessWidget {
           ? l10n.unknownSize
           : '';
     }
+    if (task.status == TransferStatus.pending) return formatBytes(task.total);
     if (task.received >= task.total) return formatBytes(task.total);
     return '${formatBytes(task.received)} / ${formatBytes(task.total)}';
   }
@@ -1389,6 +1572,10 @@ class _TransferTile extends StatelessWidget {
       return task.total > 0 ? formatBytes(task.total) : '';
     }
     if (task.status == TransferStatus.failed) return status;
+    if (task.status == TransferStatus.pending) {
+      final issueText = _issueText(l10n);
+      if (issueText != null) return issueText;
+    }
     if (task.status == TransferStatus.skipped) {
       final issueText = _issueText(l10n);
       if (issueText != null) return issueText;
@@ -1412,6 +1599,7 @@ class _TransferTile extends StatelessWidget {
     final paused = task.status == TransferStatus.paused;
     final saving = task.status == TransferStatus.saving;
     final skipped = _isSkippedUpload(task);
+    final pending = _isPendingUpload(task);
     final completed = _isCompletedTask(task);
     final failed = _isFailedTask(task);
     final terminal = completed || failed;
@@ -1440,7 +1628,7 @@ class _TransferTile extends StatelessWidget {
           onLongPress: onLongPress,
         ),
         // 右键与 ⋯ 菜单可用性一致：多选和进行中任务都不响应。
-        onSecondaryTap: selecting || (!terminal && !skipped)
+        onSecondaryTap: selecting || (!terminal && !skipped && !pending)
             ? null
             : (Offset position) =>
                   onMenu(rowContext, pointerPosition: position),
@@ -1469,7 +1657,13 @@ class _TransferTile extends StatelessWidget {
                   icon: Icons.close,
                   onPressed: saving ? null : () => manager.removeTask(task.id),
                 ),
-              if (terminal || skipped)
+              if (pending)
+                TextButton(
+                  key: ValueKey('upload-start-${task.id}'),
+                  onPressed: () => manager.startUploads([task.id]),
+                  child: Text(l10n.upload),
+                ),
+              if (terminal || skipped || pending)
                 Builder(
                   builder: (BuildContext buttonContext) => M3eIconButton(
                     tooltip: l10n.moreActions,

@@ -403,6 +403,14 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get clearPendingUploads => '清空待开始上传';
+
+  @override
+  String clearPendingUploadsConfirmMessage(int count) {
+    return '将清空全部 $count 条待开始的上传任务记录，继续吗？';
+  }
+
+  @override
   String get clearFailedTransfers => '清空失败任务';
 
   @override
@@ -426,6 +434,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get inProgress => '进行中';
+
+  @override
+  String get pendingUploads => '待开始';
 
   @override
   String get skippedUploads => '被跳过';
@@ -495,6 +506,56 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get cancelDownload => '取消下载';
+
+  @override
+  String get cancelUpload => '取消上传';
+
+  @override
+  String get rename => '重命名';
+
+  @override
+  String get modify => '修改';
+
+  @override
+  String get preview => '预览';
+
+  @override
+  String get batchRename => '批量重命名';
+
+  @override
+  String get renamePreview => '重命名预览';
+
+  @override
+  String get findContent => '查找内容';
+
+  @override
+  String get replaceWith => '替换为';
+
+  @override
+  String get useRegularExpression => '正则表达式';
+
+  @override
+  String get matchCase => '区分大小写';
+
+  @override
+  String get searchContentRequired => '请输入查找内容';
+
+  @override
+  String get invalidRegularExpression => '正则表达式无效';
+
+  @override
+  String get renameNoMatches => '没有名称会被修改';
+
+  @override
+  String get renameEmptyName => '修改后的文件名不能为空';
+
+  @override
+  String get renameDuplicateNames => '修改后的文件名不能重复';
+
+  @override
+  String renamedUploads(int count) {
+    return '已修改 $count 个上传任务的名称';
+  }
 
   @override
   String get openFileFailed => '没有可打开此文件的应用';
@@ -802,6 +863,15 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get uploadKeywords => '上传 并发';
+
+  @override
+  String get autoStartUploads => '自动开始上传';
+
+  @override
+  String get autoStartUploadsSubtitle => '关闭后需在传输列表手动开始上传，上传前可修改任务队列';
+
+  @override
+  String get autoStartUploadsKeywords => '上传 自动开始 待开始 手动 队列';
 
   @override
   String get skipOversizeUploads => '跳过超过限制大小的文件';

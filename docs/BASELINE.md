@@ -11,27 +11,28 @@
 | --- | --- | --- | --- |
 | `tools\agent.cmd analyze` | 全量 | No issues found | 约 27 s |
 | `tools\agent.cmd analyze` | 增量（本次改动，5 个 lib 文件） | No issues found | 约 15 s |
-| `tools\agent.cmd test` | 全量（最近一次完整运行） | **724 tests, all passed** | 约 100 s |
-| `tools\agent.cmd test` | 增量（本次改动，63 个测试文件） | **372 tests, all passed** | 约 72 s |
+| `tools\agent.cmd test test` | 全量（最近两次并行运行） | **832 tests：每次 831 passed + 1 个既有偶发失败** | 约 115–185 s |
+| `tools\agent.cmd test` | 增量（本次改动，97 个测试文件） | **526 tests, all passed** | 约 73 s |
 
 当前分析结果为 0 issue 是硬基线。出现红灯时，先判断是否为本次改动引入；
 不要把增量结果当成全量结论。
 
-当前全量用例总数应为 813（含传输问题码与语言切换测试）；
-全量结果待下一次人工兜底时刷新。
+当前全量用例总数为 832。最近两次全量分别只有
+`app_log_test.dart` / `share_password_recovery_test.dart` 的单个既有用例失败，
+对应测试文件单独重跑均通过；本次改动相关的 97 个受影响测试文件全部通过。
 
 ## 规模
 
 | 指标 | 当前值 |
 | --- | ---: |
-| `lib` Dart 文件 | 151 |
-| `lib` 总行数 | 48,423 |
-| `test` 测试文件 | 170（全部为 `*_test.dart`，平铺） |
-| `test` 总行数 | 26,251 |
-| `test` 用例数 | 813 |
-| `lib/ui` 平铺文件 | 57 |
+| `lib` Dart 文件 | 154 |
+| `lib` 总行数 | 49,356 |
+| `test` 测试文件 | 172（全部为 `*_test.dart`，平铺） |
+| `test` 总行数 | 26,720 |
+| `test` 用例数 | 832 |
+| `lib/ui` 平铺文件 | 59 |
 | `lib/core` | 54 个平铺文件 + 5 个子系统目录 |
-| 文案（`app_zh.arb`） | 1,516 行 |
+| 文案（`app_zh.arb`） | 1,552 行 |
 
 ## 工具链与依赖
 
@@ -45,7 +46,7 @@
 
 ## 测试安全网
 
-- 最近一次全量为 724 个测试，当前预期总数为 813；项目仍没有
+- 当前全量总数为 832 个测试；项目仍没有
   `integration_test` 和 golden test。
 - `tools\agent.cmd analyze|test` 默认走增量；全量结果必须按上表单独记录。
 - `tools\agent.cmd` 已内置 `--no-pub`；需要安装依赖时使用 `agent.cmd pubget`。
@@ -69,6 +70,8 @@
 - Windows 构建出现 `flutter_inappwebview_windows` 的 CMake `CMP0175` 开发警告；
   当前不影响构建与启动，继续跟随插件升级观察。
 - Windows OverlayPortal/UIA 上游间歇风险继续观察，不误判为业务回归。
+- 全量并行运行时，日志清理与分享密码恢复测试偶发单个时序失败；对应测试文件
+  单独重跑均稳定通过，提交判断以受影响测试和失败项复跑结果为准。
 - 开发环境 Flutter `3.47.9`，`pubspec.lock` 已记录相同 SDK 注记。
 
 ## 维护约定

@@ -27,6 +27,7 @@ class SettingsStore {
   static const _keyUploadPath = 'upload_path';
   static const _keySkipOversizeUploads = 'skip_oversize_uploads';
   static const _keySkipUnsupportedUploads = 'skip_unsupported_uploads';
+  static const _keyAutoStartUploads = 'auto_start_uploads';
   static const _keySwipeTabs = 'swipe_tabs';
   static const _keyHideBars = 'hide_bars_on_scroll';
   static const _keyHideBarsMode = 'hide_bars_mode';
@@ -87,6 +88,9 @@ class SettingsStore {
 
   /// 上传时把不在账号白名单内的任务标记为「被跳过」，默认开启。
   bool skipUnsupportedUploads = true;
+
+  /// 添加上传任务后是否立即进入调度；关闭后先保留在「待开始」。
+  bool autoStartUploads = true;
   bool swipeTabs = false;
   bool hideTopBar = false;
   bool hideBottomBar = false;
@@ -163,6 +167,7 @@ class SettingsStore {
     uploadPath = prefs.getString(_keyUploadPath) ?? 'html5up.php';
     skipOversizeUploads = prefs.getBool(_keySkipOversizeUploads) ?? true;
     skipUnsupportedUploads = prefs.getBool(_keySkipUnsupportedUploads) ?? true;
+    autoStartUploads = prefs.getBool(_keyAutoStartUploads) ?? true;
     swipeTabs = prefs.getBool(_keySwipeTabs) ?? false;
     final legacyMode = prefs.getString(_keyHideBarsMode);
     if (legacyMode != null) {
@@ -317,6 +322,12 @@ class SettingsStore {
     await prefs.setBool(_keySkipUnsupportedUploads, value);
   }
 
+  Future<void> setAutoStartUploads(bool value) async {
+    autoStartUploads = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyAutoStartUploads, value);
+  }
+
   Future<void> setRequestInterval(int value) async {
     requestInterval = value;
     final prefs = await SharedPreferences.getInstance();
@@ -461,6 +472,7 @@ class SettingsStore {
     _keyUploadPath: uploadPath,
     _keySkipOversizeUploads: skipOversizeUploads,
     _keySkipUnsupportedUploads: skipUnsupportedUploads,
+    _keyAutoStartUploads: autoStartUploads,
     _keySwipeTabs: swipeTabs,
     _keyHideTopBar: hideTopBar,
     _keyHideBottomBar: hideBottomBar,

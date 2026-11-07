@@ -160,6 +160,15 @@
       }
     }
   },
+  "clearPendingUploads": "Clear pending uploads",
+  "clearPendingUploadsConfirmMessage": "Clear all {count} upload records waiting to start?",
+  "@clearPendingUploadsConfirmMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "clearFailedTransfers": "Clear failed transfers",
   "clearFailedConfirmMessage": "Clear all {count} failed transfer records?",
   "@clearFailedConfirmMessage": {
@@ -181,6 +190,7 @@
   "noUploads": "No upload tasks",
   "noDownloads": "No download tasks",
   "inProgress": "In progress",
+  "pendingUploads": "Waiting to start",
   "skippedUploads": "Skipped",
   "finished": "Completed",
   "failed": "Failed",
@@ -202,6 +212,29 @@
   "retry": "Retry",
   "cancelTask": "Cancel task",
   "cancelDownload": "Cancel download",
+  "cancelUpload": "Cancel upload",
+  "rename": "Rename",
+  "modify": "Modify",
+  "preview": "Preview",
+  "batchRename": "Batch rename",
+  "renamePreview": "Rename preview",
+  "findContent": "Find",
+  "replaceWith": "Replace with",
+  "useRegularExpression": "Regular expression",
+  "matchCase": "Match case",
+  "searchContentRequired": "Enter text to find",
+  "invalidRegularExpression": "Invalid regular expression",
+  "renameNoMatches": "No file names will change",
+  "renameEmptyName": "The new file name cannot be empty",
+  "renameDuplicateNames": "The new file names must be unique",
+  "renamedUploads": "Renamed {count} upload tasks",
+  "@renamedUploads": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "openFileFailed": "No app can open this file",
   "openFileMissing": "The file no longer exists or has been moved",
   "openFilePermissionDenied": "File access is no longer permitted. Choosing a download directory only affects future tasks; please download this file again.",
@@ -306,6 +339,9 @@
   "requestIntervalKeywords": "interval rate limit throttling request",
   "maxUploads": "Concurrent uploads",
   "uploadKeywords": "upload concurrent",
+  "autoStartUploads": "Start uploads automatically",
+  "autoStartUploadsSubtitle": "When off, start uploads manually from the transfer list and edit the queue first",
+  "autoStartUploadsKeywords": "upload auto start pending manual queue",
   "skipOversizeUploads": "Skip files over the size limit",
   "skipOversizeUploadsSubtitle": "Do not start files larger than your account's per-file limit",
   "skipOversizeUploadsKeywords": "upload skip oversized size limit",
