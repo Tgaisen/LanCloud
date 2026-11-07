@@ -215,7 +215,7 @@ void main() {
       expect(unavailable.error, isNotEmpty);
     });
 
-    test('should 只清空指定类型的全部已结束任务', () {
+    test('should 分别只清空指定类型的已完成与失败任务', () {
       final manager = TransferManager.withDependencies(
         TransferDependencies(
           store: _FakeTransferStore(),
@@ -252,9 +252,18 @@ void main() {
         )..status = TransferStatus.done,
       ]);
 
-      final removed = manager.clearFinished(TransferKind.upload);
+      final completed = manager.clearCompleted(TransferKind.upload);
 
-      expect(removed.map((task) => task.id), ['u-done', 'u-failed']);
+      expect(completed.map((task) => task.id), ['u-done']);
+      expect(manager.tasks.map((task) => task.id), [
+        'u-failed',
+        'u-active',
+        'd-done',
+      ]);
+
+      final failed = manager.clearFailed(TransferKind.upload);
+
+      expect(failed.map((task) => task.id), ['u-failed']);
       expect(manager.tasks.map((task) => task.id), ['u-active', 'd-done']);
     });
 
@@ -938,6 +947,7 @@ class _FakeTransferStore implements TransferStore {
     String savedPath = '',
     String ref = '',
     String folderId = '',
+    String folderName = '',
     String referer = '',
     String pwd = '',
     String localPath = '',

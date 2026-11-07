@@ -45,6 +45,7 @@ class _FakeTransferStore implements TransferStore {
     String savedPath = '',
     String ref = '',
     String folderId = '',
+    String folderName = '',
     String referer = '',
     String pwd = '',
     String localPath = '',
@@ -310,7 +311,9 @@ void main() {
       ..maxDownloads = 4
       ..downloadConnections = 3
       ..notifyProgress = false
-      ..notifyDone = false;
+      ..notifyDone = false
+      ..skipOversizeUploads = false
+      ..skipUnsupportedUploads = false;
     final port = StoreTransferSettingsPort(store);
 
     expect(port.maxUploads, 2);
@@ -318,6 +321,8 @@ void main() {
     expect(port.downloadConnections, 3);
     expect(port.notifyProgress, isFalse);
     expect(port.notifyDone, isFalse);
+    expect(port.skipOversizeUploads, isFalse);
+    expect(port.skipUnsupportedUploads, isFalse);
   });
 
   test('transferManagerProvider 提供应用级共享实例', () async {

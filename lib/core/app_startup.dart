@@ -129,30 +129,31 @@ final class AppStartup {
         _refreshActiveAccountInfoFromNetwork();
   }
 
-  /// 账号缺昵称 / 等级时，后台解析一次网页版个人中心并落盘。
+  /// 每次启动后台解析一次新版个人中心，更新昵称 / 等级并预热上传限制。
   ///
-  /// 等级没取到（页面结构变了等）不写空值，下次启动再试；界面同时会按
-  /// 普通用户「普」显示（见 `Account.levelLabel`）。
+  /// 网络失败时的「用户」占位不会覆盖已有的有效昵称。等级没取到
+  /// （页面结构变了等）不写空值，下次启动再试；界面同时会按普通用户
+  /// 「普」显示（见 `Account.levelLabel`）。
   Future<void> _refreshActiveAccountInfoFromNetwork() async {
     final accountStore = environment.accountState.store;
     final uid = accountStore.activeUid;
     if (uid == null) return;
     final account = accountStore.byUid(uid);
-    if (account == null ||
-        (account.nickname.isNotEmpty && account.level.isNotEmpty)) {
-      return;
-    }
+    if (account == null) return;
     try {
       final info = await environment.clientRegistry
           .clientFor(uid, cookie: accountStore.byUid(uid)?.cookie)
           .fetchAccountInfo();
       var changed = false;
       final nickname = info.nickname ?? '';
-      if (nickname.isNotEmpty) {
+      final canReplaceNickname =
+          nickname.isNotEmpty &&
+          (nickname != kFallbackAccountNickname || account.nickname.isEmpty);
+      if (canReplaceNickname && account.nickname != nickname) {
         await accountStore.setNickname(uid, nickname);
         changed = true;
       }
-      if (info.level.isNotEmpty) {
+      if (info.level.isNotEmpty && account.level != info.level) {
         await accountStore.setLevel(uid, info.level);
         changed = true;
       }

@@ -18,6 +18,7 @@ import '../core/platform_support.dart';
 import '../core/system_file_saver.dart';
 import '../l10n/l10n.dart';
 import 'advanced_connection_settings_tile.dart';
+import 'auto_start_upload_settings_tile.dart';
 import 'app_icons.dart';
 import 'backup_page.dart';
 import 'cache_page_settings_tile.dart';
@@ -35,6 +36,7 @@ import 'request_interval_settings_tile.dart';
 import 'show_cookie_settings_tile.dart';
 import 'theme_settings_tile.dart';
 import 'transfer_concurrency_settings_tile.dart';
+import 'upload_filter_settings_tile.dart';
 
 /// 「清除数据」弹窗里可勾选的清除项。
 enum _ClearDataOption { quickAccess, recents, otherAccounts, logs, registry }
@@ -517,6 +519,34 @@ class _SettingsCategoryPageState extends ConsumerState<SettingsCategoryPage>
         section: SettingsSection.upload,
         build: (context) => const TransferConcurrencySettingsTile(
           setting: TransferConcurrencySetting.uploads,
+        ),
+      ),
+      _Entry(
+        id: 'auto_start_uploads',
+        title: l10n.autoStartUploads,
+        subtitle: l10n.autoStartUploadsSubtitle,
+        keywords: l10n.autoStartUploadsKeywords.split(' '),
+        section: SettingsSection.upload,
+        build: (context) => const AutoStartUploadSettingsTile(),
+      ),
+      _Entry(
+        id: 'skip_oversize_uploads',
+        title: l10n.skipOversizeUploads,
+        subtitle: l10n.skipOversizeUploadsSubtitle,
+        keywords: l10n.skipOversizeUploadsKeywords.split(' '),
+        section: SettingsSection.upload,
+        build: (context) => const UploadFilterSettingsTile(
+          setting: UploadFilterSetting.oversize,
+        ),
+      ),
+      _Entry(
+        id: 'skip_unsupported_uploads',
+        title: l10n.skipUnsupportedUploads,
+        subtitle: l10n.skipUnsupportedUploadsSubtitle,
+        keywords: l10n.skipUnsupportedUploadsKeywords.split(' '),
+        section: SettingsSection.upload,
+        build: (context) => const UploadFilterSettingsTile(
+          setting: UploadFilterSetting.unsupported,
         ),
       ),
       _Entry(

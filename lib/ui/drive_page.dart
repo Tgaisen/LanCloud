@@ -31,8 +31,6 @@ import 'm3e.dart';
 import 'reduce_motion.dart';
 import 'scroll_tint.dart';
 
-const int kFreeUploadLimit = 100 * 1024 * 1024;
-
 /// 目录进入动画：总时长要容纳常见一屏条目的错峰起点；单项动画与步长
 /// 仍保持原来的 232 / 26ms，后续条目再按列表数量缩放到可用时间内。
 const Duration _driveEnterDuration = Duration(milliseconds: 720);
@@ -1163,38 +1161,39 @@ class _DrivePageState extends ConsumerState<DrivePage>
     final files = await FilePicker.pickFiles();
     if (files.isEmpty) return;
     if (!mounted) return;
+    await _activeClient()?.fetchAccountInfo();
+    if (!mounted) return;
     final transfers = _transfers;
     var skipped = 0;
     var added = 0;
     for (final file in files) {
       final path = file.path;
       if (path == null) continue;
-      var size = file.lengthSync();
-      if (size == null) {
-        try {
-          size = await File(path).length();
-        } catch (_) {
-          continue;
-        }
-      }
-      if (size > kFreeUploadLimit) {
-        skipped += 1;
+      final int size;
+      try {
+        size = await File(path).length();
+      } catch (_) {
         continue;
       }
-      transfers.addUpload(
+      final result = transfers.addUpload(
         name: file.name,
         folderId: _folderId,
+        folderName: _folderId == '-1' || _path.isEmpty ? '' : _path.last.name,
         path: path,
         size: size,
       );
-      added += 1;
+      if (result.accepted) {
+        added += 1;
+      } else {
+        skipped += 1;
+      }
     }
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
           skipped > 0
-              ? context.l10n.uploadSkipped(added, skipped)
+              ? context.l10n.uploadSkipped(added + skipped, skipped)
               : context.l10n.uploadAdded(added),
         ),
       ),
@@ -1206,29 +1205,32 @@ class _DrivePageState extends ConsumerState<DrivePage>
     try {
       final paths = await ProviderFilePicker.pickFiles();
       if (paths.isEmpty || !mounted) return;
+      await _activeClient()?.fetchAccountInfo();
+      if (!mounted) return;
       final transfers = _transfers;
       var added = 0;
       var skipped = 0;
       for (final path in paths) {
         final size = await File(path).length();
-        if (size > kFreeUploadLimit) {
-          skipped += 1;
-          continue;
-        }
-        transfers.addUpload(
+        final result = transfers.addUpload(
           name: p.basename(path),
           folderId: _folderId,
+          folderName: _folderId == '-1' || _path.isEmpty ? '' : _path.last.name,
           path: path,
           size: size,
         );
-        added += 1;
+        if (result.accepted) {
+          added += 1;
+        } else {
+          skipped += 1;
+        }
       }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             skipped > 0
-                ? context.l10n.uploadSkipped(added, skipped)
+                ? context.l10n.uploadSkipped(added + skipped, skipped)
                 : context.l10n.uploadTasksAdded(added),
           ),
         ),
@@ -4830,6 +4832,7 @@ Future<FolderPickResult?> showFolderPicker(
   Set<String> excludeIds = const {},
   String? confirmLabel,
   String? initialName,
+  String initialFolderId = '-1',
 }) {
   return showDialog<FolderPickResult>(
     context: context,
@@ -4838,6 +4841,7 @@ Future<FolderPickResult?> showFolderPicker(
       excludeIds: excludeIds,
       confirmLabel: confirmLabel,
       initialName: initialName,
+      initialFolderId: initialFolderId,
     ),
   );
 }
@@ -4851,6 +4855,7 @@ class FolderPickerDialog extends StatefulWidget {
     required this.excludeIds,
     this.confirmLabel,
     this.initialName,
+    this.initialFolderId = '-1',
   });
 
   final LanzouClient client;
@@ -4861,6 +4866,7 @@ class FolderPickerDialog extends StatefulWidget {
 
   /// 上传时预填的文件名；为 null 表示移动模式，不显示名称输入框。
   final String? initialName;
+  final String initialFolderId;
 
   @override
   State<FolderPickerDialog> createState() => _FolderPickerDialogState();
@@ -4883,7 +4889,7 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
   @override
   void initState() {
     super.initState();
-    _load('-1');
+    _load(widget.initialFolderId.isEmpty ? '-1' : widget.initialFolderId);
   }
 
   @override
@@ -4989,12 +4995,13 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
                       ],
                       onTap: (index) => _jumpTo(index - 1),
                       verticalPadding: 4,
+                      horizontalPadding: 0,
                     ),
                   ),
                   const SizedBox(width: 4),
-                  IconButton.filledTonal(
+                  M3eIconButton(
                     tooltip: l10n.newFolder,
-                    icon: const Icon(Icons.create_new_folder_outlined),
+                    icon: Icons.create_new_folder_outlined,
                     onPressed: _loading ? null : _mkdir,
                   ),
                 ],
@@ -5020,11 +5027,16 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
                           style: TextStyle(color: scheme.onSurfaceVariant),
                         ),
                       )
-                    : ListView.builder(
-                        padding: EdgeInsets.zero,
-                        itemCount: visible.length,
-                        itemBuilder: (context, index) =>
-                            _folderRow(visible[index]),
+                    : CustomScrollView(
+                        slivers: [
+                          SegmentedSliverList(
+                            color: scheme.surfaceContainerHighest,
+                            margin: EdgeInsets.zero,
+                            itemCount: visible.length,
+                            itemBuilder: (context, index) =>
+                                _folderTile(visible[index]),
+                          ),
+                        ],
                       ),
               ),
             ],
@@ -5060,50 +5072,14 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
     );
   }
 
-  /// MD3E 目录行：圆角图标块 + 名称 + 进入箭头。
-  Widget _folderRow(LzFolder folder) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(14),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: () => _load(folder.id),
-          child: Padding(
-            padding: const EdgeInsets.all(6),
-            child: Row(
-              children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: scheme.surfaceContainerHigh,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    Icons.folder_outlined,
-                    size: 19,
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    folder.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyLarge,
-                  ),
-                ),
-                Icon(Icons.chevron_right, size: 20, color: scheme.outline),
-              ],
-            ),
-          ),
-        ),
-      ),
+  /// 目录列表交给共享 MD3E 分段列表组负责底色、圆角和按压形变。
+  Widget _folderTile(LzFolder folder) {
+    final scheme = Theme.of(context).colorScheme;
+    return ListTile(
+      leading: Icon(Icons.folder_outlined, color: scheme.onSurfaceVariant),
+      title: Text(folder.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+      trailing: Icon(Icons.chevron_right, color: scheme.outline),
+      onTap: () => _load(folder.id),
     );
   }
 }

@@ -18,6 +18,8 @@ import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/core/notification_settings_state.dart';
 import 'package:lancloud/core/theme_settings_state.dart';
+import 'package:lancloud/core/transfer/transfer_manager.dart';
+import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/core/transfer_connection_settings_state.dart';
 import 'package:lancloud/core/update/release_info.dart';
 import 'package:lancloud/core/update/update_service.dart';
@@ -67,11 +69,14 @@ Widget appEnvironmentTestTree({
   required AppEnvironment environment,
   required Widget child,
   BackupService? backupService,
+  TransferManager? transferManager,
 }) {
   return ProviderScope(
     overrides: [
       if (backupService != null)
         backupServiceProvider.overrideWithValue(backupService),
+      if (transferManager != null)
+        transferManagerProvider.overrideWithValue(transferManager),
       accountStateProvider.overrideWithValue(environment.accountState),
       accountSessionProvider.overrideWithValue(environment.accountSession),
       appDbProvider.overrideWithValue(environment.db),

@@ -66,4 +66,31 @@ void main() {
     expect(reloaded.updateChannel, 'stable');
     expect(reloaded.updateAutoCheck, isFalse);
   });
+
+  test('上传筛选默认开启且开关可持久化', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final store = SettingsStore();
+    await store.load();
+    expect(store.skipOversizeUploads, isTrue);
+    expect(store.skipUnsupportedUploads, isTrue);
+
+    await store.setSkipOversizeUploads(false);
+    await store.setSkipUnsupportedUploads(false);
+    final reloaded = SettingsStore();
+    await reloaded.load();
+    expect(reloaded.skipOversizeUploads, isFalse);
+    expect(reloaded.skipUnsupportedUploads, isFalse);
+  });
+
+  test('自动开始上传默认开启且关闭后可持久化', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final store = SettingsStore();
+    await store.load();
+    expect(store.autoStartUploads, isTrue);
+
+    await store.setAutoStartUploads(false);
+    final reloaded = SettingsStore();
+    await reloaded.load();
+    expect(reloaded.autoStartUploads, isFalse);
+  });
 }

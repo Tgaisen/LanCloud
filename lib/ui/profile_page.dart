@@ -11,6 +11,7 @@ import '../core/api/lanzou_client.dart';
 import '../core/backup/backup_sections.dart';
 import '../core/navigation_appearance_settings_state.dart';
 import '../core/navigation_state.dart';
+import '../core/transfer/transfer_manager_provider.dart';
 import '../core/update/update_service.dart';
 import '../l10n/l10n.dart';
 import 'about_page.dart';
@@ -28,6 +29,33 @@ import 'update_page.dart';
 import 'web_page.dart';
 
 enum _ProfileDeepPage { backupOptions, licenseDetail }
+
+/// 切换账号会中断上传时使用的确认弹窗。
+Future<bool> showAccountSwitchUploadDialog(
+  BuildContext context, {
+  required int count,
+}) async {
+  final l10n = context.l10n;
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: Text(l10n.switchAccountUploadsTitle),
+      content: Text(l10n.switchAccountUploadsMessage(count)),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(false),
+          child: Text(l10n.cancel),
+        ),
+        FilledButton(
+          key: const ValueKey('switch-account-upload-confirm'),
+          onPressed: () => Navigator.of(dialogContext).pop(true),
+          child: Text(l10n.continueLabel),
+        ),
+      ],
+    ),
+  );
+  return confirmed == true;
+}
 
 /// 「我的」视图：账号卡片 + 网页版/回收站 + 设置/关于。
 /// 既作为底栏视图，也可作为独立路由打开。
@@ -1124,6 +1152,19 @@ class _ProfilePageState extends riverpod.ConsumerState<ProfilePage>
     ];
   }
 
+  Future<bool> _confirmAccountChange() async {
+    final manager = ref.read(transferManagerProvider);
+    final count = manager.activeUploadCount;
+    if (count == 0) return true;
+    final confirmed = await showAccountSwitchUploadDialog(
+      context,
+      count: count,
+    );
+    if (!confirmed || !mounted) return false;
+    await manager.interruptActiveUploads();
+    return mounted;
+  }
+
   Future<void> _showAccountSwitcher(BuildContext context) async {
     final accountState = ref.read(accountStateProvider);
     final session = ref.read(accountSessionProvider);
@@ -1154,7 +1195,12 @@ class _ProfilePageState extends riverpod.ConsumerState<ProfilePage>
                   selected: account.uid == accountState.store.activeUid,
                   singleSelect: true,
                   onTap: () async {
+                    if (account.uid == accountState.store.activeUid) {
+                      Navigator.of(context).pop();
+                      return;
+                    }
                     Navigator.of(context).pop();
+                    if (!await _confirmAccountChange()) return;
                     await session.switchAccount(account.uid);
                   },
                 ),
@@ -1163,7 +1209,18 @@ class _ProfilePageState extends riverpod.ConsumerState<ProfilePage>
                 leading: const Icon(Icons.add),
                 onTap: () async {
                   Navigator.of(context).pop();
-                  await showLoginSheet(context);
+                  final manager = ref.read(transferManagerProvider);
+                  final activeUploads = manager.activeUploadCount;
+                  if (activeUploads > 0) {
+                    final confirmed = await showAccountSwitchUploadDialog(
+                      context,
+                      count: activeUploads,
+                    );
+                    if (!confirmed || !context.mounted) return;
+                  }
+                  final loggedIn = await showLoginSheet(context);
+                  if (!loggedIn) return;
+                  await manager.interruptActiveUploads();
                 },
               ),
             ],
@@ -1233,6 +1290,7 @@ class _ProfilePageState extends riverpod.ConsumerState<ProfilePage>
       ),
     );
     if (ok != true) return;
+    if (!await _confirmAccountChange()) return;
     await session.removeAccount(uid, clearData: clearData);
   }
 }

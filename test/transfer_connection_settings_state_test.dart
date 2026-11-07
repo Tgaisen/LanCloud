@@ -26,6 +26,9 @@ void main() {
     final state = TransferConnectionSettingsState(settings);
 
     expect(settings.downloadConnections, 2);
+    expect(settings.skipOversizeUploads, isTrue);
+    expect(settings.skipUnsupportedUploads, isTrue);
+    expect(settings.autoStartUploads, isTrue);
     await state.setRequestInterval(250);
     await state.setMaxUploads(2);
     await state.setMaxDownloads(4);
@@ -33,8 +36,11 @@ void main() {
     await state.setApiHost('up');
     await state.setUserAgent('test-agent');
     await state.setUploadPath('fileup.php');
+    await state.setSkipOversizeUploads(false);
+    await state.setSkipUnsupportedUploads(false);
+    await state.setAutoStartUploads(false);
 
-    expect(state.revision.value, 7);
+    expect(state.revision.value, 10);
     expect(state.requestInterval, 250);
     expect(state.maxUploads, 2);
     expect(state.maxDownloads, 4);
@@ -42,6 +48,9 @@ void main() {
     expect(state.apiHost, 'up');
     expect(state.userAgent, 'test-agent');
     expect(state.uploadPath, 'fileup.php');
+    expect(state.skipOversizeUploads, isFalse);
+    expect(state.skipUnsupportedUploads, isFalse);
+    expect(state.autoStartUploads, isFalse);
     expect(LanzouClient.requestInterval, const Duration(milliseconds: 250));
     expect(LanzouClient.apiBase, 'https://up.woozooo.com');
     expect(LanzouClient.userAgent, 'test-agent');

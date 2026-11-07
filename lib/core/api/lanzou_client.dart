@@ -3,12 +3,15 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 
+import '../upload_policy.dart';
 import 'acw_sc_v2.dart';
 import 'models.dart';
 
 const kUserAgent =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
     '(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+
+const String kFallbackAccountNickname = '用户';
 
 enum LanzouErrorCode {
   passwordRequired,
@@ -138,6 +141,10 @@ class LanzouClient {
   /// 网页登录地址（与网页版同一个域名）。
   static String get loginUrl => '$apiBase/account.php';
 
+  /// 新版个人中心：昵称、单文件上限和允许上传类型都在这一页。
+  static String get accountProfileUrl =>
+      '$apiBase/mydisk.php?item=profile&action=mypower';
+
   /// 上传接口路径（接口名）：html5up.php（默认）/ fileup.php。
   ///
   /// 上传只开放**路径**这一个设置：域名永远跟随「网盘接口域名」
@@ -154,6 +161,16 @@ class LanzouClient {
 
   final String uid;
   late final Dio dio;
+
+  /// 同一个账号客户端在一个接口域名下只抓一次个人中心；登录、启动补资料和
+  /// 上传前读取限制会共用这次请求。
+  Future<({String? nickname, String level, LanzouUploadPolicy uploadPolicy})>?
+  _accountInfoRequest;
+  String? _accountInfoRequestBase;
+  LanzouUploadPolicy _uploadPolicy = LanzouUploadPolicy.fallback;
+
+  /// 上传筛选使用的最新账号规则；尚未抓到网页信息时使用内置兜底值。
+  LanzouUploadPolicy get uploadPolicy => _uploadPolicy;
 
   /// host -> (cookie name -> value)
   final Map<String, Map<String, String>> _jar = {};
@@ -717,14 +734,39 @@ class LanzouClient {
 
   // ------------------------------------------------------------------ share
 
-  /// 从网页版个人中心（myfile.php?item=1）的 HTML 里取出昵称与用户等级。
+  /// 新版个人中心里的昵称：`utcn()` 中 `/u/<用户名>` 的最后一段。
+  static String? parseProfileNickname(String html) {
+    final match = RegExp(
+      r'''function\s+utcn\s*\(\s*\)\s*\{[\s\S]*?url\s*=\s*['"]([^'"]+)['"]''',
+      caseSensitive: false,
+    ).firstMatch(html);
+    final rawUrl = match?.group(1)?.trim();
+    if (rawUrl == null || rawUrl.isEmpty) return null;
+    final uri = Uri.tryParse(rawUrl);
+    if (uri != null) {
+      final segments = uri.pathSegments;
+      for (var i = 0; i + 1 < segments.length; i++) {
+        if (segments[i] == 'u' && segments[i + 1].isNotEmpty) {
+          return Uri.decodeComponent(segments[i + 1]);
+        }
+      }
+    }
+    final pathName = RegExp(r'/u/([^/?#]+)').firstMatch(rawUrl)?.group(1);
+    if (pathName == null || pathName.isEmpty) return null;
+    try {
+      return Uri.decodeComponent(pathName);
+    } catch (_) {
+      return pathName;
+    }
+  }
+
+  /// 从新版个人中心 HTML 里解析昵称与等级。
   ///
-  /// 昵称：顶栏的登录用户名优先，发布者昵称（shownames）兜底，都取不到为 null。
-  /// 等级：昵称旁边的等级标记（普通用户是 `<span class="ulv1">普</span>`），
-  /// 取不到返回空串（UI 按普通用户「普」处理）。
+  /// 新页优先；保留旧页顶栏 / `shownames` 规则，既用于旧链接回退，也让
+  /// 页面改版但仍有旧标记时不丢昵称。
   static ({String? nickname, String level}) parseAccountInfoHtml(String html) {
-    // 昵称：顶栏的登录用户名优先，发布者昵称（shownames）兜底。
-    final loginName = RegExp(r'<div class="c_topr">([^<]+)<span')
+    final profileName = parseProfileNickname(html);
+    final loginName = RegExp(r'<div class="c_topr">\s*([^<]+?)\s*<span')
         .firstMatch(html)
         ?.group(1)
         ?.trim();
@@ -732,9 +774,9 @@ class LanzouClient {
         .firstMatch(html)
         ?.group(1)
         ?.trim();
-    final name = (loginName != null && loginName.isNotEmpty)
-        ? loginName
-        : fallback;
+    final name =
+        profileName ??
+        (loginName != null && loginName.isNotEmpty ? loginName : fallback);
     // 等级：昵称旁边那个等级标记（普通用户是 <span class="ulv1">普</span>）。
     // 从顶栏那块往后找，避免误取页面别处的等级图标。
     final topRight = html.indexOf('c_topr');
@@ -748,24 +790,117 @@ class LanzouClient {
     return (nickname: name == null || name.isEmpty ? null : name, level: level);
   }
 
-  /// 网页版个人中心信息：昵称 + 用户等级。
+  /// 解析新版个人中心里的单文件上限；找不到或格式异常时回退到 100 MB。
+  static int parseUploadLimitBytes(String html) {
+    final raw = RegExp(r'单个文件大小\s*<span[^>]*>\s*([^<]+?)\s*</span>')
+        .firstMatch(html)
+        ?.group(1)
+        ?.trim()
+        .toUpperCase()
+        .replaceAll(' ', '');
+    if (raw == null || raw.isEmpty) return kFallbackUploadLimitBytes;
+    final match = RegExp(r'^(\d+(?:\.\d+)?)([KMGT]?)(?:I?B)?$').firstMatch(raw);
+    if (match == null) return kFallbackUploadLimitBytes;
+    final number = double.tryParse(match.group(1) ?? '');
+    if (number == null || number <= 0) return kFallbackUploadLimitBytes;
+    final unit = match.group(2) ?? '';
+    final multiplier = switch (unit) {
+      'K' => 1024,
+      'M' => 1024 * 1024,
+      'G' => 1024 * 1024 * 1024,
+      'T' => 1024 * 1024 * 1024 * 1024,
+      _ => 1,
+    };
+    final bytes = (number * multiplier).round();
+    return bytes > 0 ? bytes : kFallbackUploadLimitBytes;
+  }
+
+  /// 解析新版个人中心里的允许上传扩展名；找不到时回退到内置完整列表。
+  static Set<String> parseAllowedUploadExtensions(String html) {
+    final block =
+        RegExp(
+          r'允许上传类型\s*[:：]?\s*</div>\s*<div[^>]*class="mf2"[^>]*>([\s\S]*?)</div>',
+          caseSensitive: false,
+        ).firstMatch(html)?.group(1) ??
+        '';
+    if (block.isEmpty) return kFallbackUploadExtensions;
+    final text = block
+        .replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), ',')
+        .replaceAll(RegExp(r'<[^>]+>'), ' ')
+        .replaceAll('&nbsp;', ' ')
+        .replaceAll('&nbsp', ' ');
+    final extensions = <String>{};
+    for (final part in text.split(RegExp(r'[,，\s]+'))) {
+      final extension = part.trim().replaceFirst(RegExp(r'^\.+'), '');
+      if (extension.isNotEmpty) extensions.add(extension.toLowerCase());
+    }
+    return extensions.isEmpty ? kFallbackUploadExtensions : extensions;
+  }
+
+  /// 从同一份新版个人中心 HTML 中提取完整上传约束。
+  static LanzouUploadPolicy parseUploadPolicyHtml(String html) =>
+      LanzouUploadPolicy(
+        maxFileBytes: parseUploadLimitBytes(html),
+        allowedExtensions: parseAllowedUploadExtensions(html),
+      );
+
+  /// 网页版个人中心信息：昵称、等级、单文件上限与上传白名单。
   ///
-  /// 解析失败时昵称返回 null（UI 回退显示 UID）、等级返回空串
-  /// （UI 按普通用户「普」处理，下次启动再试一次）。
-  Future<({String? nickname, String level})> fetchAccountInfo() async {
+  /// 新版页只请求一次。昵称解析失败时才回退旧版页补昵称 / 等级；大小和
+  /// 白名单不会从旧页重试。最终仍取不到昵称时使用「用户」占位。
+  Future<({String? nickname, String level, LanzouUploadPolicy uploadPolicy})>
+  fetchAccountInfo({bool refresh = false}) {
+    if (!refresh &&
+        _accountInfoRequest != null &&
+        _accountInfoRequestBase == apiBase) {
+      return _accountInfoRequest!;
+    }
+    _accountInfoRequestBase = apiBase;
+    final request = _loadAccountInfo();
+    _accountInfoRequest = request;
+    return request;
+  }
+
+  Future<({String? nickname, String level, LanzouUploadPolicy uploadPolicy})>
+  _loadAccountInfo() async {
+    String? nickname;
+    var level = '';
+    var uploadPolicy = LanzouUploadPolicy.fallback;
     try {
       final resp = await dio.get<String>(
-        '$apiBase/myfile.php?item=1&v2',
+        accountProfileUrl,
         options: _options(referer: '$apiBase/mydisk.php'),
       );
       final html = resp.data ?? '';
-      if (html.isEmpty || html.contains('网盘用户登录')) {
-        return (nickname: null, level: '');
+      if (html.isNotEmpty && !html.contains('网盘用户登录')) {
+        final parsed = parseAccountInfoHtml(html);
+        nickname = parsed.nickname;
+        level = parsed.level;
+        uploadPolicy = parseUploadPolicyHtml(html);
       }
-      return parseAccountInfoHtml(html);
-    } catch (_) {
-      return (nickname: null, level: '');
+    } catch (_) {}
+
+    if (nickname == null) {
+      try {
+        final legacy = await dio.get<String>(
+          '$apiBase/myfile.php?item=1&v2',
+          options: _options(referer: '$apiBase/mydisk.php'),
+        );
+        final html = legacy.data ?? '';
+        if (html.isNotEmpty && !html.contains('网盘用户登录')) {
+          final parsed = parseAccountInfoHtml(html);
+          nickname = parsed.nickname;
+          if (level.isEmpty) level = parsed.level;
+        }
+      } catch (_) {}
     }
+
+    _uploadPolicy = uploadPolicy;
+    return (
+      nickname: nickname ?? kFallbackAccountNickname,
+      level: level,
+      uploadPolicy: uploadPolicy,
+    );
   }
 
   Future<ShareInfo> shareInfoOfFile(

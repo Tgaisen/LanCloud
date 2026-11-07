@@ -15,18 +15,31 @@ import '../platform_support.dart';
 import '../saf_storage.dart';
 import '../saved_file.dart';
 import '../shared_downloads_gateway.dart';
+import '../upload_policy.dart';
 import 'resumable_downloader.dart';
 import 'transfer_dependencies.dart';
+import 'transfer_issue.dart';
+import 'upload_rename.dart';
 
 enum TransferKind { upload, download }
 
+enum UploadAddResult { pending, queued, skippedOversize, skippedUnsupported }
+
+extension UploadAddResultStatus on UploadAddResult {
+  /// 任务已成功保存；具体是待开始还是排队中由自动开始设置决定。
+  bool get accepted =>
+      this == UploadAddResult.pending || this == UploadAddResult.queued;
+}
+
 enum TransferStatus {
+  pending,
   queued,
   resolving,
   running,
   resuming,
   paused,
   saving,
+  skipped,
   done,
   failed,
   canceled,
@@ -40,6 +53,7 @@ class TransferTask {
     required this.accountUid,
     this.total = 0,
     this.folderId = '',
+    this.folderName = '',
     this.localFilePath = '',
     this.url = '',
     this.referer = '',
@@ -52,9 +66,10 @@ class TransferTask {
 
   final String id;
   final TransferKind kind;
-  final String name;
+  String name;
   final String accountUid;
-  final String folderId;
+  String folderId;
+  String folderName;
   final String localFilePath;
 
   /// 解析后的直链。应用重启后为空，重试时会按 [referer] 重新解析。
@@ -84,6 +99,9 @@ class TransferTask {
   String? partialPath;
   bool exporting = false;
   bool autoRefreshTried = false;
+
+  /// 切换账号导致的主动中断：Dio 取消后仍把任务保留为失败，供切回账号后重试。
+  bool interruptedByAccountSwitch = false;
 
   /// 已被用户删除：进行中的任务结束后不再写回记录。
   bool removed = false;
@@ -128,6 +146,7 @@ class TransferManager extends ChangeNotifier {
   final TransferDownloader _downloader;
   final List<TransferTask> tasks = [];
   final List<void Function(TransferTask)> _taskListeners = [];
+  final Map<String, Future<void>> _activeStarts = {};
   int _seq = 0;
   bool _serviceRunning = false;
   int _serviceTaskCount = 0;
@@ -211,6 +230,7 @@ class TransferManager extends ChangeNotifier {
               ? (_dependencies.accounts.activeUid ?? '')
               : '${row['account']}',
           folderId: '${row['folder_id'] ?? ''}',
+          folderName: '${row['folder_name'] ?? ''}',
           localFilePath: '${row['local_path'] ?? ''}',
           referer: '${row['referer'] ?? ''}',
           pwd: '${row['pwd'] ?? ''}',
@@ -247,6 +267,7 @@ class TransferManager extends ChangeNotifier {
         savedPath: task.savedPath ?? '',
         ref: task.refId ?? '',
         folderId: task.folderId,
+        folderName: task.folderName,
         referer: task.referer,
         pwd: task.pwd,
         localPath: task.localFilePath,
@@ -258,28 +279,114 @@ class TransferManager extends ChangeNotifier {
   List<TransferTask> byKind(TransferKind kind) =>
       tasks.where((t) => t.kind == kind).toList();
 
-  void addUpload({
+  /// 上传任务所属账号。旧记录没有账号时沿用管理器的兼容规则：
+  /// 只在当前账号视图里展示，并继续用当前账号上传。
+  bool _uploadBelongsToAccount(TransferTask task, String accountUid) {
+    if (task.kind != TransferKind.upload) return false;
+    return task.accountUid == accountUid ||
+        (task.accountUid.isEmpty && accountUid.isNotEmpty);
+  }
+
+  /// 当前账号上传 Tab 可见的任务；下载任务不按账号隔离。
+  List<TransferTask> uploadsForAccount(String? accountUid) {
+    final uid = accountUid ?? '';
+    return tasks
+        .where((task) => _uploadBelongsToAccount(task, uid))
+        .toList(growable: false);
+  }
+
+  bool _isActiveUpload(TransferTask task) =>
+      task.kind == TransferKind.upload &&
+      (task.status == TransferStatus.queued ||
+          task.status == TransferStatus.running ||
+          task.status == TransferStatus.saving);
+
+  /// 当前会继续执行或马上被调度的上传数量。
+  int get activeUploadCount => tasks.where(_isActiveUpload).length;
+
+  UploadAddResult addUpload({
     required String name,
     required String folderId,
+    String folderName = '',
     String path = '',
     Stream<List<int>> Function()? streamFactory,
     int size = 0,
   }) {
     final uid = _dependencies.accounts.activeUid ?? '';
+    var effectiveSize = size;
+    if (effectiveSize <= 0 && path.isNotEmpty) {
+      try {
+        effectiveSize = File(path).lengthSync();
+      } catch (_) {}
+    }
+    final uploadPolicy = _uploadPolicyFor(uid);
+    final skipReason = _uploadSkipResult(
+      name: name,
+      size: effectiveSize,
+      policy: uploadPolicy,
+    );
     final task = TransferTask(
       id: 'u${DateTime.now().millisecondsSinceEpoch}_${_seq++}',
       kind: TransferKind.upload,
       name: name,
       accountUid: uid,
       folderId: folderId,
+      folderName: folderName,
       localFilePath: path,
       streamFactory: streamFactory,
-      sourceSize: size,
-    )..total = size;
+      sourceSize: effectiveSize,
+    )..total = effectiveSize;
+    if (skipReason != null) {
+      task.status = TransferStatus.skipped;
+      task.error = switch (skipReason) {
+        UploadAddResult.skippedOversize => TransferIssue(
+          TransferIssueCode.skippedOversize,
+          uploadPolicy.limitLabel,
+        ).encode(),
+        UploadAddResult.skippedUnsupported => const TransferIssue(
+          TransferIssueCode.skippedUnsupported,
+        ).encode(),
+        UploadAddResult.pending || UploadAddResult.queued => null,
+      };
+    } else if (!_dependencies.settings.autoStartUploads) {
+      task.status = TransferStatus.pending;
+    }
     tasks.add(task);
+    _bumpMarks();
     _persist(task);
     notifyListeners();
     _pump();
+    return skipReason ??
+        (_dependencies.settings.autoStartUploads
+            ? UploadAddResult.queued
+            : UploadAddResult.pending);
+  }
+
+  LanzouUploadPolicy _uploadPolicyFor(String uid) {
+    if (uid.isEmpty || !_dependencies.accounts.hasAccount(uid)) {
+      return LanzouUploadPolicy.fallback;
+    }
+    try {
+      return _dependencies.accounts.clientFor(uid).uploadPolicy;
+    } catch (_) {
+      return LanzouUploadPolicy.fallback;
+    }
+  }
+
+  UploadAddResult? _uploadSkipResult({
+    required String name,
+    required int size,
+    required LanzouUploadPolicy policy,
+  }) {
+    if (_dependencies.settings.skipOversizeUploads &&
+        size > policy.maxFileBytes) {
+      return UploadAddResult.skippedOversize;
+    }
+    if (_dependencies.settings.skipUnsupportedUploads &&
+        !policy.allowsFile(name)) {
+      return UploadAddResult.skippedUnsupported;
+    }
+    return null;
   }
 
   void addDownload({
@@ -429,32 +536,9 @@ class TransferManager extends ChangeNotifier {
     final task = _find(id);
     if (task == null || task.status != TransferStatus.failed) return null;
     final expectedStatus = task.status;
-    final i18n = NotificationService.i18n;
     if (task.kind == TransferKind.upload) {
-      if (task.localFilePath.isNotEmpty) {
-        // 源文件路径已持久化，重启后一般还在缓存目录里；被清理掉时提示重选
-        if (!File(task.localFilePath).existsSync()) {
-          final message = i18n?.retryUploadFileGone ?? '源文件已不存在，请重新选择文件上传';
-          task.error = message;
-          _persist(task);
-          notifyListeners();
-          return message;
-        }
-      } else if (task.streamFactory == null) {
-        // 旧记录没留源文件路径，来源也只是一次性的流：没法继续
-        final message = i18n?.retryUploadUnavailable ?? '应用重启后无法继续该上传，请重新上传';
-        task.error = message;
-        _persist(task);
-        notifyListeners();
-        return message;
-      }
-      // 上传必须带账号 Cookie：账号被移除、或记录里没有可用账号时先拦下，
-      // 别发出请求让服务端回 "login not"
-      if (_uploadAccountUid(task).isEmpty) {
-        final message = i18n?.uploadNeedLogin ?? '请先登录后再上传';
-        task.error = message;
-        _persist(task);
-        notifyListeners();
+      final message = _applyUploadSourceIssue(task);
+      if (message != null) {
         return message;
       }
     }
@@ -466,6 +550,7 @@ class TransferManager extends ChangeNotifier {
     task.status = TransferStatus.queued;
     task.error = null;
     task.autoRefreshTried = false;
+    task.interruptedByAccountSwitch = false;
     if (task.kind == TransferKind.upload) task.received = 0;
     _bumpMarks();
     _persist(task);
@@ -473,6 +558,192 @@ class TransferManager extends ChangeNotifier {
     _syncTaskNotification(task);
     _pump();
     return null;
+  }
+
+  ({TransferIssue issue, String message, bool permanent})? _uploadSourceIssue(
+    TransferTask task,
+  ) {
+    final i18n = NotificationService.i18n;
+    if (task.localFilePath.isNotEmpty) {
+      if (SafStorage.isContentUri(task.localFilePath)) {
+        return (
+          issue: const TransferIssue(TransferIssueCode.uploadPermissionExpired),
+          message: i18n?.retryUploadPermissionExpired ?? '文件访问授权已过期，请重新选择文件上传',
+          permanent: true,
+        );
+      }
+      // 源文件路径已持久化，重启后一般还在缓存目录里；被清理掉时提示重选
+      if (!File(task.localFilePath).existsSync()) {
+        return (
+          issue: const TransferIssue(TransferIssueCode.uploadSourceMissing),
+          message: i18n?.retryUploadFileGone ?? '源文件已不存在，请重新选择文件上传',
+          permanent: true,
+        );
+      }
+    } else if (task.streamFactory == null) {
+      // 旧记录没留源文件路径，来源也只是一次性的流：没法继续
+      return (
+        issue: const TransferIssue(TransferIssueCode.uploadSourceUnavailable),
+        message: i18n?.retryUploadUnavailable ?? '应用重启后无法继续该上传，请重新上传',
+        permanent: true,
+      );
+    }
+    // 上传必须带账号 Cookie：账号被移除、或记录里没有可用账号时先拦下，
+    // 别发出请求让服务端回 "login not"
+    if (_uploadAccountUid(task).isEmpty) {
+      return (
+        issue: const TransferIssue(TransferIssueCode.uploadNeedLogin),
+        message: i18n?.uploadNeedLogin ?? '请先登录后再上传',
+        permanent: false,
+      );
+    }
+    return null;
+  }
+
+  String? _applyUploadSourceIssue(TransferTask task) {
+    final issue = _uploadSourceIssue(task);
+    if (issue == null) return null;
+    if (issue.permanent) task.status = TransferStatus.failed;
+    task.error = issue.issue.encode();
+    _bumpMarks();
+    _persist(task);
+    notifyListeners();
+    return issue.message;
+  }
+
+  /// 用户确认仍然上传后，绕过登录时抓到的上传筛选规则。
+  Future<String?> uploadSkipped(String id) async {
+    final task = _find(id);
+    if (task == null ||
+        task.kind != TransferKind.upload ||
+        task.status != TransferStatus.skipped) {
+      return null;
+    }
+    final message = _applyUploadSourceIssue(task);
+    if (message != null) {
+      return message;
+    }
+    task.status = TransferStatus.queued;
+    task.error = null;
+    task.received = 0;
+    task.autoRefreshTried = false;
+    if (task.cancelToken.isCancelled) task.cancelToken = CancelToken();
+    _bumpMarks();
+    _persist(task);
+    notifyListeners();
+    _pump();
+    return null;
+  }
+
+  /// 应用单条或批量上传任务重命名，并重新检查待开始 / 被跳过状态。
+  ///
+  /// 通过当前上传规则的任务统一回到「待开始」，避免改名后直接绕过用户
+  /// 关闭自动开始上传的选择；仍不符合规则的任务继续留在「被跳过」。
+  int renameUploads(Iterable<UploadRenameChange> changes) {
+    var changed = 0;
+    for (final change in changes) {
+      final task = _find(change.id);
+      if (task == null ||
+          task.kind != TransferKind.upload ||
+          (task.status != TransferStatus.pending &&
+              task.status != TransferStatus.skipped) ||
+          change.newName.trim().isEmpty ||
+          change.newName == task.name) {
+        continue;
+      }
+
+      task.name = change.newName;
+      final policy = _uploadPolicyFor(_policyUidFor(task));
+      final skipReason = _uploadSkipResult(
+        name: task.name,
+        size: _sourceSizeOf(task),
+        policy: policy,
+      );
+      if (skipReason == null) {
+        task.status = TransferStatus.pending;
+        task.error = null;
+      } else {
+        task.status = TransferStatus.skipped;
+        task.error = _encodedSkipReason(skipReason, policy);
+      }
+      _persist(task);
+      changed += 1;
+    }
+    if (changed == 0) return 0;
+    _bumpMarks();
+    notifyListeners();
+    return changed;
+  }
+
+  /// 修改待开始上传的目标目录。账号在应用内切换后目录 ID 不再可靠，
+  /// 因此这里必须同时校验任务仍属于指定账号。
+  int movePendingUploads({
+    required Iterable<String> ids,
+    required String folderId,
+    required String folderName,
+    required String accountUid,
+  }) {
+    if (folderId.trim().isEmpty ||
+        accountUid != (_dependencies.accounts.activeUid ?? '')) {
+      return 0;
+    }
+    var changed = 0;
+    for (final id in ids.toSet()) {
+      final task = _find(id);
+      if (task == null ||
+          !_uploadBelongsToAccount(task, accountUid) ||
+          task.status != TransferStatus.pending) {
+        continue;
+      }
+      if (task.folderId == folderId && task.folderName == folderName) {
+        continue;
+      }
+      task.folderId = folderId;
+      task.folderName = folderName;
+      _persist(task);
+      changed += 1;
+    }
+    if (changed == 0) return 0;
+    notifyListeners();
+    return changed;
+  }
+
+  /// 手动开始待开始的上传任务，返回实际转入调度的数量。
+  ///
+  /// 源文件或账号不可用的任务不会入队：永久失效转为失败，登录等可恢复问题
+  /// 继续保留在待开始，等待用户处理后再次点击上传。
+  int startUploads(Iterable<String> ids) {
+    var started = 0;
+    var changed = false;
+    for (final id in ids.toSet()) {
+      final task = _find(id);
+      if (task == null ||
+          task.kind != TransferKind.upload ||
+          task.status != TransferStatus.pending) {
+        continue;
+      }
+      final issue = _uploadSourceIssue(task);
+      if (issue != null) {
+        if (issue.permanent) task.status = TransferStatus.failed;
+        task.error = issue.issue.encode();
+        _persist(task);
+        changed = true;
+        continue;
+      }
+      task.status = TransferStatus.queued;
+      task.error = null;
+      task.received = 0;
+      task.autoRefreshTried = false;
+      if (task.cancelToken.isCancelled) task.cancelToken = CancelToken();
+      _persist(task);
+      started += 1;
+      changed = true;
+    }
+    if (!changed) return 0;
+    _bumpMarks();
+    notifyListeners();
+    _pump();
+    return started;
   }
 
   Future<String?> _ensureDownloadUrl(TransferTask task) async {
@@ -511,20 +782,97 @@ class TransferManager extends ChangeNotifier {
     }
   }
 
-  /// 清空指定类型的已结束任务，返回被移除的任务快照供调用方处理本地文件。
-  List<TransferTask> clearFinished(TransferKind kind) {
+  /// 清空指定类型的已完成任务，返回快照供调用方处理本地文件。
+  List<TransferTask> clearCompleted(
+    TransferKind kind, {
+    String? uploadAccountUid,
+  }) {
     final removed = tasks
         .where(
           (t) =>
               t.kind == kind &&
-              (t.status == TransferStatus.done ||
-                  t.status == TransferStatus.failed ||
-                  t.status == TransferStatus.canceled),
+              t.status == TransferStatus.done &&
+              (kind != TransferKind.upload ||
+                  uploadAccountUid == null ||
+                  _uploadBelongsToAccount(t, uploadAccountUid)),
         )
         .toList(growable: false);
     if (removed.isEmpty) return const <TransferTask>[];
     removeTasks([for (final task in removed) task.id]);
     return removed;
+  }
+
+  /// 清空指定类型的失败任务。
+  List<TransferTask> clearFailed(
+    TransferKind kind, {
+    String? uploadAccountUid,
+  }) {
+    final removed = tasks
+        .where(
+          (t) =>
+              t.kind == kind &&
+              t.status == TransferStatus.failed &&
+              (kind != TransferKind.upload ||
+                  uploadAccountUid == null ||
+                  _uploadBelongsToAccount(t, uploadAccountUid)),
+        )
+        .toList(growable: false);
+    if (removed.isEmpty) return const <TransferTask>[];
+    removeTasks([for (final task in removed) task.id]);
+    return removed;
+  }
+
+  /// 清空「被跳过」的上传记录。
+  List<TransferTask> clearSkippedUploads({String? uploadAccountUid}) {
+    final removed = tasks
+        .where(
+          (task) =>
+              task.kind == TransferKind.upload &&
+              task.status == TransferStatus.skipped &&
+              (uploadAccountUid == null ||
+                  _uploadBelongsToAccount(task, uploadAccountUid)),
+        )
+        .toList(growable: false);
+    if (removed.isEmpty) return const <TransferTask>[];
+    removeTasks([for (final task in removed) task.id]);
+    return removed;
+  }
+
+  /// 清空待开始的上传记录。
+  List<TransferTask> clearPendingUploads({String? uploadAccountUid}) {
+    final removed = tasks
+        .where(
+          (task) =>
+              task.kind == TransferKind.upload &&
+              task.status == TransferStatus.pending &&
+              (uploadAccountUid == null ||
+                  _uploadBelongsToAccount(task, uploadAccountUid)),
+        )
+        .toList(growable: false);
+    if (removed.isEmpty) return const <TransferTask>[];
+    removeTasks([for (final task in removed) task.id]);
+    return removed;
+  }
+
+  String _policyUidFor(TransferTask task) {
+    if (task.accountUid.isNotEmpty) return task.accountUid;
+    return _dependencies.accounts.activeUid ?? '';
+  }
+
+  int _sourceSizeOf(TransferTask task) =>
+      task.sourceSize > 0 ? task.sourceSize : task.total;
+
+  String _encodedSkipReason(UploadAddResult reason, LanzouUploadPolicy policy) {
+    return switch (reason) {
+      UploadAddResult.skippedOversize => TransferIssue(
+        TransferIssueCode.skippedOversize,
+        policy.limitLabel,
+      ).encode(),
+      UploadAddResult.skippedUnsupported => const TransferIssue(
+        TransferIssueCode.skippedUnsupported,
+      ).encode(),
+      UploadAddResult.pending || UploadAddResult.queued => '',
+    };
   }
 
   /// 删除一条传输记录：进行中的先取消，避免残留记录被写回。
@@ -584,6 +932,47 @@ class TransferManager extends ChangeNotifier {
     return null;
   }
 
+  void _launch(TransferTask task) {
+    final future = _start(task);
+    _activeStarts[task.id] = future;
+    unawaited(
+      future.whenComplete(() {
+        _activeStarts.remove(task.id);
+      }),
+    );
+  }
+
+  /// 中断所有会继续执行的上传，并把记录保留为可重试的失败任务。
+  ///
+  /// 先同步把排队任务移出调度，再等待正在运行的请求完成取消，避免账号已经
+  /// 切换后旧请求仍在收尾，或取消一个任务后调度器又启动下一个旧账号任务。
+  Future<int> interruptActiveUploads() async {
+    final active = tasks.where(_isActiveUpload).toList(growable: false);
+    if (active.isEmpty) return 0;
+    const issue = TransferIssue(
+      TransferIssueCode.uploadInterruptedByAccountSwitch,
+    );
+    for (final task in active) {
+      task.interruptedByAccountSwitch = true;
+      task.status = TransferStatus.failed;
+      task.error = issue.encode();
+      if (!task.cancelToken.isCancelled) {
+        task.cancelToken.cancel('account-switch');
+      }
+      _persist(task);
+    }
+    _bumpMarks();
+    notifyListeners();
+    final running = <Future<void>>[
+      for (final task in active) ?_activeStarts[task.id],
+    ];
+    if (running.isNotEmpty) {
+      await Future.wait(running);
+    }
+    _pump();
+    return active.length;
+  }
+
   void _pump() {
     var runningUploads = tasks
         .where(
@@ -606,11 +995,11 @@ class TransferManager extends ChangeNotifier {
       if (task.kind == TransferKind.upload &&
           runningUploads < _dependencies.settings.maxUploads) {
         runningUploads += 1;
-        _start(task);
+        _launch(task);
       } else if (task.kind == TransferKind.download &&
           runningDownloads < _dependencies.settings.maxDownloads) {
         runningDownloads += 1;
-        _start(task);
+        _launch(task);
       }
     }
     _syncForegroundService();
@@ -692,12 +1081,15 @@ class TransferManager extends ChangeNotifier {
         }
         await _runDownload(task);
       }
-      if (task.status != TransferStatus.canceled &&
+      if (!task.interruptedByAccountSwitch &&
+          task.status != TransferStatus.canceled &&
           task.status != TransferStatus.paused) {
         task.status = TransferStatus.done;
       }
     } on DioException catch (e) {
-      if (task.status == TransferStatus.paused) {
+      if (task.interruptedByAccountSwitch) {
+        task.status = TransferStatus.failed;
+      } else if (task.status == TransferStatus.paused) {
         // 暂停保留当前状态，等用户继续。
       } else if (task.status == TransferStatus.canceled ||
           CancelToken.isCancel(e)) {
@@ -726,10 +1118,12 @@ class TransferManager extends ChangeNotifier {
       }
     } on LanzouException catch (e) {
       task.status = TransferStatus.failed;
-      task.error = NotificationService.i18n?.lanzouError(e) ?? e.message;
+      if (!task.interruptedByAccountSwitch) {
+        task.error = NotificationService.i18n?.lanzouError(e) ?? e.message;
+      }
     } catch (e) {
       task.status = TransferStatus.failed;
-      task.error = '$e';
+      if (!task.interruptedByAccountSwitch) task.error = '$e';
     } finally {
       _bumpMarks();
       _persist(task);
@@ -747,6 +1141,10 @@ class TransferManager extends ChangeNotifier {
   /// 按任务和设置同步单条通知。进行中任务受“传输进度通知”控制，
   /// 完成 / 失败受“传输完成通知”控制。
   void _syncTaskNotification(TransferTask task) {
+    if (task.interruptedByAccountSwitch) {
+      _notifications.cancelTransferTask(task.id);
+      return;
+    }
     // 上传完成后留通知意义不大；失败通知仍然保留，方便用户判断原因。
     if (task.kind == TransferKind.upload &&
         task.status == TransferStatus.done) {
@@ -762,9 +1160,12 @@ class TransferManager extends ChangeNotifier {
             : TransferNotificationState.downloading,
       TransferStatus.paused => TransferNotificationState.paused,
       TransferStatus.saving => TransferNotificationState.saving,
+      TransferStatus.skipped => null,
       TransferStatus.done => TransferNotificationState.done,
       TransferStatus.failed => TransferNotificationState.failed,
-      TransferStatus.queued || TransferStatus.canceled => null,
+      TransferStatus.pending ||
+      TransferStatus.queued ||
+      TransferStatus.canceled => null,
     };
     if (task.removed || state == null) {
       _notifications.cancelTransferTask(task.id);

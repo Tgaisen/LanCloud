@@ -161,6 +161,15 @@
   },
   "switchAccountShort": "切换",
   "switchAccount": "切换账号",
+  "switchAccountUploadsTitle": "切换账号并中断上传",
+  "switchAccountUploadsMessage": "当前有 {count} 个上传任务正在进行。切换账号会中断这些任务，切回原账号后可在失败列表重试。是否继续？",
+  "@switchAccountUploadsMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "removeCurrentAccount": "移除当前账号",
   "accountManagement": "账号管理",
   "appSection": "应用",
@@ -201,7 +210,7 @@
       }
     }
   },
-  "cancelAllDownloadsConfirmMessage": "将取消并移除全部 {count} 个进行中的下载任务，并删除已下载的文件，继续吗？",
+  "cancelAllDownloadsConfirmMessage": "将取消并移除全部 {count} 个进行中的下载任务，继续吗？",
   "@cancelAllDownloadsConfirmMessage": {
     "placeholders": {
       "count": {
@@ -209,8 +218,8 @@
       }
     }
   },
-  "clearFinishedTransfers": "清空已结束任务",
-  "clearFinishedUploadsConfirmMessage": "将清空全部 {count} 条已结束的上传任务记录，继续吗？",
+  "clearFinishedTransfers": "清空已完成任务",
+  "clearFinishedUploadsConfirmMessage": "将清空全部 {count} 条已完成的上传任务记录，继续吗？",
   "@clearFinishedUploadsConfirmMessage": {
     "placeholders": {
       "count": {
@@ -218,8 +227,35 @@
       }
     }
   },
-  "clearFinishedDownloadsConfirmMessage": "将清空全部 {count} 条已结束的下载任务记录，继续吗？",
+  "clearFinishedDownloadsConfirmMessage": "将清空全部 {count} 条已完成的下载任务记录，继续吗？",
   "@clearFinishedDownloadsConfirmMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "clearSkippedUploads": "清空被跳过的上传记录",
+  "clearSkippedUploadsConfirmMessage": "将清空全部 {count} 条被跳过的上传任务记录，继续吗？",
+  "@clearSkippedUploadsConfirmMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "clearPendingUploads": "清空待开始上传",
+  "clearPendingUploadsConfirmMessage": "将清空全部 {count} 条待开始的上传任务记录，继续吗？",
+  "@clearPendingUploadsConfirmMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "clearFailedTransfers": "清空失败任务",
+  "clearFailedConfirmMessage": "将清空全部 {count} 条失败任务记录，继续吗？",
+  "@clearFailedConfirmMessage": {
     "placeholders": {
       "count": {
         "type": "int"
@@ -238,7 +274,10 @@
   "noUploads": "暂无上传任务",
   "noDownloads": "暂无下载任务",
   "inProgress": "进行中",
-  "finished": "已结束",
+  "pendingUploads": "待开始",
+  "skippedUploads": "被跳过",
+  "finished": "已完成",
+  "failed": "失败",
   "queued": "排队中",
   "uploading": "上传中",
   "downloading": "下载中",
@@ -278,12 +317,55 @@
   "retry": "重试",
   "cancelTask": "取消任务",
   "cancelDownload": "取消下载",
+  "cancelUpload": "取消上传",
+  "rename": "重命名",
+  "changeUploadFolder": "修改上传目录",
+  "targetFolder": "目标文件夹",
+  "uploadToFolder": "上传至 {folder} · {size}",
+  "@uploadToFolder": {
+    "placeholders": {
+      "folder": {
+        "type": "String"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "updatedUploadFolders": "已修改 {count} 个上传任务的目录",
+  "@updatedUploadFolders": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "uploadInterruptedByAccountSwitch": "切换账号，任务已中断",
+  "modify": "修改",
+  "preview": "预览",
+  "batchRename": "批量重命名",
+  "renamePreview": "重命名预览",
+  "findContent": "查找内容",
+  "replaceWith": "替换为",
+  "useRegularExpression": "正则表达式",
+  "matchCase": "区分大小写",
+  "searchContentRequired": "请输入查找内容",
+  "invalidRegularExpression": "正则表达式无效",
+  "renameNoMatches": "没有名称会被修改",
+  "renameEmptyName": "修改后的文件名不能为空",
+  "renamedUploads": "已修改 {count} 个上传任务的名称",
+  "@renamedUploads": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "openFileFailed": "没有可打开此文件的应用",
   "openFileMissing": "文件不存在，可能已被移动或删除",
   "openFilePermissionDenied": "文件访问权限已失效；重新选择下载目录只影响之后的任务，请重新下载该文件",
   "openFileSystemError": "系统无法打开该文件，请稍后重试",
   "redownload": "重新下载",
-  "deleteDownloadRecord": "删除下载记录",
   "waitingToDownload": "等待中",
   "downloadFailed": "下载失败",
   "batchRetry": "批量重试",
@@ -291,6 +373,7 @@
   "retryUnavailable": "应用重启后请重新发起下载",
   "retryUploadUnavailable": "应用重启后无法继续该上传，请重新上传",
   "retryUploadFileGone": "源文件已不存在，请重新选择文件上传",
+  "retryUploadPermissionExpired": "文件访问授权已过期，请重新选择文件上传",
   "uploadNeedLogin": "请先登录后再上传",
   "retryResolving": "正在重新解析下载链接…",
   "retryResolveFailed": "重新解析下载链接失败：{error}",
@@ -412,6 +495,15 @@
   "requestIntervalKeywords": "间隔 限流 风控 请求",
   "maxUploads": "同时上传数量",
   "uploadKeywords": "上传 并发",
+  "autoStartUploads": "自动开始上传",
+  "autoStartUploadsSubtitle": "关闭后需在传输列表手动开始上传，上传前可修改任务队列",
+  "autoStartUploadsKeywords": "上传 自动开始 待开始 手动 队列",
+  "skipOversizeUploads": "跳过超过限制大小的文件",
+  "skipOversizeUploadsSubtitle": "超过账号允许的单文件大小时不自动上传",
+  "skipOversizeUploadsKeywords": "上传 跳过 超限 大小 限制",
+  "skipUnsupportedUploads": "跳过不支持上传的文件",
+  "skipUnsupportedUploadsSubtitle": "文件类型不在蓝奏云允许列表中时不自动上传",
+  "skipUnsupportedUploadsKeywords": "上传 跳过 文件类型 扩展名 支持",
   "maxDownloads": "同时下载数量",
   "downloadKeywords": "下载 并发",
   "singleFileDownloadConnections": "最高下载线程",
@@ -511,7 +603,7 @@
       }
     }
   },
-  "downloadDirHint": "Android 10 及以上默认下载到公共目录 Download/LanCloud，无需存储权限或目录授权；Android 9 及以下受系统限制，默认下载到应用私有目录。如需更改位置，建议选择系统公共目录；选择非公共目录需下载完成后二次移入。",
+  "downloadDirHint": "Android 10 及以上默认下载到公共目录 Download/LanCloud，无需存储权限或目录授权；Android 9 及以下受系统限制，默认下载到应用私有目录。",
   "safDirPermissionLost": "下载目录授权已失效，请在设置里重新选择下载目录",
   "safExportFailed": "写入下载目录失败：{error}",
   "@safExportFailed": {
@@ -549,11 +641,12 @@
     }
   },
   "selectAll": "全选",
+  "select": "选择",
   "invertSelection": "反选",
   "newFolder": "新建文件夹",
   "uploadFile": "上传文件",
   "uploadFileSubtitle": "从本机或其他应用中选择文件",
-  "uploadSkipped": "已加入 {added} 个上传任务，跳过 {skipped} 个超过 100MB 的文件",
+  "uploadSkipped": "已加入 {added} 个上传任务，其中 {skipped} 个被跳过",
   "@uploadSkipped": {
     "placeholders": {
       "added": {
@@ -564,6 +657,16 @@
       }
     }
   },
+  "uploadSkippedReasonOversize": "文件超过 {limit} 限制",
+  "@uploadSkippedReasonOversize": {
+    "placeholders": {
+      "limit": {
+        "type": "String"
+      }
+    }
+  },
+  "uploadSkippedReasonUnsupported": "此类文件不允许上传",
+  "uploadAnyway": "仍然上传",
   "uploadAdded": "已加入 {count} 个上传任务",
   "@uploadAdded": {
     "placeholders": {
@@ -947,6 +1050,17 @@
       }
     }
   },
+  "shareReceivedFilesSkipped": "已接收 {added} 个文件，其中 {skipped} 个被跳过",
+  "@shareReceivedFilesSkipped": {
+    "placeholders": {
+      "added": {
+        "type": "int"
+      },
+      "skipped": {
+        "type": "int"
+      }
+    }
+  },
   "shareTargetUnsupported": "无法识别的分享内容",
   "uploadHere": "上传到此",
   "uploadFromApp": "从应用上传",
@@ -1274,6 +1388,14 @@
   "dropHoverMixed": "松开后处理所选内容",
   "dropUploaded": "已上传 {count} 个文件",
   "@dropUploaded": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dropSkippedUploads": "{count} 个文件被跳过",
+  "@dropSkippedUploads": {
     "placeholders": {
       "count": {
         "type": "int"

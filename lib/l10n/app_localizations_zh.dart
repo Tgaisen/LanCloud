@@ -295,6 +295,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get switchAccount => '切换账号';
 
   @override
+  String get switchAccountUploadsTitle => '切换账号并中断上传';
+
+  @override
+  String switchAccountUploadsMessage(int count) {
+    return '当前有 $count 个上传任务正在进行。切换账号会中断这些任务，切回原账号后可在失败列表重试。是否继续？';
+  }
+
+  @override
   String get removeCurrentAccount => '移除当前账号';
 
   @override
@@ -378,20 +386,44 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String cancelAllDownloadsConfirmMessage(int count) {
-    return '将取消并移除全部 $count 个进行中的下载任务，并删除已下载的文件，继续吗？';
+    return '将取消并移除全部 $count 个进行中的下载任务，继续吗？';
   }
 
   @override
-  String get clearFinishedTransfers => '清空已结束任务';
+  String get clearFinishedTransfers => '清空已完成任务';
 
   @override
   String clearFinishedUploadsConfirmMessage(int count) {
-    return '将清空全部 $count 条已结束的上传任务记录，继续吗？';
+    return '将清空全部 $count 条已完成的上传任务记录，继续吗？';
   }
 
   @override
   String clearFinishedDownloadsConfirmMessage(int count) {
-    return '将清空全部 $count 条已结束的下载任务记录，继续吗？';
+    return '将清空全部 $count 条已完成的下载任务记录，继续吗？';
+  }
+
+  @override
+  String get clearSkippedUploads => '清空被跳过的上传记录';
+
+  @override
+  String clearSkippedUploadsConfirmMessage(int count) {
+    return '将清空全部 $count 条被跳过的上传任务记录，继续吗？';
+  }
+
+  @override
+  String get clearPendingUploads => '清空待开始上传';
+
+  @override
+  String clearPendingUploadsConfirmMessage(int count) {
+    return '将清空全部 $count 条待开始的上传任务记录，继续吗？';
+  }
+
+  @override
+  String get clearFailedTransfers => '清空失败任务';
+
+  @override
+  String clearFailedConfirmMessage(int count) {
+    return '将清空全部 $count 条失败任务记录，继续吗？';
   }
 
   @override
@@ -412,7 +444,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get inProgress => '进行中';
 
   @override
-  String get finished => '已结束';
+  String get pendingUploads => '待开始';
+
+  @override
+  String get skippedUploads => '被跳过';
+
+  @override
+  String get finished => '已完成';
+
+  @override
+  String get failed => '失败';
 
   @override
   String get queued => '排队中';
@@ -475,6 +516,72 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cancelDownload => '取消下载';
 
   @override
+  String get cancelUpload => '取消上传';
+
+  @override
+  String get rename => '重命名';
+
+  @override
+  String get changeUploadFolder => '修改上传目录';
+
+  @override
+  String get targetFolder => '目标文件夹';
+
+  @override
+  String uploadToFolder(String folder, String size) {
+    return '上传至 $folder · $size';
+  }
+
+  @override
+  String updatedUploadFolders(int count) {
+    return '已修改 $count 个上传任务的目录';
+  }
+
+  @override
+  String get uploadInterruptedByAccountSwitch => '切换账号，任务已中断';
+
+  @override
+  String get modify => '修改';
+
+  @override
+  String get preview => '预览';
+
+  @override
+  String get batchRename => '批量重命名';
+
+  @override
+  String get renamePreview => '重命名预览';
+
+  @override
+  String get findContent => '查找内容';
+
+  @override
+  String get replaceWith => '替换为';
+
+  @override
+  String get useRegularExpression => '正则表达式';
+
+  @override
+  String get matchCase => '区分大小写';
+
+  @override
+  String get searchContentRequired => '请输入查找内容';
+
+  @override
+  String get invalidRegularExpression => '正则表达式无效';
+
+  @override
+  String get renameNoMatches => '没有名称会被修改';
+
+  @override
+  String get renameEmptyName => '修改后的文件名不能为空';
+
+  @override
+  String renamedUploads(int count) {
+    return '已修改 $count 个上传任务的名称';
+  }
+
+  @override
   String get openFileFailed => '没有可打开此文件的应用';
 
   @override
@@ -488,9 +595,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get redownload => '重新下载';
-
-  @override
-  String get deleteDownloadRecord => '删除下载记录';
 
   @override
   String get waitingToDownload => '等待中';
@@ -512,6 +616,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get retryUploadFileGone => '源文件已不存在，请重新选择文件上传';
+
+  @override
+  String get retryUploadPermissionExpired => '文件访问授权已过期，请重新选择文件上传';
 
   @override
   String get uploadNeedLogin => '请先登录后再上传';
@@ -782,6 +889,33 @@ class AppLocalizationsZh extends AppLocalizations {
   String get uploadKeywords => '上传 并发';
 
   @override
+  String get autoStartUploads => '自动开始上传';
+
+  @override
+  String get autoStartUploadsSubtitle => '关闭后需在传输列表手动开始上传，上传前可修改任务队列';
+
+  @override
+  String get autoStartUploadsKeywords => '上传 自动开始 待开始 手动 队列';
+
+  @override
+  String get skipOversizeUploads => '跳过超过限制大小的文件';
+
+  @override
+  String get skipOversizeUploadsSubtitle => '超过账号允许的单文件大小时不自动上传';
+
+  @override
+  String get skipOversizeUploadsKeywords => '上传 跳过 超限 大小 限制';
+
+  @override
+  String get skipUnsupportedUploads => '跳过不支持上传的文件';
+
+  @override
+  String get skipUnsupportedUploadsSubtitle => '文件类型不在蓝奏云允许列表中时不自动上传';
+
+  @override
+  String get skipUnsupportedUploadsKeywords => '上传 跳过 文件类型 扩展名 支持';
+
+  @override
   String get maxDownloads => '同时下载数量';
 
   @override
@@ -947,7 +1081,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get downloadDirHint =>
-      'Android 10 及以上默认下载到公共目录 Download/LanCloud，无需存储权限或目录授权；Android 9 及以下受系统限制，默认下载到应用私有目录。如需更改位置，建议选择系统公共目录；选择非公共目录需下载完成后二次移入。';
+      'Android 10 及以上默认下载到公共目录 Download/LanCloud，无需存储权限或目录授权；Android 9 及以下受系统限制，默认下载到应用私有目录。';
 
   @override
   String get safDirPermissionLost => '下载目录授权已失效，请在设置里重新选择下载目录';
@@ -1023,6 +1157,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get selectAll => '全选';
 
   @override
+  String get select => '选择';
+
+  @override
   String get invertSelection => '反选';
 
   @override
@@ -1036,8 +1173,19 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String uploadSkipped(int added, int skipped) {
-    return '已加入 $added 个上传任务，跳过 $skipped 个超过 100MB 的文件';
+    return '已加入 $added 个上传任务，其中 $skipped 个被跳过';
   }
+
+  @override
+  String uploadSkippedReasonOversize(String limit) {
+    return '文件超过 $limit 限制';
+  }
+
+  @override
+  String get uploadSkippedReasonUnsupported => '此类文件不允许上传';
+
+  @override
+  String get uploadAnyway => '仍然上传';
 
   @override
   String uploadAdded(int count) {
@@ -1564,6 +1712,11 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String shareReceivedFiles(int count) {
     return '已接收 $count 个文件，开始上传';
+  }
+
+  @override
+  String shareReceivedFilesSkipped(int added, int skipped) {
+    return '已接收 $added 个文件，其中 $skipped 个被跳过';
   }
 
   @override
@@ -2244,6 +2397,11 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String dropUploaded(int count) {
     return '已上传 $count 个文件';
+  }
+
+  @override
+  String dropSkippedUploads(int count) {
+    return '$count 个文件被跳过';
   }
 
   @override

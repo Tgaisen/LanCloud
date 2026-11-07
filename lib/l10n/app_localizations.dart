@@ -626,6 +626,18 @@ abstract class AppLocalizations {
   /// **'切换账号'**
   String get switchAccount;
 
+  /// No description provided for @switchAccountUploadsTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'切换账号并中断上传'**
+  String get switchAccountUploadsTitle;
+
+  /// No description provided for @switchAccountUploadsMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前有 {count} 个上传任务正在进行。切换账号会中断这些任务，切回原账号后可在失败列表重试。是否继续？'**
+  String switchAccountUploadsMessage(int count);
+
   /// No description provided for @removeCurrentAccount.
   ///
   /// In zh, this message translates to:
@@ -785,26 +797,62 @@ abstract class AppLocalizations {
   /// No description provided for @cancelAllDownloadsConfirmMessage.
   ///
   /// In zh, this message translates to:
-  /// **'将取消并移除全部 {count} 个进行中的下载任务，并删除已下载的文件，继续吗？'**
+  /// **'将取消并移除全部 {count} 个进行中的下载任务，继续吗？'**
   String cancelAllDownloadsConfirmMessage(int count);
 
   /// No description provided for @clearFinishedTransfers.
   ///
   /// In zh, this message translates to:
-  /// **'清空已结束任务'**
+  /// **'清空已完成任务'**
   String get clearFinishedTransfers;
 
   /// No description provided for @clearFinishedUploadsConfirmMessage.
   ///
   /// In zh, this message translates to:
-  /// **'将清空全部 {count} 条已结束的上传任务记录，继续吗？'**
+  /// **'将清空全部 {count} 条已完成的上传任务记录，继续吗？'**
   String clearFinishedUploadsConfirmMessage(int count);
 
   /// No description provided for @clearFinishedDownloadsConfirmMessage.
   ///
   /// In zh, this message translates to:
-  /// **'将清空全部 {count} 条已结束的下载任务记录，继续吗？'**
+  /// **'将清空全部 {count} 条已完成的下载任务记录，继续吗？'**
   String clearFinishedDownloadsConfirmMessage(int count);
+
+  /// No description provided for @clearSkippedUploads.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空被跳过的上传记录'**
+  String get clearSkippedUploads;
+
+  /// No description provided for @clearSkippedUploadsConfirmMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'将清空全部 {count} 条被跳过的上传任务记录，继续吗？'**
+  String clearSkippedUploadsConfirmMessage(int count);
+
+  /// No description provided for @clearPendingUploads.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空待开始上传'**
+  String get clearPendingUploads;
+
+  /// No description provided for @clearPendingUploadsConfirmMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'将清空全部 {count} 条待开始的上传任务记录，继续吗？'**
+  String clearPendingUploadsConfirmMessage(int count);
+
+  /// No description provided for @clearFailedTransfers.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空失败任务'**
+  String get clearFailedTransfers;
+
+  /// No description provided for @clearFailedConfirmMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'将清空全部 {count} 条失败任务记录，继续吗？'**
+  String clearFailedConfirmMessage(int count);
 
   /// No description provided for @resumeAllPartialFailed.
   ///
@@ -836,11 +884,29 @@ abstract class AppLocalizations {
   /// **'进行中'**
   String get inProgress;
 
+  /// No description provided for @pendingUploads.
+  ///
+  /// In zh, this message translates to:
+  /// **'待开始'**
+  String get pendingUploads;
+
+  /// No description provided for @skippedUploads.
+  ///
+  /// In zh, this message translates to:
+  /// **'被跳过'**
+  String get skippedUploads;
+
   /// No description provided for @finished.
   ///
   /// In zh, this message translates to:
-  /// **'已结束'**
+  /// **'已完成'**
   String get finished;
+
+  /// No description provided for @failed.
+  ///
+  /// In zh, this message translates to:
+  /// **'失败'**
+  String get failed;
 
   /// No description provided for @queued.
   ///
@@ -950,6 +1016,126 @@ abstract class AppLocalizations {
   /// **'取消下载'**
   String get cancelDownload;
 
+  /// No description provided for @cancelUpload.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消上传'**
+  String get cancelUpload;
+
+  /// No description provided for @rename.
+  ///
+  /// In zh, this message translates to:
+  /// **'重命名'**
+  String get rename;
+
+  /// No description provided for @changeUploadFolder.
+  ///
+  /// In zh, this message translates to:
+  /// **'修改上传目录'**
+  String get changeUploadFolder;
+
+  /// No description provided for @targetFolder.
+  ///
+  /// In zh, this message translates to:
+  /// **'目标文件夹'**
+  String get targetFolder;
+
+  /// No description provided for @uploadToFolder.
+  ///
+  /// In zh, this message translates to:
+  /// **'上传至 {folder} · {size}'**
+  String uploadToFolder(String folder, String size);
+
+  /// No description provided for @updatedUploadFolders.
+  ///
+  /// In zh, this message translates to:
+  /// **'已修改 {count} 个上传任务的目录'**
+  String updatedUploadFolders(int count);
+
+  /// No description provided for @uploadInterruptedByAccountSwitch.
+  ///
+  /// In zh, this message translates to:
+  /// **'切换账号，任务已中断'**
+  String get uploadInterruptedByAccountSwitch;
+
+  /// No description provided for @modify.
+  ///
+  /// In zh, this message translates to:
+  /// **'修改'**
+  String get modify;
+
+  /// No description provided for @preview.
+  ///
+  /// In zh, this message translates to:
+  /// **'预览'**
+  String get preview;
+
+  /// No description provided for @batchRename.
+  ///
+  /// In zh, this message translates to:
+  /// **'批量重命名'**
+  String get batchRename;
+
+  /// No description provided for @renamePreview.
+  ///
+  /// In zh, this message translates to:
+  /// **'重命名预览'**
+  String get renamePreview;
+
+  /// No description provided for @findContent.
+  ///
+  /// In zh, this message translates to:
+  /// **'查找内容'**
+  String get findContent;
+
+  /// No description provided for @replaceWith.
+  ///
+  /// In zh, this message translates to:
+  /// **'替换为'**
+  String get replaceWith;
+
+  /// No description provided for @useRegularExpression.
+  ///
+  /// In zh, this message translates to:
+  /// **'正则表达式'**
+  String get useRegularExpression;
+
+  /// No description provided for @matchCase.
+  ///
+  /// In zh, this message translates to:
+  /// **'区分大小写'**
+  String get matchCase;
+
+  /// No description provided for @searchContentRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入查找内容'**
+  String get searchContentRequired;
+
+  /// No description provided for @invalidRegularExpression.
+  ///
+  /// In zh, this message translates to:
+  /// **'正则表达式无效'**
+  String get invalidRegularExpression;
+
+  /// No description provided for @renameNoMatches.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有名称会被修改'**
+  String get renameNoMatches;
+
+  /// No description provided for @renameEmptyName.
+  ///
+  /// In zh, this message translates to:
+  /// **'修改后的文件名不能为空'**
+  String get renameEmptyName;
+
+  /// No description provided for @renamedUploads.
+  ///
+  /// In zh, this message translates to:
+  /// **'已修改 {count} 个上传任务的名称'**
+  String renamedUploads(int count);
+
   /// No description provided for @openFileFailed.
   ///
   /// In zh, this message translates to:
@@ -979,12 +1165,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'重新下载'**
   String get redownload;
-
-  /// No description provided for @deleteDownloadRecord.
-  ///
-  /// In zh, this message translates to:
-  /// **'删除下载记录'**
-  String get deleteDownloadRecord;
 
   /// No description provided for @waitingToDownload.
   ///
@@ -1027,6 +1207,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'源文件已不存在，请重新选择文件上传'**
   String get retryUploadFileGone;
+
+  /// No description provided for @retryUploadPermissionExpired.
+  ///
+  /// In zh, this message translates to:
+  /// **'文件访问授权已过期，请重新选择文件上传'**
+  String get retryUploadPermissionExpired;
 
   /// No description provided for @uploadNeedLogin.
   ///
@@ -1544,6 +1730,60 @@ abstract class AppLocalizations {
   /// **'上传 并发'**
   String get uploadKeywords;
 
+  /// No description provided for @autoStartUploads.
+  ///
+  /// In zh, this message translates to:
+  /// **'自动开始上传'**
+  String get autoStartUploads;
+
+  /// No description provided for @autoStartUploadsSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'关闭后需在传输列表手动开始上传，上传前可修改任务队列'**
+  String get autoStartUploadsSubtitle;
+
+  /// No description provided for @autoStartUploadsKeywords.
+  ///
+  /// In zh, this message translates to:
+  /// **'上传 自动开始 待开始 手动 队列'**
+  String get autoStartUploadsKeywords;
+
+  /// No description provided for @skipOversizeUploads.
+  ///
+  /// In zh, this message translates to:
+  /// **'跳过超过限制大小的文件'**
+  String get skipOversizeUploads;
+
+  /// No description provided for @skipOversizeUploadsSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'超过账号允许的单文件大小时不自动上传'**
+  String get skipOversizeUploadsSubtitle;
+
+  /// No description provided for @skipOversizeUploadsKeywords.
+  ///
+  /// In zh, this message translates to:
+  /// **'上传 跳过 超限 大小 限制'**
+  String get skipOversizeUploadsKeywords;
+
+  /// No description provided for @skipUnsupportedUploads.
+  ///
+  /// In zh, this message translates to:
+  /// **'跳过不支持上传的文件'**
+  String get skipUnsupportedUploads;
+
+  /// No description provided for @skipUnsupportedUploadsSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'文件类型不在蓝奏云允许列表中时不自动上传'**
+  String get skipUnsupportedUploadsSubtitle;
+
+  /// No description provided for @skipUnsupportedUploadsKeywords.
+  ///
+  /// In zh, this message translates to:
+  /// **'上传 跳过 文件类型 扩展名 支持'**
+  String get skipUnsupportedUploadsKeywords;
+
   /// No description provided for @maxDownloads.
   ///
   /// In zh, this message translates to:
@@ -1847,7 +2087,7 @@ abstract class AppLocalizations {
   /// No description provided for @downloadDirHint.
   ///
   /// In zh, this message translates to:
-  /// **'Android 10 及以上默认下载到公共目录 Download/LanCloud，无需存储权限或目录授权；Android 9 及以下受系统限制，默认下载到应用私有目录。如需更改位置，建议选择系统公共目录；选择非公共目录需下载完成后二次移入。'**
+  /// **'Android 10 及以上默认下载到公共目录 Download/LanCloud，无需存储权限或目录授权；Android 9 及以下受系统限制，默认下载到应用私有目录。'**
   String get downloadDirHint;
 
   /// No description provided for @safDirPermissionLost.
@@ -1988,6 +2228,12 @@ abstract class AppLocalizations {
   /// **'全选'**
   String get selectAll;
 
+  /// No description provided for @select.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择'**
+  String get select;
+
   /// No description provided for @invertSelection.
   ///
   /// In zh, this message translates to:
@@ -2015,8 +2261,26 @@ abstract class AppLocalizations {
   /// No description provided for @uploadSkipped.
   ///
   /// In zh, this message translates to:
-  /// **'已加入 {added} 个上传任务，跳过 {skipped} 个超过 100MB 的文件'**
+  /// **'已加入 {added} 个上传任务，其中 {skipped} 个被跳过'**
   String uploadSkipped(int added, int skipped);
+
+  /// No description provided for @uploadSkippedReasonOversize.
+  ///
+  /// In zh, this message translates to:
+  /// **'文件超过 {limit} 限制'**
+  String uploadSkippedReasonOversize(String limit);
+
+  /// No description provided for @uploadSkippedReasonUnsupported.
+  ///
+  /// In zh, this message translates to:
+  /// **'此类文件不允许上传'**
+  String get uploadSkippedReasonUnsupported;
+
+  /// No description provided for @uploadAnyway.
+  ///
+  /// In zh, this message translates to:
+  /// **'仍然上传'**
+  String get uploadAnyway;
 
   /// No description provided for @uploadAdded.
   ///
@@ -2959,6 +3223,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'已接收 {count} 个文件，开始上传'**
   String shareReceivedFiles(int count);
+
+  /// No description provided for @shareReceivedFilesSkipped.
+  ///
+  /// In zh, this message translates to:
+  /// **'已接收 {added} 个文件，其中 {skipped} 个被跳过'**
+  String shareReceivedFilesSkipped(int added, int skipped);
 
   /// No description provided for @shareTargetUnsupported.
   ///
@@ -4243,6 +4513,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'已上传 {count} 个文件'**
   String dropUploaded(int count);
+
+  /// No description provided for @dropSkippedUploads.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 个文件被跳过'**
+  String dropSkippedUploads(int count);
 
   /// No description provided for @dropFavorited.
   ///

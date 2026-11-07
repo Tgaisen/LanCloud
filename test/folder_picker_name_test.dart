@@ -4,25 +4,41 @@ import 'package:lancloud/core/api/lanzou_client.dart';
 import 'package:lancloud/core/api/models.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/app_icons.dart';
+import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/drive_page.dart';
+import 'package:lancloud/ui/m3e.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
-/// 空目录，不打网络。
+/// 返回固定目录，不打网络。
 class _FakeClient extends LanzouClient {
-  _FakeClient() : super(uid: '1');
+  _FakeClient({this.folders = const <LzFolder>[]}) : super(uid: '1');
+
+  final List<String> requestedFolders = [];
+  final List<LzFolder> folders;
 
   @override
   Future<({List<LzFolder> folders, List<PathNode> path})> listFolders(
     String folderId,
-  ) async => (folders: const <LzFolder>[], path: const <PathNode>[]);
+  ) async {
+    requestedFolders.add(folderId);
+    return (
+      folders: folders,
+      path: folderId == '-1'
+          ? const <PathNode>[]
+          : <PathNode>[PathNode(id: folderId, name: '子目录')],
+    );
+  }
 }
 
 Future<Future<FolderPickResult?>> pumpPicker(
   WidgetTester tester, {
   String? initialName,
+  String initialFolderId = '-1',
+  _FakeClient? client,
 }) async {
   late Future<FolderPickResult?> result;
+  final pickerClient = client ?? _FakeClient();
   await tester.pumpWidget(
     MaterialApp(
       localizationsDelegates: appLocalizationsDelegates,
@@ -35,9 +51,10 @@ Future<Future<FolderPickResult?>> pumpPicker(
               onPressed: () {
                 result = showFolderPicker(
                   context,
-                  client: _FakeClient(),
+                  client: pickerClient,
                   confirmLabel: '上传到此',
                   initialName: initialName,
+                  initialFolderId: initialFolderId,
                 );
               },
               child: const Text('open'),
@@ -86,5 +103,32 @@ void main() {
 
     expect(find.text('请输入名称'), findsNothing);
     expect((await result)?.fileName, isNull);
+  });
+
+  testWidgets('指定初始目录时直接加载该目录，供修改上传目录复用', (tester) async {
+    final client = _FakeClient();
+    await pumpPicker(tester, initialFolderId: 'child', client: client);
+
+    expect(client.requestedFolders, ['child']);
+    expect(find.text('子目录'), findsOneWidget);
+  });
+
+  testWidgets('弹窗路径栏去掉重复缩进，按钮和目录列表使用 MD3E 组件', (tester) async {
+    final client = _FakeClient(
+      folders: [LzFolder(id: 'child', name: '文档', desc: '')],
+    );
+    await pumpPicker(tester, client: client);
+
+    final pathBar = tester.widget<PathBar>(find.byType(PathBar));
+    expect(pathBar.horizontalPadding, 0);
+    expect(find.byType(M3eIconButton), findsOneWidget);
+
+    final list = tester.widget<SegmentedSliverList>(
+      find.byType(SegmentedSliverList),
+    );
+    final scheme = Theme.of(tester.element(find.byType(PathBar))).colorScheme;
+    expect(list.color, scheme.surfaceContainerHighest);
+    expect(list.margin, EdgeInsets.zero);
+    expect(find.text('文档'), findsOneWidget);
   });
 }
