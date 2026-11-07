@@ -12,6 +12,7 @@ import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/file_open_result.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
+import 'package:lancloud/core/transfer/transfer_issue.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
@@ -1083,7 +1084,7 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('transfers-cancel-all')));
     await tester.pumpAndSettle();
-    expect(find.text('将取消并移除全部 1 个进行中的下载任务，并删除已下载的文件，继续吗？'), findsOneWidget);
+    expect(find.text('将取消并移除全部 1 个进行中的下载任务，继续吗？'), findsOneWidget);
     expect(find.text('同时删除文件'), findsNothing);
     await tester.tap(find.byKey(const ValueKey('transfer-delete-confirm')));
     await tester.pump();
@@ -1484,6 +1485,43 @@ void main() {
     await tester.pumpAndSettle();
     expect(manager.tasks, isEmpty);
     expect(find.text('large.zip'), findsNothing);
+    app.dispose();
+  });
+
+  testWidgets('被跳过副标题跟随界面语言切换', (tester) async {
+    final app = AppEnvironment();
+    final manager = buildTransferManagerForEnvironment(app);
+    manager.tasks.add(
+      task('u1', 'unsupported.bin', status: TransferStatus.skipped)
+        ..error = const TransferIssue(TransferIssueCode.skippedUnsupported)
+            .encode(),
+    );
+
+    Future<void> pumpLocale(Locale locale) async {
+      await tester.pumpWidget(
+        _transferTestHost(
+          app: app,
+          manager: manager,
+          child: MaterialApp(
+            localizationsDelegates: appLocalizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            locale: locale,
+            home: const TransfersPage(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.text(locale.languageCode == 'zh' ? '上传' : 'Upload').hitTestable(),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    await pumpLocale(const Locale('zh'));
+    expect(find.text('此类文件不允许上传'), findsOneWidget);
+
+    await pumpLocale(const Locale('en'));
+    expect(find.text('This type of file cannot be uploaded'), findsOneWidget);
     app.dispose();
   });
 

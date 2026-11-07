@@ -18,6 +18,7 @@ import '../shared_downloads_gateway.dart';
 import '../upload_policy.dart';
 import 'resumable_downloader.dart';
 import 'transfer_dependencies.dart';
+import 'transfer_issue.dart';
 
 enum TransferKind { upload, download }
 
@@ -300,14 +301,13 @@ class TransferManager extends ChangeNotifier {
     if (skipReason != null) {
       task.status = TransferStatus.skipped;
       task.error = switch (skipReason) {
-        UploadAddResult.skippedOversize =>
-          NotificationService.i18n?.uploadSkippedReasonOversize(
-                uploadPolicy.limitLabel,
-              ) ??
-              '超过单文件大小限制（${uploadPolicy.limitLabel}）',
-        UploadAddResult.skippedUnsupported =>
-          NotificationService.i18n?.uploadSkippedReasonUnsupported ??
-              '文件类型不在允许上传列表中',
+        UploadAddResult.skippedOversize => TransferIssue(
+          TransferIssueCode.skippedOversize,
+          uploadPolicy.limitLabel,
+        ).encode(),
+        UploadAddResult.skippedUnsupported => const TransferIssue(
+          TransferIssueCode.skippedUnsupported,
+        ).encode(),
         UploadAddResult.queued => null,
       };
     }
@@ -505,11 +505,14 @@ class TransferManager extends ChangeNotifier {
     return null;
   }
 
-  ({String message, bool permanent})? _uploadSourceIssue(TransferTask task) {
+  ({TransferIssue issue, String message, bool permanent})? _uploadSourceIssue(
+    TransferTask task,
+  ) {
     final i18n = NotificationService.i18n;
     if (task.localFilePath.isNotEmpty) {
       if (SafStorage.isContentUri(task.localFilePath)) {
         return (
+          issue: const TransferIssue(TransferIssueCode.uploadPermissionExpired),
           message: i18n?.retryUploadPermissionExpired ?? '文件访问授权已过期，请重新选择文件上传',
           permanent: true,
         );
@@ -517,6 +520,7 @@ class TransferManager extends ChangeNotifier {
       // 源文件路径已持久化，重启后一般还在缓存目录里；被清理掉时提示重选
       if (!File(task.localFilePath).existsSync()) {
         return (
+          issue: const TransferIssue(TransferIssueCode.uploadSourceMissing),
           message: i18n?.retryUploadFileGone ?? '源文件已不存在，请重新选择文件上传',
           permanent: true,
         );
@@ -524,6 +528,7 @@ class TransferManager extends ChangeNotifier {
     } else if (task.streamFactory == null) {
       // 旧记录没留源文件路径，来源也只是一次性的流：没法继续
       return (
+        issue: const TransferIssue(TransferIssueCode.uploadSourceUnavailable),
         message: i18n?.retryUploadUnavailable ?? '应用重启后无法继续该上传，请重新上传',
         permanent: true,
       );
@@ -531,7 +536,11 @@ class TransferManager extends ChangeNotifier {
     // 上传必须带账号 Cookie：账号被移除、或记录里没有可用账号时先拦下，
     // 别发出请求让服务端回 "login not"
     if (_uploadAccountUid(task).isEmpty) {
-      return (message: i18n?.uploadNeedLogin ?? '请先登录后再上传', permanent: false);
+      return (
+        issue: const TransferIssue(TransferIssueCode.uploadNeedLogin),
+        message: i18n?.uploadNeedLogin ?? '请先登录后再上传',
+        permanent: false,
+      );
     }
     return null;
   }
@@ -540,7 +549,7 @@ class TransferManager extends ChangeNotifier {
     final issue = _uploadSourceIssue(task);
     if (issue == null) return null;
     if (issue.permanent) task.status = TransferStatus.failed;
-    task.error = issue.message;
+    task.error = issue.issue.encode();
     _bumpMarks();
     _persist(task);
     notifyListeners();

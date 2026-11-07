@@ -378,7 +378,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String cancelAllDownloadsConfirmMessage(int count) {
-    return '将取消并移除全部 $count 个进行中的下载任务，并删除已下载的文件，继续吗？';
+    return '将取消并移除全部 $count 个进行中的下载任务，继续吗？';
   }
 
   @override
@@ -990,7 +990,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get downloadDirHint =>
-      'Android 10 及以上默认下载到公共目录 Download/LanCloud，无需存储权限或目录授权；Android 9 及以下受系统限制，默认下载到应用私有目录。如需更改位置，建议选择系统公共目录；选择非公共目录需下载完成后二次移入。';
+      'Android 10 及以上默认下载到公共目录 Download/LanCloud，无需存储权限或目录授权；Android 9 及以下受系统限制，默认下载到应用私有目录。';
 
   @override
   String get safDirPermissionLost => '下载目录授权已失效，请在设置里重新选择下载目录';

@@ -126,7 +126,7 @@
       }
     }
   },
-  "cancelAllDownloadsConfirmMessage": "Cancel and remove all {count} in-progress downloads and delete downloaded files?",
+  "cancelAllDownloadsConfirmMessage": "Cancel and remove all {count} in-progress downloads?",
   "@cancelAllDownloadsConfirmMessage": {
     "placeholders": {
       "count": {
@@ -377,7 +377,7 @@
   "privateDownloadDir": "Private folder ({path})",
   "publicDownloadDir": "Public folder ({path})",
   "customDownloadDir": "Non-public folder ({path})",
-  "downloadDirHint": "On Android 10 and newer, downloads are saved to the public Download/LanCloud folder by default without storage permission or folder authorization. Android 9 and older still use the app's private folder due to system restrictions. To change the location, prefer a public system folder; non-public folders require authorization and are written after the download finishes.",
+  "downloadDirHint": "On Android 10 and newer, downloads are saved to the public Download/LanCloud folder by default without storage permission or folder authorization. Android 9 and older still use the app's private folder due to system restrictions.",
   "safDirPermissionLost": "Access to the download folder expired; please pick it again in Settings",
   "safExportFailed": "Failed to write into the download folder: {error}",
   "noInterval": "No delay",

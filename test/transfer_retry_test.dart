@@ -5,6 +5,7 @@ import 'package:lancloud/core/api/lanzou_client.dart' show LanzouException;
 import 'package:lancloud/core/api/models.dart' show DirectFile;
 import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/data/account_store.dart' show Account;
+import 'package:lancloud/core/transfer/transfer_issue.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -180,6 +181,10 @@ void main() {
 
     expect(message, '请先登录后再上传');
     expect(task.status, TransferStatus.failed);
+    expect(
+      TransferIssue.decode(task.error)?.code,
+      TransferIssueCode.uploadNeedLogin,
+    );
   });
 
   test('重启恢复：任务带回原账号（上传鉴权用）', () async {
@@ -231,6 +236,10 @@ void main() {
 
     expect(message, '源文件已不存在，请重新选择文件上传');
     expect(task.status, TransferStatus.failed);
+    expect(
+      TransferIssue.decode(task.error)?.code,
+      TransferIssueCode.uploadSourceMissing,
+    );
   });
 
   test('重启后的上传任务：content URI 授权失效时提示重新选择', () async {
@@ -251,7 +260,10 @@ void main() {
 
     expect(message, '文件访问授权已过期，请重新选择文件上传');
     expect(task.status, TransferStatus.failed);
-    expect(task.error, message);
+    expect(
+      TransferIssue.decode(task.error)?.code,
+      TransferIssueCode.uploadPermissionExpired,
+    );
   });
 
   test('没留源文件路径的旧上传记录：仍提示重新上传', () async {
@@ -270,5 +282,9 @@ void main() {
 
     expect(message, '应用重启后无法继续该上传，请重新上传');
     expect(task.status, TransferStatus.failed);
+    expect(
+      TransferIssue.decode(task.error)?.code,
+      TransferIssueCode.uploadSourceUnavailable,
+    );
   });
 }

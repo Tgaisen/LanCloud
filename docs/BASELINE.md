@@ -10,25 +10,25 @@
 | 命令 | 口径 | 结果 | 耗时 |
 | --- | --- | --- | --- |
 | `tools\agent.cmd analyze` | 全量 | No issues found | 约 27 s |
-| `tools\agent.cmd analyze` | 增量（本次改动，6 个 lib 文件） | No issues found | 约 17 s |
+| `tools\agent.cmd analyze` | 增量（本次改动，6 个 lib 文件） | No issues found | 约 12 s |
 | `tools\agent.cmd test` | 全量（最近一次完整运行） | **724 tests, all passed** | 约 100 s |
-| `tools\agent.cmd test` | 增量（本次改动，71 个测试文件） | **419 tests, all passed** | 约 67 s |
+| `tools\agent.cmd test` | 增量（本次改动，69 个测试文件） | **412 tests, all passed** | 约 62 s |
 
 当前分析结果为 0 issue 是硬基线。出现红灯时，先判断是否为本次改动引入；
 不要把增量结果当成全量结论。
 
-当前全量用例总数应为 810（含上传源文件授权、分栏状态与排序测试）；
+当前全量用例总数应为 813（含传输问题码与语言切换测试）；
 全量结果待下一次人工兜底时刷新。
 
 ## 规模
 
 | 指标 | 当前值 |
 | --- | ---: |
-| `lib` Dart 文件 | 150 |
-| `lib` 总行数 | 48,296 |
-| `test` 测试文件 | 169（全部为 `*_test.dart`，平铺） |
-| `test` 总行数 | 26,161 |
-| `test` 用例数 | 810 |
+| `lib` Dart 文件 | 151 |
+| `lib` 总行数 | 48,423 |
+| `test` 测试文件 | 170（全部为 `*_test.dart`，平铺） |
+| `test` 总行数 | 26,251 |
+| `test` 用例数 | 813 |
 | `lib/ui` 平铺文件 | 57 |
 | `lib/core` | 54 个平铺文件 + 5 个子系统目录 |
 | 文案（`app_zh.arb`） | 1,517 行 |
@@ -45,7 +45,7 @@
 
 ## 测试安全网
 
-- 最近一次全量为 724 个测试，当前预期总数为 810；项目仍没有
+- 最近一次全量为 724 个测试，当前预期总数为 813；项目仍没有
   `integration_test` 和 golden test。
 - `tools\agent.cmd analyze|test` 默认走增量；全量结果必须按上表单独记录。
 - `tools\agent.cmd` 已内置 `--no-pub`；需要安装依赖时使用 `agent.cmd pubget`。

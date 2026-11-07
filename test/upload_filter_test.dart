@@ -7,6 +7,7 @@ import 'package:lancloud/core/download_target.dart';
 import 'package:lancloud/core/transfer/transfer_account_port.dart';
 import 'package:lancloud/core/transfer/transfer_dependencies.dart';
 import 'package:lancloud/core/transfer/transfer_download_port.dart';
+import 'package:lancloud/core/transfer/transfer_issue.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/core/transfer/transfer_settings_port.dart';
 import 'package:lancloud/core/transfer/transfer_store.dart';
@@ -147,7 +148,13 @@ void main() {
       manager.tasks.map((task) => task.status),
       everyElement(TransferStatus.skipped),
     );
-    expect(manager.tasks.first.error, contains('10 B'));
+    final oversize = TransferIssue.decode(manager.tasks.first.error);
+    expect(oversize?.code, TransferIssueCode.skippedOversize);
+    expect(oversize?.detail, '10 B');
+    expect(
+      TransferIssue.decode(manager.tasks.last.error)?.code,
+      TransferIssueCode.skippedUnsupported,
+    );
     await Future<void>.delayed(const Duration(milliseconds: 10));
     expect(
       store.rows.values.map((row) => row['status']),
@@ -231,11 +238,17 @@ void main() {
 
     expect(await manager.uploadSkipped(shared.id), '文件访问授权已过期，请重新选择文件上传');
     expect(shared.status, TransferStatus.failed);
-    expect(shared.error, '文件访问授权已过期，请重新选择文件上传');
+    expect(
+      TransferIssue.decode(shared.error)?.code,
+      TransferIssueCode.uploadPermissionExpired,
+    );
 
     expect(await manager.uploadSkipped(missing.id), '源文件已不存在，请重新选择文件上传');
     expect(missing.status, TransferStatus.failed);
-    expect(missing.error, '源文件已不存在，请重新选择文件上传');
+    expect(
+      TransferIssue.decode(missing.error)?.code,
+      TransferIssueCode.uploadSourceMissing,
+    );
 
     await Future<void>.delayed(const Duration(milliseconds: 10));
     expect(

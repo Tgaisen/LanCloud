@@ -400,7 +400,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String cancelAllDownloadsConfirmMessage(int count) {
-    return 'Cancel and remove all $count in-progress downloads and delete downloaded files?';
+    return 'Cancel and remove all $count in-progress downloads?';
   }
 
   @override
@@ -1041,7 +1041,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get downloadDirHint =>
-      'On Android 10 and newer, downloads are saved to the public Download/LanCloud folder by default without storage permission or folder authorization. Android 9 and older still use the app\'s private folder due to system restrictions. To change the location, prefer a public system folder; non-public folders require authorization and are written after the download finishes.';
+      'On Android 10 and newer, downloads are saved to the public Download/LanCloud folder by default without storage permission or folder authorization. Android 9 and older still use the app\'s private folder due to system restrictions.';
 
   @override
   String get safDirPermissionLost =>

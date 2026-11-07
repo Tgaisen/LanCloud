@@ -12,6 +12,7 @@ import '../core/system_open.dart';
 import '../core/system_share.dart';
 import '../core/transfer/transfer_manager.dart';
 import '../core/transfer/transfer_manager_provider.dart';
+import '../core/transfer/transfer_issue.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
@@ -1326,6 +1327,24 @@ class _TransferTile extends StatelessWidget {
   final int index;
   final bool removing;
 
+  String? _issueText(AppLocalizations l10n) {
+    final issue = TransferIssue.decode(task.error);
+    if (issue == null) return null;
+    return switch (issue.code) {
+      TransferIssueCode.skippedOversize =>
+        issue.detail.isEmpty
+            ? null
+            : l10n.uploadSkippedReasonOversize(issue.detail),
+      TransferIssueCode.skippedUnsupported =>
+        l10n.uploadSkippedReasonUnsupported,
+      TransferIssueCode.uploadSourceMissing => l10n.retryUploadFileGone,
+      TransferIssueCode.uploadPermissionExpired =>
+        l10n.retryUploadPermissionExpired,
+      TransferIssueCode.uploadSourceUnavailable => l10n.retryUploadUnavailable,
+      TransferIssueCode.uploadNeedLogin => l10n.uploadNeedLogin,
+    };
+  }
+
   String _statusText(AppLocalizations l10n) {
     switch (task.status) {
       case TransferStatus.queued:
@@ -1347,7 +1366,8 @@ class _TransferTile extends StatelessWidget {
       case TransferStatus.done:
         return l10n.completed;
       case TransferStatus.failed:
-        return l10n.transferFailureDetail(error: task.error);
+        return _issueText(l10n) ??
+            l10n.transferFailureDetail(error: task.error);
       case TransferStatus.canceled:
         return l10n.canceled;
     }
@@ -1373,6 +1393,8 @@ class _TransferTile extends StatelessWidget {
     }
     if (task.status == TransferStatus.failed) return status;
     if (task.status == TransferStatus.skipped) {
+      final issueText = _issueText(l10n);
+      if (issueText != null) return issueText;
       final reason = task.error?.trim() ?? '';
       if (reason.isEmpty) return status;
       return reason;
