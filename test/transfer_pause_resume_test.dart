@@ -947,6 +947,7 @@ class _FakeTransferStore implements TransferStore {
     String savedPath = '',
     String ref = '',
     String folderId = '',
+    String folderName = '',
     String referer = '',
     String pwd = '',
     String localPath = '',

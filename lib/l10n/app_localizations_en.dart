@@ -313,6 +313,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get switchAccount => 'Switch account';
 
   @override
+  String get switchAccountUploadsTitle =>
+      'Switch accounts and interrupt uploads';
+
+  @override
+  String switchAccountUploadsMessage(int count) {
+    return 'There are $count active upload tasks. Switching accounts will interrupt them. You can retry them after switching back. Continue?';
+  }
+
+  @override
   String get removeCurrentAccount => 'Remove current account';
 
   @override
@@ -534,6 +543,26 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get rename => 'Rename';
+
+  @override
+  String get changeUploadFolder => 'Change upload folder';
+
+  @override
+  String get targetFolder => 'target folder';
+
+  @override
+  String uploadToFolder(String folder, String size) {
+    return 'Uploading to $folder · $size';
+  }
+
+  @override
+  String updatedUploadFolders(int count) {
+    return 'Updated the destination of $count upload tasks';
+  }
+
+  @override
+  String get uploadInterruptedByAccountSwitch =>
+      'Upload interrupted because the account was switched';
 
   @override
   String get modify => 'Modify';

@@ -1178,6 +1178,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
       final result = transfers.addUpload(
         name: file.name,
         folderId: _folderId,
+        folderName: _folderId == '-1' || _path.isEmpty ? '' : _path.last.name,
         path: path,
         size: size,
       );
@@ -1214,6 +1215,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
         final result = transfers.addUpload(
           name: p.basename(path),
           folderId: _folderId,
+          folderName: _folderId == '-1' || _path.isEmpty ? '' : _path.last.name,
           path: path,
           size: size,
         );
@@ -4830,6 +4832,7 @@ Future<FolderPickResult?> showFolderPicker(
   Set<String> excludeIds = const {},
   String? confirmLabel,
   String? initialName,
+  String initialFolderId = '-1',
 }) {
   return showDialog<FolderPickResult>(
     context: context,
@@ -4838,6 +4841,7 @@ Future<FolderPickResult?> showFolderPicker(
       excludeIds: excludeIds,
       confirmLabel: confirmLabel,
       initialName: initialName,
+      initialFolderId: initialFolderId,
     ),
   );
 }
@@ -4851,6 +4855,7 @@ class FolderPickerDialog extends StatefulWidget {
     required this.excludeIds,
     this.confirmLabel,
     this.initialName,
+    this.initialFolderId = '-1',
   });
 
   final LanzouClient client;
@@ -4861,6 +4866,7 @@ class FolderPickerDialog extends StatefulWidget {
 
   /// 上传时预填的文件名；为 null 表示移动模式，不显示名称输入框。
   final String? initialName;
+  final String initialFolderId;
 
   @override
   State<FolderPickerDialog> createState() => _FolderPickerDialogState();
@@ -4883,7 +4889,7 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
   @override
   void initState() {
     super.initState();
-    _load('-1');
+    _load(widget.initialFolderId.isEmpty ? '-1' : widget.initialFolderId);
   }
 
   @override

@@ -12,17 +12,30 @@ import 'package:lancloud/l10n/delegates.dart';
 class _FakeClient extends LanzouClient {
   _FakeClient() : super(uid: '1');
 
+  final List<String> requestedFolders = [];
+
   @override
   Future<({List<LzFolder> folders, List<PathNode> path})> listFolders(
     String folderId,
-  ) async => (folders: const <LzFolder>[], path: const <PathNode>[]);
+  ) async {
+    requestedFolders.add(folderId);
+    return (
+      folders: const <LzFolder>[],
+      path: folderId == '-1'
+          ? const <PathNode>[]
+          : <PathNode>[PathNode(id: folderId, name: '子目录')],
+    );
+  }
 }
 
 Future<Future<FolderPickResult?>> pumpPicker(
   WidgetTester tester, {
   String? initialName,
+  String initialFolderId = '-1',
+  _FakeClient? client,
 }) async {
   late Future<FolderPickResult?> result;
+  final pickerClient = client ?? _FakeClient();
   await tester.pumpWidget(
     MaterialApp(
       localizationsDelegates: appLocalizationsDelegates,
@@ -35,9 +48,10 @@ Future<Future<FolderPickResult?>> pumpPicker(
               onPressed: () {
                 result = showFolderPicker(
                   context,
-                  client: _FakeClient(),
+                  client: pickerClient,
                   confirmLabel: '上传到此',
                   initialName: initialName,
+                  initialFolderId: initialFolderId,
                 );
               },
               child: const Text('open'),
@@ -86,5 +100,13 @@ void main() {
 
     expect(find.text('请输入名称'), findsNothing);
     expect((await result)?.fileName, isNull);
+  });
+
+  testWidgets('指定初始目录时直接加载该目录，供修改上传目录复用', (tester) async {
+    final client = _FakeClient();
+    await pumpPicker(tester, initialFolderId: 'child', client: client);
+
+    expect(client.requestedFolders, ['child']);
+    expect(find.text('子目录'), findsOneWidget);
   });
 }

@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart' hide Icons;
 
+import '../core/account_state.dart';
+import '../core/api/lanzou_client.dart';
+import '../core/api/lanzou_client_registry.dart';
 import '../core/file_open_result.dart';
 import '../core/navigation_appearance_settings_state.dart';
 import '../core/navigation_state.dart';
@@ -17,6 +20,7 @@ import '../core/transfer/upload_rename.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
+import 'drive_page.dart';
 import 'file_open_feedback.dart';
 import 'm3e.dart';
 import 'reduce_motion.dart';
@@ -34,6 +38,7 @@ enum _TransferMenuAction {
   resume,
   cancel,
   rename,
+  changeFolder,
   retry,
   uploadAnyway,
   removeRecord,
@@ -178,10 +183,13 @@ bool _isPausableDownload(TransferTask task) =>
     !task.exporting;
 
 class TransfersPage extends ConsumerStatefulWidget {
-  const TransfersPage({super.key, this.openFile});
+  const TransfersPage({super.key, this.openFile, this.activeUploadClient});
 
   /// 打开已下载文件；默认交给系统「打开」，测试注入以免真的调起系统应用。
   final TransferFileOpener? openFile;
+
+  /// 修改上传目录时使用的当前账号客户端；测试可注入以避免网络。
+  final LanzouClient Function()? activeUploadClient;
 
   @override
   ConsumerState<TransfersPage> createState() => _TransfersPageState();
@@ -260,7 +268,23 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
   TransferKind get _kind =>
       _tab == 0 ? TransferKind.upload : TransferKind.download;
 
-  List<TransferTask> _tasksOf(TransferManager manager) => manager.byKind(_kind);
+  String? get _activeUploadUid =>
+      ref.read(accountStateProvider).store.activeUid;
+
+  List<TransferTask> _tasksOf(TransferManager manager) => switch (_kind) {
+    TransferKind.upload => manager.uploadsForAccount(_activeUploadUid),
+    TransferKind.download => manager.byKind(TransferKind.download),
+  };
+
+  LanzouClient? _activeUploadClient() {
+    final injected = widget.activeUploadClient;
+    if (injected != null) return injected();
+    final account = ref.read(accountStateProvider).store.active;
+    if (account == null) return null;
+    return ref
+        .read(lanzouClientRegistryProvider)
+        .clientFor(account.uid, cookie: account.cookie);
+  }
 
   void _enterSelection({String? taskId}) {
     final wasSelecting = _selecting;
@@ -358,7 +382,10 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
       showDeleteFiles: _kind == TransferKind.download,
     );
     if (result == null || !mounted) return;
-    final removed = manager.clearCompleted(_kind);
+    final removed = manager.clearCompleted(
+      _kind,
+      uploadAccountUid: _activeUploadUid,
+    );
     if (result.deleteFiles) await _deleteTaskFiles(removed);
   }
 
@@ -376,7 +403,7 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
       showDeleteFiles: false,
     );
     if (result == null || !mounted) return;
-    manager.clearFailed(_kind);
+    manager.clearFailed(_kind, uploadAccountUid: _activeUploadUid);
   }
 
   Future<void> _clearSkippedSection() async {
@@ -393,7 +420,7 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
       showDeleteFiles: false,
     );
     if (result == null || !mounted) return;
-    manager.clearSkippedUploads();
+    manager.clearSkippedUploads(uploadAccountUid: _activeUploadUid);
   }
 
   Future<void> _clearPendingSection() async {
@@ -410,7 +437,7 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
       showDeleteFiles: false,
     );
     if (result == null || !mounted) return;
-    manager.clearPendingUploads();
+    manager.clearPendingUploads(uploadAccountUid: _activeUploadUid);
   }
 
   Future<void> _renameTask(TransferTask task) async {
@@ -447,6 +474,64 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
     );
   }
 
+  Future<void> _changeUploadFolder(TransferTask task) async {
+    if (!_isPendingUpload(task)) return;
+    await _changeUploadFolders([task]);
+  }
+
+  Future<void> _changeSelectedUploadFolder() async {
+    final manager = ref.read(transferManagerProvider);
+    final tasks = _tasksOf(manager)
+        .where((task) => _selected.contains(task.id) && _isPendingUpload(task))
+        .toList(growable: false);
+    if (tasks.isEmpty) return;
+    final changed = await _changeUploadFolders(tasks);
+    if (changed && mounted) _exitSelection();
+  }
+
+  Future<bool> _changeUploadFolders(List<TransferTask> tasks) async {
+    final account = ref.read(accountStateProvider).store.active;
+    if (account == null || tasks.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(context.l10n.notLoggedIn)));
+      }
+      return false;
+    }
+    final client = _activeUploadClient();
+    if (client == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(context.l10n.notLoggedIn)));
+      }
+      return false;
+    }
+    final currentFolders = {for (final task in tasks) task.folderId};
+    final initialFolderId = currentFolders.length == 1
+        ? currentFolders.single
+        : '-1';
+    final picked = await showFolderPicker(
+      context,
+      client: client,
+      initialFolderId: initialFolderId,
+      confirmLabel: context.l10n.uploadHere,
+    );
+    if (picked == null || !mounted) return false;
+    final changed = ref
+        .read(transferManagerProvider)
+        .movePendingUploads(
+          ids: tasks.map((task) => task.id),
+          folderId: picked.folderId,
+          folderName: picked.folderId == '-1' ? '' : picked.name,
+          accountUid: account.uid,
+        );
+    if (changed == 0 || !mounted) return false;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(context.l10n.updatedUploadFolders(changed))),
+    );
+    return true;
+  }
+
   void _uploadSelected() {
     final ids = ref
         .read(transferManagerProvider)
@@ -473,7 +558,7 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
   void _uploadPendingSection() {
     final ids = ref
         .read(transferManagerProvider)
-        .byKind(TransferKind.upload)
+        .uploadsForAccount(_activeUploadUid)
         .where(_isPendingUpload)
         .map((task) => task.id)
         .toList(growable: false);
@@ -671,6 +756,12 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
             label: l10n.rename,
             icon: Icons.input_field,
           ),
+        if (pending)
+          M3eMenuItem(
+            value: _TransferMenuAction.changeFolder,
+            label: l10n.changeUploadFolder,
+            icon: Icons.drive_file_move_outline,
+          ),
         if (skipped)
           M3eMenuItem(
             value: _TransferMenuAction.uploadAnyway,
@@ -754,6 +845,8 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
         manager.cancel(task.id);
       case _TransferMenuAction.rename:
         await _renameTask(task);
+      case _TransferMenuAction.changeFolder:
+        await _changeUploadFolder(task);
       case _TransferMenuAction.retry:
         final message = await manager.retry(task.id);
         if (!mounted) return;
@@ -804,14 +897,18 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final accountState = ref.watch(accountStateProvider);
     final appearance = ref.watch(navigationAppearanceSettingsStateProvider);
     final manager = ref.watch(transferManagerProvider);
     return ListenableBuilder(
-      listenable: appearance.revision,
+      listenable: accountState,
       builder: (context, _) => ListenableBuilder(
-        listenable: manager,
-        builder: (context, _) =>
-            _buildPage(context, appearance.hideTopBar, _navigation, manager),
+        listenable: appearance.revision,
+        builder: (context, _) => ListenableBuilder(
+          listenable: manager,
+          builder: (context, _) =>
+              _buildPage(context, appearance.hideTopBar, _navigation, manager),
+        ),
       ),
     );
   }
@@ -1073,14 +1170,21 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
                     children: [
                       if (uploadTab) ...[
                         BatchAction(
+                          icon: Icons.upload,
+                          label: l10n.upload,
+                          onPressed: pendingCount == 0 ? null : _uploadSelected,
+                        ),
+                        BatchAction(
                           icon: Icons.input_field,
                           label: l10n.rename,
                           onPressed: renameCount == 0 ? null : _renameSelected,
                         ),
                         BatchAction(
-                          icon: Icons.upload,
-                          label: l10n.upload,
-                          onPressed: pendingCount == 0 ? null : _uploadSelected,
+                          icon: Icons.drive_file_move_outline,
+                          label: l10n.changeUploadFolder,
+                          onPressed: pendingCount == 0
+                              ? null
+                              : _changeSelectedUploadFolder,
                         ),
                       ],
                       if (!uploadTab && PlatformSupport.isAndroid)
@@ -1305,6 +1409,54 @@ class _TransferListSliver extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
       sliver: SliverMainAxisGroup(
         slivers: [
+          if (active.isNotEmpty) ...[
+            SliverToBoxAdapter(
+              child: SectionHeader(
+                title: l10n.inProgress,
+                count: active.length,
+                compact: !PlatformSupport.isDesktop,
+                actions: _sectionActions(
+                  l10n: l10n,
+                  key: 'transfers-select-active',
+                  tasks: active,
+                  actions: activeActions,
+                ),
+              ),
+            ),
+            // MD3E 连接式列表（懒加载）：组外侧 16dp / 组内相邻 4dp，和收藏页同款
+            SegmentedSliverList(
+              adaptive: true,
+              minItemWidth: kAdaptiveDenseListItemMinWidth,
+              // 幸存条目按 key 复用元素，删除后不重播出现动画
+              findChildIndexCallback: childIndexLookup(
+                active,
+                (t) => ValueKey('transfer-${t.id}'),
+              ),
+              itemCount: active.length,
+              itemBuilder: (context, index) => ListEnterAnimation(
+                // key 挂在最外层：sliver 靠它把条目认回来（见 findChildIndexCallback）
+                key: ValueKey('transfer-${active[index].id}'),
+                progress: enter,
+                index: index,
+                child: _TransferTile(
+                  task: active[index],
+                  manager: manager,
+                  index: index,
+                  removing: removing.contains(active[index].id),
+                  selecting: selecting,
+                  selected: selected.contains(active[index].id),
+                  onTap: () => _handleTap(context, active[index]),
+                  onLongPress: () => onLongPress(taskId: active[index].id),
+                  onMenu: (anchorContext, {pointerPosition}) => onMenu(
+                    active[index],
+                    anchorContext,
+                    pointerPosition: pointerPosition,
+                  ),
+                ),
+              ),
+            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 20)),
+          ],
           if (pending.isNotEmpty) ...[
             SliverToBoxAdapter(
               child: SectionHeader(
@@ -1353,54 +1505,6 @@ class _TransferListSliver extends StatelessWidget {
                   onLongPress: () => onLongPress(taskId: pending[index].id),
                   onMenu: (anchorContext, {pointerPosition}) => onMenu(
                     pending[index],
-                    anchorContext,
-                    pointerPosition: pointerPosition,
-                  ),
-                ),
-              ),
-            ),
-            const SliverToBoxAdapter(child: SizedBox(height: 20)),
-          ],
-          if (active.isNotEmpty) ...[
-            SliverToBoxAdapter(
-              child: SectionHeader(
-                title: l10n.inProgress,
-                count: active.length,
-                compact: !PlatformSupport.isDesktop,
-                actions: _sectionActions(
-                  l10n: l10n,
-                  key: 'transfers-select-active',
-                  tasks: active,
-                  actions: activeActions,
-                ),
-              ),
-            ),
-            // MD3E 连接式列表（懒加载）：组外侧 16dp / 组内相邻 4dp，和收藏页同款
-            SegmentedSliverList(
-              adaptive: true,
-              minItemWidth: kAdaptiveDenseListItemMinWidth,
-              // 幸存条目按 key 复用元素，删除后不重播出现动画
-              findChildIndexCallback: childIndexLookup(
-                active,
-                (t) => ValueKey('transfer-${t.id}'),
-              ),
-              itemCount: active.length,
-              itemBuilder: (context, index) => ListEnterAnimation(
-                // key 挂在最外层：sliver 靠它把条目认回来（见 findChildIndexCallback）
-                key: ValueKey('transfer-${active[index].id}'),
-                progress: enter,
-                index: index,
-                child: _TransferTile(
-                  task: active[index],
-                  manager: manager,
-                  index: index,
-                  removing: removing.contains(active[index].id),
-                  selecting: selecting,
-                  selected: selected.contains(active[index].id),
-                  onTap: () => _handleTap(context, active[index]),
-                  onLongPress: () => onLongPress(taskId: active[index].id),
-                  onMenu: (anchorContext, {pointerPosition}) => onMenu(
-                    active[index],
                     anchorContext,
                     pointerPosition: pointerPosition,
                   ),
@@ -1611,6 +1715,8 @@ class _TransferTile extends StatelessWidget {
         l10n.retryUploadPermissionExpired,
       TransferIssueCode.uploadSourceUnavailable => l10n.retryUploadUnavailable,
       TransferIssueCode.uploadNeedLogin => l10n.uploadNeedLogin,
+      TransferIssueCode.uploadInterruptedByAccountSwitch =>
+        l10n.uploadInterruptedByAccountSwitch,
     };
   }
 
@@ -1667,6 +1773,13 @@ class _TransferTile extends StatelessWidget {
     if (task.status == TransferStatus.pending) {
       final issueText = _issueText(l10n);
       if (issueText != null) return issueText;
+      final folder = task.folderId == '-1'
+          ? l10n.root
+          : task.folderName.trim().isEmpty
+          ? l10n.targetFolder
+          : task.folderName;
+      final size = task.total > 0 ? formatBytes(task.total) : l10n.unknownSize;
+      return l10n.uploadToFolder(folder, size);
     }
     if (task.status == TransferStatus.skipped) {
       final issueText = _issueText(l10n);

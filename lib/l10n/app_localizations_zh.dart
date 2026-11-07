@@ -295,6 +295,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get switchAccount => '切换账号';
 
   @override
+  String get switchAccountUploadsTitle => '切换账号并中断上传';
+
+  @override
+  String switchAccountUploadsMessage(int count) {
+    return '当前有 $count 个上传任务正在进行。切换账号会中断这些任务，切回原账号后可在失败列表重试。是否继续？';
+  }
+
+  @override
   String get removeCurrentAccount => '移除当前账号';
 
   @override
@@ -512,6 +520,25 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get rename => '重命名';
+
+  @override
+  String get changeUploadFolder => '修改上传目录';
+
+  @override
+  String get targetFolder => '目标文件夹';
+
+  @override
+  String uploadToFolder(String folder, String size) {
+    return '上传至 $folder · $size';
+  }
+
+  @override
+  String updatedUploadFolders(int count) {
+    return '已修改 $count 个上传任务的目录';
+  }
+
+  @override
+  String get uploadInterruptedByAccountSwitch => '切换账号，任务已中断';
 
   @override
   String get modify => '修改';

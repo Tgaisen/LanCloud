@@ -28,4 +28,15 @@ void main() {
       TransferIssueCode.skippedOversize,
     );
   });
+
+  test('切换账号中断可被持久化识别，供任务重试', () {
+    const issue = TransferIssue(
+      TransferIssueCode.uploadInterruptedByAccountSwitch,
+    );
+
+    expect(
+      TransferIssue.decode(issue.encode())?.code,
+      TransferIssueCode.uploadInterruptedByAccountSwitch,
+    );
+  });
 }

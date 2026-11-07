@@ -626,6 +626,18 @@ abstract class AppLocalizations {
   /// **'切换账号'**
   String get switchAccount;
 
+  /// No description provided for @switchAccountUploadsTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'切换账号并中断上传'**
+  String get switchAccountUploadsTitle;
+
+  /// No description provided for @switchAccountUploadsMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前有 {count} 个上传任务正在进行。切换账号会中断这些任务，切回原账号后可在失败列表重试。是否继续？'**
+  String switchAccountUploadsMessage(int count);
+
   /// No description provided for @removeCurrentAccount.
   ///
   /// In zh, this message translates to:
@@ -1015,6 +1027,36 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'重命名'**
   String get rename;
+
+  /// No description provided for @changeUploadFolder.
+  ///
+  /// In zh, this message translates to:
+  /// **'修改上传目录'**
+  String get changeUploadFolder;
+
+  /// No description provided for @targetFolder.
+  ///
+  /// In zh, this message translates to:
+  /// **'目标文件夹'**
+  String get targetFolder;
+
+  /// No description provided for @uploadToFolder.
+  ///
+  /// In zh, this message translates to:
+  /// **'上传至 {folder} · {size}'**
+  String uploadToFolder(String folder, String size);
+
+  /// No description provided for @updatedUploadFolders.
+  ///
+  /// In zh, this message translates to:
+  /// **'已修改 {count} 个上传任务的目录'**
+  String updatedUploadFolders(int count);
+
+  /// No description provided for @uploadInterruptedByAccountSwitch.
+  ///
+  /// In zh, this message translates to:
+  /// **'切换账号，任务已中断'**
+  String get uploadInterruptedByAccountSwitch;
 
   /// No description provided for @modify.
   ///

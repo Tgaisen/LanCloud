@@ -45,7 +45,7 @@ void main() {
     if (dir.existsSync()) dir.deleteSync(recursive: true);
   });
 
-  test('v7 → 最新：transfers 依次补上分享链接、密码与上传源路径列', () async {
+  test('v7 → 最新：transfers 依次补上分享链接、上传源路径与目录名称列', () async {
     final path = p.join(dir.path, 'lancloud.db');
     await databaseFactory.deleteDatabase(path);
 
@@ -98,6 +98,7 @@ void main() {
     expect('${rows.single['pwd'] ?? ''}', '');
     expect('${rows.single['local_path'] ?? ''}', '');
     expect('${rows.single['account'] ?? ''}', '');
+    expect('${rows.single['folder_name'] ?? ''}', '');
 
     // 新写入可以把分享链接 + 密码 + 上传源路径 + 账号存进去（重启后重试要用）
     await db.saveTransfer(
@@ -109,11 +110,15 @@ void main() {
       pwd: '1abc',
       localPath: '/tmp/up.zip',
       account: '12345',
+      folderId: '-1',
+      folderName: '文档',
     );
     final again = (await db.loadTransfers()).single;
     expect('${again['referer']}', 'https://share.example/f1');
     expect('${again['pwd']}', '1abc');
     expect('${again['local_path']}', '/tmp/up.zip');
     expect('${again['account']}', '12345');
+    expect('${again['folder_id']}', '-1');
+    expect('${again['folder_name']}', '文档');
   });
 }

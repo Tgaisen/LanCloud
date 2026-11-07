@@ -10,6 +10,8 @@ import 'package:lancloud/core/app_startup.dart';
 import 'package:lancloud/core/backup/backup_dependencies.dart';
 import 'package:lancloud/core/backup/backup_service.dart';
 import 'package:lancloud/core/data/account_store.dart';
+import 'package:lancloud/core/transfer/transfer_issue.dart';
+import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/core/update/release_info.dart';
 import 'package:lancloud/core/update/update_service.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
@@ -24,6 +26,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lancloud/l10n/delegates.dart';
 
 import 'update_test_scope_test.dart';
+import 'transfer_dependencies_test.dart'
+    show buildTransferManagerForEnvironment;
 
 Future<void> _reloadFromStorage(AppEnvironment environment) =>
     AppStartup(environment: environment, onChanged: () {}).reloadFromStorage();
@@ -50,12 +54,14 @@ class _TestProviders extends StatelessWidget {
     required this.child,
     this.container,
     this.backupService,
+    this.transferManager,
   });
 
   final AppEnvironment value;
   final Widget child;
   final ProviderContainer? container;
   final BackupService? backupService;
+  final TransferManager? transferManager;
 
   @override
   Widget build(BuildContext context) {
@@ -71,6 +77,7 @@ class _TestProviders extends StatelessWidget {
       environment: value,
       child: child,
       backupService: backupService,
+      transferManager: transferManager,
     );
   }
 }
@@ -787,6 +794,8 @@ void main() {
   testWidgets('管理账号弹窗：两个列表组，容器色比弹窗底高一档、窗体边距 16dp', (tester) async {
     final app = AppEnvironment();
     addTearDown(app.dispose);
+    final manager = buildTransferManagerForEnvironment(app);
+    addTearDown(manager.dispose);
     app.accountState.store.accounts.add(
       Account(uid: '556911', cookie: 'c', nickname: '土豆'),
     );
@@ -794,6 +803,7 @@ void main() {
     await tester.pumpWidget(
       _TestProviders.value(
         value: app,
+        transferManager: manager,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
@@ -835,11 +845,79 @@ void main() {
     );
   });
 
+  testWidgets('切换账号会确认中断上传，并把任务保留为可重试失败记录', (tester) async {
+    FlutterSecureStorage.setMockInitialValues({});
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final app = AppEnvironment();
+    addTearDown(app.dispose);
+    final manager = buildTransferManagerForEnvironment(app);
+    addTearDown(manager.dispose);
+    app.accountState.store.accounts.addAll([
+      Account(uid: 'a', cookie: 'cookie-a', nickname: '账号 A'),
+      Account(uid: 'b', cookie: 'cookie-b', nickname: '账号 B'),
+    ]);
+    app.accountState.store.activeUid = 'a';
+    final upload =
+        TransferTask(
+            id: 'u1',
+            kind: TransferKind.upload,
+            name: 'running.zip',
+            accountUid: 'a',
+          )
+          ..status = TransferStatus.running
+          ..total = 100
+          ..received = 30;
+    manager.tasks.add(upload);
+    await tester.pumpWidget(
+      _TestProviders.value(
+        value: app,
+        transferManager: manager,
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const ProfilePage(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('切换'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('账号 B'));
+    await tester.pumpAndSettle();
+    expect(find.text('切换账号并中断上传'), findsOneWidget);
+    expect(find.textContaining('当前有 1 个上传任务'), findsOneWidget);
+
+    await tester.tap(find.text('取消'));
+    await tester.pumpAndSettle();
+    expect(app.accountState.store.activeUid, 'a');
+    expect(upload.status, TransferStatus.running);
+
+    await tester.tap(find.text('切换'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('账号 B'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('switch-account-upload-confirm')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(app.accountState.store.activeUid, 'b');
+    expect(upload.status, TransferStatus.failed);
+    expect(
+      TransferIssue.decode(upload.error)?.code,
+      TransferIssueCode.uploadInterruptedByAccountSwitch,
+    );
+  });
+
   testWidgets('移除账号弹窗：列表组复选行「清除使用数据」，勾选后确认即移除账号', (tester) async {
     // 移除账号会写安全存储：测试里换成内存实现
     FlutterSecureStorage.setMockInitialValues({});
     final app = AppEnvironment();
     addTearDown(app.dispose);
+    final manager = buildTransferManagerForEnvironment(app);
+    addTearDown(manager.dispose);
     app.accountState.store.accounts.add(
       Account(uid: '556911', cookie: 'c', nickname: '土豆'),
     );
@@ -847,6 +925,7 @@ void main() {
     await tester.pumpWidget(
       _TestProviders.value(
         value: app,
+        transferManager: manager,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,

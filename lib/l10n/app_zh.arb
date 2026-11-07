@@ -161,6 +161,15 @@
   },
   "switchAccountShort": "切换",
   "switchAccount": "切换账号",
+  "switchAccountUploadsTitle": "切换账号并中断上传",
+  "switchAccountUploadsMessage": "当前有 {count} 个上传任务正在进行。切换账号会中断这些任务，切回原账号后可在失败列表重试。是否继续？",
+  "@switchAccountUploadsMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "removeCurrentAccount": "移除当前账号",
   "accountManagement": "账号管理",
   "appSection": "应用",
@@ -310,6 +319,28 @@
   "cancelDownload": "取消下载",
   "cancelUpload": "取消上传",
   "rename": "重命名",
+  "changeUploadFolder": "修改上传目录",
+  "targetFolder": "目标文件夹",
+  "uploadToFolder": "上传至 {folder} · {size}",
+  "@uploadToFolder": {
+    "placeholders": {
+      "folder": {
+        "type": "String"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "updatedUploadFolders": "已修改 {count} 个上传任务的目录",
+  "@updatedUploadFolders": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "uploadInterruptedByAccountSwitch": "切换账号，任务已中断",
   "modify": "修改",
   "preview": "预览",
   "batchRename": "批量重命名",

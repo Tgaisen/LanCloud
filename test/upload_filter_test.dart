@@ -39,6 +39,7 @@ class _MemoryStore implements TransferStore {
     String savedPath = '',
     String ref = '',
     String folderId = '',
+    String folderName = '',
     String referer = '',
     String pwd = '',
     String localPath = '',
@@ -50,6 +51,8 @@ class _MemoryStore implements TransferStore {
       'status': status,
       'total': total,
       'error': error,
+      'folder_id': folderId,
+      'folder_name': folderName,
     };
   }
 

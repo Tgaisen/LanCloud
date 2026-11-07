@@ -941,6 +941,7 @@ class _RootShellState extends ConsumerState<RootShell>
       final result = transfers.addUpload(
         name: name,
         folderId: target.folderId,
+        folderName: target.folderId == '-1' ? '' : target.name,
         path: path,
       );
       if (result.accepted) {

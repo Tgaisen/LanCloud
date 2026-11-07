@@ -284,6 +284,7 @@ Future<DropOutcome?> _handleDroppedFiles(
   }
 
   String? folderId;
+  var folderName = '';
   String? rename;
   if (target == DropFileTarget.currentFolder) {
     final location = container.read(driveStateProvider).location.value;
@@ -295,6 +296,11 @@ Future<DropOutcome?> _handleDroppedFiles(
     if (choice == null || choice == _UploadChoice.cancel) return null;
     if (choice == _UploadChoice.currentFolder) {
       folderId = location.id;
+      final pathParts = location.path
+          .split('/')
+          .where((part) => part.isNotEmpty)
+          .toList(growable: false);
+      folderName = pathParts.isEmpty ? '' : pathParts.last;
     }
   }
   if (folderId == null) {
@@ -307,6 +313,7 @@ Future<DropOutcome?> _handleDroppedFiles(
     );
     if (picked == null) return null;
     folderId = picked.folderId;
+    folderName = picked.folderId == '-1' ? '' : picked.name;
     rename = picked.fileName;
   }
 
@@ -335,6 +342,7 @@ Future<DropOutcome?> _handleDroppedFiles(
     final result = transfers.addUpload(
       name: name,
       folderId: folderId,
+      folderName: folderName,
       path: path,
     );
     if (result.accepted) {

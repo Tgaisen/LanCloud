@@ -6,6 +6,7 @@ enum TransferIssueCode {
   uploadPermissionExpired,
   uploadSourceUnavailable,
   uploadNeedLogin,
+  uploadInterruptedByAccountSwitch,
 }
 
 /// 存在现有 `transfer.error` 字段里的稳定错误码，不随界面语言变化。
@@ -47,6 +48,8 @@ class TransferIssue {
     'uploadPermissionExpired' => TransferIssueCode.uploadPermissionExpired,
     'uploadSourceUnavailable' => TransferIssueCode.uploadSourceUnavailable,
     'uploadNeedLogin' => TransferIssueCode.uploadNeedLogin,
+    'uploadInterruptedByAccountSwitch' =>
+      TransferIssueCode.uploadInterruptedByAccountSwitch,
     _ => null,
   };
 

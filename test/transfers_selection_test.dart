@@ -8,6 +8,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/api/models.dart';
+import 'package:lancloud/core/api/lanzou_client.dart';
+import 'package:lancloud/core/account_state.dart';
 import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/data/account_store.dart';
 import 'package:lancloud/core/file_open_result.dart';
@@ -35,6 +37,7 @@ Widget _transferTestHost({
   return ProviderScope(
     overrides: [
       transferManagerProvider.overrideWithValue(manager),
+      accountStateProvider.overrideWithValue(app.accountState),
       navigationAppearanceSettingsStateProvider.overrideWithValue(
         app.navigationAppearanceSettings,
       ),
@@ -49,14 +52,33 @@ TransferTask task(
   String name, {
   required TransferStatus status,
   TransferKind kind = TransferKind.upload,
+  String accountUid = '',
+  String folderId = '',
+  String folderName = '',
 }) {
   return TransferTask(
     id: id,
     kind: kind,
     name: name,
-    accountUid: '',
+    accountUid: accountUid,
+    folderId: folderId,
+    folderName: folderName,
     localFilePath: '/tmp/$name',
   )..status = status;
+}
+
+class _FolderPickerClient extends LanzouClient {
+  _FolderPickerClient() : super(uid: 'u1');
+
+  @override
+  Future<({List<LzFolder> folders, List<PathNode> path})> listFolders(
+    String folderId,
+  ) async => (
+    folders: const <LzFolder>[],
+    path: folderId == '-1'
+        ? const <PathNode>[]
+        : <PathNode>[PathNode(id: folderId, name: '当前目录')],
+  );
 }
 
 Future<(AppEnvironment, TransferManager)> host(WidgetTester tester) async {
@@ -87,8 +109,9 @@ Future<(AppEnvironment, TransferManager)> host(WidgetTester tester) async {
 
 Future<(AppEnvironment, TransferManager)> hostWithTasks(
   WidgetTester tester,
-  List<TransferTask> tasks,
-) async {
+  List<TransferTask> tasks, {
+  LanzouClient? uploadClient,
+}) async {
   final app = AppEnvironment();
   final manager = buildTransferManagerForEnvironment(app);
   manager.tasks.addAll(tasks);
@@ -100,7 +123,9 @@ Future<(AppEnvironment, TransferManager)> hostWithTasks(
         localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         locale: const Locale('zh'),
-        home: const TransfersPage(),
+        home: TransfersPage(
+          activeUploadClient: uploadClient == null ? null : () => uploadClient,
+        ),
       ),
     ),
   );
@@ -1845,7 +1870,7 @@ void main() {
     smallApp.dispose();
   });
 
-  testWidgets('待开始上传单独分栏，行内提供上传按钮与重命名/取消菜单', (tester) async {
+  testWidgets('待开始上传单独分栏，行内提供上传按钮与目录/重命名/取消菜单', (tester) async {
     final (app, _) = await hostWithTasks(tester, [
       task('u1', 'waiting.txt', status: TransferStatus.pending)..total = 12,
     ]);
@@ -1863,7 +1888,14 @@ void main() {
     );
 
     await openRowMenu(tester, 'waiting.txt');
-    expect(menuLabels(tester), ['重命名', '取消上传']);
+    expect(menuLabels(tester), ['重命名', '修改上传目录', '取消上传']);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('m3e-menu-card')),
+        matching: find.byIcon(app_icons.Icons.drive_file_move_outline),
+      ),
+      findsOneWidget,
+    );
     await tester.tapAt(const Offset(5, 5));
     await tester.pumpAndSettle();
     app.dispose();
@@ -1925,7 +1957,7 @@ void main() {
     app.dispose();
   });
 
-  testWidgets('上传多选栏为改名/上传/删除/重试，下载多选栏为分享/删除/重试', (tester) async {
+  testWidgets('上传多选栏为上传/改名/目录/删除/重试，下载多选栏为分享/删除/重试', (tester) async {
     final (app, _) = await hostWithTasks(tester, [
       task('u1', 'waiting.txt', status: TransferStatus.pending),
       task(
@@ -1943,7 +1975,11 @@ void main() {
           .widgetList<BatchAction>(find.byType(BatchAction))
           .map((action) => action.label)
           .toList(),
-      ['重命名', '上传', '删除', '重试'],
+      ['上传', '重命名', '修改上传目录', '删除', '重试'],
+    );
+    expect(
+      find.byIcon(app_icons.Icons.drive_file_move_outline),
+      findsOneWidget,
     );
 
     await tester.tap(find.byTooltip('退出多选'));
@@ -2116,6 +2152,176 @@ void main() {
 
     expect(manager.tasks.single.name, 'renamed.txt');
     expect(manager.tasks.single.status, TransferStatus.pending);
+    app.dispose();
+  });
+
+  testWidgets('上传 Tab 只显示当前账号任务，切账号后立即换组', (tester) async {
+    final (app, _) = await hostWithTasks(tester, [
+      task(
+        'a1',
+        'account-a.txt',
+        status: TransferStatus.pending,
+        accountUid: 'a',
+      ),
+      task(
+        'b1',
+        'account-b.txt',
+        status: TransferStatus.pending,
+        accountUid: 'b',
+      ),
+    ]);
+    app.accountState.store.accounts.addAll([
+      Account(uid: 'a', cookie: 'cookie-a'),
+      Account(uid: 'b', cookie: 'cookie-b'),
+    ]);
+
+    app.accountState.store.activeUid = 'a';
+    app.accountState.notifyAccountChanged();
+    await tester.pumpAndSettle();
+    expect(find.text('account-a.txt'), findsOneWidget);
+    expect(find.text('account-b.txt'), findsNothing);
+
+    app.accountState.store.activeUid = 'b';
+    app.accountState.notifyAccountChanged();
+    await tester.pumpAndSettle();
+    expect(find.text('account-a.txt'), findsNothing);
+    expect(find.text('account-b.txt'), findsOneWidget);
+    app.dispose();
+  });
+
+  testWidgets('待开始分栏的「全部上传」只启动当前账号任务', (tester) async {
+    final accountA =
+        TransferTask(
+            id: 'a1',
+            kind: TransferKind.upload,
+            name: 'account-a.txt',
+            accountUid: 'a',
+            streamFactory: () => Stream<List<int>>.value(const [1]),
+            sourceSize: 1,
+          )
+          ..status = TransferStatus.pending
+          ..total = 1;
+    final accountB =
+        TransferTask(
+            id: 'b1',
+            kind: TransferKind.upload,
+            name: 'account-b.txt',
+            accountUid: 'b',
+            streamFactory: () => Stream<List<int>>.value(const [1]),
+            sourceSize: 1,
+          )
+          ..status = TransferStatus.pending
+          ..total = 1;
+    final (app, _) = await hostWithTasks(tester, [accountA, accountB]);
+    app.settingsState.store.maxUploads = 0;
+    app.accountState.store.accounts.addAll([
+      Account(uid: 'a', cookie: 'cookie-a'),
+      Account(uid: 'b', cookie: 'cookie-b'),
+    ]);
+    app.accountState.store.activeUid = 'a';
+    app.accountState.notifyAccountChanged();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('transfers-upload-pending')));
+    await tester.pumpAndSettle();
+
+    expect(accountA.status, TransferStatus.queued);
+    expect(accountB.status, TransferStatus.pending);
+    app.dispose();
+  });
+
+  testWidgets('上传 Tab 的进行中分栏排在待开始前面', (tester) async {
+    final (app, _) = await hostWithTasks(tester, [
+      task('running', 'running.txt', status: TransferStatus.running),
+      task('pending', 'pending.txt', status: TransferStatus.pending),
+    ]);
+
+    expect(
+      tester.getTopLeft(find.text('进行中')).dy,
+      lessThan(tester.getTopLeft(find.text('待开始')).dy),
+    );
+    app.dispose();
+  });
+
+  testWidgets('待开始菜单可修改上传目录并持久化目录名', (tester) async {
+    final client = _FolderPickerClient();
+    final pending = task(
+      'u1',
+      'waiting.txt',
+      status: TransferStatus.pending,
+      accountUid: 'u1',
+      folderId: 'old',
+      folderName: '旧目录',
+    )..total = 12;
+    final (app, manager) = await hostWithTasks(tester, [
+      pending,
+    ], uploadClient: client);
+    app.accountState.store.accounts.add(
+      Account(uid: 'u1', cookie: 'cookie-u1'),
+    );
+    app.accountState.store.activeUid = 'u1';
+    app.accountState.notifyAccountChanged();
+    await tester.pumpAndSettle();
+
+    await openRowMenu(tester, 'waiting.txt');
+    await tester.tap(menuItem('修改上传目录'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('根目录'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('上传到此'));
+    await tester.pumpAndSettle();
+
+    expect(manager.tasks.single.folderId, '-1');
+    expect(manager.tasks.single.folderName, '');
+    expect(find.text('上传至 根目录 · 12 B'), findsOneWidget);
+    app.dispose();
+  });
+
+  testWidgets('批量修改上传目录会作用于所有选中的待开始任务', (tester) async {
+    final client = _FolderPickerClient();
+    final first = task(
+      'u1',
+      'one.txt',
+      status: TransferStatus.pending,
+      accountUid: 'u1',
+      folderId: 'old',
+      folderName: '旧目录',
+    );
+    final second = task(
+      'u2',
+      'two.txt',
+      status: TransferStatus.pending,
+      accountUid: 'u1',
+      folderId: 'other',
+      folderName: '另一个目录',
+    );
+    final (app, manager) = await hostWithTasks(tester, [
+      first,
+      second,
+    ], uploadClient: client);
+    app.accountState.store.accounts.add(
+      Account(uid: 'u1', cookie: 'cookie-u1'),
+    );
+    app.accountState.store.activeUid = 'u1';
+    app.accountState.notifyAccountChanged();
+    await tester.pumpAndSettle();
+
+    await tester.longPress(find.text('one.txt'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('two.txt'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.ancestor(
+        of: find.byTooltip('修改上传目录'),
+        matching: find.byType(BatchAction),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('上传到此'));
+    await tester.pumpAndSettle();
+
+    expect(manager.tasks.map((task) => task.folderId), everyElement('-1'));
+    expect(selectionBarOpacity(tester), 0);
     app.dispose();
   });
 

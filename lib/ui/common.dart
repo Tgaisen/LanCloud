@@ -2466,7 +2466,7 @@ class _ExpressiveIconButtonState extends State<ExpressiveIconButton>
   }
 }
 
-/// MD3E 路径胶囊：当前项用主色容器强调，其余为中性容器。
+/// MD3E 路径胶囊：保持小尺寸，只用字重与文字色区分当前位置。
 /// 网盘路径栏与文件夹选择弹窗共用。
 class PathChip extends StatelessWidget {
   const PathChip({
@@ -2488,8 +2488,7 @@ class PathChip extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: verticalPadding),
       child: Material(
-        // 只有当前目录带底色，上级目录保持透明
-        color: current ? scheme.secondaryContainer : Colors.transparent,
+        color: Colors.transparent,
         // 大圆角 = 胶囊：高度不足时 Skia 会把半径收到一半，左右看是半圆
         borderRadius: BorderRadius.circular(999),
         clipBehavior: Clip.antiAlias,
@@ -2504,9 +2503,7 @@ class PathChip extends StatelessWidget {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: current ? FontWeight.w600 : FontWeight.w400,
-                color: current
-                    ? scheme.onSecondaryContainer
-                    : scheme.onSurfaceVariant,
+                color: current ? scheme.onSurface : scheme.onSurfaceVariant,
               ),
             ),
           ),
@@ -2705,7 +2702,7 @@ class _PathBarState extends State<PathBar> with TickerProviderStateMixin {
                 padding: const EdgeInsets.symmetric(horizontal: 2),
                 child: Icon(
                   Icons.chevron_right,
-                  size: 16,
+                  size: 18,
                   color: scheme.outline,
                 ),
               ),
