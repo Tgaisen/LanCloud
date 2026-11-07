@@ -34,6 +34,32 @@ class SystemShare {
     });
   }
 
+  /// 一次导出多个文件；单个文件仍复用普通分享通道。
+  static Future<bool> shareFiles(
+    Iterable<String> paths, {
+    String subject = '',
+    String? mime,
+  }) {
+    final files = [
+      for (final path in paths)
+        if (path.isNotEmpty) path,
+    ];
+    if (files.isEmpty) return Future<bool>.value(false);
+    if (files.length == 1) {
+      return shareFile(
+        files.single,
+        subject: subject,
+        mime: mime ?? 'application/octet-stream',
+      );
+    }
+    if (PlatformSupport.isDesktop) return revealInExplorer(files.first);
+    return _invoke('shareFiles', {
+      'paths': files,
+      'subject': subject,
+      if (mime != null && mime.isNotEmpty) 'mime': mime,
+    });
+  }
+
   static Future<bool> _invoke(
     String method,
     Map<String, Object?> arguments,

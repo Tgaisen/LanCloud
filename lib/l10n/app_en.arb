@@ -435,6 +435,7 @@
   "exitSelection": "Exit selection",
   "selectedCount": "{count} selected",
   "selectAll": "Select all",
+  "select": "Select",
   "invertSelection": "Invert selection",
   "newFolder": "New folder",
   "uploadFile": "Upload files",

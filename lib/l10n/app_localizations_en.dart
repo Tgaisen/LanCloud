@@ -1184,6 +1184,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get selectAll => 'Select all';
 
   @override
+  String get select => 'Select';
+
+  @override
   String get invertSelection => 'Invert selection';
 
   @override

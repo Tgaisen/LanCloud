@@ -2186,6 +2186,12 @@ abstract class AppLocalizations {
   /// **'全选'**
   String get selectAll;
 
+  /// No description provided for @select.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择'**
+  String get select;
+
   /// No description provided for @invertSelection.
   ///
   /// In zh, this message translates to:

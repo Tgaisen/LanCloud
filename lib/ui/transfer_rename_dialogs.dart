@@ -6,6 +6,7 @@ import '../core/transfer/transfer_manager.dart';
 import '../core/transfer/upload_rename.dart';
 import '../l10n/l10n.dart';
 import 'common.dart';
+import 'reduce_motion.dart';
 
 /// 单个上传任务的名称修改。
 Future<String?> showSingleUploadRenameDialog(
@@ -115,6 +116,8 @@ class _BatchUploadRenameDialog extends StatefulWidget {
 }
 
 class _BatchUploadRenameDialogState extends State<_BatchUploadRenameDialog> {
+  static const _stepDuration = Duration(milliseconds: 200);
+
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _replaceController = TextEditingController();
   UploadRenameError? _error;
@@ -158,122 +161,207 @@ class _BatchUploadRenameDialogState extends State<_BatchUploadRenameDialog> {
     null => '',
   };
 
+  Widget _buildConfigContent(BuildContext context, AppLocalizations l10n) {
+    return Column(
+      key: const ValueKey('upload-batch-rename-config-content'),
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextField(
+          key: const ValueKey('upload-batch-rename-search'),
+          controller: _searchController,
+          autofocus: true,
+          textInputAction: TextInputAction.next,
+          decoration: errorState(
+            context,
+            InputDecoration(
+              border: const OutlineInputBorder(),
+              labelText: l10n.findContent,
+            ),
+            _error == null ? null : _errorText(l10n),
+          ),
+          onChanged: (_) => _clearError(),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          key: const ValueKey('upload-batch-rename-replacement'),
+          controller: _replaceController,
+          textInputAction: TextInputAction.done,
+          decoration: InputDecoration(
+            border: const OutlineInputBorder(),
+            labelText: l10n.replaceWith,
+          ),
+          onChanged: (_) => _clearError(),
+          onSubmitted: (_) => _buildPreview(),
+        ),
+        const SizedBox(height: 12),
+        DialogListGroup(
+          children: [
+            CheckboxListTile(
+              value: _useRegex,
+              title: Text(l10n.useRegularExpression),
+              onChanged: (value) {
+                setState(() {
+                  _useRegex = value ?? false;
+                  _error = null;
+                });
+              },
+            ),
+            CheckboxListTile(
+              value: _matchCase,
+              title: Text(l10n.matchCase),
+              onChanged: (value) {
+                setState(() {
+                  _matchCase = value ?? false;
+                  _error = null;
+                });
+              },
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPreviewContent(
+    BuildContext context,
+    UploadRenamePreview preview,
+  ) {
+    return ConstrainedBox(
+      key: const ValueKey('upload-batch-rename-preview-content'),
+      constraints: BoxConstraints(
+        maxHeight: math.min(360, MediaQuery.sizeOf(context).height * 0.52),
+      ),
+      child: SingleChildScrollView(
+        key: const ValueKey('upload-batch-rename-preview-list'),
+        child: DialogListGroup(
+          children: [
+            for (final change in preview.changes)
+              ListTile(
+                key: ValueKey('upload-rename-preview-${change.id}'),
+                title: Text('${change.originalName} → ${change.newName}'),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActions(
+    BuildContext context,
+    AppLocalizations l10n,
+    UploadRenamePreview? preview,
+  ) {
+    final previewing = preview != null;
+    return Wrap(
+      key: ValueKey(
+        previewing
+            ? 'upload-batch-rename-preview-actions'
+            : 'upload-batch-rename-config-actions',
+      ),
+      alignment: WrapAlignment.end,
+      spacing: 8,
+      runSpacing: 4,
+      children: previewing
+          ? [
+              TextButton(
+                key: const ValueKey('upload-batch-rename-back'),
+                onPressed: () => setState(() => _preview = null),
+                child: Text(l10n.cancel),
+              ),
+              FilledButton(
+                key: const ValueKey('upload-batch-rename-confirm'),
+                onPressed: () => Navigator.of(context).pop(preview.changes),
+                child: Text(l10n.modify),
+              ),
+            ]
+          : [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(l10n.cancel),
+              ),
+              FilledButton(
+                key: const ValueKey('upload-batch-rename-preview'),
+                onPressed: _buildPreview,
+                child: Text(l10n.preview),
+              ),
+            ],
+    );
+  }
+
+  Widget _stepTransition(Widget child, Animation<double> animation) {
+    final curved = CurvedAnimation(
+      parent: animation,
+      curve: Curves.easeOutCubic,
+      reverseCurve: Curves.easeInCubic,
+    );
+    return FadeTransition(
+      opacity: curved,
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0.02, 0),
+          end: Offset.zero,
+        ).animate(curved),
+        child: child,
+      ),
+    );
+  }
+
+  Widget _stepLayout(Widget? current, List<Widget> previous) {
+    return Stack(
+      alignment: Alignment.topCenter,
+      children: [...previous, ?current],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final preview = _preview;
-    if (preview != null) {
-      return formDialog(
-        context,
-        title: Text(l10n.renamePreview),
-        content: SizedBox(
-          width: dialogFormWidth(context),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              maxHeight: math.min(
-                360,
-                MediaQuery.sizeOf(context).height * 0.52,
-              ),
-            ),
-            child: SingleChildScrollView(
-              key: const ValueKey('upload-batch-rename-preview-list'),
-              child: DialogListGroup(
-                children: [
-                  for (final change in preview.changes)
-                    ListTile(
-                      key: ValueKey('upload-rename-preview-${change.id}'),
-                      title: Text('${change.originalName} → ${change.newName}'),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            key: const ValueKey('upload-batch-rename-back'),
-            onPressed: () => setState(() => _preview = null),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            key: const ValueKey('upload-batch-rename-confirm'),
-            onPressed: () => Navigator.of(context).pop(preview.changes),
-            child: Text(l10n.modify),
-          ),
-        ],
-      );
-    }
-
+    final duration = reduceMotionOf(context) ? Duration.zero : _stepDuration;
     return formDialog(
       context,
-      title: Text(l10n.batchRename),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          TextField(
-            key: const ValueKey('upload-batch-rename-search'),
-            controller: _searchController,
-            autofocus: true,
-            textInputAction: TextInputAction.next,
-            decoration: errorState(
-              context,
-              InputDecoration(
-                border: const OutlineInputBorder(),
-                labelText: l10n.findContent,
-              ),
-              _error == null ? null : _errorText(l10n),
-            ),
-            onChanged: (_) => _clearError(),
+      title: AnimatedSwitcher(
+        duration: duration,
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: _stepTransition,
+        layoutBuilder: _stepLayout,
+        child: SizedBox(
+          key: ValueKey(
+            preview == null ? 'rename-config-title' : 'rename-preview-title',
           ),
-          const SizedBox(height: 12),
-          TextField(
-            key: const ValueKey('upload-batch-rename-replacement'),
-            controller: _replaceController,
-            textInputAction: TextInputAction.done,
-            decoration: InputDecoration(
-              border: const OutlineInputBorder(),
-              labelText: l10n.replaceWith,
-            ),
-            onChanged: (_) => _clearError(),
-            onSubmitted: (_) => _buildPreview(),
+          width: double.infinity,
+          child: Text(
+            preview == null ? l10n.batchRename : l10n.renamePreview,
+            textAlign: TextAlign.start,
           ),
-          const SizedBox(height: 12),
-          DialogListGroup(
-            children: [
-              CheckboxListTile(
-                value: _useRegex,
-                title: Text(l10n.useRegularExpression),
-                onChanged: (value) {
-                  setState(() {
-                    _useRegex = value ?? false;
-                    _error = null;
-                  });
-                },
-              ),
-              CheckboxListTile(
-                value: _matchCase,
-                title: Text(l10n.matchCase),
-                onChanged: (value) {
-                  setState(() {
-                    _matchCase = value ?? false;
-                    _error = null;
-                  });
-                },
-              ),
-            ],
-          ),
-        ],
+        ),
+      ),
+      content: AnimatedSize(
+        duration: duration,
+        curve: Curves.easeOutCubic,
+        alignment: Alignment.topCenter,
+        clipBehavior: Clip.hardEdge,
+        child: AnimatedSwitcher(
+          duration: duration,
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          transitionBuilder: _stepTransition,
+          layoutBuilder: _stepLayout,
+          child: preview == null
+              ? _buildConfigContent(context, l10n)
+              : _buildPreviewContent(context, preview),
+        ),
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(l10n.cancel),
-        ),
-        FilledButton(
-          key: const ValueKey('upload-batch-rename-preview'),
-          onPressed: _buildPreview,
-          child: Text(l10n.preview),
+        AnimatedSwitcher(
+          duration: duration,
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          transitionBuilder: _stepTransition,
+          layoutBuilder: _stepLayout,
+          child: _buildActions(context, l10n, preview),
         ),
       ],
     );

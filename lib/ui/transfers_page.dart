@@ -463,6 +463,45 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
     ref.read(transferManagerProvider).startUploads(ids);
   }
 
+  void _selectSection(Iterable<String> ids) {
+    if (!_selecting) return;
+    final values = ids.toSet();
+    if (values.isEmpty) return;
+    setState(() => _selected.addAll(values));
+  }
+
+  void _uploadPendingSection() {
+    final ids = ref
+        .read(transferManagerProvider)
+        .byKind(TransferKind.upload)
+        .where(_isPendingUpload)
+        .map((task) => task.id)
+        .toList(growable: false);
+    if (ids.isEmpty) return;
+    ref.read(transferManagerProvider).startUploads(ids);
+  }
+
+  Future<void> _shareSelected() async {
+    final tasks = ref
+        .read(transferManagerProvider)
+        .tasks
+        .where(
+          (task) =>
+              _selected.contains(task.id) &&
+              task.kind == TransferKind.download &&
+              task.status == TransferStatus.done &&
+              (task.savedPath?.isNotEmpty ?? false),
+        )
+        .toList(growable: false);
+    if (tasks.isEmpty) return;
+    final paths = <String>{for (final task in tasks) ?task.savedPath};
+    if (paths.isEmpty || !mounted) return;
+    final subject = context.l10n.share;
+    final mime = tasks.length == 1 ? _shareMimeFor(tasks.single.name) : null;
+    _exitSelection();
+    await SystemShare.shareFiles(paths, subject: subject, mime: mime);
+  }
+
   void _pauseAll() {
     final manager = ref.read(transferManagerProvider);
     final ids = _tasksOf(manager)
@@ -809,6 +848,16 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
               )
               .length
         : 0;
+    final shareCount = !uploadTab
+        ? tasks
+              .where(
+                (task) =>
+                    _selected.contains(task.id) &&
+                    task.status == TransferStatus.done &&
+                    (task.savedPath?.isNotEmpty ?? false),
+              )
+              .length
+        : 0;
     final retryCount = tasks
         .where(
           (t) => _selected.contains(t.id) && t.status == TransferStatus.failed,
@@ -869,6 +918,8 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
                           onClearFailed: _clearFailedSection,
                           onClearSkipped: _clearSkippedSection,
                           onClearPending: _clearPendingSection,
+                          onUploadPending: _uploadPendingSection,
+                          onSelectTasks: _selectSection,
                           onPauseAll: _pauseAll,
                           onResumeAll: _resumeAll,
                           bulkResumeRunning: _bulkResumeRunning,
@@ -1032,6 +1083,12 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
                           onPressed: pendingCount == 0 ? null : _uploadSelected,
                         ),
                       ],
+                      if (!uploadTab && PlatformSupport.isAndroid)
+                        BatchAction(
+                          icon: Icons.share_outlined,
+                          label: l10n.share,
+                          onPressed: shareCount == 0 ? null : _shareSelected,
+                        ),
                       BatchAction(
                         icon: Icons.delete_outline,
                         label: l10n.delete,
@@ -1072,6 +1129,8 @@ class _TransferListSliver extends StatelessWidget {
     required this.onClearFailed,
     required this.onClearSkipped,
     required this.onClearPending,
+    required this.onUploadPending,
+    required this.onSelectTasks,
     required this.onPauseAll,
     required this.onResumeAll,
     required this.bulkResumeRunning,
@@ -1107,6 +1166,8 @@ class _TransferListSliver extends StatelessWidget {
   final VoidCallback onClearFailed;
   final VoidCallback onClearSkipped;
   final VoidCallback onClearPending;
+  final VoidCallback onUploadPending;
+  final void Function(Iterable<String>) onSelectTasks;
   final VoidCallback onPauseAll;
   final VoidCallback onResumeAll;
   final bool bulkResumeRunning;
@@ -1152,6 +1213,22 @@ class _TransferListSliver extends StatelessWidget {
       ),
       child: Text(label, maxLines: 1, softWrap: false),
     );
+  }
+
+  List<Widget> _sectionActions({
+    required AppLocalizations l10n,
+    required String key,
+    required Iterable<TransferTask> tasks,
+    required List<Widget> actions,
+  }) {
+    if (!selecting) return actions;
+    return [
+      _actionButton(
+        key: key,
+        label: l10n.select,
+        onPressed: () => onSelectTasks(tasks.map((task) => task.id)),
+      ),
+    ];
   }
 
   @override
@@ -1234,16 +1311,23 @@ class _TransferListSliver extends StatelessWidget {
                 title: l10n.pendingUploads,
                 count: pending.length,
                 compact: !PlatformSupport.isDesktop,
-                actions: [
-                  HideKeepingSpace(
-                    hidden: selecting,
-                    child: _actionButton(
+                actions: _sectionActions(
+                  l10n: l10n,
+                  key: 'transfers-select-pending',
+                  tasks: pending,
+                  actions: [
+                    _actionButton(
                       key: 'transfers-clear-pending',
                       label: l10n.clearAll,
                       onPressed: onClearPending,
                     ),
-                  ),
-                ],
+                    _actionButton(
+                      key: 'transfers-upload-pending',
+                      label: l10n.upload,
+                      onPressed: onUploadPending,
+                    ),
+                  ],
+                ),
               ),
             ),
             SegmentedSliverList(
@@ -1283,10 +1367,12 @@ class _TransferListSliver extends StatelessWidget {
                 title: l10n.inProgress,
                 count: active.length,
                 compact: !PlatformSupport.isDesktop,
-                actions: [
-                  for (final action in activeActions)
-                    HideKeepingSpace(hidden: selecting, child: action),
-                ],
+                actions: _sectionActions(
+                  l10n: l10n,
+                  key: 'transfers-select-active',
+                  tasks: active,
+                  actions: activeActions,
+                ),
               ),
             ),
             // MD3E 连接式列表（懒加载）：组外侧 16dp / 组内相邻 4dp，和收藏页同款
@@ -1329,16 +1415,18 @@ class _TransferListSliver extends StatelessWidget {
                 title: l10n.skippedUploads,
                 count: skipped.length,
                 compact: !PlatformSupport.isDesktop,
-                actions: [
-                  HideKeepingSpace(
-                    hidden: selecting,
-                    child: _actionButton(
+                actions: _sectionActions(
+                  l10n: l10n,
+                  key: 'transfers-select-skipped',
+                  tasks: skipped,
+                  actions: [
+                    _actionButton(
                       key: 'transfers-clear-skipped',
                       label: l10n.clearAll,
                       onPressed: onClearSkipped,
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
             SegmentedSliverList(
@@ -1378,16 +1466,18 @@ class _TransferListSliver extends StatelessWidget {
                 title: l10n.failed,
                 count: failed.length,
                 compact: !PlatformSupport.isDesktop,
-                actions: [
-                  HideKeepingSpace(
-                    hidden: selecting,
-                    child: _actionButton(
+                actions: _sectionActions(
+                  l10n: l10n,
+                  key: 'transfers-select-failed',
+                  tasks: failed,
+                  actions: [
+                    _actionButton(
                       key: 'transfers-clear-failed',
                       label: l10n.clearAll,
                       onPressed: onClearFailed,
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
             SegmentedSliverList(
@@ -1427,16 +1517,18 @@ class _TransferListSliver extends StatelessWidget {
                 title: l10n.finished,
                 count: completed.length,
                 compact: !PlatformSupport.isDesktop,
-                actions: [
-                  HideKeepingSpace(
-                    hidden: selecting,
-                    child: _actionButton(
+                actions: _sectionActions(
+                  l10n: l10n,
+                  key: 'transfers-select-finished',
+                  tasks: completed,
+                  actions: [
+                    _actionButton(
                       key: 'transfers-clear-finished',
                       label: l10n.clearAll,
                       onPressed: onClearCompleted,
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
             SegmentedSliverList(

@@ -610,6 +610,7 @@
     }
   },
   "selectAll": "全选",
+  "select": "选择",
   "invertSelection": "反选",
   "newFolder": "新建文件夹",
   "uploadFile": "上传文件",

@@ -1130,6 +1130,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get selectAll => '全选';
 
   @override
+  String get select => '选择';
+
+  @override
   String get invertSelection => '反选';
 
   @override
