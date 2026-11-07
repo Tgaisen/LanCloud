@@ -110,9 +110,9 @@
   "remove": "Remove",
   "clear": "Clear",
   "transfers": "Transfers",
-  "clearFinished": "Clear finished",
-  "clearFinishedConfirmTitle": "Clear finished records",
-  "clearFinishedConfirmMessage": "This will clear finished transfer records. Continue?",
+  "clearFinished": "Clear completed",
+  "clearFinishedConfirmTitle": "Clear completed records",
+  "clearFinishedConfirmMessage": "This will clear completed transfer records. Continue?",
   "cancelAll": "Cancel all",
   "pauseAll": "Pause all",
   "resumeAll": "Resume all",
@@ -134,8 +134,8 @@
       }
     }
   },
-  "clearFinishedTransfers": "Clear finished transfers",
-  "clearFinishedUploadsConfirmMessage": "Clear all {count} finished upload records?",
+  "clearFinishedTransfers": "Clear completed transfers",
+  "clearFinishedUploadsConfirmMessage": "Clear all {count} completed upload records?",
   "@clearFinishedUploadsConfirmMessage": {
     "placeholders": {
       "count": {
@@ -143,7 +143,7 @@
       }
     }
   },
-  "clearFinishedDownloadsConfirmMessage": "Clear all {count} finished download records?",
+  "clearFinishedDownloadsConfirmMessage": "Clear all {count} completed download records?",
   "@clearFinishedDownloadsConfirmMessage": {
     "placeholders": {
       "count": {
@@ -154,6 +154,15 @@
   "clearSkippedUploads": "Clear skipped upload records",
   "clearSkippedUploadsConfirmMessage": "Clear all {count} skipped upload records?",
   "@clearSkippedUploadsConfirmMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "clearFailedTransfers": "Clear failed transfers",
+  "clearFailedConfirmMessage": "Clear all {count} failed transfer records?",
+  "@clearFailedConfirmMessage": {
     "placeholders": {
       "count": {
         "type": "int"
@@ -173,7 +182,8 @@
   "noDownloads": "No download tasks",
   "inProgress": "In progress",
   "skippedUploads": "Skipped",
-  "finished": "Finished",
+  "finished": "Completed",
+  "failed": "Failed",
   "queued": "Queued",
   "uploading": "Uploading",
   "downloading": "Downloading",
@@ -205,6 +215,7 @@
   "retryUnavailable": "The app has restarted; please start the download again",
   "retryUploadUnavailable": "This upload can't continue after an app restart; please upload again",
   "retryUploadFileGone": "The source file is gone; please pick the file again",
+  "retryUploadPermissionExpired": "File access permission has expired. Please choose the file again.",
   "uploadNeedLogin": "Please sign in before uploading",
   "retryResolving": "Re-resolving the download link…",
   "retryResolveFailed": "Failed to re-resolve the download link: {error}",

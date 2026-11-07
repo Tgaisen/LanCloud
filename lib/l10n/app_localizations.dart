@@ -791,19 +791,19 @@ abstract class AppLocalizations {
   /// No description provided for @clearFinishedTransfers.
   ///
   /// In zh, this message translates to:
-  /// **'清空已结束任务'**
+  /// **'清空已完成任务'**
   String get clearFinishedTransfers;
 
   /// No description provided for @clearFinishedUploadsConfirmMessage.
   ///
   /// In zh, this message translates to:
-  /// **'将清空全部 {count} 条已结束的上传任务记录，继续吗？'**
+  /// **'将清空全部 {count} 条已完成的上传任务记录，继续吗？'**
   String clearFinishedUploadsConfirmMessage(int count);
 
   /// No description provided for @clearFinishedDownloadsConfirmMessage.
   ///
   /// In zh, this message translates to:
-  /// **'将清空全部 {count} 条已结束的下载任务记录，继续吗？'**
+  /// **'将清空全部 {count} 条已完成的下载任务记录，继续吗？'**
   String clearFinishedDownloadsConfirmMessage(int count);
 
   /// No description provided for @clearSkippedUploads.
@@ -817,6 +817,18 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'将清空全部 {count} 条被跳过的上传任务记录，继续吗？'**
   String clearSkippedUploadsConfirmMessage(int count);
+
+  /// No description provided for @clearFailedTransfers.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空失败任务'**
+  String get clearFailedTransfers;
+
+  /// No description provided for @clearFailedConfirmMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'将清空全部 {count} 条失败任务记录，继续吗？'**
+  String clearFailedConfirmMessage(int count);
 
   /// No description provided for @resumeAllPartialFailed.
   ///
@@ -857,8 +869,14 @@ abstract class AppLocalizations {
   /// No description provided for @finished.
   ///
   /// In zh, this message translates to:
-  /// **'已结束'**
+  /// **'已完成'**
   String get finished;
+
+  /// No description provided for @failed.
+  ///
+  /// In zh, this message translates to:
+  /// **'失败'**
+  String get failed;
 
   /// No description provided for @queued.
   ///
@@ -1045,6 +1063,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'源文件已不存在，请重新选择文件上传'**
   String get retryUploadFileGone;
+
+  /// No description provided for @retryUploadPermissionExpired.
+  ///
+  /// In zh, this message translates to:
+  /// **'文件访问授权已过期，请重新选择文件上传'**
+  String get retryUploadPermissionExpired;
 
   /// No description provided for @uploadNeedLogin.
   ///

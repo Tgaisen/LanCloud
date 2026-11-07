@@ -369,14 +369,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get transfers => 'Transfers';
 
   @override
-  String get clearFinished => 'Clear finished';
+  String get clearFinished => 'Clear completed';
 
   @override
-  String get clearFinishedConfirmTitle => 'Clear finished records';
+  String get clearFinishedConfirmTitle => 'Clear completed records';
 
   @override
   String get clearFinishedConfirmMessage =>
-      'This will clear finished transfer records. Continue?';
+      'This will clear completed transfer records. Continue?';
 
   @override
   String get cancelAll => 'Cancel all';
@@ -404,16 +404,16 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get clearFinishedTransfers => 'Clear finished transfers';
+  String get clearFinishedTransfers => 'Clear completed transfers';
 
   @override
   String clearFinishedUploadsConfirmMessage(int count) {
-    return 'Clear all $count finished upload records?';
+    return 'Clear all $count completed upload records?';
   }
 
   @override
   String clearFinishedDownloadsConfirmMessage(int count) {
-    return 'Clear all $count finished download records?';
+    return 'Clear all $count completed download records?';
   }
 
   @override
@@ -422,6 +422,14 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String clearSkippedUploadsConfirmMessage(int count) {
     return 'Clear all $count skipped upload records?';
+  }
+
+  @override
+  String get clearFailedTransfers => 'Clear failed transfers';
+
+  @override
+  String clearFailedConfirmMessage(int count) {
+    return 'Clear all $count failed transfer records?';
   }
 
   @override
@@ -445,7 +453,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get skippedUploads => 'Skipped';
 
   @override
-  String get finished => 'Finished';
+  String get finished => 'Completed';
+
+  @override
+  String get failed => 'Failed';
 
   @override
   String get queued => 'Queued';
@@ -550,6 +561,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get retryUploadFileGone =>
       'The source file is gone; please pick the file again';
+
+  @override
+  String get retryUploadPermissionExpired =>
+      'File access permission has expired. Please choose the file again.';
 
   @override
   String get uploadNeedLogin => 'Please sign in before uploading';

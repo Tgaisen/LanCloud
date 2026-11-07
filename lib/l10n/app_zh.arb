@@ -209,8 +209,8 @@
       }
     }
   },
-  "clearFinishedTransfers": "清空已结束任务",
-  "clearFinishedUploadsConfirmMessage": "将清空全部 {count} 条已结束的上传任务记录，继续吗？",
+  "clearFinishedTransfers": "清空已完成任务",
+  "clearFinishedUploadsConfirmMessage": "将清空全部 {count} 条已完成的上传任务记录，继续吗？",
   "@clearFinishedUploadsConfirmMessage": {
     "placeholders": {
       "count": {
@@ -218,7 +218,7 @@
       }
     }
   },
-  "clearFinishedDownloadsConfirmMessage": "将清空全部 {count} 条已结束的下载任务记录，继续吗？",
+  "clearFinishedDownloadsConfirmMessage": "将清空全部 {count} 条已完成的下载任务记录，继续吗？",
   "@clearFinishedDownloadsConfirmMessage": {
     "placeholders": {
       "count": {
@@ -229,6 +229,15 @@
   "clearSkippedUploads": "清空被跳过的上传记录",
   "clearSkippedUploadsConfirmMessage": "将清空全部 {count} 条被跳过的上传任务记录，继续吗？",
   "@clearSkippedUploadsConfirmMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "clearFailedTransfers": "清空失败任务",
+  "clearFailedConfirmMessage": "将清空全部 {count} 条失败任务记录，继续吗？",
+  "@clearFailedConfirmMessage": {
     "placeholders": {
       "count": {
         "type": "int"
@@ -248,7 +257,8 @@
   "noDownloads": "暂无下载任务",
   "inProgress": "进行中",
   "skippedUploads": "被跳过",
-  "finished": "已结束",
+  "finished": "已完成",
+  "failed": "失败",
   "queued": "排队中",
   "uploading": "上传中",
   "downloading": "下载中",
@@ -301,6 +311,7 @@
   "retryUnavailable": "应用重启后请重新发起下载",
   "retryUploadUnavailable": "应用重启后无法继续该上传，请重新上传",
   "retryUploadFileGone": "源文件已不存在，请重新选择文件上传",
+  "retryUploadPermissionExpired": "文件访问授权已过期，请重新选择文件上传",
   "uploadNeedLogin": "请先登录后再上传",
   "retryResolving": "正在重新解析下载链接…",
   "retryResolveFailed": "重新解析下载链接失败：{error}",

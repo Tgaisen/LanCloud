@@ -233,6 +233,27 @@ void main() {
     expect(task.status, TransferStatus.failed);
   });
 
+  test('重启后的上传任务：content URI 授权失效时提示重新选择', () async {
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
+    final manager = buildTransferManagerForEnvironment(environment);
+    final task = TransferTask(
+      id: 'u5',
+      kind: TransferKind.upload,
+      name: 'shared.zip',
+      accountUid: '',
+      folderId: '-1',
+      localFilePath: 'content://shared/document/1',
+    )..status = TransferStatus.failed;
+    manager.tasks.add(task);
+
+    final message = await manager.retry('u5');
+
+    expect(message, '文件访问授权已过期，请重新选择文件上传');
+    expect(task.status, TransferStatus.failed);
+    expect(task.error, message);
+  });
+
   test('没留源文件路径的旧上传记录：仍提示重新上传', () async {
     final environment = AppEnvironment();
     addTearDown(environment.dispose);

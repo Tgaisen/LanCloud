@@ -172,7 +172,7 @@ int selectedTransferTab(WidgetTester tester) => tester
     .selected;
 
 void main() {
-  testWidgets('失败副标题区分上传下载且不重复失败前缀', (tester) async {
+  testWidgets('失败副标题只显示错误详情，不重复上传下载前缀', (tester) async {
     final (app, _) = await hostWithTasks(tester, [
       task('u1', 'upload.zip', status: TransferStatus.failed)
         ..error = '失败：上传失败：server busy',
@@ -184,10 +184,12 @@ void main() {
       )..error = '失败：获取下载地址失败：HTTP 403',
     ]);
 
-    expect(find.text('上传失败：server busy'), findsOneWidget);
+    expect(find.text('server busy'), findsOneWidget);
+    expect(find.textContaining('上传失败：'), findsNothing);
     await tester.tap(find.text('下载').hitTestable());
     await tester.pumpAndSettle();
-    expect(find.text('下载失败：HTTP 403'), findsOneWidget);
+    expect(find.text('HTTP 403'), findsOneWidget);
+    expect(find.textContaining('下载失败：'), findsNothing);
     app.dispose();
   });
 
@@ -886,13 +888,16 @@ void main() {
     app.dispose();
   });
 
-  testWidgets('上传已结束分栏：清空先确认并移除完成和失败记录', (tester) async {
+  testWidgets('上传失败与已完成分栏分别清空各自记录', (tester) async {
     final (app, manager) = await host(tester);
+
+    expect(find.text('失败'), findsOneWidget);
+    expect(find.text('已完成'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('transfers-clear-finished')));
     await tester.pumpAndSettle();
-    expect(find.text('清空已结束任务'), findsOneWidget);
-    expect(find.text('将清空全部 3 条已结束的上传任务记录，继续吗？'), findsOneWidget);
+    expect(find.text('清空已完成任务'), findsOneWidget);
+    expect(find.text('将清空全部 1 条已完成的上传任务记录，继续吗？'), findsOneWidget);
     expect(find.text('同时删除文件'), findsNothing);
 
     // 取消：记录原样
@@ -900,13 +905,60 @@ void main() {
     await tester.pumpAndSettle();
     expect(manager.tasks, hasLength(3));
 
-    // 清空：完成与失败记录都属于已结束分栏。
+    // 清空已完成只删 done，失败记录仍保留。
     await tester.tap(find.byKey(const ValueKey('transfers-clear-finished')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('transfer-delete-confirm')));
     await tester.pumpAndSettle();
+    expect(manager.tasks.map((task) => task.status), [
+      TransferStatus.failed,
+      TransferStatus.failed,
+    ]);
+    expect(find.text('c.zip'), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('transfers-clear-failed')));
+    await tester.pumpAndSettle();
+    expect(find.text('清空失败任务'), findsOneWidget);
+    expect(find.text('将清空全部 2 条失败任务记录，继续吗？'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('transfer-delete-confirm')));
+    await tester.pumpAndSettle();
     expect(manager.tasks, isEmpty);
     expect(find.text('暂无上传任务'), findsOneWidget);
+    app.dispose();
+  });
+
+  testWidgets('已完成条目副标题只显示文件大小', (tester) async {
+    final (app, _) = await hostWithTasks(tester, [
+      task('u1', 'done.zip', status: TransferStatus.done)
+        ..total = 10 * 1024 * 1024,
+    ]);
+
+    expect(find.text('10.0 MB'), findsOneWidget);
+    expect(find.textContaining('已完成 ·'), findsNothing);
+    app.dispose();
+  });
+
+  testWidgets('进行中、被跳过、失败与已完成分栏均按新任务在前排序', (tester) async {
+    tester.view.physicalSize = const Size(420, 2000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final (app, _) = await hostWithTasks(tester, [
+      task('a-old', 'active-old.zip', status: TransferStatus.running),
+      task('a-new', 'active-new.zip', status: TransferStatus.queued),
+      task('s-old', 'skipped-old.zip', status: TransferStatus.skipped),
+      task('s-new', 'skipped-new.zip', status: TransferStatus.skipped),
+      task('f-old', 'failed-old.zip', status: TransferStatus.failed),
+      task('f-new', 'failed-new.zip', status: TransferStatus.failed),
+      task('c-old', 'completed-old.zip', status: TransferStatus.done),
+      task('c-new', 'completed-new.zip', status: TransferStatus.done),
+    ]);
+
+    double top(String name) => tester.getTopLeft(find.text(name)).dy;
+
+    expect(top('active-new.zip'), lessThan(top('active-old.zip')));
+    expect(top('skipped-new.zip'), lessThan(top('skipped-old.zip')));
+    expect(top('failed-new.zip'), lessThan(top('failed-old.zip')));
+    expect(top('completed-new.zip'), lessThan(top('completed-old.zip')));
     app.dispose();
   });
 
@@ -1047,7 +1099,7 @@ void main() {
     app.dispose();
   });
 
-  testWidgets('下载已结束分栏：可清空记录并同时删除文件', (tester) async {
+  testWidgets('下载已完成分栏：可清空记录并同时删除文件', (tester) async {
     final dir = Directory.systemTemp.createTempSync('lancloud-clear-finished');
     addTearDown(() {
       try {
@@ -1413,7 +1465,8 @@ void main() {
     ]);
 
     expect(find.text('被跳过'), findsWidgets);
-    expect(find.text('此类文件不允许上传·10.0 MB'), findsOneWidget);
+    expect(find.text('此类文件不允许上传'), findsOneWidget);
+    expect(find.textContaining('10.0 MB'), findsNothing);
     expect(
       find.byKey(const ValueKey('transfers-clear-skipped')),
       findsOneWidget,

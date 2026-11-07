@@ -195,6 +195,55 @@ void main() {
     expect(manager.tasks.single, same(skipped));
   });
 
+  test('被跳过任务重新上传时，文件授权或源文件失效会转为失败', () async {
+    final store = _MemoryStore();
+    final settings = SettingsStore()..maxUploads = 0;
+    final manager = _manager(
+      settings: settings,
+      store: store,
+      policy: const LanzouUploadPolicy(
+        maxFileBytes: 100,
+        allowedExtensions: {'txt'},
+      ),
+    );
+    addTearDown(manager.dispose);
+
+    expect(
+      manager.addUpload(
+        name: 'shared.bin',
+        folderId: 'f',
+        path: 'content://shared/document/1',
+        size: 1,
+      ),
+      UploadAddResult.skippedUnsupported,
+    );
+    expect(
+      manager.addUpload(
+        name: 'missing.bin',
+        folderId: 'f',
+        path: '/definitely/missing/lancloud-upload.bin',
+        size: 1,
+      ),
+      UploadAddResult.skippedUnsupported,
+    );
+    final shared = manager.tasks[0];
+    final missing = manager.tasks[1];
+
+    expect(await manager.uploadSkipped(shared.id), '文件访问授权已过期，请重新选择文件上传');
+    expect(shared.status, TransferStatus.failed);
+    expect(shared.error, '文件访问授权已过期，请重新选择文件上传');
+
+    expect(await manager.uploadSkipped(missing.id), '源文件已不存在，请重新选择文件上传');
+    expect(missing.status, TransferStatus.failed);
+    expect(missing.error, '源文件已不存在，请重新选择文件上传');
+
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+    expect(
+      store.rows.values.map((row) => row['status']),
+      everyElement('failed'),
+    );
+  });
+
   test('关闭筛选后任务直接进入队列', () {
     final settings = SettingsStore()
       ..maxUploads = 0

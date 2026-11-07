@@ -382,16 +382,16 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get clearFinishedTransfers => '清空已结束任务';
+  String get clearFinishedTransfers => '清空已完成任务';
 
   @override
   String clearFinishedUploadsConfirmMessage(int count) {
-    return '将清空全部 $count 条已结束的上传任务记录，继续吗？';
+    return '将清空全部 $count 条已完成的上传任务记录，继续吗？';
   }
 
   @override
   String clearFinishedDownloadsConfirmMessage(int count) {
-    return '将清空全部 $count 条已结束的下载任务记录，继续吗？';
+    return '将清空全部 $count 条已完成的下载任务记录，继续吗？';
   }
 
   @override
@@ -400,6 +400,14 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String clearSkippedUploadsConfirmMessage(int count) {
     return '将清空全部 $count 条被跳过的上传任务记录，继续吗？';
+  }
+
+  @override
+  String get clearFailedTransfers => '清空失败任务';
+
+  @override
+  String clearFailedConfirmMessage(int count) {
+    return '将清空全部 $count 条失败任务记录，继续吗？';
   }
 
   @override
@@ -423,7 +431,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get skippedUploads => '被跳过';
 
   @override
-  String get finished => '已结束';
+  String get finished => '已完成';
+
+  @override
+  String get failed => '失败';
 
   @override
   String get queued => '排队中';
@@ -523,6 +534,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get retryUploadFileGone => '源文件已不存在，请重新选择文件上传';
+
+  @override
+  String get retryUploadPermissionExpired => '文件访问授权已过期，请重新选择文件上传';
 
   @override
   String get uploadNeedLogin => '请先登录后再上传';

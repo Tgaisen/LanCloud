@@ -483,11 +483,8 @@ class TransferManager extends ChangeNotifier {
     if (task == null || task.status != TransferStatus.failed) return null;
     final expectedStatus = task.status;
     if (task.kind == TransferKind.upload) {
-      final message = _uploadSourceError(task);
+      final message = _applyUploadSourceIssue(task);
       if (message != null) {
-        task.error = message;
-        _persist(task);
-        notifyListeners();
         return message;
       }
     }
@@ -508,23 +505,46 @@ class TransferManager extends ChangeNotifier {
     return null;
   }
 
-  String? _uploadSourceError(TransferTask task) {
+  ({String message, bool permanent})? _uploadSourceIssue(TransferTask task) {
     final i18n = NotificationService.i18n;
     if (task.localFilePath.isNotEmpty) {
+      if (SafStorage.isContentUri(task.localFilePath)) {
+        return (
+          message: i18n?.retryUploadPermissionExpired ?? '文件访问授权已过期，请重新选择文件上传',
+          permanent: true,
+        );
+      }
       // 源文件路径已持久化，重启后一般还在缓存目录里；被清理掉时提示重选
       if (!File(task.localFilePath).existsSync()) {
-        return i18n?.retryUploadFileGone ?? '源文件已不存在，请重新选择文件上传';
+        return (
+          message: i18n?.retryUploadFileGone ?? '源文件已不存在，请重新选择文件上传',
+          permanent: true,
+        );
       }
     } else if (task.streamFactory == null) {
       // 旧记录没留源文件路径，来源也只是一次性的流：没法继续
-      return i18n?.retryUploadUnavailable ?? '应用重启后无法继续该上传，请重新上传';
+      return (
+        message: i18n?.retryUploadUnavailable ?? '应用重启后无法继续该上传，请重新上传',
+        permanent: true,
+      );
     }
     // 上传必须带账号 Cookie：账号被移除、或记录里没有可用账号时先拦下，
     // 别发出请求让服务端回 "login not"
     if (_uploadAccountUid(task).isEmpty) {
-      return i18n?.uploadNeedLogin ?? '请先登录后再上传';
+      return (message: i18n?.uploadNeedLogin ?? '请先登录后再上传', permanent: false);
     }
     return null;
+  }
+
+  String? _applyUploadSourceIssue(TransferTask task) {
+    final issue = _uploadSourceIssue(task);
+    if (issue == null) return null;
+    if (issue.permanent) task.status = TransferStatus.failed;
+    task.error = issue.message;
+    _bumpMarks();
+    _persist(task);
+    notifyListeners();
+    return issue.message;
   }
 
   /// 用户确认仍然上传后，绕过登录时抓到的上传筛选规则。
@@ -535,11 +555,8 @@ class TransferManager extends ChangeNotifier {
         task.status != TransferStatus.skipped) {
       return null;
     }
-    final message = _uploadSourceError(task);
+    final message = _applyUploadSourceIssue(task);
     if (message != null) {
-      task.error = message;
-      _persist(task);
-      notifyListeners();
       return message;
     }
     task.status = TransferStatus.queued;
@@ -590,16 +607,20 @@ class TransferManager extends ChangeNotifier {
     }
   }
 
-  /// 清空指定类型的已结束任务，返回被移除的任务快照供调用方处理本地文件。
-  List<TransferTask> clearFinished(TransferKind kind) {
+  /// 清空指定类型的已完成任务，返回快照供调用方处理本地文件。
+  List<TransferTask> clearCompleted(TransferKind kind) {
     final removed = tasks
-        .where(
-          (t) =>
-              t.kind == kind &&
-              (t.status == TransferStatus.done ||
-                  t.status == TransferStatus.failed ||
-                  t.status == TransferStatus.canceled),
-        )
+        .where((t) => t.kind == kind && t.status == TransferStatus.done)
+        .toList(growable: false);
+    if (removed.isEmpty) return const <TransferTask>[];
+    removeTasks([for (final task in removed) task.id]);
+    return removed;
+  }
+
+  /// 清空指定类型的失败任务。
+  List<TransferTask> clearFailed(TransferKind kind) {
+    final removed = tasks
+        .where((t) => t.kind == kind && t.status == TransferStatus.failed)
         .toList(growable: false);
     if (removed.isEmpty) return const <TransferTask>[];
     removeTasks([for (final task in removed) task.id]);
