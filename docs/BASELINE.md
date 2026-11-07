@@ -10,25 +10,25 @@
 | 命令 | 口径 | 结果 | 耗时 |
 | --- | --- | --- | --- |
 | `tools\agent.cmd analyze` | 全量 | No issues found | 约 27 s |
-| `tools\agent.cmd analyze` | 增量（本次改动，2 项） | No issues found | 约 12–15 s |
+| `tools\agent.cmd analyze` | 增量（本次改动，1 项） | No issues found | 约 10–12 s |
 | `tools\agent.cmd test` | 全量（最近完整快照，本次新增 15 用例前） | **835 tests：834 passed + 1 个既有偶发失败** | 约 115–185 s |
-| `tools\agent.cmd test` | 增量（本次改动，53 个测试文件） | **359 tests, all passed** | 约 67 s |
+| `tools\agent.cmd test` | 增量（本次改动，5 个测试文件） | **73 tests, all passed** | 约 31 s |
 
 当前分析结果为 0 issue 是硬基线。出现红灯时，先判断是否为本次改动引入；
 不要把增量结果当成全量结论。
 
 当前全量用例总数为 850（本次新增 15 个；全量尚未重跑）。最近两次全量分别只有
 `app_log_test.dart` / `share_password_recovery_test.dart` 的单个既有用例失败，
-对应测试文件单独重跑均通过；本次改动相关的 53 个受影响测试文件全部通过。
+对应测试文件单独重跑均通过；本次改动相关的 5 个受影响测试文件全部通过。
 
 ## 规模
 
 | 指标 | 当前值 |
 | --- | ---: |
 | `lib` Dart 文件 | 154 |
-| `lib` 总行数 | 49,919 |
+| `lib` 总行数 | 49,948 |
 | `test` 测试文件 | 173（全部为 `*_test.dart`，平铺） |
-| `test` 总行数 | 27,514 |
+| `test` 总行数 | 27,538 |
 | `test` 用例数 | 850 |
 | `lib/ui` 平铺文件 | 59 |
 | `lib/core` | 54 个平铺文件 + 5 个子系统目录 |

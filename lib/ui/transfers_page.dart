@@ -228,6 +228,9 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
   /// 正在播放删除动画的记录（动画播完再真正移除）
   final Set<String> _removing = {};
 
+  /// 单个上传任务修改成功后的高亮闪烁计数。
+  final Map<String, int> _pulse = {};
+
   /// 外壳导航状态：dispose 里不能再读 context，退出多选要用它。
   late final NavigationState _navigation;
 
@@ -349,6 +352,11 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
     if (_selected.isEmpty) _exitSelection();
   }
 
+  void _pulseTask(String id) {
+    if (!mounted) return;
+    setState(() => _pulse[id] = (_pulse[id] ?? 0) + 1);
+  }
+
   Future<void> _cancelActive() async {
     final manager = ref.read(transferManagerProvider);
     final tasks = _tasksOf(manager)
@@ -447,9 +455,7 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
       UploadRenameChange(id: task.id, originalName: task.name, newName: name),
     ]);
     if (applied == 0 || !mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(context.l10n.renamedUploads(applied))),
-    );
+    _pulseTask(task.id);
   }
 
   Future<void> _renameSelected() async {
@@ -476,7 +482,10 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
 
   Future<void> _changeUploadFolder(TransferTask task) async {
     if (!_isPendingUpload(task)) return;
-    await _changeUploadFolders([task]);
+    final changed = await _changeUploadFolders([
+      task,
+    ], showUpdatedSnackbar: false);
+    if (changed) _pulseTask(task.id);
   }
 
   Future<void> _changeSelectedUploadFolder() async {
@@ -489,7 +498,10 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
     if (changed && mounted) _exitSelection();
   }
 
-  Future<bool> _changeUploadFolders(List<TransferTask> tasks) async {
+  Future<bool> _changeUploadFolders(
+    List<TransferTask> tasks, {
+    bool showUpdatedSnackbar = true,
+  }) async {
     final account = ref.read(accountStateProvider).store.active;
     if (account == null || tasks.isEmpty) {
       if (mounted) {
@@ -526,9 +538,11 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
           accountUid: account.uid,
         );
     if (changed == 0 || !mounted) return false;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(context.l10n.updatedUploadFolders(changed))),
-    );
+    if (showUpdatedSnackbar) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.updatedUploadFolders(changed))),
+      );
+    }
     return true;
   }
 
@@ -875,7 +889,12 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
     setState(() => _removing.add(task.id));
     await Future<void>.delayed(const Duration(milliseconds: 220));
     // 动画期间页面可能已经被移出树（比如返回了上一页）：记录照删
-    if (mounted) setState(() => _removing.remove(task.id));
+    if (mounted) {
+      setState(() {
+        _removing.remove(task.id);
+        _pulse.remove(task.id);
+      });
+    }
     manager.removeTasks([task.id]);
     // 文件删除放最后、不挡动画，失败也静默（和批量删除同一个口径）
     if (deleteFile) unawaited(_deleteTaskFile(task));
@@ -1005,6 +1024,7 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
                           selecting: _selecting,
                           selected: _selected,
                           removing: _removing,
+                          pulse: _pulse,
                           enter: _enter,
                           onToggle: _toggleSelected,
                           onLongPress: _enterSelection,
@@ -1223,6 +1243,7 @@ class _TransferListSliver extends StatelessWidget {
     required this.selecting,
     required this.selected,
     required this.removing,
+    required this.pulse,
     required this.enter,
     required this.onToggle,
     required this.onLongPress,
@@ -1248,6 +1269,9 @@ class _TransferListSliver extends StatelessWidget {
 
   /// 正在播放删除动画的记录 id。
   final Set<String> removing;
+
+  /// 单项修改后的高亮闪烁计数，按任务 id 索引。
+  final Map<String, int> pulse;
 
   /// 列表入场动画的共享进度（只播一次，懒加载进来的条目不重播）。
   final Animation<double> enter;
@@ -1443,6 +1467,7 @@ class _TransferListSliver extends StatelessWidget {
                   manager: manager,
                   index: index,
                   removing: removing.contains(active[index].id),
+                  pulse: pulse[active[index].id] ?? 0,
                   selecting: selecting,
                   selected: selected.contains(active[index].id),
                   onTap: () => _handleTap(context, active[index]),
@@ -1499,6 +1524,7 @@ class _TransferListSliver extends StatelessWidget {
                   manager: manager,
                   index: index,
                   removing: removing.contains(pending[index].id),
+                  pulse: pulse[pending[index].id] ?? 0,
                   selecting: selecting,
                   selected: selected.contains(pending[index].id),
                   onTap: () => _handleTap(context, pending[index]),
@@ -1550,6 +1576,7 @@ class _TransferListSliver extends StatelessWidget {
                   manager: manager,
                   index: index,
                   removing: removing.contains(skipped[index].id),
+                  pulse: pulse[skipped[index].id] ?? 0,
                   selecting: selecting,
                   selected: selected.contains(skipped[index].id),
                   onTap: () => _handleTap(context, skipped[index]),
@@ -1601,6 +1628,7 @@ class _TransferListSliver extends StatelessWidget {
                   manager: manager,
                   index: index,
                   removing: removing.contains(failed[index].id),
+                  pulse: pulse[failed[index].id] ?? 0,
                   selecting: selecting,
                   selected: selected.contains(failed[index].id),
                   onTap: () => _handleTap(context, failed[index]),
@@ -1653,6 +1681,7 @@ class _TransferListSliver extends StatelessWidget {
                   manager: manager,
                   index: index,
                   removing: removing.contains(completed[index].id),
+                  pulse: pulse[completed[index].id] ?? 0,
                   selecting: selecting,
                   selected: selected.contains(completed[index].id),
                   onTap: () => _handleTap(context, completed[index]),
@@ -1685,6 +1714,7 @@ class _TransferTile extends StatelessWidget {
     required this.onMenu,
     this.index = 0,
     this.removing = false,
+    this.pulse = 0,
   });
 
   final TransferTask task;
@@ -1699,6 +1729,7 @@ class _TransferTile extends StatelessWidget {
   onMenu;
   final int index;
   final bool removing;
+  final int pulse;
 
   String? _issueText(AppLocalizations l10n) {
     final issue = TransferIssue.decode(task.error);
@@ -1817,6 +1848,7 @@ class _TransferTile extends StatelessWidget {
         // 入场动画由外层 ListEnterAnimation 统一驱动（只播一次）
         animateIn: false,
         removing: removing,
+        pulse: pulse,
         icon: iconForFile(task.name),
         iconColor: fileIconColor(task.name, brightness: scheme.brightness),
         title: task.name,

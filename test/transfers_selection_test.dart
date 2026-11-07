@@ -2152,6 +2152,18 @@ void main() {
 
     expect(manager.tasks.single.name, 'renamed.txt');
     expect(manager.tasks.single.status, TransferStatus.pending);
+    expect(find.byType(SnackBar), findsNothing);
+    expect(
+      tester
+          .widget<Md3ListItem>(
+            find.ancestor(
+              of: find.text('renamed.txt'),
+              matching: find.byType(Md3ListItem),
+            ),
+          )
+          .pulse,
+      1,
+    );
     app.dispose();
   });
 
@@ -2274,6 +2286,18 @@ void main() {
     expect(manager.tasks.single.folderId, '-1');
     expect(manager.tasks.single.folderName, '');
     expect(find.text('上传至 根目录 · 12 B'), findsOneWidget);
+    expect(find.byType(SnackBar), findsNothing);
+    expect(
+      tester
+          .widget<Md3ListItem>(
+            find.ancestor(
+              of: find.text('waiting.txt'),
+              matching: find.byType(Md3ListItem),
+            ),
+          )
+          .pulse,
+      1,
+    );
     app.dispose();
   });
 
