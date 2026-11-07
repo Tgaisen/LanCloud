@@ -4995,12 +4995,13 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
                       ],
                       onTap: (index) => _jumpTo(index - 1),
                       verticalPadding: 4,
+                      horizontalPadding: 0,
                     ),
                   ),
                   const SizedBox(width: 4),
-                  IconButton.filledTonal(
+                  M3eIconButton(
                     tooltip: l10n.newFolder,
-                    icon: const Icon(Icons.create_new_folder_outlined),
+                    icon: Icons.create_new_folder_outlined,
                     onPressed: _loading ? null : _mkdir,
                   ),
                 ],
@@ -5026,11 +5027,16 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
                           style: TextStyle(color: scheme.onSurfaceVariant),
                         ),
                       )
-                    : ListView.builder(
-                        padding: EdgeInsets.zero,
-                        itemCount: visible.length,
-                        itemBuilder: (context, index) =>
-                            _folderRow(visible[index]),
+                    : CustomScrollView(
+                        slivers: [
+                          SegmentedSliverList(
+                            color: scheme.surfaceContainerHighest,
+                            margin: EdgeInsets.zero,
+                            itemCount: visible.length,
+                            itemBuilder: (context, index) =>
+                                _folderTile(visible[index]),
+                          ),
+                        ],
                       ),
               ),
             ],
@@ -5066,50 +5072,14 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
     );
   }
 
-  /// MD3E 目录行：圆角图标块 + 名称 + 进入箭头。
-  Widget _folderRow(LzFolder folder) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(14),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: () => _load(folder.id),
-          child: Padding(
-            padding: const EdgeInsets.all(6),
-            child: Row(
-              children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: scheme.surfaceContainerHigh,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    Icons.folder_outlined,
-                    size: 19,
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    folder.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyLarge,
-                  ),
-                ),
-                Icon(Icons.chevron_right, size: 20, color: scheme.outline),
-              ],
-            ),
-          ),
-        ),
-      ),
+  /// 目录列表交给共享 MD3E 分段列表组负责底色、圆角和按压形变。
+  Widget _folderTile(LzFolder folder) {
+    final scheme = Theme.of(context).colorScheme;
+    return ListTile(
+      leading: Icon(Icons.folder_outlined, color: scheme.onSurfaceVariant),
+      title: Text(folder.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+      trailing: Icon(Icons.chevron_right, color: scheme.outline),
+      onTap: () => _load(folder.id),
     );
   }
 }

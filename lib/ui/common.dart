@@ -2531,6 +2531,7 @@ class PathBar extends StatefulWidget {
     required this.onTap,
     this.currentIndex,
     this.verticalPadding = 8,
+    this.horizontalPadding = 12,
   });
 
   final List<PathSegment> segments;
@@ -2543,6 +2544,9 @@ class PathBar extends StatefulWidget {
 
   /// 卡片上下留白：网盘页 8，弹窗里 4。
   final double verticalPadding;
+
+  /// 横向内边距。AlertDialog 已有内容边距时传 0，避免重复缩进。
+  final double horizontalPadding;
 
   @override
   State<PathBar> createState() => _PathBarState();
@@ -2728,7 +2732,7 @@ class _PathBarState extends State<PathBar> with TickerProviderStateMixin {
       child: SingleChildScrollView(
         controller: _scroll,
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        padding: EdgeInsets.symmetric(horizontal: widget.horizontalPadding),
         child: Row(
           children: [
             for (var i = 0; i < _entries.length; i++)
