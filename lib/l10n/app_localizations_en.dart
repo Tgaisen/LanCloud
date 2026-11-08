@@ -1482,6 +1482,32 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get propertyType => 'Type';
+
+  @override
+  String get propertySize => 'Size';
+
+  @override
+  String get propertyTime => 'Time';
+
+  @override
+  String get propertyDownloadCount => 'Downloads';
+
+  @override
+  String get propertyFileCount => 'Files';
+
+  @override
+  String propertyFileType(String extension) {
+    return '$extension file';
+  }
+
+  @override
+  String get propertyPasswordEnabled => 'Enabled';
+
+  @override
+  String get propertyPasswordDisabled => 'Not enabled';
+
+  @override
   String get hasPassword => 'Has password';
 
   @override

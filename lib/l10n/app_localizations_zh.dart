@@ -1420,6 +1420,32 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get propertyType => '类型';
+
+  @override
+  String get propertySize => '大小';
+
+  @override
+  String get propertyTime => '时间';
+
+  @override
+  String get propertyDownloadCount => '下载数';
+
+  @override
+  String get propertyFileCount => '文件数';
+
+  @override
+  String propertyFileType(String extension) {
+    return '$extension 文件';
+  }
+
+  @override
+  String get propertyPasswordEnabled => '已启用';
+
+  @override
+  String get propertyPasswordDisabled => '未启用';
+
+  @override
   String get hasPassword => '有提取码';
 
   @override

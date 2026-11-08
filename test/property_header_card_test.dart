@@ -1,10 +1,15 @@
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/system_motion.dart';
+import 'package:lancloud/l10n/app_localizations.dart';
+import 'package:lancloud/l10n/delegates.dart';
 import 'package:lancloud/ui/app_icons.dart';
 import 'package:lancloud/ui/common.dart';
 
 Widget host(Widget child) => MaterialApp(
+  localizationsDelegates: appLocalizationsDelegates,
+  supportedLocales: AppLocalizations.supportedLocales,
+  locale: const Locale('zh'),
   home: Scaffold(
     // 放到可滚动容器里：卡片高度由内容决定（和属性弹窗里的情形一致）
     body: SingleChildScrollView(
@@ -75,6 +80,17 @@ void main() {
     expect(tall, greaterThan(short));
     expect(middle, greaterThan(short));
     expect(middle, lessThan(tall));
+
+    // 简介默认只占 4 行；长内容可以展开，展开后卡片继续顺滑增高。
+    expect(find.text('展开'), findsOneWidget);
+    await tester.tap(find.text('展开'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('收起'), findsOneWidget);
+    expect(
+      tester.getSize(find.byType(PropertyHeaderCard)).height,
+      greaterThan(tall),
+    );
   });
 
   testWidgets('系统要求少动效时简介直接显示', (tester) async {

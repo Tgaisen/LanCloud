@@ -920,6 +920,21 @@
       }
     }
   },
+  "propertyType": "类型",
+  "propertySize": "大小",
+  "propertyTime": "时间",
+  "propertyDownloadCount": "下载数",
+  "propertyFileCount": "文件数",
+  "propertyFileType": "{extension} 文件",
+  "@propertyFileType": {
+    "placeholders": {
+      "extension": {
+        "type": "String"
+      }
+    }
+  },
+  "propertyPasswordEnabled": "已启用",
+  "propertyPasswordDisabled": "未启用",
   "hasPassword": "有提取码",
   "openLink": "打开链接",
   "showQr": "显示二维码",

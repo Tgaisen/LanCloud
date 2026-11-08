@@ -540,6 +540,19 @@
   "passwordSetPartial": "Set {ok}; {failed} failed",
   "close": "Close",
   "downloadsCount": "{count} downloads",
+  "propertyType": "Type",
+  "propertySize": "Size",
+  "propertyTime": "Time",
+  "propertyDownloadCount": "Downloads",
+  "propertyFileCount": "Files",
+  "propertyFileType": "{extension} file",
+  "@propertyFileType": {
+    "placeholders": {
+      "extension": {"type": "String"}
+    }
+  },
+  "propertyPasswordEnabled": "Enabled",
+  "propertyPasswordDisabled": "Not enabled",
   "hasPassword": "Has password",
   "openLink": "Open link",
   "showQr": "Show QR code",

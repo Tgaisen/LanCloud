@@ -2654,6 +2654,54 @@ abstract class AppLocalizations {
   /// **'下载 {count}'**
   String downloadsCount(int count);
 
+  /// No description provided for @propertyType.
+  ///
+  /// In zh, this message translates to:
+  /// **'类型'**
+  String get propertyType;
+
+  /// No description provided for @propertySize.
+  ///
+  /// In zh, this message translates to:
+  /// **'大小'**
+  String get propertySize;
+
+  /// No description provided for @propertyTime.
+  ///
+  /// In zh, this message translates to:
+  /// **'时间'**
+  String get propertyTime;
+
+  /// No description provided for @propertyDownloadCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载数'**
+  String get propertyDownloadCount;
+
+  /// No description provided for @propertyFileCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'文件数'**
+  String get propertyFileCount;
+
+  /// No description provided for @propertyFileType.
+  ///
+  /// In zh, this message translates to:
+  /// **'{extension} 文件'**
+  String propertyFileType(String extension);
+
+  /// No description provided for @propertyPasswordEnabled.
+  ///
+  /// In zh, this message translates to:
+  /// **'已启用'**
+  String get propertyPasswordEnabled;
+
+  /// No description provided for @propertyPasswordDisabled.
+  ///
+  /// In zh, this message translates to:
+  /// **'未启用'**
+  String get propertyPasswordDisabled;
+
   /// No description provided for @hasPassword.
   ///
   /// In zh, this message translates to:
