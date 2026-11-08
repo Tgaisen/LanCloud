@@ -2081,7 +2081,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get restorePreviewTitle => 'Review backup';
 
   @override
-  String get restoreCreatedAtLabel => 'Created:';
+  String get restoreCreatedAtLabel => 'Created';
 
   @override
   String restoreCreatedAt(String time) {
@@ -2092,10 +2092,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get restoreIncludedContent => 'Included content';
 
   @override
-  String get restoreIncludedContentLabel => 'Included content:';
+  String get restoreIncludedContentLabel => 'Included content';
 
   @override
-  String get restoreAccountLabel => 'Accounts:';
+  String get restoreAccountLabel => 'Accounts';
 
   @override
   String restoreAccountCount(int count) {

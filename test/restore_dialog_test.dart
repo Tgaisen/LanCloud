@@ -61,9 +61,12 @@ void main() {
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
 
-    expect(find.text('创建时间：'), findsOneWidget);
-    expect(find.text('包含内容：'), findsOneWidget);
-    expect(find.text('账号：'), findsOneWidget);
+    expect(find.text('创建时间'), findsOneWidget);
+    expect(find.text('包含内容'), findsOneWidget);
+    expect(find.text('账号'), findsOneWidget);
+    expect(find.text('创建时间：'), findsNothing);
+    expect(find.text('包含内容：'), findsNothing);
+    expect(find.text('账号：'), findsNothing);
     expect(
       find.descendant(
         of: find.byType(BackupPreviewDetails),
@@ -100,8 +103,14 @@ void main() {
 
     // 选项行放进列表组（与选择弹窗同一套样式）：行铺满组宽，组沿距弹窗
     // 内容边距 24dp（M3 对话框规范）
-    final group = find.byType(DialogListGroup);
-    expect(group, findsOneWidget);
+    // 第一组是恢复摘要的三项信息，第二组是「保留原收藏夹」选项。
+    final groups = find.byType(DialogListGroup);
+    expect(groups, findsNWidgets(2));
+    expect(
+      find.descendant(of: groups.first, matching: find.byType(SelectableText)),
+      findsNWidgets(3),
+    );
+    final group = groups.last;
     final row = find.descendant(of: group, matching: find.byType(M3ePickTile));
     expect(
       tester.getSize(row).width,

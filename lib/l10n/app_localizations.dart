@@ -3755,7 +3755,7 @@ abstract class AppLocalizations {
   /// No description provided for @restoreCreatedAtLabel.
   ///
   /// In zh, this message translates to:
-  /// **'创建时间：'**
+  /// **'创建时间'**
   String get restoreCreatedAtLabel;
 
   /// No description provided for @restoreCreatedAt.
@@ -3773,13 +3773,13 @@ abstract class AppLocalizations {
   /// No description provided for @restoreIncludedContentLabel.
   ///
   /// In zh, this message translates to:
-  /// **'包含内容：'**
+  /// **'包含内容'**
   String get restoreIncludedContentLabel;
 
   /// No description provided for @restoreAccountLabel.
   ///
   /// In zh, this message translates to:
-  /// **'账号：'**
+  /// **'账号'**
   String get restoreAccountLabel;
 
   /// No description provided for @restoreAccountCount.

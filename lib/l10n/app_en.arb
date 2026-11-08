@@ -66,7 +66,9 @@
   "favoriteDeleteConfirmMessage": "Remove {count} selected favorites?",
   "@favoriteDeleteConfirmMessage": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "unfavorite": "Remove favorite",
@@ -342,7 +344,9 @@
   "defaultDownloadDir": "Default ({path})",
   "@defaultDownloadDir": {
     "placeholders": {
-      "path": {"type": "String"}
+      "path": {
+        "type": "String"
+      }
     }
   },
   "downloadDirKeywords": "download folder save location",
@@ -497,14 +501,18 @@
   "passwordClearedCount": "Disabled access password for {count} items",
   "@passwordClearedCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "transferDeleteConfirmTitle": "Delete transfer records",
   "transferDeleteConfirmMessage": "Remove {count} selected records (running ones will be canceled)?",
   "@transferDeleteConfirmMessage": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "batchDownload": "Batch download",
@@ -514,7 +522,7 @@
   "addedDownloadsSkipped": "Added {ok} download tasks; skipped {skipped} files already in the transfer list",
   "addedDownloadsPartialSkipped": "Added {ok} download tasks; skipped {skipped} files already in the transfer list; {failed} failed to resolve",
   "downloadStarted": "Download started",
-  "downloadSkippedInTransfers": "Skipped: file is already in the transfer list",
+  "downloadSkippedInTransfers": "File is already in the transfer list",
   "retriedDownloads": "Re-queued {count} download tasks",
   "retriedDownloadsPartial": "Re-queued {ok} download tasks; {failed} failed",
   "noLinksToCopy": "No share links to copy",
@@ -548,7 +556,9 @@
   "propertyFileType": "{extension} file",
   "@propertyFileType": {
     "placeholders": {
-      "extension": {"type": "String"}
+      "extension": {
+        "type": "String"
+      }
     }
   },
   "propertyPasswordEnabled": "Enabled",
@@ -632,7 +642,9 @@
   "notifProgressBody": "{count} tasks in progress",
   "@notifProgressBody": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "notifUploadDone": "Upload complete",
@@ -647,15 +659,21 @@
   "favoritedPartial": "{ok} favorited, {failed} failed",
   "@favoritedPartial": {
     "placeholders": {
-      "ok": {"type": "int"},
-      "failed": {"type": "int"}
+      "ok": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
     }
   },
   "file": "File",
   "sharerLabel": "Shared by {name}",
   "@sharerLabel": {
     "placeholders": {
-      "name": {"type": "String"}
+      "name": {
+        "type": "String"
+      }
     }
   },
   "editInfo": "Edit info",
@@ -671,7 +689,9 @@
   "shareReceivedFiles": "Received {count} files; starting upload",
   "@shareReceivedFiles": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "shareReceivedFilesSkipped": "Received {added} files; {skipped} were skipped",
@@ -691,7 +711,9 @@
   "uploadTasksAdded": "Added {count} upload tasks",
   "@uploadTasksAdded": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "install": "Install",
@@ -703,13 +725,17 @@
   "expandSection": "Expand {title}",
   "@expandSection": {
     "placeholders": {
-      "title": {"type": "String"}
+      "title": {
+        "type": "String"
+      }
     }
   },
   "collapseSection": "Collapse {title}",
   "@collapseSection": {
     "placeholders": {
-      "title": {"type": "String"}
+      "title": {
+        "type": "String"
+      }
     }
   },
   "enteredMultiSelect": "Multi-select mode",
@@ -738,7 +764,9 @@
   "exportLogsSaved": "Saved to {path}",
   "@exportLogsSaved": {
     "placeholders": {
-      "path": {"type": "String"}
+      "path": {
+        "type": "String"
+      }
     }
   },
   "scan": "Scan QR code",
@@ -779,32 +807,40 @@
   "restoreCloudSourceSubtitle": "Connect to a server and choose a backup",
   "restoreFileInvalid": "The backup could not be read or is not a valid UTF-8 JSON file",
   "restorePreviewTitle": "Review backup",
-  "restoreCreatedAtLabel": "Created:",
+  "restoreCreatedAtLabel": "Created",
   "restoreCreatedAt": "Created: {time}",
   "@restoreCreatedAt": {
     "placeholders": {
-      "time": {"type": "String"}
+      "time": {
+        "type": "String"
+      }
     }
   },
   "restoreIncludedContent": "Included content",
-  "restoreIncludedContentLabel": "Included content:",
-  "restoreAccountLabel": "Accounts:",
+  "restoreIncludedContentLabel": "Included content",
+  "restoreAccountLabel": "Accounts",
   "restoreAccountCount": "Accounts: {count}",
   "@restoreAccountCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "restoreAccountCountValue": "{count}",
   "@restoreAccountCountValue": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "restoreUsingAccount": "Sign in as {name} after restoring",
   "@restoreUsingAccount": {
     "placeholders": {
-      "name": {"type": "String"}
+      "name": {
+        "type": "String"
+      }
     }
   },
   "restoreLoginReady": "The saved sign-in state is valid and ready to restore.",
@@ -848,7 +884,9 @@
   "backupSaved": "Saved to {path}",
   "@backupSaved": {
     "placeholders": {
-      "path": {"type": "String"}
+      "path": {
+        "type": "String"
+      }
     }
   },
   "restoreFromFile": "Restore from file",
@@ -910,7 +948,9 @@
   "webdavUploadDone": "Uploaded {name}",
   "@webdavUploadDone": {
     "placeholders": {
-      "name": {"type": "String"}
+      "name": {
+        "type": "String"
+      }
     }
   },
   "webdavRestore": "Restore from cloud",
@@ -927,14 +967,18 @@
   "lastBackupAt": "Last backup: {time}",
   "@lastBackupAt": {
     "placeholders": {
-      "time": {"type": "String"}
+      "time": {
+        "type": "String"
+      }
     }
   },
   "neverBackedUp": "Not yet",
   "backupFailed": "Last backup failed: {error}",
   "@backupFailed": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "restoreConfirmTitle": "Restore from backup?",
@@ -945,19 +989,25 @@
   "dropFilesCount": "{count, plural, =1{1 file} other{{count} files}}",
   "@dropFilesCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "dropLinksCount": "{count, plural, =1{1 link} other{{count} links}}",
   "@dropLinksCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "dropUploadConfirm": "Upload to the current folder: {path}?",
   "@dropUploadConfirm": {
     "placeholders": {
-      "path": {"type": "String"}
+      "path": {
+        "type": "String"
+      }
     }
   },
   "dropPickAnotherFolder": "Change folder",
@@ -971,7 +1021,9 @@
   "dropHoverUpload": "Drop to upload to {path}",
   "@dropHoverUpload": {
     "placeholders": {
-      "path": {"type": "String"}
+      "path": {
+        "type": "String"
+      }
     }
   },
   "dropHoverPickFolder": "Drop to choose a target folder",
@@ -981,7 +1033,9 @@
   "dropUploaded": "Uploaded {count} file(s)",
   "@dropUploaded": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "dropSkippedUploads": "{count} file(s) were skipped",
@@ -995,32 +1049,44 @@
   "dropFavorited": "Added {count} to favorites",
   "@dropFavorited": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "dropNeedsPassword": "{count} need an access code",
   "@dropNeedsPassword": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "dropDuplicated": "{count} already in favorites",
   "@dropDuplicated": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "dropFailed": "{count} failed",
   "@dropFailed": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "aboutVersion": "{version} (build {build})",
   "@aboutVersion": {
     "placeholders": {
-      "version": {"type": "String"},
-      "build": {"type": "int"}
+      "version": {
+        "type": "String"
+      },
+      "build": {
+        "type": "int"
+      }
     }
   },
   "aboutTerms": "Terms of service",
@@ -1043,13 +1109,17 @@
   "updateLastCheckAt": "Last checked {time}",
   "@updateLastCheckAt": {
     "placeholders": {
-      "time": {"type": "String"}
+      "time": {
+        "type": "String"
+      }
     }
   },
   "updateReachFailed": "Couldn't reach GitHub ({code})",
   "@updateReachFailed": {
     "placeholders": {
-      "code": {"type": "String"}
+      "code": {
+        "type": "String"
+      }
     }
   },
   "updateCheck": "Check for updates",
@@ -1065,7 +1135,9 @@
   "updateDialogTitle": "New version {version} available",
   "@updateDialogTitle": {
     "placeholders": {
-      "version": {"type": "String"}
+      "version": {
+        "type": "String"
+      }
     }
   },
   "updateViewDetails": "View details",
@@ -1076,34 +1148,50 @@
   "timeMinutesAgo": "{count} min ago",
   "@timeMinutesAgo": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "timeTodayAt": "Today {time}",
   "@timeTodayAt": {
     "placeholders": {
-      "time": {"type": "String"}
+      "time": {
+        "type": "String"
+      }
     }
   },
   "timeYesterdayAt": "Yesterday {time}",
   "@timeYesterdayAt": {
     "placeholders": {
-      "time": {"type": "String"}
+      "time": {
+        "type": "String"
+      }
     }
   },
   "timeMonthDay": "{month}/{day}",
   "@timeMonthDay": {
     "placeholders": {
-      "month": {"type": "int"},
-      "day": {"type": "int"}
+      "month": {
+        "type": "int"
+      },
+      "day": {
+        "type": "int"
+      }
     }
   },
   "timeYearMonthDay": "{year}/{month}/{day}",
   "@timeYearMonthDay": {
     "placeholders": {
-      "year": {"type": "int"},
-      "month": {"type": "int"},
-      "day": {"type": "int"}
+      "year": {
+        "type": "int"
+      },
+      "month": {
+        "type": "int"
+      },
+      "day": {
+        "type": "int"
+      }
     }
   },
   "firstRunWelcome": "Welcome to LanCloud",
@@ -1115,7 +1203,9 @@
   "recentLimitValue": "{count} items",
   "@recentLimitValue": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "recentLimitKeywords": "recent limit history",

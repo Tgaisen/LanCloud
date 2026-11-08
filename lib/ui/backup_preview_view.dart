@@ -127,8 +127,8 @@ class BackupPreviewDetails extends StatelessWidget {
   Widget _buildPlainText(BuildContext context) {
     final l10n = context.l10n;
     final createdAt = preview.createdAt;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return DialogListGroup(
+      margin: listMargin,
       children: [
         _PreviewTextRow(
           label: l10n.restoreCreatedAtLabel,
@@ -136,12 +136,10 @@ class BackupPreviewDetails extends StatelessWidget {
               ? '—'
               : formatRelativeTime(l10n, createdAt, now: now),
         ),
-        const SizedBox(height: 12),
         _PreviewTextRow(
           label: l10n.restoreIncludedContentLabel,
           value: _sectionSummary(l10n, preview.sections),
         ),
-        const SizedBox(height: 12),
         _PreviewTextRow(
           label: l10n.restoreAccountLabel,
           value: l10n.restoreAccountCountValue(preview.accounts.length),
@@ -184,27 +182,30 @@ class _PreviewTextRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: theme.textTheme.labelMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-        const SizedBox(height: 2),
-        SelectableText(value, style: theme.textTheme.bodyMedium),
-        if (detail != null) ...[
-          const SizedBox(height: 2),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           Text(
-            detail!,
-            style: theme.textTheme.bodySmall?.copyWith(
+            label,
+            style: theme.textTheme.labelMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
+          const SizedBox(height: 2),
+          SelectableText(value, style: theme.textTheme.bodyMedium),
+          if (detail != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              detail!,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 }

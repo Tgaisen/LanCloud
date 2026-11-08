@@ -1996,7 +1996,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get restorePreviewTitle => '确认备份内容';
 
   @override
-  String get restoreCreatedAtLabel => '创建时间：';
+  String get restoreCreatedAtLabel => '创建时间';
 
   @override
   String restoreCreatedAt(String time) {
@@ -2007,10 +2007,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get restoreIncludedContent => '包含内容';
 
   @override
-  String get restoreIncludedContentLabel => '包含内容：';
+  String get restoreIncludedContentLabel => '包含内容';
 
   @override
-  String get restoreAccountLabel => '账号：';
+  String get restoreAccountLabel => '账号';
 
   @override
   String restoreAccountCount(int count) {
