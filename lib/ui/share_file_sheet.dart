@@ -176,7 +176,6 @@ class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final scheme = Theme.of(context).colorScheme;
-    final navigator = Navigator.of(context);
     final transfers = ref.read(transferManagerProvider);
     return SafeArea(
       child: Column(
@@ -290,20 +289,19 @@ class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
                 enabled: !_invalid,
                 leading: const Icon(Icons.copy),
                 title: Text(l10n.copyLink),
-                onTap: () {
-                  navigator.pop();
-                  copyText(context, widget.url);
+                onTap: () async {
+                  // 属性页常作为操作入口：复制后继续留在页内，反馈用顶层轻提示。
+                  await copyText(context, widget.url, asToast: true);
                 },
               ),
               ListTile(
                 enabled: !_invalid,
                 leading: const Icon(Icons.qr_code),
                 title: Text(l10n.showQr),
-                onTap: () {
-                  navigator.pop();
-                  showQrDialog(
-                    // 用 navigator 的 context：弹窗刚被 pop，原 context 已失效
-                    navigator.context,
+                onTap: () async {
+                  // 二维码弹窗盖在属性页上，关闭二维码后仍回到原属性页。
+                  await showQrDialog(
+                    context,
                     title: _name,
                     url: widget.url,
                     pwd: _pwd,

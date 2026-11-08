@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -11,6 +12,7 @@ import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/app_icons.dart';
+import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/m3e.dart';
 import 'package:lancloud/ui/share_file_sheet.dart';
 
@@ -106,11 +108,32 @@ Future<void> _pumpSheet(
   TransferManager? manager,
   bool invalid = false,
   String size = '1 MB',
+  bool asModal = false,
 }) async {
   final transfers =
       manager ?? buildTransferManagerForEnvironment(app.environment);
   final clients = LanzouClientRegistry(factory: (_) => app.sheetClient);
   addTearDown(app.dispose);
+  final sheet = ShareFileInfoSheet(
+    name: 'a.zip',
+    url: 'https://example.com/abcdef',
+    pwd: '',
+    size: size,
+    invalid: invalid,
+  );
+  final home = asModal
+      ? Builder(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: FilledButton(
+                key: const ValueKey('open-share-file-sheet'),
+                onPressed: () => showAppSheet<void>(context, child: sheet),
+                child: const Text('打开属性'),
+              ),
+            ),
+          ),
+        )
+      : Scaffold(body: sheet);
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
@@ -121,19 +144,16 @@ Future<void> _pumpSheet(
         localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         locale: const Locale('zh'),
-        home: Scaffold(
-          body: ShareFileInfoSheet(
-            name: 'a.zip',
-            url: 'https://example.com/abcdef',
-            pwd: '',
-            size: size,
-            invalid: invalid,
-          ),
-        ),
+        home: home,
       ),
     ),
   );
   await tester.pumpAndSettle();
+  if (asModal) {
+    await tester.tap(find.byKey(const ValueKey('open-share-file-sheet')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+  }
 }
 
 void main() {
@@ -152,14 +172,48 @@ void main() {
 
   // 分享文件夹浏览页里点文件弹出的这张表就是「项目菜单」：只留下载 / 复制链接 /
   // 二维码 / 收藏，「打开链接」按需求去掉（浏览器的入口在别处）。
-  testWidgets('分享文件属性弹窗：没有「打开链接」，其余入口都在', (tester) async {
-    await _pumpSheet(tester, _FakeApp(), invalid: true);
+  testWidgets('分享文件属性弹窗：复制和二维码后仍保留属性页', (tester) async {
+    final clipboard = <MethodCall>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+          if (call.method == 'Clipboard.setData') clipboard.add(call);
+          return null;
+        });
+    addTearDown(
+      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, null),
+    );
+    await _pumpSheet(tester, _FakeApp(), asModal: true);
 
     expect(find.text('打开链接'), findsNothing);
     expect(find.text('下载'), findsOneWidget);
     expect(find.text('复制链接'), findsOneWidget);
     expect(find.text('显示二维码'), findsOneWidget);
     expect(find.text('收藏'), findsOneWidget);
+
+    await tester.tap(find.text('复制链接'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(clipboard, hasLength(1));
+    expect(find.byType(M3EBottomSheet), findsOneWidget);
+    expect(find.text('复制链接'), findsOneWidget);
+
+    await tester.tap(find.text('显示二维码'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(find.byType(M3EBottomSheet), findsOneWidget);
+
+    await tester.tap(
+      find.descendant(of: find.byType(AlertDialog), matching: find.text('关闭')),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byType(M3EBottomSheet), findsOneWidget);
+    expect(find.text('显示二维码'), findsOneWidget);
+
+    // 等复制轻提示的定时器结束。
+    await tester.pump(const Duration(seconds: 3));
   });
 
   testWidgets('分享文件属性弹窗：已加入下载时是「已加入下载」+ 进度环，点击弹二级菜单', (tester) async {
