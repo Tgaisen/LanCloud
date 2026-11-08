@@ -400,7 +400,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
     await tester.pump(const Duration(milliseconds: 600));
 
-    const order = ['下载', '属性', '复制链接', '访问密码', '移动', '重命名', '修改简介'];
+    const order = ['下载', '属性', '复制链接', '访问密码', '移动', '重命名', '修改简介', '删除'];
     expect(find.byType(M3eMenuRow), findsNWidgets(order.length));
     for (final label in order) {
       // 页面本身也有「删除」这类文案，断言限定在菜单行里
@@ -468,17 +468,6 @@ void main() {
       ),
       findsOneWidget,
     );
-
-    // 第八项在默认窗口高度下需要滚动才会构建；滚到底验证“删除”仍在最后。
-    final menuCard = find.byKey(const ValueKey('m3e-menu-card'));
-    await tester.drag(menuCard, const Offset(0, -120));
-    await tester.pumpAndSettle();
-    expect(
-      find.descendant(of: find.byType(M3eMenuRow), matching: find.text('删除')),
-      findsOneWidget,
-    );
-    await tester.drag(menuCard, const Offset(0, 120));
-    await tester.pumpAndSettle();
 
     // 点「属性」→ 打开文件属性弹窗（那一行 5 个图标按钮）
     await tester.tap(
