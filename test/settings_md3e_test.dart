@@ -83,14 +83,10 @@ void main() {
       SettingsCategory.transferConnection,
     );
 
-    final entry = find.text('网络请求间隔');
-    await tester.ensureVisible(entry);
-    await tester.pumpAndSettle();
-    // ensureVisible 会把条目贴到浮层顶栏下面（拖不到）：往回滚一点
-    await tester.drag(find.byType(SettingsCategoryPage), const Offset(0, 240));
-    await tester.pumpAndSettle();
-
     final slider = find.byKey(const ValueKey('settings-slider-网络请求间隔'));
+    await tester.ensureVisible(slider);
+    await tester.pumpAndSettle();
+    final entry = find.text('网络请求间隔');
     expect(slider, findsOneWidget);
     // 滑杆上方有「间隔过小易触发服务器限流」的说明
     expect(find.text('间隔过小易触发服务器限流'), findsOneWidget);

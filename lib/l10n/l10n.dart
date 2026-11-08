@@ -79,11 +79,14 @@ extension TransferFailureL10n on AppLocalizations {
   /// 传输页和通知栏共用的失败文案，保证上传 / 下载状态只显示一层前缀。
   String transferFailure({required bool upload, required String? error}) =>
       formatTransferFailure(this, upload: upload, error: error);
+
+  /// 失败分栏内部使用的纯错误详情，不再重复“上传 / 下载失败”。
+  String transferFailureDetail({required String? error}) =>
+      formatTransferFailureDetail(this, error: error);
 }
 
-String formatTransferFailure(
+String formatTransferFailureDetail(
   AppLocalizations? strings, {
-  required bool upload,
   required String? error,
 }) {
   var detail = error?.trim() ?? '';
@@ -115,6 +118,15 @@ String formatTransferFailure(
     detail = detail.replaceFirst(englishFailurePrefix, '');
   }
   if (detail.isEmpty) detail = strings?.unknownError ?? '未知错误';
+  return detail;
+}
+
+String formatTransferFailure(
+  AppLocalizations? strings, {
+  required bool upload,
+  required String? error,
+}) {
+  final detail = formatTransferFailureDetail(strings, error: error);
   return upload
       ? (strings?.uploadFailedWithError(detail) ?? '上传失败：$detail')
       : (strings?.downloadFailedWithError(detail) ?? '下载失败：$detail');

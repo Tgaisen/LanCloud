@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_environment.dart';
+import 'package:lancloud/core/account_state.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
@@ -39,6 +40,7 @@ Future<(AppEnvironment, TransferManager)> _pumpTransfers(
     ProviderScope(
       overrides: [
         transferManagerProvider.overrideWithValue(manager),
+        accountStateProvider.overrideWithValue(environment.accountState),
         navigationAppearanceSettingsStateProvider.overrideWithValue(
           environment.navigationAppearanceSettings,
         ),

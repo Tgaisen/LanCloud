@@ -7,6 +7,9 @@ abstract interface class TransferSettingsPort {
   int get downloadConnections;
   bool get notifyProgress;
   bool get notifyDone;
+  bool get skipOversizeUploads;
+  bool get skipUnsupportedUploads;
+  bool get autoStartUploads;
 }
 
 /// 从既有设置存储实时读取传输相关设置。
@@ -29,4 +32,13 @@ class StoreTransferSettingsPort implements TransferSettingsPort {
 
   @override
   bool get notifyDone => store.notifyDone;
+
+  @override
+  bool get skipOversizeUploads => store.skipOversizeUploads;
+
+  @override
+  bool get skipUnsupportedUploads => store.skipUnsupportedUploads;
+
+  @override
+  bool get autoStartUploads => store.autoStartUploads;
 }

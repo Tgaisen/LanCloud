@@ -53,6 +53,7 @@ void main() {
       ProviderScope(
         overrides: [
           transferManagerProvider.overrideWithValue(manager),
+          accountStateProvider.overrideWithValue(environment.accountState),
           navigationAppearanceSettingsStateProvider.overrideWithValue(
             environment.navigationAppearanceSettings,
           ),

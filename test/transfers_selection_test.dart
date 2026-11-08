@@ -8,10 +8,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/api/models.dart';
+import 'package:lancloud/core/api/lanzou_client.dart';
+import 'package:lancloud/core/account_state.dart';
 import 'package:lancloud/core/app_environment.dart';
+import 'package:lancloud/core/data/account_store.dart';
 import 'package:lancloud/core/file_open_result.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
+import 'package:lancloud/core/transfer/transfer_issue.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
@@ -33,6 +37,7 @@ Widget _transferTestHost({
   return ProviderScope(
     overrides: [
       transferManagerProvider.overrideWithValue(manager),
+      accountStateProvider.overrideWithValue(app.accountState),
       navigationAppearanceSettingsStateProvider.overrideWithValue(
         app.navigationAppearanceSettings,
       ),
@@ -47,14 +52,33 @@ TransferTask task(
   String name, {
   required TransferStatus status,
   TransferKind kind = TransferKind.upload,
+  String accountUid = '',
+  String folderId = '',
+  String folderName = '',
 }) {
   return TransferTask(
     id: id,
     kind: kind,
     name: name,
-    accountUid: '',
+    accountUid: accountUid,
+    folderId: folderId,
+    folderName: folderName,
     localFilePath: '/tmp/$name',
   )..status = status;
+}
+
+class _FolderPickerClient extends LanzouClient {
+  _FolderPickerClient() : super(uid: 'u1');
+
+  @override
+  Future<({List<LzFolder> folders, List<PathNode> path})> listFolders(
+    String folderId,
+  ) async => (
+    folders: const <LzFolder>[],
+    path: folderId == '-1'
+        ? const <PathNode>[]
+        : <PathNode>[PathNode(id: folderId, name: '当前目录')],
+  );
 }
 
 Future<(AppEnvironment, TransferManager)> host(WidgetTester tester) async {
@@ -85,8 +109,9 @@ Future<(AppEnvironment, TransferManager)> host(WidgetTester tester) async {
 
 Future<(AppEnvironment, TransferManager)> hostWithTasks(
   WidgetTester tester,
-  List<TransferTask> tasks,
-) async {
+  List<TransferTask> tasks, {
+  LanzouClient? uploadClient,
+}) async {
   final app = AppEnvironment();
   final manager = buildTransferManagerForEnvironment(app);
   manager.tasks.addAll(tasks);
@@ -98,7 +123,9 @@ Future<(AppEnvironment, TransferManager)> hostWithTasks(
         localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         locale: const Locale('zh'),
-        home: const TransfersPage(),
+        home: TransfersPage(
+          activeUploadClient: uploadClient == null ? null : () => uploadClient,
+        ),
       ),
     ),
   );
@@ -172,7 +199,7 @@ int selectedTransferTab(WidgetTester tester) => tester
     .selected;
 
 void main() {
-  testWidgets('失败副标题区分上传下载且不重复失败前缀', (tester) async {
+  testWidgets('失败副标题只显示错误详情，不重复上传下载前缀', (tester) async {
     final (app, _) = await hostWithTasks(tester, [
       task('u1', 'upload.zip', status: TransferStatus.failed)
         ..error = '失败：上传失败：server busy',
@@ -184,10 +211,12 @@ void main() {
       )..error = '失败：获取下载地址失败：HTTP 403',
     ]);
 
-    expect(find.text('上传失败：server busy'), findsOneWidget);
+    expect(find.text('server busy'), findsOneWidget);
+    expect(find.textContaining('上传失败：'), findsNothing);
     await tester.tap(find.text('下载').hitTestable());
     await tester.pumpAndSettle();
-    expect(find.text('下载失败：HTTP 403'), findsOneWidget);
+    expect(find.text('HTTP 403'), findsOneWidget);
+    expect(find.textContaining('下载失败：'), findsNothing);
     app.dispose();
   });
 
@@ -691,29 +720,48 @@ void main() {
     app.dispose();
   });
 
-  testWidgets('进入多选时隐藏分栏按钮但保留动作槽位', (tester) async {
-    final (app, _) = await host(tester);
-    final clearButton = find.byKey(const ValueKey('transfers-clear-finished'));
-    final header = find.ancestor(
-      of: clearButton,
-      matching: find.byType(SectionHeader),
-    );
-    final heightBefore = tester.getSize(header).height;
-    expect(clearButton.hitTestable(), findsOneWidget);
+  testWidgets('进入多选后各分栏操作变为选择，并追加选中该栏全部任务', (tester) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(420, 1600);
+    addTearDown(tester.view.reset);
+    final (app, _) = await hostWithTasks(tester, [
+      task('u1', 'pending.txt', status: TransferStatus.pending),
+      task('u2', 'running.txt', status: TransferStatus.running),
+      task('u3', 'skipped.txt', status: TransferStatus.skipped),
+      task('u4', 'failed.txt', status: TransferStatus.failed),
+      task('u5', 'done.txt', status: TransferStatus.done),
+    ]);
 
-    await tester.longPress(find.text('a.zip'));
+    await tester.longPress(find.text('pending.txt'));
     await tester.pumpAndSettle();
 
-    expect(
-      tester.getSize(header).height,
-      moreOrLessEquals(heightBefore, epsilon: 0.1),
-    );
-    expect(clearButton, findsOneWidget);
-    expect(clearButton.hitTestable(), findsNothing);
+    for (final key in [
+      'transfers-select-pending',
+      'transfers-select-active',
+      'transfers-select-skipped',
+      'transfers-select-failed',
+      'transfers-select-finished',
+    ]) {
+      expect(find.byKey(ValueKey(key)), findsOneWidget);
+    }
+    expect(find.text('选择'), findsNWidgets(5));
+    expect(find.byKey(const ValueKey('transfers-clear-pending')), findsNothing);
+    expect(find.byKey(const ValueKey('transfers-clear-skipped')), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('transfers-select-failed')));
+    await tester.pumpAndSettle();
+    expect(find.text('已选择 2 项'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('transfers-select-finished')));
+    await tester.pumpAndSettle();
+    expect(find.text('已选择 3 项'), findsOneWidget);
 
     await tester.tap(find.byTooltip('退出多选'));
     await tester.pumpAndSettle();
-    expect(clearButton.hitTestable(), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('transfers-clear-finished')),
+      findsOneWidget,
+    );
     app.dispose();
   });
 
@@ -886,13 +934,16 @@ void main() {
     app.dispose();
   });
 
-  testWidgets('上传已结束分栏：清空先确认并移除完成和失败记录', (tester) async {
+  testWidgets('上传失败与已完成分栏分别清空各自记录', (tester) async {
     final (app, manager) = await host(tester);
+
+    expect(find.text('失败'), findsOneWidget);
+    expect(find.text('已完成'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('transfers-clear-finished')));
     await tester.pumpAndSettle();
-    expect(find.text('清空已结束任务'), findsOneWidget);
-    expect(find.text('将清空全部 3 条已结束的上传任务记录，继续吗？'), findsOneWidget);
+    expect(find.text('清空已完成任务'), findsOneWidget);
+    expect(find.text('将清空全部 1 条已完成的上传任务记录，继续吗？'), findsOneWidget);
     expect(find.text('同时删除文件'), findsNothing);
 
     // 取消：记录原样
@@ -900,13 +951,60 @@ void main() {
     await tester.pumpAndSettle();
     expect(manager.tasks, hasLength(3));
 
-    // 清空：完成与失败记录都属于已结束分栏。
+    // 清空已完成只删 done，失败记录仍保留。
     await tester.tap(find.byKey(const ValueKey('transfers-clear-finished')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('transfer-delete-confirm')));
     await tester.pumpAndSettle();
+    expect(manager.tasks.map((task) => task.status), [
+      TransferStatus.failed,
+      TransferStatus.failed,
+    ]);
+    expect(find.text('c.zip'), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('transfers-clear-failed')));
+    await tester.pumpAndSettle();
+    expect(find.text('清空失败任务'), findsOneWidget);
+    expect(find.text('将清空全部 2 条失败任务记录，继续吗？'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('transfer-delete-confirm')));
+    await tester.pumpAndSettle();
     expect(manager.tasks, isEmpty);
     expect(find.text('暂无上传任务'), findsOneWidget);
+    app.dispose();
+  });
+
+  testWidgets('已完成条目副标题只显示文件大小', (tester) async {
+    final (app, _) = await hostWithTasks(tester, [
+      task('u1', 'done.zip', status: TransferStatus.done)
+        ..total = 10 * 1024 * 1024,
+    ]);
+
+    expect(find.text('10.0 MB'), findsOneWidget);
+    expect(find.textContaining('已完成 ·'), findsNothing);
+    app.dispose();
+  });
+
+  testWidgets('进行中、被跳过、失败与已完成分栏均按新任务在前排序', (tester) async {
+    tester.view.physicalSize = const Size(420, 2000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final (app, _) = await hostWithTasks(tester, [
+      task('a-old', 'active-old.zip', status: TransferStatus.running),
+      task('a-new', 'active-new.zip', status: TransferStatus.queued),
+      task('s-old', 'skipped-old.zip', status: TransferStatus.skipped),
+      task('s-new', 'skipped-new.zip', status: TransferStatus.skipped),
+      task('f-old', 'failed-old.zip', status: TransferStatus.failed),
+      task('f-new', 'failed-new.zip', status: TransferStatus.failed),
+      task('c-old', 'completed-old.zip', status: TransferStatus.done),
+      task('c-new', 'completed-new.zip', status: TransferStatus.done),
+    ]);
+
+    double top(String name) => tester.getTopLeft(find.text(name)).dy;
+
+    expect(top('active-new.zip'), lessThan(top('active-old.zip')));
+    expect(top('skipped-new.zip'), lessThan(top('skipped-old.zip')));
+    expect(top('failed-new.zip'), lessThan(top('failed-old.zip')));
+    expect(top('completed-new.zip'), lessThan(top('completed-old.zip')));
     app.dispose();
   });
 
@@ -1031,7 +1129,7 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('transfers-cancel-all')));
     await tester.pumpAndSettle();
-    expect(find.text('将取消并移除全部 1 个进行中的下载任务，并删除已下载的文件，继续吗？'), findsOneWidget);
+    expect(find.text('将取消并移除全部 1 个进行中的下载任务，继续吗？'), findsOneWidget);
     expect(find.text('同时删除文件'), findsNothing);
     await tester.tap(find.byKey(const ValueKey('transfer-delete-confirm')));
     await tester.pump();
@@ -1047,7 +1145,7 @@ void main() {
     app.dispose();
   });
 
-  testWidgets('下载已结束分栏：可清空记录并同时删除文件', (tester) async {
+  testWidgets('下载已完成分栏：可清空记录并同时删除文件', (tester) async {
     final dir = Directory.systemTemp.createTempSync('lancloud-clear-finished');
     addTearDown(() {
       try {
@@ -1218,11 +1316,11 @@ void main() {
     expect(find.byTooltip('安装'), findsNothing);
     // 打开 / 分享都收进 ⋯ 菜单，行内不再单独给按钮
     expect(find.byTooltip('打开'), findsNothing);
-    expect(find.byTooltip('分享'), findsNothing);
+    expect(find.byTooltip('分享').hitTestable(), findsNothing);
 
     await openRowMenu(tester, 'tool.apk');
-    // 完成项：打开 / 分享 / 删除下载记录 / 删除记录与文件，且不给「重试」
-    expect(menuLabels(tester), ['打开', '分享', '删除下载记录', '删除记录与文件']);
+    // 完成项：打开 / 分享 / 删除此条记录 / 删除记录与文件，且不给「重试」
+    expect(menuLabels(tester), ['打开', '分享', '删除此条记录', '删除记录与文件']);
 
     await tester.tap(menuItem('打开'));
     await tester.pumpAndSettle();
@@ -1247,6 +1345,68 @@ void main() {
     expect(openedNames, ['tool.apk', 'tool.apk']);
     // 点击条目只打开文件，不会进入多选
     expect(selectionBarOpacity(tester), 0);
+    app.dispose();
+  });
+
+  testWidgets('下载多选分享一次提交全部已完成文件，忽略不可分享任务', (tester) async {
+    final (app, manager) = await hostWithTasks(tester, [
+      task(
+        'd1',
+        'one.zip',
+        status: TransferStatus.done,
+        kind: TransferKind.download,
+      )..savedPath = '/tmp/one.zip',
+      task(
+        'd2',
+        'two.apk',
+        status: TransferStatus.done,
+        kind: TransferKind.download,
+      )..savedPath = '/tmp/two.apk',
+      task(
+        'd3',
+        'failed.zip',
+        status: TransferStatus.failed,
+        kind: TransferKind.download,
+      )..savedPath = '/tmp/failed.zip',
+    ]);
+    final shared = <MethodCall>[];
+    const shareChannel = MethodChannel('lancloud/share');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(shareChannel, (call) async {
+          shared.add(call);
+          return true;
+        });
+    addTearDown(
+      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(shareChannel, null),
+    );
+
+    await tester.tap(find.text('下载').hitTestable());
+    await tester.pumpAndSettle();
+    await tester.longPress(find.text('one.zip'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('two.apk'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('failed.zip'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.ancestor(
+        of: find.byTooltip('分享'),
+        matching: find.byType(BatchAction),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(shared, hasLength(1));
+    expect(shared.single.method, 'shareFiles');
+    expect(
+      shared.single.arguments['paths'],
+      unorderedEquals(['/tmp/one.zip', '/tmp/two.apk']),
+    );
+    expect(shared.single.arguments['subject'], '分享');
+    expect(selectionBarOpacity(tester), 0);
+    expect(manager.tasks, hasLength(3));
     app.dispose();
   });
 
@@ -1341,7 +1501,7 @@ void main() {
 
     await openRowMenu(tester, 'bad.zip');
     // 失败项：不给打开 / 分享，给重试
-    expect(menuLabels(tester), ['重试', '删除下载记录', '删除记录与文件']);
+    expect(menuLabels(tester), ['重试', '删除此条记录', '删除记录与文件']);
 
     // 这个任务没有可用的直链（等价于重启后重启下载）：retry 会改成提示重新发起，
     // 正好用来确认菜单确实调到了 TransferManager.retry
@@ -1402,6 +1562,73 @@ void main() {
     expect(menuLabels(tester), ['删除此条记录']);
     await tester.tapAt(const Offset(5, 5));
     await tester.pumpAndSettle();
+    app.dispose();
+  });
+
+  testWidgets('被跳过的上传单独分栏，菜单可仍然上传或删除记录', (tester) async {
+    final (app, manager) = await hostWithTasks(tester, [
+      task('u1', 'large.zip', status: TransferStatus.skipped)
+        ..error = '此类文件不允许上传'
+        ..total = 10 * 1024 * 1024,
+    ]);
+
+    expect(find.text('被跳过'), findsWidgets);
+    expect(find.text('此类文件不允许上传'), findsOneWidget);
+    expect(find.textContaining('10.0 MB'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('transfers-clear-skipped')),
+      findsOneWidget,
+    );
+
+    await openRowMenu(tester, 'large.zip');
+    expect(menuLabels(tester), ['重命名', '仍然上传', '删除此条记录']);
+    await tester.tapAt(const Offset(5, 5));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('transfers-clear-skipped')));
+    await tester.pumpAndSettle();
+    expect(find.text('将清空全部 1 条被跳过的上传任务记录，继续吗？'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('transfer-delete-confirm')));
+    await tester.pumpAndSettle();
+    expect(manager.tasks, isEmpty);
+    expect(find.text('large.zip'), findsNothing);
+    app.dispose();
+  });
+
+  testWidgets('被跳过副标题跟随界面语言切换', (tester) async {
+    final app = AppEnvironment();
+    final manager = buildTransferManagerForEnvironment(app);
+    manager.tasks.add(
+      task('u1', 'unsupported.bin', status: TransferStatus.skipped)
+        ..error = const TransferIssue(TransferIssueCode.skippedUnsupported)
+            .encode(),
+    );
+
+    Future<void> pumpLocale(Locale locale) async {
+      await tester.pumpWidget(
+        _transferTestHost(
+          app: app,
+          manager: manager,
+          child: MaterialApp(
+            localizationsDelegates: appLocalizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            locale: locale,
+            home: const TransfersPage(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.text(locale.languageCode == 'zh' ? '上传' : 'Upload').hitTestable(),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    await pumpLocale(const Locale('zh'));
+    expect(find.text('此类文件不允许上传'), findsOneWidget);
+
+    await pumpLocale(const Locale('en'));
+    expect(find.text('This type of file cannot be uploaded'), findsOneWidget);
     app.dispose();
   });
 
@@ -1641,5 +1868,540 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pumpAndSettle();
     smallApp.dispose();
+  });
+
+  testWidgets('待开始上传单独分栏，行内提供上传按钮与目录/重命名/取消菜单', (tester) async {
+    final (app, _) = await hostWithTasks(tester, [
+      task('u1', 'waiting.txt', status: TransferStatus.pending)..total = 12,
+    ]);
+
+    expect(find.text('待开始'), findsWidgets);
+    expect(find.textContaining('12 B'), findsOneWidget);
+    final uploadButton = find.byKey(const ValueKey('upload-start-u1'));
+    expect(uploadButton, findsOneWidget);
+    expect(
+      find.descendant(
+        of: uploadButton,
+        matching: find.byIcon(app_icons.Icons.upload),
+      ),
+      findsOneWidget,
+    );
+
+    await openRowMenu(tester, 'waiting.txt');
+    expect(menuLabels(tester), ['重命名', '修改上传目录', '取消上传']);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('m3e-menu-card')),
+        matching: find.byIcon(app_icons.Icons.drive_file_move_outline),
+      ),
+      findsOneWidget,
+    );
+    await tester.tapAt(const Offset(5, 5));
+    await tester.pumpAndSettle();
+    app.dispose();
+  });
+
+  testWidgets('清空待开始只移除待开始任务，不影响被跳过记录', (tester) async {
+    final (app, manager) = await hostWithTasks(tester, [
+      task('u1', 'pending.txt', status: TransferStatus.pending),
+      task('u2', 'skipped.txt', status: TransferStatus.skipped),
+    ]);
+
+    await tester.tap(find.byKey(const ValueKey('transfers-clear-pending')));
+    await tester.pumpAndSettle();
+    expect(find.text('清空待开始上传'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('transfer-delete-confirm')));
+    await tester.pumpAndSettle();
+
+    expect(manager.tasks.map((task) => task.id), ['u2']);
+    expect(find.text('pending.txt'), findsNothing);
+    expect(find.text('skipped.txt'), findsOneWidget);
+    app.dispose();
+  });
+
+  testWidgets('待开始分栏按钮可一次启动全部待开始任务', (tester) async {
+    final pendingOne =
+        TransferTask(
+            id: 'u1',
+            kind: TransferKind.upload,
+            name: 'one.txt',
+            accountUid: '',
+            streamFactory: () => Stream<List<int>>.value(const <int>[1]),
+            sourceSize: 1,
+          )
+          ..status = TransferStatus.pending
+          ..total = 1;
+    final pendingTwo =
+        TransferTask(
+            id: 'u2',
+            kind: TransferKind.upload,
+            name: 'two.txt',
+            accountUid: '',
+            streamFactory: () => Stream<List<int>>.value(const <int>[1]),
+            sourceSize: 1,
+          )
+          ..status = TransferStatus.pending
+          ..total = 1;
+    final (app, _) = await hostWithTasks(tester, [pendingOne, pendingTwo]);
+    app.settingsState.store.maxUploads = 0;
+    app.accountState.store.accounts.add(
+      Account(uid: 'u1', cookie: 'phpdisk_info=x'),
+    );
+    app.accountState.store.activeUid = 'u1';
+
+    await tester.tap(find.byKey(const ValueKey('transfers-upload-pending')));
+    await tester.pumpAndSettle();
+
+    expect(pendingOne.status, TransferStatus.queued);
+    expect(pendingTwo.status, TransferStatus.queued);
+    app.dispose();
+  });
+
+  testWidgets('上传多选栏为上传/改名/目录/删除/重试，下载多选栏为分享/删除/重试', (tester) async {
+    final (app, _) = await hostWithTasks(tester, [
+      task('u1', 'waiting.txt', status: TransferStatus.pending),
+      task(
+        'd1',
+        'download.zip',
+        status: TransferStatus.done,
+        kind: TransferKind.download,
+      )..savedPath = '/tmp/download.zip',
+    ]);
+
+    await tester.longPress(find.text('waiting.txt'));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widgetList<BatchAction>(find.byType(BatchAction))
+          .map((action) => action.label)
+          .toList(),
+      ['上传', '重命名', '修改上传目录', '删除', '重试'],
+    );
+    expect(
+      find.byIcon(app_icons.Icons.drive_file_move_outline),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byTooltip('退出多选'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('下载').hitTestable());
+    await tester.pumpAndSettle();
+    await tester.longPress(find.text('download.zip'));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widgetList<BatchAction>(find.byType(BatchAction))
+          .map((action) => action.label)
+          .toList(),
+      ['分享', '删除', '重试'],
+    );
+    await tester.tap(find.byTooltip('退出多选'));
+    await tester.pumpAndSettle();
+    app.dispose();
+  });
+
+  testWidgets('Windows 下载多选栏不显示多文件分享', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    AppEnvironment? app;
+    try {
+      final (environment, _) = await hostWithTasks(tester, [
+        task(
+          'd1',
+          'download.zip',
+          status: TransferStatus.done,
+          kind: TransferKind.download,
+        )..savedPath = '/tmp/download.zip',
+      ]);
+      app = environment;
+      await tester.tap(find.text('下载').hitTestable());
+      await tester.pumpAndSettle();
+      await tester.longPress(find.text('download.zip'));
+      await tester.pumpAndSettle();
+
+      expect(
+        tester
+            .widgetList<BatchAction>(find.byType(BatchAction))
+            .map((action) => action.label)
+            .toList(),
+        ['删除', '重试'],
+      );
+      expect(find.byTooltip('分享'), findsNothing);
+
+      await tester.tap(find.byTooltip('退出多选'));
+      await tester.pumpAndSettle();
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+      app?.dispose();
+    }
+  });
+
+  testWidgets('批量重命名可返回配置，并在预览确认后一次修改任务名称', (tester) async {
+    final (app, manager) = await hostWithTasks(tester, [
+      task('u1', 'one_old.txt', status: TransferStatus.pending),
+      task('u2', 'two_old.txt', status: TransferStatus.pending),
+    ]);
+
+    await tester.longPress(find.text('one_old.txt'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('two_old.txt'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('重命名'));
+    await tester.pumpAndSettle();
+
+    final dialogTitle = tester.widget<Text>(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('批量重命名'),
+      ),
+    );
+    expect(dialogTitle.textAlign, TextAlign.start);
+
+    final regexTile = tester.widget<CheckboxListTile>(
+      find.ancestor(
+        of: find.text('正则表达式'),
+        matching: find.byType(CheckboxListTile),
+      ),
+    );
+    final caseTile = tester.widget<CheckboxListTile>(
+      find.ancestor(
+        of: find.text('区分大小写'),
+        matching: find.byType(CheckboxListTile),
+      ),
+    );
+    expect(regexTile.value, isFalse);
+    expect(caseTile.value, isFalse);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('upload-batch-rename-search')),
+      'old',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('upload-batch-rename-replacement')),
+      'new',
+    );
+    await tester.tap(find.byKey(const ValueKey('upload-batch-rename-preview')));
+    await tester.pump();
+
+    expect(find.byType(AnimatedSize), findsWidgets);
+    expect(
+      find.byKey(const ValueKey('upload-batch-rename-search')),
+      findsOneWidget,
+    );
+    expect(find.text('one_old.txt → one_new.txt'), findsOneWidget);
+
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('upload-batch-rename-search')),
+      findsNothing,
+    );
+    expect(find.text('one_old.txt → one_new.txt'), findsOneWidget);
+    expect(find.text('two_old.txt → two_new.txt'), findsOneWidget);
+    expect(
+      tester
+          .getSize(
+            find.byKey(const ValueKey('upload-batch-rename-preview-list')),
+          )
+          .height,
+      lessThan(300),
+    );
+    await tester.tap(find.byKey(const ValueKey('upload-batch-rename-back')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('upload-batch-rename-search')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('upload-batch-rename-preview')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('upload-batch-rename-confirm')));
+    await tester.pumpAndSettle();
+
+    expect(manager.tasks.map((task) => task.name).toSet(), {
+      'one_new.txt',
+      'two_new.txt',
+    });
+    expect(
+      manager.tasks.map((task) => task.status),
+      everyElement(TransferStatus.pending),
+    );
+    expect(selectionBarOpacity(tester), 0);
+    app.dispose();
+  });
+
+  testWidgets('单文件重命名预填当前名称并使用修改按钮', (tester) async {
+    final (app, manager) = await hostWithTasks(tester, [
+      task('u1', 'old.txt', status: TransferStatus.pending),
+    ]);
+
+    await openRowMenu(tester, 'old.txt');
+    await tester.tap(menuItem('重命名'));
+    await tester.pumpAndSettle();
+
+    final field = tester.widget<TextField>(
+      find.byKey(const ValueKey('upload-rename-field')),
+    );
+    expect(field.controller?.text, 'old.txt');
+    expect(find.byKey(const ValueKey('upload-rename-confirm')), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const ValueKey('upload-rename-field')),
+      'renamed.txt',
+    );
+    await tester.tap(find.byKey(const ValueKey('upload-rename-confirm')));
+    await tester.pumpAndSettle();
+
+    expect(manager.tasks.single.name, 'renamed.txt');
+    expect(manager.tasks.single.status, TransferStatus.pending);
+    expect(find.byType(SnackBar), findsNothing);
+    expect(
+      tester
+          .widget<Md3ListItem>(
+            find.ancestor(
+              of: find.text('renamed.txt'),
+              matching: find.byType(Md3ListItem),
+            ),
+          )
+          .pulse,
+      1,
+    );
+    app.dispose();
+  });
+
+  testWidgets('上传 Tab 只显示当前账号任务，切账号后立即换组', (tester) async {
+    final (app, _) = await hostWithTasks(tester, [
+      task(
+        'a1',
+        'account-a.txt',
+        status: TransferStatus.pending,
+        accountUid: 'a',
+      ),
+      task(
+        'b1',
+        'account-b.txt',
+        status: TransferStatus.pending,
+        accountUid: 'b',
+      ),
+    ]);
+    app.accountState.store.accounts.addAll([
+      Account(uid: 'a', cookie: 'cookie-a'),
+      Account(uid: 'b', cookie: 'cookie-b'),
+    ]);
+
+    app.accountState.store.activeUid = 'a';
+    app.accountState.notifyAccountChanged();
+    await tester.pumpAndSettle();
+    expect(find.text('account-a.txt'), findsOneWidget);
+    expect(find.text('account-b.txt'), findsNothing);
+
+    app.accountState.store.activeUid = 'b';
+    app.accountState.notifyAccountChanged();
+    await tester.pumpAndSettle();
+    expect(find.text('account-a.txt'), findsNothing);
+    expect(find.text('account-b.txt'), findsOneWidget);
+    app.dispose();
+  });
+
+  testWidgets('待开始分栏的「全部上传」只启动当前账号任务', (tester) async {
+    final accountA =
+        TransferTask(
+            id: 'a1',
+            kind: TransferKind.upload,
+            name: 'account-a.txt',
+            accountUid: 'a',
+            streamFactory: () => Stream<List<int>>.value(const [1]),
+            sourceSize: 1,
+          )
+          ..status = TransferStatus.pending
+          ..total = 1;
+    final accountB =
+        TransferTask(
+            id: 'b1',
+            kind: TransferKind.upload,
+            name: 'account-b.txt',
+            accountUid: 'b',
+            streamFactory: () => Stream<List<int>>.value(const [1]),
+            sourceSize: 1,
+          )
+          ..status = TransferStatus.pending
+          ..total = 1;
+    final (app, _) = await hostWithTasks(tester, [accountA, accountB]);
+    app.settingsState.store.maxUploads = 0;
+    app.accountState.store.accounts.addAll([
+      Account(uid: 'a', cookie: 'cookie-a'),
+      Account(uid: 'b', cookie: 'cookie-b'),
+    ]);
+    app.accountState.store.activeUid = 'a';
+    app.accountState.notifyAccountChanged();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('transfers-upload-pending')));
+    await tester.pumpAndSettle();
+
+    expect(accountA.status, TransferStatus.queued);
+    expect(accountB.status, TransferStatus.pending);
+    app.dispose();
+  });
+
+  testWidgets('上传 Tab 的进行中分栏排在待开始前面', (tester) async {
+    final (app, _) = await hostWithTasks(tester, [
+      task('running', 'running.txt', status: TransferStatus.running),
+      task('pending', 'pending.txt', status: TransferStatus.pending),
+    ]);
+
+    expect(
+      tester.getTopLeft(find.text('进行中')).dy,
+      lessThan(tester.getTopLeft(find.text('待开始')).dy),
+    );
+    app.dispose();
+  });
+
+  testWidgets('待开始菜单可修改上传目录并持久化目录名', (tester) async {
+    final client = _FolderPickerClient();
+    final pending = task(
+      'u1',
+      'waiting.txt',
+      status: TransferStatus.pending,
+      accountUid: 'u1',
+      folderId: 'old',
+      folderName: '旧目录',
+    )..total = 12;
+    final (app, manager) = await hostWithTasks(tester, [
+      pending,
+    ], uploadClient: client);
+    app.accountState.store.accounts.add(
+      Account(uid: 'u1', cookie: 'cookie-u1'),
+    );
+    app.accountState.store.activeUid = 'u1';
+    app.accountState.notifyAccountChanged();
+    await tester.pumpAndSettle();
+
+    await openRowMenu(tester, 'waiting.txt');
+    await tester.tap(menuItem('修改上传目录'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('根目录'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('上传到此'));
+    await tester.pumpAndSettle();
+
+    expect(manager.tasks.single.folderId, '-1');
+    expect(manager.tasks.single.folderName, '');
+    expect(find.text('上传至 根目录 · 12 B'), findsOneWidget);
+    expect(find.byType(SnackBar), findsNothing);
+    expect(
+      tester
+          .widget<Md3ListItem>(
+            find.ancestor(
+              of: find.text('waiting.txt'),
+              matching: find.byType(Md3ListItem),
+            ),
+          )
+          .pulse,
+      1,
+    );
+    app.dispose();
+  });
+
+  testWidgets('批量修改上传目录会作用于所有选中的待开始任务', (tester) async {
+    final client = _FolderPickerClient();
+    final first = task(
+      'u1',
+      'one.txt',
+      status: TransferStatus.pending,
+      accountUid: 'u1',
+      folderId: 'old',
+      folderName: '旧目录',
+    );
+    final second = task(
+      'u2',
+      'two.txt',
+      status: TransferStatus.pending,
+      accountUid: 'u1',
+      folderId: 'other',
+      folderName: '另一个目录',
+    );
+    final (app, manager) = await hostWithTasks(tester, [
+      first,
+      second,
+    ], uploadClient: client);
+    app.accountState.store.accounts.add(
+      Account(uid: 'u1', cookie: 'cookie-u1'),
+    );
+    app.accountState.store.activeUid = 'u1';
+    app.accountState.notifyAccountChanged();
+    await tester.pumpAndSettle();
+
+    await tester.longPress(find.text('one.txt'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('two.txt'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.ancestor(
+        of: find.byTooltip('修改上传目录'),
+        matching: find.byType(BatchAction),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('上传到此'));
+    await tester.pumpAndSettle();
+
+    expect(manager.tasks.map((task) => task.folderId), everyElement('-1'));
+    expect(selectionBarOpacity(tester), 0);
+    app.dispose();
+  });
+
+  testWidgets('批量上传只启动选中的待开始任务', (tester) async {
+    final pendingOne =
+        TransferTask(
+            id: 'u1',
+            kind: TransferKind.upload,
+            name: 'one.txt',
+            accountUid: '',
+            streamFactory: () => Stream<List<int>>.value(const <int>[1]),
+            sourceSize: 1,
+          )
+          ..status = TransferStatus.pending
+          ..total = 1;
+    final pendingTwo =
+        TransferTask(
+            id: 'u2',
+            kind: TransferKind.upload,
+            name: 'two.txt',
+            accountUid: '',
+            streamFactory: () => Stream<List<int>>.value(const <int>[1]),
+            sourceSize: 1,
+          )
+          ..status = TransferStatus.pending
+          ..total = 1;
+    final skipped = task('u3', 'skip.txt', status: TransferStatus.skipped);
+    final (app, manager) = await hostWithTasks(tester, [
+      pendingOne,
+      pendingTwo,
+      skipped,
+    ]);
+    app.settingsState.store.maxUploads = 0;
+    app.accountState.store.accounts.add(
+      Account(uid: 'u1', cookie: 'phpdisk_info=x'),
+    );
+    app.accountState.store.activeUid = 'u1';
+
+    await tester.longPress(find.text('one.txt'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('two.txt'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('skip.txt'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.ancestor(
+        of: find.byTooltip('上传'),
+        matching: find.byType(BatchAction),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(pendingOne.status, TransferStatus.queued);
+    expect(pendingTwo.status, TransferStatus.queued);
+    expect(skipped.status, TransferStatus.skipped);
+    expect(selectionBarOpacity(tester), 0);
+    app.dispose();
   });
 }

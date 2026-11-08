@@ -23,6 +23,9 @@ class TransferConnectionSettingsState {
   String get apiHost => store.apiHost;
   String get userAgent => store.userAgent;
   String get uploadPath => store.uploadPath;
+  bool get skipOversizeUploads => store.skipOversizeUploads;
+  bool get skipUnsupportedUploads => store.skipUnsupportedUploads;
+  bool get autoStartUploads => store.autoStartUploads;
 
   Future<void> setRequestInterval(int value) async {
     await store.setRequestInterval(value);
@@ -60,6 +63,21 @@ class TransferConnectionSettingsState {
   Future<void> setUploadPath(String value) async {
     await store.setUploadPath(value);
     LanzouClient.uploadPath = value;
+    revision.value += 1;
+  }
+
+  Future<void> setSkipOversizeUploads(bool value) async {
+    await store.setSkipOversizeUploads(value);
+    revision.value += 1;
+  }
+
+  Future<void> setSkipUnsupportedUploads(bool value) async {
+    await store.setSkipUnsupportedUploads(value);
+    revision.value += 1;
+  }
+
+  Future<void> setAutoStartUploads(bool value) async {
+    await store.setAutoStartUploads(value);
     revision.value += 1;
   }
 }

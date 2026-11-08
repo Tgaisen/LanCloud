@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/ui/common.dart';
+import 'package:lancloud/ui/app_icons.dart' as app_icons;
 
 /// 根目录 + [count] 层长名称目录，用来把路径栏撑到需要横向滚动。
 List<PathSegment> segments(int count) => [
@@ -79,5 +80,37 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('很长的目录名称2'), findsNothing);
     expect(find.text('很长的目录名称1'), findsNothing);
+  });
+
+  testWidgets('路径按钮始终透明，当前项强调整体但不再使用容器色', (tester) async {
+    await tester.pumpWidget(host(segments(1)));
+    await tester.pumpAndSettle();
+
+    final scheme = Theme.of(tester.element(find.byType(PathBar))).colorScheme;
+    final currentText = tester.widget<Text>(find.text('很长的目录名称0'));
+    final parentText = tester.widget<Text>(find.text('根目录'));
+    expect(currentText.style?.color, scheme.onSurface);
+    expect(currentText.style?.fontWeight, FontWeight.w600);
+    expect(parentText.style?.color, scheme.onSurfaceVariant);
+
+    for (final label in ['根目录', '很长的目录名称0']) {
+      final material = tester.widget<Material>(
+        find
+            .descendant(
+              of: find.ancestor(
+                of: find.text(label),
+                matching: find.byType(PathChip),
+              ),
+              matching: find.byType(Material),
+            )
+            .first,
+      );
+      expect(material.color, Colors.transparent);
+    }
+
+    final arrow = tester.widget<Icon>(
+      find.byIcon(app_icons.Icons.chevron_right),
+    );
+    expect(arrow.size, 18);
   });
 }

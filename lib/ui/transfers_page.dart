@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart' hide Icons;
 
+import '../core/account_state.dart';
+import '../core/api/lanzou_client.dart';
+import '../core/api/lanzou_client_registry.dart';
 import '../core/file_open_result.dart';
 import '../core/navigation_appearance_settings_state.dart';
 import '../core/navigation_state.dart';
@@ -12,13 +15,17 @@ import '../core/system_open.dart';
 import '../core/system_share.dart';
 import '../core/transfer/transfer_manager.dart';
 import '../core/transfer/transfer_manager_provider.dart';
+import '../core/transfer/transfer_issue.dart';
+import '../core/transfer/upload_rename.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
+import 'drive_page.dart';
 import 'file_open_feedback.dart';
 import 'm3e.dart';
 import 'reduce_motion.dart';
 import 'scroll_tint.dart';
+import 'transfer_rename_dialogs.dart';
 
 /// 传输条目 ⋯ 菜单里的动作。
 ///
@@ -30,12 +37,22 @@ enum _TransferMenuAction {
   pause,
   resume,
   cancel,
+  rename,
+  changeFolder,
   retry,
+  uploadAnyway,
   removeRecord,
   removeRecordAndFile,
 }
 
-enum TransferDeleteReason { selected, cancelActive, clearFinished }
+enum TransferDeleteReason {
+  selected,
+  cancelActive,
+  clearCompleted,
+  clearFailed,
+  clearSkipped,
+  clearPending,
+}
 
 class TransferDeleteResult {
   const TransferDeleteResult({required this.deleteFiles});
@@ -56,7 +73,10 @@ Future<TransferDeleteResult?> showTransferDeleteDialog(
   final title = switch (reason) {
     TransferDeleteReason.selected => l10n.transferDeleteConfirmTitle,
     TransferDeleteReason.cancelActive => l10n.cancelInProgressTransfers,
-    TransferDeleteReason.clearFinished => l10n.clearFinishedTransfers,
+    TransferDeleteReason.clearCompleted => l10n.clearFinishedTransfers,
+    TransferDeleteReason.clearFailed => l10n.clearFailedTransfers,
+    TransferDeleteReason.clearSkipped => l10n.clearSkippedUploads,
+    TransferDeleteReason.clearPending => l10n.clearPendingUploads,
   };
   final message = switch (reason) {
     TransferDeleteReason.selected => l10n.transferDeleteConfirmMessage(count),
@@ -64,15 +84,25 @@ Future<TransferDeleteResult?> showTransferDeleteDialog(
       kind == TransferKind.upload
           ? l10n.cancelAllUploadsConfirmMessage(count)
           : l10n.cancelAllDownloadsConfirmMessage(count),
-    TransferDeleteReason.clearFinished =>
+    TransferDeleteReason.clearCompleted =>
       kind == TransferKind.upload
           ? l10n.clearFinishedUploadsConfirmMessage(count)
           : l10n.clearFinishedDownloadsConfirmMessage(count),
+    TransferDeleteReason.clearFailed => l10n.clearFailedConfirmMessage(count),
+    TransferDeleteReason.clearSkipped => l10n.clearSkippedUploadsConfirmMessage(
+      count,
+    ),
+    TransferDeleteReason.clearPending => l10n.clearPendingUploadsConfirmMessage(
+      count,
+    ),
   };
   final confirmLabel = switch (reason) {
     TransferDeleteReason.selected => l10n.delete,
     TransferDeleteReason.cancelActive => l10n.cancelAll,
-    TransferDeleteReason.clearFinished => l10n.clearAll,
+    TransferDeleteReason.clearCompleted => l10n.clearAll,
+    TransferDeleteReason.clearFailed => l10n.clearAll,
+    TransferDeleteReason.clearSkipped => l10n.clearAll,
+    TransferDeleteReason.clearPending => l10n.clearAll,
   };
   var deleteFiles = false;
   return showDialog<TransferDeleteResult>(
@@ -133,10 +163,18 @@ bool _isInProgressTask(TransferTask task) =>
     task.status == TransferStatus.paused ||
     task.status == TransferStatus.saving;
 
-bool _isFinishedTask(TransferTask task) =>
-    task.status == TransferStatus.done ||
-    task.status == TransferStatus.failed ||
-    task.status == TransferStatus.canceled;
+bool _isCompletedTask(TransferTask task) => task.status == TransferStatus.done;
+
+bool _isFailedTask(TransferTask task) => task.status == TransferStatus.failed;
+
+List<TransferTask> _newestFirst(Iterable<TransferTask> tasks) =>
+    tasks.toList().reversed.toList();
+
+bool _isSkippedUpload(TransferTask task) =>
+    task.kind == TransferKind.upload && task.status == TransferStatus.skipped;
+
+bool _isPendingUpload(TransferTask task) =>
+    task.kind == TransferKind.upload && task.status == TransferStatus.pending;
 
 bool _isPausableDownload(TransferTask task) =>
     task.kind == TransferKind.download &&
@@ -145,10 +183,13 @@ bool _isPausableDownload(TransferTask task) =>
     !task.exporting;
 
 class TransfersPage extends ConsumerStatefulWidget {
-  const TransfersPage({super.key, this.openFile});
+  const TransfersPage({super.key, this.openFile, this.activeUploadClient});
 
   /// 打开已下载文件；默认交给系统「打开」，测试注入以免真的调起系统应用。
   final TransferFileOpener? openFile;
+
+  /// 修改上传目录时使用的当前账号客户端；测试可注入以避免网络。
+  final LanzouClient Function()? activeUploadClient;
 
   @override
   ConsumerState<TransfersPage> createState() => _TransfersPageState();
@@ -186,6 +227,9 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
 
   /// 正在播放删除动画的记录（动画播完再真正移除）
   final Set<String> _removing = {};
+
+  /// 单个上传任务修改成功后的高亮闪烁计数。
+  final Map<String, int> _pulse = {};
 
   /// 外壳导航状态：dispose 里不能再读 context，退出多选要用它。
   late final NavigationState _navigation;
@@ -227,7 +271,23 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
   TransferKind get _kind =>
       _tab == 0 ? TransferKind.upload : TransferKind.download;
 
-  List<TransferTask> _tasksOf(TransferManager manager) => manager.byKind(_kind);
+  String? get _activeUploadUid =>
+      ref.read(accountStateProvider).store.activeUid;
+
+  List<TransferTask> _tasksOf(TransferManager manager) => switch (_kind) {
+    TransferKind.upload => manager.uploadsForAccount(_activeUploadUid),
+    TransferKind.download => manager.byKind(TransferKind.download),
+  };
+
+  LanzouClient? _activeUploadClient() {
+    final injected = widget.activeUploadClient;
+    if (injected != null) return injected();
+    final account = ref.read(accountStateProvider).store.active;
+    if (account == null) return null;
+    return ref
+        .read(lanzouClientRegistryProvider)
+        .clientFor(account.uid, cookie: account.cookie);
+  }
 
   void _enterSelection({String? taskId}) {
     final wasSelecting = _selecting;
@@ -292,6 +352,11 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
     if (_selected.isEmpty) _exitSelection();
   }
 
+  void _pulseTask(String id) {
+    if (!mounted) return;
+    setState(() => _pulse[id] = (_pulse[id] ?? 0) + 1);
+  }
+
   Future<void> _cancelActive() async {
     final manager = ref.read(transferManagerProvider);
     final tasks = _tasksOf(manager)
@@ -311,22 +376,229 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
     if (_kind == TransferKind.download) await _deleteTaskFiles(tasks);
   }
 
-  Future<void> _clearFinishedSection() async {
+  Future<void> _clearCompletedSection() async {
     final manager = ref.read(transferManagerProvider);
     final tasks = _tasksOf(manager)
-        .where(_isFinishedTask)
+        .where(_isCompletedTask)
         .toList(growable: false);
     if (tasks.isEmpty) return;
     final result = await showTransferDeleteDialog(
       context,
       kind: _kind,
       count: tasks.length,
-      reason: TransferDeleteReason.clearFinished,
+      reason: TransferDeleteReason.clearCompleted,
       showDeleteFiles: _kind == TransferKind.download,
     );
     if (result == null || !mounted) return;
-    final removed = manager.clearFinished(_kind);
+    final removed = manager.clearCompleted(
+      _kind,
+      uploadAccountUid: _activeUploadUid,
+    );
     if (result.deleteFiles) await _deleteTaskFiles(removed);
+  }
+
+  Future<void> _clearFailedSection() async {
+    final manager = ref.read(transferManagerProvider);
+    final tasks = _tasksOf(manager)
+        .where(_isFailedTask)
+        .toList(growable: false);
+    if (tasks.isEmpty) return;
+    final result = await showTransferDeleteDialog(
+      context,
+      kind: _kind,
+      count: tasks.length,
+      reason: TransferDeleteReason.clearFailed,
+      showDeleteFiles: false,
+    );
+    if (result == null || !mounted) return;
+    manager.clearFailed(_kind, uploadAccountUid: _activeUploadUid);
+  }
+
+  Future<void> _clearSkippedSection() async {
+    final manager = ref.read(transferManagerProvider);
+    final tasks = _tasksOf(manager)
+        .where(_isSkippedUpload)
+        .toList(growable: false);
+    if (tasks.isEmpty) return;
+    final result = await showTransferDeleteDialog(
+      context,
+      kind: TransferKind.upload,
+      count: tasks.length,
+      reason: TransferDeleteReason.clearSkipped,
+      showDeleteFiles: false,
+    );
+    if (result == null || !mounted) return;
+    manager.clearSkippedUploads(uploadAccountUid: _activeUploadUid);
+  }
+
+  Future<void> _clearPendingSection() async {
+    final manager = ref.read(transferManagerProvider);
+    final tasks = _tasksOf(manager)
+        .where(_isPendingUpload)
+        .toList(growable: false);
+    if (tasks.isEmpty) return;
+    final result = await showTransferDeleteDialog(
+      context,
+      kind: TransferKind.upload,
+      count: tasks.length,
+      reason: TransferDeleteReason.clearPending,
+      showDeleteFiles: false,
+    );
+    if (result == null || !mounted) return;
+    manager.clearPendingUploads(uploadAccountUid: _activeUploadUid);
+  }
+
+  Future<void> _renameTask(TransferTask task) async {
+    final name = await showSingleUploadRenameDialog(context, task: task);
+    if (name == null || !mounted) return;
+    final applied = ref.read(transferManagerProvider).renameUploads([
+      UploadRenameChange(id: task.id, originalName: task.name, newName: name),
+    ]);
+    if (applied == 0 || !mounted) return;
+    _pulseTask(task.id);
+  }
+
+  Future<void> _renameSelected() async {
+    final tasks = ref
+        .read(transferManagerProvider)
+        .tasks
+        .where(
+          (task) =>
+              _selected.contains(task.id) &&
+              (task.status == TransferStatus.pending ||
+                  task.status == TransferStatus.skipped),
+        )
+        .toList(growable: false);
+    if (tasks.isEmpty) return;
+    final changes = await showBatchUploadRenameDialog(context, tasks: tasks);
+    if (changes == null || !mounted) return;
+    final applied = ref.read(transferManagerProvider).renameUploads(changes);
+    _exitSelection();
+    if (applied == 0 || !mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(context.l10n.renamedUploads(applied))),
+    );
+  }
+
+  Future<void> _changeUploadFolder(TransferTask task) async {
+    if (!_isPendingUpload(task)) return;
+    final changed = await _changeUploadFolders([
+      task,
+    ], showUpdatedSnackbar: false);
+    if (changed) _pulseTask(task.id);
+  }
+
+  Future<void> _changeSelectedUploadFolder() async {
+    final manager = ref.read(transferManagerProvider);
+    final tasks = _tasksOf(manager)
+        .where((task) => _selected.contains(task.id) && _isPendingUpload(task))
+        .toList(growable: false);
+    if (tasks.isEmpty) return;
+    final changed = await _changeUploadFolders(tasks);
+    if (changed && mounted) _exitSelection();
+  }
+
+  Future<bool> _changeUploadFolders(
+    List<TransferTask> tasks, {
+    bool showUpdatedSnackbar = true,
+  }) async {
+    final account = ref.read(accountStateProvider).store.active;
+    if (account == null || tasks.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(context.l10n.notLoggedIn)));
+      }
+      return false;
+    }
+    final client = _activeUploadClient();
+    if (client == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(context.l10n.notLoggedIn)));
+      }
+      return false;
+    }
+    final currentFolders = {for (final task in tasks) task.folderId};
+    final initialFolderId = currentFolders.length == 1
+        ? currentFolders.single
+        : '-1';
+    final picked = await showFolderPicker(
+      context,
+      client: client,
+      initialFolderId: initialFolderId,
+      confirmLabel: context.l10n.uploadHere,
+    );
+    if (picked == null || !mounted) return false;
+    final changed = ref
+        .read(transferManagerProvider)
+        .movePendingUploads(
+          ids: tasks.map((task) => task.id),
+          folderId: picked.folderId,
+          folderName: picked.folderId == '-1' ? '' : picked.name,
+          accountUid: account.uid,
+        );
+    if (changed == 0 || !mounted) return false;
+    if (showUpdatedSnackbar) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.updatedUploadFolders(changed))),
+      );
+    }
+    return true;
+  }
+
+  void _uploadSelected() {
+    final ids = ref
+        .read(transferManagerProvider)
+        .tasks
+        .where(
+          (task) =>
+              _selected.contains(task.id) &&
+              task.status == TransferStatus.pending,
+        )
+        .map((task) => task.id)
+        .toList(growable: false);
+    if (ids.isEmpty) return;
+    _exitSelection();
+    ref.read(transferManagerProvider).startUploads(ids);
+  }
+
+  void _selectSection(Iterable<String> ids) {
+    if (!_selecting) return;
+    final values = ids.toSet();
+    if (values.isEmpty) return;
+    setState(() => _selected.addAll(values));
+  }
+
+  void _uploadPendingSection() {
+    final ids = ref
+        .read(transferManagerProvider)
+        .uploadsForAccount(_activeUploadUid)
+        .where(_isPendingUpload)
+        .map((task) => task.id)
+        .toList(growable: false);
+    if (ids.isEmpty) return;
+    ref.read(transferManagerProvider).startUploads(ids);
+  }
+
+  Future<void> _shareSelected() async {
+    final tasks = ref
+        .read(transferManagerProvider)
+        .tasks
+        .where(
+          (task) =>
+              _selected.contains(task.id) &&
+              task.kind == TransferKind.download &&
+              task.status == TransferStatus.done &&
+              (task.savedPath?.isNotEmpty ?? false),
+        )
+        .toList(growable: false);
+    if (tasks.isEmpty) return;
+    final paths = <String>{for (final task in tasks) ?task.savedPath};
+    if (paths.isEmpty || !mounted) return;
+    final subject = context.l10n.share;
+    final mime = tasks.length == 1 ? _shareMimeFor(tasks.single.name) : null;
+    _exitSelection();
+    await SystemShare.shareFiles(paths, subject: subject, mime: mime);
   }
 
   void _pauseAll() {
@@ -454,6 +726,8 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
     final resolving = task.status == TransferStatus.resolving;
     final resuming = task.status == TransferStatus.resuming;
     final paused = task.status == TransferStatus.paused;
+    final skipped = _isSkippedUpload(task);
+    final pending = _isPendingUpload(task);
     final active =
         task.status == TransferStatus.queued ||
         task.status == TransferStatus.running;
@@ -490,6 +764,24 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
             label: l10n.retry,
             icon: Icons.refresh,
           ),
+        if (pending || skipped)
+          M3eMenuItem(
+            value: _TransferMenuAction.rename,
+            label: l10n.rename,
+            icon: Icons.input_field,
+          ),
+        if (pending)
+          M3eMenuItem(
+            value: _TransferMenuAction.changeFolder,
+            label: l10n.changeUploadFolder,
+            icon: Icons.drive_file_move_outline,
+          ),
+        if (skipped)
+          M3eMenuItem(
+            value: _TransferMenuAction.uploadAnyway,
+            label: l10n.uploadAnyway,
+            icon: Icons.upload,
+          ),
         if (task.kind == TransferKind.download && active)
           M3eMenuItem(
             value: _TransferMenuAction.pause,
@@ -509,14 +801,18 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
             label: l10n.cancelDownload,
             icon: Icons.close,
           ),
-        M3eMenuItem(
-          value: _TransferMenuAction.removeRecord,
-          // 下载任务叫「删除下载记录」；上传没有本地文件语义，沿用「删除此条记录」
-          label: task.kind == TransferKind.download
-              ? l10n.deleteDownloadRecord
-              : l10n.deleteRecord,
-          icon: Icons.playlist_remove,
-        ),
+        if (pending)
+          M3eMenuItem(
+            value: _TransferMenuAction.cancel,
+            label: l10n.cancelUpload,
+            icon: Icons.close,
+          )
+        else
+          M3eMenuItem(
+            value: _TransferMenuAction.removeRecord,
+            label: l10n.deleteRecord,
+            icon: Icons.playlist_remove,
+          ),
         if (task.kind == TransferKind.download &&
             stopped &&
             path != null &&
@@ -561,8 +857,19 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
         }
       case _TransferMenuAction.cancel:
         manager.cancel(task.id);
+      case _TransferMenuAction.rename:
+        await _renameTask(task);
+      case _TransferMenuAction.changeFolder:
+        await _changeUploadFolder(task);
       case _TransferMenuAction.retry:
         final message = await manager.retry(task.id);
+        if (!mounted) return;
+        if (message != null) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(message)));
+        }
+      case _TransferMenuAction.uploadAnyway:
+        final message = await manager.uploadSkipped(task.id);
         if (!mounted) return;
         if (message != null) {
           ScaffoldMessenger.of(context)
@@ -582,7 +889,12 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
     setState(() => _removing.add(task.id));
     await Future<void>.delayed(const Duration(milliseconds: 220));
     // 动画期间页面可能已经被移出树（比如返回了上一页）：记录照删
-    if (mounted) setState(() => _removing.remove(task.id));
+    if (mounted) {
+      setState(() {
+        _removing.remove(task.id);
+        _pulse.remove(task.id);
+      });
+    }
     manager.removeTasks([task.id]);
     // 文件删除放最后、不挡动画，失败也静默（和批量删除同一个口径）
     if (deleteFile) unawaited(_deleteTaskFile(task));
@@ -604,14 +916,18 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final accountState = ref.watch(accountStateProvider);
     final appearance = ref.watch(navigationAppearanceSettingsStateProvider);
     final manager = ref.watch(transferManagerProvider);
     return ListenableBuilder(
-      listenable: appearance.revision,
+      listenable: accountState,
       builder: (context, _) => ListenableBuilder(
-        listenable: manager,
-        builder: (context, _) =>
-            _buildPage(context, appearance.hideTopBar, _navigation, manager),
+        listenable: appearance.revision,
+        builder: (context, _) => ListenableBuilder(
+          listenable: manager,
+          builder: (context, _) =>
+              _buildPage(context, appearance.hideTopBar, _navigation, manager),
+        ),
       ),
     );
   }
@@ -628,6 +944,36 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
         MediaQuery.paddingOf(context).top + kToolbarHeight + 58;
     final tasks = _tasksOf(manager);
     final selectedCount = _selected.length;
+    final uploadTab = _kind == TransferKind.upload;
+    final pendingCount = uploadTab
+        ? tasks
+              .where(
+                (task) =>
+                    _selected.contains(task.id) &&
+                    task.status == TransferStatus.pending,
+              )
+              .length
+        : 0;
+    final renameCount = uploadTab
+        ? tasks
+              .where(
+                (task) =>
+                    _selected.contains(task.id) &&
+                    (task.status == TransferStatus.pending ||
+                        task.status == TransferStatus.skipped),
+              )
+              .length
+        : 0;
+    final shareCount = !uploadTab
+        ? tasks
+              .where(
+                (task) =>
+                    _selected.contains(task.id) &&
+                    task.status == TransferStatus.done &&
+                    (task.savedPath?.isNotEmpty ?? false),
+              )
+              .length
+        : 0;
     final retryCount = tasks
         .where(
           (t) => _selected.contains(t.id) && t.status == TransferStatus.failed,
@@ -678,13 +1024,19 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
                           selecting: _selecting,
                           selected: _selected,
                           removing: _removing,
+                          pulse: _pulse,
                           enter: _enter,
                           onToggle: _toggleSelected,
                           onLongPress: _enterSelection,
                           onMenu: _taskMenu,
                           openFile: widget.openFile ?? openFileWithSystem,
                           onCancelActive: _cancelActive,
-                          onClearFinished: _clearFinishedSection,
+                          onClearCompleted: _clearCompletedSection,
+                          onClearFailed: _clearFailedSection,
+                          onClearSkipped: _clearSkippedSection,
+                          onClearPending: _clearPendingSection,
+                          onUploadPending: _uploadPendingSection,
+                          onSelectTasks: _selectSection,
                           onPauseAll: _pauseAll,
                           onResumeAll: _resumeAll,
                           bulkResumeRunning: _bulkResumeRunning,
@@ -836,6 +1188,31 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
                   curve: Curves.easeInOut,
                   child: BatchActionBar(
                     children: [
+                      if (uploadTab) ...[
+                        BatchAction(
+                          icon: Icons.upload,
+                          label: l10n.upload,
+                          onPressed: pendingCount == 0 ? null : _uploadSelected,
+                        ),
+                        BatchAction(
+                          icon: Icons.input_field,
+                          label: l10n.rename,
+                          onPressed: renameCount == 0 ? null : _renameSelected,
+                        ),
+                        BatchAction(
+                          icon: Icons.drive_file_move_outline,
+                          label: l10n.changeUploadFolder,
+                          onPressed: pendingCount == 0
+                              ? null
+                              : _changeSelectedUploadFolder,
+                        ),
+                      ],
+                      if (!uploadTab && PlatformSupport.isAndroid)
+                        BatchAction(
+                          icon: Icons.share_outlined,
+                          label: l10n.share,
+                          onPressed: shareCount == 0 ? null : _shareSelected,
+                        ),
                       BatchAction(
                         icon: Icons.delete_outline,
                         label: l10n.delete,
@@ -866,13 +1243,19 @@ class _TransferListSliver extends StatelessWidget {
     required this.selecting,
     required this.selected,
     required this.removing,
+    required this.pulse,
     required this.enter,
     required this.onToggle,
     required this.onLongPress,
     required this.onMenu,
     required this.openFile,
     required this.onCancelActive,
-    required this.onClearFinished,
+    required this.onClearCompleted,
+    required this.onClearFailed,
+    required this.onClearSkipped,
+    required this.onClearPending,
+    required this.onUploadPending,
+    required this.onSelectTasks,
     required this.onPauseAll,
     required this.onResumeAll,
     required this.bulkResumeRunning,
@@ -886,6 +1269,9 @@ class _TransferListSliver extends StatelessWidget {
 
   /// 正在播放删除动画的记录 id。
   final Set<String> removing;
+
+  /// 单项修改后的高亮闪烁计数，按任务 id 索引。
+  final Map<String, int> pulse;
 
   /// 列表入场动画的共享进度（只播一次，懒加载进来的条目不重播）。
   final Animation<double> enter;
@@ -904,7 +1290,12 @@ class _TransferListSliver extends StatelessWidget {
   final TransferFileOpener openFile;
 
   final VoidCallback onCancelActive;
-  final VoidCallback onClearFinished;
+  final VoidCallback onClearCompleted;
+  final VoidCallback onClearFailed;
+  final VoidCallback onClearSkipped;
+  final VoidCallback onClearPending;
+  final VoidCallback onUploadPending;
+  final void Function(Iterable<String>) onSelectTasks;
   final VoidCallback onPauseAll;
   final VoidCallback onResumeAll;
   final bool bulkResumeRunning;
@@ -952,6 +1343,22 @@ class _TransferListSliver extends StatelessWidget {
     );
   }
 
+  List<Widget> _sectionActions({
+    required AppLocalizations l10n,
+    required String key,
+    required Iterable<TransferTask> tasks,
+    required List<Widget> actions,
+  }) {
+    if (!selecting) return actions;
+    return [
+      _actionButton(
+        key: key,
+        label: l10n.select,
+        onPressed: () => onSelectTasks(tasks.map((task) => task.id)),
+      ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -972,8 +1379,11 @@ class _TransferListSliver extends StatelessWidget {
         ),
       );
     }
-    final active = tasks.where(_isInProgressTask).toList();
-    final finished = tasks.where(_isFinishedTask).toList().reversed.toList();
+    final pending = _newestFirst(tasks.where(_isPendingUpload));
+    final active = _newestFirst(tasks.where(_isInProgressTask));
+    final skipped = _newestFirst(tasks.where(_isSkippedUpload));
+    final failed = _newestFirst(tasks.where(_isFailedTask));
+    final completed = _newestFirst(tasks.where(_isCompletedTask));
     final paused = active
         .where((task) => task.status == TransferStatus.paused)
         .length;
@@ -1029,10 +1439,12 @@ class _TransferListSliver extends StatelessWidget {
                 title: l10n.inProgress,
                 count: active.length,
                 compact: !PlatformSupport.isDesktop,
-                actions: [
-                  for (final action in activeActions)
-                    HideKeepingSpace(hidden: selecting, child: action),
-                ],
+                actions: _sectionActions(
+                  l10n: l10n,
+                  key: 'transfers-select-active',
+                  tasks: active,
+                  actions: activeActions,
+                ),
               ),
             ),
             // MD3E 连接式列表（懒加载）：组外侧 16dp / 组内相邻 4dp，和收藏页同款
@@ -1055,6 +1467,7 @@ class _TransferListSliver extends StatelessWidget {
                   manager: manager,
                   index: index,
                   removing: removing.contains(active[index].id),
+                  pulse: pulse[active[index].id] ?? 0,
                   selecting: selecting,
                   selected: selected.contains(active[index].id),
                   onTap: () => _handleTap(context, active[index]),
@@ -1069,48 +1482,212 @@ class _TransferListSliver extends StatelessWidget {
             ),
             const SliverToBoxAdapter(child: SizedBox(height: 20)),
           ],
-          if (finished.isNotEmpty) ...[
+          if (pending.isNotEmpty) ...[
             SliverToBoxAdapter(
               child: SectionHeader(
-                title: l10n.finished,
-                count: finished.length,
+                title: l10n.pendingUploads,
+                count: pending.length,
                 compact: !PlatformSupport.isDesktop,
-                actions: [
-                  HideKeepingSpace(
-                    hidden: selecting,
-                    child: _actionButton(
-                      key: 'transfers-clear-finished',
+                actions: _sectionActions(
+                  l10n: l10n,
+                  key: 'transfers-select-pending',
+                  tasks: pending,
+                  actions: [
+                    _actionButton(
+                      key: 'transfers-clear-pending',
                       label: l10n.clearAll,
-                      onPressed: onClearFinished,
+                      onPressed: onClearPending,
                     ),
-                  ),
-                ],
+                    _actionButton(
+                      key: 'transfers-upload-pending',
+                      label: l10n.upload,
+                      onPressed: onUploadPending,
+                    ),
+                  ],
+                ),
               ),
             ),
             SegmentedSliverList(
               adaptive: true,
               minItemWidth: kAdaptiveDenseListItemMinWidth,
               findChildIndexCallback: childIndexLookup(
-                finished,
+                pending,
                 (t) => ValueKey('transfer-${t.id}'),
               ),
-              // 与收藏页同色（SegmentedList 默认 surfaceContainerLow）
-              itemCount: finished.length,
+              itemCount: pending.length,
               itemBuilder: (context, index) => ListEnterAnimation(
-                key: ValueKey('transfer-${finished[index].id}'),
+                key: ValueKey('transfer-${pending[index].id}'),
                 progress: enter,
                 index: index,
                 child: _TransferTile(
-                  task: finished[index],
+                  task: pending[index],
                   manager: manager,
                   index: index,
-                  removing: removing.contains(finished[index].id),
+                  removing: removing.contains(pending[index].id),
+                  pulse: pulse[pending[index].id] ?? 0,
                   selecting: selecting,
-                  selected: selected.contains(finished[index].id),
-                  onTap: () => _handleTap(context, finished[index]),
-                  onLongPress: () => onLongPress(taskId: finished[index].id),
+                  selected: selected.contains(pending[index].id),
+                  onTap: () => _handleTap(context, pending[index]),
+                  onLongPress: () => onLongPress(taskId: pending[index].id),
                   onMenu: (anchorContext, {pointerPosition}) => onMenu(
-                    finished[index],
+                    pending[index],
+                    anchorContext,
+                    pointerPosition: pointerPosition,
+                  ),
+                ),
+              ),
+            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 20)),
+          ],
+          if (skipped.isNotEmpty) ...[
+            SliverToBoxAdapter(
+              child: SectionHeader(
+                title: l10n.skippedUploads,
+                count: skipped.length,
+                compact: !PlatformSupport.isDesktop,
+                actions: _sectionActions(
+                  l10n: l10n,
+                  key: 'transfers-select-skipped',
+                  tasks: skipped,
+                  actions: [
+                    _actionButton(
+                      key: 'transfers-clear-skipped',
+                      label: l10n.clearAll,
+                      onPressed: onClearSkipped,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SegmentedSliverList(
+              adaptive: true,
+              minItemWidth: kAdaptiveDenseListItemMinWidth,
+              findChildIndexCallback: childIndexLookup(
+                skipped,
+                (t) => ValueKey('transfer-${t.id}'),
+              ),
+              itemCount: skipped.length,
+              itemBuilder: (context, index) => ListEnterAnimation(
+                key: ValueKey('transfer-${skipped[index].id}'),
+                progress: enter,
+                index: index,
+                child: _TransferTile(
+                  task: skipped[index],
+                  manager: manager,
+                  index: index,
+                  removing: removing.contains(skipped[index].id),
+                  pulse: pulse[skipped[index].id] ?? 0,
+                  selecting: selecting,
+                  selected: selected.contains(skipped[index].id),
+                  onTap: () => _handleTap(context, skipped[index]),
+                  onLongPress: () => onLongPress(taskId: skipped[index].id),
+                  onMenu: (anchorContext, {pointerPosition}) => onMenu(
+                    skipped[index],
+                    anchorContext,
+                    pointerPosition: pointerPosition,
+                  ),
+                ),
+              ),
+            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 20)),
+          ],
+          if (failed.isNotEmpty) ...[
+            SliverToBoxAdapter(
+              child: SectionHeader(
+                title: l10n.failed,
+                count: failed.length,
+                compact: !PlatformSupport.isDesktop,
+                actions: _sectionActions(
+                  l10n: l10n,
+                  key: 'transfers-select-failed',
+                  tasks: failed,
+                  actions: [
+                    _actionButton(
+                      key: 'transfers-clear-failed',
+                      label: l10n.clearAll,
+                      onPressed: onClearFailed,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SegmentedSliverList(
+              adaptive: true,
+              minItemWidth: kAdaptiveDenseListItemMinWidth,
+              findChildIndexCallback: childIndexLookup(
+                failed,
+                (t) => ValueKey('transfer-${t.id}'),
+              ),
+              itemCount: failed.length,
+              itemBuilder: (context, index) => ListEnterAnimation(
+                key: ValueKey('transfer-${failed[index].id}'),
+                progress: enter,
+                index: index,
+                child: _TransferTile(
+                  task: failed[index],
+                  manager: manager,
+                  index: index,
+                  removing: removing.contains(failed[index].id),
+                  pulse: pulse[failed[index].id] ?? 0,
+                  selecting: selecting,
+                  selected: selected.contains(failed[index].id),
+                  onTap: () => _handleTap(context, failed[index]),
+                  onLongPress: () => onLongPress(taskId: failed[index].id),
+                  onMenu: (anchorContext, {pointerPosition}) => onMenu(
+                    failed[index],
+                    anchorContext,
+                    pointerPosition: pointerPosition,
+                  ),
+                ),
+              ),
+            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 20)),
+          ],
+          if (completed.isNotEmpty) ...[
+            SliverToBoxAdapter(
+              child: SectionHeader(
+                title: l10n.finished,
+                count: completed.length,
+                compact: !PlatformSupport.isDesktop,
+                actions: _sectionActions(
+                  l10n: l10n,
+                  key: 'transfers-select-finished',
+                  tasks: completed,
+                  actions: [
+                    _actionButton(
+                      key: 'transfers-clear-finished',
+                      label: l10n.clearAll,
+                      onPressed: onClearCompleted,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SegmentedSliverList(
+              adaptive: true,
+              minItemWidth: kAdaptiveDenseListItemMinWidth,
+              findChildIndexCallback: childIndexLookup(
+                completed,
+                (t) => ValueKey('transfer-${t.id}'),
+              ),
+              // 与收藏页同色（SegmentedList 默认 surfaceContainerLow）
+              itemCount: completed.length,
+              itemBuilder: (context, index) => ListEnterAnimation(
+                key: ValueKey('transfer-${completed[index].id}'),
+                progress: enter,
+                index: index,
+                child: _TransferTile(
+                  task: completed[index],
+                  manager: manager,
+                  index: index,
+                  removing: removing.contains(completed[index].id),
+                  pulse: pulse[completed[index].id] ?? 0,
+                  selecting: selecting,
+                  selected: selected.contains(completed[index].id),
+                  onTap: () => _handleTap(context, completed[index]),
+                  onLongPress: () => onLongPress(taskId: completed[index].id),
+                  onMenu: (anchorContext, {pointerPosition}) => onMenu(
+                    completed[index],
                     anchorContext,
                     pointerPosition: pointerPosition,
                   ),
@@ -1137,6 +1714,7 @@ class _TransferTile extends StatelessWidget {
     required this.onMenu,
     this.index = 0,
     this.removing = false,
+    this.pulse = 0,
   });
 
   final TransferTask task;
@@ -1151,9 +1729,32 @@ class _TransferTile extends StatelessWidget {
   onMenu;
   final int index;
   final bool removing;
+  final int pulse;
+
+  String? _issueText(AppLocalizations l10n) {
+    final issue = TransferIssue.decode(task.error);
+    if (issue == null) return null;
+    return switch (issue.code) {
+      TransferIssueCode.skippedOversize =>
+        issue.detail.isEmpty
+            ? null
+            : l10n.uploadSkippedReasonOversize(issue.detail),
+      TransferIssueCode.skippedUnsupported =>
+        l10n.uploadSkippedReasonUnsupported,
+      TransferIssueCode.uploadSourceMissing => l10n.retryUploadFileGone,
+      TransferIssueCode.uploadPermissionExpired =>
+        l10n.retryUploadPermissionExpired,
+      TransferIssueCode.uploadSourceUnavailable => l10n.retryUploadUnavailable,
+      TransferIssueCode.uploadNeedLogin => l10n.uploadNeedLogin,
+      TransferIssueCode.uploadInterruptedByAccountSwitch =>
+        l10n.uploadInterruptedByAccountSwitch,
+    };
+  }
 
   String _statusText(AppLocalizations l10n) {
     switch (task.status) {
+      case TransferStatus.pending:
+        return l10n.pendingUploads;
       case TransferStatus.queued:
         return l10n.queued;
       case TransferStatus.resolving:
@@ -1168,13 +1769,13 @@ class _TransferTile extends StatelessWidget {
         return l10n.paused;
       case TransferStatus.saving:
         return l10n.saving;
+      case TransferStatus.skipped:
+        return l10n.skippedUploads;
       case TransferStatus.done:
         return l10n.completed;
       case TransferStatus.failed:
-        return l10n.transferFailure(
-          upload: task.kind == TransferKind.upload,
-          error: task.error,
-        );
+        return _issueText(l10n) ??
+            l10n.transferFailureDetail(error: task.error);
       case TransferStatus.canceled:
         return l10n.canceled;
     }
@@ -1189,13 +1790,35 @@ class _TransferTile extends StatelessWidget {
           ? l10n.unknownSize
           : '';
     }
+    if (task.status == TransferStatus.pending) return formatBytes(task.total);
     if (task.received >= task.total) return formatBytes(task.total);
     return '${formatBytes(task.received)} / ${formatBytes(task.total)}';
   }
 
   String _statusLine(AppLocalizations l10n) {
     final status = _statusText(l10n);
+    if (task.status == TransferStatus.done) {
+      return task.total > 0 ? formatBytes(task.total) : '';
+    }
     if (task.status == TransferStatus.failed) return status;
+    if (task.status == TransferStatus.pending) {
+      final issueText = _issueText(l10n);
+      if (issueText != null) return issueText;
+      final folder = task.folderId == '-1'
+          ? l10n.root
+          : task.folderName.trim().isEmpty
+          ? l10n.targetFolder
+          : task.folderName;
+      final size = task.total > 0 ? formatBytes(task.total) : l10n.unknownSize;
+      return l10n.uploadToFolder(folder, size);
+    }
+    if (task.status == TransferStatus.skipped) {
+      final issueText = _issueText(l10n);
+      if (issueText != null) return issueText;
+      final reason = task.error?.trim() ?? '';
+      if (reason.isEmpty) return status;
+      return reason;
+    }
     final size = _sizeText(l10n);
     return size.isEmpty ? status : '$status · $size';
   }
@@ -1211,7 +1834,11 @@ class _TransferTile extends StatelessWidget {
     final resuming = task.status == TransferStatus.resuming;
     final paused = task.status == TransferStatus.paused;
     final saving = task.status == TransferStatus.saving;
-    final finished = _isFinishedTask(task);
+    final skipped = _isSkippedUpload(task);
+    final pending = _isPendingUpload(task);
+    final completed = _isCompletedTask(task);
+    final failed = _isFailedTask(task);
+    final terminal = completed || failed;
     // 与首页 / 收藏共用同一套列表项布局，圆角由外层 SegmentedList 控制
     // 菜单要贴在被点的那颗 ⋯（鼠标右键时是整行）下方，所以这里得拿到两个 context
     return Builder(
@@ -1221,6 +1848,7 @@ class _TransferTile extends StatelessWidget {
         // 入场动画由外层 ListEnterAnimation 统一驱动（只播一次）
         animateIn: false,
         removing: removing,
+        pulse: pulse,
         icon: iconForFile(task.name),
         iconColor: fileIconColor(task.name, brightness: scheme.brightness),
         title: task.name,
@@ -1237,7 +1865,7 @@ class _TransferTile extends StatelessWidget {
           onLongPress: onLongPress,
         ),
         // 右键与 ⋯ 菜单可用性一致：多选和进行中任务都不响应。
-        onSecondaryTap: selecting || !finished
+        onSecondaryTap: selecting || (!terminal && !skipped && !pending)
             ? null
             : (Offset position) =>
                   onMenu(rowContext, pointerPosition: position),
@@ -1266,7 +1894,14 @@ class _TransferTile extends StatelessWidget {
                   icon: Icons.close,
                   onPressed: saving ? null : () => manager.removeTask(task.id),
                 ),
-              if (finished)
+              if (pending)
+                M3eIconButton(
+                  key: ValueKey('upload-start-${task.id}'),
+                  tooltip: l10n.upload,
+                  icon: Icons.upload,
+                  onPressed: () => manager.startUploads([task.id]),
+                ),
+              if (terminal || skipped || pending)
                 Builder(
                   builder: (BuildContext buttonContext) => M3eIconButton(
                     tooltip: l10n.moreActions,

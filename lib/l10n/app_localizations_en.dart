@@ -313,6 +313,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get switchAccount => 'Switch account';
 
   @override
+  String get switchAccountUploadsTitle =>
+      'Switch accounts and interrupt uploads';
+
+  @override
+  String switchAccountUploadsMessage(int count) {
+    return 'There are $count active upload tasks. Switching accounts will interrupt them. You can retry them after switching back. Continue?';
+  }
+
+  @override
   String get removeCurrentAccount => 'Remove current account';
 
   @override
@@ -369,14 +378,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get transfers => 'Transfers';
 
   @override
-  String get clearFinished => 'Clear finished';
+  String get clearFinished => 'Clear completed';
 
   @override
-  String get clearFinishedConfirmTitle => 'Clear finished records';
+  String get clearFinishedConfirmTitle => 'Clear completed records';
 
   @override
   String get clearFinishedConfirmMessage =>
-      'This will clear finished transfer records. Continue?';
+      'This will clear completed transfer records. Continue?';
 
   @override
   String get cancelAll => 'Cancel all';
@@ -400,20 +409,44 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String cancelAllDownloadsConfirmMessage(int count) {
-    return 'Cancel and remove all $count in-progress downloads and delete downloaded files?';
+    return 'Cancel and remove all $count in-progress downloads?';
   }
 
   @override
-  String get clearFinishedTransfers => 'Clear finished transfers';
+  String get clearFinishedTransfers => 'Clear completed transfers';
 
   @override
   String clearFinishedUploadsConfirmMessage(int count) {
-    return 'Clear all $count finished upload records?';
+    return 'Clear all $count completed upload records?';
   }
 
   @override
   String clearFinishedDownloadsConfirmMessage(int count) {
-    return 'Clear all $count finished download records?';
+    return 'Clear all $count completed download records?';
+  }
+
+  @override
+  String get clearSkippedUploads => 'Clear skipped upload records';
+
+  @override
+  String clearSkippedUploadsConfirmMessage(int count) {
+    return 'Clear all $count skipped upload records?';
+  }
+
+  @override
+  String get clearPendingUploads => 'Clear pending uploads';
+
+  @override
+  String clearPendingUploadsConfirmMessage(int count) {
+    return 'Clear all $count upload records waiting to start?';
+  }
+
+  @override
+  String get clearFailedTransfers => 'Clear failed transfers';
+
+  @override
+  String clearFailedConfirmMessage(int count) {
+    return 'Clear all $count failed transfer records?';
   }
 
   @override
@@ -434,7 +467,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get inProgress => 'In progress';
 
   @override
-  String get finished => 'Finished';
+  String get pendingUploads => 'Waiting to start';
+
+  @override
+  String get skippedUploads => 'Skipped';
+
+  @override
+  String get finished => 'Completed';
+
+  @override
+  String get failed => 'Failed';
 
   @override
   String get queued => 'Queued';
@@ -497,6 +539,73 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cancelDownload => 'Cancel download';
 
   @override
+  String get cancelUpload => 'Cancel upload';
+
+  @override
+  String get rename => 'Rename';
+
+  @override
+  String get changeUploadFolder => 'Change upload folder';
+
+  @override
+  String get targetFolder => 'target folder';
+
+  @override
+  String uploadToFolder(String folder, String size) {
+    return 'Uploading to $folder · $size';
+  }
+
+  @override
+  String updatedUploadFolders(int count) {
+    return 'Updated the destination of $count upload tasks';
+  }
+
+  @override
+  String get uploadInterruptedByAccountSwitch =>
+      'Upload interrupted because the account was switched';
+
+  @override
+  String get modify => 'Modify';
+
+  @override
+  String get preview => 'Preview';
+
+  @override
+  String get batchRename => 'Batch rename';
+
+  @override
+  String get renamePreview => 'Rename preview';
+
+  @override
+  String get findContent => 'Find';
+
+  @override
+  String get replaceWith => 'Replace with';
+
+  @override
+  String get useRegularExpression => 'Regular expression';
+
+  @override
+  String get matchCase => 'Match case';
+
+  @override
+  String get searchContentRequired => 'Enter text to find';
+
+  @override
+  String get invalidRegularExpression => 'Invalid regular expression';
+
+  @override
+  String get renameNoMatches => 'No file names will change';
+
+  @override
+  String get renameEmptyName => 'The new file name cannot be empty';
+
+  @override
+  String renamedUploads(int count) {
+    return 'Renamed $count upload tasks';
+  }
+
+  @override
   String get openFileFailed => 'No app can open this file';
 
   @override
@@ -512,9 +621,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get redownload => 'Download again';
-
-  @override
-  String get deleteDownloadRecord => 'Delete download record';
 
   @override
   String get waitingToDownload => 'Waiting';
@@ -539,6 +645,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get retryUploadFileGone =>
       'The source file is gone; please pick the file again';
+
+  @override
+  String get retryUploadPermissionExpired =>
+      'File access permission has expired. Please choose the file again.';
 
   @override
   String get uploadNeedLogin => 'Please sign in before uploading';
@@ -818,6 +928,38 @@ class AppLocalizationsEn extends AppLocalizations {
   String get uploadKeywords => 'upload concurrent';
 
   @override
+  String get autoStartUploads => 'Start uploads automatically';
+
+  @override
+  String get autoStartUploadsSubtitle =>
+      'When off, start uploads manually from the transfer list and edit the queue first';
+
+  @override
+  String get autoStartUploadsKeywords =>
+      'upload auto start pending manual queue';
+
+  @override
+  String get skipOversizeUploads => 'Skip files over the size limit';
+
+  @override
+  String get skipOversizeUploadsSubtitle =>
+      'Do not start files larger than your account\'s per-file limit';
+
+  @override
+  String get skipOversizeUploadsKeywords => 'upload skip oversized size limit';
+
+  @override
+  String get skipUnsupportedUploads => 'Skip unsupported files';
+
+  @override
+  String get skipUnsupportedUploadsSubtitle =>
+      'Do not start file types outside LanZou\'s allowed list';
+
+  @override
+  String get skipUnsupportedUploadsKeywords =>
+      'upload skip file type extension supported';
+
+  @override
   String get maxDownloads => 'Concurrent downloads';
 
   @override
@@ -994,7 +1136,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get downloadDirHint =>
-      'On Android 10 and newer, downloads are saved to the public Download/LanCloud folder by default without storage permission or folder authorization. Android 9 and older still use the app\'s private folder due to system restrictions. To change the location, prefer a public system folder; non-public folders require authorization and are written after the download finishes.';
+      'On Android 10 and newer, downloads are saved to the public Download/LanCloud folder by default without storage permission or folder authorization. Android 9 and older still use the app\'s private folder due to system restrictions.';
 
   @override
   String get safDirPermissionLost =>
@@ -1071,6 +1213,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get selectAll => 'Select all';
 
   @override
+  String get select => 'Select';
+
+  @override
   String get invertSelection => 'Invert selection';
 
   @override
@@ -1084,8 +1229,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String uploadSkipped(int added, int skipped) {
-    return 'Added $added upload tasks and skipped $skipped files larger than 100 MB';
+    return 'Added $added upload tasks; $skipped were skipped';
   }
+
+  @override
+  String uploadSkippedReasonOversize(String limit) {
+    return 'File exceeds the $limit limit';
+  }
+
+  @override
+  String get uploadSkippedReasonUnsupported =>
+      'This type of file cannot be uploaded';
+
+  @override
+  String get uploadAnyway => 'Upload anyway';
 
   @override
   String uploadAdded(int count) {
@@ -1625,6 +1782,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String shareReceivedFiles(int count) {
     return 'Received $count files; starting upload';
+  }
+
+  @override
+  String shareReceivedFilesSkipped(int added, int skipped) {
+    return 'Received $added files; $skipped were skipped';
   }
 
   @override
@@ -2354,6 +2516,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String dropUploaded(int count) {
     return 'Uploaded $count file(s)';
+  }
+
+  @override
+  String dropSkippedUploads(int count) {
+    return '$count file(s) were skipped';
   }
 
   @override

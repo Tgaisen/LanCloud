@@ -98,7 +98,7 @@ class AppDb {
     final path = p.join(await _databaseDirectory(), 'lancloud.db');
     return openDatabase(
       path,
-      version: 11,
+      version: 12,
       onCreate: (db, version) async {
         await db.execute(
           'CREATE TABLE favorites('
@@ -145,6 +145,7 @@ class AppDb {
           'saved_path TEXT DEFAULT "",'
           'ref TEXT DEFAULT "",'
           'folder_id TEXT DEFAULT "",'
+          'folder_name TEXT DEFAULT "",'
           'referer TEXT DEFAULT "",'
           'pwd TEXT DEFAULT "",'
           'local_path TEXT DEFAULT "",'
@@ -255,6 +256,12 @@ class AppDb {
           await db.execute('DROP TABLE IF EXISTS downloads');
           await db.execute("DELETE FROM transfers WHERE status = 'canceled'");
         }
+        if (oldVersion < 12) {
+          // 待开始上传的副标题需要目录名称；旧记录无法可靠回填，保留空串。
+          await db.execute(
+            'ALTER TABLE transfers ADD COLUMN folder_name TEXT DEFAULT ""',
+          );
+        }
       },
     );
   }
@@ -315,6 +322,7 @@ class AppDb {
     String savedPath = '',
     String ref = '',
     String folderId = '',
+    String folderName = '',
     String referer = '',
     String pwd = '',
     String localPath = '',
@@ -331,6 +339,7 @@ class AppDb {
       'saved_path': savedPath,
       'ref': ref,
       'folder_id': folderId,
+      'folder_name': folderName,
       'referer': referer,
       'pwd': pwd,
       'local_path': localPath,

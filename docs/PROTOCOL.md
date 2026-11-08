@@ -15,6 +15,14 @@
 - Cookie 登录：设置 `ylogin`（uid）+ `phpdisk_info`，GET account.php 验证（页面含"网盘用户登录"即失败）。
 - 账号密码登录已弃用，容易触发滑块验证，不建议在 App 内做。
 
+## 账号资料与上传限制
+- 新版个人中心：GET `mydisk.php?item=profile&action=mypower`。
+- 昵称：`function utcn()` 内 URL 的 `/u/<用户名>` 段。
+- 单文件上限：`单个文件大小<span>100M</span>`；支持 K / M / G / T 单位。
+- 允许上传类型：`允许上传类型` 后、`class="mf2"` 区块内的逗号列表（可能含 `<br>`）。
+- 新版页昵称解析失败时才回退旧版 `myfile.php?item=1&v2` 补昵称 / 等级；
+  大小和类型白名单不从旧页重试，失败分别使用 100 MB 与客户端内置完整列表。
+
 ## 列表
 - 文件列表：POST doupload.php `{task:5, folder_id:<id|-1>, pg:<页码>}` → JSON
   `{info, text:[{id,name_all,time,size,downs,onof,is_des}]}`；`info==0` 表示没有更多页。
@@ -32,7 +40,8 @@
 ## 上传
 - POST https://pc.woozooo.com/fileup.php，multipart：
   `task=1, vie=2, ve=2, id=WU_FILE_0, folder_id_bb_n=<folder_id>, name=<文件名>` + 文件字段。
-- 响应 `{zt:1, text:[{id,...}]}`；`zt==1` 成功。免费账号单文件 ≤100MB。
+- 响应 `{zt:1, text:[{id,...}]}`；`zt==1` 成功。
+- 单文件 ≤100MB 是免费账号常见值；实际上限以账号资料页解析结果为准。
 - 文件名有后缀白名单限制；免费账号重命名文件（task 46）需要会员。
 
 ## 下载直链（登录态，按文件 id）

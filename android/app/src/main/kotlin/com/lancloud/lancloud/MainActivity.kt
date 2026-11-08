@@ -40,6 +40,7 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileNotFoundException
 import java.io.IOException
+import java.util.ArrayList
 
 // local_auth（生物识别）要求宿主 Activity 必须是 FragmentActivity。
 class MainActivity : FlutterFragmentActivity() {
@@ -362,6 +363,80 @@ class MainActivity : FlutterFragmentActivity() {
                                 putExtra(Intent.EXTRA_SUBJECT, subject)
                             }
                             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        val chooser = Intent.createChooser(
+                            send,
+                            subject.ifEmpty { null },
+                        )
+                        chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        startActivity(chooser)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("share_failed", e.message, null)
+                    }
+                }
+                "shareFiles" -> {
+                    val paths = call.argument<List<*>>("paths")
+                        ?.mapNotNull { it as? String }
+                        ?.filter { it.isNotEmpty() }
+                        ?.distinct()
+                        .orEmpty()
+                    if (paths.isEmpty()) {
+                        result.error("bad_args", "paths required", null)
+                        return@setMethodCallHandler
+                    }
+                    try {
+                        val uris = ArrayList<Uri>()
+                        val mimeTypes = mutableSetOf<String>()
+                        for (path in paths) {
+                            if (path.startsWith("content://")) {
+                                val uri = Uri.parse(path)
+                                uris.add(uri)
+                                mimeTypes.add(
+                                    contentResolver.getType(uri) ?: "*/*",
+                                )
+                            } else {
+                                val file = File(path)
+                                if (!file.exists()) {
+                                    result.error(
+                                        "not_found",
+                                        "file not found: $path",
+                                        null,
+                                    )
+                                    return@setMethodCallHandler
+                                }
+                                uris.add(
+                                    FileProvider.getUriForFile(
+                                        this,
+                                        "$packageName.fileProvider",
+                                        file,
+                                    ),
+                                )
+                                mimeTypes.add("application/octet-stream")
+                            }
+                        }
+                        val requestedMime = call.argument<String>("mime")
+                            ?.takeIf { it.isNotBlank() }
+                        val mime = requestedMime
+                            ?: mimeTypes.singleOrNull()
+                            ?: "*/*"
+                        val subject = call.argument<String>("subject").orEmpty()
+                        val send = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+                            type = mime
+                            putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
+                            if (subject.isNotEmpty()) {
+                                putExtra(Intent.EXTRA_SUBJECT, subject)
+                            }
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        send.clipData = ClipData.newUri(
+                            contentResolver,
+                            "shared files",
+                            uris.first(),
+                        ).apply {
+                            for (index in 1 until uris.size) {
+                                addItem(ClipData.Item(uris[index]))
+                            }
                         }
                         val chooser = Intent.createChooser(
                             send,
