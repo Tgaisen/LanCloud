@@ -193,9 +193,7 @@ void main() {
     expect(find.textContaining('22.0 MB'), findsNothing);
   });
 
-  // 分享文件夹浏览页里点文件弹出的这张表就是「项目菜单」：只留下载 / 复制链接 /
-  // 二维码 / 收藏，「打开链接」按需求去掉（浏览器的入口在别处）。
-  testWidgets('分享文件属性弹窗：复制和二维码后仍保留属性页', (tester) async {
+  testWidgets('分享文件属性弹窗：复制和二维码支持分享链接 / 下载直链且保留属性页', (tester) async {
     final clipboard = <MethodCall>[];
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(SystemChannels.platform, (call) async {
@@ -206,7 +204,7 @@ void main() {
       () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(SystemChannels.platform, null),
     );
-    await _pumpSheet(tester, _FakeApp(), asModal: true);
+    await _pumpSheet(tester, _FakeApp(_DescClient()), asModal: true);
 
     expect(find.text('打开链接'), findsNothing);
     expect(find.byTooltip('下载'), findsOneWidget);
@@ -216,12 +214,63 @@ void main() {
 
     await tester.tap(find.byTooltip('复制链接'));
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(
+      find.descendant(
+        of: find.byType(M3eMenuRow),
+        matching: find.text('复制分享链接'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byType(M3eMenuRow),
+        matching: find.text('复制下载直链'),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('复制分享链接'));
+    await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(clipboard, hasLength(1));
+    expect(
+      '${(clipboard.single.arguments as Map)['text']}',
+      'https://example.com/abcdef',
+    );
     expect(find.byType(M3EBottomSheet), findsOneWidget);
     expect(find.byTooltip('复制链接'), findsOneWidget);
 
+    await tester.tap(find.byTooltip('复制链接'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.tap(find.text('复制下载直链'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(clipboard, hasLength(2));
+    expect(
+      '${(clipboard.last.arguments as Map)['text']}',
+      'https://example.com/a',
+    );
+    expect(find.byType(M3EBottomSheet), findsOneWidget);
+
     await tester.tap(find.byTooltip('显示二维码'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(
+      find.descendant(
+        of: find.byType(M3eMenuRow),
+        matching: find.text('分享链接二维码'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byType(M3eMenuRow),
+        matching: find.text('下载直链二维码'),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('分享链接二维码'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.byType(AlertDialog), findsOneWidget);
@@ -234,6 +283,21 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.byType(M3EBottomSheet), findsOneWidget);
     expect(find.byTooltip('显示二维码'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('显示二维码'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.tap(find.text('下载直链二维码'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(find.byType(M3EBottomSheet), findsOneWidget);
+    await tester.tap(
+      find.descendant(of: find.byType(AlertDialog), matching: find.text('关闭')),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byType(M3EBottomSheet), findsOneWidget);
 
     // 等复制轻提示的定时器结束。
     await tester.pump(const Duration(seconds: 3));

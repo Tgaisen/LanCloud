@@ -61,6 +61,9 @@ class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
   /// 下载按钮的二级菜单贴着该按钮组弹出。
   final GlobalKey _quickActionGroupKey = GlobalKey();
 
+  /// 复制链接 / 二维码二选一菜单当前由哪个按钮触发。
+  _ShareFileQuickAction? _linkMenuTarget;
+
   /// 当前使用的提取码：解析出「提取码错误」并重新验证后换成新的。
   late String _pwd = widget.pwd;
 
@@ -101,9 +104,9 @@ class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
           _startDownload();
         }
       case _ShareFileQuickAction.copyLink:
-        copyText(context, widget.url, asToast: true);
+        _openLinkMenu(action);
       case _ShareFileQuickAction.qr:
-        showQrDialog(context, title: _name, url: widget.url, pwd: _pwd);
+        _openLinkMenu(action);
       case _ShareFileQuickAction.favorite:
         // 开关型按钮走 onToggled，这里不会命中。
         break;
@@ -122,6 +125,116 @@ class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
       task: task,
       onRedownload: _startDownload,
     );
+  }
+
+  Future<void> _openLinkMenu(_ShareFileQuickAction target) async {
+    if (_linkMenuTarget != target) {
+      setState(() => _linkMenuTarget = target);
+    }
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+    final RenderBox? group =
+        _quickActionGroupKey.currentContext?.findRenderObject() as RenderBox?;
+    if (group == null || !group.hasSize) return;
+    final l10n = context.l10n;
+    final qr = target == _ShareFileQuickAction.qr;
+    final bool? direct = await showAdaptiveM3eMenu<bool>(
+      context: context,
+      anchor: _quickActionAnchor(
+        group,
+        target == _ShareFileQuickAction.qr ? 2 : 1,
+      ),
+      // 属性页本身已经是底部面板，二级菜单保持锚定菜单，避免面板叠面板。
+      allowSheet: false,
+      items: [
+        M3eMenuItem(
+          value: false,
+          label: qr ? l10n.shareLinkQr : l10n.copyShareLink,
+          icon: Icons.share_outlined,
+        ),
+        M3eMenuItem(
+          value: true,
+          label: qr ? l10n.directLinkQr : l10n.copyDirectLink,
+          icon: Icons.file_present,
+        ),
+      ],
+    );
+    if (direct == null || !mounted) return;
+    if (target == _ShareFileQuickAction.qr) {
+      if (direct) {
+        await _showDirectLinkQr();
+      } else {
+        await _showShareLinkQr();
+      }
+    } else if (direct) {
+      await _copyDirectLink();
+    } else {
+      await _copyShareLink();
+    }
+  }
+
+  Future<void> _copyShareLink() async {
+    final l10n = context.l10n;
+    await copyText(
+      context,
+      _pwd.isEmpty ? widget.url : l10n.linkWithPassword(widget.url, _pwd),
+      asToast: true,
+    );
+  }
+
+  Future<void> _copyDirectLink() async {
+    final resolved = await _resolveDirectFile();
+    if (!mounted || resolved == null) return;
+    await copyText(context, resolved.url, asToast: true);
+  }
+
+  Future<void> _showShareLinkQr() =>
+      showQrDialog(context, title: _name, url: widget.url, pwd: _pwd);
+
+  Future<void> _showDirectLinkQr() async {
+    final resolved = await _resolveDirectFile();
+    if (!mounted || resolved == null) return;
+    await showQrDialog(context, title: _name, url: resolved.url);
+  }
+
+  Future<DirectFile?> _resolveDirectFile() async {
+    final cached = _resolved;
+    if (cached != null && cached.url.isNotEmpty) return cached;
+    final client = ref.read(lanzouClientRegistryProvider).publicClient;
+    final navigator = Navigator.of(context);
+    showLoadingDialog(context, context.l10n.resolving);
+    DirectFile? resolved;
+    Object? error;
+    var needsPassword = false;
+    try {
+      resolved = await client.resolveFileShare(
+        widget.url,
+        pwd: _pwd,
+        withDescription: true,
+      );
+    } on NeedPasswordException {
+      needsPassword = true;
+    } on WrongPasswordException {
+      needsPassword = true;
+    } catch (e) {
+      error = e;
+    } finally {
+      if (navigator.canPop()) navigator.pop();
+    }
+    if (!mounted) return null;
+    if (needsPassword) {
+      final pwd = await _promptPassword();
+      return pwd == null ? null : _resolved;
+    }
+    if (error != null) {
+      showAppToast(context, context.l10n.lanzouError(error));
+      return null;
+    }
+    if (resolved != null) {
+      setState(() => _resolved = resolved);
+      await widget.onResolved?.call(resolved);
+    }
+    return resolved;
   }
 
   Future<void> _toggleFavorite(bool checked) async {
