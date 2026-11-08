@@ -2030,25 +2030,30 @@ class SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final titleBlock = Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          title,
-          style: context.m3eEmphasizedTheme.titleSmall?.copyWith(
-            color: scheme.primary,
+    final titleBlock = MergeSemantics(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            title,
+            style: context.m3eEmphasizedTheme.titleSmall?.copyWith(
+              color: scheme.primary,
+            ),
           ),
-        ),
-        const SizedBox(width: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          decoration: BoxDecoration(
-            color: scheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(8),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              '$count',
+              style: Theme.of(context).textTheme.labelSmall,
+            ),
           ),
-          child: Text('$count', style: Theme.of(context).textTheme.labelSmall),
-        ),
-      ],
+        ],
+      ),
     );
     return Padding(
       padding: compact
