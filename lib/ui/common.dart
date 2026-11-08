@@ -3504,7 +3504,51 @@ class PropertyDetailRow extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 2),
-          SelectionArea(child: Text(value, style: theme.textTheme.bodyMedium)),
+          SizedBox(
+            width: double.infinity,
+            child: AnimatedSize(
+              duration: reduceMotionOf(context)
+                  ? Duration.zero
+                  : const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.topLeft,
+              child: AnimatedSwitcher(
+                duration: reduceMotionOf(context)
+                    ? Duration.zero
+                    : const Duration(milliseconds: 220),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                layoutBuilder: (currentChild, previousChildren) => Stack(
+                  alignment: Alignment.topLeft,
+                  children: [...previousChildren, ?currentChild],
+                ),
+                transitionBuilder: (child, animation) {
+                  final curved = CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeOutCubic,
+                    reverseCurve: Curves.easeInCubic,
+                  );
+                  return FadeTransition(
+                    opacity: curved,
+                    child: SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(0, 0.08),
+                        end: Offset.zero,
+                      ).animate(curved),
+                      child: child,
+                    ),
+                  );
+                },
+                child: SizedBox(
+                  key: ValueKey(value),
+                  width: double.infinity,
+                  child: SelectionArea(
+                    child: Text(value, style: theme.textTheme.bodyMedium),
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );

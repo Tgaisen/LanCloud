@@ -70,7 +70,7 @@ void main() {
 <title>文件</title>
 <meta name="description" content="文件大小：24.1 K" />
 <span class="user-name">用户</span>
-<span class="n_file_infos">2026-10-04</span>
+<span class="n_file_infos">前天22:45</span>
 <span class="n_file_infos">压缩文件</span>
 <div id="passwddiv"></div>
 </body></html>
@@ -83,7 +83,7 @@ void main() {
     // 密码页首屏没有真实文件名：不能把 URL 末段兜底成文件名。
     expect(details.name, isEmpty);
     expect(details.size, '24.1K');
-    expect(details.time, '2026-10-04');
+    expect(details.time, '前天22:45');
     expect(details.sharer, '用户');
     expect(details.requiresPassword, isTrue);
     expect(client.requests, ['https://example.com/secret']);
@@ -96,6 +96,13 @@ void main() {
     );
     expect(shareSharerFromHtml('<div class="meta">作者：分享者丙</div>'), '分享者丙');
     expect(shareSharerFromHtml('<div>上传时间：2026-06-22</div>'), '');
+    expect(
+      shareFileTimeFromHtml(
+        '<span class="n_file_infos">2026-10-04</span>'
+        '<span class="n_file_infos">压缩文件</span>',
+      ),
+      '2026-10-04',
+    );
   });
 
   test('分享详情会用 iframe 中的分享者补全普通文件模板', () async {

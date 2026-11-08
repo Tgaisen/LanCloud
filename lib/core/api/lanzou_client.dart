@@ -1799,20 +1799,35 @@ String shareFileSizeFromHtml(String html) {
 /// APK 模板用 `appinfotime` 节点；部分 PC 模板会把时间写在明确的时间标签后。
 /// 这里只接受已知节点/标签，不抓页面里的任意日期，避免把统计或其他日期误当文件时间。
 String shareFileTimeFromHtml(String html) {
-  final match =
-      RegExp(
-        r'class="appinfotime"[^>]*>\s*([^<]+?)\s*<',
-        caseSensitive: false,
-      ).firstMatch(html) ??
-      RegExp(
-        r'''class=["'][^"']*\bn_file_infos\b[^"']*["'][^>]*>\s*(\d{4}-\d{2}-\d{2}(?:\s+\d{2}:\d{2}(?::\d{2})?)?)\s*<''',
-        caseSensitive: false,
-      ).firstMatch(html) ??
-      RegExp(
+  final appInfo = RegExp(
+    r'class="appinfotime"[^>]*>\s*([^<]+?)\s*<',
+    caseSensitive: false,
+  ).firstMatch(html)?.group(1);
+  if (appInfo != null && appInfo.trim().isNotEmpty) return appInfo.trim();
+
+  final infoPattern = RegExp(
+    r'''class=["'][^"']*\bn_file_infos\b[^"']*["'][^>]*>\s*([^<]+?)\s*<''',
+    caseSensitive: false,
+  );
+  for (final match in infoPattern.allMatches(html)) {
+    final candidate = match.group(1)?.trim() ?? '';
+    if (_looksLikeShareTime(candidate)) return candidate;
+  }
+
+  return RegExp(
         r'(?:上传时间|文件时间|分享时间)[：:]\s*(?:</span>\s*)?([^<]+?)\s*<',
         caseSensitive: false,
-      ).firstMatch(html);
-  return match?.group(1)?.trim() ?? '';
+      ).firstMatch(html)?.group(1)?.trim() ??
+      '';
+}
+
+bool _looksLikeShareTime(String value) {
+  if (value.isEmpty) return false;
+  return RegExp(r'^\d{4}[-/年]\d{1,2}[-/月]\d{1,2}').hasMatch(value) ||
+      RegExp(r'^\d{1,2}[-/月]\d{1,2}').hasMatch(value) ||
+      RegExp(r'^(今天|昨天|前天|刚刚)').hasMatch(value) ||
+      RegExp(r'(分钟前|小时前|天前|周前|个月前)$').hasMatch(value) ||
+      RegExp(r'^\d{1,2}[:：]\d{2}').hasMatch(value);
 }
 
 /// 从分享文件页解析分享者。
