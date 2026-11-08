@@ -1820,10 +1820,10 @@ class _M3eMenuRoute<T> extends PopupRoute<T> {
     closeOn?.addListener(_handleCloseOn);
   }
 
-  /// M3 菜单：宽度 112–280、项高 48、上下内边距 8、离屏幕边缘 12。
-  static const double _minWidth = 140;
+  /// M3 菜单：宽度 180–280、项高 48、上下内边距 8、离屏幕边缘 12。
+  static const double _minWidth = 180;
   static const double _maxWidth = 280;
-  static const double _maxHeight = 320;
+  static const double _maxHeight = 380;
   static const double _rowHeight = 48;
 
   /// 卡片上下内边距：和项目间隔一致，首 / 末项到卡片的距离 = 项目之间的距离。
