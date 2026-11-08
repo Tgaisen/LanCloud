@@ -27,6 +27,15 @@ class _NoNetClient extends LanzouClient {
   _NoNetClient() : super(uid: '0');
 
   @override
+  Future<ShareFileDetails> fetchFileShareDetails(
+    String shareUrl, {
+    String pwd = '',
+    bool withDescription = false,
+  }) async {
+    throw const LanzouException('网络异常');
+  }
+
+  @override
   Future<DirectFile> resolveFileShare(
     String shareUrl, {
     String pwd = '',
@@ -48,23 +57,27 @@ class _FakeApp {
   void dispose() => environment.dispose();
 }
 
-/// 第一次解析（弹窗加载）立刻失败，之后的解析（点击下载）挂起等测试放行。
+/// 详情加载失败，但点击下载后的直链解析挂起，等测试放行。
 class _GateSecondPublic extends LanzouClient {
   _GateSecondPublic() : super(uid: '0');
 
   final Completer<DirectFile> gate = Completer<DirectFile>();
-  int calls = 0;
+
+  @override
+  Future<ShareFileDetails> fetchFileShareDetails(
+    String shareUrl, {
+    String pwd = '',
+    bool withDescription = false,
+  }) async {
+    throw const LanzouException('网络异常');
+  }
 
   @override
   Future<DirectFile> resolveFileShare(
     String shareUrl, {
     String pwd = '',
     bool withDescription = false,
-  }) {
-    calls += 1;
-    if (calls == 1) return Future.error(const LanzouException('网络异常'));
-    return gate.future;
-  }
+  }) => gate.future;
 }
 
 /// 返回指定大小的假客户端：模拟文件页把大小解析错（如历史 bug 的 22）。
@@ -72,6 +85,14 @@ class _SizeClient extends LanzouClient {
   _SizeClient(this.size) : super(uid: '0');
 
   final String size;
+
+  @override
+  Future<ShareFileDetails> fetchFileShareDetails(
+    String shareUrl, {
+    String pwd = '',
+    bool withDescription = false,
+  }) async =>
+      ShareFileDetails(size: size, time: '2026-06-22', requiresPassword: true);
 
   @override
   Future<DirectFile> resolveFileShare(
@@ -87,12 +108,26 @@ class _SizeClient extends LanzouClient {
 class _DescClient extends LanzouClient {
   _DescClient() : super(uid: '0');
 
+  int detailCalls = 0;
+  int resolveCalls = 0;
+
+  @override
+  Future<ShareFileDetails> fetchFileShareDetails(
+    String shareUrl, {
+    String pwd = '',
+    bool withDescription = false,
+  }) async {
+    detailCalls += 1;
+    return const ShareFileDetails(name: 'a.zip', size: '1 M', desc: '这是文件简介');
+  }
+
   @override
   Future<DirectFile> resolveFileShare(
     String shareUrl, {
     String pwd = '',
     bool withDescription = false,
   }) async {
+    resolveCalls += 1;
     return DirectFile(
       name: 'a.zip',
       url: 'https://example.com/a',
@@ -108,6 +143,8 @@ Future<void> _pumpSheet(
   TransferManager? manager,
   bool invalid = false,
   String size = '1 MB',
+  String time = '',
+  String sharer = '',
   bool asModal = false,
 }) async {
   final transfers =
@@ -119,6 +156,8 @@ Future<void> _pumpSheet(
     url: 'https://example.com/abcdef',
     pwd: '',
     size: size,
+    time: time,
+    sharer: sharer,
     invalid: invalid,
   );
   final home = asModal
@@ -157,22 +196,46 @@ Future<void> _pumpSheet(
 }
 
 void main() {
-  testWidgets('分享文件属性弹窗：文件页有简介时显示在信息卡里', (tester) async {
-    await _pumpSheet(tester, _FakeApp(_DescClient()));
+  testWidgets('分享文件属性弹窗：简介、快捷按钮与详情列表分层展示', (tester) async {
+    final client = _DescClient();
+    await _pumpSheet(tester, _FakeApp(client), time: '2 天前', sharer: '测试分享者');
+    expect(client.detailCalls, 1);
+    expect(client.resolveCalls, 0);
     expect(find.text('这是文件简介'), findsOneWidget);
+
+    expect(find.byType(M3EToggleButton), findsNWidgets(4));
+    for (final tooltip in ['下载', '复制链接', '显示二维码', '收藏']) {
+      expect(find.byTooltip(tooltip), findsOneWidget, reason: tooltip);
+    }
+    expect(find.text('类型'), findsOneWidget);
+    expect(find.text('ZIP 文件'), findsOneWidget);
+    expect(find.text('大小'), findsOneWidget);
+    expect(find.text('1 MB'), findsOneWidget);
+    expect(find.text('时间'), findsOneWidget);
+    expect(find.text('2 天前'), findsOneWidget);
+    expect(find.text('分享者'), findsOneWidget);
+    expect(find.text('测试分享者'), findsOneWidget);
+    expect(find.text('访问密码'), findsOneWidget);
+    expect(find.text('未启用'), findsOneWidget);
   });
 
   testWidgets('分享文件属性弹窗：大小以列表值为准，不被文件页解析值覆盖', (tester) async {
     // 列表给的 31.5 M 是文件夹接口的真实大小；文件页解析出的 22 是错的
     await _pumpSheet(tester, _FakeApp(_SizeClient('22')), size: '31.5 M');
 
+    // 密码页取不到真实名称时沿用调用方给的名称，不能显示 URL 末段。
+    expect(find.text('a.zip'), findsOneWidget);
+    expect(find.text('abcdef'), findsNothing);
     expect(find.textContaining('31.5 MB'), findsOneWidget);
     expect(find.textContaining('22.0 MB'), findsNothing);
+    expect(find.text('时间'), findsOneWidget);
+    expect(find.text('2026-06-22'), findsOneWidget);
+    expect(find.text('访问密码'), findsOneWidget);
+    expect(find.text('已启用'), findsOneWidget);
   });
 
-  // 分享文件夹浏览页里点文件弹出的这张表就是「项目菜单」：只留下载 / 复制链接 /
-  // 二维码 / 收藏，「打开链接」按需求去掉（浏览器的入口在别处）。
-  testWidgets('分享文件属性弹窗：复制和二维码后仍保留属性页', (tester) async {
+  testWidgets('分享文件属性弹窗：复制和二维码支持分享链接 / 下载直链且保留属性页', (tester) async {
+    final client = _DescClient();
     final clipboard = <MethodCall>[];
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(SystemChannels.platform, (call) async {
@@ -183,26 +246,82 @@ void main() {
       () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(SystemChannels.platform, null),
     );
-    await _pumpSheet(tester, _FakeApp(), asModal: true);
+    await _pumpSheet(tester, _FakeApp(client), asModal: true);
+    expect(client.detailCalls, 1);
+    expect(client.resolveCalls, 0);
 
     expect(find.text('打开链接'), findsNothing);
-    expect(find.text('下载'), findsOneWidget);
-    expect(find.text('复制链接'), findsOneWidget);
-    expect(find.text('显示二维码'), findsOneWidget);
-    expect(find.text('收藏'), findsOneWidget);
+    expect(find.byTooltip('下载'), findsOneWidget);
+    expect(find.byTooltip('复制链接'), findsOneWidget);
+    expect(find.byTooltip('显示二维码'), findsOneWidget);
+    expect(find.byTooltip('收藏'), findsOneWidget);
 
-    await tester.tap(find.text('复制链接'));
+    await tester.tap(find.byTooltip('复制链接'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(
+      find.descendant(
+        of: find.byType(M3eMenuRow),
+        matching: find.text('复制分享链接'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byType(M3eMenuRow),
+        matching: find.text('复制下载直链'),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('复制分享链接'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(clipboard, hasLength(1));
+    expect(
+      '${(clipboard.single.arguments as Map)['text']}',
+      'https://example.com/abcdef',
+    );
+    expect(client.resolveCalls, 0);
     expect(find.byType(M3EBottomSheet), findsOneWidget);
-    expect(find.text('复制链接'), findsOneWidget);
+    expect(find.byTooltip('复制链接'), findsOneWidget);
 
-    await tester.tap(find.text('显示二维码'));
+    await tester.tap(find.byTooltip('复制链接'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.tap(find.text('复制下载直链'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(clipboard, hasLength(2));
+    expect(
+      '${(clipboard.last.arguments as Map)['text']}',
+      'https://example.com/a',
+    );
+    expect(client.resolveCalls, 1);
+    expect(find.byType(M3EBottomSheet), findsOneWidget);
+
+    await tester.tap(find.byTooltip('显示二维码'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(
+      find.descendant(
+        of: find.byType(M3eMenuRow),
+        matching: find.text('分享链接二维码'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byType(M3eMenuRow),
+        matching: find.text('下载直链二维码'),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('分享链接二维码'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.byType(AlertDialog), findsOneWidget);
     expect(find.byType(M3EBottomSheet), findsOneWidget);
+    expect(client.resolveCalls, 1);
 
     await tester.tap(
       find.descendant(of: find.byType(AlertDialog), matching: find.text('关闭')),
@@ -210,7 +329,22 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.byType(M3EBottomSheet), findsOneWidget);
-    expect(find.text('显示二维码'), findsOneWidget);
+    expect(find.byTooltip('显示二维码'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('显示二维码'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.tap(find.text('下载直链二维码'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(find.byType(M3EBottomSheet), findsOneWidget);
+    await tester.tap(
+      find.descendant(of: find.byType(AlertDialog), matching: find.text('关闭')),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byType(M3EBottomSheet), findsOneWidget);
 
     // 等复制轻提示的定时器结束。
     await tester.pump(const Duration(seconds: 3));
@@ -233,16 +367,16 @@ void main() {
     );
     await _pumpSheet(tester, app, manager: manager);
 
-    // 下载中：文本「下载中」+ 确定态进度环（40%）
-    expect(find.text('下载中'), findsOneWidget);
-    expect(find.text('下载'), findsNothing);
+    // 下载中：按钮提示「下载中」+ 确定态进度环（40%）
+    expect(find.byTooltip('下载中'), findsOneWidget);
+    expect(find.byTooltip('下载'), findsNothing);
     final ring = tester.widget<M3eCircularProgressIndicator>(
       find.byType(M3eCircularProgressIndicator),
     );
     expect(ring.value, closeTo(0.4, 0.001));
 
     // 点它：二级菜单按状态给可用项（进行中：暂停与取消下载可点）
-    await tester.tap(find.text('下载中'));
+    await tester.tap(find.byTooltip('下载中'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
     final rows = tester
@@ -270,8 +404,8 @@ void main() {
     );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
-    expect(find.text('下载'), findsOneWidget);
-    expect(find.text('已加入下载'), findsNothing);
+    expect(find.byTooltip('下载'), findsOneWidget);
+    expect(find.byTooltip('已加入下载'), findsNothing);
     expect(manager.downloadMarkOf('https://example.com/abcdef'), isNull);
   });
 
@@ -295,7 +429,7 @@ void main() {
     await tester.pump();
 
     // 等待中：不确定态环
-    expect(find.text('等待中'), findsOneWidget);
+    expect(find.byTooltip('等待中'), findsOneWidget);
     expect(
       tester
           .widget<M3eCircularProgressIndicator>(
@@ -310,14 +444,14 @@ void main() {
     task.received = 40;
     manager.marksRevision.value += 1;
     await tester.pump();
-    expect(find.text('下载中'), findsOneWidget);
+    expect(find.byTooltip('下载中'), findsOneWidget);
 
     // 正在保存：文案切换，进度环继续显示复制进度
     task.status = TransferStatus.saving;
     task.received = 75;
     manager.marksRevision.value += 1;
     await tester.pump();
-    expect(find.text('正在保存'), findsOneWidget);
+    expect(find.byTooltip('正在保存'), findsOneWidget);
     expect(
       tester
           .widget<M3eCircularProgressIndicator>(
@@ -332,7 +466,7 @@ void main() {
     task.savedPath = '/tmp/a.zip';
     manager.marksRevision.value += 1;
     await tester.pump();
-    expect(find.text('已加入下载'), findsOneWidget);
+    expect(find.byTooltip('已加入下载'), findsOneWidget);
     expect(find.byIcon(Icons.download_done), findsOneWidget);
     expect(find.byType(M3eCircularProgressIndicator), findsNothing);
 
@@ -340,7 +474,7 @@ void main() {
     task.status = TransferStatus.failed;
     manager.marksRevision.value += 1;
     await tester.pump();
-    expect(find.text('下载失败'), findsOneWidget);
+    expect(find.byTooltip('下载失败'), findsOneWidget);
     expect(find.byIcon(Icons.file_download_off), findsOneWidget);
     expect(find.byType(M3eCircularProgressIndicator), findsNothing);
   });
@@ -357,10 +491,10 @@ void main() {
       tester.element(find.byType(ShareFileInfoSheet)),
     );
 
-    await tester.tap(find.text('下载'));
+    await tester.tap(find.byTooltip('下载'));
     await tester.pump();
     // 解析中：不确定态环 + 「解析中」（文案取 l10n，避免写死后被改文案带崩）
-    expect(find.text(l10n.resolving), findsOneWidget);
+    expect(find.byTooltip(l10n.resolving), findsOneWidget);
     expect(
       tester
           .widget<M3eCircularProgressIndicator>(
@@ -374,8 +508,8 @@ void main() {
     gate.gate.completeError(const LanzouException('网络异常'));
     await tester.pump();
     await tester.pump();
-    expect(find.text('下载'), findsOneWidget);
-    expect(find.text(l10n.resolving), findsNothing);
+    expect(find.byTooltip('下载'), findsOneWidget);
+    expect(find.byTooltip(l10n.resolving), findsNothing);
   });
 
   testWidgets('二级菜单：这条任务的下载状态变更时自动收起', (tester) async {
@@ -395,7 +529,7 @@ void main() {
     manager.tasks.add(task);
     await _pumpSheet(tester, app, manager: manager);
 
-    await tester.tap(find.text('下载中'));
+    await tester.tap(find.byTooltip('下载中'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
     expect(find.byType(M3eMenuRow), findsNWidgets(6));
@@ -427,7 +561,7 @@ void main() {
       tester.element(find.byType(ShareFileInfoSheet)),
     );
 
-    await tester.tap(find.text('下载失败'));
+    await tester.tap(find.byTooltip('下载失败'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
     await tester.tap(
@@ -439,7 +573,7 @@ void main() {
 
     // 旧任务已删、新任务还没入队：立刻进入「解析中」+ 不确定态环
     expect(manager.tasks, isEmpty);
-    expect(find.text(l10n.resolving), findsOneWidget);
+    expect(find.byTooltip(l10n.resolving), findsOneWidget);
     expect(
       tester
           .widget<M3eCircularProgressIndicator>(
@@ -453,6 +587,6 @@ void main() {
     gate.gate.completeError(const LanzouException('网络异常'));
     await tester.pump();
     await tester.pump();
-    expect(find.text('下载'), findsOneWidget);
+    expect(find.byTooltip('下载'), findsOneWidget);
   });
 }

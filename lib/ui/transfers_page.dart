@@ -738,92 +738,93 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
         task.status != TransferStatus.resolving &&
         task.status != TransferStatus.resuming;
     final desktop = PlatformSupport.isDesktop;
-    final _TransferMenuAction? action = await showM3eMenu<_TransferMenuAction>(
-      context: context,
-      anchor: anchor,
-      pointerPosition: pointerPosition,
-      // ⋯ 贴着右边缘：菜单右缘对齐，免得被屏幕右上角夹歪
-      alignEnd: true,
-      items: [
-        if (task.kind == TransferKind.download && done) ...[
-          M3eMenuItem(
-            value: _TransferMenuAction.open,
-            label: l10n.open,
-            icon: Icons.open_in_new,
-          ),
-          M3eMenuItem(
-            value: _TransferMenuAction.share,
-            // 桌面端没有分享面板：SystemShare.shareFile 在桌面端就是资源管理器定位
-            label: desktop ? l10n.openContainingFolder : l10n.share,
-            icon: desktop ? Icons.folder_open : Icons.share_outlined,
-          ),
-        ],
-        if (failed)
-          M3eMenuItem(
-            value: _TransferMenuAction.retry,
-            label: l10n.retry,
-            icon: Icons.refresh,
-          ),
-        if (pending || skipped)
-          M3eMenuItem(
-            value: _TransferMenuAction.rename,
-            label: l10n.rename,
-            icon: Icons.input_field,
-          ),
-        if (pending)
-          M3eMenuItem(
-            value: _TransferMenuAction.changeFolder,
-            label: l10n.changeUploadFolder,
-            icon: Icons.drive_file_move_outline,
-          ),
-        if (skipped)
-          M3eMenuItem(
-            value: _TransferMenuAction.uploadAnyway,
-            label: l10n.uploadAnyway,
-            icon: Icons.upload,
-          ),
-        if (task.kind == TransferKind.download && active)
-          M3eMenuItem(
-            value: _TransferMenuAction.pause,
-            label: l10n.pauseDownload,
-            icon: Icons.pause,
-          ),
-        if (task.kind == TransferKind.download && paused)
-          M3eMenuItem(
-            value: _TransferMenuAction.resume,
-            label: l10n.resumeDownload,
-            icon: Icons.play_arrow,
-          ),
-        if (task.kind == TransferKind.download &&
-            (active || resolving || resuming || paused))
-          M3eMenuItem(
-            value: _TransferMenuAction.cancel,
-            label: l10n.cancelDownload,
-            icon: Icons.close,
-          ),
-        if (pending)
-          M3eMenuItem(
-            value: _TransferMenuAction.cancel,
-            label: l10n.cancelUpload,
-            icon: Icons.close,
-          )
-        else
-          M3eMenuItem(
-            value: _TransferMenuAction.removeRecord,
-            label: l10n.deleteRecord,
-            icon: Icons.playlist_remove,
-          ),
-        if (task.kind == TransferKind.download &&
-            stopped &&
-            path != null &&
-            path.isNotEmpty)
-          M3eMenuItem(
-            value: _TransferMenuAction.removeRecordAndFile,
-            label: l10n.deleteRecordAndFile,
-            icon: Icons.delete_outline,
-          ),
-      ],
-    );
+    final _TransferMenuAction? action =
+        await showAdaptiveM3eMenu<_TransferMenuAction>(
+          context: context,
+          anchor: anchor,
+          pointerPosition: pointerPosition,
+          // ⋯ 贴着右边缘：菜单右缘对齐，免得被屏幕右上角夹歪
+          alignEnd: true,
+          items: [
+            if (task.kind == TransferKind.download && done) ...[
+              M3eMenuItem(
+                value: _TransferMenuAction.open,
+                label: l10n.open,
+                icon: Icons.open_in_new,
+              ),
+              M3eMenuItem(
+                value: _TransferMenuAction.share,
+                // 桌面端没有分享面板：SystemShare.shareFile 在桌面端就是资源管理器定位
+                label: desktop ? l10n.openContainingFolder : l10n.share,
+                icon: desktop ? Icons.folder_open : Icons.share_outlined,
+              ),
+            ],
+            if (failed)
+              M3eMenuItem(
+                value: _TransferMenuAction.retry,
+                label: l10n.retry,
+                icon: Icons.refresh,
+              ),
+            if (pending || skipped)
+              M3eMenuItem(
+                value: _TransferMenuAction.rename,
+                label: l10n.rename,
+                icon: Icons.input_field,
+              ),
+            if (pending)
+              M3eMenuItem(
+                value: _TransferMenuAction.changeFolder,
+                label: l10n.changeUploadFolder,
+                icon: Icons.drive_file_move_outline,
+              ),
+            if (skipped)
+              M3eMenuItem(
+                value: _TransferMenuAction.uploadAnyway,
+                label: l10n.uploadAnyway,
+                icon: Icons.upload,
+              ),
+            if (task.kind == TransferKind.download && active)
+              M3eMenuItem(
+                value: _TransferMenuAction.pause,
+                label: l10n.pauseDownload,
+                icon: Icons.pause,
+              ),
+            if (task.kind == TransferKind.download && paused)
+              M3eMenuItem(
+                value: _TransferMenuAction.resume,
+                label: l10n.resumeDownload,
+                icon: Icons.play_arrow,
+              ),
+            if (task.kind == TransferKind.download &&
+                (active || resolving || resuming || paused))
+              M3eMenuItem(
+                value: _TransferMenuAction.cancel,
+                label: l10n.cancelDownload,
+                icon: Icons.close,
+              ),
+            if (pending)
+              M3eMenuItem(
+                value: _TransferMenuAction.cancel,
+                label: l10n.cancelUpload,
+                icon: Icons.close,
+              )
+            else
+              M3eMenuItem(
+                value: _TransferMenuAction.removeRecord,
+                label: l10n.deleteRecord,
+                icon: Icons.playlist_remove,
+              ),
+            if (task.kind == TransferKind.download &&
+                stopped &&
+                path != null &&
+                path.isNotEmpty)
+              M3eMenuItem(
+                value: _TransferMenuAction.removeRecordAndFile,
+                label: l10n.deleteRecordAndFile,
+                icon: Icons.delete_outline,
+              ),
+          ],
+        );
     if (!mounted || action == null) return;
     switch (action) {
       case _TransferMenuAction.open:

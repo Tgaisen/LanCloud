@@ -216,7 +216,7 @@ class _HomePageState extends ConsumerState<HomePage>
     final l10n = context.l10n;
     final anchor = m3eMenuAnchorOf(anchorContext);
     if (anchor == null) return;
-    final _QuickPinAction? action = await showM3eMenu<_QuickPinAction>(
+    final _QuickPinAction? action = await showAdaptiveM3eMenu<_QuickPinAction>(
       context: context,
       anchor: anchor,
       pointerPosition: pointerPosition,
@@ -275,7 +275,7 @@ class _HomePageState extends ConsumerState<HomePage>
     final favorited =
         shareUrl != null && await isFavoritedByRef(context, shareUrl);
     if (!mounted) return;
-    final _RecentAction? action = await showM3eMenu<_RecentAction>(
+    final _RecentAction? action = await showAdaptiveM3eMenu<_RecentAction>(
       context: context,
       anchor: anchor,
       pointerPosition: pointerPosition,

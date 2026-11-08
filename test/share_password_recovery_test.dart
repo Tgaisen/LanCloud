@@ -19,6 +19,7 @@ import 'package:lancloud/l10n/delegates.dart';
 import 'package:lancloud/ui/app_icons.dart' as app_icons;
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/favorites_page.dart';
+import 'package:lancloud/ui/m3e.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'transfer_dependencies_test.dart'
@@ -47,6 +48,18 @@ class _StalePwdClient extends LanzouClient {
       ],
     );
   }
+
+  @override
+  Future<ShareFileDetails> fetchFileShareDetails(
+    String shareUrl, {
+    String pwd = '',
+    bool withDescription = false,
+  }) async => const ShareFileDetails(
+    name: 'fav-renamed.txt',
+    size: '2 M',
+    sharer: '分享者甲',
+    requiresPassword: true,
+  );
 
   @override
   Future<DirectFile> resolveFileShare(
@@ -152,12 +165,9 @@ Future<void> _pumpFavorites(
 }
 
 /// 交替推进真实事件循环与帧：sqflite 的回包是真实异步，单靠 pump 不会到。
-Future<void> _until(
-  WidgetTester tester,
-  Finder finder, {
-  int tries = 40,
-}) async {
-  for (var i = 0; i < tries; i++) {
+Future<void> _until(WidgetTester tester, Finder finder) async {
+  final stopwatch = Stopwatch()..start();
+  while (stopwatch.elapsed < const Duration(seconds: 5)) {
     if (finder.evaluate().isNotEmpty) return;
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 10)),
@@ -165,6 +175,18 @@ Future<void> _until(
     await tester.pump(const Duration(milliseconds: 20));
   }
   fail('等待 $finder 超时');
+}
+
+Future<void> _untilGone(WidgetTester tester, Finder finder) async {
+  final stopwatch = Stopwatch()..start();
+  while (stopwatch.elapsed < const Duration(seconds: 5)) {
+    if (finder.evaluate().isEmpty) return;
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 10)),
+    );
+    await tester.pump(const Duration(milliseconds: 20));
+  }
+  fail('等待 $finder 消失超时');
 }
 
 /// 等数据库写入落库：属性弹窗是「先刷 UI、再异步写收藏」，直接查会拿到旧值。
@@ -175,7 +197,8 @@ Future<FavoriteItem> _eventuallyFavorite(
   required bool Function(FavoriteItem item) done,
 }) async {
   late FavoriteItem last;
-  for (var i = 0; i < 80; i++) {
+  final stopwatch = Stopwatch()..start();
+  while (stopwatch.elapsed < const Duration(seconds: 5)) {
     final all = await tester.runAsync(() => app.db.favorites());
     last = all!.firstWhere((f) => f.ref == ref);
     if (done(last)) return last;
@@ -294,18 +317,50 @@ void main() {
     await _pumpFavorites(tester, app, item: find.text('fav.txt'));
 
     await tester.tap(find.text('fav.txt'));
+    await _until(tester, find.text('fav-renamed.txt'));
+
+    // 打开属性页只取元信息，不再为了密码校验提前解析直链。
+    expect(find.text('此文件需要密码'), findsNothing);
+    final sheet = find.byType(M3EBottomSheet);
+    final qrButton = find.descendant(
+      of: sheet,
+      matching: find.byTooltip('显示二维码'),
+    );
+    await tester.ensureVisible(qrButton);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(qrButton);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.tap(find.text('下载直链二维码'));
     await _until(tester, find.text('此文件需要密码'));
     expect(find.text('此文件需要密码'), findsOneWidget);
 
     await tester.enterText(find.byType(TextField), 'newpass');
     await tester.tap(find.text('确定'));
-    await _until(tester, find.textContaining('分享者 分享者甲'));
+    await _untilGone(tester, find.text('此文件需要密码'));
+    await tester.pump(const Duration(milliseconds: 500));
 
     expect(find.text('此文件需要密码'), findsNothing);
     // 解析出的新名称也显示在信息卡上
     expect(find.text('fav-renamed.txt'), findsWidgets);
-    // 信息卡：大小 · 分享者（收藏里没有日期，所以只有两段）
-    expect(find.text('2.0 MB · 分享者 分享者甲'), findsOneWidget);
+    // 详情列表：大小与分享者分别成行。
+    expect(
+      find.descendant(of: sheet, matching: find.text('大小')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: sheet, matching: find.text('2.0 MB')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: sheet, matching: find.text('分享者')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: sheet, matching: find.text('分享者甲')),
+      findsOneWidget,
+    );
     final saved = await _eventuallyFavorite(
       tester,
       app,

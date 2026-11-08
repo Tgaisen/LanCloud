@@ -1178,6 +1178,42 @@ class LanzouClient {
     return list;
   }
 
+  /// 只解析分享页上可直接展示的元信息，不生成会过期的下载直链。
+  Future<ShareFileDetails> fetchFileShareDetails(
+    String shareUrl, {
+    String pwd = '',
+    bool withDescription = false,
+  }) async {
+    Object? lastError;
+    for (final candidate in _shareUrlCandidates(shareUrl)) {
+      try {
+        final page = await _loadFileSharePageOn(
+          candidate,
+          pwd,
+          withDescription: withDescription,
+          requirePassword: false,
+        );
+        return ShareFileDetails(
+          name: page.nameResolved ? page.name : '',
+          size: page.size,
+          time: page.time,
+          desc: page.desc,
+          sharer: page.sharer,
+          requiresPassword: page.needPwd,
+        );
+      } catch (e) {
+        lastError = e;
+      }
+    }
+    throw lastError is LanzouException
+        ? lastError
+        : LanzouException(
+            '解析分享详情失败：$lastError',
+            code: LanzouErrorCode.resolveShareFailed,
+            detail: '$lastError',
+          );
+  }
+
   Future<DirectFile> resolveFileShare(
     String shareUrl, {
     String pwd = '',
@@ -1213,70 +1249,23 @@ class LanzouClient {
     String pwd, {
     bool withDescription = false,
   }) async {
-    final uri = Uri.parse(url);
-    final base = '${uri.scheme}://${uri.host}';
-    final html = await fetchSharePage(url);
-    if (html.contains('文件不存') || html.contains('文件取消')) {
-      throw const LanzouException(
-        '文件不存在或已取消分享',
-        code: LanzouErrorCode.fileShareUnavailable,
-      );
-    }
-    final needPwd =
-        html.contains('id="pwdload"') || html.contains('id="passwddiv"');
-    if (needPwd && pwd.isEmpty) throw const NeedPasswordException();
-
-    var name =
-        _match(html, [
-          r'<title>(.+?) - 蓝奏云</title>',
-          r'<div class="filethetext".+?>([^<>]+?)</div>',
-        ]) ??
-        url.split('/').last;
-    final size = shareFileSizeFromHtml(html);
-    final sharer =
-        _match(html, [
-          r'<span class="user-name">([^<]+)</span>',
-          r'class="user-name"[^>]*>([^<]+)<',
-        ]) ??
-        '';
-    var desc = _cleanDesc(
-      _match(html, [r'class="n_box_des">(.*?)</div>']) ?? '',
+    final page = await _loadFileSharePageOn(
+      url,
+      pwd,
+      withDescription: withDescription,
+      requirePassword: true,
     );
-    // app 用桌面 UA 请求时会返回 PC 版模板：简介写在「文件描述：」表格里
-    // （exe / 普通文件的分享页就是这种），APK 模板没有这个字段。
-    if (desc.isEmpty) {
-      desc = pcShareDescriptionFromHtml(html) ?? desc;
-    }
-
-    // 新版流程：分享页 -> iframe -> ajaxfile.php
-    final iframeRaw = RegExp(r'<iframe.*?src="(.+?)"')
-        .firstMatch(html)
-        ?.group(1);
-    var legacyHtml = html;
-    String? iframeUrl;
-    String? iframeHtml;
-    if (iframeRaw != null) {
-      iframeUrl = _absoluteUrl(base, uri.scheme, iframeRaw);
-      iframeHtml = await fetchSharePage(iframeUrl);
-      legacyHtml = iframeHtml;
-      final frameTitle = _match(iframeHtml, [r'<title>(.+?)</title>']);
-      if (frameTitle != null && frameTitle.trim().isNotEmpty) {
-        name = frameTitle.trim();
-      }
-      final frameDesc = _match(iframeHtml, [r'class="n_box_des">(.*?)</div>']);
-      if (frameDesc != null) {
-        final cleaned = _cleanDesc(frameDesc);
-        // iframe 里是空的就别覆盖分享页已解析到的简介
-        if (cleaned.isNotEmpty) desc = cleaned;
-      }
-    }
-
-    // exe / apk 等分享页模板没有简介节点：下载页（/tp）的 .mdo 才是简介。
-    // 只在属性弹窗（需要简介）且分享页没解析到简介时多请求一次。
-    if (withDescription && desc.isEmpty) {
-      final tpDesc = await _fetchTpDescription(html, base, uri.scheme, url);
-      if (tpDesc != null && tpDesc.isNotEmpty) desc = tpDesc;
-    }
+    final uri = page.uri;
+    final base = page.base;
+    final html = page.html;
+    final needPwd = page.needPwd;
+    final name = page.name;
+    final size = page.size;
+    final desc = page.desc;
+    final sharer = page.sharer;
+    final legacyHtml = page.legacyHtml;
+    final iframeUrl = page.iframeUrl;
+    final iframeHtml = page.iframeHtml;
 
     if (iframeHtml != null && iframeUrl != null) {
       final direct = await _resolveViaAjaxFile(iframeHtml, iframeUrl, url, pwd);
@@ -1377,6 +1366,102 @@ class LanzouClient {
       size: size,
       desc: desc,
       sharer: sharer,
+    );
+  }
+
+  /// 加载分享页并解析属性弹窗所需的元信息。
+  ///
+  /// [requirePassword] 为 false 时，需要提取码的分享也能在未提供密码时返回
+  /// 基本元信息；真正生成直链时仍会由 [resolveFileShare] 强制校验密码。
+  Future<_FileSharePageContext> _loadFileSharePageOn(
+    String url,
+    String pwd, {
+    required bool withDescription,
+    required bool requirePassword,
+  }) async {
+    final uri = Uri.parse(url);
+    final base = '${uri.scheme}://${uri.host}';
+    final html = await fetchSharePage(url);
+    if (html.contains('文件不存') || html.contains('文件取消')) {
+      throw const LanzouException(
+        '文件不存在或已取消分享',
+        code: LanzouErrorCode.fileShareUnavailable,
+      );
+    }
+    final needPwd =
+        html.contains('id="pwdload"') || html.contains('id="passwddiv"');
+    if (requirePassword && needPwd && pwd.isEmpty) {
+      throw const NeedPasswordException();
+    }
+
+    final parsedName = _match(html, [
+      r'<title>(.+?) - 蓝奏云</title>',
+      r'<div class="filethetext".+?>([^<>]+?)</div>',
+    ]);
+    var nameResolved = parsedName != null;
+    var name = parsedName ?? url.split('/').last;
+    final size = shareFileSizeFromHtml(html);
+    var time = shareFileTimeFromHtml(html);
+    var sharer = shareSharerFromHtml(html);
+    var desc = _cleanDesc(
+      _match(html, [r'class="n_box_des">(.*?)</div>']) ?? '',
+    );
+    // app 用桌面 UA 请求时会返回 PC 版模板：简介写在「文件描述：」表格里
+    // （exe / 普通文件的分享页就是这种），APK 模板没有这个字段。
+    if (desc.isEmpty) {
+      desc = pcShareDescriptionFromHtml(html) ?? desc;
+    }
+
+    // 新版流程：分享页 -> iframe -> ajaxfile.php。仅解析属性时如果分享页
+    // 已明确需要提取码且当前没有密码，不额外进入 iframe。
+    final iframeRaw = RegExp(r'<iframe.*?src="(.+?)"')
+        .firstMatch(html)
+        ?.group(1);
+    var legacyHtml = html;
+    String? iframeUrl;
+    String? iframeHtml;
+    if (iframeRaw != null && (!needPwd || pwd.isNotEmpty)) {
+      iframeUrl = _absoluteUrl(base, uri.scheme, iframeRaw);
+      iframeHtml = await fetchSharePage(iframeUrl);
+      legacyHtml = iframeHtml;
+      final frameTitle = _match(iframeHtml, [r'<title>(.+?)</title>']);
+      if (frameTitle != null && frameTitle.trim().isNotEmpty) {
+        name = frameTitle.trim();
+        nameResolved = true;
+      }
+      final frameDesc = _match(iframeHtml, [r'class="n_box_des">(.*?)</div>']);
+      if (frameDesc != null) {
+        final cleaned = _cleanDesc(frameDesc);
+        // iframe 里是空的就别覆盖分享页已解析到的简介
+        if (cleaned.isNotEmpty) desc = cleaned;
+      }
+      final frameTime = shareFileTimeFromHtml(iframeHtml);
+      if (frameTime.isNotEmpty) time = frameTime;
+      final frameSharer = shareSharerFromHtml(iframeHtml);
+      if (frameSharer.isNotEmpty) sharer = frameSharer;
+    }
+
+    // exe / apk 等分享页模板没有简介节点：下载页（/tp）的 .mdo 才是简介。
+    // 只在属性弹窗（需要简介）且分享页没解析到简介时多请求一次。
+    if (withDescription && desc.isEmpty) {
+      final tpDesc = await _fetchTpDescription(html, base, uri.scheme, url);
+      if (tpDesc != null && tpDesc.isNotEmpty) desc = tpDesc;
+    }
+
+    return _FileSharePageContext(
+      uri: uri,
+      base: base,
+      html: html,
+      needPwd: needPwd,
+      name: name,
+      nameResolved: nameResolved,
+      size: size,
+      time: time,
+      desc: desc,
+      sharer: sharer,
+      legacyHtml: legacyHtml,
+      iframeUrl: iframeUrl,
+      iframeHtml: iframeHtml,
     );
   }
 
@@ -1519,12 +1604,7 @@ class LanzouClient {
           r'<div class="user-radio-\d"></div>(.+?)</div>',
         ]) ??
         '';
-    final sharer =
-        _match(html, [
-          r'<span class="user-name">([^<]+)</span>',
-          r'class="user-name"[^>]*>([^<]+)<',
-        ]) ??
-        '';
+    final sharer = shareSharerFromHtml(html);
     final paging = ShareFolderPaging(
       base: base,
       referer: url,
@@ -1661,6 +1741,38 @@ class LanzouClient {
   }
 }
 
+class _FileSharePageContext {
+  const _FileSharePageContext({
+    required this.uri,
+    required this.base,
+    required this.html,
+    required this.needPwd,
+    required this.name,
+    required this.nameResolved,
+    required this.size,
+    required this.time,
+    required this.desc,
+    required this.sharer,
+    required this.legacyHtml,
+    required this.iframeUrl,
+    required this.iframeHtml,
+  });
+
+  final Uri uri;
+  final String base;
+  final String html;
+  final bool needPwd;
+  final String name;
+  final bool nameResolved;
+  final String size;
+  final String time;
+  final String desc;
+  final String sharer;
+  final String legacyHtml;
+  final String? iframeUrl;
+  final String? iframeHtml;
+}
+
 /// 从分享文件页 HTML 解析大小（返回如 `1.1M`，解析不到返回空串）。
 ///
 /// 文件页把大小写在 meta description（`大小：1.1 M`）和下载按钮里
@@ -1680,6 +1792,64 @@ String shareFileSizeFromHtml(String html) {
       ).firstMatch(html);
   final raw = match?.group(1) ?? '';
   return raw.replaceAll(',', '').replaceAll(RegExp(r'\s+'), '');
+}
+
+/// 从分享文件页解析文件时间。
+///
+/// APK 模板用 `appinfotime` 节点；部分 PC 模板会把时间写在明确的时间标签后。
+/// 这里只接受已知节点/标签，不抓页面里的任意日期，避免把统计或其他日期误当文件时间。
+String shareFileTimeFromHtml(String html) {
+  final appInfo = RegExp(
+    r'class="appinfotime"[^>]*>\s*([^<]+?)\s*<',
+    caseSensitive: false,
+  ).firstMatch(html)?.group(1);
+  if (appInfo != null && appInfo.trim().isNotEmpty) return appInfo.trim();
+
+  final infoPattern = RegExp(
+    r'''class=["'][^"']*\bn_file_infos\b[^"']*["'][^>]*>\s*([^<]+?)\s*<''',
+    caseSensitive: false,
+  );
+  for (final match in infoPattern.allMatches(html)) {
+    final candidate = match.group(1)?.trim() ?? '';
+    if (_looksLikeShareTime(candidate)) return candidate;
+  }
+
+  return RegExp(
+        r'(?:上传时间|文件时间|分享时间)[：:]\s*(?:</span>\s*)?([^<]+?)\s*<',
+        caseSensitive: false,
+      ).firstMatch(html)?.group(1)?.trim() ??
+      '';
+}
+
+bool _looksLikeShareTime(String value) {
+  if (value.isEmpty) return false;
+  return RegExp(r'^\d{4}[-/年]\d{1,2}[-/月]\d{1,2}').hasMatch(value) ||
+      RegExp(r'^\d{1,2}[-/月]\d{1,2}').hasMatch(value) ||
+      RegExp(r'^(今天|昨天|前天|刚刚)').hasMatch(value) ||
+      RegExp(r'(分钟前|小时前|天前|周前|个月前)$').hasMatch(value) ||
+      RegExp(r'^\d{1,2}[:：]\d{2}').hasMatch(value);
+}
+
+/// 从分享文件页解析分享者。
+///
+/// 密码文件与 APK 模板常用 `user-name`；普通文件 PC 模板可能把分享者写在
+/// “分享者 / 分享用户 / 上传者 / 作者”标签后。只接受明确节点或标签，
+/// 避免误取正文。
+String shareSharerFromHtml(String html) {
+  final match =
+      RegExp(
+        r'''class=["'][^"']*\buser-name\b[^"']*["'][^>]*>\s*([^<]+?)\s*<''',
+        caseSensitive: false,
+      ).firstMatch(html) ??
+      RegExp(
+        r'(?:分享者|分享用户|上传者|作者)[：:]\s*(?:</span>\s*)?(?:<[^>]+>\s*)*([^<]+?)\s*<',
+        caseSensitive: false,
+      ).firstMatch(html) ??
+      RegExp(
+        r'(?:分享者|分享用户|上传者|作者)[：:]\s*([^<\r\n]+)',
+        caseSensitive: false,
+      ).firstMatch(html);
+  return match?.group(1)?.replaceAll('&amp;', '&').trim() ?? '';
 }
 
 /// 清理分享页里的富文本（简介、描述）：保留换行、去掉标签与常见实体。

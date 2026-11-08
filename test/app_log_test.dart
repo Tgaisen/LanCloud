@@ -12,7 +12,7 @@ void main() {
   });
 
   tearDown(() async {
-    if (await dir.exists()) await dir.delete(recursive: true);
+    await _deleteTempDirectory(dir);
   });
 
   Future<void> initLog({
@@ -123,4 +123,18 @@ void main() {
     final text = await currentFile().readAsString();
     expect(text, contains('（相同错误重复 2 次已省略）'));
   });
+}
+
+/// Windows 上刚写入的临时日志目录偶尔会短暂显示为非空。
+/// 测试清理只做有界重试，最终仍失败也不影响下一条测试使用新的唯一目录。
+Future<void> _deleteTempDirectory(Directory dir) async {
+  for (var attempt = 0; attempt < 8; attempt++) {
+    try {
+      if (await dir.exists()) await dir.delete(recursive: true);
+      return;
+    } on FileSystemException {
+      if (attempt == 7) return;
+      await Future<void>.delayed(Duration(milliseconds: 20 * (attempt + 1)));
+    }
+  }
 }

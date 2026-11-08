@@ -16,6 +16,7 @@ import '../core/data/app_db_provider.dart';
 import '../core/drive_state.dart';
 import '../core/navigation_appearance_settings_state.dart';
 import '../core/navigation_state.dart';
+import '../core/platform_support.dart';
 import '../core/transfer/transfer_manager_provider.dart';
 import '../l10n/l10n.dart';
 import 'app_scroll.dart';
@@ -27,6 +28,12 @@ import 'scroll_tint.dart';
 
 /// 大屏（平板 / 桌面）布局阈值：≥640dp 时用侧栏 + 圆角内容卡片。
 const double kLargeLayoutBreakpoint = 640;
+
+/// M3 Compact 窗口宽度上限：条目动作菜单在小屏移动端改为底部面板。
+///
+/// 这是组件呈现的断点，不复用 [kLargeLayoutBreakpoint]：后者控制应用外壳的
+/// 侧栏 / 内容卡片布局，两者可以独立演进。
+const double kCompactMenuBreakpoint = 600;
 
 /// 网盘页路径栏高度（顶栏的 bottom 部分）。
 const double kDrivePathBarHeight = 46;
@@ -1529,10 +1536,11 @@ Future<void> showQrDialog(
 /// （按 M3 规范给 22dp 上下留白，凑满 48dp 触控高度）；
 /// 入场动画由路由统一播放（不用组件自带的入场，原因见下）。
 ///
-/// 路由仍走框架的 [showModalBottomSheet]：m3e_core 的
-/// `showM3EModalBottomSheet` 会在「builder 返回的不是 M3EBottomSheet」时再
-/// 套一层外壳，而弹窗在这里还要按窗口宽度决定安全区让位（见下），外壳外面
-/// 必须能再包一层 MediaQuery——自己拼装更可控，外观与动效仍是 MD3E 的。
+/// 路由使用框架的 [ModalBottomSheetRoute]：内容区拖拽需要同时驱动路由动画
+/// 和 BottomSheet 的跟手曲线，因此这里按 [showModalBottomSheet] 的同一套
+/// 参数自行组装并持有控制器。m3e_core 的 `showM3EModalBottomSheet` 会在
+/// 「builder 返回的不是 M3EBottomSheet」时再套一层外壳，而弹窗还要按窗口宽度
+/// 决定安全区让位（见下），外壳外必须能再包一层 MediaQuery，自行组装更可控。
 Future<T?> showAppSheet<T>(
   BuildContext context, {
   required Widget child,
@@ -1540,41 +1548,46 @@ Future<T?> showAppSheet<T>(
 }) {
   final size = MediaQuery.sizeOf(context);
   final maxHeight = size.height * maxHeightRatio;
+  final sheetKey = GlobalKey(debugLabel: 'app-sheet');
+  double sheetHeight() {
+    final box = sheetKey.currentContext?.findRenderObject();
+    return box is RenderBox && box.hasSize ? box.size.height : maxHeight;
+  }
+
   // MD3 给模态底部弹窗 640dp 宽度上限：窗口更宽时弹窗居中、离屏幕两侧
   // 还有很远，这时不需要左右让位；只有弹窗真的通铺整屏（窗口不超过上限）
   // 时才要避开两侧的挖孔 / 导航栏。
   final fullWidthSheet = size.width <= kModalSheetMaxWidth;
   // 系统要求少动效时整块面板直接出现 / 消失，不做滑入滑出
   final reduceMotion = reduceMotionOf(context);
-  return showModalBottomSheet<T>(
-    context: context,
-    isScrollControlled: true,
-    // 背景与形状都由 MD3E 外壳自己画，路由层保持透明。
-    backgroundColor: Colors.transparent,
-    showDragHandle: false,
-    constraints: const BoxConstraints(maxWidth: kModalSheetMaxWidth),
-    // 入场手感：整块面板由路由滑入，曲线带一点点过冲（峰值 +1.4%，和组件
-    // 原本 spring（stiffness 380 / damping 0.8，过冲约 1.5%）相当），落位前
-    // 轻轻一顿，不打扰——由路由统一播放，也不会像组件自带入场那样露出垫色。
-    // 面板弹过头时，外壳垫在底部的 overshoot 垫色正好补住面板与屏幕底边的缝。
-    // 时长在框架默认 250ms 上放宽到 350ms，节奏更和缓；
-    // 关闭方向不设，仍用框架默认的 200ms。
-    sheetAnimationStyle: reduceMotion
-        ? const AnimationStyle(duration: Duration.zero)
-        : const AnimationStyle(
-            duration: Duration(milliseconds: 350),
-            curve: Cubic(0.22, 1.15, 0.55, 1.02),
-          ),
-    // 通铺整屏时让「弹窗窗体」整体避开左右挖孔：useSafeArea 作用在弹窗
-    // 面板外侧（路由层），弹窗被收窄，而不是面板照旧压住挖孔、只让内容
-    // 缩进一截（那样有挖孔的一侧会多出留白）。
-    useSafeArea: fullWidthSheet,
+  final animationStyle = reduceMotion
+      ? const AnimationStyle(duration: Duration.zero)
+      // 入场手感：整块面板由路由滑入，曲线带一点点过冲（峰值 +1.4%，和组件
+      // 原本 spring（stiffness 380 / damping 0.8，过冲约 1.5%）相当），落位前
+      // 轻轻一顿，不打扰——由路由统一播放，也不会像组件自带入场那样露出垫色。
+      // 面板弹过头时，外壳垫在底部的 overshoot 垫色正好补住面板与屏幕底边的缝。
+      // 时长在框架默认 250ms 上放宽到 350ms，节奏更和缓；
+      // 关闭方向不设，仍用框架默认的 200ms。
+      : const AnimationStyle(
+          duration: Duration(milliseconds: 350),
+          curve: Cubic(0.22, 1.15, 0.55, 1.02),
+        );
+  final navigator = Navigator.of(context);
+  // 自己持有路由动画，内容区拖拽才能与顶部手柄共用同一套退场效果。
+  final routeController = BottomSheet.createAnimationController(
+    navigator,
+    sheetAnimationStyle: animationStyle,
+  );
+  final localizations = MaterialLocalizations.of(context);
+  final route = _AppBottomSheetRoute<T>(
+    routeAnimation: routeController,
     builder: (sheetContext) {
       // 颜色必须在弹窗自己的 context 里取：弹窗打开期间切换深浅色时，
       // 主题是实时的，而这里若用调用方在打开时算好的颜色，就会把旧主题
       // 烤进弹窗背景（控件却跟着新主题走，于是看不清）。
       final scheme = Theme.of(sheetContext).colorScheme;
       final sheet = M3EBottomSheet(
+        key: sheetKey,
         showDragHandle: true,
         // 关掉组件自带的「下移 200dp + 淡入」入场动画：m3e_core 在面板下面
         // 垫了一条 overshoot 垫色（Stack 里在内容之后、不参与这段动画的实色
@@ -1611,7 +1624,12 @@ Future<T?> showAppSheet<T>(
               removeLeft: true,
               removeRight: true,
               removeBottom: true,
-              child: MeasuredSheet(maxHeight: maxHeight, child: child),
+              child: MeasuredSheet(
+                maxHeight: maxHeight,
+                routeController: routeController,
+                sheetHeight: sheetHeight,
+                child: child,
+              ),
             ),
           ),
         ),
@@ -1628,64 +1646,148 @@ Future<T?> showAppSheet<T>(
               child: sheet,
             );
     },
+    capturedThemes: InheritedTheme.capture(
+      from: context,
+      to: navigator.context,
+    ),
+    isScrollControlled: true,
+    // 背景与形状都由 MD3E 外壳自己画，路由层保持透明。
+    backgroundColor: Colors.transparent,
+    constraints: const BoxConstraints(maxWidth: kModalSheetMaxWidth),
+    barrierLabel: localizations.scrimLabel,
+    barrierOnTapHint: localizations.scrimOnTapHint(
+      localizations.bottomSheetLabel,
+    ),
+    modalBarrierColor: Theme.of(context).bottomSheetTheme.modalBarrierColor,
+    sheetAnimationStyle: animationStyle,
+    // 通铺整屏时让「弹窗窗体」整体避开左右挖孔：useSafeArea 作用在弹窗
+    // 面板外侧（路由层），弹窗被收窄，而不是面板照旧压住挖孔、只让内容
+    // 缩进一截（那样有挖孔的一侧会多出留白）。
+    useSafeArea: fullWidthSheet,
+  );
+  return navigator.push(route);
+}
+
+/// 自持动画控制器的模态弹窗路由。
+///
+/// [ModalBottomSheetRoute] 不会释放外部注入的控制器；这里跟随路由自身的
+/// dispose 一起释放，既覆盖正常关闭，也覆盖测试结束或父 Navigator 被销毁时
+/// 仍有弹窗打开的情况。
+class _AppBottomSheetRoute<T> extends ModalBottomSheetRoute<T> {
+  _AppBottomSheetRoute({
+    required this.routeAnimation,
+    required super.builder,
+    required super.capturedThemes,
+    required super.isScrollControlled,
+    required super.barrierLabel,
+    required super.barrierOnTapHint,
+    required super.useSafeArea,
+    super.backgroundColor,
+    super.constraints,
+    super.modalBarrierColor,
+    super.sheetAnimationStyle,
+  }) : super(
+         transitionAnimationController: routeAnimation,
+         showDragHandle: false,
+       );
+
+  final AnimationController routeAnimation;
+
+  @override
+  void dispose() {
+    super.dispose();
+    routeAnimation.dispose();
+  }
+}
+
+/// 条目动作菜单的自适应入口。
+///
+/// M3 建议 Compact 窗口把辅助选择从浮动菜单改为底部面板，以获得更宽的文案
+/// 和更易触达的动作列表；Medium 及以上继续使用锚定菜单。这里额外保留两个
+/// 例外：
+/// - [pointerPosition] 非空代表鼠标右键等上下文菜单，始终留在原位置；
+/// - [allowSheet] 为 false 供已经位于模态面板内的二级菜单使用，避免面板叠面板。
+///
+/// 底部面板和原菜单返回相同的 `Future<T?>`，调用方不需要分支处理结果。
+Future<T?> showAdaptiveM3eMenu<T>({
+  required BuildContext context,
+  required Rect anchor,
+  Offset? pointerPosition,
+  required List<M3eMenuItem<T>> items,
+  bool alignEnd = false,
+  Listenable? closeOn,
+  bool Function()? closeWhen,
+  bool allowSheet = true,
+}) {
+  final bool compact =
+      MediaQuery.sizeOf(context).width < kCompactMenuBreakpoint;
+  if (pointerPosition != null ||
+      !allowSheet ||
+      !compact ||
+      !PlatformSupport.isMobile) {
+    return showM3eMenu<T>(
+      context: context,
+      anchor: anchor,
+      pointerPosition: pointerPosition,
+      items: items,
+      alignEnd: alignEnd,
+      closeOn: closeOn,
+      closeWhen: closeWhen,
+    );
+  }
+  return showAppSheet<T>(
+    context,
+    child: _M3eMenuSheet<T>(
+      items: items,
+      closeOn: closeOn,
+      closeWhen: closeWhen,
+    ),
   );
 }
 
 /// 自适应内容高度的弹窗外壳：
 /// - 先测量内容自然高度，再取 min(内容高度, 上限) 作为弹窗高度；
 /// - 内容尺寸变化（例如弹出键盘）时自动重新测量；
-/// - 内容滚到顶部后继续下拉，剩余位移会带动弹窗下滑（等效 Android 的
-///   NestedScrolling），松手时按拖动距离与速度决定关闭或弹回。
+/// - 内容滚到顶部后继续下拉，剩余位移会直接驱动整个 BottomSheet 路由下滑
+///   （等效 Android 的 NestedScrolling），松手时按拖动距离与速度决定关闭或
+///   弹回。整个面板因此会一起经过系统导航栏，而不是只缩短内容区。
 class MeasuredSheet extends StatefulWidget {
   const MeasuredSheet({
     super.key,
     required this.child,
     required this.maxHeight,
+    required this.routeController,
+    this.sheetHeight,
   });
 
   final Widget child;
   final double maxHeight;
+  final AnimationController routeController;
+
+  /// 整个 BottomSheet 当前的实际高度，用于把内容拖动距离换算成路由动画值。
+  /// 未提供时退回内容高度，便于单独测试本组件。
+  final ValueGetter<double>? sheetHeight;
 
   @override
   State<MeasuredSheet> createState() => _MeasuredSheetState();
 }
 
-class _MeasuredSheetState extends State<MeasuredSheet>
-    with SingleTickerProviderStateMixin {
+class _MeasuredSheetState extends State<MeasuredSheet> {
   final GlobalKey _contentKey = GlobalKey();
   double? _contentHeight;
 
-  /// 弹窗被向下拖出的距离（0 = 完全展开）。
-  double _pull = 0;
-
-  /// 松手后的弹回动画。
-  late final AnimationController _settle = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 220),
-  );
-  Animation<double>? _settleTween;
+  static const Duration _settleDuration = Duration(milliseconds: 220);
 
   /// 指针速度采样：用于判断“快速下滑关闭”。
   VelocityTracker? _tracker;
   int? _pointer;
+  bool _draggedSheet = false;
+  bool _routeDragStarted = false;
 
   @override
   void initState() {
     super.initState();
-    _settle.addListener(_onSettleTick);
     WidgetsBinding.instance.addPostFrameCallback((_) => _measure());
-  }
-
-  @override
-  void dispose() {
-    _settle.dispose();
-    super.dispose();
-  }
-
-  void _onSettleTick() {
-    final tween = _settleTween;
-    if (tween == null) return;
-    setState(() => _pull = tween.value);
   }
 
   void _measure() {
@@ -1703,30 +1805,74 @@ class _MeasuredSheetState extends State<MeasuredSheet>
       ? widget.maxHeight
       : math.min(widget.maxHeight, _contentHeight!);
 
-  void _stopSettle() {
-    if (_settle.isAnimating) _settle.stop();
-    _settleTween = null;
+  AnimationController get _routeController => widget.routeController;
+
+  double get _routePull {
+    final controller = _routeController;
+    final height = widget.sheetHeight?.call() ?? _expandedHeight;
+    return math.max(0.0, (1 - controller.value) * height);
+  }
+
+  bool get _routeClosing =>
+      ModalRoute.of(context)?.animation?.status == AnimationStatus.reverse;
+
+  BottomSheet? get _bottomSheet {
+    BottomSheet? result;
+    context.visitAncestorElements((element) {
+      final widget = element.widget;
+      if (widget is BottomSheet) {
+        result = widget;
+        return false;
+      }
+      return true;
+    });
+    return result;
+  }
+
+  /// 让框架内部的底栏动画从入场曲线切换为直接跟手。顶部手柄由
+  /// BottomSheet 自己调用这两个回调；内容区拖拽也复用同一套，避免另造一套
+  /// “只缩短内容高度”的动画。
+  void _startRouteDrag() {
+    if (_routeDragStarted) return;
+    _bottomSheet?.onDragStart?.call(DragStartDetails());
+    _routeDragStarted = true;
+  }
+
+  void _finishRouteDrag({required bool closing}) {
+    if (!_routeDragStarted) return;
+    _bottomSheet?.onDragEnd?.call(DragEndDetails(), isClosing: closing);
+    _routeDragStarted = false;
+  }
+
+  void _stopRouteAnimation() {
+    final controller = _routeController;
+    if (controller.isAnimating && !_routeClosing) {
+      controller.stop();
+    }
   }
 
   void _springBack() {
-    if (_pull <= 0) return;
-    _settleTween = Tween<double>(
-      begin: _pull,
-      end: 0,
-    ).animate(CurvedAnimation(parent: _settle, curve: Curves.easeOutCubic));
-    _settle.forward(from: 0);
+    final controller = _routeController;
+    if (controller.value >= 1 || _routeClosing) return;
+    _finishRouteDrag(closing: false);
+    controller.animateTo(1, duration: _settleDuration, curve: Curves.linear);
   }
 
   /// 手势位移分配（滚动坐标：正值 = 手指下拉）。
-  /// 列表先滚到顶部，超出的位移带动弹窗下滑；反向拖动先还回弹窗。
+  /// 列表先滚到顶部，超出的位移带动整个弹窗路由下滑；反向拖动先还回弹窗。
   double _distributeDrag(double offset, ScrollMetrics position) {
-    if (offset == 0) return 0;
+    final controller = _routeController;
+    if (offset == 0 || _routeClosing) return offset;
+    final height = math.max(1.0, widget.sheetHeight?.call() ?? _expandedHeight);
     var remaining = offset;
-    if (_pull > 0 && remaining < 0) {
+    final pulled = math.max(0.0, (1 - controller.value) * height);
+    if (pulled > 0 && remaining < 0) {
       // 弹窗正被拖出时向上拖动：优先把弹窗还回去
-      final back = math.min(_pull, -remaining);
-      _stopSettle();
-      setState(() => _pull -= back);
+      final back = math.min(pulled, -remaining);
+      _stopRouteAnimation();
+      _startRouteDrag();
+      controller.value = (controller.value + back / height).clamp(0.0, 1.0);
+      _draggedSheet = true;
       remaining += back;
     }
     if (remaining <= 0) return remaining;
@@ -1734,17 +1880,20 @@ class _MeasuredSheetState extends State<MeasuredSheet>
     if (target >= position.minScrollExtent) return remaining;
     // 列表已经到顶：超出的位移交给弹窗（列表只走到顶部为止）
     final extra = position.minScrollExtent - target;
-    final capacity = math.max(0.0, _expandedHeight - _pull);
+    final capacity = math.max(0.0, height - _routePull);
     final used = math.min(extra, capacity);
     if (used > 0) {
-      _stopSettle();
-      setState(() => _pull += used);
+      _stopRouteAnimation();
+      _startRouteDrag();
+      controller.value = (controller.value - used / height).clamp(0.0, 1.0);
+      _draggedSheet = true;
     }
     return remaining - (extra - used);
   }
 
   void _onPointerDown(PointerDownEvent event) {
     _pointer = event.pointer;
+    _draggedSheet = false;
     _tracker = VelocityTracker.withKind(event.kind)
       ..addPosition(event.timeStamp, event.position);
   }
@@ -1754,18 +1903,54 @@ class _MeasuredSheetState extends State<MeasuredSheet>
     _tracker?.addPosition(event.timeStamp, event.position);
   }
 
-  void _onPointerEnd(PointerEvent event) {
-    if (event.pointer != _pointer) return;
-    final pull = _pull;
-    final velocity = _tracker?.getVelocity().pixelsPerSecond.dy ?? 0.0;
+  void _clearPointer() {
     _pointer = null;
     _tracker = null;
-    if (pull <= 0) return;
+  }
+
+  void _dismissSheet() {
+    final route = ModalRoute.of(context);
+    if (!mounted ||
+        route == null ||
+        !route.isCurrent ||
+        route.animation?.status == AnimationStatus.reverse) {
+      return;
+    }
+    _finishRouteDrag(closing: true);
+    Navigator.of(context).maybePop();
+  }
+
+  void _onPointerUp(PointerUpEvent event) {
+    if (event.pointer != _pointer) return;
+    final pull = _routePull;
+    final velocity = _tracker?.getVelocity().pixelsPerSecond.dy ?? 0.0;
+    final draggedSheet = _draggedSheet;
+    _clearPointer();
+    if (!draggedSheet) return;
+    if (pull <= 0 || _routeClosing) {
+      _finishRouteDrag(closing: _routeClosing);
+      return;
+    }
     // 快速下滑，或拖过弹窗高度的 35%：关闭弹窗，否则弹回
+    final height = widget.sheetHeight?.call() ?? _expandedHeight;
     final shouldClose =
-        velocity > 700 || (velocity > -700 && pull > _expandedHeight * 0.35);
+        velocity > 700 || (velocity > -700 && pull > height * 0.35);
     if (shouldClose) {
-      Navigator.of(context).pop();
+      _dismissSheet();
+    } else {
+      _springBack();
+    }
+  }
+
+  void _onPointerCancel(PointerCancelEvent event) {
+    if (event.pointer != _pointer) return;
+    final draggedSheet = _draggedSheet;
+    _clearPointer();
+    // 返回键、遮罩等已经让路由开始退场时，取消事件不能再 pop 一次；
+    // 仅当路由仍在原位时才把尚未完成的拖动弹回去。
+    if (!draggedSheet) return;
+    if (_routeClosing) {
+      _finishRouteDrag(closing: true);
     } else {
       _springBack();
     }
@@ -1774,16 +1959,15 @@ class _MeasuredSheetState extends State<MeasuredSheet>
   @override
   Widget build(BuildContext context) {
     final measured = _contentHeight;
-    final height = math.max(0.0, _expandedHeight - _pull);
     return Opacity(
       opacity: measured == null ? 0 : 1,
       child: SizedBox(
-        height: height,
+        height: _expandedHeight,
         child: Listener(
           onPointerDown: _onPointerDown,
           onPointerMove: _onPointerMove,
-          onPointerUp: _onPointerEnd,
-          onPointerCancel: _onPointerEnd,
+          onPointerUp: _onPointerUp,
+          onPointerCancel: _onPointerCancel,
           child: SingleChildScrollView(
             physics: _SheetDragPhysics(
               parent: const AlwaysScrollableScrollPhysics(),
@@ -3283,6 +3467,94 @@ class PropertyHeaderCard extends StatelessWidget {
   }
 }
 
+/// 文件属性里的类型文案：有扩展名时显示「ZIP 文件」，否则回退为「文件」。
+String propertyFileTypeLabel(String name, AppLocalizations l10n) {
+  final dot = name.lastIndexOf('.');
+  final extension = dot <= 0 || dot == name.length - 1
+      ? ''
+      : name.substring(dot + 1).trim();
+  return extension.isEmpty
+      ? l10n.file
+      : l10n.propertyFileType(extension.toUpperCase());
+}
+
+/// 属性详情的一行：标签在上、值在下，和备份恢复确认弹窗的信息层级一致。
+class PropertyDetailRow extends StatelessWidget {
+  const PropertyDetailRow({
+    super.key,
+    required this.label,
+    required this.value,
+  });
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 2),
+          SizedBox(
+            width: double.infinity,
+            child: AnimatedSize(
+              duration: reduceMotionOf(context)
+                  ? Duration.zero
+                  : const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.topLeft,
+              child: AnimatedSwitcher(
+                duration: reduceMotionOf(context)
+                    ? Duration.zero
+                    : const Duration(milliseconds: 220),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                layoutBuilder: (currentChild, previousChildren) => Stack(
+                  alignment: Alignment.topLeft,
+                  children: [...previousChildren, ?currentChild],
+                ),
+                transitionBuilder: (child, animation) {
+                  final curved = CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeOutCubic,
+                    reverseCurve: Curves.easeInCubic,
+                  );
+                  return FadeTransition(
+                    opacity: curved,
+                    child: SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(0, 0.08),
+                        end: Offset.zero,
+                      ).animate(curved),
+                      child: child,
+                    ),
+                  );
+                },
+                child: SizedBox(
+                  key: ValueKey(value),
+                  width: double.infinity,
+                  child: SelectionArea(
+                    child: Text(value, style: theme.textTheme.bodyMedium),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// 属性简介：默认最多 4 行，长简介可以展开 / 收起。
 ///
 /// 用 SelectionArea + Text（而不是 SelectableText）：文字可以选中复制，
@@ -3799,6 +4071,79 @@ class SheetListGroup extends StatelessWidget {
     margin: margin,
     children: children,
   );
+}
+
+/// Compact 窗口里的条目动作面板。
+///
+/// 仍复用“添加”弹窗的连接式列表组；每项只执行一个动作，选中后带类型化结果
+/// 关闭面板。传输页等调用方原有的 [closeOn] / [closeWhen] 自动收起条件在这里
+/// 保持生效。
+class _M3eMenuSheet<T> extends StatefulWidget {
+  const _M3eMenuSheet({required this.items, this.closeOn, this.closeWhen});
+
+  final List<M3eMenuItem<T>> items;
+  final Listenable? closeOn;
+  final bool Function()? closeWhen;
+
+  @override
+  State<_M3eMenuSheet<T>> createState() => _M3eMenuSheetState<T>();
+}
+
+class _M3eMenuSheetState<T> extends State<_M3eMenuSheet<T>> {
+  bool _closing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.closeOn?.addListener(_handleCloseOn);
+  }
+
+  @override
+  void didUpdateWidget(covariant _M3eMenuSheet<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.closeOn == oldWidget.closeOn) return;
+    oldWidget.closeOn?.removeListener(_handleCloseOn);
+    widget.closeOn?.addListener(_handleCloseOn);
+  }
+
+  void _handleCloseOn() {
+    if (!mounted || _closing) return;
+    if (widget.closeWhen != null && !widget.closeWhen!()) return;
+    _closing = true;
+    Navigator.of(context).pop();
+  }
+
+  @override
+  void dispose() {
+    widget.closeOn?.removeListener(_handleCloseOn);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SheetListGroup(
+      key: const ValueKey('adaptive-m3e-menu-sheet'),
+      margin: SheetListGroup.endMargin,
+      children: [
+        for (final M3eMenuItem<T> item in widget.items)
+          ListTile(
+            enabled: item.enabled,
+            leading: Icon(item.icon, fill: item.iconFill),
+            title: Text(
+              item.label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            onTap: item.enabled
+                ? () {
+                    _closing = true;
+                    Navigator.of(context).pop(item.value);
+                  }
+                : null,
+          ),
+      ],
+    );
+  }
 }
 
 /// 对话框里的 MD3E 列表组：[SegmentedList] 的对话框预设。

@@ -530,6 +530,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get unknownSize => 'Unknown size';
 
   @override
+  String get unknownValue => 'Unknown';
+
+  @override
   String get retry => 'Retry';
 
   @override
@@ -1489,6 +1492,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get propertyTime => 'Time';
+
+  @override
+  String get propertySharer => 'Sharer';
 
   @override
   String get propertyDownloadCount => 'Downloads';

@@ -507,6 +507,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get unknownSize => '未知大小';
 
   @override
+  String get unknownValue => '未知';
+
+  @override
   String get retry => '重试';
 
   @override
@@ -1427,6 +1430,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get propertyTime => '时间';
+
+  @override
+  String get propertySharer => '分享者';
 
   @override
   String get propertyDownloadCount => '下载数';

@@ -124,4 +124,41 @@ void main() {
     );
     expect(descOpacity(tester), 1.0);
   });
+
+  testWidgets('属性详情值更新时淡入并轻微上移', (tester) async {
+    await tester.pumpWidget(
+      host(const PropertyDetailRow(label: '大小', value: '—')),
+    );
+    await tester.pumpAndSettle();
+    final widthBefore = tester.getSize(find.byType(AnimatedSize)).width;
+
+    await tester.pumpWidget(
+      host(const PropertyDetailRow(label: '大小', value: '2.0 MB')),
+    );
+    await tester.pump();
+
+    expect(find.text('—'), findsOneWidget);
+    expect(find.text('2.0 MB'), findsOneWidget);
+    final incoming = find.text('2.0 MB');
+    final fade = tester.widget<FadeTransition>(
+      find.ancestor(of: incoming, matching: find.byType(FadeTransition)).first,
+    );
+    final slide = tester.widget<SlideTransition>(
+      find.ancestor(of: incoming, matching: find.byType(SlideTransition)).first,
+    );
+    expect(fade.opacity.value, lessThan(1));
+    expect(slide.position.value.dy, greaterThan(0));
+    expect(
+      tester.getSize(find.byType(AnimatedSize)).width,
+      moreOrLessEquals(widthBefore, epsilon: 0.5),
+    );
+    expect(
+      tester.getSize(incoming).width,
+      moreOrLessEquals(widthBefore, epsilon: 0.5),
+    );
+
+    await tester.pumpAndSettle();
+    expect(find.text('—'), findsNothing);
+    expect(find.text('2.0 MB'), findsOneWidget);
+  });
 }

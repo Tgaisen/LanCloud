@@ -9,30 +9,30 @@
 
 | 命令 | 口径 | 结果 | 耗时 |
 | --- | --- | --- | --- |
-| `tools\agent.cmd analyze` | 全量 | No issues found | 约 27 s |
-| `tools\agent.cmd analyze` | 增量（本次改动，2 项） | No issues found | 约 14.9 s |
-| `tools\agent.cmd test` | 全量（最近完整快照，本次累计新增 18 用例前） | **835 tests：834 passed + 1 个既有偶发失败** | 约 115–185 s |
-| `tools\agent.cmd test` | 增量（本次改动，53 个测试文件） | **364 tests, all passed** | 约 66 s |
+| `tools\agent.cmd analyze` | 全量 | No issues found | 约 41 s |
+| `tools\agent.cmd analyze` | 增量（本次改动，5 项） | No issues found | 约 13.9 s |
+| `tools\agent.cmd test` | 全量（当前） | **865 tests, all passed** | 约 125 s |
+| `tools\agent.cmd test` | 增量（本次改动，2 个测试文件） | **11 tests, all passed** | 约 6 s |
 
 当前分析结果为 0 issue 是硬基线。出现红灯时，先判断是否为本次改动引入；
 不要把增量结果当成全量结论。
 
-当前全量用例总数为 855（本轮新增 2 个；全量尚未重跑）。最近两次全量分别只有
-`app_log_test.dart` / `share_password_recovery_test.dart` 的单个既有用例失败，
-对应测试文件单独重跑均通过；本次改动相关的 53 个受影响测试文件全部通过。
+当前全量用例总数为 865。测试清理与异步等待加固后，全量 865 个用例已在并发
+场景下全部通过；`app_log_test.dart` 与 `share_password_recovery_test.dart`
+连续 3 轮针对性复跑也全部通过。
 
 ## 规模
 
 | 指标 | 当前值 |
 | --- | ---: |
 | `lib` Dart 文件 | 156 |
-| `lib` 总行数 | 56,552 |
-| `test` 测试文件 | 173（全部为 `*_test.dart`，平铺） |
-| `test` 总行数 | 31,170 |
-| `test` 用例数 | 855 |
+| `lib` 总行数 | 57,290 |
+| `test` 测试文件 | 174（全部为 `*_test.dart`，平铺） |
+| `test` 总行数 | 31,720 |
+| `test` 用例数 | 865 |
 | `lib/ui` 平铺文件 | 60 |
 | `lib/core` | 55 个平铺文件 + 5 个子系统目录 |
-| 文案（`app_zh.arb`） | 1,620 行 |
+| 文案（`app_zh.arb`） | 1,622 行 |
 
 ## 工具链与依赖
 
@@ -46,7 +46,7 @@
 
 ## 测试安全网
 
-- 当前全量总数为 853 个测试；项目仍没有
+- 当前全量总数为 865 个测试；项目仍没有
   `integration_test` 和 golden test。
 - `tools\agent.cmd analyze|test` 默认走增量；全量结果必须按上表单独记录。
 - `tools\agent.cmd` 已内置 `--no-pub`；需要安装依赖时使用 `agent.cmd pubget`。
@@ -70,8 +70,8 @@
 - Windows 构建出现 `flutter_inappwebview_windows` 的 CMake `CMP0175` 开发警告；
   当前不影响构建与启动，继续跟随插件升级观察。
 - Windows OverlayPortal/UIA 上游间歇风险继续观察，不误判为业务回归。
-- 全量并行运行时，日志清理与分享密码恢复测试偶发单个时序失败；对应测试文件
-  单独重跑均稳定通过，提交判断以受影响测试和失败项复跑结果为准。
+- 日志清理已增加 Windows 临时目录有界重试，分享密码恢复测试已改用 5 秒截止
+  时间轮询；当前全量与连续复跑均通过，后续继续观察较慢 CI 环境。
 - 开发环境 Flutter `3.47.9`，`pubspec.lock` 已记录相同 SDK 注记。
 
 ## 维护约定

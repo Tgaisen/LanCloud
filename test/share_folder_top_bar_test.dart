@@ -9,7 +9,6 @@ import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/common.dart';
-import 'package:lancloud/ui/m3e.dart';
 import 'package:lancloud/ui/share_folder_page.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
@@ -138,8 +137,13 @@ void main() {
     );
 
     List<String> menuLabels() => tester
-        .widgetList<M3eMenuRow>(find.byType(M3eMenuRow))
-        .map((row) => row.label)
+        .widgetList<ListTile>(
+          find.descendant(
+            of: find.byKey(const ValueKey('adaptive-m3e-menu-sheet')),
+            matching: find.byType(ListTile),
+          ),
+        )
+        .map((tile) => (tile.title! as Text).data!)
         .toList();
 
     Future<void> openMenu(String name) async {
@@ -208,9 +212,15 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
 
-    final downloadRow = tester
-        .widgetList<M3eMenuRow>(find.byType(M3eMenuRow))
-        .firstWhere((r) => r.label == '下载');
+    final downloadRow = tester.widget<ListTile>(
+      find.ancestor(
+        of: find.descendant(
+          of: find.byKey(const ValueKey('adaptive-m3e-menu-sheet')),
+          matching: find.text('下载'),
+        ),
+        matching: find.byType(ListTile),
+      ),
+    );
     expect(downloadRow.enabled, isFalse);
   });
 
