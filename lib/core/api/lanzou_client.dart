@@ -1402,12 +1402,7 @@ class LanzouClient {
     var name = parsedName ?? url.split('/').last;
     final size = shareFileSizeFromHtml(html);
     var time = shareFileTimeFromHtml(html);
-    final sharer =
-        _match(html, [
-          r'<span class="user-name">([^<]+)</span>',
-          r'class="user-name"[^>]*>([^<]+)<',
-        ]) ??
-        '';
+    var sharer = shareSharerFromHtml(html);
     var desc = _cleanDesc(
       _match(html, [r'class="n_box_des">(.*?)</div>']) ?? '',
     );
@@ -1442,6 +1437,8 @@ class LanzouClient {
       }
       final frameTime = shareFileTimeFromHtml(iframeHtml);
       if (frameTime.isNotEmpty) time = frameTime;
+      final frameSharer = shareSharerFromHtml(iframeHtml);
+      if (frameSharer.isNotEmpty) sharer = frameSharer;
     }
 
     // exe / apk 等分享页模板没有简介节点：下载页（/tp）的 .mdo 才是简介。
@@ -1607,12 +1604,7 @@ class LanzouClient {
           r'<div class="user-radio-\d"></div>(.+?)</div>',
         ]) ??
         '';
-    final sharer =
-        _match(html, [
-          r'<span class="user-name">([^<]+)</span>',
-          r'class="user-name"[^>]*>([^<]+)<',
-        ]) ??
-        '';
+    final sharer = shareSharerFromHtml(html);
     final paging = ShareFolderPaging(
       base: base,
       referer: url,
@@ -1813,10 +1805,36 @@ String shareFileTimeFromHtml(String html) {
         caseSensitive: false,
       ).firstMatch(html) ??
       RegExp(
+        r'''class=["'][^"']*\bn_file_infos\b[^"']*["'][^>]*>\s*(\d{4}-\d{2}-\d{2}(?:\s+\d{2}:\d{2}(?::\d{2})?)?)\s*<''',
+        caseSensitive: false,
+      ).firstMatch(html) ??
+      RegExp(
         r'(?:上传时间|文件时间|分享时间)[：:]\s*(?:</span>\s*)?([^<]+?)\s*<',
         caseSensitive: false,
       ).firstMatch(html);
   return match?.group(1)?.trim() ?? '';
+}
+
+/// 从分享文件页解析分享者。
+///
+/// 密码文件与 APK 模板常用 `user-name`；普通文件 PC 模板可能把分享者写在
+/// “分享者 / 分享用户 / 上传者 / 作者”标签后。只接受明确节点或标签，
+/// 避免误取正文。
+String shareSharerFromHtml(String html) {
+  final match =
+      RegExp(
+        r'''class=["'][^"']*\buser-name\b[^"']*["'][^>]*>\s*([^<]+?)\s*<''',
+        caseSensitive: false,
+      ).firstMatch(html) ??
+      RegExp(
+        r'(?:分享者|分享用户|上传者|作者)[：:]\s*(?:</span>\s*)?(?:<[^>]+>\s*)*([^<]+?)\s*<',
+        caseSensitive: false,
+      ).firstMatch(html) ??
+      RegExp(
+        r'(?:分享者|分享用户|上传者|作者)[：:]\s*([^<\r\n]+)',
+        caseSensitive: false,
+      ).firstMatch(html);
+  return match?.group(1)?.replaceAll('&amp;', '&').trim() ?? '';
 }
 
 /// 清理分享页里的富文本（简介、描述）：保留换行、去掉标签与常见实体。
