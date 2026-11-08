@@ -1266,6 +1266,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get nameLabelMember => 'Name (membership required to rename)';
 
   @override
+  String get fileRenameMembershipHint =>
+      'A membership is required to rename files';
+
+  @override
   String get pleaseEnterName => 'Enter a name';
 
   @override
@@ -1369,6 +1373,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String addedDownloadsPartialSkipped(int ok, int skipped, int failed) {
     return 'Added $ok download tasks; skipped $skipped files already in the transfer list; $failed failed to resolve';
   }
+
+  @override
+  String get downloadStarted => 'Download started';
+
+  @override
+  String get downloadSkippedInTransfers =>
+      'Skipped: file is already in the transfer list';
 
   @override
   String retriedDownloads(int count) {

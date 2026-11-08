@@ -12,6 +12,7 @@ import 'package:lancloud/core/api/models.dart';
 import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/cache_page_settings_state.dart';
 import 'package:lancloud/core/data/app_db_provider.dart';
+import 'package:lancloud/core/data/account_store.dart';
 import 'package:lancloud/core/drive_state.dart';
 import 'package:lancloud/core/list_home_settings_state.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
@@ -266,10 +267,18 @@ Future<void> _pumpDrive(
   VisualDensity density = VisualDensity.standard,
   Size viewSize = const Size(420, 900),
   Locale locale = const Locale('zh'),
+  bool freeTier = false,
 }) async {
   final environment = app.environment;
   final transfers = manager ?? buildTransferManagerForEnvironment(environment);
-  environment.accountState.store.activeUid = '';
+  if (freeTier) {
+    environment.accountState.store.accounts = [
+      Account(uid: '1', cookie: 'cookie'),
+    ];
+    environment.accountState.store.activeUid = '1';
+  } else {
+    environment.accountState.store.activeUid = '';
+  }
   addTearDown(app.dispose);
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = viewSize;
@@ -358,7 +367,7 @@ void main() {
 
     final menu = tester.getRect(find.byKey(const ValueKey('m3e-menu-card')));
     expect(menu.topLeft, pointer);
-    expect(find.byType(M3eMenuRow), findsNWidgets(7));
+    expect(find.byType(M3eMenuRow), findsWidgets);
   });
 
   testWidgets('网盘页文件 ⋯ 菜单：重命名与简介拆分，属性打开属性弹窗', (tester) async {
@@ -371,7 +380,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
     await tester.pump(const Duration(milliseconds: 600));
 
-    const order = ['属性', '复制链接', '访问密码', '重命名', '修改简介', '移动', '删除'];
+    const order = ['下载', '属性', '复制链接', '访问密码', '移动', '重命名', '修改简介'];
     expect(find.byType(M3eMenuRow), findsNWidgets(order.length));
     for (final label in order) {
       // 页面本身也有「删除」这类文案，断言限定在菜单行里
@@ -384,7 +393,7 @@ void main() {
         reason: label,
       );
     }
-    // 顺序：属性 / 复制链接 / 访问密码 / 重命名 / 修改简介 / 移动 / 删除
+    // 顺序：下载 / 属性 / 复制链接 / 访问密码 / 移动 / 重命名 / 修改简介 / 删除
     final tops = [
       for (final label in order)
         tester
@@ -440,6 +449,17 @@ void main() {
       findsOneWidget,
     );
 
+    // 第八项在默认窗口高度下需要滚动才会构建；滚到底验证“删除”仍在最后。
+    final menuCard = find.byKey(const ValueKey('m3e-menu-card'));
+    await tester.drag(menuCard, const Offset(0, -120));
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(of: find.byType(M3eMenuRow), matching: find.text('删除')),
+      findsOneWidget,
+    );
+    await tester.drag(menuCard, const Offset(0, 120));
+    await tester.pumpAndSettle();
+
     // 点「属性」→ 打开文件属性弹窗（那一行 5 个图标按钮）
     await tester.tap(
       find.descendant(of: find.byType(M3eMenuRow), matching: find.text('属性')),
@@ -448,6 +468,37 @@ void main() {
     expect(find.byType(M3EToggleButton), findsNWidgets(5));
     expect(_sheetText('重命名'), findsOneWidget);
     expect(_sheetText('修改简介'), findsOneWidget);
+  });
+
+  testWidgets('网盘页文件菜单：下载入队，重复下载提示跳过', (tester) async {
+    final client = _FakeClient();
+    final app = _FakeApp(client);
+    final manager = buildTransferManagerForEnvironment(app.environment);
+    await _pumpDrive(tester, app, manager: manager);
+
+    Future<void> openMenuAndTapDownload() async {
+      await tester.tap(find.byTooltip('文件操作'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+      await tester.tap(
+        find.descendant(of: find.byType(M3eMenuRow), matching: find.text('下载')),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+
+    await openMenuAndTapDownload();
+    expect(client.shareFileCalls, 1);
+    expect(manager.tasks, hasLength(1));
+    expect(manager.tasks.single.refId, ':f1');
+    expect(find.text('已开始下载'), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 3));
+    await openMenuAndTapDownload();
+    expect(client.shareFileCalls, 1);
+    expect(manager.tasks, hasLength(1));
+    expect(find.text('已跳过：文件已在传输列表'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 3));
   });
 
   testWidgets('网盘页文件 ⋯ 菜单：复制链接复制的是分享链接（带提取码）', (tester) async {
@@ -534,7 +585,7 @@ void main() {
     expect(client.renamedFiles, ['b.zip']);
     expect(client.savedDescs, ['新简介']);
 
-    // 七项菜单的「删除」位置更低，等提示条消失后再打开，避免点击被遮挡。
+    // 八项菜单的「删除」需要滚到末尾，等提示条消失后再打开，避免点击被遮挡。
     await tester.pump(const Duration(seconds: 10));
     await tester.pump(const Duration(seconds: 1));
     Navigator.of(tester.element(find.byType(DrivePage))).pop();
@@ -542,12 +593,13 @@ void main() {
     await tester.tap(find.byTooltip('文件操作'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
+    final menuCard = find.byKey(const ValueKey('m3e-menu-card'));
+    await tester.drag(menuCard, const Offset(0, -200));
+    await tester.pumpAndSettle();
     final deleteItem = find.descendant(
       of: find.byType(M3eMenuRow),
       matching: find.text('删除'),
     );
-    await tester.ensureVisible(deleteItem);
-    await tester.pumpAndSettle();
     await tester.tap(deleteItem);
     await _settleSheet(tester);
     expect(find.text('删除确认'), findsOneWidget);
@@ -622,7 +674,7 @@ void main() {
 
     await tester.tap(find.byTooltip('更多'));
     await _settleSheet(tester);
-    const moreOrder = ['移动', '重命名', '修改简介', '访问密码'];
+    const moreOrder = ['访问密码', '移动', '重命名', '修改简介'];
     final moreTops = [
       for (final label in moreOrder)
         tester
@@ -645,6 +697,10 @@ void main() {
       ),
     );
     await _settleSheet(tester);
+    expect(
+      find.byKey(const ValueKey('drive-batch-rename-supporting-text')),
+      findsNothing,
+    );
     await tester.enterText(
       find.byKey(const ValueKey('drive-batch-rename-search')),
       'file',
@@ -671,12 +727,13 @@ void main() {
   testWidgets('网盘批量重命名：文件失败时文件夹仍成功并汇总', (tester) async {
     final client = _PartialBatchRenameClient();
     final app = _FakeApp(client);
-    await _pumpDrive(tester, app);
+    await _pumpDrive(tester, app, freeTier: true);
 
     await tester.longPress(find.text('file1.zip'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('file-folder'));
     await tester.pumpAndSettle();
+    expect(find.text('已选择 2 项'), findsOneWidget);
 
     await tester.tap(find.byTooltip('更多'));
     await _settleSheet(tester);
@@ -687,6 +744,11 @@ void main() {
       ),
     );
     await _settleSheet(tester);
+    expect(
+      find.byKey(const ValueKey('drive-batch-rename-supporting-text')),
+      findsOneWidget,
+    );
+    expect(find.text('修改文件名称需开通会员'), findsOneWidget);
     await tester.enterText(
       find.byKey(const ValueKey('drive-batch-rename-search')),
       'file',
@@ -1100,7 +1162,7 @@ void main() {
     );
   });
 
-  testWidgets('桌面端紧凑密度：菜单放得下时卡片贴着内容，底部不多留白', (tester) async {
+  testWidgets('桌面端紧凑密度：菜单首尾贴近卡片内边距', (tester) async {
     final app = _FakeApp(_FakeClient());
     // Windows 桌面默认 visualDensity.compact：行高被压到 40dp 而不是 48dp。
     // 卡片高度如果按 48dp 硬算，完全展开时底部就会多出一截空白。
@@ -1111,16 +1173,17 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
     await tester.pump(const Duration(milliseconds: 600));
 
+    final menuCard = find.byKey(const ValueKey('m3e-menu-card'));
+    final Rect card = tester.getRect(menuCard);
     final rows = find.byType(M3eMenuRow);
-    expect(rows, findsNWidgets(7));
-    // 卡片 = 菜单行最近的 Material 祖先
-    final Rect card = tester.getRect(
-      find.ancestor(of: rows.first, matching: find.byType(Material)).first,
-    );
     final Rect first = tester.getRect(rows.first);
-    final Rect last = tester.getRect(rows.last);
     expect(first.height, 40, reason: '紧凑密度下 MenuItemButton 行高 40dp');
     expect(first.top - card.top, 4, reason: '首项到卡片顶边也是 4dp');
+
+    await tester.drag(menuCard, const Offset(0, -400));
+    await tester.pumpAndSettle();
+    final Rect last = tester.getRect(find.byType(M3eMenuRow).last);
+    expect(last.height, 40, reason: '滚动后末项仍保持紧凑行高');
     expect(card.bottom - last.bottom, 4, reason: '末项到卡片底边也是 4dp');
   });
 
@@ -1412,13 +1475,22 @@ void main() {
     final app = _FakeApp(_MemberRenameClient());
     const locale = Locale('en');
     final l10n = lookupAppLocalizations(locale);
-    await _pumpDrive(tester, app, locale: locale);
+    await _pumpDrive(tester, app, locale: locale, freeTier: true);
 
     await tester.tap(find.text('a.zip'));
     await _settleSheet(tester);
     await tester.tap(_sheetText(l10n.rename));
     await _settleSheet(tester);
 
+    expect(
+      find.byKey(const ValueKey('drive-rename-supporting-text')),
+      findsOneWidget,
+    );
+    expect(find.text(l10n.fileRenameMembershipHint), findsOneWidget);
+    final field = tester.widget<TextField>(
+      find.byKey(const ValueKey('drive-rename-field')),
+    );
+    expect(field.decoration?.helperText, isNull);
     await tester.enterText(find.byType(TextField).first, 'b.zip');
     await tester.tap(find.text(l10n.modify));
     await _settleSheet(tester);

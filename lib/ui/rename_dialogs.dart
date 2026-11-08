@@ -11,14 +11,14 @@ import 'reduce_motion.dart';
 Future<String?> showRenameDialog(
   BuildContext context, {
   required String initialName,
-  String? nameLabel,
+  String? supportingText,
   String keyPrefix = 'rename',
 }) {
   return showDialog<String>(
     context: context,
     builder: (_) => _SingleRenameDialog(
       initialName: initialName,
-      nameLabel: nameLabel,
+      supportingText: supportingText,
       keyPrefix: keyPrefix,
     ),
   );
@@ -28,23 +28,28 @@ Future<String?> showRenameDialog(
 Future<List<RenameChange>?> showBatchRenameDialog(
   BuildContext context, {
   required List<RenameTarget> targets,
+  String? supportingText,
   String keyPrefix = 'batch-rename',
 }) {
   return showDialog<List<RenameChange>>(
     context: context,
-    builder: (_) => _BatchRenameDialog(targets: targets, keyPrefix: keyPrefix),
+    builder: (_) => _BatchRenameDialog(
+      targets: targets,
+      supportingText: supportingText,
+      keyPrefix: keyPrefix,
+    ),
   );
 }
 
 class _SingleRenameDialog extends StatefulWidget {
   const _SingleRenameDialog({
     required this.initialName,
-    required this.nameLabel,
+    required this.supportingText,
     required this.keyPrefix,
   });
 
   final String initialName;
-  final String? nameLabel;
+  final String? supportingText;
   final String keyPrefix;
 
   @override
@@ -78,23 +83,39 @@ class _SingleRenameDialogState extends State<_SingleRenameDialog> {
     return formDialog(
       context,
       title: Text(l10n.rename),
-      content: TextField(
-        key: ValueKey('${widget.keyPrefix}-field'),
-        controller: _controller,
-        autofocus: true,
-        textInputAction: TextInputAction.done,
-        decoration: errorState(
-          context,
-          InputDecoration(
-            border: const OutlineInputBorder(),
-            labelText: widget.nameLabel ?? l10n.nameLabel,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (widget.supportingText case final text?) ...[
+            Text(
+              text,
+              key: ValueKey('${widget.keyPrefix}-supporting-text'),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+          TextField(
+            key: ValueKey('${widget.keyPrefix}-field'),
+            controller: _controller,
+            autofocus: true,
+            textInputAction: TextInputAction.done,
+            decoration: errorState(
+              context,
+              InputDecoration(
+                border: const OutlineInputBorder(),
+                labelText: l10n.nameLabel,
+              ),
+              _error,
+            ),
+            onChanged: (_) {
+              if (_error != null) setState(() => _error = null);
+            },
+            onSubmitted: (_) => _submit(),
           ),
-          _error,
-        ),
-        onChanged: (_) {
-          if (_error != null) setState(() => _error = null);
-        },
-        onSubmitted: (_) => _submit(),
+        ],
       ),
       actions: [
         TextButton(
@@ -112,9 +133,14 @@ class _SingleRenameDialogState extends State<_SingleRenameDialog> {
 }
 
 class _BatchRenameDialog extends StatefulWidget {
-  const _BatchRenameDialog({required this.targets, required this.keyPrefix});
+  const _BatchRenameDialog({
+    required this.targets,
+    required this.supportingText,
+    required this.keyPrefix,
+  });
 
   final List<RenameTarget> targets;
+  final String? supportingText;
   final String keyPrefix;
 
   @override
@@ -174,6 +200,16 @@ class _BatchRenameDialogState extends State<_BatchRenameDialog> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (widget.supportingText case final text?) ...[
+          Text(
+            text,
+            key: ValueKey('$prefix-supporting-text'),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
         TextField(
           key: ValueKey('$prefix-search'),
           controller: _searchController,

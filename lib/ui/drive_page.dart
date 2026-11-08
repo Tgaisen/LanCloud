@@ -42,12 +42,13 @@ const double _driveEnterStepMs = 26;
 
 /// 网盘页文件条目 ⋯ 菜单里的动作。
 enum _FileMenuAction {
+  download,
   properties,
   copyLink,
   password,
+  move,
   rename,
   editDescription,
-  move,
   delete,
 }
 
@@ -1526,6 +1527,11 @@ class _DrivePageState extends ConsumerState<DrivePage>
         margin: SheetListGroup.endMargin,
         children: [
           ListTile(
+            leading: const Icon(Icons.lock_outline),
+            title: Text(context.l10n.accessPassword),
+            onTap: () => Navigator.of(context).pop('pwd'),
+          ),
+          ListTile(
             leading: const Icon(Icons.drive_file_move_outline),
             title: Text(context.l10n.move),
             onTap: () => Navigator.of(context).pop('move'),
@@ -1539,11 +1545,6 @@ class _DrivePageState extends ConsumerState<DrivePage>
             leading: const Icon(Icons.description_outlined),
             title: Text(context.l10n.editDesc),
             onTap: () => Navigator.of(context).pop('desc'),
-          ),
-          ListTile(
-            leading: const Icon(Icons.lock_outline),
-            title: Text(context.l10n.accessPassword),
-            onTap: () => Navigator.of(context).pop('pwd'),
           ),
         ],
       ),
@@ -1629,6 +1630,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
     final folderTargets = {
       for (final folder in folders) 'folder:${folder.id}': folder,
     };
+    final freeTier = _accounts.store.active?.isFreeTier ?? false;
     final changes = await showBatchRenameDialog(
       context,
       targets: [
@@ -1637,6 +1639,9 @@ class _DrivePageState extends ConsumerState<DrivePage>
         for (final entry in folderTargets.entries)
           RenameTarget(id: entry.key, name: entry.value.name),
       ],
+      supportingText: files.isNotEmpty && freeTier
+          ? context.l10n.fileRenameMembershipHint
+          : null,
       keyPrefix: 'drive-batch-rename',
     );
     if (changes == null || !mounted) return;
@@ -2014,7 +2019,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
   }
 
   /// 点 ⋯：MD3E 弹出菜单
-  /// （属性 / 复制链接 / 访问密码 / 重命名 / 修改简介 / 移动 / 删除）。
+  /// （下载 / 属性 / 复制链接 / 访问密码 / 移动 / 重命名 / 修改简介 / 删除）。
   ///
   /// [buttonContext] 是那颗 ⋯ 按钮的 context——菜单贴它下方右对齐弹出。
   Future<void> _fileMenu(
@@ -2037,6 +2042,11 @@ class _DrivePageState extends ConsumerState<DrivePage>
       alignEnd: true,
       items: [
         M3eMenuItem(
+          value: _FileMenuAction.download,
+          label: l10n.download,
+          icon: Icons.download_outlined,
+        ),
+        M3eMenuItem(
           value: _FileMenuAction.properties,
           label: l10n.properties,
           icon: Icons.info_outline,
@@ -2052,6 +2062,11 @@ class _DrivePageState extends ConsumerState<DrivePage>
           icon: Icons.lock_outline,
         ),
         M3eMenuItem(
+          value: _FileMenuAction.move,
+          label: l10n.move,
+          icon: Icons.drive_file_move_outline,
+        ),
+        M3eMenuItem(
           value: _FileMenuAction.rename,
           label: l10n.rename,
           icon: Icons.input_field,
@@ -2062,11 +2077,6 @@ class _DrivePageState extends ConsumerState<DrivePage>
           icon: Icons.description_outlined,
         ),
         M3eMenuItem(
-          value: _FileMenuAction.move,
-          label: l10n.move,
-          icon: Icons.drive_file_move_outline,
-        ),
-        M3eMenuItem(
           value: _FileMenuAction.delete,
           label: l10n.delete,
           icon: Icons.delete_outline,
@@ -2075,6 +2085,8 @@ class _DrivePageState extends ConsumerState<DrivePage>
     );
     if (action == null || !mounted) return;
     switch (action) {
+      case _FileMenuAction.download:
+        await _downloadFileFromMenu(file);
       case _FileMenuAction.properties:
         await _showFileProperties(file);
       case _FileMenuAction.copyLink:
@@ -2089,6 +2101,34 @@ class _DrivePageState extends ConsumerState<DrivePage>
         await _editFileDescFromMenu(file);
       case _FileMenuAction.delete:
         await _deleteFile(file);
+    }
+  }
+
+  /// 文件菜单的「下载」：与批量下载使用同一套传输列表去重和入队逻辑。
+  Future<void> _downloadFileFromMenu(LzFile file) async {
+    final transfers = _transfers;
+    final activeUid = _accounts.store.activeUid ?? '';
+    final ref = driveDownloadKey(activeUid, file.id);
+    if (shouldSkipDriveBatchDownload(ref: ref, transfers: transfers)) {
+      showAppToast(context, context.l10n.downloadSkippedInTransfers);
+      return;
+    }
+    final client = _activeClient();
+    if (client == null) return;
+    try {
+      final info = await client.shareInfoOfFile(file.id, withDetails: false);
+      transfers.addDownload(
+        url: '',
+        name: info.name.isEmpty ? file.name : info.name,
+        referer: info.url,
+        pwd: info.pwd,
+        refId: ref,
+      );
+      if (!mounted) return;
+      showAppToast(context, context.l10n.downloadStarted);
+    } catch (e) {
+      if (!mounted) return;
+      showAppToast(context, context.l10n.lanzouError(e));
     }
   }
 
@@ -2277,8 +2317,8 @@ class _DrivePageState extends ConsumerState<DrivePage>
     final name = await showRenameDialog(
       context,
       initialName: file.name,
-      // 普通账号改不了文件名（重命名接口只对会员开放），输入框标题里说明。
-      nameLabel: freeTier ? context.l10n.nameLabelMember : null,
+      // 普通账号改不了文件名（重命名接口只对会员开放），在弹窗正文里说明。
+      supportingText: freeTier ? context.l10n.fileRenameMembershipHint : null,
       keyPrefix: 'drive-rename',
     );
     if (name == null || !mounted) return null;

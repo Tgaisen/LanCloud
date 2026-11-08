@@ -1209,6 +1209,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get nameLabelMember => '名称（修改名称需开通会员）';
 
   @override
+  String get fileRenameMembershipHint => '修改文件名称需开通会员';
+
+  @override
   String get pleaseEnterName => '请输入名称';
 
   @override
@@ -1312,6 +1315,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String addedDownloadsPartialSkipped(int ok, int skipped, int failed) {
     return '已加入 $ok 个下载任务，跳过 $skipped 个已在传输列表的文件，$failed 个解析失败';
   }
+
+  @override
+  String get downloadStarted => '已开始下载';
+
+  @override
+  String get downloadSkippedInTransfers => '已跳过：文件已在传输列表';
 
   @override
   String retriedDownloads(int count) {
