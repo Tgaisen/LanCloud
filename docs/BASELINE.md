@@ -9,16 +9,17 @@
 
 | 命令 | 口径 | 结果 | 耗时 |
 | --- | --- | --- | --- |
-| `tools\agent.cmd analyze` | 全量 | No issues found | 约 27 s |
+| `tools\agent.cmd analyze` | 全量 | No issues found | 约 41 s |
 | `tools\agent.cmd analyze` | 增量（本次改动，5 项） | No issues found | 约 13.9 s |
-| `tools\agent.cmd test` | 全量（上一轮快照） | **860 tests, all passed** | 约 124 s |
+| `tools\agent.cmd test` | 全量（当前） | **865 tests：864 passed + 1 个既有偶发失败** | 约 133 s |
 | `tools\agent.cmd test` | 增量（本次改动，64 个测试文件） | **393 tests, all passed** | 约 105 s |
 
 当前分析结果为 0 issue 是硬基线。出现红灯时，先判断是否为本次改动引入；
 不要把增量结果当成全量结论。
 
-当前全量用例总数为 865（本轮新增 1 个；全量尚未重跑）。本次改动相关的
-64 个受影响测试文件全部通过。
+当前全量用例总数为 865。本次全量中只有 `app_log_test.dart` 的临时目录删除竞态
+失败，该文件单独复跑 6 个用例全部通过；本次改动相关的 64 个受影响测试文件
+也全部通过。
 
 ## 规模
 
