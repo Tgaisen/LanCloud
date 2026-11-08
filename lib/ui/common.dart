@@ -16,6 +16,7 @@ import '../core/data/app_db_provider.dart';
 import '../core/drive_state.dart';
 import '../core/navigation_appearance_settings_state.dart';
 import '../core/navigation_state.dart';
+import '../core/platform_support.dart';
 import '../core/transfer/transfer_manager_provider.dart';
 import '../l10n/l10n.dart';
 import 'app_scroll.dart';
@@ -27,6 +28,12 @@ import 'scroll_tint.dart';
 
 /// 大屏（平板 / 桌面）布局阈值：≥640dp 时用侧栏 + 圆角内容卡片。
 const double kLargeLayoutBreakpoint = 640;
+
+/// M3 Compact 窗口宽度上限：条目动作菜单在小屏移动端改为底部面板。
+///
+/// 这是组件呈现的断点，不复用 [kLargeLayoutBreakpoint]：后者控制应用外壳的
+/// 侧栏 / 内容卡片布局，两者可以独立演进。
+const double kCompactMenuBreakpoint = 600;
 
 /// 网盘页路径栏高度（顶栏的 bottom 部分）。
 const double kDrivePathBarHeight = 46;
@@ -1628,6 +1635,51 @@ Future<T?> showAppSheet<T>(
               child: sheet,
             );
     },
+  );
+}
+
+/// 条目动作菜单的自适应入口。
+///
+/// M3 建议 Compact 窗口把辅助选择从浮动菜单改为底部面板，以获得更宽的文案
+/// 和更易触达的动作列表；Medium 及以上继续使用锚定菜单。这里额外保留两个
+/// 例外：
+/// - [pointerPosition] 非空代表鼠标右键等上下文菜单，始终留在原位置；
+/// - [allowSheet] 为 false 供已经位于模态面板内的二级菜单使用，避免面板叠面板。
+///
+/// 底部面板和原菜单返回相同的 `Future<T?>`，调用方不需要分支处理结果。
+Future<T?> showAdaptiveM3eMenu<T>({
+  required BuildContext context,
+  required Rect anchor,
+  Offset? pointerPosition,
+  required List<M3eMenuItem<T>> items,
+  bool alignEnd = false,
+  Listenable? closeOn,
+  bool Function()? closeWhen,
+  bool allowSheet = true,
+}) {
+  final bool compact =
+      MediaQuery.sizeOf(context).width < kCompactMenuBreakpoint;
+  if (pointerPosition != null ||
+      !allowSheet ||
+      !compact ||
+      !PlatformSupport.isMobile) {
+    return showM3eMenu<T>(
+      context: context,
+      anchor: anchor,
+      pointerPosition: pointerPosition,
+      items: items,
+      alignEnd: alignEnd,
+      closeOn: closeOn,
+      closeWhen: closeWhen,
+    );
+  }
+  return showAppSheet<T>(
+    context,
+    child: _M3eMenuSheet<T>(
+      items: items,
+      closeOn: closeOn,
+      closeWhen: closeWhen,
+    ),
   );
 }
 
@@ -3799,6 +3851,79 @@ class SheetListGroup extends StatelessWidget {
     margin: margin,
     children: children,
   );
+}
+
+/// Compact 窗口里的条目动作面板。
+///
+/// 仍复用“添加”弹窗的连接式列表组；每项只执行一个动作，选中后带类型化结果
+/// 关闭面板。传输页等调用方原有的 [closeOn] / [closeWhen] 自动收起条件在这里
+/// 保持生效。
+class _M3eMenuSheet<T> extends StatefulWidget {
+  const _M3eMenuSheet({required this.items, this.closeOn, this.closeWhen});
+
+  final List<M3eMenuItem<T>> items;
+  final Listenable? closeOn;
+  final bool Function()? closeWhen;
+
+  @override
+  State<_M3eMenuSheet<T>> createState() => _M3eMenuSheetState<T>();
+}
+
+class _M3eMenuSheetState<T> extends State<_M3eMenuSheet<T>> {
+  bool _closing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.closeOn?.addListener(_handleCloseOn);
+  }
+
+  @override
+  void didUpdateWidget(covariant _M3eMenuSheet<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.closeOn == oldWidget.closeOn) return;
+    oldWidget.closeOn?.removeListener(_handleCloseOn);
+    widget.closeOn?.addListener(_handleCloseOn);
+  }
+
+  void _handleCloseOn() {
+    if (!mounted || _closing) return;
+    if (widget.closeWhen != null && !widget.closeWhen!()) return;
+    _closing = true;
+    Navigator.of(context).pop();
+  }
+
+  @override
+  void dispose() {
+    widget.closeOn?.removeListener(_handleCloseOn);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SheetListGroup(
+      key: const ValueKey('adaptive-m3e-menu-sheet'),
+      margin: SheetListGroup.endMargin,
+      children: [
+        for (final M3eMenuItem<T> item in widget.items)
+          ListTile(
+            enabled: item.enabled,
+            leading: Icon(item.icon, fill: item.iconFill),
+            title: Text(
+              item.label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            onTap: item.enabled
+                ? () {
+                    _closing = true;
+                    Navigator.of(context).pop(item.value);
+                  }
+                : null,
+          ),
+      ],
+    );
+  }
 }
 
 /// 对话框里的 MD3E 列表组：[SegmentedList] 的对话框预设。

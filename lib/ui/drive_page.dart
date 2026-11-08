@@ -74,10 +74,11 @@ Future<_FileMenuAction?> _showFileActionMenu(
   bool propertyContext = false,
 }) {
   final l10n = context.l10n;
-  return showM3eMenu<_FileMenuAction>(
+  return showAdaptiveM3eMenu<_FileMenuAction>(
     context: context,
     anchor: anchor,
     pointerPosition: pointerPosition,
+    allowSheet: !propertyContext,
     // ⋯ 贴着右边缘：菜单右缘对齐，免得被屏幕右上角夹歪
     alignEnd: true,
     items: propertyContext
@@ -163,10 +164,11 @@ Future<_FolderMenuAction?> _showFolderActionMenu(
   bool propertyContext = false,
 }) {
   final l10n = context.l10n;
-  return showM3eMenu<_FolderMenuAction>(
+  return showAdaptiveM3eMenu<_FolderMenuAction>(
     context: context,
     anchor: anchor,
     pointerPosition: pointerPosition,
+    allowSheet: !propertyContext,
     alignEnd: true,
     items: propertyContext
         ? [

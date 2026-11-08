@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -268,6 +269,16 @@ Finder _sheetTooltip(String label) => find.descendant(
 Finder _menuRowText(String text) =>
     find.descendant(of: find.byType(M3eMenuRow), matching: find.text(text));
 
+Finder _adaptiveSheetAction(String text) => find.descendant(
+  of: find.byKey(const ValueKey('adaptive-m3e-menu-sheet')),
+  matching: find.text(text),
+);
+
+Finder _adaptiveSheetTiles() => find.descendant(
+  of: find.byKey(const ValueKey('adaptive-m3e-menu-sheet')),
+  matching: find.byType(ListTile),
+);
+
 Future<void> _openPropertyMore(
   WidgetTester tester, {
   String label = '更多操作',
@@ -401,29 +412,15 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
 
     const order = ['下载', '属性', '复制链接', '访问密码', '移动', '重命名', '修改简介', '删除'];
-    expect(find.byType(M3eMenuRow), findsNWidgets(order.length));
+    expect(_adaptiveSheetTiles(), findsNWidgets(order.length));
     for (final label in order) {
-      // 页面本身也有「删除」这类文案，断言限定在菜单行里
-      expect(
-        find.descendant(
-          of: find.byType(M3eMenuRow),
-          matching: find.text(label),
-        ),
-        findsOneWidget,
-        reason: label,
-      );
+      // 页面本身也有「删除」这类文案，断言限定在自适应动作面板里
+      expect(_adaptiveSheetAction(label), findsOneWidget, reason: label);
     }
     // 顺序：下载 / 属性 / 复制链接 / 访问密码 / 移动 / 重命名 / 修改简介 / 删除
     final tops = [
       for (final label in order)
-        tester
-            .getTopLeft(
-              find.descendant(
-                of: find.byType(M3eMenuRow),
-                matching: find.text(label),
-              ),
-            )
-            .dy,
+        tester.getTopLeft(_adaptiveSheetAction(label)).dy,
     ];
     for (int i = 1; i < tops.length; i++) {
       expect(
@@ -432,47 +429,23 @@ void main() {
         reason: '「${order[i]}」要排在「${order[i - 1]}」下面',
       );
     }
-    // M3E vertical menu：项目是各自独立的圆角块，之间留 4dp 间隔
-    final rows = find.byType(M3eMenuRow).evaluate().toList();
-    for (int i = 1; i < rows.length; i++) {
-      final above = tester.getRect(find.byType(M3eMenuRow).at(i - 1));
-      final below = tester.getRect(find.byType(M3eMenuRow).at(i));
-      expect(
-        below.top - above.bottom,
-        4,
-        reason: '第 ${i + 1} 项与上一项之间应是 4dp 间隔',
-      );
-    }
-    // 项目本身的圆角 12dp（卡片 16 − 左右内缩 4）
-    final item = tester.widget<MenuItemButton>(
-      find.byType(MenuItemButton).first,
-    );
-    final shape =
-        item.style?.shape?.resolve(<WidgetState>{}) as RoundedRectangleBorder?;
-    expect(
-      (shape?.borderRadius as BorderRadius?)?.topLeft.x,
-      12,
-      reason: '菜单项目圆角应为 12dp',
-    );
     expect(
       find.descendant(
-        of: find.byType(M3eMenuRow),
+        of: find.byKey(const ValueKey('adaptive-m3e-menu-sheet')),
         matching: find.byIcon(Icons.input_field),
       ),
       findsOneWidget,
     );
     expect(
       find.descendant(
-        of: find.byType(M3eMenuRow),
+        of: find.byKey(const ValueKey('adaptive-m3e-menu-sheet')),
         matching: find.byIcon(Icons.description_outlined),
       ),
       findsOneWidget,
     );
 
     // 点「属性」→ 打开文件属性弹窗（那一行 5 个图标按钮）
-    await tester.tap(
-      find.descendant(of: find.byType(M3eMenuRow), matching: find.text('属性')),
-    );
+    await tester.tap(_adaptiveSheetAction('属性'));
     await _settleSheet(tester);
     expect(find.byType(M3EToggleButton), findsNWidgets(5));
     expect(_sheetText('类型'), findsOneWidget);
@@ -491,9 +464,7 @@ void main() {
       await tester.tap(find.byTooltip('文件操作'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 600));
-      await tester.tap(
-        find.descendant(of: find.byType(M3eMenuRow), matching: find.text('下载')),
-      );
+      await tester.tap(_adaptiveSheetAction('下载'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
     }
@@ -533,9 +504,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
     await tester.pump(const Duration(milliseconds: 600));
 
-    await tester.tap(
-      find.descendant(of: find.byType(M3eMenuRow), matching: find.text('复制链接')),
-    );
+    await tester.tap(_adaptiveSheetAction('复制链接'));
     await tester.pumpAndSettle();
 
     // 和属性弹窗一样：现取分享信息，把链接（含提取码）写进剪贴板
@@ -565,9 +534,7 @@ void main() {
     await tester.tap(find.byTooltip('文件操作'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
-    await tester.tap(
-      find.descendant(of: find.byType(M3eMenuRow), matching: find.text('复制链接')),
-    );
+    await tester.tap(_adaptiveSheetAction('复制链接'));
     await tester.pumpAndSettle();
 
     expect(client.shareFileCalls, 1);
@@ -598,7 +565,7 @@ void main() {
     expect(client.renamedFiles, ['b.zip']);
     expect(client.savedDescs, ['新简介']);
 
-    // 八项菜单的「删除」需要滚到末尾，等提示条消失后再打开，避免点击被遮挡。
+    // 等提示条消失后再打开，避免点击被遮挡。
     await tester.pump(const Duration(seconds: 10));
     await tester.pump(const Duration(seconds: 1));
     Navigator.of(tester.element(find.byType(DrivePage))).pop();
@@ -606,14 +573,7 @@ void main() {
     await tester.tap(find.byTooltip('文件操作'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
-    final menuCard = find.byKey(const ValueKey('m3e-menu-card'));
-    await tester.drag(menuCard, const Offset(0, -200));
-    await tester.pumpAndSettle();
-    final deleteItem = find.descendant(
-      of: find.byType(M3eMenuRow),
-      matching: find.text('删除'),
-    );
-    await tester.tap(deleteItem);
+    await tester.tap(_adaptiveSheetAction('删除'));
     await _settleSheet(tester);
     expect(find.text('删除确认'), findsOneWidget);
 
@@ -1176,28 +1136,33 @@ void main() {
   });
 
   testWidgets('桌面端紧凑密度：菜单首尾贴近卡片内边距', (tester) async {
-    final app = _FakeApp(_FakeClient());
-    // Windows 桌面默认 visualDensity.compact：行高被压到 40dp 而不是 48dp。
-    // 卡片高度如果按 48dp 硬算，完全展开时底部就会多出一截空白。
-    await _pumpDrive(tester, app, density: VisualDensity.compact);
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    try {
+      final app = _FakeApp(_FakeClient());
+      // Windows 桌面默认 visualDensity.compact：行高被压到 40dp 而不是 48dp。
+      // 卡片高度如果按 48dp 硬算，完全展开时底部就会多出一截空白。
+      await _pumpDrive(tester, app, density: VisualDensity.compact);
 
-    await tester.tap(find.byTooltip('文件操作'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 600));
-    await tester.pump(const Duration(milliseconds: 600));
+      await tester.tap(find.byTooltip('文件操作'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+      await tester.pump(const Duration(milliseconds: 600));
 
-    final menuCard = find.byKey(const ValueKey('m3e-menu-card'));
-    final Rect card = tester.getRect(menuCard);
-    final rows = find.byType(M3eMenuRow);
-    final Rect first = tester.getRect(rows.first);
-    expect(first.height, 40, reason: '紧凑密度下 MenuItemButton 行高 40dp');
-    expect(first.top - card.top, 4, reason: '首项到卡片顶边也是 4dp');
+      final menuCard = find.byKey(const ValueKey('m3e-menu-card'));
+      final Rect card = tester.getRect(menuCard);
+      final rows = find.byType(M3eMenuRow);
+      final Rect first = tester.getRect(rows.first);
+      expect(first.height, 40, reason: '紧凑密度下 MenuItemButton 行高 40dp');
+      expect(first.top - card.top, 4, reason: '首项到卡片顶边也是 4dp');
 
-    await tester.drag(menuCard, const Offset(0, -400));
-    await tester.pumpAndSettle();
-    final Rect last = tester.getRect(find.byType(M3eMenuRow).last);
-    expect(last.height, 40, reason: '滚动后末项仍保持紧凑行高');
-    expect(card.bottom - last.bottom, 4, reason: '末项到卡片底边也是 4dp');
+      await tester.drag(menuCard, const Offset(0, -400));
+      await tester.pumpAndSettle();
+      final Rect last = tester.getRect(find.byType(M3eMenuRow).last);
+      expect(last.height, 40, reason: '滚动后末项仍保持紧凑行高');
+      expect(card.bottom - last.bottom, 4, reason: '末项到卡片底边也是 4dp');
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
   });
 
   testWidgets('文件属性弹窗：快捷操作与详情分层，低频操作收进更多菜单', (tester) async {
@@ -1430,17 +1395,10 @@ void main() {
     // 文件夹菜单：打开 / 属性 / 复制链接 / 访问密码 / 重命名 / 修改简介 / 删除
     //（「打开」排第一，与点文件夹卡片等效；文件夹没有「移动」）
     const order = ['打开', '属性', '复制链接', '访问密码', '重命名', '修改简介', '删除'];
-    expect(find.byType(M3eMenuRow), findsNWidgets(order.length));
+    expect(_adaptiveSheetTiles(), findsNWidgets(order.length));
     final tops = [
       for (final label in order)
-        tester
-            .getTopLeft(
-              find.descendant(
-                of: find.byType(M3eMenuRow),
-                matching: find.text(label),
-              ),
-            )
-            .dy,
+        tester.getTopLeft(_adaptiveSheetAction(label)).dy,
     ];
     for (int i = 1; i < tops.length; i++) {
       expect(
@@ -1451,9 +1409,7 @@ void main() {
     }
 
     // 点「属性」→ 打开文件夹属性弹窗
-    await tester.tap(
-      find.descendant(of: find.byType(M3eMenuRow), matching: find.text('属性')),
-    );
+    await tester.tap(_adaptiveSheetAction('属性'));
     await _settleSheet(tester);
     // 菜单 → 弹窗比原来多一次路由（先收菜单再开弹窗）：多给一帧，
     // 让弹窗里的分享信息和统计请求跑完。

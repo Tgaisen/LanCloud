@@ -400,38 +400,39 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
     // 收藏项要显示「收藏 / 取消收藏」：ref 就是分享链接，先查本地收藏表
     final favorited = await isFavoritedByRef(context, url);
     if (!mounted) return;
-    final _ShareItemAction? action = await showM3eMenu<_ShareItemAction>(
-      context: context,
-      anchor: anchor,
-      pointerPosition: pointerPosition,
-      // ⋯ 贴着右边缘：菜单右缘对齐，免得被屏幕右上角夹歪
-      alignEnd: true,
-      items: [
-        M3eMenuItem(
-          value: _ShareItemAction.open,
-          label: folder != null ? l10n.open : l10n.view,
-          icon: Icons.open_in_new,
-        ),
-        if (file != null)
-          M3eMenuItem(
-            value: _ShareItemAction.download,
-            label: l10n.download,
-            icon: Icons.download_outlined,
-            enabled: !alreadyAdded,
-          ),
-        M3eMenuItem(
-          value: _ShareItemAction.copyLink,
-          label: l10n.copyLink,
-          icon: Icons.copy,
-        ),
-        M3eMenuItem(
-          value: _ShareItemAction.favorite,
-          label: favorited ? l10n.unfavorite : l10n.favorite,
-          // 取消收藏用 Remix 的 star-off-line（描边）；「收藏」保持描边星星
-          icon: favorited ? Icons.star_off_line : Icons.star_outline,
-        ),
-      ],
-    );
+    final _ShareItemAction? action =
+        await showAdaptiveM3eMenu<_ShareItemAction>(
+          context: context,
+          anchor: anchor,
+          pointerPosition: pointerPosition,
+          // ⋯ 贴着右边缘：菜单右缘对齐，免得被屏幕右上角夹歪
+          alignEnd: true,
+          items: [
+            M3eMenuItem(
+              value: _ShareItemAction.open,
+              label: folder != null ? l10n.open : l10n.view,
+              icon: Icons.open_in_new,
+            ),
+            if (file != null)
+              M3eMenuItem(
+                value: _ShareItemAction.download,
+                label: l10n.download,
+                icon: Icons.download_outlined,
+                enabled: !alreadyAdded,
+              ),
+            M3eMenuItem(
+              value: _ShareItemAction.copyLink,
+              label: l10n.copyLink,
+              icon: Icons.copy,
+            ),
+            M3eMenuItem(
+              value: _ShareItemAction.favorite,
+              label: favorited ? l10n.unfavorite : l10n.favorite,
+              // 取消收藏用 Remix 的 star-off-line（描边）；「收藏」保持描边星星
+              icon: favorited ? Icons.star_off_line : Icons.star_outline,
+            ),
+          ],
+        );
     if (!mounted || action == null) return;
     switch (action) {
       case _ShareItemAction.open:

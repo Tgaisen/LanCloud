@@ -461,36 +461,37 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
   }) async {
     final anchor = m3eMenuAnchorOf(anchorContext);
     if (anchor == null) return;
-    final _FavoriteItemAction? action = await showM3eMenu<_FavoriteItemAction>(
-      context: context,
-      anchor: anchor,
-      pointerPosition: pointerPosition,
-      // ⋯ 贴着右边缘：菜单右缘对齐，免得被屏幕右上角夹歪
-      alignEnd: true,
-      items: [
-        M3eMenuItem(
-          value: _FavoriteItemAction.open,
-          label: context.l10n.open,
-          icon: Icons.open_in_new,
-        ),
-        M3eMenuItem(
-          value: _FavoriteItemAction.copyLink,
-          label: context.l10n.copyLink,
-          icon: Icons.copy,
-        ),
-        M3eMenuItem(
-          value: _FavoriteItemAction.edit,
-          label: context.l10n.editInfo,
-          icon: Icons.edit,
-        ),
-        M3eMenuItem(
-          value: _FavoriteItemAction.unfavorite,
-          label: context.l10n.unfavorite,
-          // 与首页 / 分享浏览菜单一致：星形划斜杠（Remix star-off-line）
-          icon: Icons.star_off_line,
-        ),
-      ],
-    );
+    final _FavoriteItemAction? action =
+        await showAdaptiveM3eMenu<_FavoriteItemAction>(
+          context: context,
+          anchor: anchor,
+          pointerPosition: pointerPosition,
+          // ⋯ 贴着右边缘：菜单右缘对齐，免得被屏幕右上角夹歪
+          alignEnd: true,
+          items: [
+            M3eMenuItem(
+              value: _FavoriteItemAction.open,
+              label: context.l10n.open,
+              icon: Icons.open_in_new,
+            ),
+            M3eMenuItem(
+              value: _FavoriteItemAction.copyLink,
+              label: context.l10n.copyLink,
+              icon: Icons.copy,
+            ),
+            M3eMenuItem(
+              value: _FavoriteItemAction.edit,
+              label: context.l10n.editInfo,
+              icon: Icons.edit,
+            ),
+            M3eMenuItem(
+              value: _FavoriteItemAction.unfavorite,
+              label: context.l10n.unfavorite,
+              // 与首页 / 分享浏览菜单一致：星形划斜杠（Remix star-off-line）
+              icon: Icons.star_off_line,
+            ),
+          ],
+        );
     if (!mounted || action == null) return;
     switch (action) {
       case _FavoriteItemAction.open:
