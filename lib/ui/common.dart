@@ -3190,7 +3190,7 @@ class PropertyHeaderCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Container(
                     // 与 Md3ListItem 的图标块保持一致（尺寸 / 圆角 / 字号）
@@ -3264,6 +3264,7 @@ class PropertyHeaderCard extends StatelessWidget {
                 // 简介是拉取到之后才出现的：整块淡入 + 轻微上移，不要凭空跳出
                 RevealOnAppear(
                   child: Container(
+                    key: const ValueKey('property-description-card'),
                     width: double.infinity,
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -3350,24 +3351,29 @@ class _PropertyDescriptionState extends State<_PropertyDescription> {
               ),
             ),
             if (overflows)
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                  onPressed: () => setState(() => _expanded = !_expanded),
-                  icon: AnimatedRotation(
-                    turns: _expanded ? 0.75 : 0.25,
-                    duration: reduceMotionOf(context)
-                        ? Duration.zero
-                        : const Duration(milliseconds: 220),
-                    curve: Curves.easeOutCubic,
-                    child: const Icon(Icons.chevron_right),
-                  ),
-                  label: Text(
-                    _expanded ? context.l10n.collapse : context.l10n.expand,
-                  ),
-                  style: TextButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
+              Padding(
+                padding: const EdgeInsets.only(left: 4, bottom: 4),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    key: const ValueKey('property-description-toggle'),
+                    onPressed: () => setState(() => _expanded = !_expanded),
+                    icon: AnimatedRotation(
+                      turns: _expanded ? 0.75 : 0.25,
+                      duration: reduceMotionOf(context)
+                          ? Duration.zero
+                          : const Duration(milliseconds: 220),
+                      curve: Curves.easeOutCubic,
+                      child: const Icon(Icons.chevron_right),
+                    ),
+                    label: Text(
+                      _expanded ? context.l10n.collapse : context.l10n.expand,
+                    ),
+                    style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: EdgeInsets.zero,
+                      minimumSize: const Size(48, 48),
+                    ),
                   ),
                 ),
               ),

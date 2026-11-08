@@ -44,6 +44,14 @@ void main() {
     // 简介用 SelectionArea + Text：能选中复制，又不会自带上下滚动
     expect(find.byType(SelectionArea), findsOneWidget);
     expect(find.byType(SelectableText), findsNothing);
+    // 没有副标题时，标题与 42dp 图标块垂直居中。
+    expect(
+      tester.getCenter(find.text('测试文件夹')).dy,
+      moreOrLessEquals(
+        tester.getCenter(find.byIcon(Icons.folder_outlined)).dy,
+        epsilon: 0.5,
+      ),
+    );
     // 第一帧还在动画起点，不是瞬间出现
     expect(descOpacity(tester), lessThan(0.5));
 
@@ -83,6 +91,14 @@ void main() {
 
     // 简介默认只占 4 行；长内容可以展开，展开后卡片继续顺滑增高。
     expect(find.text('展开'), findsOneWidget);
+    final descriptionCard = tester.getRect(
+      find.byKey(const ValueKey('property-description-card')),
+    );
+    final toggle = tester.getRect(
+      find.byKey(const ValueKey('property-description-toggle')),
+    );
+    expect(toggle.left - descriptionCard.left, 16);
+    expect(descriptionCard.bottom - toggle.bottom, 16);
     await tester.tap(find.text('展开'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));

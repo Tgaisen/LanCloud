@@ -2268,28 +2268,31 @@ class _DrivePageState extends ConsumerState<DrivePage>
     await _editFileDesc(file, desc: desc);
   }
 
-  Future<void> _moveSingleFile(LzFile file) async {
+  /// 返回是否实际移动完成；属性页据此决定何时关闭。
+  Future<bool> _moveSingleFile(LzFile file) async {
     final client = _activeClient();
-    if (client == null) return;
+    if (client == null) return false;
     final target = await showFolderPicker(
       context,
       client: client,
       excludeIds: {file.id},
     );
-    if (target == null || !mounted) return;
+    if (target == null || !mounted) return false;
     try {
       await client.moveFile(file.id, target.folderId);
       // 局部刷新：被移走的条目原位淡出
       final ok = await _refreshInPlace(refreshFolders: true);
       if (!ok) await _reloadAfterChange();
-      if (!mounted) return;
+      if (!mounted) return true;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.l10n.movedTo(1, target.name))),
       );
+      return true;
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) return false;
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(context.l10n.lanzouError(e))));
+      return false;
     }
   }
 
@@ -2851,47 +2854,57 @@ class _DrivePageState extends ConsumerState<DrivePage>
     }
   }
 
-  Future<void> _deleteFile(LzFile file) async {
+  /// 返回是否实际删除完成；属性页据此决定何时关闭。
+  Future<bool> _deleteFile(LzFile file) async {
     final l10n = context.l10n;
-    if (!await _confirmDelete(l10n.deleteConfirmSingle(file.name))) return;
-    if (!mounted) return;
+    if (!await _confirmDelete(l10n.deleteConfirmSingle(file.name))) {
+      return false;
+    }
+    if (!mounted) return false;
     final client = _activeClient();
-    if (client == null) return;
+    if (client == null) return false;
     try {
       await client.deleteItem(id: file.id, isFile: true);
-      if (!mounted) return;
+      if (!mounted) return true;
       await _removeItemsWithAnimation(fileIds: {file.id});
+      return true;
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) return false;
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(context.l10n.lanzouError(e))));
+      return false;
     }
   }
 
-  Future<void> _deleteFolder(LzFolder folder) async {
+  /// 返回是否实际删除完成；属性页据此决定何时关闭。
+  Future<bool> _deleteFolder(LzFolder folder) async {
     final l10n = context.l10n;
-    if (!await _confirmDelete(l10n.deleteConfirmSingle(folder.name))) return;
-    if (!mounted) return;
+    if (!await _confirmDelete(l10n.deleteConfirmSingle(folder.name))) {
+      return false;
+    }
+    if (!mounted) return false;
     final client = _activeClient();
-    if (client == null) return;
+    if (client == null) return false;
     // 删的是当前所在目录：删除成功后这个目录已经不存在了，要退回上一级
     final deletingCurrent = folder.id == _folderId;
     try {
       await client.deleteItem(id: folder.id, isFile: false);
-      if (!mounted) return;
+      if (!mounted) return true;
       // 删除的目录如果固定在快速访问里，一并移除
       await _db.removePin(folder.id);
       if (deletingCurrent) {
         // 不清缓存的话，退回父目录会读到仍包含这一项的旧快照
         _drive.cache.clear();
         await _jumpTo(_path.length - 2);
-        return;
+        return true;
       }
       await _removeItemsWithAnimation(folderIds: {folder.id});
+      return true;
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) return false;
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(context.l10n.lanzouError(e))));
+      return false;
     }
   }
 
@@ -4588,17 +4601,15 @@ class _FileInfoSheetState extends ConsumerState<_FileInfoSheet> {
       case _FileMenuAction.password:
         await _editPassword();
       case _FileMenuAction.move:
-        final file = _currentFile;
-        Navigator.of(context).pop();
-        widget.page._moveSingleFile(file);
+        final moved = await widget.page._moveSingleFile(_currentFile);
+        if (moved && mounted) Navigator.of(context).pop();
       case _FileMenuAction.rename:
         await _rename();
       case _FileMenuAction.editDescription:
         await _editDescription();
       case _FileMenuAction.delete:
-        final file = _currentFile;
-        Navigator.of(context).pop();
-        widget.page._deleteFile(file);
+        final deleted = await widget.page._deleteFile(_currentFile);
+        if (deleted && mounted) Navigator.of(context).pop();
       case _FileMenuAction.download:
       case _FileMenuAction.properties:
       case _FileMenuAction.copyLink:
@@ -5055,9 +5066,8 @@ class _FolderInfoSheetState extends ConsumerState<_FolderInfoSheet> {
       case _FolderMenuAction.editDescription:
         await _editDescription();
       case _FolderMenuAction.delete:
-        final folder = _folder;
-        Navigator.of(context).pop();
-        widget.page._deleteFolder(folder);
+        final deleted = await widget.page._deleteFolder(_folder);
+        if (deleted && mounted) Navigator.of(context).pop();
       case _FolderMenuAction.open:
       case _FolderMenuAction.properties:
       case _FolderMenuAction.copyLink:

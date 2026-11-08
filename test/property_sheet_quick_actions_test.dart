@@ -54,6 +54,7 @@ class _FakeClient extends LanzouClient {
   final List<String> savedDescs = <String>[];
   final List<String> savedFolderDescs = <String>[];
   final List<({String id, bool isFile})> deletedItems = [];
+  final List<({String id, String folderId})> movedFiles = [];
 
   @override
   Future<({List<LzFolder> folders, List<PathNode> path})> listFolders(
@@ -110,6 +111,11 @@ class _FakeClient extends LanzouClient {
   @override
   Future<void> deleteItem({required String id, required bool isFile}) async {
     deletedItems.add((id: id, isFile: isFile));
+  }
+
+  @override
+  Future<void> moveFile(String fileId, String folderId) async {
+    movedFiles.add((id: fileId, folderId: folderId));
   }
 
   @override
@@ -1250,6 +1256,77 @@ void main() {
     expect(_menuRowText('复制链接'), findsNothing);
   });
 
+  testWidgets('文件属性弹窗：移动取消保留弹窗，确认成功后再关闭', (tester) async {
+    final client = _FakeClient();
+    final app = _FakeApp(client);
+    await _pumpDrive(tester, app);
+
+    await tester.tap(find.text('a.zip'));
+    await _settleSheet(tester);
+
+    await _openPropertyMore(tester);
+    await tester.tap(_menuRowText('移动'));
+    await _settleSheet(tester);
+    expect(find.text('选择目标文件夹'), findsOneWidget);
+    expect(find.byType(M3EBottomSheet), findsOneWidget);
+
+    await tester.tap(
+      find.descendant(of: find.byType(AlertDialog), matching: find.text('取消')),
+    );
+    await _settleSheet(tester);
+    expect(find.byType(M3EBottomSheet), findsOneWidget);
+    expect(client.movedFiles, isEmpty);
+
+    await _openPropertyMore(tester);
+    await tester.tap(_menuRowText('移动'));
+    await _settleSheet(tester);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    final moveHere = find.widgetWithText(FilledButton, '移动到此');
+    expect(tester.widget<FilledButton>(moveHere).onPressed, isNotNull);
+    await tester.tap(moveHere);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(client.movedFiles, [(id: 'f1', folderId: '-1')]);
+    expect(find.byType(M3EBottomSheet), findsNothing);
+  });
+
+  testWidgets('文件属性弹窗：删除取消保留弹窗，确认成功后再关闭', (tester) async {
+    final client = _FakeClient();
+    final app = _FakeApp(client);
+    await _pumpDrive(tester, app);
+
+    await tester.tap(find.text('a.zip'));
+    await _settleSheet(tester);
+
+    await _openPropertyMore(tester);
+    await tester.tap(_menuRowText('删除'));
+    await _settleSheet(tester);
+    expect(find.text('删除确认'), findsOneWidget);
+
+    await tester.tap(
+      find.descendant(of: find.byType(AlertDialog), matching: find.text('取消')),
+    );
+    await _settleSheet(tester);
+    expect(find.byType(M3EBottomSheet), findsOneWidget);
+    expect(client.deletedItems, isEmpty);
+
+    await _openPropertyMore(tester);
+    await tester.tap(_menuRowText('删除'));
+    await _settleSheet(tester);
+    await tester.tap(
+      find.descendant(of: find.byType(AlertDialog), matching: find.text('删除')),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(client.deletedItems, [(id: 'f1', isFile: true)]);
+    expect(find.byType(M3EBottomSheet), findsNothing);
+  });
+
   testWidgets('文件属性弹窗：复制链接弹出 MD3E 菜单（分享链接 / 下载直链）', (tester) async {
     final clipboard = <MethodCall>[];
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -1433,6 +1510,17 @@ void main() {
     expect(_menuRowText('复制链接'), findsNothing);
     expect(_menuRowText('移动'), findsNothing);
 
+    // 取消删除时文件夹属性页继续保留；确认动作由删除流程自己处理。
+    await tester.tap(_menuRowText('删除'));
+    await _settleSheet(tester);
+    await tester.tap(
+      find.descendant(of: find.byType(AlertDialog), matching: find.text('取消')),
+    );
+    await _settleSheet(tester);
+    expect(find.byType(M3EBottomSheet), findsOneWidget);
+    expect(client.deletedItems, isEmpty);
+
+    await _openPropertyMore(tester);
     await tester.tap(_menuRowText('重命名'));
     await _settleSheet(tester);
     await tester.enterText(
