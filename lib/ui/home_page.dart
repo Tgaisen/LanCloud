@@ -142,6 +142,7 @@ class _HomePageState extends ConsumerState<HomePage>
     final l10n = context.l10n;
     final scheme = Theme.of(context).colorScheme;
     final removing = _removingQuick.contains(item.ref);
+    final kind = _shareRefKind(item.ref);
     // 菜单要贴在被点的 ⋯ 下方，所以这里得拿到行 / 按钮各自的 context
     return Builder(
       builder: (BuildContext rowContext) => Md3ListItem(
@@ -167,7 +168,7 @@ class _HomePageState extends ConsumerState<HomePage>
           anchorContext: rowContext,
           pointerPosition: position,
         ),
-        onTap: () => _openItem(context, 'folder', item.ref, item.name, ''),
+        onTap: () => _openItem(context, kind, item.ref, item.name, ''),
       ),
     );
   }
@@ -248,7 +249,7 @@ class _HomePageState extends ConsumerState<HomePage>
     if (!mounted || action == null) return;
     switch (action) {
       case _QuickPinAction.open:
-        _openItem(context, 'folder', item.ref, item.name, '');
+        _openItem(context, _shareRefKind(item.ref), item.ref, item.name, '');
       case _QuickPinAction.removePin:
         // 先播放删除动画，再真正删库（列表由 db.revision 通知刷新）
         setState(() => _removingQuick.add(item.ref));
@@ -395,6 +396,13 @@ class _HomePageState extends ConsumerState<HomePage>
         .clientFor(uid, cookie: accounts.byUid(uid)?.cookie);
   }
 
+  String _shareRefKind(String ref) {
+    final uri = Uri.tryParse(ref);
+    return uri != null && (uri.scheme == 'http' || uri.scheme == 'https')
+        ? 'shareFolder'
+        : 'folder';
+  }
+
   Future<void> _load() async {
     final uid = ref.read(accountStateProvider).store.activeUid ?? '';
     try {
@@ -452,7 +460,7 @@ class _HomePageState extends ConsumerState<HomePage>
           child: ShareFileInfoSheet(name: name, url: ref, pwd: pwd),
         );
       case 'shareFolder':
-        await openShareSheet(context, initialLink: ref, initialPwd: pwd);
+        await openShareFolderWithLoading(context, url: ref, pwd: pwd);
     }
     if (mounted) _load();
   }
