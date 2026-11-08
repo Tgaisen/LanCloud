@@ -9,7 +9,6 @@ import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/common.dart';
-import 'package:lancloud/ui/m3e.dart';
 import 'package:lancloud/ui/share_folder_page.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
