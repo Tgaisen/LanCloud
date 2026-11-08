@@ -2501,7 +2501,7 @@ abstract class AppLocalizations {
   /// No description provided for @downloadSkippedInTransfers.
   ///
   /// In zh, this message translates to:
-  /// **'已跳过：文件已在传输列表'**
+  /// **'文件已在传输列表'**
   String get downloadSkippedInTransfers;
 
   /// No description provided for @retriedDownloads.

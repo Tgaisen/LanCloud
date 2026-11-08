@@ -519,7 +519,7 @@ void main() {
     await openMenuAndTapDownload();
     expect(client.shareFileCalls, 1);
     expect(manager.tasks, hasLength(1));
-    expect(find.text('已跳过：文件已在传输列表'), findsOneWidget);
+    expect(find.text('文件已在传输列表'), findsOneWidget);
     await tester.pump(const Duration(seconds: 3));
   });
 

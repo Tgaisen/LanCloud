@@ -1320,7 +1320,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get downloadStarted => '已开始下载';
 
   @override
-  String get downloadSkippedInTransfers => '已跳过：文件已在传输列表';
+  String get downloadSkippedInTransfers => '文件已在传输列表';
 
   @override
   String retriedDownloads(int count) {

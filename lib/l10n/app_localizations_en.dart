@@ -1379,7 +1379,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get downloadSkippedInTransfers =>
-      'Skipped: file is already in the transfer list';
+      'File is already in the transfer list';
 
   @override
   String retriedDownloads(int count) {
