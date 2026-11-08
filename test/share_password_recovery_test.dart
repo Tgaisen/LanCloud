@@ -332,7 +332,8 @@ void main() {
       matching: find.byTooltip('显示二维码'),
     );
     await tester.ensureVisible(qrButton);
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     await tester.tap(qrButton);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));

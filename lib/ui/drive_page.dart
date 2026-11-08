@@ -4841,7 +4841,7 @@ class _FileInfoSheetState extends ConsumerState<_FileInfoSheet> {
             ),
             PropertyDetailRow(
               label: l10n.propertyTime,
-              value: file.time.isEmpty ? '—' : file.time,
+              value: file.time.isEmpty ? l10n.unknownValue : file.time,
             ),
             PropertyDetailRow(
               label: l10n.propertyDownloadCount,
@@ -5180,11 +5180,13 @@ class _FolderInfoSheetState extends ConsumerState<_FolderInfoSheet> {
               PropertyDetailRow(label: l10n.propertyType, value: l10n.folder),
               PropertyDetailRow(
                 label: l10n.propertySize,
-                value: _folderSize == null ? '—' : prettyLzSize(_folderSize!),
+                value: _folderSize == null
+                    ? l10n.unknownValue
+                    : prettyLzSize(_folderSize!),
               ),
               PropertyDetailRow(
                 label: l10n.propertyFileCount,
-                value: _fileCount?.toString() ?? '—',
+                value: _fileCount?.toString() ?? l10n.unknownValue,
               ),
               PropertyDetailRow(
                 label: l10n.accessPassword,

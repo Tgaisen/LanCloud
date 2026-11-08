@@ -215,7 +215,8 @@ void main() {
     expect(find.text('2 天前'), findsOneWidget);
     expect(find.text('分享者'), findsOneWidget);
     expect(find.text('测试分享者'), findsOneWidget);
-    expect(find.text('访问密码'), findsNothing);
+    expect(find.text('访问密码'), findsOneWidget);
+    expect(find.text('未启用'), findsOneWidget);
   });
 
   testWidgets('分享文件属性弹窗：大小以列表值为准，不被文件页解析值覆盖', (tester) async {
@@ -229,6 +230,8 @@ void main() {
     expect(find.textContaining('22.0 MB'), findsNothing);
     expect(find.text('时间'), findsOneWidget);
     expect(find.text('2026-06-22'), findsOneWidget);
+    expect(find.text('访问密码'), findsOneWidget);
+    expect(find.text('已启用'), findsOneWidget);
   });
 
   testWidgets('分享文件属性弹窗：复制和二维码支持分享链接 / 下载直链且保留属性页', (tester) async {

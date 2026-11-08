@@ -507,6 +507,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get unknownSize => '未知大小';
 
   @override
+  String get unknownValue => '未知';
+
+  @override
   String get retry => '重试';
 
   @override

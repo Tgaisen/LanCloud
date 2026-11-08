@@ -314,6 +314,7 @@
   "unknownError": "未知错误",
   "canceled": "已取消",
   "unknownSize": "未知大小",
+  "unknownValue": "未知",
   "retry": "重试",
   "cancelTask": "取消任务",
   "cancelDownload": "取消下载",

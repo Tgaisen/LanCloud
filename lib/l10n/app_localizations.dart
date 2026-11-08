@@ -998,6 +998,12 @@ abstract class AppLocalizations {
   /// **'未知大小'**
   String get unknownSize;
 
+  /// No description provided for @unknownValue.
+  ///
+  /// In zh, this message translates to:
+  /// **'未知'**
+  String get unknownValue;
+
   /// No description provided for @retry.
   ///
   /// In zh, this message translates to:

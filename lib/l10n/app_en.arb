@@ -213,6 +213,7 @@
   "unknownError": "Unknown error",
   "canceled": "Canceled",
   "unknownSize": "Unknown size",
+  "unknownValue": "Unknown",
   "retry": "Retry",
   "cancelTask": "Cancel task",
   "cancelDownload": "Cancel download",

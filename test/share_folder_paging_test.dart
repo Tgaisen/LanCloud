@@ -263,6 +263,13 @@ void main() {
       const EdgeInsets.fromLTRB(16, 12, 16, 4),
     );
     expect(find.text(l10n.fileInvalid), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(M3EBottomSheet),
+        matching: find.text(l10n.unknownValue),
+      ),
+      findsNWidgets(2),
+    );
     final downloadButton = tester
         .widgetList<M3EToggleButton>(find.byType(M3EToggleButton))
         .firstWhere((button) => button.tooltip == l10n.download);

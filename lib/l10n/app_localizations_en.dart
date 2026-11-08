@@ -530,6 +530,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get unknownSize => 'Unknown size';
 
   @override
+  String get unknownValue => 'Unknown';
+
+  @override
   String get retry => 'Retry';
 
   @override

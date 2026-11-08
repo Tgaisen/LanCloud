@@ -10,28 +10,28 @@
 | 命令 | 口径 | 结果 | 耗时 |
 | --- | --- | --- | --- |
 | `tools\agent.cmd analyze` | 全量 | No issues found | 约 27 s |
-| `tools\agent.cmd analyze` | 增量（本次改动，2 项） | No issues found | 约 13.0 s |
+| `tools\agent.cmd analyze` | 增量（本次改动，5 项） | No issues found | 约 13.9 s |
 | `tools\agent.cmd test` | 全量（上一轮快照） | **860 tests, all passed** | 约 124 s |
-| `tools\agent.cmd test` | 增量（本次改动，73 个测试文件） | **480 tests, all passed** | 约 79 s |
+| `tools\agent.cmd test` | 增量（本次改动，64 个测试文件） | **393 tests, all passed** | 约 105 s |
 
 当前分析结果为 0 issue 是硬基线。出现红灯时，先判断是否为本次改动引入；
 不要把增量结果当成全量结论。
 
 当前全量用例总数为 865（本轮新增 1 个；全量尚未重跑）。本次改动相关的
-73 个受影响测试文件全部通过。
+64 个受影响测试文件全部通过。
 
 ## 规模
 
 | 指标 | 当前值 |
 | --- | ---: |
 | `lib` Dart 文件 | 156 |
-| `lib` 总行数 | 57,268 |
+| `lib` 总行数 | 57,290 |
 | `test` 测试文件 | 174（全部为 `*_test.dart`，平铺） |
-| `test` 总行数 | 31,700 |
+| `test` 总行数 | 31,711 |
 | `test` 用例数 | 865 |
 | `lib/ui` 平铺文件 | 60 |
 | `lib/core` | 55 个平铺文件 + 5 个子系统目录 |
-| 文案（`app_zh.arb`） | 1,621 行 |
+| 文案（`app_zh.arb`） | 1,622 行 |
 
 ## 工具链与依赖
 

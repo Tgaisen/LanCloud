@@ -240,7 +240,7 @@ class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
         time: _details?.time ?? '',
         desc: resolved.desc,
         sharer: resolved.sharer,
-        requiresPassword: _pwd.isNotEmpty,
+        requiresPassword: _details?.requiresPassword ?? _pwd.isNotEmpty,
       );
       setState(() {
         _directFile = resolved;
@@ -516,11 +516,19 @@ class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
               ),
               PropertyDetailRow(
                 label: l10n.propertyTime,
-                value: _time.isEmpty ? '—' : _time,
+                value: _time.isEmpty ? l10n.unknownValue : _time,
               ),
               PropertyDetailRow(
                 label: l10n.propertySharer,
-                value: _sharer.isEmpty ? '—' : _sharer,
+                value: _sharer.isEmpty ? l10n.unknownValue : _sharer,
+              ),
+              PropertyDetailRow(
+                label: l10n.accessPassword,
+                value: _details == null
+                    ? l10n.unknownValue
+                    : _details!.requiresPassword
+                    ? l10n.propertyPasswordEnabled
+                    : l10n.propertyPasswordDisabled,
               ),
             ],
           ),
