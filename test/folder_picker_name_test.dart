@@ -35,7 +35,7 @@ Future<Future<FolderPickResult?>> pumpPicker(
   WidgetTester tester, {
   String? initialName,
   String initialFolderId = '-1',
-  _FakeClient? client,
+  LanzouClient? client,
 }) async {
   late Future<FolderPickResult?> result;
   final pickerClient = client ?? _FakeClient();
