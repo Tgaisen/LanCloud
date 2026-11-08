@@ -2672,6 +2672,12 @@ abstract class AppLocalizations {
   /// **'时间'**
   String get propertyTime;
 
+  /// No description provided for @propertySharer.
+  ///
+  /// In zh, this message translates to:
+  /// **'分享者'**
+  String get propertySharer;
+
   /// No description provided for @propertyDownloadCount.
   ///
   /// In zh, this message translates to:

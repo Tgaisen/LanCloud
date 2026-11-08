@@ -299,13 +299,16 @@ void main() {
 
     await tester.enterText(find.byType(TextField), 'newpass');
     await tester.tap(find.text('确定'));
-    await _until(tester, find.textContaining('分享者 分享者甲'));
+    await _until(tester, find.text('分享者甲'));
 
     expect(find.text('此文件需要密码'), findsNothing);
     // 解析出的新名称也显示在信息卡上
     expect(find.text('fav-renamed.txt'), findsWidgets);
-    // 信息卡：大小 · 分享者（收藏里没有日期，所以只有两段）
-    expect(find.text('2.0 MB · 分享者 分享者甲'), findsOneWidget);
+    // 详情列表：大小与分享者分别成行。
+    expect(find.text('大小'), findsOneWidget);
+    expect(find.text('2.0 MB'), findsOneWidget);
+    expect(find.text('分享者'), findsOneWidget);
+    expect(find.text('分享者甲'), findsOneWidget);
     final saved = await _eventuallyFavorite(
       tester,
       app,

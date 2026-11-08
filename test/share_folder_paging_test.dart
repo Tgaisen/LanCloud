@@ -13,6 +13,7 @@ import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/app_localizations_zh.dart';
 import 'package:lancloud/ui/common.dart';
+import 'package:lancloud/ui/m3e.dart';
 import 'package:lancloud/ui/share_folder_page.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
@@ -262,15 +263,10 @@ void main() {
       const EdgeInsets.fromLTRB(16, 12, 16, 4),
     );
     expect(find.text(l10n.fileInvalid), findsOneWidget);
-    final downloadTile = tester.widget<ListTile>(
-      find
-          .ancestor(
-            of: find.text(l10n.download),
-            matching: find.byType(ListTile),
-          )
-          .first,
-    );
-    expect(downloadTile.enabled, isFalse);
+    final downloadButton = tester
+        .widgetList<M3EToggleButton>(find.byType(M3EToggleButton))
+        .firstWhere((button) => button.tooltip == l10n.download);
+    expect(downloadButton.enabled, isFalse);
 
     // 关掉弹窗后长按有效条目进入多选：全选只包含可下载的条目
     await tester.tapAt(const Offset(5, 5));

@@ -1491,6 +1491,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get propertyTime => 'Time';
 
   @override
+  String get propertySharer => 'Sharer';
+
+  @override
   String get propertyDownloadCount => 'Downloads';
 
   @override

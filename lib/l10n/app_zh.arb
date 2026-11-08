@@ -923,6 +923,7 @@
   "propertyType": "类型",
   "propertySize": "大小",
   "propertyTime": "时间",
+  "propertySharer": "分享者",
   "propertyDownloadCount": "下载数",
   "propertyFileCount": "文件数",
   "propertyFileType": "{extension} 文件",

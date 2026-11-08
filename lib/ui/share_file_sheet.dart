@@ -51,10 +51,15 @@ class ShareFileInfoSheet extends ConsumerStatefulWidget {
   ConsumerState<ShareFileInfoSheet> createState() => _ShareFileInfoSheetState();
 }
 
+enum _ShareFileQuickAction { download, copyLink, qr, favorite }
+
 class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
   bool _loading = true;
   bool _invalid = false;
   DirectFile? _resolved;
+
+  /// 下载按钮的二级菜单贴着该按钮组弹出。
+  final GlobalKey _quickActionGroupKey = GlobalKey();
 
   /// 当前使用的提取码：解析出「提取码错误」并重新验证后换成新的。
   late String _pwd = widget.pwd;
@@ -80,6 +85,58 @@ class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
       askPassword: _promptPassword,
     );
     if (mounted) setState(() => _resolvingDownload = false);
+  }
+
+  TransferTask? get _downloadTask =>
+      ref.read(transferManagerProvider).downloadMarkOf(widget.url);
+
+  void _runQuickAction(_ShareFileQuickAction action) {
+    if (_invalid) return;
+    switch (action) {
+      case _ShareFileQuickAction.download:
+        final mark = _downloadTask;
+        if (mark != null) {
+          _openDownloadMenu(mark);
+        } else if (!_resolvingDownload) {
+          _startDownload();
+        }
+      case _ShareFileQuickAction.copyLink:
+        copyText(context, widget.url, asToast: true);
+      case _ShareFileQuickAction.qr:
+        showQrDialog(context, title: _name, url: widget.url, pwd: _pwd);
+      case _ShareFileQuickAction.favorite:
+        // 开关型按钮走 onToggled，这里不会命中。
+        break;
+    }
+  }
+
+  Future<void> _openDownloadMenu(TransferTask task) async {
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+    final RenderBox? group =
+        _quickActionGroupKey.currentContext?.findRenderObject() as RenderBox?;
+    if (group == null || !group.hasSize) return;
+    await showDownloadTaskMenu(
+      context,
+      anchor: _quickActionAnchor(group, 0),
+      task: task,
+      onRedownload: _startDownload,
+    );
+  }
+
+  Future<void> _toggleFavorite(bool checked) async {
+    setState(() => _favorite = checked);
+    final next = await toggleFavoriteByRef(
+      context,
+      kind: 'shareFile',
+      name: _name,
+      ref: widget.url,
+      pwd: _pwd,
+      size: _size,
+      sharer: _sharer,
+    );
+    if (!mounted) return;
+    setState(() => _favorite = next ?? !checked);
   }
 
   @override
@@ -185,11 +242,6 @@ class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
             icon: iconForFile(_name),
             iconColor: fileIconColor(_name, brightness: scheme.brightness),
             title: _name,
-            subtitle: [
-              if (_size.isNotEmpty) prettyLzSize(_size),
-              if (widget.time.isNotEmpty) widget.time,
-              if (_sharer.isNotEmpty) l10n.sharerLabel(_sharer),
-            ].join(' · '),
             desc: _desc,
             loading: _loading,
           ),
@@ -199,35 +251,22 @@ class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
               message: widget.invalid ? l10n.fileInvalid : l10n.shareInvalid,
               margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
             ),
-          // 下载 / 复制链接 / 二维码 / 收藏：弹窗里的列表组
-          SheetListGroup(
-            margin: SheetListGroup.endMargin,
-            children: [
-              // 下载状态原位显示：解析中 / 等待中 / 下载中在行尾显示进度环，
-              // 已加入下载 / 下载失败换图标与文案；已加入后点击弹二级菜单
-              // （打开 / 分享 / 取消下载 / 重新下载）
-              ListenableBuilder(
-                // 进度更新走 manager（环要动）；标记集合变化走低频 revision，
-                // 两者都听，状态切换不会漏刷新
+          // 下载 / 复制链接 / 二维码 / 收藏：与网盘文件属性页使用同一套按钮组。
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 4, 24, 12),
+            child: KeyedSubtree(
+              key: _quickActionGroupKey,
+              child: ListenableBuilder(
                 listenable: Listenable.merge([
                   transfers,
                   transfers.marksRevision,
                 ]),
                 builder: (BuildContext context, _) {
                   final mark = transfers.downloadMarkOf(widget.url);
-                  final status = mark?.status;
                   final resolving = _resolvingDownload;
-                  final active =
-                      resolving ||
-                      status == TransferStatus.queued ||
-                      status == TransferStatus.resolving ||
-                      status == TransferStatus.running ||
-                      status == TransferStatus.resuming;
-                  final paused = status == TransferStatus.paused;
-                  final saving = status == TransferStatus.saving;
-                  final title = resolving
+                  final tooltip = resolving
                       ? l10n.resolving
-                      : switch (status) {
+                      : switch (mark?.status) {
                           TransferStatus.queued => l10n.waitingToDownload,
                           TransferStatus.resolving => l10n.resolving,
                           TransferStatus.running => l10n.downloading,
@@ -238,101 +277,117 @@ class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
                           TransferStatus.failed => l10n.downloadFailed,
                           _ => l10n.download,
                         };
-                  return Builder(
-                    builder: (BuildContext rowContext) => ListTile(
-                      enabled: !_invalid,
-                      leading: Icon(switch (status) {
-                        TransferStatus.done => Icons.download_done,
-                        TransferStatus.failed => Icons.file_download_off,
-                        TransferStatus.paused => Icons.pause_circle_outline,
-                        TransferStatus.saving => Icons.save,
-                        _ => Icons.download_outlined,
-                      }),
-                      title: Text(title),
-                      trailing: !active && !paused && !saving
-                          ? null
-                          : M3eCircularProgressIndicator(
-                              // 下载中显示确定进度；解析中 / 排队中 / 大小未知
-                              // 都是不确定态
-                              value:
-                                  (status == TransferStatus.running ||
-                                          status == TransferStatus.paused ||
-                                          status == TransferStatus.saving) &&
-                                      (mark?.total ?? 0) > 0
-                                  ? mark?.progress
-                                  : null,
-                              size: 24,
-                              strokeWidth: 2.5,
-                            ),
-                      onTap: () {
-                        if (mark != null) {
-                          final anchor = m3eMenuAnchorOf(rowContext);
-                          if (anchor == null) return;
-                          showDownloadTaskMenu(
-                            context,
-                            anchor: anchor,
-                            task: mark,
-                            // 重新下载：旧任务已删，重新解析直链；解析期间同样
-                            // 走「解析中」状态（行尾不确定态环）
-                            onRedownload: _startDownload,
-                          );
-                          return;
-                        }
-                        // 解析中忽略再次点击；解析失败会回到「下载」原状
-                        _startDownload();
-                      },
-                    ),
+                  M3eCircularProgressIndicator ring({
+                    required Color color,
+                    double? value,
+                  }) => M3eCircularProgressIndicator(
+                    value: value,
+                    color: color,
+                    backgroundColor: color.withValues(alpha: 0.2),
+                    size: 24,
+                    strokeWidth: 2.5,
+                  );
+                  return M3EIconButtonGroup<_ShareFileQuickAction>(
+                    items: [
+                      M3EIconAction(
+                        value: _ShareFileQuickAction.download,
+                        icon: Icons.download_outlined,
+                        checkedIcon: Icons.download_done,
+                        tooltip: tooltip,
+                        checked: mark != null,
+                        enabled: !_invalid,
+                        iconWidget: !resolving
+                            ? null
+                            : ring(color: scheme.onSecondaryContainer),
+                        checkedIconWidget: switch (mark?.status) {
+                          TransferStatus.queued => ring(
+                            color: scheme.onSecondary,
+                          ),
+                          TransferStatus.resolving => ring(
+                            color: scheme.onSecondary,
+                          ),
+                          TransferStatus.running => ring(
+                            color: scheme.onSecondary,
+                            value: (mark?.total ?? 0) > 0
+                                ? mark?.progress
+                                : null,
+                          ),
+                          TransferStatus.resuming => ring(
+                            color: scheme.onSecondary,
+                          ),
+                          TransferStatus.paused => ring(
+                            color: scheme.onSecondary,
+                            value: (mark?.total ?? 0) > 0
+                                ? mark?.progress
+                                : null,
+                          ),
+                          TransferStatus.saving => ring(
+                            color: scheme.onSecondary,
+                            value: (mark?.total ?? 0) > 0
+                                ? mark?.progress
+                                : null,
+                          ),
+                          TransferStatus.failed => const Icon(
+                            Icons.file_download_off,
+                          ),
+                          _ => null,
+                        },
+                      ),
+                      M3EIconAction(
+                        value: _ShareFileQuickAction.copyLink,
+                        icon: Icons.link_outlined,
+                        checkedIcon: Icons.link,
+                        tooltip: l10n.copyLink,
+                        enabled: !_invalid,
+                      ),
+                      M3EIconAction(
+                        value: _ShareFileQuickAction.qr,
+                        icon: Icons.qr_code,
+                        checkedIcon: Icons.qr_code,
+                        tooltip: l10n.showQr,
+                        enabled: !_invalid,
+                      ),
+                      M3EIconAction(
+                        value: _ShareFileQuickAction.favorite,
+                        icon: Icons.star_border,
+                        checkedIcon: Icons.star_outline,
+                        tooltip: _favorite == true
+                            ? l10n.unfavorite
+                            : l10n.favorite,
+                        checked: _favorite == true,
+                        isToggle: true,
+                        enabled: !_invalid && _favorite != null,
+                      ),
+                    ],
+                    onPressed: _runQuickAction,
+                    onToggled: (action, checked) {
+                      if (action == _ShareFileQuickAction.favorite) {
+                        _toggleFavorite(checked);
+                      }
+                    },
                   );
                 },
               ),
-              ListTile(
-                enabled: !_invalid,
-                leading: const Icon(Icons.copy),
-                title: Text(l10n.copyLink),
-                onTap: () async {
-                  // 属性页常作为操作入口：复制后继续留在页内，反馈用顶层轻提示。
-                  await copyText(context, widget.url, asToast: true);
-                },
+            ),
+          ),
+          SheetListGroup(
+            margin: SheetListGroup.endMargin,
+            children: [
+              PropertyDetailRow(
+                label: l10n.propertyType,
+                value: propertyFileTypeLabel(_name, l10n),
               ),
-              ListTile(
-                enabled: !_invalid,
-                leading: const Icon(Icons.qr_code),
-                title: Text(l10n.showQr),
-                onTap: () async {
-                  // 二维码弹窗盖在属性页上，关闭二维码后仍回到原属性页。
-                  await showQrDialog(
-                    context,
-                    title: _name,
-                    url: widget.url,
-                    pwd: _pwd,
-                  );
-                },
+              PropertyDetailRow(
+                label: l10n.propertySize,
+                value: _size.isEmpty ? l10n.unknownSize : prettyLzSize(_size),
               ),
-              ListTile(
-                // 收藏态查出来之前先置灰：否则会在状态未知时点出重复收藏 / 错误取消
-                enabled: !_invalid && _favorite != null,
-                leading: Icon(
-                  // 取消收藏用自定义 star-off-line；未收藏保持描边星星
-                  _favorite == true ? Icons.star_off_line : Icons.star_outline,
-                ),
-                title: Text(
-                  _favorite == true ? l10n.unfavorite : l10n.favorite,
-                ),
-                onTap: () async {
-                  // 与网盘页属性弹窗一致：收藏就地切换，不关弹窗（反馈走轻提示）
-                  final next = await toggleFavoriteByRef(
-                    context,
-                    kind: 'shareFile',
-                    name: _name,
-                    ref: widget.url,
-                    pwd: _pwd,
-                    size: _size,
-                    sharer: _sharer,
-                  );
-                  if (next != null && mounted) {
-                    setState(() => _favorite = next);
-                  }
-                },
+              PropertyDetailRow(
+                label: l10n.propertyTime,
+                value: widget.time.isEmpty ? '—' : widget.time,
+              ),
+              PropertyDetailRow(
+                label: l10n.propertySharer,
+                value: _sharer.isEmpty ? '—' : _sharer,
               ),
             ],
           ),
@@ -340,4 +395,16 @@ class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
       ),
     );
   }
+}
+
+/// 分享文件属性页 4 个快捷按钮中，第 [index] 个按钮的全局矩形。
+Rect _quickActionAnchor(RenderBox group, int index) {
+  final double segment = m3eIconButtonWidth(group.size.width, 4);
+  final Offset origin = group.localToGlobal(Offset.zero);
+  return Rect.fromLTWH(
+    origin.dx + index * (segment + kM3EIconButtonSpacing),
+    origin.dy,
+    segment,
+    group.size.height,
+  );
 }

@@ -3335,6 +3335,50 @@ class PropertyHeaderCard extends StatelessWidget {
   }
 }
 
+/// 文件属性里的类型文案：有扩展名时显示「ZIP 文件」，否则回退为「文件」。
+String propertyFileTypeLabel(String name, AppLocalizations l10n) {
+  final dot = name.lastIndexOf('.');
+  final extension = dot <= 0 || dot == name.length - 1
+      ? ''
+      : name.substring(dot + 1).trim();
+  return extension.isEmpty
+      ? l10n.file
+      : l10n.propertyFileType(extension.toUpperCase());
+}
+
+/// 属性详情的一行：标签在上、值在下，和备份恢复确认弹窗的信息层级一致。
+class PropertyDetailRow extends StatelessWidget {
+  const PropertyDetailRow({
+    super.key,
+    required this.label,
+    required this.value,
+  });
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 2),
+          SelectionArea(child: Text(value, style: theme.textTheme.bodyMedium)),
+        ],
+      ),
+    );
+  }
+}
+
 /// 属性简介：默认最多 4 行，长简介可以展开 / 收起。
 ///
 /// 用 SelectionArea + Text（而不是 SelectableText）：文字可以选中复制，

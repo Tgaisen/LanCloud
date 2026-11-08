@@ -551,6 +551,7 @@
   "propertyType": "Type",
   "propertySize": "Size",
   "propertyTime": "Time",
+  "propertySharer": "Sharer",
   "propertyDownloadCount": "Downloads",
   "propertyFileCount": "Files",
   "propertyFileType": "{extension} file",

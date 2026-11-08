@@ -1429,6 +1429,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get propertyTime => '时间';
 
   @override
+  String get propertySharer => '分享者';
+
+  @override
   String get propertyDownloadCount => '下载数';
 
   @override

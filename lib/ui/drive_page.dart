@@ -4829,25 +4829,25 @@ class _FileInfoSheetState extends ConsumerState<_FileInfoSheet> {
         SheetListGroup(
           margin: SheetListGroup.endMargin,
           children: [
-            _PropertyDetailRow(
+            PropertyDetailRow(
               label: l10n.propertyType,
-              value: _fileTypeLabel(file.name, l10n),
+              value: propertyFileTypeLabel(file.name, l10n),
             ),
-            _PropertyDetailRow(
+            PropertyDetailRow(
               label: l10n.propertySize,
               value: file.size.isEmpty
                   ? l10n.unknownSize
                   : prettyLzSize(file.size),
             ),
-            _PropertyDetailRow(
+            PropertyDetailRow(
               label: l10n.propertyTime,
               value: file.time.isEmpty ? '—' : file.time,
             ),
-            _PropertyDetailRow(
+            PropertyDetailRow(
               label: l10n.propertyDownloadCount,
               value: '${file.downs}',
             ),
-            _PropertyDetailRow(
+            PropertyDetailRow(
               label: l10n.accessPassword,
               value: file.hasPwd
                   ? l10n.propertyPasswordEnabled
@@ -4860,13 +4860,6 @@ class _FileInfoSheetState extends ConsumerState<_FileInfoSheet> {
   }
 }
 
-String _fileTypeLabel(String name, AppLocalizations l10n) {
-  final extension = p.extension(name).replaceFirst('.', '').trim();
-  return extension.isEmpty
-      ? l10n.file
-      : l10n.propertyFileType(extension.toUpperCase());
-}
-
 /// 属性页 5 个快捷按钮中，第 [index] 个按钮的全局矩形。
 Rect _quickActionAnchor(RenderBox group, int index) {
   final double segment = m3eIconButtonWidth(group.size.width, 5);
@@ -4877,35 +4870,6 @@ Rect _quickActionAnchor(RenderBox group, int index) {
     segment,
     group.size.height,
   );
-}
-
-/// 属性详情的一行：标签在上、值在下，和备份恢复确认弹窗的信息层级一致。
-class _PropertyDetailRow extends StatelessWidget {
-  const _PropertyDetailRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: theme.textTheme.labelMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 2),
-          SelectionArea(child: Text(value, style: theme.textTheme.bodyMedium)),
-        ],
-      ),
-    );
-  }
 }
 
 /// 文件夹属性弹窗：简介与统计信息变动快，不读缓存——每次打开都重新拉取，
@@ -5213,16 +5177,16 @@ class _FolderInfoSheetState extends ConsumerState<_FolderInfoSheet> {
           SheetListGroup(
             margin: SheetListGroup.endMargin,
             children: [
-              _PropertyDetailRow(label: l10n.propertyType, value: l10n.folder),
-              _PropertyDetailRow(
+              PropertyDetailRow(label: l10n.propertyType, value: l10n.folder),
+              PropertyDetailRow(
                 label: l10n.propertySize,
                 value: _folderSize == null ? '—' : prettyLzSize(_folderSize!),
               ),
-              _PropertyDetailRow(
+              PropertyDetailRow(
                 label: l10n.propertyFileCount,
                 value: _fileCount?.toString() ?? '—',
               ),
-              _PropertyDetailRow(
+              PropertyDetailRow(
                 label: l10n.accessPassword,
                 value: _hasPwd
                     ? l10n.propertyPasswordEnabled
