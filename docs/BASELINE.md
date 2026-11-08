@@ -11,15 +11,15 @@
 | --- | --- | --- | --- |
 | `tools\agent.cmd analyze` | 全量 | No issues found | 约 41 s |
 | `tools\agent.cmd analyze` | 增量（本次改动，5 项） | No issues found | 约 13.9 s |
-| `tools\agent.cmd test` | 全量（当前） | **865 tests：864 passed + 1 个既有偶发失败** | 约 133 s |
-| `tools\agent.cmd test` | 增量（本次改动，64 个测试文件） | **393 tests, all passed** | 约 105 s |
+| `tools\agent.cmd test` | 全量（当前） | **865 tests, all passed** | 约 125 s |
+| `tools\agent.cmd test` | 增量（本次改动，2 个测试文件） | **11 tests, all passed** | 约 6 s |
 
 当前分析结果为 0 issue 是硬基线。出现红灯时，先判断是否为本次改动引入；
 不要把增量结果当成全量结论。
 
-当前全量用例总数为 865。本次全量中只有 `app_log_test.dart` 的临时目录删除竞态
-失败，该文件单独复跑 6 个用例全部通过；本次改动相关的 64 个受影响测试文件
-也全部通过。
+当前全量用例总数为 865。测试清理与异步等待加固后，全量 865 个用例已在并发
+场景下全部通过；`app_log_test.dart` 与 `share_password_recovery_test.dart`
+连续 3 轮针对性复跑也全部通过。
 
 ## 规模
 
@@ -28,7 +28,7 @@
 | `lib` Dart 文件 | 156 |
 | `lib` 总行数 | 57,290 |
 | `test` 测试文件 | 174（全部为 `*_test.dart`，平铺） |
-| `test` 总行数 | 31,711 |
+| `test` 总行数 | 31,720 |
 | `test` 用例数 | 865 |
 | `lib/ui` 平铺文件 | 60 |
 | `lib/core` | 55 个平铺文件 + 5 个子系统目录 |
@@ -70,8 +70,8 @@
 - Windows 构建出现 `flutter_inappwebview_windows` 的 CMake `CMP0175` 开发警告；
   当前不影响构建与启动，继续跟随插件升级观察。
 - Windows OverlayPortal/UIA 上游间歇风险继续观察，不误判为业务回归。
-- 全量并行运行时，日志清理与分享密码恢复测试偶发单个时序失败；对应测试文件
-  单独重跑均稳定通过，提交判断以受影响测试和失败项复跑结果为准。
+- 日志清理已增加 Windows 临时目录有界重试，分享密码恢复测试已改用 5 秒截止
+  时间轮询；当前全量与连续复跑均通过，后续继续观察较慢 CI 环境。
 - 开发环境 Flutter `3.47.9`，`pubspec.lock` 已记录相同 SDK 注记。
 
 ## 维护约定

@@ -165,12 +165,9 @@ Future<void> _pumpFavorites(
 }
 
 /// 交替推进真实事件循环与帧：sqflite 的回包是真实异步，单靠 pump 不会到。
-Future<void> _until(
-  WidgetTester tester,
-  Finder finder, {
-  int tries = 40,
-}) async {
-  for (var i = 0; i < tries; i++) {
+Future<void> _until(WidgetTester tester, Finder finder) async {
+  final stopwatch = Stopwatch()..start();
+  while (stopwatch.elapsed < const Duration(seconds: 5)) {
     if (finder.evaluate().isNotEmpty) return;
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 10)),
@@ -180,12 +177,9 @@ Future<void> _until(
   fail('等待 $finder 超时');
 }
 
-Future<void> _untilGone(
-  WidgetTester tester,
-  Finder finder, {
-  int tries = 40,
-}) async {
-  for (var i = 0; i < tries; i++) {
+Future<void> _untilGone(WidgetTester tester, Finder finder) async {
+  final stopwatch = Stopwatch()..start();
+  while (stopwatch.elapsed < const Duration(seconds: 5)) {
     if (finder.evaluate().isEmpty) return;
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 10)),
@@ -203,7 +197,8 @@ Future<FavoriteItem> _eventuallyFavorite(
   required bool Function(FavoriteItem item) done,
 }) async {
   late FavoriteItem last;
-  for (var i = 0; i < 80; i++) {
+  final stopwatch = Stopwatch()..start();
+  while (stopwatch.elapsed < const Duration(seconds: 5)) {
     final all = await tester.runAsync(() => app.db.favorites());
     last = all!.firstWhere((f) => f.ref == ref);
     if (done(last)) return last;
