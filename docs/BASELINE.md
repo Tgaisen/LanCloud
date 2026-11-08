@@ -10,9 +10,9 @@
 | 命令 | 口径 | 结果 | 耗时 |
 | --- | --- | --- | --- |
 | `tools\agent.cmd analyze` | 全量 | No issues found | 约 27 s |
-| `tools\agent.cmd analyze` | 增量（本次改动，3 项） | No issues found | 约 17.1 s |
+| `tools\agent.cmd analyze` | 增量（本次改动，3 项） | No issues found | 约 17.8 s |
 | `tools\agent.cmd test` | 全量（上一轮快照） | **860 tests, all passed** | 约 124 s |
-| `tools\agent.cmd test` | 增量（本次改动，31 个测试文件） | **256 tests, all passed** | 约 50 s |
+| `tools\agent.cmd test` | 增量（本次改动，31 个测试文件） | **256 tests, all passed** | 约 47 s |
 
 当前分析结果为 0 issue 是硬基线。出现红灯时，先判断是否为本次改动引入；
 不要把增量结果当成全量结论。
@@ -25,9 +25,9 @@
 | 指标 | 当前值 |
 | --- | ---: |
 | `lib` Dart 文件 | 156 |
-| `lib` 总行数 | 57,158 |
+| `lib` 总行数 | 57,191 |
 | `test` 测试文件 | 174（全部为 `*_test.dart`，平铺） |
-| `test` 总行数 | 31,615 |
+| `test` 总行数 | 31,621 |
 | `test` 用例数 | 862 |
 | `lib/ui` 平铺文件 | 60 |
 | `lib/core` | 55 个平铺文件 + 5 个子系统目录 |

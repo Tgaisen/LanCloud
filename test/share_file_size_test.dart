@@ -45,6 +45,7 @@ void main() {
     final client = _PageClient('''
 <title>报告.pdf - 蓝奏云</title>
 <meta name="description" content="大小：2.5 M" />
+<span class="appinfotime">2026-06-22</span>
 <span class="user-name">分享者甲</span>
 <div class="n_box_des">文件说明</div>
 ''');
@@ -55,6 +56,7 @@ void main() {
 
     expect(details.name, '报告.pdf');
     expect(details.size, '2.5M');
+    expect(details.time, '2026-06-22');
     expect(details.desc, '文件说明');
     expect(details.sharer, '分享者甲');
     expect(details.requiresPassword, isFalse);
@@ -75,6 +77,7 @@ void main() {
 
     // 密码页首屏没有真实文件名：不能把 URL 末段兜底成文件名。
     expect(details.name, isEmpty);
+    expect(details.time, isEmpty);
     expect(details.requiresPassword, isTrue);
     expect(client.requests, ['https://example.com/secret']);
   });

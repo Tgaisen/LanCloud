@@ -91,7 +91,8 @@ class _SizeClient extends LanzouClient {
     String shareUrl, {
     String pwd = '',
     bool withDescription = false,
-  }) async => ShareFileDetails(size: size, requiresPassword: true);
+  }) async =>
+      ShareFileDetails(size: size, time: '2026-06-22', requiresPassword: true);
 
   @override
   Future<DirectFile> resolveFileShare(
@@ -226,6 +227,8 @@ void main() {
     expect(find.text('abcdef'), findsNothing);
     expect(find.textContaining('31.5 MB'), findsOneWidget);
     expect(find.textContaining('22.0 MB'), findsNothing);
+    expect(find.text('时间'), findsOneWidget);
+    expect(find.text('2026-06-22'), findsOneWidget);
   });
 
   testWidgets('分享文件属性弹窗：复制和二维码支持分享链接 / 下载直链且保留属性页', (tester) async {

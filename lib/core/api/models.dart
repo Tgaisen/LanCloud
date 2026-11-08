@@ -202,6 +202,7 @@ class ShareFileDetails {
   const ShareFileDetails({
     this.name = '',
     this.size = '',
+    this.time = '',
     this.desc = '',
     this.sharer = '',
     this.requiresPassword = false,
@@ -211,6 +212,7 @@ class ShareFileDetails {
   /// 调用方应沿用已有名称，不能使用 URL 末段兜底。
   final String name;
   final String size;
+  final String time;
   final String desc;
   final String sharer;
   final bool requiresPassword;

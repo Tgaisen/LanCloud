@@ -237,6 +237,7 @@ class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
       final details = ShareFileDetails(
         name: resolved.name,
         size: resolved.size,
+        time: _details?.time ?? '',
         desc: resolved.desc,
         sharer: resolved.sharer,
         requiresPassword: _pwd.isNotEmpty,
@@ -316,6 +317,7 @@ class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
     final details = ShareFileDetails(
       name: result.value.name,
       size: result.value.size,
+      time: _details?.time ?? '',
       desc: result.value.desc,
       sharer: result.value.sharer,
       requiresPassword: true,
@@ -345,6 +347,11 @@ class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
     if (widget.size.isNotEmpty) return widget.size;
     final details = _details;
     return details?.size ?? '';
+  }
+
+  String get _time {
+    if (widget.time.isNotEmpty) return widget.time;
+    return _details?.time ?? '';
   }
 
   String get _desc => _details?.desc ?? '';
@@ -509,7 +516,7 @@ class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
               ),
               PropertyDetailRow(
                 label: l10n.propertyTime,
-                value: widget.time.isEmpty ? '—' : widget.time,
+                value: _time.isEmpty ? '—' : _time,
               ),
               PropertyDetailRow(
                 label: l10n.propertySharer,

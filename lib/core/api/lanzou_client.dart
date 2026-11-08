@@ -1196,6 +1196,7 @@ class LanzouClient {
         return ShareFileDetails(
           name: page.nameResolved ? page.name : '',
           size: page.size,
+          time: page.time,
           desc: page.desc,
           sharer: page.sharer,
           requiresPassword: page.needPwd,
@@ -1400,6 +1401,7 @@ class LanzouClient {
     var nameResolved = parsedName != null;
     var name = parsedName ?? url.split('/').last;
     final size = shareFileSizeFromHtml(html);
+    var time = shareFileTimeFromHtml(html);
     final sharer =
         _match(html, [
           r'<span class="user-name">([^<]+)</span>',
@@ -1438,6 +1440,8 @@ class LanzouClient {
         // iframe 里是空的就别覆盖分享页已解析到的简介
         if (cleaned.isNotEmpty) desc = cleaned;
       }
+      final frameTime = shareFileTimeFromHtml(iframeHtml);
+      if (frameTime.isNotEmpty) time = frameTime;
     }
 
     // exe / apk 等分享页模板没有简介节点：下载页（/tp）的 .mdo 才是简介。
@@ -1455,6 +1459,7 @@ class LanzouClient {
       name: name,
       nameResolved: nameResolved,
       size: size,
+      time: time,
       desc: desc,
       sharer: sharer,
       legacyHtml: legacyHtml,
@@ -1753,6 +1758,7 @@ class _FileSharePageContext {
     required this.name,
     required this.nameResolved,
     required this.size,
+    required this.time,
     required this.desc,
     required this.sharer,
     required this.legacyHtml,
@@ -1767,6 +1773,7 @@ class _FileSharePageContext {
   final String name;
   final bool nameResolved;
   final String size;
+  final String time;
   final String desc;
   final String sharer;
   final String legacyHtml;
@@ -1793,6 +1800,23 @@ String shareFileSizeFromHtml(String html) {
       ).firstMatch(html);
   final raw = match?.group(1) ?? '';
   return raw.replaceAll(',', '').replaceAll(RegExp(r'\s+'), '');
+}
+
+/// 从分享文件页解析文件时间。
+///
+/// APK 模板用 `appinfotime` 节点；部分 PC 模板会把时间写在明确的时间标签后。
+/// 这里只接受已知节点/标签，不抓页面里的任意日期，避免把统计或其他日期误当文件时间。
+String shareFileTimeFromHtml(String html) {
+  final match =
+      RegExp(
+        r'class="appinfotime"[^>]*>\s*([^<]+?)\s*<',
+        caseSensitive: false,
+      ).firstMatch(html) ??
+      RegExp(
+        r'(?:上传时间|文件时间|分享时间)[：:]\s*(?:</span>\s*)?([^<]+?)\s*<',
+        caseSensitive: false,
+      ).firstMatch(html);
+  return match?.group(1)?.trim() ?? '';
 }
 
 /// 清理分享页里的富文本（简介、描述）：保留换行、去掉标签与常见实体。
