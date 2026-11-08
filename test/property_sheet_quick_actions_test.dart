@@ -766,12 +766,12 @@ void main() {
 
     await tester.tap(find.text('a.zip'));
     await _settleSheet(tester);
-    // 下载按钮变 checked、tooltip 变「已加入下载」
-    expect(_toggleButton(tester, '已加入下载').checked, isTrue);
+    // 下载按钮变 checked、tooltip 变「已下载」
+    expect(_toggleButton(tester, '已下载').checked, isTrue);
 
     // 点它弹二级菜单：已完成 → 打开 / 分享可用，取消位换成删除记录，
     // 重新下载与「删除记录与文件」也可用
-    await tester.tap(find.byTooltip('已加入下载'));
+    await tester.tap(find.byTooltip('已下载'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
     final rows = tester
@@ -824,7 +824,7 @@ void main() {
     await _pumpDrive(tester, app, manager: manager);
     await tester.tap(find.text('a.zip'));
     await _settleSheet(tester);
-    await tester.tap(find.byTooltip('已加入下载'));
+    await tester.tap(find.byTooltip('已下载'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
     await tester.tap(
