@@ -1,10 +1,15 @@
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/system_motion.dart';
+import 'package:lancloud/l10n/app_localizations.dart';
+import 'package:lancloud/l10n/delegates.dart';
 import 'package:lancloud/ui/app_icons.dart';
 import 'package:lancloud/ui/common.dart';
 
 Widget host(Widget child) => MaterialApp(
+  localizationsDelegates: appLocalizationsDelegates,
+  supportedLocales: AppLocalizations.supportedLocales,
+  locale: const Locale('zh'),
   home: Scaffold(
     // 放到可滚动容器里：卡片高度由内容决定（和属性弹窗里的情形一致）
     body: SingleChildScrollView(
@@ -39,6 +44,14 @@ void main() {
     // 简介用 SelectionArea + Text：能选中复制，又不会自带上下滚动
     expect(find.byType(SelectionArea), findsOneWidget);
     expect(find.byType(SelectableText), findsNothing);
+    // 没有副标题时，标题与 42dp 图标块垂直居中。
+    expect(
+      tester.getCenter(find.text('测试文件夹')).dy,
+      moreOrLessEquals(
+        tester.getCenter(find.byIcon(Icons.folder_outlined)).dy,
+        epsilon: 0.5,
+      ),
+    );
     // 第一帧还在动画起点，不是瞬间出现
     expect(descOpacity(tester), lessThan(0.5));
 
@@ -75,6 +88,25 @@ void main() {
     expect(tall, greaterThan(short));
     expect(middle, greaterThan(short));
     expect(middle, lessThan(tall));
+
+    // 简介默认只占 4 行；长内容可以展开，展开后卡片继续顺滑增高。
+    expect(find.text('展开'), findsOneWidget);
+    final descriptionCard = tester.getRect(
+      find.byKey(const ValueKey('property-description-card')),
+    );
+    final toggle = tester.getRect(
+      find.byKey(const ValueKey('property-description-toggle')),
+    );
+    expect(toggle.left - descriptionCard.left, 16);
+    expect(descriptionCard.bottom - toggle.bottom, 16);
+    await tester.tap(find.text('展开'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('收起'), findsOneWidget);
+    expect(
+      tester.getSize(find.byType(PropertyHeaderCard)).height,
+      greaterThan(tall),
+    );
   });
 
   testWidgets('系统要求少动效时简介直接显示', (tester) async {

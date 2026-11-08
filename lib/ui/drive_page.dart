@@ -63,6 +63,174 @@ enum _FolderMenuAction {
   delete,
 }
 
+/// 文件条目和文件属性页共用的动作菜单。
+///
+/// 属性页已经提供下载 / 复制链接等快捷按钮，并负责承载“属性”内容本身，
+/// 所以从属性页打开时只保留其余操作，避免重复动作和嵌套打开属性页。
+Future<_FileMenuAction?> _showFileActionMenu(
+  BuildContext context, {
+  required Rect anchor,
+  Offset? pointerPosition,
+  bool propertyContext = false,
+}) {
+  final l10n = context.l10n;
+  return showM3eMenu<_FileMenuAction>(
+    context: context,
+    anchor: anchor,
+    pointerPosition: pointerPosition,
+    // ⋯ 贴着右边缘：菜单右缘对齐，免得被屏幕右上角夹歪
+    alignEnd: true,
+    items: propertyContext
+        ? [
+            M3eMenuItem(
+              value: _FileMenuAction.password,
+              label: l10n.accessPassword,
+              icon: Icons.lock_outline,
+            ),
+            M3eMenuItem(
+              value: _FileMenuAction.move,
+              label: l10n.move,
+              icon: Icons.drive_file_move_outline,
+            ),
+            M3eMenuItem(
+              value: _FileMenuAction.rename,
+              label: l10n.rename,
+              icon: Icons.input_field,
+            ),
+            M3eMenuItem(
+              value: _FileMenuAction.editDescription,
+              label: l10n.editDesc,
+              icon: Icons.description_outlined,
+            ),
+            M3eMenuItem(
+              value: _FileMenuAction.delete,
+              label: l10n.delete,
+              icon: Icons.delete_outline,
+            ),
+          ]
+        : [
+            M3eMenuItem(
+              value: _FileMenuAction.download,
+              label: l10n.download,
+              icon: Icons.download_outlined,
+            ),
+            M3eMenuItem(
+              value: _FileMenuAction.properties,
+              label: l10n.properties,
+              icon: Icons.info_outline,
+            ),
+            M3eMenuItem(
+              value: _FileMenuAction.copyLink,
+              label: l10n.copyLink,
+              icon: Icons.copy,
+            ),
+            M3eMenuItem(
+              value: _FileMenuAction.password,
+              label: l10n.accessPassword,
+              icon: Icons.lock_outline,
+            ),
+            M3eMenuItem(
+              value: _FileMenuAction.move,
+              label: l10n.move,
+              icon: Icons.drive_file_move_outline,
+            ),
+            M3eMenuItem(
+              value: _FileMenuAction.rename,
+              label: l10n.rename,
+              icon: Icons.input_field,
+            ),
+            M3eMenuItem(
+              value: _FileMenuAction.editDescription,
+              label: l10n.editDesc,
+              icon: Icons.description_outlined,
+            ),
+            M3eMenuItem(
+              value: _FileMenuAction.delete,
+              label: l10n.delete,
+              icon: Icons.delete_outline,
+            ),
+          ],
+  );
+}
+
+/// 文件夹条目和文件夹属性页共用的动作菜单。
+///
+/// 属性页打开时去掉“打开 / 属性 / 复制链接”，其中复制链接已经放在快捷按钮里。
+Future<_FolderMenuAction?> _showFolderActionMenu(
+  BuildContext context, {
+  required Rect anchor,
+  Offset? pointerPosition,
+  bool propertyContext = false,
+}) {
+  final l10n = context.l10n;
+  return showM3eMenu<_FolderMenuAction>(
+    context: context,
+    anchor: anchor,
+    pointerPosition: pointerPosition,
+    alignEnd: true,
+    items: propertyContext
+        ? [
+            M3eMenuItem(
+              value: _FolderMenuAction.password,
+              label: l10n.accessPassword,
+              icon: Icons.lock_outline,
+            ),
+            M3eMenuItem(
+              value: _FolderMenuAction.rename,
+              label: l10n.rename,
+              icon: Icons.input_field,
+            ),
+            M3eMenuItem(
+              value: _FolderMenuAction.editDescription,
+              label: l10n.editDesc,
+              icon: Icons.description_outlined,
+            ),
+            M3eMenuItem(
+              value: _FolderMenuAction.delete,
+              label: l10n.delete,
+              icon: Icons.delete_outline,
+            ),
+          ]
+        : [
+            M3eMenuItem(
+              value: _FolderMenuAction.open,
+              label: l10n.open,
+              icon: Icons.open_in_new,
+            ),
+            M3eMenuItem(
+              value: _FolderMenuAction.properties,
+              label: l10n.properties,
+              icon: Icons.info_outline,
+            ),
+            M3eMenuItem(
+              value: _FolderMenuAction.copyLink,
+              label: l10n.copyLink,
+              icon: Icons.copy,
+            ),
+            M3eMenuItem(
+              value: _FolderMenuAction.password,
+              label: l10n.accessPassword,
+              icon: Icons.lock_outline,
+            ),
+            M3eMenuItem(
+              value: _FolderMenuAction.rename,
+              label: l10n.rename,
+              icon: Icons.input_field,
+            ),
+            M3eMenuItem(
+              value: _FolderMenuAction.editDescription,
+              label: l10n.editDesc,
+              icon: Icons.description_outlined,
+            ),
+            M3eMenuItem(
+              value: _FolderMenuAction.delete,
+              label: l10n.delete,
+              icon: Icons.delete_outline,
+            ),
+          ],
+  );
+}
+
 class DrivePage extends ConsumerStatefulWidget {
   const DrivePage({
     super.key,
@@ -2033,55 +2201,10 @@ class _DrivePageState extends ConsumerState<DrivePage>
     }
     final Rect? anchor = m3eMenuAnchorOf(buttonContext);
     if (anchor == null) return;
-    final l10n = context.l10n;
-    final _FileMenuAction? action = await showM3eMenu<_FileMenuAction>(
-      context: context,
+    final _FileMenuAction? action = await _showFileActionMenu(
+      context,
       anchor: anchor,
       pointerPosition: pointerPosition,
-      // ⋯ 贴着右边缘：菜单右缘对齐，免得被屏幕右上角夹歪
-      alignEnd: true,
-      items: [
-        M3eMenuItem(
-          value: _FileMenuAction.download,
-          label: l10n.download,
-          icon: Icons.download_outlined,
-        ),
-        M3eMenuItem(
-          value: _FileMenuAction.properties,
-          label: l10n.properties,
-          icon: Icons.info_outline,
-        ),
-        M3eMenuItem(
-          value: _FileMenuAction.copyLink,
-          label: l10n.copyLink,
-          icon: Icons.copy,
-        ),
-        M3eMenuItem(
-          value: _FileMenuAction.password,
-          label: l10n.accessPassword,
-          icon: Icons.lock_outline,
-        ),
-        M3eMenuItem(
-          value: _FileMenuAction.move,
-          label: l10n.move,
-          icon: Icons.drive_file_move_outline,
-        ),
-        M3eMenuItem(
-          value: _FileMenuAction.rename,
-          label: l10n.rename,
-          icon: Icons.input_field,
-        ),
-        M3eMenuItem(
-          value: _FileMenuAction.editDescription,
-          label: l10n.editDesc,
-          icon: Icons.description_outlined,
-        ),
-        M3eMenuItem(
-          value: _FileMenuAction.delete,
-          label: l10n.delete,
-          icon: Icons.delete_outline,
-        ),
-      ],
     );
     if (action == null || !mounted) return;
     switch (action) {
@@ -2145,28 +2268,31 @@ class _DrivePageState extends ConsumerState<DrivePage>
     await _editFileDesc(file, desc: desc);
   }
 
-  Future<void> _moveSingleFile(LzFile file) async {
+  /// 返回是否实际移动完成；属性页据此决定何时关闭。
+  Future<bool> _moveSingleFile(LzFile file) async {
     final client = _activeClient();
-    if (client == null) return;
+    if (client == null) return false;
     final target = await showFolderPicker(
       context,
       client: client,
       excludeIds: {file.id},
     );
-    if (target == null || !mounted) return;
+    if (target == null || !mounted) return false;
     try {
       await client.moveFile(file.id, target.folderId);
       // 局部刷新：被移走的条目原位淡出
       final ok = await _refreshInPlace(refreshFolders: true);
       if (!ok) await _reloadAfterChange();
-      if (!mounted) return;
+      if (!mounted) return true;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.l10n.movedTo(1, target.name))),
       );
+      return true;
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) return false;
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(context.l10n.lanzouError(e))));
+      return false;
     }
   }
 
@@ -2464,50 +2590,10 @@ class _DrivePageState extends ConsumerState<DrivePage>
     }
     final anchor = m3eMenuAnchorOf(buttonContext);
     if (anchor == null) return;
-    final l10n = context.l10n;
-    final _FolderMenuAction? action = await showM3eMenu<_FolderMenuAction>(
-      context: context,
+    final _FolderMenuAction? action = await _showFolderActionMenu(
+      context,
       anchor: anchor,
       pointerPosition: pointerPosition,
-      // ⋯ 贴着右边缘：菜单右缘对齐，免得被屏幕右上角夹歪
-      alignEnd: true,
-      items: [
-        M3eMenuItem(
-          value: _FolderMenuAction.open,
-          label: l10n.open,
-          icon: Icons.open_in_new,
-        ),
-        M3eMenuItem(
-          value: _FolderMenuAction.properties,
-          label: l10n.properties,
-          icon: Icons.info_outline,
-        ),
-        M3eMenuItem(
-          value: _FolderMenuAction.copyLink,
-          label: l10n.copyLink,
-          icon: Icons.copy,
-        ),
-        M3eMenuItem(
-          value: _FolderMenuAction.password,
-          label: l10n.accessPassword,
-          icon: Icons.lock_outline,
-        ),
-        M3eMenuItem(
-          value: _FolderMenuAction.rename,
-          label: l10n.rename,
-          icon: Icons.input_field,
-        ),
-        M3eMenuItem(
-          value: _FolderMenuAction.editDescription,
-          label: l10n.editDesc,
-          icon: Icons.description_outlined,
-        ),
-        M3eMenuItem(
-          value: _FolderMenuAction.delete,
-          label: l10n.delete,
-          icon: Icons.delete_outline,
-        ),
-      ],
     );
     if (action == null || !mounted) return;
     switch (action) {
@@ -2768,47 +2854,57 @@ class _DrivePageState extends ConsumerState<DrivePage>
     }
   }
 
-  Future<void> _deleteFile(LzFile file) async {
+  /// 返回是否实际删除完成；属性页据此决定何时关闭。
+  Future<bool> _deleteFile(LzFile file) async {
     final l10n = context.l10n;
-    if (!await _confirmDelete(l10n.deleteConfirmSingle(file.name))) return;
-    if (!mounted) return;
+    if (!await _confirmDelete(l10n.deleteConfirmSingle(file.name))) {
+      return false;
+    }
+    if (!mounted) return false;
     final client = _activeClient();
-    if (client == null) return;
+    if (client == null) return false;
     try {
       await client.deleteItem(id: file.id, isFile: true);
-      if (!mounted) return;
+      if (!mounted) return true;
       await _removeItemsWithAnimation(fileIds: {file.id});
+      return true;
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) return false;
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(context.l10n.lanzouError(e))));
+      return false;
     }
   }
 
-  Future<void> _deleteFolder(LzFolder folder) async {
+  /// 返回是否实际删除完成；属性页据此决定何时关闭。
+  Future<bool> _deleteFolder(LzFolder folder) async {
     final l10n = context.l10n;
-    if (!await _confirmDelete(l10n.deleteConfirmSingle(folder.name))) return;
-    if (!mounted) return;
+    if (!await _confirmDelete(l10n.deleteConfirmSingle(folder.name))) {
+      return false;
+    }
+    if (!mounted) return false;
     final client = _activeClient();
-    if (client == null) return;
+    if (client == null) return false;
     // 删的是当前所在目录：删除成功后这个目录已经不存在了，要退回上一级
     final deletingCurrent = folder.id == _folderId;
     try {
       await client.deleteItem(id: folder.id, isFile: false);
-      if (!mounted) return;
+      if (!mounted) return true;
       // 删除的目录如果固定在快速访问里，一并移除
       await _db.removePin(folder.id);
       if (deletingCurrent) {
         // 不清缓存的话，退回父目录会读到仍包含这一项的旧快照
         _drive.cache.clear();
         await _jumpTo(_path.length - 2);
-        return;
+        return true;
       }
       await _removeItemsWithAnimation(folderIds: {folder.id});
+      return true;
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) return false;
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(context.l10n.lanzouError(e))));
+      return false;
     }
   }
 
@@ -4309,7 +4405,7 @@ class _FileInfoSheet extends ConsumerStatefulWidget {
 }
 
 /// 文件属性弹窗顶部那一行常用操作（图标按钮组）。
-enum _FileQuickAction { download, link, qr, favorite, password }
+enum _FileQuickAction { download, link, qr, favorite, more }
 
 class _FileInfoSheetState extends ConsumerState<_FileInfoSheet> {
   late LzFile _file = widget.file;
@@ -4385,7 +4481,7 @@ class _FileInfoSheetState extends ConsumerState<_FileInfoSheet> {
     if (mounted) setState(() => _loading = false);
   }
 
-  /// 普通动作按钮（下载 / 复制链接 / 二维码 / 访问密码）。
+  /// 普通动作按钮（下载 / 复制链接 / 二维码 / 更多操作）。
   void _runQuickAction(_FileQuickAction action) {
     switch (action) {
       case _FileQuickAction.download:
@@ -4402,8 +4498,8 @@ class _FileInfoSheetState extends ConsumerState<_FileInfoSheet> {
       case _FileQuickAction.link:
       case _FileQuickAction.qr:
         _openLinkMenu(action);
-      case _FileQuickAction.password:
-        _editPassword();
+      case _FileQuickAction.more:
+        _openMoreMenu();
       case _FileQuickAction.favorite:
         // 开关型按钮走 onToggled，这里不会命中
         break;
@@ -4481,19 +4577,45 @@ class _FileInfoSheetState extends ConsumerState<_FileInfoSheet> {
   /// 段宽用和按钮组同一个公式算，保证菜单左缘和那一段对齐；窄窗口按钮组会
   /// 横向滚动，这里不补偿滚动偏移（和原来挂在组上的做法一致）。
   /// 按钮组里第 [index] 段的全局矩形（段宽与按钮组内部同一个公式）。
-  Rect _actionMenuAnchor(RenderBox group, int index) {
-    final double segment = m3eIconButtonWidth(group.size.width, 5);
-    final Offset origin = group.localToGlobal(Offset.zero);
-    return Rect.fromLTWH(
-      origin.dx + index * (segment + kM3EIconButtonSpacing),
-      origin.dy,
-      segment,
-      group.size.height,
-    );
-  }
+  Rect _actionMenuAnchor(RenderBox group, int index) =>
+      _quickActionAnchor(group, index);
 
   Rect _linkMenuAnchor(RenderBox group, _FileQuickAction target) =>
       _actionMenuAnchor(group, target == _FileQuickAction.qr ? 2 : 1);
+
+  /// 属性页里的“更多操作”：只展示没有放进快捷按钮、也不会递归打开
+  /// 属性页的动作。
+  Future<void> _openMoreMenu() async {
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+    final RenderBox? group =
+        _quickActionGroupKey.currentContext?.findRenderObject() as RenderBox?;
+    if (group == null || !group.hasSize) return;
+    final action = await _showFileActionMenu(
+      context,
+      anchor: _actionMenuAnchor(group, 4),
+      propertyContext: true,
+    );
+    if (!mounted || action == null) return;
+    switch (action) {
+      case _FileMenuAction.password:
+        await _editPassword();
+      case _FileMenuAction.move:
+        final moved = await widget.page._moveSingleFile(_currentFile);
+        if (moved && mounted) Navigator.of(context).pop();
+      case _FileMenuAction.rename:
+        await _rename();
+      case _FileMenuAction.editDescription:
+        await _editDescription();
+      case _FileMenuAction.delete:
+        final deleted = await widget.page._deleteFile(_currentFile);
+        if (deleted && mounted) Navigator.of(context).pop();
+      case _FileMenuAction.download:
+      case _FileMenuAction.properties:
+      case _FileMenuAction.copyLink:
+        break;
+    }
+  }
 
   /// 菜单里选了「分享链接」还是「下载直链」。
   ///
@@ -4518,7 +4640,7 @@ class _FileInfoSheetState extends ConsumerState<_FileInfoSheet> {
   }
 
   /// 访问密码：弹窗盖在属性弹窗上（与文件夹属性一致），改完再刷新一次
-  /// 「有没有提取码」，让按钮的选中态跟上。
+  /// 「有没有提取码」，让详情里的密码状态跟上。
   Future<void> _editPassword() async {
     await widget.page._singleSetPasswd(_currentFile);
     if (mounted) await _refresh();
@@ -4553,8 +4675,7 @@ class _FileInfoSheetState extends ConsumerState<_FileInfoSheet> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final page = widget.page;
-    final file = _file;
+    final file = _currentFile;
     final scheme = Theme.of(context).colorScheme;
     final transfers = ref.read(transferManagerProvider);
     return Column(
@@ -4564,12 +4685,6 @@ class _FileInfoSheetState extends ConsumerState<_FileInfoSheet> {
           icon: iconForFile(file.name),
           iconColor: fileIconColor(file.name, brightness: scheme.brightness),
           title: _name,
-          subtitle: [
-            if (file.size.isNotEmpty) prettyLzSize(file.size),
-            if (file.time.isNotEmpty) file.time,
-            if (file.downs > 0) l10n.downloadsCount(file.downs),
-            if (file.hasPwd) l10n.hasPassword,
-          ].join(' · '),
           desc: _desc,
           loading: _loading,
         ),
@@ -4692,20 +4807,16 @@ class _FileInfoSheetState extends ConsumerState<_FileInfoSheet> {
                       enabled: _favorite != null,
                     ),
                     M3EIconAction(
-                      value: _FileQuickAction.password,
-                      icon: Icons.lock_outline,
-                      checkedIcon: Icons.lock_outline,
-                      tooltip: l10n.accessPassword,
-                      checked: file.hasPwd,
-                      isToggle: true,
+                      value: _FileQuickAction.more,
+                      icon: Icons.more_vert,
+                      checkedIcon: Icons.more_vert,
+                      tooltip: l10n.moreActions,
                     ),
                   ],
                   onPressed: _runQuickAction,
                   onToggled: (action, checked) {
                     if (action == _FileQuickAction.favorite) {
                       _toggleFavorite(checked);
-                    } else if (action == _FileQuickAction.password) {
-                      _editPassword();
                     }
                   },
                 );
@@ -4716,31 +4827,29 @@ class _FileInfoSheetState extends ConsumerState<_FileInfoSheet> {
         SheetListGroup(
           margin: SheetListGroup.endMargin,
           children: [
-            ListTile(
-              leading: const Icon(Icons.input_field),
-              title: Text(l10n.rename),
-              onTap: _rename,
+            _PropertyDetailRow(
+              label: l10n.propertyType,
+              value: _fileTypeLabel(file.name, l10n),
             ),
-            ListTile(
-              leading: const Icon(Icons.description_outlined),
-              title: Text(l10n.editDesc),
-              onTap: _editDescription,
+            _PropertyDetailRow(
+              label: l10n.propertySize,
+              value: file.size.isEmpty
+                  ? l10n.unknownSize
+                  : prettyLzSize(file.size),
             ),
-            ListTile(
-              leading: const Icon(Icons.drive_file_move_outline),
-              title: Text(l10n.move),
-              onTap: () {
-                Navigator.of(context).pop();
-                page._moveSingleFile(file);
-              },
+            _PropertyDetailRow(
+              label: l10n.propertyTime,
+              value: file.time.isEmpty ? '—' : file.time,
             ),
-            ListTile(
-              leading: const Icon(Icons.delete_outline),
-              title: Text(l10n.delete),
-              onTap: () {
-                Navigator.of(context).pop();
-                page._deleteFile(file);
-              },
+            _PropertyDetailRow(
+              label: l10n.propertyDownloadCount,
+              value: '${file.downs}',
+            ),
+            _PropertyDetailRow(
+              label: l10n.accessPassword,
+              value: file.hasPwd
+                  ? l10n.propertyPasswordEnabled
+                  : l10n.propertyPasswordDisabled,
             ),
           ],
         ),
@@ -4749,10 +4858,58 @@ class _FileInfoSheetState extends ConsumerState<_FileInfoSheet> {
   }
 }
 
+String _fileTypeLabel(String name, AppLocalizations l10n) {
+  final extension = p.extension(name).replaceFirst('.', '').trim();
+  return extension.isEmpty
+      ? l10n.file
+      : l10n.propertyFileType(extension.toUpperCase());
+}
+
+/// 属性页 5 个快捷按钮中，第 [index] 个按钮的全局矩形。
+Rect _quickActionAnchor(RenderBox group, int index) {
+  final double segment = m3eIconButtonWidth(group.size.width, 5);
+  final Offset origin = group.localToGlobal(Offset.zero);
+  return Rect.fromLTWH(
+    origin.dx + index * (segment + kM3EIconButtonSpacing),
+    origin.dy,
+    segment,
+    group.size.height,
+  );
+}
+
+/// 属性详情的一行：标签在上、值在下，和备份恢复确认弹窗的信息层级一致。
+class _PropertyDetailRow extends StatelessWidget {
+  const _PropertyDetailRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 2),
+          SelectionArea(child: Text(value, style: theme.textTheme.bodyMedium)),
+        ],
+      ),
+    );
+  }
+}
+
 /// 文件夹属性弹窗：简介与统计信息变动快，不读缓存——每次打开都重新拉取，
 /// 拉取期间先展示列表里的现有简介并显示加载指示。
 /// 文件夹属性弹窗顶部那一行常用操作（图标按钮组）。
-enum _FolderQuickAction { link, qr, favorite, quickAccess, password }
+enum _FolderQuickAction { link, qr, favorite, quickAccess, more }
 
 class _FolderInfoSheet extends ConsumerStatefulWidget {
   const _FolderInfoSheet({required this.folder, required this.page});
@@ -4767,10 +4924,14 @@ class _FolderInfoSheet extends ConsumerStatefulWidget {
 class _FolderInfoSheetState extends ConsumerState<_FolderInfoSheet> {
   late String _name = widget.folder.name;
   String? _desc;
-  String? _stats;
+  String? _folderSize;
+  int? _fileCount;
 
   /// 简介与统计信息都不再缓存：打开弹窗时总会重新拉取。
   bool _loading = true;
+
+  /// “更多操作”菜单贴在该按钮组下方弹出。
+  final GlobalKey _quickActionGroupKey = GlobalKey();
 
   /// 是否已固定到快速访问：null = 还在读本地库。
   bool? _pinned;
@@ -4833,7 +4994,7 @@ class _FolderInfoSheetState extends ConsumerState<_FolderInfoSheet> {
     hasPwd: _hasPwd,
   );
 
-  /// 普通动作按钮（复制链接 / 二维码 / 快速访问 / 访问密码）。
+  /// 普通动作按钮（复制链接 / 二维码 / 快速访问 / 更多操作）。
   void _runQuickAction(_FolderQuickAction action) {
     final page = widget.page;
     final folder = _folder;
@@ -4846,8 +5007,8 @@ class _FolderInfoSheetState extends ConsumerState<_FolderInfoSheet> {
       case _FolderQuickAction.quickAccess:
         // 开关型留在弹窗里，选中态即时更新（提示条不参与）
         _toggleQuickAccess();
-      case _FolderQuickAction.password:
-        _editPassword();
+      case _FolderQuickAction.more:
+        _openMoreMenu();
       case _FolderQuickAction.favorite:
         // 开关型按钮走 onToggled，这里不会命中
         break;
@@ -4880,8 +5041,38 @@ class _FolderInfoSheetState extends ConsumerState<_FolderInfoSheet> {
 
   Future<void> _editPassword() async {
     await widget.page._setFolderPasswd(_folder);
-    // 改完刷新「有没有提取码」，让按钮的选中态跟上
+    // 改完刷新「有没有提取码」，让详情里的密码状态跟上。
     if (mounted) await _fetch();
+  }
+
+  /// 属性页里的“更多操作”：不重复展示快捷按钮，也不再次打开属性页。
+  Future<void> _openMoreMenu() async {
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+    final RenderBox? group =
+        _quickActionGroupKey.currentContext?.findRenderObject() as RenderBox?;
+    if (group == null || !group.hasSize) return;
+    final action = await _showFolderActionMenu(
+      context,
+      anchor: _quickActionAnchor(group, 4),
+      propertyContext: true,
+    );
+    if (!mounted || action == null) return;
+    switch (action) {
+      case _FolderMenuAction.password:
+        await _editPassword();
+      case _FolderMenuAction.rename:
+        await _rename();
+      case _FolderMenuAction.editDescription:
+        await _editDescription();
+      case _FolderMenuAction.delete:
+        final deleted = await widget.page._deleteFolder(_folder);
+        if (deleted && mounted) Navigator.of(context).pop();
+      case _FolderMenuAction.open:
+      case _FolderMenuAction.properties:
+      case _FolderMenuAction.copyLink:
+        break;
+    }
   }
 
   Future<void> _fetch() async {
@@ -4911,32 +5102,27 @@ class _FolderInfoSheetState extends ConsumerState<_FolderInfoSheet> {
       // debug 下会抛 "called before ...initState() completed"，导致 _fetch 中断、
       // _loading 永远为 true（属性弹窗一直转圈）。放到首次 await 之后再取。
       if (!mounted) return;
-      final l10n = context.l10n;
       if (stats != null) {
         if (stats.desc.isNotEmpty) {
           setState(() => _desc = stats.desc);
         }
-        if (stats.size.isNotEmpty || stats.count > 0) {
-          final text = [
-            if (stats.size.isNotEmpty) stats.size,
-            if (stats.count > 0) l10n.fileCount(stats.count),
-          ].join(' · ');
-          setState(() => _stats = text);
-        }
+        setState(() {
+          _folderSize = stats.size.isEmpty ? null : stats.size;
+          _fileCount = stats.count;
+        });
       } else {
         final files = client == null
             ? const <LzFile>[]
             : await client.listFiles(id);
-        if (files.isNotEmpty && mounted) {
+        if (mounted) {
           final total = files.fold<int>(
             0,
             (sum, file) => sum + lzSizeToBytes(file.size),
           );
-          final text = [
-            formatBytes(total),
-            l10n.fileCount(files.length),
-          ].join(' · ');
-          setState(() => _stats = text);
+          setState(() {
+            _folderSize = formatBytes(total);
+            _fileCount = files.length;
+          });
         }
       }
     } catch (_) {}
@@ -4945,8 +5131,8 @@ class _FolderInfoSheetState extends ConsumerState<_FolderInfoSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final folder = widget.folder;
-    final page = widget.page;
+    final l10n = context.l10n;
+    final folder = _folder;
     return SafeArea(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -4954,7 +5140,6 @@ class _FolderInfoSheetState extends ConsumerState<_FolderInfoSheet> {
           PropertyHeaderCard(
             icon: Icons.folder,
             title: _name,
-            subtitle: [context.l10n.folder, ?_stats].join(' · '),
             desc: _desc ?? folder.desc,
             loading: _loading,
           ),
@@ -4962,88 +5147,84 @@ class _FolderInfoSheetState extends ConsumerState<_FolderInfoSheet> {
           // 宽度自适应弹窗，最多 80dp）
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 4, 24, 12),
-            child: M3EIconButtonGroup<_FolderQuickAction>(
-              items: [
-                M3EIconAction(
-                  value: _FolderQuickAction.link,
-                  icon: Icons.link_outlined,
-                  checkedIcon: Icons.link,
-                  tooltip: context.l10n.copyLink,
-                  // 复用弹窗打开时取的分享信息，等它回来再放开
-                  enabled: _share != null,
-                ),
-                M3EIconAction(
-                  value: _FolderQuickAction.qr,
-                  icon: Icons.qr_code,
-                  checkedIcon: Icons.qr_code,
-                  tooltip: context.l10n.showQr,
-                  enabled: _share != null,
-                ),
-                M3EIconAction(
-                  value: _FolderQuickAction.favorite,
-                  icon: Icons.star_border,
-                  checkedIcon: Icons.star_outline,
-                  tooltip: _favorite == true
-                      ? context.l10n.unfavorite
-                      : context.l10n.addFavorite,
-                  checked: _favorite == true,
-                  isToggle: true,
-                  // 收藏态要等分享信息 + 收藏表回来才知道，之前先置灰
-                  enabled: _favorite != null,
-                ),
-                M3EIconAction(
-                  value: _FolderQuickAction.quickAccess,
-                  icon: Icons.push_pin_outlined,
-                  checkedIcon: Icons.push_pin,
-                  tooltip: _pinned == true
-                      ? context.l10n.removeFromQuickAccess
-                      : context.l10n.addToQuickAccess,
-                  checked: _pinned == true,
-                  isToggle: true,
-                  // 固定态要读一次本地库，回来之前先置灰
-                  enabled: _pinned != null,
-                ),
-                M3EIconAction(
-                  value: _FolderQuickAction.password,
-                  icon: Icons.lock_outline,
-                  checkedIcon: Icons.lock_outline,
-                  tooltip: context.l10n.accessPassword,
-                  checked: _hasPwd,
-                  isToggle: true,
-                ),
-              ],
-              onPressed: _runQuickAction,
-              onToggled: (action, checked) {
-                if (action == _FolderQuickAction.favorite) {
-                  _toggleFavorite(checked);
-                } else if (action == _FolderQuickAction.quickAccess) {
-                  _toggleQuickAccess();
-                } else if (action == _FolderQuickAction.password) {
-                  _editPassword();
-                }
-              },
+            child: KeyedSubtree(
+              key: _quickActionGroupKey,
+              child: M3EIconButtonGroup<_FolderQuickAction>(
+                items: [
+                  M3EIconAction(
+                    value: _FolderQuickAction.link,
+                    icon: Icons.link_outlined,
+                    checkedIcon: Icons.link,
+                    tooltip: l10n.copyLink,
+                    // 复用弹窗打开时取的分享信息，等它回来再放开
+                    enabled: _share != null,
+                  ),
+                  M3EIconAction(
+                    value: _FolderQuickAction.qr,
+                    icon: Icons.qr_code,
+                    checkedIcon: Icons.qr_code,
+                    tooltip: l10n.showQr,
+                    enabled: _share != null,
+                  ),
+                  M3EIconAction(
+                    value: _FolderQuickAction.favorite,
+                    icon: Icons.star_border,
+                    checkedIcon: Icons.star_outline,
+                    tooltip: _favorite == true
+                        ? l10n.unfavorite
+                        : l10n.addFavorite,
+                    checked: _favorite == true,
+                    isToggle: true,
+                    // 收藏态要等分享信息 + 收藏表回来才知道，之前先置灰
+                    enabled: _favorite != null,
+                  ),
+                  M3EIconAction(
+                    value: _FolderQuickAction.quickAccess,
+                    icon: Icons.push_pin_outlined,
+                    checkedIcon: Icons.push_pin,
+                    tooltip: _pinned == true
+                        ? l10n.removeFromQuickAccess
+                        : l10n.addToQuickAccess,
+                    checked: _pinned == true,
+                    isToggle: true,
+                    // 固定态要读一次本地库，回来之前先置灰
+                    enabled: _pinned != null,
+                  ),
+                  M3EIconAction(
+                    value: _FolderQuickAction.more,
+                    icon: Icons.more_vert,
+                    checkedIcon: Icons.more_vert,
+                    tooltip: l10n.moreActions,
+                  ),
+                ],
+                onPressed: _runQuickAction,
+                onToggled: (action, checked) {
+                  if (action == _FolderQuickAction.favorite) {
+                    _toggleFavorite(checked);
+                  } else if (action == _FolderQuickAction.quickAccess) {
+                    _toggleQuickAccess();
+                  }
+                },
+              ),
             ),
           ),
           SheetListGroup(
             margin: SheetListGroup.endMargin,
             children: [
-              ListTile(
-                leading: const Icon(Icons.input_field),
-                title: Text(context.l10n.rename),
-                onTap: _rename,
+              _PropertyDetailRow(label: l10n.propertyType, value: l10n.folder),
+              _PropertyDetailRow(
+                label: l10n.propertySize,
+                value: _folderSize == null ? '—' : prettyLzSize(_folderSize!),
               ),
-              ListTile(
-                leading: const Icon(Icons.description_outlined),
-                title: Text(context.l10n.editDesc),
-                onTap: _editDescription,
+              _PropertyDetailRow(
+                label: l10n.propertyFileCount,
+                value: _fileCount?.toString() ?? '—',
               ),
-              ListTile(
-                leading: const Icon(Icons.delete_outline),
-                title: Text(context.l10n.delete),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  page._deleteFolder(_folder);
-                },
+              _PropertyDetailRow(
+                label: l10n.accessPassword,
+                value: _hasPwd
+                    ? l10n.propertyPasswordEnabled
+                    : l10n.propertyPasswordDisabled,
               ),
             ],
           ),

@@ -1379,7 +1379,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get downloadSkippedInTransfers =>
-      'Skipped: file is already in the transfer list';
+      'File is already in the transfer list';
 
   @override
   String retriedDownloads(int count) {
@@ -1480,6 +1480,32 @@ class AppLocalizationsEn extends AppLocalizations {
   String downloadsCount(int count) {
     return '$count downloads';
   }
+
+  @override
+  String get propertyType => 'Type';
+
+  @override
+  String get propertySize => 'Size';
+
+  @override
+  String get propertyTime => 'Time';
+
+  @override
+  String get propertyDownloadCount => 'Downloads';
+
+  @override
+  String get propertyFileCount => 'Files';
+
+  @override
+  String propertyFileType(String extension) {
+    return '$extension file';
+  }
+
+  @override
+  String get propertyPasswordEnabled => 'Enabled';
+
+  @override
+  String get propertyPasswordDisabled => 'Not enabled';
 
   @override
   String get hasPassword => 'Has password';
@@ -2055,7 +2081,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get restorePreviewTitle => 'Review backup';
 
   @override
-  String get restoreCreatedAtLabel => 'Created:';
+  String get restoreCreatedAtLabel => 'Created';
 
   @override
   String restoreCreatedAt(String time) {
@@ -2066,10 +2092,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get restoreIncludedContent => 'Included content';
 
   @override
-  String get restoreIncludedContentLabel => 'Included content:';
+  String get restoreIncludedContentLabel => 'Included content';
 
   @override
-  String get restoreAccountLabel => 'Accounts:';
+  String get restoreAccountLabel => 'Accounts';
 
   @override
   String restoreAccountCount(int count) {

@@ -789,7 +789,7 @@
   },
   "addedDownloadsPartialSkipped": "已加入 {ok} 个下载任务，跳过 {skipped} 个已在传输列表的文件，{failed} 个解析失败",
   "downloadStarted": "已开始下载",
-  "downloadSkippedInTransfers": "已跳过：文件已在传输列表",
+  "downloadSkippedInTransfers": "文件已在传输列表",
   "@addedDownloadsPartialSkipped": {
     "placeholders": {
       "ok": {
@@ -920,6 +920,21 @@
       }
     }
   },
+  "propertyType": "类型",
+  "propertySize": "大小",
+  "propertyTime": "时间",
+  "propertyDownloadCount": "下载数",
+  "propertyFileCount": "文件数",
+  "propertyFileType": "{extension} 文件",
+  "@propertyFileType": {
+    "placeholders": {
+      "extension": {
+        "type": "String"
+      }
+    }
+  },
+  "propertyPasswordEnabled": "已启用",
+  "propertyPasswordDisabled": "未启用",
   "hasPassword": "有提取码",
   "openLink": "打开链接",
   "showQr": "显示二维码",
@@ -1185,7 +1200,7 @@
   "restoreCloudSourceSubtitle": "连接服务器并选择备份副本",
   "restoreFileInvalid": "备份文件无法读取或不是有效的 UTF-8 JSON 文件",
   "restorePreviewTitle": "确认备份内容",
-  "restoreCreatedAtLabel": "创建时间：",
+  "restoreCreatedAtLabel": "创建时间",
   "restoreCreatedAt": "创建时间：{time}",
   "@restoreCreatedAt": {
     "placeholders": {
@@ -1195,8 +1210,8 @@
     }
   },
   "restoreIncludedContent": "包含内容",
-  "restoreIncludedContentLabel": "包含内容：",
-  "restoreAccountLabel": "账号：",
+  "restoreIncludedContentLabel": "包含内容",
+  "restoreAccountLabel": "账号",
   "restoreAccountCount": "账号：{count} 个",
   "@restoreAccountCount": {
     "placeholders": {

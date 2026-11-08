@@ -1320,7 +1320,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get downloadStarted => '已开始下载';
 
   @override
-  String get downloadSkippedInTransfers => '已跳过：文件已在传输列表';
+  String get downloadSkippedInTransfers => '文件已在传输列表';
 
   @override
   String retriedDownloads(int count) {
@@ -1418,6 +1418,32 @@ class AppLocalizationsZh extends AppLocalizations {
   String downloadsCount(int count) {
     return '下载 $count';
   }
+
+  @override
+  String get propertyType => '类型';
+
+  @override
+  String get propertySize => '大小';
+
+  @override
+  String get propertyTime => '时间';
+
+  @override
+  String get propertyDownloadCount => '下载数';
+
+  @override
+  String get propertyFileCount => '文件数';
+
+  @override
+  String propertyFileType(String extension) {
+    return '$extension 文件';
+  }
+
+  @override
+  String get propertyPasswordEnabled => '已启用';
+
+  @override
+  String get propertyPasswordDisabled => '未启用';
 
   @override
   String get hasPassword => '有提取码';
@@ -1970,7 +1996,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get restorePreviewTitle => '确认备份内容';
 
   @override
-  String get restoreCreatedAtLabel => '创建时间：';
+  String get restoreCreatedAtLabel => '创建时间';
 
   @override
   String restoreCreatedAt(String time) {
@@ -1981,10 +2007,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get restoreIncludedContent => '包含内容';
 
   @override
-  String get restoreIncludedContentLabel => '包含内容：';
+  String get restoreIncludedContentLabel => '包含内容';
 
   @override
-  String get restoreAccountLabel => '账号：';
+  String get restoreAccountLabel => '账号';
 
   @override
   String restoreAccountCount(int count) {

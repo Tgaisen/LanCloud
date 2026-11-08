@@ -2501,7 +2501,7 @@ abstract class AppLocalizations {
   /// No description provided for @downloadSkippedInTransfers.
   ///
   /// In zh, this message translates to:
-  /// **'已跳过：文件已在传输列表'**
+  /// **'文件已在传输列表'**
   String get downloadSkippedInTransfers;
 
   /// No description provided for @retriedDownloads.
@@ -2653,6 +2653,54 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'下载 {count}'**
   String downloadsCount(int count);
+
+  /// No description provided for @propertyType.
+  ///
+  /// In zh, this message translates to:
+  /// **'类型'**
+  String get propertyType;
+
+  /// No description provided for @propertySize.
+  ///
+  /// In zh, this message translates to:
+  /// **'大小'**
+  String get propertySize;
+
+  /// No description provided for @propertyTime.
+  ///
+  /// In zh, this message translates to:
+  /// **'时间'**
+  String get propertyTime;
+
+  /// No description provided for @propertyDownloadCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载数'**
+  String get propertyDownloadCount;
+
+  /// No description provided for @propertyFileCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'文件数'**
+  String get propertyFileCount;
+
+  /// No description provided for @propertyFileType.
+  ///
+  /// In zh, this message translates to:
+  /// **'{extension} 文件'**
+  String propertyFileType(String extension);
+
+  /// No description provided for @propertyPasswordEnabled.
+  ///
+  /// In zh, this message translates to:
+  /// **'已启用'**
+  String get propertyPasswordEnabled;
+
+  /// No description provided for @propertyPasswordDisabled.
+  ///
+  /// In zh, this message translates to:
+  /// **'未启用'**
+  String get propertyPasswordDisabled;
 
   /// No description provided for @hasPassword.
   ///
@@ -3707,7 +3755,7 @@ abstract class AppLocalizations {
   /// No description provided for @restoreCreatedAtLabel.
   ///
   /// In zh, this message translates to:
-  /// **'创建时间：'**
+  /// **'创建时间'**
   String get restoreCreatedAtLabel;
 
   /// No description provided for @restoreCreatedAt.
@@ -3725,13 +3773,13 @@ abstract class AppLocalizations {
   /// No description provided for @restoreIncludedContentLabel.
   ///
   /// In zh, this message translates to:
-  /// **'包含内容：'**
+  /// **'包含内容'**
   String get restoreIncludedContentLabel;
 
   /// No description provided for @restoreAccountLabel.
   ///
   /// In zh, this message translates to:
-  /// **'账号：'**
+  /// **'账号'**
   String get restoreAccountLabel;
 
   /// No description provided for @restoreAccountCount.
