@@ -241,6 +241,25 @@
       }
     }
   },
+  "renamedItems": "Renamed {count} items",
+  "@renamedItems": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "renamedItemsPartial": "Renamed {renamed} items; {failed} failed",
+  "@renamedItemsPartial": {
+    "placeholders": {
+      "renamed": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
   "openFileFailed": "No app can open this file",
   "openFileMissing": "The file no longer exists or has been moved",
   "openFilePermissionDenied": "File access is no longer permitted. Choosing a download directory only affects future tasks; please download this file again.",
@@ -454,6 +473,7 @@
   "uploadAnyway": "Upload anyway",
   "nameLabel": "Name",
   "nameLabelMember": "Name (membership required to rename)",
+  "fileRenameMembershipHint": "A membership is required to rename files",
   "pleaseEnterName": "Enter a name",
   "descOptional": "Description (optional)",
   "create": "Create",
@@ -493,6 +513,8 @@
   "addedDownloadsPartial": "Added {ok} download tasks; {failed} failed to resolve",
   "addedDownloadsSkipped": "Added {ok} download tasks; skipped {skipped} files already in the transfer list",
   "addedDownloadsPartialSkipped": "Added {ok} download tasks; skipped {skipped} files already in the transfer list; {failed} failed to resolve",
+  "downloadStarted": "Download started",
+  "downloadSkippedInTransfers": "Skipped: file is already in the transfer list",
   "retriedDownloads": "Re-queued {count} download tasks",
   "retriedDownloadsPartial": "Re-queued {ok} download tasks; {failed} failed",
   "noLinksToCopy": "No share links to copy",

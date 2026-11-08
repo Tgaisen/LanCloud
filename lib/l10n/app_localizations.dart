@@ -1136,6 +1136,18 @@ abstract class AppLocalizations {
   /// **'已修改 {count} 个上传任务的名称'**
   String renamedUploads(int count);
 
+  /// No description provided for @renamedItems.
+  ///
+  /// In zh, this message translates to:
+  /// **'已重命名 {count} 个条目'**
+  String renamedItems(int count);
+
+  /// No description provided for @renamedItemsPartial.
+  ///
+  /// In zh, this message translates to:
+  /// **'已重命名 {renamed} 个条目，{failed} 个失败'**
+  String renamedItemsPartial(int renamed, int failed);
+
   /// No description provided for @openFileFailed.
   ///
   /// In zh, this message translates to:
@@ -2300,6 +2312,12 @@ abstract class AppLocalizations {
   /// **'名称（修改名称需开通会员）'**
   String get nameLabelMember;
 
+  /// No description provided for @fileRenameMembershipHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'修改文件名称需开通会员'**
+  String get fileRenameMembershipHint;
+
   /// No description provided for @pleaseEnterName.
   ///
   /// In zh, this message translates to:
@@ -2473,6 +2491,18 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'已加入 {ok} 个下载任务，跳过 {skipped} 个已在传输列表的文件，{failed} 个解析失败'**
   String addedDownloadsPartialSkipped(int ok, int skipped, int failed);
+
+  /// No description provided for @downloadStarted.
+  ///
+  /// In zh, this message translates to:
+  /// **'已开始下载'**
+  String get downloadStarted;
+
+  /// No description provided for @downloadSkippedInTransfers.
+  ///
+  /// In zh, this message translates to:
+  /// **'已跳过：文件已在传输列表'**
+  String get downloadSkippedInTransfers;
 
   /// No description provided for @retriedDownloads.
   ///

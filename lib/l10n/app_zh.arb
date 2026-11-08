@@ -361,6 +361,25 @@
       }
     }
   },
+  "renamedItems": "已重命名 {count} 个条目",
+  "@renamedItems": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "renamedItemsPartial": "已重命名 {renamed} 个条目，{failed} 个失败",
+  "@renamedItemsPartial": {
+    "placeholders": {
+      "renamed": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
   "openFileFailed": "没有可打开此文件的应用",
   "openFileMissing": "文件不存在，可能已被移动或删除",
   "openFilePermissionDenied": "文件访问权限已失效；重新选择下载目录只影响之后的任务，请重新下载该文件",
@@ -677,6 +696,7 @@
   },
   "nameLabel": "名称",
   "nameLabelMember": "名称（修改名称需开通会员）",
+  "fileRenameMembershipHint": "修改文件名称需开通会员",
   "pleaseEnterName": "请输入名称",
   "descOptional": "简介（选填）",
   "create": "创建",
@@ -768,6 +788,8 @@
     }
   },
   "addedDownloadsPartialSkipped": "已加入 {ok} 个下载任务，跳过 {skipped} 个已在传输列表的文件，{failed} 个解析失败",
+  "downloadStarted": "已开始下载",
+  "downloadSkippedInTransfers": "已跳过：文件已在传输列表",
   "@addedDownloadsPartialSkipped": {
     "placeholders": {
       "ok": {
