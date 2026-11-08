@@ -1,6 +1,19 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/api/lanzou_client.dart';
 
+class _PageClient extends LanzouClient {
+  _PageClient(this.html) : super(uid: '0');
+
+  final String html;
+  final List<String> requests = [];
+
+  @override
+  Future<String> fetchSharePage(String url, {String? referer}) async {
+    requests.add(url);
+    return html;
+  }
+}
+
 void main() {
   test('分享文件页：大小取 meta description，不会被页内日期带偏', () {
     // 真实页面里日期 `2026-06-22` 出现在大小之后，旧正则 `大小.+?(\d...)<`
@@ -26,5 +39,43 @@ void main() {
 
   test('分享文件页：解析不到大小返回空串', () {
     expect(shareFileSizeFromHtml('<html><body>没有大小</body></html>'), '');
+  });
+
+  test('分享详情只解析元信息，不进入直链流程', () async {
+    final client = _PageClient('''
+<title>报告.pdf - 蓝奏云</title>
+<meta name="description" content="大小：2.5 M" />
+<span class="user-name">分享者甲</span>
+<div class="n_box_des">文件说明</div>
+''');
+
+    final details = await client.fetchFileShareDetails(
+      'https://example.com/demo',
+    );
+
+    expect(details.name, '报告.pdf');
+    expect(details.size, '2.5M');
+    expect(details.desc, '文件说明');
+    expect(details.sharer, '分享者甲');
+    expect(details.requiresPassword, isFalse);
+    expect(client.requests, ['https://example.com/demo']);
+  });
+
+  test('分享详情在缺少提取码时仍可返回基本信息，直链再校验密码', () async {
+    final client = _PageClient('''
+<html><body>
+<meta name="description" content="大小：1 M" />
+<div id="passwddiv"></div>
+</body></html>
+''');
+
+    final details = await client.fetchFileShareDetails(
+      'https://example.com/secret',
+    );
+
+    // 密码页首屏没有真实文件名：不能把 URL 末段兜底成文件名。
+    expect(details.name, isEmpty);
+    expect(details.requiresPassword, isTrue);
+    expect(client.requests, ['https://example.com/secret']);
   });
 }

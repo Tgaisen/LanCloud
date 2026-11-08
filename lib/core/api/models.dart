@@ -196,3 +196,22 @@ class DirectFile {
   final String desc;
   final String sharer;
 }
+
+/// 分享文件页上可直接展示的元信息；不包含会过期的下载直链。
+class ShareFileDetails {
+  const ShareFileDetails({
+    this.name = '',
+    this.size = '',
+    this.desc = '',
+    this.sharer = '',
+    this.requiresPassword = false,
+  });
+
+  /// 分享页能解析出真实名称时才有值；密码页首屏拿不到时为空，
+  /// 调用方应沿用已有名称，不能使用 URL 末段兜底。
+  final String name;
+  final String size;
+  final String desc;
+  final String sharer;
+  final bool requiresPassword;
+}

@@ -45,7 +45,7 @@ class ShareFileInfoSheet extends ConsumerStatefulWidget {
   final Future<void> Function(String pwd)? onPasswordUpdated;
 
   /// 解析成功后回调：收藏夹用它把最新的名称 / 分享者写回收藏数据。
-  final Future<void> Function(DirectFile file)? onResolved;
+  final Future<void> Function(ShareFileDetails file)? onResolved;
 
   @override
   ConsumerState<ShareFileInfoSheet> createState() => _ShareFileInfoSheetState();
@@ -56,7 +56,10 @@ enum _ShareFileQuickAction { download, copyLink, qr, favorite }
 class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
   bool _loading = true;
   bool _invalid = false;
-  DirectFile? _resolved;
+  ShareFileDetails? _details;
+
+  /// 下载直链只在当前弹窗内有效；关闭弹窗后随 State 一起丢弃。
+  DirectFile? _directFile;
 
   /// 下载按钮的二级菜单贴着该按钮组弹出。
   final GlobalKey _quickActionGroupKey = GlobalKey();
@@ -198,7 +201,7 @@ class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
   }
 
   Future<DirectFile?> _resolveDirectFile() async {
-    final cached = _resolved;
+    final cached = _directFile;
     if (cached != null && cached.url.isNotEmpty) return cached;
     final client = ref.read(lanzouClientRegistryProvider).publicClient;
     final navigator = Navigator.of(context);
@@ -224,15 +227,25 @@ class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
     if (!mounted) return null;
     if (needsPassword) {
       final pwd = await _promptPassword();
-      return pwd == null ? null : _resolved;
+      return pwd == null ? null : _directFile;
     }
     if (error != null) {
       showAppToast(context, context.l10n.lanzouError(error));
       return null;
     }
     if (resolved != null) {
-      setState(() => _resolved = resolved);
-      await widget.onResolved?.call(resolved);
+      final details = ShareFileDetails(
+        name: resolved.name,
+        size: resolved.size,
+        desc: resolved.desc,
+        sharer: resolved.sharer,
+        requiresPassword: _pwd.isNotEmpty,
+      );
+      setState(() {
+        _directFile = resolved;
+        _details = details;
+      });
+      await widget.onResolved?.call(details);
     }
     return resolved;
   }
@@ -273,22 +286,14 @@ class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
   Future<void> _fetch() async {
     final client = ref.read(lanzouClientRegistryProvider).publicClient;
     try {
-      // 属性弹窗要显示简介：分享页没有时再去下载页（/tp）兜底
-      final resolved = await client.resolveFileShare(
+      // 打开属性页只取元信息；直链等用户明确选择后再解析。
+      final details = await client.fetchFileShareDetails(
         widget.url,
         pwd: _pwd,
         withDescription: true,
       );
-      if (mounted) setState(() => _resolved = resolved);
-      await widget.onResolved?.call(resolved);
-    } on NeedPasswordException {
-      if (!mounted) return;
-      setState(() => _loading = false);
-      await _promptPassword();
-    } on WrongPasswordException {
-      if (!mounted) return;
-      setState(() => _loading = false);
-      await _promptPassword();
+      if (mounted) setState(() => _details = details);
+      await widget.onResolved?.call(details);
     } on LanzouException catch (e) {
       if (mounted) {
         setState(
@@ -308,20 +313,28 @@ class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
   Future<String?> _promptPassword() async {
     final result = await showFilePasswordDialog(context, url: widget.url);
     if (result == null || !mounted) return null;
+    final details = ShareFileDetails(
+      name: result.value.name,
+      size: result.value.size,
+      desc: result.value.desc,
+      sharer: result.value.sharer,
+      requiresPassword: true,
+    );
     setState(() {
       _pwd = result.pwd;
-      _resolved = result.value;
+      _details = details;
+      _directFile = result.value;
       _invalid = false;
       _loading = false;
     });
-    await widget.onResolved?.call(result.value);
+    await widget.onResolved?.call(details);
     await widget.onPasswordUpdated?.call(result.pwd);
     return result.pwd;
   }
 
   String get _name {
-    final resolved = _resolved;
-    if (resolved != null && resolved.name.isNotEmpty) return resolved.name;
+    final details = _details;
+    if (details != null && details.name.isNotEmpty) return details.name;
     return widget.name;
   }
 
@@ -330,15 +343,15 @@ class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
     // 文件页解析出的 size 偶尔会取到别的数字（历史上是页内日期 22），
     // 有列表值时以列表为准，保证打开属性弹窗前后的显示不跳变。
     if (widget.size.isNotEmpty) return widget.size;
-    final resolved = _resolved;
-    return resolved?.size ?? '';
+    final details = _details;
+    return details?.size ?? '';
   }
 
-  String get _desc => _resolved?.desc ?? '';
+  String get _desc => _details?.desc ?? '';
 
   String get _sharer {
-    final resolved = _resolved;
-    if (resolved != null && resolved.sharer.isNotEmpty) return resolved.sharer;
+    final details = _details;
+    if (details != null && details.sharer.isNotEmpty) return details.sharer;
     return widget.sharer;
   }
 

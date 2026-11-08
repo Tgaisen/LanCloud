@@ -27,6 +27,15 @@ class _NoNetClient extends LanzouClient {
   _NoNetClient() : super(uid: '0');
 
   @override
+  Future<ShareFileDetails> fetchFileShareDetails(
+    String shareUrl, {
+    String pwd = '',
+    bool withDescription = false,
+  }) async {
+    throw const LanzouException('网络异常');
+  }
+
+  @override
   Future<DirectFile> resolveFileShare(
     String shareUrl, {
     String pwd = '',
@@ -48,23 +57,27 @@ class _FakeApp {
   void dispose() => environment.dispose();
 }
 
-/// 第一次解析（弹窗加载）立刻失败，之后的解析（点击下载）挂起等测试放行。
+/// 详情加载失败，但点击下载后的直链解析挂起，等测试放行。
 class _GateSecondPublic extends LanzouClient {
   _GateSecondPublic() : super(uid: '0');
 
   final Completer<DirectFile> gate = Completer<DirectFile>();
-  int calls = 0;
+
+  @override
+  Future<ShareFileDetails> fetchFileShareDetails(
+    String shareUrl, {
+    String pwd = '',
+    bool withDescription = false,
+  }) async {
+    throw const LanzouException('网络异常');
+  }
 
   @override
   Future<DirectFile> resolveFileShare(
     String shareUrl, {
     String pwd = '',
     bool withDescription = false,
-  }) {
-    calls += 1;
-    if (calls == 1) return Future.error(const LanzouException('网络异常'));
-    return gate.future;
-  }
+  }) => gate.future;
 }
 
 /// 返回指定大小的假客户端：模拟文件页把大小解析错（如历史 bug 的 22）。
@@ -72,6 +85,13 @@ class _SizeClient extends LanzouClient {
   _SizeClient(this.size) : super(uid: '0');
 
   final String size;
+
+  @override
+  Future<ShareFileDetails> fetchFileShareDetails(
+    String shareUrl, {
+    String pwd = '',
+    bool withDescription = false,
+  }) async => ShareFileDetails(size: size, requiresPassword: true);
 
   @override
   Future<DirectFile> resolveFileShare(
@@ -87,12 +107,26 @@ class _SizeClient extends LanzouClient {
 class _DescClient extends LanzouClient {
   _DescClient() : super(uid: '0');
 
+  int detailCalls = 0;
+  int resolveCalls = 0;
+
+  @override
+  Future<ShareFileDetails> fetchFileShareDetails(
+    String shareUrl, {
+    String pwd = '',
+    bool withDescription = false,
+  }) async {
+    detailCalls += 1;
+    return const ShareFileDetails(name: 'a.zip', size: '1 M', desc: '这是文件简介');
+  }
+
   @override
   Future<DirectFile> resolveFileShare(
     String shareUrl, {
     String pwd = '',
     bool withDescription = false,
   }) async {
+    resolveCalls += 1;
     return DirectFile(
       name: 'a.zip',
       url: 'https://example.com/a',
@@ -162,12 +196,10 @@ Future<void> _pumpSheet(
 
 void main() {
   testWidgets('分享文件属性弹窗：简介、快捷按钮与详情列表分层展示', (tester) async {
-    await _pumpSheet(
-      tester,
-      _FakeApp(_DescClient()),
-      time: '2 天前',
-      sharer: '测试分享者',
-    );
+    final client = _DescClient();
+    await _pumpSheet(tester, _FakeApp(client), time: '2 天前', sharer: '测试分享者');
+    expect(client.detailCalls, 1);
+    expect(client.resolveCalls, 0);
     expect(find.text('这是文件简介'), findsOneWidget);
 
     expect(find.byType(M3EToggleButton), findsNWidgets(4));
@@ -189,11 +221,15 @@ void main() {
     // 列表给的 31.5 M 是文件夹接口的真实大小；文件页解析出的 22 是错的
     await _pumpSheet(tester, _FakeApp(_SizeClient('22')), size: '31.5 M');
 
+    // 密码页取不到真实名称时沿用调用方给的名称，不能显示 URL 末段。
+    expect(find.text('a.zip'), findsOneWidget);
+    expect(find.text('abcdef'), findsNothing);
     expect(find.textContaining('31.5 MB'), findsOneWidget);
     expect(find.textContaining('22.0 MB'), findsNothing);
   });
 
   testWidgets('分享文件属性弹窗：复制和二维码支持分享链接 / 下载直链且保留属性页', (tester) async {
+    final client = _DescClient();
     final clipboard = <MethodCall>[];
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(SystemChannels.platform, (call) async {
@@ -204,7 +240,9 @@ void main() {
       () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(SystemChannels.platform, null),
     );
-    await _pumpSheet(tester, _FakeApp(_DescClient()), asModal: true);
+    await _pumpSheet(tester, _FakeApp(client), asModal: true);
+    expect(client.detailCalls, 1);
+    expect(client.resolveCalls, 0);
 
     expect(find.text('打开链接'), findsNothing);
     expect(find.byTooltip('下载'), findsOneWidget);
@@ -237,6 +275,7 @@ void main() {
       '${(clipboard.single.arguments as Map)['text']}',
       'https://example.com/abcdef',
     );
+    expect(client.resolveCalls, 0);
     expect(find.byType(M3EBottomSheet), findsOneWidget);
     expect(find.byTooltip('复制链接'), findsOneWidget);
 
@@ -251,6 +290,7 @@ void main() {
       '${(clipboard.last.arguments as Map)['text']}',
       'https://example.com/a',
     );
+    expect(client.resolveCalls, 1);
     expect(find.byType(M3EBottomSheet), findsOneWidget);
 
     await tester.tap(find.byTooltip('显示二维码'));
@@ -275,6 +315,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.byType(AlertDialog), findsOneWidget);
     expect(find.byType(M3EBottomSheet), findsOneWidget);
+    expect(client.resolveCalls, 1);
 
     await tester.tap(
       find.descendant(of: find.byType(AlertDialog), matching: find.text('关闭')),

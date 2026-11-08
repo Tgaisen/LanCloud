@@ -19,6 +19,7 @@ import 'package:lancloud/l10n/delegates.dart';
 import 'package:lancloud/ui/app_icons.dart' as app_icons;
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/favorites_page.dart';
+import 'package:lancloud/ui/m3e.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'transfer_dependencies_test.dart'
@@ -47,6 +48,18 @@ class _StalePwdClient extends LanzouClient {
       ],
     );
   }
+
+  @override
+  Future<ShareFileDetails> fetchFileShareDetails(
+    String shareUrl, {
+    String pwd = '',
+    bool withDescription = false,
+  }) async => const ShareFileDetails(
+    name: 'fav-renamed.txt',
+    size: '2 M',
+    sharer: '分享者甲',
+    requiresPassword: true,
+  );
 
   @override
   Future<DirectFile> resolveFileShare(
@@ -165,6 +178,21 @@ Future<void> _until(
     await tester.pump(const Duration(milliseconds: 20));
   }
   fail('等待 $finder 超时');
+}
+
+Future<void> _untilGone(
+  WidgetTester tester,
+  Finder finder, {
+  int tries = 40,
+}) async {
+  for (var i = 0; i < tries; i++) {
+    if (finder.evaluate().isEmpty) return;
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 10)),
+    );
+    await tester.pump(const Duration(milliseconds: 20));
+  }
+  fail('等待 $finder 消失超时');
 }
 
 /// 等数据库写入落库：属性弹窗是「先刷 UI、再异步写收藏」，直接查会拿到旧值。
@@ -294,21 +322,49 @@ void main() {
     await _pumpFavorites(tester, app, item: find.text('fav.txt'));
 
     await tester.tap(find.text('fav.txt'));
+    await _until(tester, find.text('fav-renamed.txt'));
+
+    // 打开属性页只取元信息，不再为了密码校验提前解析直链。
+    expect(find.text('此文件需要密码'), findsNothing);
+    final sheet = find.byType(M3EBottomSheet);
+    final qrButton = find.descendant(
+      of: sheet,
+      matching: find.byTooltip('显示二维码'),
+    );
+    await tester.ensureVisible(qrButton);
+    await tester.pumpAndSettle();
+    await tester.tap(qrButton);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.tap(find.text('下载直链二维码'));
     await _until(tester, find.text('此文件需要密码'));
     expect(find.text('此文件需要密码'), findsOneWidget);
 
     await tester.enterText(find.byType(TextField), 'newpass');
     await tester.tap(find.text('确定'));
-    await _until(tester, find.text('分享者甲'));
+    await _untilGone(tester, find.text('此文件需要密码'));
+    await tester.pump(const Duration(milliseconds: 500));
 
     expect(find.text('此文件需要密码'), findsNothing);
     // 解析出的新名称也显示在信息卡上
     expect(find.text('fav-renamed.txt'), findsWidgets);
     // 详情列表：大小与分享者分别成行。
-    expect(find.text('大小'), findsOneWidget);
-    expect(find.text('2.0 MB'), findsOneWidget);
-    expect(find.text('分享者'), findsOneWidget);
-    expect(find.text('分享者甲'), findsOneWidget);
+    expect(
+      find.descendant(of: sheet, matching: find.text('大小')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: sheet, matching: find.text('2.0 MB')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: sheet, matching: find.text('分享者')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: sheet, matching: find.text('分享者甲')),
+      findsOneWidget,
+    );
     final saved = await _eventuallyFavorite(
       tester,
       app,
