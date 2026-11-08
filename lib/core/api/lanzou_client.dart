@@ -610,6 +610,21 @@ class LanzouClient {
 
   /// 修改文件夹简介：先 task 18 取当前名称，再 task 4 保存。
   Future<void> setFolderDesc(String folderId, String desc) async {
+    final current = await _folderInfoForUpdate(folderId);
+    await setFolderInfo(folderId, name: current.name, desc: desc);
+  }
+
+  /// 修改文件夹名称：先 task 18 取当前简介，再 task 4 原样保存。
+  ///
+  /// task 4 会同时提交名称和简介，不能只传新名称，否则会覆盖已有简介。
+  Future<void> renameFolder(String folderId, String name) async {
+    final current = await _folderInfoForUpdate(folderId);
+    await setFolderInfo(folderId, name: name, desc: current.desc);
+  }
+
+  Future<({String name, String desc})> _folderInfoForUpdate(
+    String folderId,
+  ) async {
     final infoResp = await dio.post<String>(
       '$apiBase/doupload.php',
       data: {'task': 18, 'folder_id': folderId},
@@ -621,7 +636,8 @@ class LanzouClient {
       code: LanzouErrorCode.readFolderInfoFailed,
     );
     final name = '${info['name'] ?? ''}';
-    await setFolderInfo(folderId, name: name, desc: desc);
+    final desc = '${info['des'] ?? ''}';
+    return (name: name, desc: desc);
   }
 
   /// 修改文件夹信息（名称 + 简介）：task 4。

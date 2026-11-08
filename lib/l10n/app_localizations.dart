@@ -1136,6 +1136,18 @@ abstract class AppLocalizations {
   /// **'已修改 {count} 个上传任务的名称'**
   String renamedUploads(int count);
 
+  /// No description provided for @renamedItems.
+  ///
+  /// In zh, this message translates to:
+  /// **'已重命名 {count} 个条目'**
+  String renamedItems(int count);
+
+  /// No description provided for @renamedItemsPartial.
+  ///
+  /// In zh, this message translates to:
+  /// **'已重命名 {renamed} 个条目，{failed} 个失败'**
+  String renamedItemsPartial(int renamed, int failed);
+
   /// No description provided for @openFileFailed.
   ///
   /// In zh, this message translates to:

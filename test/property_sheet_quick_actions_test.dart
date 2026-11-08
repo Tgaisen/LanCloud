@@ -47,9 +47,11 @@ class _FakeClient extends LanzouClient {
   int shareFileCalls = 0;
   int shareFolderCalls = 0;
 
-  /// 「修改信息」流程里实际调用的接口参数。
+  /// 重命名与简介修改流程里实际调用的接口参数。
   final List<String> renamedFiles = <String>[];
+  final List<String> renamedFolders = <String>[];
   final List<String> savedDescs = <String>[];
+  final List<String> savedFolderDescs = <String>[];
   final List<({String id, bool isFile})> deletedItems = [];
 
   @override
@@ -97,6 +99,14 @@ class _FakeClient extends LanzouClient {
       savedDescs.add(desc);
 
   @override
+  Future<void> renameFolder(String folderId, String name) async =>
+      renamedFolders.add(name);
+
+  @override
+  Future<void> setFolderDesc(String folderId, String desc) async =>
+      savedFolderDescs.add(desc);
+
+  @override
   Future<void> deleteItem({required String id, required bool isFile}) async {
     deletedItems.add((id: id, isFile: isFile));
   }
@@ -119,7 +129,13 @@ class _FakeClient extends LanzouClient {
   @override
   Future<ShareInfo> shareInfoOfFolder(String folderId) async {
     shareFolderCalls += 1;
-    return ShareInfo(url: folderUrl, pwd: 'efgh', isFile: false, name: '子文件夹');
+    return ShareInfo(
+      url: folderUrl,
+      pwd: 'efgh',
+      isFile: false,
+      name: '子文件夹',
+      desc: '文件夹简介',
+    );
   }
 
   @override
@@ -158,6 +174,26 @@ class _ManyFilesClient extends _FakeClient {
         : const <LzFile>[],
     hasMore: false,
   );
+}
+
+class _PartialBatchRenameClient extends _ManyFilesClient {
+  @override
+  Future<({List<LzFolder> folders, List<PathNode> path})> listFolders(
+    String folderId,
+  ) async => (
+    folders: folderId == '-1'
+        ? [LzFolder(id: 'fd1', name: 'file-folder', desc: '')]
+        : const <LzFolder>[],
+    path: const <PathNode>[],
+  );
+
+  @override
+  Future<void> setFileName(String fileId, String name) async {
+    throw const LanzouException(
+      'fallback',
+      code: LanzouErrorCode.renameRequiresMembership,
+    );
+  }
 }
 
 class _FakeApp {
@@ -322,10 +358,10 @@ void main() {
 
     final menu = tester.getRect(find.byKey(const ValueKey('m3e-menu-card')));
     expect(menu.topLeft, pointer);
-    expect(find.byType(M3eMenuRow), findsNWidgets(6));
+    expect(find.byType(M3eMenuRow), findsNWidgets(7));
   });
 
-  testWidgets('网盘页文件 ⋯ 菜单：六项操作，属性打开属性弹窗', (tester) async {
+  testWidgets('网盘页文件 ⋯ 菜单：重命名与简介拆分，属性打开属性弹窗', (tester) async {
     final app = _FakeApp(_FakeClient());
     await _pumpDrive(tester, app);
 
@@ -335,8 +371,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
     await tester.pump(const Duration(milliseconds: 600));
 
-    expect(find.byType(M3eMenuRow), findsNWidgets(6));
-    const order = ['属性', '复制链接', '访问密码', '修改信息', '移动', '删除'];
+    const order = ['属性', '复制链接', '访问密码', '重命名', '修改简介', '移动', '删除'];
+    expect(find.byType(M3eMenuRow), findsNWidgets(order.length));
     for (final label in order) {
       // 页面本身也有「删除」这类文案，断言限定在菜单行里
       expect(
@@ -348,7 +384,7 @@ void main() {
         reason: label,
       );
     }
-    // 顺序：属性 / 复制链接 / 访问密码 / 修改信息 / 移动 / 删除
+    // 顺序：属性 / 复制链接 / 访问密码 / 重命名 / 修改简介 / 移动 / 删除
     final tops = [
       for (final label in order)
         tester
@@ -389,8 +425,20 @@ void main() {
       12,
       reason: '菜单项目圆角应为 12dp',
     );
-    // 原来那套「更多操作」弹窗（含修改简介）已经不在
-    expect(find.text('修改简介'), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byType(M3eMenuRow),
+        matching: find.byIcon(Icons.input_field),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byType(M3eMenuRow),
+        matching: find.byIcon(Icons.description_outlined),
+      ),
+      findsOneWidget,
+    );
 
     // 点「属性」→ 打开文件属性弹窗（那一行 5 个图标按钮）
     await tester.tap(
@@ -398,7 +446,8 @@ void main() {
     );
     await _settleSheet(tester);
     expect(find.byType(M3EToggleButton), findsNWidgets(5));
-    expect(_sheetText('修改信息'), findsOneWidget);
+    expect(_sheetText('重命名'), findsOneWidget);
+    expect(_sheetText('修改简介'), findsOneWidget);
   });
 
   testWidgets('网盘页文件 ⋯ 菜单：复制链接复制的是分享链接（带提取码）', (tester) async {
@@ -466,24 +515,40 @@ void main() {
     await _settleSheet(tester);
     expect(client.shareFileCalls, 2);
     expect(_toggleButton(tester, '复制链接').enabled, isTrue);
-    await tester.tap(_sheetText('修改信息'));
+    await tester.tap(_sheetText('重命名'));
     await _settleSheet(tester);
-    await tester.enterText(find.byType(TextField).first, 'b.zip');
-    await tester.enterText(find.byType(TextField).last, '新简介');
+    await tester.enterText(
+      find.byKey(const ValueKey('drive-rename-field')),
+      'b.zip',
+    );
+    await tester.tap(find.byKey(const ValueKey('drive-rename-confirm')));
+    await _settleSheet(tester);
+    expect(_sheetText('b.zip'), findsOneWidget);
+
+    await tester.tap(_sheetText('修改简介'));
+    await _settleSheet(tester);
+    await tester.enterText(find.byType(TextField), '新简介');
     await tester.tap(find.text('确定'));
     await _settleSheet(tester);
 
     expect(client.renamedFiles, ['b.zip']);
     expect(client.savedDescs, ['新简介']);
 
+    // 七项菜单的「删除」位置更低，等提示条消失后再打开，避免点击被遮挡。
+    await tester.pump(const Duration(seconds: 10));
+    await tester.pump(const Duration(seconds: 1));
     Navigator.of(tester.element(find.byType(DrivePage))).pop();
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('文件操作'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
-    await tester.tap(
-      find.descendant(of: find.byType(M3eMenuRow), matching: find.text('删除')),
+    final deleteItem = find.descendant(
+      of: find.byType(M3eMenuRow),
+      matching: find.text('删除'),
     );
+    await tester.ensureVisible(deleteItem);
+    await tester.pumpAndSettle();
+    await tester.tap(deleteItem);
     await _settleSheet(tester);
     expect(find.text('删除确认'), findsOneWidget);
 
@@ -536,6 +601,111 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(client.deletedItems, [(id: 'f1', isFile: true)]);
+  });
+
+  testWidgets('网盘多选：操作栏顺序与批量重命名预览生效', (tester) async {
+    final client = _ManyFilesClient();
+    final app = _FakeApp(client);
+    await _pumpDrive(tester, app);
+
+    await tester.longPress(find.text('file1.zip'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('file2.zip'));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .widgetList<BatchAction>(find.byType(BatchAction))
+          .map((action) => action.label),
+      ['下载', '复制链接', '收藏', '删除', '更多'],
+    );
+
+    await tester.tap(find.byTooltip('更多'));
+    await _settleSheet(tester);
+    const moreOrder = ['移动', '重命名', '修改简介', '访问密码'];
+    final moreTops = [
+      for (final label in moreOrder)
+        tester
+            .getTopLeft(
+              find.descendant(
+                of: find.byType(M3EBottomSheet),
+                matching: find.text(label),
+              ),
+            )
+            .dy,
+    ];
+    for (var i = 1; i < moreTops.length; i++) {
+      expect(moreTops[i], greaterThan(moreTops[i - 1]), reason: moreOrder[i]);
+    }
+
+    await tester.tap(
+      find.descendant(
+        of: find.byType(M3EBottomSheet),
+        matching: find.text('重命名'),
+      ),
+    );
+    await _settleSheet(tester);
+    await tester.enterText(
+      find.byKey(const ValueKey('drive-batch-rename-search')),
+      'file',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('drive-batch-rename-replacement')),
+      'doc',
+    );
+    await tester.tap(find.byKey(const ValueKey('drive-batch-rename-preview')));
+    await _settleSheet(tester);
+    expect(find.text('file1.zip → doc1.zip'), findsOneWidget);
+    expect(find.text('file2.zip → doc2.zip'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('drive-batch-rename-confirm')));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 2));
+
+    expect(client.renamedFiles, ['doc1.zip', 'doc2.zip']);
+    expect(find.text('doc1.zip'), findsOneWidget);
+    expect(find.text('doc2.zip'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 5));
+  });
+
+  testWidgets('网盘批量重命名：文件失败时文件夹仍成功并汇总', (tester) async {
+    final client = _PartialBatchRenameClient();
+    final app = _FakeApp(client);
+    await _pumpDrive(tester, app);
+
+    await tester.longPress(find.text('file1.zip'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('file-folder'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('更多'));
+    await _settleSheet(tester);
+    await tester.tap(
+      find.descendant(
+        of: find.byType(M3EBottomSheet),
+        matching: find.text('重命名'),
+      ),
+    );
+    await _settleSheet(tester);
+    await tester.enterText(
+      find.byKey(const ValueKey('drive-batch-rename-search')),
+      'file',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('drive-batch-rename-replacement')),
+      'doc',
+    );
+    await tester.tap(find.byKey(const ValueKey('drive-batch-rename-preview')));
+    await _settleSheet(tester);
+    await tester.tap(find.byKey(const ValueKey('drive-batch-rename-confirm')));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 2));
+
+    expect(client.renamedFolders, ['doc-folder']);
+    expect(find.text('doc-folder'), findsOneWidget);
+    expect(find.text('file1.zip'), findsOneWidget);
+    expect(find.text('已重命名 1 个条目，1 个失败'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 5));
   });
 
   testWidgets('已添加下载的文件：属性弹窗下载按钮 checked，点击弹五项菜单', (tester) async {
@@ -942,7 +1112,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
 
     final rows = find.byType(M3eMenuRow);
-    expect(rows, findsNWidgets(6));
+    expect(rows, findsNWidgets(7));
     // 卡片 = 菜单行最近的 Material 祖先
     final Rect card = tester.getRect(
       find.ancestor(of: rows.first, matching: find.byType(Material)).first,
@@ -977,7 +1147,8 @@ void main() {
       findsOneWidget,
     );
 
-    expect(_sheetText('修改信息'), findsOneWidget);
+    expect(_sheetText('重命名'), findsOneWidget);
+    expect(_sheetText('修改简介'), findsOneWidget);
     expect(_sheetText('移动'), findsOneWidget);
     expect(_sheetText('删除'), findsOneWidget);
     // 「打开链接」入口已删（提示条里的复制链接等照旧）
@@ -1086,7 +1257,7 @@ void main() {
     expect(_toggleButton(tester, '添加收藏').checked, isFalse);
   });
 
-  testWidgets('网盘页文件夹 ⋯ 菜单：六项操作，属性打开属性弹窗', (tester) async {
+  testWidgets('网盘页文件夹 ⋯ 菜单：重命名与简介拆分，属性打开属性弹窗', (tester) async {
     final client = _FakeClient();
     final app = _FakeApp(client);
     await _pumpDrive(tester, app);
@@ -1097,9 +1268,9 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
     await tester.pump(const Duration(milliseconds: 600));
 
-    // 文件夹菜单：打开 / 属性 / 复制链接 / 访问密码 / 修改信息 / 删除
+    // 文件夹菜单：打开 / 属性 / 复制链接 / 访问密码 / 重命名 / 修改简介 / 删除
     //（「打开」排第一，与点文件夹卡片等效；文件夹没有「移动」）
-    const order = ['打开', '属性', '复制链接', '访问密码', '修改信息', '删除'];
+    const order = ['打开', '属性', '复制链接', '访问密码', '重命名', '修改简介', '删除'];
     expect(find.byType(M3eMenuRow), findsNWidgets(order.length));
     final tops = [
       for (final label in order)
@@ -1145,17 +1316,40 @@ void main() {
     // （真机上库可用，读回来即恢复可点）
     expect(_toggleButton(tester, '添加到快速访问').enabled, isFalse);
 
-    // 属性弹窗里只剩低频列表：修改信息 / 删除
+    // 属性弹窗里只剩低频列表：重命名 / 修改简介 / 删除
     //（「打开」已经在 ⋯ 菜单里，不再在弹窗里重复一个）
-    expect(_sheetText('修改信息'), findsOneWidget);
+    expect(_sheetText('重命名'), findsOneWidget);
+    expect(_sheetText('修改简介'), findsOneWidget);
     expect(_sheetText('打开'), findsNothing);
-    // 修改信息不再带副标题
+    // 名称与简介是两个独立入口，不再带合并操作的副标题
     expect(_sheetText('修改名称与简介'), findsNothing);
     // 「打开链接」入口已删
     expect(_sheetText('打开链接'), findsNothing);
     expect(_sheetText('删除'), findsOneWidget);
     // 文件夹没有「移动」
     expect(_sheetText('移动'), findsNothing);
+
+    await tester.tap(_sheetText('重命名'));
+    await _settleSheet(tester);
+    await tester.enterText(
+      find.byKey(const ValueKey('drive-rename-field')),
+      '新文件夹',
+    );
+    await tester.tap(find.byKey(const ValueKey('drive-rename-confirm')));
+    await _settleSheet(tester);
+    expect(client.renamedFolders, ['新文件夹']);
+    expect(_sheetText('新文件夹'), findsOneWidget);
+
+    await tester.tap(_sheetText('修改简介'));
+    await _settleSheet(tester);
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller?.text,
+      '文件夹简介',
+    );
+    await tester.enterText(find.byType(TextField), '新文件夹简介');
+    await tester.tap(find.text('确定'));
+    await _settleSheet(tester);
+    expect(client.savedFolderDescs, ['新文件夹简介']);
 
     // 复制链接复用打开弹窗时取回的分享信息（不再请求一次）；
     // 注意这一步会把弹窗收起来，所以放在弹窗内容断言之后。
@@ -1165,29 +1359,51 @@ void main() {
     expect(client.shareFolderCalls, 1);
   });
 
-  testWidgets('文件属性弹窗：修改信息能改名称与简介', (tester) async {
+  testWidgets('文件属性弹窗：重命名与修改简介分别保存', (tester) async {
     final client = _FakeClient();
     final app = _FakeApp(client);
     await _pumpDrive(tester, app);
 
     await tester.tap(find.text('a.zip'));
     await _settleSheet(tester);
-    await tester.tap(_sheetText('修改信息'));
+    await tester.tap(_sheetText('重命名'));
     await _settleSheet(tester);
 
-    // 名称 + 简介两个输入框，预填当前值
-    expect(find.byType(TextField), findsNWidgets(2));
-    await tester.enterText(find.byType(TextField).first, 'b.zip');
-    await tester.enterText(find.byType(TextField).last, '新简介');
+    // 只有名称输入框，预填当前名称
+    expect(find.byType(TextField), findsOneWidget);
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const ValueKey('drive-rename-field')))
+          .controller
+          ?.text,
+      'a.zip',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('drive-rename-field')),
+      'b.zip',
+    );
+    await tester.tap(find.byKey(const ValueKey('drive-rename-confirm')));
+    await _settleSheet(tester);
+
+    expect(client.renamedFiles, ['b.zip']);
+    expect(client.savedDescs, isEmpty);
+    expect(_sheetText('b.zip'), findsOneWidget);
+
+    await tester.tap(_sheetText('修改简介'));
+    await _settleSheet(tester);
+    expect(find.byType(TextField), findsOneWidget);
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller?.text,
+      '文件简介',
+    );
+    await tester.enterText(find.byType(TextField), '新简介');
     await tester.tap(find.text('确定'));
     await _settleSheet(tester);
 
-    // 改名 + 简介都落到接口上，弹窗标题跟着更新
-    expect(client.renamedFiles, ['b.zip']);
     expect(client.savedDescs, ['新简介']);
     expect(_sheetText('b.zip'), findsOneWidget);
 
-    // 让「信息已更新」提示条走完（否则测试结束时还挂着它的定时器）
+    // 让提示条走完（否则测试结束时还挂着它的定时器）
     await tester.pump(const Duration(seconds: 5));
     await tester.pump(const Duration(seconds: 1));
   });
@@ -1200,41 +1416,41 @@ void main() {
 
     await tester.tap(find.text('a.zip'));
     await _settleSheet(tester);
-    await tester.tap(_sheetText(l10n.editInfo));
+    await tester.tap(_sheetText(l10n.rename));
     await _settleSheet(tester);
 
     await tester.enterText(find.byType(TextField).first, 'b.zip');
-    await tester.tap(find.text(l10n.confirm));
+    await tester.tap(find.text(l10n.modify));
     await _settleSheet(tester);
 
     expect(find.text(l10n.lanzouRenameRequiresMembership), findsOneWidget);
     expect(find.text('重命名失败：此功能需要开通会员'), findsNothing);
   });
 
-  testWidgets('文件属性弹窗：修改信息名称为空时原地标错，弹窗不关也不发请求', (tester) async {
+  testWidgets('文件属性弹窗：重命名名称为空时原地标错，弹窗不关也不发请求', (tester) async {
     final client = _FakeClient();
     final app = _FakeApp(client);
     await _pumpDrive(tester, app);
 
     await tester.tap(find.text('a.zip'));
     await _settleSheet(tester);
-    await tester.tap(_sheetText('修改信息'));
+    await tester.tap(_sheetText('重命名'));
     await _settleSheet(tester);
 
     // 清空名称后确定：MD3E error state（错误文本 + 尾部 fill 风格 Error 图标）
     await tester.enterText(find.byType(TextField).first, '');
-    await tester.tap(find.text('确定'));
+    await tester.tap(find.text('修改'));
     await _settleSheet(tester);
     expect(find.text('请输入名称'), findsOneWidget);
     expect(find.byIcon(Icons.error), findsOneWidget);
-    // 弹窗还在（两个输入框都在），改名 / 改简介接口都没被调用
-    expect(find.byType(TextField), findsNWidgets(2));
+    // 弹窗还在，重命名接口没有被调用
+    expect(find.byType(TextField), findsOneWidget);
     expect(client.renamedFiles, isEmpty);
     expect(client.savedDescs, isEmpty);
 
     // 补上名字就能正常保存
     await tester.enterText(find.byType(TextField).first, 'b.zip');
-    await tester.tap(find.text('确定'));
+    await tester.tap(find.text('修改'));
     await _settleSheet(tester);
     expect(client.renamedFiles, ['b.zip']);
     await tester.pump(const Duration(seconds: 5));
@@ -1251,7 +1467,8 @@ void main() {
     await tester.tap(find.text('目录属性'));
     await _settleSheet(tester);
 
-    expect(_sheetText('修改信息'), findsOneWidget);
+    expect(_sheetText('重命名'), findsOneWidget);
+    expect(_sheetText('修改简介'), findsOneWidget);
     expect(_sheetText('打开'), findsNothing);
   });
 

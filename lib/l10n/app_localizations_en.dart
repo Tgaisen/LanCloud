@@ -606,6 +606,16 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String renamedItems(int count) {
+    return 'Renamed $count items';
+  }
+
+  @override
+  String renamedItemsPartial(int renamed, int failed) {
+    return 'Renamed $renamed items; $failed failed';
+  }
+
+  @override
   String get openFileFailed => 'No app can open this file';
 
   @override

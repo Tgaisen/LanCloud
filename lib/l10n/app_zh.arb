@@ -361,6 +361,25 @@
       }
     }
   },
+  "renamedItems": "已重命名 {count} 个条目",
+  "@renamedItems": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "renamedItemsPartial": "已重命名 {renamed} 个条目，{failed} 个失败",
+  "@renamedItemsPartial": {
+    "placeholders": {
+      "renamed": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
   "openFileFailed": "没有可打开此文件的应用",
   "openFileMissing": "文件不存在，可能已被移动或删除",
   "openFilePermissionDenied": "文件访问权限已失效；重新选择下载目录只影响之后的任务，请重新下载该文件",

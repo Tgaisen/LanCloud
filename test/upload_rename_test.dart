@@ -1,14 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lancloud/core/transfer/upload_rename.dart';
+import 'package:lancloud/core/rename_rule.dart';
 
 void main() {
   const targets = [
-    UploadRenameTarget(id: 'a', name: 'Photo_One.PNG'),
-    UploadRenameTarget(id: 'b', name: 'Photo_Two.PNG'),
+    RenameTarget(id: 'a', name: 'Photo_One.PNG'),
+    RenameTarget(id: 'b', name: 'Photo_Two.PNG'),
   ];
 
   test('普通文本默认替换全部匹配项且区分大小写', () {
-    final preview = const UploadRenameRule(
+    final preview = const BatchRenameRule(
       search: 'Photo',
       replacement: 'Image',
       useRegex: false,
@@ -23,7 +23,7 @@ void main() {
   });
 
   test('普通文本关闭区分大小写后忽略大小写替换', () {
-    final preview = const UploadRenameRule(
+    final preview = const BatchRenameRule(
       search: 'photo',
       replacement: 'image',
       useRegex: false,
@@ -38,7 +38,7 @@ void main() {
   });
 
   test('正则表达式支持捕获组替换', () {
-    final preview = const UploadRenameRule(
+    final preview = const BatchRenameRule(
       search: r'^(Photo)_(One|Two)(\.PNG)$',
       replacement: r'$2-$1$3',
       useRegex: true,
@@ -54,40 +54,40 @@ void main() {
 
   test('无效正则、无匹配和空名称会阻止应用', () {
     expect(
-      const UploadRenameRule(
+      const BatchRenameRule(
         search: '[',
         replacement: '',
         useRegex: true,
         matchCase: false,
       ).preview(targets).error,
-      UploadRenameError.invalidPattern,
+      RenameError.invalidPattern,
     );
     expect(
-      const UploadRenameRule(
+      const BatchRenameRule(
         search: 'not-found',
         replacement: '',
         useRegex: false,
         matchCase: false,
       ).preview(targets).error,
-      UploadRenameError.noMatches,
+      RenameError.noMatches,
     );
     expect(
-      const UploadRenameRule(
+      const BatchRenameRule(
         search: 'Photo_One.PNG',
         replacement: '   ',
         useRegex: false,
         matchCase: false,
       ).preview(targets).error,
-      UploadRenameError.emptyName,
+      RenameError.emptyName,
     );
   });
 
   test('允许修改后与同批其他任务同名', () {
     const collisions = [
-      UploadRenameTarget(id: 'a', name: 'old.zip'),
-      UploadRenameTarget(id: 'b', name: 'target.zip'),
+      RenameTarget(id: 'a', name: 'old.zip'),
+      RenameTarget(id: 'b', name: 'target.zip'),
     ];
-    final preview = const UploadRenameRule(
+    final preview = const BatchRenameRule(
       search: 'old',
       replacement: 'target',
       useRegex: false,

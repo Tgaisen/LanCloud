@@ -79,19 +79,32 @@ void main() {
       expect(setup.adapter.requests.length, 1);
     });
 
-    test('读取文件夹描述时 info 为$shape不会继续写回', () async {
-      final setup = _clientWith([
+    test('读取文件夹信息时 info 为$shape不会继续写回', () async {
+      final descSetup = _clientWith([
         jsonEncode({'info': malformed}),
       ]);
 
       await expectLater(
-        setup.client.setFolderDesc('folder-id', '新描述'),
+        descSetup.client.setFolderDesc('folder-id', '新描述'),
         _throwsLanzouError(LanzouErrorCode.readFolderInfoFailed),
       );
       expect(
-        setup.adapter.requests.length,
+        descSetup.adapter.requests.length,
         1,
         reason: '读取失败后不应继续发送 task 4 保存请求',
+      );
+
+      final renameSetup = _clientWith([
+        jsonEncode({'info': malformed}),
+      ]);
+      await expectLater(
+        renameSetup.client.renameFolder('folder-id', '新名称'),
+        _throwsLanzouError(LanzouErrorCode.readFolderInfoFailed),
+      );
+      expect(
+        renameSetup.adapter.requests.length,
+        1,
+        reason: '重命名读取失败后也不应继续发送 task 4 保存请求',
       );
     });
   }
@@ -140,5 +153,27 @@ void main() {
     expect(info.desc, isEmpty);
     expect(setup.adapter.requests, hasLength(1));
     expect(setup.adapter.requests.single.data, containsPair('task', 22));
+  });
+
+  test('重命名文件夹时保留 task 18 返回的原简介', () async {
+    final setup = _clientWith([
+      jsonEncode({
+        'info': {'name': '旧文件夹', 'des': '原简介'},
+      }),
+      jsonEncode({'zt': 1}),
+    ]);
+
+    await setup.client.renameFolder('folder-id', '新文件夹');
+
+    expect(setup.adapter.requests, hasLength(2));
+    expect(setup.adapter.requests.first.data, containsPair('task', 18));
+    expect(
+      setup.adapter.requests.last.data,
+      allOf(
+        containsPair('task', 4),
+        containsPair('folder_name', '新文件夹'),
+        containsPair('folder_description', '原简介'),
+      ),
+    );
   });
 }

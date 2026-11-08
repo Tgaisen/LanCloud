@@ -582,6 +582,16 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String renamedItems(int count) {
+    return '已重命名 $count 个条目';
+  }
+
+  @override
+  String renamedItemsPartial(int renamed, int failed) {
+    return '已重命名 $renamed 个条目，$failed 个失败';
+  }
+
+  @override
   String get openFileFailed => '没有可打开此文件的应用';
 
   @override

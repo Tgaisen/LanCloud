@@ -21,6 +21,7 @@ import '../core/list_home_settings_state.dart';
 import '../core/navigation_appearance_settings_state.dart';
 import '../core/navigation_state.dart';
 import '../core/platform_support.dart';
+import '../core/rename_rule.dart';
 import '../core/transfer/transfer_manager.dart';
 import '../core/transfer/transfer_manager_provider.dart';
 import '../l10n/l10n.dart';
@@ -29,6 +30,7 @@ import 'common.dart';
 import 'download_mark.dart';
 import 'm3e.dart';
 import 'reduce_motion.dart';
+import 'rename_dialogs.dart';
 import 'scroll_tint.dart';
 
 /// 目录进入动画：总时长要容纳常见一屏条目的错峰起点；单项动画与步长
@@ -39,7 +41,15 @@ const double _driveEnterItemDurationMs = 232;
 const double _driveEnterStepMs = 26;
 
 /// 网盘页文件条目 ⋯ 菜单里的动作。
-enum _FileMenuAction { properties, copyLink, move, editInfo, password, delete }
+enum _FileMenuAction {
+  properties,
+  copyLink,
+  password,
+  rename,
+  editDescription,
+  move,
+  delete,
+}
 
 /// 网盘页文件夹条目 ⋯ 菜单里的动作。
 enum _FolderMenuAction {
@@ -47,7 +57,8 @@ enum _FolderMenuAction {
   properties,
   copyLink,
   password,
-  editInfo,
+  rename,
+  editDescription,
   delete,
 }
 
@@ -1520,13 +1531,18 @@ class _DrivePageState extends ConsumerState<DrivePage>
             onTap: () => Navigator.of(context).pop('move'),
           ),
           ListTile(
-            leading: const Icon(Icons.edit_note),
+            leading: const Icon(Icons.input_field),
+            title: Text(context.l10n.rename),
+            onTap: () => Navigator.of(context).pop('rename'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.description_outlined),
             title: Text(context.l10n.editDesc),
             onTap: () => Navigator.of(context).pop('desc'),
           ),
           ListTile(
             leading: const Icon(Icons.lock_outline),
-            title: Text(context.l10n.setPassword),
+            title: Text(context.l10n.accessPassword),
             onTap: () => Navigator.of(context).pop('pwd'),
           ),
         ],
@@ -1534,6 +1550,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
     );
     if (!mounted) return;
     if (action == 'move') await _batchMove();
+    if (action == 'rename') await _batchRename();
     if (action == 'desc') await _batchSetDesc();
     if (action == 'pwd') await _batchSetPasswd();
   }
@@ -1590,6 +1607,132 @@ class _DrivePageState extends ConsumerState<DrivePage>
           failed == 0
               ? context.l10n.movedTo(count, target.name)
               : context.l10n.movedPartial(count - failed, failed),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _batchRename() async {
+    final files = [
+      for (final file in _files)
+        if (_selectedFiles.contains(file.id)) file,
+    ];
+    final folders = [
+      for (final folder in _folders)
+        if (_selectedFolders.contains(folder.id)) folder,
+    ];
+    if (files.isEmpty && folders.isEmpty) return;
+
+    // 文件和文件夹的 ID 命名空间不保证互斥，批量规则使用带类型前缀的
+    // 临时 ID，应用结果时再映射回各自集合。
+    final fileTargets = {for (final file in files) 'file:${file.id}': file};
+    final folderTargets = {
+      for (final folder in folders) 'folder:${folder.id}': folder,
+    };
+    final changes = await showBatchRenameDialog(
+      context,
+      targets: [
+        for (final entry in fileTargets.entries)
+          RenameTarget(id: entry.key, name: entry.value.name),
+        for (final entry in folderTargets.entries)
+          RenameTarget(id: entry.key, name: entry.value.name),
+      ],
+      keyPrefix: 'drive-batch-rename',
+    );
+    if (changes == null || !mounted) return;
+
+    final client = _activeClient();
+    if (client == null) return;
+    final successful = <String, String>{};
+    var failed = 0;
+    await runBatchWithProgress(
+      context,
+      title: context.l10n.rename,
+      total: changes.length,
+      run: (report) async {
+        var done = 0;
+        for (final change in changes) {
+          report(++done, change.originalName);
+          try {
+            if (fileTargets[change.id] case final file?) {
+              await client.setFileName(file.id, change.newName);
+            } else {
+              final folder = folderTargets[change.id];
+              if (folder == null) continue;
+              await client.renameFolder(folder.id, change.newName);
+            }
+            successful[change.id] = change.newName;
+          } catch (_) {
+            failed += 1;
+          }
+        }
+      },
+    );
+    if (!mounted) return;
+    _exitSelection();
+
+    final renamedFiles = {
+      for (final entry in successful.entries)
+        if (fileTargets[entry.key] case final file?) file.id: entry.value,
+    };
+    final renamedFolders = {
+      for (final entry in successful.entries)
+        if (folderTargets[entry.key] case final folder?) folder.id: entry.value,
+    };
+    if (renamedFiles.isNotEmpty || renamedFolders.isNotEmpty) {
+      setState(() {
+        _files = [
+          for (final file in _files)
+            if (renamedFiles[file.id] case final name?)
+              LzFile(
+                id: file.id,
+                name: name,
+                time: file.time,
+                size: file.size,
+                downs: file.downs,
+                hasPwd: file.hasPwd,
+                hasDes: file.hasDes,
+              )
+            else
+              file,
+        ];
+        _folders = [
+          for (final folder in _folders)
+            if (renamedFolders[folder.id] case final name?)
+              LzFolder(
+                id: folder.id,
+                name: name,
+                desc: folder.desc,
+                hasPwd: folder.hasPwd,
+              )
+            else
+              folder,
+        ];
+        _path = [
+          for (final node in _path)
+            if (renamedFolders[node.id] case final name?)
+              PathNode(id: node.id, name: name)
+            else
+              node,
+        ];
+      });
+      for (final entry in renamedFolders.entries) {
+        _drive.cache.renameFolder(entry.key, entry.value);
+      }
+      _pulseItems(
+        fileIds: renamedFiles.keys.toSet(),
+        folderIds: renamedFolders.keys.toSet(),
+      );
+      _updateCacheSnapshot();
+    }
+    if (!mounted) return;
+    final renamed = successful.length;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          failed == 0
+              ? context.l10n.renamedItems(renamed)
+              : context.l10n.renamedItemsPartial(renamed, failed),
         ),
       ),
     );
@@ -1870,7 +2013,8 @@ class _DrivePageState extends ConsumerState<DrivePage>
     });
   }
 
-  /// 点 ⋯：MD3E 弹出菜单（属性 / 复制链接 / 访问密码 / 修改信息 / 移动 / 删除）。
+  /// 点 ⋯：MD3E 弹出菜单
+  /// （属性 / 复制链接 / 访问密码 / 重命名 / 修改简介 / 移动 / 删除）。
   ///
   /// [buttonContext] 是那颗 ⋯ 按钮的 context——菜单贴它下方右对齐弹出。
   Future<void> _fileMenu(
@@ -1908,9 +2052,14 @@ class _DrivePageState extends ConsumerState<DrivePage>
           icon: Icons.lock_outline,
         ),
         M3eMenuItem(
-          value: _FileMenuAction.editInfo,
-          label: l10n.folderInfo,
-          icon: Icons.edit,
+          value: _FileMenuAction.rename,
+          label: l10n.rename,
+          icon: Icons.input_field,
+        ),
+        M3eMenuItem(
+          value: _FileMenuAction.editDescription,
+          label: l10n.editDesc,
+          icon: Icons.description_outlined,
         ),
         M3eMenuItem(
           value: _FileMenuAction.move,
@@ -1932,18 +2081,19 @@ class _DrivePageState extends ConsumerState<DrivePage>
         await _copyShareLink(file);
       case _FileMenuAction.move:
         await _moveSingleFile(file);
-      case _FileMenuAction.editInfo:
-        await _editFileInfoFromMenu(file);
       case _FileMenuAction.password:
         await _singleSetPasswd(file);
+      case _FileMenuAction.rename:
+        await _renameFile(file);
+      case _FileMenuAction.editDescription:
+        await _editFileDescFromMenu(file);
       case _FileMenuAction.delete:
         await _deleteFile(file);
     }
   }
 
-  /// ⋯ 菜单里的「修改信息」：列表项没有简介正文，先取一次再开弹窗——
-  /// 否则输入框是空的，用户只改名就会把简介覆盖掉。取不到就按空简介处理。
-  Future<void> _editFileInfoFromMenu(LzFile file) async {
+  /// ⋯ 菜单里的「修改简介」：列表项没有简介正文，先取一次再开弹窗。
+  Future<void> _editFileDescFromMenu(LzFile file) async {
     final client = _activeClient();
     var desc = '';
     if (client != null) {
@@ -1952,7 +2102,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
       } catch (_) {}
     }
     if (!mounted) return;
-    await _editFileInfo(file, desc: desc);
+    await _editFileDesc(file, desc: desc);
   }
 
   Future<void> _moveSingleFile(LzFile file) async {
@@ -2119,37 +2269,22 @@ class _DrivePageState extends ConsumerState<DrivePage>
     }
   }
 
-  /// 修改文件信息（名称 + 简介），成功后返回新值给调用方刷新弹窗。
-  ///
-  /// 名称没改动时只保存简介：蓝奏云的重命名接口（task 46）只对会员开放，
-  /// 免费账号不该因为改名不可用而连简介也改不了。
-  Future<({String name, String desc})?> _editFileInfo(
-    LzFile file, {
-    required String desc,
-  }) async {
+  /// 重命名单个文件，成功后返回新名称给属性弹窗刷新。
+  Future<String?> _renameFile(LzFile file) async {
     final client = _activeClient();
     if (client == null) return null;
     final freeTier = _accounts.store.active?.isFreeTier ?? false;
-    final result = await showDialog<({String name, String desc})>(
-      context: context,
-      builder: (_) => _ItemFormDialog(
-        title: context.l10n.folderInfo,
-        confirmLabel: context.l10n.confirm,
-        name: file.name,
-        desc: desc,
-        // 普通账号改不了文件名（重命名接口只对会员开放），标题里说明一下
-        nameLabel: freeTier ? context.l10n.nameLabelMember : null,
-      ),
+    final name = await showRenameDialog(
+      context,
+      initialName: file.name,
+      // 普通账号改不了文件名（重命名接口只对会员开放），输入框标题里说明。
+      nameLabel: freeTier ? context.l10n.nameLabelMember : null,
+      keyPrefix: 'drive-rename',
     );
-    if (result == null || !mounted) return null;
-    // 名称为空由弹窗自己的 error state 拦住，到这里一定非空
-    final name = result.name;
-    final newDesc = result.desc;
+    if (name == null || !mounted) return null;
+    if (name == file.name) return name;
     try {
-      if (name != file.name) {
-        await client.setFileName(file.id, name);
-      }
-      await client.setDesc(file.id, newDesc);
+      await client.setFileName(file.id, name);
       if (!mounted) return null;
       setState(() {
         _files = [
@@ -2158,6 +2293,48 @@ class _DrivePageState extends ConsumerState<DrivePage>
                 ? LzFile(
                     id: f.id,
                     name: name,
+                    time: f.time,
+                    size: f.size,
+                    downs: f.downs,
+                    hasPwd: f.hasPwd,
+                    hasDes: f.hasDes,
+                  )
+                : f,
+        ];
+      });
+      _pulseItems(fileIds: {file.id});
+      _updateCacheSnapshot();
+      if (!mounted) return null;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(context.l10n.renamedItems(1))));
+      return name;
+    } catch (e) {
+      if (!mounted) return null;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(context.l10n.lanzouError(e))));
+      return null;
+    }
+  }
+
+  /// 修改单个文件简介，成功后返回新简介给属性弹窗刷新。
+  Future<String?> _editFileDesc(LzFile file, {required String desc}) async {
+    final client = _activeClient();
+    if (client == null) return null;
+    final newDesc = await showDialog<String>(
+      context: context,
+      builder: (_) => _EditDescDialog(initialDesc: desc),
+    );
+    if (newDesc == null || !mounted) return null;
+    try {
+      await client.setDesc(file.id, newDesc);
+      if (!mounted) return null;
+      setState(() {
+        _files = [
+          for (final f in _files)
+            f.id == file.id
+                ? LzFile(
+                    id: f.id,
+                    name: f.name,
                     time: f.time,
                     size: f.size,
                     downs: f.downs,
@@ -2171,8 +2348,8 @@ class _DrivePageState extends ConsumerState<DrivePage>
       _updateCacheSnapshot();
       if (!mounted) return null;
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(context.l10n.itemInfoSaved)));
-      return (name: name, desc: newDesc);
+          .showSnackBar(SnackBar(content: Text(context.l10n.descUpdated)));
+      return newDesc;
     } catch (e) {
       if (!mounted) return null;
       ScaffoldMessenger.of(context)
@@ -2181,33 +2358,48 @@ class _DrivePageState extends ConsumerState<DrivePage>
     }
   }
 
-  /// 修改文件夹信息（名称 + 简介），成功后返回新值给调用方刷新弹窗。
-  Future<({String name, String desc})?> _editFolderInfo(LzFolder folder) async {
+  /// 重命名单个文件夹，成功后返回新名称给属性弹窗刷新。
+  Future<String?> _renameFolder(LzFolder folder) async {
     final client = _activeClient();
     if (client == null) return null;
-    // 控制器由弹窗自己持有：退场动画期间 TextField 仍会重建，
-    // 在 showDialog 返回后立刻 dispose 会触发
-    // 「A TextEditingController was used after being disposed」。
-    final result = await showDialog<({String name, String desc})>(
-      context: context,
-      builder: (_) => _ItemFormDialog(
-        title: context.l10n.folderInfo,
-        confirmLabel: context.l10n.confirm,
-        name: folder.name,
-        desc: folder.desc,
-      ),
+    final name = await showRenameDialog(
+      context,
+      initialName: folder.name,
+      keyPrefix: 'drive-rename',
     );
-    if (result == null || !mounted) return null;
-    // 名称为空由弹窗自己的 error state 拦住，到这里一定非空
-    final name = result.name;
-    final desc = result.desc;
+    if (name == null || !mounted) return null;
+    if (name == folder.name) return name;
     try {
-      await client.setFolderInfo(folder.id, name: name, desc: desc);
+      await client.renameFolder(folder.id, name);
       if (!mounted) return null;
-      _applyFolderUpdate(folder.id, name: name, desc: desc);
+      _applyFolderUpdate(folder.id, name: name);
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(context.l10n.folderInfoSaved)));
-      return (name: name, desc: desc);
+          .showSnackBar(SnackBar(content: Text(context.l10n.renamedItems(1))));
+      return name;
+    } catch (e) {
+      if (!mounted) return null;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(context.l10n.lanzouError(e))));
+      return null;
+    }
+  }
+
+  /// 修改单个文件夹简介，成功后返回新简介给属性弹窗刷新。
+  Future<String?> _editFolderDesc(LzFolder folder) async {
+    final client = _activeClient();
+    if (client == null) return null;
+    final desc = await showDialog<String>(
+      context: context,
+      builder: (_) => _EditDescDialog(initialDesc: folder.desc),
+    );
+    if (desc == null || !mounted) return null;
+    try {
+      await client.setFolderDesc(folder.id, desc);
+      if (!mounted) return null;
+      _applyFolderUpdate(folder.id, desc: desc);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(context.l10n.descUpdated)));
+      return desc;
     } catch (e) {
       if (!mounted) return null;
       ScaffoldMessenger.of(context)
@@ -2217,7 +2409,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
   }
 
   /// 点文件夹 ⋯：MD3E 弹出菜单
-  /// （打开 / 属性 / 复制链接 / 访问密码 / 修改信息 / 删除）。
+  /// （打开 / 属性 / 复制链接 / 访问密码 / 重命名 / 修改简介 / 删除）。
   ///
   /// [buttonContext] 是那颗 ⋯ 按钮的 context（桌面端右键时是整行）——
   /// 菜单贴它下方右对齐弹出。
@@ -2261,9 +2453,14 @@ class _DrivePageState extends ConsumerState<DrivePage>
           icon: Icons.lock_outline,
         ),
         M3eMenuItem(
-          value: _FolderMenuAction.editInfo,
-          label: l10n.folderInfo,
-          icon: Icons.edit,
+          value: _FolderMenuAction.rename,
+          label: l10n.rename,
+          icon: Icons.input_field,
+        ),
+        M3eMenuItem(
+          value: _FolderMenuAction.editDescription,
+          label: l10n.editDesc,
+          icon: Icons.description_outlined,
         ),
         M3eMenuItem(
           value: _FolderMenuAction.delete,
@@ -2283,8 +2480,10 @@ class _DrivePageState extends ConsumerState<DrivePage>
         await _copyFolderShareLink(folder);
       case _FolderMenuAction.password:
         await _setFolderPasswd(folder);
-      case _FolderMenuAction.editInfo:
-        await _editFolderInfoFromMenu(folder);
+      case _FolderMenuAction.rename:
+        await _renameFolder(folder);
+      case _FolderMenuAction.editDescription:
+        await _editFolderDescFromMenu(folder);
       case _FolderMenuAction.delete:
         await _deleteFolder(folder);
     }
@@ -2300,9 +2499,8 @@ class _DrivePageState extends ConsumerState<DrivePage>
     );
   }
 
-  /// ⋯ 菜单里的「修改信息」：列表项带的简介可能是截断过的，先取一次最新全文
-  /// （与文件的修改信息同一个口径），取不到就沿用列表里的值。
-  Future<void> _editFolderInfoFromMenu(LzFolder folder) async {
+  /// ⋯ 菜单里的「修改简介」：列表项带的简介可能是截断过的，先取最新全文。
+  Future<void> _editFolderDescFromMenu(LzFolder folder) async {
     final client = _activeClient();
     var desc = folder.desc;
     if (client != null) {
@@ -2312,7 +2510,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
       } catch (_) {}
     }
     if (!mounted) return;
-    await _editFolderInfo(
+    await _editFolderDesc(
       LzFolder(
         id: folder.id,
         name: folder.name,
@@ -2675,13 +2873,6 @@ class _DrivePageState extends ConsumerState<DrivePage>
                     child: BatchActionBar(
                       children: [
                         BatchAction(
-                          icon: Icons.delete_outline,
-                          label: context.l10n.delete,
-                          onPressed: selectedCount == 0
-                              ? null
-                              : _deleteSelected,
-                        ),
-                        BatchAction(
                           icon: Icons.download_outlined,
                           label: context.l10n.download,
                           onPressed: _selectedFiles.isEmpty
@@ -2699,6 +2890,13 @@ class _DrivePageState extends ConsumerState<DrivePage>
                           icon: Icons.star_outline,
                           label: context.l10n.favorite,
                           onPressed: selectedCount == 0 ? null : _batchFavorite,
+                        ),
+                        BatchAction(
+                          icon: Icons.delete_outline,
+                          label: context.l10n.delete,
+                          onPressed: selectedCount == 0
+                              ? null
+                              : _deleteSelected,
                         ),
                         BatchAction(
                           icon: Icons.more_horiz,
@@ -3881,34 +4079,18 @@ class _FileRow extends StatelessWidget {
 /// 输入控制器随弹窗 State 一起释放，避免弹窗退场动画期间 TextField
 /// 重建时用到已 dispose 的控制器。
 class _ItemFormDialog extends StatefulWidget {
-  const _ItemFormDialog({
-    required this.title,
-    required this.confirmLabel,
-    this.name = '',
-    this.desc = '',
-    this.nameLabel,
-  });
+  const _ItemFormDialog({required this.title, required this.confirmLabel});
 
   final String title;
   final String confirmLabel;
-  final String name;
-  final String desc;
-
-  /// 名称输入框的标题；不传用默认的「名称」。
-  /// 免费账号改不了文件名，调用处会换成带说明的文案。
-  final String? nameLabel;
 
   @override
   State<_ItemFormDialog> createState() => _ItemFormDialogState();
 }
 
 class _ItemFormDialogState extends State<_ItemFormDialog> {
-  late final TextEditingController _name = TextEditingController(
-    text: widget.name,
-  );
-  late final TextEditingController _desc = TextEditingController(
-    text: widget.desc,
-  );
+  final TextEditingController _name = TextEditingController();
+  final TextEditingController _desc = TextEditingController();
 
   /// 名称为空时的 error state（MD3E：错误文本 + 尾部红色 fill 风格 Error 图标）
   String? _nameError;
@@ -3946,9 +4128,7 @@ class _ItemFormDialogState extends State<_ItemFormDialog> {
             },
             decoration: errorState(
               context,
-              InputDecoration(
-                labelText: widget.nameLabel ?? context.l10n.nameLabel,
-              ),
+              InputDecoration(labelText: context.l10n.nameLabel),
               _nameError,
             ),
           ),
@@ -3976,14 +4156,18 @@ class _ItemFormDialogState extends State<_ItemFormDialog> {
 
 /// 修改简介弹窗（文件 / 文件夹批量共用）：控制器随弹窗 State 释放。
 class _EditDescDialog extends StatefulWidget {
-  const _EditDescDialog();
+  const _EditDescDialog({this.initialDesc = ''});
+
+  final String initialDesc;
 
   @override
   State<_EditDescDialog> createState() => _EditDescDialogState();
 }
 
 class _EditDescDialogState extends State<_EditDescDialog> {
-  final TextEditingController _controller = TextEditingController();
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.initialDesc,
+  );
 
   @override
   void dispose() {
@@ -4090,7 +4274,7 @@ enum _FileQuickAction { download, link, qr, favorite, password }
 class _FileInfoSheetState extends ConsumerState<_FileInfoSheet> {
   late LzFile _file = widget.file;
 
-  /// 当前名称（「修改信息」里可以改名，改完头部和后续操作都用新的）。
+  /// 当前名称（重命名后头部和后续操作都用新的）。
   late String _name = widget.file.name;
   String _desc = '';
   bool _loading = true;
@@ -4300,17 +4484,16 @@ class _FileInfoSheetState extends ConsumerState<_FileInfoSheet> {
     if (mounted) await _refresh();
   }
 
-  /// 修改文件信息（名称 + 简介）。
-  ///
-  /// 名称没改动时就只保存简介——蓝奏云的重命名接口只对会员开放，这样
-  /// 免费账号仍然可以照常改简介。
-  Future<void> _editInfo() async {
-    final updated = await widget.page._editFileInfo(_currentFile, desc: _desc);
-    if (updated == null || !mounted) return;
-    setState(() {
-      _name = updated.name;
-      _desc = updated.desc;
-    });
+  Future<void> _rename() async {
+    final name = await widget.page._renameFile(_currentFile);
+    if (name == null || !mounted) return;
+    setState(() => _name = name);
+  }
+
+  Future<void> _editDescription() async {
+    final desc = await widget.page._editFileDesc(_currentFile, desc: _desc);
+    if (desc == null || !mounted) return;
+    setState(() => _desc = desc);
   }
 
   /// 收藏是开关型按钮：就地切换选中态（乐观更新），失败再回滚。
@@ -4494,9 +4677,14 @@ class _FileInfoSheetState extends ConsumerState<_FileInfoSheet> {
           margin: SheetListGroup.endMargin,
           children: [
             ListTile(
-              leading: const Icon(Icons.edit_note),
-              title: Text(l10n.folderInfo),
-              onTap: _editInfo,
+              leading: const Icon(Icons.input_field),
+              title: Text(l10n.rename),
+              onTap: _rename,
+            ),
+            ListTile(
+              leading: const Icon(Icons.description_outlined),
+              title: Text(l10n.editDesc),
+              onTap: _editDescription,
             ),
             ListTile(
               leading: const Icon(Icons.drive_file_move_outline),
@@ -4638,13 +4826,16 @@ class _FolderInfoSheetState extends ConsumerState<_FolderInfoSheet> {
     setState(() => _favorite = !checked);
   }
 
-  Future<void> _editInfo() async {
-    final updated = await widget.page._editFolderInfo(_folder);
-    if (updated == null || !mounted) return;
-    setState(() {
-      _name = updated.name;
-      _desc = updated.desc;
-    });
+  Future<void> _rename() async {
+    final name = await widget.page._renameFolder(_folder);
+    if (name == null || !mounted) return;
+    setState(() => _name = name);
+  }
+
+  Future<void> _editDescription() async {
+    final desc = await widget.page._editFolderDesc(_folder);
+    if (desc == null || !mounted) return;
+    setState(() => _desc = desc);
   }
 
   Future<void> _editPassword() async {
@@ -4797,9 +4988,14 @@ class _FolderInfoSheetState extends ConsumerState<_FolderInfoSheet> {
             margin: SheetListGroup.endMargin,
             children: [
               ListTile(
-                leading: const Icon(Icons.edit_note),
-                title: Text(context.l10n.folderInfo),
-                onTap: _editInfo,
+                leading: const Icon(Icons.input_field),
+                title: Text(context.l10n.rename),
+                onTap: _rename,
+              ),
+              ListTile(
+                leading: const Icon(Icons.description_outlined),
+                title: Text(context.l10n.editDesc),
+                onTap: _editDescription,
               ),
               ListTile(
                 leading: const Icon(Icons.delete_outline),
