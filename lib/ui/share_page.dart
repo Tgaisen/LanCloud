@@ -216,6 +216,7 @@ class _ShareLinkDialogState extends ConsumerState<ShareLinkDialog> {
       name: name,
       ref: link,
       pwd: pwd,
+      shareUrl: link,
     );
   }
 

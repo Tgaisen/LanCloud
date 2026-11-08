@@ -440,6 +440,7 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
       name: detail.name,
       ref: item.ref,
       pwd: pwd,
+      shareUrl: item.ref,
     );
     if (!mounted) return;
     await Navigator.of(context).push(
