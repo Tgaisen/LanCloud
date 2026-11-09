@@ -316,6 +316,16 @@ Finder _adaptiveSheetTiles() => find.descendant(
   matching: find.byType(ListTile),
 );
 
+List<String> _adaptiveSheetGroupLabels(WidgetTester tester, int index) => tester
+    .widgetList<ListTile>(
+      find.descendant(
+        of: find.byKey(ValueKey('adaptive-m3e-menu-group-$index')),
+        matching: find.byType(ListTile),
+      ),
+    )
+    .map((tile) => (tile.title! as Text).data!)
+    .toList();
+
 Future<void> _openPropertyMore(
   WidgetTester tester, {
   String label = '更多操作',
@@ -546,6 +556,18 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
 
     const order = ['下载', '属性', '复制链接', '访问密码', '移动', '重命名', '修改简介', '删除'];
+    expect(_adaptiveSheetGroupLabels(tester, 0), ['下载', '属性', '复制链接']);
+    expect(_adaptiveSheetGroupLabels(tester, 1), [
+      '访问密码',
+      '移动',
+      '重命名',
+      '修改简介',
+      '删除',
+    ]);
+    expect(
+      find.byKey(const ValueKey('adaptive-m3e-menu-group-2')),
+      findsNothing,
+    );
     expect(_adaptiveSheetTiles(), findsNWidgets(order.length));
     for (final label in order) {
       // 页面本身也有「删除」这类文案，断言限定在自适应动作面板里
@@ -1530,6 +1552,12 @@ void main() {
     // 文件夹菜单：打开 / 属性 / 复制链接 / 访问密码 / 重命名 / 修改简介 / 删除
     //（「打开」排第一，与点文件夹卡片等效；文件夹没有「移动」）
     const order = ['打开', '属性', '复制链接', '访问密码', '重命名', '修改简介', '删除'];
+    expect(_adaptiveSheetGroupLabels(tester, 0), ['打开', '属性', '复制链接']);
+    expect(_adaptiveSheetGroupLabels(tester, 1), ['访问密码', '重命名', '修改简介', '删除']);
+    expect(
+      find.byKey(const ValueKey('adaptive-m3e-menu-group-2')),
+      findsNothing,
+    );
     expect(_adaptiveSheetTiles(), findsNWidgets(order.length));
     final tops = [
       for (final label in order)

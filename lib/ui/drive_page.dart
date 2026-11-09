@@ -100,6 +100,50 @@ Future<_FileMenuAction?> _showFileActionMenu(
   bool propertyContext = false,
 }) {
   final l10n = context.l10n;
+  final readonlyItems = <M3eMenuItem<_FileMenuAction>>[
+    M3eMenuItem(
+      value: _FileMenuAction.download,
+      label: l10n.download,
+      icon: Icons.download_outlined,
+    ),
+    M3eMenuItem(
+      value: _FileMenuAction.properties,
+      label: l10n.properties,
+      icon: Icons.info_outline,
+    ),
+    M3eMenuItem(
+      value: _FileMenuAction.copyLink,
+      label: l10n.copyLink,
+      icon: Icons.copy,
+    ),
+  ];
+  final modifyingItems = <M3eMenuItem<_FileMenuAction>>[
+    M3eMenuItem(
+      value: _FileMenuAction.password,
+      label: l10n.accessPassword,
+      icon: Icons.lock_outline,
+    ),
+    M3eMenuItem(
+      value: _FileMenuAction.move,
+      label: l10n.move,
+      icon: Icons.drive_file_move_outline,
+    ),
+    M3eMenuItem(
+      value: _FileMenuAction.rename,
+      label: l10n.rename,
+      icon: Icons.input_field,
+    ),
+    M3eMenuItem(
+      value: _FileMenuAction.editDescription,
+      label: l10n.editDesc,
+      icon: Icons.description_outlined,
+    ),
+    M3eMenuItem(
+      value: _FileMenuAction.delete,
+      label: l10n.delete,
+      icon: Icons.delete_outline,
+    ),
+  ];
   return showAdaptiveM3eMenu<_FileMenuAction>(
     context: context,
     anchor: anchor,
@@ -107,76 +151,10 @@ Future<_FileMenuAction?> _showFileActionMenu(
     allowSheet: !propertyContext,
     // ⋯ 贴着右边缘：菜单右缘对齐，免得被屏幕右上角夹歪
     alignEnd: true,
-    items: propertyContext
-        ? [
-            M3eMenuItem(
-              value: _FileMenuAction.password,
-              label: l10n.accessPassword,
-              icon: Icons.lock_outline,
-            ),
-            M3eMenuItem(
-              value: _FileMenuAction.move,
-              label: l10n.move,
-              icon: Icons.drive_file_move_outline,
-            ),
-            M3eMenuItem(
-              value: _FileMenuAction.rename,
-              label: l10n.rename,
-              icon: Icons.input_field,
-            ),
-            M3eMenuItem(
-              value: _FileMenuAction.editDescription,
-              label: l10n.editDesc,
-              icon: Icons.description_outlined,
-            ),
-            M3eMenuItem(
-              value: _FileMenuAction.delete,
-              label: l10n.delete,
-              icon: Icons.delete_outline,
-            ),
-          ]
-        : [
-            M3eMenuItem(
-              value: _FileMenuAction.download,
-              label: l10n.download,
-              icon: Icons.download_outlined,
-            ),
-            M3eMenuItem(
-              value: _FileMenuAction.properties,
-              label: l10n.properties,
-              icon: Icons.info_outline,
-            ),
-            M3eMenuItem(
-              value: _FileMenuAction.copyLink,
-              label: l10n.copyLink,
-              icon: Icons.copy,
-            ),
-            M3eMenuItem(
-              value: _FileMenuAction.password,
-              label: l10n.accessPassword,
-              icon: Icons.lock_outline,
-            ),
-            M3eMenuItem(
-              value: _FileMenuAction.move,
-              label: l10n.move,
-              icon: Icons.drive_file_move_outline,
-            ),
-            M3eMenuItem(
-              value: _FileMenuAction.rename,
-              label: l10n.rename,
-              icon: Icons.input_field,
-            ),
-            M3eMenuItem(
-              value: _FileMenuAction.editDescription,
-              label: l10n.editDesc,
-              icon: Icons.description_outlined,
-            ),
-            M3eMenuItem(
-              value: _FileMenuAction.delete,
-              label: l10n.delete,
-              icon: Icons.delete_outline,
-            ),
-          ],
+    sections: [
+      if (!propertyContext) M3eMenuSection(items: readonlyItems),
+      M3eMenuSection(items: modifyingItems),
+    ],
   );
 }
 
@@ -190,72 +168,55 @@ Future<_FolderMenuAction?> _showFolderActionMenu(
   bool propertyContext = false,
 }) {
   final l10n = context.l10n;
+  final readonlyItems = <M3eMenuItem<_FolderMenuAction>>[
+    M3eMenuItem(
+      value: _FolderMenuAction.open,
+      label: l10n.open,
+      icon: Icons.open_in_new,
+    ),
+    M3eMenuItem(
+      value: _FolderMenuAction.properties,
+      label: l10n.properties,
+      icon: Icons.info_outline,
+    ),
+    M3eMenuItem(
+      value: _FolderMenuAction.copyLink,
+      label: l10n.copyLink,
+      icon: Icons.copy,
+    ),
+  ];
+  final modifyingItems = <M3eMenuItem<_FolderMenuAction>>[
+    M3eMenuItem(
+      value: _FolderMenuAction.password,
+      label: l10n.accessPassword,
+      icon: Icons.lock_outline,
+    ),
+    M3eMenuItem(
+      value: _FolderMenuAction.rename,
+      label: l10n.rename,
+      icon: Icons.input_field,
+    ),
+    M3eMenuItem(
+      value: _FolderMenuAction.editDescription,
+      label: l10n.editDesc,
+      icon: Icons.description_outlined,
+    ),
+    M3eMenuItem(
+      value: _FolderMenuAction.delete,
+      label: l10n.delete,
+      icon: Icons.delete_outline,
+    ),
+  ];
   return showAdaptiveM3eMenu<_FolderMenuAction>(
     context: context,
     anchor: anchor,
     pointerPosition: pointerPosition,
     allowSheet: !propertyContext,
     alignEnd: true,
-    items: propertyContext
-        ? [
-            M3eMenuItem(
-              value: _FolderMenuAction.password,
-              label: l10n.accessPassword,
-              icon: Icons.lock_outline,
-            ),
-            M3eMenuItem(
-              value: _FolderMenuAction.rename,
-              label: l10n.rename,
-              icon: Icons.input_field,
-            ),
-            M3eMenuItem(
-              value: _FolderMenuAction.editDescription,
-              label: l10n.editDesc,
-              icon: Icons.description_outlined,
-            ),
-            M3eMenuItem(
-              value: _FolderMenuAction.delete,
-              label: l10n.delete,
-              icon: Icons.delete_outline,
-            ),
-          ]
-        : [
-            M3eMenuItem(
-              value: _FolderMenuAction.open,
-              label: l10n.open,
-              icon: Icons.open_in_new,
-            ),
-            M3eMenuItem(
-              value: _FolderMenuAction.properties,
-              label: l10n.properties,
-              icon: Icons.info_outline,
-            ),
-            M3eMenuItem(
-              value: _FolderMenuAction.copyLink,
-              label: l10n.copyLink,
-              icon: Icons.copy,
-            ),
-            M3eMenuItem(
-              value: _FolderMenuAction.password,
-              label: l10n.accessPassword,
-              icon: Icons.lock_outline,
-            ),
-            M3eMenuItem(
-              value: _FolderMenuAction.rename,
-              label: l10n.rename,
-              icon: Icons.input_field,
-            ),
-            M3eMenuItem(
-              value: _FolderMenuAction.editDescription,
-              label: l10n.editDesc,
-              icon: Icons.description_outlined,
-            ),
-            M3eMenuItem(
-              value: _FolderMenuAction.delete,
-              label: l10n.delete,
-              icon: Icons.delete_outline,
-            ),
-          ],
+    sections: [
+      if (!propertyContext) M3eMenuSection(items: readonlyItems),
+      M3eMenuSection(items: modifyingItems),
+    ],
   );
 }
 
