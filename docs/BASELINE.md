@@ -1,6 +1,6 @@
 # 回归基线
 
-> 当前快照日期：2026-11-08。
+> 当前快照日期：2026-11-09。
 >
 > 本文件只记录当前仓库状态；逐次迁移和增量测试历史见
 > [BASELINE_HISTORY.md](BASELINE_HISTORY.md)。
@@ -9,30 +9,30 @@
 
 | 命令 | 口径 | 结果 | 耗时 |
 | --- | --- | --- | --- |
-| `tools\agent.cmd analyze` | 全量 | No issues found | 约 41 s |
-| `tools\agent.cmd analyze` | 增量（本次改动，5 项） | No issues found | 约 13.9 s |
-| `tools\agent.cmd test` | 全量（当前） | **865 tests, all passed** | 约 125 s |
-| `tools\agent.cmd test` | 增量（本次改动，2 个测试文件） | **11 tests, all passed** | 约 6 s |
+| `tools\agent.cmd analyze` | 全量 | No issues found | 约 47 s |
+| `tools\agent.cmd analyze` | 增量（本次改动，1 项） | No issues found | 约 13 s |
+| `tools\agent.cmd test` | 全量（当前） | **876 tests, all passed** | 约 161 s |
+| `tools\agent.cmd test` | 增量（本次改动，40 个测试文件） | **316 tests, all passed** | 约 96 s |
 
 当前分析结果为 0 issue 是硬基线。出现红灯时，先判断是否为本次改动引入；
 不要把增量结果当成全量结论。
 
-当前全量用例总数为 865。测试清理与异步等待加固后，全量 865 个用例已在并发
-场景下全部通过；`app_log_test.dart` 与 `share_password_recovery_test.dart`
-连续 3 轮针对性复跑也全部通过。
+当前全量用例总数为 876（本轮新增 5 个）。全量 876 个用例已在并发场景下全部
+通过；`app_log_test.dart` 与 `share_password_recovery_test.dart` 连续 3 轮
+针对性复跑也全部通过。
 
 ## 规模
 
 | 指标 | 当前值 |
 | --- | ---: |
 | `lib` Dart 文件 | 156 |
-| `lib` 总行数 | 57,290 |
-| `test` 测试文件 | 174（全部为 `*_test.dart`，平铺） |
-| `test` 总行数 | 31,720 |
-| `test` 用例数 | 865 |
+| `lib` 总行数 | 58,309 |
+| `test` 测试文件 | 175（全部为 `*_test.dart`，平铺） |
+| `test` 总行数 | 32,425 |
+| `test` 用例数 | 876 |
 | `lib/ui` 平铺文件 | 60 |
 | `lib/core` | 55 个平铺文件 + 5 个子系统目录 |
-| 文案（`app_zh.arb`） | 1,622 行 |
+| 文案（`app_zh.arb`） | 1,624 行 |
 
 ## 工具链与依赖
 
@@ -46,7 +46,7 @@
 
 ## 测试安全网
 
-- 当前全量总数为 865 个测试；项目仍没有
+- 当前全量总数为 876 个测试；项目仍没有
   `integration_test` 和 golden test。
 - `tools\agent.cmd analyze|test` 默认走增量；全量结果必须按上表单独记录。
 - `tools\agent.cmd` 已内置 `--no-pub`；需要安装依赖时使用 `agent.cmd pubget`。

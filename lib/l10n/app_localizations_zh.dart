@@ -1536,6 +1536,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get layout => '布局';
 
   @override
+  String get viewMode => '视图';
+
+  @override
+  String get listView => '列表视图';
+
+  @override
+  String get gridView => '网格视图';
+
+  @override
   String get grid => '网格';
 
   @override
@@ -1567,6 +1576,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get sortByTime => '按时间排序';
+
+  @override
+  String get ascending => '升序';
 
   @override
   String get toggleLayout => '切换布局样式';

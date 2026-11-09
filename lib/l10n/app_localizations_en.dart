@@ -1599,6 +1599,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get layout => 'Layout';
 
   @override
+  String get viewMode => 'View';
+
+  @override
+  String get listView => 'List view';
+
+  @override
+  String get gridView => 'Grid view';
+
+  @override
   String get grid => 'Grid';
 
   @override
@@ -1630,6 +1639,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sortByTime => 'Sort by time';
+
+  @override
+  String get ascending => 'Ascending';
 
   @override
   String get toggleLayout => 'Toggle layout style';

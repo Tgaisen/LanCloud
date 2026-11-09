@@ -36,7 +36,7 @@ const double kLargeLayoutBreakpoint = 640;
 const double kCompactMenuBreakpoint = 600;
 
 /// 网盘页路径栏高度（顶栏的 bottom 部分）。
-const double kDrivePathBarHeight = 46;
+const double kDrivePathBarHeight = 48;
 
 /// 传输页上传 / 下载切换栏高度（顶栏的 bottom 部分）。
 const double kTransfersTabBarHeight = 58;
@@ -1713,23 +1713,27 @@ Future<T?> showAdaptiveM3eMenu<T>({
   required BuildContext context,
   required Rect anchor,
   Offset? pointerPosition,
-  required List<M3eMenuItem<T>> items,
+  List<M3eMenuItem<T>>? items,
+  List<M3eMenuSection<T>>? sections,
   bool alignEnd = false,
   Listenable? closeOn,
   bool Function()? closeWhen,
   bool allowSheet = true,
 }) {
-  final bool compact =
-      MediaQuery.sizeOf(context).width < kCompactMenuBreakpoint;
-  if (pointerPosition != null ||
-      !allowSheet ||
-      !compact ||
-      !PlatformSupport.isMobile) {
+  final resolvedSections = _resolveAdaptiveM3eMenuSections(
+    items: items,
+    sections: sections,
+  );
+  if (!_usesAdaptiveM3eMenuSheet(
+    context,
+    pointerPosition: pointerPosition,
+    allowSheet: allowSheet,
+  )) {
     return showM3eMenu<T>(
       context: context,
       anchor: anchor,
       pointerPosition: pointerPosition,
-      items: items,
+      sections: resolvedSections,
       alignEnd: alignEnd,
       closeOn: closeOn,
       closeWhen: closeWhen,
@@ -1738,11 +1742,189 @@ Future<T?> showAdaptiveM3eMenu<T>({
   return showAppSheet<T>(
     context,
     child: _M3eMenuSheet<T>(
-      items: items,
+      sections: resolvedSections,
       closeOn: closeOn,
       closeWhen: closeWhen,
     ),
   );
+}
+
+/// 自适应单选菜单：选中后立即返回该值。
+Future<T?> showAdaptiveM3eSingleSelectMenu<T>({
+  required BuildContext context,
+  required Rect anchor,
+  Offset? pointerPosition,
+  List<M3eMenuItem<T>>? items,
+  List<M3eMenuSection<T>>? sections,
+  required T? selected,
+  bool alignEnd = false,
+  Listenable? closeOn,
+  bool Function()? closeWhen,
+  bool allowSheet = true,
+}) {
+  final resolvedSections = _resolveAdaptiveM3eMenuSections(
+    items: items,
+    sections: sections,
+  );
+  if (!_usesAdaptiveM3eMenuSheet(
+    context,
+    pointerPosition: pointerPosition,
+    allowSheet: allowSheet,
+  )) {
+    return showM3eSingleSelectMenu<T>(
+      context: context,
+      anchor: anchor,
+      pointerPosition: pointerPosition,
+      sections: resolvedSections,
+      selected: selected,
+      alignEnd: alignEnd,
+      closeOn: closeOn,
+      closeWhen: closeWhen,
+    );
+  }
+  return showAppSheet<T>(
+    context,
+    child: _M3eMenuSheet<T>(
+      sections: resolvedSections,
+      selectionMode: M3eMenuSelectionMode.single,
+      initialSelectedValue: selected,
+      closeOn: closeOn,
+      closeWhen: closeWhen,
+    ),
+  );
+}
+
+/// 自适应多选菜单：每次勾选立即通过 [onChanged] 返回新集合。
+Future<void> showAdaptiveM3eMultiSelectMenu<T>({
+  required BuildContext context,
+  required Rect anchor,
+  Offset? pointerPosition,
+  List<M3eMenuItem<T>>? items,
+  List<M3eMenuSection<T>>? sections,
+  required Set<T> selected,
+  required ValueChanged<Set<T>> onChanged,
+  bool alignEnd = false,
+  Listenable? closeOn,
+  bool Function()? closeWhen,
+  bool allowSheet = true,
+}) async {
+  final resolvedSections = _resolveAdaptiveM3eMenuSections(
+    items: items,
+    sections: sections,
+  );
+  if (!_usesAdaptiveM3eMenuSheet(
+    context,
+    pointerPosition: pointerPosition,
+    allowSheet: allowSheet,
+  )) {
+    await showM3eMultiSelectMenu<T>(
+      context: context,
+      anchor: anchor,
+      pointerPosition: pointerPosition,
+      sections: resolvedSections,
+      selected: selected,
+      onChanged: onChanged,
+      alignEnd: alignEnd,
+      closeOn: closeOn,
+      closeWhen: closeWhen,
+    );
+    return;
+  }
+  await showAppSheet<void>(
+    context,
+    child: _M3eMenuSheet<T>(
+      sections: resolvedSections,
+      selectionMode: M3eMenuSelectionMode.multiple,
+      initialSelectedValues: selected,
+      onMultiSelectionChanged: onChanged,
+      closeOn: closeOn,
+      closeWhen: closeWhen,
+    ),
+  );
+}
+
+/// 自适应混合选择菜单：每项按自己的选择角色显示 radio / checkbox。
+Future<void> showAdaptiveM3eChoiceMenu<T>({
+  required BuildContext context,
+  required Rect anchor,
+  Offset? pointerPosition,
+  List<M3eMenuItem<T>>? items,
+  List<M3eMenuSection<T>>? sections,
+  T? radioValue,
+  Set<T> checkedValues = const {},
+  required ValueChanged<M3eMenuChoice<T>> onChanged,
+  bool alignEnd = false,
+  Listenable? closeOn,
+  bool Function()? closeWhen,
+  bool allowSheet = true,
+}) async {
+  final resolvedSections = _resolveAdaptiveM3eMenuSections(
+    items: items,
+    sections: sections,
+  );
+  if (!_usesAdaptiveM3eMenuSheet(
+    context,
+    pointerPosition: pointerPosition,
+    allowSheet: allowSheet,
+  )) {
+    await showM3eChoiceMenu<T>(
+      context: context,
+      anchor: anchor,
+      pointerPosition: pointerPosition,
+      sections: resolvedSections,
+      radioValue: radioValue,
+      checkedValues: checkedValues,
+      onChanged: onChanged,
+      alignEnd: alignEnd,
+      closeOn: closeOn,
+      closeWhen: closeWhen,
+    );
+    return;
+  }
+  await showAppSheet<void>(
+    context,
+    child: _M3eMenuSheet<T>(
+      sections: resolvedSections,
+      selectionMode: M3eMenuSelectionMode.mixed,
+      initialSelectedValue: radioValue,
+      initialSelectedValues: checkedValues,
+      onChoiceChanged: onChanged,
+      closeOn: closeOn,
+      closeWhen: closeWhen,
+    ),
+  );
+}
+
+bool _usesAdaptiveM3eMenuSheet(
+  BuildContext context, {
+  required Offset? pointerPosition,
+  required bool allowSheet,
+}) {
+  final bool compact =
+      MediaQuery.sizeOf(context).width < kCompactMenuBreakpoint;
+  return pointerPosition == null &&
+      allowSheet &&
+      compact &&
+      PlatformSupport.isMobile;
+}
+
+List<M3eMenuSection<T>> _resolveAdaptiveM3eMenuSections<T>({
+  List<M3eMenuItem<T>>? items,
+  List<M3eMenuSection<T>>? sections,
+}) {
+  if ((items != null) == (sections != null)) {
+    throw ArgumentError('items 和 sections 必须且只能提供一个');
+  }
+  final List<M3eMenuSection<T>> resolved;
+  if (items != null) {
+    resolved = <M3eMenuSection<T>>[M3eMenuSection(items: items)];
+  } else {
+    resolved = sections!;
+  }
+  if (resolved.isEmpty || resolved.any((section) => section.items.isEmpty)) {
+    throw ArgumentError('菜单至少需要一个非空分组');
+  }
+  return resolved;
 }
 
 /// 自适应内容高度的弹窗外壳：
@@ -2658,36 +2840,56 @@ class PathChip extends StatelessWidget {
     required this.label,
     required this.current,
     required this.onTap,
-    this.verticalPadding = 8,
   });
 
   final String label;
   final bool current;
   final VoidCallback onTap;
-  final double verticalPadding;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: verticalPadding),
-      child: Material(
-        color: Colors.transparent,
-        // 大圆角 = 胶囊：高度不足时 Skia 会把半径收到一半，左右看是半圆
-        borderRadius: BorderRadius.circular(999),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
+    final BorderRadius shape = BorderRadius.circular(20);
+    return Semantics(
+      container: true,
+      button: true,
+      selected: current,
+      label: label,
+      onTap: onTap,
+      excludeSemantics: true,
+      child: SizedBox(
+        height: 48,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
           onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: current ? FontWeight.w600 : FontWeight.w400,
-                color: current ? scheme.onSurface : scheme.onSurfaceVariant,
+          child: Center(
+            child: SizedBox(
+              height: 40,
+              child: Material(
+                color: Colors.transparent,
+                borderRadius: shape,
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  onTap: onTap,
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.m3eEmphasizedTheme.titleSmall?.copyWith(
+                          fontWeight: current
+                              ? FontWeight.w600
+                              : FontWeight.w400,
+                          color: current
+                              ? scheme.onSurface
+                              : scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
@@ -2714,7 +2916,6 @@ class PathBar extends StatefulWidget {
     required this.segments,
     required this.onTap,
     this.currentIndex,
-    this.verticalPadding = 8,
     this.horizontalPadding = 12,
   });
 
@@ -2725,9 +2926,6 @@ class PathBar extends StatefulWidget {
 
   /// 高亮哪一段；默认最后一段（当前目录）。
   final int? currentIndex;
-
-  /// 卡片上下留白：网盘页 8，弹窗里 4。
-  final double verticalPadding;
 
   /// 横向内边距。AlertDialog 已有内容边距时传 0，避免重复缩进。
   final double horizontalPadding;
@@ -2897,7 +3095,6 @@ class _PathBarState extends State<PathBar> with TickerProviderStateMixin {
             PathChip(
               label: entry.segment.label,
               current: _isCurrent(entry),
-              verticalPadding: widget.verticalPadding,
               onTap: () => _handleTap(entry),
             ),
           ],
@@ -4079,9 +4276,23 @@ class SheetListGroup extends StatelessWidget {
 /// 关闭面板。传输页等调用方原有的 [closeOn] / [closeWhen] 自动收起条件在这里
 /// 保持生效。
 class _M3eMenuSheet<T> extends StatefulWidget {
-  const _M3eMenuSheet({required this.items, this.closeOn, this.closeWhen});
+  const _M3eMenuSheet({
+    required this.sections,
+    this.selectionMode,
+    this.initialSelectedValue,
+    this.initialSelectedValues = const {},
+    this.onMultiSelectionChanged,
+    this.onChoiceChanged,
+    this.closeOn,
+    this.closeWhen,
+  });
 
-  final List<M3eMenuItem<T>> items;
+  final List<M3eMenuSection<T>> sections;
+  final M3eMenuSelectionMode? selectionMode;
+  final T? initialSelectedValue;
+  final Set<T> initialSelectedValues;
+  final ValueChanged<Set<T>>? onMultiSelectionChanged;
+  final ValueChanged<M3eMenuChoice<T>>? onChoiceChanged;
   final Listenable? closeOn;
   final bool Function()? closeWhen;
 
@@ -4091,19 +4302,30 @@ class _M3eMenuSheet<T> extends StatefulWidget {
 
 class _M3eMenuSheetState<T> extends State<_M3eMenuSheet<T>> {
   bool _closing = false;
+  late T? _selectedValue;
+  late Set<T> _selectedValues;
 
   @override
   void initState() {
     super.initState();
+    _selectedValue = widget.initialSelectedValue;
+    _selectedValues = Set<T>.of(widget.initialSelectedValues);
     widget.closeOn?.addListener(_handleCloseOn);
   }
 
   @override
   void didUpdateWidget(covariant _M3eMenuSheet<T> oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.closeOn == oldWidget.closeOn) return;
-    oldWidget.closeOn?.removeListener(_handleCloseOn);
-    widget.closeOn?.addListener(_handleCloseOn);
+    if (widget.closeOn != oldWidget.closeOn) {
+      oldWidget.closeOn?.removeListener(_handleCloseOn);
+      widget.closeOn?.addListener(_handleCloseOn);
+    }
+    if (widget.initialSelectedValues != oldWidget.initialSelectedValues) {
+      _selectedValues = Set<T>.of(widget.initialSelectedValues);
+    }
+    if (widget.initialSelectedValue != oldWidget.initialSelectedValue) {
+      _selectedValue = widget.initialSelectedValue;
+    }
   }
 
   void _handleCloseOn() {
@@ -4119,27 +4341,120 @@ class _M3eMenuSheetState<T> extends State<_M3eMenuSheet<T>> {
     super.dispose();
   }
 
+  bool _isSelected(M3eMenuItem<T> item) => switch (widget.selectionMode) {
+    M3eMenuSelectionMode.single => item.value == widget.initialSelectedValue,
+    M3eMenuSelectionMode.multiple => _selectedValues.contains(item.value),
+    M3eMenuSelectionMode.mixed => switch (item.selectionRole) {
+      M3eMenuSelectionRole.radio => item.value == _selectedValue,
+      M3eMenuSelectionRole.checkbox => _selectedValues.contains(item.value),
+      M3eMenuSelectionRole.action => false,
+    },
+    null => false,
+  };
+
+  bool _showsSelection(M3eMenuItem<T> item) => switch (widget.selectionMode) {
+    M3eMenuSelectionMode.single || M3eMenuSelectionMode.multiple => true,
+    M3eMenuSelectionMode.mixed =>
+      item.selectionRole != M3eMenuSelectionRole.action,
+    null => false,
+  };
+
+  bool _isSingleSelect(M3eMenuItem<T> item) => switch (widget.selectionMode) {
+    M3eMenuSelectionMode.single => true,
+    M3eMenuSelectionMode.mixed =>
+      item.selectionRole == M3eMenuSelectionRole.radio,
+    _ => false,
+  };
+
+  void _toggleSelected(T value) {
+    final Set<T> next = Set<T>.of(_selectedValues);
+    if (!next.add(value)) next.remove(value);
+    setState(() => _selectedValues = next);
+    widget.onMultiSelectionChanged?.call(Set<T>.unmodifiable(next));
+    _notifyChoice();
+  }
+
+  void _selectRadio(T value) {
+    setState(() => _selectedValue = value);
+    _notifyChoice();
+  }
+
+  void _notifyChoice() {
+    widget.onChoiceChanged?.call(
+      M3eMenuChoice<T>(
+        radioValue: _selectedValue,
+        checkedValues: Set<T>.unmodifiable(_selectedValues),
+      ),
+    );
+  }
+
+  Widget _buildItem(M3eMenuItem<T> item) {
+    if (widget.selectionMode == null) {
+      return ListTile(
+        enabled: item.enabled,
+        leading: Icon(item.icon, fill: item.iconFill),
+        title: Text(item.label, maxLines: 2, overflow: TextOverflow.ellipsis),
+        onTap: item.enabled
+            ? () {
+                _closing = true;
+                Navigator.of(context).pop(item.value);
+              }
+            : null,
+      );
+    }
+    return M3ePickTile(
+      label: item.label,
+      leading: Icon(item.icon, fill: item.iconFill),
+      selected: _isSelected(item),
+      singleSelect: _isSingleSelect(item),
+      showSelector: _showsSelection(item),
+      enabled: item.enabled,
+      onTap: () {
+        if (widget.selectionMode == M3eMenuSelectionMode.multiple ||
+            (widget.selectionMode == M3eMenuSelectionMode.mixed &&
+                item.selectionRole == M3eMenuSelectionRole.checkbox)) {
+          _toggleSelected(item.value);
+          return;
+        }
+        if (widget.selectionMode == M3eMenuSelectionMode.mixed &&
+            item.selectionRole == M3eMenuSelectionRole.radio) {
+          _selectRadio(item.value);
+          return;
+        }
+        _closing = true;
+        Navigator.of(context).pop(item.value);
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return SheetListGroup(
+    final EdgeInsets firstMargin = const EdgeInsets.fromLTRB(16, 4, 16, 4);
+    final EdgeInsets middleMargin = const EdgeInsets.fromLTRB(16, 8, 16, 4);
+    final EdgeInsets lastMargin = SheetListGroup.endMargin;
+    return Column(
       key: const ValueKey('adaptive-m3e-menu-sheet'),
-      margin: SheetListGroup.endMargin,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        for (final M3eMenuItem<T> item in widget.items)
-          ListTile(
-            enabled: item.enabled,
-            leading: Icon(item.icon, fill: item.iconFill),
-            title: Text(
-              item.label,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            onTap: item.enabled
-                ? () {
-                    _closing = true;
-                    Navigator.of(context).pop(item.value);
-                  }
-                : null,
+        for (
+          int sectionIndex = 0;
+          sectionIndex < widget.sections.length;
+          sectionIndex++
+        )
+          SheetListGroup(
+            key: ValueKey('adaptive-m3e-menu-group-$sectionIndex'),
+            margin: widget.sections.length == 1
+                ? lastMargin
+                : sectionIndex == 0
+                ? firstMargin
+                : sectionIndex == widget.sections.length - 1
+                ? lastMargin
+                : middleMargin,
+            children: [
+              for (final M3eMenuItem<T> item
+                  in widget.sections[sectionIndex].items)
+                _buildItem(item),
+            ],
           ),
       ],
     );

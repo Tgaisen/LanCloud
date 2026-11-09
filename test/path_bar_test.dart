@@ -9,14 +9,14 @@ List<PathSegment> segments(int count) => [
   for (var i = 0; i < count; i++) PathSegment(id: '$i', label: '很长的目录名称$i'),
 ];
 
-Widget host(List<PathSegment> data) => MaterialApp(
+Widget host(List<PathSegment> data, {ValueChanged<int>? onTap}) => MaterialApp(
   home: Scaffold(
     body: Align(
       alignment: Alignment.topLeft,
       child: SizedBox(
-        height: 46,
+        height: 48,
         width: 400,
-        child: PathBar(segments: data, onTap: (_) {}),
+        child: PathBar(segments: data, onTap: onTap ?? (_) {}),
       ),
     ),
   ),
@@ -112,5 +112,36 @@ void main() {
       find.byIcon(app_icons.Icons.chevron_right),
     );
     expect(arrow.size, 18);
+  });
+
+  testWidgets('路径胶囊：40dp 胶囊涟漪区域位于 48dp 触控目标内', (tester) async {
+    final taps = <int>[];
+    await tester.pumpWidget(host(segments(1), onTap: taps.add));
+    await tester.pumpAndSettle();
+
+    final chip = find.ancestor(
+      of: find.text('很长的目录名称0'),
+      matching: find.byType(PathChip),
+    );
+    expect(tester.getSize(chip).height, 48);
+    final visual = find.descendant(of: chip, matching: find.byType(Material));
+    expect(tester.getSize(visual).height, 40);
+    final text = find.text('很长的目录名称0');
+    expect(
+      tester.widget<Text>(text).style?.fontSize,
+      Theme.of(tester.element(text)).textTheme.titleSmall?.fontSize,
+    );
+    expect(
+      tester.getCenter(text).dy,
+      closeTo(tester.getCenter(visual).dy, 0.5),
+      reason: '文字在 40dp 胶囊内垂直居中',
+    );
+
+    final target = tester.getRect(chip);
+    await tester.tapAt(Offset(target.center.dx, target.top + 2));
+    expect(taps, [1], reason: '胶囊外侧 4dp 仍属于触控目标');
+
+    await tester.tapAt(target.center);
+    expect(taps, [1, 1], reason: '胶囊内一次点击只触发一次');
   });
 }
