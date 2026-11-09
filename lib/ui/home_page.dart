@@ -90,11 +90,11 @@ class _HomePageState extends ConsumerState<HomePage>
     }
   }
 
-  /// 识别二维码：底部弹窗选择「拍照获取 / 从相册选取」（都不需要相机权限），
+  /// 识别二维码：移动端选择「拍照获取 / 从相册选取」，Windows 直接选图；
   /// 识别到蓝奏云分享链接后直接打开解析弹窗。
   Future<void> _scanQr() async {
     final l10n = context.l10n;
-    final source = await showQrSourceSheet(context);
+    final source = await resolveQrImageSource(context);
     if (source == null || !mounted) return;
     final raw = await scanQrFromImage(context, source);
     if (!mounted || raw == null) return;

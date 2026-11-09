@@ -1139,6 +1139,8 @@ void main() {
 
     await tester.tap(find.text('添加'));
     await _settleSheet(tester);
+    expect(find.byKey(const ValueKey('m3e-menu-card')), findsOneWidget);
+    expect(find.byKey(const ValueKey('adaptive-m3e-menu-sheet')), findsNothing);
     await tester.tap(find.text('新建文件夹'));
     await _settleSheet(tester);
     // 自动聚焦 → 帧后量位置 → 180ms 上移动画：多给几帧让它走完

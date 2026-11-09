@@ -89,6 +89,9 @@ enum _FolderMenuAction {
 /// 网盘顶栏菜单里的动作。
 enum _DriveMenuAction { multiSelect, refresh, folderProperties }
 
+/// 网盘“添加”FAB 菜单里的动作。
+enum _AddMenuAction { newFolder, uploadFile, uploadFromApp }
+
 /// 文件条目和文件属性页共用的动作菜单。
 ///
 /// 属性页已经提供下载 / 复制链接等快捷按钮，并负责承载“属性”内容本身，
@@ -1319,42 +1322,44 @@ class _DrivePageState extends ConsumerState<DrivePage>
     }
   }
 
-  Future<void> _showAddMenu() async {
-    await showAppSheet<void>(
-      context,
-      child: SheetListGroup(
-        margin: SheetListGroup.endMargin,
-        children: [
-          ListTile(
-            leading: const Icon(Icons.create_new_folder_outlined),
-            title: Text(context.l10n.newFolder),
-            onTap: () {
-              Navigator.of(context).pop();
-              _mkdir();
-            },
+  Future<void> _showAddMenu(BuildContext anchorContext) async {
+    final anchor = m3eMenuAnchorOf(anchorContext);
+    if (anchor == null) return;
+    final l10n = context.l10n;
+    final action = await showAdaptiveM3eMenu<_AddMenuAction>(
+      context: context,
+      anchor: anchor,
+      alignEnd: true,
+      items: [
+        M3eMenuItem(
+          value: _AddMenuAction.newFolder,
+          label: l10n.newFolder,
+          icon: Icons.create_new_folder_outlined,
+        ),
+        M3eMenuItem(
+          value: _AddMenuAction.uploadFile,
+          label: l10n.uploadFile,
+          icon: Icons.upload_file_outlined,
+        ),
+        // 桌面端没有 ACTION_OPEN_DOCUMENT 那套「从其他应用/文档提供器选取」，
+        // 系统选择器与「上传文件」完全一样，这里不重复给入口。
+        if (PlatformSupport.isMobile)
+          M3eMenuItem(
+            value: _AddMenuAction.uploadFromApp,
+            label: l10n.uploadFromApp,
+            icon: Icons.file_open,
           ),
-          ListTile(
-            leading: const Icon(Icons.upload_file_outlined),
-            title: Text(context.l10n.uploadFile),
-            onTap: () {
-              Navigator.of(context).pop();
-              _upload();
-            },
-          ),
-          // 桌面端没有 ACTION_OPEN_DOCUMENT 那套「从其他应用/文档提供器选取」，
-          // 系统选择器与「上传文件」完全一样，这里不重复给入口。
-          if (PlatformSupport.isMobile)
-            ListTile(
-              leading: const Icon(Icons.file_open),
-              title: Text(context.l10n.uploadFromApp),
-              onTap: () {
-                Navigator.of(context).pop();
-                _uploadFromApp();
-              },
-            ),
-        ],
-      ),
+      ],
     );
+    if (!mounted || action == null) return;
+    switch (action) {
+      case _AddMenuAction.newFolder:
+        await _mkdir();
+      case _AddMenuAction.uploadFile:
+        await _upload();
+      case _AddMenuAction.uploadFromApp:
+        await _uploadFromApp();
+    }
   }
 
   Future<void> _upload() async {
@@ -3119,10 +3124,13 @@ class _DrivePageState extends ConsumerState<DrivePage>
                           ),
                         );
                       },
-                      child: FloatingActionButton.extended(
-                        onPressed: _showAddMenu,
-                        icon: const Icon(Icons.add),
-                        label: Text(context.l10n.add),
+                      child: Builder(
+                        builder: (BuildContext anchorContext) =>
+                            FloatingActionButton.extended(
+                              onPressed: () => _showAddMenu(anchorContext),
+                              icon: const Icon(Icons.add),
+                              label: Text(context.l10n.add),
+                            ),
                       ),
                     ),
                   );
