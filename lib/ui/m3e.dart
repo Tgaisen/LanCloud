@@ -1967,10 +1967,17 @@ class M3eMenuRow extends StatelessWidget {
     final ColorScheme scheme = Theme.of(context).colorScheme;
     final bool emphasized = selected && enabled;
     return Semantics(
-      selected: showSelectionIndicator ? selected : null,
+      container: true,
+      excludeSemantics: true,
+      label: label,
+      button: true,
+      enabled: enabled,
+      focusable: true,
+      checked: showSelectionIndicator ? selected : null,
       inMutuallyExclusiveGroup: showSelectionIndicator
           ? mutuallyExclusive
           : null,
+      onTap: enabled ? onTap : null,
       child: MenuItemButton(
         onPressed: enabled ? onTap : null,
         // 菜单里的项目是竖排文案：必须显式指定 vertical，MenuItemButton 才会把

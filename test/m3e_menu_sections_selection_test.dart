@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/m3e.dart';
@@ -73,8 +74,30 @@ Future<void> _pumpTrigger(
   await tester.pumpAndSettle();
 }
 
+SemanticsData _semanticsDataForLabel(WidgetTester tester, String label) {
+  final owner = tester.binding.renderViews.first.owner!.semanticsOwner!;
+  final matches = <SemanticsNode>[];
+  void walk(SemanticsNode node) {
+    final data = node.getSemanticsData();
+    if (data.label == label && data.hasAction(SemanticsAction.tap)) {
+      matches.add(node);
+    }
+    node.visitChildren((child) {
+      walk(child);
+      return true;
+    });
+  }
+
+  walk(owner.rootSemanticsNode!);
+  expect(matches, isNotEmpty, reason: '$label 应存在可点击语义节点');
+  // MenuItemButton 会留下 merge boundary 父节点；后者是实际承载按钮状态与
+  // 点击动作的叶子语义节点。
+  return matches.last.getSemanticsData();
+}
+
 void main() {
   testWidgets('宽菜单分组可放下时使用 gap', (tester) async {
+    final semantics = tester.ensureSemantics();
     await _pumpTrigger(
       tester,
       size: const Size(800, 800),
@@ -149,6 +172,10 @@ void main() {
       find.byKey(const ValueKey('m3e-menu-group-surface-1')),
       findsOneWidget,
     );
+    final actionSemantics = _semanticsDataForLabel(tester, '选项 A');
+    expect(actionSemantics.flagsCollection.isChecked.name, 'none');
+    expect(actionSemantics.flagsCollection.isInMutuallyExclusiveGroup, isFalse);
+    semantics.dispose();
   });
 
   testWidgets('宽菜单需要滚动时改用 divider 分组', (tester) async {
@@ -202,6 +229,7 @@ void main() {
   });
 
   testWidgets('宽菜单单选显示选中态并在选择后返回', (tester) async {
+    final semantics = tester.ensureSemantics();
     final result = Completer<String?>();
     await _pumpTrigger(
       tester,
@@ -226,13 +254,22 @@ void main() {
       find.byKey(const ValueKey('m3e-menu-selected-check-选项 A')),
       findsOneWidget,
     );
+    final selected = _semanticsDataForLabel(tester, '选项 A');
+    final unselected = _semanticsDataForLabel(tester, '选项 B');
+    expect(selected.flagsCollection.isChecked.name, 'isTrue');
+    expect(unselected.flagsCollection.isChecked.name, 'isFalse');
+    expect(selected.flagsCollection.isInMutuallyExclusiveGroup, isTrue);
+    expect(unselected.flagsCollection.isInMutuallyExclusiveGroup, isTrue);
+    expect(selected.hasAction(SemanticsAction.tap), isTrue);
 
     await tester.tap(find.text('选项 B'));
     await tester.pumpAndSettle();
     expect(await result.future, 'b');
+    semantics.dispose();
   });
 
   testWidgets('宽菜单多选保持打开并即时回调', (tester) async {
+    final semantics = tester.ensureSemantics();
     final changed = <Set<String>>[];
     await _pumpTrigger(
       tester,
@@ -248,9 +285,20 @@ void main() {
       },
     );
 
+    final initialA = _semanticsDataForLabel(tester, '选项 A');
+    final initialB = _semanticsDataForLabel(tester, '选项 B');
+    expect(initialA.flagsCollection.isChecked.name, 'isTrue');
+    expect(initialB.flagsCollection.isChecked.name, 'isFalse');
+    expect(initialA.flagsCollection.isInMutuallyExclusiveGroup, isFalse);
+    expect(initialB.flagsCollection.isInMutuallyExclusiveGroup, isFalse);
+
     await tester.tap(find.text('选项 B'));
     await tester.pumpAndSettle();
     expect(changed.last, {'a', 'b'});
+    expect(
+      _semanticsDataForLabel(tester, '选项 B').flagsCollection.isChecked.name,
+      'isTrue',
+    );
     expect(find.text('选项 A'), findsOneWidget);
     expect(find.text('选项 B'), findsOneWidget);
 
@@ -259,9 +307,11 @@ void main() {
     expect(changed.last, {'b'});
     expect(find.text('选项 A'), findsOneWidget);
     expect(find.text('选项 B'), findsOneWidget);
+    semantics.dispose();
   });
 
   testWidgets('宽菜单可混合单选与复选并保持打开', (tester) async {
+    final semantics = tester.ensureSemantics();
     final changed = <M3eMenuChoice<String>>[];
     await _pumpTrigger(
       tester,
@@ -275,6 +325,16 @@ void main() {
           onChanged: changed.add,
         );
       },
+    );
+
+    final initialA = _semanticsDataForLabel(tester, '选项 A');
+    final initialAscending = _semanticsDataForLabel(tester, '升序');
+    expect(initialA.flagsCollection.isChecked.name, 'isTrue');
+    expect(initialA.flagsCollection.isInMutuallyExclusiveGroup, isTrue);
+    expect(initialAscending.flagsCollection.isChecked.name, 'isFalse');
+    expect(
+      initialAscending.flagsCollection.isInMutuallyExclusiveGroup,
+      isFalse,
     );
 
     await tester.tap(find.text('选项 B'));
@@ -295,8 +355,13 @@ void main() {
       find.byKey(const ValueKey('m3e-menu-selected-check-升序')),
       findsOneWidget,
     );
+    expect(
+      _semanticsDataForLabel(tester, '升序').flagsCollection.isChecked.name,
+      'isTrue',
+    );
     expect(find.text('选项 A'), findsOneWidget);
     expect(find.text('升序'), findsOneWidget);
+    semantics.dispose();
   });
 
   testWidgets('Compact 单选使用多个列表组和 radio', (tester) async {
