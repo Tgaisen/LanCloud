@@ -270,9 +270,15 @@ class AppDb {
         if (oldVersion < 13) {
           // 首页最近使用菜单优先用本地缓存的分享链接判断收藏，避免每次
           // 打开菜单都请求网盘接口。旧记录无法离线回填，先保留空串。
-          await db.execute(
-            'ALTER TABLE recents ADD COLUMN share_url TEXT DEFAULT ""',
-          );
+          //
+          // 曾运行过 v13、随后降到 v12 的数据库只会把 user_version 写回，
+          // 不会删除 v13 新增的列；再次升级时必须能识别这种状态。
+          final columns = await db.rawQuery('PRAGMA table_info(recents)');
+          if (columns.every((row) => row['name'] != 'share_url')) {
+            await db.execute(
+              'ALTER TABLE recents ADD COLUMN share_url TEXT DEFAULT ""',
+            );
+          }
         }
       },
     );
