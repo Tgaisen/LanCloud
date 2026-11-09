@@ -9,15 +9,15 @@
 
 | 命令 | 口径 | 结果 | 耗时 |
 | --- | --- | --- | --- |
-| `tools\agent.cmd analyze` | 全量 | No issues found | 约 47 s |
-| `tools\agent.cmd analyze` | 增量（本次改动，1 项） | No issues found | 约 13 s |
-| `tools\agent.cmd test` | 全量（当前） | **876 tests, all passed** | 约 161 s |
-| `tools\agent.cmd test` | 增量（本次改动，40 个测试文件） | **316 tests, all passed** | 约 96 s |
+| `tools\agent.cmd analyze` | 全量 | No issues found | 约 38 s |
+| `tools\agent.cmd analyze` | 增量（本次改动，14 个文件） | No issues found | 约 22 s |
+| `tools\agent.cmd test` | 全量（当前） | **881 tests, all passed** | 约 122 s |
+| `tools\agent.cmd test` | 增量（本次改动，104 个测试文件） | **570 tests, all passed** | 约 94 s |
 
 当前分析结果为 0 issue 是硬基线。出现红灯时，先判断是否为本次改动引入；
 不要把增量结果当成全量结论。
 
-当前全量用例总数为 876（本轮新增 5 个）。全量 876 个用例已在并发场景下全部
+当前全量用例总数为 881（本轮新增 5 个）。全量 881 个用例已在并发场景下全部
 通过；`app_log_test.dart` 与 `share_password_recovery_test.dart` 连续 3 轮
 针对性复跑也全部通过。
 
@@ -26,10 +26,10 @@
 | 指标 | 当前值 |
 | --- | ---: |
 | `lib` Dart 文件 | 156 |
-| `lib` 总行数 | 58,309 |
-| `test` 测试文件 | 175（全部为 `*_test.dart`，平铺） |
-| `test` 总行数 | 32,425 |
-| `test` 用例数 | 876 |
+| `lib` 总行数 | 58,648 |
+| `test` 测试文件 | 176（全部为 `*_test.dart`，平铺） |
+| `test` 总行数 | 32,898 |
+| `test` 用例数 | 881 |
 | `lib/ui` 平铺文件 | 60 |
 | `lib/core` | 55 个平铺文件 + 5 个子系统目录 |
 | 文案（`app_zh.arb`） | 1,624 行 |
@@ -46,7 +46,7 @@
 
 ## 测试安全网
 
-- 当前全量总数为 876 个测试；项目仍没有
+- 当前全量总数为 881 个测试；项目仍没有
   `integration_test` 和 golden test。
 - `tools\agent.cmd analyze|test` 默认走增量；全量结果必须按上表单独记录。
 - `tools\agent.cmd` 已内置 `--no-pub`；需要安装依赖时使用 `agent.cmd pubget`。
