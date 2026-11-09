@@ -2039,6 +2039,7 @@ class _M3eMenuRoute<T, R> extends PopupRoute<R> {
   final ValueChanged<M3eMenuChoice<T>>? onChoiceChanged;
   T? _selectedValue;
   Set<T> _selectedValues;
+  final ValueNotifier<int> _selectionRevision = ValueNotifier<int>(0);
 
   /// 读屏播报的路由标签（本地化的「弹出菜单」）。
   @override
@@ -2086,13 +2087,13 @@ class _M3eMenuRoute<T, R> extends PopupRoute<R> {
     _selectedValues = next;
     onMultiSelectionChanged?.call(Set<T>.unmodifiable(next));
     _notifyChoice();
-    changedInternalState();
+    _selectionRevision.value += 1;
   }
 
   void _selectRadio(T value) {
     _selectedValue = value;
     _notifyChoice();
-    changedInternalState();
+    _selectionRevision.value += 1;
   }
 
   void _notifyChoice() {
@@ -2153,6 +2154,10 @@ class _M3eMenuRoute<T, R> extends PopupRoute<R> {
 
   /// 可滚动菜单使用 divider 分组；保留 M3 baseline 的 8dp 上下留白 + 1dp 线。
   static const double _dividerExtent = 17;
+
+  /// 非滚动分组菜单的组卡片：内边距与组内圆角。
+  static const double _groupVerticalPadding = 2;
+  static const double _groupRadius = 12;
 
   /// 项目相对卡片的左右内缩；同时决定项目自己的圆角（16 − 4 = 12dp）。
   static const double _itemInset = 4;
@@ -2243,6 +2248,7 @@ class _M3eMenuRoute<T, R> extends PopupRoute<R> {
   @override
   void dispose() {
     closeOn?.removeListener(_handleCloseOn);
+    _selectionRevision.dispose();
     _scroll.dispose();
     super.dispose();
   }
@@ -2252,13 +2258,57 @@ class _M3eMenuRoute<T, R> extends PopupRoute<R> {
     required int sectionCount,
     required double rowHeight,
     required double groupExtent,
+    required bool groupedSurfaces,
   }) {
     final int itemGapCount = math.max(0, itemCount - sectionCount);
     final int groupGapCount = math.max(0, sectionCount - 1);
     return itemCount * rowHeight +
         itemGapCount * _itemGap +
         groupGapCount * groupExtent +
+        (groupedSurfaces ? sectionCount * _groupVerticalPadding * 2 : 0) +
         _verticalPadding * 2;
+  }
+
+  Widget _buildSection(
+    BuildContext context,
+    int sectionIndex, {
+    required bool groupedSurface,
+  }) {
+    final List<M3eMenuItem<T>> items = sections[sectionIndex].items;
+    final Widget rows = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (int itemIndex = 0; itemIndex < items.length; itemIndex++) ...[
+          if (itemIndex > 0) const SizedBox(height: _itemGap),
+          _buildRow(context, items[itemIndex]),
+        ],
+      ],
+    );
+    if (!groupedSurface) return rows;
+    return Material(
+      key: ValueKey('m3e-menu-group-surface-$sectionIndex'),
+      color: Theme.of(context).colorScheme.surfaceContainer,
+      borderRadius: BorderRadius.circular(_groupRadius),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: _groupVerticalPadding),
+        child: rows,
+      ),
+    );
+  }
+
+  Widget _buildRow(BuildContext context, M3eMenuItem<T> item) {
+    return M3eMenuRow(
+      icon: item.icon,
+      iconFill: item.iconFill,
+      label: item.label,
+      enabled: item.enabled,
+      selected: _isSelected(item),
+      showSelectionIndicator: _showsSelection(item),
+      mutuallyExclusive: _isMutuallyExclusive(item),
+      onTap: () => _activate(context, item),
+    );
   }
 
   @override
@@ -2286,11 +2336,13 @@ class _M3eMenuRoute<T, R> extends PopupRoute<R> {
     final double rowHeight =
         _rowHeight + Theme.of(context).visualDensity.baseSizeAdjustment.dy;
     final int itemCount = _allItems.length;
+    bool groupedSurfaces = sections.length > 1;
     double contentHeight = _menuContentHeight(
       itemCount: itemCount,
       sectionCount: sections.length,
       rowHeight: rowHeight,
       groupExtent: _groupGap,
+      groupedSurfaces: groupedSurfaces,
     );
     final double below = bottomLimit - (effectiveAnchor.bottom + anchorGap);
     final double above = (effectiveAnchor.top - anchorGap) - topLimit;
@@ -2302,12 +2354,14 @@ class _M3eMenuRoute<T, R> extends PopupRoute<R> {
     final bool useDividers =
         sections.length > 1 &&
         (sections.length > 3 || contentHeight > available);
+    groupedSurfaces = groupedSurfaces && !useDividers;
     if (useDividers) {
       contentHeight = _menuContentHeight(
         itemCount: itemCount,
         sectionCount: sections.length,
         rowHeight: rowHeight,
         groupExtent: _dividerExtent,
+        groupedSurfaces: false,
       );
     }
     // 卡片最高只能到「可用空间」和 M3 上限，具体多高由内容决定：放得下就贴着
@@ -2390,72 +2444,52 @@ class _M3eMenuRoute<T, R> extends PopupRoute<R> {
                       controller: _scroll,
                       thickness: 6,
                       radius: const Radius.circular(3),
-                      child: ListView(
-                        controller: _scroll,
-                        // 贴着内容：放得下时卡片刚好包住项目（不同平台的
-                        // VisualDensity 会让行高在 40–48dp 之间变），放不下才滚
-                        shrinkWrap: true,
-                        padding: const EdgeInsets.symmetric(
-                          vertical: _verticalPadding,
-                          horizontal: _itemInset,
-                        ),
-                        children: [
-                          for (
-                            int sectionIndex = 0;
-                            sectionIndex < sections.length;
-                            sectionIndex++
-                          ) ...[
-                            if (sectionIndex > 0)
-                              if (useDividers)
-                                Padding(
-                                  key: ValueKey(
-                                    'm3e-menu-divider-$sectionIndex',
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                  ),
-                                  child: Divider(
-                                    height: _dividerExtent,
-                                    thickness: 1,
-                                  ),
-                                )
-                              else
-                                SizedBox(
-                                  key: ValueKey(
-                                    'm3e-menu-group-gap-$sectionIndex',
-                                  ),
-                                  height: _groupGap,
-                                ),
+                      child: ValueListenableBuilder<int>(
+                        valueListenable: _selectionRevision,
+                        builder: (BuildContext context, _, _) => ListView(
+                          controller: _scroll,
+                          // 贴着内容：放得下时卡片刚好包住项目（不同平台的
+                          // VisualDensity 会让行高在 40–48dp 之间变），放不下才滚
+                          shrinkWrap: true,
+                          padding: const EdgeInsets.symmetric(
+                            vertical: _verticalPadding,
+                            horizontal: _itemInset,
+                          ),
+                          children: [
                             for (
-                              int itemIndex = 0;
-                              itemIndex < sections[sectionIndex].items.length;
-                              itemIndex++
+                              int sectionIndex = 0;
+                              sectionIndex < sections.length;
+                              sectionIndex++
                             ) ...[
-                              if (itemIndex > 0)
-                                const SizedBox(height: _itemGap),
-                              Builder(
-                                builder: (BuildContext itemContext) {
-                                  final M3eMenuItem<T> item =
-                                      sections[sectionIndex].items[itemIndex];
-                                  return M3eMenuRow(
-                                    icon: item.icon,
-                                    iconFill: item.iconFill,
-                                    label: item.label,
-                                    enabled: item.enabled,
-                                    selected: _isSelected(item),
-                                    showSelectionIndicator: _showsSelection(
-                                      item,
+                              if (sectionIndex > 0)
+                                if (useDividers)
+                                  Padding(
+                                    key: ValueKey(
+                                      'm3e-menu-divider-$sectionIndex',
                                     ),
-                                    mutuallyExclusive: _isMutuallyExclusive(
-                                      item,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
                                     ),
-                                    onTap: () => _activate(itemContext, item),
-                                  );
-                                },
+                                    child: Divider(
+                                      height: _dividerExtent,
+                                      thickness: 1,
+                                    ),
+                                  )
+                                else
+                                  SizedBox(
+                                    key: ValueKey(
+                                      'm3e-menu-group-gap-$sectionIndex',
+                                    ),
+                                    height: _groupGap,
+                                  ),
+                              _buildSection(
+                                context,
+                                sectionIndex,
+                                groupedSurface: groupedSurfaces,
                               ),
                             ],
                           ],
-                        ],
+                        ),
                       ),
                     ),
                   ),

@@ -89,6 +89,14 @@ void main() {
 
     expect(find.byKey(const ValueKey('m3e-menu-group-gap-1')), findsOneWidget);
     expect(find.byKey(const ValueKey('m3e-menu-divider-1')), findsNothing);
+    expect(
+      find.byKey(const ValueKey('m3e-menu-group-surface-0')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('m3e-menu-group-surface-1')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('宽菜单需要滚动时改用 divider 分组', (tester) async {
@@ -209,11 +217,20 @@ void main() {
     await tester.pumpAndSettle();
     expect(changed.last.radioValue, 'b');
     expect(changed.last.checkedValues, isEmpty);
+    final rows = tester
+        .widgetList<M3eMenuRow>(find.byType(M3eMenuRow))
+        .toList();
+    expect(rows.firstWhere((row) => row.label == '选项 A').selected, isFalse);
+    expect(rows.firstWhere((row) => row.label == '选项 B').selected, isTrue);
 
     await tester.tap(find.text('升序'));
     await tester.pumpAndSettle();
     expect(changed.last.radioValue, 'b');
     expect(changed.last.checkedValues, {'ascending'});
+    expect(
+      find.byKey(const ValueKey('m3e-menu-selected-check-升序')),
+      findsOneWidget,
+    );
     expect(find.text('选项 A'), findsOneWidget);
     expect(find.text('升序'), findsOneWidget);
   });
@@ -287,6 +304,12 @@ void main() {
     await tester.tap(find.text('升序'));
     await tester.pumpAndSettle();
     expect(changed.last.checkedValues, {'ascending'});
+    expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, isTrue);
+    final tiles = tester
+        .widgetList<M3ePickTile>(find.byType(M3ePickTile))
+        .toList();
+    expect(tiles.firstWhere((tile) => tile.label == '选项 A').selected, isTrue);
+    expect(tiles.firstWhere((tile) => tile.label == '选项 B').selected, isFalse);
     expect(find.text('升序'), findsOneWidget);
   });
 }
