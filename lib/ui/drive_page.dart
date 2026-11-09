@@ -3346,7 +3346,6 @@ class _DrivePageState extends ConsumerState<DrivePage>
   }
 
   Widget _pathBar() {
-    final scheme = Theme.of(context).colorScheme;
     final grid = _cacheSettings.gridView;
     final compact = MediaQuery.sizeOf(context).width < kLargeLayoutBreakpoint;
     return Padding(
@@ -3374,8 +3373,6 @@ class _DrivePageState extends ConsumerState<DrivePage>
             builder: (BuildContext anchorContext) => M3eIconButton(
               tooltip: context.l10n.sort,
               icon: Icons.sort,
-              containerColor: scheme.secondaryContainer,
-              iconColor: scheme.onSecondaryContainer,
               onPressed: () => _showSortMenu(anchorContext),
             ),
           ),
@@ -3385,8 +3382,6 @@ class _DrivePageState extends ConsumerState<DrivePage>
               builder: (BuildContext anchorContext) => M3eIconButton(
                 tooltip: context.l10n.viewMode,
                 icon: grid ? Icons.grid_view : Icons.view_list,
-                containerColor: scheme.secondaryContainer,
-                iconColor: scheme.onSecondaryContainer,
                 onPressed: () => _showViewMenu(anchorContext),
               ),
             ),
@@ -5597,8 +5592,6 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
                     builder: (BuildContext anchorContext) => M3eIconButton(
                       tooltip: l10n.sort,
                       icon: Icons.sort,
-                      containerColor: scheme.secondaryContainer,
-                      iconColor: scheme.onSecondaryContainer,
                       onPressed: _loading
                           ? null
                           : () => _showFolderSortMenu(anchorContext),
@@ -5608,8 +5601,6 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
                   M3eIconButton(
                     tooltip: l10n.newFolder,
                     icon: Icons.create_new_folder_outlined,
-                    containerColor: scheme.secondaryContainer,
-                    iconColor: scheme.onSecondaryContainer,
                     onPressed: _loading ? null : _mkdir,
                   ),
                 ],

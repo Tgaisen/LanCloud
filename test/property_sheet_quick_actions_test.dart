@@ -446,6 +446,14 @@ void main() {
     final viewButton = find.byTooltip('视图');
     expect(sortButton, findsOneWidget);
     expect(viewButton, findsOneWidget);
+    final sortIconButton = tester.widget<M3eIconButton>(
+      find.ancestor(of: sortButton, matching: find.byType(M3eIconButton)).first,
+    );
+    final viewIconButton = tester.widget<M3eIconButton>(
+      find.ancestor(of: viewButton, matching: find.byType(M3eIconButton)).first,
+    );
+    expect(sortIconButton.containerColor, isNull);
+    expect(viewIconButton.containerColor, isNull);
     expect(
       tester.getSize(sortButton),
       const Size(48, 48),
