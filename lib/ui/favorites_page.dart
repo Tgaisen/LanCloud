@@ -60,8 +60,9 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
   bool _searching = false;
   String _filter = '';
 
-  /// 排序方式：time（收藏时间新到旧，默认）/ name / size。
+  /// 排序方式：time（收藏时间，默认）/ name / size。
   String _sort = 'time';
+  bool _sortAscending = false;
 
   late final AppDb _db;
   late final NavigationState _navigation;
@@ -168,17 +169,21 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
                     item.title.toLowerCase().contains(query),
               )
               .toList();
+    final direction = _sortAscending ? 1 : -1;
     switch (_sort) {
       case 'name':
         items.sort(
-          (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+          (a, b) =>
+              direction * a.name.toLowerCase().compareTo(b.name.toLowerCase()),
         );
       case 'size':
         items.sort(
-          (a, b) => lzSizeToBytes(b.size).compareTo(lzSizeToBytes(a.size)),
+          (a, b) =>
+              direction *
+              lzSizeToBytes(a.size).compareTo(lzSizeToBytes(b.size)),
         );
       default:
-        items.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        items.sort((a, b) => direction * a.createdAt.compareTo(b.createdAt));
     }
     return items;
   }
@@ -187,23 +192,58 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
     final anchor = m3eMenuAnchorOf(anchorContext);
     if (anchor == null) return;
     final l10n = context.l10n;
-    final selected = await showAdaptiveM3eSingleSelectMenu<String>(
+    await showAdaptiveM3eChoiceMenu<String>(
       context: context,
       anchor: anchor,
       alignEnd: true,
-      selected: _sort,
-      items: [
-        M3eMenuItem(value: 'time', label: l10n.sortTime, icon: Icons.schedule),
-        M3eMenuItem(
-          value: 'name',
-          label: l10n.sortName,
-          icon: Icons.sort_by_alpha,
+      radioValue: _sort,
+      checkedValues: _sortAscending
+          ? const <String>{'ascending'}
+          : const <String>{},
+      sections: [
+        M3eMenuSection(
+          items: [
+            M3eMenuItem(
+              value: 'time',
+              label: l10n.sortTime,
+              icon: Icons.schedule,
+              selectionRole: M3eMenuSelectionRole.radio,
+            ),
+            M3eMenuItem(
+              value: 'name',
+              label: l10n.sortName,
+              icon: Icons.sort_by_alpha,
+              selectionRole: M3eMenuSelectionRole.radio,
+            ),
+            M3eMenuItem(
+              value: 'size',
+              label: l10n.sortSize,
+              icon: Icons.draft,
+              selectionRole: M3eMenuSelectionRole.radio,
+            ),
+          ],
         ),
-        M3eMenuItem(value: 'size', label: l10n.sortSize, icon: Icons.draft),
+        M3eMenuSection(
+          items: [
+            M3eMenuItem(
+              value: 'ascending',
+              label: l10n.ascending,
+              icon: Icons.arrow_upward,
+              selectionRole: M3eMenuSelectionRole.checkbox,
+            ),
+          ],
+        ),
       ],
+      onChanged: (choice) {
+        final sort = choice.radioValue ?? _sort;
+        final ascending = choice.checkedValues.contains('ascending');
+        if (sort == _sort && ascending == _sortAscending) return;
+        setState(() {
+          _sort = sort;
+          _sortAscending = ascending;
+        });
+      },
     );
-    if (!mounted || selected == null || selected == _sort) return;
-    setState(() => _sort = selected);
   }
 
   /// 顶栏 ⋯ 菜单：多选、添加收藏。

@@ -80,8 +80,17 @@ void main() {
         .widgetList<M3eMenuRow>(find.byType(M3eMenuRow))
         .map((row) => row.label)
         .toList();
-    expect(menuLabels(), ['时间', '名称', '大小']);
+    expect(menuLabels(), ['时间', '名称', '大小', '升序']);
+    final ascendingCheck = find.byKey(
+      const ValueKey('m3e-menu-selected-check-升序'),
+    );
+    expect(ascendingCheck, findsNothing);
+    await tester.tap(find.text('升序'));
+    await tester.pumpAndSettle();
+    expect(ascendingCheck, findsOneWidget);
     await tester.tap(find.text('名称'));
+    await tester.pump();
+    await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
 
     // 空收藏也能进多选：⋯ 菜单只保留非排序动作
