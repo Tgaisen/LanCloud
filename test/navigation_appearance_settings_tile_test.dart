@@ -76,28 +76,6 @@ void main() {
 
     await tester.tap(find.widgetWithText(ListTile, '底栏显示项'));
     await tester.pumpAndSettle();
-    final supportingText = find.byKey(
-      const ValueKey('nav-bar-items-supporting-text'),
-    );
-    expect(supportingText, findsOneWidget);
-    expect(
-      tester.widget<Text>(supportingText).data,
-      '未勾选的视图不显示在底栏，仍可从首页快捷操作栏打开',
-    );
-    expect(
-      find.ancestor(
-        of: supportingText,
-        matching: find.byType(SingleChildScrollView),
-      ),
-      findsNothing,
-    );
-    expect(
-      find.descendant(
-        of: find.byType(AlertDialog),
-        matching: find.byType(SingleChildScrollView),
-      ),
-      findsOneWidget,
-    );
     await tester.tap(
       find.descendant(of: find.byType(AlertDialog), matching: find.text('传输')),
     );

@@ -13,7 +13,6 @@ import 'common.dart';
 import 'm3e.dart';
 import 'share_file_sheet.dart';
 import 'share_folder_page.dart';
-import 'share_password_dialog.dart';
 
 /// 打开分享链接：普通弹窗（取消 / 解析），与「修改文件夹信息」弹窗一致。
 ///
@@ -31,68 +30,6 @@ Future<void> openShareSheet(
       initialLink: initialLink,
       initialPwd: initialPwd,
       addFavoriteOnResolve: addFavoriteOnResolve,
-    ),
-  );
-}
-
-/// 从已有分享链接直接打开文件夹：先显示解析中，密码缺失或失效时再弹
-/// 专用密码框。收藏页与首页快速访问共用，避免进入带编辑框的“打开链接”。
-Future<void> openShareFolderWithLoading(
-  BuildContext context, {
-  required String url,
-  String pwd = '',
-  Future<void> Function(String pwd)? onPasswordUpdated,
-}) async {
-  final container = ProviderScope.containerOf(context, listen: false);
-  final client = container.read(lanzouClientRegistryProvider).publicClient;
-  final account = container.read(accountStateProvider).store.activeUid ?? '';
-  final db = container.read(appDbProvider);
-  final l10n = context.l10n;
-  final navigator = Navigator.of(context);
-  final messenger = ScaffoldMessenger.of(context);
-  showLoadingDialog(context, l10n.resolving);
-  FolderShareDetail? folder;
-  var currentPwd = pwd;
-  try {
-    folder = await client.resolveFolderShare(url, pwd: currentPwd);
-  } on NeedPasswordException {
-    folder = null;
-  } on WrongPasswordException {
-    folder = null;
-  } on LanzouException catch (e) {
-    if (!context.mounted) return;
-    navigator.pop();
-    messenger.showSnackBar(SnackBar(content: Text(l10n.lanzouError(e))));
-    return;
-  } catch (e) {
-    if (!context.mounted) return;
-    navigator.pop();
-    messenger.showSnackBar(SnackBar(content: Text(l10n.resolveFailed('$e'))));
-    return;
-  }
-  if (!context.mounted) return;
-  navigator.pop();
-  if (folder == null) {
-    final result = await showFolderPasswordDialog(context, url: url);
-    if (result == null || !context.mounted) return;
-    folder = result.value;
-    currentPwd = result.pwd;
-    await onPasswordUpdated?.call(currentPwd);
-    if (!context.mounted) return;
-  }
-  await db.addRecent(
-    account: account,
-    kind: 'shareFolder',
-    name: folder.name,
-    ref: url,
-    pwd: currentPwd,
-    shareUrl: url,
-  );
-  if (!context.mounted) return;
-  await navigator.push(
-    MaterialPageRoute<void>(
-      builder: (_) =>
-          ShareFolderPage(folder: folder!, link: url, pwd: currentPwd),
     ),
   );
 }
@@ -279,7 +216,6 @@ class _ShareLinkDialogState extends ConsumerState<ShareLinkDialog> {
       name: name,
       ref: link,
       pwd: pwd,
-      shareUrl: link,
     );
   }
 

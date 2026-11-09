@@ -38,43 +38,36 @@ Future<NavBarItemsSelection?> showNavBarItemsPicker(
     context: context,
     builder: (dialogContext) => StatefulBuilder(
       builder: (dialogContext, setDialogState) => AlertDialog(
-        title: Column(
+        title: Text(l10n.navBarItems),
+        contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(l10n.navBarItems),
-            const SizedBox(height: 16),
-            // 当前 material_ui 尚未公开 AlertDialog.supportingText；放在
-            // title 区并排除在列表滚动视图外，保持 M3 的固定说明文本语义。
             Text(
               l10n.navBarItemsHint,
-              key: const ValueKey('nav-bar-items-supporting-text'),
-              style: Theme.of(dialogContext).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(dialogContext).colorScheme.onSurfaceVariant,
-              ),
+              style: Theme.of(dialogContext).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 8),
+            DialogListGroup(
+              children: [
+                M3ePickTile(
+                  label: l10n.tabTransfers,
+                  leading: const Icon(Icons.swap_vert),
+                  selected: draftTransfers,
+                  onTap: () =>
+                      setDialogState(() => draftTransfers = !draftTransfers),
+                ),
+                M3ePickTile(
+                  label: l10n.favorite,
+                  leading: const Icon(Icons.star_border),
+                  selected: draftFavorites,
+                  onTap: () =>
+                      setDialogState(() => draftFavorites = !draftFavorites),
+                ),
+              ],
             ),
           ],
-        ),
-        contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-        content: SingleChildScrollView(
-          child: DialogListGroup(
-            children: [
-              M3ePickTile(
-                label: l10n.tabTransfers,
-                leading: const Icon(Icons.swap_vert),
-                selected: draftTransfers,
-                onTap: () =>
-                    setDialogState(() => draftTransfers = !draftTransfers),
-              ),
-              M3ePickTile(
-                label: l10n.favorite,
-                leading: const Icon(Icons.star_border),
-                selected: draftFavorites,
-                onTap: () =>
-                    setDialogState(() => draftFavorites = !draftFavorites),
-              ),
-            ],
-          ),
         ),
         actions: [
           TextButton(

@@ -56,7 +56,6 @@ enum _FileMenuAction {
 enum _FolderMenuAction {
   open,
   properties,
-  toggleQuickAccess,
   copyLink,
   password,
   rename,
@@ -163,7 +162,6 @@ Future<_FolderMenuAction?> _showFolderActionMenu(
   required Rect anchor,
   Offset? pointerPosition,
   bool propertyContext = false,
-  bool pinned = false,
 }) {
   final l10n = context.l10n;
   return showAdaptiveM3eMenu<_FolderMenuAction>(
@@ -205,13 +203,6 @@ Future<_FolderMenuAction?> _showFolderActionMenu(
               value: _FolderMenuAction.properties,
               label: l10n.properties,
               icon: Icons.info_outline,
-            ),
-            M3eMenuItem(
-              value: _FolderMenuAction.toggleQuickAccess,
-              label: pinned
-                  ? l10n.removeFromQuickAccess
-                  : l10n.addToQuickAccess,
-              icon: pinned ? Icons.keep_off : Icons.keep,
             ),
             M3eMenuItem(
               value: _FolderMenuAction.copyLink,
@@ -1208,50 +1199,11 @@ class _DrivePageState extends ConsumerState<DrivePage>
     }
   }
 
-  Future<bool> _folderIsPinned(String folderId) async {
-    final activeUid = ref.read(accountStateProvider).store.activeUid ?? '';
-    try {
-      return await ref.read(appDbProvider).isPinned(activeUid, folderId);
-    } catch (_) {
-      return false;
-    }
-  }
-
-  /// 添加 / 移除文件夹的快速访问；返回操作后的固定态，失败返回 null。
-  Future<bool?> _toggleFolderQuickAccess(LzFolder folder) async {
-    final db = ref.read(appDbProvider);
-    final activeUid = ref.read(accountStateProvider).store.activeUid ?? '';
-    try {
-      final pinned = await db.isPinned(activeUid, folder.id);
-      if (pinned) {
-        await db.removePin(folder.id);
-        return false;
-      }
-      final isCurrent = _path.isNotEmpty && _path.last.id == folder.id;
-      final parents = isCurrent ? _path.sublist(0, _path.length - 1) : _path;
-      await db.addPin(
-        account: activeUid,
-        name: folder.name,
-        ref: folder.id,
-        path: parents.map((node) => node.name).join('/'),
-      );
-      return true;
-    } catch (_) {
-      return null;
-    }
-  }
-
   /// 网盘菜单：底部弹窗承载布局、排序与列表操作。
   Future<void> _showDriveMenu() async {
     var grid = _cacheSettings.gridView;
     var sort = _sortMode;
     final isRoot = _folderId == '-1';
-    final currentFolder = isRoot || _path.isEmpty
-        ? null
-        : LzFolder(id: _path.last.id, name: _path.last.name, desc: '');
-    final pinned =
-        currentFolder != null && await _folderIsPinned(currentFolder.id);
-    if (!mounted) return;
     await showAppSheet<void>(
       context,
       child: StatefulBuilder(
@@ -1322,19 +1274,6 @@ class _DrivePageState extends ConsumerState<DrivePage>
                     _reloadAfterChange();
                   },
                 ),
-                if (currentFolder != null)
-                  ListTile(
-                    leading: Icon(pinned ? Icons.keep_off : Icons.keep),
-                    title: Text(
-                      pinned
-                          ? context.l10n.removeFromQuickAccess
-                          : context.l10n.addToQuickAccess,
-                    ),
-                    onTap: () async {
-                      Navigator.of(context).pop();
-                      await _toggleFolderQuickAccess(currentFolder);
-                    },
-                  ),
                 if (!isRoot)
                   ListTile(
                     leading: const Icon(Icons.info_outline),
@@ -2653,13 +2592,10 @@ class _DrivePageState extends ConsumerState<DrivePage>
     }
     final anchor = m3eMenuAnchorOf(buttonContext);
     if (anchor == null) return;
-    final pinned = await _folderIsPinned(folder.id);
-    if (!mounted) return;
     final _FolderMenuAction? action = await _showFolderActionMenu(
       context,
       anchor: anchor,
       pointerPosition: pointerPosition,
-      pinned: pinned,
     );
     if (action == null || !mounted) return;
     switch (action) {
@@ -2668,8 +2604,6 @@ class _DrivePageState extends ConsumerState<DrivePage>
         await _openFolder(folder);
       case _FolderMenuAction.properties:
         await _showFolderProperties(folder);
-      case _FolderMenuAction.toggleQuickAccess:
-        await _toggleFolderQuickAccess(folder);
       case _FolderMenuAction.copyLink:
         await _copyFolderShareLink(folder);
       case _FolderMenuAction.password:
@@ -4995,8 +4929,28 @@ class _FolderInfoSheetState extends ConsumerState<_FolderInfoSheet> {
   }
 
   Future<void> _toggleQuickAccess() async {
-    final next = await widget.page._toggleFolderQuickAccess(widget.folder);
-    if (mounted && next != null) setState(() => _pinned = next);
+    final db = ref.read(appDbProvider);
+    final activeUid = ref.read(accountStateProvider).store.activeUid ?? '';
+    if (_pinned == true) {
+      await db.removePin(widget.folder.id);
+      if (mounted) setState(() => _pinned = false);
+    } else {
+      // 只存「所在目录」的相对路径：不含根目录前缀，也不含文件夹自身。
+      // 副标题展示时再按当前语言拼上根目录，这样切换语言后也能跟着变。
+      final ancestors = widget.page._path;
+      final isCurrent =
+          ancestors.isNotEmpty && ancestors.last.id == widget.folder.id;
+      final parents = isCurrent
+          ? ancestors.sublist(0, ancestors.length - 1)
+          : ancestors;
+      await db.addPin(
+        account: activeUid,
+        name: widget.folder.name,
+        ref: widget.folder.id,
+        path: parents.map((node) => node.name).join('/'),
+      );
+      if (mounted) setState(() => _pinned = true);
+    }
   }
 
   LzFolder get _folder => LzFolder(
@@ -5082,7 +5036,6 @@ class _FolderInfoSheetState extends ConsumerState<_FolderInfoSheet> {
         if (deleted && mounted) Navigator.of(context).pop();
       case _FolderMenuAction.open:
       case _FolderMenuAction.properties:
-      case _FolderMenuAction.toggleQuickAccess:
       case _FolderMenuAction.copyLink:
         break;
     }

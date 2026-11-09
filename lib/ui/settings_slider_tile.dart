@@ -76,80 +76,82 @@ class _SettingsSliderTileState<T> extends State<SettingsSliderTile<T>> {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final value = widget.values[_index];
-    return Semantics(
-      key: ValueKey('settings-slider-semantics-${widget.title}'),
-      container: true,
-      slider: true,
-      enabled: true,
-      label: widget.title,
-      hint: widget.subtitle,
-      value: widget.labelOf(value),
-      increasedValue: widget.labelOf(widget.values[_clampIndex(_index + 1)]),
-      decreasedValue: widget.labelOf(widget.values[_clampIndex(_index - 1)]),
-      onIncrease: () => _step(1),
-      onDecrease: () => _step(-1),
-      excludeSemantics: true,
-      child: Padding(
-        // 与 M3 单行 ListTile 的内容内边距一致：leading 16dp、trailing 24dp；
-        // 上下 8dp 对应含副标题列表项的最小垂直留白。
-        padding: const EdgeInsets.fromLTRB(16, 8, 24, 8),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Icon(widget.icon, color: scheme.onSurfaceVariant),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
+    return Padding(
+      // 与 M3 单行 ListTile 的内容内边距一致：leading 16dp、trailing 24dp；
+      // 上下 8dp 对应含副标题列表项的最小垂直留白。
+      padding: const EdgeInsets.fromLTRB(16, 8, 24, 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Icon(widget.icon, color: scheme.onSurfaceVariant),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.title,
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              color: scheme.onSurface,
+                            ),
+                          ),
+                          if (widget.subtitle != null) ...[
+                            const SizedBox(height: 4),
                             Text(
-                              widget.title,
-                              style: theme.textTheme.bodyLarge?.copyWith(
-                                color: scheme.onSurface,
+                              widget.subtitle!,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: scheme.onSurfaceVariant,
                               ),
                             ),
-                            if (widget.subtitle != null) ...[
-                              const SizedBox(height: 4),
-                              Text(
-                                widget.subtitle!,
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: scheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ],
                           ],
-                        ),
+                        ],
                       ),
-                      const SizedBox(width: 16),
-                      Text(
-                        widget.labelOf(value),
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          color: scheme.primary,
-                        ),
+                    ),
+                    const SizedBox(width: 16),
+                    Text(
+                      widget.labelOf(value),
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: scheme.primary,
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      const endpointInset = M3ESliderDefaults.thumbRadius;
-                      final width = constraints.maxWidth + endpointInset * 2;
-                      final height = M3ESliderDefaults.thumbRippleRadius * 2;
-                      return SizedBox(
-                        height: height,
-                        child: OverflowBox(
-                          minWidth: width,
-                          maxWidth: width,
-                          minHeight: height,
-                          maxHeight: height,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    const endpointInset = M3ESliderDefaults.thumbRadius;
+                    final width = constraints.maxWidth + endpointInset * 2;
+                    final height = M3ESliderDefaults.thumbRippleRadius * 2;
+                    return SizedBox(
+                      height: height,
+                      child: OverflowBox(
+                        minWidth: width,
+                        maxWidth: width,
+                        minHeight: height,
+                        maxHeight: height,
+                        child: Semantics(
+                          container: true,
+                          slider: true,
+                          enabled: true,
+                          label: widget.title,
+                          value: widget.labelOf(value),
+                          increasedValue: widget.labelOf(
+                            widget.values[_clampIndex(_index + 1)],
+                          ),
+                          decreasedValue: widget.labelOf(
+                            widget.values[_clampIndex(_index - 1)],
+                          ),
+                          onIncrease: () => _step(1),
+                          onDecrease: () => _step(-1),
+                          excludeSemantics: true,
                           child: M3ESlider(
                             key: ValueKey('settings-slider-${widget.title}'),
                             value: _index.toDouble(),
@@ -161,14 +163,14 @@ class _SettingsSliderTileState<T> extends State<SettingsSliderTile<T>> {
                             onChangeEnd: (_) => _commit(),
                           ),
                         ),
-                      );
-                    },
-                  ),
-                ],
-              ),
+                      ),
+                    );
+                  },
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

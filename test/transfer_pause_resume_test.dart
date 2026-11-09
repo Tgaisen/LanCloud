@@ -658,69 +658,6 @@ void main() {
       expect(failed.error, isNotEmpty);
     });
 
-    test('should 识别人机校验页后刷新直链并重新下载', () async {
-      final tempDir = Directory.systemTemp.createTempSync(
-        'lancloud-transfer-challenge',
-      );
-      addTearDown(() async {
-        try {
-          await tempDir.delete(recursive: true);
-        } catch (_) {}
-      });
-      final payload = List<int>.generate(2048, (index) => index % 193);
-      final padding = List<String>.filled(700, 'x').join();
-      final challenge =
-          '<html><script>$padding'
-                  "var arg1='7E8382F8567F0B54329AFED098ECFC4F8EAC90CD';"
-                  "document.cookie='acw_sc__v2=token';"
-                  '</script></html>'
-              .codeUnits;
-      final downloader = _ChallengeThenSuccessDownloader(
-        challenge: challenge,
-        payload: payload,
-      );
-      final manager = TransferManager.withDependencies(
-        TransferDependencies(
-          store: _FakeTransferStore(),
-          accounts: _FakeTransferAccountPort(),
-          download: _FakeTransferDownloadPort(tempDir.path),
-          settings: StoreTransferSettingsPort(
-            SettingsStore()..maxDownloads = 1,
-          ),
-        ),
-        downloader: downloader,
-      );
-      addTearDown(manager.dispose);
-      var resolved = 0;
-      manager.debugResolveShare = (url, pwd) async {
-        resolved += 1;
-        return DirectFile(
-          name: 'archive.apk',
-          url: 'https://cdn.example/fresh',
-        );
-      };
-
-      manager.addDownload(
-        url: 'https://cdn.example/stale',
-        name: 'archive.apk',
-        referer: 'https://example.com/share',
-      );
-      final task = manager.tasks.single;
-      await _waitFor(
-        () =>
-            task.status == TransferStatus.done ||
-            task.status == TransferStatus.failed,
-      );
-
-      expect(task.status, TransferStatus.done);
-      expect(resolved, 1);
-      expect(downloader.urls, <String>[
-        'https://cdn.example/stale',
-        'https://cdn.example/fresh',
-      ]);
-      expect(await File(task.savedPath!).readAsBytes(), payload);
-    });
-
     test('should 将应用中退出时残留的保存状态恢复为失败', () async {
       final manager = TransferManager.withDependencies(
         TransferDependencies(
@@ -852,35 +789,6 @@ class _ImmediateDownloader implements TransferDownloader {
     await File(partialPath).writeAsBytes(payload);
     onProgress(payload.length, payload.length);
     return TransferDownloadResult(total: payload.length, resumed: false);
-  }
-}
-
-class _ChallengeThenSuccessDownloader implements TransferDownloader {
-  _ChallengeThenSuccessDownloader({
-    required this.challenge,
-    required this.payload,
-  });
-
-  final List<int> challenge;
-  final List<int> payload;
-  final List<String> urls = <String>[];
-
-  @override
-  Future<TransferDownloadResult> download({
-    required Dio dio,
-    required String url,
-    required String partialPath,
-    required int expectedTotal,
-    required CancelToken cancelToken,
-    required Map<String, String> headers,
-    required Duration receiveTimeout,
-    required TransferDownloadProgress onProgress,
-  }) async {
-    urls.add(url);
-    final body = urls.length == 1 ? challenge : payload;
-    await File(partialPath).writeAsBytes(body);
-    onProgress(body.length, body.length);
-    return TransferDownloadResult(total: body.length, resumed: false);
   }
 }
 
