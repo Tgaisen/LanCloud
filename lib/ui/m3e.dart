@@ -883,14 +883,18 @@ class M3eConnectedButtonGroup<T> extends StatelessWidget {
     required this.values,
     required this.selected,
     required this.onSelected,
-    required this.labelOf,
+    this.labelOf,
+    this.semanticLabelOf,
     this.iconOf,
     this.checkedIconOf,
     this.size = core.M3EButtonSize.sm,
     this.expand = true,
     this.style = core.M3EButtonStyle.tonal,
     this.semanticLabel,
-  });
+  }) : assert(
+         labelOf != null || semanticLabelOf != null,
+         '纯图标连接组必须提供 semanticLabelOf',
+       );
 
   /// 每个按钮对应的业务值，顺序即显示顺序。
   final List<T> values;
@@ -902,7 +906,10 @@ class M3eConnectedButtonGroup<T> extends StatelessWidget {
   final ValueChanged<T> onSelected;
 
   /// 按钮文字。
-  final Widget Function(T value) labelOf;
+  final Widget Function(T value)? labelOf;
+
+  /// 读屏名称；纯图标按钮没有可见文字时必须提供。
+  final String Function(T value)? semanticLabelOf;
 
   /// 按钮图标；为 null 时是纯文字按钮（与原实现保持一致）。
   final Widget Function(T value)? iconOf;
@@ -953,7 +960,7 @@ class M3eConnectedButtonGroup<T> extends StatelessWidget {
               core.M3EToggleButtonGroupAction(
                 icon: iconOf?.call(value),
                 checkedIcon: checkedIconOf?.call(value),
-                label: labelOf(value),
+                label: labelOf?.call(value),
                 width: width,
               ),
           ],
@@ -970,7 +977,13 @@ class M3eConnectedButtonGroup<T> extends StatelessWidget {
                 width: width,
                 // 连接式按钮组相邻间隙固定 2dp（ButtonGroupTokens.kConnectedGap）
                 spacing: 2,
-                labelAt: (index) => labelOf(values[index]),
+                labelAt: (index) {
+                  final value = values[index];
+                  final semanticLabel = semanticLabelOf?.call(value);
+                  return semanticLabel == null
+                      ? labelOf!(value)
+                      : Text(semanticLabel);
+                },
                 checkedAt: (index) => index == selectedIndex,
                 mutuallyExclusive: true,
                 enabledAt: (_) => true,
@@ -1660,6 +1673,7 @@ class M3eMenuItem<T> {
     required this.icon,
     this.iconFill = 0,
     this.enabled = true,
+    this.selectionRole = M3eMenuSelectionRole.action,
   });
 
   /// 选中这一项时 [showM3eMenu] 返回的值。
@@ -1680,6 +1694,9 @@ class M3eMenuItem<T> {
   /// 是否可用：置灰的项仍显示（M3 规范：不可用的操作置灰而不是删掉），
   /// 但点不动。
   final bool enabled;
+
+  /// 混合选择菜单里的选项角色；动作菜单和纯单选 / 纯多选菜单会忽略它。
+  final M3eMenuSelectionRole selectionRole;
 }
 
 /// 菜单里的一个视觉分组。
@@ -1693,7 +1710,18 @@ class M3eMenuSection<T> {
 }
 
 /// 锚定菜单的选项选择方式。
-enum M3eMenuSelectionMode { single, multiple }
+enum M3eMenuSelectionMode { single, multiple, mixed }
+
+/// 混合选择菜单里的选项角色。
+enum M3eMenuSelectionRole { action, radio, checkbox }
+
+/// 混合选择菜单的当前状态。
+class M3eMenuChoice<T> {
+  const M3eMenuChoice({required this.radioValue, required this.checkedValues});
+
+  final T? radioValue;
+  final Set<T> checkedValues;
+}
 
 List<M3eMenuSection<T>> _resolveM3eMenuSections<T>({
   List<M3eMenuItem<T>>? items,
@@ -1846,6 +1874,49 @@ Future<void> showM3eMultiSelectMenu<T>({
   );
 }
 
+/// 大屏锚定菜单里的混合选择菜单。
+///
+/// 每项按 [M3eMenuItem.selectionRole] 显示为单选、复选或普通动作。选择项不会
+/// 关闭菜单，每次变化立即通过 [onChanged] 返回完整状态；点外部、返回键或
+/// [closeOn] 触发时才关闭。
+Future<void> showM3eChoiceMenu<T>({
+  required BuildContext context,
+  required Rect anchor,
+  Offset? pointerPosition,
+  List<M3eMenuItem<T>>? items,
+  List<M3eMenuSection<T>>? sections,
+  T? radioValue,
+  Set<T> checkedValues = const {},
+  required ValueChanged<M3eMenuChoice<T>> onChanged,
+  bool alignEnd = false,
+  Listenable? closeOn,
+  bool Function()? closeWhen,
+}) async {
+  final resolvedSections = _resolveM3eMenuSections(
+    items: items,
+    sections: sections,
+  );
+  final bool reduceMotion = reduceMotionOf(context);
+  final String barrierLabel = MaterialLocalizations.of(context).popupMenuLabel;
+  await Navigator.of(context, rootNavigator: true).push<void>(
+    _M3eMenuRoute<T, void>(
+      anchor: anchor,
+      pointerPosition: pointerPosition,
+      sections: resolvedSections,
+      alignEnd: alignEnd,
+      reduceMotion: reduceMotion,
+      barrierLabel: barrierLabel,
+      closeOn: closeOn,
+      closeWhen: closeWhen,
+      selectionMode: M3eMenuSelectionMode.mixed,
+      initialSelectedValue: radioValue,
+      initialSelectedValues: checkedValues,
+      onChoiceChanged: onChanged,
+      onActivate: null,
+    ),
+  );
+}
+
 /// 菜单里的一行：图标 + 文案。
 ///
 /// 公开是为了让测试能断言「菜单里有哪些行」；业务代码不需要直接用。
@@ -1949,9 +2020,11 @@ class _M3eMenuRoute<T, R> extends PopupRoute<R> {
     this.initialSelectedValue,
     this.initialSelectedValues = const {},
     this.onMultiSelectionChanged,
+    this.onChoiceChanged,
     this.closeOn,
     this.closeWhen,
-  }) : _selectedValues = Set<T>.of(initialSelectedValues);
+  }) : _selectedValue = initialSelectedValue,
+       _selectedValues = Set<T>.of(initialSelectedValues);
 
   final Rect anchor;
   final Offset? pointerPosition;
@@ -1963,6 +2036,8 @@ class _M3eMenuRoute<T, R> extends PopupRoute<R> {
   final T? initialSelectedValue;
   final Set<T> initialSelectedValues;
   final ValueChanged<Set<T>>? onMultiSelectionChanged;
+  final ValueChanged<M3eMenuChoice<T>>? onChoiceChanged;
+  T? _selectedValue;
   Set<T> _selectedValues;
 
   /// 读屏播报的路由标签（本地化的「弹出菜单」）。
@@ -1980,10 +2055,29 @@ class _M3eMenuRoute<T, R> extends PopupRoute<R> {
 
   bool get _hasSelection => selectionMode != null;
 
-  bool _isSelected(T value) => switch (selectionMode) {
-    M3eMenuSelectionMode.single => value == initialSelectedValue,
-    M3eMenuSelectionMode.multiple => _selectedValues.contains(value),
+  bool _isSelected(M3eMenuItem<T> item) => switch (selectionMode) {
+    M3eMenuSelectionMode.single => item.value == initialSelectedValue,
+    M3eMenuSelectionMode.multiple => _selectedValues.contains(item.value),
+    M3eMenuSelectionMode.mixed => switch (item.selectionRole) {
+      M3eMenuSelectionRole.radio => item.value == _selectedValue,
+      M3eMenuSelectionRole.checkbox => _selectedValues.contains(item.value),
+      M3eMenuSelectionRole.action => false,
+    },
     null => false,
+  };
+
+  bool _showsSelection(M3eMenuItem<T> item) => switch (selectionMode) {
+    M3eMenuSelectionMode.single || M3eMenuSelectionMode.multiple => true,
+    M3eMenuSelectionMode.mixed =>
+      item.selectionRole != M3eMenuSelectionRole.action,
+    null => false,
+  };
+
+  bool _isMutuallyExclusive(M3eMenuItem<T> item) => switch (selectionMode) {
+    M3eMenuSelectionMode.single => true,
+    M3eMenuSelectionMode.mixed =>
+      item.selectionRole == M3eMenuSelectionRole.radio,
+    _ => false,
   };
 
   void _toggleSelected(T value) {
@@ -1991,15 +2085,42 @@ class _M3eMenuRoute<T, R> extends PopupRoute<R> {
     if (!next.add(value)) next.remove(value);
     _selectedValues = next;
     onMultiSelectionChanged?.call(Set<T>.unmodifiable(next));
+    _notifyChoice();
     changedInternalState();
   }
 
-  void _activate(BuildContext context, T value) {
+  void _selectRadio(T value) {
+    _selectedValue = value;
+    _notifyChoice();
+    changedInternalState();
+  }
+
+  void _notifyChoice() {
+    onChoiceChanged?.call(
+      M3eMenuChoice<T>(
+        radioValue: _selectedValue,
+        checkedValues: Set<T>.unmodifiable(_selectedValues),
+      ),
+    );
+  }
+
+  void _activate(BuildContext context, M3eMenuItem<T> item) {
     if (selectionMode == M3eMenuSelectionMode.multiple) {
-      _toggleSelected(value);
+      _toggleSelected(item.value);
       return;
     }
-    onActivate?.call(Navigator.of(context), value);
+    if (selectionMode == M3eMenuSelectionMode.mixed) {
+      switch (item.selectionRole) {
+        case M3eMenuSelectionRole.radio:
+          _selectRadio(item.value);
+        case M3eMenuSelectionRole.checkbox:
+          _toggleSelected(item.value);
+        case M3eMenuSelectionRole.action:
+          onActivate?.call(Navigator.of(context), item.value);
+      }
+      return;
+    }
+    onActivate?.call(Navigator.of(context), item.value);
   }
 
   void _handleCloseOn() {
@@ -2321,13 +2442,14 @@ class _M3eMenuRoute<T, R> extends PopupRoute<R> {
                                     iconFill: item.iconFill,
                                     label: item.label,
                                     enabled: item.enabled,
-                                    selected: _isSelected(item.value),
-                                    showSelectionIndicator: _hasSelection,
-                                    mutuallyExclusive:
-                                        selectionMode ==
-                                        M3eMenuSelectionMode.single,
-                                    onTap: () =>
-                                        _activate(itemContext, item.value),
+                                    selected: _isSelected(item),
+                                    showSelectionIndicator: _showsSelection(
+                                      item,
+                                    ),
+                                    mutuallyExclusive: _isMutuallyExclusive(
+                                      item,
+                                    ),
+                                    onTap: () => _activate(itemContext, item),
                                   );
                                 },
                               ),

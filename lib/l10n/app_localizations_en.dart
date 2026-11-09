@@ -1632,6 +1632,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sortByTime => 'Sort by time';
 
   @override
+  String get ascending => 'Ascending';
+
+  @override
   String get toggleLayout => 'Toggle layout style';
 
   @override

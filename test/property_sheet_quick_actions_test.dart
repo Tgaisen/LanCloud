@@ -251,6 +251,38 @@ class _GatedClient extends _FakeClient {
       share.future;
 }
 
+/// 固定服务端降序顺序，用于验证升降序与文件夹特殊规则。
+class _OrderedClient extends _FakeClient {
+  @override
+  Future<({List<LzFolder> folders, List<PathNode> path})> listFolders(
+    String folderId,
+  ) async => (
+    folders: folderId == '-1'
+        ? [
+            LzFolder(id: 'fb', name: '文件夹 B', desc: ''),
+            LzFolder(id: 'fa', name: '文件夹 A', desc: ''),
+            LzFolder(id: 'fc', name: '文件夹 C', desc: ''),
+          ]
+        : const <LzFolder>[],
+    path: const <PathNode>[],
+  );
+
+  @override
+  Future<({List<LzFile> files, bool hasMore})> listFilesPage(
+    String folderId,
+    int page,
+  ) async => (
+    files: folderId == '-1' && page == 1
+        ? [
+            LzFile(id: 'f2', name: 'b.zip', size: '2 M', time: '2 天前'),
+            LzFile(id: 'f3', name: 'a.zip', size: '3 M', time: '3 天前'),
+            LzFile(id: 'f1', name: 'c.zip', size: '1 M', time: '1 天前'),
+          ]
+        : const <LzFile>[],
+    hasMore: false,
+  );
+}
+
 /// 弹窗里那一行图标按钮：按 tooltip 找到对应按钮。
 M3EToggleButton _toggleButton(WidgetTester tester, String tooltip) => tester
     .widgetList<M3EToggleButton>(find.byType(M3EToggleButton))
@@ -264,6 +296,11 @@ Finder _sheetText(String text) =>
 Finder _sheetTooltip(String label) => find.descendant(
   of: find.byType(M3EBottomSheet),
   matching: find.byTooltip(label),
+);
+
+Finder _sheetToggleButtons() => find.descendant(
+  of: find.byType(M3EBottomSheet),
+  matching: find.byType(M3EToggleButton),
 );
 
 Finder _menuRowText(String text) =>
@@ -382,6 +419,107 @@ void main() {
     expect(find.byType(AdaptiveSliverRows), findsNothing);
   });
 
+  testWidgets('路径栏 48dp：排序按钮和纯图标布局连接组可在窄屏操作', (tester) async {
+    final app = _FakeApp(_OrderedClient());
+    app.environment.cachePageSettings.store.gridView = false;
+    await _pumpDrive(tester, app, viewSize: const Size(320, 800));
+
+    expect(tester.getSize(find.byType(PathBar)).height, 48);
+    expect(find.byTooltip('排序'), findsOneWidget);
+    expect(
+      tester.getSize(find.byTooltip('排序')),
+      const Size(48, 48),
+      reason: '路径栏和图标按钮均使用 48dp 触控目标',
+    );
+    final layoutGroup = find.byType(M3eConnectedButtonGroup<String>);
+    expect(layoutGroup, findsOneWidget);
+    expect(tester.getSize(layoutGroup).width, 98);
+    expect(
+      find.descendant(of: layoutGroup, matching: find.text('网格')).hitTestable(),
+      findsNothing,
+      reason: '连接组只显示图标；读屏文字不参与视觉显示',
+    );
+    final groupButtons = find
+        .descendant(of: layoutGroup, matching: find.byType(M3EToggleButton))
+        .hitTestable();
+    expect(groupButtons, findsNWidgets(2));
+    for (int i = 0; i < 2; i++) {
+      final icon = find.descendant(
+        of: groupButtons.at(i),
+        matching: find.byIcon(i == 0 ? Icons.view_list : Icons.grid_view),
+      );
+      expect(
+        tester.getCenter(icon).dx,
+        closeTo(tester.getCenter(groupButtons.at(i)).dx, 0.1),
+      );
+      expect(
+        tester.getCenter(icon).dy,
+        closeTo(tester.getCenter(groupButtons.at(i)).dy, 0.1),
+      );
+    }
+
+    await tester.tap(
+      find
+          .descendant(of: layoutGroup, matching: find.byIcon(Icons.grid_view))
+          .hitTestable(),
+    );
+    await tester.pump();
+    expect(app.environment.cachePageSettings.store.gridView, isTrue);
+
+    await tester.tap(find.byTooltip('排序'));
+    await _settleSheet(tester);
+    expect(find.byType(Radio<bool>), findsNWidgets(3));
+    expect(find.byType(Checkbox), findsOneWidget);
+
+    await tester.tap(find.text('名称'));
+    await tester.pump();
+    await tester.tap(find.text('升序'));
+    await tester.pump();
+    expect(app.environment.listHomeSettings.store.sortMode, 'name');
+    expect(app.environment.listHomeSettings.store.sortAscending, isTrue);
+  });
+
+  testWidgets('排序升降序：文件夹时间反转、大小保持原序', (tester) async {
+    final app = _FakeApp(_OrderedClient());
+    app.environment.cachePageSettings.store.gridView = false;
+    await _pumpDrive(tester, app, viewSize: const Size(420, 900));
+
+    Future<void> openSort() async {
+      await tester.tap(find.byTooltip('排序'));
+      await _settleSheet(tester);
+    }
+
+    Future<void> closeSort() async {
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+    }
+
+    double top(String text) => tester.getTopLeft(find.text(text)).dy;
+
+    await openSort();
+    await tester.tap(find.text('时间'));
+    await tester.pump();
+    await tester.tap(find.text('升序'));
+    await tester.pump();
+    await closeSort();
+
+    expect(top('文件夹 C'), lessThan(top('文件夹 A')));
+    expect(top('文件夹 A'), lessThan(top('文件夹 B')));
+    expect(top('c.zip'), lessThan(top('a.zip')));
+    expect(top('a.zip'), lessThan(top('b.zip')));
+
+    await openSort();
+    await tester.tap(find.text('大小'));
+    await tester.pump();
+    await closeSort();
+
+    // 大小无法比较文件夹：保持服务端原顺序；文件按 1M / 2M / 3M 升序。
+    expect(top('文件夹 B'), lessThan(top('文件夹 A')));
+    expect(top('文件夹 A'), lessThan(top('文件夹 C')));
+    expect(top('c.zip'), lessThan(top('b.zip')));
+    expect(top('b.zip'), lessThan(top('a.zip')));
+  });
+
   testWidgets('网盘条目鼠标右键：菜单从鼠标坐标展开', (tester) async {
     final app = _FakeApp(_FakeClient());
     await _pumpDrive(tester, app);
@@ -447,7 +585,7 @@ void main() {
     // 点「属性」→ 打开文件属性弹窗（那一行 5 个图标按钮）
     await tester.tap(_adaptiveSheetAction('属性'));
     await _settleSheet(tester);
-    expect(find.byType(M3EToggleButton), findsNWidgets(5));
+    expect(_sheetToggleButtons(), findsNWidgets(5));
     expect(_sheetText('类型'), findsOneWidget);
     expect(_sheetText('ZIP 文件'), findsOneWidget);
     expect(_sheetText('重命名'), findsNothing);
@@ -1120,14 +1258,15 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    final closeButton = find.descendant(
+      of: find.byType(AlertDialog),
+      matching: find.widgetWithText(FilledButton, '关闭'),
+    );
     expect(
       tester
           .getSize(
             find
-                .ancestor(
-                  of: find.byType(FilledButton),
-                  matching: find.byType(Material),
-                )
+                .ancestor(of: closeButton, matching: find.byType(Material))
                 .first,
           )
           .width,
@@ -1173,7 +1312,7 @@ void main() {
     await _settleSheet(tester);
 
     // 一行 5 个纯图标按钮：下载 / 复制链接 / 二维码 / 收藏 / 更多操作
-    expect(find.byType(M3EToggleButton), findsNWidgets(5));
+    expect(_sheetToggleButtons(), findsNWidgets(5));
     for (final tooltip in ['下载', '复制链接', '显示二维码', '添加收藏', '更多操作']) {
       expect(_toggleButton(tester, tooltip), isNotNull, reason: tooltip);
     }
@@ -1303,7 +1442,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // 菜单是贴在被点那一段下面的弹出菜单：属性弹窗还在，菜单浮在它上面
-    expect(find.byType(M3EToggleButton), findsNWidgets(5));
+    expect(_sheetToggleButtons(), findsNWidgets(5));
     expect(find.byType(M3eMenuRow), findsNWidgets(2));
     expect(find.text('复制分享链接'), findsOneWidget);
     expect(find.text('复制下载直链'), findsOneWidget);
@@ -1364,7 +1503,7 @@ void main() {
     await _settleSheet(tester);
     expect(client.shareFileCalls, 1);
     // 复制完属性弹窗还在（反馈走浮在最上层的轻提示）
-    expect(find.byType(M3EToggleButton), findsNWidgets(5));
+    expect(_sheetToggleButtons(), findsNWidgets(5));
   });
 
   testWidgets('文件属性弹窗：收藏就地切换，不关弹窗', (tester) async {
@@ -1377,7 +1516,7 @@ void main() {
     await _settleSheet(tester);
 
     // 测试环境没有 sqflite：收藏会失败并回滚，但弹窗必须还在
-    expect(find.byType(M3EToggleButton), findsNWidgets(5));
+    expect(_sheetToggleButtons(), findsNWidgets(5));
     expect(_toggleButton(tester, '添加收藏').checked, isFalse);
   });
 
@@ -1415,7 +1554,7 @@ void main() {
     // 让弹窗里的分享信息和统计请求跑完。
     await tester.pump(const Duration(milliseconds: 200));
 
-    expect(find.byType(M3EToggleButton), findsNWidgets(5));
+    expect(_sheetToggleButtons(), findsNWidgets(5));
     for (final tooltip in ['复制链接', '显示二维码', '添加收藏', '添加到快速访问', '更多操作']) {
       expect(_toggleButton(tester, tooltip), isNotNull, reason: tooltip);
     }

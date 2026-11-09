@@ -604,6 +604,7 @@
   "sortByName": "Sort by name",
   "sortBySize": "Sort by size",
   "sortByTime": "Sort by time",
+  "ascending": "Ascending",
   "toggleLayout": "Toggle layout style",
   "multiSelect": "Select",
   "refresh": "Refresh",

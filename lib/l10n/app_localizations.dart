@@ -2948,6 +2948,12 @@ abstract class AppLocalizations {
   /// **'按时间排序'**
   String get sortByTime;
 
+  /// No description provided for @ascending.
+  ///
+  /// In zh, this message translates to:
+  /// **'升序'**
+  String get ascending;
+
   /// No description provided for @toggleLayout.
   ///
   /// In zh, this message translates to:

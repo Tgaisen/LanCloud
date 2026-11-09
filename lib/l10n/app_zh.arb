@@ -976,6 +976,7 @@
   "sortByName": "按名称排序",
   "sortBySize": "按大小排序",
   "sortByTime": "按时间排序",
+  "ascending": "升序",
   "toggleLayout": "切换布局样式",
   "multiSelect": "多选",
   "refresh": "刷新",

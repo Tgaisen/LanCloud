@@ -38,6 +38,7 @@ class SettingsStore {
   static const _keyNotifyProgress = 'notify_progress';
   static const _keyNotifyDone = 'notify_done';
   static const _keySortMode = 'sort_mode';
+  static const _keySortAscending = 'sort_ascending';
   static const _keyQuickExpanded = 'quick_access_expanded';
   static const _keyRecentsExpanded = 'recents_expanded';
   static const _keyRecentLimit = 'recent_limit';
@@ -107,6 +108,9 @@ class SettingsStore {
 
   /// 网盘文件排序方式：default / name / size / time。
   String sortMode = 'default';
+
+  /// 网盘排序是否升序；关闭时沿用服务端/原有降序顺序。
+  bool sortAscending = false;
 
   /// 首页「快速访问」/「最近使用」是否展开（重启后保持）。
   bool quickExpanded = true;
@@ -185,6 +189,7 @@ class SettingsStore {
     notifyProgress = prefs.getBool(_keyNotifyProgress) ?? true;
     notifyDone = prefs.getBool(_keyNotifyDone) ?? true;
     sortMode = prefs.getString(_keySortMode) ?? 'default';
+    sortAscending = prefs.getBool(_keySortAscending) ?? false;
     quickExpanded = prefs.getBool(_keyQuickExpanded) ?? true;
     recentsExpanded = prefs.getBool(_keyRecentsExpanded) ?? true;
     recentLimit = prefs.getInt(_keyRecentLimit) ?? 50;
@@ -230,6 +235,12 @@ class SettingsStore {
     sortMode = value;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keySortMode, value);
+  }
+
+  Future<void> setSortAscending(bool value) async {
+    sortAscending = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keySortAscending, value);
   }
 
   Future<void> setQuickExpanded(bool value) async {
@@ -481,6 +492,7 @@ class SettingsStore {
     _keyNotifyProgress: notifyProgress,
     _keyNotifyDone: notifyDone,
     _keySortMode: sortMode,
+    _keySortAscending: sortAscending,
     _keyQuickExpanded: quickExpanded,
     _keyRecentsExpanded: recentsExpanded,
     _keyRecentLimit: recentLimit,

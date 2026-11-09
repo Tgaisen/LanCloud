@@ -12,13 +12,15 @@ void main() {
     final state = ListHomeSettingsState(settings);
 
     await state.setSortMode('name');
+    await state.setSortAscending(true);
     await state.setQuickExpanded(false);
     await state.setRecentsExpanded(false);
     await state.setRecentLimit(20);
     await state.setHomeFolderOpenMode('page');
 
-    expect(state.revision.value, 5);
+    expect(state.revision.value, 6);
     expect(state.sortMode, 'name');
+    expect(state.sortAscending, isTrue);
     expect(state.quickExpanded, isFalse);
     expect(state.recentsExpanded, isFalse);
     expect(state.recentLimit, 20);

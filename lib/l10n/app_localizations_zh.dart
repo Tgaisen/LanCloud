@@ -1569,6 +1569,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sortByTime => '按时间排序';
 
   @override
+  String get ascending => '升序';
+
+  @override
   String get toggleLayout => '切换布局样式';
 
   @override

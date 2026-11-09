@@ -16,6 +16,7 @@ class ListHomeSettingsState {
   final ValueNotifier<int> revision = ValueNotifier(0);
 
   String get sortMode => store.sortMode;
+  bool get sortAscending => store.sortAscending;
   bool get quickExpanded => store.quickExpanded;
   bool get recentsExpanded => store.recentsExpanded;
   int get recentLimit => store.recentLimit;
@@ -23,6 +24,11 @@ class ListHomeSettingsState {
 
   Future<void> setSortMode(String value) async {
     await store.setSortMode(value);
+    revision.value += 1;
+  }
+
+  Future<void> setSortAscending(bool value) async {
+    await store.setSortAscending(value);
     revision.value += 1;
   }
 

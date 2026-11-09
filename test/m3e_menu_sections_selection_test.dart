@@ -18,6 +18,35 @@ const List<M3eMenuSection<String>> _sections = [
   ),
 ];
 
+const List<M3eMenuSection<String>> _choiceSections = [
+  M3eMenuSection(
+    items: [
+      M3eMenuItem(
+        value: 'a',
+        label: '选项 A',
+        icon: Icons.circle_outlined,
+        selectionRole: M3eMenuSelectionRole.radio,
+      ),
+      M3eMenuItem(
+        value: 'b',
+        label: '选项 B',
+        icon: Icons.square_outlined,
+        selectionRole: M3eMenuSelectionRole.radio,
+      ),
+    ],
+  ),
+  M3eMenuSection(
+    items: [
+      M3eMenuItem(
+        value: 'ascending',
+        label: '升序',
+        icon: Icons.arrow_upward,
+        selectionRole: M3eMenuSelectionRole.checkbox,
+      ),
+    ],
+  ),
+];
+
 Future<void> _pumpTrigger(
   WidgetTester tester, {
   required Size size,
@@ -160,6 +189,35 @@ void main() {
     expect(find.text('选项 B'), findsOneWidget);
   });
 
+  testWidgets('宽菜单可混合单选与复选并保持打开', (tester) async {
+    final changed = <M3eMenuChoice<String>>[];
+    await _pumpTrigger(
+      tester,
+      size: const Size(800, 800),
+      open: (BuildContext context) async {
+        await showM3eChoiceMenu<String>(
+          context: context,
+          anchor: const Rect.fromLTWH(300, 100, 48, 48),
+          sections: _choiceSections,
+          radioValue: 'a',
+          onChanged: changed.add,
+        );
+      },
+    );
+
+    await tester.tap(find.text('选项 B'));
+    await tester.pumpAndSettle();
+    expect(changed.last.radioValue, 'b');
+    expect(changed.last.checkedValues, isEmpty);
+
+    await tester.tap(find.text('升序'));
+    await tester.pumpAndSettle();
+    expect(changed.last.radioValue, 'b');
+    expect(changed.last.checkedValues, {'ascending'});
+    expect(find.text('选项 A'), findsOneWidget);
+    expect(find.text('升序'), findsOneWidget);
+  });
+
   testWidgets('Compact 单选使用多个列表组和 radio', (tester) async {
     final result = Completer<String?>();
     await _pumpTrigger(
@@ -206,5 +264,29 @@ void main() {
     expect(changed.last, {'a', 'b'});
     expect(find.text('选项 A'), findsOneWidget);
     expect(find.text('选项 B'), findsOneWidget);
+  });
+
+  testWidgets('Compact 混合选择按项显示 radio 与 checkbox', (tester) async {
+    final changed = <M3eMenuChoice<String>>[];
+    await _pumpTrigger(
+      tester,
+      size: const Size(411, 800),
+      open: (BuildContext context) async {
+        await showAdaptiveM3eChoiceMenu<String>(
+          context: context,
+          anchor: const Rect.fromLTWH(300, 100, 48, 48),
+          sections: _choiceSections,
+          radioValue: 'a',
+          onChanged: changed.add,
+        );
+      },
+    );
+
+    expect(find.byType(Radio<bool>), findsNWidgets(2));
+    expect(find.byType(Checkbox), findsOneWidget);
+    await tester.tap(find.text('升序'));
+    await tester.pumpAndSettle();
+    expect(changed.last.checkedValues, {'ascending'});
+    expect(find.text('升序'), findsOneWidget);
   });
 }

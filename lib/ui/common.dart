@@ -36,7 +36,7 @@ const double kLargeLayoutBreakpoint = 640;
 const double kCompactMenuBreakpoint = 600;
 
 /// 网盘页路径栏高度（顶栏的 bottom 部分）。
-const double kDrivePathBarHeight = 46;
+const double kDrivePathBarHeight = 48;
 
 /// 传输页上传 / 下载切换栏高度（顶栏的 bottom 部分）。
 const double kTransfersTabBarHeight = 58;
@@ -1843,6 +1843,58 @@ Future<void> showAdaptiveM3eMultiSelectMenu<T>({
   );
 }
 
+/// 自适应混合选择菜单：每项按自己的选择角色显示 radio / checkbox。
+Future<void> showAdaptiveM3eChoiceMenu<T>({
+  required BuildContext context,
+  required Rect anchor,
+  Offset? pointerPosition,
+  List<M3eMenuItem<T>>? items,
+  List<M3eMenuSection<T>>? sections,
+  T? radioValue,
+  Set<T> checkedValues = const {},
+  required ValueChanged<M3eMenuChoice<T>> onChanged,
+  bool alignEnd = false,
+  Listenable? closeOn,
+  bool Function()? closeWhen,
+  bool allowSheet = true,
+}) async {
+  final resolvedSections = _resolveAdaptiveM3eMenuSections(
+    items: items,
+    sections: sections,
+  );
+  if (!_usesAdaptiveM3eMenuSheet(
+    context,
+    pointerPosition: pointerPosition,
+    allowSheet: allowSheet,
+  )) {
+    await showM3eChoiceMenu<T>(
+      context: context,
+      anchor: anchor,
+      pointerPosition: pointerPosition,
+      sections: resolvedSections,
+      radioValue: radioValue,
+      checkedValues: checkedValues,
+      onChanged: onChanged,
+      alignEnd: alignEnd,
+      closeOn: closeOn,
+      closeWhen: closeWhen,
+    );
+    return;
+  }
+  await showAppSheet<void>(
+    context,
+    child: _M3eMenuSheet<T>(
+      sections: resolvedSections,
+      selectionMode: M3eMenuSelectionMode.mixed,
+      initialSelectedValue: radioValue,
+      initialSelectedValues: checkedValues,
+      onChoiceChanged: onChanged,
+      closeOn: closeOn,
+      closeWhen: closeWhen,
+    ),
+  );
+}
+
 bool _usesAdaptiveM3eMenuSheet(
   BuildContext context, {
   required Offset? pointerPosition,
@@ -2788,36 +2840,56 @@ class PathChip extends StatelessWidget {
     required this.label,
     required this.current,
     required this.onTap,
-    this.verticalPadding = 8,
   });
 
   final String label;
   final bool current;
   final VoidCallback onTap;
-  final double verticalPadding;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: verticalPadding),
-      child: Material(
-        color: Colors.transparent,
-        // 大圆角 = 胶囊：高度不足时 Skia 会把半径收到一半，左右看是半圆
-        borderRadius: BorderRadius.circular(999),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
+    final BorderRadius shape = BorderRadius.circular(20);
+    return Semantics(
+      container: true,
+      button: true,
+      selected: current,
+      label: label,
+      onTap: onTap,
+      excludeSemantics: true,
+      child: SizedBox(
+        height: 48,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
           onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: current ? FontWeight.w600 : FontWeight.w400,
-                color: current ? scheme.onSurface : scheme.onSurfaceVariant,
+          child: Center(
+            child: SizedBox(
+              height: 40,
+              child: Material(
+                color: Colors.transparent,
+                borderRadius: shape,
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  onTap: onTap,
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.m3eEmphasizedTheme.titleSmall?.copyWith(
+                          fontWeight: current
+                              ? FontWeight.w600
+                              : FontWeight.w400,
+                          color: current
+                              ? scheme.onSurface
+                              : scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
@@ -2844,7 +2916,6 @@ class PathBar extends StatefulWidget {
     required this.segments,
     required this.onTap,
     this.currentIndex,
-    this.verticalPadding = 8,
     this.horizontalPadding = 12,
   });
 
@@ -2855,9 +2926,6 @@ class PathBar extends StatefulWidget {
 
   /// 高亮哪一段；默认最后一段（当前目录）。
   final int? currentIndex;
-
-  /// 卡片上下留白：网盘页 8，弹窗里 4。
-  final double verticalPadding;
 
   /// 横向内边距。AlertDialog 已有内容边距时传 0，避免重复缩进。
   final double horizontalPadding;
@@ -3027,7 +3095,6 @@ class _PathBarState extends State<PathBar> with TickerProviderStateMixin {
             PathChip(
               label: entry.segment.label,
               current: _isCurrent(entry),
-              verticalPadding: widget.verticalPadding,
               onTap: () => _handleTap(entry),
             ),
           ],
@@ -4215,6 +4282,7 @@ class _M3eMenuSheet<T> extends StatefulWidget {
     this.initialSelectedValue,
     this.initialSelectedValues = const {},
     this.onMultiSelectionChanged,
+    this.onChoiceChanged,
     this.closeOn,
     this.closeWhen,
   });
@@ -4224,6 +4292,7 @@ class _M3eMenuSheet<T> extends StatefulWidget {
   final T? initialSelectedValue;
   final Set<T> initialSelectedValues;
   final ValueChanged<Set<T>>? onMultiSelectionChanged;
+  final ValueChanged<M3eMenuChoice<T>>? onChoiceChanged;
   final Listenable? closeOn;
   final bool Function()? closeWhen;
 
@@ -4233,11 +4302,13 @@ class _M3eMenuSheet<T> extends StatefulWidget {
 
 class _M3eMenuSheetState<T> extends State<_M3eMenuSheet<T>> {
   bool _closing = false;
+  late T? _selectedValue;
   late Set<T> _selectedValues;
 
   @override
   void initState() {
     super.initState();
+    _selectedValue = widget.initialSelectedValue;
     _selectedValues = Set<T>.of(widget.initialSelectedValues);
     widget.closeOn?.addListener(_handleCloseOn);
   }
@@ -4251,6 +4322,9 @@ class _M3eMenuSheetState<T> extends State<_M3eMenuSheet<T>> {
     }
     if (widget.initialSelectedValues != oldWidget.initialSelectedValues) {
       _selectedValues = Set<T>.of(widget.initialSelectedValues);
+    }
+    if (widget.initialSelectedValue != oldWidget.initialSelectedValue) {
+      _selectedValue = widget.initialSelectedValue;
     }
   }
 
@@ -4267,10 +4341,29 @@ class _M3eMenuSheetState<T> extends State<_M3eMenuSheet<T>> {
     super.dispose();
   }
 
-  bool _isSelected(T value) => switch (widget.selectionMode) {
-    M3eMenuSelectionMode.single => value == widget.initialSelectedValue,
-    M3eMenuSelectionMode.multiple => _selectedValues.contains(value),
+  bool _isSelected(M3eMenuItem<T> item) => switch (widget.selectionMode) {
+    M3eMenuSelectionMode.single => item.value == widget.initialSelectedValue,
+    M3eMenuSelectionMode.multiple => _selectedValues.contains(item.value),
+    M3eMenuSelectionMode.mixed => switch (item.selectionRole) {
+      M3eMenuSelectionRole.radio => item.value == _selectedValue,
+      M3eMenuSelectionRole.checkbox => _selectedValues.contains(item.value),
+      M3eMenuSelectionRole.action => false,
+    },
     null => false,
+  };
+
+  bool _showsSelection(M3eMenuItem<T> item) => switch (widget.selectionMode) {
+    M3eMenuSelectionMode.single || M3eMenuSelectionMode.multiple => true,
+    M3eMenuSelectionMode.mixed =>
+      item.selectionRole != M3eMenuSelectionRole.action,
+    null => false,
+  };
+
+  bool _isSingleSelect(M3eMenuItem<T> item) => switch (widget.selectionMode) {
+    M3eMenuSelectionMode.single => true,
+    M3eMenuSelectionMode.mixed =>
+      item.selectionRole == M3eMenuSelectionRole.radio,
+    _ => false,
   };
 
   void _toggleSelected(T value) {
@@ -4278,6 +4371,21 @@ class _M3eMenuSheetState<T> extends State<_M3eMenuSheet<T>> {
     if (!next.add(value)) next.remove(value);
     setState(() => _selectedValues = next);
     widget.onMultiSelectionChanged?.call(Set<T>.unmodifiable(next));
+    _notifyChoice();
+  }
+
+  void _selectRadio(T value) {
+    setState(() => _selectedValue = value);
+    _notifyChoice();
+  }
+
+  void _notifyChoice() {
+    widget.onChoiceChanged?.call(
+      M3eMenuChoice<T>(
+        radioValue: _selectedValue,
+        checkedValues: Set<T>.unmodifiable(_selectedValues),
+      ),
+    );
   }
 
   Widget _buildItem(M3eMenuItem<T> item) {
@@ -4297,12 +4405,20 @@ class _M3eMenuSheetState<T> extends State<_M3eMenuSheet<T>> {
     return M3ePickTile(
       label: item.label,
       leading: Icon(item.icon, fill: item.iconFill),
-      selected: _isSelected(item.value),
-      singleSelect: widget.selectionMode == M3eMenuSelectionMode.single,
+      selected: _isSelected(item),
+      singleSelect: _isSingleSelect(item),
+      showSelector: _showsSelection(item),
       enabled: item.enabled,
       onTap: () {
-        if (widget.selectionMode == M3eMenuSelectionMode.multiple) {
+        if (widget.selectionMode == M3eMenuSelectionMode.multiple ||
+            (widget.selectionMode == M3eMenuSelectionMode.mixed &&
+                item.selectionRole == M3eMenuSelectionRole.checkbox)) {
           _toggleSelected(item.value);
+          return;
+        }
+        if (widget.selectionMode == M3eMenuSelectionMode.mixed &&
+            item.selectionRole == M3eMenuSelectionRole.radio) {
+          _selectRadio(item.value);
           return;
         }
         _closing = true;
