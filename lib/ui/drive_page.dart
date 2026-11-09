@@ -86,6 +86,9 @@ enum _FolderMenuAction {
   delete,
 }
 
+/// 网盘顶栏菜单里的动作。
+enum _DriveMenuAction { multiSelect, refresh, folderProperties }
+
 /// 文件条目和文件属性页共用的动作菜单。
 ///
 /// 属性页已经提供下载 / 复制链接等快捷按钮，并负责承载“属性”内容本身，
@@ -1310,51 +1313,49 @@ class _DrivePageState extends ConsumerState<DrivePage>
   }
 
   /// 网盘菜单：布局与排序移到路径栏，这里只保留列表操作。
-  Future<void> _showDriveMenu() async {
+  Future<void> _showDriveMenu(BuildContext anchorContext) async {
+    final anchor = m3eMenuAnchorOf(anchorContext);
+    if (anchor == null) return;
     final isRoot = _folderId == '-1';
-    await showAppSheet<void>(
-      context,
-      child: SheetListGroup(
-        margin: SheetListGroup.endMargin,
-        children: [
-          ListTile(
-            leading: const Icon(Icons.checklist),
-            title: Text(context.l10n.multiSelect),
-            onTap: () {
-              Navigator.of(context).pop();
-              _enterSelection();
-            },
+    final l10n = context.l10n;
+    final action = await showAdaptiveM3eMenu<_DriveMenuAction>(
+      context: context,
+      anchor: anchor,
+      alignEnd: true,
+      items: [
+        M3eMenuItem(
+          value: _DriveMenuAction.multiSelect,
+          label: l10n.multiSelect,
+          icon: Icons.checklist,
+        ),
+        M3eMenuItem(
+          value: _DriveMenuAction.refresh,
+          label: l10n.refresh,
+          icon: Icons.refresh,
+        ),
+        if (!isRoot)
+          M3eMenuItem(
+            value: _DriveMenuAction.folderProperties,
+            label: l10n.folderProperties,
+            icon: Icons.info_outline,
           ),
-          ListTile(
-            leading: const Icon(Icons.refresh),
-            title: Text(context.l10n.refresh),
-            onTap: () {
-              Navigator.of(context).pop();
-              _reloadAfterChange();
-            },
-          ),
-          if (!isRoot)
-            ListTile(
-              leading: const Icon(Icons.info_outline),
-              title: Text(context.l10n.folderProperties),
-              onTap: () {
-                Navigator.of(context).pop();
-                showAppSheet<void>(
-                  context,
-                  child: _FolderInfoSheet(
-                    folder: LzFolder(
-                      id: _folderId,
-                      name: _path.last.name,
-                      desc: '',
-                    ),
-                    page: this,
-                  ),
-                );
-              },
-            ),
-        ],
-      ),
+      ],
     );
+    if (!mounted || action == null) return;
+    switch (action) {
+      case _DriveMenuAction.multiSelect:
+        _enterSelection();
+      case _DriveMenuAction.refresh:
+        await _reloadAfterChange();
+      case _DriveMenuAction.folderProperties:
+        await showAppSheet<void>(
+          context,
+          child: _FolderInfoSheet(
+            folder: LzFolder(id: _folderId, name: _path.last.name, desc: ''),
+            page: this,
+          ),
+        );
+    }
   }
 
   Future<void> _showAddMenu() async {
@@ -3214,10 +3215,12 @@ class _DrivePageState extends ConsumerState<DrivePage>
                   icon: const Icon(Icons.search),
                   onPressed: () => setState(() => _searching = true),
                 ),
-                IconButton(
-                  tooltip: context.l10n.menu,
-                  icon: const Icon(Icons.more_vert),
-                  onPressed: _showDriveMenu,
+                Builder(
+                  builder: (BuildContext anchorContext) => IconButton(
+                    tooltip: context.l10n.menu,
+                    icon: const Icon(Icons.more_vert),
+                    onPressed: () => _showDriveMenu(anchorContext),
+                  ),
                 ),
               ],
         bottom: PreferredSize(

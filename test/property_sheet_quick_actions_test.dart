@@ -1750,6 +1750,11 @@ void main() {
 
     await tester.tap(find.byTooltip('菜单'));
     await _settleSheet(tester);
+    expect(
+      find.byKey(const ValueKey('adaptive-m3e-menu-sheet')),
+      findsOneWidget,
+    );
+    expect(find.text('刷新'), findsOneWidget);
     await tester.tap(find.text('目录属性'));
     await _settleSheet(tester);
 

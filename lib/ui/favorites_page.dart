@@ -24,6 +24,9 @@ import 'share_password_dialog.dart';
 /// 收藏条目 ⋯ 菜单里的动作。
 enum _FavoriteItemAction { open, copyLink, edit, unfavorite }
 
+/// 收藏页顶栏菜单里的动作。
+enum _FavoritesMenuAction { multiSelect, newFavorite }
+
 /// 收藏视图：独立底栏页，布局与传输页一致（分组 + 多选删除）。
 class FavoritesPage extends ConsumerStatefulWidget {
   const FavoritesPage({super.key, this.tabIndex});
@@ -180,67 +183,58 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
     return items;
   }
 
-  /// 顶栏 ⋯ 菜单：排序（时间 / 名称 / 大小）、多选、添加收藏。
-  Future<void> _showMenu() async {
+  Future<void> _showSortMenu(BuildContext anchorContext) async {
+    final anchor = m3eMenuAnchorOf(anchorContext);
+    if (anchor == null) return;
     final l10n = context.l10n;
-    var sort = _sort;
-    await showAppSheet<void>(
-      context,
-      child: StatefulBuilder(
-        builder: (sheetContext, setSheetState) => Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 分组小标题 + 按钮组：标题用统一的 M3eSectionHeader
-            M3eSectionHeader(l10n.sort, horizontalInset: 24),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: SizedBox(
-                width: double.infinity,
-                child: M3eConnectedButtonGroup<String>(
-                  values: const ['time', 'name', 'size'],
-                  selected: sort,
-                  onSelected: (value) {
-                    setSheetState(() => sort = value);
-                    setState(() => _sort = value);
-                  },
-                  labelOf: (value) => Text(switch (value) {
-                    'name' => l10n.sortName,
-                    'size' => l10n.sortSize,
-                    _ => l10n.sortTime,
-                  }),
-                ),
-              ),
-            ),
-            SheetListGroup(
-              // 与上面的按钮组分开：上边距用列表的左右边距同值（16dp）；
-              // 作为弹窗内容最后一块，下边距同样与左右同值（16dp）
-              margin: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.checklist),
-                  title: Text(l10n.multiSelect),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    _enterSelection();
-                  },
-                ),
-                ListTile(
-                  // 与条目菜单里的「取消收藏」对应（那边用 star-off 自定义图标）
-                  leading: const Icon(Icons.playlist_add),
-                  title: Text(l10n.newFavorite),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    // 打开「打开链接」弹窗，识别出文件（夹）后直接加入收藏
-                    openShareSheet(context, addFavoriteOnResolve: true);
-                  },
-                ),
-              ],
-            ),
-          ],
+    final selected = await showAdaptiveM3eSingleSelectMenu<String>(
+      context: context,
+      anchor: anchor,
+      alignEnd: true,
+      selected: _sort,
+      items: [
+        M3eMenuItem(value: 'time', label: l10n.sortTime, icon: Icons.schedule),
+        M3eMenuItem(
+          value: 'name',
+          label: l10n.sortName,
+          icon: Icons.sort_by_alpha,
         ),
-      ),
+        M3eMenuItem(value: 'size', label: l10n.sortSize, icon: Icons.draft),
+      ],
     );
+    if (!mounted || selected == null || selected == _sort) return;
+    setState(() => _sort = selected);
+  }
+
+  /// 顶栏 ⋯ 菜单：多选、添加收藏。
+  Future<void> _showMenu(BuildContext anchorContext) async {
+    final anchor = m3eMenuAnchorOf(anchorContext);
+    if (anchor == null) return;
+    final l10n = context.l10n;
+    final action = await showAdaptiveM3eMenu<_FavoritesMenuAction>(
+      context: context,
+      anchor: anchor,
+      alignEnd: true,
+      items: [
+        M3eMenuItem(
+          value: _FavoritesMenuAction.multiSelect,
+          label: l10n.multiSelect,
+          icon: Icons.checklist,
+        ),
+        M3eMenuItem(
+          value: _FavoritesMenuAction.newFavorite,
+          label: l10n.newFavorite,
+          icon: Icons.playlist_add,
+        ),
+      ],
+    );
+    if (!mounted || action == null) return;
+    switch (action) {
+      case _FavoritesMenuAction.multiSelect:
+        _enterSelection();
+      case _FavoritesMenuAction.newFavorite:
+        await openShareSheet(context, addFavoriteOnResolve: true);
+    }
   }
 
   // ------------------------------------------------------------------ 多选
@@ -861,10 +855,22 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
                               onPressed: () =>
                                   setState(() => _searching = true),
                             ),
-                            IconButton(
-                              tooltip: l10n.menu,
-                              icon: const Icon(Icons.more_vert),
-                              onPressed: _showMenu,
+                            Builder(
+                              builder: (BuildContext anchorContext) =>
+                                  IconButton(
+                                    tooltip: l10n.sort,
+                                    icon: const Icon(Icons.sort),
+                                    onPressed: () =>
+                                        _showSortMenu(anchorContext),
+                                  ),
+                            ),
+                            Builder(
+                              builder: (BuildContext anchorContext) =>
+                                  IconButton(
+                                    tooltip: l10n.menu,
+                                    icon: const Icon(Icons.more_vert),
+                                    onPressed: () => _showMenu(anchorContext),
+                                  ),
                             ),
                           ],
                   ),

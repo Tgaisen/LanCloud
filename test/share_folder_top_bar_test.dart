@@ -158,6 +158,19 @@ void main() {
       await tester.pump(const Duration(milliseconds: 600));
     }
 
+    // 顶栏 ⋯ 菜单也走自适应菜单：Compact 下显示为底部面板。
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('share-normal-appbar')),
+        matching: find.byTooltip('更多操作'),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(menuLabels(), ['多选', '收藏', '复制链接']);
+    await tester.tapAt(const Offset(5, 300));
+    await tester.pumpAndSettle();
+
     // 子文件夹：打开 / 复制链接 / 收藏
     await openMenu('子目录');
     expect(menuLabels(), ['打开', '复制链接', '收藏']);
