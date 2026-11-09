@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/semantics.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/m3e.dart';
@@ -74,14 +75,11 @@ Future<void> _pumpTrigger(
   await tester.pumpAndSettle();
 }
 
-SemanticsData _semanticsDataForLabel(WidgetTester tester, String label) {
+List<SemanticsNode> _semanticsNodes(WidgetTester tester) {
   final owner = tester.binding.renderViews.first.owner!.semanticsOwner!;
-  final matches = <SemanticsNode>[];
+  final nodes = <SemanticsNode>[];
   void walk(SemanticsNode node) {
-    final data = node.getSemanticsData();
-    if (data.label == label && data.hasAction(SemanticsAction.tap)) {
-      matches.add(node);
-    }
+    nodes.add(node);
     node.visitChildren((child) {
       walk(child);
       return true;
@@ -89,10 +87,22 @@ SemanticsData _semanticsDataForLabel(WidgetTester tester, String label) {
   }
 
   walk(owner.rootSemanticsNode!);
-  expect(matches, isNotEmpty, reason: '$label 应存在可点击语义节点');
-  // MenuItemButton 会留下 merge boundary 父节点；后者是实际承载按钮状态与
-  // 点击动作的叶子语义节点。
-  return matches.last.getSemanticsData();
+  return nodes;
+}
+
+SemanticsNode _semanticsNodeForLabel(WidgetTester tester, String label) {
+  final matches = [
+    for (final node in _semanticsNodes(tester))
+      if (node.getSemanticsData().label == label &&
+          node.getSemanticsData().hasAction(SemanticsAction.tap))
+        node,
+  ];
+  expect(matches, hasLength(1), reason: '$label 应只有一个可点击语义节点，避免 TalkBack 重复停留');
+  return matches.single;
+}
+
+SemanticsData _semanticsDataForLabel(WidgetTester tester, String label) {
+  return _semanticsNodeForLabel(tester, label).getSemanticsData();
 }
 
 void main() {
@@ -135,7 +145,9 @@ void main() {
     expect(shadowClipRect.right, tester.getSize(shadowClipFinder).width + 16);
     expect(shadowClipRect.bottom, tester.getSize(shadowClipFinder).height + 16);
     expect(
-      tester.widget<ListView>(find.byType(ListView)).padding,
+      tester
+          .widget<SingleChildScrollView>(find.byType(SingleChildScrollView))
+          .padding,
       const EdgeInsets.symmetric(horizontal: 4),
     );
     for (var i = 0; i < 2; i++) {
@@ -173,8 +185,29 @@ void main() {
       findsOneWidget,
     );
     final actionSemantics = _semanticsDataForLabel(tester, '选项 A');
+    expect(actionSemantics.role, SemanticsRole.menuItem);
     expect(actionSemantics.flagsCollection.isChecked.name, 'none');
     expect(actionSemantics.flagsCollection.isInMutuallyExclusiveGroup, isFalse);
+    final menuNodes = [
+      for (final node in _semanticsNodes(tester))
+        if (node.getSemanticsData().role == SemanticsRole.menu) node,
+    ];
+    expect(menuNodes, hasLength(1));
+    final menuScroll = tester.widget<SingleChildScrollView>(
+      find.descendant(
+        of: find.byKey(const ValueKey('m3e-menu-card')),
+        matching: find.byType(SingleChildScrollView),
+      ),
+    );
+    expect(menuScroll.padding, isNotNull);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('m3e-menu-card')),
+        matching: find.byType(ListView),
+      ),
+      findsNothing,
+      reason: '菜单不能使用 ListView，否则 Android 会附加列表 collection 语义',
+    );
     semantics.dispose();
   });
 
@@ -256,15 +289,40 @@ void main() {
     );
     final selected = _semanticsDataForLabel(tester, '选项 A');
     final unselected = _semanticsDataForLabel(tester, '选项 B');
+    expect(selected.role, SemanticsRole.menuItemRadio);
+    expect(unselected.role, SemanticsRole.menuItemRadio);
     expect(selected.flagsCollection.isChecked.name, 'isTrue');
     expect(unselected.flagsCollection.isChecked.name, 'isFalse');
     expect(selected.flagsCollection.isInMutuallyExclusiveGroup, isTrue);
     expect(unselected.flagsCollection.isInMutuallyExclusiveGroup, isTrue);
     expect(selected.hasAction(SemanticsAction.tap), isTrue);
 
-    await tester.tap(find.text('选项 B'));
+    final accessibilityEvents = <Map<dynamic, dynamic>>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockDecodedMessageHandler<dynamic>(SystemChannels.accessibility, (
+          message,
+        ) async {
+          accessibilityEvents.add(message as Map<dynamic, dynamic>);
+        });
+    addTearDown(
+      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockDecodedMessageHandler<dynamic>(
+            SystemChannels.accessibility,
+            null,
+          ),
+    );
+
+    tester.binding.renderViews.first.owner!.semanticsOwner!.performAction(
+      _semanticsNodeForLabel(tester, '选项 B').id,
+      SemanticsAction.tap,
+    );
     await tester.pumpAndSettle();
     expect(await result.future, 'b');
+    expect(
+      accessibilityEvents.any((event) => event['type'] == 'tap'),
+      isTrue,
+      reason: 'TalkBack 语义点击应发送 TapSemanticEvent，触发 Android 点击音效',
+    );
     semantics.dispose();
   });
 
@@ -287,12 +345,17 @@ void main() {
 
     final initialA = _semanticsDataForLabel(tester, '选项 A');
     final initialB = _semanticsDataForLabel(tester, '选项 B');
+    expect(initialA.role, SemanticsRole.menuItemCheckbox);
+    expect(initialB.role, SemanticsRole.menuItemCheckbox);
     expect(initialA.flagsCollection.isChecked.name, 'isTrue');
     expect(initialB.flagsCollection.isChecked.name, 'isFalse');
     expect(initialA.flagsCollection.isInMutuallyExclusiveGroup, isFalse);
     expect(initialB.flagsCollection.isInMutuallyExclusiveGroup, isFalse);
 
-    await tester.tap(find.text('选项 B'));
+    tester.binding.renderViews.first.owner!.semanticsOwner!.performAction(
+      _semanticsNodeForLabel(tester, '选项 B').id,
+      SemanticsAction.tap,
+    );
     await tester.pumpAndSettle();
     expect(changed.last, {'a', 'b'});
     expect(
@@ -329,6 +392,8 @@ void main() {
 
     final initialA = _semanticsDataForLabel(tester, '选项 A');
     final initialAscending = _semanticsDataForLabel(tester, '升序');
+    expect(initialA.role, SemanticsRole.menuItemRadio);
+    expect(initialAscending.role, SemanticsRole.menuItemCheckbox);
     expect(initialA.flagsCollection.isChecked.name, 'isTrue');
     expect(initialA.flagsCollection.isInMutuallyExclusiveGroup, isTrue);
     expect(initialAscending.flagsCollection.isChecked.name, 'isFalse');

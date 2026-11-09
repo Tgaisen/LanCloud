@@ -1966,9 +1966,19 @@ class M3eMenuRow extends StatelessWidget {
     // 项目左右内缩 4dp，内圆角 = 16 − 4 = 12，符合嵌套规则。
     final ColorScheme scheme = Theme.of(context).colorScheme;
     final bool emphasized = selected && enabled;
+    final SemanticsRole role = !showSelectionIndicator
+        ? SemanticsRole.menuItem
+        : mutuallyExclusive
+        ? SemanticsRole.menuItemRadio
+        : SemanticsRole.menuItemCheckbox;
+    // 行本身合成一个读屏节点，让名称、菜单项角色和选中态落在同一节点上。
+    // 指针 / 键盘点击仍走 MenuItemButton；读屏点击由这里接管后必须显式调用
+    // Flutter 的 Feedback.forTap，发送 Android 用于 TalkBack 点击音效的
+    // TapSemanticEvent。普通 InkWell 会自动做这一步，自定义语义节点不会。
     return Semantics(
       container: true,
       excludeSemantics: true,
+      role: role,
       label: label,
       button: true,
       enabled: enabled,
@@ -1977,7 +1987,12 @@ class M3eMenuRow extends StatelessWidget {
       inMutuallyExclusiveGroup: showSelectionIndicator
           ? mutuallyExclusive
           : null,
-      onTap: enabled ? onTap : null,
+      onTap: enabled
+          ? () {
+              Feedback.forTap(context);
+              onTap();
+            }
+          : null,
       child: MenuItemButton(
         onPressed: enabled ? onTap : null,
         // 菜单里的项目是竖排文案：必须显式指定 vertical，MenuItemButton 才会把
@@ -2471,54 +2486,70 @@ class _M3eMenuRoute<T, R> extends PopupRoute<R> {
                         controller: _scroll,
                         thickness: 6,
                         radius: const Radius.circular(3),
-                        child: ValueListenableBuilder<int>(
-                          valueListenable: _selectionRevision,
-                          builder: (BuildContext context, _, _) => ListView(
-                            controller: _scroll,
-                            clipBehavior: groupedSurfaces
-                                ? Clip.none
-                                : Clip.hardEdge,
-                            // 贴着内容：放得下时卡片刚好包住项目（不同平台的
-                            // VisualDensity 会让行高在 40–48dp 之间变），放不下才滚
-                            shrinkWrap: true,
-                            padding: EdgeInsets.symmetric(
-                              vertical: groupedSurfaces ? 0 : _verticalPadding,
-                              horizontal: _itemInset,
-                            ),
-                            children: [
-                              for (
-                                int sectionIndex = 0;
-                                sectionIndex < sections.length;
-                                sectionIndex++
-                              ) ...[
-                                if (sectionIndex > 0)
-                                  if (useDividers)
-                                    Padding(
-                                      key: ValueKey(
-                                        'm3e-menu-divider-$sectionIndex',
-                                      ),
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                      ),
-                                      child: Divider(
-                                        height: _dividerExtent,
-                                        thickness: 1,
-                                      ),
-                                    )
-                                  else
-                                    SizedBox(
-                                      key: ValueKey(
-                                        'm3e-menu-group-gap-$sectionIndex',
-                                      ),
-                                      height: _groupGap,
-                                    ),
-                                _buildSection(
-                                  context,
-                                  sectionIndex,
-                                  groupedSurface: groupedSurfaces,
+                        child: Semantics(
+                          role: SemanticsRole.menu,
+                          container: true,
+                          explicitChildNodes: true,
+                          child: ValueListenableBuilder<int>(
+                            valueListenable: _selectionRevision,
+                            builder: (BuildContext context, _, _) =>
+                                // 菜单是一个整体，不是数据列表。ListView 会让
+                                // Android 自动附加 collection 信息，TalkBack 因而
+                                // 额外读「在列表中 / 第 N 个，共 N 个」。菜单项数量
+                                // 有限，改用单列滚动容器即可保留滚动和全部子项
+                                // 语义，同时不产生列表计数。
+                                SingleChildScrollView(
+                                  controller: _scroll,
+                                  clipBehavior: groupedSurfaces
+                                      ? Clip.none
+                                      : Clip.hardEdge,
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: groupedSurfaces
+                                        ? 0
+                                        : _verticalPadding,
+                                    horizontal: _itemInset,
+                                  ),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      for (
+                                        int sectionIndex = 0;
+                                        sectionIndex < sections.length;
+                                        sectionIndex++
+                                      ) ...[
+                                        if (sectionIndex > 0)
+                                          if (useDividers)
+                                            Padding(
+                                              key: ValueKey(
+                                                'm3e-menu-divider-$sectionIndex',
+                                              ),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 8,
+                                                  ),
+                                              child: Divider(
+                                                height: _dividerExtent,
+                                                thickness: 1,
+                                              ),
+                                            )
+                                          else
+                                            SizedBox(
+                                              key: ValueKey(
+                                                'm3e-menu-group-gap-$sectionIndex',
+                                              ),
+                                              height: _groupGap,
+                                            ),
+                                        _buildSection(
+                                          context,
+                                          sectionIndex,
+                                          groupedSurface: groupedSurfaces,
+                                        ),
+                                      ],
+                                    ],
+                                  ),
                                 ),
-                              ],
-                            ],
                           ),
                         ),
                       ),
