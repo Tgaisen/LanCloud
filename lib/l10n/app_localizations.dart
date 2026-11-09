@@ -3047,7 +3047,7 @@ abstract class AppLocalizations {
   /// No description provided for @downloaded.
   ///
   /// In zh, this message translates to:
-  /// **'已加入下载'**
+  /// **'已下载'**
   String get downloaded;
 
   /// No description provided for @folder.

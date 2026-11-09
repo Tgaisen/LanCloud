@@ -1685,7 +1685,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get fileActions => 'File actions';
 
   @override
-  String get downloaded => 'Added to downloads';
+  String get downloaded => 'Downloaded';
 
   @override
   String get folder => 'Folder';

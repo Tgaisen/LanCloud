@@ -45,6 +45,12 @@ enum TransferStatus {
   canceled,
 }
 
+const int _downloadChallengeProbeBytes = 64 * 1024;
+
+class _DownloadChallengeException implements Exception {
+  const _DownloadChallengeException();
+}
+
 class TransferTask {
   TransferTask({
     required this.id,
@@ -1116,6 +1122,38 @@ class TransferManager extends ChangeNotifier {
         task.status = TransferStatus.failed;
         task.error = _dioMessage(e);
       }
+    } on _DownloadChallengeException {
+      if (task.interruptedByAccountSwitch) {
+        task.status = TransferStatus.failed;
+      } else if (task.status == TransferStatus.paused) {
+        // 暂停保留当前状态，等用户继续。
+      } else if (task.kind == TransferKind.download &&
+          task.referer.isNotEmpty &&
+          !task.autoRefreshTried) {
+        task.autoRefreshTried = true;
+        task.url = '';
+        task.via = null;
+        final message = await _ensureDownloadUrl(task);
+        if (task.status == TransferStatus.canceled ||
+            task.status == TransferStatus.paused) {
+          // 重新解析期间用户已经取消或暂停。
+        } else if (message == null && !task.removed) {
+          task.status = TransferStatus.queued;
+          task.error = null;
+        } else {
+          task.status = TransferStatus.failed;
+          task.error ??=
+              message ??
+              NotificationService.i18n?.downloadBlocked ??
+              '下载被风控拦截，请稍后重试';
+        }
+      } else {
+        task.status = TransferStatus.failed;
+        if (!task.interruptedByAccountSwitch) {
+          task.error =
+              NotificationService.i18n?.downloadBlocked ?? '下载被风控拦截，请稍后重试';
+        }
+      }
     } on LanzouException catch (e) {
       task.status = TransferStatus.failed;
       if (!task.interruptedByAccountSwitch) {
@@ -1228,6 +1266,7 @@ class TransferManager extends ChangeNotifier {
 
   Future<void> _runDownload(TransferTask task) async {
     task.exporting = false;
+    final previouslyKnownTotal = task.total;
     // SAF 目录和公共 Downloads 都先下到应用专属中转目录，完成后由原生
     // 流式写入目标；固定路径 / 应用专属目录仍可直接写。
     final target = await _dependencies.download.targetMode();
@@ -1264,24 +1303,27 @@ class TransferManager extends ChangeNotifier {
         receiveTimeout: const Duration(hours: 2),
         onProgress: (received, total) => _reportProgress(task, received, total),
       );
-      if (result.total > 0) task.total = result.total;
       // 被风控拦截时会保存成校验页，这里识别并清理
       final file = File(path);
       if (await file.exists()) {
         task.received = await file.length();
-        if (task.total <= 0) task.total = task.received;
         final head = await file
-            .openRead(0, 512)
+            .openRead(0, _downloadChallengeProbeBytes)
             .fold<List<int>>(<int>[], (acc, chunk) => acc..addAll(chunk));
         final text = String.fromCharCodes(head);
-        if (text.contains('acw_sc__v2') || text.startsWith('<!DOCTYPE')) {
-          await file.delete();
+        final normalized = text.toLowerCase();
+        if (normalized.contains('acw_sc__v2') ||
+            normalized.trimLeft().startsWith('<!doctype')) {
+          await DioTransferDownloader.deleteState(path);
           task.savedPath = null;
-          throw LanzouException(
-            NotificationService.i18n?.downloadBlocked ?? '下载被风控拦截，请稍后重试',
-          );
+          task.partialPath = null;
+          task.received = 0;
+          task.total = previouslyKnownTotal;
+          throw const _DownloadChallengeException();
         }
       }
+      if (result.total > 0) task.total = result.total;
+      if (task.total <= 0) task.total = task.received;
       if (!staged) {
         final finalPath = await _dependencies.download.uniqueSavePath(
           task.name,

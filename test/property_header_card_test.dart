@@ -126,10 +126,16 @@ void main() {
   });
 
   testWidgets('属性详情值更新时淡入并轻微上移', (tester) async {
+    final semantics = tester.ensureSemantics();
     await tester.pumpWidget(
       host(const PropertyDetailRow(label: '大小', value: '—')),
     );
     await tester.pumpAndSettle();
+    final detailSemantics = tester
+        .getSemantics(find.byType(PropertyDetailRow))
+        .getSemanticsData();
+    expect(detailSemantics.label, contains('大小'));
+    expect(detailSemantics.label, contains('—'));
     final widthBefore = tester.getSize(find.byType(AnimatedSize)).width;
 
     await tester.pumpWidget(
@@ -160,5 +166,6 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('—'), findsNothing);
     expect(find.text('2.0 MB'), findsOneWidget);
+    semantics.dispose();
   });
 }
