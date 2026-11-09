@@ -2149,15 +2149,16 @@ class _M3eMenuRoute<T, R> extends PopupRoute<R> {
   /// 项目之间的间隔：M3E vertical menu 里每一项是各自独立的圆角块。
   static const double _itemGap = 4;
 
-  /// 非滚动菜单的组间间隔。当前项间隔 4dp，组间隔加大到 8dp 以形成明确层级。
-  static const double _groupGap = 8;
+  /// M3E segmented menu 的组间固定间隔。
+  static const double _groupGap = 2;
 
   /// 可滚动菜单使用 divider 分组；保留 M3 baseline 的 8dp 上下留白 + 1dp 线。
   static const double _dividerExtent = 17;
 
   /// 非滚动分组菜单的组卡片：内边距与组内圆角。
-  static const double _groupVerticalPadding = 2;
-  static const double _groupRadius = 12;
+  static const double _groupVerticalPadding = 4;
+  static const double _groupHorizontalPadding = 4;
+  static const double _groupRadius = 16;
 
   /// 项目相对卡片的左右内缩；同时决定项目自己的圆角（16 − 4 = 12dp）。
   static const double _itemInset = 4;
@@ -2286,13 +2287,20 @@ class _M3eMenuRoute<T, R> extends PopupRoute<R> {
       ],
     );
     if (!groupedSurface) return rows;
+    final ColorScheme scheme = Theme.of(context).colorScheme;
     return Material(
       key: ValueKey('m3e-menu-group-surface-$sectionIndex'),
-      color: Theme.of(context).colorScheme.surfaceContainer,
+      color: scheme.surfaceContainerLow,
+      elevation: 3,
+      shadowColor: scheme.shadow,
+      surfaceTintColor: Colors.transparent,
       borderRadius: BorderRadius.circular(_groupRadius),
       clipBehavior: Clip.antiAlias,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: _groupVerticalPadding),
+        padding: const EdgeInsets.symmetric(
+          horizontal: _groupHorizontalPadding,
+          vertical: _groupVerticalPadding,
+        ),
         child: rows,
       ),
     );
@@ -2419,12 +2427,14 @@ class _M3eMenuRoute<T, R> extends PopupRoute<R> {
             },
             child: Material(
               key: const ValueKey('m3e-menu-card'),
-              color: scheme.surfaceContainerLow,
+              color: groupedSurfaces
+                  ? Colors.transparent
+                  : scheme.surfaceContainerLow,
               // M3 给菜单的是 elevation level 2；这里按需求用 3
-              elevation: 3,
+              elevation: groupedSurfaces ? 0 : 3,
               surfaceTintColor: Colors.transparent,
               borderRadius: BorderRadius.circular(_radius),
-              clipBehavior: Clip.antiAlias,
+              clipBehavior: groupedSurfaces ? Clip.none : Clip.antiAlias,
               child: ConstrainedBox(
                 constraints: BoxConstraints(maxHeight: maxHeight),
                 // 卡片固定，超出高度的部分在卡片里面滚：滚动条沿用应用同款
@@ -2448,6 +2458,9 @@ class _M3eMenuRoute<T, R> extends PopupRoute<R> {
                         valueListenable: _selectionRevision,
                         builder: (BuildContext context, _, _) => ListView(
                           controller: _scroll,
+                          clipBehavior: groupedSurfaces
+                              ? Clip.none
+                              : Clip.hardEdge,
                           // 贴着内容：放得下时卡片刚好包住项目（不同平台的
                           // VisualDensity 会让行高在 40–48dp 之间变），放不下才滚
                           shrinkWrap: true,

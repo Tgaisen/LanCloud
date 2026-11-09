@@ -90,6 +90,37 @@ void main() {
     expect(find.byKey(const ValueKey('m3e-menu-group-gap-1')), findsOneWidget);
     expect(find.byKey(const ValueKey('m3e-menu-divider-1')), findsNothing);
     expect(
+      tester.getSize(find.byKey(const ValueKey('m3e-menu-group-gap-1'))).height,
+      2,
+    );
+    final scheme = Theme.of(tester.element(find.byType(M3eMenuRow).first))
+        .colorScheme;
+    final outer = tester.widget<Material>(
+      find.byKey(const ValueKey('m3e-menu-card')),
+    );
+    expect(outer.color, Colors.transparent);
+    expect(outer.elevation, 0);
+    expect(outer.clipBehavior, Clip.none);
+    for (var i = 0; i < 2; i++) {
+      final group = tester.widget<Material>(
+        find.byKey(ValueKey('m3e-menu-group-surface-$i')),
+      );
+      expect(group.color, scheme.surfaceContainerLow);
+      expect(group.elevation, 3);
+      expect(group.borderRadius, BorderRadius.circular(16));
+      final groupRect = tester.getRect(
+        find.byKey(ValueKey('m3e-menu-group-surface-$i')),
+      );
+      final rowRect = tester.getRect(
+        find.descendant(
+          of: find.byKey(ValueKey('m3e-menu-group-surface-$i')),
+          matching: find.byType(M3eMenuRow),
+        ),
+      );
+      expect(rowRect.top - groupRect.top, closeTo(4, 0.1));
+      expect(groupRect.bottom - rowRect.bottom, closeTo(4, 0.1));
+    }
+    expect(
       find.byKey(const ValueKey('m3e-menu-group-surface-0')),
       findsOneWidget,
     );
@@ -135,6 +166,18 @@ void main() {
 
     expect(find.byKey(const ValueKey('m3e-menu-divider-1')), findsOneWidget);
     expect(find.byKey(const ValueKey('m3e-menu-group-gap-1')), findsNothing);
+    expect(
+      find.byKey(const ValueKey('m3e-menu-group-surface-0')),
+      findsNothing,
+    );
+    final outer = tester.widget<Material>(
+      find.byKey(const ValueKey('m3e-menu-card')),
+    );
+    final scheme = Theme.of(tester.element(find.byType(M3eMenuRow).first))
+        .colorScheme;
+    expect(outer.color, scheme.surfaceContainerLow);
+    expect(outer.elevation, 3);
+    expect(outer.clipBehavior, Clip.antiAlias);
   });
 
   testWidgets('宽菜单单选显示选中态并在选择后返回', (tester) async {
