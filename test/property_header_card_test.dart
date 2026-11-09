@@ -59,8 +59,8 @@ void main() {
     expect(descOpacity(tester), 1.0);
   });
 
-  // 弹窗打开后简介才拉取回来：卡片高度要跟着平滑变高，不能瞬间跳
-  testWidgets('简介更新后卡片高度是平滑变化的', (tester) async {
+  // 弹窗打开后简介才拉取回来：完整简介直接展示，卡片高度平滑变化。
+  testWidgets('简介更新后完整展示且卡片高度平滑变化', (tester) async {
     Future<double> pumpWithDesc(String desc) async {
       await tester.pumpWidget(
         host(
@@ -78,7 +78,8 @@ void main() {
     await tester.pumpAndSettle();
     final short = tester.getSize(find.byType(PropertyHeaderCard)).height;
 
-    await pumpWithDesc(List.filled(20, '这是一段更长的简介').join('，'));
+    final longDescription = List.filled(20, '这是一段更长的简介').join('，');
+    await pumpWithDesc(longDescription);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
     final middle = tester.getSize(find.byType(PropertyHeaderCard)).height;
@@ -89,23 +90,16 @@ void main() {
     expect(middle, greaterThan(short));
     expect(middle, lessThan(tall));
 
-    // 简介默认只占 4 行；长内容可以展开，展开后卡片继续顺滑增高。
-    expect(find.text('展开'), findsOneWidget);
-    final descriptionCard = tester.getRect(
-      find.byKey(const ValueKey('property-description-card')),
-    );
-    final toggle = tester.getRect(
-      find.byKey(const ValueKey('property-description-toggle')),
-    );
-    expect(toggle.left - descriptionCard.left, 16);
-    expect(descriptionCard.bottom - toggle.bottom, 16);
-    await tester.tap(find.text('展开'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 300));
-    expect(find.text('收起'), findsOneWidget);
     expect(
-      tester.getSize(find.byType(PropertyHeaderCard)).height,
-      greaterThan(tall),
+      find.byKey(const ValueKey('property-description-toggle')),
+      findsNothing,
+    );
+    expect(find.text('展开'), findsNothing);
+    expect(find.text('收起'), findsNothing);
+    expect(
+      tester.widget<Text>(find.text(longDescription)).maxLines,
+      isNull,
+      reason: '简介应默认完整展示，不再截断',
     );
   });
 

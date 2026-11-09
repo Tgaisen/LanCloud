@@ -435,6 +435,13 @@ void main() {
     await _pumpDrive(tester, app, viewSize: const Size(320, 800));
 
     expect(tester.getSize(find.byType(PathBar)).height, 48);
+    final titleLeft = tester.getTopLeft(find.text('网盘')).dx;
+    final rootLeft = tester
+        .getTopLeft(
+          find.descendant(of: find.byType(PathBar), matching: find.text('根目录')),
+        )
+        .dx;
+    expect(rootLeft, closeTo(titleLeft, 0.5));
     final sortButton = find.byTooltip('排序');
     final viewButton = find.byTooltip('视图');
     expect(sortButton, findsOneWidget);

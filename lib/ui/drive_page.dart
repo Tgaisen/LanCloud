@@ -3355,6 +3355,9 @@ class _DrivePageState extends ConsumerState<DrivePage>
         children: [
           Expanded(
             child: PathBar(
+              // 路径栏本身仍有 12dp 内边距；首段胶囊只留 4dp，
+              // 使「根目录」文字与 AppBar 标题默认的 16dp 起点对齐。
+              firstSegmentContentPadding: 4,
               segments: [
                 PathSegment(id: '-1', label: context.l10n.root),
                 for (final node in _path)

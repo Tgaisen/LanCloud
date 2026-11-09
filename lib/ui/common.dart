@@ -2845,11 +2845,13 @@ class PathChip extends StatelessWidget {
     required this.label,
     required this.current,
     required this.onTap,
+    this.contentPadding = 12,
   });
 
   final String label;
   final bool current;
   final VoidCallback onTap;
+  final double contentPadding;
 
   @override
   Widget build(BuildContext context) {
@@ -2878,7 +2880,7 @@ class PathChip extends StatelessWidget {
                   onTap: onTap,
                   child: Center(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      padding: EdgeInsets.symmetric(horizontal: contentPadding),
                       child: Text(
                         label,
                         maxLines: 1,
@@ -2922,6 +2924,7 @@ class PathBar extends StatefulWidget {
     required this.onTap,
     this.currentIndex,
     this.horizontalPadding = 12,
+    this.firstSegmentContentPadding = 12,
   });
 
   final List<PathSegment> segments;
@@ -2934,6 +2937,9 @@ class PathBar extends StatefulWidget {
 
   /// 横向内边距。AlertDialog 已有内容边距时传 0，避免重复缩进。
   final double horizontalPadding;
+
+  /// 第一段胶囊的内容内边距；页面可缩小它来对齐顶栏标题文字。
+  final double firstSegmentContentPadding;
 
   @override
   State<PathBar> createState() => _PathBarState();
@@ -3101,6 +3107,9 @@ class _PathBarState extends State<PathBar> with TickerProviderStateMixin {
               label: entry.segment.label,
               current: _isCurrent(entry),
               onTap: () => _handleTap(entry),
+              contentPadding: index == 0
+                  ? widget.firstSegmentContentPadding
+                  : 12,
             ),
           ],
         ),
@@ -3759,104 +3768,20 @@ class PropertyDetailRow extends StatelessWidget {
   }
 }
 
-/// 属性简介：默认最多 4 行，长简介可以展开 / 收起。
+/// 属性简介：完整展示，并支持选中复制。
 ///
 /// 用 SelectionArea + Text（而不是 SelectableText）：文字可以选中复制，
-/// 但不会带来自己的上下滚动。是否出现展开按钮按实际排版宽度判断，
-/// 并保留长文本兜底，避免极端字体度量下漏掉展开入口。
-class _PropertyDescription extends StatefulWidget {
+/// 但不会带来自己的上下滚动。
+class _PropertyDescription extends StatelessWidget {
   const _PropertyDescription({required this.text});
 
   final String text;
 
   @override
-  State<_PropertyDescription> createState() => _PropertyDescriptionState();
-}
-
-class _PropertyDescriptionState extends State<_PropertyDescription> {
-  static const int _collapsedLines = 4;
-
-  bool _expanded = false;
-
-  @override
-  void didUpdateWidget(covariant _PropertyDescription oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.text != oldWidget.text) _expanded = false;
-  }
-
-  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final style = theme.textTheme.bodyMedium?.copyWith(height: 1.5);
-    return LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints constraints) {
-        final maxWidth = constraints.hasBoundedWidth
-            ? constraints.maxWidth
-            : math.max(0.0, MediaQuery.sizeOf(context).width - 80);
-        final painter = TextPainter(
-          text: TextSpan(text: widget.text, style: style),
-          maxLines: _collapsedLines,
-          textDirection: Directionality.of(context),
-          textScaler: MediaQuery.textScalerOf(context),
-          ellipsis: '…',
-        )..layout(maxWidth: maxWidth);
-        final overflows = painter.didExceedMaxLines || widget.text.length > 120;
-        painter.dispose();
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SelectionArea(
-              child: AnimatedSwitcher(
-                duration: reduceMotionOf(context)
-                    ? Duration.zero
-                    : const Duration(milliseconds: 220),
-                switchInCurve: Curves.easeOut,
-                switchOutCurve: Curves.easeIn,
-                transitionBuilder: (child, animation) =>
-                    FadeTransition(opacity: animation, child: child),
-                child: Text(
-                  widget.text,
-                  key: ValueKey(widget.text),
-                  maxLines: _expanded ? null : _collapsedLines,
-                  overflow: _expanded
-                      ? TextOverflow.visible
-                      : TextOverflow.ellipsis,
-                  style: style,
-                ),
-              ),
-            ),
-            if (overflows)
-              Padding(
-                padding: const EdgeInsets.only(left: 4, bottom: 4),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    key: const ValueKey('property-description-toggle'),
-                    onPressed: () => setState(() => _expanded = !_expanded),
-                    icon: AnimatedRotation(
-                      turns: _expanded ? 0.75 : 0.25,
-                      duration: reduceMotionOf(context)
-                          ? Duration.zero
-                          : const Duration(milliseconds: 220),
-                      curve: Curves.easeOutCubic,
-                      child: const Icon(Icons.chevron_right),
-                    ),
-                    label: Text(
-                      _expanded ? context.l10n.collapse : context.l10n.expand,
-                    ),
-                    style: TextButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                      padding: EdgeInsets.zero,
-                      minimumSize: const Size(48, 48),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        );
-      },
-    );
+    return SelectionArea(child: Text(text, style: style));
   }
 }
 
