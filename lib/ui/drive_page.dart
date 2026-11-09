@@ -1889,9 +1889,17 @@ class _DrivePageState extends ConsumerState<DrivePage>
       context,
       targets: [
         for (final entry in fileTargets.entries)
-          RenameTarget(id: entry.key, name: entry.value.name),
+          RenameTarget(
+            id: entry.key,
+            name: entry.value.name,
+            kind: RenameTargetKind.file,
+          ),
         for (final entry in folderTargets.entries)
-          RenameTarget(id: entry.key, name: entry.value.name),
+          RenameTarget(
+            id: entry.key,
+            name: entry.value.name,
+            kind: RenameTargetKind.folder,
+          ),
       ],
       supportingText: files.isNotEmpty && freeTier
           ? context.l10n.fileRenameMembershipHint
@@ -2529,6 +2537,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
     final name = await showRenameDialog(
       context,
       initialName: file.name,
+      kind: RenameTargetKind.file,
       // 普通账号改不了文件名（重命名接口只对会员开放），在弹窗正文里说明。
       supportingText: freeTier ? context.l10n.fileRenameMembershipHint : null,
       keyPrefix: 'drive-rename',
@@ -2617,6 +2626,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
     final name = await showRenameDialog(
       context,
       initialName: folder.name,
+      kind: RenameTargetKind.folder,
       keyPrefix: 'drive-rename',
     );
     if (name == null || !mounted) return null;

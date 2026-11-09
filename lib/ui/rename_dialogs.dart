@@ -11,6 +11,7 @@ import 'reduce_motion.dart';
 Future<String?> showRenameDialog(
   BuildContext context, {
   required String initialName,
+  required RenameTargetKind kind,
   String? supportingText,
   String keyPrefix = 'rename',
 }) {
@@ -18,6 +19,7 @@ Future<String?> showRenameDialog(
     context: context,
     builder: (_) => _SingleRenameDialog(
       initialName: initialName,
+      kind: kind,
       supportingText: supportingText,
       keyPrefix: keyPrefix,
     ),
@@ -44,11 +46,13 @@ Future<List<RenameChange>?> showBatchRenameDialog(
 class _SingleRenameDialog extends StatefulWidget {
   const _SingleRenameDialog({
     required this.initialName,
+    required this.kind,
     required this.supportingText,
     required this.keyPrefix,
   });
 
   final String initialName;
+  final RenameTargetKind kind;
   final String? supportingText;
   final String keyPrefix;
 
@@ -72,6 +76,10 @@ class _SingleRenameDialogState extends State<_SingleRenameDialog> {
     final name = _controller.text.trim();
     if (name.isEmpty) {
       setState(() => _error = context.l10n.pleaseEnterName);
+      return;
+    }
+    if (containsInvalidRenameCharacters(name, widget.kind)) {
+      setState(() => _error = context.l10n.renameInvalidCharacters);
       return;
     }
     Navigator.of(context).pop(name);
@@ -190,11 +198,18 @@ class _BatchRenameDialogState extends State<_BatchRenameDialog> {
     RenameError.invalidPattern => l10n.invalidRegularExpression,
     RenameError.noMatches => l10n.renameNoMatches,
     RenameError.emptyName => l10n.renameEmptyName,
+    RenameError.invalidCharacters => l10n.renameInvalidCharacters,
     null => '',
   };
 
   Widget _buildConfigContent(BuildContext context, AppLocalizations l10n) {
     final prefix = widget.keyPrefix;
+    final replacementError = _error == RenameError.invalidCharacters
+        ? _errorText(l10n)
+        : null;
+    final searchError = _error != null && replacementError == null
+        ? _errorText(l10n)
+        : null;
     return Column(
       key: ValueKey('$prefix-config-content'),
       mainAxisSize: MainAxisSize.min,
@@ -221,7 +236,7 @@ class _BatchRenameDialogState extends State<_BatchRenameDialog> {
               border: const OutlineInputBorder(),
               labelText: l10n.findContent,
             ),
-            _error == null ? null : _errorText(l10n),
+            searchError,
           ),
           onChanged: (_) => _clearError(),
         ),
@@ -230,9 +245,13 @@ class _BatchRenameDialogState extends State<_BatchRenameDialog> {
           key: ValueKey('$prefix-replacement'),
           controller: _replaceController,
           textInputAction: TextInputAction.done,
-          decoration: InputDecoration(
-            border: const OutlineInputBorder(),
-            labelText: l10n.replaceWith,
+          decoration: errorState(
+            context,
+            InputDecoration(
+              border: const OutlineInputBorder(),
+              labelText: l10n.replaceWith,
+            ),
+            replacementError,
           ),
           onChanged: (_) => _clearError(),
           onSubmitted: (_) => _buildPreview(),

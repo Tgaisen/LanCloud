@@ -604,6 +604,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get renameEmptyName => 'The new file name cannot be empty';
 
   @override
+  String get renameInvalidCharacters => 'Contains invalid characters';
+
+  @override
   String renamedUploads(int count) {
     return 'Renamed $count upload tasks';
   }
