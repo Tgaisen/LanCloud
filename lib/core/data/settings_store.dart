@@ -109,8 +109,8 @@ class SettingsStore {
   /// 网盘文件排序方式：default / name / size / time。
   String sortMode = 'default';
 
-  /// 网盘排序是否升序；关闭时沿用服务端/原有降序顺序。
-  bool sortAscending = false;
+  /// 网盘排序是否升序；服务端默认按时间早到晚返回。
+  bool sortAscending = true;
 
   /// 首页「快速访问」/「最近使用」是否展开（重启后保持）。
   bool quickExpanded = true;
@@ -189,7 +189,7 @@ class SettingsStore {
     notifyProgress = prefs.getBool(_keyNotifyProgress) ?? true;
     notifyDone = prefs.getBool(_keyNotifyDone) ?? true;
     sortMode = prefs.getString(_keySortMode) ?? 'default';
-    sortAscending = prefs.getBool(_keySortAscending) ?? false;
+    sortAscending = prefs.getBool(_keySortAscending) ?? true;
     quickExpanded = prefs.getBool(_keyQuickExpanded) ?? true;
     recentsExpanded = prefs.getBool(_keyRecentsExpanded) ?? true;
     recentLimit = prefs.getInt(_keyRecentLimit) ?? 50;

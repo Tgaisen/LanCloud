@@ -251,7 +251,7 @@ class _GatedClient extends _FakeClient {
       share.future;
 }
 
-/// 固定服务端降序顺序，用于验证升降序与文件夹特殊规则。
+/// 固定服务端时间升序顺序，用于验证升降序与文件夹特殊规则。
 class _OrderedClient extends _FakeClient {
   @override
   Future<({List<LzFolder> folders, List<PathNode> path})> listFolders(
@@ -274,8 +274,8 @@ class _OrderedClient extends _FakeClient {
   ) async => (
     files: folderId == '-1' && page == 1
         ? [
-            LzFile(id: 'f2', name: 'b.zip', size: '2 M', time: '2 天前'),
             LzFile(id: 'f3', name: 'a.zip', size: '3 M', time: '3 天前'),
+            LzFile(id: 'f2', name: 'b.zip', size: '2 M', time: '2 天前'),
             LzFile(id: 'f1', name: 'c.zip', size: '1 M', time: '1 天前'),
           ]
         : const <LzFile>[],
@@ -419,64 +419,51 @@ void main() {
     expect(find.byType(AdaptiveSliverRows), findsNothing);
   });
 
-  testWidgets('路径栏 48dp：排序按钮和纯图标布局连接组可在窄屏操作', (tester) async {
+  testWidgets('路径栏 48dp：窄屏用独立排序/视图按钮，宽屏保留连接组', (tester) async {
     final app = _FakeApp(_OrderedClient());
     app.environment.cachePageSettings.store.gridView = false;
     await _pumpDrive(tester, app, viewSize: const Size(320, 800));
 
     expect(tester.getSize(find.byType(PathBar)).height, 48);
-    expect(find.byTooltip('排序'), findsOneWidget);
+    final sortButton = find.byTooltip('排序');
+    final viewButton = find.byTooltip('视图');
+    expect(sortButton, findsOneWidget);
+    expect(viewButton, findsOneWidget);
     expect(
-      tester.getSize(find.byTooltip('排序')),
+      tester.getSize(sortButton),
       const Size(48, 48),
       reason: '路径栏和图标按钮均使用 48dp 触控目标',
     );
+    expect(tester.getSize(viewButton), const Size(48, 48));
+    expect(
+      tester.getRect(viewButton).left - tester.getRect(sortButton).right,
+      12,
+      reason: '排序与视图两个独立按钮之间留 12dp',
+    );
+    expect(find.byType(M3eConnectedButtonGroup<String>), findsNothing);
+
+    await tester.tap(viewButton);
+    await _settleSheet(tester);
+    expect(find.text('列表视图'), findsOneWidget);
+    expect(find.text('网格视图'), findsOneWidget);
+    await tester.tap(find.text('网格视图'));
+    await _settleSheet(tester);
+    expect(app.environment.cachePageSettings.store.gridView, isTrue);
+
+    tester.view.physicalSize = const Size(800, 800);
+    await tester.pumpAndSettle();
     final layoutGroup = find.byType(M3eConnectedButtonGroup<String>);
     expect(layoutGroup, findsOneWidget);
     expect(tester.getSize(layoutGroup).width, 98);
     expect(
-      find.descendant(of: layoutGroup, matching: find.text('网格')).hitTestable(),
+      find
+          .descendant(of: layoutGroup, matching: find.text('网格视图'))
+          .hitTestable(),
       findsNothing,
       reason: '连接组只显示图标；读屏文字不参与视觉显示',
     );
-    final groupButtons = find
-        .descendant(of: layoutGroup, matching: find.byType(M3EToggleButton))
-        .hitTestable();
-    expect(groupButtons, findsNWidgets(2));
-    for (int i = 0; i < 2; i++) {
-      final icon = find.descendant(
-        of: groupButtons.at(i),
-        matching: find.byIcon(i == 0 ? Icons.view_list : Icons.grid_view),
-      );
-      expect(
-        tester.getCenter(icon).dx,
-        closeTo(tester.getCenter(groupButtons.at(i)).dx, 0.1),
-      );
-      expect(
-        tester.getCenter(icon).dy,
-        closeTo(tester.getCenter(groupButtons.at(i)).dy, 0.1),
-      );
-    }
-
-    await tester.tap(
-      find
-          .descendant(of: layoutGroup, matching: find.byIcon(Icons.grid_view))
-          .hitTestable(),
-    );
-    await tester.pump();
-    expect(app.environment.cachePageSettings.store.gridView, isTrue);
-
-    await tester.tap(find.byTooltip('排序'));
-    await _settleSheet(tester);
-    expect(find.byType(Radio<bool>), findsNWidgets(3));
-    expect(find.byType(Checkbox), findsOneWidget);
-
-    await tester.tap(find.text('名称'));
-    await tester.pump();
-    await tester.tap(find.text('升序'));
-    await tester.pump();
-    expect(app.environment.listHomeSettings.store.sortMode, 'name');
-    expect(app.environment.listHomeSettings.store.sortAscending, isTrue);
+    expect(find.byTooltip('列表视图'), findsOneWidget);
+    expect(find.byTooltip('网格视图'), findsOneWidget);
   });
 
   testWidgets('排序升降序：文件夹时间反转、大小保持原序', (tester) async {
@@ -496,19 +483,28 @@ void main() {
 
     double top(String text) => tester.getTopLeft(find.text(text)).dy;
 
+    // 服务端按时间早到晚返回；默认“时间 + 升序”保持原顺序。
+    expect(top('文件夹 B'), lessThan(top('文件夹 A')));
+    expect(top('文件夹 A'), lessThan(top('文件夹 C')));
+    expect(top('a.zip'), lessThan(top('b.zip')));
+    expect(top('b.zip'), lessThan(top('c.zip')));
+
     await openSort();
-    await tester.tap(find.text('时间'));
-    await tester.pump();
+    expect(find.byType(Radio<bool>), findsNWidgets(3));
+    expect(find.text('大小'), findsOneWidget);
+    expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, isTrue);
     await tester.tap(find.text('升序'));
     await tester.pump();
     await closeSort();
 
     expect(top('文件夹 C'), lessThan(top('文件夹 A')));
     expect(top('文件夹 A'), lessThan(top('文件夹 B')));
-    expect(top('c.zip'), lessThan(top('a.zip')));
-    expect(top('a.zip'), lessThan(top('b.zip')));
+    expect(top('c.zip'), lessThan(top('b.zip')));
+    expect(top('b.zip'), lessThan(top('a.zip')));
 
     await openSort();
+    await tester.tap(find.text('升序'));
+    await tester.pump();
     await tester.tap(find.text('大小'));
     await tester.pump();
     await closeSort();

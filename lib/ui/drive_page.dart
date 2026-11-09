@@ -40,6 +40,29 @@ const double _driveEnterDurationMs = 720;
 const double _driveEnterItemDurationMs = 232;
 const double _driveEnterStepMs = 26;
 
+String _lanzouNameSortKey(String name) =>
+    PinyinHelper.getPinyinE(name, separator: '', defPinyin: '~').toLowerCase();
+
+/// 文件夹没有时间 / 大小字段，按网盘页的既有约定处理：
+/// 时间升序沿用服务端顺序，降序反转；名称按拼音比较；大小保持原序。
+List<LzFolder> _sortLzFoldersForDisplay(
+  List<LzFolder> folders, {
+  required String sortMode,
+  required bool ascending,
+}) {
+  var list = List<LzFolder>.of(folders);
+  if (sortMode == 'name') {
+    list.sort(
+      (a, b) =>
+          _lanzouNameSortKey(a.name).compareTo(_lanzouNameSortKey(b.name)),
+    );
+    if (!ascending) list = list.reversed.toList();
+  } else if (sortMode != 'size' && !ascending) {
+    list = list.reversed.toList();
+  }
+  return list;
+}
+
 /// 网盘页文件条目 ⋯ 菜单里的动作。
 enum _FileMenuAction {
   download,
@@ -973,28 +996,15 @@ class _DrivePageState extends ConsumerState<DrivePage>
 
   List<LzFolder> get _visibleFolders {
     final query = _filter.toLowerCase();
-    var list = _folders
+    final list = _folders
         .where((f) => query.isEmpty || f.name.toLowerCase().contains(query))
         .toList();
-    if (_sortMode == 'name') {
-      final direction = _sortAscending ? 1 : -1;
-      list.sort(
-        (a, b) =>
-            direction * _nameSortKey(a.name).compareTo(_nameSortKey(b.name)),
-      );
-    } else if (_sortAscending && _sortMode != 'size') {
-      // 文件夹没有时间 / 大小字段：时间升序时反转服务端顺序；
-      // 大小模式无法比较文件夹，保持服务端原顺序。
-      list = list.reversed.toList();
-    }
-    return list;
+    return _sortLzFoldersForDisplay(
+      list,
+      sortMode: _sortMode,
+      ascending: _sortAscending,
+    );
   }
-
-  String _nameSortKey(String name) => PinyinHelper.getPinyinE(
-    name,
-    separator: '',
-    defPinyin: '~',
-  ).toLowerCase();
 
   List<LzFile> get _visibleFiles {
     final query = _filter.toLowerCase();
@@ -1010,11 +1020,13 @@ class _DrivePageState extends ConsumerState<DrivePage>
               lzSizeToBytes(a.size).compareTo(lzSizeToBytes(b.size)),
         );
       case 'default':
-        if (_sortAscending) list = list.reversed.toList();
+      case 'time':
+        if (!_sortAscending) list = list.reversed.toList();
       default:
         list.sort(
           (a, b) =>
-              direction * _nameSortKey(a.name).compareTo(_nameSortKey(b.name)),
+              direction *
+              _lanzouNameSortKey(a.name).compareTo(_lanzouNameSortKey(b.name)),
         );
     }
     return list;
@@ -1274,6 +1286,27 @@ class _DrivePageState extends ConsumerState<DrivePage>
         }
       },
     );
+  }
+
+  Future<void> _showViewMenu(BuildContext anchorContext) async {
+    final anchor = m3eMenuAnchorOf(anchorContext);
+    if (anchor == null) return;
+    final l10n = context.l10n;
+    final selected = await showAdaptiveM3eSingleSelectMenu<String>(
+      context: context,
+      anchor: anchor,
+      alignEnd: true,
+      selected: _cacheSettings.gridView ? 'grid' : 'list',
+      items: [
+        M3eMenuItem(value: 'list', label: l10n.listView, icon: Icons.view_list),
+        M3eMenuItem(value: 'grid', label: l10n.gridView, icon: Icons.grid_view),
+      ],
+    );
+    if (!mounted || selected == null) return;
+    final grid = selected == 'grid';
+    if (grid != _cacheSettings.gridView) {
+      await _cacheSettings.setGridView(grid);
+    }
   }
 
   /// 网盘菜单：布局与排序移到路径栏，这里只保留列表操作。
@@ -3267,6 +3300,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
   Widget _pathBar() {
     final scheme = Theme.of(context).colorScheme;
     final grid = _cacheSettings.gridView;
+    final compact = MediaQuery.sizeOf(context).width < kLargeLayoutBreakpoint;
     return Padding(
       padding: const EdgeInsets.only(right: 12),
       child: Row(
@@ -3294,29 +3328,43 @@ class _DrivePageState extends ConsumerState<DrivePage>
               onPressed: () => _showSortMenu(anchorContext),
             ),
           ),
-          const SizedBox(width: 4),
-          SizedBox(
-            // 两个 48dp 按钮 + 连接组固定 2dp 间隙。
-            width: 98,
-            child: M3eConnectedButtonGroup<String>(
-              values: const ['list', 'grid'],
-              selected: grid ? 'grid' : 'list',
-              onSelected: (value) =>
-                  _cacheSettings.setGridView(value == 'grid'),
-              semanticLabelOf: (value) =>
-                  value == 'grid' ? context.l10n.grid : context.l10n.list,
-              iconOf: (value) => Tooltip(
-                message: value == 'grid'
-                    ? context.l10n.grid
-                    : context.l10n.list,
-                child: Icon(
-                  value == 'grid' ? Icons.grid_view : Icons.view_list,
-                ),
+          if (compact) ...[
+            const SizedBox(width: 12),
+            Builder(
+              builder: (BuildContext anchorContext) => M3eIconButton(
+                tooltip: context.l10n.viewMode,
+                icon: grid ? Icons.grid_view : Icons.view_list,
+                containerColor: scheme.secondaryContainer,
+                iconColor: scheme.onSecondaryContainer,
+                onPressed: () => _showViewMenu(anchorContext),
               ),
-              expand: true,
-              semanticLabel: context.l10n.layout,
             ),
-          ),
+          ] else ...[
+            const SizedBox(width: 4),
+            SizedBox(
+              // 两个 48dp 按钮 + 连接组固定 2dp 间隙。
+              width: 98,
+              child: M3eConnectedButtonGroup<String>(
+                values: const ['list', 'grid'],
+                selected: grid ? 'grid' : 'list',
+                onSelected: (value) =>
+                    _cacheSettings.setGridView(value == 'grid'),
+                semanticLabelOf: (value) => value == 'grid'
+                    ? context.l10n.gridView
+                    : context.l10n.listView,
+                iconOf: (value) => Tooltip(
+                  message: value == 'grid'
+                      ? context.l10n.gridView
+                      : context.l10n.listView,
+                  child: Icon(
+                    value == 'grid' ? Icons.grid_view : Icons.view_list,
+                  ),
+                ),
+                expand: true,
+                semanticLabel: context.l10n.layout,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -5335,6 +5383,8 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
   List<PathNode> _path = [];
   bool _loading = true;
   String? _error;
+  String _sortMode = 'time';
+  bool _sortAscending = true;
 
   /// 上传模式下文件名为空时的 error state
   String? _nameError;
@@ -5403,14 +5453,70 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
   String _targetName(AppLocalizations l10n) =>
       _path.isEmpty ? l10n.root : _path.last.name;
 
+  List<LzFolder> get _visibleFolders => _sortLzFoldersForDisplay(
+    _folders.where((folder) => !widget.excludeIds.contains(folder.id)).toList(),
+    sortMode: _sortMode,
+    ascending: _sortAscending,
+  );
+
+  Future<void> _showFolderSortMenu(BuildContext anchorContext) async {
+    final anchor = m3eMenuAnchorOf(anchorContext);
+    if (anchor == null) return;
+    final l10n = context.l10n;
+    await showAdaptiveM3eChoiceMenu<String>(
+      context: context,
+      anchor: anchor,
+      alignEnd: true,
+      radioValue: _sortMode,
+      checkedValues: _sortAscending
+          ? const <String>{'ascending'}
+          : const <String>{},
+      sections: [
+        M3eMenuSection(
+          items: [
+            M3eMenuItem(
+              value: 'time',
+              label: l10n.sortTime,
+              icon: Icons.schedule,
+              selectionRole: M3eMenuSelectionRole.radio,
+            ),
+            M3eMenuItem(
+              value: 'name',
+              label: l10n.sortName,
+              icon: Icons.sort_by_alpha,
+              selectionRole: M3eMenuSelectionRole.radio,
+            ),
+          ],
+        ),
+        M3eMenuSection(
+          items: [
+            M3eMenuItem(
+              value: 'ascending',
+              label: l10n.ascending,
+              icon: Icons.arrow_upward,
+              selectionRole: M3eMenuSelectionRole.checkbox,
+            ),
+          ],
+        ),
+      ],
+      onChanged: (choice) {
+        final sort = choice.radioValue ?? _sortMode;
+        final ascending = choice.checkedValues.contains('ascending');
+        if (sort == _sortMode && ascending == _sortAscending) return;
+        setState(() {
+          _sortMode = sort;
+          _sortAscending = ascending;
+        });
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final visible = _folders
-        .where((f) => !widget.excludeIds.contains(f.id))
-        .toList();
+    final visible = _visibleFolders;
     // 选目标文件夹（可选改名输入框）：套上「不被输入法压扁 + 上移聚焦」外壳
     return formDialogPan(
       context,
@@ -5455,9 +5561,23 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
                     ),
                   ),
                   const SizedBox(width: 4),
+                  Builder(
+                    builder: (BuildContext anchorContext) => M3eIconButton(
+                      tooltip: l10n.sort,
+                      icon: Icons.sort,
+                      containerColor: scheme.secondaryContainer,
+                      iconColor: scheme.onSecondaryContainer,
+                      onPressed: _loading
+                          ? null
+                          : () => _showFolderSortMenu(anchorContext),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
                   M3eIconButton(
                     tooltip: l10n.newFolder,
                     icon: Icons.create_new_folder_outlined,
+                    containerColor: scheme.secondaryContainer,
+                    iconColor: scheme.onSecondaryContainer,
                     onPressed: _loading ? null : _mkdir,
                   ),
                 ],

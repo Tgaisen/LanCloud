@@ -2882,6 +2882,24 @@ abstract class AppLocalizations {
   /// **'布局'**
   String get layout;
 
+  /// No description provided for @viewMode.
+  ///
+  /// In zh, this message translates to:
+  /// **'视图'**
+  String get viewMode;
+
+  /// No description provided for @listView.
+  ///
+  /// In zh, this message translates to:
+  /// **'列表视图'**
+  String get listView;
+
+  /// No description provided for @gridView.
+  ///
+  /// In zh, this message translates to:
+  /// **'网格视图'**
+  String get gridView;
+
   /// No description provided for @grid.
   ///
   /// In zh, this message translates to:

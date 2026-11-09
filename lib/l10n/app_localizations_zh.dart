@@ -1536,6 +1536,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get layout => '布局';
 
   @override
+  String get viewMode => '视图';
+
+  @override
+  String get listView => '列表视图';
+
+  @override
+  String get gridView => '网格视图';
+
+  @override
   String get grid => '网格';
 
   @override

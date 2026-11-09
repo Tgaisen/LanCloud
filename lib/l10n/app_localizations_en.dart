@@ -1599,6 +1599,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get layout => 'Layout';
 
   @override
+  String get viewMode => 'View';
+
+  @override
+  String get listView => 'List view';
+
+  @override
+  String get gridView => 'Grid view';
+
+  @override
   String get grid => 'Grid';
 
   @override
