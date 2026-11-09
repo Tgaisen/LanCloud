@@ -101,6 +101,20 @@ void main() {
     expect(outer.color, Colors.transparent);
     expect(outer.elevation, 0);
     expect(outer.clipBehavior, Clip.none);
+    final shadowClipFinder = find.byKey(const ValueKey('m3e-menu-shadow-clip'));
+    expect(shadowClipFinder, findsOneWidget);
+    final shadowClip = tester.widget<ClipRect>(shadowClipFinder);
+    final shadowClipRect = shadowClip.clipper!.getClip(
+      tester.getSize(shadowClipFinder),
+    );
+    expect(shadowClipRect.left, -16);
+    expect(shadowClipRect.top, -16);
+    expect(shadowClipRect.right, tester.getSize(shadowClipFinder).width + 16);
+    expect(shadowClipRect.bottom, tester.getSize(shadowClipFinder).height + 16);
+    expect(
+      tester.widget<ListView>(find.byType(ListView)).padding,
+      const EdgeInsets.symmetric(horizontal: 4),
+    );
     for (var i = 0; i < 2; i++) {
       final group = tester.widget<Material>(
         find.byKey(ValueKey('m3e-menu-group-surface-$i')),
@@ -119,6 +133,13 @@ void main() {
       );
       expect(rowRect.top - groupRect.top, closeTo(4, 0.1));
       expect(groupRect.bottom - rowRect.bottom, closeTo(4, 0.1));
+      if (i == 0) {
+        expect(
+          groupRect.top,
+          100 + 48 + 4,
+          reason: 'gap 菜单第一个分组表面与锚点的距离和无 gap 卡片一致',
+        );
+      }
     }
     expect(
       find.byKey(const ValueKey('m3e-menu-group-surface-0')),

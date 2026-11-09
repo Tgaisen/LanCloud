@@ -2160,6 +2160,9 @@ class _M3eMenuRoute<T, R> extends PopupRoute<R> {
   static const double _groupHorizontalPadding = 4;
   static const double _groupRadius = 16;
 
+  /// 分组卡片阴影的绘制缓冲区；裁剪只限制滚动溢出，不裁掉 3dp elevation 阴影。
+  static const double _shadowClipExtent = 16;
+
   /// 项目相对卡片的左右内缩；同时决定项目自己的圆角（16 − 4 = 12dp）。
   static const double _itemInset = 4;
 
@@ -2267,7 +2270,7 @@ class _M3eMenuRoute<T, R> extends PopupRoute<R> {
         itemGapCount * _itemGap +
         groupGapCount * groupExtent +
         (groupedSurfaces ? sectionCount * _groupVerticalPadding * 2 : 0) +
-        _verticalPadding * 2;
+        (groupedSurfaces ? 0 : _verticalPadding * 2);
   }
 
   Widget _buildSection(
@@ -2450,58 +2453,66 @@ class _M3eMenuRoute<T, R> extends PopupRoute<R> {
                     data: const ScrollbarThemeData(
                       trackColor: WidgetStatePropertyAll(Colors.transparent),
                     ),
-                    child: Scrollbar(
-                      controller: _scroll,
-                      thickness: 6,
-                      radius: const Radius.circular(3),
-                      child: ValueListenableBuilder<int>(
-                        valueListenable: _selectionRevision,
-                        builder: (BuildContext context, _, _) => ListView(
-                          controller: _scroll,
-                          clipBehavior: groupedSurfaces
-                              ? Clip.none
-                              : Clip.hardEdge,
-                          // 贴着内容：放得下时卡片刚好包住项目（不同平台的
-                          // VisualDensity 会让行高在 40–48dp 之间变），放不下才滚
-                          shrinkWrap: true,
-                          padding: const EdgeInsets.symmetric(
-                            vertical: _verticalPadding,
-                            horizontal: _itemInset,
-                          ),
-                          children: [
-                            for (
-                              int sectionIndex = 0;
-                              sectionIndex < sections.length;
-                              sectionIndex++
-                            ) ...[
-                              if (sectionIndex > 0)
-                                if (useDividers)
-                                  Padding(
-                                    key: ValueKey(
-                                      'm3e-menu-divider-$sectionIndex',
+                    child: ClipRect(
+                      key: groupedSurfaces
+                          ? const ValueKey('m3e-menu-shadow-clip')
+                          : null,
+                      clipper: groupedSurfaces
+                          ? const _MenuShadowClipper(_shadowClipExtent)
+                          : null,
+                      child: Scrollbar(
+                        controller: _scroll,
+                        thickness: 6,
+                        radius: const Radius.circular(3),
+                        child: ValueListenableBuilder<int>(
+                          valueListenable: _selectionRevision,
+                          builder: (BuildContext context, _, _) => ListView(
+                            controller: _scroll,
+                            clipBehavior: groupedSurfaces
+                                ? Clip.none
+                                : Clip.hardEdge,
+                            // 贴着内容：放得下时卡片刚好包住项目（不同平台的
+                            // VisualDensity 会让行高在 40–48dp 之间变），放不下才滚
+                            shrinkWrap: true,
+                            padding: EdgeInsets.symmetric(
+                              vertical: groupedSurfaces ? 0 : _verticalPadding,
+                              horizontal: _itemInset,
+                            ),
+                            children: [
+                              for (
+                                int sectionIndex = 0;
+                                sectionIndex < sections.length;
+                                sectionIndex++
+                              ) ...[
+                                if (sectionIndex > 0)
+                                  if (useDividers)
+                                    Padding(
+                                      key: ValueKey(
+                                        'm3e-menu-divider-$sectionIndex',
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                      ),
+                                      child: Divider(
+                                        height: _dividerExtent,
+                                        thickness: 1,
+                                      ),
+                                    )
+                                  else
+                                    SizedBox(
+                                      key: ValueKey(
+                                        'm3e-menu-group-gap-$sectionIndex',
+                                      ),
+                                      height: _groupGap,
                                     ),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                    ),
-                                    child: Divider(
-                                      height: _dividerExtent,
-                                      thickness: 1,
-                                    ),
-                                  )
-                                else
-                                  SizedBox(
-                                    key: ValueKey(
-                                      'm3e-menu-group-gap-$sectionIndex',
-                                    ),
-                                    height: _groupGap,
-                                  ),
-                              _buildSection(
-                                context,
-                                sectionIndex,
-                                groupedSurface: groupedSurfaces,
-                              ),
+                                _buildSection(
+                                  context,
+                                  sectionIndex,
+                                  groupedSurface: groupedSurfaces,
+                                ),
+                              ],
                             ],
-                          ],
+                          ),
                         ),
                       ),
                     ),
@@ -2514,6 +2525,25 @@ class _M3eMenuRoute<T, R> extends PopupRoute<R> {
       ],
     );
   }
+}
+
+/// 分组菜单的滚动裁剪层：向外扩一圈，既保留卡片阴影，又限制 iOS 回弹溢出。
+class _MenuShadowClipper extends CustomClipper<Rect> {
+  const _MenuShadowClipper(this.extent);
+
+  final double extent;
+
+  @override
+  Rect getClip(Size size) => Rect.fromLTRB(
+    -extent,
+    -extent,
+    size.width + extent,
+    size.height + extent,
+  );
+
+  @override
+  bool shouldReclip(_MenuShadowClipper oldClipper) =>
+      oldClipper.extent != extent;
 }
 
 /// 取 [context] 对应渲染对象的全局矩形，给 [showM3eMenu] 当锚点。
