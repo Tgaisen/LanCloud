@@ -3329,7 +3329,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
             ),
           ),
           if (compact) ...[
-            const SizedBox(width: 12),
+            const SizedBox(width: 4),
             Builder(
               builder: (BuildContext anchorContext) => M3eIconButton(
                 tooltip: context.l10n.viewMode,
@@ -5572,7 +5572,7 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
                           : () => _showFolderSortMenu(anchorContext),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 4),
                   M3eIconButton(
                     tooltip: l10n.newFolder,
                     icon: Icons.create_new_folder_outlined,

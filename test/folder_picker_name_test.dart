@@ -133,8 +133,8 @@ void main() {
     expect(newFolderButton, findsOneWidget);
     expect(
       tester.getRect(newFolderButton).left - tester.getRect(sortButton).right,
-      12,
-      reason: '两个独立图标按钮之间保留 12dp 间距',
+      4,
+      reason: '两个独立图标按钮沿用原路径栏操作之间的 4dp 间距',
     );
 
     double top(String text) => tester.getTopLeft(find.text(text)).dy;

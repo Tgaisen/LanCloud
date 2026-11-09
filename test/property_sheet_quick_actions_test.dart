@@ -437,8 +437,8 @@ void main() {
     expect(tester.getSize(viewButton), const Size(48, 48));
     expect(
       tester.getRect(viewButton).left - tester.getRect(sortButton).right,
-      12,
-      reason: '排序与视图两个独立按钮之间留 12dp',
+      4,
+      reason: '排序与视图两个独立按钮沿用原路径栏操作之间的 4dp 间距',
     );
     expect(find.byType(M3eConnectedButtonGroup<String>), findsNothing);
 
