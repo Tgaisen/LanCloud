@@ -1002,7 +1002,7 @@
   "filterResult": "筛选结果",
   "folderActions": "文件夹操作",
   "fileActions": "文件操作",
-  "downloaded": "已加入下载",
+  "downloaded": "已下载",
   "folder": "文件夹",
   "fileCount": "{count} 个文件",
   "@fileCount": {

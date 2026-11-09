@@ -616,7 +616,7 @@
   "filterResult": "Filtered results",
   "folderActions": "Folder actions",
   "fileActions": "File actions",
-  "downloaded": "Added to downloads",
+  "downloaded": "Downloaded",
   "folder": "Folder",
   "fileCount": "{count} files",
   "openFolder": "Open folder",

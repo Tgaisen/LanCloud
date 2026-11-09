@@ -1,10 +1,6 @@
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../core/account_state.dart';
-import '../core/api/lanzou_client.dart';
-import '../core/api/lanzou_client_registry.dart';
-import '../core/api/models.dart';
 import '../core/data/app_db_provider.dart';
 import '../core/drive_state.dart';
 import '../core/navigation_appearance_settings_state.dart';
@@ -17,9 +13,7 @@ import 'common.dart';
 import 'm3e.dart';
 import 'scroll_tint.dart';
 import 'share_file_sheet.dart';
-import 'share_folder_page.dart';
 import 'share_page.dart';
-import 'share_password_dialog.dart';
 
 /// 收藏条目 ⋯ 菜单里的动作。
 enum _FavoriteItemAction { open, copyLink, edit, unfavorite }
@@ -397,56 +391,12 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
   /// 打开收藏的分享文件夹：先用收藏里的提取码解析；提取码失效时弹
   /// 「此文件夹需要密码」，验证通过后把新密码写回收藏，再进入浏览页。
   Future<void> _openFolder(FavoriteItem item) async {
-    final client = ref.read(lanzouClientRegistryProvider).publicClient;
-    final accounts = ref.read(accountStateProvider).store;
-    final l10n = context.l10n;
-    showLoadingDialog(context, l10n.resolving);
-    FolderShareDetail? detail;
-    var pwd = item.pwd;
-    try {
-      detail = await client.resolveFolderShare(item.ref, pwd: pwd);
-    } on NeedPasswordException {
-      detail = null;
-    } on WrongPasswordException {
-      detail = null;
-    } on LanzouException catch (e) {
-      if (!mounted) return;
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(l10n.lanzouError(e))));
-      return;
-    } catch (e) {
-      if (!mounted) return;
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(l10n.resolveFailed('$e'))));
-      return;
-    }
-    if (!mounted) return;
-    Navigator.of(context).pop();
-    if (detail == null) {
-      final result = await showFolderPasswordDialog(context, url: item.ref);
-      if (result == null || !mounted) return;
-      detail = result.value;
-      pwd = result.pwd;
+    await openShareFolderWithLoading(
+      context,
+      url: item.ref,
+      pwd: item.pwd,
       // 上传者改过提取码：同步写回收藏，下次直接用新的
-      await _db.updateFavorite(item.id, pwd: pwd);
-      if (!mounted) return;
-    }
-    // 与「打开链接」打开文件夹一致：进入浏览页前记一条最近使用
-    await _db.addRecent(
-      account: accounts.activeUid ?? '',
-      kind: 'shareFolder',
-      name: detail.name,
-      ref: item.ref,
-      pwd: pwd,
-    );
-    if (!mounted) return;
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) =>
-            ShareFolderPage(folder: detail!, link: item.ref, pwd: pwd),
-      ),
+      onPasswordUpdated: (pwd) => _db.updateFavorite(item.id, pwd: pwd),
     );
   }
 

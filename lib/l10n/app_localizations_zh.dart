@@ -1609,7 +1609,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get fileActions => '文件操作';
 
   @override
-  String get downloaded => '已加入下载';
+  String get downloaded => '已下载';
 
   @override
   String get folder => '文件夹';
