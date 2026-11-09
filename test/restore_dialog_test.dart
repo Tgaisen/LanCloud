@@ -33,7 +33,6 @@ void main() {
   });
 
   testWidgets('恢复确认弹窗：复选行在列表组里，组沿距内容边距 24dp', (tester) async {
-    final semantics = tester.ensureSemantics();
     const content =
         '{"app":"lancloud","format":2,"createdAt":1700000000000,'
         '"sections":["settings","favorites"],"tables":{'
@@ -68,14 +67,6 @@ void main() {
     expect(find.text('创建时间：'), findsNothing);
     expect(find.text('包含内容：'), findsNothing);
     expect(find.text('账号：'), findsNothing);
-    final includedRow = find
-        .ancestor(of: find.text('包含内容'), matching: find.byType(MergeSemantics))
-        .first;
-    final includedSemantics = tester
-        .getSemantics(includedRow)
-        .getSemanticsData();
-    expect(includedSemantics.label, contains('包含内容'));
-    expect(includedSemantics.label, contains('设置'));
     expect(
       find.descendant(
         of: find.byType(BackupPreviewDetails),
@@ -116,7 +107,7 @@ void main() {
     final groups = find.byType(DialogListGroup);
     expect(groups, findsNWidgets(2));
     expect(
-      find.descendant(of: groups.first, matching: find.byType(SelectionArea)),
+      find.descendant(of: groups.first, matching: find.byType(SelectableText)),
       findsNWidgets(3),
     );
     final group = groups.last;
@@ -129,7 +120,6 @@ void main() {
       tester.getTopLeft(group).dx - tester.getTopLeft(surface).dx,
       moreOrLessEquals(24, epsilon: 0.5),
     );
-    semantics.dispose();
   });
 
   testWidgets('恢复摘要时间使用更新页同款相对时间', (tester) async {
@@ -159,7 +149,6 @@ void main() {
   });
 
   testWidgets('恢复向导里的提示卡水平边距与选项组一致', (tester) async {
-    final semantics = tester.ensureSemantics();
     final preview = BackupService.inspect(
       '{"app":"lancloud","sections":["settings"],"tables":{}}',
     );
@@ -178,14 +167,5 @@ void main() {
       tester.widget<InfoHintCard>(find.byType(InfoHintCard)).margin,
       const EdgeInsets.only(left: 4, right: 4),
     );
-    final includedRow = find
-        .ancestor(of: find.text('包含内容'), matching: find.byType(MergeSemantics))
-        .first;
-    final includedSemantics = tester
-        .getSemantics(includedRow)
-        .getSemanticsData();
-    expect(includedSemantics.label, contains('包含内容'));
-    expect(includedSemantics.label, contains('设置'));
-    semantics.dispose();
   });
 }

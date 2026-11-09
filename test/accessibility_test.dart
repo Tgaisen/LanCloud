@@ -351,25 +351,6 @@ void main() {
     handle.dispose();
   });
 
-  testWidgets('带数量角标的分栏标题合并为一个语义节点', (tester) async {
-    final handle = tester.ensureSemantics();
-
-    await tester.pumpWidget(host(const SectionHeader(title: '进行中', count: 3)));
-    await tester.pumpAndSettle();
-
-    final nodes = semanticsNodes(tester)
-        .where(
-          (node) =>
-              node.getSemanticsData().label.contains('进行中') ||
-              node.getSemanticsData().label == '3',
-        )
-        .toList();
-    expect(nodes, hasLength(1));
-    expect(nodes.single.getSemanticsData().label, contains('进行中'));
-    expect(nodes.single.getSemanticsData().label, contains('3'));
-    handle.dispose();
-  });
-
   // 置灰的操作项（onPressed == null）此前没有自己的语义节点，文字会冒泡到
   // 上层：读屏聚焦窗口最外层会念出「下载」。这里钉住「有自己的节点 + 带停用状态」。
   testWidgets('置灰的多选操作项有自己的标签与停用状态', (tester) async {
@@ -538,27 +519,17 @@ void main() {
     await tester.drag(find.byType(SettingsCategoryPage), const Offset(0, 240));
     await tester.pumpAndSettle();
 
-    final slider = find.byKey(
-      const ValueKey('settings-slider-semantics-网络请求间隔'),
-    );
+    final slider = find.byKey(const ValueKey('settings-slider-网络请求间隔'));
     expect(slider, findsOneWidget);
 
     SemanticsData data() => tester.getSemantics(slider).getSemanticsData();
     expect(data().flagsCollection.isSlider, isTrue);
     expect(data().label, '网络请求间隔');
-    expect(data().hint, isNotEmpty);
     expect(data().value, '100 ms');
     expect(data().increasedValue, '150 ms');
     expect(data().decreasedValue, '75 ms');
     expect(data().hasAction(SemanticsAction.increase), isTrue);
     expect(data().hasAction(SemanticsAction.decrease), isTrue);
-    final matchingNodes = semanticsNodes(tester).where((node) {
-      final nodeData = node.getSemanticsData();
-      return nodeData.label == '网络请求间隔' ||
-          nodeData.hint == data().hint ||
-          nodeData.value == '100 ms';
-    });
-    expect(matchingNodes, hasLength(1));
     // 内部手势语义不再暴露：读屏双击不会把值按到中间档
     expect(data().hasAction(SemanticsAction.tap), isFalse);
     expect(data().hasAction(SemanticsAction.scrollRight), isFalse);

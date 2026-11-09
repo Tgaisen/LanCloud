@@ -98,33 +98,27 @@ class BackupPreviewDetails extends StatelessWidget {
       margin: listMargin,
       children: [
         if (createdAt != null)
-          MergeSemantics(
-            child: ListTile(
-              leading: const Icon(Icons.schedule),
-              title: Text(
-                l10n.restoreCreatedAt(
-                  formatRelativeTime(l10n, createdAt, now: now),
-                ),
+          ListTile(
+            leading: const Icon(Icons.schedule),
+            title: Text(
+              l10n.restoreCreatedAt(
+                formatRelativeTime(l10n, createdAt, now: now),
               ),
-              subtitle: fileName == null ? null : Text(fileName!),
             ),
+            subtitle: fileName == null ? null : Text(fileName!),
           ),
-        MergeSemantics(
-          child: ListTile(
-            leading: const Icon(Icons.checklist),
-            title: Text(l10n.restoreIncludedContent),
-            subtitle: Text(_sectionSummary(l10n, preview.sections)),
-          ),
+        ListTile(
+          leading: const Icon(Icons.checklist),
+          title: Text(l10n.restoreIncludedContent),
+          subtitle: Text(_sectionSummary(l10n, preview.sections)),
         ),
         if (preview.accounts.isNotEmpty)
-          MergeSemantics(
-            child: ListTile(
-              leading: const Icon(Icons.people_outline),
-              title: Text(l10n.restoreAccountCount(preview.accounts.length)),
-              subtitle: candidate == null
-                  ? null
-                  : Text(l10n.restoreUsingAccount(candidate!.displayName)),
-            ),
+          ListTile(
+            leading: const Icon(Icons.people_outline),
+            title: Text(l10n.restoreAccountCount(preview.accounts.length)),
+            subtitle: candidate == null
+                ? null
+                : Text(l10n.restoreUsingAccount(candidate!.displayName)),
           ),
       ],
     );
@@ -188,33 +182,29 @@ class _PreviewTextRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return MergeSemantics(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 2),
+          SelectableText(value, style: theme.textTheme.bodyMedium),
+          if (detail != null) ...[
+            const SizedBox(height: 2),
             Text(
-              label,
-              style: theme.textTheme.labelMedium?.copyWith(
+              detail!,
+              style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
-            const SizedBox(height: 2),
-            SelectionArea(
-              child: Text(value, style: theme.textTheme.bodyMedium),
-            ),
-            if (detail != null) ...[
-              const SizedBox(height: 2),
-              Text(
-                detail!,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
           ],
-        ),
+        ],
       ),
     );
   }
