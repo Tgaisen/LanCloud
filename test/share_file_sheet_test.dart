@@ -350,7 +350,7 @@ void main() {
     await tester.pump(const Duration(seconds: 3));
   });
 
-  testWidgets('分享文件属性弹窗：已加入下载时是「已加入下载」+ 进度环，点击弹二级菜单', (tester) async {
+  testWidgets('分享文件属性弹窗：下载中显示进度环，点击弹二级菜单', (tester) async {
     final app = _FakeApp();
     final manager = buildTransferManagerForEnvironment(app.environment);
     manager.tasks.add(
@@ -405,7 +405,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.byTooltip('下载'), findsOneWidget);
-    expect(find.byTooltip('已加入下载'), findsNothing);
+    expect(find.byTooltip('已下载'), findsNothing);
     expect(manager.downloadMarkOf('https://example.com/abcdef'), isNull);
   });
 
@@ -461,12 +461,12 @@ void main() {
       closeTo(0.75, 0.001),
     );
 
-    // 已完成：勾图标、「已加入下载」、无环
+    // 已完成：勾图标、「已下载」、无环
     task.status = TransferStatus.done;
     task.savedPath = '/tmp/a.zip';
     manager.marksRevision.value += 1;
     await tester.pump();
-    expect(find.byTooltip('已加入下载'), findsOneWidget);
+    expect(find.byTooltip('已下载'), findsOneWidget);
     expect(find.byIcon(Icons.download_done), findsOneWidget);
     expect(find.byType(M3eCircularProgressIndicator), findsNothing);
 

@@ -87,6 +87,7 @@ class Icons {
   /// Remix Icon 的 input-field（U+F479），用于上传任务重命名。
   static const IconData input_field = IconData(0xf479, fontFamily: 'RemixIcon');
   static const IconData install_mobile = Symbols.install_mobile;
+  static const IconData keep = Symbols.keep;
   static const IconData keep_off = Symbols.keep_off;
   static const IconData key_outlined = Symbols.key;
   static const IconData link = Symbols.link;

@@ -922,12 +922,12 @@ void main() {
 
     await tester.tap(find.text('a.zip'));
     await _settleSheet(tester);
-    // 下载按钮变 checked、tooltip 变「已加入下载」
-    expect(_toggleButton(tester, '已加入下载').checked, isTrue);
+    // 下载按钮变 checked、tooltip 变「已下载」
+    expect(_toggleButton(tester, '已下载').checked, isTrue);
 
     // 点它弹二级菜单：已完成 → 打开 / 分享可用，取消位换成删除记录，
     // 重新下载与「删除记录与文件」也可用
-    await tester.tap(find.byTooltip('已加入下载'));
+    await tester.tap(find.byTooltip('已下载'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
     final rows = tester
@@ -980,7 +980,7 @@ void main() {
     await _pumpDrive(tester, app, manager: manager);
     await tester.tap(find.text('a.zip'));
     await _settleSheet(tester);
-    await tester.tap(find.byTooltip('已加入下载'));
+    await tester.tap(find.byTooltip('已下载'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
     await tester.tap(
@@ -1551,10 +1551,15 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
     await tester.pump(const Duration(milliseconds: 600));
 
-    // 文件夹菜单：打开 / 属性 / 复制链接 / 访问密码 / 重命名 / 修改简介 / 删除
+    // 文件夹菜单：打开 / 属性 / 快速访问 / 复制链接 / 访问密码 / 重命名 / 修改简介 / 删除
     //（「打开」排第一，与点文件夹卡片等效；文件夹没有「移动」）
-    const order = ['打开', '属性', '复制链接', '访问密码', '重命名', '修改简介', '删除'];
-    expect(_adaptiveSheetGroupLabels(tester, 0), ['打开', '属性', '复制链接']);
+    const order = ['打开', '属性', '添加到快速访问', '复制链接', '访问密码', '重命名', '修改简介', '删除'];
+    expect(_adaptiveSheetGroupLabels(tester, 0), [
+      '打开',
+      '属性',
+      '添加到快速访问',
+      '复制链接',
+    ]);
     expect(_adaptiveSheetGroupLabels(tester, 1), ['访问密码', '重命名', '修改简介', '删除']);
     expect(
       find.byKey(const ValueKey('adaptive-m3e-menu-group-2')),
@@ -1785,6 +1790,15 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('刷新'), findsOneWidget);
+    expect(find.text('添加到快速访问'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('刷新')).dy,
+      lessThan(tester.getTopLeft(find.text('添加到快速访问')).dy),
+    );
+    expect(
+      tester.getTopLeft(find.text('添加到快速访问')).dy,
+      lessThan(tester.getTopLeft(find.text('目录属性')).dy),
+    );
     await tester.tap(find.text('目录属性'));
     await _settleSheet(tester);
 
@@ -1796,6 +1810,7 @@ void main() {
     await _openPropertyMore(tester);
     expect(_menuRowText('打开'), findsNothing);
     expect(_menuRowText('属性'), findsNothing);
+    expect(_menuRowText('添加到快速访问'), findsNothing);
   });
 
   testWidgets('弹窗里的列表组：容器色比弹窗底高一档、窗体边距 16dp', (tester) async {

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -47,6 +49,8 @@ class _HomePageState extends ConsumerState<HomePage>
   /// 正在播放删除动画的条目（动画播完再真正删库）
   final Set<String> _removingQuick = {};
   final Set<String> _removingRecents = {};
+  final Set<String> _openingRecentMenus = {};
+  bool _backfillingRecentShareUrls = false;
   bool _loading = true;
   bool _quickExpanded = true;
   bool _recentsExpanded = true;
@@ -138,6 +142,7 @@ class _HomePageState extends ConsumerState<HomePage>
     final l10n = context.l10n;
     final scheme = Theme.of(context).colorScheme;
     final removing = _removingQuick.contains(item.ref);
+    final kind = _shareRefKind(item.ref);
     // 菜单要贴在被点的 ⋯ 下方，所以这里得拿到行 / 按钮各自的 context
     return Builder(
       builder: (BuildContext rowContext) => Md3ListItem(
@@ -163,7 +168,7 @@ class _HomePageState extends ConsumerState<HomePage>
           anchorContext: rowContext,
           pointerPosition: position,
         ),
-        onTap: () => _openItem(context, 'folder', item.ref, item.name, ''),
+        onTap: () => _openItem(context, kind, item.ref, item.name, ''),
       ),
     );
   }
@@ -244,7 +249,7 @@ class _HomePageState extends ConsumerState<HomePage>
     if (!mounted || action == null) return;
     switch (action) {
       case _QuickPinAction.open:
-        _openItem(context, 'folder', item.ref, item.name, '');
+        _openItem(context, _shareRefKind(item.ref), item.ref, item.name, '');
       case _QuickPinAction.removePin:
         // 先播放删除动画，再真正删库（列表由 db.revision 通知刷新）
         setState(() => _removingQuick.add(item.ref));
@@ -264,86 +269,121 @@ class _HomePageState extends ConsumerState<HomePage>
     BuildContext anchorContext, {
     Offset? pointerPosition,
   }) async {
-    final l10n = context.l10n;
-    final anchor = m3eMenuAnchorOf(anchorContext);
-    if (anchor == null) return;
-    // 菜单项是静态的：先把收藏链接 / 收藏态查出来，避免出现「已收藏却显示收藏」
-    // 这种状态相反的项。分享条目查本地收藏表（很快）；网盘条目要先取一次分享
-    // 链接（与网盘页的收藏行为一致）。
-    final shareUrl = await _recentShareUrl(item);
-    if (!mounted) return;
-    final favorited =
-        shareUrl != null && await isFavoritedByRef(context, shareUrl);
-    if (!mounted) return;
-    final _RecentAction? action = await showAdaptiveM3eMenu<_RecentAction>(
-      context: context,
-      anchor: anchor,
-      pointerPosition: pointerPosition,
-      // ⋯ 贴着右边缘：菜单右缘对齐，免得被屏幕右上角夹歪
-      alignEnd: true,
-      items: [
-        M3eMenuItem(
-          value: _RecentAction.open,
-          label: l10n.open,
-          icon: Icons.open_in_new,
-        ),
-        M3eMenuItem(
-          value: _RecentAction.toggleFavorite,
-          label: favorited ? l10n.unfavorite : l10n.favorite,
-          // 取消收藏用 Remix 的 star-off-line（描边）；「收藏」保持描边星星
-          icon: favorited ? Icons.star_off_line : Icons.star_outline,
-        ),
-        M3eMenuItem(
-          value: _RecentAction.deleteRecord,
-          label: l10n.deleteRecord,
-          icon: Icons.playlist_remove,
-        ),
-      ],
-    );
-    if (!mounted || action == null) return;
-    switch (action) {
-      case _RecentAction.open:
-        _openItem(context, item.kind, item.ref, item.name, item.pwd);
-      case _RecentAction.toggleFavorite:
-        // 用菜单打开时查到的链接；菜单打开期间状态可能变了（比如退出了登录），
-        // 那就再取一次，取不到给个提示而不是静默失败
-        final url = shareUrl ?? await _recentShareUrl(item);
-        if (!mounted) return;
-        if (url == null) {
-          showAppToast(context, l10n.shareInfoUnavailable);
-          return;
-        }
-        await toggleFavoriteByRef(
-          context,
-          kind: item.kind == 'folder' ? 'shareFolder' : 'shareFile',
-          name: item.name,
-          ref: url,
-          pwd: item.pwd,
-        );
-      case _RecentAction.deleteRecord:
-        setState(() => _removingRecents.add(item.ref));
-        await Future<void>.delayed(const Duration(milliseconds: 220));
-        if (!mounted) return;
-        final uid = ref.read(accountStateProvider).store.activeUid ?? '';
-        await _db.removeRecent(account: uid, ref: item.ref);
+    if (!_openingRecentMenus.add(item.ref)) return;
+    try {
+      final l10n = context.l10n;
+      final anchor = m3eMenuAnchorOf(anchorContext);
+      if (anchor == null) return;
+      // 菜单只依赖本地缓存。旧记录 / 网盘记录的后台回填还没完成时，
+      // 菜单仍立即打开，仅暂时禁用收藏项，避免整次点击等待网络。
+      final shareUrl = _cachedRecentShareUrl(item);
+      final favorited =
+          shareUrl != null && await isFavoritedByRef(context, shareUrl);
+      if (!mounted) return;
+      final _RecentAction? action = await showAdaptiveM3eMenu<_RecentAction>(
+        context: context,
+        anchor: anchor,
+        pointerPosition: pointerPosition,
+        // ⋯ 贴着右边缘：菜单右缘对齐，免得被屏幕右上角夹歪
+        alignEnd: true,
+        items: [
+          M3eMenuItem(
+            value: _RecentAction.open,
+            label: l10n.open,
+            icon: Icons.open_in_new,
+          ),
+          M3eMenuItem(
+            value: _RecentAction.toggleFavorite,
+            label: favorited ? l10n.unfavorite : l10n.favorite,
+            // 取消收藏用 Remix 的 star-off-line（描边）；「收藏」保持描边星星
+            icon: favorited ? Icons.star_off_line : Icons.star_outline,
+            enabled: shareUrl != null,
+          ),
+          M3eMenuItem(
+            value: _RecentAction.deleteRecord,
+            label: l10n.deleteRecord,
+            icon: Icons.playlist_remove,
+          ),
+        ],
+      );
+      if (!mounted || action == null) return;
+      switch (action) {
+        case _RecentAction.open:
+          _openItem(context, item.kind, item.ref, item.name, item.pwd);
+        case _RecentAction.toggleFavorite:
+          final url = shareUrl;
+          if (url == null) {
+            showAppToast(context, l10n.shareInfoUnavailable);
+            return;
+          }
+          await toggleFavoriteByRef(
+            context,
+            kind: item.kind == 'folder' ? 'shareFolder' : 'shareFile',
+            name: item.name,
+            ref: url,
+            pwd: item.pwd,
+          );
+        case _RecentAction.deleteRecord:
+          setState(() => _removingRecents.add(item.ref));
+          await Future<void>.delayed(const Duration(milliseconds: 220));
+          if (!mounted) return;
+          final uid = ref.read(accountStateProvider).store.activeUid ?? '';
+          await _db.removeRecent(account: uid, ref: item.ref);
+      }
+    } finally {
+      _openingRecentMenus.remove(item.ref);
     }
   }
 
   /// 最近使用条目的分享链接：收藏表就是按分享链接存、按分享链接去重的，
-  /// 分享条目直接用 `ref`；网盘文件 / 目录要先取一次分享信息。
-  Future<String?> _recentShareUrl(RecentItem item) async {
+  /// 分享条目直接用 `ref`；网盘文件 / 目录读取后台回填的缓存。
+  String? _cachedRecentShareUrl(RecentItem item) {
+    if (item.shareUrl.isNotEmpty) return item.shareUrl;
     if (item.kind == 'shareFile' || item.kind == 'shareFolder') {
       return item.ref;
     }
+    return null;
+  }
+
+  /// 串行补齐当前首页最近记录的分享链接。只写数据库，不阻塞页面和菜单；
+  /// 成功后由 `AppDb.revision` 触发一次重新读取。
+  Future<void> _backfillRecentShareUrls(
+    String account,
+    List<RecentItem> items,
+  ) async {
+    if (_backfillingRecentShareUrls) return;
+    final missing = [
+      for (final item in items)
+        if (item.shareUrl.isEmpty &&
+            (item.kind == 'file' || item.kind == 'folder'))
+          item,
+    ];
+    if (missing.isEmpty) return;
+    final activeUid = ref.read(accountStateProvider).store.activeUid;
+    if (activeUid != account) return;
     final client = _activeClient();
-    if (client == null) return null;
+    if (client == null) return;
+    _backfillingRecentShareUrls = true;
     try {
-      final info = item.kind == 'folder'
-          ? await client.shareInfoOfFolder(item.ref)
-          : await client.shareInfoOfFile(item.ref);
-      return info.url;
-    } catch (_) {
-      return null;
+      final resolved = <String, String>{};
+      for (final item in missing) {
+        try {
+          final info = item.kind == 'folder'
+              ? await client.shareInfoOfFolder(item.ref)
+              : await client.shareInfoOfFile(item.ref, withDetails: false);
+          if (info.url.isNotEmpty) resolved[item.ref] = info.url;
+        } catch (_) {
+          // 单条失败不影响其它记录；下次首页刷新仍可重试。
+        }
+      }
+      if (resolved.isNotEmpty) {
+        await _db.updateRecentShareUrls(
+          account: account,
+          shareUrlsByRef: resolved,
+        );
+      }
+    } finally {
+      _backfillingRecentShareUrls = false;
     }
   }
 
@@ -354,6 +394,13 @@ class _HomePageState extends ConsumerState<HomePage>
     return ref
         .read(lanzouClientRegistryProvider)
         .clientFor(uid, cookie: accounts.byUid(uid)?.cookie);
+  }
+
+  String _shareRefKind(String ref) {
+    final uri = Uri.tryParse(ref);
+    return uri != null && (uri.scheme == 'http' || uri.scheme == 'https')
+        ? 'shareFolder'
+        : 'folder';
   }
 
   Future<void> _load() async {
@@ -371,6 +418,7 @@ class _HomePageState extends ConsumerState<HomePage>
         _removingQuick.clear();
         _removingRecents.clear();
       });
+      unawaited(_backfillRecentShareUrls(uid, recents));
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
@@ -412,7 +460,7 @@ class _HomePageState extends ConsumerState<HomePage>
           child: ShareFileInfoSheet(name: name, url: ref, pwd: pwd),
         );
       case 'shareFolder':
-        await openShareSheet(context, initialLink: ref, initialPwd: pwd);
+        await openShareFolderWithLoading(context, url: ref, pwd: pwd);
     }
     if (mounted) _load();
   }
