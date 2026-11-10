@@ -3376,9 +3376,9 @@ class _DrivePageState extends ConsumerState<DrivePage>
               // 多选期间只禁路径跳转，排序 / 视图仍可使用。
               ignoring: _selecting,
               child: PathBar(
-                // 路径栏本身仍有 12dp 内边距；首段胶囊只留 4dp，
+                // 胶囊内部统一 12dp；路径栏起始只留 4dp，
                 // 使「根目录」文字与 AppBar 标题默认的 16dp 起点对齐。
-                firstSegmentContentPadding: 4,
+                leadingPadding: 4,
                 segments: [
                   PathSegment(id: '-1', label: context.l10n.root),
                   for (final node in _path)
