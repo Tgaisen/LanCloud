@@ -9,14 +9,22 @@ List<PathSegment> segments(int count) => [
   for (var i = 0; i < count; i++) PathSegment(id: '$i', label: '很长的目录名称$i'),
 ];
 
-Widget host(List<PathSegment> data, {ValueChanged<int>? onTap}) => MaterialApp(
+Widget host(
+  List<PathSegment> data, {
+  ValueChanged<int>? onTap,
+  double? leadingPadding,
+}) => MaterialApp(
   home: Scaffold(
     body: Align(
       alignment: Alignment.topLeft,
       child: SizedBox(
         height: 48,
         width: 400,
-        child: PathBar(segments: data, onTap: onTap ?? (_) {}),
+        child: PathBar(
+          segments: data,
+          onTap: onTap ?? (_) {},
+          leadingPadding: leadingPadding,
+        ),
       ),
     ),
   ),
@@ -116,8 +124,34 @@ void main() {
 
   testWidgets('路径胶囊：40dp 胶囊涟漪区域位于 48dp 触控目标内', (tester) async {
     final taps = <int>[];
-    await tester.pumpWidget(host(segments(1), onTap: taps.add));
+    await tester.pumpWidget(
+      host(segments(1), onTap: taps.add, leadingPadding: 4),
+    );
     await tester.pumpAndSettle();
+
+    for (final label in ['根目录', '很长的目录名称0']) {
+      final chip = find.ancestor(
+        of: find.text(label),
+        matching: find.byType(PathChip),
+      );
+      expect(
+        tester.getTopLeft(find.text(label)).dx - tester.getRect(chip).left,
+        12,
+        reason: '$label 的胶囊内部横向留白保持一致',
+      );
+    }
+    expect(
+      tester
+          .getRect(
+            find.ancestor(
+              of: find.text('根目录'),
+              matching: find.byType(PathChip),
+            ),
+          )
+          .left,
+      4,
+      reason: '自定义起始留白只作用于路径栏，不改变第一段胶囊内部样式',
+    );
 
     final chip = find.ancestor(
       of: find.text('很长的目录名称0'),
