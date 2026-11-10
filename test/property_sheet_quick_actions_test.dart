@@ -531,8 +531,8 @@ void main() {
     await tester.tap(find.text('升序'));
     await tester.pump();
     await tester.tap(find.text('大小'));
-    await tester.pump();
-    await closeSort();
+    await tester.pumpAndSettle();
+    expect(find.text('时间'), findsNothing);
 
     // 大小无法比较文件夹：保持服务端原顺序；文件按 1M / 2M / 3M 升序。
     expect(top('文件夹 B'), lessThan(top('文件夹 A')));
@@ -817,9 +817,8 @@ void main() {
       findsOneWidget,
     );
     await tester.tap(find.text('名称'));
-    await tester.pump();
-    await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
+    expect(find.text('时间'), findsNothing);
     expect(find.text('已选择 2 项'), findsOneWidget);
 
     final gridBefore = app.environment.cachePageSettings.store.gridView;

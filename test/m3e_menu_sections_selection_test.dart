@@ -373,14 +373,14 @@ void main() {
     semantics.dispose();
   });
 
-  testWidgets('宽菜单可混合单选与复选并保持打开', (tester) async {
+  testWidgets('宽菜单混合选择：单选关闭，复选保持打开', (tester) async {
     final semantics = tester.ensureSemantics();
     final changed = <M3eMenuChoice<String>>[];
     await _pumpTrigger(
       tester,
       size: const Size(800, 800),
       open: (BuildContext context) async {
-        await showM3eChoiceMenu<String>(
+        await showAdaptiveM3eChoiceMenu<String>(
           context: context,
           anchor: const Rect.fromLTWH(300, 100, 48, 48),
           sections: _choiceSections,
@@ -406,12 +406,23 @@ void main() {
     await tester.pumpAndSettle();
     expect(changed.last.radioValue, 'b');
     expect(changed.last.checkedValues, isEmpty);
-    final rows = tester
-        .widgetList<M3eMenuRow>(find.byType(M3eMenuRow))
-        .toList();
-    expect(rows.firstWhere((row) => row.label == '选项 A').selected, isFalse);
-    expect(rows.firstWhere((row) => row.label == '选项 B').selected, isTrue);
+    expect(find.text('选项 A'), findsNothing);
+    expect(find.text('选项 B'), findsNothing);
+    expect(find.text('升序'), findsNothing);
 
+    await _pumpTrigger(
+      tester,
+      size: const Size(800, 800),
+      open: (BuildContext context) async {
+        await showAdaptiveM3eChoiceMenu<String>(
+          context: context,
+          anchor: const Rect.fromLTWH(300, 100, 48, 48),
+          sections: _choiceSections,
+          radioValue: 'b',
+          onChanged: changed.add,
+        );
+      },
+    );
     await tester.tap(find.text('升序'));
     await tester.pumpAndSettle();
     expect(changed.last.radioValue, 'b');
@@ -505,5 +516,11 @@ void main() {
     expect(tiles.firstWhere((tile) => tile.label == '选项 A').selected, isTrue);
     expect(tiles.firstWhere((tile) => tile.label == '选项 B').selected, isFalse);
     expect(find.text('升序'), findsOneWidget);
+
+    await tester.tap(find.text('选项 B'));
+    await tester.pumpAndSettle();
+    expect(changed.last.radioValue, 'b');
+    expect(changed.last.checkedValues, {'ascending'});
+    expect(find.text('升序'), findsNothing);
   });
 }

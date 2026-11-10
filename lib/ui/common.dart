@@ -1844,6 +1844,9 @@ Future<void> showAdaptiveM3eMultiSelectMenu<T>({
 }
 
 /// 自适应混合选择菜单：每项按自己的选择角色显示 radio / checkbox。
+///
+/// 大屏锚定菜单与小屏底部面板行为一致：选择 radio 后立即关闭；选择
+/// checkbox 时保持打开。
 Future<void> showAdaptiveM3eChoiceMenu<T>({
   required BuildContext context,
   required Rect anchor,
@@ -4351,6 +4354,8 @@ class _M3eMenuSheetState<T> extends State<_M3eMenuSheet<T>> {
         if (widget.selectionMode == M3eMenuSelectionMode.mixed &&
             item.selectionRole == M3eMenuSelectionRole.radio) {
           _selectRadio(item.value);
+          _closing = true;
+          Navigator.of(context).pop();
           return;
         }
         _closing = true;

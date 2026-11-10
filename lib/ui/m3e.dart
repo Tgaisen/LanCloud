@@ -1876,9 +1876,9 @@ Future<void> showM3eMultiSelectMenu<T>({
 
 /// 大屏锚定菜单里的混合选择菜单。
 ///
-/// 每项按 [M3eMenuItem.selectionRole] 显示为单选、复选或普通动作。选择项不会
-/// 关闭菜单，每次变化立即通过 [onChanged] 返回完整状态；点外部、返回键或
-/// [closeOn] 触发时才关闭。
+/// 每项按 [M3eMenuItem.selectionRole] 显示为单选、复选或普通动作。每次变化会
+/// 立即通过 [onChanged] 返回完整状态。选择 radio 后菜单立即关闭；选择
+/// checkbox 时保持打开，直到用户点外部、按返回键或由 [closeOn] 触发关闭。
 Future<void> showM3eChoiceMenu<T>({
   required BuildContext context,
   required Rect anchor,
@@ -2136,6 +2136,7 @@ class _M3eMenuRoute<T, R> extends PopupRoute<R> {
       switch (item.selectionRole) {
         case M3eMenuSelectionRole.radio:
           _selectRadio(item.value);
+          if (isCurrent) navigator?.pop();
         case M3eMenuSelectionRole.checkbox:
           _toggleSelected(item.value);
         case M3eMenuSelectionRole.action:

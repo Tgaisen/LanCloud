@@ -193,7 +193,12 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     await tester.tap(find.text('名称'));
+    await tester.pumpAndSettle();
+    expect(find.text('时间'), findsNothing);
+
+    await tester.tap(sortButton);
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
     await tester.tap(find.text('升序'));
     await tester.pump();
     await tester.binding.handlePopRoute();
