@@ -89,9 +89,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(ascendingCheck, findsOneWidget);
     await tester.tap(find.text('名称'));
-    await tester.pump();
-    await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
+    expect(find.text('时间'), findsNothing);
+    expect(ascendingCheck, findsNothing);
 
     // 空收藏也能进多选：⋯ 菜单只保留非排序动作
     await tester.tap(find.byTooltip('菜单'));
