@@ -354,6 +354,7 @@
   "invalidRegularExpression": "正则表达式无效",
   "renameNoMatches": "没有名称会被修改",
   "renameEmptyName": "修改后的文件名不能为空",
+  "renameInvalidCharacters": "包含非法字符",
   "renamedUploads": "已修改 {count} 个上传任务的名称",
   "@renamedUploads": {
     "placeholders": {

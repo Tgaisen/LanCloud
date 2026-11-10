@@ -435,10 +435,25 @@ void main() {
     await _pumpDrive(tester, app, viewSize: const Size(320, 800));
 
     expect(tester.getSize(find.byType(PathBar)).height, 48);
+    final titleLeft = tester.getTopLeft(find.text('网盘')).dx;
+    final rootLeft = tester
+        .getTopLeft(
+          find.descendant(of: find.byType(PathBar), matching: find.text('根目录')),
+        )
+        .dx;
+    expect(rootLeft, closeTo(titleLeft, 0.5));
     final sortButton = find.byTooltip('排序');
     final viewButton = find.byTooltip('视图');
     expect(sortButton, findsOneWidget);
     expect(viewButton, findsOneWidget);
+    final sortIconButton = tester.widget<M3eIconButton>(
+      find.ancestor(of: sortButton, matching: find.byType(M3eIconButton)).first,
+    );
+    final viewIconButton = tester.widget<M3eIconButton>(
+      find.ancestor(of: viewButton, matching: find.byType(M3eIconButton)).first,
+    );
+    expect(sortIconButton.containerColor, isNull);
+    expect(viewIconButton.containerColor, isNull);
     expect(
       tester.getSize(sortButton),
       const Size(48, 48),
@@ -793,6 +808,27 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('file2.zip'));
     await tester.pumpAndSettle();
+    expect(find.text('已选择 2 项'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('排序'));
+    await _settleSheet(tester);
+    expect(
+      find.byKey(const ValueKey('adaptive-m3e-menu-sheet')),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('名称'));
+    await tester.pump();
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('已选择 2 项'), findsOneWidget);
+
+    final gridBefore = app.environment.cachePageSettings.store.gridView;
+    await tester.tap(find.byTooltip('视图'));
+    await _settleSheet(tester);
+    await tester.tap(find.text(gridBefore ? '列表视图' : '网格视图'));
+    await tester.pumpAndSettle();
+    expect(app.environment.cachePageSettings.store.gridView, !gridBefore);
+    expect(find.text('已选择 2 项'), findsOneWidget);
 
     expect(
       tester
@@ -803,6 +839,10 @@ void main() {
 
     await tester.tap(find.byTooltip('更多'));
     await _settleSheet(tester);
+    expect(
+      find.byKey(const ValueKey('adaptive-m3e-menu-sheet')),
+      findsOneWidget,
+    );
     const moreOrder = ['访问密码', '移动', '重命名', '修改简介'];
     final moreTops = [
       for (final label in moreOrder)
@@ -836,20 +876,20 @@ void main() {
     );
     await tester.enterText(
       find.byKey(const ValueKey('drive-batch-rename-replacement')),
-      'doc',
+      'doc: ',
     );
     await tester.tap(find.byKey(const ValueKey('drive-batch-rename-preview')));
     await _settleSheet(tester);
-    expect(find.text('file1.zip → doc1.zip'), findsOneWidget);
-    expect(find.text('file2.zip → doc2.zip'), findsOneWidget);
+    expect(find.text('file1.zip → doc: 1.zip'), findsOneWidget);
+    expect(find.text('file2.zip → doc: 2.zip'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('drive-batch-rename-confirm')));
     await tester.pump();
     await tester.pump(const Duration(seconds: 2));
 
-    expect(client.renamedFiles, ['doc1.zip', 'doc2.zip']);
-    expect(find.text('doc1.zip'), findsOneWidget);
-    expect(find.text('doc2.zip'), findsOneWidget);
+    expect(client.renamedFiles, ['doc: 1.zip', 'doc: 2.zip']);
+    expect(find.text('doc: 1.zip'), findsOneWidget);
+    expect(find.text('doc: 2.zip'), findsOneWidget);
     await tester.pump(const Duration(seconds: 5));
   });
 
@@ -882,6 +922,20 @@ void main() {
       find.byKey(const ValueKey('drive-batch-rename-search')),
       'file',
     );
+    await tester.enterText(
+      find.byKey(const ValueKey('drive-batch-rename-replacement')),
+      'doc: ',
+    );
+    await tester.tap(find.byKey(const ValueKey('drive-batch-rename-preview')));
+    await _settleSheet(tester);
+    final invalidReplacement = tester.widget<TextField>(
+      find.byKey(const ValueKey('drive-batch-rename-replacement')),
+    );
+    expect(invalidReplacement.decoration?.errorText, '包含非法字符');
+    expect(find.text('file1.zip → doc: 1.zip'), findsNothing);
+    expect(client.renamedFiles, isEmpty);
+    expect(client.renamedFolders, isEmpty);
+
     await tester.enterText(
       find.byKey(const ValueKey('drive-batch-rename-replacement')),
       'doc',
@@ -1640,6 +1694,21 @@ void main() {
     await _settleSheet(tester);
     await tester.enterText(
       find.byKey(const ValueKey('drive-rename-field')),
+      '新 文件夹',
+    );
+    await tester.tap(find.byKey(const ValueKey('drive-rename-confirm')));
+    await _settleSheet(tester);
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const ValueKey('drive-rename-field')))
+          .decoration
+          ?.errorText,
+      '包含非法字符',
+    );
+    expect(client.renamedFolders, isEmpty);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('drive-rename-field')),
       '新文件夹',
     );
     await tester.tap(find.byKey(const ValueKey('drive-rename-confirm')));
@@ -1774,6 +1843,45 @@ void main() {
     await tester.tap(find.text('修改'));
     await _settleSheet(tester);
     expect(client.renamedFiles, ['b.zip']);
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pump(const Duration(seconds: 1));
+  });
+
+  testWidgets('文件重命名拒绝文件非法字符并允许文件专属字符', (tester) async {
+    final client = _FakeClient();
+    final app = _FakeApp(client);
+    await _pumpDrive(tester, app);
+
+    await tester.tap(find.text('a.zip'));
+    await _settleSheet(tester);
+    await _openPropertyMore(tester);
+    await tester.tap(_menuRowText('重命名'));
+    await _settleSheet(tester);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('drive-rename-field')),
+      'bad/name.zip',
+    );
+    await tester.tap(find.byKey(const ValueKey('drive-rename-confirm')));
+    await _settleSheet(tester);
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const ValueKey('drive-rename-field')))
+          .decoration
+          ?.errorText,
+      '包含非法字符',
+    );
+    expect(find.byIcon(Icons.error), findsOneWidget);
+    expect(client.renamedFiles, isEmpty);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('drive-rename-field')),
+      'good:*?| name.zip',
+    );
+    await tester.tap(find.byKey(const ValueKey('drive-rename-confirm')));
+    await _settleSheet(tester);
+    expect(client.renamedFiles, ['good:*?| name.zip']);
+    expect(_sheetText('good:*?| name.zip'), findsOneWidget);
     await tester.pump(const Duration(seconds: 5));
     await tester.pump(const Duration(seconds: 1));
   });

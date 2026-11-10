@@ -1143,33 +1143,37 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
                     // 与网盘页多选条一致：小屏随滚动渐变，大屏保持侧栏同色
                     color: topBarBackgroundColor(context, scheme),
                     // 显式高度：Stack 的 Positioned 不提供高度约束
-                    child: SizedBox(
-                      height:
-                          MediaQuery.paddingOf(context).top + kToolbarHeight,
-                      child: AppBar(
-                        key: const ValueKey('transfers-selection-appbar'),
-                        // 底色由外层 Material 提供（与网盘页多选条一致），
-                        // 否则 AppBar 会用自己的 surface 把外层颜色盖住
-                        backgroundColor: Colors.transparent,
-                        scrolledUnderElevation: 0,
-                        leading: IconButton(
-                          tooltip: l10n.exitSelection,
-                          icon: const Icon(Icons.close),
-                          onPressed: _exitSelection,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.translucent,
+                      onTap: _scrollToTop,
+                      child: SizedBox(
+                        height:
+                            MediaQuery.paddingOf(context).top + kToolbarHeight,
+                        child: AppBar(
+                          key: const ValueKey('transfers-selection-appbar'),
+                          // 底色由外层 Material 提供（与网盘页多选条一致），
+                          // 否则 AppBar 会用自己的 surface 把外层颜色盖住
+                          backgroundColor: Colors.transparent,
+                          scrolledUnderElevation: 0,
+                          leading: IconButton(
+                            tooltip: l10n.exitSelection,
+                            icon: const Icon(Icons.close),
+                            onPressed: _exitSelection,
+                          ),
+                          title: Text(l10n.selectedCount(selectedCount)),
+                          actions: [
+                            IconButton(
+                              tooltip: l10n.selectAll,
+                              icon: const Icon(Icons.select_all),
+                              onPressed: _selectAll,
+                            ),
+                            IconButton(
+                              tooltip: l10n.invertSelection,
+                              icon: const Icon(Icons.flip),
+                              onPressed: _invertSelection,
+                            ),
+                          ],
                         ),
-                        title: Text(l10n.selectedCount(selectedCount)),
-                        actions: [
-                          IconButton(
-                            tooltip: l10n.selectAll,
-                            icon: const Icon(Icons.select_all),
-                            onPressed: _selectAll,
-                          ),
-                          IconButton(
-                            tooltip: l10n.invertSelection,
-                            icon: const Icon(Icons.flip),
-                            onPressed: _invertSelection,
-                          ),
-                        ],
                       ),
                     ),
                   ),

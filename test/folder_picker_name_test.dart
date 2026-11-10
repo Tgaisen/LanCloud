@@ -132,6 +132,29 @@ void main() {
     expect(sortButton, findsOneWidget);
     expect(newFolderButton, findsOneWidget);
     expect(
+      tester
+          .widget<M3eIconButton>(
+            find
+                .ancestor(of: sortButton, matching: find.byType(M3eIconButton))
+                .first,
+          )
+          .containerColor,
+      isNull,
+    );
+    expect(
+      tester
+          .widget<M3eIconButton>(
+            find
+                .ancestor(
+                  of: newFolderButton,
+                  matching: find.byType(M3eIconButton),
+                )
+                .first,
+          )
+          .containerColor,
+      isNull,
+    );
+    expect(
       tester.getRect(newFolderButton).left - tester.getRect(sortButton).right,
       4,
       reason: '两个独立图标按钮沿用原路径栏操作之间的 4dp 间距',

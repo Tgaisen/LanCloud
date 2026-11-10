@@ -1,9 +1,17 @@
+/// 重命名目标的类型；文件和文件夹使用不同的非法字符规则。
+enum RenameTargetKind { file, folder }
+
 /// 批量重命名的一个输入条目。
 class RenameTarget {
-  const RenameTarget({required this.id, required this.name});
+  const RenameTarget({
+    required this.id,
+    required this.name,
+    required this.kind,
+  });
 
   final String id;
   final String name;
+  final RenameTargetKind kind;
 }
 
 /// 名称实际发生变化的条目。
@@ -19,7 +27,32 @@ class RenameChange {
   final String newName;
 }
 
-enum RenameError { emptySearch, invalidPattern, noMatches, emptyName }
+enum RenameError {
+  emptySearch,
+  invalidPattern,
+  noMatches,
+  emptyName,
+  invalidCharacters,
+}
+
+const Set<String> _invalidFileCharacters = {'\\', '/', '"', '<', '>'};
+const Set<String> _invalidFolderCharacters = {
+  ..._invalidFileCharacters,
+  ':',
+  '*',
+  '?',
+  '|',
+  ' ',
+};
+
+/// 判断名称是否包含对应目标类型禁止的字符。
+bool containsInvalidRenameCharacters(String name, RenameTargetKind kind) {
+  final invalidCharacters = switch (kind) {
+    RenameTargetKind.file => _invalidFileCharacters,
+    RenameTargetKind.folder => _invalidFolderCharacters,
+  };
+  return invalidCharacters.any(name.contains);
+}
 
 /// 批量重命名预览；错误存在时不能应用。
 class RenamePreview {
@@ -66,21 +99,27 @@ class BatchRenameRule {
     }
 
     final targetList = targets.toList(growable: false);
+    final validationKind =
+        targetList.any((target) => target.kind == RenameTargetKind.folder)
+        ? RenameTargetKind.folder
+        : RenameTargetKind.file;
     final changes = <RenameChange>[];
     for (final target in targetList) {
       final newName = _replace(target.name, expression);
+      if (newName == target.name) continue;
       if (newName.trim().isEmpty) {
         return const RenamePreview.failure(RenameError.emptyName);
       }
-      if (newName != target.name) {
-        changes.add(
-          RenameChange(
-            id: target.id,
-            originalName: target.name,
-            newName: newName,
-          ),
-        );
+      if (containsInvalidRenameCharacters(newName, validationKind)) {
+        return const RenamePreview.failure(RenameError.invalidCharacters);
       }
+      changes.add(
+        RenameChange(
+          id: target.id,
+          originalName: target.name,
+          newName: newName,
+        ),
+      );
     }
 
     if (changes.isEmpty) {

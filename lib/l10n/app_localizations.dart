@@ -1136,6 +1136,12 @@ abstract class AppLocalizations {
   /// **'修改后的文件名不能为空'**
   String get renameEmptyName;
 
+  /// No description provided for @renameInvalidCharacters.
+  ///
+  /// In zh, this message translates to:
+  /// **'包含非法字符'**
+  String get renameInvalidCharacters;
+
   /// No description provided for @renamedUploads.
   ///
   /// In zh, this message translates to:

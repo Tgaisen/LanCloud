@@ -353,6 +353,25 @@ void main() {
           .pixels,
       greaterThan(0),
     );
+
+    await tester.tapAt(
+      tester
+          .getRect(find.byKey(const ValueKey('transfers-selection-appbar')))
+          .center,
+    );
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .state<ScrollableState>(
+            find.descendant(
+              of: transferList,
+              matching: find.byType(Scrollable),
+            ),
+          )
+          .position
+          .pixels,
+      closeTo(0, 0.5),
+    );
   });
 
   testWidgets('收藏页跨越宽窄布局保留搜索，多选顶栏随滚动变色', (tester) async {
@@ -442,6 +461,40 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(selectionMaterial().color, scheme.surfaceContainer);
+    final favoritesScroll = find.descendant(
+      of: find.byType(FavoritesPage),
+      matching: find.byType(CustomScrollView),
+    );
+    expect(
+      tester
+          .state<ScrollableState>(
+            find.descendant(
+              of: favoritesScroll,
+              matching: find.byType(Scrollable),
+            ),
+          )
+          .position
+          .pixels,
+      greaterThan(0),
+    );
+    await tester.tapAt(
+      tester
+          .getRect(find.byKey(const ValueKey('favorites-selection-appbar')))
+          .center,
+    );
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .state<ScrollableState>(
+            find.descendant(
+              of: favoritesScroll,
+              matching: find.byType(Scrollable),
+            ),
+          )
+          .position
+          .pixels,
+      closeTo(0, 0.5),
+    );
     expect(
       tester.state(find.byType(FavoritesPage)),
       same(favoritesBeforeResize),

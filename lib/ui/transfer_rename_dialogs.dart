@@ -12,6 +12,7 @@ Future<String?> showSingleUploadRenameDialog(
   return showRenameDialog(
     context,
     initialName: task.name,
+    kind: RenameTargetKind.file,
     keyPrefix: 'upload-rename',
   );
 }
@@ -25,7 +26,11 @@ Future<List<UploadRenameChange>?> showBatchUploadRenameDialog(
     context,
     targets: [
       for (final task in tasks)
-        UploadRenameTarget(id: task.id, name: task.name),
+        UploadRenameTarget(
+          id: task.id,
+          name: task.name,
+          kind: RenameTargetKind.file,
+        ),
     ],
     keyPrefix: 'upload-batch-rename',
   );

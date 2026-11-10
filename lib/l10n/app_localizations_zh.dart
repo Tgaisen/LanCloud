@@ -580,6 +580,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get renameEmptyName => '修改后的文件名不能为空';
 
   @override
+  String get renameInvalidCharacters => '包含非法字符';
+
+  @override
   String renamedUploads(int count) {
     return '已修改 $count 个上传任务的名称';
   }
