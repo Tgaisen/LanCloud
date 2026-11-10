@@ -283,7 +283,14 @@ void main() {
   // 一样把它藏起来；但只是「看不见」而不是「不占位」，否则条目高度会跳。
   testWidgets('网盘页进入多选隐藏 ⋯ 但保留占位：高度不变、读屏读不到', (tester) async {
     final handle = tester.ensureSemantics();
-    final environment = await host(tester);
+    final environment = await host(
+      tester,
+      files: [
+        LzFile(id: 'l1', name: '测试文件.zip', size: '1M', time: ''),
+        for (var i = 2; i <= 20; i++)
+          LzFile(id: 'l$i', name: '文件$i.zip', size: '1M', time: ''),
+      ],
+    );
 
     final folderItem = find.byKey(const ValueKey('-1-f-f1'));
     final fileItem = find.byKey(const ValueKey('-1-l-l1'));
@@ -291,7 +298,7 @@ void main() {
     final fileHeight = tester.getSize(fileItem).height;
     expect(find.text('测试文件夹'), findsOneWidget);
     expect(find.byTooltip('文件夹操作'), findsOneWidget);
-    expect(find.byTooltip('文件操作'), findsOneWidget);
+    expect(find.byTooltip('文件操作'), findsWidgets);
     expect(hasSemanticsLabel(tester, '文件夹操作'), isTrue);
     expect(hasSemanticsLabel(tester, '文件操作'), isTrue);
 
@@ -305,13 +312,34 @@ void main() {
     expect(hasSemanticsLabel(tester, '文件夹操作'), isFalse);
     expect(hasSemanticsLabel(tester, '文件操作'), isFalse);
 
+    final driveScroll = find
+        .descendant(
+          of: find.byType(DrivePage),
+          matching: find.byType(CustomScrollView),
+        )
+        .first;
+    double scrollPixels() => tester
+        .state<ScrollableState>(
+          find.descendant(of: driveScroll, matching: find.byType(Scrollable)),
+        )
+        .position
+        .pixels;
+    await tester.drag(driveScroll, const Offset(0, -400));
+    await tester.pumpAndSettle();
+    expect(scrollPixels(), greaterThan(0));
+    await tester.tapAt(
+      tester.getRect(find.byKey(const ValueKey('selection-appbar'))).center,
+    );
+    await tester.pumpAndSettle();
+    expect(scrollPixels(), closeTo(0, 0.5));
+
     await tester.tap(find.byTooltip('退出多选'));
     await tester.pumpAndSettle();
     expect(environment.navigation.selectionMode, isFalse);
     expect(tester.getSize(folderItem).height, folderHeight);
     expect(tester.getSize(fileItem).height, fileHeight);
     expect(find.byTooltip('文件夹操作'), findsOneWidget);
-    expect(find.byTooltip('文件操作'), findsOneWidget);
+    expect(find.byTooltip('文件操作'), findsWidgets);
     expect(hasSemanticsLabel(tester, '文件夹操作'), isTrue);
     expect(hasSemanticsLabel(tester, '文件操作'), isTrue);
 

@@ -98,6 +98,9 @@ enum _DriveMenuAction {
 /// 网盘“添加”FAB 菜单里的动作。
 enum _AddMenuAction { newFolder, uploadFile, uploadFromApp }
 
+/// 网盘多选操作栏“更多”菜单里的动作。
+enum _BatchMoreAction { password, move, rename, editDescription }
+
 /// 文件条目和文件属性页共用的动作菜单。
 ///
 /// 属性页已经提供下载 / 复制链接等快捷按钮，并负责承载“属性”内容本身，
@@ -1774,40 +1777,50 @@ class _DrivePageState extends ConsumerState<DrivePage>
     );
   }
 
-  Future<void> _batchMore() async {
-    final action = await showAppSheet<String>(
-      context,
-      child: SheetListGroup(
-        margin: SheetListGroup.endMargin,
-        children: [
-          ListTile(
-            leading: const Icon(Icons.lock_outline),
-            title: Text(context.l10n.accessPassword),
-            onTap: () => Navigator.of(context).pop('pwd'),
-          ),
-          ListTile(
-            leading: const Icon(Icons.drive_file_move_outline),
-            title: Text(context.l10n.move),
-            onTap: () => Navigator.of(context).pop('move'),
-          ),
-          ListTile(
-            leading: const Icon(Icons.input_field),
-            title: Text(context.l10n.rename),
-            onTap: () => Navigator.of(context).pop('rename'),
-          ),
-          ListTile(
-            leading: const Icon(Icons.description_outlined),
-            title: Text(context.l10n.editDesc),
-            onTap: () => Navigator.of(context).pop('desc'),
-          ),
-        ],
-      ),
+  Future<void> _batchMore(BuildContext anchorContext) async {
+    final anchor = m3eMenuAnchorOf(anchorContext);
+    if (anchor == null) return;
+    final l10n = context.l10n;
+    final action = await showAdaptiveM3eMenu<_BatchMoreAction>(
+      context: context,
+      anchor: anchor,
+      alignEnd: true,
+      items: [
+        M3eMenuItem(
+          value: _BatchMoreAction.password,
+          label: l10n.accessPassword,
+          icon: Icons.lock_outline,
+        ),
+        M3eMenuItem(
+          value: _BatchMoreAction.move,
+          label: l10n.move,
+          icon: Icons.drive_file_move_outline,
+        ),
+        M3eMenuItem(
+          value: _BatchMoreAction.rename,
+          label: l10n.rename,
+          icon: Icons.input_field,
+        ),
+        M3eMenuItem(
+          value: _BatchMoreAction.editDescription,
+          label: l10n.editDesc,
+          icon: Icons.description_outlined,
+        ),
+      ],
     );
     if (!mounted) return;
-    if (action == 'move') await _batchMove();
-    if (action == 'rename') await _batchRename();
-    if (action == 'desc') await _batchSetDesc();
-    if (action == 'pwd') await _batchSetPasswd();
+    switch (action) {
+      case _BatchMoreAction.password:
+        await _batchSetPasswd();
+      case _BatchMoreAction.move:
+        await _batchMove();
+      case _BatchMoreAction.rename:
+        await _batchRename();
+      case _BatchMoreAction.editDescription:
+        await _batchSetDesc();
+      case null:
+        return;
+    }
   }
 
   Future<void> _batchMove() async {
@@ -3090,10 +3103,15 @@ class _DrivePageState extends ConsumerState<DrivePage>
                         Theme.of(context).colorScheme,
                       ),
                       // 显式高度：Stack 的 Positioned 不提供高度约束
-                      child: SizedBox(
-                        height:
-                            MediaQuery.paddingOf(context).top + kToolbarHeight,
-                        child: _selectionAppBar(selectedCount),
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.translucent,
+                        onTap: _scrollToTop,
+                        child: SizedBox(
+                          height:
+                              MediaQuery.paddingOf(context).top +
+                              kToolbarHeight,
+                          child: _selectionAppBar(selectedCount),
+                        ),
                       ),
                     ),
                   ),
@@ -3137,10 +3155,14 @@ class _DrivePageState extends ConsumerState<DrivePage>
                               ? null
                               : _deleteSelected,
                         ),
-                        BatchAction(
-                          icon: Icons.more_horiz,
-                          label: context.l10n.more,
-                          onPressed: selectedCount == 0 ? null : _batchMore,
+                        Builder(
+                          builder: (BuildContext anchorContext) => BatchAction(
+                            icon: Icons.more_horiz,
+                            label: context.l10n.more,
+                            onPressed: selectedCount == 0
+                                ? null
+                                : () => _batchMore(anchorContext),
+                          ),
                         ),
                       ],
                     ),
@@ -3272,10 +3294,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
           preferredSize: const Size.fromHeight(kDrivePathBarHeight),
           // 多选期间禁用路径切换，但路径栏保持可见；
           // bottom 拿到的是无界高度，必须自己声明固定高度，否则会把工具栏挤成 0
-          child: SizedBox(
-            height: kDrivePathBarHeight,
-            child: IgnorePointer(ignoring: _selecting, child: _pathBar()),
-          ),
+          child: SizedBox(height: kDrivePathBarHeight, child: _pathBar()),
         ),
       ),
     );
@@ -3353,19 +3372,23 @@ class _DrivePageState extends ConsumerState<DrivePage>
       child: Row(
         children: [
           Expanded(
-            child: PathBar(
-              // 路径栏本身仍有 12dp 内边距；首段胶囊只留 4dp，
-              // 使「根目录」文字与 AppBar 标题默认的 16dp 起点对齐。
-              firstSegmentContentPadding: 4,
-              segments: [
-                PathSegment(id: '-1', label: context.l10n.root),
-                for (final node in _path)
-                  PathSegment(id: node.id, label: node.name),
-              ],
-              // 点当前目录 = 刷新；点上一级 = 返回该目录
-              onTap: (index) => index == _path.length
-                  ? _reloadAfterChange()
-                  : _jumpTo(index - 1),
+            child: IgnorePointer(
+              // 多选期间只禁路径跳转，排序 / 视图仍可使用。
+              ignoring: _selecting,
+              child: PathBar(
+                // 路径栏本身仍有 12dp 内边距；首段胶囊只留 4dp，
+                // 使「根目录」文字与 AppBar 标题默认的 16dp 起点对齐。
+                firstSegmentContentPadding: 4,
+                segments: [
+                  PathSegment(id: '-1', label: context.l10n.root),
+                  for (final node in _path)
+                    PathSegment(id: node.id, label: node.name),
+                ],
+                // 点当前目录 = 刷新；点上一级 = 返回该目录
+                onTap: (index) => index == _path.length
+                    ? _reloadAfterChange()
+                    : _jumpTo(index - 1),
+              ),
             ),
           ),
           const SizedBox(width: 4),

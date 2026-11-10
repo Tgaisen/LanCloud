@@ -808,6 +808,27 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('file2.zip'));
     await tester.pumpAndSettle();
+    expect(find.text('已选择 2 项'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('排序'));
+    await _settleSheet(tester);
+    expect(
+      find.byKey(const ValueKey('adaptive-m3e-menu-sheet')),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('名称'));
+    await tester.pump();
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('已选择 2 项'), findsOneWidget);
+
+    final gridBefore = app.environment.cachePageSettings.store.gridView;
+    await tester.tap(find.byTooltip('视图'));
+    await _settleSheet(tester);
+    await tester.tap(find.text(gridBefore ? '列表视图' : '网格视图'));
+    await tester.pumpAndSettle();
+    expect(app.environment.cachePageSettings.store.gridView, !gridBefore);
+    expect(find.text('已选择 2 项'), findsOneWidget);
 
     expect(
       tester
@@ -818,6 +839,10 @@ void main() {
 
     await tester.tap(find.byTooltip('更多'));
     await _settleSheet(tester);
+    expect(
+      find.byKey(const ValueKey('adaptive-m3e-menu-sheet')),
+      findsOneWidget,
+    );
     const moreOrder = ['访问密码', '移动', '重命名', '修改简介'];
     final moreTops = [
       for (final label in moreOrder)
