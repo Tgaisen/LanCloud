@@ -2845,13 +2845,11 @@ class PathChip extends StatelessWidget {
     required this.label,
     required this.current,
     required this.onTap,
-    this.contentPadding = 12,
   });
 
   final String label;
   final bool current;
   final VoidCallback onTap;
-  final double contentPadding;
 
   @override
   Widget build(BuildContext context) {
@@ -2880,7 +2878,7 @@ class PathChip extends StatelessWidget {
                   onTap: onTap,
                   child: Center(
                     child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: contentPadding),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
                       child: Text(
                         label,
                         maxLines: 1,
@@ -2924,7 +2922,7 @@ class PathBar extends StatefulWidget {
     required this.onTap,
     this.currentIndex,
     this.horizontalPadding = 12,
-    this.firstSegmentContentPadding = 12,
+    this.leadingPadding,
   });
 
   final List<PathSegment> segments;
@@ -2938,8 +2936,8 @@ class PathBar extends StatefulWidget {
   /// 横向内边距。AlertDialog 已有内容边距时传 0，避免重复缩进。
   final double horizontalPadding;
 
-  /// 第一段胶囊的内容内边距；页面可缩小它来对齐顶栏标题文字。
-  final double firstSegmentContentPadding;
+  /// 起始方向的额外留白；为空时与 [horizontalPadding] 相同。
+  final double? leadingPadding;
 
   @override
   State<PathBar> createState() => _PathBarState();
@@ -3107,9 +3105,6 @@ class _PathBarState extends State<PathBar> with TickerProviderStateMixin {
               label: entry.segment.label,
               current: _isCurrent(entry),
               onTap: () => _handleTap(entry),
-              contentPadding: index == 0
-                  ? widget.firstSegmentContentPadding
-                  : 12,
             ),
           ],
         ),
@@ -3127,7 +3122,10 @@ class _PathBarState extends State<PathBar> with TickerProviderStateMixin {
       child: SingleChildScrollView(
         controller: _scroll,
         scrollDirection: Axis.horizontal,
-        padding: EdgeInsets.symmetric(horizontal: widget.horizontalPadding),
+        padding: EdgeInsetsDirectional.only(
+          start: widget.leadingPadding ?? widget.horizontalPadding,
+          end: widget.horizontalPadding,
+        ),
         child: Row(
           children: [
             for (var i = 0; i < _entries.length; i++)
