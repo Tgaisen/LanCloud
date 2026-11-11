@@ -255,6 +255,9 @@ class DioTransferDownloader implements TransferDownloader {
     if (body == null) return null;
     await _cancelStream(body);
 
+    // gzip 是压缩表示，Range 与 Content-Range 都按压缩字节计算，不能用于
+    // 恢复解压后的本地文件。
+    if (_isTransparentlyDecodedGzip(response.headers)) return null;
     if (response.statusCode != HttpStatus.partialContent) return null;
     final range = _parseContentRange(response.headers.value('content-range'));
     if (range == null ||
@@ -490,6 +493,10 @@ class DioTransferDownloader implements TransferDownloader {
       await _cancelStream(body);
       throw const _RestartSequential();
     }
+    if (_isTransparentlyDecodedGzip(response.headers)) {
+      await _cancelStream(body);
+      throw const _RestartSequential();
+    }
     final range = _parseContentRange(response.headers.value('content-range'));
     if (range == null ||
         range.start != start ||
@@ -621,10 +628,21 @@ class DioTransferDownloader implements TransferDownloader {
       }
 
       final responseLength = _contentLength(response.headers);
+      final gzipEncoded = _isTransparentlyDecodedGzip(response.headers);
       final range = _parseContentRange(response.headers.value('content-range'));
       var offset = existing;
       var total = expectedTotal;
       if (status == HttpStatus.partialContent) {
+        if (gzipEncoded) {
+          await _cancelStream(body);
+          if (retriedWithoutRange) {
+            throw const ResumableDownloadException('服务器对压缩内容返回了断点范围');
+          }
+          retriedWithoutRange = true;
+          await deleteState(partialPath);
+          existing = 0;
+          continue;
+        }
         if (range == null ||
             range.start != existing ||
             (expectedTotal > 0 && range.total != expectedTotal)) {
@@ -642,7 +660,7 @@ class DioTransferDownloader implements TransferDownloader {
       } else {
         // 200 表示服务器没有采用 Range，响应体是完整文件，必须从头覆盖。
         offset = 0;
-        if (responseLength > 0) total = responseLength;
+        if (!gzipEncoded && responseLength > 0) total = responseLength;
       }
 
       final output = await file.open(
@@ -685,11 +703,16 @@ class DioTransferDownloader implements TransferDownloader {
       }
 
       final actualTotal = await file.length();
-      if (total > 0 && actualTotal != total) {
+      if (!gzipEncoded && total > 0 && actualTotal != total) {
         throw ResumableDownloadException('下载文件大小不一致：$actualTotal / $total');
       }
+      if (gzipEncoded) {
+        // HttpClient 默认会透明解压 gzip 正文，但保留压缩表示的
+        // Content-Length。此时落盘字节数才是解压后的真实总大小。
+        onProgress(actualTotal, actualTotal);
+      }
       return TransferDownloadResult(
-        total: total > 0 ? total : actualTotal,
+        total: gzipEncoded || total <= 0 ? actualTotal : total,
         resumed: offset > 0,
       );
     }
@@ -783,6 +806,12 @@ class DioTransferDownloader implements TransferDownloader {
 
   static int _contentLength(Headers headers) =>
       int.tryParse(headers.value('content-length') ?? '') ?? 0;
+
+  /// Dart HttpClient 只会在 Content-Encoding 恰好为 gzip 时透明解压响应体，
+  /// 且不会同步改写 Content-Length。返回值必须准确对应这一行为。
+  static bool _isTransparentlyDecodedGzip(Headers headers) =>
+      headers.value(HttpHeaders.contentEncodingHeader)?.trim().toLowerCase() ==
+      'gzip';
 
   static String? _headerValue(Headers headers, String name) {
     final value = headers.value(name)?.trim();
