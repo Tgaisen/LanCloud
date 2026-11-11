@@ -134,6 +134,12 @@ class _ProfilePageState extends riverpod.ConsumerState<ProfilePage>
   /// 当前右窗格内容的滚动控制器键（类别 + 二级页）。
   Object get _paneKey => (_detail, _subPage, _deepPage, _licensePackage?.name);
 
+  /// 右窗格切换身份。备份选项是备份内容发起的异步子页，进入后要保留
+  /// [BackupContent] 的 State，否则确认选项后的保存/落盘 continuation 会
+  /// 因原 State 已卸载而直接返回。
+  Object get _paneSwitcherKey =>
+      _subPage == ProfileSubPage.backup ? (_detail, _subPage) : _paneKey;
+
   /// 右窗格内容的排序值：类别按枚举顺序、二级页比所在类别深一层。
   /// 用来判断前后方向（新值更大 = 前进）。
   int get _paneOrder =>
@@ -772,7 +778,7 @@ class _ProfilePageState extends riverpod.ConsumerState<ProfilePage>
     bool hideTopBar,
   ) {
     // 右窗格内容身份 = (类别, 二级页)：二级页进出同样走滑动切换
-    final switcherKey = ValueKey(_paneKey);
+    final switcherKey = ValueKey(_paneSwitcherKey);
     return BodySideInset(
       child: Padding(
         // 独立页面（不在外壳里）时让开系统导航栏；外壳里的卡片已经让过位
@@ -977,22 +983,33 @@ class _ProfilePageState extends riverpod.ConsumerState<ProfilePage>
 
   Widget _buildDetailPane(BuildContext context) {
     final deep = _deepPage;
-    if (deep == _ProfileDeepPage.backupOptions) {
-      final controller = _backupOptionsController;
-      if (controller == null) return const SizedBox.shrink();
-      return _paneScrollView(
-        context,
-        controller: _paneScroll(_paneKey),
+    if (_subPage == ProfileSubPage.backup) {
+      final backupKey = (_detail, _subPage, null, null);
+      final showingOptions = deep == _ProfileDeepPage.backupOptions;
+      final optionsController = _backupOptionsController;
+      return Stack(
+        fit: StackFit.expand,
         children: [
-          BackupOptionsPage(
-            initialSections: _backupInitialSections,
-            confirmLabel: _backupConfirmLabel,
-            initialPassphrase: _backupInitialPassphrase,
-            verifySensitive: _backupVerifySensitive,
-            embedded: true,
-            controller: controller,
-            onResult: _completeBackupOptions,
+          Offstage(
+            offstage: showingOptions,
+            child: _buildBackupContentPane(context, scrollKey: backupKey),
           ),
+          if (showingOptions && optionsController != null)
+            _paneScrollView(
+              context,
+              controller: _paneScroll(_paneKey),
+              children: [
+                BackupOptionsPage(
+                  initialSections: _backupInitialSections,
+                  confirmLabel: _backupConfirmLabel,
+                  initialPassphrase: _backupInitialPassphrase,
+                  verifySensitive: _backupVerifySensitive,
+                  embedded: true,
+                  controller: optionsController,
+                  onResult: _completeBackupOptions,
+                ),
+              ],
+            ),
         ],
       );
     }
@@ -1024,9 +1041,9 @@ class _ProfilePageState extends riverpod.ConsumerState<ProfilePage>
         children: [
           switch (sub) {
             ProfileSubPage.advanced => const AdvancedContent(),
-            ProfileSubPage.backup => BackupContent(
-              progress: _subPageProgress,
-              backupOptionsOpener: _openBackupOptionsInPane,
+            ProfileSubPage.backup => _buildBackupContentPane(
+              context,
+              scrollKey: _paneKey,
             ),
             ProfileSubPage.licenses => LicensesContent(
               onOpenPackage: _openLicensePackage,
@@ -1083,6 +1100,23 @@ class _ProfilePageState extends riverpod.ConsumerState<ProfilePage>
         ),
       ],
       topPadding: 16,
+    );
+  }
+
+  Widget _buildBackupContentPane(
+    BuildContext context, {
+    required Object scrollKey,
+  }) {
+    return _paneScrollView(
+      context,
+      controller: _paneScroll(scrollKey),
+      children: [
+        BackupContent(
+          progress: _subPageProgress,
+          backupOptionsOpener: _openBackupOptionsInPane,
+        ),
+      ],
+      topPadding: 8,
     );
   }
 
