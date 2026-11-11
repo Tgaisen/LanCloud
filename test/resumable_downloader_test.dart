@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -52,6 +53,84 @@ void main() {
       expect(result.resumed, isFalse);
       expect(progress.last, payload.length);
       expect(progress.length, lessThan(5));
+    });
+
+    test('should 下载重定向后的 gzip 文本且不把压缩长度当作文件大小', () async {
+      final payload = utf8.encode(
+        List<String>.generate(512, (index) => '第$index行：蓝奏云文本下载。').join('\n'),
+      );
+      final server = await _startServer((request) async {
+        if (request.uri.path == '/redirect') {
+          request.response.statusCode = HttpStatus.found;
+          request.response.headers.set(HttpHeaders.locationHeader, '/file.txt');
+          await request.response.close();
+          return;
+        }
+        await _writeGzipResponse(request.response, payload);
+      });
+      addTearDown(() => server.close(force: true));
+      final progress = <(int, int)>[];
+
+      final result = await const DioTransferDownloader().download(
+        dio: dio,
+        url: 'http://${server.address.host}:${server.port}/redirect',
+        partialPath: partialFile.path,
+        expectedTotal: 0,
+        cancelToken: CancelToken(),
+        headers: const <String, String>{},
+        receiveTimeout: const Duration(seconds: 5),
+        onProgress: (received, total) => progress.add((received, total)),
+      );
+
+      expect(await partialFile.readAsBytes(), payload);
+      expect(result.total, payload.length);
+      expect(result.resumed, isFalse);
+      expect(progress.last, (payload.length, payload.length));
+    });
+
+    test('should 在 gzip 的 206 响应后无 Range 重新请求完整文件', () async {
+      final payload = utf8.encode(
+        List<String>.generate(1024, (index) => 'gzip range $index').join('\n'),
+      );
+      final compressed = gzip.encode(payload);
+      final initialLength = 16;
+      await partialFile.writeAsBytes(payload.sublist(0, initialLength));
+      final ranges = <String?>[];
+      final server = await _startServer((request) async {
+        final range = request.headers.value('range');
+        ranges.add(range);
+        if (range == null) {
+          await _writeGzipResponse(request.response, payload);
+          return;
+        }
+        request.response.statusCode = HttpStatus.partialContent;
+        request.response.headers.contentType = ContentType.text;
+        request.response.headers.set(HttpHeaders.contentEncodingHeader, 'gzip');
+        request.response.headers.set(
+          HttpHeaders.contentRangeHeader,
+          'bytes $initialLength-${compressed.length - 1}/${compressed.length}',
+        );
+        request.response.contentLength = compressed.length;
+        request.response.add(compressed);
+        await request.response.close();
+      });
+      addTearDown(() => server.close(force: true));
+
+      final result = await const DioTransferDownloader().download(
+        dio: dio,
+        url: 'http://${server.address.host}:${server.port}/file.txt',
+        partialPath: partialFile.path,
+        expectedTotal: 0,
+        cancelToken: CancelToken(),
+        headers: const <String, String>{},
+        receiveTimeout: const Duration(seconds: 5),
+        onProgress: (_, _) {},
+      );
+
+      expect(ranges, <String?>['bytes=$initialLength-', null]);
+      expect(await partialFile.readAsBytes(), payload);
+      expect(result.total, payload.length);
+      expect(result.resumed, isFalse);
     });
 
     test('should 从已有 .part 文件发送 Range 并追加剩余内容', () async {
@@ -524,6 +603,19 @@ Future<void> _writeResponse(
       await response.flush();
     }
   }
+  await response.close();
+}
+
+Future<void> _writeGzipResponse(
+  HttpResponse response,
+  List<int> payload,
+) async {
+  final compressed = gzip.encode(payload);
+  response.statusCode = HttpStatus.ok;
+  response.headers.contentType = ContentType.text;
+  response.headers.set(HttpHeaders.contentEncodingHeader, 'gzip');
+  response.contentLength = compressed.length;
+  response.add(compressed);
   await response.close();
 }
 
