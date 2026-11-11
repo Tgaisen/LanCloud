@@ -87,7 +87,7 @@ dependencies:
   cupertino_ui: ^1.1.6
   cryptography: ^2.9.0
   # 应用级状态与依赖注入统一使用 Riverpod。
-  flutter_riverpod: ^3.4.3
+  flutter_riverpod: ^3.5.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
