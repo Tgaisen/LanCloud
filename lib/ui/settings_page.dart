@@ -941,6 +941,7 @@ class _SettingsCategoryPageState extends ConsumerState<SettingsCategoryPage>
       final saved = await SystemFileSaver.save(
         sourcePath: file.path,
         fileName: p.basename(file.path),
+        dialogTitle: l10n.filePickerSaveLogsTitle,
         mime: 'text/plain',
       );
       if (!mounted || saved == null) return; // 用户取消保存

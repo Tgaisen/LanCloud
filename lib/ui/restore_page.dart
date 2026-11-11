@@ -261,7 +261,6 @@ class _RestorePageState extends ConsumerState<RestorePage> {
     }
     final preview = BackupService.inspect(plaintext);
     var sensitiveAuthorized = false;
-    String? authorizationError;
     if (preview.hasSensitiveData && mounted) {
       final l10n = context.l10n;
       final result = await CookieAuth.instance.verify(
@@ -275,9 +274,12 @@ class _RestorePageState extends ConsumerState<RestorePage> {
         case CookieAuthResult.canceled:
           return;
         case CookieAuthResult.unavailable:
-          authorizationError = l10n.cookieAuthUnavailable;
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(l10n.cookieAuthUnavailable)));
         case CookieAuthResult.failed:
-          authorizationError = l10n.cookieAuthFailed;
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(l10n.cookieAuthFailed)));
       }
     }
     final candidate = sensitiveAuthorized ? preview.suggestedAccount : null;
@@ -296,7 +298,7 @@ class _RestorePageState extends ConsumerState<RestorePage> {
       _candidate = candidate;
       _loginStatus = status;
       _sensitiveAuthorized = sensitiveAuthorized;
-      _error = authorizationError;
+      _error = null;
       _forward = true;
       _stage = _RestoreStage.preview;
     });
@@ -330,10 +332,13 @@ class _RestorePageState extends ConsumerState<RestorePage> {
         case CookieAuthResult.canceled:
           return;
         case CookieAuthResult.unavailable:
-          setState(() => _error = l10n.cookieAuthUnavailable);
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(l10n.cookieAuthUnavailable)));
           return;
         case CookieAuthResult.failed:
-          setState(() => _error = l10n.cookieAuthFailed);
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(l10n.cookieAuthFailed)));
           return;
       }
     }

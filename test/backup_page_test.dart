@@ -675,13 +675,24 @@ void main() {
     expect(fakeAuth.calls, 1);
     expect(fake.restoreCount, 0);
 
+    fakeAuth.result = CookieAuthResult.failed;
+    await tester.tap(find.text('恢复'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, '确定'));
+    await tester.pumpAndSettle();
+    expect(restored, isFalse);
+    expect(fakeAuth.calls, 2);
+    expect(fake.restoreCount, 0);
+    expect(find.byType(SnackBar), findsOneWidget);
+    expect(find.byType(AlertDialog), findsNothing);
+
     fakeAuth.result = CookieAuthResult.ok;
     await tester.tap(find.text('恢复'));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, '确定'));
     await tester.pumpAndSettle();
     expect(restored, isTrue);
-    expect(fakeAuth.calls, 2);
+    expect(fakeAuth.calls, 3);
     expect(fake.restoreCount, 1);
   });
 

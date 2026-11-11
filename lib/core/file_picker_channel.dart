@@ -13,9 +13,9 @@ class ProviderFilePicker {
 
   static const _channel = MethodChannel('lancloud/file_picker');
 
-  static Future<List<String>> pickFiles() async {
+  static Future<List<String>> pickFiles({required String dialogTitle}) async {
     if (PlatformSupport.isDesktop) {
-      final picked = await FilePicker.pickFiles();
+      final picked = await FilePicker.pickFiles(dialogTitle: dialogTitle);
       return [
         for (final file in picked)
           if (file.path != null && file.path!.isNotEmpty) file.path!,

@@ -2273,6 +2273,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chooseBackupFile => 'Choose backup file';
 
   @override
+  String get filePickerQrImageTitle => 'Select QR code image';
+
+  @override
+  String get filePickerUploadFilesTitle => 'Select files to upload';
+
+  @override
+  String get filePickerDownloadDirectoryTitle => 'Select download folder';
+
+  @override
+  String get filePickerSaveBackupTitle => 'Save backup file';
+
+  @override
+  String get filePickerSaveLogsTitle => 'Save runtime logs';
+
+  @override
   String get backupContent => 'Backup content';
 
   @override

@@ -122,6 +122,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('身份验证未通过，已取消显示'), findsOneWidget);
+    expect(find.byType(SnackBar), findsOneWidget);
+    expect(find.byType(AlertDialog), findsNothing);
     expect(find.text(_cookie), findsNothing);
   });
 
@@ -135,6 +137,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('当前设备未设置锁屏密码或生物识别，无法验证身份'), findsOneWidget);
+    expect(find.byType(SnackBar), findsOneWidget);
+    expect(find.byType(AlertDialog), findsNothing);
   });
 
   testWidgets('导出把 Cookie 交给系统分享通道', (tester) async {

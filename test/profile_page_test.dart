@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/semantics.dart';
@@ -8,7 +10,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/app_startup.dart';
 import 'package:lancloud/core/backup/backup_dependencies.dart';
+import 'package:lancloud/core/backup/backup_sections.dart';
 import 'package:lancloud/core/backup/backup_service.dart';
+import 'package:lancloud/core/backup/webdav_store.dart';
+import 'package:lancloud/core/cookie_auth.dart';
 import 'package:lancloud/core/data/account_store.dart';
 import 'package:lancloud/core/transfer/transfer_issue.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
@@ -21,6 +26,7 @@ import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/licenses_page.dart';
 import 'package:lancloud/ui/m3e.dart';
 import 'package:lancloud/ui/profile_page.dart';
+import 'package:local_auth_android/local_auth_android.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
@@ -46,6 +52,66 @@ class _NoopBackupService extends BackupService {
 
   @override
   Future<void> init() async {}
+}
+
+class _RecordingWebdavStore extends WebdavStore {
+  Map<String, String>? _secureAccount;
+  String _legacyPassword = '';
+
+  @override
+  Future<Map<String, String>?> readSecureAccount() async =>
+      _secureAccount == null ? null : Map.of(_secureAccount!);
+
+  @override
+  Future<void> writeSecureAccount(Map<String, String> value) async {
+    _secureAccount = Map.of(value);
+  }
+
+  @override
+  Future<void> deleteSecureAccount() async => _secureAccount = null;
+
+  @override
+  Future<String> readLegacyPassword() async => _legacyPassword;
+
+  @override
+  Future<void> deleteLegacyPassword() async => _legacyPassword = '';
+}
+
+class _RecordingBackupService extends BackupService {
+  _RecordingBackupService(AppEnvironment environment)
+    : super(backupDependenciesFor(environment));
+
+  final _store = _RecordingWebdavStore();
+  int exportCount = 0;
+
+  @override
+  WebdavStore get webdav => _store;
+
+  @override
+  Future<void> init() => _store.load();
+
+  @override
+  Future<File> exportFile({
+    Set<BackupSection> sections = const {},
+    String? passphrase,
+    DateTime? now,
+  }) async {
+    exportCount += 1;
+    return File('${Directory.systemTemp.path}/profile-backup-test.json');
+  }
+}
+
+class _FakeCookieAuth extends CookieAuth {
+  int calls = 0;
+
+  @override
+  Future<CookieAuthResult> verify(
+    String reason, {
+    Iterable<AuthMessages> messages = const <AuthMessages>[],
+  }) async {
+    calls += 1;
+    return CookieAuthResult.ok;
+  }
 }
 
 class _TestProviders extends StatelessWidget {
@@ -245,6 +311,111 @@ void main() {
 
   /// 右窗格内容的焦点落点（FocusNode 的 debugLabel）。
   String? focusedPaneLabel() => FocusManager.instance.primaryFocus?.debugLabel;
+
+  testWidgets('大屏备份选项确认后，本地保存与 WebDAV 设置都会继续执行', (tester) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    tester.view.physicalSize = const Size(1200, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final app = AppEnvironment();
+    addTearDown(app.dispose);
+    final service = _RecordingBackupService(app);
+    final saveCalls = <MethodCall>[];
+    const saveChannel = MethodChannel('lancloud/file_picker');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(saveChannel, (call) async {
+          if (call.method != 'saveFile') return null;
+          saveCalls.add(call);
+          return 'profile-backup-test.json';
+        });
+    addTearDown(
+      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(saveChannel, null),
+    );
+
+    await tester.pumpWidget(
+      _TestProviders.value(
+        value: app,
+        backupService: service,
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const ProfilePage(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('隐私与数据'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ListTile, '备份与恢复'));
+    await tester.pumpAndSettle();
+
+    // 立即备份：从备份内容进入右窗格选项页，确认后必须继续生成并保存。
+    await tester.tap(find.widgetWithText(ListTile, '立即备份'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byType(BackupOptionsPage),
+        matching: find.text('设置项'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(TextButton, '继续'));
+    await tester.pumpAndSettle();
+
+    expect(service.exportCount, 1);
+    expect(saveCalls, hasLength(1));
+    expect(find.textContaining('profile-backup-test.json'), findsOneWidget);
+
+    // WebDAV 备份选项确认后，也必须由仍存活的 BackupContent 落盘。
+    await tester.tap(find.widgetWithText(ListTile, '备份选项'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byType(BackupOptionsPage),
+        matching: find.text('设置项'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(TextButton, '保存'));
+    await tester.pumpAndSettle();
+
+    expect(service.webdav.backupSections, {BackupSection.settings});
+    expect(find.byType(BackupOptionsPage), findsNothing);
+  });
+
+  testWidgets('大屏备份选项：敏感项仍会发起身份验证（回归）', (tester) async {
+    final fakeAuth = _FakeCookieAuth();
+    CookieAuth.instance = fakeAuth;
+    addTearDown(() => CookieAuth.instance = CookieAuth());
+    await pumpTwoPane(tester);
+
+    await tester.tap(find.text('隐私与数据'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ListTile, '备份与恢复'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ListTile, '备份选项'));
+    await tester.pumpAndSettle();
+
+    final sensitiveTile = find.descendant(
+      of: find.byType(BackupOptionsPage),
+      matching: find.text('账号列表与 Cookie'),
+    );
+    await tester.ensureVisible(sensitiveTile);
+    await tester.pumpAndSettle();
+    await tester.tap(sensitiveTile);
+    await tester.pumpAndSettle();
+
+    expect(fakeAuth.calls, 1);
+    expect(
+      tester
+          .widget<M3ePickTile>(find.widgetWithText(M3ePickTile, '账号列表与 Cookie'))
+          .selected,
+      isTrue,
+    );
+  });
 
   /// 顶栏标题的语义：右窗格换内容时标题跟着换，标题本身是 live region，
   /// 念不念、怎么念交给 TalkBack 自己（不自己发 announcement、不加自造文案）。

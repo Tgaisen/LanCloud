@@ -18,18 +18,21 @@ class SystemFileSaver {
 
   /// 把 [sourcePath] 的文件保存到用户选择的位置。
   ///
-  /// [fileName] 是保存对话框里预填的文件名，[mime] 决定系统筛选的类型。
+  /// [fileName] 是保存对话框里预填的文件名，[dialogTitle] 是本地化窗口标题，
+  /// [mime] 决定系统筛选的类型。
   /// 返回系统实际使用的文件名（用户可能改名，重名时系统会追加序号）；
   /// 用户取消时返回 null，写入失败时抛 PlatformException。
   static Future<String?> save({
     required String sourcePath,
     required String fileName,
+    required String dialogTitle,
     required String mime,
   }) async {
     if (PlatformSupport.isDesktop) {
       return _saveOnDesktop(
         sourcePath: sourcePath,
         fileName: fileName,
+        dialogTitle: dialogTitle,
         mime: mime,
       );
     }
@@ -47,11 +50,13 @@ class SystemFileSaver {
   static Future<String?> _saveOnDesktop({
     required String sourcePath,
     required String fileName,
+    required String dialogTitle,
     required String mime,
   }) async {
     final target = await FilePicker.saveFile(
       fileName: fileName,
       bytes: await File(sourcePath).readAsBytes(),
+      dialogTitle: dialogTitle,
       mimeType: mime,
     );
     if (target == null) return null;

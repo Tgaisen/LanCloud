@@ -1427,7 +1427,9 @@ class _DrivePageState extends ConsumerState<DrivePage>
   }
 
   Future<void> _upload() async {
-    final files = await FilePicker.pickFiles();
+    final files = await FilePicker.pickFiles(
+      dialogTitle: context.l10n.filePickerUploadFilesTitle,
+    );
     if (files.isEmpty) return;
     if (!mounted) return;
     await _activeClient()?.fetchAccountInfo();
@@ -1472,7 +1474,9 @@ class _DrivePageState extends ConsumerState<DrivePage>
   /// 从其他应用/文档提供器选取文件上传（ACTION_OPEN_DOCUMENT）。
   Future<void> _uploadFromApp() async {
     try {
-      final paths = await ProviderFilePicker.pickFiles();
+      final paths = await ProviderFilePicker.pickFiles(
+        dialogTitle: context.l10n.filePickerUploadFilesTitle,
+      );
       if (paths.isEmpty || !mounted) return;
       await _activeClient()?.fetchAccountInfo();
       if (!mounted) return;

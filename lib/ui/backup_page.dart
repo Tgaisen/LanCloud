@@ -155,26 +155,39 @@ class _BackupContentState extends ConsumerState<BackupContent> {
   // -------------------------------------------------------------- 本地备份
 
   /// 敏感内容需要身份验证：本次运行验证通过一次后不再重复验证。
-  /// 返回 true 表示可以继续。
-  Future<bool> _ensureSensitiveVerified() async {
-    if (_service.sensitiveVerified) return true;
-    final l10n = context.l10n;
+  ///
+  /// 大屏“我的”页会把备份内容替换成备份选项页，原 [BackupContent] 的
+  /// State 随即卸载。验证回调必须在打开选项页前捕获稳定的 Messenger 和
+  /// 文案，不能在被卸载的 State 上再访问 `context`。
+  static Future<bool> _ensureSensitiveVerified({
+    required BackupService service,
+    required AppLocalizations l10n,
+    required ScaffoldMessengerState messenger,
+  }) async {
+    if (service.sensitiveVerified) return true;
     final result = await CookieAuth.instance.verify(
       l10n.cookieAuthReason,
       messages: authMessagesFor(l10n),
     );
-    if (!mounted) return false;
     switch (result) {
       case CookieAuthResult.ok:
-        _service.sensitiveVerified = true;
+        service.sensitiveVerified = true;
         return true;
       case CookieAuthResult.canceled:
         return false;
       case CookieAuthResult.unavailable:
-        _snack(l10n.cookieAuthUnavailable);
+        if (messenger.mounted) {
+          messenger.showSnackBar(
+            SnackBar(content: Text(l10n.cookieAuthUnavailable)),
+          );
+        }
         return false;
       case CookieAuthResult.failed:
-        _snack(l10n.cookieAuthFailed);
+        if (messenger.mounted) {
+          messenger.showSnackBar(
+            SnackBar(content: Text(l10n.cookieAuthFailed)),
+          );
+        }
         return false;
     }
   }
@@ -201,16 +214,22 @@ class _BackupContentState extends ConsumerState<BackupContent> {
     required String confirmLabel,
     String? title,
     String initialPassphrase = '',
-    Future<bool> Function()? verifySensitive,
   }) {
     final opener = widget.backupOptionsOpener ?? showBackupOptionsPage;
+    final l10n = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+    final service = _service;
     return opener(
       context,
       initialSections: initialSections,
       confirmLabel: confirmLabel,
       title: title,
       initialPassphrase: initialPassphrase,
-      verifySensitive: verifySensitive,
+      verifySensitive: () => _ensureSensitiveVerified(
+        service: service,
+        l10n: l10n,
+        messenger: messenger,
+      ),
     );
   }
 
@@ -221,7 +240,6 @@ class _BackupContentState extends ConsumerState<BackupContent> {
       initialSections: const <BackupSection>{},
       confirmLabel: l10n.continueLabel,
       title: l10n.backupPageTitle,
-      verifySensitive: _ensureSensitiveVerified,
     );
     if (options == null || options.sections.isEmpty || !mounted) return;
     final file = await _withGeneratingDialog(
@@ -236,6 +254,7 @@ class _BackupContentState extends ConsumerState<BackupContent> {
       saved = await SystemFileSaver.save(
         sourcePath: file.path,
         fileName: p.basename(file.path),
+        dialogTitle: l10n.filePickerSaveBackupTitle,
         mime: 'application/json',
       );
     } catch (_) {
@@ -309,7 +328,6 @@ class _BackupContentState extends ConsumerState<BackupContent> {
       initialSections: store.backupSections,
       initialPassphrase: store.backupPassphrase,
       confirmLabel: l10n.save,
-      verifySensitive: _ensureSensitiveVerified,
     );
     if (options == null || !mounted) return;
     await _run(() async {
