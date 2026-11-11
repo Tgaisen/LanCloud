@@ -580,6 +580,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get renameEmptyName => '修改后的文件名不能为空';
 
   @override
+  String get renameInvalidCharacters => '包含非法字符';
+
+  @override
   String renamedUploads(int count) {
     return '已修改 $count 个上传任务的名称';
   }
@@ -1536,6 +1539,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get layout => '布局';
 
   @override
+  String get viewMode => '视图';
+
+  @override
+  String get listView => '列表视图';
+
+  @override
+  String get gridView => '网格视图';
+
+  @override
   String get grid => '网格';
 
   @override
@@ -1567,6 +1579,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get sortByTime => '按时间排序';
+
+  @override
+  String get ascending => '升序';
 
   @override
   String get toggleLayout => '切换布局样式';
@@ -1609,7 +1624,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get fileActions => '文件操作';
 
   @override
-  String get downloaded => '已加入下载';
+  String get downloaded => '已下载';
 
   @override
   String get folder => '文件夹';

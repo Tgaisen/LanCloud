@@ -40,6 +40,29 @@ const double _driveEnterDurationMs = 720;
 const double _driveEnterItemDurationMs = 232;
 const double _driveEnterStepMs = 26;
 
+String _lanzouNameSortKey(String name) =>
+    PinyinHelper.getPinyinE(name, separator: '', defPinyin: '~').toLowerCase();
+
+/// 文件夹没有时间 / 大小字段，按网盘页的既有约定处理：
+/// 时间升序沿用服务端顺序，降序反转；名称按拼音比较；大小保持原序。
+List<LzFolder> _sortLzFoldersForDisplay(
+  List<LzFolder> folders, {
+  required String sortMode,
+  required bool ascending,
+}) {
+  var list = List<LzFolder>.of(folders);
+  if (sortMode == 'name') {
+    list.sort(
+      (a, b) =>
+          _lanzouNameSortKey(a.name).compareTo(_lanzouNameSortKey(b.name)),
+    );
+    if (!ascending) list = list.reversed.toList();
+  } else if (sortMode != 'size' && !ascending) {
+    list = list.reversed.toList();
+  }
+  return list;
+}
+
 /// 网盘页文件条目 ⋯ 菜单里的动作。
 enum _FileMenuAction {
   download,
@@ -56,12 +79,27 @@ enum _FileMenuAction {
 enum _FolderMenuAction {
   open,
   properties,
+  toggleQuickAccess,
   copyLink,
   password,
   rename,
   editDescription,
   delete,
 }
+
+/// 网盘顶栏菜单里的动作。
+enum _DriveMenuAction {
+  multiSelect,
+  refresh,
+  toggleQuickAccess,
+  folderProperties,
+}
+
+/// 网盘“添加”FAB 菜单里的动作。
+enum _AddMenuAction { newFolder, uploadFile, uploadFromApp }
+
+/// 网盘多选操作栏“更多”菜单里的动作。
+enum _BatchMoreAction { password, move, rename, editDescription }
 
 /// 文件条目和文件属性页共用的动作菜单。
 ///
@@ -74,6 +112,50 @@ Future<_FileMenuAction?> _showFileActionMenu(
   bool propertyContext = false,
 }) {
   final l10n = context.l10n;
+  final readonlyItems = <M3eMenuItem<_FileMenuAction>>[
+    M3eMenuItem(
+      value: _FileMenuAction.download,
+      label: l10n.download,
+      icon: Icons.download_outlined,
+    ),
+    M3eMenuItem(
+      value: _FileMenuAction.properties,
+      label: l10n.properties,
+      icon: Icons.info_outline,
+    ),
+    M3eMenuItem(
+      value: _FileMenuAction.copyLink,
+      label: l10n.copyLink,
+      icon: Icons.copy,
+    ),
+  ];
+  final modifyingItems = <M3eMenuItem<_FileMenuAction>>[
+    M3eMenuItem(
+      value: _FileMenuAction.password,
+      label: l10n.accessPassword,
+      icon: Icons.lock_outline,
+    ),
+    M3eMenuItem(
+      value: _FileMenuAction.move,
+      label: l10n.move,
+      icon: Icons.drive_file_move_outline,
+    ),
+    M3eMenuItem(
+      value: _FileMenuAction.rename,
+      label: l10n.rename,
+      icon: Icons.input_field,
+    ),
+    M3eMenuItem(
+      value: _FileMenuAction.editDescription,
+      label: l10n.editDesc,
+      icon: Icons.description_outlined,
+    ),
+    M3eMenuItem(
+      value: _FileMenuAction.delete,
+      label: l10n.delete,
+      icon: Icons.delete_outline,
+    ),
+  ];
   return showAdaptiveM3eMenu<_FileMenuAction>(
     context: context,
     anchor: anchor,
@@ -81,76 +163,10 @@ Future<_FileMenuAction?> _showFileActionMenu(
     allowSheet: !propertyContext,
     // ⋯ 贴着右边缘：菜单右缘对齐，免得被屏幕右上角夹歪
     alignEnd: true,
-    items: propertyContext
-        ? [
-            M3eMenuItem(
-              value: _FileMenuAction.password,
-              label: l10n.accessPassword,
-              icon: Icons.lock_outline,
-            ),
-            M3eMenuItem(
-              value: _FileMenuAction.move,
-              label: l10n.move,
-              icon: Icons.drive_file_move_outline,
-            ),
-            M3eMenuItem(
-              value: _FileMenuAction.rename,
-              label: l10n.rename,
-              icon: Icons.input_field,
-            ),
-            M3eMenuItem(
-              value: _FileMenuAction.editDescription,
-              label: l10n.editDesc,
-              icon: Icons.description_outlined,
-            ),
-            M3eMenuItem(
-              value: _FileMenuAction.delete,
-              label: l10n.delete,
-              icon: Icons.delete_outline,
-            ),
-          ]
-        : [
-            M3eMenuItem(
-              value: _FileMenuAction.download,
-              label: l10n.download,
-              icon: Icons.download_outlined,
-            ),
-            M3eMenuItem(
-              value: _FileMenuAction.properties,
-              label: l10n.properties,
-              icon: Icons.info_outline,
-            ),
-            M3eMenuItem(
-              value: _FileMenuAction.copyLink,
-              label: l10n.copyLink,
-              icon: Icons.copy,
-            ),
-            M3eMenuItem(
-              value: _FileMenuAction.password,
-              label: l10n.accessPassword,
-              icon: Icons.lock_outline,
-            ),
-            M3eMenuItem(
-              value: _FileMenuAction.move,
-              label: l10n.move,
-              icon: Icons.drive_file_move_outline,
-            ),
-            M3eMenuItem(
-              value: _FileMenuAction.rename,
-              label: l10n.rename,
-              icon: Icons.input_field,
-            ),
-            M3eMenuItem(
-              value: _FileMenuAction.editDescription,
-              label: l10n.editDesc,
-              icon: Icons.description_outlined,
-            ),
-            M3eMenuItem(
-              value: _FileMenuAction.delete,
-              label: l10n.delete,
-              icon: Icons.delete_outline,
-            ),
-          ],
+    sections: [
+      if (!propertyContext) M3eMenuSection(items: readonlyItems),
+      M3eMenuSection(items: modifyingItems),
+    ],
   );
 }
 
@@ -162,74 +178,63 @@ Future<_FolderMenuAction?> _showFolderActionMenu(
   required Rect anchor,
   Offset? pointerPosition,
   bool propertyContext = false,
+  bool pinned = false,
 }) {
   final l10n = context.l10n;
+  final readonlyItems = <M3eMenuItem<_FolderMenuAction>>[
+    M3eMenuItem(
+      value: _FolderMenuAction.open,
+      label: l10n.open,
+      icon: Icons.open_in_new,
+    ),
+    M3eMenuItem(
+      value: _FolderMenuAction.properties,
+      label: l10n.properties,
+      icon: Icons.info_outline,
+    ),
+    M3eMenuItem(
+      value: _FolderMenuAction.toggleQuickAccess,
+      label: pinned ? l10n.removeFromQuickAccess : l10n.addToQuickAccess,
+      icon: pinned ? Icons.keep_off : Icons.keep,
+    ),
+    M3eMenuItem(
+      value: _FolderMenuAction.copyLink,
+      label: l10n.copyLink,
+      icon: Icons.copy,
+    ),
+  ];
+  final modifyingItems = <M3eMenuItem<_FolderMenuAction>>[
+    M3eMenuItem(
+      value: _FolderMenuAction.password,
+      label: l10n.accessPassword,
+      icon: Icons.lock_outline,
+    ),
+    M3eMenuItem(
+      value: _FolderMenuAction.rename,
+      label: l10n.rename,
+      icon: Icons.input_field,
+    ),
+    M3eMenuItem(
+      value: _FolderMenuAction.editDescription,
+      label: l10n.editDesc,
+      icon: Icons.description_outlined,
+    ),
+    M3eMenuItem(
+      value: _FolderMenuAction.delete,
+      label: l10n.delete,
+      icon: Icons.delete_outline,
+    ),
+  ];
   return showAdaptiveM3eMenu<_FolderMenuAction>(
     context: context,
     anchor: anchor,
     pointerPosition: pointerPosition,
     allowSheet: !propertyContext,
     alignEnd: true,
-    items: propertyContext
-        ? [
-            M3eMenuItem(
-              value: _FolderMenuAction.password,
-              label: l10n.accessPassword,
-              icon: Icons.lock_outline,
-            ),
-            M3eMenuItem(
-              value: _FolderMenuAction.rename,
-              label: l10n.rename,
-              icon: Icons.input_field,
-            ),
-            M3eMenuItem(
-              value: _FolderMenuAction.editDescription,
-              label: l10n.editDesc,
-              icon: Icons.description_outlined,
-            ),
-            M3eMenuItem(
-              value: _FolderMenuAction.delete,
-              label: l10n.delete,
-              icon: Icons.delete_outline,
-            ),
-          ]
-        : [
-            M3eMenuItem(
-              value: _FolderMenuAction.open,
-              label: l10n.open,
-              icon: Icons.open_in_new,
-            ),
-            M3eMenuItem(
-              value: _FolderMenuAction.properties,
-              label: l10n.properties,
-              icon: Icons.info_outline,
-            ),
-            M3eMenuItem(
-              value: _FolderMenuAction.copyLink,
-              label: l10n.copyLink,
-              icon: Icons.copy,
-            ),
-            M3eMenuItem(
-              value: _FolderMenuAction.password,
-              label: l10n.accessPassword,
-              icon: Icons.lock_outline,
-            ),
-            M3eMenuItem(
-              value: _FolderMenuAction.rename,
-              label: l10n.rename,
-              icon: Icons.input_field,
-            ),
-            M3eMenuItem(
-              value: _FolderMenuAction.editDescription,
-              label: l10n.editDesc,
-              icon: Icons.description_outlined,
-            ),
-            M3eMenuItem(
-              value: _FolderMenuAction.delete,
-              label: l10n.delete,
-              icon: Icons.delete_outline,
-            ),
-          ],
+    sections: [
+      if (!propertyContext) M3eMenuSection(items: readonlyItems),
+      M3eMenuSection(items: modifyingItems),
+    ],
   );
 }
 
@@ -321,6 +326,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
   bool _searching = false;
   String _filter = '';
   String _sortMode = 'default';
+  bool _sortAscending = false;
   final Map<String, double> _folderOffsets = {};
   bool _selecting = false;
   final Set<String> _selectedFiles = {};
@@ -383,6 +389,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
     _listHome = ref.read(listHomeSettingsStateProvider);
     _appearance = ref.read(navigationAppearanceSettingsStateProvider);
     _sortMode = _listHome.sortMode;
+    _sortAscending = _listHome.sortAscending;
     _transfers = ref.read(transferManagerProvider)
       ..addTaskListener(_onTaskDone);
     if (widget.initialName != null) {
@@ -974,33 +981,34 @@ class _DrivePageState extends ConsumerState<DrivePage>
     final list = _folders
         .where((f) => query.isEmpty || f.name.toLowerCase().contains(query))
         .toList();
-    if (_sortMode == 'name') {
-      list.sort((a, b) => _nameSortKey(a.name).compareTo(_nameSortKey(b.name)));
-    }
-    return list;
+    return _sortLzFoldersForDisplay(
+      list,
+      sortMode: _sortMode,
+      ascending: _sortAscending,
+    );
   }
-
-  String _nameSortKey(String name) => PinyinHelper.getPinyinE(
-    name,
-    separator: '',
-    defPinyin: '~',
-  ).toLowerCase();
 
   List<LzFile> get _visibleFiles {
     final query = _filter.toLowerCase();
-    final list = _files
+    var list = _files
         .where((f) => query.isEmpty || f.name.toLowerCase().contains(query))
         .toList();
+    final direction = _sortAscending ? 1 : -1;
     switch (_sortMode) {
       case 'size':
         list.sort(
-          (a, b) => lzSizeToBytes(b.size).compareTo(lzSizeToBytes(a.size)),
+          (a, b) =>
+              direction *
+              lzSizeToBytes(a.size).compareTo(lzSizeToBytes(b.size)),
         );
       case 'default':
-        break;
+      case 'time':
+        if (!_sortAscending) list = list.reversed.toList();
       default:
         list.sort(
-          (a, b) => _nameSortKey(a.name).compareTo(_nameSortKey(b.name)),
+          (a, b) =>
+              direction *
+              _lanzouNameSortKey(a.name).compareTo(_lanzouNameSortKey(b.name)),
         );
     }
     return list;
@@ -1199,144 +1207,223 @@ class _DrivePageState extends ConsumerState<DrivePage>
     }
   }
 
-  /// 网盘菜单：底部弹窗承载布局、排序与列表操作。
-  Future<void> _showDriveMenu() async {
-    var grid = _cacheSettings.gridView;
-    var sort = _sortMode;
-    final isRoot = _folderId == '-1';
-    await showAppSheet<void>(
-      context,
-      child: StatefulBuilder(
-        builder: (sheetContext, setSheetState) => Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 分组小标题 + 按钮组：标题用统一的 M3eSectionHeader
-            M3eSectionHeader(context.l10n.layout, horizontalInset: 20),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: SizedBox(
-                width: double.infinity,
-                child: M3eConnectedButtonGroup<String>(
-                  values: const ['grid', 'list'],
-                  selected: grid ? 'grid' : 'list',
-                  onSelected: (value) {
-                    setSheetState(() => grid = value == 'grid');
-                    _cacheSettings.setGridView(grid);
-                  },
-                  labelOf: (value) => Text(
-                    value == 'grid' ? context.l10n.grid : context.l10n.list,
-                  ),
-                  iconOf: (value) =>
-                      Icon(value == 'grid' ? Icons.grid_view : Icons.view_list),
-                ),
-              ),
+  Future<bool> _folderIsPinned(String folderId) async {
+    final activeUid = ref.read(accountStateProvider).store.activeUid ?? '';
+    try {
+      return await ref.read(appDbProvider).isPinned(activeUid, folderId);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// 添加 / 移除文件夹的快速访问；返回操作后的固定态，失败返回 null。
+  Future<bool?> _toggleFolderQuickAccess(LzFolder folder) async {
+    final db = ref.read(appDbProvider);
+    final activeUid = ref.read(accountStateProvider).store.activeUid ?? '';
+    try {
+      final pinned = await db.isPinned(activeUid, folder.id);
+      if (pinned) {
+        await db.removePin(folder.id);
+        return false;
+      }
+      final isCurrent = _path.isNotEmpty && _path.last.id == folder.id;
+      final parents = isCurrent ? _path.sublist(0, _path.length - 1) : _path;
+      await db.addPin(
+        account: activeUid,
+        name: folder.name,
+        ref: folder.id,
+        path: parents.map((node) => node.name).join('/'),
+      );
+      return true;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// 路径栏排序菜单：排序字段单选 + “升序”复选，变化即时生效并保持菜单打开。
+  Future<void> _showSortMenu(BuildContext anchorContext) async {
+    final anchor = m3eMenuAnchorOf(anchorContext);
+    if (anchor == null) return;
+    final l10n = context.l10n;
+    await showAdaptiveM3eChoiceMenu<String>(
+      context: context,
+      anchor: anchor,
+      alignEnd: true,
+      radioValue: _sortMode,
+      checkedValues: _sortAscending
+          ? const <String>{'ascending'}
+          : const <String>{},
+      sections: [
+        M3eMenuSection(
+          items: [
+            M3eMenuItem(
+              value: 'default',
+              label: l10n.sortTime,
+              icon: Icons.schedule,
+              selectionRole: M3eMenuSelectionRole.radio,
             ),
-            M3eSectionHeader(context.l10n.sort, horizontalInset: 20),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: SizedBox(
-                width: double.infinity,
-                child: M3eConnectedButtonGroup<String>(
-                  values: const ['default', 'name', 'size'],
-                  selected: sort,
-                  onSelected: (value) {
-                    setSheetState(() => sort = value);
-                    setState(() => _sortMode = value);
-                    _listHome.setSortMode(value);
-                  },
-                  labelOf: (value) => Text(switch (value) {
-                    'name' => context.l10n.sortName,
-                    'size' => context.l10n.sortSize,
-                    _ => context.l10n.sortTime,
-                  }),
-                ),
-              ),
+            M3eMenuItem(
+              value: 'name',
+              label: l10n.sortName,
+              icon: Icons.sort_by_alpha,
+              selectionRole: M3eMenuSelectionRole.radio,
             ),
-            SheetListGroup(
-              // 与上面的按钮组分开：上边距用列表的左右边距同值（16dp）；
-              // 作为弹窗内容最后一块，下边距同样与左右同值（16dp）
-              margin: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.checklist),
-                  title: Text(context.l10n.multiSelect),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    _enterSelection();
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.refresh),
-                  title: Text(context.l10n.refresh),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    _reloadAfterChange();
-                  },
-                ),
-                if (!isRoot)
-                  ListTile(
-                    leading: const Icon(Icons.info_outline),
-                    title: Text(context.l10n.folderProperties),
-                    onTap: () {
-                      Navigator.of(context).pop();
-                      showAppSheet<void>(
-                        context,
-                        child: _FolderInfoSheet(
-                          folder: LzFolder(
-                            id: _folderId,
-                            name: _path.last.name,
-                            desc: '',
-                          ),
-                          page: this,
-                        ),
-                      );
-                    },
-                  ),
-              ],
+            M3eMenuItem(
+              value: 'size',
+              label: l10n.sortSize,
+              icon: Icons.draft,
+              selectionRole: M3eMenuSelectionRole.radio,
             ),
           ],
         ),
-      ),
+        M3eMenuSection(
+          items: [
+            M3eMenuItem(
+              value: 'ascending',
+              label: l10n.ascending,
+              icon: Icons.arrow_upward,
+              selectionRole: M3eMenuSelectionRole.checkbox,
+            ),
+          ],
+        ),
+      ],
+      onChanged: (choice) {
+        final sort = choice.radioValue ?? _sortMode;
+        final ascending = choice.checkedValues.contains('ascending');
+        if (sort == _sortMode && ascending == _sortAscending) return;
+        setState(() {
+          _sortMode = sort;
+          _sortAscending = ascending;
+        });
+        if (sort != _listHome.sortMode) _listHome.setSortMode(sort);
+        if (ascending != _listHome.sortAscending) {
+          _listHome.setSortAscending(ascending);
+        }
+      },
     );
   }
 
-  Future<void> _showAddMenu() async {
-    await showAppSheet<void>(
-      context,
-      child: SheetListGroup(
-        margin: SheetListGroup.endMargin,
-        children: [
-          ListTile(
-            leading: const Icon(Icons.create_new_folder_outlined),
-            title: Text(context.l10n.newFolder),
-            onTap: () {
-              Navigator.of(context).pop();
-              _mkdir();
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.upload_file_outlined),
-            title: Text(context.l10n.uploadFile),
-            onTap: () {
-              Navigator.of(context).pop();
-              _upload();
-            },
-          ),
-          // 桌面端没有 ACTION_OPEN_DOCUMENT 那套「从其他应用/文档提供器选取」，
-          // 系统选择器与「上传文件」完全一样，这里不重复给入口。
-          if (PlatformSupport.isMobile)
-            ListTile(
-              leading: const Icon(Icons.file_open),
-              title: Text(context.l10n.uploadFromApp),
-              onTap: () {
-                Navigator.of(context).pop();
-                _uploadFromApp();
-              },
-            ),
-        ],
-      ),
+  Future<void> _showViewMenu(BuildContext anchorContext) async {
+    final anchor = m3eMenuAnchorOf(anchorContext);
+    if (anchor == null) return;
+    final l10n = context.l10n;
+    final selected = await showAdaptiveM3eSingleSelectMenu<String>(
+      context: context,
+      anchor: anchor,
+      alignEnd: true,
+      selected: _cacheSettings.gridView ? 'grid' : 'list',
+      items: [
+        M3eMenuItem(value: 'list', label: l10n.listView, icon: Icons.view_list),
+        M3eMenuItem(value: 'grid', label: l10n.gridView, icon: Icons.grid_view),
+      ],
     );
+    if (!mounted || selected == null) return;
+    final grid = selected == 'grid';
+    if (grid != _cacheSettings.gridView) {
+      await _cacheSettings.setGridView(grid);
+    }
+  }
+
+  /// 网盘菜单：布局与排序移到路径栏，这里只保留列表操作。
+  Future<void> _showDriveMenu(BuildContext anchorContext) async {
+    final anchor = m3eMenuAnchorOf(anchorContext);
+    if (anchor == null) return;
+    final isRoot = _folderId == '-1';
+    final currentFolder = isRoot || _path.isEmpty
+        ? null
+        : LzFolder(id: _path.last.id, name: _path.last.name, desc: '');
+    final pinned =
+        currentFolder != null && await _folderIsPinned(currentFolder.id);
+    if (!mounted) return;
+    final l10n = context.l10n;
+    final action = await showAdaptiveM3eMenu<_DriveMenuAction>(
+      context: context,
+      anchor: anchor,
+      alignEnd: true,
+      items: [
+        M3eMenuItem(
+          value: _DriveMenuAction.multiSelect,
+          label: l10n.multiSelect,
+          icon: Icons.checklist,
+        ),
+        M3eMenuItem(
+          value: _DriveMenuAction.refresh,
+          label: l10n.refresh,
+          icon: Icons.refresh,
+        ),
+        if (currentFolder != null)
+          M3eMenuItem(
+            value: _DriveMenuAction.toggleQuickAccess,
+            label: pinned ? l10n.removeFromQuickAccess : l10n.addToQuickAccess,
+            icon: pinned ? Icons.keep_off : Icons.keep,
+          ),
+        if (!isRoot)
+          M3eMenuItem(
+            value: _DriveMenuAction.folderProperties,
+            label: l10n.folderProperties,
+            icon: Icons.info_outline,
+          ),
+      ],
+    );
+    if (!mounted || action == null) return;
+    switch (action) {
+      case _DriveMenuAction.multiSelect:
+        _enterSelection();
+      case _DriveMenuAction.refresh:
+        await _reloadAfterChange();
+      case _DriveMenuAction.toggleQuickAccess:
+        if (currentFolder != null) {
+          await _toggleFolderQuickAccess(currentFolder);
+        }
+      case _DriveMenuAction.folderProperties:
+        await showAppSheet<void>(
+          context,
+          child: _FolderInfoSheet(
+            folder: LzFolder(id: _folderId, name: _path.last.name, desc: ''),
+            page: this,
+          ),
+        );
+    }
+  }
+
+  Future<void> _showAddMenu(BuildContext anchorContext) async {
+    final anchor = m3eMenuAnchorOf(anchorContext);
+    if (anchor == null) return;
+    final l10n = context.l10n;
+    final action = await showAdaptiveM3eMenu<_AddMenuAction>(
+      context: context,
+      anchor: anchor,
+      alignEnd: true,
+      items: [
+        M3eMenuItem(
+          value: _AddMenuAction.newFolder,
+          label: l10n.newFolder,
+          icon: Icons.create_new_folder_outlined,
+        ),
+        M3eMenuItem(
+          value: _AddMenuAction.uploadFile,
+          label: l10n.uploadFile,
+          icon: Icons.upload_file_outlined,
+        ),
+        // 桌面端没有 ACTION_OPEN_DOCUMENT 那套「从其他应用/文档提供器选取」，
+        // 系统选择器与「上传文件」完全一样，这里不重复给入口。
+        if (PlatformSupport.isMobile)
+          M3eMenuItem(
+            value: _AddMenuAction.uploadFromApp,
+            label: l10n.uploadFromApp,
+            icon: Icons.file_open,
+          ),
+      ],
+    );
+    if (!mounted || action == null) return;
+    switch (action) {
+      case _AddMenuAction.newFolder:
+        await _mkdir();
+      case _AddMenuAction.uploadFile:
+        await _upload();
+      case _AddMenuAction.uploadFromApp:
+        await _uploadFromApp();
+    }
   }
 
   Future<void> _upload() async {
@@ -1690,40 +1777,50 @@ class _DrivePageState extends ConsumerState<DrivePage>
     );
   }
 
-  Future<void> _batchMore() async {
-    final action = await showAppSheet<String>(
-      context,
-      child: SheetListGroup(
-        margin: SheetListGroup.endMargin,
-        children: [
-          ListTile(
-            leading: const Icon(Icons.lock_outline),
-            title: Text(context.l10n.accessPassword),
-            onTap: () => Navigator.of(context).pop('pwd'),
-          ),
-          ListTile(
-            leading: const Icon(Icons.drive_file_move_outline),
-            title: Text(context.l10n.move),
-            onTap: () => Navigator.of(context).pop('move'),
-          ),
-          ListTile(
-            leading: const Icon(Icons.input_field),
-            title: Text(context.l10n.rename),
-            onTap: () => Navigator.of(context).pop('rename'),
-          ),
-          ListTile(
-            leading: const Icon(Icons.description_outlined),
-            title: Text(context.l10n.editDesc),
-            onTap: () => Navigator.of(context).pop('desc'),
-          ),
-        ],
-      ),
+  Future<void> _batchMore(BuildContext anchorContext) async {
+    final anchor = m3eMenuAnchorOf(anchorContext);
+    if (anchor == null) return;
+    final l10n = context.l10n;
+    final action = await showAdaptiveM3eMenu<_BatchMoreAction>(
+      context: context,
+      anchor: anchor,
+      alignEnd: true,
+      items: [
+        M3eMenuItem(
+          value: _BatchMoreAction.password,
+          label: l10n.accessPassword,
+          icon: Icons.lock_outline,
+        ),
+        M3eMenuItem(
+          value: _BatchMoreAction.move,
+          label: l10n.move,
+          icon: Icons.drive_file_move_outline,
+        ),
+        M3eMenuItem(
+          value: _BatchMoreAction.rename,
+          label: l10n.rename,
+          icon: Icons.input_field,
+        ),
+        M3eMenuItem(
+          value: _BatchMoreAction.editDescription,
+          label: l10n.editDesc,
+          icon: Icons.description_outlined,
+        ),
+      ],
     );
     if (!mounted) return;
-    if (action == 'move') await _batchMove();
-    if (action == 'rename') await _batchRename();
-    if (action == 'desc') await _batchSetDesc();
-    if (action == 'pwd') await _batchSetPasswd();
+    switch (action) {
+      case _BatchMoreAction.password:
+        await _batchSetPasswd();
+      case _BatchMoreAction.move:
+        await _batchMove();
+      case _BatchMoreAction.rename:
+        await _batchRename();
+      case _BatchMoreAction.editDescription:
+        await _batchSetDesc();
+      case null:
+        return;
+    }
   }
 
   Future<void> _batchMove() async {
@@ -1805,9 +1902,17 @@ class _DrivePageState extends ConsumerState<DrivePage>
       context,
       targets: [
         for (final entry in fileTargets.entries)
-          RenameTarget(id: entry.key, name: entry.value.name),
+          RenameTarget(
+            id: entry.key,
+            name: entry.value.name,
+            kind: RenameTargetKind.file,
+          ),
         for (final entry in folderTargets.entries)
-          RenameTarget(id: entry.key, name: entry.value.name),
+          RenameTarget(
+            id: entry.key,
+            name: entry.value.name,
+            kind: RenameTargetKind.folder,
+          ),
       ],
       supportingText: files.isNotEmpty && freeTier
           ? context.l10n.fileRenameMembershipHint
@@ -2445,6 +2550,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
     final name = await showRenameDialog(
       context,
       initialName: file.name,
+      kind: RenameTargetKind.file,
       // 普通账号改不了文件名（重命名接口只对会员开放），在弹窗正文里说明。
       supportingText: freeTier ? context.l10n.fileRenameMembershipHint : null,
       keyPrefix: 'drive-rename',
@@ -2533,6 +2639,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
     final name = await showRenameDialog(
       context,
       initialName: folder.name,
+      kind: RenameTargetKind.folder,
       keyPrefix: 'drive-rename',
     );
     if (name == null || !mounted) return null;
@@ -2592,10 +2699,13 @@ class _DrivePageState extends ConsumerState<DrivePage>
     }
     final anchor = m3eMenuAnchorOf(buttonContext);
     if (anchor == null) return;
+    final pinned = await _folderIsPinned(folder.id);
+    if (!mounted) return;
     final _FolderMenuAction? action = await _showFolderActionMenu(
       context,
       anchor: anchor,
       pointerPosition: pointerPosition,
+      pinned: pinned,
     );
     if (action == null || !mounted) return;
     switch (action) {
@@ -2604,6 +2714,8 @@ class _DrivePageState extends ConsumerState<DrivePage>
         await _openFolder(folder);
       case _FolderMenuAction.properties:
         await _showFolderProperties(folder);
+      case _FolderMenuAction.toggleQuickAccess:
+        await _toggleFolderQuickAccess(folder);
       case _FolderMenuAction.copyLink:
         await _copyFolderShareLink(folder);
       case _FolderMenuAction.password:
@@ -2936,7 +3048,9 @@ class _DrivePageState extends ConsumerState<DrivePage>
         final grid = viewSettings.gridView;
         final selectedCount = _selectedFiles.length + _selectedFolders.length;
         final headerHeight =
-            MediaQuery.paddingOf(context).top + kToolbarHeight + 46;
+            MediaQuery.paddingOf(context).top +
+            kToolbarHeight +
+            kDrivePathBarHeight;
         // 底部被占住的高度（外壳底栏 / 系统导航栏），用来把 FAB 抬到它上面。
         // 必须在页面上下文里读：FAB 槽位的 MediaQuery 已经把底部内边距清掉了。
         final bottomObstruction = bottomObstructionHeight(context);
@@ -2989,10 +3103,15 @@ class _DrivePageState extends ConsumerState<DrivePage>
                         Theme.of(context).colorScheme,
                       ),
                       // 显式高度：Stack 的 Positioned 不提供高度约束
-                      child: SizedBox(
-                        height:
-                            MediaQuery.paddingOf(context).top + kToolbarHeight,
-                        child: _selectionAppBar(selectedCount),
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.translucent,
+                        onTap: _scrollToTop,
+                        child: SizedBox(
+                          height:
+                              MediaQuery.paddingOf(context).top +
+                              kToolbarHeight,
+                          child: _selectionAppBar(selectedCount),
+                        ),
                       ),
                     ),
                   ),
@@ -3036,10 +3155,14 @@ class _DrivePageState extends ConsumerState<DrivePage>
                               ? null
                               : _deleteSelected,
                         ),
-                        BatchAction(
-                          icon: Icons.more_horiz,
-                          label: context.l10n.more,
-                          onPressed: selectedCount == 0 ? null : _batchMore,
+                        Builder(
+                          builder: (BuildContext anchorContext) => BatchAction(
+                            icon: Icons.more_horiz,
+                            label: context.l10n.more,
+                            onPressed: selectedCount == 0
+                                ? null
+                                : () => _batchMore(anchorContext),
+                          ),
                         ),
                       ],
                     ),
@@ -3099,10 +3222,13 @@ class _DrivePageState extends ConsumerState<DrivePage>
                           ),
                         );
                       },
-                      child: FloatingActionButton.extended(
-                        onPressed: _showAddMenu,
-                        icon: const Icon(Icons.add),
-                        label: Text(context.l10n.add),
+                      child: Builder(
+                        builder: (BuildContext anchorContext) =>
+                            FloatingActionButton.extended(
+                              onPressed: () => _showAddMenu(anchorContext),
+                              icon: const Icon(Icons.add),
+                              label: Text(context.l10n.add),
+                            ),
                       ),
                     ),
                   );
@@ -3156,20 +3282,19 @@ class _DrivePageState extends ConsumerState<DrivePage>
                   icon: const Icon(Icons.search),
                   onPressed: () => setState(() => _searching = true),
                 ),
-                IconButton(
-                  tooltip: context.l10n.menu,
-                  icon: const Icon(Icons.more_vert),
-                  onPressed: _showDriveMenu,
+                Builder(
+                  builder: (BuildContext anchorContext) => IconButton(
+                    tooltip: context.l10n.menu,
+                    icon: const Icon(Icons.more_vert),
+                    onPressed: () => _showDriveMenu(anchorContext),
+                  ),
                 ),
               ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(kDrivePathBarHeight),
           // 多选期间禁用路径切换，但路径栏保持可见；
           // bottom 拿到的是无界高度，必须自己声明固定高度，否则会把工具栏挤成 0
-          child: SizedBox(
-            height: 46,
-            child: IgnorePointer(ignoring: _selecting, child: _pathBar()),
-          ),
+          child: SizedBox(height: kDrivePathBarHeight, child: _pathBar()),
         ),
       ),
     );
@@ -3178,7 +3303,9 @@ class _DrivePageState extends ConsumerState<DrivePage>
   /// 顶栏不参与列表布局，列表顶部留出等高占位。
   Widget _buildBody(bool grid, bool hideTopBar) {
     final headerInset =
-        MediaQuery.of(context).padding.top + kToolbarHeight + 46;
+        MediaQuery.of(context).padding.top +
+        kToolbarHeight +
+        kDrivePathBarHeight;
     return ScrollTint(
       hideDistance: headerInset,
       readBarsHidden: () => _navigation.topBarHide.value,
@@ -3238,15 +3365,77 @@ class _DrivePageState extends ConsumerState<DrivePage>
   }
 
   Widget _pathBar() {
-    return PathBar(
-      segments: [
-        PathSegment(id: '-1', label: context.l10n.root),
-        for (final node in _path) PathSegment(id: node.id, label: node.name),
-      ],
-      // 点当前目录 = 刷新；点上一级 = 返回该目录
-      onTap: (index) =>
-          index == _path.length ? _reloadAfterChange() : _jumpTo(index - 1),
-      verticalPadding: 8,
+    final grid = _cacheSettings.gridView;
+    final compact = MediaQuery.sizeOf(context).width < kLargeLayoutBreakpoint;
+    return Padding(
+      padding: const EdgeInsets.only(right: 12),
+      child: Row(
+        children: [
+          Expanded(
+            child: IgnorePointer(
+              // 多选期间只禁路径跳转，排序 / 视图仍可使用。
+              ignoring: _selecting,
+              child: PathBar(
+                // 胶囊内部统一 12dp；路径栏起始只留 4dp，
+                // 使「根目录」文字与 AppBar 标题默认的 16dp 起点对齐。
+                leadingPadding: 4,
+                segments: [
+                  PathSegment(id: '-1', label: context.l10n.root),
+                  for (final node in _path)
+                    PathSegment(id: node.id, label: node.name),
+                ],
+                // 点当前目录 = 刷新；点上一级 = 返回该目录
+                onTap: (index) => index == _path.length
+                    ? _reloadAfterChange()
+                    : _jumpTo(index - 1),
+              ),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Builder(
+            builder: (BuildContext anchorContext) => M3eIconButton(
+              tooltip: context.l10n.sort,
+              icon: Icons.sort,
+              onPressed: () => _showSortMenu(anchorContext),
+            ),
+          ),
+          if (compact) ...[
+            const SizedBox(width: 4),
+            Builder(
+              builder: (BuildContext anchorContext) => M3eIconButton(
+                tooltip: context.l10n.viewMode,
+                icon: grid ? Icons.grid_view : Icons.view_list,
+                onPressed: () => _showViewMenu(anchorContext),
+              ),
+            ),
+          ] else ...[
+            const SizedBox(width: 4),
+            SizedBox(
+              // 两个 48dp 按钮 + 连接组固定 2dp 间隙。
+              width: 98,
+              child: M3eConnectedButtonGroup<String>(
+                values: const ['list', 'grid'],
+                selected: grid ? 'grid' : 'list',
+                onSelected: (value) =>
+                    _cacheSettings.setGridView(value == 'grid'),
+                semanticLabelOf: (value) => value == 'grid'
+                    ? context.l10n.gridView
+                    : context.l10n.listView,
+                iconOf: (value) => Tooltip(
+                  message: value == 'grid'
+                      ? context.l10n.gridView
+                      : context.l10n.listView,
+                  child: Icon(
+                    value == 'grid' ? Icons.grid_view : Icons.view_list,
+                  ),
+                ),
+                expand: true,
+                semanticLabel: context.l10n.layout,
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
@@ -4929,28 +5118,8 @@ class _FolderInfoSheetState extends ConsumerState<_FolderInfoSheet> {
   }
 
   Future<void> _toggleQuickAccess() async {
-    final db = ref.read(appDbProvider);
-    final activeUid = ref.read(accountStateProvider).store.activeUid ?? '';
-    if (_pinned == true) {
-      await db.removePin(widget.folder.id);
-      if (mounted) setState(() => _pinned = false);
-    } else {
-      // 只存「所在目录」的相对路径：不含根目录前缀，也不含文件夹自身。
-      // 副标题展示时再按当前语言拼上根目录，这样切换语言后也能跟着变。
-      final ancestors = widget.page._path;
-      final isCurrent =
-          ancestors.isNotEmpty && ancestors.last.id == widget.folder.id;
-      final parents = isCurrent
-          ? ancestors.sublist(0, ancestors.length - 1)
-          : ancestors;
-      await db.addPin(
-        account: activeUid,
-        name: widget.folder.name,
-        ref: widget.folder.id,
-        path: parents.map((node) => node.name).join('/'),
-      );
-      if (mounted) setState(() => _pinned = true);
-    }
+    final next = await widget.page._toggleFolderQuickAccess(widget.folder);
+    if (mounted && next != null) setState(() => _pinned = next);
   }
 
   LzFolder get _folder => LzFolder(
@@ -5036,6 +5205,7 @@ class _FolderInfoSheetState extends ConsumerState<_FolderInfoSheet> {
         if (deleted && mounted) Navigator.of(context).pop();
       case _FolderMenuAction.open:
       case _FolderMenuAction.properties:
+      case _FolderMenuAction.toggleQuickAccess:
       case _FolderMenuAction.copyLink:
         break;
     }
@@ -5263,6 +5433,8 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
   List<PathNode> _path = [];
   bool _loading = true;
   String? _error;
+  String _sortMode = 'time';
+  bool _sortAscending = true;
 
   /// 上传模式下文件名为空时的 error state
   String? _nameError;
@@ -5331,14 +5503,70 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
   String _targetName(AppLocalizations l10n) =>
       _path.isEmpty ? l10n.root : _path.last.name;
 
+  List<LzFolder> get _visibleFolders => _sortLzFoldersForDisplay(
+    _folders.where((folder) => !widget.excludeIds.contains(folder.id)).toList(),
+    sortMode: _sortMode,
+    ascending: _sortAscending,
+  );
+
+  Future<void> _showFolderSortMenu(BuildContext anchorContext) async {
+    final anchor = m3eMenuAnchorOf(anchorContext);
+    if (anchor == null) return;
+    final l10n = context.l10n;
+    await showAdaptiveM3eChoiceMenu<String>(
+      context: context,
+      anchor: anchor,
+      alignEnd: true,
+      radioValue: _sortMode,
+      checkedValues: _sortAscending
+          ? const <String>{'ascending'}
+          : const <String>{},
+      sections: [
+        M3eMenuSection(
+          items: [
+            M3eMenuItem(
+              value: 'time',
+              label: l10n.sortTime,
+              icon: Icons.schedule,
+              selectionRole: M3eMenuSelectionRole.radio,
+            ),
+            M3eMenuItem(
+              value: 'name',
+              label: l10n.sortName,
+              icon: Icons.sort_by_alpha,
+              selectionRole: M3eMenuSelectionRole.radio,
+            ),
+          ],
+        ),
+        M3eMenuSection(
+          items: [
+            M3eMenuItem(
+              value: 'ascending',
+              label: l10n.ascending,
+              icon: Icons.arrow_upward,
+              selectionRole: M3eMenuSelectionRole.checkbox,
+            ),
+          ],
+        ),
+      ],
+      onChanged: (choice) {
+        final sort = choice.radioValue ?? _sortMode;
+        final ascending = choice.checkedValues.contains('ascending');
+        if (sort == _sortMode && ascending == _sortAscending) return;
+        setState(() {
+          _sortMode = sort;
+          _sortAscending = ascending;
+        });
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final visible = _folders
-        .where((f) => !widget.excludeIds.contains(f.id))
-        .toList();
+    final visible = _visibleFolders;
     // 选目标文件夹（可选改名输入框）：套上「不被输入法压扁 + 上移聚焦」外壳
     return formDialogPan(
       context,
@@ -5379,8 +5607,17 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
                           PathSegment(id: node.id, label: node.name),
                       ],
                       onTap: (index) => _jumpTo(index - 1),
-                      verticalPadding: 4,
                       horizontalPadding: 0,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Builder(
+                    builder: (BuildContext anchorContext) => M3eIconButton(
+                      tooltip: l10n.sort,
+                      icon: Icons.sort,
+                      onPressed: _loading
+                          ? null
+                          : () => _showFolderSortMenu(anchorContext),
                     ),
                   ),
                   const SizedBox(width: 4),

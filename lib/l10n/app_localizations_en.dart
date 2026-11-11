@@ -604,6 +604,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get renameEmptyName => 'The new file name cannot be empty';
 
   @override
+  String get renameInvalidCharacters => 'Contains invalid characters';
+
+  @override
   String renamedUploads(int count) {
     return 'Renamed $count upload tasks';
   }
@@ -1599,6 +1602,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get layout => 'Layout';
 
   @override
+  String get viewMode => 'View';
+
+  @override
+  String get listView => 'List view';
+
+  @override
+  String get gridView => 'Grid view';
+
+  @override
   String get grid => 'Grid';
 
   @override
@@ -1630,6 +1642,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sortByTime => 'Sort by time';
+
+  @override
+  String get ascending => 'Ascending';
 
   @override
   String get toggleLayout => 'Toggle layout style';
@@ -1673,7 +1688,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get fileActions => 'File actions';
 
   @override
-  String get downloaded => 'Added to downloads';
+  String get downloaded => 'Downloaded';
 
   @override
   String get folder => 'Folder';

@@ -1136,6 +1136,12 @@ abstract class AppLocalizations {
   /// **'修改后的文件名不能为空'**
   String get renameEmptyName;
 
+  /// No description provided for @renameInvalidCharacters.
+  ///
+  /// In zh, this message translates to:
+  /// **'包含非法字符'**
+  String get renameInvalidCharacters;
+
   /// No description provided for @renamedUploads.
   ///
   /// In zh, this message translates to:
@@ -2882,6 +2888,24 @@ abstract class AppLocalizations {
   /// **'布局'**
   String get layout;
 
+  /// No description provided for @viewMode.
+  ///
+  /// In zh, this message translates to:
+  /// **'视图'**
+  String get viewMode;
+
+  /// No description provided for @listView.
+  ///
+  /// In zh, this message translates to:
+  /// **'列表视图'**
+  String get listView;
+
+  /// No description provided for @gridView.
+  ///
+  /// In zh, this message translates to:
+  /// **'网格视图'**
+  String get gridView;
+
   /// No description provided for @grid.
   ///
   /// In zh, this message translates to:
@@ -2947,6 +2971,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'按时间排序'**
   String get sortByTime;
+
+  /// No description provided for @ascending.
+  ///
+  /// In zh, this message translates to:
+  /// **'升序'**
+  String get ascending;
 
   /// No description provided for @toggleLayout.
   ///
@@ -3023,7 +3053,7 @@ abstract class AppLocalizations {
   /// No description provided for @downloaded.
   ///
   /// In zh, this message translates to:
-  /// **'已加入下载'**
+  /// **'已下载'**
   String get downloaded;
 
   /// No description provided for @folder.

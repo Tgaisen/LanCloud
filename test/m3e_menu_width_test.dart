@@ -42,7 +42,7 @@ void main() {
       M3eMenuItem(value: 'open', label: 'Open', icon: Icons.open_in_new),
     ]);
 
-    final width = tester.getSize(find.byType(ListView)).width;
+    final width = tester.getSize(find.byType(SingleChildScrollView)).width;
     // M3：112dp 下限；不再跟着 48dp 锚点变成 224dp 的固定宽度
     expect(width, greaterThanOrEqualTo(112));
     expect(width, lessThan(224));
@@ -64,14 +64,14 @@ void main() {
 
     // 内容比 280dp 还宽：宽度顶到上限，文案由省略号截断（测试字体下 24 字符
     // 宽 338dp，必然超过 280−内边距后的可用宽度）
-    final width = tester.getSize(find.byType(ListView)).width;
+    final width = tester.getSize(find.byType(SingleChildScrollView)).width;
     expect(width, 280);
     final paragraph = tester.renderObject<RenderParagraph>(
       find.text('Remove from quick access'),
     );
     expect(paragraph.didExceedMaxLines, isTrue);
     // 菜单整体仍在屏幕内（左右各留 12dp）
-    final left = tester.getTopLeft(find.byType(ListView)).dx;
+    final left = tester.getTopLeft(find.byType(SingleChildScrollView)).dx;
     expect(left, greaterThanOrEqualTo(12));
     expect(left + width, lessThanOrEqualTo(411 - 12));
   });

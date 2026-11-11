@@ -354,6 +354,7 @@
   "invalidRegularExpression": "正则表达式无效",
   "renameNoMatches": "没有名称会被修改",
   "renameEmptyName": "修改后的文件名不能为空",
+  "renameInvalidCharacters": "包含非法字符",
   "renamedUploads": "已修改 {count} 个上传任务的名称",
   "@renamedUploads": {
     "placeholders": {
@@ -965,6 +966,9 @@
   "search": "搜索",
   "menu": "菜单",
   "layout": "布局",
+  "viewMode": "视图",
+  "listView": "列表视图",
+  "gridView": "网格视图",
   "grid": "网格",
   "list": "列表",
   "sort": "排序",
@@ -976,6 +980,7 @@
   "sortByName": "按名称排序",
   "sortBySize": "按大小排序",
   "sortByTime": "按时间排序",
+  "ascending": "升序",
   "toggleLayout": "切换布局样式",
   "multiSelect": "多选",
   "refresh": "刷新",
@@ -1002,7 +1007,7 @@
   "filterResult": "筛选结果",
   "folderActions": "文件夹操作",
   "fileActions": "文件操作",
-  "downloaded": "已加入下载",
+  "downloaded": "已下载",
   "folder": "文件夹",
   "fileCount": "{count} 个文件",
   "@fileCount": {

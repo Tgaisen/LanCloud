@@ -113,15 +113,56 @@ void main() {
     expect(find.text('子目录'), findsOneWidget);
   });
 
-  testWidgets('弹窗路径栏去掉重复缩进，按钮和目录列表使用 MD3E 组件', (tester) async {
+  testWidgets('弹窗使用本地时间升序，并可切换到名称排序', (tester) async {
     final client = _FakeClient(
-      folders: [LzFolder(id: 'child', name: '文档', desc: '')],
+      folders: [
+        LzFolder(id: 'z', name: 'Zulu', desc: ''),
+        LzFolder(id: 'b', name: 'Banana', desc: ''),
+        LzFolder(id: 'a', name: 'Apple', desc: ''),
+      ],
     );
     await pumpPicker(tester, client: client);
 
     final pathBar = tester.widget<PathBar>(find.byType(PathBar));
     expect(pathBar.horizontalPadding, 0);
-    expect(find.byType(M3eIconButton), findsOneWidget);
+    expect(find.byType(M3eIconButton), findsNWidgets(2));
+
+    final sortButton = find.byTooltip('排序');
+    final newFolderButton = find.byTooltip('新建文件夹');
+    expect(sortButton, findsOneWidget);
+    expect(newFolderButton, findsOneWidget);
+    expect(
+      tester
+          .widget<M3eIconButton>(
+            find
+                .ancestor(of: sortButton, matching: find.byType(M3eIconButton))
+                .first,
+          )
+          .containerColor,
+      isNull,
+    );
+    expect(
+      tester
+          .widget<M3eIconButton>(
+            find
+                .ancestor(
+                  of: newFolderButton,
+                  matching: find.byType(M3eIconButton),
+                )
+                .first,
+          )
+          .containerColor,
+      isNull,
+    );
+    expect(
+      tester.getRect(newFolderButton).left - tester.getRect(sortButton).right,
+      4,
+      reason: '两个独立图标按钮沿用原路径栏操作之间的 4dp 间距',
+    );
+
+    double top(String text) => tester.getTopLeft(find.text(text)).dy;
+    expect(top('Zulu'), lessThan(top('Banana')));
+    expect(top('Banana'), lessThan(top('Apple')));
 
     final list = tester.widget<SegmentedSliverList>(
       find.byType(SegmentedSliverList),
@@ -129,6 +170,40 @@ void main() {
     final scheme = Theme.of(tester.element(find.byType(PathBar))).colorScheme;
     expect(list.color, scheme.surfaceContainerHighest);
     expect(list.margin, EdgeInsets.zero);
-    expect(find.text('文档'), findsOneWidget);
+
+    await tester.tap(sortButton);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('时间'), findsOneWidget);
+    expect(find.text('名称'), findsOneWidget);
+    expect(find.text('大小'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('m3e-menu-selected-check-升序')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('升序'));
+    await tester.pump();
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(top('Apple'), lessThan(top('Banana')));
+    expect(top('Banana'), lessThan(top('Zulu')));
+
+    await tester.tap(sortButton);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.text('名称'));
+    await tester.pumpAndSettle();
+    expect(find.text('时间'), findsNothing);
+
+    await tester.tap(sortButton);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.text('升序'));
+    await tester.pump();
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(top('Apple'), lessThan(top('Banana')));
+    expect(top('Banana'), lessThan(top('Zulu')));
   });
 }

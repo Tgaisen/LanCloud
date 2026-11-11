@@ -1,10 +1,6 @@
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../core/account_state.dart';
-import '../core/api/lanzou_client.dart';
-import '../core/api/lanzou_client_registry.dart';
-import '../core/api/models.dart';
 import '../core/data/app_db_provider.dart';
 import '../core/drive_state.dart';
 import '../core/navigation_appearance_settings_state.dart';
@@ -17,12 +13,13 @@ import 'common.dart';
 import 'm3e.dart';
 import 'scroll_tint.dart';
 import 'share_file_sheet.dart';
-import 'share_folder_page.dart';
 import 'share_page.dart';
-import 'share_password_dialog.dart';
 
 /// 收藏条目 ⋯ 菜单里的动作。
 enum _FavoriteItemAction { open, copyLink, edit, unfavorite }
+
+/// 收藏页顶栏菜单里的动作。
+enum _FavoritesMenuAction { multiSelect, newFavorite }
 
 /// 收藏视图：独立底栏页，布局与传输页一致（分组 + 多选删除）。
 class FavoritesPage extends ConsumerStatefulWidget {
@@ -57,8 +54,9 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
   bool _searching = false;
   String _filter = '';
 
-  /// 排序方式：time（收藏时间新到旧，默认）/ name / size。
+  /// 排序方式：time（收藏时间，默认）/ name / size。
   String _sort = 'time';
+  bool _sortAscending = false;
 
   late final AppDb _db;
   late final NavigationState _navigation;
@@ -165,82 +163,112 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
                     item.title.toLowerCase().contains(query),
               )
               .toList();
+    final direction = _sortAscending ? 1 : -1;
     switch (_sort) {
       case 'name':
         items.sort(
-          (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+          (a, b) =>
+              direction * a.name.toLowerCase().compareTo(b.name.toLowerCase()),
         );
       case 'size':
         items.sort(
-          (a, b) => lzSizeToBytes(b.size).compareTo(lzSizeToBytes(a.size)),
+          (a, b) =>
+              direction *
+              lzSizeToBytes(a.size).compareTo(lzSizeToBytes(b.size)),
         );
       default:
-        items.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        items.sort((a, b) => direction * a.createdAt.compareTo(b.createdAt));
     }
     return items;
   }
 
-  /// 顶栏 ⋯ 菜单：排序（时间 / 名称 / 大小）、多选、添加收藏。
-  Future<void> _showMenu() async {
+  Future<void> _showSortMenu(BuildContext anchorContext) async {
+    final anchor = m3eMenuAnchorOf(anchorContext);
+    if (anchor == null) return;
     final l10n = context.l10n;
-    var sort = _sort;
-    await showAppSheet<void>(
-      context,
-      child: StatefulBuilder(
-        builder: (sheetContext, setSheetState) => Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 分组小标题 + 按钮组：标题用统一的 M3eSectionHeader
-            M3eSectionHeader(l10n.sort, horizontalInset: 24),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: SizedBox(
-                width: double.infinity,
-                child: M3eConnectedButtonGroup<String>(
-                  values: const ['time', 'name', 'size'],
-                  selected: sort,
-                  onSelected: (value) {
-                    setSheetState(() => sort = value);
-                    setState(() => _sort = value);
-                  },
-                  labelOf: (value) => Text(switch (value) {
-                    'name' => l10n.sortName,
-                    'size' => l10n.sortSize,
-                    _ => l10n.sortTime,
-                  }),
-                ),
-              ),
+    await showAdaptiveM3eChoiceMenu<String>(
+      context: context,
+      anchor: anchor,
+      alignEnd: true,
+      radioValue: _sort,
+      checkedValues: _sortAscending
+          ? const <String>{'ascending'}
+          : const <String>{},
+      sections: [
+        M3eMenuSection(
+          items: [
+            M3eMenuItem(
+              value: 'time',
+              label: l10n.sortTime,
+              icon: Icons.schedule,
+              selectionRole: M3eMenuSelectionRole.radio,
             ),
-            SheetListGroup(
-              // 与上面的按钮组分开：上边距用列表的左右边距同值（16dp）；
-              // 作为弹窗内容最后一块，下边距同样与左右同值（16dp）
-              margin: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.checklist),
-                  title: Text(l10n.multiSelect),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    _enterSelection();
-                  },
-                ),
-                ListTile(
-                  // 与条目菜单里的「取消收藏」对应（那边用 star-off 自定义图标）
-                  leading: const Icon(Icons.playlist_add),
-                  title: Text(l10n.newFavorite),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    // 打开「打开链接」弹窗，识别出文件（夹）后直接加入收藏
-                    openShareSheet(context, addFavoriteOnResolve: true);
-                  },
-                ),
-              ],
+            M3eMenuItem(
+              value: 'name',
+              label: l10n.sortName,
+              icon: Icons.sort_by_alpha,
+              selectionRole: M3eMenuSelectionRole.radio,
+            ),
+            M3eMenuItem(
+              value: 'size',
+              label: l10n.sortSize,
+              icon: Icons.draft,
+              selectionRole: M3eMenuSelectionRole.radio,
             ),
           ],
         ),
-      ),
+        M3eMenuSection(
+          items: [
+            M3eMenuItem(
+              value: 'ascending',
+              label: l10n.ascending,
+              icon: Icons.arrow_upward,
+              selectionRole: M3eMenuSelectionRole.checkbox,
+            ),
+          ],
+        ),
+      ],
+      onChanged: (choice) {
+        final sort = choice.radioValue ?? _sort;
+        final ascending = choice.checkedValues.contains('ascending');
+        if (sort == _sort && ascending == _sortAscending) return;
+        setState(() {
+          _sort = sort;
+          _sortAscending = ascending;
+        });
+      },
     );
+  }
+
+  /// 顶栏 ⋯ 菜单：多选、添加收藏。
+  Future<void> _showMenu(BuildContext anchorContext) async {
+    final anchor = m3eMenuAnchorOf(anchorContext);
+    if (anchor == null) return;
+    final l10n = context.l10n;
+    final action = await showAdaptiveM3eMenu<_FavoritesMenuAction>(
+      context: context,
+      anchor: anchor,
+      alignEnd: true,
+      items: [
+        M3eMenuItem(
+          value: _FavoritesMenuAction.multiSelect,
+          label: l10n.multiSelect,
+          icon: Icons.checklist,
+        ),
+        M3eMenuItem(
+          value: _FavoritesMenuAction.newFavorite,
+          label: l10n.newFavorite,
+          icon: Icons.playlist_add,
+        ),
+      ],
+    );
+    if (!mounted || action == null) return;
+    switch (action) {
+      case _FavoritesMenuAction.multiSelect:
+        _enterSelection();
+      case _FavoritesMenuAction.newFavorite:
+        await openShareSheet(context, addFavoriteOnResolve: true);
+    }
   }
 
   // ------------------------------------------------------------------ 多选
@@ -397,56 +425,12 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
   /// 打开收藏的分享文件夹：先用收藏里的提取码解析；提取码失效时弹
   /// 「此文件夹需要密码」，验证通过后把新密码写回收藏，再进入浏览页。
   Future<void> _openFolder(FavoriteItem item) async {
-    final client = ref.read(lanzouClientRegistryProvider).publicClient;
-    final accounts = ref.read(accountStateProvider).store;
-    final l10n = context.l10n;
-    showLoadingDialog(context, l10n.resolving);
-    FolderShareDetail? detail;
-    var pwd = item.pwd;
-    try {
-      detail = await client.resolveFolderShare(item.ref, pwd: pwd);
-    } on NeedPasswordException {
-      detail = null;
-    } on WrongPasswordException {
-      detail = null;
-    } on LanzouException catch (e) {
-      if (!mounted) return;
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(l10n.lanzouError(e))));
-      return;
-    } catch (e) {
-      if (!mounted) return;
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(l10n.resolveFailed('$e'))));
-      return;
-    }
-    if (!mounted) return;
-    Navigator.of(context).pop();
-    if (detail == null) {
-      final result = await showFolderPasswordDialog(context, url: item.ref);
-      if (result == null || !mounted) return;
-      detail = result.value;
-      pwd = result.pwd;
+    await openShareFolderWithLoading(
+      context,
+      url: item.ref,
+      pwd: item.pwd,
       // 上传者改过提取码：同步写回收藏，下次直接用新的
-      await _db.updateFavorite(item.id, pwd: pwd);
-      if (!mounted) return;
-    }
-    // 与「打开链接」打开文件夹一致：进入浏览页前记一条最近使用
-    await _db.addRecent(
-      account: accounts.activeUid ?? '',
-      kind: 'shareFolder',
-      name: detail.name,
-      ref: item.ref,
-      pwd: pwd,
-    );
-    if (!mounted) return;
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) =>
-            ShareFolderPage(folder: detail!, link: item.ref, pwd: pwd),
-      ),
+      onPasswordUpdated: (pwd) => _db.updateFavorite(item.id, pwd: pwd),
     );
   }
 
@@ -861,10 +845,22 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
                               onPressed: () =>
                                   setState(() => _searching = true),
                             ),
-                            IconButton(
-                              tooltip: l10n.menu,
-                              icon: const Icon(Icons.more_vert),
-                              onPressed: _showMenu,
+                            Builder(
+                              builder: (BuildContext anchorContext) =>
+                                  IconButton(
+                                    tooltip: l10n.sort,
+                                    icon: const Icon(Icons.sort),
+                                    onPressed: () =>
+                                        _showSortMenu(anchorContext),
+                                  ),
+                            ),
+                            Builder(
+                              builder: (BuildContext anchorContext) =>
+                                  IconButton(
+                                    tooltip: l10n.menu,
+                                    icon: const Icon(Icons.more_vert),
+                                    onPressed: () => _showMenu(anchorContext),
+                                  ),
                             ),
                           ],
                   ),
@@ -886,32 +882,36 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
                     elevation: 0,
                     // 与网盘页多选条一致：小屏随滚动渐变，大屏保持侧栏同色
                     color: topBarBackgroundColor(context, scheme),
-                    child: SizedBox(
-                      height: headerHeight,
-                      child: AppBar(
-                        key: const ValueKey('favorites-selection-appbar'),
-                        // 底色由外层 Material 提供（与网盘页多选条一致），
-                        // 否则 AppBar 会用自己的 surface 把外层颜色盖住
-                        backgroundColor: Colors.transparent,
-                        scrolledUnderElevation: 0,
-                        leading: IconButton(
-                          tooltip: l10n.exitSelection,
-                          icon: const Icon(Icons.close),
-                          onPressed: _exitSelection,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.translucent,
+                      onTap: _scrollToTop,
+                      child: SizedBox(
+                        height: headerHeight,
+                        child: AppBar(
+                          key: const ValueKey('favorites-selection-appbar'),
+                          // 底色由外层 Material 提供（与网盘页多选条一致），
+                          // 否则 AppBar 会用自己的 surface 把外层颜色盖住
+                          backgroundColor: Colors.transparent,
+                          scrolledUnderElevation: 0,
+                          leading: IconButton(
+                            tooltip: l10n.exitSelection,
+                            icon: const Icon(Icons.close),
+                            onPressed: _exitSelection,
+                          ),
+                          title: Text(l10n.selectedCount(selectedCount)),
+                          actions: [
+                            IconButton(
+                              tooltip: l10n.selectAll,
+                              icon: const Icon(Icons.select_all),
+                              onPressed: _selectAll,
+                            ),
+                            IconButton(
+                              tooltip: l10n.invertSelection,
+                              icon: const Icon(Icons.flip),
+                              onPressed: _invertSelection,
+                            ),
+                          ],
                         ),
-                        title: Text(l10n.selectedCount(selectedCount)),
-                        actions: [
-                          IconButton(
-                            tooltip: l10n.selectAll,
-                            icon: const Icon(Icons.select_all),
-                            onPressed: _selectAll,
-                          ),
-                          IconButton(
-                            tooltip: l10n.invertSelection,
-                            icon: const Icon(Icons.flip),
-                            onPressed: _invertSelection,
-                          ),
-                        ],
                       ),
                     ),
                   ),

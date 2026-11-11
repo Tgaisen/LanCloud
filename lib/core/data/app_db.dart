@@ -68,6 +68,7 @@ class RecentItem {
     required this.name,
     required this.ref,
     this.pwd = '',
+    this.shareUrl = '',
     this.openedAt = 0,
   });
 
@@ -77,6 +78,9 @@ class RecentItem {
   final String name;
   final String ref;
   final String pwd;
+
+  /// 网盘文件 / 文件夹对应的分享链接缓存；分享条目本身可退回 [ref]。
+  final String shareUrl;
   final int openedAt;
 }
 
@@ -98,7 +102,7 @@ class AppDb {
     final path = p.join(await _databaseDirectory(), 'lancloud.db');
     return openDatabase(
       path,
-      version: 12,
+      version: 13,
       onCreate: (db, version) async {
         await db.execute(
           'CREATE TABLE favorites('
@@ -122,6 +126,7 @@ class AppDb {
           'name TEXT NOT NULL,'
           'ref TEXT NOT NULL,'
           'pwd TEXT DEFAULT "",'
+          'share_url TEXT DEFAULT "",'
           'opened_at INTEGER NOT NULL)',
         );
         await db.execute(
@@ -261,6 +266,19 @@ class AppDb {
           await db.execute(
             'ALTER TABLE transfers ADD COLUMN folder_name TEXT DEFAULT ""',
           );
+        }
+        if (oldVersion < 13) {
+          // 首页最近使用菜单优先用本地缓存的分享链接判断收藏，避免每次
+          // 打开菜单都请求网盘接口。旧记录无法离线回填，先保留空串。
+          //
+          // 曾运行过 v13、随后降到 v12 的数据库只会把 user_version 写回，
+          // 不会删除 v13 新增的列；再次升级时必须能识别这种状态。
+          final columns = await db.rawQuery('PRAGMA table_info(recents)');
+          if (columns.every((row) => row['name'] != 'share_url')) {
+            await db.execute(
+              'ALTER TABLE recents ADD COLUMN share_url TEXT DEFAULT ""',
+            );
+          }
         }
       },
     );
@@ -588,6 +606,7 @@ class AppDb {
     required String name,
     required String ref,
     String pwd = '',
+    String shareUrl = '',
     int limit = 50,
   }) async {
     if (limit <= 0) return;
@@ -603,10 +622,55 @@ class AppDb {
       'name': name,
       'ref': ref,
       'pwd': pwd,
+      'share_url': shareUrl,
       'opened_at': DateTime.now().millisecondsSinceEpoch,
     });
     await _trimRecents(database, account, limit);
     _touch();
+  }
+
+  /// 补写一条最近记录的分享链接；链接为空或没有变化时不写库。
+  Future<bool> updateRecentShareUrl({
+    required String account,
+    required String ref,
+    required String shareUrl,
+  }) async {
+    if (shareUrl.isEmpty) return false;
+    final database = await db;
+    final changed = await database.update(
+      'recents',
+      {'share_url': shareUrl},
+      where: 'account = ? AND ref = ? AND share_url != ?',
+      whereArgs: [account, ref, shareUrl],
+    );
+    if (changed > 0) _touch();
+    return changed > 0;
+  }
+
+  /// 批量补写同一账号的最近记录分享链接，只触发一次首页刷新。
+  Future<int> updateRecentShareUrls({
+    required String account,
+    required Map<String, String> shareUrlsByRef,
+  }) async {
+    final values = {
+      for (final entry in shareUrlsByRef.entries)
+        if (entry.value.isNotEmpty) entry.key: entry.value,
+    };
+    if (values.isEmpty) return 0;
+    final database = await db;
+    var changed = 0;
+    await database.transaction((txn) async {
+      for (final entry in values.entries) {
+        changed += await txn.update(
+          'recents',
+          {'share_url': entry.value},
+          where: 'account = ? AND ref = ? AND share_url != ?',
+          whereArgs: [account, entry.key, entry.value],
+        );
+      }
+    });
+    if (changed > 0) _touch();
+    return changed;
   }
 
   /// 按上限裁剪某个账号的最近使用（0 表示清空该账号的记录）。
@@ -655,6 +719,7 @@ class AppDb {
             name: '${r['name']}',
             ref: '${r['ref']}',
             pwd: '${r['pwd']}',
+            shareUrl: '${r['share_url'] ?? ''}',
             openedAt: r['opened_at'] as int,
           ),
         )
@@ -755,7 +820,16 @@ class AppDb {
       'created_at',
     ],
     'pins': ['id', 'account', 'name', 'ref', 'path', 'created_at'],
-    'recents': ['id', 'account', 'kind', 'name', 'ref', 'pwd', 'opened_at'],
+    'recents': [
+      'id',
+      'account',
+      'kind',
+      'name',
+      'ref',
+      'pwd',
+      'share_url',
+      'opened_at',
+    ],
   };
 
   /// 恢复：整表替换备份里的数据，忽略未知列与非 Map 行。
