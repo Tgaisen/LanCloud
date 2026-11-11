@@ -1,6 +1,6 @@
 # 回归基线
 
-> 当前快照日期：2026-11-09。
+> 当前快照日期：2026-11-11。
 >
 > 本文件只记录当前仓库状态；逐次迁移和增量测试历史见
 > [BASELINE_HISTORY.md](BASELINE_HISTORY.md)。
@@ -10,15 +10,15 @@
 | 命令 | 口径 | 结果 | 耗时 |
 | --- | --- | --- | --- |
 | `tools\agent.cmd analyze` | 全量 | No issues found | 约 34 s |
-| `tools\agent.cmd analyze` | 增量（本次改动，7 个文件） | No issues found | 约 19 s |
-| `tools\agent.cmd test` | 全量（用例总数） | **889 tests（本轮新增 7 个；本轮未重跑全量）** | 上次全量约 140 s |
-| `tools\agent.cmd test` | 增量（本次改动，65 个测试文件） | **408 tests, all passed** | 约 1 min 46 s |
+| `tools\agent.cmd analyze` | 增量（本次改动，1 个文件） | No issues found | 约 4 s |
+| `tools\agent.cmd test` | 全量（用例总数） | **891 tests（本轮新增 2 个；本轮未重跑全量）** | 上次全量约 140 s |
+| `tools\agent.cmd test` | 增量（本次改动，2 个测试文件） | **29 tests, all passed** | 约 9 s |
 
 当前分析结果为 0 issue 是硬基线。出现红灯时，先判断是否为本次改动引入；
 不要把增量结果当成全量结论。
 
-当前全量用例总数为 889（本轮新增 7 个）。本轮 65 个受影响测试文件中的
-408 个用例全部通过；全量 889 个用例本轮未重复运行。此前 882 个用例的全量
+当前全量用例总数为 891（本轮新增 2 个）。本轮 2 个受影响测试文件中的
+29 个用例全部通过；全量 891 个用例本轮未重复运行。此前 889 个用例的全量
 结果保持全绿。
 
 ## 规模
@@ -29,7 +29,7 @@
 | `lib` 总行数 | 58,654 |
 | `test` 测试文件 | 177（全部为 `*_test.dart`，平铺） |
 | `test` 总行数 | 32,972 |
-| `test` 用例数 | 889 |
+| `test` 用例数 | 891 |
 | `lib/ui` 平铺文件 | 60 |
 | `lib/core` | 55 个平铺文件 + 5 个子系统目录 |
 | 文案（`app_zh.arb`） | 1,624 行 |
@@ -46,7 +46,7 @@
 
 ## 测试安全网
 
-- 当前全量总数为 889 个测试；项目仍没有
+- 当前全量总数为 891 个测试；项目仍没有
   `integration_test` 和 golden test。
 - `tools\agent.cmd analyze|test` 默认走增量；全量结果必须按上表单独记录。
 - `tools\agent.cmd` 已内置 `--no-pub`；需要安装依赖时使用 `agent.cmd pubget`。
