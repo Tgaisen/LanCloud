@@ -22,6 +22,9 @@ import 'share_password_dialog.dart';
 /// 两者共用同一个枚举值，菜单文案按条目类型区分。
 enum _ShareItemAction { open, download, copyLink, favorite }
 
+/// 分享文件夹顶栏菜单里的动作。
+enum _ShareFolderMenuAction { multiSelect, favorite, copyLink }
+
 /// 分享文件夹浏览页：布局类似网盘页，支持子文件夹与多选批量操作。
 class ShareFolderPage extends ConsumerStatefulWidget {
   const ShareFolderPage({
@@ -323,53 +326,51 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
     );
   }
 
-  Future<void> _showMenu() async {
+  Future<void> _showMenu(BuildContext anchorContext) async {
+    final anchor = m3eMenuAnchorOf(anchorContext);
+    if (anchor == null) return;
     // 收藏项要显示「收藏 / 取消收藏」：分享文件夹的 ref 就是链接，先查本地收藏表
     final favorited = await isFavoritedByRef(context, widget.link);
     if (!mounted) return;
-    await showAppSheet<void>(
-      context,
-      child: SheetListGroup(
-        margin: SheetListGroup.endMargin,
-        children: [
-          // 原顶栏的多选入口移到这里
-          ListTile(
-            leading: const Icon(Icons.checklist),
-            title: Text(context.l10n.multiSelect),
-            onTap: () {
-              Navigator.of(context).pop();
-              _toggleSelecting();
-            },
-          ),
-          ListTile(
-            // 取消收藏用自定义 star-off-line；「收藏」保持描边星星
-            leading: Icon(favorited ? Icons.star_off_line : Icons.star_outline),
-            title: Text(
-              favorited ? context.l10n.unfavorite : context.l10n.favorite,
-            ),
-            onTap: () {
-              Navigator.of(context).pop();
-              toggleFavoriteByRef(
-                context,
-                kind: 'shareFolder',
-                name: widget.folder.name,
-                ref: widget.link,
-                pwd: widget.pwd,
-                sharer: widget.folder.sharer,
-              );
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.copy),
-            title: Text(context.l10n.copyLink),
-            onTap: () {
-              Navigator.of(context).pop();
-              copyText(context, widget.link);
-            },
-          ),
-        ],
-      ),
+    final l10n = context.l10n;
+    final action = await showAdaptiveM3eMenu<_ShareFolderMenuAction>(
+      context: context,
+      anchor: anchor,
+      alignEnd: true,
+      items: [
+        M3eMenuItem(
+          value: _ShareFolderMenuAction.multiSelect,
+          label: l10n.multiSelect,
+          icon: Icons.checklist,
+        ),
+        M3eMenuItem(
+          value: _ShareFolderMenuAction.favorite,
+          label: favorited ? l10n.unfavorite : l10n.favorite,
+          icon: favorited ? Icons.star_off_line : Icons.star_outline,
+        ),
+        M3eMenuItem(
+          value: _ShareFolderMenuAction.copyLink,
+          label: l10n.copyLink,
+          icon: Icons.copy,
+        ),
+      ],
     );
+    if (!mounted || action == null) return;
+    switch (action) {
+      case _ShareFolderMenuAction.multiSelect:
+        _toggleSelecting();
+      case _ShareFolderMenuAction.favorite:
+        await toggleFavoriteByRef(
+          context,
+          kind: 'shareFolder',
+          name: widget.folder.name,
+          ref: widget.link,
+          pwd: widget.pwd,
+          sharer: widget.folder.sharer,
+        );
+      case _ShareFolderMenuAction.copyLink:
+        await copyText(context, widget.link);
+    }
   }
 
   /// 条目 ⋯ 菜单：文件夹「打开 / 复制链接 / 收藏」，
@@ -578,10 +579,12 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
               icon: const Icon(Icons.search),
               onPressed: () => setState(() => _searching = true),
             ),
-            IconButton(
-              tooltip: l10n.moreActions,
-              icon: const Icon(Icons.more_vert),
-              onPressed: _showMenu,
+            Builder(
+              builder: (BuildContext anchorContext) => IconButton(
+                tooltip: l10n.moreActions,
+                icon: const Icon(Icons.more_vert),
+                onPressed: () => _showMenu(anchorContext),
+              ),
             ),
           ],
   );

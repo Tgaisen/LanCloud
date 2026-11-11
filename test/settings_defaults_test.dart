@@ -12,6 +12,8 @@ void main() {
     final store = SettingsStore();
     await store.load();
     expect(store.clipboardLinkPrompt, isFalse);
+    expect(store.sortMode, 'default');
+    expect(store.sortAscending, isTrue);
   });
 
   test('用户手动打开后，重启仍然保持开启', () async {

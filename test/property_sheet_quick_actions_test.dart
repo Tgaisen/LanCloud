@@ -251,6 +251,38 @@ class _GatedClient extends _FakeClient {
       share.future;
 }
 
+/// 固定服务端时间升序顺序，用于验证升降序与文件夹特殊规则。
+class _OrderedClient extends _FakeClient {
+  @override
+  Future<({List<LzFolder> folders, List<PathNode> path})> listFolders(
+    String folderId,
+  ) async => (
+    folders: folderId == '-1'
+        ? [
+            LzFolder(id: 'fb', name: '文件夹 B', desc: ''),
+            LzFolder(id: 'fa', name: '文件夹 A', desc: ''),
+            LzFolder(id: 'fc', name: '文件夹 C', desc: ''),
+          ]
+        : const <LzFolder>[],
+    path: const <PathNode>[],
+  );
+
+  @override
+  Future<({List<LzFile> files, bool hasMore})> listFilesPage(
+    String folderId,
+    int page,
+  ) async => (
+    files: folderId == '-1' && page == 1
+        ? [
+            LzFile(id: 'f3', name: 'a.zip', size: '3 M', time: '3 天前'),
+            LzFile(id: 'f2', name: 'b.zip', size: '2 M', time: '2 天前'),
+            LzFile(id: 'f1', name: 'c.zip', size: '1 M', time: '1 天前'),
+          ]
+        : const <LzFile>[],
+    hasMore: false,
+  );
+}
+
 /// 弹窗里那一行图标按钮：按 tooltip 找到对应按钮。
 M3EToggleButton _toggleButton(WidgetTester tester, String tooltip) => tester
     .widgetList<M3EToggleButton>(find.byType(M3EToggleButton))
@@ -266,6 +298,11 @@ Finder _sheetTooltip(String label) => find.descendant(
   matching: find.byTooltip(label),
 );
 
+Finder _sheetToggleButtons() => find.descendant(
+  of: find.byType(M3EBottomSheet),
+  matching: find.byType(M3EToggleButton),
+);
+
 Finder _menuRowText(String text) =>
     find.descendant(of: find.byType(M3eMenuRow), matching: find.text(text));
 
@@ -278,6 +315,16 @@ Finder _adaptiveSheetTiles() => find.descendant(
   of: find.byKey(const ValueKey('adaptive-m3e-menu-sheet')),
   matching: find.byType(ListTile),
 );
+
+List<String> _adaptiveSheetGroupLabels(WidgetTester tester, int index) => tester
+    .widgetList<ListTile>(
+      find.descendant(
+        of: find.byKey(ValueKey('adaptive-m3e-menu-group-$index')),
+        matching: find.byType(ListTile),
+      ),
+    )
+    .map((tile) => (tile.title! as Text).data!)
+    .toList();
 
 Future<void> _openPropertyMore(
   WidgetTester tester, {
@@ -382,6 +429,118 @@ void main() {
     expect(find.byType(AdaptiveSliverRows), findsNothing);
   });
 
+  testWidgets('路径栏 48dp：窄屏用独立排序/视图按钮，宽屏保留连接组', (tester) async {
+    final app = _FakeApp(_OrderedClient());
+    app.environment.cachePageSettings.store.gridView = false;
+    await _pumpDrive(tester, app, viewSize: const Size(320, 800));
+
+    expect(tester.getSize(find.byType(PathBar)).height, 48);
+    final titleLeft = tester.getTopLeft(find.text('网盘')).dx;
+    final rootLeft = tester
+        .getTopLeft(
+          find.descendant(of: find.byType(PathBar), matching: find.text('根目录')),
+        )
+        .dx;
+    expect(rootLeft, closeTo(titleLeft, 0.5));
+    final sortButton = find.byTooltip('排序');
+    final viewButton = find.byTooltip('视图');
+    expect(sortButton, findsOneWidget);
+    expect(viewButton, findsOneWidget);
+    final sortIconButton = tester.widget<M3eIconButton>(
+      find.ancestor(of: sortButton, matching: find.byType(M3eIconButton)).first,
+    );
+    final viewIconButton = tester.widget<M3eIconButton>(
+      find.ancestor(of: viewButton, matching: find.byType(M3eIconButton)).first,
+    );
+    expect(sortIconButton.containerColor, isNull);
+    expect(viewIconButton.containerColor, isNull);
+    expect(
+      tester.getSize(sortButton),
+      const Size(48, 48),
+      reason: '路径栏和图标按钮均使用 48dp 触控目标',
+    );
+    expect(tester.getSize(viewButton), const Size(48, 48));
+    expect(
+      tester.getRect(viewButton).left - tester.getRect(sortButton).right,
+      4,
+      reason: '排序与视图两个独立按钮沿用原路径栏操作之间的 4dp 间距',
+    );
+    expect(find.byType(M3eConnectedButtonGroup<String>), findsNothing);
+
+    await tester.tap(viewButton);
+    await _settleSheet(tester);
+    expect(find.text('列表视图'), findsOneWidget);
+    expect(find.text('网格视图'), findsOneWidget);
+    await tester.tap(find.text('网格视图'));
+    await _settleSheet(tester);
+    expect(app.environment.cachePageSettings.store.gridView, isTrue);
+
+    tester.view.physicalSize = const Size(800, 800);
+    await tester.pumpAndSettle();
+    final layoutGroup = find.byType(M3eConnectedButtonGroup<String>);
+    expect(layoutGroup, findsOneWidget);
+    expect(tester.getSize(layoutGroup).width, 98);
+    expect(
+      find
+          .descendant(of: layoutGroup, matching: find.text('网格视图'))
+          .hitTestable(),
+      findsNothing,
+      reason: '连接组只显示图标；读屏文字不参与视觉显示',
+    );
+    expect(find.byTooltip('列表视图'), findsOneWidget);
+    expect(find.byTooltip('网格视图'), findsOneWidget);
+  });
+
+  testWidgets('排序升降序：文件夹时间反转、大小保持原序', (tester) async {
+    final app = _FakeApp(_OrderedClient());
+    app.environment.cachePageSettings.store.gridView = false;
+    await _pumpDrive(tester, app, viewSize: const Size(420, 900));
+
+    Future<void> openSort() async {
+      await tester.tap(find.byTooltip('排序'));
+      await _settleSheet(tester);
+    }
+
+    Future<void> closeSort() async {
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+    }
+
+    double top(String text) => tester.getTopLeft(find.text(text)).dy;
+
+    // 服务端按时间早到晚返回；默认“时间 + 升序”保持原顺序。
+    expect(top('文件夹 B'), lessThan(top('文件夹 A')));
+    expect(top('文件夹 A'), lessThan(top('文件夹 C')));
+    expect(top('a.zip'), lessThan(top('b.zip')));
+    expect(top('b.zip'), lessThan(top('c.zip')));
+
+    await openSort();
+    expect(find.byType(Radio<bool>), findsNWidgets(3));
+    expect(find.text('大小'), findsOneWidget);
+    expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, isTrue);
+    await tester.tap(find.text('升序'));
+    await tester.pump();
+    await closeSort();
+
+    expect(top('文件夹 C'), lessThan(top('文件夹 A')));
+    expect(top('文件夹 A'), lessThan(top('文件夹 B')));
+    expect(top('c.zip'), lessThan(top('b.zip')));
+    expect(top('b.zip'), lessThan(top('a.zip')));
+
+    await openSort();
+    await tester.tap(find.text('升序'));
+    await tester.pump();
+    await tester.tap(find.text('大小'));
+    await tester.pumpAndSettle();
+    expect(find.text('时间'), findsNothing);
+
+    // 大小无法比较文件夹：保持服务端原顺序；文件按 1M / 2M / 3M 升序。
+    expect(top('文件夹 B'), lessThan(top('文件夹 A')));
+    expect(top('文件夹 A'), lessThan(top('文件夹 C')));
+    expect(top('c.zip'), lessThan(top('b.zip')));
+    expect(top('b.zip'), lessThan(top('a.zip')));
+  });
+
   testWidgets('网盘条目鼠标右键：菜单从鼠标坐标展开', (tester) async {
     final app = _FakeApp(_FakeClient());
     await _pumpDrive(tester, app);
@@ -412,6 +571,18 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
 
     const order = ['下载', '属性', '复制链接', '访问密码', '移动', '重命名', '修改简介', '删除'];
+    expect(_adaptiveSheetGroupLabels(tester, 0), ['下载', '属性', '复制链接']);
+    expect(_adaptiveSheetGroupLabels(tester, 1), [
+      '访问密码',
+      '移动',
+      '重命名',
+      '修改简介',
+      '删除',
+    ]);
+    expect(
+      find.byKey(const ValueKey('adaptive-m3e-menu-group-2')),
+      findsNothing,
+    );
     expect(_adaptiveSheetTiles(), findsNWidgets(order.length));
     for (final label in order) {
       // 页面本身也有「删除」这类文案，断言限定在自适应动作面板里
@@ -447,7 +618,7 @@ void main() {
     // 点「属性」→ 打开文件属性弹窗（那一行 5 个图标按钮）
     await tester.tap(_adaptiveSheetAction('属性'));
     await _settleSheet(tester);
-    expect(find.byType(M3EToggleButton), findsNWidgets(5));
+    expect(_sheetToggleButtons(), findsNWidgets(5));
     expect(_sheetText('类型'), findsOneWidget);
     expect(_sheetText('ZIP 文件'), findsOneWidget);
     expect(_sheetText('重命名'), findsNothing);
@@ -637,6 +808,26 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('file2.zip'));
     await tester.pumpAndSettle();
+    expect(find.text('已选择 2 项'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('排序'));
+    await _settleSheet(tester);
+    expect(
+      find.byKey(const ValueKey('adaptive-m3e-menu-sheet')),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('名称'));
+    await tester.pumpAndSettle();
+    expect(find.text('时间'), findsNothing);
+    expect(find.text('已选择 2 项'), findsOneWidget);
+
+    final gridBefore = app.environment.cachePageSettings.store.gridView;
+    await tester.tap(find.byTooltip('视图'));
+    await _settleSheet(tester);
+    await tester.tap(find.text(gridBefore ? '列表视图' : '网格视图'));
+    await tester.pumpAndSettle();
+    expect(app.environment.cachePageSettings.store.gridView, !gridBefore);
+    expect(find.text('已选择 2 项'), findsOneWidget);
 
     expect(
       tester
@@ -647,6 +838,10 @@ void main() {
 
     await tester.tap(find.byTooltip('更多'));
     await _settleSheet(tester);
+    expect(
+      find.byKey(const ValueKey('adaptive-m3e-menu-sheet')),
+      findsOneWidget,
+    );
     const moreOrder = ['访问密码', '移动', '重命名', '修改简介'];
     final moreTops = [
       for (final label in moreOrder)
@@ -680,20 +875,20 @@ void main() {
     );
     await tester.enterText(
       find.byKey(const ValueKey('drive-batch-rename-replacement')),
-      'doc',
+      'doc: ',
     );
     await tester.tap(find.byKey(const ValueKey('drive-batch-rename-preview')));
     await _settleSheet(tester);
-    expect(find.text('file1.zip → doc1.zip'), findsOneWidget);
-    expect(find.text('file2.zip → doc2.zip'), findsOneWidget);
+    expect(find.text('file1.zip → doc: 1.zip'), findsOneWidget);
+    expect(find.text('file2.zip → doc: 2.zip'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('drive-batch-rename-confirm')));
     await tester.pump();
     await tester.pump(const Duration(seconds: 2));
 
-    expect(client.renamedFiles, ['doc1.zip', 'doc2.zip']);
-    expect(find.text('doc1.zip'), findsOneWidget);
-    expect(find.text('doc2.zip'), findsOneWidget);
+    expect(client.renamedFiles, ['doc: 1.zip', 'doc: 2.zip']);
+    expect(find.text('doc: 1.zip'), findsOneWidget);
+    expect(find.text('doc: 2.zip'), findsOneWidget);
     await tester.pump(const Duration(seconds: 5));
   });
 
@@ -726,6 +921,20 @@ void main() {
       find.byKey(const ValueKey('drive-batch-rename-search')),
       'file',
     );
+    await tester.enterText(
+      find.byKey(const ValueKey('drive-batch-rename-replacement')),
+      'doc: ',
+    );
+    await tester.tap(find.byKey(const ValueKey('drive-batch-rename-preview')));
+    await _settleSheet(tester);
+    final invalidReplacement = tester.widget<TextField>(
+      find.byKey(const ValueKey('drive-batch-rename-replacement')),
+    );
+    expect(invalidReplacement.decoration?.errorText, '包含非法字符');
+    expect(find.text('file1.zip → doc: 1.zip'), findsNothing);
+    expect(client.renamedFiles, isEmpty);
+    expect(client.renamedFolders, isEmpty);
+
     await tester.enterText(
       find.byKey(const ValueKey('drive-batch-rename-replacement')),
       'doc',
@@ -766,12 +975,12 @@ void main() {
 
     await tester.tap(find.text('a.zip'));
     await _settleSheet(tester);
-    // 下载按钮变 checked、tooltip 变「已加入下载」
-    expect(_toggleButton(tester, '已加入下载').checked, isTrue);
+    // 下载按钮变 checked、tooltip 变「已下载」
+    expect(_toggleButton(tester, '已下载').checked, isTrue);
 
     // 点它弹二级菜单：已完成 → 打开 / 分享可用，取消位换成删除记录，
     // 重新下载与「删除记录与文件」也可用
-    await tester.tap(find.byTooltip('已加入下载'));
+    await tester.tap(find.byTooltip('已下载'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
     final rows = tester
@@ -824,7 +1033,7 @@ void main() {
     await _pumpDrive(tester, app, manager: manager);
     await tester.tap(find.text('a.zip'));
     await _settleSheet(tester);
-    await tester.tap(find.byTooltip('已加入下载'));
+    await tester.tap(find.byTooltip('已下载'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
     await tester.tap(
@@ -983,6 +1192,8 @@ void main() {
 
     await tester.tap(find.text('添加'));
     await _settleSheet(tester);
+    expect(find.byKey(const ValueKey('m3e-menu-card')), findsOneWidget);
+    expect(find.byKey(const ValueKey('adaptive-m3e-menu-sheet')), findsNothing);
     await tester.tap(find.text('新建文件夹'));
     await _settleSheet(tester);
     // 自动聚焦 → 帧后量位置 → 180ms 上移动画：多给几帧让它走完
@@ -1120,14 +1331,15 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    final closeButton = find.descendant(
+      of: find.byType(AlertDialog),
+      matching: find.widgetWithText(FilledButton, '关闭'),
+    );
     expect(
       tester
           .getSize(
             find
-                .ancestor(
-                  of: find.byType(FilledButton),
-                  matching: find.byType(Material),
-                )
+                .ancestor(of: closeButton, matching: find.byType(Material))
                 .first,
           )
           .width,
@@ -1173,7 +1385,7 @@ void main() {
     await _settleSheet(tester);
 
     // 一行 5 个纯图标按钮：下载 / 复制链接 / 二维码 / 收藏 / 更多操作
-    expect(find.byType(M3EToggleButton), findsNWidgets(5));
+    expect(_sheetToggleButtons(), findsNWidgets(5));
     for (final tooltip in ['下载', '复制链接', '显示二维码', '添加收藏', '更多操作']) {
       expect(_toggleButton(tester, tooltip), isNotNull, reason: tooltip);
     }
@@ -1303,7 +1515,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // 菜单是贴在被点那一段下面的弹出菜单：属性弹窗还在，菜单浮在它上面
-    expect(find.byType(M3EToggleButton), findsNWidgets(5));
+    expect(_sheetToggleButtons(), findsNWidgets(5));
     expect(find.byType(M3eMenuRow), findsNWidgets(2));
     expect(find.text('复制分享链接'), findsOneWidget);
     expect(find.text('复制下载直链'), findsOneWidget);
@@ -1364,7 +1576,7 @@ void main() {
     await _settleSheet(tester);
     expect(client.shareFileCalls, 1);
     // 复制完属性弹窗还在（反馈走浮在最上层的轻提示）
-    expect(find.byType(M3EToggleButton), findsNWidgets(5));
+    expect(_sheetToggleButtons(), findsNWidgets(5));
   });
 
   testWidgets('文件属性弹窗：收藏就地切换，不关弹窗', (tester) async {
@@ -1377,7 +1589,7 @@ void main() {
     await _settleSheet(tester);
 
     // 测试环境没有 sqflite：收藏会失败并回滚，但弹窗必须还在
-    expect(find.byType(M3EToggleButton), findsNWidgets(5));
+    expect(_sheetToggleButtons(), findsNWidgets(5));
     expect(_toggleButton(tester, '添加收藏').checked, isFalse);
   });
 
@@ -1392,9 +1604,20 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
     await tester.pump(const Duration(milliseconds: 600));
 
-    // 文件夹菜单：打开 / 属性 / 复制链接 / 访问密码 / 重命名 / 修改简介 / 删除
+    // 文件夹菜单：打开 / 属性 / 快速访问 / 复制链接 / 访问密码 / 重命名 / 修改简介 / 删除
     //（「打开」排第一，与点文件夹卡片等效；文件夹没有「移动」）
-    const order = ['打开', '属性', '复制链接', '访问密码', '重命名', '修改简介', '删除'];
+    const order = ['打开', '属性', '添加到快速访问', '复制链接', '访问密码', '重命名', '修改简介', '删除'];
+    expect(_adaptiveSheetGroupLabels(tester, 0), [
+      '打开',
+      '属性',
+      '添加到快速访问',
+      '复制链接',
+    ]);
+    expect(_adaptiveSheetGroupLabels(tester, 1), ['访问密码', '重命名', '修改简介', '删除']);
+    expect(
+      find.byKey(const ValueKey('adaptive-m3e-menu-group-2')),
+      findsNothing,
+    );
     expect(_adaptiveSheetTiles(), findsNWidgets(order.length));
     final tops = [
       for (final label in order)
@@ -1415,7 +1638,7 @@ void main() {
     // 让弹窗里的分享信息和统计请求跑完。
     await tester.pump(const Duration(milliseconds: 200));
 
-    expect(find.byType(M3EToggleButton), findsNWidgets(5));
+    expect(_sheetToggleButtons(), findsNWidgets(5));
     for (final tooltip in ['复制链接', '显示二维码', '添加收藏', '添加到快速访问', '更多操作']) {
       expect(_toggleButton(tester, tooltip), isNotNull, reason: tooltip);
     }
@@ -1468,6 +1691,21 @@ void main() {
     await _openPropertyMore(tester);
     await tester.tap(_menuRowText('重命名'));
     await _settleSheet(tester);
+    await tester.enterText(
+      find.byKey(const ValueKey('drive-rename-field')),
+      '新 文件夹',
+    );
+    await tester.tap(find.byKey(const ValueKey('drive-rename-confirm')));
+    await _settleSheet(tester);
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const ValueKey('drive-rename-field')))
+          .decoration
+          ?.errorText,
+      '包含非法字符',
+    );
+    expect(client.renamedFolders, isEmpty);
+
     await tester.enterText(
       find.byKey(const ValueKey('drive-rename-field')),
       '新文件夹',
@@ -1608,6 +1846,45 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
   });
 
+  testWidgets('文件重命名拒绝文件非法字符并允许文件专属字符', (tester) async {
+    final client = _FakeClient();
+    final app = _FakeApp(client);
+    await _pumpDrive(tester, app);
+
+    await tester.tap(find.text('a.zip'));
+    await _settleSheet(tester);
+    await _openPropertyMore(tester);
+    await tester.tap(_menuRowText('重命名'));
+    await _settleSheet(tester);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('drive-rename-field')),
+      'bad/name.zip',
+    );
+    await tester.tap(find.byKey(const ValueKey('drive-rename-confirm')));
+    await _settleSheet(tester);
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const ValueKey('drive-rename-field')))
+          .decoration
+          ?.errorText,
+      '包含非法字符',
+    );
+    expect(find.byIcon(Icons.error), findsOneWidget);
+    expect(client.renamedFiles, isEmpty);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('drive-rename-field')),
+      'good:*?| name.zip',
+    );
+    await tester.tap(find.byKey(const ValueKey('drive-rename-confirm')));
+    await _settleSheet(tester);
+    expect(client.renamedFiles, ['good:*?| name.zip']);
+    expect(_sheetText('good:*?| name.zip'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pump(const Duration(seconds: 1));
+  });
+
   testWidgets('文件夹属性弹窗：从网盘页「目录属性」进来不显示「打开」', (tester) async {
     final app = _FakeApp(_FakeClient());
     // 站在子目录里：顶栏菜单才会出现「目录属性」
@@ -1615,6 +1892,20 @@ void main() {
 
     await tester.tap(find.byTooltip('菜单'));
     await _settleSheet(tester);
+    expect(
+      find.byKey(const ValueKey('adaptive-m3e-menu-sheet')),
+      findsOneWidget,
+    );
+    expect(find.text('刷新'), findsOneWidget);
+    expect(find.text('添加到快速访问'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('刷新')).dy,
+      lessThan(tester.getTopLeft(find.text('添加到快速访问')).dy),
+    );
+    expect(
+      tester.getTopLeft(find.text('添加到快速访问')).dy,
+      lessThan(tester.getTopLeft(find.text('目录属性')).dy),
+    );
     await tester.tap(find.text('目录属性'));
     await _settleSheet(tester);
 
@@ -1626,6 +1917,7 @@ void main() {
     await _openPropertyMore(tester);
     expect(_menuRowText('打开'), findsNothing);
     expect(_menuRowText('属性'), findsNothing);
+    expect(_menuRowText('添加到快速访问'), findsNothing);
   });
 
   testWidgets('弹窗里的列表组：容器色比弹窗底高一档、窗体边距 16dp', (tester) async {

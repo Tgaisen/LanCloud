@@ -103,6 +103,14 @@ Future<QrImageSource?> showQrSourceSheet(BuildContext context) {
   );
 }
 
+/// 选择二维码图片来源。
+///
+/// Windows 没有拍照入口，直接使用系统图片选择器；其它平台继续显示来源弹窗。
+Future<QrImageSource?> resolveQrImageSource(BuildContext context) async {
+  if (PlatformSupport.isWindows) return QrImageSource.gallery;
+  return showQrSourceSheet(context);
+}
+
 /// 拍照 / 选图并解码二维码内容。
 ///
 /// 返回二维码文本；用户取消、图片里没有二维码或出错时返回 null

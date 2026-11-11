@@ -87,6 +87,7 @@ class Icons {
   /// Remix Icon 的 input-field（U+F479），用于上传任务重命名。
   static const IconData input_field = IconData(0xf479, fontFamily: 'RemixIcon');
   static const IconData install_mobile = Symbols.install_mobile;
+  static const IconData keep = Symbols.keep;
   static const IconData keep_off = Symbols.keep_off;
   static const IconData key_outlined = Symbols.key;
   static const IconData link = Symbols.link;
@@ -132,6 +133,7 @@ class Icons {
   static const IconData save = Symbols.save;
   static const IconData security = Symbols.security;
   static const IconData select_all = Symbols.select_all;
+  static const IconData draft = Symbols.draft;
   static const IconData settings_outlined = Symbols.settings;
   static const IconData shield = Symbols.shield;
   static const IconData shield_person = Symbols.shield_person;
@@ -142,6 +144,8 @@ class Icons {
   static const IconData smart_button = Symbols.smart_button;
   static const IconData speed = Symbols.speed;
   static const IconData schedule = Symbols.schedule;
+  static const IconData sort = Symbols.sort;
+  static const IconData sort_by_alpha = Symbols.sort_by_alpha;
   static const IconData star_border = Symbols.star_border;
   static const IconData star_outline = Symbols.star;
 

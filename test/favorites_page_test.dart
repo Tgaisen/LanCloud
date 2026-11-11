@@ -11,6 +11,7 @@ import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/app_icons.dart';
 import 'package:lancloud/ui/favorites_page.dart';
+import 'package:lancloud/ui/m3e.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
@@ -71,15 +72,41 @@ void main() {
     await tester.tap(find.text('打开收藏'));
     await tester.pumpAndSettle();
 
-    // 空收藏也能进多选：菜单里的「多选」
+    // 排序是独立 AppBar 按钮，在搜索右侧。
+    expect(find.byTooltip('排序'), findsOneWidget);
+    await tester.tap(find.byTooltip('排序'));
+    await tester.pumpAndSettle();
+    List<String> menuLabels() => tester
+        .widgetList<M3eMenuRow>(find.byType(M3eMenuRow))
+        .map((row) => row.label)
+        .toList();
+    expect(menuLabels(), ['时间', '名称', '大小', '升序']);
+    final ascendingCheck = find.byKey(
+      const ValueKey('m3e-menu-selected-check-升序'),
+    );
+    expect(ascendingCheck, findsNothing);
+    await tester.tap(find.text('升序'));
+    await tester.pumpAndSettle();
+    expect(ascendingCheck, findsOneWidget);
+    await tester.tap(find.text('名称'));
+    await tester.pumpAndSettle();
+    expect(find.text('时间'), findsNothing);
+    expect(ascendingCheck, findsNothing);
+
+    // 空收藏也能进多选：⋯ 菜单只保留非排序动作
     await tester.tap(find.byTooltip('菜单'));
     await tester.pumpAndSettle();
+    expect(menuLabels(), hasLength(2));
+    expect(menuLabels().first, '多选');
+    expect(find.text('时间'), findsNothing);
+    expect(find.text('名称'), findsNothing);
+    expect(find.text('大小'), findsNothing);
     // 图标与传输页顶栏的多选入口一致（Checklist）
     expect(
       tester
           .widget<Icon>(
             find.descendant(
-              of: find.widgetWithText(ListTile, '多选'),
+              of: find.widgetWithText(M3eMenuRow, '多选'),
               matching: find.byType(Icon),
             ),
           )

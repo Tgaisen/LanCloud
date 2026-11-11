@@ -5,6 +5,7 @@ import 'package:flutter/rendering.dart';
 import 'package:m3e_core/m3e_core.dart' as core;
 import 'package:material_ui/material_ui.dart' hide Icons;
 
+import 'app_icons.dart';
 import 'reduce_motion.dart';
 
 export 'm3e_pull_refresh.dart';
@@ -882,14 +883,18 @@ class M3eConnectedButtonGroup<T> extends StatelessWidget {
     required this.values,
     required this.selected,
     required this.onSelected,
-    required this.labelOf,
+    this.labelOf,
+    this.semanticLabelOf,
     this.iconOf,
     this.checkedIconOf,
     this.size = core.M3EButtonSize.sm,
     this.expand = true,
     this.style = core.M3EButtonStyle.tonal,
     this.semanticLabel,
-  });
+  }) : assert(
+         labelOf != null || semanticLabelOf != null,
+         '纯图标连接组必须提供 semanticLabelOf',
+       );
 
   /// 每个按钮对应的业务值，顺序即显示顺序。
   final List<T> values;
@@ -901,7 +906,10 @@ class M3eConnectedButtonGroup<T> extends StatelessWidget {
   final ValueChanged<T> onSelected;
 
   /// 按钮文字。
-  final Widget Function(T value) labelOf;
+  final Widget Function(T value)? labelOf;
+
+  /// 读屏名称；纯图标按钮没有可见文字时必须提供。
+  final String Function(T value)? semanticLabelOf;
 
   /// 按钮图标；为 null 时是纯文字按钮（与原实现保持一致）。
   final Widget Function(T value)? iconOf;
@@ -952,7 +960,7 @@ class M3eConnectedButtonGroup<T> extends StatelessWidget {
               core.M3EToggleButtonGroupAction(
                 icon: iconOf?.call(value),
                 checkedIcon: checkedIconOf?.call(value),
-                label: labelOf(value),
+                label: labelOf?.call(value),
                 width: width,
               ),
           ],
@@ -969,7 +977,13 @@ class M3eConnectedButtonGroup<T> extends StatelessWidget {
                 width: width,
                 // 连接式按钮组相邻间隙固定 2dp（ButtonGroupTokens.kConnectedGap）
                 spacing: 2,
-                labelAt: (index) => labelOf(values[index]),
+                labelAt: (index) {
+                  final value = values[index];
+                  final semanticLabel = semanticLabelOf?.call(value);
+                  return semanticLabel == null
+                      ? labelOf!(value)
+                      : Text(semanticLabel);
+                },
                 checkedAt: (index) => index == selectedIndex,
                 mutuallyExclusive: true,
                 enabledAt: (_) => true,
@@ -1659,6 +1673,7 @@ class M3eMenuItem<T> {
     required this.icon,
     this.iconFill = 0,
     this.enabled = true,
+    this.selectionRole = M3eMenuSelectionRole.action,
   });
 
   /// 选中这一项时 [showM3eMenu] 返回的值。
@@ -1679,11 +1694,58 @@ class M3eMenuItem<T> {
   /// 是否可用：置灰的项仍显示（M3 规范：不可用的操作置灰而不是删掉），
   /// 但点不动。
   final bool enabled;
+
+  /// 混合选择菜单里的选项角色；动作菜单和纯单选 / 纯多选菜单会忽略它。
+  final M3eMenuSelectionRole selectionRole;
+}
+
+/// 菜单里的一个视觉分组。
+///
+/// 多个分组在大屏菜单里用组间 gap 分隔；菜单需要滚动时自动改用 divider。
+/// Compact 底部面板则为每个分组绘制一个独立的弹窗列表组。
+class M3eMenuSection<T> {
+  const M3eMenuSection({required this.items});
+
+  final List<M3eMenuItem<T>> items;
+}
+
+/// 锚定菜单的选项选择方式。
+enum M3eMenuSelectionMode { single, multiple, mixed }
+
+/// 混合选择菜单里的选项角色。
+enum M3eMenuSelectionRole { action, radio, checkbox }
+
+/// 混合选择菜单的当前状态。
+class M3eMenuChoice<T> {
+  const M3eMenuChoice({required this.radioValue, required this.checkedValues});
+
+  final T? radioValue;
+  final Set<T> checkedValues;
+}
+
+List<M3eMenuSection<T>> _resolveM3eMenuSections<T>({
+  List<M3eMenuItem<T>>? items,
+  List<M3eMenuSection<T>>? sections,
+}) {
+  if ((items != null) == (sections != null)) {
+    throw ArgumentError('items 和 sections 必须且只能提供一个');
+  }
+  final List<M3eMenuSection<T>> resolved;
+  if (items != null) {
+    resolved = <M3eMenuSection<T>>[M3eMenuSection(items: items)];
+  } else {
+    resolved = sections!;
+  }
+  if (resolved.isEmpty || resolved.any((section) => section.items.isEmpty)) {
+    throw ArgumentError('菜单至少需要一个非空分组');
+  }
+  return resolved;
 }
 
 /// 贴在被点控件下方弹出的 MD3E 菜单。
 ///
-/// [anchor] 是被点控件的全局矩形：菜单贴它下方弹出（[items] 顺序即显示顺序），
+/// [anchor] 是被点控件的全局矩形：菜单贴它下方弹出（[items] 或 [sections]
+/// 的顺序即显示顺序），
 /// 默认左缘对齐；[alignEnd] 为真时右缘对齐——贴右侧的 ⋯ 按钮用这个，菜单不会
 /// 被屏幕右上角夹歪。鼠标右键传入 [pointerPosition] 时，菜单改为从该全局坐标
 /// 弹出，并忽略 [alignEnd]；上下 / 左右空间不够时自动翻到鼠标另一侧。
@@ -1701,26 +1763,156 @@ Future<T?> showM3eMenu<T>({
   required BuildContext context,
   required Rect anchor,
   Offset? pointerPosition,
-  required List<M3eMenuItem<T>> items,
+  List<M3eMenuItem<T>>? items,
+  List<M3eMenuSection<T>>? sections,
   bool alignEnd = false,
   Listenable? closeOn,
   bool Function()? closeWhen,
 }) {
+  final resolvedSections = _resolveM3eMenuSections(
+    items: items,
+    sections: sections,
+  );
   // 少动效在这里就定下来：路由的时长是 getter，拿不到 context
   final bool reduceMotion = reduceMotionOf(context);
   // 读屏进入菜单路由时读的是 barrierLabel：用 Material 本地化的
   // 「弹出菜单」，别用写死的英文（TalkBack 会读成 "Popup menu"）
   final String barrierLabel = MaterialLocalizations.of(context).popupMenuLabel;
   return Navigator.of(context, rootNavigator: true).push<T>(
-    _M3eMenuRoute<T>(
+    _M3eMenuRoute<T, T>(
       anchor: anchor,
       pointerPosition: pointerPosition,
-      items: items,
+      sections: resolvedSections,
       alignEnd: alignEnd,
       reduceMotion: reduceMotion,
       barrierLabel: barrierLabel,
       closeOn: closeOn,
       closeWhen: closeWhen,
+      onActivate: (NavigatorState navigator, T value) {
+        navigator.pop(value);
+      },
+    ),
+  );
+}
+
+/// 大屏锚定菜单里的单选菜单。
+///
+/// 选中一项后立即关闭并返回该项的值；[selected] 只控制打开时的初始选中态。
+Future<T?> showM3eSingleSelectMenu<T>({
+  required BuildContext context,
+  required Rect anchor,
+  Offset? pointerPosition,
+  List<M3eMenuItem<T>>? items,
+  List<M3eMenuSection<T>>? sections,
+  T? selected,
+  bool alignEnd = false,
+  Listenable? closeOn,
+  bool Function()? closeWhen,
+}) {
+  final resolvedSections = _resolveM3eMenuSections(
+    items: items,
+    sections: sections,
+  );
+  final bool reduceMotion = reduceMotionOf(context);
+  final String barrierLabel = MaterialLocalizations.of(context).popupMenuLabel;
+  return Navigator.of(context, rootNavigator: true).push<T>(
+    _M3eMenuRoute<T, T>(
+      anchor: anchor,
+      pointerPosition: pointerPosition,
+      sections: resolvedSections,
+      alignEnd: alignEnd,
+      reduceMotion: reduceMotion,
+      barrierLabel: barrierLabel,
+      closeOn: closeOn,
+      closeWhen: closeWhen,
+      selectionMode: M3eMenuSelectionMode.single,
+      initialSelectedValue: selected,
+      onActivate: (NavigatorState navigator, T value) {
+        navigator.pop(value);
+      },
+    ),
+  );
+}
+
+/// 大屏锚定菜单里的多选菜单。
+///
+/// 每次勾选都会立即通过 [onChanged] 返回新的不可变集合，菜单本身保持打开，
+/// 直到用户点外部、按返回键或由 [closeOn] 触发关闭。
+Future<void> showM3eMultiSelectMenu<T>({
+  required BuildContext context,
+  required Rect anchor,
+  Offset? pointerPosition,
+  List<M3eMenuItem<T>>? items,
+  List<M3eMenuSection<T>>? sections,
+  Set<T> selected = const {},
+  required ValueChanged<Set<T>> onChanged,
+  bool alignEnd = false,
+  Listenable? closeOn,
+  bool Function()? closeWhen,
+}) async {
+  final resolvedSections = _resolveM3eMenuSections(
+    items: items,
+    sections: sections,
+  );
+  final bool reduceMotion = reduceMotionOf(context);
+  final String barrierLabel = MaterialLocalizations.of(context).popupMenuLabel;
+  await Navigator.of(context, rootNavigator: true).push<void>(
+    _M3eMenuRoute<T, void>(
+      anchor: anchor,
+      pointerPosition: pointerPosition,
+      sections: resolvedSections,
+      alignEnd: alignEnd,
+      reduceMotion: reduceMotion,
+      barrierLabel: barrierLabel,
+      closeOn: closeOn,
+      closeWhen: closeWhen,
+      selectionMode: M3eMenuSelectionMode.multiple,
+      initialSelectedValues: selected,
+      onMultiSelectionChanged: onChanged,
+      onActivate: null,
+    ),
+  );
+}
+
+/// 大屏锚定菜单里的混合选择菜单。
+///
+/// 每项按 [M3eMenuItem.selectionRole] 显示为单选、复选或普通动作。每次变化会
+/// 立即通过 [onChanged] 返回完整状态。选择 radio 后菜单立即关闭；选择
+/// checkbox 时保持打开，直到用户点外部、按返回键或由 [closeOn] 触发关闭。
+Future<void> showM3eChoiceMenu<T>({
+  required BuildContext context,
+  required Rect anchor,
+  Offset? pointerPosition,
+  List<M3eMenuItem<T>>? items,
+  List<M3eMenuSection<T>>? sections,
+  T? radioValue,
+  Set<T> checkedValues = const {},
+  required ValueChanged<M3eMenuChoice<T>> onChanged,
+  bool alignEnd = false,
+  Listenable? closeOn,
+  bool Function()? closeWhen,
+}) async {
+  final resolvedSections = _resolveM3eMenuSections(
+    items: items,
+    sections: sections,
+  );
+  final bool reduceMotion = reduceMotionOf(context);
+  final String barrierLabel = MaterialLocalizations.of(context).popupMenuLabel;
+  await Navigator.of(context, rootNavigator: true).push<void>(
+    _M3eMenuRoute<T, void>(
+      anchor: anchor,
+      pointerPosition: pointerPosition,
+      sections: resolvedSections,
+      alignEnd: alignEnd,
+      reduceMotion: reduceMotion,
+      barrierLabel: barrierLabel,
+      closeOn: closeOn,
+      closeWhen: closeWhen,
+      selectionMode: M3eMenuSelectionMode.mixed,
+      initialSelectedValue: radioValue,
+      initialSelectedValues: checkedValues,
+      onChoiceChanged: onChanged,
+      onActivate: null,
     ),
   );
 }
@@ -1736,6 +1928,9 @@ class M3eMenuRow extends StatelessWidget {
     required this.onTap,
     this.iconFill = 0,
     this.enabled = true,
+    this.selected = false,
+    this.showSelectionIndicator = false,
+    this.mutuallyExclusive = false,
   });
 
   /// 行首图标。
@@ -1754,48 +1949,119 @@ class M3eMenuRow extends StatelessWidget {
   /// 即渲染成禁用态，颜色由主题负责。
   final bool enabled;
 
+  /// 选择菜单里的选中态。
+  final bool selected;
+
+  /// 是否显示尾部对勾并暴露 selected 语义。
+  final bool showSelectionIndicator;
+
+  /// 单选择菜单的选项互斥；多选菜单为 false。
+  final bool mutuallyExclusive;
+
   @override
   Widget build(BuildContext context) {
     // 用框架的 MenuItemButton 拿到它的默认度量（48dp 高、左右内边距 12dp、
     // 图标 24dp、labelLarge）和桌面端的悬停 / 焦点 / 键盘行为；圆角按 M3E 的
     // vertical menu 规格改：项目是卡片里的一块圆角块，圆角 12dp——卡片圆角 16、
     // 项目左右内缩 4dp，内圆角 = 16 − 4 = 12，符合嵌套规则。
-    return MenuItemButton(
-      onPressed: enabled ? onTap : null,
-      // 菜单里的项目是竖排文案：必须显式指定 vertical，MenuItemButton 才会把
-      // 文案放进 Expanded（+ClipRect）里约束住；默认的 horizontal 是给 MenuBar
-      // 用的，文案会拿到无约束宽度、直接溢出卡片（长文案就是被卡片裁掉）。
-      // 约束住之后，超出菜单最大宽度（280）的长文案按规范走省略号。
-      overflowAxis: Axis.vertical,
-      style: MenuItemButton.styleFrom(
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(12)),
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+    final bool emphasized = selected && enabled;
+    final SemanticsRole role = !showSelectionIndicator
+        ? SemanticsRole.menuItem
+        : mutuallyExclusive
+        ? SemanticsRole.menuItemRadio
+        : SemanticsRole.menuItemCheckbox;
+    // 行本身合成一个读屏节点，让名称、菜单项角色和选中态落在同一节点上。
+    // 指针 / 键盘点击仍走 MenuItemButton；读屏点击由这里接管后必须显式调用
+    // Flutter 的 Feedback.forTap，发送 Android 用于 TalkBack 点击音效的
+    // TapSemanticEvent。普通 InkWell 会自动做这一步，自定义语义节点不会。
+    return Semantics(
+      container: true,
+      excludeSemantics: true,
+      role: role,
+      label: label,
+      button: true,
+      enabled: enabled,
+      focusable: true,
+      checked: showSelectionIndicator ? selected : null,
+      inMutuallyExclusiveGroup: showSelectionIndicator
+          ? mutuallyExclusive
+          : null,
+      onTap: enabled
+          ? () {
+              Feedback.forTap(context);
+              onTap();
+            }
+          : null,
+      child: MenuItemButton(
+        onPressed: enabled ? onTap : null,
+        // 菜单里的项目是竖排文案：必须显式指定 vertical，MenuItemButton 才会把
+        // 文案放进 Expanded（+ClipRect）里约束住；默认的 horizontal 是给 MenuBar
+        // 用的，文案会拿到无约束宽度、直接溢出卡片（长文案就是被卡片裁掉）。
+        // 约束住之后，超出菜单最大宽度（280）的长文案按规范走省略号。
+        overflowAxis: Axis.vertical,
+        style: MenuItemButton.styleFrom(
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(12)),
+          ),
+          backgroundColor: emphasized ? scheme.tertiaryContainer : null,
+          foregroundColor: emphasized ? scheme.onTertiaryContainer : null,
+          iconColor: emphasized ? scheme.onTertiaryContainer : null,
         ),
+        leadingIcon: Icon(icon, size: 24, fill: iconFill),
+        trailingIcon: showSelectionIndicator
+            ? SizedBox(
+                width: 24,
+                child: selected
+                    ? Icon(
+                        Icons.check,
+                        size: 20,
+                        color: scheme.onTertiaryContainer,
+                        key: ValueKey('m3e-menu-selected-check-$label'),
+                      )
+                    : null,
+              )
+            : null,
+        child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
       ),
-      leadingIcon: Icon(icon, size: 24, fill: iconFill),
-      child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
     );
   }
 }
 
-/// [showM3eMenu] 的弹层：固定卡片 + 内部滚动。
-class _M3eMenuRoute<T> extends PopupRoute<T> {
+/// [showM3eMenu] 系列函数的弹层：固定卡片 + 内部滚动。
+class _M3eMenuRoute<T, R> extends PopupRoute<R> {
   _M3eMenuRoute({
     required this.anchor,
     required this.pointerPosition,
-    required this.items,
+    required this.sections,
     required this.alignEnd,
     required this.reduceMotion,
     required this.barrierLabel,
+    required this.onActivate,
+    this.selectionMode,
+    this.initialSelectedValue,
+    this.initialSelectedValues = const {},
+    this.onMultiSelectionChanged,
+    this.onChoiceChanged,
     this.closeOn,
     this.closeWhen,
-  });
+  }) : _selectedValue = initialSelectedValue,
+       _selectedValues = Set<T>.of(initialSelectedValues);
 
   final Rect anchor;
   final Offset? pointerPosition;
-  final List<M3eMenuItem<T>> items;
+  final List<M3eMenuSection<T>> sections;
   final bool alignEnd;
   final bool reduceMotion;
+  final void Function(NavigatorState navigator, T value)? onActivate;
+  final M3eMenuSelectionMode? selectionMode;
+  final T? initialSelectedValue;
+  final Set<T> initialSelectedValues;
+  final ValueChanged<Set<T>>? onMultiSelectionChanged;
+  final ValueChanged<M3eMenuChoice<T>>? onChoiceChanged;
+  T? _selectedValue;
+  Set<T> _selectedValues;
+  final ValueNotifier<int> _selectionRevision = ValueNotifier<int>(0);
 
   /// 读屏播报的路由标签（本地化的「弹出菜单」）。
   @override
@@ -1806,6 +2072,80 @@ class _M3eMenuRoute<T> extends PopupRoute<T> {
   /// 且 [closeWhen] 为真（默认恒真）时收起。收起走正常 pop，返回 null。
   final Listenable? closeOn;
   final bool Function()? closeWhen;
+
+  Iterable<M3eMenuItem<T>> get _allItems =>
+      sections.expand((M3eMenuSection<T> section) => section.items);
+
+  bool get _hasSelection => selectionMode != null;
+
+  bool _isSelected(M3eMenuItem<T> item) => switch (selectionMode) {
+    M3eMenuSelectionMode.single => item.value == initialSelectedValue,
+    M3eMenuSelectionMode.multiple => _selectedValues.contains(item.value),
+    M3eMenuSelectionMode.mixed => switch (item.selectionRole) {
+      M3eMenuSelectionRole.radio => item.value == _selectedValue,
+      M3eMenuSelectionRole.checkbox => _selectedValues.contains(item.value),
+      M3eMenuSelectionRole.action => false,
+    },
+    null => false,
+  };
+
+  bool _showsSelection(M3eMenuItem<T> item) => switch (selectionMode) {
+    M3eMenuSelectionMode.single || M3eMenuSelectionMode.multiple => true,
+    M3eMenuSelectionMode.mixed =>
+      item.selectionRole != M3eMenuSelectionRole.action,
+    null => false,
+  };
+
+  bool _isMutuallyExclusive(M3eMenuItem<T> item) => switch (selectionMode) {
+    M3eMenuSelectionMode.single => true,
+    M3eMenuSelectionMode.mixed =>
+      item.selectionRole == M3eMenuSelectionRole.radio,
+    _ => false,
+  };
+
+  void _toggleSelected(T value) {
+    final Set<T> next = Set<T>.of(_selectedValues);
+    if (!next.add(value)) next.remove(value);
+    _selectedValues = next;
+    onMultiSelectionChanged?.call(Set<T>.unmodifiable(next));
+    _notifyChoice();
+    _selectionRevision.value += 1;
+  }
+
+  void _selectRadio(T value) {
+    _selectedValue = value;
+    _notifyChoice();
+    _selectionRevision.value += 1;
+  }
+
+  void _notifyChoice() {
+    onChoiceChanged?.call(
+      M3eMenuChoice<T>(
+        radioValue: _selectedValue,
+        checkedValues: Set<T>.unmodifiable(_selectedValues),
+      ),
+    );
+  }
+
+  void _activate(BuildContext context, M3eMenuItem<T> item) {
+    if (selectionMode == M3eMenuSelectionMode.multiple) {
+      _toggleSelected(item.value);
+      return;
+    }
+    if (selectionMode == M3eMenuSelectionMode.mixed) {
+      switch (item.selectionRole) {
+        case M3eMenuSelectionRole.radio:
+          _selectRadio(item.value);
+          if (isCurrent) navigator?.pop();
+        case M3eMenuSelectionRole.checkbox:
+          _toggleSelected(item.value);
+        case M3eMenuSelectionRole.action:
+          onActivate?.call(Navigator.of(context), item.value);
+      }
+      return;
+    }
+    onActivate?.call(Navigator.of(context), item.value);
+  }
 
   void _handleCloseOn() {
     if (!isActive) return;
@@ -1831,6 +2171,20 @@ class _M3eMenuRoute<T> extends PopupRoute<T> {
 
   /// 项目之间的间隔：M3E vertical menu 里每一项是各自独立的圆角块。
   static const double _itemGap = 4;
+
+  /// M3E segmented menu 的组间固定间隔。
+  static const double _groupGap = 2;
+
+  /// 可滚动菜单使用 divider 分组；保留 M3 baseline 的 8dp 上下留白 + 1dp 线。
+  static const double _dividerExtent = 17;
+
+  /// 非滚动分组菜单的组卡片：内边距与组内圆角。
+  static const double _groupVerticalPadding = 4;
+  static const double _groupHorizontalPadding = 4;
+  static const double _groupRadius = 16;
+
+  /// 分组卡片阴影的绘制缓冲区；裁剪只限制滚动溢出，不裁掉 3dp elevation 阴影。
+  static const double _shadowClipExtent = 16;
 
   /// 项目相对卡片的左右内缩；同时决定项目自己的圆角（16 − 4 = 12dp）。
   static const double _itemInset = 4;
@@ -1900,14 +2254,16 @@ class _M3eMenuRoute<T> extends PopupRoute<T> {
     final TextScaler textScaler = MediaQuery.textScalerOf(context);
     final TextDirection direction = Directionality.of(context);
     var widest = 0.0;
-    for (final M3eMenuItem<T> item in items) {
+    for (final M3eMenuItem<T> item in _allItems) {
       final TextPainter painter = TextPainter(
         text: TextSpan(text: item.label, style: labelStyle),
         maxLines: 1,
         textDirection: direction,
         textScaler: textScaler,
       )..layout();
-      final double row = padding * 2 + 24 + gap + painter.width;
+      final double selectionWidth = _hasSelection ? 24 + gap : 0;
+      final double row =
+          padding * 2 + 24 + gap + selectionWidth + painter.width;
       if (row > widest) widest = row;
     }
     return (widest + _itemInset * 2).clamp(
@@ -1919,8 +2275,74 @@ class _M3eMenuRoute<T> extends PopupRoute<T> {
   @override
   void dispose() {
     closeOn?.removeListener(_handleCloseOn);
+    _selectionRevision.dispose();
     _scroll.dispose();
     super.dispose();
+  }
+
+  double _menuContentHeight({
+    required int itemCount,
+    required int sectionCount,
+    required double rowHeight,
+    required double groupExtent,
+    required bool groupedSurfaces,
+  }) {
+    final int itemGapCount = math.max(0, itemCount - sectionCount);
+    final int groupGapCount = math.max(0, sectionCount - 1);
+    return itemCount * rowHeight +
+        itemGapCount * _itemGap +
+        groupGapCount * groupExtent +
+        (groupedSurfaces ? sectionCount * _groupVerticalPadding * 2 : 0) +
+        (groupedSurfaces ? 0 : _verticalPadding * 2);
+  }
+
+  Widget _buildSection(
+    BuildContext context,
+    int sectionIndex, {
+    required bool groupedSurface,
+  }) {
+    final List<M3eMenuItem<T>> items = sections[sectionIndex].items;
+    final Widget rows = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (int itemIndex = 0; itemIndex < items.length; itemIndex++) ...[
+          if (itemIndex > 0) const SizedBox(height: _itemGap),
+          _buildRow(context, items[itemIndex]),
+        ],
+      ],
+    );
+    if (!groupedSurface) return rows;
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+    return Material(
+      key: ValueKey('m3e-menu-group-surface-$sectionIndex'),
+      color: scheme.surfaceContainerLow,
+      elevation: 3,
+      shadowColor: scheme.shadow,
+      surfaceTintColor: Colors.transparent,
+      borderRadius: BorderRadius.circular(_groupRadius),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: _groupHorizontalPadding,
+          vertical: _groupVerticalPadding,
+        ),
+        child: rows,
+      ),
+    );
+  }
+
+  Widget _buildRow(BuildContext context, M3eMenuItem<T> item) {
+    return M3eMenuRow(
+      icon: item.icon,
+      iconFill: item.iconFill,
+      label: item.label,
+      enabled: item.enabled,
+      selected: _isSelected(item),
+      showSelectionIndicator: _showsSelection(item),
+      mutuallyExclusive: _isMutuallyExclusive(item),
+      onTap: () => _activate(context, item),
+    );
   }
 
   @override
@@ -1947,15 +2369,35 @@ class _M3eMenuRoute<T> extends PopupRoute<T> {
     // 开」；卡片高度本身交给内容决定（见下面的 ConstrainedBox + shrinkWrap）。
     final double rowHeight =
         _rowHeight + Theme.of(context).visualDensity.baseSizeAdjustment.dy;
-    final double contentHeight =
-        items.length * rowHeight +
-        (items.length - 1) * _itemGap +
-        _verticalPadding * 2;
+    final int itemCount = _allItems.length;
+    bool groupedSurfaces = sections.length > 1;
+    double contentHeight = _menuContentHeight(
+      itemCount: itemCount,
+      sectionCount: sections.length,
+      rowHeight: rowHeight,
+      groupExtent: _groupGap,
+      groupedSurfaces: groupedSurfaces,
+    );
     final double below = bottomLimit - (effectiveAnchor.bottom + anchorGap);
     final double above = (effectiveAnchor.top - anchorGap) - topLimit;
     // 先试锚点下方；放不下且上方更宽敞时才翻到上方，避免菜单贴屏幕边
     final bool opensAbove = below < contentHeight && above > below;
     final double available = opensAbove ? above : below;
+    // M3 不允许在滚动菜单里使用 gap 分组；组数超过 3 时 gap 也会超过推荐的
+    // 一到两个，因此这两种情况统一回退到 divider。
+    final bool useDividers =
+        sections.length > 1 &&
+        (sections.length > 3 || contentHeight > available);
+    groupedSurfaces = groupedSurfaces && !useDividers;
+    if (useDividers) {
+      contentHeight = _menuContentHeight(
+        itemCount: itemCount,
+        sectionCount: sections.length,
+        rowHeight: rowHeight,
+        groupExtent: _dividerExtent,
+        groupedSurfaces: false,
+      );
+    }
     // 卡片最高只能到「可用空间」和 M3 上限，具体多高由内容决定：放得下就贴着
     // 内容（不留多余空白），放不下才在里面滚。
     final double maxHeight = available.clamp(0.0, _maxHeight);
@@ -2011,12 +2453,14 @@ class _M3eMenuRoute<T> extends PopupRoute<T> {
             },
             child: Material(
               key: const ValueKey('m3e-menu-card'),
-              color: scheme.surfaceContainerLow,
+              color: groupedSurfaces
+                  ? Colors.transparent
+                  : scheme.surfaceContainerLow,
               // M3 给菜单的是 elevation level 2；这里按需求用 3
-              elevation: 3,
+              elevation: groupedSurfaces ? 0 : 3,
               surfaceTintColor: Colors.transparent,
               borderRadius: BorderRadius.circular(_radius),
-              clipBehavior: Clip.antiAlias,
+              clipBehavior: groupedSurfaces ? Clip.none : Clip.antiAlias,
               child: ConstrainedBox(
                 constraints: BoxConstraints(maxHeight: maxHeight),
                 // 卡片固定，超出高度的部分在卡片里面滚：滚动条沿用应用同款
@@ -2032,33 +2476,83 @@ class _M3eMenuRoute<T> extends PopupRoute<T> {
                     data: const ScrollbarThemeData(
                       trackColor: WidgetStatePropertyAll(Colors.transparent),
                     ),
-                    child: Scrollbar(
-                      controller: _scroll,
-                      thickness: 6,
-                      radius: const Radius.circular(3),
-                      child: ListView(
+                    child: ClipRect(
+                      key: groupedSurfaces
+                          ? const ValueKey('m3e-menu-shadow-clip')
+                          : null,
+                      clipper: groupedSurfaces
+                          ? const _MenuShadowClipper(_shadowClipExtent)
+                          : null,
+                      child: Scrollbar(
                         controller: _scroll,
-                        // 贴着内容：放得下时卡片刚好包住项目（不同平台的
-                        // VisualDensity 会让行高在 40–48dp 之间变），放不下才滚
-                        shrinkWrap: true,
-                        padding: const EdgeInsets.symmetric(
-                          vertical: _verticalPadding,
-                          horizontal: _itemInset,
+                        thickness: 6,
+                        radius: const Radius.circular(3),
+                        child: Semantics(
+                          role: SemanticsRole.menu,
+                          container: true,
+                          explicitChildNodes: true,
+                          child: ValueListenableBuilder<int>(
+                            valueListenable: _selectionRevision,
+                            builder: (BuildContext context, _, _) =>
+                                // 菜单是一个整体，不是数据列表。ListView 会让
+                                // Android 自动附加 collection 信息，TalkBack 因而
+                                // 额外读「在列表中 / 第 N 个，共 N 个」。菜单项数量
+                                // 有限，改用单列滚动容器即可保留滚动和全部子项
+                                // 语义，同时不产生列表计数。
+                                SingleChildScrollView(
+                                  controller: _scroll,
+                                  clipBehavior: groupedSurfaces
+                                      ? Clip.none
+                                      : Clip.hardEdge,
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: groupedSurfaces
+                                        ? 0
+                                        : _verticalPadding,
+                                    horizontal: _itemInset,
+                                  ),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      for (
+                                        int sectionIndex = 0;
+                                        sectionIndex < sections.length;
+                                        sectionIndex++
+                                      ) ...[
+                                        if (sectionIndex > 0)
+                                          if (useDividers)
+                                            Padding(
+                                              key: ValueKey(
+                                                'm3e-menu-divider-$sectionIndex',
+                                              ),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 8,
+                                                  ),
+                                              child: Divider(
+                                                height: _dividerExtent,
+                                                thickness: 1,
+                                              ),
+                                            )
+                                          else
+                                            SizedBox(
+                                              key: ValueKey(
+                                                'm3e-menu-group-gap-$sectionIndex',
+                                              ),
+                                              height: _groupGap,
+                                            ),
+                                        _buildSection(
+                                          context,
+                                          sectionIndex,
+                                          groupedSurface: groupedSurfaces,
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                          ),
                         ),
-                        children: [
-                          for (int i = 0; i < items.length; i++) ...[
-                            // 项目之间留间隔，头尾不额外留（M3E 的块状项目）
-                            if (i > 0) const SizedBox(height: _itemGap),
-                            M3eMenuRow(
-                              icon: items[i].icon,
-                              iconFill: items[i].iconFill,
-                              label: items[i].label,
-                              enabled: items[i].enabled,
-                              onTap: () =>
-                                  Navigator.of(context).pop(items[i].value),
-                            ),
-                          ],
-                        ],
                       ),
                     ),
                   ),
@@ -2070,6 +2564,25 @@ class _M3eMenuRoute<T> extends PopupRoute<T> {
       ],
     );
   }
+}
+
+/// 分组菜单的滚动裁剪层：向外扩一圈，既保留卡片阴影，又限制 iOS 回弹溢出。
+class _MenuShadowClipper extends CustomClipper<Rect> {
+  const _MenuShadowClipper(this.extent);
+
+  final double extent;
+
+  @override
+  Rect getClip(Size size) => Rect.fromLTRB(
+    -extent,
+    -extent,
+    size.width + extent,
+    size.height + extent,
+  );
+
+  @override
+  bool shouldReclip(_MenuShadowClipper oldClipper) =>
+      oldClipper.extent != extent;
 }
 
 /// 取 [context] 对应渲染对象的全局矩形，给 [showM3eMenu] 当锚点。
