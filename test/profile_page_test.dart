@@ -9,6 +9,7 @@ import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/app_startup.dart';
 import 'package:lancloud/core/backup/backup_dependencies.dart';
 import 'package:lancloud/core/backup/backup_service.dart';
+import 'package:lancloud/core/cookie_auth.dart';
 import 'package:lancloud/core/data/account_store.dart';
 import 'package:lancloud/core/transfer/transfer_issue.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
@@ -21,6 +22,7 @@ import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/licenses_page.dart';
 import 'package:lancloud/ui/m3e.dart';
 import 'package:lancloud/ui/profile_page.dart';
+import 'package:local_auth_android/local_auth_android.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
@@ -46,6 +48,19 @@ class _NoopBackupService extends BackupService {
 
   @override
   Future<void> init() async {}
+}
+
+class _FakeCookieAuth extends CookieAuth {
+  int calls = 0;
+
+  @override
+  Future<CookieAuthResult> verify(
+    String reason, {
+    Iterable<AuthMessages> messages = const <AuthMessages>[],
+  }) async {
+    calls += 1;
+    return CookieAuthResult.ok;
+  }
 }
 
 class _TestProviders extends StatelessWidget {
@@ -245,6 +260,37 @@ void main() {
 
   /// 右窗格内容的焦点落点（FocusNode 的 debugLabel）。
   String? focusedPaneLabel() => FocusManager.instance.primaryFocus?.debugLabel;
+
+  testWidgets('大屏备份选项：敏感项仍会发起身份验证（回归）', (tester) async {
+    final fakeAuth = _FakeCookieAuth();
+    CookieAuth.instance = fakeAuth;
+    addTearDown(() => CookieAuth.instance = CookieAuth());
+    await pumpTwoPane(tester);
+
+    await tester.tap(find.text('隐私与数据'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ListTile, '备份与恢复'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ListTile, '备份选项'));
+    await tester.pumpAndSettle();
+
+    final sensitiveTile = find.descendant(
+      of: find.byType(BackupOptionsPage),
+      matching: find.text('账号列表与 Cookie'),
+    );
+    await tester.ensureVisible(sensitiveTile);
+    await tester.pumpAndSettle();
+    await tester.tap(sensitiveTile);
+    await tester.pumpAndSettle();
+
+    expect(fakeAuth.calls, 1);
+    expect(
+      tester
+          .widget<M3ePickTile>(find.widgetWithText(M3ePickTile, '账号列表与 Cookie'))
+          .selected,
+      isTrue,
+    );
+  });
 
   /// 顶栏标题的语义：右窗格换内容时标题跟着换，标题本身是 live region，
   /// 念不念、怎么念交给 TalkBack 自己（不自己发 announcement、不加自造文案）。
