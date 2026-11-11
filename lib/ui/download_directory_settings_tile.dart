@@ -225,7 +225,11 @@ class _DownloadDirectorySettingsTileState
         return;
       }
 
-      final pick = widget.pickDirectoryPath ?? FilePicker.getDirectoryPath;
+      final pick =
+          widget.pickDirectoryPath ??
+          () => FilePicker.getDirectoryPath(
+            dialogTitle: l10n.filePickerDownloadDirectoryTitle,
+          );
       final dir = await pick();
       if (dir == null || dir.isEmpty) return;
       await settings.selectDirectoryPath(dir);

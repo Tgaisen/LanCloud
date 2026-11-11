@@ -126,7 +126,7 @@ Future<String?> scanQrFromImage(
   try {
     path = source == QrImageSource.camera
         ? await ProviderFilePicker.takePhoto()
-        : await _pickFromGallery();
+        : await _pickFromGallery(l10n.filePickerQrImageTitle);
   } on PlatformException catch (e) {
     messenger.showSnackBar(
       SnackBar(
@@ -165,7 +165,10 @@ Future<String?> scanQrFromImage(
 }
 
 /// 从系统图库选一张图片（ACTION_PICK，不需要存储权限）。
-Future<String?> _pickFromGallery() async {
-  final picked = await FilePicker.pickFile(type: FileType.image);
+Future<String?> _pickFromGallery(String dialogTitle) async {
+  final picked = await FilePicker.pickFile(
+    dialogTitle: dialogTitle,
+    type: FileType.image,
+  );
   return picked?.path;
 }

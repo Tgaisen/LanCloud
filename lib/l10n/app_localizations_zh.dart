@@ -2179,6 +2179,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get chooseBackupFile => '选择备份文件';
 
   @override
+  String get filePickerQrImageTitle => '选择二维码图片';
+
+  @override
+  String get filePickerUploadFilesTitle => '选择上传文件';
+
+  @override
+  String get filePickerDownloadDirectoryTitle => '选择下载目录';
+
+  @override
+  String get filePickerSaveBackupTitle => '保存备份文件';
+
+  @override
+  String get filePickerSaveLogsTitle => '保存运行日志';
+
+  @override
   String get backupContent => '备份内容';
 
   @override

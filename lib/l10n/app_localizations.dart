@@ -4094,6 +4094,36 @@ abstract class AppLocalizations {
   /// **'选择备份文件'**
   String get chooseBackupFile;
 
+  /// No description provided for @filePickerQrImageTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择二维码图片'**
+  String get filePickerQrImageTitle;
+
+  /// No description provided for @filePickerUploadFilesTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择上传文件'**
+  String get filePickerUploadFilesTitle;
+
+  /// No description provided for @filePickerDownloadDirectoryTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择下载目录'**
+  String get filePickerDownloadDirectoryTitle;
+
+  /// No description provided for @filePickerSaveBackupTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存备份文件'**
+  String get filePickerSaveBackupTitle;
+
+  /// No description provided for @filePickerSaveLogsTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存运行日志'**
+  String get filePickerSaveLogsTitle;
+
   /// No description provided for @backupContent.
   ///
   /// In zh, this message translates to:

@@ -254,6 +254,7 @@ class _BackupContentState extends ConsumerState<BackupContent> {
       saved = await SystemFileSaver.save(
         sourcePath: file.path,
         fileName: p.basename(file.path),
+        dialogTitle: l10n.filePickerSaveBackupTitle,
         mime: 'application/json',
       );
     } catch (_) {
