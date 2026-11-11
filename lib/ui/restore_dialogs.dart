@@ -141,10 +141,12 @@ Future<bool> confirmAndRestore(
       case CookieAuthResult.canceled:
         return false;
       case CookieAuthResult.unavailable:
-        showAppToast(context, l10n.cookieAuthUnavailable);
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(l10n.cookieAuthUnavailable)));
         return false;
       case CookieAuthResult.failed:
-        showAppToast(context, l10n.cookieAuthFailed);
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(l10n.cookieAuthFailed)));
         return false;
     }
   }

@@ -5,7 +5,6 @@ import '../core/data/account_store.dart';
 import '../core/platform_support.dart';
 import '../core/system_share.dart';
 import '../l10n/l10n.dart';
-import 'app_icons.dart';
 import 'common.dart';
 
 /// 「显示 Cookie」流程：风险提示 → 生物识别 / 锁屏验证 → 展示与导出。
@@ -40,26 +39,12 @@ Future<void> showCookieFlow(BuildContext context, Account account) async {
     case CookieAuthResult.canceled:
       break;
     case CookieAuthResult.unavailable:
-      await _showTip(context, Icons.lock_outline, l10n.cookieAuthUnavailable);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(l10n.cookieAuthUnavailable)));
     case CookieAuthResult.failed:
-      await _showTip(context, Icons.error_outline, l10n.cookieAuthFailed);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(l10n.cookieAuthFailed)));
   }
-}
-
-Future<void> _showTip(BuildContext context, IconData icon, String message) {
-  return showDialog<void>(
-    context: context,
-    builder: (dialogContext) => AlertDialog(
-      icon: Icon(icon),
-      content: Text(message),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(dialogContext).pop(),
-          child: Text(context.l10n.close),
-        ),
-      ],
-    ),
-  );
 }
 
 /// Cookie 展示弹窗（MD3E 默认风格）：标题 + UID + 可滑动的等宽内容 + 操作按钮。
