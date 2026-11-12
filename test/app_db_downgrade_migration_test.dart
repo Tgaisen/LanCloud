@@ -59,13 +59,13 @@ void main() {
     if (dir.existsSync()) dir.deleteSync(recursive: true);
   });
 
-  test('v13 → v12 降级后重新升级：share_url 迁移保持幂等且不丢数据', () async {
+  test('v13 → v12 降级后重新升级：迁移保持幂等且不丢数据', () async {
     final appDb = AppDb.instance;
     final database = await appDb.db;
 
     final columns = await database.rawQuery('PRAGMA table_info(recents)');
     expect(columns.where((row) => row['name'] == 'share_url'), hasLength(1));
-    expect(await database.getVersion(), 13);
+    expect(await database.getVersion(), 14);
 
     final recent = (await appDb.recents('legacy')).single;
     expect(recent.name, '旧目录');

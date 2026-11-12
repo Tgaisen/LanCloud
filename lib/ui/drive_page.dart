@@ -1741,7 +1741,9 @@ class _DrivePageState extends ConsumerState<DrivePage>
                 ref: info.url,
                 pwd: info.pwd,
                 size: file?.size ?? '',
+                fileTime: file?.time ?? '',
                 sharer: sharer,
+                requiresPassword: info.pwd.isNotEmpty,
               );
               count += 1;
             } catch (_) {
@@ -1759,6 +1761,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
                 ref: info.url,
                 pwd: info.pwd,
                 sharer: sharer,
+                requiresPassword: info.pwd.isNotEmpty,
               );
               count += 1;
             } catch (_) {
@@ -2937,7 +2940,9 @@ class _DrivePageState extends ConsumerState<DrivePage>
         ref: info.url,
         pwd: info.pwd,
         size: file.size,
+        fileTime: file.time,
         sharer: _accounts.store.active?.nickname ?? '',
+        requiresPassword: info.pwd.isNotEmpty,
       );
       if (!mounted) return false;
       showAppToast(context, context.l10n.favorited);
@@ -2961,6 +2966,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
         ref: info.url,
         pwd: info.pwd,
         sharer: _accounts.store.active?.nickname ?? '',
+        requiresPassword: info.pwd.isNotEmpty,
       );
       if (!mounted) return false;
       showAppToast(context, context.l10n.favorited);
@@ -5393,10 +5399,15 @@ Future<FolderPickResult?> showFolderPicker(
   String? initialName,
   String initialFolderId = '-1',
 }) {
+  final sortSettings = ProviderScope.containerOf(
+    context,
+    listen: false,
+  ).read(listHomeSettingsStateProvider);
   return showDialog<FolderPickResult>(
     context: context,
     builder: (_) => FolderPickerDialog(
       client: client,
+      sortSettings: sortSettings,
       excludeIds: excludeIds,
       confirmLabel: confirmLabel,
       initialName: initialName,
@@ -5411,6 +5422,7 @@ class FolderPickerDialog extends StatefulWidget {
   const FolderPickerDialog({
     super.key,
     required this.client,
+    required this.sortSettings,
     required this.excludeIds,
     this.confirmLabel,
     this.initialName,
@@ -5418,6 +5430,7 @@ class FolderPickerDialog extends StatefulWidget {
   });
 
   final LanzouClient client;
+  final ListHomeSettingsState sortSettings;
 
   /// 需要排除的条目 id（避免把文件夹移进它自己）。
   final Set<String> excludeIds;
@@ -5450,6 +5463,8 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
   @override
   void initState() {
     super.initState();
+    _sortMode = widget.sortSettings.folderPickerSortMode;
+    _sortAscending = widget.sortSettings.folderPickerSortAscending;
     _load(widget.initialFolderId.isEmpty ? '-1' : widget.initialFolderId);
   }
 
@@ -5561,6 +5576,12 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
           _sortMode = sort;
           _sortAscending = ascending;
         });
+        if (sort != widget.sortSettings.folderPickerSortMode) {
+          widget.sortSettings.setFolderPickerSortMode(sort);
+        }
+        if (ascending != widget.sortSettings.folderPickerSortAscending) {
+          widget.sortSettings.setFolderPickerSortAscending(ascending);
+        }
       },
     );
   }

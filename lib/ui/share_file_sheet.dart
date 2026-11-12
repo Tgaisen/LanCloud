@@ -24,6 +24,7 @@ class ShareFileInfoSheet extends ConsumerStatefulWidget {
     this.size = '',
     this.time = '',
     this.sharer = '',
+    this.requiresPassword,
     this.invalid = false,
     this.onPasswordUpdated,
     this.onResolved,
@@ -37,6 +38,9 @@ class ShareFileInfoSheet extends ConsumerStatefulWidget {
 
   /// 打开时已知的分享者（分享文件夹 / 收藏带过来）；解析出文件页的值后覆盖。
   final String sharer;
+
+  /// 打开时已知的访问密码状态；null 表示旧缓存没有该信息。
+  final bool? requiresPassword;
 
   /// 已知失效的条目（服务端 id 为 -1）：不再去解析链接，直接提示「文件已失效」。
   final bool invalid;
@@ -237,10 +241,15 @@ class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
       final details = ShareFileDetails(
         name: resolved.name,
         size: resolved.size,
-        time: _details?.time ?? '',
+        time: resolved.time.isNotEmpty
+            ? resolved.time
+            : (_details?.time ?? widget.time),
         desc: resolved.desc,
         sharer: resolved.sharer,
-        requiresPassword: _details?.requiresPassword ?? _pwd.isNotEmpty,
+        requiresPassword:
+            _details?.requiresPassword ??
+            widget.requiresPassword ??
+            _pwd.isNotEmpty,
       );
       setState(() {
         _directFile = resolved;
@@ -260,7 +269,9 @@ class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
       ref: widget.url,
       pwd: _pwd,
       size: _size,
+      time: _time,
       sharer: _sharer,
+      requiresPassword: _requiresPassword,
     );
     if (!mounted) return;
     setState(() => _favorite = next ?? !checked);
@@ -317,7 +328,9 @@ class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
     final details = ShareFileDetails(
       name: result.value.name,
       size: result.value.size,
-      time: _details?.time ?? '',
+      time: result.value.time.isNotEmpty
+          ? result.value.time
+          : (_details?.time ?? widget.time),
       desc: result.value.desc,
       sharer: result.value.sharer,
       requiresPassword: true,
@@ -350,8 +363,8 @@ class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
   }
 
   String get _time {
-    if (widget.time.isNotEmpty) return widget.time;
-    return _details?.time ?? '';
+    final resolved = _details?.time ?? '';
+    return resolved.isNotEmpty ? resolved : widget.time;
   }
 
   String get _desc => _details?.desc ?? '';
@@ -361,6 +374,11 @@ class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
     if (details != null && details.sharer.isNotEmpty) return details.sharer;
     return widget.sharer;
   }
+
+  bool? get _requiresPassword =>
+      _details?.requiresPassword ??
+      widget.requiresPassword ??
+      (_pwd.isEmpty ? null : true);
 
   @override
   Widget build(BuildContext context) {
@@ -524,11 +542,11 @@ class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
               ),
               PropertyDetailRow(
                 label: l10n.accessPassword,
-                value: _details == null
-                    ? l10n.unknownValue
-                    : _details!.requiresPassword
-                    ? l10n.propertyPasswordEnabled
-                    : l10n.propertyPasswordDisabled,
+                value: switch (_requiresPassword) {
+                  null => l10n.unknownValue,
+                  true => l10n.propertyPasswordEnabled,
+                  false => l10n.propertyPasswordDisabled,
+                },
               ),
             ],
           ),

@@ -13,6 +13,7 @@ import 'package:lancloud/core/account_state.dart';
 import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/data/account_store.dart';
 import 'package:lancloud/core/file_open_result.dart';
+import 'package:lancloud/core/list_home_settings_state.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/core/transfer/transfer_issue.dart';
@@ -38,6 +39,7 @@ Widget _transferTestHost({
     overrides: [
       transferManagerProvider.overrideWithValue(manager),
       accountStateProvider.overrideWithValue(app.accountState),
+      listHomeSettingsStateProvider.overrideWithValue(app.listHomeSettings),
       navigationAppearanceSettingsStateProvider.overrideWithValue(
         app.navigationAppearanceSettings,
       ),

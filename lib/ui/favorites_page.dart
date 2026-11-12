@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/data/app_db_provider.dart';
 import '../core/drive_state.dart';
+import '../core/list_home_settings_state.dart';
 import '../core/navigation_appearance_settings_state.dart';
 import '../core/navigation_state.dart';
 import 'download_mark.dart';
@@ -61,6 +62,7 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
   late final AppDb _db;
   late final NavigationState _navigation;
   late final DriveState _drive;
+  late final ListHomeSettingsState _listHome;
 
   /// 拖拽判定用的探针：当前是否"可见地"处于收藏页（底栏 tab 或独立路由）。
   late final bool Function() _dropProbe = _visibleAsDropTarget;
@@ -93,6 +95,9 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
     _db = ref.read(appDbProvider);
     _navigation = ref.read(navigationStateProvider);
     _drive = ref.read(driveStateProvider);
+    _listHome = ref.read(listHomeSettingsStateProvider);
+    _sort = _listHome.favoritesSortMode;
+    _sortAscending = _listHome.favoritesSortAscending;
     _db.revision.addListener(_load);
     _navigation.activeTab.addListener(_onActiveTabChanged);
     _drive.addFavoritesProbe(_dropProbe);
@@ -236,6 +241,12 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
           _sort = sort;
           _sortAscending = ascending;
         });
+        if (sort != _listHome.favoritesSortMode) {
+          _listHome.setFavoritesSortMode(sort);
+        }
+        if (ascending != _listHome.favoritesSortAscending) {
+          _listHome.setFavoritesSortAscending(ascending);
+        }
       },
     );
   }
@@ -404,7 +415,9 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
           url: item.ref,
           pwd: item.pwd,
           size: item.size,
+          time: item.fileTime,
           sharer: item.sharer,
+          requiresPassword: item.requiresPassword,
           // 解析出的最新名称 / 分享者同步写回收藏
           onResolved: (file) => _db.updateFavorite(
             item.id,
@@ -412,9 +425,12 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
             sharer: file.sharer.isEmpty ? null : file.sharer,
             // 有些入口收藏时没带 size：解析出来就补上
             size: file.size.isEmpty ? null : file.size,
+            fileTime: file.time.isEmpty ? null : file.time,
+            requiresPassword: file.requiresPassword,
           ),
           // 提取码不对时补一次密码；验证通过后把新密码写回收藏
-          onPasswordUpdated: (pwd) => _db.updateFavorite(item.id, pwd: pwd),
+          onPasswordUpdated: (pwd) =>
+              _db.updateFavorite(item.id, pwd: pwd, requiresPassword: true),
         ),
       );
     } else {
@@ -553,11 +569,13 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
                   return;
                 }
                 Navigator.of(dialogContext).pop();
+                final pwd = pwdController.text.trim();
                 _db.updateFavorite(
                   item.id,
                   title: titleController.text.trim(),
                   ref: link,
-                  pwd: pwdController.text.trim(),
+                  pwd: pwd,
+                  requiresPassword: pwd.isNotEmpty,
                 );
                 // 修改后闪一下，和网盘列表一致
                 setState(() => _pulse[item.id] = (_pulse[item.id] ?? 0) + 1);

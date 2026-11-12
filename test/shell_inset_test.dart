@@ -76,6 +76,9 @@ Widget _favoritesHost(AppEnvironment environment, TransferManager transfers) =>
         ),
         appDbProvider.overrideWithValue(environment.db),
         driveStateProvider.overrideWithValue(environment.drive),
+        listHomeSettingsStateProvider.overrideWithValue(
+          environment.listHomeSettings,
+        ),
         navigationAppearanceSettingsStateProvider.overrideWithValue(
           environment.navigationAppearanceSettings,
         ),

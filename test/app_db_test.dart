@@ -246,6 +246,70 @@ void main() {
     expect((await db.favorites()).map((f) => f.ref).toList(), ['only']);
   });
 
+  test('收藏文件元数据可导出恢复，旧备份缺少新列时保持未知', () async {
+    final db = AppDb.instance;
+    const ref = 'https://share.example/metadata';
+    await db.addFavorite(
+      kind: 'shareFile',
+      name: 'metadata.zip',
+      ref: ref,
+      pwd: 'abcd',
+      size: '3 M',
+      fileTime: '2026-11-12',
+      sharer: '分享者',
+      requiresPassword: true,
+    );
+
+    var favorite = (await db.favorites()).singleWhere(
+      (item) => item.ref == ref,
+    );
+    expect(favorite.fileTime, '2026-11-12');
+    expect(favorite.size, '3 M');
+    expect(favorite.sharer, '分享者');
+    expect(favorite.pwd, 'abcd');
+    expect(favorite.requiresPassword, isTrue);
+
+    final exported = await db.exportTables(
+      favorites: true,
+      pins: false,
+      recents: false,
+    );
+    final row = (exported['favorites']! as List).cast<Map>().singleWhere(
+      (item) => item['ref'] == ref,
+    );
+    expect(row['file_time'], '2026-11-12');
+    expect(row['requires_password'], 1);
+
+    await db.importTables({
+      'favorites': [row],
+    });
+    favorite = (await db.favorites()).singleWhere((item) => item.ref == ref);
+    expect(favorite.fileTime, '2026-11-12');
+    expect(favorite.requiresPassword, isTrue);
+
+    await db.updateFavorite(favorite.id, pwd: 'newpass');
+    favorite = (await db.favorites()).singleWhere((item) => item.ref == ref);
+    expect(favorite.requiresPassword, isTrue);
+    await db.updateFavorite(favorite.id, pwd: '');
+    favorite = (await db.favorites()).singleWhere((item) => item.ref == ref);
+    expect(favorite.requiresPassword, isFalse);
+
+    // 旧版备份没有新增列：恢复后仍可读取，联网刷新前保持未知。
+    await db.importTables({
+      'favorites': [
+        {
+          'kind': 'shareFile',
+          'name': 'legacy.zip',
+          'ref': 'legacy-ref',
+          'created_at': 1,
+        },
+      ],
+    });
+    favorite = (await db.favorites()).single;
+    expect(favorite.fileTime, isEmpty);
+    expect(favorite.requiresPassword, isNull);
+  });
+
   test('导出表：按备份内容裁剪', () async {
     final db = AppDb.instance;
     expect(

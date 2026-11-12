@@ -5524,7 +5524,9 @@ Future<bool?> toggleFavoriteByRef(
   required String ref,
   String pwd = '',
   String size = '',
+  String time = '',
   String sharer = '',
+  bool? requiresPassword,
 }) async {
   final db = ProviderScope.containerOf(
     context,
@@ -5543,7 +5545,9 @@ Future<bool?> toggleFavoriteByRef(
       ref: ref,
       pwd: pwd,
       size: size,
+      fileTime: time,
       sharer: sharer,
+      requiresPassword: requiresPassword,
     );
     if (context.mounted) showAppToast(context, l10n.favorited);
     return true;

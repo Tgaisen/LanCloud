@@ -186,6 +186,7 @@ class DirectFile {
     required this.name,
     required this.url,
     this.size = '',
+    this.time = '',
     this.desc = '',
     this.sharer = '',
   });
@@ -193,6 +194,7 @@ class DirectFile {
   final String name;
   final String url;
   final String size;
+  final String time;
   final String desc;
   final String sharer;
 }

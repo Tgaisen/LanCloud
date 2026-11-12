@@ -145,6 +145,7 @@ Future<void> _pumpSheet(
   String size = '1 MB',
   String time = '',
   String sharer = '',
+  bool? requiresPassword,
   bool asModal = false,
 }) async {
   final transfers =
@@ -158,6 +159,7 @@ Future<void> _pumpSheet(
     size: size,
     time: time,
     sharer: sharer,
+    requiresPassword: requiresPassword,
     invalid: invalid,
   );
   final home = asModal
@@ -198,7 +200,13 @@ Future<void> _pumpSheet(
 void main() {
   testWidgets('分享文件属性弹窗：简介、快捷按钮与详情列表分层展示', (tester) async {
     final client = _DescClient();
-    await _pumpSheet(tester, _FakeApp(client), time: '2 天前', sharer: '测试分享者');
+    await _pumpSheet(
+      tester,
+      _FakeApp(client),
+      time: '2 天前',
+      sharer: '测试分享者',
+      requiresPassword: false,
+    );
     expect(client.detailCalls, 1);
     expect(client.resolveCalls, 0);
     expect(find.text('这是文件简介'), findsOneWidget);
@@ -221,7 +229,12 @@ void main() {
 
   testWidgets('分享文件属性弹窗：大小以列表值为准，不被文件页解析值覆盖', (tester) async {
     // 列表给的 31.5 M 是文件夹接口的真实大小；文件页解析出的 22 是错的
-    await _pumpSheet(tester, _FakeApp(_SizeClient('22')), size: '31.5 M');
+    await _pumpSheet(
+      tester,
+      _FakeApp(_SizeClient('22')),
+      size: '31.5 M',
+      time: '旧缓存时间',
+    );
 
     // 密码页取不到真实名称时沿用调用方给的名称，不能显示 URL 末段。
     expect(find.text('a.zip'), findsOneWidget);
@@ -230,6 +243,7 @@ void main() {
     expect(find.textContaining('22.0 MB'), findsNothing);
     expect(find.text('时间'), findsOneWidget);
     expect(find.text('2026-06-22'), findsOneWidget);
+    expect(find.text('旧缓存时间'), findsNothing);
     expect(find.text('访问密码'), findsOneWidget);
     expect(find.text('已启用'), findsOneWidget);
   });

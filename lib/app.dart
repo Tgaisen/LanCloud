@@ -881,6 +881,9 @@ class _RootShellState extends ConsumerState<RootShell>
     messenger.showSnackBar(
       SnackBar(
         content: Text(l10n.clipboardLinkFound),
+        // Flutter 3.47 起，带 action 的 SnackBar 默认 persist；不显式关闭时
+        // 后续提示会一直排在队列里。这里保持 4 秒超时并自动展示下一条。
+        persist: false,
         action: SnackBarAction(
           label: l10n.open,
           onPressed: () {

@@ -41,6 +41,8 @@ class FavoriteItem {
     required this.ref,
     this.pwd = '',
     this.size = '',
+    this.fileTime = '',
+    this.requiresPassword,
     this.title = '',
     this.sharer = '',
     this.createdAt = 0,
@@ -52,6 +54,12 @@ class FavoriteItem {
   final String ref; // file id / folder id / share url
   final String pwd;
   final String size;
+
+  /// 分享文件自身的时间；与 [createdAt]（加入收藏的时间）分开保存。
+  final String fileTime;
+
+  /// 是否启用访问密码；null 表示旧收藏尚未缓存该信息。
+  final bool? requiresPassword;
   final String title;
   final String sharer;
   final int createdAt;
@@ -102,7 +110,7 @@ class AppDb {
     final path = p.join(await _databaseDirectory(), 'lancloud.db');
     return openDatabase(
       path,
-      version: 13,
+      version: 14,
       onCreate: (db, version) async {
         await db.execute(
           'CREATE TABLE favorites('
@@ -112,6 +120,8 @@ class AppDb {
           'ref TEXT NOT NULL,'
           'pwd TEXT DEFAULT "",'
           'size TEXT DEFAULT "",'
+          'file_time TEXT DEFAULT "",'
+          'requires_password INTEGER,'
           'title TEXT DEFAULT "",'
           'sharer TEXT DEFAULT "",'
           'created_at INTEGER NOT NULL)',
@@ -280,6 +290,22 @@ class AppDb {
             );
           }
         }
+        if (oldVersion < 14) {
+          // 收藏属性弹窗先展示本地元信息，再异步刷新。旧收藏没有这些列
+          // 时保持空时间 / null 密码状态，首次联网后由属性弹窗回填。
+          final columns = await db.rawQuery('PRAGMA table_info(favorites)');
+          final names = columns.map((row) => row['name']).toSet();
+          if (names.isNotEmpty && !names.contains('file_time')) {
+            await db.execute(
+              'ALTER TABLE favorites ADD COLUMN file_time TEXT DEFAULT ""',
+            );
+          }
+          if (names.isNotEmpty && !names.contains('requires_password')) {
+            await db.execute(
+              'ALTER TABLE favorites ADD COLUMN requires_password INTEGER',
+            );
+          }
+        }
       },
     );
   }
@@ -408,6 +434,8 @@ class AppDb {
     required String ref,
     String pwd = '',
     String size = '',
+    String fileTime = '',
+    bool? requiresPassword,
     String title = '',
     String sharer = '',
   }) async {
@@ -419,6 +447,10 @@ class AppDb {
       'ref': ref,
       'pwd': pwd,
       'size': size,
+      'file_time': fileTime,
+      'requires_password': requiresPassword == null
+          ? (pwd.isNotEmpty ? 1 : null)
+          : (requiresPassword ? 1 : 0),
       'title': title,
       'sharer': sharer,
       'created_at': DateTime.now().millisecondsSinceEpoch,
@@ -434,8 +466,11 @@ class AppDb {
     String? name,
     String? sharer,
     String? size,
+    String? fileTime,
+    bool? requiresPassword,
   }) async {
     final database = await db;
+    final passwordFlag = requiresPassword ?? pwd?.isNotEmpty;
     await database.update(
       'favorites',
       {
@@ -445,6 +480,8 @@ class AppDb {
         'name': ?name,
         'sharer': ?sharer,
         'size': ?size,
+        'file_time': ?fileTime,
+        if (passwordFlag != null) 'requires_password': passwordFlag ? 1 : 0,
       },
       where: 'id = ?',
       whereArgs: [id],
@@ -505,6 +542,11 @@ class AppDb {
             ref: '${r['ref']}',
             pwd: '${r['pwd']}',
             size: '${r['size']}',
+            fileTime: '${r['file_time'] ?? ''}',
+            requiresPassword: r['requires_password'] == null
+                ? null
+                : r['requires_password'] == true ||
+                      '${r['requires_password']}' == '1',
             title: '${r['title'] ?? ''}',
             sharer: '${r['sharer'] ?? ''}',
             createdAt: r['created_at'] as int,
@@ -815,6 +857,8 @@ class AppDb {
       'ref',
       'pwd',
       'size',
+      'file_time',
+      'requires_password',
       'title',
       'sharer',
       'created_at',

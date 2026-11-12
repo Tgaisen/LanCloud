@@ -7,6 +7,7 @@ import 'package:lancloud/core/api/models.dart';
 import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/data/app_db_provider.dart';
 import 'package:lancloud/core/drive_state.dart';
+import 'package:lancloud/core/list_home_settings_state.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
@@ -86,6 +87,9 @@ void main() {
           ),
           appDbProvider.overrideWithValue(environment.db),
           driveStateProvider.overrideWithValue(environment.drive),
+          listHomeSettingsStateProvider.overrideWithValue(
+            environment.listHomeSettings,
+          ),
           navigationAppearanceSettingsStateProvider.overrideWithValue(
             environment.navigationAppearanceSettings,
           ),
