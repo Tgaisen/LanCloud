@@ -587,6 +587,21 @@ void main() {
     expect(find.byTooltip('暂停下载'), findsNothing);
     await tester.tap(find.byTooltip('取消任务'));
     await tester.pump();
+    await tester.pump();
+    expect(manager.tasks.map((task) => task.id), contains('u1'));
+    expect(
+      tester
+          .widget<Md3ListItem>(
+            find.ancestor(
+              of: find.text('upload.zip'),
+              matching: find.byType(Md3ListItem),
+            ),
+          )
+          .removing,
+      isTrue,
+    );
+    await tester.pump(const Duration(milliseconds: 220));
+    await tester.pump();
     expect(manager.tasks.map((task) => task.id), isNot(contains('u1')));
 
     final downloadTab = find.descendant(
@@ -607,6 +622,24 @@ void main() {
           .wavy,
       isTrue,
     );
+    await tester.tap(find.byTooltip('取消任务'));
+    await tester.pump();
+    await tester.pump();
+    expect(manager.tasks.map((task) => task.id), contains('d1'));
+    expect(
+      tester
+          .widget<Md3ListItem>(
+            find.ancestor(
+              of: find.text('download.zip'),
+              matching: find.byType(Md3ListItem),
+            ),
+          )
+          .removing,
+      isTrue,
+    );
+    await tester.pump(const Duration(milliseconds: 220));
+    await tester.pump();
+    expect(manager.tasks.map((task) => task.id), isNot(contains('d1')));
     app.dispose();
   });
 
@@ -1873,7 +1906,7 @@ void main() {
   });
 
   testWidgets('待开始上传单独分栏，行内提供上传按钮与目录/重命名/取消菜单', (tester) async {
-    final (app, _) = await hostWithTasks(tester, [
+    final (app, manager) = await hostWithTasks(tester, [
       task('u1', 'waiting.txt', status: TransferStatus.pending)..total = 12,
     ]);
 
@@ -1898,8 +1931,24 @@ void main() {
       ),
       findsOneWidget,
     );
-    await tester.tapAt(const Offset(5, 5));
-    await tester.pumpAndSettle();
+    await tester.tap(menuItem('取消上传'));
+    await tester.pump();
+    await tester.pump();
+    expect(manager.tasks.map((task) => task.id), contains('u1'));
+    expect(
+      tester
+          .widget<Md3ListItem>(
+            find.ancestor(
+              of: find.text('waiting.txt'),
+              matching: find.byType(Md3ListItem),
+            ),
+          )
+          .removing,
+      isTrue,
+    );
+    await tester.pump(const Duration(milliseconds: 220));
+    await tester.pump();
+    expect(manager.tasks, isEmpty);
     app.dispose();
   });
 
@@ -2128,6 +2177,20 @@ void main() {
       everyElement(TransferStatus.pending),
     );
     expect(selectionBarOpacity(tester), 0);
+    for (final name in ['one_new.txt', 'two_new.txt']) {
+      expect(
+        tester
+            .widget<Md3ListItem>(
+              find.ancestor(
+                of: find.text(name),
+                matching: find.byType(Md3ListItem),
+              ),
+            )
+            .pulse,
+        1,
+        reason: '$name 修改成功后应闪动高亮',
+      );
+    }
     app.dispose();
   });
 
@@ -2321,9 +2384,18 @@ void main() {
       folderId: 'other',
       folderName: '另一个目录',
     );
+    final unchanged = task(
+      'u3',
+      'unchanged.txt',
+      status: TransferStatus.pending,
+      accountUid: 'u1',
+      folderId: '-1',
+      folderName: '',
+    );
     final (app, manager) = await hostWithTasks(tester, [
       first,
       second,
+      unchanged,
     ], uploadClient: client);
     app.accountState.store.accounts.add(
       Account(uid: 'u1', cookie: 'cookie-u1'),
@@ -2335,6 +2407,8 @@ void main() {
     await tester.longPress(find.text('one.txt'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('two.txt'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('unchanged.txt'));
     await tester.pumpAndSettle();
     await tester.tap(
       find.ancestor(
@@ -2348,6 +2422,24 @@ void main() {
 
     expect(manager.tasks.map((task) => task.folderId), everyElement('-1'));
     expect(selectionBarOpacity(tester), 0);
+    for (final (name, pulse) in [
+      ('one.txt', 1),
+      ('two.txt', 1),
+      ('unchanged.txt', 0),
+    ]) {
+      expect(
+        tester
+            .widget<Md3ListItem>(
+              find.ancestor(
+                of: find.text(name),
+                matching: find.byType(Md3ListItem),
+              ),
+            )
+            .pulse,
+        pulse,
+        reason: '$name 只有实际修改目录时才应闪动高亮',
+      );
+    }
     app.dispose();
   });
 

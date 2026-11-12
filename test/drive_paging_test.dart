@@ -16,6 +16,7 @@ import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
+import 'package:lancloud/l10n/app_localizations_zh.dart';
 import 'package:lancloud/l10n/delegates.dart';
 import 'package:lancloud/ui/drive_page.dart';
 
@@ -72,6 +73,35 @@ class _FakeClient extends LanzouClient {
   }
 }
 
+/// 第一页足够长、且服务端明确还有下一页；搜索期间不应再补页。
+class _IncompleteSearchClient extends LanzouClient {
+  _IncompleteSearchClient() : super(uid: '1');
+
+  final List<int> filePages = [];
+
+  @override
+  Future<({List<LzFolder> folders, List<PathNode> path})> listFolders(
+    String folderId,
+  ) async => (folders: const <LzFolder>[], path: const <PathNode>[]);
+
+  @override
+  Future<({List<LzFile> files, bool hasMore})> listFilesPage(
+    String folderId,
+    int page,
+  ) async {
+    filePages.add(page);
+    return page == 1
+        ? (
+            files: [
+              for (var i = 0; i < 20; i++)
+                LzFile(id: 'file$i', name: 'file$i.zip', size: '1 M', time: ''),
+            ],
+            hasMore: true,
+          )
+        : (files: const <LzFile>[], hasMore: false);
+  }
+}
+
 class _FakeApp {
   _FakeApp() {
     environment.accountState.store.activeUid = '1';
@@ -107,6 +137,47 @@ List<Override> _overrides(
 ];
 
 void main() {
+  testWidgets('网盘搜索未加载全部分页时提示结果可能不全', (tester) async {
+    final client = _IncompleteSearchClient();
+    final app = _FakeApp();
+    final manager = buildTransferManagerForEnvironment(app.environment);
+    addTearDown(app.dispose);
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(420, 900);
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: _overrides(app, manager, client),
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const DrivePage(tabIndex: 0),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(client.filePages, [1]);
+    expect(find.text(AppLocalizationsZh().searchIncomplete), findsNothing);
+
+    await tester.tap(find.byTooltip('搜索'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), '不存在的文件');
+    await tester.pumpAndSettle();
+
+    expect(find.text(AppLocalizationsZh().searchIncomplete), findsOneWidget);
+    expect(client.filePages, [1]);
+
+    await tester.enterText(find.byType(TextField), 'file0');
+    await tester.pumpAndSettle();
+
+    expect(find.text('file0.zip'), findsOneWidget);
+    expect(find.text(AppLocalizationsZh().searchIncomplete), findsOneWidget);
+    expect(client.filePages, [1]);
+  });
+
   testWidgets('目录内容不满一屏时自动补页：进入即显示「已加载全部」', (tester) async {
     final client = _FakeClient();
     final app = _FakeApp();

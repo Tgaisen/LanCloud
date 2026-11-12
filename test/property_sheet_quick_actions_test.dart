@@ -175,8 +175,8 @@ class _ManyFilesClient extends _FakeClient {
                 id: 'f$i',
                 name: 'file$i.zip',
                 size: '1 M',
-                time: '',
-                downs: 0,
+                time: '1 天前',
+                downs: 5,
                 hasPwd: false,
               ),
           ]
@@ -274,9 +274,27 @@ class _OrderedClient extends _FakeClient {
   ) async => (
     files: folderId == '-1' && page == 1
         ? [
-            LzFile(id: 'f3', name: 'a.zip', size: '3 M', time: '3 天前'),
-            LzFile(id: 'f2', name: 'b.zip', size: '2 M', time: '2 天前'),
-            LzFile(id: 'f1', name: 'c.zip', size: '1 M', time: '1 天前'),
+            LzFile(
+              id: 'f3',
+              name: 'a.zip',
+              size: '3 M',
+              time: '3 天前',
+              downs: 1,
+            ),
+            LzFile(
+              id: 'f2',
+              name: 'b.zip',
+              size: '2 M',
+              time: '2 天前',
+              downs: 3,
+            ),
+            LzFile(
+              id: 'f1',
+              name: 'c.zip',
+              size: '1 M',
+              time: '1 天前',
+              downs: 2,
+            ),
           ]
         : const <LzFile>[],
     hasMore: false,
@@ -427,6 +445,10 @@ void main() {
     expect(second.dy, greaterThan(first.dy));
     expect(third.dy, greaterThan(second.dy));
     expect(find.byType(AdaptiveSliverRows), findsNothing);
+    expect(
+      find.text('${prettyLzSize('1 M')} · 1 天前 · 下载数 5'),
+      findsNWidgets(3),
+    );
   });
 
   testWidgets('路径栏 48dp：窄屏用独立排序/视图按钮，宽屏保留连接组', (tester) async {
@@ -491,7 +513,7 @@ void main() {
     expect(find.byTooltip('网格视图'), findsOneWidget);
   });
 
-  testWidgets('排序升降序：文件夹时间反转、大小保持原序', (tester) async {
+  testWidgets('排序升降序：文件夹时间反转、大小与下载数保持原序', (tester) async {
     final app = _FakeApp(_OrderedClient());
     app.environment.cachePageSettings.store.gridView = false;
     await _pumpDrive(tester, app, viewSize: const Size(420, 900));
@@ -515,8 +537,19 @@ void main() {
     expect(top('b.zip'), lessThan(top('c.zip')));
 
     await openSort();
-    expect(find.byType(Radio<bool>), findsNWidgets(3));
+    expect(find.byType(Radio<bool>), findsNWidgets(4));
     expect(find.text('大小'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('大小')).dy,
+      lessThan(tester.getTopLeft(find.text('下载数')).dy),
+    );
+    final downloadTile = tester.widget<M3ePickTile>(
+      find.ancestor(of: find.text('下载数'), matching: find.byType(M3ePickTile)),
+    );
+    expect(
+      downloadTile.leading,
+      isA<Icon>().having((icon) => icon.icon, 'icon', Icons.download),
+    );
     expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, isTrue);
     await tester.tap(find.text('升序'));
     await tester.pump();
@@ -539,6 +572,16 @@ void main() {
     expect(top('文件夹 A'), lessThan(top('文件夹 C')));
     expect(top('c.zip'), lessThan(top('b.zip')));
     expect(top('b.zip'), lessThan(top('a.zip')));
+
+    await openSort();
+    await tester.tap(find.text('下载数'));
+    await tester.pumpAndSettle();
+
+    // 下载数也不适用于文件夹：仍保持服务端原顺序；文件按 1 / 2 / 3 升序。
+    expect(top('文件夹 B'), lessThan(top('文件夹 A')));
+    expect(top('文件夹 A'), lessThan(top('文件夹 C')));
+    expect(top('a.zip'), lessThan(top('c.zip')));
+    expect(top('c.zip'), lessThan(top('b.zip')));
   });
 
   testWidgets('网盘条目鼠标右键：菜单从鼠标坐标展开', (tester) async {

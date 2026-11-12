@@ -43,8 +43,12 @@ const double _driveEnterStepMs = 26;
 String _lanzouNameSortKey(String name) =>
     PinyinHelper.getPinyinE(name, separator: '', defPinyin: '~').toLowerCase();
 
+String _downloadCountLabel(BuildContext context, int count) {
+  return '${context.l10n.propertyDownloadCount} $count';
+}
+
 /// 文件夹没有时间 / 大小字段，按网盘页的既有约定处理：
-/// 时间升序沿用服务端顺序，降序反转；名称按拼音比较；大小保持原序。
+/// 时间升序沿用服务端顺序，降序反转；名称按拼音比较；大小 / 下载数保持原序。
 List<LzFolder> _sortLzFoldersForDisplay(
   List<LzFolder> folders, {
   required String sortMode,
@@ -57,7 +61,7 @@ List<LzFolder> _sortLzFoldersForDisplay(
           _lanzouNameSortKey(a.name).compareTo(_lanzouNameSortKey(b.name)),
     );
     if (!ascending) list = list.reversed.toList();
-  } else if (sortMode != 'size' && !ascending) {
+  } else if (sortMode != 'size' && sortMode != 'downloads' && !ascending) {
     list = list.reversed.toList();
   }
   return list;
@@ -1001,6 +1005,8 @@ class _DrivePageState extends ConsumerState<DrivePage>
               direction *
               lzSizeToBytes(a.size).compareTo(lzSizeToBytes(b.size)),
         );
+      case 'downloads':
+        list.sort((a, b) => direction * a.downs.compareTo(b.downs));
       case 'default':
       case 'time':
         if (!_sortAscending) list = list.reversed.toList();
@@ -1272,6 +1278,12 @@ class _DrivePageState extends ConsumerState<DrivePage>
               value: 'size',
               label: l10n.sortSize,
               icon: Icons.draft,
+              selectionRole: M3eMenuSelectionRole.radio,
+            ),
+            M3eMenuItem(
+              value: 'downloads',
+              label: l10n.propertyDownloadCount,
+              icon: Icons.download,
               selectionRole: M3eMenuSelectionRole.radio,
             ),
           ],
@@ -3510,7 +3522,10 @@ class _DrivePageState extends ConsumerState<DrivePage>
           hasScrollBody: false,
           child: Padding(
             padding: EdgeInsets.only(bottom: cover),
-            child: _EmptyFolderView(filter: _filter),
+            child: _EmptyFolderView(
+              filter: _filter,
+              searchIncomplete: _filter.isNotEmpty && _hasMore,
+            ),
           ),
         ),
       ];
@@ -3606,9 +3621,13 @@ class _DrivePageState extends ConsumerState<DrivePage>
           child: Center(
             // 失败后的自动重试还在排队时继续显示转圈：马上会再试一次，
             // 闪一下「重试」反而像是让用户去点
-            child:
-                (_loadingMore ||
-                    (_loadFailed && _hasMore && _autoRetriesLeft > 0))
+            child: (_filter.isNotEmpty && (_hasMore || _loadingMore))
+                ? Text(
+                    context.l10n.searchIncomplete,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  )
+                : (_loadingMore ||
+                      (_loadFailed && _hasMore && _autoRetriesLeft > 0))
                 ? const M3eCircularProgressIndicator(size: 24, strokeWidth: 3)
                 // 还有下一页但拉取失败：给一个手动重试入口，别只留空白
                 : (_loadFailed && _hasMore
@@ -3887,17 +3906,40 @@ class _AnimatedListItem extends StatelessWidget {
 
 /// 空目录 / 无匹配结果：整块居中显示并带显隐渐变。
 class _EmptyFolderView extends StatelessWidget {
-  const _EmptyFolderView({required this.filter});
+  const _EmptyFolderView({
+    required this.filter,
+    required this.searchIncomplete,
+  });
 
   final String filter;
+  final bool searchIncomplete;
 
   @override
   Widget build(BuildContext context) {
-    return EmptyHint(
+    final hint = EmptyHint(
       icon: Icons.folder_open,
       text: filter.isEmpty
           ? context.l10n.emptyFolder
           : context.l10n.noMatchContent(filter),
+    );
+    if (!searchIncomplete) return hint;
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          hint,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Text(
+              context.l10n.searchIncomplete,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -4402,6 +4444,7 @@ class _FileRow extends StatelessWidget {
       subtitle: [
         prettyLzSize(file.size),
         if (file.time.isNotEmpty) file.time,
+        _downloadCountLabel(context, file.downs),
       ].where((e) => e.isNotEmpty).join(' · '),
       locked: file.hasPwd,
       menuTooltip: context.l10n.fileActions,
