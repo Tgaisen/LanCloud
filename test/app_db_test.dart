@@ -274,9 +274,9 @@ void main() {
       pins: false,
       recents: false,
     );
-    final row = (exported['favorites']! as List).cast<Map>().singleWhere(
-      (item) => item['ref'] == ref,
-    );
+    final row = (exported['favorites']! as List)
+        .cast<Map<String, Object?>>()
+        .singleWhere((item) => item['ref'] == ref);
     expect(row['file_time'], '2026-11-12');
     expect(row['requires_password'], 1);
 
