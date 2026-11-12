@@ -36,6 +36,20 @@ CI，本地一键发布也复用同一组脚本。
 如果运行一个已经发布过的版本，校验阶段会识别出来并跳过后续构建；
 如果同名 Release 还是 draft，重新运行会覆盖上传产物，便于修复失败任务。
 
+如果同名 draft 创建后 main 又有了新提交，可以在手动触发时显式替换 draft：
+
+```powershell
+gh workflow run release.yml -f draft=true -f replace_draft=true
+```
+
+`replace_draft` 默认关闭，并且只在手动触发、`draft=true` 时生效。校验阶段会
+确认同名 Release 仍是 draft；Android 和 Windows 都构建成功后，发布任务再通过
+`--force-with-lease` 把 tag 条件更新到本次提交。替换时会清理旧 draft 中不属于
+本次产物清单的文件，Release 仍保持 draft，不会直接公开。
+
+已正式发布的版本始终不可替换。如果旧 draft 已经分发给测试者，或同名 tag 已被
+下游使用，应递增版本号，不要复用该版本。
+
 注意：只有修改 `pubspec.yaml` 的 `main` push 会自动触发 Release。普通代码、
 文档和依赖更新不会启动发布流程；需要提前构建时使用手动触发。
 
@@ -249,10 +263,13 @@ CI 默认使用自动生成的发布说明。仓库目前忽略 `docs/releases/*
 **Android 任务报缺少 secret**：按上面的表格配置四个 secrets，然后重新运行
 workflow。
 
-**版本已经发过，工作流被跳过**：这是预期行为。校验阶段发现 tag 已指向
-其他提交，或当前 tag 对应的 Release 已经发布时，会输出
-`should_release=false`。要发新版本，先运行
+**版本已经发过，工作流被跳过**：这是预期行为。当前 tag 对应的 Release 已经
+正式发布时会输出 `should_release=false`，不允许再次替换。要发新版本，先运行
 `dart run tool/bump_version.dart` 并提交版本号变化。
+
+**同名 draft 期间改了代码，怎么复用版本号**：手动运行 `Release`，同时选择
+`draft=true`、`replace_draft=true`。普通 push 和默认手动触发仍要求 tag 与本次
+提交一致，不会静默移动 tag。
 
 **CI 失败了怎么重跑**：在 Actions 页面打开对应的 `Release` run，选择
 `Re-run all jobs`；也可以执行 `gh run rerun <run-id>`。重新运行会基于同一个

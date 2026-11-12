@@ -1,7 +1,7 @@
 name: Release
 
 # 只有修改 pubspec.yaml 的 main push 才检查版本，避免文档和普通代码提交
-# 也启动发布 workflow；tag / Release 已存在时仍会跳过构建。
+# 也启动发布 workflow；已发布版本会跳过构建，同名 draft 可手动替换。
 # 也可以在 Actions 页面手动触发，默认仍然创建 draft。
 on:
   push:
@@ -14,6 +14,10 @@ on:
         description: 创建 draft Release（默认是）
         type: boolean
         default: true
+      replace_draft:
+        description: 替换同名 draft，并把 tag 移到当前提交（仅 draft=true 可用）
+        type: boolean
+        default: false
 
 concurrency:
   group: release-main
@@ -53,9 +57,13 @@ jobs:
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_DRAFT: ${{ github.event_name == 'push' || inputs.draft }}
+          REPLACE_DRAFT: ${{ github.event_name == 'workflow_dispatch' && inputs.replace_draft }}
         run: |
+          $replaceDraft = [System.Convert]::ToBoolean($env:REPLACE_DRAFT)
           ./tools/release/validate.ps1 `
             -CI `
+            -ReplaceDraft:$replaceDraft `
             -SkipPubGet `
             -ExpectedCertSha256 $env:EXPECTED_CERT_SHA256
 
@@ -230,6 +238,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_DRAFT: ${{ github.event_name == 'push' || inputs.draft }}
+          REPLACE_DRAFT: ${{ github.event_name == 'workflow_dispatch' && inputs.replace_draft }}
         run: |
           $draft = [System.Convert]::ToBoolean($env:RELEASE_DRAFT)
-          ./tools/release/publish.ps1 -Draft:$draft
+          $replaceDraft = [System.Convert]::ToBoolean($env:REPLACE_DRAFT)
+          ./tools/release/publish.ps1 `
+            -Draft:$draft `
+            -ReplaceDraft:$replaceDraft

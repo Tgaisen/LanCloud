@@ -305,7 +305,7 @@ function Invoke-ReleaseTool {
   }
 }
 
-function Get-RemoteTagCommit {
+function Get-RemoteTagState {
   param(
     [Parameter(Mandatory = $true)][string]$Root,
     [Parameter(Mandatory = $true)][string]$Tag
@@ -333,9 +333,28 @@ function Get-RemoteTagCommit {
     }
   }
   if ($peeledSha) {
-    return $peeledSha
+    return [pscustomobject]@{
+      RefSha = $tagSha
+      Commit = $peeledSha
+    }
   }
-  return $tagSha
+  return [pscustomobject]@{
+    RefSha = $tagSha
+    Commit = $tagSha
+  }
+}
+
+function Get-RemoteTagCommit {
+  param(
+    [Parameter(Mandatory = $true)][string]$Root,
+    [Parameter(Mandatory = $true)][string]$Tag
+  )
+
+  $state = Get-RemoteTagState -Root $Root -Tag $Tag
+  if (!$state) {
+    return $null
+  }
+  return $state.Commit
 }
 
 function Set-CIOutput {
@@ -392,6 +411,7 @@ Export-ModuleMember -Function @(
   'Get-AndroidSdk',
   'Get-ApkSigner',
   'Invoke-ReleaseTool',
+  'Get-RemoteTagState',
   'Get-RemoteTagCommit',
   'Set-CIOutput',
   'Add-CISummary',
