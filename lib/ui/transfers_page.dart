@@ -228,7 +228,7 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
   /// 正在播放删除动画的记录（动画播完再真正移除）
   final Set<String> _removing = {};
 
-  /// 单个上传任务修改成功后的高亮闪烁计数。
+  /// 上传任务修改成功后的高亮闪烁计数。
   final Map<String, int> _pulse = {};
 
   /// 外壳导航状态：dispose 里不能再读 context，退出多选要用它。
@@ -353,8 +353,18 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
   }
 
   void _pulseTask(String id) {
+    _pulseTasks([id]);
+  }
+
+  void _pulseTasks(Iterable<String> ids) {
     if (!mounted) return;
-    setState(() => _pulse[id] = (_pulse[id] ?? 0) + 1);
+    final changedIds = ids.toSet();
+    if (changedIds.isEmpty) return;
+    setState(() {
+      for (final id in changedIds) {
+        _pulse[id] = (_pulse[id] ?? 0) + 1;
+      }
+    });
   }
 
   Future<void> _cancelActive() async {
@@ -472,9 +482,15 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
     if (tasks.isEmpty) return;
     final changes = await showBatchUploadRenameDialog(context, tasks: tasks);
     if (changes == null || !mounted) return;
-    final applied = ref.read(transferManagerProvider).renameUploads(changes);
+    final manager = ref.read(transferManagerProvider);
+    final namesBefore = {for (final task in tasks) task.id: task.name};
+    final applied = manager.renameUploads(changes);
     _exitSelection();
     if (applied == 0 || !mounted) return;
+    _pulseTasks({
+      for (final task in tasks)
+        if (namesBefore[task.id] != task.name) task.id,
+    });
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(context.l10n.renamedUploads(applied))),
     );
@@ -485,7 +501,7 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
     final changed = await _changeUploadFolders([
       task,
     ], showUpdatedSnackbar: false);
-    if (changed) _pulseTask(task.id);
+    _pulseTasks(changed);
   }
 
   Future<void> _changeSelectedUploadFolder() async {
@@ -495,10 +511,12 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
         .toList(growable: false);
     if (tasks.isEmpty) return;
     final changed = await _changeUploadFolders(tasks);
-    if (changed && mounted) _exitSelection();
+    if (changed.isEmpty || !mounted) return;
+    _exitSelection();
+    _pulseTasks(changed);
   }
 
-  Future<bool> _changeUploadFolders(
+  Future<Set<String>> _changeUploadFolders(
     List<TransferTask> tasks, {
     bool showUpdatedSnackbar = true,
   }) async {
@@ -508,7 +526,7 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(context.l10n.notLoggedIn)));
       }
-      return false;
+      return const <String>{};
     }
     final client = _activeUploadClient();
     if (client == null) {
@@ -516,7 +534,7 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(context.l10n.notLoggedIn)));
       }
-      return false;
+      return const <String>{};
     }
     final currentFolders = {for (final task in tasks) task.folderId};
     final initialFolderId = currentFolders.length == 1
@@ -528,7 +546,10 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
       initialFolderId: initialFolderId,
       confirmLabel: context.l10n.uploadHere,
     );
-    if (picked == null || !mounted) return false;
+    if (picked == null || !mounted) return const <String>{};
+    final foldersBefore = {
+      for (final task in tasks) task.id: (task.folderId, task.folderName),
+    };
     final changed = ref
         .read(transferManagerProvider)
         .movePendingUploads(
@@ -537,13 +558,19 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
           folderName: picked.folderId == '-1' ? '' : picked.name,
           accountUid: account.uid,
         );
-    if (changed == 0 || !mounted) return false;
+    if (changed == 0 || !mounted) return const <String>{};
+    final changedIds = {
+      for (final task in tasks)
+        if (foldersBefore[task.id] != (task.folderId, task.folderName)) task.id,
+    };
     if (showUpdatedSnackbar) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.updatedUploadFolders(changed))),
+        SnackBar(
+          content: Text(context.l10n.updatedUploadFolders(changedIds.length)),
+        ),
       );
     }
-    return true;
+    return changedIds;
   }
 
   void _uploadSelected() {

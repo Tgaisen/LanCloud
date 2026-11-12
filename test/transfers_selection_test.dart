@@ -2128,6 +2128,20 @@ void main() {
       everyElement(TransferStatus.pending),
     );
     expect(selectionBarOpacity(tester), 0);
+    for (final name in ['one_new.txt', 'two_new.txt']) {
+      expect(
+        tester
+            .widget<Md3ListItem>(
+              find.ancestor(
+                of: find.text(name),
+                matching: find.byType(Md3ListItem),
+              ),
+            )
+            .pulse,
+        1,
+        reason: '$name 修改成功后应闪动高亮',
+      );
+    }
     app.dispose();
   });
 
@@ -2321,9 +2335,18 @@ void main() {
       folderId: 'other',
       folderName: '另一个目录',
     );
+    final unchanged = task(
+      'u3',
+      'unchanged.txt',
+      status: TransferStatus.pending,
+      accountUid: 'u1',
+      folderId: '-1',
+      folderName: '',
+    );
     final (app, manager) = await hostWithTasks(tester, [
       first,
       second,
+      unchanged,
     ], uploadClient: client);
     app.accountState.store.accounts.add(
       Account(uid: 'u1', cookie: 'cookie-u1'),
@@ -2335,6 +2358,8 @@ void main() {
     await tester.longPress(find.text('one.txt'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('two.txt'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('unchanged.txt'));
     await tester.pumpAndSettle();
     await tester.tap(
       find.ancestor(
@@ -2348,6 +2373,24 @@ void main() {
 
     expect(manager.tasks.map((task) => task.folderId), everyElement('-1'));
     expect(selectionBarOpacity(tester), 0);
+    for (final (name, pulse) in [
+      ('one.txt', 1),
+      ('two.txt', 1),
+      ('unchanged.txt', 0),
+    ]) {
+      expect(
+        tester
+            .widget<Md3ListItem>(
+              find.ancestor(
+                of: find.text(name),
+                matching: find.byType(Md3ListItem),
+              ),
+            )
+            .pulse,
+        pulse,
+        reason: '$name 只有实际修改目录时才应闪动高亮',
+      );
+    }
     app.dispose();
   });
 
