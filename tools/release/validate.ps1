@@ -23,6 +23,8 @@
 param(
   # 在 GitHub Actions 中运行：跳过本地工作区检查，并计算 should_release
   [switch]$CI,
+  # 允许手动替换仍处于 draft 的同名 Release，并把 tag 移到本次提交
+  [switch]$ReplaceDraft,
   # 跳过 dart format / flutter analyze / flutter test
   [switch]$SkipTests,
   # 跳过 flutter pub get（CI 已在前面执行过时可加）
@@ -48,6 +50,17 @@ function Fail([string]$text) { throw $text }
 $root = Get-ProjectRoot -ScriptRoot $PSScriptRoot
 Set-Location $root
 $isCI = $CI -or (Test-IsCI)
+if ($ReplaceDraft) {
+  if (!$isCI) {
+    Fail '只有 Release CI 的手动触发支持 -ReplaceDraft'
+  }
+  if ($env:GITHUB_EVENT_NAME -ne 'workflow_dispatch') {
+    Fail 'replace_draft 只能通过 workflow_dispatch 手动启用'
+  }
+  if ($env:RELEASE_DRAFT -eq 'false') {
+    Fail 'replace_draft 只能与 draft=true 一起使用'
+  }
+}
 if ($isCI -and $env:GITHUB_REF -and $env:GITHUB_REF -ne 'refs/heads/main') {
   throw "Release 只能从 main 触发（当前 ref：$env:GITHUB_REF）"
 }
@@ -118,37 +131,47 @@ if (!$SkipRemoteChecks) {
     }
   }
 
-  $remoteTagCommit = Get-RemoteTagCommit -Root $root -Tag $version.Tag
-  if ($remoteTagCommit) {
-    if ($isCI) {
-      if ($remoteTagCommit -ne $commit) {
-        $shouldRelease = $false
-        $reason = "tag $($version.Tag) 已指向 $($remoteTagCommit.Substring(0, 7))，不是本次提交"
-      } else {
-        # tag 已存在但 Release 可能只建到一半；草稿或无 Release 时允许重跑补齐。
-        $previous = $ErrorActionPreference
-        $ErrorActionPreference = 'Continue'
-        try {
-          $releaseRaw = & $gh release view $version.Tag --json isDraft,url 2>$null
-          $releaseExit = $LASTEXITCODE
-        } finally {
-          $ErrorActionPreference = $previous
-        }
-        if ($releaseExit -eq 0) {
-          $existingRelease = ($releaseRaw -join "`n") | ConvertFrom-Json
-          if ($existingRelease.isDraft) {
-            $reason = '已有同名草稿 Release，将重新构建并补齐产物'
-          } else {
-            $shouldRelease = $false
-            $reason = '该版本已经发布'
-          }
-        } else {
-          $reason = 'tag 已存在但没有 Release，将补齐发布'
-        }
-      }
-    } else {
-      Fail "远端已存在 tag $($version.Tag)（$($remoteTagCommit.Substring(0, 7))）"
+  $remoteTag = Get-RemoteTagState -Root $root -Tag $version.Tag
+  $existingRelease = $null
+  if ($isCI) {
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+      $releaseRaw = & $gh release view $version.Tag --json isDraft,url,assets 2>$null
+      $releaseExit = $LASTEXITCODE
+    } finally {
+      $ErrorActionPreference = $previous
     }
+    if ($releaseExit -eq 0) {
+      $existingRelease = ($releaseRaw -join "`n") | ConvertFrom-Json
+    }
+  }
+
+  if ($isCI) {
+    if ($existingRelease) {
+      if (!$existingRelease.isDraft) {
+        $shouldRelease = $false
+        $reason = '该版本已经发布，不能替换'
+      } elseif (!$remoteTag) {
+        $reason = '已有同名草稿 Release，但 tag 不存在，将重新创建'
+      } elseif ($remoteTag.Commit -eq $commit) {
+        $reason = '已有同名草稿 Release，将重新构建并替换产物'
+      } elseif ($ReplaceDraft) {
+        $reason = "将替换同名草稿 Release，并把 tag $($version.Tag) 从 $($remoteTag.Commit.Substring(0, 7)) 移到 $($commit.Substring(0, 7))"
+      } else {
+        $shouldRelease = $false
+        $reason = "tag $($version.Tag) 已指向 $($remoteTag.Commit.Substring(0, 7))，不是本次提交；如需替换同名草稿，请手动触发并启用 replace_draft"
+      }
+    } elseif ($remoteTag) {
+      if ($remoteTag.Commit -ne $commit) {
+        $shouldRelease = $false
+        $reason = "tag $($version.Tag) 已指向 $($remoteTag.Commit.Substring(0, 7))，不是本次提交"
+      } else {
+        $reason = 'tag 已存在但没有 Release，将补齐发布'
+      }
+    }
+  } elseif ($remoteTag) {
+    Fail "远端已存在 tag $($version.Tag)（$($remoteTag.Commit.Substring(0, 7))）"
   }
 } else {
   $reason = '已跳过远端检查'
@@ -172,6 +195,7 @@ Add-CISummary @"
 | versionCode | ``$($version.Code)`` |
 | tag | ``$($version.Tag)`` |
 | 提交 | ``$commit`` |
+| 替换 draft | ``$(if ($ReplaceDraft) { '是' } else { '否' })`` |
 | 是否发布 | ``$(if ($shouldRelease) { '是' } else { '否' })`` |
 | 原因 | $reason |
 "@

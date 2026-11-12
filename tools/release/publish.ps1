@@ -9,6 +9,7 @@
   - tag 不存在时创建带注释的 tag 并推送
   - 默认创建 draft Release（可用 -Draft:$false 直接发布）
   - 已发布版本直接跳过；同名草稿则重新上传产物（可重跑失败任务）
+  - 手动替换同名草稿时，可在构建完成后把 tag 条件更新到本次提交
   - 上传后核对 3 个 APK 和 Windows zip 是否都已挂到 Release
 
   需要 GitHub CLI（gh）已登录；GitHub Actions 中使用 GITHUB_TOKEN。
@@ -34,6 +35,8 @@ param(
   [string]$NotesFile = '',
   # 默认创建 draft；本地想直接发布时传 -Draft:$false
   [bool]$Draft = $true,
+  # 仅 CI 手动发布使用：替换仍为 draft 的同名 Release，并条件更新 tag
+  [switch]$ReplaceDraft,
   # 是否要求 Windows zip 存在
   [bool]$RequireWindows = $true,
   # 是否要求三个 Android APK 存在
@@ -61,6 +64,17 @@ if (!$Commit) {
     $env:GITHUB_SHA
   } else {
     Get-GitCommit -Root $root
+  }
+}
+if ($ReplaceDraft) {
+  if (!(Test-IsCI)) {
+    Fail '只有 Release CI 的手动触发支持 -ReplaceDraft'
+  }
+  if ($env:GITHUB_EVENT_NAME -ne 'workflow_dispatch') {
+    Fail 'ReplaceDraft 只能通过 workflow_dispatch 手动启用'
+  }
+  if (!$Draft) {
+    Fail 'ReplaceDraft 只能与 -Draft:$true 一起使用'
   }
 }
 
@@ -133,7 +147,7 @@ function Get-ExistingRelease {
   $previous = $ErrorActionPreference
   $ErrorActionPreference = 'Continue'
   try {
-    $raw = & $gh release view $Tag --json isDraft,url 2>$null
+    $raw = & $gh release view $Tag --json isDraft,url,assets 2>$null
     $code = $LASTEXITCODE
   } finally {
     $ErrorActionPreference = $previous
@@ -146,18 +160,51 @@ function Get-ExistingRelease {
 
 $existingRelease = Get-ExistingRelease
 if ($existingRelease -and !$existingRelease.isDraft) {
+  if ($ReplaceDraft) {
+    Fail "Release 已发布：$($existingRelease.url)。已发布版本不能替换"
+  }
   Info "Release 已发布：$($existingRelease.url)"
   Add-CISummary "### Release 已存在`n`n版本 ``$($version.Name)`` 已经发布，本次跳过上传。"
   return
 }
+if ($ReplaceDraft -and !$existingRelease) {
+  Fail "请求替换 draft，但找不到同名 Release：$Tag"
+}
 
 # ---------------------------------------------------------------- tag
-$remoteTagCommit = Get-RemoteTagCommit -Root $root -Tag $Tag
-if ($remoteTagCommit) {
-  if ($remoteTagCommit -ne $Commit) {
-    Fail "远端 tag $Tag 指向 $remoteTagCommit，不是本次提交 $Commit"
+$configArgs = @()
+if (Test-IsCI) {
+  $configArgs = @(
+    '-c', 'user.name=github-actions[bot]',
+    '-c', 'user.email=41898282+github-actions[bot]@users.noreply.github.com'
+  )
+}
+$tagReplaced = $false
+$remoteTag = Get-RemoteTagState -Root $root -Tag $Tag
+if ($remoteTag) {
+  if ($remoteTag.Commit -ne $Commit) {
+    if (!$ReplaceDraft) {
+      Fail "远端 tag $Tag 指向 $($remoteTag.Commit)，不是本次提交 $Commit"
+    }
+    $currentRelease = Get-ExistingRelease
+    if (!$currentRelease -or !$currentRelease.isDraft) {
+      Fail "tag 不一致，但 Release $Tag 已不是 draft，拒绝替换"
+    }
+    Info "替换 draft：将 tag $Tag 从 $($remoteTag.Commit.Substring(0, 7)) 移到 $($Commit.Substring(0, 7))"
+    Invoke-ReleaseTool -Exe 'git' -Arguments (@(
+      '-C', $root
+    ) + $configArgs + @(
+      'tag', '-f', '-a', $Tag, $Commit, '-m', $version.Name
+    )) -DryRun:$DryRun
+    $lease = "refs/tags/${Tag}:$($remoteTag.RefSha)"
+    Invoke-ReleaseTool -Exe 'git' -Arguments @(
+      '-C', $root, 'push', "--force-with-lease=$lease", 'origin',
+      "refs/tags/${Tag}:refs/tags/$Tag"
+    ) -DryRun:$DryRun
+    $tagReplaced = $true
+  } else {
+    Info "远端 tag 已存在（$($remoteTag.Commit.Substring(0, 7))）"
   }
-  Info "远端 tag 已存在（$($remoteTagCommit.Substring(0, 7))）"
 } else {
   Info "创建并推送 tag：$Tag"
   $localTag = (@(Invoke-ReleaseTool -Exe 'git' `
@@ -166,17 +213,24 @@ if ($remoteTagCommit) {
     $localTagCommit = (@(Invoke-ReleaseTool -Exe 'git' `
       -Arguments @('-C', $root, 'rev-list', '-n', '1', $Tag) -Capture -Quiet) -join '').Trim()
     if ($localTagCommit -ne $Commit) {
-      Fail "本地 tag $Tag 指向 $localTagCommit，不是本次提交 $Commit"
+      if (!$ReplaceDraft) {
+        Fail "本地 tag $Tag 指向 $localTagCommit，不是本次提交 $Commit"
+      }
+      $currentRelease = Get-ExistingRelease
+      if (!$currentRelease -or !$currentRelease.isDraft) {
+        Fail "本地 tag 不一致，但 Release $Tag 已不是 draft，拒绝替换"
+      }
+      Info "替换 draft：把本地 tag $Tag 移到 $($Commit.Substring(0, 7))"
+      $tagReplaced = $true
+      Invoke-ReleaseTool -Exe 'git' -Arguments (@(
+        '-C', $root
+      ) + $configArgs + @(
+        'tag', '-f', '-a', $Tag, $Commit, '-m', $version.Name
+      )) -DryRun:$DryRun
+    } else {
+      Info "本地 tag 已存在（$($localTagCommit.Substring(0, 7))），直接推送"
     }
-    Info "本地 tag 已存在（$($localTagCommit.Substring(0, 7))），直接推送"
   } else {
-    $configArgs = @()
-    if (Test-IsCI) {
-      $configArgs = @(
-        '-c', 'user.name=github-actions[bot]',
-        '-c', 'user.email=41898282+github-actions[bot]@users.noreply.github.com'
-      )
-    }
     Invoke-ReleaseTool -Exe 'git' -Arguments (@(
       '-C', $root
     ) + $configArgs + @(
@@ -187,6 +241,13 @@ if ($remoteTagCommit) {
     '-C', $root, 'push', 'origin', $Tag
   ) -DryRun:$DryRun
 }
+if (!$DryRun) {
+  $updatedTag = Get-RemoteTagState -Root $root -Tag $Tag
+  if (!$updatedTag -or $updatedTag.Commit -ne $Commit) {
+    $actual = if ($updatedTag) { $updatedTag.Commit } else { '不存在' }
+    Fail "tag $Tag 更新后指向 $actual，不是本次提交 $Commit"
+  }
+}
 
 # ---------------------------------------------------------------- 创建 / 补齐
 $prereleaseArgs = @()
@@ -196,6 +257,20 @@ if ($version.IsPrerelease) {
 
 if ($existingRelease) {
   Info "补齐已有草稿 Release：$Tag"
+  if ($ReplaceDraft) {
+    $expectedNames = @($Assets | ForEach-Object { Split-Path -Leaf $_ })
+    if ($expectedNames -notcontains 'SHA256SUMS.txt') {
+      $expectedNames += 'SHA256SUMS.txt'
+    }
+    foreach ($asset in @($existingRelease.assets)) {
+      if ($expectedNames -notcontains $asset.name) {
+        Info "删除旧 draft 产物：$($asset.name)"
+        Invoke-ReleaseTool -Exe $gh -Arguments @(
+          'release', 'delete-asset', $Tag, $asset.name, '--yes'
+        ) -DryRun:$DryRun
+      }
+    }
+  }
   Invoke-ReleaseTool -Exe $gh -Arguments (@(
     'release', 'upload', $Tag
   ) + $Assets + @('--clobber')) -DryRun:$DryRun
@@ -282,6 +357,9 @@ Add-CISummary @"
 
 - 版本：$($version.Name)
 - tag：$Tag
+- 源码提交：$Commit
+- 替换 draft：$(if ($ReplaceDraft) { '是' } else { '否' })
+- tag 已移动：$(if ($tagReplaced) { '是' } else { '否' })
 - 状态：$draftText
 - 地址：$($release.url)
 - 产物：$($Assets.Count) 个
