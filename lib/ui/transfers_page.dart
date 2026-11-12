@@ -884,7 +884,7 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
               .showSnackBar(SnackBar(content: Text(message)));
         }
       case _TransferMenuAction.cancel:
-        manager.cancel(task.id);
+        await _removeTask(task);
       case _TransferMenuAction.rename:
         await _renameTask(task);
       case _TransferMenuAction.changeFolder:
@@ -1057,6 +1057,7 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
                           onToggle: _toggleSelected,
                           onLongPress: _enterSelection,
                           onMenu: _taskMenu,
+                          onRemove: (task) => _removeTask(task),
                           openFile: widget.openFile ?? openFileWithSystem,
                           onCancelActive: _cancelActive,
                           onClearCompleted: _clearCompletedSection,
@@ -1280,6 +1281,7 @@ class _TransferListSliver extends StatelessWidget {
     required this.onToggle,
     required this.onLongPress,
     required this.onMenu,
+    required this.onRemove,
     required this.openFile,
     required this.onCancelActive,
     required this.onClearCompleted,
@@ -1317,6 +1319,9 @@ class _TransferListSliver extends StatelessWidget {
     Offset? pointerPosition,
   })
   onMenu;
+
+  /// 单项取消 / 删除：先播放移除动画，再交给管理器删除记录。
+  final Future<void> Function(TransferTask task) onRemove;
 
   /// 打开已下载的文件（外壳注入，默认交给系统默认程序）。
   final TransferFileOpener openFile;
@@ -1497,6 +1502,7 @@ class _TransferListSliver extends StatelessWidget {
                 child: _TransferTile(
                   task: active[index],
                   manager: manager,
+                  onRemove: onRemove,
                   index: index,
                   removing: removing.contains(active[index].id),
                   pulse: pulse[active[index].id] ?? 0,
@@ -1554,6 +1560,7 @@ class _TransferListSliver extends StatelessWidget {
                 child: _TransferTile(
                   task: pending[index],
                   manager: manager,
+                  onRemove: onRemove,
                   index: index,
                   removing: removing.contains(pending[index].id),
                   pulse: pulse[pending[index].id] ?? 0,
@@ -1606,6 +1613,7 @@ class _TransferListSliver extends StatelessWidget {
                 child: _TransferTile(
                   task: skipped[index],
                   manager: manager,
+                  onRemove: onRemove,
                   index: index,
                   removing: removing.contains(skipped[index].id),
                   pulse: pulse[skipped[index].id] ?? 0,
@@ -1658,6 +1666,7 @@ class _TransferListSliver extends StatelessWidget {
                 child: _TransferTile(
                   task: failed[index],
                   manager: manager,
+                  onRemove: onRemove,
                   index: index,
                   removing: removing.contains(failed[index].id),
                   pulse: pulse[failed[index].id] ?? 0,
@@ -1711,6 +1720,7 @@ class _TransferListSliver extends StatelessWidget {
                 child: _TransferTile(
                   task: completed[index],
                   manager: manager,
+                  onRemove: onRemove,
                   index: index,
                   removing: removing.contains(completed[index].id),
                   pulse: pulse[completed[index].id] ?? 0,
@@ -1739,6 +1749,7 @@ class _TransferTile extends StatelessWidget {
   const _TransferTile({
     required this.task,
     required this.manager,
+    required this.onRemove,
     required this.selecting,
     required this.selected,
     required this.onTap,
@@ -1751,6 +1762,7 @@ class _TransferTile extends StatelessWidget {
 
   final TransferTask task;
   final TransferManager manager;
+  final Future<void> Function(TransferTask task) onRemove;
   final bool selecting;
   final bool selected;
   final VoidCallback onTap;
@@ -1924,7 +1936,7 @@ class _TransferTile extends StatelessWidget {
                 M3eIconButton(
                   tooltip: l10n.cancelTask,
                   icon: Icons.close,
-                  onPressed: saving ? null : () => manager.removeTask(task.id),
+                  onPressed: saving ? null : () => unawaited(onRemove(task)),
                 ),
               if (pending)
                 M3eIconButton(
