@@ -164,8 +164,14 @@ if (!$SkipRemoteChecks) {
       }
     } elseif ($remoteTag) {
       if ($remoteTag.Commit -ne $commit) {
-        $shouldRelease = $false
-        $reason = "tag $($version.Tag) 已指向 $($remoteTag.Commit.Substring(0, 7))，不是本次提交"
+        if ($ReplaceDraft) {
+          # 校验 job 只有 contents: read，看不到 draft Release。这里先放行显式
+          # 替换请求；发布 job 会用 contents: write 再次确认 draft 后更新 tag。
+          $reason = "已请求替换同名草稿；将在发布阶段确认 Release 后，把 tag $($version.Tag) 从 $($remoteTag.Commit.Substring(0, 7)) 移到 $($commit.Substring(0, 7))"
+        } else {
+          $shouldRelease = $false
+          $reason = "tag $($version.Tag) 已指向 $($remoteTag.Commit.Substring(0, 7))，不是本次提交"
+        }
       } else {
         $reason = 'tag 已存在但没有 Release，将补齐发布'
       }

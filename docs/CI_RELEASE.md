@@ -42,8 +42,9 @@ CI，本地一键发布也复用同一组脚本。
 gh workflow run release.yml -f draft=true -f replace_draft=true
 ```
 
-`replace_draft` 默认关闭，并且只在手动触发、`draft=true` 时生效。校验阶段会
-确认同名 Release 仍是 draft；Android 和 Windows 都构建成功后，发布任务再通过
+`replace_draft` 默认关闭，并且只在手动触发、`draft=true` 时生效。校验 job 只有
+只读权限，可能看不到 draft，因此显式替换时会先放行构建；Android 和 Windows
+都构建成功后，有写权限的发布任务会再次确认 Release 仍是 draft，再通过
 `--force-with-lease` 把 tag 条件更新到本次提交。替换时会清理旧 draft 中不属于
 本次产物清单的文件，Release 仍保持 draft，不会直接公开。
 
