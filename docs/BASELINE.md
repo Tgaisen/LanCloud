@@ -11,15 +11,15 @@
 | --- | --- | --- | --- |
 | `tools\agent.cmd analyze` | 全量 | No issues found | 约 34 s |
 | `tools\agent.cmd analyze` | 增量（本次改动，13 个文件） | No issues found | 约 15 s |
-| `tools\agent.cmd test` | 全量（用例总数） | **898 tests, all passed** | 约 2 min 6 s |
-| `tools\agent.cmd test` | 宽改动推断出 124 个测试文件 | 自动回退全量，898 tests passed | 约 2 min 6 s |
+| `tools\agent.cmd test` | 全量（用例总数） | **899 tests；本轮未重跑全量** | 上次全量约 2 min 6 s |
+| `tools\agent.cmd test` | 增量（本次改动，5 个测试文件） | **62 tests, all passed** | 约 45 s |
 
 当前分析结果为 0 issue 是硬基线。出现红灯时，先判断是否为本次改动引入；
 不要把增量结果当成全量结论。
 
-当前全量用例总数为 898（本轮新增 5 个）。本轮全量 898 个用例全部通过。
-测试入口在受影响文件超过 60 个时自动回退全量，避免 Windows 命令行长度
-上限导致测试尚未启动就报错。
+当前全量用例总数为 899（本轮新增 1 个）。本轮增量 5 个测试文件、
+62 个用例全部通过；全量验证仍待人工兜底。测试入口在受影响文件超过 60 个时
+自动回退全量，避免 Windows 命令行长度上限导致测试尚未启动就报错。
 
 ## 规模
 
@@ -29,7 +29,7 @@
 | `lib` 总行数 | 58,654 |
 | `test` 测试文件 | 177（全部为 `*_test.dart`，平铺） |
 | `test` 总行数 | 32,972 |
-| `test` 用例数 | 898 |
+| `test` 用例数 | 899 |
 | `lib/ui` 平铺文件 | 60 |
 | `lib/core` | 55 个平铺文件 + 5 个子系统目录 |
 | 文案（`app_zh.arb`） | 1,624 行 |
@@ -46,7 +46,7 @@
 
 ## 测试安全网
 
-- 当前全量总数为 898 个测试；项目仍没有
+- 当前全量总数为 899 个测试；项目仍没有
   `integration_test` 和 golden test。
 - `tools\agent.cmd analyze|test` 默认走增量；全量结果必须按上表单独记录。
 - 增量推断出超过 60 个测试文件时，`agent.cmd test` 自动回退全量。
