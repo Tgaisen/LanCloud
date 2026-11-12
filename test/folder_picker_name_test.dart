@@ -1,7 +1,10 @@
 import 'package:material_ui/material_ui.dart' hide Icons;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/api/lanzou_client.dart';
 import 'package:lancloud/core/api/models.dart';
+import 'package:lancloud/core/data/settings_store.dart';
+import 'package:lancloud/core/list_home_settings_state.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/app_icons.dart';
 import 'package:lancloud/ui/common.dart';
@@ -36,28 +39,36 @@ Future<Future<FolderPickResult?>> pumpPicker(
   String? initialName,
   String initialFolderId = '-1',
   LanzouClient? client,
+  ListHomeSettingsState? sortSettings,
 }) async {
   late Future<FolderPickResult?> result;
   final pickerClient = client ?? _FakeClient();
+  final pickerSortSettings =
+      sortSettings ?? ListHomeSettingsState(SettingsStore());
   await tester.pumpWidget(
-    MaterialApp(
-      localizationsDelegates: appLocalizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      locale: const Locale('zh'),
-      home: Builder(
-        builder: (context) => Scaffold(
-          body: Center(
-            child: TextButton(
-              onPressed: () {
-                result = showFolderPicker(
-                  context,
-                  client: pickerClient,
-                  confirmLabel: '上传到此',
-                  initialName: initialName,
-                  initialFolderId: initialFolderId,
-                );
-              },
-              child: const Text('open'),
+    ProviderScope(
+      overrides: [
+        listHomeSettingsStateProvider.overrideWithValue(pickerSortSettings),
+      ],
+      child: MaterialApp(
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('zh'),
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: TextButton(
+                onPressed: () {
+                  result = showFolderPicker(
+                    context,
+                    client: pickerClient,
+                    confirmLabel: '上传到此',
+                    initialName: initialName,
+                    initialFolderId: initialFolderId,
+                  );
+                },
+                child: const Text('open'),
+              ),
             ),
           ),
         ),
@@ -114,6 +125,7 @@ void main() {
   });
 
   testWidgets('弹窗使用本地时间升序，并可切换到名称排序', (tester) async {
+    final sortSettings = ListHomeSettingsState(SettingsStore());
     final client = _FakeClient(
       folders: [
         LzFolder(id: 'z', name: 'Zulu', desc: ''),
@@ -121,7 +133,7 @@ void main() {
         LzFolder(id: 'a', name: 'Apple', desc: ''),
       ],
     );
-    await pumpPicker(tester, client: client);
+    await pumpPicker(tester, client: client, sortSettings: sortSettings);
 
     final pathBar = tester.widget<PathBar>(find.byType(PathBar));
     expect(pathBar.horizontalPadding, 0);
@@ -205,5 +217,33 @@ void main() {
     await tester.pumpAndSettle();
     expect(top('Apple'), lessThan(top('Banana')));
     expect(top('Banana'), lessThan(top('Zulu')));
+    expect(sortSettings.folderPickerSortMode, 'name');
+    expect(sortSettings.folderPickerSortAscending, isTrue);
+  });
+
+  testWidgets('重新打开弹窗沿用已保存的名称升序', (tester) async {
+    final sortSettings = ListHomeSettingsState(SettingsStore());
+    sortSettings.store.folderPickerSortMode = 'name';
+    sortSettings.store.folderPickerSortAscending = true;
+    final client = _FakeClient(
+      folders: [
+        LzFolder(id: 'z', name: 'Zulu', desc: ''),
+        LzFolder(id: 'b', name: 'Banana', desc: ''),
+        LzFolder(id: 'a', name: 'Apple', desc: ''),
+      ],
+    );
+    await pumpPicker(tester, client: client, sortSettings: sortSettings);
+
+    double top(String text) => tester.getTopLeft(find.text(text)).dy;
+    expect(top('Apple'), lessThan(top('Banana')));
+    expect(top('Banana'), lessThan(top('Zulu')));
+
+    await tester.tap(find.byTooltip('排序'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(
+      find.byKey(const ValueKey('m3e-menu-selected-check-升序')),
+      findsOneWidget,
+    );
   });
 }

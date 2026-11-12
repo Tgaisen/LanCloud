@@ -152,7 +152,12 @@ switch ($Verb) {
   'test' {
     $targets = @($Rest | Where-Object { $_ })
     if (-not $targets) { $targets = @(Resolve-Tests -Dirty @(Get-DirtyDart)) }
-    if ($targets.Count -gt 0) {
+    # Windows 命令行长度有限；宽改动的绝对路径列表可能超过上限，
+    # 在这种情况下直接跑全量，避免 cmd.exe 在 Flutter 启动前就报语法错误。
+    if ($targets.Count -gt 60) {
+      Write-Output "受影响测试文件过多（$($targets.Count) 个），跑全量（约 1.5 分钟）"
+      Invoke-Flutter -FlutterArgs @('test', '--no-pub') -Tail 16 -FailureDetails
+    } elseif ($targets.Count -gt 0) {
       Write-Output "运行 $($targets.Count) 个受影响的测试文件"
       Invoke-Flutter -FlutterArgs (@('test', '--no-pub') + $targets) -Tail 16 -FailureDetails
     } else {

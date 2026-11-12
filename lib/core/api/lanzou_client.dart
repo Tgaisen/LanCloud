@@ -1261,6 +1261,7 @@ class LanzouClient {
     final needPwd = page.needPwd;
     final name = page.name;
     final size = page.size;
+    final time = page.time;
     final desc = page.desc;
     final sharer = page.sharer;
     final legacyHtml = page.legacyHtml;
@@ -1274,6 +1275,7 @@ class LanzouClient {
           name: name,
           url: direct,
           size: size,
+          time: time,
           desc: desc,
           sharer: sharer,
         );
@@ -1294,6 +1296,7 @@ class LanzouClient {
           name: passwordDirect.name.isEmpty ? name : passwordDirect.name,
           url: passwordDirect.url,
           size: size,
+          time: time,
           desc: desc,
           sharer: sharer,
         );
@@ -1364,6 +1367,7 @@ class LanzouClient {
       name: name,
       url: direct,
       size: size,
+      time: time,
       desc: desc,
       sharer: sharer,
     );

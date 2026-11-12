@@ -14,6 +14,42 @@ void main() {
     expect(store.clipboardLinkPrompt, isFalse);
     expect(store.sortMode, 'default');
     expect(store.sortAscending, isTrue);
+    expect(store.favoritesSortMode, 'time');
+    expect(store.favoritesSortAscending, isFalse);
+    expect(store.folderPickerSortMode, 'time');
+    expect(store.folderPickerSortAscending, isTrue);
+  });
+
+  test('收藏页与选择文件夹排序可独立持久化并进入设置备份', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final store = SettingsStore();
+    await store.load();
+    await store.setFavoritesSortMode('name');
+    await store.setFavoritesSortAscending(true);
+    await store.setFolderPickerSortMode('name');
+    await store.setFolderPickerSortAscending(false);
+
+    final reloaded = SettingsStore();
+    await reloaded.load();
+    expect(reloaded.sortMode, 'default');
+    expect(reloaded.sortAscending, isTrue);
+    expect(reloaded.favoritesSortMode, 'name');
+    expect(reloaded.favoritesSortAscending, isTrue);
+    expect(reloaded.folderPickerSortMode, 'name');
+    expect(reloaded.folderPickerSortAscending, isFalse);
+
+    final backup = reloaded.toJson();
+    expect(backup['favorites_sort_mode'], 'name');
+    expect(backup['favorites_sort_ascending'], isTrue);
+    expect(backup['folder_picker_sort_mode'], 'name');
+    expect(backup['folder_picker_sort_ascending'], isFalse);
+
+    final restored = SettingsStore();
+    await restored.applyJson(backup);
+    expect(restored.favoritesSortMode, 'name');
+    expect(restored.favoritesSortAscending, isTrue);
+    expect(restored.folderPickerSortMode, 'name');
+    expect(restored.folderPickerSortAscending, isFalse);
   });
 
   test('用户手动打开后，重启仍然保持开启', () async {

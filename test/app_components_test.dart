@@ -113,4 +113,53 @@ void main() {
       greaterThan(tester.getRect(clip).left),
     );
   });
+
+  testWidgets('带动作的 SnackBar 超时后自动展示排队中的下一条', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: theme,
+        home: Scaffold(
+          body: Builder(
+            builder: (context) {
+              final messenger = ScaffoldMessenger.of(context);
+              return Column(
+                children: [
+                  TextButton(
+                    onPressed: () => messenger.showSnackBar(
+                      SnackBar(
+                        content: const Text('链接提示'),
+                        persist: false,
+                        action: SnackBarAction(label: '打开', onPressed: () {}),
+                      ),
+                    ),
+                    child: const Text('show-action'),
+                  ),
+                  TextButton(
+                    onPressed: () => messenger.showSnackBar(
+                      const SnackBar(content: Text('后续提示')),
+                    ),
+                    child: const Text('show-next'),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('show-action'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.text('show-next'));
+    await tester.pump();
+    expect(find.text('链接提示'), findsOneWidget);
+    expect(find.text('后续提示'), findsNothing);
+
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 750));
+    expect(find.text('链接提示'), findsNothing);
+    expect(find.text('后续提示'), findsOneWidget);
+  });
 }

@@ -316,7 +316,10 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
         name: file.name,
         ref: file.url,
         pwd: widget.pwd,
+        size: file.size,
+        fileTime: file.time,
         sharer: widget.folder.sharer,
+        requiresPassword: widget.pwd.isNotEmpty,
       );
     }
     if (!mounted) return;
@@ -462,6 +465,10 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
           name: name,
           ref: url,
           pwd: widget.pwd,
+          size: file?.size ?? '',
+          time: file?.time ?? '',
+          sharer: widget.folder.sharer,
+          requiresPassword: widget.pwd.isNotEmpty,
         );
     }
   }

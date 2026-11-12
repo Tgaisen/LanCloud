@@ -11,6 +11,7 @@ import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/data/app_db.dart';
 import 'package:lancloud/core/data/app_db_provider.dart';
 import 'package:lancloud/core/drive_state.dart';
+import 'package:lancloud/core/list_home_settings_state.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
@@ -57,6 +58,7 @@ class _StalePwdClient extends LanzouClient {
   }) async => const ShareFileDetails(
     name: 'fav-renamed.txt',
     size: '2 M',
+    time: '2026-11-01',
     sharer: '分享者甲',
     requiresPassword: true,
   );
@@ -73,6 +75,7 @@ class _StalePwdClient extends LanzouClient {
       name: 'fav-renamed.txt',
       url: 'https://example.com/d',
       size: '2 M',
+      time: '2026-11-01',
       sharer: '分享者甲',
     );
   }
@@ -122,6 +125,7 @@ class _FakeApp {
   AccountState get accountState => environment.accountState;
   AppDb get db => environment.db;
   DriveState get drive => environment.drive;
+  ListHomeSettingsState get listHomeSettings => environment.listHomeSettings;
   NavigationAppearanceSettingsState get navigationAppearanceSettings =>
       environment.navigationAppearanceSettings;
   NavigationState get navigation => environment.navigation;
@@ -147,6 +151,7 @@ Future<void> _pumpFavorites(
         accountStateProvider.overrideWithValue(app.accountState),
         appDbProvider.overrideWithValue(app.db),
         driveStateProvider.overrideWithValue(app.drive),
+        listHomeSettingsStateProvider.overrideWithValue(app.listHomeSettings),
         navigationAppearanceSettingsStateProvider.overrideWithValue(
           app.navigationAppearanceSettings,
         ),
@@ -227,6 +232,8 @@ void main() {
         name: '收藏的文件夹',
         ref: ref,
         pwd: 'oldpass',
+        fileTime: '2026-10-01',
+        requiresPassword: true,
       ),
     );
     await _pumpFavorites(tester, app, item: find.text('收藏的文件夹'));
@@ -369,7 +376,9 @@ void main() {
           f.pwd == 'newpass' &&
           f.name == 'fav-renamed.txt' &&
           f.sharer == '分享者甲' &&
-          f.size == '2 M',
+          f.size == '2 M' &&
+          f.fileTime == '2026-11-01' &&
+          f.requiresPassword == true,
     );
     expect(saved.pwd, 'newpass');
     // 名称与分享者同步写回收藏
@@ -377,6 +386,8 @@ void main() {
     expect(saved.sharer, '分享者甲');
     // 收藏时缺失的 size 也补上了（列表副标题会显示 2.0 MB）
     expect(saved.size, '2 M');
+    expect(saved.fileTime, '2026-11-01');
+    expect(saved.requiresPassword, isTrue);
   });
 
   testWidgets('downloadShareFile：提取码错误时用 askPassword 的新密码重试', (tester) async {

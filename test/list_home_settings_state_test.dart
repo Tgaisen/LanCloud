@@ -13,14 +13,22 @@ void main() {
 
     await state.setSortMode('name');
     await state.setSortAscending(true);
+    await state.setFavoritesSortMode('size');
+    await state.setFavoritesSortAscending(true);
+    await state.setFolderPickerSortMode('name');
+    await state.setFolderPickerSortAscending(false);
     await state.setQuickExpanded(false);
     await state.setRecentsExpanded(false);
     await state.setRecentLimit(20);
     await state.setHomeFolderOpenMode('page');
 
-    expect(state.revision.value, 6);
+    expect(state.revision.value, 10);
     expect(state.sortMode, 'name');
     expect(state.sortAscending, isTrue);
+    expect(state.favoritesSortMode, 'size');
+    expect(state.favoritesSortAscending, isTrue);
+    expect(state.folderPickerSortMode, 'name');
+    expect(state.folderPickerSortAscending, isFalse);
     expect(state.quickExpanded, isFalse);
     expect(state.recentsExpanded, isFalse);
     expect(state.recentLimit, 20);

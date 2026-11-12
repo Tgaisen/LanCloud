@@ -17,6 +17,10 @@ class ListHomeSettingsState {
 
   String get sortMode => store.sortMode;
   bool get sortAscending => store.sortAscending;
+  String get favoritesSortMode => store.favoritesSortMode;
+  bool get favoritesSortAscending => store.favoritesSortAscending;
+  String get folderPickerSortMode => store.folderPickerSortMode;
+  bool get folderPickerSortAscending => store.folderPickerSortAscending;
   bool get quickExpanded => store.quickExpanded;
   bool get recentsExpanded => store.recentsExpanded;
   int get recentLimit => store.recentLimit;
@@ -29,6 +33,26 @@ class ListHomeSettingsState {
 
   Future<void> setSortAscending(bool value) async {
     await store.setSortAscending(value);
+    revision.value += 1;
+  }
+
+  Future<void> setFavoritesSortMode(String value) async {
+    await store.setFavoritesSortMode(value);
+    revision.value += 1;
+  }
+
+  Future<void> setFavoritesSortAscending(bool value) async {
+    await store.setFavoritesSortAscending(value);
+    revision.value += 1;
+  }
+
+  Future<void> setFolderPickerSortMode(String value) async {
+    await store.setFolderPickerSortMode(value);
+    revision.value += 1;
+  }
+
+  Future<void> setFolderPickerSortAscending(bool value) async {
+    await store.setFolderPickerSortAscending(value);
     revision.value += 1;
   }
 

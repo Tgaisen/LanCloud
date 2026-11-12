@@ -72,7 +72,7 @@
 | `TransferConnectionSettingsState` | `core/transfer_connection_settings_state.dart` | 设置子组：请求间隔、并发数、API 域名、UA、上传路径、自动开始与上传前筛选 |
 | `LanzouUploadPolicy` | `core/upload_policy.dart` | 从账号页取得的单文件上限 / 扩展名白名单及内置回退值；筛选任务进入 `skipped` 后不自动调度 |
 | `BatchRenameRule` | `core/rename_rule.dart` | 传输页与网盘页共用的批量查找替换、正则、大小写与空名称校验；只产出预览。`core/transfer/upload_rename.dart` 保留上传侧兼容别名 |
-| `ListHomeSettingsState` | `core/list_home_settings_state.dart` | 设置子组：列表排序、首页折叠、最近使用上限与文件夹打开模式 |
+| `ListHomeSettingsState` | `core/list_home_settings_state.dart` | 设置子组：网盘 / 收藏 / 文件夹选择器排序、首页折叠、最近使用上限与文件夹打开模式 |
 | `LanguageClipboardSettingsState` | `core/language_clipboard_settings_state.dart` | 设置子组：界面语言与复制分享链接提示 |
 | `CachePageSettingsState` | `core/cache_page_settings_state.dart` | 设置子组：网格视图、启动页、目录缓存和自动加载全部页面 |
 | `DownloadDirectorySettingsState` | `core/download_directory_settings_state.dart` | 设置子组：普通下载目录、SAF URI/标签、互斥写入和旧授权释放入口 |

@@ -211,6 +211,7 @@ class _ShareLinkDialogState extends ConsumerState<ShareLinkDialog> {
               link: link,
               pwd: pwd,
               size: file.size,
+              time: file.time,
             );
             return;
           }
@@ -291,6 +292,7 @@ class _ShareLinkDialogState extends ConsumerState<ShareLinkDialog> {
     required String pwd,
     String sharer = '',
     String size = '',
+    String time = '',
   }) async {
     final l10n = context.l10n;
     final db = ref.read(appDbProvider);
@@ -304,6 +306,8 @@ class _ShareLinkDialogState extends ConsumerState<ShareLinkDialog> {
       pwd: pwd,
       sharer: sharer,
       size: size,
+      fileTime: time,
+      requiresPassword: pwd.trim().isNotEmpty,
     );
     if (!mounted) return;
     if (navigator.canPop()) navigator.pop();
@@ -324,7 +328,9 @@ class _ShareLinkDialogState extends ConsumerState<ShareLinkDialog> {
         url: link,
         pwd: pwd,
         size: file.size,
+        time: file.time,
         sharer: file.sharer,
+        requiresPassword: pwd.trim().isNotEmpty,
       ),
     );
   }

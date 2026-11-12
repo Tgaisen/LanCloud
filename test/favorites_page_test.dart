@@ -6,6 +6,7 @@ import 'package:lancloud/core/api/lanzou_client_registry.dart';
 import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/data/app_db_provider.dart';
 import 'package:lancloud/core/drive_state.dart';
+import 'package:lancloud/core/list_home_settings_state.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
@@ -21,6 +22,9 @@ Widget _host(AppEnvironment environment, Widget home) => ProviderScope(
     lanzouClientRegistryProvider.overrideWithValue(environment.clientRegistry),
     appDbProvider.overrideWithValue(environment.db),
     driveStateProvider.overrideWithValue(environment.drive),
+    listHomeSettingsStateProvider.overrideWithValue(
+      environment.listHomeSettings,
+    ),
     navigationAppearanceSettingsStateProvider.overrideWithValue(
       environment.navigationAppearanceSettings,
     ),
@@ -92,6 +96,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('时间'), findsNothing);
     expect(ascendingCheck, findsNothing);
+    expect(environment.listHomeSettings.favoritesSortMode, 'name');
+    expect(environment.listHomeSettings.favoritesSortAscending, isTrue);
 
     // 空收藏也能进多选：⋯ 菜单只保留非排序动作
     await tester.tap(find.byTooltip('菜单'));

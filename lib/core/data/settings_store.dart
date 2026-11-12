@@ -39,6 +39,10 @@ class SettingsStore {
   static const _keyNotifyDone = 'notify_done';
   static const _keySortMode = 'sort_mode';
   static const _keySortAscending = 'sort_ascending';
+  static const _keyFavoritesSortMode = 'favorites_sort_mode';
+  static const _keyFavoritesSortAscending = 'favorites_sort_ascending';
+  static const _keyFolderPickerSortMode = 'folder_picker_sort_mode';
+  static const _keyFolderPickerSortAscending = 'folder_picker_sort_ascending';
   static const _keyQuickExpanded = 'quick_access_expanded';
   static const _keyRecentsExpanded = 'recents_expanded';
   static const _keyRecentLimit = 'recent_limit';
@@ -111,6 +115,14 @@ class SettingsStore {
 
   /// 网盘排序是否升序；服务端默认按时间早到晚返回。
   bool sortAscending = true;
+
+  /// 收藏页排序：time（收藏时间）/ name / size，默认收藏时间降序。
+  String favoritesSortMode = 'time';
+  bool favoritesSortAscending = false;
+
+  /// 选择目标文件夹弹窗的排序，默认沿用服务端时间顺序。
+  String folderPickerSortMode = 'time';
+  bool folderPickerSortAscending = true;
 
   /// 首页「快速访问」/「最近使用」是否展开（重启后保持）。
   bool quickExpanded = true;
@@ -190,6 +202,11 @@ class SettingsStore {
     notifyDone = prefs.getBool(_keyNotifyDone) ?? true;
     sortMode = prefs.getString(_keySortMode) ?? 'default';
     sortAscending = prefs.getBool(_keySortAscending) ?? true;
+    favoritesSortMode = prefs.getString(_keyFavoritesSortMode) ?? 'time';
+    favoritesSortAscending = prefs.getBool(_keyFavoritesSortAscending) ?? false;
+    folderPickerSortMode = prefs.getString(_keyFolderPickerSortMode) ?? 'time';
+    folderPickerSortAscending =
+        prefs.getBool(_keyFolderPickerSortAscending) ?? true;
     quickExpanded = prefs.getBool(_keyQuickExpanded) ?? true;
     recentsExpanded = prefs.getBool(_keyRecentsExpanded) ?? true;
     recentLimit = prefs.getInt(_keyRecentLimit) ?? 50;
@@ -241,6 +258,30 @@ class SettingsStore {
     sortAscending = value;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keySortAscending, value);
+  }
+
+  Future<void> setFavoritesSortMode(String value) async {
+    favoritesSortMode = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyFavoritesSortMode, value);
+  }
+
+  Future<void> setFavoritesSortAscending(bool value) async {
+    favoritesSortAscending = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyFavoritesSortAscending, value);
+  }
+
+  Future<void> setFolderPickerSortMode(String value) async {
+    folderPickerSortMode = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyFolderPickerSortMode, value);
+  }
+
+  Future<void> setFolderPickerSortAscending(bool value) async {
+    folderPickerSortAscending = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyFolderPickerSortAscending, value);
   }
 
   Future<void> setQuickExpanded(bool value) async {
@@ -493,6 +534,10 @@ class SettingsStore {
     _keyNotifyDone: notifyDone,
     _keySortMode: sortMode,
     _keySortAscending: sortAscending,
+    _keyFavoritesSortMode: favoritesSortMode,
+    _keyFavoritesSortAscending: favoritesSortAscending,
+    _keyFolderPickerSortMode: folderPickerSortMode,
+    _keyFolderPickerSortAscending: folderPickerSortAscending,
     _keyQuickExpanded: quickExpanded,
     _keyRecentsExpanded: recentsExpanded,
     _keyRecentLimit: recentLimit,

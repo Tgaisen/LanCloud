@@ -45,7 +45,7 @@ void main() {
     if (dir.existsSync()) dir.deleteSync(recursive: true);
   });
 
-  test('v6 → v7：收藏表补上 ref 索引，收藏数据本身不受影响', () async {
+  test('v6 → 最新：收藏补索引与元数据列，旧数据保持兼容', () async {
     final path = p.join(dir.path, 'lancloud.db');
     await databaseFactory.deleteDatabase(path);
 
@@ -73,7 +73,10 @@ void main() {
     // 数据还在，判定照常可用
     expect(await db.isFavorite('https://share.example/f1'), isTrue);
     expect(await db.isFavorite('https://share.example/none'), isFalse);
-    expect((await db.favorites()).length, 1);
+    final favorites = await db.favorites();
+    expect(favorites, hasLength(1));
+    expect(favorites.single.fileTime, isEmpty);
+    expect(favorites.single.requiresPassword, isNull);
 
     // 索引真的建出来了，而且查询走的是它
     final indexes = await (await db.db).rawQuery(
@@ -90,5 +93,11 @@ void main() {
       plan.map((row) => '${row['detail']}').join(' '),
       contains('idx_favorites_ref'),
     );
+
+    final columns = await (await db.db).rawQuery(
+      'PRAGMA table_info(favorites)',
+    );
+    final names = columns.map((row) => '${row['name']}').toSet();
+    expect(names, containsAll(<String>['file_time', 'requires_password']));
   });
 }

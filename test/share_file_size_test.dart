@@ -1,3 +1,7 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/api/lanzou_client.dart';
 
@@ -13,6 +17,31 @@ class _PageClient extends LanzouClient {
     requests.add(url);
     return pages[url] ?? html;
   }
+}
+
+class _JsonAdapter implements HttpClientAdapter {
+  _JsonAdapter(this.body);
+
+  final String body;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    await requestStream?.drain<void>();
+    return ResponseBody.fromString(
+      body,
+      200,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
 }
 
 void main() {
@@ -122,5 +151,26 @@ void main() {
       'https://example.com/demo',
       'https://example.com/frame',
     ]);
+  });
+
+  test('解析下载直链时保留分享页时间', () async {
+    final client =
+        _PageClient('''
+<title>报告.pdf - 蓝奏云</title>
+<span class="p7">上传时间：</span>6 天前<br>
+<script>'sign':'abc123',</script>
+''')
+          ..dio.httpClientAdapter = _JsonAdapter(
+            jsonEncode({
+              'zt': '1',
+              'dom': 'https://cdn.example',
+              'url': 'https://cdn.example/report.pdf',
+            }),
+          );
+
+    final file = await client.resolveFileShare('https://example.com/demo');
+
+    expect(file.url, 'https://cdn.example/report.pdf');
+    expect(file.time, '6 天前');
   });
 }

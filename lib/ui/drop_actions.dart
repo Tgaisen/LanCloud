@@ -462,6 +462,8 @@ Future<DropOutcome> _addFavoritesFromLinks(
           ref: link.url,
           pwd: link.pwd ?? '',
           size: file.size,
+          fileTime: file.time,
+          requiresPassword: (link.pwd ?? '').isNotEmpty,
         );
         favorited += 1;
       } on NeedPasswordException {
@@ -479,6 +481,7 @@ Future<DropOutcome> _addFavoritesFromLinks(
           ref: link.url,
           pwd: link.pwd ?? '',
           sharer: folder.sharer,
+          requiresPassword: (link.pwd ?? '').isNotEmpty,
         );
         favorited += 1;
       }
