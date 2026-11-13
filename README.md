@@ -32,7 +32,7 @@
 - [ ] HarmonyOS NEXT `早期技术验证阶段`
 - [ ] 其余平台无计划
 
-> HarmonyOS NEXT 未来数月将维持早期技术验证阶段。因目前 Flutter OpenHarmony 适配的[主要社区](https://atomgit.com/CPF-Flutter/flutter_flutter)暂未适配 Flutter 3.47，而社区分支版本经测试性能表现欠佳，且无法对齐部分关键功能。
+> HarmonyOS NEXT 未来数月将维持搁置状态。因目前 Flutter OpenHarmony 适配的[主要社区](https://atomgit.com/CPF-Flutter/flutter_flutter)暂未适配 Flutter 3.47，而社区分支版本经测试性能表现欠佳，且无法对齐部分关键功能。
 
 ## 获取
 
@@ -97,7 +97,7 @@ powershell -ExecutionPolicy Bypass -File tools/build_windows.ps1
 
 | 组件 | 信息 |
 | --- | --- |
-| Flutter | 3.47.9 |
+| Flutter | 3.50.0 |
 | JDK | 17 |
 | Android SDK | platform 37、build-tools、NDK 28.2、CMake |
 | Visual Studio Build Tools | 2026（Windows SDK 10.0.28000）；勾选「使用 C++ 的桌面开发」工作负载（含 Windows SDK 与 CMake），与「C++ ATL for x64/x86 (最新 MSVC)」 |
