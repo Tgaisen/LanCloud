@@ -8,6 +8,8 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+val lanCloudApplicationId = "com.lancloud.lancloud"
+
 // release 签名配置：密码与密钥路径放在 android/key.properties（已在 .gitignore 中），
 // 格式与备份要求见 README「签名」。缺少该文件时 release 会退回 debug 签名，仅供本地构建。
 val keystoreProperties = Properties()
@@ -30,7 +32,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.lancloud.lancloud"
+        applicationId = lanCloudApplicationId
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -67,11 +69,6 @@ android {
             // 也允许在同一台设备上同时安装。
             applicationIdSuffix = ".debug"
         }
-        getByName("profile") {
-            // Flutter 插件会创建 profile build type；它继承 debug 的签名和能力，
-            // 但仍使用独立 applicationId，便于和 release / debug 同时安装。
-            applicationIdSuffix = ".profile"
-        }
         release {
             signingConfig = if (keystorePropertiesFile.exists()) {
                 signingConfigs.getByName("release")
@@ -89,6 +86,12 @@ android {
 // pubspec 里存 ABI=0 的基准号，拆分包按实际 ABI 加上 digit*1000。
 androidComponents {
     onVariants { variant ->
+        // Flutter 3.50.0 会把 app buildType 通过 initWith 复制给插件库；
+        // applicationIdSuffix 属于应用专属属性，会让库项目配置直接失败。
+        // 保留 profile 的独立包名，但改在 Variant API 上设置，避免污染插件。
+        if (variant.buildType == "profile") {
+            variant.applicationId.set("$lanCloudApplicationId.profile")
+        }
         variant.outputs.forEach { output ->
             val abi = output.filters
                 .firstOrNull {
