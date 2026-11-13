@@ -23,9 +23,9 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 26.1.0-rc.1+260100301
 
 environment:
-  sdk: ^3.13.7
+  sdk: ^3.14.0
   # GitHub Actions 通过 flutter-version-file 读取该版本，避免多处手动同步。
-  flutter: 3.47.9
+  flutter: 3.50.0
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions

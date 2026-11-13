@@ -1,3 +1,7 @@
+// Flutter 3.50 的 gen-l10n 仍硬编码旧 flutter_localizations delegates。
+// 应用实际使用 lib/l10n/delegates.dart 中的 material_ui delegates。
+// ignore_for_file: deprecated_member_use
+
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
 
