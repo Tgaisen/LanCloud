@@ -221,6 +221,7 @@ User-Agent 也迁入 `AdvancedConnectionSettingsTile`；对应 setter 统一同�
 | 主题 / 动效 / 无障碍 | `app.dart`（主题）、`ui/m3e.dart`、`core/dynamic_color_support.dart`、`core/system_motion.dart`、`ui/reduce_motion.dart` |
 | 日志 / 崩溃 / 诊断 | `core/app_log.dart`、`core/webview_diagnostics.dart` |
 | 文案 / 国际化 | `lib/l10n/app_zh.arb`（模板）、`app_en.arb`、`l10n.yaml` |
+| Flutter / Material 组件栈 / Android 构建升级 | `docs/FLUTTER_3_50_UPGRADE.md`、`pubspec.yaml`、`l10n.yaml`、`android/app/build.gradle.kts` |
 | 版本号 | `docs/VERSIONING.md`、`tool/bump_version.dart`、`lib/core/app_info.dart` |
 
 ## 平台
@@ -234,7 +235,8 @@ User-Agent 也迁入 `AdvancedConnectionSettingsTile`；对应 setter 统一同�
 ## 不变量（改动前确认，别顺手破掉）
 
 1. 版本号只能由 `tool/bump_version.dart` 同时改 `pubspec.yaml` 与 `lib/core/app_info.dart`（有测试校验）
-2. `material_ui` / `m3e_core` / `cupertino_ui` 三件套必须同步升级；`material_ui` 不得 ≥ 1.8.0
+2. `material_ui` / `m3e_core` / `cupertino_ui` 三件套必须作为一组升级；不得重新引入
+   框架内 Material / Cupertino，当前兼容说明见 `docs/FLUTTER_3_50_UPGRADE.md`
 3. 文案模板是 `app_zh.arb`，中英两份必须同时改，改完跑 `gen-l10n`
 4. `android/gradle.properties` 的 `force-version-code-ignoring-abi` 是 versionCode 位段方案的一部分，不要动
 5. `lib/core/third_party_licenses.dart` 的登记结构涉及许可证合规，新增素材要按同格式追加

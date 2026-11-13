@@ -77,12 +77,10 @@ dependencies:
   # cross_file 0.4（但已依赖 Win32 6），两者暂时无法同时解析。
   # 等 file_picker 支持 cross_file 0.4 后再成组升级。
   desktop_drop: ">=0.8.4 <0.9.0"
-  # Flutter 3.47 起 Material 从框架拆到了 material_ui，本项目已整体迁移过去
-  # （见 docs / 提交记录）；m3e_core 提供 MD3E 控件，cupertino_ui 承接
-  # Cupertino 组件。三者版本要配套升级。
+  # Flutter 3.50 起框架内 Material / Cupertino 正式弃用；m3e_core 提供
+  # MD3E 控件，material_ui 和 cupertino_ui 承接设计组件。三者作为一组升级，
+  # 兼容与后续清理事项见 docs/FLUTTER_3_50_UPGRADE.md。
   m3e_core: ^1.1.5
-  # 1.8 新增的 RoundedPolygon 与 m3e_core 1.1.4 的同名类型冲突；
-  # 待 m3e_core 适配后再放开 <1.8.0。
   material_ui: ^1.11.0
   cupertino_ui: ^1.1.6
   cryptography: ^2.9.0

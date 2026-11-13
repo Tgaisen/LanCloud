@@ -14,6 +14,7 @@
 | `docs/VERSIONING.md` | 任何涉及版本号的改动 |
 | `docs/PROTOCOL.md` | 改 `core/api/` 的网络与协议逻辑 |
 | `docs/RIVERPOD_MIGRATION_ASSESSMENT.md` | 需要了解 Riverpod 迁移决策与历史；当前状态约定以本文件和架构文档为准 |
+| `docs/FLUTTER_3_50_UPGRADE.md` | 升级 Flutter、Material 组件栈、Android 构建工具或本地化生成器 |
 
 ## 工具链：唯一入口是 `tools\agent.cmd`
 
@@ -70,9 +71,10 @@ lib/l10n/              arb + 生成文件
 
 ## 依赖锁定（不得擅自增删升降）
 
-- `material_ui >=1.6.0 <1.8.0`、`m3e_core ^1.1.4`、`cupertino_ui ^1.1.4` 三件套必须同步。
-  **不要升到 `material_ui` 1.8**：它的 `RoundedPolygon` 与 `m3e_core` 1.1.4 同名类型冲突。
-- Flutter 3.47 起 Material 已从框架拆出：用 `package:material_ui/material_ui.dart`，
+- `material_ui`、`m3e_core`、`cupertino_ui` 三件套必须作为一组升级，不再设置
+  `material_ui <1.8.0` 的固定上限；升级时检查 `RoundedPolygon`、主题和本地化类型冲突。
+- Flutter 3.50 起 Material / Cupertino 设计库正式从框架弃用：用
+  `package:material_ui/material_ui.dart` 和 `package:cupertino_ui/cupertino_ui.dart`，
   不存在 `package:flutter/material.dart` 这个导入。MD3E 控件从 `ui/m3e.dart` 取。
 - 新增第三方依赖：**先问人**，不要直接 `pub add`。
 
@@ -142,7 +144,7 @@ Provider → Riverpod 迁移和 `AppController` 退役已于 2026-10-31 完成�
 - 保持单一状态所有者，不允许同一字段存在两套可写来源。
 - 测试优先使用 `ProviderScope`、`ProviderContainer` 和 `AppEnvironment` 注入依赖，
   不要再建立完整应用控制器式宿主。
-- 当前使用 `flutter_riverpod 3.4.3`，不要采用 2.x 的 `StateNotifier` 写法。
+- 当前使用 `flutter_riverpod 3.5.0`，不要采用 2.x 的 `StateNotifier` 写法。
 - 暂不引入 `riverpod_generator` / `riverpod_lint` / `build_runner`；如需 codegen，
   作为独立改动评估依赖和生成文件影响。
 - 每个提交保持 `analyze` 0 issue，并通过 `tools\agent.cmd test`。

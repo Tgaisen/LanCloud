@@ -12,12 +12,6 @@ updates:
     open-pull-requests-limit: 5
     labels:
       - "flutter"
-    ignore:
-      # m3e_core 1.1.4 与 material_ui 1.8 存在 RoundedPolygon 同名类型冲突。
-      # 待 m3e_core 适配后删除此忽略，并按 UI 组件栈整体验证。
-      - dependency-name: "material_ui"
-        versions:
-          - ">=1.8.0 <1.9.0"
     groups:
       material-ui-stack:
         patterns:

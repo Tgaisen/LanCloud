@@ -9,14 +9,14 @@
 
 | 命令 | 口径 | 结果 | 耗时 |
 | --- | --- | --- | --- |
-| `tools\agent.cmd analyze` | 增量（本次改动，3 个 Dart 文件） | No issues found | 约 10 s |
-| `tools\agent.cmd test` | 全量（用例总数） | **899 tests, all passed** | 约 2 min 24 s |
-| `tools\agent.cmd format` | 全量 | 335 files，0 changed | 约 4 s |
+| `tools\agent.cmd analyze` | 全量 | No issues found | 约 2 min 1 s |
+| `tools\agent.cmd analyze` | 增量（升级改动，3 个 Dart 文件） | No issues found | 约 10 s |
+| `tools\agent.cmd test` | 全量（用例总数） | **899 tests, all passed** | 约 2 min 37 s |
+| `tools\agent.cmd format` | 全量 | 335 files，0 changed | 约 3 s |
 | `tools\agent.cmd build-apk` | debug | `app-debug.apk` | 首次构建约 5 min 46 s |
 
 当前分析结果为 0 issue 是硬基线。出现红灯时，先判断是否为本次改动引入；
-不要把增量结果当成全量结论。本轮升级未在修复后单独重跑全量 `analyze`，
-CI 会按干净检出执行全量分析。
+不要把增量结果当成全量结论。Flutter 3.50.0 下全量分析已重跑并通过。
 
 当前全量用例总数为 899，与升级前一致；Flutter 3.50.0 下已重跑全量并通过。
 测试入口在受影响文件超过 60 个时自动回退全量，避免 Windows 命令行长度上限导致
