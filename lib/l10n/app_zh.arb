@@ -998,14 +998,6 @@
   "sameNamedFilesTitle": "该目录下的同名文件",
   "sameNamedFilesIncomplete": "未加载全部内容，结果可能不全",
   "sameNamedFilesEmpty": "未找到同名文件",
-  "sameNamedFilesItemCount": "{count} 项",
-  "@sameNamedFilesItemCount": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "keepLatest": "保留最新",
   "sameNamedFilesSummary": "共 {groups} 组 {files} 个同名文件",
   "@sameNamedFilesSummary": {

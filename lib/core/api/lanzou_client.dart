@@ -308,12 +308,14 @@ class LanzouClient {
   /// 取文件列表的某一页（info 为该页条数，0 表示没有更多）。
   Future<({List<LzFile> files, bool hasMore})> listFilesPage(
     String folderId,
-    int page,
-  ) async {
+    int page, {
+    CancelToken? cancelToken,
+  }) async {
     final resp = await dio.post<String>(
       '$apiBase/doupload.php',
       data: {'task': 5, 'folder_id': folderId, 'pg': page},
       options: _options(),
+      cancelToken: cancelToken,
     );
     final map = _asMap(resp.data);
     final files = <LzFile>[];

@@ -5,6 +5,11 @@ import '../core/duplicate_files.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
+import 'm3e.dart';
+
+/// 小型结果保持自然高度；超过该数量后改用有界懒加载列表，避免一次构建
+/// 全部同名文件行。
+const int _lazyDuplicateFileThreshold = 30;
 
 /// 展示当前目录中的同名文件组，并返回用户确认要删除的文件 id。
 ///
@@ -14,9 +19,12 @@ Future<Set<String>?> showSameNamedFilesSheet(
   required DuplicateFileScan scan,
   required bool hasMore,
 }) {
+  final lazy = scan.fileCount > _lazyDuplicateFileThreshold;
   return showAppSheet<Set<String>>(
     context,
-    child: _SameNamedFilesSheet(scan: scan, hasMore: hasMore),
+    maxHeightRatio: lazy ? 0.86 : 0.8,
+    fitContent: !lazy,
+    child: _SameNamedFilesSheet(scan: scan, hasMore: hasMore, lazy: lazy),
   );
 }
 
@@ -47,10 +55,15 @@ Future<bool> showDeleteSameNamedFilesConfirm(
 }
 
 class _SameNamedFilesSheet extends StatefulWidget {
-  const _SameNamedFilesSheet({required this.scan, required this.hasMore});
+  const _SameNamedFilesSheet({
+    required this.scan,
+    required this.hasMore,
+    required this.lazy,
+  });
 
   final DuplicateFileScan scan;
   final bool hasMore;
+  final bool lazy;
 
   @override
   State<_SameNamedFilesSheet> createState() => _SameNamedFilesSheetState();
@@ -108,89 +121,147 @@ class _SameNamedFilesSheetState extends State<_SameNamedFilesSheet> {
     Navigator.of(context).pop(Set<String>.unmodifiable(_selected));
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _header(BuildContext context) {
     final l10n = context.l10n;
-    final scan = widget.scan;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: Text(
-                  l10n.sameNamedFilesTitle,
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-              ),
-              const SizedBox(width: 8),
-              TextButton(onPressed: _cancel, child: Text(l10n.cancel)),
-              const SizedBox(width: 4),
-              FilledButton(
-                onPressed: _selected.isEmpty ? null : _confirmDelete,
-                child: Text(l10n.delete),
-              ),
-            ],
+          Expanded(
+            child: Text(
+              l10n.sameNamedFilesTitle,
+              style: context.m3eEmphasizedTheme.titleLarge,
+            ),
           ),
-          if (widget.hasMore)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: InfoHintCard(text: l10n.sameNamedFilesIncomplete),
-            ),
-          if (scan.isEmpty)
-            EmptyHint(icon: Icons.file_copy, text: l10n.sameNamedFilesEmpty)
-          else
-            for (final group in scan.groups) ...[
-              SectionHeader(
-                title: group.name,
-                count: group.files.length,
-                countLabel: l10n.sameNamedFilesItemCount(group.files.length),
-                compact: !isLargeLayout(context),
-                actions: [
-                  TextButton(
-                    onPressed: () => _keepLatest(group),
-                    style: TextButton.styleFrom(
-                      minimumSize: const Size(0, 32),
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                    ),
-                    child: Text(l10n.keepLatest),
-                  ),
-                ],
-              ),
-              SegmentedList(
-                margin: EdgeInsets.zero,
-                children: [
-                  for (final (index, file) in group.files.indexed)
-                    _DuplicateFileTile(
-                      key: ValueKey('same-name-file-${file.id}'),
-                      file: file,
-                      index: index,
-                      selected: _selected.contains(file.id),
-                      onTap: () => _toggleFile(file.id),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 16),
-            ],
-          if (!scan.isEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 4, bottom: 8),
-              child: Text(
-                l10n.sameNamedFilesSummary(scan.groupCount, scan.fileCount),
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ),
+          const SizedBox(width: 8),
+          TextButton(onPressed: _cancel, child: Text(l10n.cancel)),
+          const SizedBox(width: 4),
+          FilledButton(
+            onPressed: _selected.isEmpty ? null : _confirmDelete,
+            child: Text(l10n.delete),
+          ),
         ],
       ),
     );
   }
+
+  Widget _incompleteNotice(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+    child: InfoHintCard(text: context.l10n.sameNamedFilesIncomplete),
+  );
+
+  Widget _groupHeader(BuildContext context, DuplicateFileGroup group) =>
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: SectionHeader(
+          title: group.name,
+          count: group.files.length,
+          compact: !isLargeLayout(context),
+          actions: [
+            TextButton(
+              onPressed: () => _keepLatest(group),
+              style: TextButton.styleFrom(
+                minimumSize: const Size(0, 32),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+              ),
+              child: Text(context.l10n.keepLatest),
+            ),
+          ],
+        ),
+      );
+
+  Widget _fileTile(DuplicateFileGroup group, int index) {
+    final file = group.files[index];
+    return _DuplicateFileTile(
+      key: ValueKey('same-name-file-${file.id}'),
+      file: file,
+      index: index,
+      selected: _selected.contains(file.id),
+      onTap: () => _toggleFile(file.id),
+    );
+  }
+
+  Widget _summary(BuildContext context) {
+    final scan = widget.scan;
+    return Text(
+      context.l10n.sameNamedFilesSummary(scan.groupCount, scan.fileCount),
+      textAlign: TextAlign.center,
+      style: Theme.of(context).textTheme.bodySmall
+          ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+    );
+  }
+
+  Widget _buildLazyBody(BuildContext context) {
+    final scan = widget.scan;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _header(context),
+        if (widget.hasMore) _incompleteNotice(context),
+        Expanded(
+          child: CustomScrollView(
+            slivers: [
+              for (final group in scan.groups)
+                SliverMainAxisGroup(
+                  slivers: [
+                    SliverToBoxAdapter(child: _groupHeader(context, group)),
+                    SegmentedSliverList(
+                      itemCount: group.files.length,
+                      margin: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+                      color: Theme.of(context).colorScheme.surfaceContainer,
+                      itemBuilder: (context, index) => _fileTile(group, index),
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                  ],
+                ),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                sliver: SliverToBoxAdapter(child: _summary(context)),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFittedBody(BuildContext context) {
+    final scan = widget.scan;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _header(context),
+        if (widget.hasMore) _incompleteNotice(context),
+        if (scan.isEmpty)
+          EmptyHint(
+            icon: Icons.file_copy,
+            text: context.l10n.sameNamedFilesEmpty,
+          )
+        else
+          for (final group in scan.groups) ...[
+            _groupHeader(context, group),
+            SheetListGroup(
+              children: [
+                for (var index = 0; index < group.files.length; index++)
+                  _fileTile(group, index),
+              ],
+            ),
+            const SizedBox(height: 12),
+          ],
+        if (!scan.isEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+            child: _summary(context),
+          ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      widget.lazy ? _buildLazyBody(context) : _buildFittedBody(context);
 }
 
 class _DuplicateFileTile extends StatelessWidget {

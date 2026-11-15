@@ -3041,12 +3041,6 @@ abstract class AppLocalizations {
   /// **'未找到同名文件'**
   String get sameNamedFilesEmpty;
 
-  /// No description provided for @sameNamedFilesItemCount.
-  ///
-  /// In zh, this message translates to:
-  /// **'{count} 项'**
-  String sameNamedFilesItemCount(int count);
-
   /// No description provided for @keepLatest.
   ///
   /// In zh, this message translates to:

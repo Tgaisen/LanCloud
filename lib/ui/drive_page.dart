@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:dio/dio.dart' show CancelToken;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:material_ui/material_ui.dart' hide Icons;
@@ -380,6 +381,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
 
   /// 目录快照的代数：刷新、切目录或换账号后，旧请求不得再写入当前列表。
   int _listingGeneration = 0;
+  CancelToken? _loadAllCancelToken;
 
   /// 上一次拉取下一页失败（且还有下一页）：底部给出「重试」入口。
   bool _loadFailed = false;
@@ -483,6 +485,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
     _keyboardUp.dispose();
     _drive.folderRequest.removeListener(_onDriveFolderRequest);
     _transfers.removeTaskListener(_onTaskDone);
+    _loadAllCancelToken?.cancel();
     if (_isShellPage) {
       _navigation.onDriveBack = null;
       // 外壳里的网盘页卸载后不再拦截返回，交回系统（预测性返回桌面）。
@@ -572,6 +575,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
   Future<bool> _refreshInPlace({bool refreshFolders = false}) async {
     final client = _activeClient();
     if (client == null) return false;
+    _loadAllCancelToken?.cancel();
     final generation = ++_listingGeneration;
     try {
       // 已经加载过几页就刷新几页，避免局部刷新把后面的条目吞掉
@@ -909,6 +913,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
   Future<void> _load({bool force = false}) async {
     final client = _activeClient();
     if (client == null) return;
+    _loadAllCancelToken?.cancel();
     final generation = ++_listingGeneration;
 
     final cached = _cacheSettings.cacheFolders
@@ -1032,6 +1037,8 @@ class _DrivePageState extends ConsumerState<DrivePage>
     final folderId = _folderId;
     final uid = _loadedUid;
     final generation = ++_listingGeneration;
+    final cancelToken = CancelToken();
+    _loadAllCancelToken = cancelToken;
     final loadedPages = ValueNotifier<int>(_page);
     var cancelRequested = false;
     var progressOpen = true;
@@ -1039,7 +1046,10 @@ class _DrivePageState extends ConsumerState<DrivePage>
     final progressDone = showPageLoadProgressDialog(
       context,
       loadedPages: loadedPages,
-      onCancel: () => cancelRequested = true,
+      onCancel: () {
+        cancelRequested = true;
+        cancelToken.cancel('canceled');
+      },
     );
     unawaited(
       progressDone.then(
@@ -1054,7 +1064,11 @@ class _DrivePageState extends ConsumerState<DrivePage>
     });
     try {
       while (mounted && !cancelRequested && _hasMore) {
-        final next = await client.listFilesPage(folderId, _page + 1);
+        final next = await client.listFilesPage(
+          folderId,
+          _page + 1,
+          cancelToken: cancelToken,
+        );
         if (!mounted ||
             cancelRequested ||
             generation != _listingGeneration ||
@@ -1084,6 +1098,9 @@ class _DrivePageState extends ConsumerState<DrivePage>
             .showSnackBar(SnackBar(content: Text(context.l10n.lanzouError(e))));
       }
     } finally {
+      if (identical(_loadAllCancelToken, cancelToken)) {
+        _loadAllCancelToken = null;
+      }
       if (mounted) {
         setState(() => _loadingMore = false);
       }

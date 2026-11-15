@@ -1650,6 +1650,7 @@ Future<T?> showAppSheet<T>(
   BuildContext context, {
   required Widget child,
   double maxHeightRatio = 0.8,
+  bool fitContent = true,
 }) {
   final size = MediaQuery.sizeOf(context);
   final maxHeight = size.height * maxHeightRatio;
@@ -1733,6 +1734,7 @@ Future<T?> showAppSheet<T>(
                 maxHeight: maxHeight,
                 routeController: routeController,
                 sheetHeight: sheetHeight,
+                fitContent: fitContent,
                 child: child,
               ),
             ),
@@ -2047,12 +2049,17 @@ class MeasuredSheet extends StatefulWidget {
     required this.child,
     required this.maxHeight,
     required this.routeController,
+    this.fitContent = true,
     this.sheetHeight,
   });
 
   final Widget child;
   final double maxHeight;
   final AnimationController routeController;
+
+  /// 是否按内容自然高度收缩。列表自身负责滚动时传 false，固定使用
+  /// [maxHeight]，让内部 sliver / list 获得有界视口。
+  final bool fitContent;
 
   /// 整个 BottomSheet 当前的实际高度，用于把内容拖动距离换算成路由动画值。
   /// 未提供时退回内容高度，便于单独测试本组件。
@@ -2091,7 +2098,9 @@ class _MeasuredSheetState extends State<MeasuredSheet> {
   }
 
   /// 完全展开时的高度：内容自然高度，不超过上限。
-  double get _expandedHeight => _contentHeight == null
+  double get _expandedHeight => !widget.fitContent
+      ? widget.maxHeight
+      : _contentHeight == null
       ? widget.maxHeight
       : math.min(widget.maxHeight, _contentHeight!);
 
@@ -2248,6 +2257,9 @@ class _MeasuredSheetState extends State<MeasuredSheet> {
 
   @override
   Widget build(BuildContext context) {
+    if (!widget.fitContent) {
+      return SizedBox(height: widget.maxHeight, child: widget.child);
+    }
     final measured = _contentHeight;
     return Opacity(
       opacity: measured == null ? 0 : 1,
@@ -2301,24 +2313,19 @@ class _SheetDragPhysics extends ClampingScrollPhysics {
 
 /// 分组标题 + 数量 chip（传输、收藏等列表视图共用）。
 ///
-/// [actions] 放在标题右侧，窄屏或大字号时可在自身区域换行，不截断按钮文案。
+/// [actions] 固定靠右并保持单行；标题占用剩余宽度，可截断长文件名。
 /// [compact] 只影响垂直留白；移动端传输页可用它保留紧凑分栏高度。
 class SectionHeader extends StatelessWidget {
   const SectionHeader({
     super.key,
     required this.title,
     required this.count,
-    this.countLabel,
     this.actions = const <Widget>[],
     this.compact = false,
   });
 
   final String title;
   final int count;
-
-  /// 数量 chip 的完整文案；为空时只显示数字。
-  final String? countLabel;
-
   final List<Widget> actions;
   final bool compact;
 
@@ -2347,7 +2354,7 @@ class SectionHeader extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
-              countLabel ?? '$count',
+              '$count',
               style: Theme.of(context).textTheme.labelSmall,
             ),
           ),
@@ -2361,21 +2368,12 @@ class SectionHeader extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Flexible(flex: actions.isEmpty ? 1 : 3, child: titleBlock),
+          Expanded(
+            child: Align(alignment: Alignment.centerLeft, child: titleBlock),
+          ),
           if (actions.isNotEmpty) ...[
             const SizedBox(width: 8),
-            Flexible(
-              flex: 2,
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: Wrap(
-                  alignment: WrapAlignment.end,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  runSpacing: 4,
-                  children: actions,
-                ),
-              ),
-            ),
+            Row(mainAxisSize: MainAxisSize.min, children: actions),
           ],
         ],
       ),

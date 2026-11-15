@@ -68,7 +68,7 @@
 | `AppRuntimeState` | `core/app_runtime_state.dart` | 应用启动 ready、凭据重认证提示与系统少动效信号的唯一所有者；非 autoDispose |
 | `NavigationState` | `core/navigation_state.dart` | 多选、返回处理器、`driveCanHandleBack`、当前 Tab 和顶/底栏高频进度的唯一所有者 |
 | `DriveState` | `core/drive_state.dart` | 目录缓存、目录请求、当前位置和可见性探针的唯一所有者 |
-| `DuplicateFileScan` | `core/duplicate_files.dart` | 当前目录同名文件分组、文件 id 去重、组名排序与“保留最新”选择 |
+| `DuplicateFileScan` | `core/duplicate_files.dart` | 当前目录同名文件分组、文件 id 去重、组名排序与“保留最新”选择；大结果由 UI 懒加载 |
 | `lanzouNameSortKey` | `core/file_name_collation.dart` | 网盘文件名统一排序键：拉丁字符大小写不敏感、中文按拼音 |
 | `AccountState` | `core/account_state.dart` | 唯一持有 `AccountStore`；`accountStoreProvider` 从它派生 |
 | `AccountLogin` | `core/account_login.dart` | Cookie 登录验证、账号落盘、客户端缓存和网盘缓存切换；通过 `accountStateProvider` 通知账号变化 |
@@ -223,7 +223,7 @@ User-Agent 也迁入 `AdvancedConnectionSettingsTile`；对应 setter 统一同�
 | --- | --- |
 | 下载 / 传输队列 | `core/transfer/transfer_manager.dart`、`core/transfer/resumable_downloader.dart`、`core/download_target.dart`、`core/download_dir.dart`、`core/saved_file.dart`、`ui/transfers_page.dart`、`ui/download_mark.dart` |
 | 上传 / 文件选择 / 保存 | `core/file_picker_channel.dart`、`core/system_file_saver.dart`、`core/shared_downloads_storage.dart`、`ui/drop_actions.dart` |
-| 网盘同名文件清理 / 显式加载全部分页 | `ui/drive_page.dart`、`ui/duplicate_file_sheet.dart`、`core/duplicate_files.dart`、`core/file_name_collation.dart` |
+| 网盘同名文件清理 / 显式加载全部分页 | `ui/drive_page.dart`（支持 `CancelToken`）、`ui/duplicate_file_sheet.dart`、`core/duplicate_files.dart`、`core/file_name_collation.dart` |
 | 登录 / 鉴权 / 反爬 | `core/cookie_auth.dart`、`core/api/acw_sc_v2.dart`、`ui/login_page.dart`、`ui/web_login_page.dart`、`ui/cookie_sheet.dart` |
 | 分享链接 / 提取码 | `core/lanzou_link.dart`、`ui/share_page.dart`、`ui/share_file_sheet.dart`、`ui/share_folder_page.dart`、`ui/share_password_dialog.dart` |
 | 收藏文件夹更新 / 失效 | `core/favorites/*`、`core/favorite_monitor_models.dart`、`core/data/app_db.dart`、`ui/favorites_page.dart`、`ui/favorite_monitor_settings_tile.dart`、`core/notifications.dart` |

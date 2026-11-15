@@ -626,14 +626,6 @@
   "sameNamedFilesTitle": "Same-name files in this folder",
   "sameNamedFilesIncomplete": "Not all content is loaded; results may be incomplete",
   "sameNamedFilesEmpty": "No same-name files found",
-  "sameNamedFilesItemCount": "{count} items",
-  "@sameNamedFilesItemCount": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "keepLatest": "Keep latest",
   "sameNamedFilesSummary": "{groups} groups, {files} same-name files",
   "@sameNamedFilesSummary": {

@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart'
+    show CancelToken, DioException, DioExceptionType, RequestOptions;
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
@@ -53,8 +55,9 @@ class _FakeClient extends LanzouClient {
   @override
   Future<({List<LzFile> files, bool hasMore})> listFilesPage(
     String folderId,
-    int page,
-  ) async {
+    int page, {
+    CancelToken? cancelToken,
+  }) async {
     filePages.add(page);
     filePageFolders.add(folderId);
     // 根目录：没有文件，也没有下一页
@@ -89,8 +92,9 @@ class _IncompleteSearchClient extends LanzouClient {
   @override
   Future<({List<LzFile> files, bool hasMore})> listFilesPage(
     String folderId,
-    int page,
-  ) async {
+    int page, {
+    CancelToken? cancelToken,
+  }) async {
     filePages.add(page);
     return page == 1
         ? (
@@ -112,6 +116,7 @@ class _LoadAllClient extends LanzouClient {
       Completer<({List<LzFile> files, bool hasMore})>();
   final Completer<({List<LzFile> files, bool hasMore})> thirdPage =
       Completer<({List<LzFile> files, bool hasMore})>();
+  CancelToken? page2CancelToken;
 
   @override
   Future<({List<LzFolder> folders, List<PathNode> path})> listFolders(
@@ -121,9 +126,25 @@ class _LoadAllClient extends LanzouClient {
   @override
   Future<({List<LzFile> files, bool hasMore})> listFilesPage(
     String folderId,
-    int page,
-  ) {
+    int page, {
+    CancelToken? cancelToken,
+  }) {
     filePages.add(page);
+    if (page == 2 && cancelToken != null) {
+      page2CancelToken = cancelToken;
+      unawaited(
+        cancelToken.whenCancel.then((_) {
+          if (!secondPage.isCompleted) {
+            secondPage.completeError(
+              DioException(
+                requestOptions: RequestOptions(path: '/canceled'),
+                type: DioExceptionType.cancel,
+              ),
+            );
+          }
+        }),
+      );
+    }
     return switch (page) {
       1 => Future.value((
         files: [
@@ -144,8 +165,9 @@ class _ScrollMemoryClient extends _FakeClient {
   @override
   Future<({List<LzFile> files, bool hasMore})> listFilesPage(
     String folderId,
-    int page,
-  ) {
+    int page, {
+    CancelToken? cancelToken,
+  }) {
     if (folderId == '-1') {
       return Future.value((
         files: [
@@ -449,14 +471,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
     }
     expect(find.text('已加载 1 页'), findsNothing);
-
-    client.secondPage.complete((
-      files: [
-        LzFile(id: 'page2-a', name: 'page2-a.zip', size: '1 M', time: ''),
-        LzFile(id: 'page2-b', name: 'page2-b.zip', size: '1 M', time: ''),
-      ],
-      hasMore: true,
-    ));
+    expect(client.page2CancelToken?.isCancelled, isTrue);
     await tester.pumpAndSettle();
 
     expect(client.filePages, [1, 2]);

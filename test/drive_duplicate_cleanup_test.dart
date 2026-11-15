@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart' show CancelToken;
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
@@ -17,7 +18,9 @@ import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/delegates.dart';
+import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/drive_page.dart';
+import 'package:lancloud/ui/m3e.dart';
 
 import 'transfer_dependencies_test.dart'
     show buildTransferManagerForEnvironment;
@@ -39,8 +42,9 @@ class _CleanupClient extends LanzouClient {
   @override
   Future<({List<LzFile> files, bool hasMore})> listFilesPage(
     String folderId,
-    int page,
-  ) async => page == 1
+    int page, {
+    CancelToken? cancelToken,
+  }) async => page == 1
       ? (files: files, hasMore: hasMore)
       : (files: const <LzFile>[], hasMore: false);
 
@@ -137,10 +141,28 @@ void main() {
     await _pumpDrive(tester, client);
     await _openCleanup(tester);
 
-    expect(find.text('该目录下的同名文件'), findsOneWidget);
+    final titleFinder = find.text('该目录下的同名文件');
+    expect(titleFinder, findsOneWidget);
+    final title = tester.widget<Text>(titleFinder);
+    final titleContext = tester.element(titleFinder);
+    expect(
+      title.style?.fontWeight,
+      titleContext.m3eEmphasizedTheme.titleLarge?.fontWeight,
+    );
     expect(find.text('未加载全部内容，结果可能不全'), findsOneWidget);
-    expect(find.text('3 项'), findsOneWidget);
+    expect(
+      find.descendant(of: find.byType(SectionHeader), matching: find.text('3')),
+      findsOneWidget,
+    );
     expect(find.text('共 1 组 3 个同名文件'), findsOneWidget);
+    final sheetGroup = find.byType(SheetListGroup);
+    final segmentedList = tester.widget<SegmentedList>(
+      find
+          .descendant(of: sheetGroup, matching: find.byType(SegmentedList))
+          .first,
+    );
+    final scheme = Theme.of(tester.element(sheetGroup)).colorScheme;
+    expect(segmentedList.color, scheme.surfaceContainer);
 
     final deleteButton = tester.widget<FilledButton>(
       find.widgetWithText(FilledButton, '删除'),
@@ -181,6 +203,32 @@ void main() {
     expect(client.deletedIds, containsAll(<String>['older', 'oldest']));
     expect(client.deletedIds, isNot(contains('newest')));
     expect(find.text('已删除 2 个同名文件'), findsOneWidget);
+  });
+
+  testWidgets('大量同名文件使用懒加载列表', (tester) async {
+    final client = _CleanupClient(
+      hasMore: false,
+      files: [
+        for (var i = 0; i < 40; i++)
+          LzFile(
+            id: 'same-$i',
+            name: 'same.zip',
+            time: '${i + 1} 天前',
+            size: '1 M',
+          ),
+      ],
+    );
+    await _pumpDrive(tester, client);
+    await _openCleanup(tester);
+
+    expect(
+      find.descendant(
+        of: find.byType(SectionHeader),
+        matching: find.text('40'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.byType(Md3ListItem).evaluate().length, lessThan(40));
   });
 
   testWidgets('同名文件单项删除失败时保留失败项并提示部分成功', (tester) async {

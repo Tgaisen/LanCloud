@@ -1684,11 +1684,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sameNamedFilesEmpty => 'No same-name files found';
 
   @override
-  String sameNamedFilesItemCount(int count) {
-    return '$count items';
-  }
-
-  @override
   String get keepLatest => 'Keep latest';
 
   @override

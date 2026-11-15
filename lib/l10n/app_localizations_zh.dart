@@ -1620,11 +1620,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sameNamedFilesEmpty => '未找到同名文件';
 
   @override
-  String sameNamedFilesItemCount(int count) {
-    return '$count 项';
-  }
-
-  @override
   String get keepLatest => '保留最新';
 
   @override
