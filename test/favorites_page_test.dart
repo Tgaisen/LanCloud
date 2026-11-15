@@ -6,17 +6,28 @@ import 'package:lancloud/core/api/lanzou_client_registry.dart';
 import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/data/app_db_provider.dart';
 import 'package:lancloud/core/drive_state.dart';
+import 'package:lancloud/core/favorite_monitor_models.dart';
 import 'package:lancloud/core/list_home_settings_state.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
+import 'package:lancloud/core/transfer/transfer_manager.dart';
+import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/app_icons.dart';
 import 'package:lancloud/ui/favorites_page.dart';
 import 'package:lancloud/ui/m3e.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
-Widget _host(AppEnvironment environment, Widget home) => ProviderScope(
+import 'transfer_dependencies_test.dart'
+    show buildTransferManagerForEnvironment;
+
+Widget _host(
+  AppEnvironment environment,
+  Widget home, {
+  TransferManager? transfers,
+}) => ProviderScope(
   overrides: [
     accountStateProvider.overrideWithValue(environment.accountState),
     lanzouClientRegistryProvider.overrideWithValue(environment.clientRegistry),
@@ -29,6 +40,7 @@ Widget _host(AppEnvironment environment, Widget home) => ProviderScope(
       environment.navigationAppearanceSettings,
     ),
     navigationStateProvider.overrideWithValue(environment.navigation),
+    if (transfers != null) transferManagerProvider.overrideWithValue(transfers),
   ],
   child: MaterialApp(
     localizationsDelegates: appLocalizationsDelegates,
@@ -202,5 +214,88 @@ void main() {
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
     expect(find.byType(FavoritesPage), findsNothing);
+  });
+
+  testWidgets('收藏多选：分区可选择全部或仅选择已失效项', (tester) async {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
+    final transfers = buildTransferManagerForEnvironment(environment);
+    addTearDown(transfers.dispose);
+    await tester.runAsync(() async {
+      await environment.db.addFavorite(
+        kind: 'shareFolder',
+        name: '普通文件夹',
+        ref: 'https://example.com/folder-ok',
+      );
+      await environment.db.addFavorite(
+        kind: 'shareFolder',
+        name: '失效文件夹',
+        ref: 'https://example.com/folder-invalid',
+      );
+      await environment.db.addFavorite(
+        kind: 'shareFile',
+        name: '普通文件.txt',
+        ref: 'https://example.com/file-ok',
+      );
+      await environment.db.addFavorite(
+        kind: 'shareFile',
+        name: '失效文件.txt',
+        ref: 'https://example.com/file-invalid',
+      );
+      final favorites = await environment.db.favorites();
+      for (final favorite in favorites.where(
+        (item) => item.ref.contains('invalid'),
+      )) {
+        await environment.db.saveFavoriteShareStatus(
+          id: favorite.id,
+          status: FavoriteShareStatus.unavailable,
+          checkedAt: 1,
+        );
+      }
+    });
+
+    await tester.pumpWidget(
+      _host(environment, const FavoritesPage(), transfers: transfers),
+    );
+    await tester.pump();
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 10)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('favorites-folders-select-all')),
+      findsNothing,
+    );
+    expect(find.text('选择'), findsNothing);
+    expect(find.text('选择失效'), findsNothing);
+
+    await tester.tap(find.byTooltip('菜单'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('多选'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('favorites-folders-select-unavailable')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('favorites-files-select-unavailable')),
+      findsOneWidget,
+    );
+    expect(find.text('选择'), findsNWidgets(2));
+    expect(find.text('选择失效'), findsNWidgets(2));
+
+    await tester.tap(find.byKey(const ValueKey('favorites-files-select-all')));
+    await tester.pump();
+    expect(find.text('已选择 2 项'), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(const ValueKey('favorites-folders-select-unavailable')),
+    );
+    await tester.pump();
+    expect(find.text('已选择 3 项'), findsOneWidget);
   });
 }

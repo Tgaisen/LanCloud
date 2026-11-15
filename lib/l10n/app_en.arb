@@ -468,6 +468,7 @@
   "selectedCount": "{count} selected",
   "selectAll": "Select all",
   "select": "Select",
+  "selectUnavailable": "Select unavailable",
   "invertSelection": "Invert selection",
   "newFolder": "New folder",
   "uploadFile": "Upload files",

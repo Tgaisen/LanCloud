@@ -247,6 +247,43 @@ void main() {
     );
   });
 
+  testWidgets('隐藏底栏的传输页从首页打开时，已收起的顶栏会完全展开', (tester) async {
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
+    environment.runtimeState.ready.value = true;
+    environment.settingsState.store.navShowTransfers = false;
+    environment.settingsState.store.navShowFavorites = false;
+    environment.accountState.store.accounts.add(
+      Account(uid: '556911', cookie: 'c', nickname: '土豆'),
+    );
+    environment.accountState.store.activeUid = '556911';
+    final transfers = buildTransferManagerForEnvironment(environment);
+    addTearDown(transfers.dispose);
+
+    await tester.pumpWidget(_rootShellHost(environment, transfers));
+    await tester.pumpAndSettle();
+    environment.navigation
+      ..topBarHide.value = 0.6
+      ..barsHide.value = 0.6
+      ..switchTab(2);
+
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TransfersPage), findsOneWidget);
+    expect(environment.navigation.topBarHide.value, 0);
+    expect(environment.navigation.barsHide.value, 0);
+    final transfersAppBar = find
+        .descendant(
+          of: find.byType(TransfersPage),
+          matching: find.byType(AppBar),
+        )
+        .first;
+    expect(tester.getTopLeft(transfersAppBar).dy, closeTo(0, 0.5));
+  });
+
   testWidgets('跨越宽窄布局阈值时，标签页、滚动与多选状态保持', (tester) async {
     tester.view.physicalSize = const Size(400, 800);
     tester.view.devicePixelRatio = 1.0;

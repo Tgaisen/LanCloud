@@ -1236,6 +1236,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get select => 'Select';
 
   @override
+  String get selectUnavailable => 'Select unavailable';
+
+  @override
   String get invertSelection => 'Invert selection';
 
   @override

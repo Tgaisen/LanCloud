@@ -2261,6 +2261,12 @@ abstract class AppLocalizations {
   /// **'选择'**
   String get select;
 
+  /// No description provided for @selectUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择失效'**
+  String get selectUnavailable;
+
   /// No description provided for @invertSelection.
   ///
   /// In zh, this message translates to:

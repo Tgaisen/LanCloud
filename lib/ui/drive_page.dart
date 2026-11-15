@@ -3394,7 +3394,9 @@ class _DrivePageState extends ConsumerState<DrivePage>
     final grid = _cacheSettings.gridView;
     final compact = MediaQuery.sizeOf(context).width < kLargeLayoutBreakpoint;
     return Padding(
-      padding: const EdgeInsets.only(right: 12),
+      // 小屏的独立图标按钮与 AppBar actions 一样贴边、相邻无额外间距；
+      // 大屏仍保留连接视图组右侧的 12dp 呼吸位。
+      padding: EdgeInsets.only(right: compact ? 0 : 12),
       child: Row(
         children: [
           Expanded(
@@ -3417,7 +3419,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
               ),
             ),
           ),
-          const SizedBox(width: 4),
+          if (!compact) const SizedBox(width: 4),
           Builder(
             builder: (BuildContext anchorContext) => M3eIconButton(
               tooltip: context.l10n.sort,
@@ -3426,7 +3428,6 @@ class _DrivePageState extends ConsumerState<DrivePage>
             ),
           ),
           if (compact) ...[
-            const SizedBox(width: 4),
             Builder(
               builder: (BuildContext anchorContext) => M3eIconButton(
                 tooltip: context.l10n.viewMode,
@@ -5682,7 +5683,6 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
                       horizontalPadding: 0,
                     ),
                   ),
-                  const SizedBox(width: 4),
                   Builder(
                     builder: (BuildContext anchorContext) => M3eIconButton(
                       tooltip: l10n.sort,
@@ -5692,7 +5692,6 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
                           : () => _showFolderSortMenu(anchorContext),
                     ),
                   ),
-                  const SizedBox(width: 4),
                   M3eIconButton(
                     tooltip: l10n.newFolder,
                     icon: Icons.create_new_folder_outlined,
