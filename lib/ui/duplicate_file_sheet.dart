@@ -189,7 +189,7 @@ class _SameNamedFilesSheetState extends State<_SameNamedFilesSheet> {
         _header(context),
         if (widget.hasMore) _incompleteNotice(context),
         Expanded(
-          child: CustomScrollView(
+          child: SheetNestedScrollView(
             slivers: [
               for (final group in scan.groups)
                 SliverMainAxisGroup(

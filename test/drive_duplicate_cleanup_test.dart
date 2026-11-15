@@ -271,6 +271,36 @@ void main() {
     expect(find.byKey(const ValueKey('same-name-delete')), findsOneWidget);
   });
 
+  testWidgets('列表到顶后继续下拉会带动弹窗并在松手后回弹', (tester) async {
+    final client = _CleanupClient(
+      hasMore: false,
+      files: [
+        for (var i = 0; i < 40; i++)
+          LzFile(
+            id: 'same-$i',
+            name: 'same.zip',
+            time: '${i + 1} 天前',
+            size: '1 M',
+          ),
+      ],
+    );
+    await _pumpDrive(tester, client);
+    await _openCleanup(tester);
+
+    final title = find.text('该目录下的同名文件');
+    final initialY = tester.getTopLeft(title).dy;
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byType(CustomScrollView).last),
+    );
+    await gesture.moveBy(const Offset(0, 160));
+    await tester.pump();
+    expect(tester.getTopLeft(title).dy, greaterThan(initialY + 40));
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(title).dy, closeTo(initialY, 1));
+  });
+
   testWidgets('同名文件单项删除失败时保留失败项并提示部分成功', (tester) async {
     final client = _CleanupClient(
       hasMore: false,

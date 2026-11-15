@@ -1765,6 +1765,7 @@ Future<T?> showAppSheet<T>(
     barrierOnTapHint: localizations.scrimOnTapHint(
       localizations.bottomSheetLabel,
     ),
+    enableDrag: fitContent,
     modalBarrierColor: Theme.of(context).bottomSheetTheme.modalBarrierColor,
     sheetAnimationStyle: animationStyle,
     // 通铺整屏时让「弹窗窗体」整体避开左右挖孔：useSafeArea 作用在弹窗
@@ -1783,6 +1784,7 @@ Future<T?> showAppSheet<T>(
 class _AppBottomSheetRoute<T> extends ModalBottomSheetRoute<T> {
   _AppBottomSheetRoute({
     required this.routeAnimation,
+    required super.enableDrag,
     required super.builder,
     required super.capturedThemes,
     required super.isScrollControlled,
@@ -2078,8 +2080,16 @@ class _MeasuredSheetState extends State<MeasuredSheet> {
   /// 指针速度采样：用于判断“快速下滑关闭”。
   VelocityTracker? _tracker;
   int? _pointer;
+  Offset? _lastPointerPosition;
   bool _draggedSheet = false;
   bool _routeDragStarted = false;
+  final ScrollController _fixedScrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _fixedScrollController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -2192,6 +2202,7 @@ class _MeasuredSheetState extends State<MeasuredSheet> {
 
   void _onPointerDown(PointerDownEvent event) {
     _pointer = event.pointer;
+    _lastPointerPosition = event.position;
     _draggedSheet = false;
     _tracker = VelocityTracker.withKind(event.kind)
       ..addPosition(event.timeStamp, event.position);
@@ -2199,11 +2210,23 @@ class _MeasuredSheetState extends State<MeasuredSheet> {
 
   void _onPointerMove(PointerMoveEvent event) {
     if (event.pointer != _pointer) return;
+    final previous = _lastPointerPosition;
+    _lastPointerPosition = event.position;
     _tracker?.addPosition(event.timeStamp, event.position);
+    if (!widget.fitContent &&
+        previous != null &&
+        _fixedScrollController.hasClients) {
+      final deltaY = event.position.dy - previous.dy;
+      final position = _fixedScrollController.position;
+      if (deltaY > 0 && position.extentBefore <= precisionErrorTolerance) {
+        _distributeDrag(deltaY, position);
+      }
+    }
   }
 
   void _clearPointer() {
     _pointer = null;
+    _lastPointerPosition = null;
     _tracker = null;
   }
 
@@ -2258,7 +2281,20 @@ class _MeasuredSheetState extends State<MeasuredSheet> {
   @override
   Widget build(BuildContext context) {
     if (!widget.fitContent) {
-      return SizedBox(height: widget.maxHeight, child: widget.child);
+      return SizedBox(
+        height: widget.maxHeight,
+        child: Listener(
+          onPointerDown: _onPointerDown,
+          onPointerMove: _onPointerMove,
+          onPointerUp: _onPointerUp,
+          onPointerCancel: _onPointerCancel,
+          child: _SheetDragScope(
+            distributeDrag: _distributeDrag,
+            scrollController: _fixedScrollController,
+            child: widget.child,
+          ),
+        ),
+      );
     }
     final measured = _contentHeight;
     return Opacity(
@@ -2307,8 +2343,53 @@ class _SheetDragPhysics extends ClampingScrollPhysics {
       onOffset(offset, position);
 
   @override
+  bool shouldAcceptUserOffset(ScrollMetrics position) => true;
+
+  @override
   _SheetDragPhysics applyTo(ScrollPhysics? ancestor) =>
       _SheetDragPhysics(parent: buildParent(ancestor), onOffset: onOffset);
+}
+
+class _SheetDragScope extends InheritedWidget {
+  const _SheetDragScope({
+    required this.distributeDrag,
+    required this.scrollController,
+    required super.child,
+  });
+
+  final double Function(double offset, ScrollMetrics position) distributeDrag;
+  final ScrollController scrollController;
+
+  static _SheetDragScope? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_SheetDragScope>();
+
+  @override
+  bool updateShouldNotify(_SheetDragScope oldWidget) => false;
+}
+
+/// 固定高度底部弹窗里的懒加载滚动视图。
+///
+/// 在弹窗内容中会把手势位移自动分配给内部列表和弹窗外壳：列表未到边界时
+/// 正常滚动，到顶后继续下拉则无缝带动整个弹窗。
+class SheetNestedScrollView extends StatelessWidget {
+  const SheetNestedScrollView({super.key, required this.slivers});
+
+  final List<Widget> slivers;
+
+  @override
+  Widget build(BuildContext context) {
+    final scope = _SheetDragScope.maybeOf(context);
+    return CustomScrollView(
+      controller: scope?.scrollController,
+      physics: scope == null
+          ? const AlwaysScrollableScrollPhysics()
+          : _SheetDragPhysics(
+              parent: const AlwaysScrollableScrollPhysics(),
+              onOffset: scope.distributeDrag,
+            ),
+      slivers: slivers,
+    );
+  }
 }
 
 /// 分组标题 + 数量 chip（传输、收藏等列表视图共用）。

@@ -214,6 +214,7 @@ User-Agent 也迁入 `AdvancedConnectionSettingsTile`；对应 setter 统一同�
 | `core/lanzou_link.dart` | 分享链接解析 |
 | `ui/m3e.dart` | MD3E 组件统一出口（`export` + 薄封装）与外壳悬浮导航栏；页面只从这里取 MD3E 控件 |
 | `ui/common.dart` | 跨页面共用的小组件与常量 |
+| `SheetNestedScrollView` | `ui/common.dart` 中的固定高度底部弹窗懒加载滚动视图，到边界后把同一手势交接给弹窗路由 |
 | `ui/duplicate_file_sheet.dart` | 当前目录同名文件底部弹窗、组内多选与“保留最新” |
 | `app.dart` | 主题构建（`buildTheme` / `buildLanCloudTheme`）、`MaterialApp`、`RootShell` |
 
