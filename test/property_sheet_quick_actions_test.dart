@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:dio/dio.dart' show CancelToken;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
@@ -70,8 +71,9 @@ class _FakeClient extends LanzouClient {
   @override
   Future<({List<LzFile> files, bool hasMore})> listFilesPage(
     String folderId,
-    int page,
-  ) async => (
+    int page, {
+    CancelToken? cancelToken,
+  }) async => (
     files: folderId == '-1' && page == 1
         ? [
             LzFile(
@@ -166,8 +168,9 @@ class _ManyFilesClient extends _FakeClient {
   @override
   Future<({List<LzFile> files, bool hasMore})> listFilesPage(
     String folderId,
-    int page,
-  ) async => (
+    int page, {
+    CancelToken? cancelToken,
+  }) async => (
     files: folderId == '-1' && page == 1
         ? [
             for (var i = 1; i <= 3; i++)
@@ -270,8 +273,9 @@ class _OrderedClient extends _FakeClient {
   @override
   Future<({List<LzFile> files, bool hasMore})> listFilesPage(
     String folderId,
-    int page,
-  ) async => (
+    int page, {
+    CancelToken? cancelToken,
+  }) async => (
     files: folderId == '-1' && page == 1
         ? [
             LzFile(

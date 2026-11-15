@@ -33,6 +33,47 @@ void main() {
     expect(padding.padding, const EdgeInsets.fromLTRB(4, 16, 4, 8));
   });
 
+  testWidgets('分组标题的多个操作靠右并保持单行', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(360, 800);
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: theme,
+        home: Scaffold(
+          body: SectionHeader(
+            title: '文件夹',
+            count: 5,
+            actions: [
+              TextButton(
+                key: const ValueKey('first-action'),
+                onPressed: () {},
+                child: const Text('选择失效'),
+              ),
+              TextButton(
+                key: const ValueKey('second-action'),
+                onPressed: () {},
+                child: const Text('选择'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    final headerRect = tester.getRect(find.byType(SectionHeader));
+    final firstRect = tester.getRect(
+      find.byKey(const ValueKey('first-action')),
+    );
+    final secondRect = tester.getRect(
+      find.byKey(const ValueKey('second-action')),
+    );
+
+    expect(firstRect.center.dy, closeTo(secondRect.center.dy, 0.1));
+    expect(secondRect.right, closeTo(headerRect.right - 4, 0.1));
+  });
+
   testWidgets('单行提示卡的文字在容器内垂直居中', (tester) async {
     await tester.pumpWidget(
       MaterialApp(

@@ -1600,6 +1600,49 @@ class AppLocalizationsZh extends AppLocalizations {
   String get refresh => '刷新';
 
   @override
+  String get loadAllRemaining => '加载全部剩余内容';
+
+  @override
+  String loadAllRemainingProgress(int count) {
+    return '已加载 $count 页';
+  }
+
+  @override
+  String get cleanSameNamedFiles => '清理同名文件';
+
+  @override
+  String get sameNamedFilesTitle => '该目录下的同名文件';
+
+  @override
+  String get sameNamedFilesIncomplete => '未加载全部内容，结果可能不全';
+
+  @override
+  String get sameNamedFilesEmpty => '未找到同名文件';
+
+  @override
+  String get keepLatest => '保留最新';
+
+  @override
+  String sameNamedFilesSummary(int groups, int files) {
+    return '共 $groups 组 $files 个同名文件';
+  }
+
+  @override
+  String sameNamedFilesDeleteConfirm(int count) {
+    return '将把选中的 $count 个同名文件移入回收站，继续吗？';
+  }
+
+  @override
+  String sameNamedFilesDeleteSuccess(int count) {
+    return '已删除 $count 个同名文件';
+  }
+
+  @override
+  String deletePartialResult(int success, int failed) {
+    return '已删除 $success 个，失败 $failed 个';
+  }
+
+  @override
   String get root => '根目录';
 
   @override

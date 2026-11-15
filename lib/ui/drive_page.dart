@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:dio/dio.dart' show CancelToken;
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:material_ui/material_ui.dart' hide Icons;
-import 'package:lpinyin/lpinyin.dart';
 import 'package:path/path.dart' as p;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -16,7 +18,9 @@ import '../core/data/app_db.dart';
 import '../core/data/app_db_provider.dart';
 import '../core/drive_cache.dart';
 import '../core/drive_state.dart';
+import '../core/duplicate_files.dart';
 import '../core/file_picker_channel.dart';
+import '../core/file_name_collation.dart';
 import '../core/list_home_settings_state.dart';
 import '../core/navigation_appearance_settings_state.dart';
 import '../core/navigation_state.dart';
@@ -28,6 +32,7 @@ import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
 import 'download_mark.dart';
+import 'duplicate_file_sheet.dart';
 import 'm3e.dart';
 import 'reduce_motion.dart';
 import 'rename_dialogs.dart';
@@ -40,13 +45,6 @@ const double _driveEnterDurationMs = 720;
 const double _driveEnterItemDurationMs = 232;
 const double _driveEnterStepMs = 26;
 
-String _lanzouNameSortKey(String name) =>
-    PinyinHelper.getPinyinE(name, separator: '', defPinyin: '~').toLowerCase();
-
-String _downloadCountLabel(BuildContext context, int count) {
-  return '${context.l10n.propertyDownloadCount} $count';
-}
-
 /// 文件夹没有时间 / 大小字段，按网盘页的既有约定处理：
 /// 时间升序沿用服务端顺序，降序反转；名称按拼音比较；大小 / 下载数保持原序。
 List<LzFolder> _sortLzFoldersForDisplay(
@@ -57,8 +55,7 @@ List<LzFolder> _sortLzFoldersForDisplay(
   var list = List<LzFolder>.of(folders);
   if (sortMode == 'name') {
     list.sort(
-      (a, b) =>
-          _lanzouNameSortKey(a.name).compareTo(_lanzouNameSortKey(b.name)),
+      (a, b) => lanzouNameSortKey(a.name).compareTo(lanzouNameSortKey(b.name)),
     );
     if (!ascending) list = list.reversed.toList();
   } else if (sortMode != 'size' && sortMode != 'downloads' && !ascending) {
@@ -95,6 +92,8 @@ enum _FolderMenuAction {
 enum _DriveMenuAction {
   multiSelect,
   refresh,
+  loadAllRemaining,
+  cleanSameNamedFiles,
   toggleQuickAccess,
   folderProperties,
 }
@@ -104,6 +103,75 @@ enum _AddMenuAction { newFolder, uploadFile, uploadFromApp }
 
 /// 网盘多选操作栏“更多”菜单里的动作。
 enum _BatchMoreAction { password, move, rename, editDescription }
+
+/// “加载全部剩余内容”的进度弹窗：总页数未知，只持续更新已成功加载的页数。
+Future<void> showPageLoadProgressDialog(
+  BuildContext context, {
+  required ValueListenable<int> loadedPages,
+  required VoidCallback onCancel,
+}) {
+  final l10n = context.l10n;
+  final textStyle = Theme.of(context).textTheme.bodyLarge;
+  return showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (dialogContext) {
+      var closed = false;
+      void cancel() {
+        if (closed) return;
+        closed = true;
+        onCancel();
+        Navigator.of(dialogContext).pop();
+      }
+
+      return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) cancel();
+        },
+        child: Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(28),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 12, 20),
+            child: SizedBox(
+              key: const ValueKey('load-pages-progress-row'),
+              width: (MediaQuery.sizeOf(dialogContext).width - 80)
+                  .clamp(240.0, 360.0)
+                  .toDouble(),
+              child: Row(
+                children: [
+                  const M3eCircularProgressIndicator(size: 28, strokeWidth: 3),
+                  const SizedBox(width: 20),
+                  Expanded(
+                    child: ValueListenableBuilder<int>(
+                      valueListenable: loadedPages,
+                      builder: (context, count, _) => Semantics(
+                        liveRegion: true,
+                        child: Text(
+                          l10n.loadAllRemainingProgress(count),
+                          style: textStyle,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  M3eIconButton(
+                    key: const ValueKey('load-pages-cancel'),
+                    tooltip: l10n.cancel,
+                    icon: Icons.close,
+                    onPressed: cancel,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    },
+  );
+}
 
 /// 文件条目和文件属性页共用的动作菜单。
 ///
@@ -317,6 +385,10 @@ class _DrivePageState extends ConsumerState<DrivePage>
   bool _loading = true;
   bool _loadingMore = false;
 
+  /// 目录快照的代数：刷新、切目录或换账号后，旧请求不得再写入当前列表。
+  int _listingGeneration = 0;
+  CancelToken? _pageLoadCancelToken;
+
   /// 上一次拉取下一页失败（且还有下一页）：底部给出「重试」入口。
   bool _loadFailed = false;
 
@@ -419,6 +491,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
     _keyboardUp.dispose();
     _drive.folderRequest.removeListener(_onDriveFolderRequest);
     _transfers.removeTaskListener(_onTaskDone);
+    _pageLoadCancelToken?.cancel();
     if (_isShellPage) {
       _navigation.onDriveBack = null;
       // 外壳里的网盘页卸载后不再拦截返回，交回系统（预测性返回桌面）。
@@ -508,6 +581,8 @@ class _DrivePageState extends ConsumerState<DrivePage>
   Future<bool> _refreshInPlace({bool refreshFolders = false}) async {
     final client = _activeClient();
     if (client == null) return false;
+    _pageLoadCancelToken?.cancel();
+    final generation = ++_listingGeneration;
     try {
       // 已经加载过几页就刷新几页，避免局部刷新把后面的条目吞掉
       final listing = await _fetchListing(
@@ -515,7 +590,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
         maxPages: math.max(_page, 1),
         withFolders: refreshFolders,
       );
-      if (!mounted) return false;
+      if (!mounted || generation != _listingGeneration) return false;
       _applyListing(
         folders: refreshFolders ? listing.folders : _folders,
         files: listing.files,
@@ -534,6 +609,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
     LanzouClient client, {
     int? maxPages,
     bool withFolders = true,
+    bool showProgress = false,
   }) async {
     final foldersResult = withFolders
         ? await client.listFolders(_folderId)
@@ -543,11 +619,52 @@ class _DrivePageState extends ConsumerState<DrivePage>
     var files = first.files;
     var hasMore = first.hasMore;
     var page = 1;
-    while (hasMore && page < limit) {
-      page += 1;
-      final next = await client.listFilesPage(_folderId, page);
-      files = [...files, ...next.files];
-      hasMore = next.hasMore;
+    var canceled = false;
+    if (mounted && showProgress && hasMore && limit > 1) {
+      final cancelToken = CancelToken();
+      _pageLoadCancelToken = cancelToken;
+      final loadedPages = ValueNotifier<int>(page);
+      var progressOpen = true;
+      final navigator = Navigator.of(context);
+      final progressDone = showPageLoadProgressDialog(
+        context,
+        loadedPages: loadedPages,
+        onCancel: () {
+          canceled = true;
+          cancelToken.cancel('canceled');
+        },
+      );
+      unawaited(
+        progressDone.then(
+          (_) => progressOpen = false,
+          onError: (Object _, StackTrace _) => progressOpen = false,
+        ),
+      );
+      try {
+        while (mounted && !canceled && hasMore && page < limit) {
+          final nextPage = page + 1;
+          final next = await client.listFilesPage(
+            _folderId,
+            nextPage,
+            cancelToken: cancelToken,
+          );
+          if (!mounted || canceled) break;
+          files = [...files, ...next.files];
+          hasMore = next.hasMore;
+          page = nextPage;
+          loadedPages.value = page;
+        }
+      } catch (_) {
+        if (!canceled) rethrow;
+      } finally {
+        if (identical(_pageLoadCancelToken, cancelToken)) {
+          _pageLoadCancelToken = null;
+        }
+        if (progressOpen && mounted && navigator.canPop()) {
+          navigator.pop();
+        }
+        await progressDone;
+      }
     }
     return _Listing(
       folders: foldersResult?.folders ?? const [],
@@ -555,6 +672,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
       path: foldersResult?.path ?? const [],
       page: page,
       hasMore: hasMore,
+      canceled: canceled,
     );
   }
 
@@ -657,8 +775,14 @@ class _DrivePageState extends ConsumerState<DrivePage>
     setState(() {
       _removingFiles.removeAll(fileIds);
       _removingFolders.removeAll(folderIds);
-      _files.removeWhere((f) => fileIds.contains(f.id));
-      _folders.removeWhere((f) => folderIds.contains(f.id));
+      _files = [
+        for (final file in _files)
+          if (!fileIds.contains(file.id)) file,
+      ];
+      _folders = [
+        for (final folder in _folders)
+          if (!folderIds.contains(folder.id)) folder,
+      ];
     });
     _updateCacheSnapshot();
   }
@@ -838,6 +962,8 @@ class _DrivePageState extends ConsumerState<DrivePage>
   Future<void> _load({bool force = false}) async {
     final client = _activeClient();
     if (client == null) return;
+    _pageLoadCancelToken?.cancel();
+    final generation = ++_listingGeneration;
 
     final cached = _cacheSettings.cacheFolders
         ? _drive.cache.get(_folderId)
@@ -858,8 +984,14 @@ class _DrivePageState extends ConsumerState<DrivePage>
         _error = null;
       });
       _playEnterAnimation();
-      // 缓存里也还留着「还有下一页」时，同样按需补页
-      _fillViewportIfNeeded();
+      if (_cacheSettings.loadAllPages && _hasMore) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _loadAllRemaining();
+        });
+      } else {
+        // 缓存里也还留着「还有下一页」时，同样按需补页
+        _fillViewportIfNeeded();
+      }
       return;
     }
 
@@ -870,8 +1002,11 @@ class _DrivePageState extends ConsumerState<DrivePage>
       _error = null;
     });
     try {
-      final listing = await _fetchListing(client);
-      if (!mounted) return;
+      final listing = await _fetchListing(
+        client,
+        showProgress: _cacheSettings.loadAllPages,
+      );
+      if (!mounted || generation != _listingGeneration) return;
       _exitAnim.value = 0;
       setState(() {
         _folders = listing.folders;
@@ -895,12 +1030,14 @@ class _DrivePageState extends ConsumerState<DrivePage>
       });
       _playEnterAnimation();
       // 目录内容不足一屏时继续补页，让「已经到底了」立刻可见
-      _fillViewportIfNeeded();
+      if (!listing.canceled) {
+        _fillViewportIfNeeded();
+      }
       if (_cacheSettings.cacheFolders) {
         _drive.cache.put(_folderId, _snapshot());
       }
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || generation != _listingGeneration) return;
       setState(() {
         _error = context.l10n.lanzouError(e);
         _loading = false;
@@ -948,6 +1085,89 @@ class _DrivePageState extends ConsumerState<DrivePage>
           _fillViewportIfNeeded(immediate: true);
         });
       }
+    }
+  }
+
+  /// 显式加载当前目录剩余全部分页；用户取消时保留已成功提交的页面。
+  Future<void> _loadAllRemaining() async {
+    if (_loading || _directorySwitching || _loadingMore || !_hasMore) return;
+    final client = _activeClient();
+    if (client == null) return;
+
+    final folderId = _folderId;
+    final uid = _loadedUid;
+    final generation = ++_listingGeneration;
+    final cancelToken = CancelToken();
+    _pageLoadCancelToken = cancelToken;
+    final loadedPages = ValueNotifier<int>(_page);
+    var cancelRequested = false;
+    var progressOpen = true;
+    final navigator = Navigator.of(context);
+    final progressDone = showPageLoadProgressDialog(
+      context,
+      loadedPages: loadedPages,
+      onCancel: () {
+        cancelRequested = true;
+        cancelToken.cancel('canceled');
+      },
+    );
+    unawaited(
+      progressDone.then(
+        (_) => progressOpen = false,
+        onError: (Object _, StackTrace _) => progressOpen = false,
+      ),
+    );
+
+    setState(() {
+      _loadingMore = true;
+      _loadFailed = false;
+    });
+    try {
+      while (mounted && !cancelRequested && _hasMore) {
+        final next = await client.listFilesPage(
+          folderId,
+          _page + 1,
+          cancelToken: cancelToken,
+        );
+        if (!mounted ||
+            cancelRequested ||
+            generation != _listingGeneration ||
+            _folderId != folderId ||
+            _loadedUid != uid) {
+          break;
+        }
+        setState(() {
+          _files = [..._files, ...next.files];
+          _page += 1;
+          _hasMore = next.hasMore;
+        });
+        loadedPages.value = _page;
+        _autoRetriesLeft = _maxAutoRetries;
+        if (_cacheSettings.cacheFolders) {
+          _drive.cache.put(folderId, _snapshot());
+        }
+      }
+    } catch (e) {
+      if (mounted &&
+          !cancelRequested &&
+          generation == _listingGeneration &&
+          _folderId == folderId &&
+          _loadedUid == uid) {
+        setState(() => _loadFailed = true);
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(context.l10n.lanzouError(e))));
+      }
+    } finally {
+      if (identical(_pageLoadCancelToken, cancelToken)) {
+        _pageLoadCancelToken = null;
+      }
+      if (mounted) {
+        setState(() => _loadingMore = false);
+      }
+      if (progressOpen && mounted && navigator.canPop()) {
+        navigator.pop();
+      }
+      await progressDone;
     }
   }
 
@@ -1015,7 +1235,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
         list.sort(
           (a, b) =>
               direction *
-              _lanzouNameSortKey(a.name).compareTo(_lanzouNameSortKey(b.name)),
+              lanzouNameSortKey(a.name).compareTo(lanzouNameSortKey(b.name)),
         );
     }
     return list;
@@ -1366,28 +1586,56 @@ class _DrivePageState extends ConsumerState<DrivePage>
       context: context,
       anchor: anchor,
       alignEnd: true,
-      items: [
-        M3eMenuItem(
-          value: _DriveMenuAction.multiSelect,
-          label: l10n.multiSelect,
-          icon: Icons.checklist,
+      sections: [
+        M3eMenuSection(
+          items: [
+            M3eMenuItem(
+              value: _DriveMenuAction.multiSelect,
+              label: l10n.multiSelect,
+              icon: Icons.checklist,
+            ),
+            M3eMenuItem(
+              value: _DriveMenuAction.refresh,
+              label: l10n.refresh,
+              icon: Icons.refresh,
+              enabled: !_loadingMore,
+            ),
+          ],
         ),
-        M3eMenuItem(
-          value: _DriveMenuAction.refresh,
-          label: l10n.refresh,
-          icon: Icons.refresh,
+        M3eMenuSection(
+          items: [
+            M3eMenuItem(
+              value: _DriveMenuAction.loadAllRemaining,
+              label: l10n.loadAllRemaining,
+              icon: Icons.last_page,
+              enabled: _hasMore && !_loading && !_loadingMore,
+            ),
+            M3eMenuItem(
+              value: _DriveMenuAction.cleanSameNamedFiles,
+              label: l10n.cleanSameNamedFiles,
+              icon: Icons.file_copy,
+              enabled: !_loading && !_loadingMore,
+            ),
+          ],
         ),
-        if (currentFolder != null)
-          M3eMenuItem(
-            value: _DriveMenuAction.toggleQuickAccess,
-            label: pinned ? l10n.removeFromQuickAccess : l10n.addToQuickAccess,
-            icon: pinned ? Icons.keep_off : Icons.keep,
-          ),
-        if (!isRoot)
-          M3eMenuItem(
-            value: _DriveMenuAction.folderProperties,
-            label: l10n.folderProperties,
-            icon: Icons.info_outline,
+        if (currentFolder != null || !isRoot)
+          M3eMenuSection(
+            items: [
+              if (currentFolder != null)
+                M3eMenuItem(
+                  value: _DriveMenuAction.toggleQuickAccess,
+                  label: pinned
+                      ? l10n.removeFromQuickAccess
+                      : l10n.addToQuickAccess,
+                  icon: pinned ? Icons.keep_off : Icons.keep,
+                ),
+              if (!isRoot)
+                M3eMenuItem(
+                  value: _DriveMenuAction.folderProperties,
+                  label: l10n.folderProperties,
+                  icon: Icons.info_outline,
+                ),
+            ],
           ),
       ],
     );
@@ -1397,6 +1645,10 @@ class _DrivePageState extends ConsumerState<DrivePage>
         _enterSelection();
       case _DriveMenuAction.refresh:
         await _reloadAfterChange();
+      case _DriveMenuAction.loadAllRemaining:
+        await _loadAllRemaining();
+      case _DriveMenuAction.cleanSameNamedFiles:
+        await _cleanSameNamedFiles();
       case _DriveMenuAction.toggleQuickAccess:
         if (currentFolder != null) {
           await _toggleFolderQuickAccess(currentFolder);
@@ -1409,6 +1661,49 @@ class _DrivePageState extends ConsumerState<DrivePage>
             page: this,
           ),
         );
+    }
+  }
+
+  Future<void> _cleanSameNamedFiles() async {
+    if (_loading || _loadingMore) return;
+    final folderId = _folderId;
+    final uid = _loadedUid;
+    final selected = await showSameNamedFilesSheet(
+      context,
+      scan: scanDuplicateFiles(_files),
+      hasMore: _hasMore,
+    );
+    if (!mounted ||
+        selected == null ||
+        selected.isEmpty ||
+        folderId != _folderId ||
+        uid != _loadedUid) {
+      return;
+    }
+
+    final result = await _deleteItemIds(fileIds: selected);
+    if (!mounted) return;
+    if (result.failed == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.l10n.sameNamedFilesDeleteSuccess(
+              result.deletedFileIds.length,
+            ),
+          ),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.l10n.deletePartialResult(
+              result.deletedFileIds.length,
+              result.failed,
+            ),
+          ),
+        ),
+      );
     }
   }
 
@@ -1595,42 +1890,104 @@ class _DrivePageState extends ConsumerState<DrivePage>
     final l10n = context.l10n;
     if (!await _confirmDelete(l10n.deleteConfirmMessage(count))) return;
     if (!mounted) return;
-    final client = _activeClient();
-    if (client == null) return;
     final fileIds = _selectedFiles.toList();
     final folderIds = _selectedFolders.toList();
+    final result = await _deleteItemIds(fileIds: fileIds, folderIds: folderIds);
+    if (!mounted) return;
+
+    setState(() {
+      _selectedFiles.removeAll(result.deletedFileIds);
+      _selectedFolders.removeAll(result.deletedFolderIds);
+    });
+    if (_selectedFiles.isEmpty && _selectedFolders.isEmpty) {
+      _exitSelection();
+    }
+    if (result.failed > 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.l10n.deletePartialResult(
+              result.deletedFileIds.length + result.deletedFolderIds.length,
+              result.failed,
+            ),
+          ),
+        ),
+      );
+    }
+  }
+
+  /// 按 id 删除文件和文件夹；单项失败不会中断其余项。
+  Future<
+    ({Set<String> deletedFileIds, Set<String> deletedFolderIds, int failed})
+  >
+  _deleteItemIds({
+    Iterable<String> fileIds = const <String>[],
+    Iterable<String> folderIds = const <String>[],
+  }) async {
+    final fileIdList = fileIds.toList();
+    final folderIdList = folderIds.toList();
+    final total = fileIdList.length + folderIdList.length;
+    if (total == 0) {
+      return (
+        deletedFileIds: const <String>{},
+        deletedFolderIds: const <String>{},
+        failed: 0,
+      );
+    }
+    final client = _activeClient();
+    if (client == null) {
+      return (
+        deletedFileIds: const <String>{},
+        deletedFolderIds: const <String>{},
+        failed: total,
+      );
+    }
+
     final fileNames = {for (final f in _files) f.id: f.name};
     final folderNames = {for (final f in _folders) f.id: f.name};
-    try {
-      await runBatchWithProgress(
-        context,
-        title: context.l10n.delete,
-        total: fileIds.length + folderIds.length,
-        run: (report) async {
-          var done = 0;
-          for (final id in fileIds) {
-            report(++done, fileNames[id] ?? '');
+    final deletedFileIds = <String>{};
+    final deletedFolderIds = <String>{};
+    var failed = 0;
+    await runBatchWithProgress(
+      context,
+      title: context.l10n.delete,
+      total: total,
+      run: (report) async {
+        var done = 0;
+        for (final id in fileIdList) {
+          report(++done, fileNames[id] ?? '');
+          try {
             await client.deleteItem(id: id, isFile: true);
+            deletedFileIds.add(id);
+          } catch (_) {
+            failed += 1;
           }
-          for (final id in folderIds) {
-            report(++done, folderNames[id] ?? '');
+        }
+        for (final id in folderIdList) {
+          report(++done, folderNames[id] ?? '');
+          try {
             await client.deleteItem(id: id, isFile: false);
+            deletedFolderIds.add(id);
+          } catch (_) {
+            failed += 1;
           }
-        },
-      );
-      // 删掉的目录若固定在快速访问里，一并移除
-      if (folderIds.isNotEmpty) await _db.removePins(folderIds);
-      if (!mounted) return;
-      _exitSelection();
-      await _removeItemsWithAnimation(
-        fileIds: fileIds.toSet(),
-        folderIds: folderIds.toSet(),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(context.l10n.lanzouError(e))));
+        }
+      },
+    );
+    if (deletedFolderIds.isNotEmpty) {
+      await _db.removePins(deletedFolderIds.toList());
     }
+    if (mounted && (deletedFileIds.isNotEmpty || deletedFolderIds.isNotEmpty)) {
+      await _removeItemsWithAnimation(
+        fileIds: deletedFileIds,
+        folderIds: deletedFolderIds,
+      );
+    }
+    return (
+      deletedFileIds: Set<String>.unmodifiable(deletedFileIds),
+      deletedFolderIds: Set<String>.unmodifiable(deletedFolderIds),
+      failed: failed,
+    );
   }
 
   Future<void> _batchDownload() async {
@@ -3976,6 +4333,7 @@ class _Listing {
     required this.path,
     required this.page,
     required this.hasMore,
+    required this.canceled,
   });
 
   final List<LzFolder> folders;
@@ -3983,6 +4341,7 @@ class _Listing {
   final List<PathNode> path;
   final int page;
   final bool hasMore;
+  final bool canceled;
 }
 
 class _FolderTile extends StatelessWidget {
@@ -4465,11 +4824,7 @@ class _FileRow extends StatelessWidget {
       selected: selected,
       selecting: selecting,
       title: file.name,
-      subtitle: [
-        prettyLzSize(file.size),
-        if (file.time.isNotEmpty) file.time,
-        _downloadCountLabel(context, file.downs),
-      ].where((e) => e.isNotEmpty).join(' · '),
+      subtitle: lzFileListSubtitle(context, file),
       locked: file.hasPwd,
       menuTooltip: context.l10n.fileActions,
       onTap: onTap,

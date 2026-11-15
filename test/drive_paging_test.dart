@@ -1,3 +1,7 @@
+import 'dart:async';
+
+import 'package:dio/dio.dart'
+    show CancelToken, DioException, DioExceptionType, RequestOptions;
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
@@ -9,6 +13,7 @@ import 'package:lancloud/core/api/models.dart';
 import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/cache_page_settings_state.dart';
 import 'package:lancloud/core/data/app_db_provider.dart';
+import 'package:lancloud/core/drive_cache.dart';
 import 'package:lancloud/core/drive_state.dart';
 import 'package:lancloud/core/list_home_settings_state.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
@@ -18,6 +23,7 @@ import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/app_localizations_zh.dart';
 import 'package:lancloud/l10n/delegates.dart';
+import 'package:lancloud/ui/app_icons.dart' as app_icons;
 import 'package:lancloud/ui/drive_page.dart';
 
 import 'transfer_dependencies_test.dart'
@@ -51,8 +57,9 @@ class _FakeClient extends LanzouClient {
   @override
   Future<({List<LzFile> files, bool hasMore})> listFilesPage(
     String folderId,
-    int page,
-  ) async {
+    int page, {
+    CancelToken? cancelToken,
+  }) async {
     filePages.add(page);
     filePageFolders.add(folderId);
     // 根目录：没有文件，也没有下一页
@@ -87,8 +94,9 @@ class _IncompleteSearchClient extends LanzouClient {
   @override
   Future<({List<LzFile> files, bool hasMore})> listFilesPage(
     String folderId,
-    int page,
-  ) async {
+    int page, {
+    CancelToken? cancelToken,
+  }) async {
     filePages.add(page);
     return page == 1
         ? (
@@ -102,13 +110,66 @@ class _IncompleteSearchClient extends LanzouClient {
   }
 }
 
+class _LoadAllClient extends LanzouClient {
+  _LoadAllClient() : super(uid: '1');
+
+  final List<int> filePages = [];
+  final Completer<({List<LzFile> files, bool hasMore})> secondPage =
+      Completer<({List<LzFile> files, bool hasMore})>();
+  final Completer<({List<LzFile> files, bool hasMore})> thirdPage =
+      Completer<({List<LzFile> files, bool hasMore})>();
+  CancelToken? page2CancelToken;
+
+  @override
+  Future<({List<LzFolder> folders, List<PathNode> path})> listFolders(
+    String folderId,
+  ) async => (folders: const <LzFolder>[], path: const <PathNode>[]);
+
+  @override
+  Future<({List<LzFile> files, bool hasMore})> listFilesPage(
+    String folderId,
+    int page, {
+    CancelToken? cancelToken,
+  }) {
+    filePages.add(page);
+    if (page == 2 && cancelToken != null) {
+      page2CancelToken = cancelToken;
+      unawaited(
+        cancelToken.whenCancel.then((_) {
+          if (!secondPage.isCompleted) {
+            secondPage.completeError(
+              DioException(
+                requestOptions: RequestOptions(path: '/canceled'),
+                type: DioExceptionType.cancel,
+              ),
+            );
+          }
+        }),
+      );
+    }
+    return switch (page) {
+      1 => Future.value((
+        files: [
+          for (var i = 0; i < 20; i++)
+            LzFile(id: 'page1-$i', name: 'page1-$i.zip', size: '1 M', time: ''),
+        ],
+        hasMore: true,
+      )),
+      2 => secondPage.future,
+      3 => thirdPage.future,
+      _ => Future.value((files: const <LzFile>[], hasMore: false)),
+    };
+  }
+}
+
 /// 根目录内容足够长，用来验证从子目录返回时恢复滚动位置。
 class _ScrollMemoryClient extends _FakeClient {
   @override
   Future<({List<LzFile> files, bool hasMore})> listFilesPage(
     String folderId,
-    int page,
-  ) {
+    int page, {
+    CancelToken? cancelToken,
+  }) {
     if (folderId == '-1') {
       return Future.value((
         files: [
@@ -157,6 +218,15 @@ List<Override> _overrides(
 ];
 
 void main() {
+  Future<void> openLoadAllRemaining(WidgetTester tester) async {
+    await tester.tap(find.byTooltip('菜单'));
+    await tester.pumpAndSettle();
+    expect(find.byIcon(app_icons.Icons.last_page), findsOneWidget);
+    await tester.tap(find.text('加载全部剩余内容'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+  }
+
   testWidgets('网盘搜索未加载全部分页时提示结果可能不全', (tester) async {
     final client = _IncompleteSearchClient();
     final app = _FakeApp();
@@ -370,5 +440,210 @@ void main() {
       closeTo(240, 0.5),
     );
     expect(app.environment.navigation.topBarHide.value, 0);
+  });
+
+  testWidgets('加载全部剩余内容显示页数，取消时保留已完成页面并丢弃在途页', (tester) async {
+    final client = _LoadAllClient();
+    final app = _FakeApp();
+    final manager = buildTransferManagerForEnvironment(app.environment);
+    addTearDown(app.dispose);
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(420, 900);
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: _overrides(app, manager, client),
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const DrivePage(tabIndex: 0),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(client.filePages, [1]);
+
+    await openLoadAllRemaining(tester);
+    expect(find.text('已加载 1 页'), findsOneWidget);
+    final progressRowRect = tester.getRect(
+      find.byKey(const ValueKey('load-pages-progress-row')),
+    );
+    final cancelRect = tester.getRect(
+      find.byKey(const ValueKey('load-pages-cancel')),
+    );
+    expect(cancelRect.right, closeTo(progressRowRect.right, 0.1));
+
+    await tester.tap(find.byTooltip('取消'));
+    await tester.pump();
+    for (var i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(find.text('已加载 1 页'), findsNothing);
+    expect(client.page2CancelToken?.isCancelled, isTrue);
+    await tester.pumpAndSettle();
+
+    expect(client.filePages, [1, 2]);
+    expect(app.environment.drive.cache.get('-1')?.files, hasLength(20));
+    expect(app.environment.drive.cache.get('-1')?.page, 1);
+
+    await tester.tap(find.byTooltip('菜单'));
+    await tester.pumpAndSettle();
+    final loadAllTile = tester.widget<ListTile>(
+      find.ancestor(of: find.text('加载全部剩余内容'), matching: find.byType(ListTile)),
+    );
+    expect(loadAllTile.enabled, isTrue);
+  });
+
+  testWidgets('加载全部剩余内容逐页更新并在服务端结束后禁用入口', (tester) async {
+    final client = _LoadAllClient();
+    final app = _FakeApp();
+    final manager = buildTransferManagerForEnvironment(app.environment);
+    addTearDown(app.dispose);
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(420, 900);
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: _overrides(app, manager, client),
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const DrivePage(tabIndex: 0),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await openLoadAllRemaining(tester);
+    client.secondPage.complete((
+      files: [
+        LzFile(id: 'page2-a', name: 'page2-a.zip', size: '1 M', time: ''),
+        LzFile(id: 'page2-b', name: 'page2-b.zip', size: '1 M', time: ''),
+      ],
+      hasMore: true,
+    ));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(find.text('已加载 2 页'), findsOneWidget);
+    expect(client.filePages, [1, 2, 3]);
+
+    client.thirdPage.complete((
+      files: [
+        LzFile(id: 'page3-end', name: 'page3-end.zip', size: '1 M', time: ''),
+      ],
+      hasMore: false,
+    ));
+    await tester.pumpAndSettle();
+
+    final snapshot = app.environment.drive.cache.get('-1');
+    expect(snapshot?.files, hasLength(23));
+    expect(snapshot?.page, 3);
+    expect(snapshot?.hasMore, isFalse);
+
+    await tester.tap(find.byTooltip('菜单'));
+    await tester.pumpAndSettle();
+    final loadAllTile = tester.widget<ListTile>(
+      find.ancestor(of: find.text('加载全部剩余内容'), matching: find.byType(ListTile)),
+    );
+    expect(loadAllTile.enabled, isFalse);
+  });
+
+  testWidgets('自动加载全部目录内容复用页数弹窗并支持取消', (tester) async {
+    final client = _LoadAllClient();
+    final app = _FakeApp();
+    app.environment.settingsState.store.loadAllPages = true;
+    final manager = buildTransferManagerForEnvironment(app.environment);
+    addTearDown(app.dispose);
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(420, 900);
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: _overrides(app, manager, client),
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const DrivePage(tabIndex: 0),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(client.filePages, [1, 2]);
+    expect(find.text('已加载 1 页'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('load-pages-cancel')));
+    await tester.pump();
+    for (var i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(client.page2CancelToken?.isCancelled, isTrue);
+    await tester.pumpAndSettle();
+
+    final snapshot = app.environment.drive.cache.get('-1');
+    expect(snapshot?.files, hasLength(20));
+    expect(snapshot?.page, 1);
+    expect(snapshot?.hasMore, isTrue);
+  });
+
+  testWidgets('自动加载设置会继续补齐缓存中的剩余页面', (tester) async {
+    final client = _LoadAllClient();
+    final app = _FakeApp();
+    app.environment.settingsState.store.loadAllPages = true;
+    app.environment.drive.cache.put(
+      '-1',
+      CachedFolder(
+        folders: const <LzFolder>[],
+        files: [
+          for (var i = 0; i < 20; i++)
+            LzFile(
+              id: 'cached-$i',
+              name: 'cached-$i.zip',
+              size: '1 M',
+              time: '',
+            ),
+        ],
+        path: const <PathNode>[],
+        page: 1,
+        hasMore: true,
+      ),
+    );
+    final manager = buildTransferManagerForEnvironment(app.environment);
+    addTearDown(app.dispose);
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(420, 900);
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: _overrides(app, manager, client),
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const DrivePage(tabIndex: 0),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(client.filePages, [2]);
+    expect(find.text('已加载 1 页'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('load-pages-cancel')));
+    await tester.pump();
+    for (var i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(client.page2CancelToken?.isCancelled, isTrue);
+    await tester.pumpAndSettle();
   });
 }

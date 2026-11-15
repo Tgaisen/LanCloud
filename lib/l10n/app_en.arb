@@ -613,6 +613,58 @@
   "toggleLayout": "Toggle layout style",
   "multiSelect": "Select",
   "refresh": "Refresh",
+  "loadAllRemaining": "Load all remaining",
+  "loadAllRemainingProgress": "{count} pages loaded",
+  "@loadAllRemainingProgress": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cleanSameNamedFiles": "Clean same-name files",
+  "sameNamedFilesTitle": "Same-name files in this folder",
+  "sameNamedFilesIncomplete": "Not all content is loaded; results may be incomplete",
+  "sameNamedFilesEmpty": "No same-name files found",
+  "keepLatest": "Keep latest",
+  "sameNamedFilesSummary": "{groups} groups, {files} same-name files",
+  "@sameNamedFilesSummary": {
+    "placeholders": {
+      "groups": {
+        "type": "int"
+      },
+      "files": {
+        "type": "int"
+      }
+    }
+  },
+  "sameNamedFilesDeleteConfirm": "Move {count} selected same-name files to the recycle bin?",
+  "@sameNamedFilesDeleteConfirm": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sameNamedFilesDeleteSuccess": "Deleted {count} same-name files",
+  "@sameNamedFilesDeleteSuccess": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "deletePartialResult": "Deleted {success}; {failed} failed",
+  "@deletePartialResult": {
+    "placeholders": {
+      "success": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
   "root": "Root",
   "loadFailed": "Failed to load: {error}",
   "noMatchContent": "Nothing matches “{query}”",

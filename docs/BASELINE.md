@@ -10,16 +10,17 @@
 | 命令 | 口径 | 结果 | 耗时 |
 | --- | --- | --- | --- |
 | `tools\agent.cmd analyze` | 全量 | No issues found | 约 2 min 1 s |
-| `tools\agent.cmd analyze` | 增量（通知设置与顶栏路由，9 个 Dart 文件） | No issues found | 约 15 s |
-| `tools\agent.cmd test` | 全量（用例总数） | **940 tests, all passed** | 约 2 min 14 s |
-| `tools\agent.cmd format` | 全量 | 349 files，0 changed | 约 3 s |
+| `tools\agent.cmd analyze` | 增量（弹窗嵌套滚动，2 个 Dart 文件） | No issues found | 约 17 s |
+| `tools\agent.cmd test` | 全量（用例总数） | **955 tests, all passed** | 约 3 min 5 s |
+| `tools\agent.cmd test` | 增量（弹窗嵌套滚动，58 个测试文件） | **411 tests, all passed** | 约 1 min 35 s |
+| `tools\agent.cmd format` | 全量 | 354 files，0 changed | 约 3 s |
 | `tools\agent.cmd build-apk` | debug | `app-debug.apk` | 首次构建约 5 min 46 s |
 
 当前分析结果为 0 issue 是硬基线。出现红灯时，先判断是否为本次改动引入；
 不要把增量结果当成全量结论。Flutter 3.50.0 下全量分析已重跑并通过。
 
-当前全量用例总数为 940，比收藏监控改动前增加 41；Flutter 3.50.0 下已重跑
-全量并通过。
+当前用例总数为 956，比收藏监控改动前增加 57。最近一次全量 955 项通过；
+嵌套滚动新增 1 项由 58 个受影响测试文件、411 项增量回归覆盖。
 测试入口在受影响文件超过 60 个时自动回退全量，避免 Windows 命令行长度上限导致
 测试尚未启动就报错。
 
@@ -27,14 +28,14 @@
 
 | 指标 | 当前值 |
 | --- | ---: |
-| `lib` Dart 文件 | 164 |
-| `lib` 总行数 | 62,171 |
-| `test` 测试文件 | 183（全部为 `*_test.dart`，平铺） |
-| `test` 总行数 | 35,634 |
-| `test` 用例数 | 940 |
-| `lib/ui` 平铺文件 | 61 |
-| `lib/core` | 58 个平铺文件 + 6 个子系统目录 |
-| 文案（`app_zh.arb`） | 1,755 行 |
+| `lib` Dart 文件 | 167 |
+| `lib` 总行数 | 63,128 |
+| `test` 测试文件 | 185（全部为 `*_test.dart`，平铺） |
+| `test` 总行数 | 36,382 |
+| `test` 用例数 | 956 |
+| `lib/ui` 平铺文件 | 62 |
+| `lib/core` | 60 个平铺文件 + 6 个子系统目录 |
+| 文案（`app_zh.arb`） | 1,807 行 |
 
 ## 工具链与依赖
 

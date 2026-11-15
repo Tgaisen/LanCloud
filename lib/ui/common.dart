@@ -12,6 +12,7 @@ import 'package:material_ui/material_ui.dart' hide Icons;
 
 import '../core/api/lanzou_client.dart';
 import '../core/api/lanzou_client_registry.dart';
+import '../core/api/models.dart';
 import '../core/data/app_db_provider.dart';
 import '../core/drive_state.dart';
 import '../core/favorites/favorite_monitor.dart';
@@ -562,6 +563,13 @@ String prettyLzSize(String raw) {
       return formatBytes((value * 1024 * 1024).round());
   }
 }
+
+/// 网盘列表模式共用的文件副标题：大小 · 时间 · 下载次数。
+String lzFileListSubtitle(BuildContext context, LzFile file) => [
+  prettyLzSize(file.size),
+  if (file.time.isNotEmpty) file.time,
+  '${context.l10n.propertyDownloadCount} ${file.downs}',
+].where((part) => part.isNotEmpty).join(' · ');
 
 int lzSizeToBytes(String raw) {
   final text = raw.trim().replaceAll(' ', '').toUpperCase();
@@ -1642,6 +1650,7 @@ Future<T?> showAppSheet<T>(
   BuildContext context, {
   required Widget child,
   double maxHeightRatio = 0.8,
+  bool fitContent = true,
 }) {
   final size = MediaQuery.sizeOf(context);
   final maxHeight = size.height * maxHeightRatio;
@@ -1725,6 +1734,7 @@ Future<T?> showAppSheet<T>(
                 maxHeight: maxHeight,
                 routeController: routeController,
                 sheetHeight: sheetHeight,
+                fitContent: fitContent,
                 child: child,
               ),
             ),
@@ -1755,6 +1765,7 @@ Future<T?> showAppSheet<T>(
     barrierOnTapHint: localizations.scrimOnTapHint(
       localizations.bottomSheetLabel,
     ),
+    enableDrag: fitContent,
     modalBarrierColor: Theme.of(context).bottomSheetTheme.modalBarrierColor,
     sheetAnimationStyle: animationStyle,
     // 通铺整屏时让「弹窗窗体」整体避开左右挖孔：useSafeArea 作用在弹窗
@@ -1773,6 +1784,7 @@ Future<T?> showAppSheet<T>(
 class _AppBottomSheetRoute<T> extends ModalBottomSheetRoute<T> {
   _AppBottomSheetRoute({
     required this.routeAnimation,
+    required super.enableDrag,
     required super.builder,
     required super.capturedThemes,
     required super.isScrollControlled,
@@ -2039,12 +2051,17 @@ class MeasuredSheet extends StatefulWidget {
     required this.child,
     required this.maxHeight,
     required this.routeController,
+    this.fitContent = true,
     this.sheetHeight,
   });
 
   final Widget child;
   final double maxHeight;
   final AnimationController routeController;
+
+  /// 是否按内容自然高度收缩。列表自身负责滚动时传 false，固定使用
+  /// [maxHeight]，让内部 sliver / list 获得有界视口。
+  final bool fitContent;
 
   /// 整个 BottomSheet 当前的实际高度，用于把内容拖动距离换算成路由动画值。
   /// 未提供时退回内容高度，便于单独测试本组件。
@@ -2063,8 +2080,16 @@ class _MeasuredSheetState extends State<MeasuredSheet> {
   /// 指针速度采样：用于判断“快速下滑关闭”。
   VelocityTracker? _tracker;
   int? _pointer;
+  Offset? _lastPointerPosition;
   bool _draggedSheet = false;
   bool _routeDragStarted = false;
+  final ScrollController _fixedScrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _fixedScrollController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -2083,7 +2108,9 @@ class _MeasuredSheetState extends State<MeasuredSheet> {
   }
 
   /// 完全展开时的高度：内容自然高度，不超过上限。
-  double get _expandedHeight => _contentHeight == null
+  double get _expandedHeight => !widget.fitContent
+      ? widget.maxHeight
+      : _contentHeight == null
       ? widget.maxHeight
       : math.min(widget.maxHeight, _contentHeight!);
 
@@ -2175,6 +2202,7 @@ class _MeasuredSheetState extends State<MeasuredSheet> {
 
   void _onPointerDown(PointerDownEvent event) {
     _pointer = event.pointer;
+    _lastPointerPosition = event.position;
     _draggedSheet = false;
     _tracker = VelocityTracker.withKind(event.kind)
       ..addPosition(event.timeStamp, event.position);
@@ -2182,11 +2210,23 @@ class _MeasuredSheetState extends State<MeasuredSheet> {
 
   void _onPointerMove(PointerMoveEvent event) {
     if (event.pointer != _pointer) return;
+    final previous = _lastPointerPosition;
+    _lastPointerPosition = event.position;
     _tracker?.addPosition(event.timeStamp, event.position);
+    if (!widget.fitContent &&
+        previous != null &&
+        _fixedScrollController.hasClients) {
+      final deltaY = event.position.dy - previous.dy;
+      final position = _fixedScrollController.position;
+      if (deltaY > 0 && position.extentBefore <= precisionErrorTolerance) {
+        _distributeDrag(deltaY, position);
+      }
+    }
   }
 
   void _clearPointer() {
     _pointer = null;
+    _lastPointerPosition = null;
     _tracker = null;
   }
 
@@ -2240,6 +2280,22 @@ class _MeasuredSheetState extends State<MeasuredSheet> {
 
   @override
   Widget build(BuildContext context) {
+    if (!widget.fitContent) {
+      return SizedBox(
+        height: widget.maxHeight,
+        child: Listener(
+          onPointerDown: _onPointerDown,
+          onPointerMove: _onPointerMove,
+          onPointerUp: _onPointerUp,
+          onPointerCancel: _onPointerCancel,
+          child: _SheetDragScope(
+            distributeDrag: _distributeDrag,
+            scrollController: _fixedScrollController,
+            child: widget.child,
+          ),
+        ),
+      );
+    }
     final measured = _contentHeight;
     return Opacity(
       opacity: measured == null ? 0 : 1,
@@ -2287,13 +2343,58 @@ class _SheetDragPhysics extends ClampingScrollPhysics {
       onOffset(offset, position);
 
   @override
+  bool shouldAcceptUserOffset(ScrollMetrics position) => true;
+
+  @override
   _SheetDragPhysics applyTo(ScrollPhysics? ancestor) =>
       _SheetDragPhysics(parent: buildParent(ancestor), onOffset: onOffset);
 }
 
+class _SheetDragScope extends InheritedWidget {
+  const _SheetDragScope({
+    required this.distributeDrag,
+    required this.scrollController,
+    required super.child,
+  });
+
+  final double Function(double offset, ScrollMetrics position) distributeDrag;
+  final ScrollController scrollController;
+
+  static _SheetDragScope? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_SheetDragScope>();
+
+  @override
+  bool updateShouldNotify(_SheetDragScope oldWidget) => false;
+}
+
+/// 固定高度底部弹窗里的懒加载滚动视图。
+///
+/// 在弹窗内容中会把手势位移自动分配给内部列表和弹窗外壳：列表未到边界时
+/// 正常滚动，到顶后继续下拉则无缝带动整个弹窗。
+class SheetNestedScrollView extends StatelessWidget {
+  const SheetNestedScrollView({super.key, required this.slivers});
+
+  final List<Widget> slivers;
+
+  @override
+  Widget build(BuildContext context) {
+    final scope = _SheetDragScope.maybeOf(context);
+    return CustomScrollView(
+      controller: scope?.scrollController,
+      physics: scope == null
+          ? const AlwaysScrollableScrollPhysics()
+          : _SheetDragPhysics(
+              parent: const AlwaysScrollableScrollPhysics(),
+              onOffset: scope.distributeDrag,
+            ),
+      slivers: slivers,
+    );
+  }
+}
+
 /// 分组标题 + 数量 chip（传输、收藏等列表视图共用）。
 ///
-/// [actions] 放在标题右侧，窄屏或大字号时可在自身区域换行，不截断按钮文案。
+/// [actions] 固定靠右并保持单行；标题占用剩余宽度，可截断长文件名。
 /// [compact] 只影响垂直留白；移动端传输页可用它保留紧凑分栏高度。
 class SectionHeader extends StatelessWidget {
   const SectionHeader({
@@ -2316,10 +2417,14 @@ class SectionHeader extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            title,
-            style: context.m3eEmphasizedTheme.titleSmall?.copyWith(
-              color: scheme.primary,
+          Flexible(
+            child: Text(
+              title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: context.m3eEmphasizedTheme.titleSmall?.copyWith(
+                color: scheme.primary,
+              ),
             ),
           ),
           const SizedBox(width: 8),
@@ -2344,20 +2449,12 @@ class SectionHeader extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          titleBlock,
+          Expanded(
+            child: Align(alignment: Alignment.centerLeft, child: titleBlock),
+          ),
           if (actions.isNotEmpty) ...[
             const SizedBox(width: 8),
-            Expanded(
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: Wrap(
-                  alignment: WrapAlignment.end,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  runSpacing: 4,
-                  children: actions,
-                ),
-              ),
-            ),
+            Row(mainAxisSize: MainAxisSize.min, children: actions),
           ],
         ],
       ),
