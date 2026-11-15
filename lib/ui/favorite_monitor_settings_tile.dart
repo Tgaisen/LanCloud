@@ -38,9 +38,8 @@ class _FavoriteAutoCheckSettingsTileState
     return ValueListenableBuilder<int>(
       valueListenable: settings.revision,
       builder: (context, _, _) => SwitchListTile(
-        secondary: const Icon(Icons.history),
+        secondary: const Icon(Icons.folder_check),
         title: Text(context.l10n.favoriteAutoCheck),
-        subtitle: Text(context.l10n.favoriteAutoCheckSubtitle),
         value: settings.autoCheck,
         onChanged: (value) => unawaited(_setEnabled(settings, value)),
       ),
@@ -181,7 +180,7 @@ class _FavoriteUpdateNotificationSettingsTileState
     return ValueListenableBuilder<int>(
       valueListenable: settings.revision,
       builder: (context, _, _) => SwitchListTile(
-        secondary: const Icon(Icons.notifications_outlined),
+        secondary: const Icon(Icons.cards_star),
         title: Text(context.l10n.favoriteUpdateNotify),
         subtitle: Text(context.l10n.favoriteUpdateNotifySubtitle),
         value: settings.notifyUpdates,

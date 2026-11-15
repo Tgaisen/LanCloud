@@ -765,7 +765,6 @@
   "favoriteCheckNoFolders": "No favorite folders to check",
   "favoriteCheckNoSelection": "Select at least one favorite folder",
   "favoriteAutoCheck": "Check favorite folder updates automatically",
-  "favoriteAutoCheckSubtitle": "Check on launch or resume when due",
   "favoriteCheckScope": "Check scope",
   "favoriteCheckScopeAll": "All favorite folders",
   "favoriteCheckScopeSelected": "{count} folders selected",
@@ -801,7 +800,7 @@
     }
   },
   "favoriteUpdateNotify": "Favorite folder update notifications",
-  "favoriteUpdateNotifySubtitle": "Send one notification for each updated folder",
+  "favoriteUpdateNotifySubtitle": "Notify when updates to favorite folders are detected",
   "favoriteUpdateBadgeSemantics": "Favorites, {count} folders updated",
   "@favoriteUpdateBadgeSemantics": {
     "placeholders": {

@@ -29,6 +29,7 @@ class Icons {
   static const IconData build_outlined = Symbols.build;
   static const IconData cached_outlined = Symbols.cached;
   static const IconData cancel = Symbols.cancel;
+  static const IconData cards_star = Symbols.cards_star;
   static const IconData check = Symbols.check;
   static const IconData check_circle = Symbols.check_circle;
   static const IconData checklist = Symbols.checklist;
