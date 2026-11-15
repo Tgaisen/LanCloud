@@ -332,6 +332,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
   String _sortMode = 'default';
   bool _sortAscending = false;
   final Map<String, double> _folderOffsets = {};
+  bool _suppressTopBarScrollWhileRestoring = false;
   bool _selecting = false;
   final Set<String> _selectedFiles = {};
   final Set<String> _selectedFolders = {};
@@ -465,7 +466,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
     if (_directorySwitching || folderId == _folderId) return;
     _directorySwitching = true;
     try {
-      _navigation.animateBarsHide(0, reduceMotion: _systemReduceMotion);
+      _revealTopBarForDirectoryChange();
       _rememberFolderOffset();
       await _animateDirectorySwitch(folderId);
       if (!mounted) return;
@@ -1122,7 +1123,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
       );
       // 进入新目录时若顶/底栏处于收起状态，先带动画恢复显示，
       // 否则目录内容较少无法滚动时底栏就唤不出来。
-      _navigation.animateBarsHide(0, reduceMotion: _systemReduceMotion);
+      _revealTopBarForDirectoryChange();
       _rememberFolderOffset();
       await _animateDirectorySwitch(folder.id);
       if (!mounted) return;
@@ -1144,7 +1145,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
     if (_directorySwitching) return;
     _directorySwitching = true;
     try {
-      _navigation.animateBarsHide(0, reduceMotion: _systemReduceMotion);
+      _revealTopBarForDirectoryChange();
       final newPath = index < 0 ? <PathNode>[] : _path.sublist(0, index + 1);
       final targetId = newPath.isEmpty ? '-1' : newPath.last.id;
       _rememberFolderOffset();
@@ -1180,25 +1181,38 @@ class _DrivePageState extends ConsumerState<DrivePage>
     }
   }
 
+  void _revealTopBarForDirectoryChange() {
+    _suppressTopBarScrollWhileRestoring = true;
+    _navigation.animateBarsHide(0, reduceMotion: _systemReduceMotion);
+  }
+
   void _restoreFolderOffset(String folderId) {
     final target = _folderOffsets[folderId] ?? 0;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && _scroll.hasClients) {
-        final max = _scroll.position.maxScrollExtent;
-        final to = target.clamp(0.0, max);
-        final from = _scroll.position.pixels;
-        // 回到列表顶部时让悬浮顶栏顺势滑下来（下移显示），
-        // 而不是 jumpTo 造成的瞬间出现。
-        final slideTopBar = _animationsEnabled && _appearance.hideTopBar;
-        if (slideTopBar && to < from) {
-          _scroll.animateTo(
-            to,
-            duration: const Duration(milliseconds: 240),
-            curve: Curves.easeOutCubic,
-          );
-        } else {
-          _scroll.jumpTo(to);
-        }
+      if (!mounted) return;
+      if (!_scroll.hasClients) {
+        _suppressTopBarScrollWhileRestoring = false;
+        return;
+      }
+      final max = _scroll.position.maxScrollExtent;
+      final to = target.clamp(0.0, max);
+      final from = _scroll.position.pixels;
+      // 恢复目录滚动位置属于程序化跳转，不应被 ScrollTint 当成用户上滑
+      // 再次收起顶栏；等恢复动画结束再重新启用滚动驱动。
+      final slideTopBar = _animationsEnabled && _appearance.hideTopBar;
+      if (slideTopBar && to < from) {
+        _scroll
+            .animateTo(
+              to,
+              duration: const Duration(milliseconds: 240),
+              curve: Curves.easeOutCubic,
+            )
+            .whenComplete(() {
+              if (mounted) _suppressTopBarScrollWhileRestoring = false;
+            });
+      } else {
+        _scroll.jumpTo(to);
+        _suppressTopBarScrollWhileRestoring = false;
       }
     });
   }
@@ -3335,7 +3349,12 @@ class _DrivePageState extends ConsumerState<DrivePage>
     return ScrollTint(
       hideDistance: headerInset,
       readBarsHidden: () => _navigation.topBarHide.value,
-      onBarsHidden: hideTopBar ? _navigation.setTopBarHideFromScroll : null,
+      onBarsHidden: hideTopBar
+          ? (value) {
+              if (_suppressTopBarScrollWhileRestoring) return;
+              _navigation.setTopBarHideFromScroll(value);
+            }
+          : null,
       // 列表快速滑动条（可拖拽）
       child: FastScrollbar(
         controller: _scroll,

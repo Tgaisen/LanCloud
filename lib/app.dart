@@ -133,6 +133,7 @@ class _LanCloudAppState extends ConsumerState<LanCloudApp> {
             );
             return MaterialApp(
               navigatorKey: _navigatorKey,
+              navigatorObservers: <NavigatorObserver>[topBarRouteObserver],
               // 系统「最近任务」里的应用名（桌面图标名由 Android 资源 app_name 决定，
               // 任务卡片这里是 Flutter 的 Title 设置的，要跟着语言走）
               onGenerateTitle: (context) => context.l10n.currentAppDisplayName,
@@ -325,7 +326,9 @@ class _AgreementGateState extends State<AgreementGate> {
           : !_accepted
           ? FirstRunTerms(onAccepted: () => setState(() => _accepted = true))
           // 自动检测到新版本时，在任意页面主动提醒一次（条款同意之后才挂上）
-          : const UpdatePromptHost(child: RootShell()),
+          : const UpdatePromptHost(
+              child: SharedTopBarRouteReveal(child: RootShell()),
+            ),
     );
     return AnimatedSwitcher(
       duration: reduceMotionOf(context)

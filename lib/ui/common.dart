@@ -27,6 +27,12 @@ import 'qr_painter.dart';
 import 'reduce_motion.dart';
 import 'scroll_tint.dart';
 
+/// 顶栏路由观察器：页面从二级页面路由返回时展开顶栏。
+///
+/// 只负责通知，收起动画由共享导航状态或各页面自己的进度源执行。
+final RouteObserver<PageRoute<dynamic>> topBarRouteObserver =
+    RouteObserver<PageRoute<dynamic>>();
+
 /// 大屏（平板 / 桌面）布局阈值：≥640dp 时用侧栏 + 圆角内容卡片。
 const double kLargeLayoutBreakpoint = 640;
 
@@ -299,6 +305,52 @@ class BodySideInset extends StatelessWidget {
   }
 }
 
+/// 使用 [NavigationState.topBarHide] 的独立页面：从二级页面路由返回时
+/// 带动画展开共享顶栏，同时保留页面原来的滚动位置与状态。
+class SharedTopBarRouteReveal extends StatefulWidget {
+  const SharedTopBarRouteReveal({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  State<SharedTopBarRouteReveal> createState() =>
+      _SharedTopBarRouteRevealState();
+}
+
+class _SharedTopBarRouteRevealState extends State<SharedTopBarRouteReveal>
+    with RouteAware {
+  PageRoute<dynamic>? _route;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is! PageRoute<dynamic> || identical(route, _route)) return;
+    topBarRouteObserver.unsubscribe(this);
+    _route = route;
+    topBarRouteObserver.subscribe(this, route);
+  }
+
+  @override
+  void didPopNext() {
+    if (!mounted) return;
+    final navigation = ProviderScope.containerOf(
+      context,
+      listen: false,
+    ).read(navigationStateProvider);
+    navigation.animateBarsHide(0, reduceMotion: reduceMotionOf(context));
+  }
+
+  @override
+  void dispose() {
+    topBarRouteObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
+
 /// 标记：本页面外面已经有 MD3E 卡片（[Md3ePageFrame]），
 /// 页面自己不要再铺底色，见 [transparentPageBackground]。
 class Md3eFramedScope extends InheritedWidget {
@@ -349,7 +401,7 @@ class Md3ePageFrame extends StatelessWidget {
         child: Md3eBodyCard(
           topBarHeight: topBarHeight,
           hide: hide,
-          child: ScrollTint(child: child),
+          child: ScrollTint(child: SharedTopBarRouteReveal(child: child)),
         ),
       ),
     );
@@ -1320,7 +1372,8 @@ class TopBarOverlayScaffold extends StatefulWidget {
   State<TopBarOverlayScaffold> createState() => _TopBarOverlayScaffoldState();
 }
 
-class _TopBarOverlayScaffoldState extends State<TopBarOverlayScaffold> {
+class _TopBarOverlayScaffoldState extends State<TopBarOverlayScaffold>
+    with SingleTickerProviderStateMixin, RouteAware {
   /// 页面自己的收起进度：不动外壳的 [NavigationState.topBarHide]，
   /// 否则返回标签页时会把它们的顶栏一起带走。
   final ValueNotifier<double> _hide = ValueNotifier<double>(0);
@@ -1329,22 +1382,64 @@ class _TopBarOverlayScaffoldState extends State<TopBarOverlayScaffold> {
   /// 必须和滚动视图共用同一个 controller 才能拖拽。
   final ScrollController _fallbackScroll = ScrollController();
   late NavigationAppearanceSettingsState _appearance;
+  PageRoute<dynamic>? _route;
+  double _revealFrom = 0;
+
+  late final AnimationController _reveal;
 
   ScrollController get _scroll => widget.controller ?? _fallbackScroll;
+
+  @override
+  void initState() {
+    super.initState();
+    _reveal = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 240),
+    )..addListener(_onRevealTick);
+  }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _appearance = ProviderScope.containerOf(context)
         .read(navigationAppearanceSettingsStateProvider);
+    final route = ModalRoute.of(context);
+    if (route is! PageRoute<dynamic> || identical(route, _route)) return;
+    topBarRouteObserver.unsubscribe(this);
+    _route = route;
+    topBarRouteObserver.subscribe(this, route);
   }
 
   @override
   void dispose() {
+    topBarRouteObserver.unsubscribe(this);
+    _reveal
+      ..removeListener(_onRevealTick)
+      ..dispose();
     _hide.dispose();
     _fallbackScroll.dispose();
     super.dispose();
   }
+
+  void _onRevealTick() {
+    final t = Curves.easeOutCubic.transform(_reveal.value);
+    _hide.value = (_revealFrom * (1 - t)).clamp(0.0, 1.0);
+  }
+
+  void _revealTopBar() {
+    final current = _hide.value;
+    if (current <= 0) return;
+    if (reduceMotionOf(context)) {
+      _reveal.stop();
+      _hide.value = 0;
+      return;
+    }
+    _revealFrom = current;
+    _reveal.forward(from: 0);
+  }
+
+  @override
+  void didPopNext() => _revealTopBar();
 
   @override
   Widget build(BuildContext context) {
@@ -1364,6 +1459,7 @@ class _TopBarOverlayScaffoldState extends State<TopBarOverlayScaffold> {
       readBarsHidden: () => _hide.value,
       onBarsHidden: hideTopBar
           ? (value) {
+              _reveal.stop();
               _hide.value = value;
             }
           : null,
