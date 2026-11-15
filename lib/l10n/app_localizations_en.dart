@@ -1236,6 +1236,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get select => 'Select';
 
   @override
+  String get selectUnavailable => 'Select unavailable';
+
+  @override
   String get invertSelection => 'Invert selection';
 
   @override
@@ -1936,9 +1939,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get favoriteAutoCheck => 'Check favorite folder updates automatically';
 
   @override
-  String get favoriteAutoCheckSubtitle => 'Check on launch or resume when due';
-
-  @override
   String get favoriteCheckScope => 'Check scope';
 
   @override
@@ -1979,7 +1979,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get favoriteUpdateNotifySubtitle =>
-      'Send one notification for each updated folder';
+      'Notify when updates to favorite folders are detected';
 
   @override
   String favoriteUpdateBadgeSemantics(int count) {

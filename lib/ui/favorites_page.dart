@@ -411,6 +411,25 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
     if (_selected.isEmpty) _exitSelection();
   }
 
+  /// 加入某一分栏的全部条目；失效分组只加入明确标注为“已失效”的收藏。
+  void _selectSection(
+    Iterable<FavoriteItem> items, {
+    bool unavailableOnly = false,
+  }) {
+    if (!_selecting) return;
+    setState(() {
+      _selected.addAll(
+        items
+            .where(
+              (item) =>
+                  !unavailableOnly ||
+                  item.shareStatus == FavoriteShareStatus.unavailable,
+            )
+            .map((item) => item.id),
+      );
+    });
+  }
+
   void _invertSelection() {
     setState(() {
       for (final item in _items) {
@@ -740,6 +759,44 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
     );
   }
 
+  Widget _sectionActionButton({
+    required String key,
+    required String label,
+    required VoidCallback onPressed,
+  }) => TextButton(
+    key: ValueKey(key),
+    onPressed: onPressed,
+    style: TextButton.styleFrom(
+      minimumSize: const Size(0, 32),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+    ),
+    child: Text(label, maxLines: 1, softWrap: false),
+  );
+
+  List<Widget> _sectionActions({
+    required AppLocalizations l10n,
+    required String keyPrefix,
+    required List<FavoriteItem> items,
+  }) {
+    if (!_selecting) return const <Widget>[];
+    final hasUnavailable = items.any(
+      (item) => item.shareStatus == FavoriteShareStatus.unavailable,
+    );
+    return [
+      if (hasUnavailable)
+        _sectionActionButton(
+          key: '$keyPrefix-select-unavailable',
+          label: l10n.selectUnavailable,
+          onPressed: () => _selectSection(items, unavailableOnly: true),
+        ),
+      _sectionActionButton(
+        key: '$keyPrefix-select-all',
+        label: l10n.select,
+        onPressed: () => _selectSection(items),
+      ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -843,6 +900,11 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
                                   child: SectionHeader(
                                     title: l10n.favoriteFolders,
                                     count: folders.length,
+                                    actions: _sectionActions(
+                                      l10n: l10n,
+                                      keyPrefix: 'favorites-folders',
+                                      items: folders,
+                                    ),
                                   ),
                                 ),
                                 // 懒加载：收藏多了也只构建可见部分
@@ -877,6 +939,11 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
                                   child: SectionHeader(
                                     title: l10n.favoriteFiles,
                                     count: files.length,
+                                    actions: _sectionActions(
+                                      l10n: l10n,
+                                      keyPrefix: 'favorites-files',
+                                      items: files,
+                                    ),
                                   ),
                                 ),
                                 SegmentedSliverList(

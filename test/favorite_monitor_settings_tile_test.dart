@@ -9,6 +9,7 @@ import 'package:lancloud/core/favorites/favorite_check_gateway.dart';
 import 'package:lancloud/core/favorites/favorite_monitor_reporter.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/delegates.dart';
+import 'package:lancloud/ui/app_icons.dart';
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/favorite_monitor_settings_tile.dart';
 import 'package:lancloud/ui/m3e.dart';
@@ -82,6 +83,11 @@ void main() {
     );
 
     expect(environment.favoriteMonitorSettings.autoCheck, isFalse);
+    final autoCheckTile = tester.widget<SwitchListTile>(
+      find.byType(SwitchListTile),
+    );
+    expect((autoCheckTile.secondary! as Icon).icon, Icons.folder_check);
+    expect(autoCheckTile.subtitle, isNull);
     await tester.tap(find.byType(SwitchListTile));
     await tester.pumpAndSettle();
 
@@ -133,6 +139,8 @@ void main() {
 
     final toggle = tester.widget<SwitchListTile>(find.byType(SwitchListTile));
     expect(toggle.value, isTrue);
+    expect((toggle.secondary! as Icon).icon, Icons.cards_star);
+    expect(find.text('检测到收藏文件夹更新时通知'), findsOneWidget);
     await tester.tap(find.byType(SwitchListTile));
     await tester.pumpAndSettle();
 

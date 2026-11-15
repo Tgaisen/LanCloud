@@ -112,7 +112,7 @@ Widget navigationHost(AppEnvironment app, Widget home) => ProviderScope(
     ),
     navigationStateProvider.overrideWithValue(app.navigation),
   ],
-  child: MaterialApp(home: home),
+  child: MaterialApp(navigatorObservers: [topBarRouteObserver], home: home),
 );
 
 /// 复刻独立页面结构：TopBarOverlayScaffold + 长列表。
@@ -444,5 +444,62 @@ void main() {
     state.scroll.jumpTo(kToolbarHeight);
     await tester.pumpAndSettle();
     expect(barTop(tester), -kToolbarHeight);
+  });
+
+  testWidgets('共享顶栏从二级路由返回时展开', (tester) async {
+    final app = AppEnvironment();
+    addTearDown(app.dispose);
+    await tester.pumpWidget(
+      navigationHost(
+        app,
+        const SharedTopBarRouteReveal(child: Scaffold(body: Text('根路由'))),
+      ),
+    );
+    await tester.pumpAndSettle();
+    app.navigation
+      ..topBarHide.value = 0.6
+      ..barsHide.value = 0.6;
+
+    Navigator.of(tester.element(find.text('根路由'))).push(
+      MaterialPageRoute<void>(
+        builder: (_) => const Scaffold(body: Text('二级路由')),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('二级路由'), findsOneWidget);
+
+    Navigator.of(tester.element(find.text('二级路由'))).pop();
+    await tester.pumpAndSettle();
+
+    expect(app.navigation.topBarHide.value, 0);
+    expect(app.navigation.barsHide.value, 0);
+  });
+
+  testWidgets('独立页面从二级路由返回时保留滚动位置并展开顶栏', (tester) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final app = AppEnvironment();
+    addTearDown(app.dispose);
+    await app.navigationAppearanceSettings.setHideTopBar(true);
+    await tester.pumpWidget(navigationHost(app, const ScaffoldProbePage()));
+    final state = tester.state<ScaffoldProbePageState>(
+      find.byType(ScaffoldProbePage),
+    );
+    await tester.pumpAndSettle();
+
+    state.scroll.jumpTo(kToolbarHeight);
+    await tester.pumpAndSettle();
+    expect(barTop(tester), -kToolbarHeight);
+
+    Navigator.of(tester.element(find.byType(ScaffoldProbePage))).push(
+      MaterialPageRoute<void>(
+        builder: (_) => const Scaffold(body: Text('二级页面')),
+      ),
+    );
+    await tester.pumpAndSettle();
+    Navigator.of(tester.element(find.text('二级页面'))).pop();
+    await tester.pumpAndSettle();
+
+    expect(state.scroll.position.pixels, kToolbarHeight);
+    expect(barTop(tester), closeTo(0, 0.5));
   });
 }

@@ -133,6 +133,7 @@ class _LanCloudAppState extends ConsumerState<LanCloudApp> {
             );
             return MaterialApp(
               navigatorKey: _navigatorKey,
+              navigatorObservers: <NavigatorObserver>[topBarRouteObserver],
               // 系统「最近任务」里的应用名（桌面图标名由 Android 资源 app_name 决定，
               // 任务卡片这里是 Flutter 的 Title 设置的，要跟着语言走）
               onGenerateTitle: (context) => context.l10n.currentAppDisplayName,
@@ -325,7 +326,9 @@ class _AgreementGateState extends State<AgreementGate> {
           : !_accepted
           ? FirstRunTerms(onAccepted: () => setState(() => _accepted = true))
           // 自动检测到新版本时，在任意页面主动提醒一次（条款同意之后才挂上）
-          : const UpdatePromptHost(child: RootShell()),
+          : const UpdatePromptHost(
+              child: SharedTopBarRouteReveal(child: RootShell()),
+            ),
     );
     return AnimatedSwitcher(
       duration: reduceMotionOf(context)
@@ -691,6 +694,9 @@ class _RootShellState extends ConsumerState<RootShell>
 
   /// 未显示在底栏的视图：以独立页面打开同样的界面。
   void _openView(int viewId) {
+    // 独立页面与底栏视图共用同一份顶/底栏收起进度。从已滚动的首页进入时，
+    // 先把进度带动画归零，避免新页顶栏沿用旧页未完全展开的位置。
+    _navigation.animateBarsHide(0, reduceMotion: reduceMotionOf(context));
     Navigator.of(context).push(
       // 大屏（横屏 / 平板）下独立打开的标签页也套 MD3E 卡片：
       // 顶栏高度与外壳里一致，顶栏收起进度共用 NavigationState.topBarHide

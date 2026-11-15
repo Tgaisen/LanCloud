@@ -102,6 +102,26 @@ class _IncompleteSearchClient extends LanzouClient {
   }
 }
 
+/// 根目录内容足够长，用来验证从子目录返回时恢复滚动位置。
+class _ScrollMemoryClient extends _FakeClient {
+  @override
+  Future<({List<LzFile> files, bool hasMore})> listFilesPage(
+    String folderId,
+    int page,
+  ) {
+    if (folderId == '-1') {
+      return Future.value((
+        files: [
+          for (var i = 0; i < 30; i++)
+            LzFile(id: 'root$i', name: 'root-$i.zip', size: '1 M', time: ''),
+        ],
+        hasMore: false,
+      ));
+    }
+    return super.listFilesPage(folderId, page);
+  }
+}
+
 class _FakeApp {
   _FakeApp() {
     environment.accountState.store.activeUid = '1';
@@ -295,5 +315,60 @@ void main() {
     );
     expect(client.filePages, contains(2), reason: '内容不满一屏时要自动补第二页');
     expect(find.text('已加载全部'), findsOneWidget);
+  });
+
+  testWidgets('返回上级目录时保留滚动位置并展开顶栏', (tester) async {
+    Future<void> pumpFrames() async {
+      await tester.pump();
+      for (var i = 0; i < 10; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+    }
+
+    final client = _ScrollMemoryClient();
+    final app = _FakeApp();
+    app.environment.settingsState.store.recentLimit = 0;
+    final manager = buildTransferManagerForEnvironment(app.environment);
+    addTearDown(app.dispose);
+    app.environment.settingsState.store.hideTopBar = true;
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(420, 900);
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: _overrides(app, manager, client),
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const DrivePage(tabIndex: 0),
+        ),
+      ),
+    );
+    await pumpFrames();
+
+    final scrollable = find
+        .descendant(
+          of: find.byType(CustomScrollView),
+          matching: find.byType(Scrollable),
+        )
+        .first;
+    tester.state<ScrollableState>(scrollable).position.jumpTo(240);
+    await pumpFrames();
+    expect(app.environment.navigation.topBarHide.value, greaterThan(0));
+
+    app.environment.drive.folderRequest.value = 'sub';
+    await pumpFrames();
+    expect(find.text('f0.zip'), findsOneWidget);
+
+    await tester.tap(find.text('根目录'));
+    await pumpFrames();
+
+    expect(
+      tester.state<ScrollableState>(scrollable).position.pixels,
+      closeTo(240, 0.5),
+    );
+    expect(app.environment.navigation.topBarHide.value, 0);
   });
 }

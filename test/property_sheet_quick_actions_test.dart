@@ -484,8 +484,16 @@ void main() {
     expect(tester.getSize(viewButton), const Size(48, 48));
     expect(
       tester.getRect(viewButton).left - tester.getRect(sortButton).right,
-      4,
-      reason: '排序与视图两个独立按钮沿用原路径栏操作之间的 4dp 间距',
+      0,
+      reason: '小屏路径栏按钮与 AppBar actions 一样相邻无额外间距',
+    );
+    expect(
+      tester.getRect(viewButton).right,
+      closeTo(
+        tester.view.physicalSize.width / tester.view.devicePixelRatio,
+        0.5,
+      ),
+      reason: '小屏路径栏最后一个按钮与 AppBar actions 一样贴右边缘',
     );
     expect(find.byType(M3eConnectedButtonGroup<String>), findsNothing);
 

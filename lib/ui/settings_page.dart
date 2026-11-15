@@ -475,7 +475,7 @@ class _SettingsCategoryPageState extends ConsumerState<SettingsCategoryPage>
       _Entry(
         id: 'favorite_auto_check',
         title: l10n.favoriteAutoCheck,
-        subtitle: l10n.favoriteAutoCheckSubtitle,
+        subtitle: '',
         keywords: const ['收藏', '文件夹', '更新', '自动', '检测'],
         section: SettingsSection.reminder,
         build: (context) => FavoriteAutoCheckSettingsTile(

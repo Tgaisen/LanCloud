@@ -663,6 +663,7 @@
   },
   "selectAll": "全选",
   "select": "选择",
+  "selectUnavailable": "选择失效",
   "invertSelection": "反选",
   "newFolder": "新建文件夹",
   "uploadFile": "上传文件",
@@ -1157,7 +1158,6 @@
   "favoriteCheckNoFolders": "没有可检测的收藏文件夹",
   "favoriteCheckNoSelection": "请至少选择一个收藏文件夹",
   "favoriteAutoCheck": "自动检测收藏文件夹更新",
-  "favoriteAutoCheckSubtitle": "启动或回到前台时按频率检查",
   "favoriteCheckScope": "检测范围",
   "favoriteCheckScopeAll": "全部收藏文件夹",
   "favoriteCheckScopeSelected": "已选择 {count} 个文件夹",
@@ -1193,7 +1193,7 @@
     }
   },
   "favoriteUpdateNotify": "收藏文件夹更新通知",
-  "favoriteUpdateNotifySubtitle": "检测完成后，每个有更新的文件夹发一条通知",
+  "favoriteUpdateNotifySubtitle": "检测到收藏文件夹更新时通知",
   "favoriteUpdateBadgeSemantics": "收藏，{count} 个文件夹有更新",
   "@favoriteUpdateBadgeSemantics": {
     "placeholders": {

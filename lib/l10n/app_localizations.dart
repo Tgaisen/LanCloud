@@ -2261,6 +2261,12 @@ abstract class AppLocalizations {
   /// **'选择'**
   String get select;
 
+  /// No description provided for @selectUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择失效'**
+  String get selectUnavailable;
+
   /// No description provided for @invertSelection.
   ///
   /// In zh, this message translates to:
@@ -3479,12 +3485,6 @@ abstract class AppLocalizations {
   /// **'自动检测收藏文件夹更新'**
   String get favoriteAutoCheck;
 
-  /// No description provided for @favoriteAutoCheckSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'启动或回到前台时按频率检查'**
-  String get favoriteAutoCheckSubtitle;
-
   /// No description provided for @favoriteCheckScope.
   ///
   /// In zh, this message translates to:
@@ -3554,7 +3554,7 @@ abstract class AppLocalizations {
   /// No description provided for @favoriteUpdateNotifySubtitle.
   ///
   /// In zh, this message translates to:
-  /// **'检测完成后，每个有更新的文件夹发一条通知'**
+  /// **'检测到收藏文件夹更新时通知'**
   String get favoriteUpdateNotifySubtitle;
 
   /// No description provided for @favoriteUpdateBadgeSemantics.

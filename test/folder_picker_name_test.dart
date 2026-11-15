@@ -168,8 +168,8 @@ void main() {
     );
     expect(
       tester.getRect(newFolderButton).left - tester.getRect(sortButton).right,
-      4,
-      reason: '两个独立图标按钮沿用原路径栏操作之间的 4dp 间距',
+      0,
+      reason: '路径栏独立按钮与 AppBar actions 一样相邻无额外间距',
     );
 
     double top(String text) => tester.getTopLeft(find.text(text)).dy;

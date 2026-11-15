@@ -1180,6 +1180,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get select => '选择';
 
   @override
+  String get selectUnavailable => '选择失效';
+
+  @override
   String get invertSelection => '反选';
 
   @override
@@ -1861,9 +1864,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get favoriteAutoCheck => '自动检测收藏文件夹更新';
 
   @override
-  String get favoriteAutoCheckSubtitle => '启动或回到前台时按频率检查';
-
-  @override
   String get favoriteCheckScope => '检测范围';
 
   @override
@@ -1903,7 +1903,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get favoriteUpdateNotify => '收藏文件夹更新通知';
 
   @override
-  String get favoriteUpdateNotifySubtitle => '检测完成后，每个有更新的文件夹发一条通知';
+  String get favoriteUpdateNotifySubtitle => '检测到收藏文件夹更新时通知';
 
   @override
   String favoriteUpdateBadgeSemantics(int count) {
