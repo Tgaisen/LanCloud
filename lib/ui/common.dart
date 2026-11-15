@@ -5729,6 +5729,26 @@ Future<void> showLoadingDialog(BuildContext context, String text) {
   );
 }
 
+/// 在异步操作期间显示与「解析中」同款的模态等待弹窗。
+///
+/// [enabled] 为假时直接执行操作，适合只有单文件、无需额外反馈的入口。
+Future<T> runWithLoadingDialog<T>(
+  BuildContext context, {
+  required String text,
+  required Future<T> Function() action,
+  bool enabled = true,
+}) async {
+  if (!enabled || !context.mounted) return action();
+  final navigator = Navigator.of(context);
+  unawaited(showLoadingDialog(context, text));
+  await WidgetsBinding.instance.endOfFrame;
+  try {
+    return await action();
+  } finally {
+    if (navigator.mounted) navigator.pop();
+  }
+}
+
 /// 查一个分享条目（`ref` = 分享链接）是否已收藏。查不到（例如库不可用）按未收藏。
 Future<bool> isFavoritedByRef(BuildContext context, String ref) async {
   try {

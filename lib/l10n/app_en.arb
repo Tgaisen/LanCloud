@@ -473,6 +473,7 @@
   "newFolder": "New folder",
   "uploadFile": "Upload files",
   "uploadFileSubtitle": "Pick files from this device or other apps",
+  "addingUploadTasks": "Adding upload tasks…",
   "uploadSkipped": "Added {added} upload tasks; {skipped} were skipped",
   "uploadAdded": "Added {count} upload tasks",
   "uploadSkippedReasonOversize": "File exceeds the {limit} limit",

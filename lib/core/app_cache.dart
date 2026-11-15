@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
@@ -13,6 +14,8 @@ import 'platform_support.dart';
 /// 账号、设置、正式日志（文档目录 `logs/`）和已下载的文件都不动。
 class AppCache {
   AppCache._();
+
+  static const _pickerChannel = MethodChannel('lancloud/file_picker');
 
   /// 本应用在临时目录里创建的条目（Android 侧由 [MainActivity] 建立）。
   static const Set<String> _ownEntries = {'picked', 'drop', 'photo'};
@@ -86,5 +89,41 @@ class AppCache {
       // 目录读不了时直接返回已释放的部分
     }
     return before;
+  }
+
+  /// 删除应用临时目录内的单个文件。
+  ///
+  /// 上传选择器会先复制 Android `content://` 内容；上传结束或任务被删除后，
+  /// 由传输层调用这里释放副本。桌面端临时目录与其它应用共享，因此不允许
+  /// 通过这个方法删除文件；缓存根目录之外的路径也一律拒绝。
+  static Future<bool> deleteTemporaryFile(String path) async {
+    if (!_wholeDirectory || path.isEmpty) return false;
+    if (PlatformSupport.isAndroid) {
+      try {
+        final deleted = await _pickerChannel.invokeMethod<bool>(
+          'deleteCacheFile',
+          <String, Object>{'path': path},
+        );
+        if (deleted != null) return deleted;
+      } on MissingPluginException {
+        // 单元测试没有原生插件；继续走 Dart 侧的目录校验。
+      } catch (_) {
+        // 旧宿主或测试环境没有新方法时继续走 Dart 侧兜底。
+      }
+    }
+    final dir = await _dir();
+    if (dir == null) return false;
+    final root = p.canonicalize(dir.path);
+    final target = p.canonicalize(path);
+    final owned = p.isWithin(root, target);
+    if (!owned) return false;
+    try {
+      final file = File(target);
+      if (!await file.exists()) return false;
+      await file.delete();
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 }

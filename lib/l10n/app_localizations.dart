@@ -2291,6 +2291,12 @@ abstract class AppLocalizations {
   /// **'从本机或其他应用中选择文件'**
   String get uploadFileSubtitle;
 
+  /// No description provided for @addingUploadTasks.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在添加上传任务…'**
+  String get addingUploadTasks;
+
   /// No description provided for @uploadSkipped.
   ///
   /// In zh, this message translates to:

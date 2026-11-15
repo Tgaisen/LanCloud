@@ -134,7 +134,7 @@ Future<(AppEnvironment, TransferManager)> hostWithTasks(
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 700));
   await tester.tap(find.text('上传').hitTestable());
-  await tester.pumpAndSettle();
+  await pumpTransferUi(tester);
   return (app, manager);
 }
 
@@ -199,6 +199,12 @@ int selectedTransferTab(WidgetTester tester) => tester
       find.byType(M3eConnectedButtonGroup<int>),
     )
     .selected;
+
+/// 运行中的波浪进度条会持续调度帧，不能用 pumpAndSettle 等待它“结束”。
+Future<void> pumpTransferUi(WidgetTester tester) async {
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 350));
+}
 
 void main() {
   testWidgets('失败副标题只显示错误详情，不重复上传下载前缀', (tester) async {
@@ -269,7 +275,7 @@ void main() {
         ),
       ),
     );
-    // 上传运行中也显示进度，但不使用下载专属的波浪动画。
+    // 上传运行中也显示进度，并与下载一样使用波浪动画。
     await tester.pump();
     expect(selectedTransferTab(tester), 1, reason: '传输页默认应进入下载');
     await tester.tap(find.text('上传').hitTestable());
@@ -289,7 +295,7 @@ void main() {
             find.byType(M3eLinearProgressIndicator),
           )
           .wavy,
-      isFalse,
+      isTrue,
     );
   });
 
@@ -579,7 +585,7 @@ void main() {
       ),
     );
     await tester.tap(find.text('上传').hitTestable());
-    await tester.pumpAndSettle();
+    await pumpTransferUi(tester);
     await tester.pump();
 
     expect(find.byTooltip('取消任务'), findsOneWidget);
@@ -768,7 +774,7 @@ void main() {
     ]);
 
     await tester.longPress(find.text('pending.txt'));
-    await tester.pumpAndSettle();
+    await pumpTransferUi(tester);
 
     for (final key in [
       'transfers-select-pending',
@@ -784,15 +790,15 @@ void main() {
     expect(find.byKey(const ValueKey('transfers-clear-skipped')), findsNothing);
 
     await tester.tap(find.byKey(const ValueKey('transfers-select-failed')));
-    await tester.pumpAndSettle();
+    await pumpTransferUi(tester);
     expect(find.text('已选择 2 项'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('transfers-select-finished')));
-    await tester.pumpAndSettle();
+    await pumpTransferUi(tester);
     expect(find.text('已选择 3 项'), findsOneWidget);
 
     await tester.tap(find.byTooltip('退出多选'));
-    await tester.pumpAndSettle();
+    await pumpTransferUi(tester);
     expect(
       find.byKey(const ValueKey('transfers-clear-finished')),
       findsOneWidget,
@@ -1275,7 +1281,7 @@ void main() {
         buttons: kSecondaryMouseButton,
         kind: PointerDeviceKind.mouse,
       );
-      await tester.pumpAndSettle();
+      await pumpTransferUi(tester);
       expect(find.byType(M3eMenuRow), findsNothing);
 
       final doneCenter = tester.getCenter(doneRow);
@@ -1284,7 +1290,7 @@ void main() {
         buttons: kSecondaryMouseButton,
         kind: PointerDeviceKind.mouse,
       );
-      await tester.pumpAndSettle();
+      await pumpTransferUi(tester);
       expect(menuLabels(tester), ['删除此条记录']);
       final menuCard = tester.getRect(
         find.byKey(const ValueKey('m3e-menu-card')),

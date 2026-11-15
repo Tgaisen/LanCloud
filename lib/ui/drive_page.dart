@@ -1748,39 +1748,50 @@ class _DrivePageState extends ConsumerState<DrivePage>
   }
 
   Future<void> _upload() async {
-    final files = await FilePicker.pickFiles(
-      dialogTitle: context.l10n.filePickerUploadFilesTitle,
+    // 选择器是独立 Activity；关闭后原生仍可能复制文件，提前挂载等待层
+    // 才能覆盖 DocumentsUI 返回与 Flutter 收到结果之间的空窗。
+    final counts = await runWithLoadingDialog(
+      context,
+      text: context.l10n.addingUploadTasks,
+      action: () async {
+        final files = await FilePicker.pickFiles(
+          dialogTitle: context.l10n.filePickerUploadFilesTitle,
+        );
+        if (files.isEmpty || !mounted) return null;
+        await _activeClient()?.fetchAccountInfo();
+        if (!mounted) return null;
+        final transfers = _transfers;
+        var skipped = 0;
+        var added = 0;
+        for (final file in files) {
+          final path = file.path;
+          if (path == null) continue;
+          final int size;
+          try {
+            size = await File(path).length();
+          } catch (_) {
+            continue;
+          }
+          final result = transfers.addUpload(
+            name: file.name,
+            folderId: _folderId,
+            folderName: _folderId == '-1' || _path.isEmpty
+                ? ''
+                : _path.last.name,
+            path: path,
+            size: size,
+          );
+          if (result.accepted) {
+            added += 1;
+          } else {
+            skipped += 1;
+          }
+        }
+        return (added: added, skipped: skipped);
+      },
     );
-    if (files.isEmpty) return;
-    if (!mounted) return;
-    await _activeClient()?.fetchAccountInfo();
-    if (!mounted) return;
-    final transfers = _transfers;
-    var skipped = 0;
-    var added = 0;
-    for (final file in files) {
-      final path = file.path;
-      if (path == null) continue;
-      final int size;
-      try {
-        size = await File(path).length();
-      } catch (_) {
-        continue;
-      }
-      final result = transfers.addUpload(
-        name: file.name,
-        folderId: _folderId,
-        folderName: _folderId == '-1' || _path.isEmpty ? '' : _path.last.name,
-        path: path,
-        size: size,
-      );
-      if (result.accepted) {
-        added += 1;
-      } else {
-        skipped += 1;
-      }
-    }
-    if (!mounted) return;
+    if (counts == null || !mounted) return;
+    final (:added, :skipped) = counts;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -1795,31 +1806,41 @@ class _DrivePageState extends ConsumerState<DrivePage>
   /// 从其他应用/文档提供器选取文件上传（ACTION_OPEN_DOCUMENT）。
   Future<void> _uploadFromApp() async {
     try {
-      final paths = await ProviderFilePicker.pickFiles(
-        dialogTitle: context.l10n.filePickerUploadFilesTitle,
+      final counts = await runWithLoadingDialog(
+        context,
+        text: context.l10n.addingUploadTasks,
+        action: () async {
+          final paths = await ProviderFilePicker.pickFiles(
+            dialogTitle: context.l10n.filePickerUploadFilesTitle,
+          );
+          if (paths.isEmpty || !mounted) return null;
+          await _activeClient()?.fetchAccountInfo();
+          if (!mounted) return null;
+          final transfers = _transfers;
+          var added = 0;
+          var skipped = 0;
+          for (final path in paths) {
+            final size = await File(path).length();
+            final result = transfers.addUpload(
+              name: p.basename(path),
+              folderId: _folderId,
+              folderName: _folderId == '-1' || _path.isEmpty
+                  ? ''
+                  : _path.last.name,
+              path: path,
+              size: size,
+            );
+            if (result.accepted) {
+              added += 1;
+            } else {
+              skipped += 1;
+            }
+          }
+          return (added: added, skipped: skipped);
+        },
       );
-      if (paths.isEmpty || !mounted) return;
-      await _activeClient()?.fetchAccountInfo();
-      if (!mounted) return;
-      final transfers = _transfers;
-      var added = 0;
-      var skipped = 0;
-      for (final path in paths) {
-        final size = await File(path).length();
-        final result = transfers.addUpload(
-          name: p.basename(path),
-          folderId: _folderId,
-          folderName: _folderId == '-1' || _path.isEmpty ? '' : _path.last.name,
-          path: path,
-          size: size,
-        );
-        if (result.accepted) {
-          added += 1;
-        } else {
-          skipped += 1;
-        }
-      }
-      if (!mounted) return;
+      if (counts == null || !mounted) return;
+      final (:added, :skipped) = counts;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(

@@ -187,6 +187,14 @@ class MainActivity : FlutterFragmentActivity() {
                         result.error("pick_failed", e.message, null)
                     }
                 }
+                "deleteCacheFile" -> {
+                    val path = call.argument<String>("path")
+                    if (path.isNullOrEmpty()) {
+                        result.success(false)
+                        return@setMethodCallHandler
+                    }
+                    result.success(deleteCacheFile(path))
+                }
                 // 拍照识别二维码：ACTION_IMAGE_CAPTURE（本应用不声明 CAMERA 权限，
                 // 由系统相机 App 完成拍摄，因此无需申请任何权限）。
                 "takePhoto" -> {
@@ -1760,6 +1768,26 @@ class MainActivity : FlutterFragmentActivity() {
             out.absolutePath
         } catch (_: Exception) {
             null
+        }
+    }
+
+    /// 删除上传选择器复制进应用缓存的文件。
+    ///
+    /// 上传完成后 Dart 侧只持有路径；用 Activity 的 cacheDir 再校验一次，
+    /// 防止误删用户原始文件或缓存目录之外的任何内容。
+    private fun deleteCacheFile(path: String): Boolean {
+        return try {
+            val file = File(path).canonicalFile
+            val root = cacheDir.canonicalFile
+            val rootPrefix = root.path + File.separator
+            if (!file.path.startsWith(rootPrefix) || !file.isFile) {
+                false
+            } else {
+                file.delete()
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "delete upload cache failed: ${e.message}")
+            false
         }
     }
 

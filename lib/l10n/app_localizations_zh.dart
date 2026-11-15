@@ -1195,6 +1195,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get uploadFileSubtitle => '从本机或其他应用中选择文件';
 
   @override
+  String get addingUploadTasks => '正在添加上传任务…';
+
+  @override
   String uploadSkipped(int added, int skipped) {
     return '已加入 $added 个上传任务，其中 $skipped 个被跳过';
   }
