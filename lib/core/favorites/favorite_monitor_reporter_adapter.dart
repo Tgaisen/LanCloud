@@ -18,8 +18,7 @@ class AppFavoriteMonitorReporter implements FavoriteMonitorReporter {
     final title =
         NotificationService.i18n?.foregroundServiceRunningTitle ?? '前台服务运行中';
     final text =
-        NotificationService.i18n?.foregroundServiceRunningBody ??
-        '下载、上传或收藏检测正在后台运行';
+        NotificationService.i18n?.foregroundServiceRunningBody ?? '点按打开应用';
     foregroundTasks.acquire(
       ForegroundTaskReason.favoriteCheck,
       title: title,
@@ -41,8 +40,7 @@ class AppFavoriteMonitorReporter implements FavoriteMonitorReporter {
     final title =
         NotificationService.i18n?.foregroundServiceRunningTitle ?? '前台服务运行中';
     final text =
-        NotificationService.i18n?.foregroundServiceRunningBody ??
-        '下载、上传或收藏检测正在后台运行';
+        NotificationService.i18n?.foregroundServiceRunningBody ?? '点按打开应用';
     foregroundTasks.update(
       ForegroundTaskReason.favoriteCheck,
       title: title,

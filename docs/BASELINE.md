@@ -10,8 +10,8 @@
 | 命令 | 口径 | 结果 | 耗时 |
 | --- | --- | --- | --- |
 | `tools\agent.cmd analyze` | 全量 | No issues found | 约 2 min 1 s |
-| `tools\agent.cmd analyze` | 增量（收藏监控细节，9 个 Dart 文件） | No issues found | 约 6 s |
-| `tools\agent.cmd test` | 全量（用例总数） | **935 tests, all passed** | 约 2 min 47 s |
+| `tools\agent.cmd analyze` | 增量（收藏菜单与弹窗细节，9 个 Dart 文件） | No issues found | 约 6 s |
+| `tools\agent.cmd test` | 全量（用例总数） | **935 tests, all passed** | 约 2 min 9 s |
 | `tools\agent.cmd format` | 全量 | 349 files，0 changed | 约 3 s |
 | `tools\agent.cmd build-apk` | debug | `app-debug.apk` | 首次构建约 5 min 46 s |
 
@@ -28,13 +28,13 @@
 | 指标 | 当前值 |
 | --- | ---: |
 | `lib` Dart 文件 | 164 |
-| `lib` 总行数 | 61,946 |
+| `lib` 总行数 | 61,984 |
 | `test` 测试文件 | 183（全部为 `*_test.dart`，平铺） |
-| `test` 总行数 | 35,311 |
+| `test` 总行数 | 35,354 |
 | `test` 用例数 | 935 |
 | `lib/ui` 平铺文件 | 61 |
 | `lib/core` | 58 个平铺文件 + 6 个子系统目录 |
-| 文案（`app_zh.arb`） | 1,754 行 |
+| 文案（`app_zh.arb`） | 1,755 行 |
 
 ## 工具链与依赖
 

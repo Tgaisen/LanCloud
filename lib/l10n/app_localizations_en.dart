@@ -1782,8 +1782,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get foregroundServiceRunningTitle => 'Foreground service running';
 
   @override
-  String get foregroundServiceRunningBody =>
-      'Download, upload, or favorite folder checks are running in the background';
+  String get foregroundServiceRunningBody => 'Tap to open the app';
 
   @override
   String get notifUploadDone => 'Upload complete';
@@ -1875,14 +1874,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get favoriteFolderUpdatedNoTime => 'Updated';
 
   @override
-  String get favoriteShareUnavailable =>
-      'Unavailable · deleted or sharing canceled';
+  String get favoriteShareUnavailable => 'Unavailable';
 
   @override
   String get favoritePasswordChanged => 'Extraction code changed';
 
   @override
   String get checkFavoriteFolderUpdates => 'Check favorite folder updates';
+
+  @override
+  String get checkFavoriteFolderUpdateShort => 'Check for updates';
 
   @override
   String get checkFavoriteAccess => 'Check unavailable items';

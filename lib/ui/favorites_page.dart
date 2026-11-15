@@ -295,13 +295,13 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
             M3eMenuItem(
               value: _FavoritesMenuAction.checkUpdates,
               label: l10n.checkFavoriteFolderUpdates,
-              icon: Icons.search,
+              icon: Icons.folder_check,
               enabled: !checking,
             ),
             M3eMenuItem(
               value: _FavoritesMenuAction.checkAccess,
               label: l10n.checkFavoriteAccess,
-              icon: Icons.link,
+              icon: Icons.document_search,
               enabled: !checking,
             ),
           ],
@@ -541,34 +541,42 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
           pointerPosition: pointerPosition,
           // ⋯ 贴着右边缘：菜单右缘对齐，免得被屏幕右上角夹歪
           alignEnd: true,
-          items: [
-            M3eMenuItem(
-              value: _FavoriteItemAction.open,
-              label: context.l10n.open,
-              icon: Icons.open_in_new,
+          sections: [
+            M3eMenuSection(
+              items: [
+                M3eMenuItem(
+                  value: _FavoriteItemAction.open,
+                  label: context.l10n.open,
+                  icon: Icons.open_in_new,
+                ),
+                M3eMenuItem(
+                  value: _FavoriteItemAction.copyLink,
+                  label: context.l10n.copyLink,
+                  icon: Icons.copy,
+                ),
+                if (item.kind == 'shareFolder')
+                  M3eMenuItem(
+                    value: _FavoriteItemAction.checkUpdate,
+                    label: context.l10n.checkFavoriteFolderUpdateShort,
+                    icon: Icons.folder_check,
+                    enabled: !ref.read(favoriteCheckRunningProvider),
+                  ),
+              ],
             ),
-            M3eMenuItem(
-              value: _FavoriteItemAction.copyLink,
-              label: context.l10n.copyLink,
-              icon: Icons.copy,
-            ),
-            M3eMenuItem(
-              value: _FavoriteItemAction.edit,
-              label: context.l10n.editInfo,
-              icon: Icons.edit,
-            ),
-            if (item.kind == 'shareFolder')
-              M3eMenuItem(
-                value: _FavoriteItemAction.checkUpdate,
-                label: context.l10n.checkFavoriteFolderUpdates,
-                icon: Icons.search,
-                enabled: !ref.read(favoriteCheckRunningProvider),
-              ),
-            M3eMenuItem(
-              value: _FavoriteItemAction.unfavorite,
-              label: context.l10n.unfavorite,
-              // 与首页 / 分享浏览菜单一致：星形划斜杠（Remix star-off-line）
-              icon: Icons.star_off_line,
+            M3eMenuSection(
+              items: [
+                M3eMenuItem(
+                  value: _FavoriteItemAction.edit,
+                  label: context.l10n.editInfo,
+                  icon: Icons.edit,
+                ),
+                M3eMenuItem(
+                  value: _FavoriteItemAction.unfavorite,
+                  label: context.l10n.unfavorite,
+                  // 与首页 / 分享浏览菜单一致：星形划斜杠（Remix star-off-line）
+                  icon: Icons.star_off_line,
+                ),
+              ],
             ),
           ],
         );

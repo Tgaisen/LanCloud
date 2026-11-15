@@ -66,7 +66,7 @@ void main() {
         folder(hasUpdate: true, status: FavoriteShareStatus.unavailable),
         l10n,
       ),
-      '已失效 · 不存在或已取消分享',
+      '已失效',
     );
   });
 

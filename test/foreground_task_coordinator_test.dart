@@ -80,7 +80,7 @@ void main() {
 
     await reporter.start(total: 3);
     expect(coordinator.activeReasons, {ForegroundTaskReason.favoriteCheck});
-    expect(backend.events.single, startsWith('start:前台服务运行中:'));
+    expect(backend.events.single, 'start:前台服务运行中:点按打开应用');
 
     await reporter.finish(total: 3, succeeded: 2, failed: 1);
     expect(coordinator.activeReasons, isEmpty);

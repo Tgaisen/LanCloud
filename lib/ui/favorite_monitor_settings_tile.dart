@@ -65,7 +65,7 @@ class _FavoriteAutoCheckSettingsTileState
     }
     await settings.setAutoCheck(value);
     if (value && mounted && widget.runCheckOnEnable) {
-      unawaited(ref.read(favoriteMonitorProvider.notifier).checkFolders());
+      unawaited(ref.read(favoriteMonitorProvider.notifier).maybeAutoCheck());
     }
   }
 }
@@ -125,60 +125,34 @@ class FavoriteCheckFrequencySettingsTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(favoriteMonitorSettingsStateProvider);
-    final snapshot = ref.watch(
-      favoriteMonitorProvider.select(
-        (state) => (state.lastAttemptAt, state.lastResult?.failed ?? 0),
-      ),
-    );
-    final (:lastAttemptAt, :failed) = (
-      lastAttemptAt: snapshot.$1,
-      failed: snapshot.$2,
-    );
     return ValueListenableBuilder<int>(
       valueListenable: settings.revision,
-      builder: (context, _, _) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            enabled: settings.autoCheck,
-            leading: const Icon(Icons.schedule),
-            title: Text(context.l10n.favoriteCheckFrequency),
-            subtitle: Text(
-              favoriteCheckFrequencyLabel(context.l10n, settings.frequency),
-            ),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: settings.autoCheck
-                ? () => unawaited(_chooseFrequency(context, settings))
-                : null,
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                favoriteLastCheckLabel(
-                  context.l10n,
-                  lastAttemptAt: lastAttemptAt,
-                  failed: failed,
-                ),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ),
-          ),
-        ],
+      builder: (context, _, _) => ListTile(
+        enabled: settings.autoCheck,
+        leading: const Icon(Icons.schedule),
+        title: Text(context.l10n.favoriteCheckFrequency),
+        subtitle: Text(
+          favoriteCheckFrequencyLabel(context.l10n, settings.frequency),
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: settings.autoCheck
+            ? () => unawaited(_chooseFrequency(context, ref, settings))
+            : null,
       ),
     );
   }
 
   Future<void> _chooseFrequency(
     BuildContext context,
+    WidgetRef ref,
     FavoriteMonitorSettingsState settings,
   ) async {
+    final monitor = ref.read(favoriteMonitorProvider);
     final selected = await showFavoriteCheckFrequencyDialog(
       context,
       selected: settings.frequency,
+      lastAttemptAt: monitor.lastAttemptAt,
+      failed: monitor.lastResult?.failed ?? 0,
     );
     if (selected != null) await settings.setFrequency(selected);
   }
@@ -260,12 +234,32 @@ String favoriteLastCheckLabel(
 Future<FavoriteCheckFrequency?> showFavoriteCheckFrequencyDialog(
   BuildContext context, {
   required FavoriteCheckFrequency selected,
+  required DateTime? lastAttemptAt,
+  required int failed,
 }) {
   final l10n = context.l10n;
   return showDialog<FavoriteCheckFrequency>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      title: Text(l10n.favoriteCheckFrequency),
+      title: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(l10n.favoriteCheckFrequency),
+          const SizedBox(height: 16),
+          Text(
+            favoriteLastCheckLabel(
+              l10n,
+              lastAttemptAt: lastAttemptAt,
+              failed: failed,
+            ),
+            key: const ValueKey('favorite-check-frequency-supporting-text'),
+            style: Theme.of(dialogContext).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(dialogContext).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
       contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
       content: SingleChildScrollView(
         child: DialogListGroup(

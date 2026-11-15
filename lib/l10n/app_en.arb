@@ -655,7 +655,7 @@
     }
   },
   "foregroundServiceRunningTitle": "Foreground service running",
-  "foregroundServiceRunningBody": "Download, upload, or favorite folder checks are running in the background",
+  "foregroundServiceRunningBody": "Tap to open the app",
   "notifUploadDone": "Upload complete",
   "notifDownloadDone": "Download complete",
   "notifFailed": "Transfer failed",
@@ -725,9 +725,10 @@
     }
   },
   "favoriteFolderUpdatedNoTime": "Updated",
-  "favoriteShareUnavailable": "Unavailable · deleted or sharing canceled",
+  "favoriteShareUnavailable": "Unavailable",
   "favoritePasswordChanged": "Extraction code changed",
   "checkFavoriteFolderUpdates": "Check favorite folder updates",
+  "checkFavoriteFolderUpdateShort": "Check for updates",
   "checkFavoriteAccess": "Check unavailable items",
   "favoriteCheckAlreadyRunning": "Favorite folders are already being checked",
   "favoriteNotificationTargetMissing": "This favorite no longer exists",

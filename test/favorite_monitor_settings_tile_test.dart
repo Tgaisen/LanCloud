@@ -114,7 +114,7 @@ void main() {
     );
     expect(scope.enabled, isFalse);
     expect(frequency.enabled, isFalse);
-    expect(find.text('上次检测：尚未检测'), findsOneWidget);
+    expect(find.text('上次检测：尚未检测'), findsNothing);
   });
 
   testWidgets('收藏更新通知默认开启，无系统权限时仍保存开关值', (tester) async {
@@ -238,6 +238,11 @@ void main() {
       find.descendant(of: dialog, matching: find.byType(M3ePickTile)),
       findsNWidgets(3),
     );
+    expect(
+      find.byKey(const ValueKey('favorite-check-frequency-supporting-text')),
+      findsOneWidget,
+    );
+    expect(find.text('上次检测：尚未检测'), findsOneWidget);
 
     await tester.tap(find.text('每月'));
     await tester.pumpAndSettle();

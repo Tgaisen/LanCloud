@@ -1048,7 +1048,7 @@
     }
   },
   "foregroundServiceRunningTitle": "前台服务运行中",
-  "foregroundServiceRunningBody": "下载、上传或收藏检测正在后台运行",
+  "foregroundServiceRunningBody": "点按打开应用",
   "notifUploadDone": "上传完成",
   "notifDownloadDone": "下载完成",
   "notifFailed": "传输失败",
@@ -1118,9 +1118,10 @@
     }
   },
   "favoriteFolderUpdatedNoTime": "有更新",
-  "favoriteShareUnavailable": "已失效 · 不存在或已取消分享",
+  "favoriteShareUnavailable": "已失效",
   "favoritePasswordChanged": "提取码已变更",
   "checkFavoriteFolderUpdates": "检测收藏文件夹更新",
+  "checkFavoriteFolderUpdateShort": "检测更新",
   "checkFavoriteAccess": "检测失效项目",
   "favoriteCheckAlreadyRunning": "正在检测收藏夹，请稍候",
   "favoriteNotificationTargetMissing": "该收藏已不存在",

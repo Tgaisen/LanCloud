@@ -1713,7 +1713,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get foregroundServiceRunningTitle => '前台服务运行中';
 
   @override
-  String get foregroundServiceRunningBody => '下载、上传或收藏检测正在后台运行';
+  String get foregroundServiceRunningBody => '点按打开应用';
 
   @override
   String get notifUploadDone => '上传完成';
@@ -1801,13 +1801,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get favoriteFolderUpdatedNoTime => '有更新';
 
   @override
-  String get favoriteShareUnavailable => '已失效 · 不存在或已取消分享';
+  String get favoriteShareUnavailable => '已失效';
 
   @override
   String get favoritePasswordChanged => '提取码已变更';
 
   @override
   String get checkFavoriteFolderUpdates => '检测收藏文件夹更新';
+
+  @override
+  String get checkFavoriteFolderUpdateShort => '检测更新';
 
   @override
   String get checkFavoriteAccess => '检测失效项目';

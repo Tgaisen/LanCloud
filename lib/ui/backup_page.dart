@@ -465,15 +465,11 @@ class _BackupContentState extends ConsumerState<BackupContent> {
         store.backupSections.isNotEmpty &&
         encryptionReady &&
         !_busy;
-    final backupStatus = !store.configured
+    final backupSetupStatus = !store.configured
         ? l10n.webdavNotConfigured
         : store.backupSections.isEmpty
         ? l10n.webdavBackupContentNotSelected
-        : l10n.lastBackupAt(
-            store.lastBackupAt == 0
-                ? l10n.neverBackedUp
-                : _backupDayLabel(context, store.lastBackupAt),
-          );
+        : null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -559,37 +555,67 @@ class _BackupContentState extends ConsumerState<BackupContent> {
               ),
           ],
         ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(4, 12, 4, 0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(backupStatus, style: Theme.of(context).textTheme.bodySmall),
-              if (store.configured &&
-                  store.backupSections.isNotEmpty &&
-                  store.lastBackupError.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    l10n.backupFailed(store.lastBackupError),
-                    style: Theme.of(context).textTheme.bodySmall
-                        ?.copyWith(color: scheme.error),
+        if (backupSetupStatus != null ||
+            (store.configured &&
+                store.backupSections.isNotEmpty &&
+                store.lastBackupError.isNotEmpty))
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 12, 4, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (backupSetupStatus != null)
+                  Text(
+                    backupSetupStatus,
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
-                ),
-            ],
+                if (store.configured &&
+                    store.backupSections.isNotEmpty &&
+                    store.lastBackupError.isNotEmpty)
+                  Padding(
+                    padding: EdgeInsets.only(
+                      top: backupSetupStatus == null ? 0 : 4,
+                    ),
+                    child: Text(
+                      l10n.backupFailed(store.lastBackupError),
+                      style: Theme.of(context).textTheme.bodySmall
+                          ?.copyWith(color: scheme.error),
+                    ),
+                  ),
+              ],
+            ),
           ),
-        ),
       ],
     );
   }
 
   Future<void> _pickInterval() async {
     final l10n = context.l10n;
-    final current = _service.webdav.interval;
+    final store = _service.webdav;
+    final current = store.interval;
+    final lastBackup = l10n.lastBackupAt(
+      store.lastBackupAt == 0
+          ? l10n.neverBackedUp
+          : _backupDayLabel(context, store.lastBackupAt),
+    );
     final value = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text(l10n.webdavInterval),
+        title: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(l10n.webdavInterval),
+            const SizedBox(height: 16),
+            Text(
+              lastBackup,
+              key: const ValueKey('webdav-interval-supporting-text'),
+              style: Theme.of(dialogContext).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(dialogContext).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
         // M3 对话框内容边距 24dp；列表组自带 0 外边距，组沿落在 24dp 上
         contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
         content: SingleChildScrollView(

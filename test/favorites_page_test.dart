@@ -106,6 +106,28 @@ void main() {
     expect(menuLabels().first, '多选');
     expect(menuLabels(), contains('检测收藏文件夹更新'));
     expect(menuLabels(), contains('检测失效项目'));
+    expect(
+      tester
+          .widget<Icon>(
+            find.descendant(
+              of: find.widgetWithText(M3eMenuRow, '检测收藏文件夹更新'),
+              matching: find.byType(Icon),
+            ),
+          )
+          .icon,
+      Icons.folder_check,
+    );
+    expect(
+      tester
+          .widget<Icon>(
+            find.descendant(
+              of: find.widgetWithText(M3eMenuRow, '检测失效项目'),
+              matching: find.byType(Icon),
+            ),
+          )
+          .icon,
+      Icons.document_search,
+    );
     expect(find.text('时间'), findsNothing);
     expect(find.text('名称'), findsNothing);
     expect(find.text('大小'), findsNothing);

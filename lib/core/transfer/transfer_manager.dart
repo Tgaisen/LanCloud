@@ -1019,7 +1019,7 @@ class TransferManager extends ChangeNotifier {
         .length;
     final i18n = NotificationService.i18n;
     final title = i18n?.foregroundServiceRunningTitle ?? '前台服务运行中';
-    final text = i18n?.foregroundServiceRunningBody ?? '下载、上传或收藏检测正在后台运行';
+    final text = i18n?.foregroundServiceRunningBody ?? '点按打开应用';
     if (activeCount > 0) {
       _foregroundTasks.acquire(
         ForegroundTaskReason.transfers,

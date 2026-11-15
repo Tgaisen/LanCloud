@@ -3218,7 +3218,7 @@ abstract class AppLocalizations {
   /// No description provided for @foregroundServiceRunningBody.
   ///
   /// In zh, this message translates to:
-  /// **'下载、上传或收藏检测正在后台运行'**
+  /// **'点按打开应用'**
   String get foregroundServiceRunningBody;
 
   /// No description provided for @notifUploadDone.
@@ -3374,7 +3374,7 @@ abstract class AppLocalizations {
   /// No description provided for @favoriteShareUnavailable.
   ///
   /// In zh, this message translates to:
-  /// **'已失效 · 不存在或已取消分享'**
+  /// **'已失效'**
   String get favoriteShareUnavailable;
 
   /// No description provided for @favoritePasswordChanged.
@@ -3388,6 +3388,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'检测收藏文件夹更新'**
   String get checkFavoriteFolderUpdates;
+
+  /// No description provided for @checkFavoriteFolderUpdateShort.
+  ///
+  /// In zh, this message translates to:
+  /// **'检测更新'**
+  String get checkFavoriteFolderUpdateShort;
 
   /// No description provided for @checkFavoriteAccess.
   ///

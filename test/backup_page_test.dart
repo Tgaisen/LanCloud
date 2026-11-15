@@ -792,7 +792,7 @@ void main() {
     await fake.webdav.setBackupSections({BackupSection.settings});
     await tester.pumpWidget(const SizedBox());
     await pumpPage(tester);
-    expect(find.text('上次备份：尚未备份'), findsOneWidget);
+    expect(find.text('上次备份：尚未备份'), findsNothing);
     expect(
       tester
           .widget<SwitchListTile>(find.widgetWithText(SwitchListTile, '自动备份'))
@@ -864,6 +864,11 @@ void main() {
       find.descendant(of: dialog, matching: find.byType(Radio<bool>)),
       findsNWidgets(2),
     );
+    expect(
+      find.byKey(const ValueKey('webdav-interval-supporting-text')),
+      findsOneWidget,
+    );
+    expect(find.text('上次备份：尚未备份'), findsOneWidget);
 
     // 选「每周」：弹窗关闭并写入，行副标题跟着变
     await tester.tap(find.text('每周'));
@@ -1010,6 +1015,7 @@ void main() {
     Future<void> pumpWith(int millis) async {
       SharedPreferences.setMockInitialValues(<String, Object>{
         'webdav_backup_sections': ['settings'],
+        'webdav_auto': true,
         'webdav_last_backup_at': millis,
       });
       // 先卸载旧页面：否则同类型 widget 复用 State，不会重新 load 存储
@@ -1018,15 +1024,25 @@ void main() {
     }
 
     await pumpWith(now.millisecondsSinceEpoch);
+    await tester.tap(find.text('备份频率'));
+    await tester.pumpAndSettle();
     expect(find.text('上次备份：今天'), findsOneWidget);
+    await tester.tapAt(const Offset(10, 10));
+    await tester.pumpAndSettle();
 
     await pumpWith(
       now.subtract(const Duration(days: 1)).millisecondsSinceEpoch,
     );
+    await tester.tap(find.text('备份频率'));
+    await tester.pumpAndSettle();
     expect(find.text('上次备份：昨天'), findsOneWidget);
+    await tester.tapAt(const Offset(10, 10));
+    await tester.pumpAndSettle();
 
     final old = now.subtract(const Duration(days: 3)).millisecondsSinceEpoch;
     await pumpWith(old);
+    await tester.tap(find.text('备份频率'));
+    await tester.pumpAndSettle();
     expect(find.text('上次备份：${formatDateShort(old)}'), findsOneWidget);
   });
 
