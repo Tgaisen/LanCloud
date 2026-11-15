@@ -1775,6 +1775,8 @@ class _DrivePageState extends ConsumerState<DrivePage>
                 sharer: sharer,
                 requiresPassword: info.pwd.isNotEmpty,
               );
+              if (!mounted) return;
+              await captureFavoriteFolderBaseline(context, info.url);
               count += 1;
             } catch (_) {
               failed += 1;
@@ -2981,6 +2983,8 @@ class _DrivePageState extends ConsumerState<DrivePage>
         requiresPassword: info.pwd.isNotEmpty,
       );
       if (!mounted) return false;
+      await captureFavoriteFolderBaseline(context, info.url);
+      if (!mounted) return true;
       showAppToast(context, context.l10n.favorited);
       return true;
     } catch (e) {

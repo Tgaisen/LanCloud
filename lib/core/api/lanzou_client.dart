@@ -1706,6 +1706,7 @@ class LanzouClient {
               final invalid = id.isEmpty || id == '-1';
               files.add(
                 ShareFileItem(
+                  remoteId: id,
                   name: '${item['name_all'] ?? ''}',
                   time: '${item['time'] ?? ''}',
                   size: '${item['size'] ?? ''}',

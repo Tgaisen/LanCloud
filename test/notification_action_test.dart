@@ -39,6 +39,18 @@ void main() {
       expect(decoded?.name, 'app.apk');
     });
 
+    test('should 还原收藏文件夹点击动作', () {
+      final action = NotificationAction.favoriteFolder(
+        ref: 'https://share.example/folder',
+      );
+
+      final decoded = NotificationAction.decode(action.encode());
+
+      expect(decoded, isNotNull);
+      expect(decoded!.kind, NotificationActionKind.favoriteFolder);
+      expect(decoded.ref, 'https://share.example/folder');
+    });
+
     test('should 忽略未知或损坏的 payload', () {
       expect(NotificationAction.decode(null), isNull);
       expect(NotificationAction.decode(''), isNull);
@@ -56,6 +68,26 @@ void main() {
     expect(first, again);
     expect(first, isNot(second));
     expect(first, greaterThanOrEqualTo(10000));
+  });
+
+  test('收藏更新通知 ID 对同一分享稳定，不同分享相互独立', () {
+    final first = NotificationService.favoriteFolderNotificationIdFor(
+      'https://share.example/a',
+    );
+    final again = NotificationService.favoriteFolderNotificationIdFor(
+      'https://share.example/a',
+    );
+    final second = NotificationService.favoriteFolderNotificationIdFor(
+      'https://share.example/b',
+    );
+
+    expect(first, again);
+    expect(first, isNot(second));
+    expect(first, inInclusiveRange(1100000000, 1139999999));
+    expect(
+      first,
+      isNot(NotificationService.favoriteCheckProgressNotificationId),
+    );
   });
 
   test('失败通知区分上传下载且不重复失败前缀', () {

@@ -60,6 +60,7 @@ class Icons {
   static const IconData download_for_offline_outlined =
       Symbols.download_for_offline;
   static const IconData download_outlined = Symbols.download;
+  static const IconData document_search = Symbols.document_search;
   static const IconData drive_file_move_outline = Symbols.drive_file_move;
   static const IconData edit = Symbols.edit;
   static const IconData edit_note = Symbols.edit_note;
@@ -71,6 +72,7 @@ class Icons {
   static const IconData flashlight_on_outlined = Symbols.flashlight_on;
   static const IconData flip = Symbols.flip;
   static const IconData folder = Symbols.folder;
+  static const IconData folder_check = Symbols.folder_check;
   static const IconData folder_open = Symbols.folder_open;
   static const IconData folder_outlined = Symbols.folder;
   static const IconData folder_special_outlined = Symbols.folder_special;

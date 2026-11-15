@@ -1,6 +1,6 @@
 # 回归基线
 
-> 当前快照日期：2026-11-13。
+> 当前快照日期：2026-11-15。
 >
 > 本文件只记录当前仓库状态；逐次迁移和增量测试历史见
 > [BASELINE_HISTORY.md](BASELINE_HISTORY.md)。
@@ -10,15 +10,16 @@
 | 命令 | 口径 | 结果 | 耗时 |
 | --- | --- | --- | --- |
 | `tools\agent.cmd analyze` | 全量 | No issues found | 约 2 min 1 s |
-| `tools\agent.cmd analyze` | 增量（升级改动，3 个 Dart 文件） | No issues found | 约 10 s |
-| `tools\agent.cmd test` | 全量（用例总数） | **899 tests, all passed** | 约 2 min 37 s |
-| `tools\agent.cmd format` | 全量 | 335 files，0 changed | 约 3 s |
+| `tools\agent.cmd analyze` | 增量（收藏菜单与弹窗细节，9 个 Dart 文件） | No issues found | 约 6 s |
+| `tools\agent.cmd test` | 全量（用例总数） | **935 tests, all passed** | 约 2 min 9 s |
+| `tools\agent.cmd format` | 全量 | 349 files，0 changed | 约 3 s |
 | `tools\agent.cmd build-apk` | debug | `app-debug.apk` | 首次构建约 5 min 46 s |
 
 当前分析结果为 0 issue 是硬基线。出现红灯时，先判断是否为本次改动引入；
 不要把增量结果当成全量结论。Flutter 3.50.0 下全量分析已重跑并通过。
 
-当前全量用例总数为 899，与升级前一致；Flutter 3.50.0 下已重跑全量并通过。
+当前全量用例总数为 935，比收藏监控改动前增加 36；Flutter 3.50.0 下已重跑
+全量并通过。
 测试入口在受影响文件超过 60 个时自动回退全量，避免 Windows 命令行长度上限导致
 测试尚未启动就报错。
 
@@ -26,14 +27,14 @@
 
 | 指标 | 当前值 |
 | --- | ---: |
-| `lib` Dart 文件 | 156 |
-| `lib` 总行数 | 58,654 |
-| `test` 测试文件 | 177（全部为 `*_test.dart`，平铺） |
-| `test` 总行数 | 32,972 |
-| `test` 用例数 | 899 |
-| `lib/ui` 平铺文件 | 60 |
-| `lib/core` | 55 个平铺文件 + 5 个子系统目录 |
-| 文案（`app_zh.arb`） | 1,624 行 |
+| `lib` Dart 文件 | 164 |
+| `lib` 总行数 | 61,984 |
+| `test` 测试文件 | 183（全部为 `*_test.dart`，平铺） |
+| `test` 总行数 | 35,354 |
+| `test` 用例数 | 935 |
+| `lib/ui` 平铺文件 | 61 |
+| `lib/core` | 58 个平铺文件 + 6 个子系统目录 |
+| 文案（`app_zh.arb`） | 1,755 行 |
 
 ## 工具链与依赖
 
@@ -47,7 +48,7 @@
 
 ## 测试安全网
 
-- 当前全量总数为 899 个测试；项目仍没有
+- 当前全量总数为 935 个测试；项目仍没有
   `integration_test` 和 golden test。
 - `tools\agent.cmd analyze|test` 默认走增量；全量结果必须按上表单独记录。
 - 增量推断出超过 60 个测试文件时，`agent.cmd test` 自动回退全量。
@@ -80,6 +81,9 @@
 - Windows OverlayPortal/UIA 上游间歇风险继续观察，不误判为业务回归。
 - 日志清理已增加 Windows 临时目录有界重试，分享密码恢复测试已改用 5 秒截止
   时间轮询；当前全量与连续复跑均通过，后续继续观察较慢 CI 环境。
+- 收藏文件夹自动检测只在应用启动或回到前台且到期时执行；应用进程被系统
+  结束后不会定时唤醒，Windows 关闭窗口后同样停止。检测期间的进度通知与
+  前台服务只用于本轮临时后台保活。
 - 开发环境 Flutter `3.50.0`，`pubspec.lock` 已记录 Dart `3.14.0` 与相同
   Flutter SDK 注记。
 

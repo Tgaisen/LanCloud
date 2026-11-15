@@ -8,6 +8,7 @@ import '../core/api/lanzou_client_registry.dart';
 import '../core/data/app_db_provider.dart';
 import '../core/drag_drop.dart';
 import '../core/drive_state.dart';
+import '../core/favorites/favorite_monitor.dart';
 import '../core/lanzou_link.dart';
 import '../core/transfer/transfer_manager.dart';
 import '../core/transfer/transfer_manager_provider.dart';
@@ -483,6 +484,12 @@ Future<DropOutcome> _addFavoritesFromLinks(
           sharer: folder.sharer,
           requiresPassword: (link.pwd ?? '').isNotEmpty,
         );
+        final favorite = await db.favoriteByRef(link.url);
+        if (favorite != null) {
+          await container
+              .read(favoriteMonitorProvider.notifier)
+              .saveFolderBaselineFromDetail(favorite, folder);
+        }
         favorited += 1;
       }
     } on NeedPasswordException {

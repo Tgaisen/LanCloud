@@ -12,6 +12,7 @@ import 'core/app_environment.dart';
 import 'core/app_log.dart';
 import 'core/app_startup.dart';
 import 'core/download_path_service.dart';
+import 'core/favorites/favorite_monitor.dart';
 import 'core/incoming_links.dart';
 import 'core/notifications.dart';
 import 'core/platform_support.dart';
@@ -69,7 +70,7 @@ Future<void> main() async {
       androidNotificationOptions: AndroidNotificationOptions(
         channelId: 'foreground_service',
         channelName: '蓝云',
-        channelDescription: '传输进行中时保持后台运行',
+        channelDescription: '传输或收藏检测进行中时保持后台运行',
         channelImportance: NotificationChannelImportance.LOW,
         priority: NotificationPriority.LOW,
         onlyAlertOnce: true,
@@ -120,6 +121,11 @@ Future<void> main() async {
   final updates = updateContainer.read(updateServiceProvider.notifier);
   await updates.initialize();
   unawaited(updates.maybeAutoCheck());
+  final favoriteMonitor = updateContainer.read(
+    favoriteMonitorProvider.notifier,
+  );
+  await favoriteMonitor.initialize();
+  unawaited(favoriteMonitor.maybeAutoCheck());
   runApp(
     UncontrolledProviderScope(
       container: updateContainer,

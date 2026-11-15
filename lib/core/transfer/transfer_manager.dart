@@ -4,14 +4,13 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
 import '../../l10n/l10n.dart';
 import '../api/lanzou_client.dart';
 import '../api/models.dart';
 import '../download_target.dart';
+import '../foreground_task_coordinator.dart';
 import '../notifications.dart';
-import '../platform_support.dart';
 import '../saf_storage.dart';
 import '../saved_file.dart';
 import '../shared_downloads_gateway.dart';
@@ -128,6 +127,7 @@ class TransferManager extends ChangeNotifier {
     TransferNotificationSink? notifications,
     SharedDownloadsGateway? sharedDownloads,
     TransferDownloader? downloader,
+    ForegroundTaskCoordinator? foregroundTasks,
     this._progressUpdateInterval = const Duration(seconds: 1),
   }) : _dependencies = dependencies,
        _notifications = notifications ?? NotificationService.instance,
@@ -138,7 +138,9 @@ class TransferManager extends ChangeNotifier {
            DioTransferDownloader(
              segmentConnectionsProvider: () =>
                  dependencies.settings.downloadConnections,
-           ) {
+           ),
+       _foregroundTasks =
+           foregroundTasks ?? ForegroundTaskCoordinator.instance {
     _restore();
   }
 
@@ -150,12 +152,11 @@ class TransferManager extends ChangeNotifier {
   final TransferNotificationSink _notifications;
   final SharedDownloadsGateway _sharedDownloads;
   final TransferDownloader _downloader;
+  final ForegroundTaskCoordinator _foregroundTasks;
   final List<TransferTask> tasks = [];
   final List<void Function(TransferTask)> _taskListeners = [];
   final Map<String, Future<void>> _activeStarts = {};
   int _seq = 0;
-  bool _serviceRunning = false;
-  int _serviceTaskCount = 0;
 
   /// 测试注入：重启后重试时用来重新解析直链；默认走账号端口的公开客户端。
   @visibleForTesting
@@ -1013,37 +1014,20 @@ class TransferManager extends ChangeNotifier {
 
   /// 有进行中任务时启动前台服务保持后台传输；全部结束则停止服务。
   void _syncForegroundService() {
-    // 前台服务是 Android / iOS 的能力，桌面端不需要（也没有这个插件）。
-    if (!PlatformSupport.isMobile) return;
     final activeCount = tasks
         .where((task) => _isActiveTransferStatus(task.status))
         .length;
     final i18n = NotificationService.i18n;
-    final title = i18n?.notifProgressTitle ?? '传输中';
-    final text =
-        i18n?.notifProgressBody(activeCount) ??
-        '$activeCount tasks in progress';
-    if (activeCount > 0 && !_serviceRunning) {
-      _serviceRunning = true;
-      _serviceTaskCount = activeCount;
-      FlutterForegroundTask.startService(
-        serviceId: 1000,
-        serviceTypes: const [ForegroundServiceTypes.dataSync],
-        notificationTitle: title,
-        notificationText: text,
+    final title = i18n?.foregroundServiceRunningTitle ?? '前台服务运行中';
+    final text = i18n?.foregroundServiceRunningBody ?? '点按打开应用';
+    if (activeCount > 0) {
+      _foregroundTasks.acquire(
+        ForegroundTaskReason.transfers,
+        title: title,
+        text: text,
       );
-    } else if (activeCount > 0 &&
-        _serviceRunning &&
-        _serviceTaskCount != activeCount) {
-      _serviceTaskCount = activeCount;
-      FlutterForegroundTask.updateService(
-        notificationTitle: title,
-        notificationText: text,
-      );
-    } else if (activeCount == 0 && _serviceRunning) {
-      _serviceRunning = false;
-      _serviceTaskCount = 0;
-      FlutterForegroundTask.stopService();
+    } else {
+      _foregroundTasks.release(ForegroundTaskReason.transfers);
     }
   }
 

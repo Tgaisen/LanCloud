@@ -3209,6 +3209,18 @@ abstract class AppLocalizations {
   /// **'{count} 个任务进行中'**
   String notifProgressBody(int count);
 
+  /// No description provided for @foregroundServiceRunningTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'前台服务运行中'**
+  String get foregroundServiceRunningTitle;
+
+  /// No description provided for @foregroundServiceRunningBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'点按打开应用'**
+  String get foregroundServiceRunningBody;
+
   /// No description provided for @notifUploadDone.
   ///
   /// In zh, this message translates to:
@@ -3250,6 +3262,54 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'下载与上传完成或失败的提醒'**
   String get notifChannelDoneDesc;
+
+  /// No description provided for @favoriteCheckProgressTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在检测收藏夹更新'**
+  String get favoriteCheckProgressTitle;
+
+  /// No description provided for @favoriteCheckProgressBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'{completed}/{total} · {name}'**
+  String favoriteCheckProgressBody(int completed, int total, String name);
+
+  /// No description provided for @favoriteCheckChannel.
+  ///
+  /// In zh, this message translates to:
+  /// **'收藏文件夹检测'**
+  String get favoriteCheckChannel;
+
+  /// No description provided for @favoriteCheckChannelDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'检测收藏夹更新时的进度'**
+  String get favoriteCheckChannelDesc;
+
+  /// No description provided for @favoriteUpdateChannel.
+  ///
+  /// In zh, this message translates to:
+  /// **'收藏文件夹更新'**
+  String get favoriteUpdateChannel;
+
+  /// No description provided for @favoriteUpdateChannelDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'收藏文件夹有更新时提醒'**
+  String get favoriteUpdateChannelDesc;
+
+  /// No description provided for @favoriteFolderUpdateNotificationBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'文件夹有更新 · {time}'**
+  String favoriteFolderUpdateNotificationBody(String time);
+
+  /// No description provided for @favoriteFolderUpdateNotificationBodyNoTime.
+  ///
+  /// In zh, this message translates to:
+  /// **'文件夹有更新'**
+  String get favoriteFolderUpdateNotificationBodyNoTime;
 
   /// No description provided for @files.
   ///
@@ -3298,6 +3358,210 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'留空则使用默认名称'**
   String get favoriteTitleHint;
+
+  /// No description provided for @favoriteFolderUpdated.
+  ///
+  /// In zh, this message translates to:
+  /// **'有更新 · {time}'**
+  String favoriteFolderUpdated(String time);
+
+  /// No description provided for @favoriteFolderUpdatedNoTime.
+  ///
+  /// In zh, this message translates to:
+  /// **'有更新'**
+  String get favoriteFolderUpdatedNoTime;
+
+  /// No description provided for @favoriteShareUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'已失效'**
+  String get favoriteShareUnavailable;
+
+  /// No description provided for @favoritePasswordChanged.
+  ///
+  /// In zh, this message translates to:
+  /// **'提取码已变更'**
+  String get favoritePasswordChanged;
+
+  /// No description provided for @checkFavoriteFolderUpdates.
+  ///
+  /// In zh, this message translates to:
+  /// **'检测收藏文件夹更新'**
+  String get checkFavoriteFolderUpdates;
+
+  /// No description provided for @checkFavoriteFolderUpdateShort.
+  ///
+  /// In zh, this message translates to:
+  /// **'检测更新'**
+  String get checkFavoriteFolderUpdateShort;
+
+  /// No description provided for @checkFavoriteAccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'检测失效项目'**
+  String get checkFavoriteAccess;
+
+  /// No description provided for @favoriteCheckAlreadyRunning.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在检测收藏夹，请稍候'**
+  String get favoriteCheckAlreadyRunning;
+
+  /// No description provided for @favoriteNotificationTargetMissing.
+  ///
+  /// In zh, this message translates to:
+  /// **'该收藏已不存在'**
+  String get favoriteNotificationTargetMissing;
+
+  /// No description provided for @favoriteCheckBatchNoUpdates.
+  ///
+  /// In zh, this message translates to:
+  /// **'检测完成，未检测到更新'**
+  String get favoriteCheckBatchNoUpdates;
+
+  /// No description provided for @favoriteCheckBatchUpdates.
+  ///
+  /// In zh, this message translates to:
+  /// **'检测完成，检测到更新 {count} 项'**
+  String favoriteCheckBatchUpdates(int count);
+
+  /// No description provided for @favoriteCheckFailureSuffix.
+  ///
+  /// In zh, this message translates to:
+  /// **'，检测失败 {count} 项'**
+  String favoriteCheckFailureSuffix(int count);
+
+  /// No description provided for @favoriteCheckSingleNoUpdate.
+  ///
+  /// In zh, this message translates to:
+  /// **'未检测到更新'**
+  String get favoriteCheckSingleNoUpdate;
+
+  /// No description provided for @favoriteCheckSingleUpdated.
+  ///
+  /// In zh, this message translates to:
+  /// **'检测到更新'**
+  String get favoriteCheckSingleUpdated;
+
+  /// No description provided for @favoriteCheckSingleFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'检测失败'**
+  String get favoriteCheckSingleFailed;
+
+  /// No description provided for @favoriteCheckAccessNone.
+  ///
+  /// In zh, this message translates to:
+  /// **'未检测到失效项目'**
+  String get favoriteCheckAccessNone;
+
+  /// No description provided for @favoriteCheckAccessFound.
+  ///
+  /// In zh, this message translates to:
+  /// **'检测到 {count} 个失效项目'**
+  String favoriteCheckAccessFound(int count);
+
+  /// No description provided for @favoriteCheckNoFolders.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有可检测的收藏文件夹'**
+  String get favoriteCheckNoFolders;
+
+  /// No description provided for @favoriteCheckNoSelection.
+  ///
+  /// In zh, this message translates to:
+  /// **'请至少选择一个收藏文件夹'**
+  String get favoriteCheckNoSelection;
+
+  /// No description provided for @favoriteAutoCheck.
+  ///
+  /// In zh, this message translates to:
+  /// **'自动检测收藏文件夹更新'**
+  String get favoriteAutoCheck;
+
+  /// No description provided for @favoriteAutoCheckSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'启动或回到前台时按频率检查'**
+  String get favoriteAutoCheckSubtitle;
+
+  /// No description provided for @favoriteCheckScope.
+  ///
+  /// In zh, this message translates to:
+  /// **'检测范围'**
+  String get favoriteCheckScope;
+
+  /// No description provided for @favoriteCheckScopeAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部收藏文件夹'**
+  String get favoriteCheckScopeAll;
+
+  /// No description provided for @favoriteCheckScopeSelected.
+  ///
+  /// In zh, this message translates to:
+  /// **'已选择 {count} 个文件夹'**
+  String favoriteCheckScopeSelected(int count);
+
+  /// No description provided for @favoriteCheckFrequency.
+  ///
+  /// In zh, this message translates to:
+  /// **'检测频率'**
+  String get favoriteCheckFrequency;
+
+  /// No description provided for @favoriteCheckDaily.
+  ///
+  /// In zh, this message translates to:
+  /// **'每天'**
+  String get favoriteCheckDaily;
+
+  /// No description provided for @favoriteCheckWeekly.
+  ///
+  /// In zh, this message translates to:
+  /// **'每周'**
+  String get favoriteCheckWeekly;
+
+  /// No description provided for @favoriteCheckMonthly.
+  ///
+  /// In zh, this message translates to:
+  /// **'每月'**
+  String get favoriteCheckMonthly;
+
+  /// No description provided for @favoriteLastCheckNever.
+  ///
+  /// In zh, this message translates to:
+  /// **'上次检测：尚未检测'**
+  String get favoriteLastCheckNever;
+
+  /// No description provided for @favoriteLastCheck.
+  ///
+  /// In zh, this message translates to:
+  /// **'上次检测：{time}'**
+  String favoriteLastCheck(String time);
+
+  /// No description provided for @favoriteLastCheckFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'上次检测：{time} · {count} 项失败'**
+  String favoriteLastCheckFailed(String time, int count);
+
+  /// No description provided for @favoriteUpdateNotify.
+  ///
+  /// In zh, this message translates to:
+  /// **'收藏文件夹更新通知'**
+  String get favoriteUpdateNotify;
+
+  /// No description provided for @favoriteUpdateNotifySubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'检测完成后，每个有更新的文件夹发一条通知'**
+  String get favoriteUpdateNotifySubtitle;
+
+  /// No description provided for @favoriteUpdateBadgeSemantics.
+  ///
+  /// In zh, this message translates to:
+  /// **'收藏，{count} 个文件夹有更新'**
+  String favoriteUpdateBadgeSemantics(int count);
 
   /// No description provided for @shareInvalid.
   ///

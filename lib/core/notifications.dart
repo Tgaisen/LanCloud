@@ -14,7 +14,7 @@ import '../l10n/l10n.dart';
 import 'app_info.dart';
 import 'platform_support.dart';
 
-enum NotificationActionKind { transfers, openFile }
+enum NotificationActionKind { transfers, openFile, favoriteFolder }
 
 enum TransferNotificationKind { download, upload }
 
@@ -72,6 +72,7 @@ class NotificationAction {
     required this.kind,
     this.path = '',
     this.name = '',
+    this.ref = '',
   });
 
   static const transfers = NotificationAction._(
@@ -87,12 +88,25 @@ class NotificationAction {
     name: name,
   );
 
+  factory NotificationAction.favoriteFolder({required String ref}) =>
+      NotificationAction._(
+        kind: NotificationActionKind.favoriteFolder,
+        ref: ref,
+      );
+
   final NotificationActionKind kind;
   final String path;
   final String name;
+  final String ref;
 
   String encode() {
     if (kind == NotificationActionKind.transfers) return 'transfers';
+    if (kind == NotificationActionKind.favoriteFolder) {
+      return jsonEncode(<String, String>{
+        'action': 'favoriteFolder',
+        'ref': ref,
+      });
+    }
     return jsonEncode(<String, String>{
       'action': 'openFile',
       'path': path,
@@ -106,6 +120,11 @@ class NotificationAction {
     try {
       final value = jsonDecode(payload);
       if (value is! Map<String, Object?>) return null;
+      if (value['action'] == 'favoriteFolder') {
+        final ref = value['ref'];
+        if (ref is! String || ref.isEmpty) return null;
+        return NotificationAction.favoriteFolder(ref: ref);
+      }
       if (value['action'] != 'openFile') return null;
       final path = value['path'];
       if (path is! String || path.isEmpty) return null;
@@ -120,7 +139,7 @@ class NotificationAction {
   }
 }
 
-/// 通知服务：传输进度与完成提醒。
+/// 通知服务：传输进度、收藏检测进度和完成提醒。
 ///
 /// 通知文案通过 [i18n] 跟随界面语言，由 RootShell 在每次构建时刷新；
 /// 初始化时也会按当前设置的语言加载一次。
@@ -160,6 +179,8 @@ class NotificationService implements TransferNotificationSink {
   bool _ready = false;
 
   static const progressChannelId = 'transfers_progress';
+  static const favoriteCheckProgressChannelId = 'favorites_check_progress';
+  static const favoriteUpdateChannelId = 'favorites_updates';
 
   /// Windows 通知在 HKCU\Software\Classes\AppUserModelId 下注册的标识，
   /// 决定通知里显示的应用名。
@@ -279,13 +300,35 @@ class NotificationService implements TransferNotificationSink {
           showBadge: false,
         ),
       );
+      await androidImpl?.createNotificationChannel(
+        AndroidNotificationChannel(
+          favoriteCheckProgressChannelId,
+          i18n?.favoriteCheckChannel ?? '收藏文件夹检测',
+          description: i18n?.favoriteCheckChannelDesc ?? '检测收藏夹更新时的进度',
+          importance: Importance.low,
+          playSound: false,
+          enableVibration: false,
+          showBadge: false,
+        ),
+      );
+      await androidImpl?.createNotificationChannel(
+        AndroidNotificationChannel(
+          favoriteUpdateChannelId,
+          i18n?.favoriteUpdateChannel ?? '收藏文件夹更新',
+          description: i18n?.favoriteUpdateChannelDesc ?? '收藏文件夹有更新时提醒',
+          importance: Importance.defaultImportance,
+          playSound: false,
+          enableVibration: false,
+          showBadge: true,
+        ),
+      );
       _ready = true;
     } catch (_) {
       _ready = false;
     }
   }
 
-  /// 冷启动时读取通知启动信息：若由传输通知拉起则标记跳转传输视图。
+  /// 冷启动时读取通知启动信息并暂存类型化点击动作。
   Future<void> consumeLaunchDetails() async {
     try {
       final details = await _plugin.getNotificationAppLaunchDetails();
@@ -402,6 +445,91 @@ class NotificationService implements TransferNotificationSink {
   void cancelTransferTask(String taskId) {
     if (!_ready) return;
     _plugin.cancel(id: notificationIdFor(taskId));
+  }
+
+  static const int favoriteCheckProgressNotificationId = 1150000000;
+  static const String favoriteUpdateGroupKey = 'favorite_folder_updates';
+
+  Future<void> showFavoriteCheckProgress({
+    required int completed,
+    required int total,
+    required String name,
+  }) async {
+    if (!_ready) return;
+    final strings = i18n;
+    await _plugin.show(
+      id: favoriteCheckProgressNotificationId,
+      title: strings?.favoriteCheckProgressTitle ?? '正在检测收藏夹更新',
+      body:
+          strings?.favoriteCheckProgressBody(completed, total, name) ??
+          '$completed/$total · $name',
+      notificationDetails: NotificationDetails(
+        android: AndroidNotificationDetails(
+          favoriteCheckProgressChannelId,
+          strings?.favoriteCheckChannel ?? '收藏文件夹检测',
+          importance: Importance.low,
+          priority: Priority.low,
+          playSound: false,
+          enableVibration: false,
+          onlyAlertOnce: true,
+          ongoing: true,
+          autoCancel: false,
+          showProgress: true,
+          indeterminate: total <= 0,
+          maxProgress: total > 0 ? total : 100,
+          progress: total > 0 ? completed.clamp(0, total) : 0,
+        ),
+      ),
+    );
+  }
+
+  Future<void> cancelFavoriteCheckProgress() async {
+    if (!_ready) return;
+    await _plugin.cancel(id: favoriteCheckProgressNotificationId);
+  }
+
+  Future<void> showFavoriteFolderUpdate({
+    required String ref,
+    required String name,
+    required String time,
+  }) async {
+    if (!_ready) return;
+    final strings = i18n;
+    await _plugin.show(
+      id: favoriteFolderNotificationIdFor(ref),
+      title: name,
+      body: time.isEmpty
+          ? strings?.favoriteFolderUpdateNotificationBodyNoTime ?? '文件夹有更新'
+          : strings?.favoriteFolderUpdateNotificationBody(time) ??
+                '文件夹有更新 · $time',
+      payload: NotificationAction.favoriteFolder(ref: ref).encode(),
+      notificationDetails: NotificationDetails(
+        android: AndroidNotificationDetails(
+          favoriteUpdateChannelId,
+          strings?.favoriteUpdateChannel ?? '收藏文件夹更新',
+          importance: Importance.defaultImportance,
+          priority: Priority.high,
+          playSound: false,
+          enableVibration: false,
+          groupKey: favoriteUpdateGroupKey,
+          autoCancel: true,
+        ),
+      ),
+    );
+  }
+
+  Future<void> cancelFavoriteFolderUpdate(String ref) async {
+    if (!_ready) return;
+    await _plugin.cancel(id: favoriteFolderNotificationIdFor(ref));
+  }
+
+  @visibleForTesting
+  static int favoriteFolderNotificationIdFor(String ref) {
+    var hash = 0x811c9dc5;
+    for (final codeUnit in ref.codeUnits) {
+      hash = ((hash ^ codeUnit) * 0x01000193) & 0x7fffffff;
+    }
+    return 1100000000 + hash % 40000000;
   }
 
   /// 任务字符串 ID 到 Android 32 位通知 ID 的稳定映射。

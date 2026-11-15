@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../foreground_task_coordinator.dart';
 import '../notifications_provider.dart';
 import '../shared_downloads_gateway.dart';
 import 'transfer_dependencies.dart';
@@ -16,6 +17,7 @@ final transferManagerProvider = Provider<TransferManager>((ref) {
     ref.watch(transferDependenciesProvider),
     notifications: ref.watch(notificationServiceProvider),
     sharedDownloads: ref.watch(sharedDownloadsGatewayProvider),
+    foregroundTasks: ref.watch(foregroundTaskCoordinatorProvider),
   );
   ref.onDispose(manager.dispose);
   return manager;

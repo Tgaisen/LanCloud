@@ -1779,6 +1779,12 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get foregroundServiceRunningTitle => 'Foreground service running';
+
+  @override
+  String get foregroundServiceRunningBody => 'Tap to open the app';
+
+  @override
   String get notifUploadDone => 'Upload complete';
 
   @override
@@ -1800,6 +1806,36 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get notifChannelDoneDesc =>
       'Alerts when downloads and uploads finish or fail';
+
+  @override
+  String get favoriteCheckProgressTitle => 'Checking favorite folder updates';
+
+  @override
+  String favoriteCheckProgressBody(int completed, int total, String name) {
+    return '$completed/$total · $name';
+  }
+
+  @override
+  String get favoriteCheckChannel => 'Favorite folder checks';
+
+  @override
+  String get favoriteCheckChannelDesc =>
+      'Progress while checking favorite folder updates';
+
+  @override
+  String get favoriteUpdateChannel => 'Favorite folder updates';
+
+  @override
+  String get favoriteUpdateChannelDesc =>
+      'Alerts when favorite folders are updated';
+
+  @override
+  String favoriteFolderUpdateNotificationBody(String time) {
+    return 'Folder updated · $time';
+  }
+
+  @override
+  String get favoriteFolderUpdateNotificationBodyNoTime => 'Folder updated';
 
   @override
   String get files => 'Files';
@@ -1828,6 +1864,127 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get favoriteTitleHint => 'Leave empty to use the default name';
+
+  @override
+  String favoriteFolderUpdated(String time) {
+    return 'Updated · $time';
+  }
+
+  @override
+  String get favoriteFolderUpdatedNoTime => 'Updated';
+
+  @override
+  String get favoriteShareUnavailable => 'Unavailable';
+
+  @override
+  String get favoritePasswordChanged => 'Extraction code changed';
+
+  @override
+  String get checkFavoriteFolderUpdates => 'Check favorite folder updates';
+
+  @override
+  String get checkFavoriteFolderUpdateShort => 'Check for updates';
+
+  @override
+  String get checkFavoriteAccess => 'Check unavailable items';
+
+  @override
+  String get favoriteCheckAlreadyRunning =>
+      'Favorite folders are already being checked';
+
+  @override
+  String get favoriteNotificationTargetMissing =>
+      'This favorite no longer exists';
+
+  @override
+  String get favoriteCheckBatchNoUpdates => 'Check complete, no updates found';
+
+  @override
+  String favoriteCheckBatchUpdates(int count) {
+    return 'Check complete, updates found in $count';
+  }
+
+  @override
+  String favoriteCheckFailureSuffix(int count) {
+    return ', $count failed';
+  }
+
+  @override
+  String get favoriteCheckSingleNoUpdate => 'No updates found';
+
+  @override
+  String get favoriteCheckSingleUpdated => 'Update found';
+
+  @override
+  String get favoriteCheckSingleFailed => 'Check failed';
+
+  @override
+  String get favoriteCheckAccessNone => 'No unavailable items found';
+
+  @override
+  String favoriteCheckAccessFound(int count) {
+    return '$count unavailable items found';
+  }
+
+  @override
+  String get favoriteCheckNoFolders => 'No favorite folders to check';
+
+  @override
+  String get favoriteCheckNoSelection => 'Select at least one favorite folder';
+
+  @override
+  String get favoriteAutoCheck => 'Check favorite folder updates automatically';
+
+  @override
+  String get favoriteAutoCheckSubtitle => 'Check on launch or resume when due';
+
+  @override
+  String get favoriteCheckScope => 'Check scope';
+
+  @override
+  String get favoriteCheckScopeAll => 'All favorite folders';
+
+  @override
+  String favoriteCheckScopeSelected(int count) {
+    return '$count folders selected';
+  }
+
+  @override
+  String get favoriteCheckFrequency => 'Check frequency';
+
+  @override
+  String get favoriteCheckDaily => 'Daily';
+
+  @override
+  String get favoriteCheckWeekly => 'Weekly';
+
+  @override
+  String get favoriteCheckMonthly => 'Monthly';
+
+  @override
+  String get favoriteLastCheckNever => 'Last checked: never';
+
+  @override
+  String favoriteLastCheck(String time) {
+    return 'Last checked: $time';
+  }
+
+  @override
+  String favoriteLastCheckFailed(String time, int count) {
+    return 'Last checked: $time · $count failed';
+  }
+
+  @override
+  String get favoriteUpdateNotify => 'Favorite folder update notifications';
+
+  @override
+  String get favoriteUpdateNotifySubtitle =>
+      'Send one notification for each updated folder';
+
+  @override
+  String favoriteUpdateBadgeSemantics(int count) {
+    return 'Favorites, $count folders updated';
+  }
 
   @override
   String get shareInvalid =>

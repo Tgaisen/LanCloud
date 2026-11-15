@@ -13,9 +13,11 @@ import 'core/agreements.dart';
 import 'core/app_runtime_state.dart';
 import 'core/api/lanzou_client_registry.dart';
 import 'core/cache_page_settings_state.dart';
+import 'core/data/app_db_provider.dart';
 import 'core/drag_drop.dart';
 import 'core/drive_state.dart';
 import 'core/file_open_result.dart';
+import 'core/favorites/favorite_monitor.dart';
 import 'core/incoming_links.dart';
 import 'core/lanzou_link.dart';
 import 'core/language_clipboard_settings_state.dart';
@@ -500,6 +502,7 @@ class _RootShellState extends ConsumerState<RootShell>
   // 保留元素，重建后像素偏移会落到错误的页。GlobalKey 可让 PageView 只
   // 移动、不重建。切换账号时更换 key，以保留重新挂载刷新页面的语义。
   String? _pageViewUid;
+  String? _pendingFavoriteNotificationRef;
   late GlobalKey _pageViewKey = GlobalKey();
   late PageController _pageController = PageController(initialPage: _index);
   bool _pagerSyncPending = false;
@@ -802,7 +805,33 @@ class _RootShellState extends ConsumerState<RootShell>
         _goTo(_viewTransfers);
       case NotificationActionKind.openFile:
         unawaited(_openFileFromNotification(action));
+      case NotificationActionKind.favoriteFolder:
+        unawaited(_openFavoriteFolderFromNotification(action.ref));
     }
+  }
+
+  Future<void> _openFavoriteFolderFromNotification(String favoriteRef) async {
+    if (_accounts.store.activeUid == null) {
+      _pendingFavoriteNotificationRef = favoriteRef;
+      return;
+    }
+    final favorite = await ref.read(appDbProvider).favoriteByRef(favoriteRef);
+    if (!mounted) return;
+    if (favorite == null || favorite.kind != 'shareFolder') {
+      _goTo(_viewFavorites);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.favoriteNotificationTargetMissing)),
+      );
+      return;
+    }
+    final opened = await openShareFolderWithLoading(
+      context,
+      url: favorite.ref,
+      pwd: favorite.pwd,
+      onPasswordUpdated: (pwd) =>
+          ref.read(appDbProvider).updateFavorite(favorite.id, pwd: pwd),
+    );
+    if (!opened && mounted) _goTo(_viewFavorites);
   }
 
   Future<void> _openFileFromNotification(NotificationAction action) async {
@@ -901,7 +930,10 @@ class _RootShellState extends ConsumerState<RootShell>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _checkClipboard();
+    if (state == AppLifecycleState.resumed) {
+      _checkClipboard();
+      unawaited(ref.read(favoriteMonitorProvider.notifier).maybeAutoCheck());
+    }
   }
 
   /// 系统主题切换时同步窗口边框（应用内主题切换走 didChangeDependencies）。
@@ -1042,6 +1074,7 @@ class _RootShellState extends ConsumerState<RootShell>
   @override
   Widget build(BuildContext context) {
     final manager = ref.watch(transferManagerProvider);
+    final favoriteUpdates = ref.watch(favoriteUpdateCountProvider);
     return _ShellStateBuilder(
       runtime: _runtime,
       accounts: _accounts,
@@ -1049,7 +1082,8 @@ class _RootShellState extends ConsumerState<RootShell>
       appearance: _appearance,
       builder: (context, shell) => TransferRunningCount(
         manager: manager,
-        builder: (context, running) => _buildShell(context, shell, running),
+        builder: (context, running) =>
+            _buildShell(context, shell, running, favoriteUpdates),
       ),
     );
   }
@@ -1058,6 +1092,7 @@ class _RootShellState extends ConsumerState<RootShell>
     BuildContext context,
     _ShellStateSnapshot shell,
     int running,
+    int favoriteUpdates,
   ) {
     final l10n = context.l10n;
     NotificationService.i18n = l10n;
@@ -1078,6 +1113,15 @@ class _RootShellState extends ConsumerState<RootShell>
         firstRun: true,
         credentialsResetNotice: shell.secureStorageNeedsReauthentication,
       );
+    }
+    final pendingFavoriteRef = _pendingFavoriteNotificationRef;
+    if (pendingFavoriteRef != null) {
+      _pendingFavoriteNotificationRef = null;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          unawaited(_openFavoriteFolderFromNotification(pendingFavoriteRef));
+        }
+      });
     }
     // 底栏显示项变化时，下一帧按新页序重建
     if (_ids.isEmpty) {
@@ -1164,12 +1208,20 @@ class _RootShellState extends ConsumerState<RootShell>
         _iconFor(viewId, selected: selected),
         fill: selected ? 1 : 0,
       );
-      if (viewId != _viewTransfers || running == 0) return icon;
-      // 角标数字单独读出来没有上下文，给读屏补一句「N 个任务进行中」
+      final count = switch (viewId) {
+        _viewTransfers => running,
+        _viewFavorites => favoriteUpdates,
+        _ => 0,
+      };
+      if (count == 0) return icon;
+      final badgeText = count > 99 ? '99+' : '$count';
+      // 角标数字单独读出来没有上下文，把状态并进导航项语义。
       return Semantics(
-        label: context.l10n.notifProgressBody(running),
+        label: viewId == _viewFavorites
+            ? context.l10n.favoriteUpdateBadgeSemantics(count)
+            : context.l10n.notifProgressBody(count),
         excludeSemantics: true,
-        child: Badge(label: Text('$running'), child: icon),
+        child: Badge(label: Text(badgeText), child: icon),
       );
     }
 
@@ -1197,9 +1249,13 @@ class _RootShellState extends ConsumerState<RootShell>
             icon: iconFor(id, selected: false),
             selectedIcon: iconFor(id, selected: true),
             label: _labelFor(id, l10n),
-            semanticsLabel: id == _viewTransfers && running > 0
-                ? '${_labelFor(id, l10n)}，${l10n.notifProgressBody(running)}'
-                : null,
+            semanticsLabel: switch (id) {
+              _viewTransfers when running > 0 =>
+                '${_labelFor(id, l10n)}，${l10n.notifProgressBody(running)}',
+              _viewFavorites when favoriteUpdates > 0 =>
+                l10n.favoriteUpdateBadgeSemantics(favoriteUpdates),
+              _ => null,
+            },
           ),
       ],
     );

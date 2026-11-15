@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/data/app_db.dart';
+import 'package:lancloud/core/favorite_monitor_models.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -305,9 +306,111 @@ void main() {
         },
       ],
     });
-    favorite = (await db.favorites()).single;
+    favorite = (await db.favorites()).singleWhere(
+      (item) => item.ref == 'legacy-ref',
+    );
     expect(favorite.fileTime, isEmpty);
     expect(favorite.requiresPassword, isNull);
+  });
+
+  test('收藏文件夹快照、更新标记和访问状态可持久化并随备份恢复', () async {
+    final db = AppDb.instance;
+    const ref = 'https://share.example/folder-monitor';
+    await db.addFavorite(kind: 'shareFolder', name: '待检测文件夹', ref: ref);
+    var favorite = (await db.favorites()).singleWhere(
+      (item) => item.ref == ref,
+    );
+    expect(favorite.folderSnapshot, isNull);
+    expect(favorite.folderHasUpdate, isFalse);
+    expect(favorite.shareStatus, FavoriteShareStatus.unchecked);
+
+    const snapshot = HeadFavoriteFolderSnapshot(
+      head: FavoriteFolderHead(
+        remoteId: 'ihead1',
+        name: '最新.zip',
+        time: '2026-11-15',
+        size: '5 M',
+      ),
+      checkedAt: 123,
+    );
+    await db.saveFavoriteFolderSnapshot(
+      id: favorite.id,
+      snapshot: snapshot,
+      hasUpdate: true,
+      updateAt: 456,
+    );
+    favorite = (await db.favorites()).singleWhere((item) => item.ref == ref);
+    expect(favorite.folderHasUpdate, isTrue);
+    expect(favorite.folderUpdateAt, 456);
+    expect(favorite.shareStatus, FavoriteShareStatus.valid);
+    expect(favorite.lastCheckedAt, 123);
+    expect(favorite.folderSnapshot, isA<HeadFavoriteFolderSnapshot>());
+
+    final exported = await db.exportTables(
+      favorites: true,
+      pins: false,
+      recents: false,
+    );
+    final row = (exported['favorites']! as List)
+        .cast<Map<String, Object?>>()
+        .singleWhere((item) => item['ref'] == ref);
+    expect(row['folder_snapshot'], snapshot.encode());
+    expect(row['folder_has_update'], 1);
+
+    await db.importTables({
+      'favorites': [row],
+    });
+    favorite = (await db.favorites()).singleWhere((item) => item.ref == ref);
+    expect(favorite.folderHasUpdate, isTrue);
+    expect(favorite.folderSnapshot, isA<HeadFavoriteFolderSnapshot>());
+
+    await db.saveFavoriteShareStatus(
+      id: favorite.id,
+      status: FavoriteShareStatus.passwordChanged,
+      checkedAt: 789,
+    );
+    favorite = (await db.favorites()).singleWhere((item) => item.ref == ref);
+    expect(favorite.shareStatus, FavoriteShareStatus.passwordChanged);
+    expect(favorite.lastCheckedAt, 789);
+
+    await db.clearFavoriteFolderUpdate(
+      id: favorite.id,
+      snapshot: const EmptyFavoriteFolderSnapshot(checkedAt: 900),
+    );
+    favorite = (await db.favorites()).singleWhere((item) => item.ref == ref);
+    expect(favorite.folderHasUpdate, isFalse);
+    expect(favorite.folderUpdateAt, isNull);
+    expect(favorite.folderSnapshot, isA<EmptyFavoriteFolderSnapshot>());
+    expect(favorite.shareStatus, FavoriteShareStatus.valid);
+  });
+
+  test('修改收藏链接会清空旧分享的检测快照和状态', () async {
+    final db = AppDb.instance;
+    const ref = 'https://share.example/old-folder';
+    await db.addFavorite(kind: 'shareFolder', name: '旧文件夹', ref: ref);
+    var favorite = (await db.favorites()).singleWhere(
+      (item) => item.ref == ref,
+    );
+    await db.saveFavoriteFolderSnapshot(
+      id: favorite.id,
+      snapshot: const EmptyFavoriteFolderSnapshot(checkedAt: 10),
+      hasUpdate: true,
+      updateAt: 20,
+    );
+
+    await db.updateFavorite(
+      favorite.id,
+      ref: 'https://share.example/new-folder',
+    );
+    favorite = (await db.favorites()).singleWhere(
+      (item) => item.ref == 'https://share.example/new-folder',
+    );
+    expect(favorite.ref, 'https://share.example/new-folder');
+    expect(favorite.folderSnapshot, isNull);
+    expect(favorite.folderHasUpdate, isFalse);
+    expect(favorite.folderUpdateAt, isNull);
+    expect(favorite.shareStatus, FavoriteShareStatus.unchecked);
+    expect(favorite.lastCheckedAt, isNull);
   });
 
   test('导出表：按备份内容裁剪', () async {

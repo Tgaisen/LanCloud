@@ -9,6 +9,7 @@ import '../core/api/lanzou_client_registry.dart';
 import '../core/data/app_db.dart';
 import '../core/data/app_db_provider.dart';
 import '../core/drive_state.dart';
+import '../core/favorites/favorite_monitor.dart';
 import '../core/lanzou_link.dart';
 import '../core/list_home_settings_state.dart';
 import '../core/navigation_appearance_settings_state.dart';
@@ -536,12 +537,18 @@ class _HomePageState extends ConsumerState<HomePage>
     super.build(context);
     final appearance = ref.watch(navigationAppearanceSettingsStateProvider);
     final manager = ref.watch(transferManagerProvider);
+    final favoriteUpdates = ref.watch(favoriteUpdateCountProvider);
     return ListenableBuilder(
       listenable: appearance.revision,
       builder: (context, _) => TransferRunningCount(
         manager: manager,
-        builder: (context, running) =>
-            _buildPage(context, appearance.hideTopBar, _navigation, running),
+        builder: (context, running) => _buildPage(
+          context,
+          appearance.hideTopBar,
+          _navigation,
+          running,
+          favoriteUpdates,
+        ),
       ),
     );
   }
@@ -551,6 +558,7 @@ class _HomePageState extends ConsumerState<HomePage>
     bool hideTopBar,
     NavigationState navigation,
     int running,
+    int favoriteUpdates,
   ) {
     final l10n = context.l10n;
     final scheme = Theme.of(context).colorScheme;
@@ -615,6 +623,16 @@ class _HomePageState extends ConsumerState<HomePage>
                             ExpressiveIconButton(
                               icon: Icons.star_border,
                               label: l10n.favorite,
+                              badge: favoriteUpdates == 0
+                                  ? null
+                                  : favoriteUpdates > 99
+                                  ? '99+'
+                                  : '$favoriteUpdates',
+                              badgeSemanticsLabel: favoriteUpdates == 0
+                                  ? null
+                                  : l10n.favoriteUpdateBadgeSemantics(
+                                      favoriteUpdates,
+                                    ),
                               onPressed: () => navigation.switchTab(3),
                             ),
                           ],

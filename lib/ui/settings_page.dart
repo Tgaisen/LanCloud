@@ -25,6 +25,7 @@ import 'cache_page_settings_tile.dart';
 import 'clipboard_link_prompt_tile.dart';
 import 'common.dart';
 import 'download_directory_settings_tile.dart';
+import 'favorite_monitor_settings_tile.dart';
 import 'language_settings_tile.dart';
 import 'licenses_page.dart';
 import 'm3e.dart';
@@ -452,12 +453,52 @@ class _SettingsCategoryPageState extends ConsumerState<SettingsCategoryPage>
         ),
       ),
       _Entry(
+        id: 'favorite_update_notify',
+        title: l10n.favoriteUpdateNotify,
+        subtitle: l10n.favoriteUpdateNotifySubtitle,
+        keywords: const ['收藏', '文件夹', '更新', '通知'],
+        section: SettingsSection.notification,
+        build: (context) => FavoriteUpdateNotificationSettingsTile(
+          onPermissionChanged: (granted) {
+            if (mounted) setState(() => _notifGranted = granted);
+          },
+        ),
+      ),
+      _Entry(
         id: 'clipboard_link',
         title: l10n.clipboardLinkPrompt,
         subtitle: l10n.clipboardLinkPromptSubtitle,
         keywords: l10n.clipboardLinkPromptKeywords.split(' '),
         section: SettingsSection.reminder,
         build: (context) => const ClipboardLinkPromptTile(),
+      ),
+      _Entry(
+        id: 'favorite_auto_check',
+        title: l10n.favoriteAutoCheck,
+        subtitle: l10n.favoriteAutoCheckSubtitle,
+        keywords: const ['收藏', '文件夹', '更新', '自动', '检测'],
+        section: SettingsSection.reminder,
+        build: (context) => FavoriteAutoCheckSettingsTile(
+          onPermissionChanged: (granted) {
+            if (mounted) setState(() => _notifGranted = granted);
+          },
+        ),
+      ),
+      _Entry(
+        id: 'favorite_check_scope',
+        title: l10n.favoriteCheckScope,
+        subtitle: l10n.favoriteCheckScopeAll,
+        keywords: const ['收藏', '文件夹', '检测', '范围'],
+        section: SettingsSection.reminder,
+        build: (context) => const FavoriteCheckScopeSettingsTile(),
+      ),
+      _Entry(
+        id: 'favorite_check_frequency',
+        title: l10n.favoriteCheckFrequency,
+        subtitle: l10n.favoriteCheckWeekly,
+        keywords: const ['收藏', '文件夹', '检测', '频率', '每天', '每周', '每月'],
+        section: SettingsSection.reminder,
+        build: (context) => const FavoriteCheckFrequencySettingsTile(),
       ),
       // 三项系统权限（通知 / 安装应用 / 忽略电池优化）收进一个弹窗，
       // 设置页只留一个「管理权限」入口

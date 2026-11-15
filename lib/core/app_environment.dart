@@ -7,6 +7,7 @@ import 'cache_page_settings_state.dart';
 import 'data/app_db.dart';
 import 'download_directory_settings_state.dart';
 import 'drive_state.dart';
+import 'favorite_monitor_settings_state.dart';
 import 'language_clipboard_settings_state.dart';
 import 'list_home_settings_state.dart';
 import 'navigation_appearance_settings_state.dart';
@@ -42,6 +43,7 @@ final class AppEnvironment {
     final settingsStore = this.settingsState.store;
     updateSettings = UpdateSettingsState(settingsStore);
     notificationSettings = NotificationSettingsState(settingsStore);
+    favoriteMonitorSettings = FavoriteMonitorSettingsState(settingsStore);
     navigationAppearanceSettings = NavigationAppearanceSettingsState(
       settingsStore,
       navigation: this.navigation,
@@ -68,6 +70,7 @@ final class AppEnvironment {
   final LanzouClientRegistry clientRegistry;
   late final UpdateSettingsState updateSettings;
   late final NotificationSettingsState notificationSettings;
+  late final FavoriteMonitorSettingsState favoriteMonitorSettings;
   late final NavigationAppearanceSettingsState navigationAppearanceSettings;
   late final ThemeSettingsState themeSettings;
   late final TransferConnectionSettingsState transferConnectionSettings;

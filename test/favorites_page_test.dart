@@ -99,11 +99,35 @@ void main() {
     expect(environment.listHomeSettings.favoritesSortMode, 'name');
     expect(environment.listHomeSettings.favoritesSortAscending, isTrue);
 
-    // 空收藏也能进多选：⋯ 菜单只保留非排序动作
+    // 空收藏也能进多选；批量检测项仍保留但会提示没有可检测项目。
     await tester.tap(find.byTooltip('菜单'));
     await tester.pumpAndSettle();
-    expect(menuLabels(), hasLength(2));
+    expect(menuLabels(), hasLength(4));
     expect(menuLabels().first, '多选');
+    expect(menuLabels(), contains('检测收藏文件夹更新'));
+    expect(menuLabels(), contains('检测失效项目'));
+    expect(
+      tester
+          .widget<Icon>(
+            find.descendant(
+              of: find.widgetWithText(M3eMenuRow, '检测收藏文件夹更新'),
+              matching: find.byType(Icon),
+            ),
+          )
+          .icon,
+      Icons.folder_check,
+    );
+    expect(
+      tester
+          .widget<Icon>(
+            find.descendant(
+              of: find.widgetWithText(M3eMenuRow, '检测失效项目'),
+              matching: find.byType(Icon),
+            ),
+          )
+          .icon,
+      Icons.document_search,
+    );
     expect(find.text('时间'), findsNothing);
     expect(find.text('名称'), findsNothing);
     expect(find.text('大小'), findsNothing);
