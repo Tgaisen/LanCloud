@@ -16,10 +16,10 @@ class AppFavoriteMonitorReporter implements FavoriteMonitorReporter {
   @override
   Future<void> start({required int total}) async {
     final title =
-        NotificationService.i18n?.favoriteCheckProgressTitle ?? '正在检测收藏夹更新';
+        NotificationService.i18n?.foregroundServiceRunningTitle ?? '前台服务运行中';
     final text =
-        NotificationService.i18n?.favoriteCheckProgressBody(0, total, '') ??
-        '0/$total';
+        NotificationService.i18n?.foregroundServiceRunningBody ??
+        '下载、上传或收藏检测正在后台运行';
     foregroundTasks.acquire(
       ForegroundTaskReason.favoriteCheck,
       title: title,
@@ -39,14 +39,10 @@ class AppFavoriteMonitorReporter implements FavoriteMonitorReporter {
     required String name,
   }) async {
     final title =
-        NotificationService.i18n?.favoriteCheckProgressTitle ?? '正在检测收藏夹更新';
+        NotificationService.i18n?.foregroundServiceRunningTitle ?? '前台服务运行中';
     final text =
-        NotificationService.i18n?.favoriteCheckProgressBody(
-          completed,
-          total,
-          name,
-        ) ??
-        '$completed/$total · $name';
+        NotificationService.i18n?.foregroundServiceRunningBody ??
+        '下载、上传或收藏检测正在后台运行';
     foregroundTasks.update(
       ForegroundTaskReason.favoriteCheck,
       title: title,

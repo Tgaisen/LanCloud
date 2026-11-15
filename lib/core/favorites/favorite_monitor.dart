@@ -44,11 +44,15 @@ class FavoriteMonitorRunResult {
     required this.total,
     required this.succeeded,
     required this.failed,
+    this.updated = 0,
+    this.invalid = 0,
   });
 
   final int total;
   final int succeeded;
   final int failed;
+  final int updated;
+  final int invalid;
 
   bool get hasFailures => failed > 0;
 }
@@ -290,6 +294,8 @@ class FavoriteMonitor extends Notifier<FavoriteMonitorState> {
 
     var succeeded = 0;
     var failed = 0;
+    var updated = 0;
+    var invalid = 0;
     var completed = 0;
     try {
       for (final target in targets) {
@@ -313,25 +319,24 @@ class FavoriteMonitor extends Notifier<FavoriteMonitorState> {
         );
 
         final checkedAt = _now.millisecondsSinceEpoch;
-        var targetSucceeded = false;
+        var targetResult = (succeeded: false, updated: false, invalid: false);
         if (favorite.kind == 'shareFolder') {
-          targetSucceeded = await _checkFolderTarget(
+          targetResult = await _checkFolderTarget(
             favorite,
             checkedAt: checkedAt,
             updateSnapshot: updateFolders,
           );
         } else if (favorite.kind == 'shareFile') {
-          targetSucceeded = await _checkFileTarget(
-            favorite,
-            checkedAt: checkedAt,
-          );
+          targetResult = await _checkFileTarget(favorite, checkedAt: checkedAt);
         }
         completed += 1;
-        if (targetSucceeded) {
+        if (targetResult.succeeded) {
           succeeded += 1;
         } else {
           failed += 1;
         }
+        if (targetResult.updated) updated += 1;
+        if (targetResult.invalid) invalid += 1;
         state = state.copyWith(completed: completed, currentName: '');
       }
     } catch (error, stack) {
@@ -345,6 +350,8 @@ class FavoriteMonitor extends Notifier<FavoriteMonitorState> {
       total: targets.length,
       succeeded: succeeded,
       failed: failed,
+      updated: updated,
+      invalid: invalid,
     );
     final completedAt = _now;
     state = state.copyWith(
@@ -367,7 +374,7 @@ class FavoriteMonitor extends Notifier<FavoriteMonitorState> {
     return result;
   }
 
-  Future<bool> _checkFolderTarget(
+  Future<({bool succeeded, bool updated, bool invalid})> _checkFolderTarget(
     FavoriteItem favorite, {
     required int checkedAt,
     required bool updateSnapshot,
@@ -381,12 +388,13 @@ class FavoriteMonitor extends Notifier<FavoriteMonitorState> {
         folder,
         checkedAt: checkedAt,
       );
+      var hasUpdate = false;
       if (updateSnapshot) {
         final changed = favoriteFolderHasChanged(
           favorite.folderSnapshot,
           snapshot,
         );
-        final hasUpdate = favorite.folderHasUpdate || changed;
+        hasUpdate = favorite.folderHasUpdate || changed;
         final updateAt = changed ? checkedAt : favorite.folderUpdateAt;
         await _db.saveFavoriteFolderSnapshot(
           id: favorite.id,
@@ -415,14 +423,23 @@ class FavoriteMonitor extends Notifier<FavoriteMonitorState> {
           checkedAt: checkedAt,
         );
       }
-      return true;
+      return (succeeded: true, updated: hasUpdate, invalid: false);
     } catch (error, stack) {
-      await _recordAccessError(favorite, error, stack, checkedAt: checkedAt);
-      return false;
+      final status = await _recordAccessError(
+        favorite,
+        error,
+        stack,
+        checkedAt: checkedAt,
+      );
+      return (
+        succeeded: false,
+        updated: false,
+        invalid: status == FavoriteShareStatus.unavailable,
+      );
     }
   }
 
-  Future<bool> _checkFileTarget(
+  Future<({bool succeeded, bool updated, bool invalid})> _checkFileTarget(
     FavoriteItem favorite, {
     required int checkedAt,
   }) async {
@@ -433,14 +450,23 @@ class FavoriteMonitor extends Notifier<FavoriteMonitorState> {
         status: FavoriteShareStatus.valid,
         checkedAt: checkedAt,
       );
-      return true;
+      return (succeeded: true, updated: false, invalid: false);
     } catch (error, stack) {
-      await _recordAccessError(favorite, error, stack, checkedAt: checkedAt);
-      return false;
+      final status = await _recordAccessError(
+        favorite,
+        error,
+        stack,
+        checkedAt: checkedAt,
+      );
+      return (
+        succeeded: false,
+        updated: false,
+        invalid: status == FavoriteShareStatus.unavailable,
+      );
     }
   }
 
-  Future<void> _recordAccessError(
+  Future<FavoriteShareStatus?> _recordAccessError(
     FavoriteItem favorite,
     Object error,
     StackTrace stack, {
@@ -453,9 +479,10 @@ class FavoriteMonitor extends Notifier<FavoriteMonitorState> {
         status: status,
         checkedAt: checkedAt,
       );
-      return;
+      return status;
     }
     ref.read(appLogProvider).error('favorite_monitor', error, stack);
+    return null;
   }
 
   /// 新收藏在后台补一次首项基线；失败不阻断收藏本身，也不产生更新提醒。

@@ -29,6 +29,8 @@ enum _FavoritesMenuAction {
   checkAccess,
 }
 
+enum FavoriteCheckReportMode { batchUpdates, singleUpdate, access }
+
 /// 收藏视图：独立底栏页，布局与传输页一致（分组 + 多选删除）。
 class FavoritesPage extends ConsumerStatefulWidget {
   const FavoritesPage({super.key, this.tabIndex});
@@ -324,7 +326,7 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
         .read(favoriteMonitorProvider.notifier)
         .checkFolders();
     if (!mounted) return;
-    _showCheckResult(result, folderCheck: true);
+    _showCheckResult(result, mode: FavoriteCheckReportMode.batchUpdates);
   }
 
   Future<void> _checkFavoriteAccess() async {
@@ -332,7 +334,7 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
         .read(favoriteMonitorProvider.notifier)
         .checkAllShareAccess();
     if (!mounted) return;
-    _showCheckResult(result, folderCheck: false);
+    _showCheckResult(result, mode: FavoriteCheckReportMode.access);
   }
 
   Future<void> _checkOneFolder(FavoriteItem item) async {
@@ -340,23 +342,17 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
         .read(favoriteMonitorProvider.notifier)
         .checkFolder(item);
     if (!mounted) return;
-    _showCheckResult(result, folderCheck: true);
+    _showCheckResult(result, mode: FavoriteCheckReportMode.singleUpdate);
   }
 
   void _showCheckResult(
     FavoriteMonitorRunResult? result, {
-    required bool folderCheck,
+    required FavoriteCheckReportMode mode,
   }) {
     final l10n = context.l10n;
-    final message = switch (result) {
-      null => l10n.favoriteCheckAlreadyRunning,
-      FavoriteMonitorRunResult(total: 0) =>
-        folderCheck ? l10n.favoriteCheckNoFolders : l10n.favoritesHint,
-      FavoriteMonitorRunResult(:final succeeded, failed: 0) =>
-        l10n.favoriteCheckAllDone(succeeded),
-      FavoriteMonitorRunResult(:final succeeded, :final failed) =>
-        l10n.favoriteCheckPartial(succeeded, failed),
-    };
+    final message = result == null
+        ? l10n.favoriteCheckAlreadyRunning
+        : favoriteCheckResultMessage(l10n, result, mode);
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));
   }
@@ -1102,4 +1098,38 @@ String favoriteItemSubtitle(FavoriteItem item, AppLocalizations l10n) {
   }
   if (item.size.isEmpty) return '';
   return prettyLzSize(item.size);
+}
+
+String favoriteCheckResultMessage(
+  AppLocalizations l10n,
+  FavoriteMonitorRunResult result,
+  FavoriteCheckReportMode mode,
+) {
+  if (mode == FavoriteCheckReportMode.singleUpdate) {
+    if (result.failed > 0) return l10n.favoriteCheckSingleFailed;
+    return result.updated > 0
+        ? l10n.favoriteCheckSingleUpdated
+        : l10n.favoriteCheckSingleNoUpdate;
+  }
+
+  if (result.total == 0) {
+    return mode == FavoriteCheckReportMode.access
+        ? l10n.favoriteCheckAccessNone
+        : l10n.favoriteCheckNoFolders;
+  }
+
+  final base = switch (mode) {
+    FavoriteCheckReportMode.access =>
+      result.invalid > 0
+          ? l10n.favoriteCheckAccessFound(result.invalid)
+          : l10n.favoriteCheckAccessNone,
+    FavoriteCheckReportMode.batchUpdates =>
+      result.updated > 0
+          ? l10n.favoriteCheckBatchUpdates(result.updated)
+          : l10n.favoriteCheckBatchNoUpdates,
+    FavoriteCheckReportMode.singleUpdate => l10n.favoriteCheckSingleNoUpdate,
+  };
+  return result.failed > 0
+      ? '$base${l10n.favoriteCheckFailureSuffix(result.failed)}'
+      : base;
 }

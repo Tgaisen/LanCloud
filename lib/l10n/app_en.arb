@@ -654,6 +654,8 @@
       }
     }
   },
+  "foregroundServiceRunningTitle": "Foreground service running",
+  "foregroundServiceRunningBody": "Download, upload, or favorite folder checks are running in the background",
   "notifUploadDone": "Upload complete",
   "notifDownloadDone": "Download complete",
   "notifFailed": "Transfer failed",
@@ -729,21 +731,31 @@
   "checkFavoriteAccess": "Check unavailable items",
   "favoriteCheckAlreadyRunning": "Favorite folders are already being checked",
   "favoriteNotificationTargetMissing": "This favorite no longer exists",
-  "favoriteCheckAllDone": "Check complete: {count} accessible",
-  "@favoriteCheckAllDone": {
+  "favoriteCheckBatchNoUpdates": "Check complete, no updates found",
+  "favoriteCheckBatchUpdates": "Check complete, updates found in {count}",
+  "@favoriteCheckBatchUpdates": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "favoriteCheckPartial": "Check complete: {ok} accessible, {failed} failed",
-  "@favoriteCheckPartial": {
+  "favoriteCheckFailureSuffix": ", {count} failed",
+  "@favoriteCheckFailureSuffix": {
     "placeholders": {
-      "ok": {
+      "count": {
         "type": "int"
-      },
-      "failed": {
+      }
+    }
+  },
+  "favoriteCheckSingleNoUpdate": "No updates found",
+  "favoriteCheckSingleUpdated": "Update found",
+  "favoriteCheckSingleFailed": "Check failed",
+  "favoriteCheckAccessNone": "No unavailable items found",
+  "favoriteCheckAccessFound": "{count} unavailable items found",
+  "@favoriteCheckAccessFound": {
+    "placeholders": {
+      "count": {
         "type": "int"
       }
     }
@@ -762,7 +774,6 @@
       }
     }
   },
-  "favoriteCheckScopeTitle": "Choose check scope",
   "favoriteCheckFrequency": "Check frequency",
   "favoriteCheckDaily": "Daily",
   "favoriteCheckWeekly": "Weekly",

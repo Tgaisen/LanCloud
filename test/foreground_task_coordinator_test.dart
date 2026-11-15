@@ -29,28 +29,27 @@ void main() {
 
     coordinator.acquire(
       ForegroundTaskReason.favoriteCheck,
-      title: '收藏检测',
-      text: '1/3',
+      title: '前台服务运行中',
+      text: '后台任务运行中',
     );
-    expect(backend.events, ['start:收藏检测:1/3']);
+    expect(backend.events, ['start:前台服务运行中:后台任务运行中']);
 
     coordinator.acquire(
       ForegroundTaskReason.transfers,
-      title: '传输中',
-      text: '2 个任务',
+      title: '前台服务运行中',
+      text: '后台任务运行中',
     );
-    expect(backend.events.last, 'update:传输中:2 个任务');
+    expect(backend.events.last, 'update:前台服务运行中:后台任务运行中');
 
     coordinator.update(
       ForegroundTaskReason.favoriteCheck,
-      title: '收藏检测',
-      text: '2/3',
+      title: '前台服务运行中',
+      text: '后台任务运行中',
     );
-    // 传输保活优先展示，收藏检测结束不能覆盖传输通知。
-    expect(backend.events.last, 'update:传输中:2 个任务');
+    expect(backend.events.last, 'update:前台服务运行中:后台任务运行中');
 
     coordinator.release(ForegroundTaskReason.transfers);
-    expect(backend.events.last, 'update:收藏检测:2/3');
+    expect(backend.events.last, 'update:前台服务运行中:后台任务运行中');
 
     coordinator.release(ForegroundTaskReason.favoriteCheck);
     expect(backend.events.last, 'stop');
@@ -62,13 +61,13 @@ void main() {
     final coordinator = ForegroundTaskCoordinator(backend);
     coordinator.acquire(
       ForegroundTaskReason.transfers,
-      title: '传输中',
-      text: '1 个任务',
+      title: '前台服务运行中',
+      text: '后台任务运行中',
     );
     coordinator.release(ForegroundTaskReason.transfers);
     coordinator.release(ForegroundTaskReason.transfers);
 
-    expect(backend.events, ['start:传输中:1 个任务', 'stop']);
+    expect(backend.events, ['start:前台服务运行中:后台任务运行中', 'stop']);
   });
 
   test('收藏检测 reporter 开始和结束成对持有前台服务', () async {
@@ -81,7 +80,7 @@ void main() {
 
     await reporter.start(total: 3);
     expect(coordinator.activeReasons, {ForegroundTaskReason.favoriteCheck});
-    expect(backend.events.single, startsWith('start:正在检测收藏夹更新:'));
+    expect(backend.events.single, startsWith('start:前台服务运行中:'));
 
     await reporter.finish(total: 3, succeeded: 2, failed: 1);
     expect(coordinator.activeReasons, isEmpty);

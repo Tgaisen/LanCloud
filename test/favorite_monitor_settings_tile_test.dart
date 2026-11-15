@@ -9,7 +9,9 @@ import 'package:lancloud/core/favorites/favorite_check_gateway.dart';
 import 'package:lancloud/core/favorites/favorite_monitor_reporter.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/delegates.dart';
+import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/favorite_monitor_settings_tile.dart';
+import 'package:lancloud/ui/m3e.dart';
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -112,6 +114,7 @@ void main() {
     );
     expect(scope.enabled, isFalse);
     expect(frequency.enabled, isFalse);
+    expect(find.text('上次检测：尚未检测'), findsOneWidget);
   });
 
   testWidgets('收藏更新通知默认开启，无系统权限时仍保存开关值', (tester) async {
@@ -136,7 +139,7 @@ void main() {
     expect(environment.favoriteMonitorSettings.notifyUpdates, isFalse);
   });
 
-  testWidgets('检测范围弹层默认全选，可取消单个文件夹后保存', (tester) async {
+  testWidgets('检测范围使用底栏显示项式 dialog，无行首图标并可取消单个文件夹', (tester) async {
     final environment = AppEnvironment();
     addTearDown(environment.dispose);
     FavoriteCheckScopeSelection? result;
@@ -187,14 +190,61 @@ void main() {
     expect(find.text('全部收藏文件夹'), findsOneWidget);
     expect(find.text('文件夹 A'), findsOneWidget);
     expect(find.text('文件夹 B'), findsOneWidget);
+    final dialog = find.byType(AlertDialog);
+    expect(dialog, findsOneWidget);
+    expect(
+      find.descendant(of: dialog, matching: find.byType(DialogListGroup)),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: dialog, matching: find.byType(M3ePickTile)),
+      findsNWidgets(3),
+    );
+    expect(find.byType(CheckboxListTile), findsNothing);
+    expect(find.widgetWithText(TextButton, '取消'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, '确定'), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(CheckboxListTile, '文件夹 B'));
+    await tester.tap(find.widgetWithText(M3ePickTile, '文件夹 B'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('保存'));
+    await tester.tap(find.text('确定'));
     await tester.pumpAndSettle();
 
     expect(result, isNotNull);
     expect(result!.all, isFalse);
     expect(result!.refs, {'https://share.example/a'});
+  });
+
+  testWidgets('检测频率使用 WebDAV 备份频率式单选 dialog', (tester) async {
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
+    await environment.favoriteMonitorSettings.setAutoCheck(true);
+
+    await tester.pumpWidget(
+      _host(
+        environment,
+        const Center(child: FavoriteCheckFrequencySettingsTile()),
+      ),
+    );
+    await tester.tap(find.text('检测频率'));
+    await tester.pumpAndSettle();
+
+    final dialog = find.byType(AlertDialog);
+    expect(dialog, findsOneWidget);
+    expect(
+      find.descendant(of: dialog, matching: find.byType(DialogListGroup)),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: dialog, matching: find.byType(M3ePickTile)),
+      findsNWidgets(3),
+    );
+
+    await tester.tap(find.text('每月'));
+    await tester.pumpAndSettle();
+    expect(
+      environment.favoriteMonitorSettings.frequency,
+      FavoriteCheckFrequency.monthly,
+    );
+    expect(find.byType(AlertDialog), findsNothing);
   });
 }

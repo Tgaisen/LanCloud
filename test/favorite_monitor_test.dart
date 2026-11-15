@@ -156,6 +156,7 @@ void main() {
 
     final saved = await db.favoriteByRef(favorite.ref);
     expect(result?.succeeded, 1);
+    expect(result?.updated, 0);
     expect(saved?.folderSnapshot, isA<HeadFavoriteFolderSnapshot>());
     expect(saved?.folderHasUpdate, isFalse);
     expect(
@@ -179,6 +180,7 @@ void main() {
 
     final saved = await db.favoriteByRef(favorite.ref);
     expect(result?.succeeded, 1);
+    expect(result?.updated, 1);
     expect(saved?.folderHasUpdate, isTrue);
     expect(saved?.folderUpdateAt, now.millisecondsSinceEpoch);
     expect(container.read(favoriteUpdateCountProvider), 1);
@@ -275,6 +277,27 @@ void main() {
     expect(gateway.fileCalls, 1);
     expect(savedFolder?.folderSnapshot!.encode(), before);
     expect(savedFolder?.folderHasUpdate, isFalse);
+  });
+
+  test('手动失效检测统计明确失效项目，提取码问题仍算检测失败', () async {
+    await addFolder();
+    await db.addFavorite(
+      kind: 'shareFile',
+      name: '失效文件',
+      ref: 'https://share.example/invalid-file',
+    );
+    final monitor = container.read(favoriteMonitorProvider.notifier);
+    gateway.fileError = const LanzouException(
+      '文件不存在',
+      code: LanzouErrorCode.fileShareUnavailable,
+    );
+
+    final result = await monitor.checkAllShareAccess();
+
+    expect(result?.succeeded, 1);
+    expect(result?.failed, 1);
+    expect(result?.invalid, 1);
+    expect(container.read(favoriteShareIssueCountProvider), 1);
   });
 
   test('自动检测只在开启、到期且不运行时执行', () async {

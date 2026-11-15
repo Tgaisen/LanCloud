@@ -1779,6 +1779,13 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get foregroundServiceRunningTitle => 'Foreground service running';
+
+  @override
+  String get foregroundServiceRunningBody =>
+      'Download, upload, or favorite folder checks are running in the background';
+
+  @override
   String get notifUploadDone => 'Upload complete';
 
   @override
@@ -1889,13 +1896,33 @@ class AppLocalizationsEn extends AppLocalizations {
       'This favorite no longer exists';
 
   @override
-  String favoriteCheckAllDone(int count) {
-    return 'Check complete: $count accessible';
+  String get favoriteCheckBatchNoUpdates => 'Check complete, no updates found';
+
+  @override
+  String favoriteCheckBatchUpdates(int count) {
+    return 'Check complete, updates found in $count';
   }
 
   @override
-  String favoriteCheckPartial(int ok, int failed) {
-    return 'Check complete: $ok accessible, $failed failed';
+  String favoriteCheckFailureSuffix(int count) {
+    return ', $count failed';
+  }
+
+  @override
+  String get favoriteCheckSingleNoUpdate => 'No updates found';
+
+  @override
+  String get favoriteCheckSingleUpdated => 'Update found';
+
+  @override
+  String get favoriteCheckSingleFailed => 'Check failed';
+
+  @override
+  String get favoriteCheckAccessNone => 'No unavailable items found';
+
+  @override
+  String favoriteCheckAccessFound(int count) {
+    return '$count unavailable items found';
   }
 
   @override
@@ -1920,9 +1947,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String favoriteCheckScopeSelected(int count) {
     return '$count folders selected';
   }
-
-  @override
-  String get favoriteCheckScopeTitle => 'Choose check scope';
 
   @override
   String get favoriteCheckFrequency => 'Check frequency';

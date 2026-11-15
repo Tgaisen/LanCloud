@@ -1710,6 +1710,12 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get foregroundServiceRunningTitle => '前台服务运行中';
+
+  @override
+  String get foregroundServiceRunningBody => '下载、上传或收藏检测正在后台运行';
+
+  @override
   String get notifUploadDone => '上传完成';
 
   @override
@@ -1813,13 +1819,33 @@ class AppLocalizationsZh extends AppLocalizations {
   String get favoriteNotificationTargetMissing => '该收藏已不存在';
 
   @override
-  String favoriteCheckAllDone(int count) {
-    return '检测完成：$count 项正常';
+  String get favoriteCheckBatchNoUpdates => '检测完成，未检测到更新';
+
+  @override
+  String favoriteCheckBatchUpdates(int count) {
+    return '检测完成，检测到更新 $count 项';
   }
 
   @override
-  String favoriteCheckPartial(int ok, int failed) {
-    return '检测完成：$ok 项正常，$failed 项失败';
+  String favoriteCheckFailureSuffix(int count) {
+    return '，检测失败 $count 项';
+  }
+
+  @override
+  String get favoriteCheckSingleNoUpdate => '未检测到更新';
+
+  @override
+  String get favoriteCheckSingleUpdated => '检测到更新';
+
+  @override
+  String get favoriteCheckSingleFailed => '检测失败';
+
+  @override
+  String get favoriteCheckAccessNone => '未检测到失效项目';
+
+  @override
+  String favoriteCheckAccessFound(int count) {
+    return '检测到 $count 个失效项目';
   }
 
   @override
@@ -1844,9 +1870,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String favoriteCheckScopeSelected(int count) {
     return '已选择 $count 个文件夹';
   }
-
-  @override
-  String get favoriteCheckScopeTitle => '选择检测范围';
 
   @override
   String get favoriteCheckFrequency => '检测频率';

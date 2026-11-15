@@ -1018,10 +1018,8 @@ class TransferManager extends ChangeNotifier {
         .where((task) => _isActiveTransferStatus(task.status))
         .length;
     final i18n = NotificationService.i18n;
-    final title = i18n?.notifProgressTitle ?? '传输中';
-    final text =
-        i18n?.notifProgressBody(activeCount) ??
-        '$activeCount tasks in progress';
+    final title = i18n?.foregroundServiceRunningTitle ?? '前台服务运行中';
+    final text = i18n?.foregroundServiceRunningBody ?? '下载、上传或收藏检测正在后台运行';
     if (activeCount > 0) {
       _foregroundTasks.acquire(
         ForegroundTaskReason.transfers,

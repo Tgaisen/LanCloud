@@ -500,14 +500,6 @@ class _SettingsCategoryPageState extends ConsumerState<SettingsCategoryPage>
         section: SettingsSection.reminder,
         build: (context) => const FavoriteCheckFrequencySettingsTile(),
       ),
-      _Entry(
-        id: 'favorite_last_check',
-        title: l10n.favoriteLastCheckNever,
-        subtitle: '',
-        keywords: const ['收藏', '文件夹', '检测', '上次'],
-        section: SettingsSection.reminder,
-        build: (context) => const FavoriteLastCheckSettingsTile(),
-      ),
       // 三项系统权限（通知 / 安装应用 / 忽略电池优化）收进一个弹窗，
       // 设置页只留一个「管理权限」入口
       _Entry(

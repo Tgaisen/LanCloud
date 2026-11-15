@@ -3209,6 +3209,18 @@ abstract class AppLocalizations {
   /// **'{count} 个任务进行中'**
   String notifProgressBody(int count);
 
+  /// No description provided for @foregroundServiceRunningTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'前台服务运行中'**
+  String get foregroundServiceRunningTitle;
+
+  /// No description provided for @foregroundServiceRunningBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载、上传或收藏检测正在后台运行'**
+  String get foregroundServiceRunningBody;
+
   /// No description provided for @notifUploadDone.
   ///
   /// In zh, this message translates to:
@@ -3395,17 +3407,53 @@ abstract class AppLocalizations {
   /// **'该收藏已不存在'**
   String get favoriteNotificationTargetMissing;
 
-  /// No description provided for @favoriteCheckAllDone.
+  /// No description provided for @favoriteCheckBatchNoUpdates.
   ///
   /// In zh, this message translates to:
-  /// **'检测完成：{count} 项正常'**
-  String favoriteCheckAllDone(int count);
+  /// **'检测完成，未检测到更新'**
+  String get favoriteCheckBatchNoUpdates;
 
-  /// No description provided for @favoriteCheckPartial.
+  /// No description provided for @favoriteCheckBatchUpdates.
   ///
   /// In zh, this message translates to:
-  /// **'检测完成：{ok} 项正常，{failed} 项失败'**
-  String favoriteCheckPartial(int ok, int failed);
+  /// **'检测完成，检测到更新 {count} 项'**
+  String favoriteCheckBatchUpdates(int count);
+
+  /// No description provided for @favoriteCheckFailureSuffix.
+  ///
+  /// In zh, this message translates to:
+  /// **'，检测失败 {count} 项'**
+  String favoriteCheckFailureSuffix(int count);
+
+  /// No description provided for @favoriteCheckSingleNoUpdate.
+  ///
+  /// In zh, this message translates to:
+  /// **'未检测到更新'**
+  String get favoriteCheckSingleNoUpdate;
+
+  /// No description provided for @favoriteCheckSingleUpdated.
+  ///
+  /// In zh, this message translates to:
+  /// **'检测到更新'**
+  String get favoriteCheckSingleUpdated;
+
+  /// No description provided for @favoriteCheckSingleFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'检测失败'**
+  String get favoriteCheckSingleFailed;
+
+  /// No description provided for @favoriteCheckAccessNone.
+  ///
+  /// In zh, this message translates to:
+  /// **'未检测到失效项目'**
+  String get favoriteCheckAccessNone;
+
+  /// No description provided for @favoriteCheckAccessFound.
+  ///
+  /// In zh, this message translates to:
+  /// **'检测到 {count} 个失效项目'**
+  String favoriteCheckAccessFound(int count);
 
   /// No description provided for @favoriteCheckNoFolders.
   ///
@@ -3448,12 +3496,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'已选择 {count} 个文件夹'**
   String favoriteCheckScopeSelected(int count);
-
-  /// No description provided for @favoriteCheckScopeTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'选择检测范围'**
-  String get favoriteCheckScopeTitle;
 
   /// No description provided for @favoriteCheckFrequency.
   ///

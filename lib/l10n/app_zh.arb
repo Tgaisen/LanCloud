@@ -1047,6 +1047,8 @@
       }
     }
   },
+  "foregroundServiceRunningTitle": "前台服务运行中",
+  "foregroundServiceRunningBody": "下载、上传或收藏检测正在后台运行",
   "notifUploadDone": "上传完成",
   "notifDownloadDone": "下载完成",
   "notifFailed": "传输失败",
@@ -1122,21 +1124,31 @@
   "checkFavoriteAccess": "检测失效项目",
   "favoriteCheckAlreadyRunning": "正在检测收藏夹，请稍候",
   "favoriteNotificationTargetMissing": "该收藏已不存在",
-  "favoriteCheckAllDone": "检测完成：{count} 项正常",
-  "@favoriteCheckAllDone": {
+  "favoriteCheckBatchNoUpdates": "检测完成，未检测到更新",
+  "favoriteCheckBatchUpdates": "检测完成，检测到更新 {count} 项",
+  "@favoriteCheckBatchUpdates": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "favoriteCheckPartial": "检测完成：{ok} 项正常，{failed} 项失败",
-  "@favoriteCheckPartial": {
+  "favoriteCheckFailureSuffix": "，检测失败 {count} 项",
+  "@favoriteCheckFailureSuffix": {
     "placeholders": {
-      "ok": {
+      "count": {
         "type": "int"
-      },
-      "failed": {
+      }
+    }
+  },
+  "favoriteCheckSingleNoUpdate": "未检测到更新",
+  "favoriteCheckSingleUpdated": "检测到更新",
+  "favoriteCheckSingleFailed": "检测失败",
+  "favoriteCheckAccessNone": "未检测到失效项目",
+  "favoriteCheckAccessFound": "检测到 {count} 个失效项目",
+  "@favoriteCheckAccessFound": {
+    "placeholders": {
+      "count": {
         "type": "int"
       }
     }
@@ -1155,7 +1167,6 @@
       }
     }
   },
-  "favoriteCheckScopeTitle": "选择检测范围",
   "favoriteCheckFrequency": "检测频率",
   "favoriteCheckDaily": "每天",
   "favoriteCheckWeekly": "每周",
