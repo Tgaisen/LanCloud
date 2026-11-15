@@ -1,11 +1,14 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_cache.dart';
 import 'package:path/path.dart' as p;
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   late Directory dir;
 
   setUp(() {
@@ -37,6 +40,34 @@ void main() {
     expect(await AppCache.clear(), 1175);
     expect(await AppCache.size(), 0);
     expect(dir.listSync(), isEmpty);
+  });
+
+  test('Android：优先通过原生缓存目录删除路径别名中的文件', () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    final file = File(p.join(dir.path, 'file_picker', 'aliased', 'a.bin'))
+      ..createSync(recursive: true);
+    const channel = MethodChannel('lancloud/file_picker');
+    String? deletedPath;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          if (call.method != 'deleteCacheFile') return null;
+          final args = call.arguments as Map<Object?, Object?>;
+          final path = args['path'] as String?;
+          if (path == null) return false;
+          deletedPath = path;
+          final target = File(path);
+          if (await target.exists()) await target.delete();
+          return true;
+        });
+    addTearDown(
+      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, null),
+    );
+
+    expect(await AppCache.deleteTemporaryFile(file.path), isTrue);
+    expect(deletedPath, file.path);
+    expect(file.existsSync(), isFalse);
   });
 
   test('桌面端：只清理本应用自己的条目，不碰 %TEMP% 里的其它文件', () async {

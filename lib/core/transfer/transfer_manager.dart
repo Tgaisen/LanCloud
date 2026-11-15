@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import '../../l10n/l10n.dart';
 import '../api/lanzou_client.dart';
 import '../api/models.dart';
+import '../app_cache.dart';
 import '../download_target.dart';
 import '../foreground_task_coordinator.dart';
 import '../notifications.dart';
@@ -253,6 +254,10 @@ class TransferManager extends ChangeNotifier {
         if (task.status.name != originalStatus) {
           await _persist(task);
           _notifications.cancelTransferTask(task.id);
+        }
+        if (task.kind == TransferKind.upload &&
+            task.status == TransferStatus.done) {
+          await _deleteTemporaryUploadSource(task);
         }
       }
       _bumpMarks();
@@ -887,14 +892,17 @@ class TransferManager extends ChangeNotifier {
     final task = _find(id);
     if (task == null) return;
     task.removed = true;
-    if (task.status == TransferStatus.running ||
-        task.status == TransferStatus.saving) {
+    final active =
+        task.status == TransferStatus.running ||
+        task.status == TransferStatus.saving;
+    if (active) {
       task.status = TransferStatus.canceled;
       if (!task.cancelToken.isCancelled) {
         task.cancelToken.cancel('removed');
       }
     } else {
       unawaited(_deletePartial(task));
+      unawaited(_deleteTemporaryUploadSource(task));
     }
     tasks.remove(task);
     _notifications.cancelTransferTask(task.id);
@@ -908,18 +916,22 @@ class TransferManager extends ChangeNotifier {
   /// （逐条删时每条都会重播一次列表动画，条目多时又卡又乱）。
   void removeTasks(List<String> ids) {
     final removed = <String>[];
+    final sourceCleanup = <TransferTask>[];
     for (final id in ids) {
       final task = _find(id);
       if (task == null) continue;
       task.removed = true;
-      if (task.status == TransferStatus.running ||
-          task.status == TransferStatus.saving) {
+      final active =
+          task.status == TransferStatus.running ||
+          task.status == TransferStatus.saving;
+      if (active) {
         task.status = TransferStatus.canceled;
         if (!task.cancelToken.isCancelled) {
           task.cancelToken.cancel('removed');
         }
       } else {
         unawaited(_deletePartial(task));
+        sourceCleanup.add(task);
       }
       tasks.remove(task);
       _notifications.cancelTransferTask(task.id);
@@ -927,6 +939,9 @@ class TransferManager extends ChangeNotifier {
     }
     if (removed.isEmpty) return;
     _dependencies.store.deleteTransfers(removed).catchError((_) {});
+    for (final task in sourceCleanup) {
+      unawaited(_deleteTemporaryUploadSource(task));
+    }
     _bumpMarks();
     notifyListeners();
     _pump();
@@ -1147,6 +1162,12 @@ class TransferManager extends ChangeNotifier {
       task.status = TransferStatus.failed;
       if (!task.interruptedByAccountSwitch) task.error = '$e';
     } finally {
+      if (task.kind == TransferKind.upload &&
+          (task.status == TransferStatus.done ||
+              task.status == TransferStatus.canceled ||
+              task.removed)) {
+        await _deleteTemporaryUploadSource(task);
+      }
       _bumpMarks();
       _persist(task);
       notifyListeners();
@@ -1246,6 +1267,15 @@ class TransferManager extends ChangeNotifier {
       cancelToken: task.cancelToken,
       onProgress: (sent, total) => _reportProgress(task, sent, total),
     );
+  }
+
+  /// 已结束或被删除的上传不再需要应用缓存里的源副本。
+  ///
+  /// 只处理临时目录内的路径；用户选择的普通文件、失败任务用于重试的副本
+  /// 都不会在这里被删除。
+  Future<void> _deleteTemporaryUploadSource(TransferTask task) async {
+    if (task.kind != TransferKind.upload || task.localFilePath.isEmpty) return;
+    await AppCache.deleteTemporaryFile(task.localFilePath);
   }
 
   Future<void> _runDownload(TransferTask task) async {
