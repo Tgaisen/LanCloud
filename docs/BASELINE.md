@@ -10,8 +10,8 @@
 | 命令 | 口径 | 结果 | 耗时 |
 | --- | --- | --- | --- |
 | `tools\agent.cmd analyze` | 全量 | No issues found | 约 2 min 1 s |
-| `tools\agent.cmd analyze` | 增量（上传进度与波浪条，2 个 Dart 文件） | No issues found | 约 20 s |
-| `tools\agent.cmd test` | 全量（用例总数） | **955 tests, all passed** | 约 3 min 5 s |
+| `tools\agent.cmd analyze` | 增量（多文件上传等待弹窗，5 个 Dart 文件） | No issues found | 约 16 s |
+| `tools\agent.cmd test` | 全量（用例总数） | **961 tests, all passed** | 约 3 min 18 s |
 | `tools\agent.cmd test` | 增量（上传进度与波浪条，21 个测试文件） | **229 tests, all passed** | 约 1 min 8 s |
 | `tools\agent.cmd format` | 全量 | 354 files，0 changed | 约 3 s |
 | `tools\agent.cmd build-apk` | debug | `app-debug.apk` | 首次构建约 5 min 46 s |
@@ -19,9 +19,8 @@
 当前分析结果为 0 issue 是硬基线。出现红灯时，先判断是否为本次改动引入；
 不要把增量结果当成全量结论。Flutter 3.50.0 下全量分析已重跑并通过。
 
-当前用例总数为 960，比收藏监控改动前增加 61。最近一次全量 955 项通过；
-上传缓存清理新增 4 项；上传进度与波浪条修复由 21 个受影响测试文件、
-229 项增量回归覆盖。
+当前用例总数为 961，比收藏监控改动前增加 62。最近一次全量 961 项通过；
+其中多文件上传等待弹窗新增 1 项；本轮因本地化生成文件触发全量回归。
 测试入口在受影响文件超过 60 个时自动回退全量，避免 Windows 命令行长度上限导致
 测试尚未启动就报错。
 

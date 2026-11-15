@@ -1251,6 +1251,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get uploadFileSubtitle => 'Pick files from this device or other apps';
 
   @override
+  String get addingUploadTasks => 'Adding upload tasks…';
+
+  @override
   String uploadSkipped(int added, int skipped) {
     return 'Added $added upload tasks; $skipped were skipped';
   }

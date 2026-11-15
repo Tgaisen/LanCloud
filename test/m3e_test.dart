@@ -187,6 +187,40 @@ void main() {
     await tester.pump(const Duration(milliseconds: 350));
   });
 
+  testWidgets('异步操作等待弹窗在完成前保持显示并自动关闭', (tester) async {
+    late BuildContext pageContext;
+    final action = Completer<int>();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) {
+              pageContext = context;
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      ),
+    );
+
+    final result = runWithLoadingDialog<int>(
+      pageContext,
+      text: '正在添加上传任务…',
+      action: () => action.future,
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 32));
+
+    expect(find.text('正在添加上传任务…'), findsOneWidget);
+    expect(find.byType(M3eCircularProgressIndicator), findsOneWidget);
+
+    action.complete(3);
+    expect(await result, 3);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+    expect(find.text('正在添加上传任务…'), findsNothing);
+  });
+
   testWidgets('弹窗打开期间切换深浅色，弹窗背景跟着变', (tester) async {
     late BuildContext pageContext;
     const seed = Color(0xFF2E6BE6);
