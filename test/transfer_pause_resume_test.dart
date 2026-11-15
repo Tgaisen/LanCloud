@@ -269,7 +269,7 @@ void main() {
       expect(manager.tasks.map((task) => task.id), ['u-active', 'd-done']);
     });
 
-    test('should 将高频进度通知限制为每秒一次', () async {
+    test('should 将高频进度限制为每秒一次且完成时保留最终值', () async {
       final tempDir = Directory.systemTemp.createTempSync(
         'lancloud-transfer-progress',
       );
@@ -308,11 +308,12 @@ void main() {
       downloader.emitProgress.complete();
       await downloader.progressBurst.future;
 
-      expect(task.received, payload.length);
+      expect(task.received, 1);
       expect(notifications, beforeBurst + 1);
 
       downloader.finish.complete();
       await _waitFor(() => task.status == TransferStatus.done);
+      expect(task.received, payload.length);
     });
 
     test('should 在直链失效后重新解析并继续原临时文件', () async {

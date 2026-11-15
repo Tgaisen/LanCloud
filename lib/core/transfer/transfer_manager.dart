@@ -120,6 +120,11 @@ class TransferTask {
     _lastProgressNotification = now;
     return true;
   }
+
+  /// 开始新传输阶段时立即允许一个进度样本，避免沿用上一阶段的节流时间。
+  void restartProgressWindow() {
+    _lastProgressNotification = DateTime.fromMillisecondsSinceEpoch(0);
+  }
 }
 
 class TransferManager extends ChangeNotifier {
@@ -170,11 +175,11 @@ class TransferManager extends ChangeNotifier {
   void _bumpMarks() => marksRevision.value += 1;
 
   void _reportProgress(TransferTask task, int received, int total) {
-    task.received = received;
-    if (total > 0) task.total = total;
     if (!task.shouldNotifyProgress(DateTime.now(), _progressUpdateInterval)) {
       return;
     }
+    task.received = received;
+    if (total > 0) task.total = total;
     notifyListeners();
     _syncTaskNotification(task);
   }
@@ -1055,6 +1060,7 @@ class TransferManager extends ChangeNotifier {
 
   Future<void> _start(TransferTask task) async {
     if (task.cancelToken.isCancelled) task.cancelToken = CancelToken();
+    task.restartProgressWindow();
     final needsResolution =
         task.kind == TransferKind.download && task.url.isEmpty;
     task.status = needsResolution
@@ -1357,6 +1363,7 @@ class TransferManager extends ChangeNotifier {
       task.status = TransferStatus.saving;
       task.exporting = true;
       task.received = 0;
+      task.restartProgressWindow();
       _bumpMarks();
       notifyListeners();
       _syncTaskNotification(task);
