@@ -3005,6 +3005,84 @@ abstract class AppLocalizations {
   /// **'刷新'**
   String get refresh;
 
+  /// No description provided for @loadAllRemaining.
+  ///
+  /// In zh, this message translates to:
+  /// **'加载全部剩余内容'**
+  String get loadAllRemaining;
+
+  /// No description provided for @loadAllRemainingProgress.
+  ///
+  /// In zh, this message translates to:
+  /// **'已加载 {count} 页'**
+  String loadAllRemainingProgress(int count);
+
+  /// No description provided for @cleanSameNamedFiles.
+  ///
+  /// In zh, this message translates to:
+  /// **'清理同名文件'**
+  String get cleanSameNamedFiles;
+
+  /// No description provided for @sameNamedFilesTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'该目录下的同名文件'**
+  String get sameNamedFilesTitle;
+
+  /// No description provided for @sameNamedFilesIncomplete.
+  ///
+  /// In zh, this message translates to:
+  /// **'未加载全部内容，结果可能不全'**
+  String get sameNamedFilesIncomplete;
+
+  /// No description provided for @sameNamedFilesEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'未找到同名文件'**
+  String get sameNamedFilesEmpty;
+
+  /// No description provided for @sameNamedFilesItemCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 项'**
+  String sameNamedFilesItemCount(int count);
+
+  /// No description provided for @keepLatest.
+  ///
+  /// In zh, this message translates to:
+  /// **'保留最新'**
+  String get keepLatest;
+
+  /// No description provided for @sameNamedFilesSummary.
+  ///
+  /// In zh, this message translates to:
+  /// **'共 {groups} 组 {files} 个同名文件'**
+  String sameNamedFilesSummary(int groups, int files);
+
+  /// No description provided for @sameNamedFilesDeleteConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'将把选中的 {count} 个同名文件移入回收站，继续吗？'**
+  String sameNamedFilesDeleteConfirm(int count);
+
+  /// No description provided for @sameNamedFilesKeepOne.
+  ///
+  /// In zh, this message translates to:
+  /// **'每组至少保留一个文件'**
+  String get sameNamedFilesKeepOne;
+
+  /// No description provided for @sameNamedFilesDeleteSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'已删除 {count} 个同名文件'**
+  String sameNamedFilesDeleteSuccess(int count);
+
+  /// No description provided for @deletePartialResult.
+  ///
+  /// In zh, this message translates to:
+  /// **'已删除 {success} 个，失败 {failed} 个'**
+  String deletePartialResult(int success, int failed);
+
   /// No description provided for @root.
   ///
   /// In zh, this message translates to:

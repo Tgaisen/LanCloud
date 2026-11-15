@@ -1663,6 +1663,58 @@ class AppLocalizationsEn extends AppLocalizations {
   String get refresh => 'Refresh';
 
   @override
+  String get loadAllRemaining => 'Load all remaining';
+
+  @override
+  String loadAllRemainingProgress(int count) {
+    return '$count pages loaded';
+  }
+
+  @override
+  String get cleanSameNamedFiles => 'Clean same-name files';
+
+  @override
+  String get sameNamedFilesTitle => 'Same-name files in this folder';
+
+  @override
+  String get sameNamedFilesIncomplete =>
+      'Not all content is loaded; results may be incomplete';
+
+  @override
+  String get sameNamedFilesEmpty => 'No same-name files found';
+
+  @override
+  String sameNamedFilesItemCount(int count) {
+    return '$count items';
+  }
+
+  @override
+  String get keepLatest => 'Keep latest';
+
+  @override
+  String sameNamedFilesSummary(int groups, int files) {
+    return '$groups groups, $files same-name files';
+  }
+
+  @override
+  String sameNamedFilesDeleteConfirm(int count) {
+    return 'Move $count selected same-name files to the recycle bin?';
+  }
+
+  @override
+  String get sameNamedFilesKeepOne => 'Keep at least one file in each group';
+
+  @override
+  String sameNamedFilesDeleteSuccess(int count) {
+    return 'Deleted $count same-name files';
+  }
+
+  @override
+  String deletePartialResult(int success, int failed) {
+    return 'Deleted $success; $failed failed';
+  }
+
+  @override
   String get root => 'Root';
 
   @override

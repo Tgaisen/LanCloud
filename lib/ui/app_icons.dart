@@ -67,6 +67,8 @@ class Icons {
   static const IconData edit_note = Symbols.edit_note;
   static const IconData error = Symbols.error;
   static const IconData error_outline = Symbols.error_outline;
+  static const IconData expand_all = Symbols.expand_all;
+  static const IconData file_copy = Symbols.file_copy;
   static const IconData file_download_off = Symbols.file_download_off;
   static const IconData file_open = Symbols.file_open;
   static const IconData file_present = Symbols.file_present;

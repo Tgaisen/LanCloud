@@ -985,6 +985,67 @@
   "toggleLayout": "切换布局样式",
   "multiSelect": "多选",
   "refresh": "刷新",
+  "loadAllRemaining": "加载全部剩余内容",
+  "loadAllRemainingProgress": "已加载 {count} 页",
+  "@loadAllRemainingProgress": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cleanSameNamedFiles": "清理同名文件",
+  "sameNamedFilesTitle": "该目录下的同名文件",
+  "sameNamedFilesIncomplete": "未加载全部内容，结果可能不全",
+  "sameNamedFilesEmpty": "未找到同名文件",
+  "sameNamedFilesItemCount": "{count} 项",
+  "@sameNamedFilesItemCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "keepLatest": "保留最新",
+  "sameNamedFilesSummary": "共 {groups} 组 {files} 个同名文件",
+  "@sameNamedFilesSummary": {
+    "placeholders": {
+      "groups": {
+        "type": "int"
+      },
+      "files": {
+        "type": "int"
+      }
+    }
+  },
+  "sameNamedFilesDeleteConfirm": "将把选中的 {count} 个同名文件移入回收站，继续吗？",
+  "@sameNamedFilesDeleteConfirm": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sameNamedFilesKeepOne": "每组至少保留一个文件",
+  "sameNamedFilesDeleteSuccess": "已删除 {count} 个同名文件",
+  "@sameNamedFilesDeleteSuccess": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "deletePartialResult": "已删除 {success} 个，失败 {failed} 个",
+  "@deletePartialResult": {
+    "placeholders": {
+      "success": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
   "root": "根目录",
   "loadFailed": "加载失败：{error}",
   "@loadFailed": {

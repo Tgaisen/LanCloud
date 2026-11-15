@@ -12,6 +12,7 @@ import 'package:material_ui/material_ui.dart' hide Icons;
 
 import '../core/api/lanzou_client.dart';
 import '../core/api/lanzou_client_registry.dart';
+import '../core/api/models.dart';
 import '../core/data/app_db_provider.dart';
 import '../core/drive_state.dart';
 import '../core/favorites/favorite_monitor.dart';
@@ -562,6 +563,13 @@ String prettyLzSize(String raw) {
       return formatBytes((value * 1024 * 1024).round());
   }
 }
+
+/// 网盘列表模式共用的文件副标题：大小 · 时间 · 下载次数。
+String lzFileListSubtitle(BuildContext context, LzFile file) => [
+  prettyLzSize(file.size),
+  if (file.time.isNotEmpty) file.time,
+  '${context.l10n.propertyDownloadCount} ${file.downs}',
+].where((part) => part.isNotEmpty).join(' · ');
 
 int lzSizeToBytes(String raw) {
   final text = raw.trim().replaceAll(' ', '').toUpperCase();
@@ -2300,12 +2308,17 @@ class SectionHeader extends StatelessWidget {
     super.key,
     required this.title,
     required this.count,
+    this.countLabel,
     this.actions = const <Widget>[],
     this.compact = false,
   });
 
   final String title;
   final int count;
+
+  /// 数量 chip 的完整文案；为空时只显示数字。
+  final String? countLabel;
+
   final List<Widget> actions;
   final bool compact;
 
@@ -2316,10 +2329,14 @@ class SectionHeader extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            title,
-            style: context.m3eEmphasizedTheme.titleSmall?.copyWith(
-              color: scheme.primary,
+          Flexible(
+            child: Text(
+              title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: context.m3eEmphasizedTheme.titleSmall?.copyWith(
+                color: scheme.primary,
+              ),
             ),
           ),
           const SizedBox(width: 8),
@@ -2330,7 +2347,7 @@ class SectionHeader extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
-              '$count',
+              countLabel ?? '$count',
               style: Theme.of(context).textTheme.labelSmall,
             ),
           ),
@@ -2344,10 +2361,11 @@ class SectionHeader extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          titleBlock,
+          Flexible(flex: actions.isEmpty ? 1 : 3, child: titleBlock),
           if (actions.isNotEmpty) ...[
             const SizedBox(width: 8),
-            Expanded(
+            Flexible(
+              flex: 2,
               child: Align(
                 alignment: Alignment.centerRight,
                 child: Wrap(
