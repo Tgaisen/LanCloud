@@ -155,17 +155,16 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('共 1 组 3 个同名文件'), findsOneWidget);
-    final sheetGroup = find.byType(SheetListGroup);
-    final segmentedList = tester.widget<SegmentedList>(
-      find
-          .descendant(of: sheetGroup, matching: find.byType(SegmentedList))
-          .first,
+    final segmentedList = tester.widget<SegmentedSliverList>(
+      find.byType(SegmentedSliverList).first,
     );
-    final scheme = Theme.of(tester.element(sheetGroup)).colorScheme;
+    final scheme = Theme.of(
+      tester.element(find.byType(SegmentedSliverList).first),
+    ).colorScheme;
     expect(segmentedList.color, scheme.surfaceContainer);
 
-    final deleteButton = tester.widget<FilledButton>(
-      find.widgetWithText(FilledButton, '删除'),
+    final deleteButton = tester.widget<M3eIconButton>(
+      find.byKey(const ValueKey('same-name-delete')),
     );
     expect(deleteButton.onPressed, isNull);
 
@@ -177,18 +176,7 @@ void main() {
         .length;
     expect(checked, 2);
 
-    await tester.tap(find.byKey(const ValueKey('same-name-file-newest')).last);
-    await tester.pump();
-    expect(
-      tester
-          .widgetList<Checkbox>(find.byType(Checkbox))
-          .where((checkbox) => checkbox.value == true)
-          .length,
-      2,
-      reason: '每组必须至少保留一个文件',
-    );
-
-    await tester.tap(find.widgetWithText(FilledButton, '删除'));
+    await tester.tap(find.byKey(const ValueKey('same-name-delete')));
     await tester.pumpAndSettle();
     expect(find.text('将把选中的 2 个同名文件移入回收站，继续吗？'), findsOneWidget);
 
@@ -203,6 +191,47 @@ void main() {
     expect(client.deletedIds, containsAll(<String>['older', 'oldest']));
     expect(client.deletedIds, isNot(contains('newest')));
     expect(find.text('已删除 2 个同名文件'), findsOneWidget);
+  });
+
+  testWidgets('同名文件允许整组全部删除', (tester) async {
+    final client = _CleanupClient(
+      hasMore: false,
+      files: [
+        LzFile(id: 'newest', name: 'same.zip', time: '3 天前', size: '3 M'),
+        LzFile(id: 'older', name: 'same.zip', time: '4 天前', size: '2 M'),
+        LzFile(id: 'oldest', name: 'same.zip', time: '5 天前', size: '1 M'),
+      ],
+    );
+    await _pumpDrive(tester, client);
+    await _openCleanup(tester);
+
+    await tester.tap(find.text('保留最新'));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('same-name-file-newest')).last);
+    await tester.pump();
+    expect(
+      tester
+          .widgetList<Checkbox>(find.byType(Checkbox))
+          .where((checkbox) => checkbox.value == true)
+          .length,
+      3,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('same-name-delete')));
+    await tester.pumpAndSettle();
+    expect(find.text('将把选中的 3 个同名文件移入回收站，继续吗？'), findsOneWidget);
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.widgetWithText(FilledButton, '删除'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      client.deletedIds,
+      containsAll(<String>['newest', 'older', 'oldest']),
+    );
   });
 
   testWidgets('大量同名文件使用懒加载列表', (tester) async {
@@ -229,6 +258,17 @@ void main() {
       findsOneWidget,
     );
     expect(find.byType(Md3ListItem).evaluate().length, lessThan(40));
+
+    final titleY = tester.getTopLeft(find.text('该目录下的同名文件')).dy;
+    await tester.drag(
+      find.byType(CustomScrollView).last,
+      const Offset(0, -500),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.getTopLeft(find.text('该目录下的同名文件')).dy, titleY);
+    expect(find.byKey(const ValueKey('same-name-cancel')), findsOneWidget);
+    expect(find.byKey(const ValueKey('same-name-delete')), findsOneWidget);
   });
 
   testWidgets('同名文件单项删除失败时保留失败项并提示部分成功', (tester) async {
@@ -245,7 +285,7 @@ void main() {
 
     await tester.tap(find.text('保留最新'));
     await tester.pump();
-    await tester.tap(find.widgetWithText(FilledButton, '删除'));
+    await tester.tap(find.byKey(const ValueKey('same-name-delete')));
     await tester.pumpAndSettle();
     await tester.tap(
       find.descendant(
@@ -273,8 +313,8 @@ void main() {
 
     expect(find.text('未找到同名文件'), findsOneWidget);
     expect(find.text('未加载全部内容，结果可能不全'), findsNothing);
-    final deleteButton = tester.widget<FilledButton>(
-      find.widgetWithText(FilledButton, '删除'),
+    final deleteButton = tester.widget<M3eIconButton>(
+      find.byKey(const ValueKey('same-name-delete')),
     );
     expect(deleteButton.onPressed, isNull);
   });

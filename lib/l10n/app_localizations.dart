@@ -3059,12 +3059,6 @@ abstract class AppLocalizations {
   /// **'将把选中的 {count} 个同名文件移入回收站，继续吗？'**
   String sameNamedFilesDeleteConfirm(int count);
 
-  /// No description provided for @sameNamedFilesKeepOne.
-  ///
-  /// In zh, this message translates to:
-  /// **'每组至少保留一个文件'**
-  String get sameNamedFilesKeepOne;
-
   /// No description provided for @sameNamedFilesDeleteSuccess.
   ///
   /// In zh, this message translates to:

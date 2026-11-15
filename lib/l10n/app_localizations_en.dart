@@ -1697,9 +1697,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get sameNamedFilesKeepOne => 'Keep at least one file in each group';
-
-  @override
   String sameNamedFilesDeleteSuccess(int count) {
     return 'Deleted $count same-name files';
   }

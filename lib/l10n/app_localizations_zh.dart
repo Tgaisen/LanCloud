@@ -1633,9 +1633,6 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get sameNamedFilesKeepOne => '每组至少保留一个文件';
-
-  @override
   String sameNamedFilesDeleteSuccess(int count) {
     return '已删除 $count 个同名文件';
   }

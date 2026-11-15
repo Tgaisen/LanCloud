@@ -646,7 +646,6 @@
       }
     }
   },
-  "sameNamedFilesKeepOne": "Keep at least one file in each group",
   "sameNamedFilesDeleteSuccess": "Deleted {count} same-name files",
   "@sameNamedFilesDeleteSuccess": {
     "placeholders": {

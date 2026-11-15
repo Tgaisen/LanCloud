@@ -1018,7 +1018,6 @@
       }
     }
   },
-  "sameNamedFilesKeepOne": "每组至少保留一个文件",
   "sameNamedFilesDeleteSuccess": "已删除 {count} 个同名文件",
   "@sameNamedFilesDeleteSuccess": {
     "placeholders": {

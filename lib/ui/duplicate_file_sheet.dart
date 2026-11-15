@@ -7,10 +7,6 @@ import 'app_icons.dart';
 import 'common.dart';
 import 'm3e.dart';
 
-/// 小型结果保持自然高度；超过该数量后改用有界懒加载列表，避免一次构建
-/// 全部同名文件行。
-const int _lazyDuplicateFileThreshold = 30;
-
 /// 展示当前目录中的同名文件组，并返回用户确认要删除的文件 id。
 ///
 /// 返回 `null` 表示取消；空集合不会返回。
@@ -19,13 +15,27 @@ Future<Set<String>?> showSameNamedFilesSheet(
   required DuplicateFileScan scan,
   required bool hasMore,
 }) {
-  final lazy = scan.fileCount > _lazyDuplicateFileThreshold;
+  final sheetHeightRatio = scan.isEmpty
+      ? 0.8
+      : _estimatedSheetHeightRatio(context, scan, hasMore: hasMore);
   return showAppSheet<Set<String>>(
     context,
-    maxHeightRatio: lazy ? 0.86 : 0.8,
-    fitContent: !lazy,
-    child: _SameNamedFilesSheet(scan: scan, hasMore: hasMore, lazy: lazy),
+    maxHeightRatio: sheetHeightRatio,
+    fitContent: scan.isEmpty,
+    child: _SameNamedFilesSheet(scan: scan, hasMore: hasMore),
   );
+}
+
+double _estimatedSheetHeightRatio(
+  BuildContext context,
+  DuplicateFileScan scan, {
+  required bool hasMore,
+}) {
+  final estimatedHeight =
+      56 + (hasMore ? 64 : 0) + scan.groupCount * 44 + scan.fileCount * 72 + 48;
+  return (estimatedHeight / MediaQuery.sizeOf(context).height)
+      .clamp(0.38, 0.86)
+      .toDouble();
 }
 
 /// 删除同名文件前的类型化确认入口。
@@ -55,15 +65,10 @@ Future<bool> showDeleteSameNamedFilesConfirm(
 }
 
 class _SameNamedFilesSheet extends StatefulWidget {
-  const _SameNamedFilesSheet({
-    required this.scan,
-    required this.hasMore,
-    required this.lazy,
-  });
+  const _SameNamedFilesSheet({required this.scan, required this.hasMore});
 
   final DuplicateFileScan scan;
   final bool hasMore;
-  final bool lazy;
 
   @override
   State<_SameNamedFilesSheet> createState() => _SameNamedFilesSheetState();
@@ -71,37 +76,15 @@ class _SameNamedFilesSheet extends StatefulWidget {
 
 class _SameNamedFilesSheetState extends State<_SameNamedFilesSheet> {
   final Set<String> _selected = <String>{};
-  late final Map<String, DuplicateFileGroup> _groupByFileId;
-
-  @override
-  void initState() {
-    super.initState();
-    _groupByFileId = {
-      for (final group in widget.scan.groups)
-        for (final file in group.files) file.id: group,
-    };
-  }
 
   void _cancel() {
     Navigator.of(context).pop();
   }
 
   void _toggleFile(String fileId) {
-    final group = _groupByFileId[fileId];
-    if (group == null) return;
-    if (_selected.contains(fileId)) {
-      setState(() => _selected.remove(fileId));
-      return;
-    }
-
-    final selectedInGroup = group.files
-        .where((file) => _selected.contains(file.id))
-        .length;
-    if (selectedInGroup >= group.files.length - 1) {
-      showAppToast(context, context.l10n.sameNamedFilesKeepOne);
-      return;
-    }
-    setState(() => _selected.add(fileId));
+    setState(() {
+      if (!_selected.remove(fileId)) _selected.add(fileId);
+    });
   }
 
   void _keepLatest(DuplicateFileGroup group) {
@@ -135,11 +118,17 @@ class _SameNamedFilesSheetState extends State<_SameNamedFilesSheet> {
             ),
           ),
           const SizedBox(width: 8),
-          TextButton(onPressed: _cancel, child: Text(l10n.cancel)),
-          const SizedBox(width: 4),
-          FilledButton(
+          M3eIconButton(
+            key: const ValueKey('same-name-cancel'),
+            tooltip: l10n.cancel,
+            icon: Icons.close,
+            onPressed: _cancel,
+          ),
+          M3eIconButton(
+            key: const ValueKey('same-name-delete'),
+            tooltip: l10n.delete,
+            icon: Icons.delete_outline,
             onPressed: _selected.isEmpty ? null : _confirmDelete,
-            child: Text(l10n.delete),
           ),
         ],
       ),
@@ -192,7 +181,7 @@ class _SameNamedFilesSheetState extends State<_SameNamedFilesSheet> {
     );
   }
 
-  Widget _buildLazyBody(BuildContext context) {
+  Widget _buildScrollableBody(BuildContext context) {
     final scan = widget.scan;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -226,42 +215,25 @@ class _SameNamedFilesSheetState extends State<_SameNamedFilesSheet> {
     );
   }
 
-  Widget _buildFittedBody(BuildContext context) {
-    final scan = widget.scan;
+  Widget _buildEmptyBody(BuildContext context) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _header(context),
         if (widget.hasMore) _incompleteNotice(context),
-        if (scan.isEmpty)
-          EmptyHint(
-            icon: Icons.file_copy,
-            text: context.l10n.sameNamedFilesEmpty,
-          )
-        else
-          for (final group in scan.groups) ...[
-            _groupHeader(context, group),
-            SheetListGroup(
-              children: [
-                for (var index = 0; index < group.files.length; index++)
-                  _fileTile(group, index),
-              ],
-            ),
-            const SizedBox(height: 12),
-          ],
-        if (!scan.isEmpty)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-            child: _summary(context),
-          ),
+        EmptyHint(
+          icon: Icons.file_copy,
+          text: context.l10n.sameNamedFilesEmpty,
+        ),
       ],
     );
   }
 
   @override
-  Widget build(BuildContext context) =>
-      widget.lazy ? _buildLazyBody(context) : _buildFittedBody(context);
+  Widget build(BuildContext context) => widget.scan.isEmpty
+      ? _buildEmptyBody(context)
+      : _buildScrollableBody(context);
 }
 
 class _DuplicateFileTile extends StatelessWidget {

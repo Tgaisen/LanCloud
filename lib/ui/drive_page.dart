@@ -135,30 +135,36 @@ Future<void> showPageLoadProgressDialog(
           ),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 20, 12, 20),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const M3eCircularProgressIndicator(size: 28, strokeWidth: 3),
-                const SizedBox(width: 20),
-                Flexible(
-                  child: ValueListenableBuilder<int>(
-                    valueListenable: loadedPages,
-                    builder: (context, count, _) => Semantics(
-                      liveRegion: true,
-                      child: Text(
-                        l10n.loadAllRemainingProgress(count),
-                        style: textStyle,
+            child: SizedBox(
+              key: const ValueKey('load-pages-progress-row'),
+              width: (MediaQuery.sizeOf(dialogContext).width - 80)
+                  .clamp(240.0, 360.0)
+                  .toDouble(),
+              child: Row(
+                children: [
+                  const M3eCircularProgressIndicator(size: 28, strokeWidth: 3),
+                  const SizedBox(width: 20),
+                  Expanded(
+                    child: ValueListenableBuilder<int>(
+                      valueListenable: loadedPages,
+                      builder: (context, count, _) => Semantics(
+                        liveRegion: true,
+                        child: Text(
+                          l10n.loadAllRemainingProgress(count),
+                          style: textStyle,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                M3eIconButton(
-                  tooltip: l10n.cancel,
-                  icon: Icons.close,
-                  onPressed: cancel,
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  M3eIconButton(
+                    key: const ValueKey('load-pages-cancel'),
+                    tooltip: l10n.cancel,
+                    icon: Icons.close,
+                    onPressed: cancel,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -381,7 +387,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
 
   /// 目录快照的代数：刷新、切目录或换账号后，旧请求不得再写入当前列表。
   int _listingGeneration = 0;
-  CancelToken? _loadAllCancelToken;
+  CancelToken? _pageLoadCancelToken;
 
   /// 上一次拉取下一页失败（且还有下一页）：底部给出「重试」入口。
   bool _loadFailed = false;
@@ -485,7 +491,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
     _keyboardUp.dispose();
     _drive.folderRequest.removeListener(_onDriveFolderRequest);
     _transfers.removeTaskListener(_onTaskDone);
-    _loadAllCancelToken?.cancel();
+    _pageLoadCancelToken?.cancel();
     if (_isShellPage) {
       _navigation.onDriveBack = null;
       // 外壳里的网盘页卸载后不再拦截返回，交回系统（预测性返回桌面）。
@@ -575,7 +581,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
   Future<bool> _refreshInPlace({bool refreshFolders = false}) async {
     final client = _activeClient();
     if (client == null) return false;
-    _loadAllCancelToken?.cancel();
+    _pageLoadCancelToken?.cancel();
     final generation = ++_listingGeneration;
     try {
       // 已经加载过几页就刷新几页，避免局部刷新把后面的条目吞掉
@@ -603,6 +609,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
     LanzouClient client, {
     int? maxPages,
     bool withFolders = true,
+    bool showProgress = false,
   }) async {
     final foldersResult = withFolders
         ? await client.listFolders(_folderId)
@@ -612,11 +619,52 @@ class _DrivePageState extends ConsumerState<DrivePage>
     var files = first.files;
     var hasMore = first.hasMore;
     var page = 1;
-    while (hasMore && page < limit) {
-      page += 1;
-      final next = await client.listFilesPage(_folderId, page);
-      files = [...files, ...next.files];
-      hasMore = next.hasMore;
+    var canceled = false;
+    if (mounted && showProgress && hasMore && limit > 1) {
+      final cancelToken = CancelToken();
+      _pageLoadCancelToken = cancelToken;
+      final loadedPages = ValueNotifier<int>(page);
+      var progressOpen = true;
+      final navigator = Navigator.of(context);
+      final progressDone = showPageLoadProgressDialog(
+        context,
+        loadedPages: loadedPages,
+        onCancel: () {
+          canceled = true;
+          cancelToken.cancel('canceled');
+        },
+      );
+      unawaited(
+        progressDone.then(
+          (_) => progressOpen = false,
+          onError: (Object _, StackTrace _) => progressOpen = false,
+        ),
+      );
+      try {
+        while (mounted && !canceled && hasMore && page < limit) {
+          final nextPage = page + 1;
+          final next = await client.listFilesPage(
+            _folderId,
+            nextPage,
+            cancelToken: cancelToken,
+          );
+          if (!mounted || canceled) break;
+          files = [...files, ...next.files];
+          hasMore = next.hasMore;
+          page = nextPage;
+          loadedPages.value = page;
+        }
+      } catch (_) {
+        if (!canceled) rethrow;
+      } finally {
+        if (identical(_pageLoadCancelToken, cancelToken)) {
+          _pageLoadCancelToken = null;
+        }
+        if (progressOpen && mounted && navigator.canPop()) {
+          navigator.pop();
+        }
+        await progressDone;
+      }
     }
     return _Listing(
       folders: foldersResult?.folders ?? const [],
@@ -624,6 +672,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
       path: foldersResult?.path ?? const [],
       page: page,
       hasMore: hasMore,
+      canceled: canceled,
     );
   }
 
@@ -913,7 +962,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
   Future<void> _load({bool force = false}) async {
     final client = _activeClient();
     if (client == null) return;
-    _loadAllCancelToken?.cancel();
+    _pageLoadCancelToken?.cancel();
     final generation = ++_listingGeneration;
 
     final cached = _cacheSettings.cacheFolders
@@ -935,8 +984,14 @@ class _DrivePageState extends ConsumerState<DrivePage>
         _error = null;
       });
       _playEnterAnimation();
-      // 缓存里也还留着「还有下一页」时，同样按需补页
-      _fillViewportIfNeeded();
+      if (_cacheSettings.loadAllPages && _hasMore) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _loadAllRemaining();
+        });
+      } else {
+        // 缓存里也还留着「还有下一页」时，同样按需补页
+        _fillViewportIfNeeded();
+      }
       return;
     }
 
@@ -947,7 +1002,10 @@ class _DrivePageState extends ConsumerState<DrivePage>
       _error = null;
     });
     try {
-      final listing = await _fetchListing(client);
+      final listing = await _fetchListing(
+        client,
+        showProgress: _cacheSettings.loadAllPages,
+      );
       if (!mounted || generation != _listingGeneration) return;
       _exitAnim.value = 0;
       setState(() {
@@ -972,7 +1030,9 @@ class _DrivePageState extends ConsumerState<DrivePage>
       });
       _playEnterAnimation();
       // 目录内容不足一屏时继续补页，让「已经到底了」立刻可见
-      _fillViewportIfNeeded();
+      if (!listing.canceled) {
+        _fillViewportIfNeeded();
+      }
       if (_cacheSettings.cacheFolders) {
         _drive.cache.put(_folderId, _snapshot());
       }
@@ -1038,7 +1098,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
     final uid = _loadedUid;
     final generation = ++_listingGeneration;
     final cancelToken = CancelToken();
-    _loadAllCancelToken = cancelToken;
+    _pageLoadCancelToken = cancelToken;
     final loadedPages = ValueNotifier<int>(_page);
     var cancelRequested = false;
     var progressOpen = true;
@@ -1098,8 +1158,8 @@ class _DrivePageState extends ConsumerState<DrivePage>
             .showSnackBar(SnackBar(content: Text(context.l10n.lanzouError(e))));
       }
     } finally {
-      if (identical(_loadAllCancelToken, cancelToken)) {
-        _loadAllCancelToken = null;
+      if (identical(_pageLoadCancelToken, cancelToken)) {
+        _pageLoadCancelToken = null;
       }
       if (mounted) {
         setState(() => _loadingMore = false);
@@ -1547,7 +1607,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
             M3eMenuItem(
               value: _DriveMenuAction.loadAllRemaining,
               label: l10n.loadAllRemaining,
-              icon: Icons.expand_all,
+              icon: Icons.last_page,
               enabled: _hasMore && !_loading && !_loadingMore,
             ),
             M3eMenuItem(
@@ -4273,6 +4333,7 @@ class _Listing {
     required this.path,
     required this.page,
     required this.hasMore,
+    required this.canceled,
   });
 
   final List<LzFolder> folders;
@@ -4280,6 +4341,7 @@ class _Listing {
   final List<PathNode> path;
   final int page;
   final bool hasMore;
+  final bool canceled;
 }
 
 class _FolderTile extends StatelessWidget {

@@ -223,7 +223,7 @@ User-Agent 也迁入 `AdvancedConnectionSettingsTile`；对应 setter 统一同�
 | --- | --- |
 | 下载 / 传输队列 | `core/transfer/transfer_manager.dart`、`core/transfer/resumable_downloader.dart`、`core/download_target.dart`、`core/download_dir.dart`、`core/saved_file.dart`、`ui/transfers_page.dart`、`ui/download_mark.dart` |
 | 上传 / 文件选择 / 保存 | `core/file_picker_channel.dart`、`core/system_file_saver.dart`、`core/shared_downloads_storage.dart`、`ui/drop_actions.dart` |
-| 网盘同名文件清理 / 显式加载全部分页 | `ui/drive_page.dart`（支持 `CancelToken`）、`ui/duplicate_file_sheet.dart`、`core/duplicate_files.dart`、`core/file_name_collation.dart` |
+| 网盘同名文件清理 / 显式或自动加载全部分页 | `ui/drive_page.dart`（统一 `CancelToken` 与页数进度）、`ui/duplicate_file_sheet.dart`、`core/duplicate_files.dart`、`core/file_name_collation.dart` |
 | 登录 / 鉴权 / 反爬 | `core/cookie_auth.dart`、`core/api/acw_sc_v2.dart`、`ui/login_page.dart`、`ui/web_login_page.dart`、`ui/cookie_sheet.dart` |
 | 分享链接 / 提取码 | `core/lanzou_link.dart`、`ui/share_page.dart`、`ui/share_file_sheet.dart`、`ui/share_folder_page.dart`、`ui/share_password_dialog.dart` |
 | 收藏文件夹更新 / 失效 | `core/favorites/*`、`core/favorite_monitor_models.dart`、`core/data/app_db.dart`、`ui/favorites_page.dart`、`ui/favorite_monitor_settings_tile.dart`、`core/notifications.dart` |
