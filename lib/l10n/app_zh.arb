@@ -1054,6 +1054,34 @@
   "notifChannelProgressDesc": "下载与上传进行中的进度",
   "notifChannelDone": "传输完成",
   "notifChannelDoneDesc": "下载与上传完成或失败的提醒",
+  "favoriteCheckProgressTitle": "正在检测收藏夹更新",
+  "favoriteCheckProgressBody": "{completed}/{total} · {name}",
+  "@favoriteCheckProgressBody": {
+    "placeholders": {
+      "completed": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "favoriteCheckChannel": "收藏文件夹检测",
+  "favoriteCheckChannelDesc": "检测收藏夹更新时的进度",
+  "favoriteUpdateChannel": "收藏文件夹更新",
+  "favoriteUpdateChannelDesc": "收藏文件夹有更新时提醒",
+  "favoriteFolderUpdateNotificationBody": "文件夹有更新 · {time}",
+  "@favoriteFolderUpdateNotificationBody": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "favoriteFolderUpdateNotificationBodyNoTime": "文件夹有更新",
   "files": "文件",
   "shareMessage": "来自分享者的信息",
   "favoritedPartial": "{ok} 个已收藏，{failed} 个失败",
@@ -1079,6 +1107,89 @@
   "editInfo": "修改信息",
   "favoriteTitle": "自定义标题",
   "favoriteTitleHint": "留空则使用默认名称",
+  "favoriteFolderUpdated": "有更新 · {time}",
+  "@favoriteFolderUpdated": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "favoriteFolderUpdatedNoTime": "有更新",
+  "favoriteShareUnavailable": "已失效 · 不存在或已取消分享",
+  "favoritePasswordChanged": "提取码已变更",
+  "checkFavoriteFolderUpdates": "检测收藏文件夹更新",
+  "checkFavoriteAccess": "检测失效项目",
+  "favoriteCheckAlreadyRunning": "正在检测收藏夹，请稍候",
+  "favoriteNotificationTargetMissing": "该收藏已不存在",
+  "favoriteCheckAllDone": "检测完成：{count} 项正常",
+  "@favoriteCheckAllDone": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "favoriteCheckPartial": "检测完成：{ok} 项正常，{failed} 项失败",
+  "@favoriteCheckPartial": {
+    "placeholders": {
+      "ok": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "favoriteCheckNoFolders": "没有可检测的收藏文件夹",
+  "favoriteCheckNoSelection": "请至少选择一个收藏文件夹",
+  "favoriteAutoCheck": "自动检测收藏文件夹更新",
+  "favoriteAutoCheckSubtitle": "启动或回到前台时按频率检查",
+  "favoriteCheckScope": "检测范围",
+  "favoriteCheckScopeAll": "全部收藏文件夹",
+  "favoriteCheckScopeSelected": "已选择 {count} 个文件夹",
+  "@favoriteCheckScopeSelected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "favoriteCheckScopeTitle": "选择检测范围",
+  "favoriteCheckFrequency": "检测频率",
+  "favoriteCheckDaily": "每天",
+  "favoriteCheckWeekly": "每周",
+  "favoriteCheckMonthly": "每月",
+  "favoriteLastCheckNever": "上次检测：尚未检测",
+  "favoriteLastCheck": "上次检测：{time}",
+  "@favoriteLastCheck": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "favoriteLastCheckFailed": "上次检测：{time} · {count} 项失败",
+  "@favoriteLastCheckFailed": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "favoriteUpdateNotify": "收藏文件夹更新通知",
+  "favoriteUpdateNotifySubtitle": "检测完成后，每个有更新的文件夹发一条通知",
+  "favoriteUpdateBadgeSemantics": "收藏，{count} 个文件夹有更新",
+  "@favoriteUpdateBadgeSemantics": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "shareInvalid": "该分享已失效（已取消或删除）",
   "fileInvalid": "文件已失效",
   "logout": "退出登录",

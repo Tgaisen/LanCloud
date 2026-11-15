@@ -98,6 +98,17 @@ void main() {
       'PRAGMA table_info(favorites)',
     );
     final names = columns.map((row) => '${row['name']}').toSet();
-    expect(names, containsAll(<String>['file_time', 'requires_password']));
+    expect(
+      names,
+      containsAll(<String>[
+        'file_time',
+        'requires_password',
+        'folder_snapshot',
+        'folder_has_update',
+        'folder_update_at',
+        'share_status',
+        'last_checked_at',
+      ]),
+    );
   });
 }

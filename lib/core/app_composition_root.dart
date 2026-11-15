@@ -15,6 +15,10 @@ import 'data/app_db_provider.dart';
 import 'download_directory_settings_state.dart';
 import 'download_path_service.dart';
 import 'drive_state.dart';
+import 'favorite_monitor_settings_state.dart';
+import 'favorites/favorite_monitor_reporter.dart';
+import 'favorites/favorite_monitor_reporter_adapter.dart';
+import 'foreground_task_coordinator.dart';
 import 'language_clipboard_settings_state.dart';
 import 'list_home_settings_state.dart';
 import 'navigation_appearance_settings_state.dart';
@@ -73,6 +77,12 @@ final class AppCompositionRoot {
     ),
   );
 
+  late final AppFavoriteMonitorReporter favoriteMonitorReporter =
+      AppFavoriteMonitorReporter(
+        notifications: NotificationService.instance,
+        foregroundTasks: ForegroundTaskCoordinator.instance,
+      );
+
   ProviderContainer createContainer() {
     return ProviderContainer(
       overrides: [
@@ -96,6 +106,12 @@ final class AppCompositionRoot {
         ),
         notificationSettingsStateProvider.overrideWithValue(
           environment.notificationSettings,
+        ),
+        favoriteMonitorSettingsStateProvider.overrideWithValue(
+          environment.favoriteMonitorSettings,
+        ),
+        favoriteMonitorReporterProvider.overrideWithValue(
+          favoriteMonitorReporter,
         ),
         themeSettingsStateProvider.overrideWithValue(environment.themeSettings),
         transferConnectionSettingsStateProvider.overrideWithValue(

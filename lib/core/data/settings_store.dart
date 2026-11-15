@@ -52,6 +52,11 @@ class SettingsStore {
   static const _keyMotionMode = 'motion_mode';
   static const _keyUpdateChannel = 'update_channel';
   static const _keyUpdateAutoCheck = 'update_auto_check';
+  static const _keyFavoriteAutoCheck = 'favorite_monitor_auto_check';
+  static const _keyFavoriteCheckFrequency = 'favorite_monitor_frequency';
+  static const _keyFavoriteCheckAll = 'favorite_monitor_check_all';
+  static const _keyFavoriteCheckRefs = 'favorite_monitor_check_refs';
+  static const _keyFavoriteUpdateNotify = 'favorite_monitor_update_notify';
 
   String? downloadDir;
 
@@ -152,6 +157,21 @@ class SettingsStore {
   /// 见「更新信息有效期」）。
   bool updateAutoCheck = true;
 
+  /// 启动 / 回前台按频率补检收藏文件夹更新（默认关闭）。
+  bool favoriteAutoCheck = false;
+
+  /// 收藏检测频率：daily / weekly / monthly。
+  String favoriteCheckFrequency = 'weekly';
+
+  /// 是否检测全部收藏文件夹；false 时只检查 [favoriteCheckRefsJson] 中的链接。
+  bool favoriteCheckAll = true;
+
+  /// 用户指定的收藏分享链接，JSON 字符串数组；使用字符串以便随设置备份。
+  String favoriteCheckRefsJson = '[]';
+
+  /// 检测到更新后发送系统通知；关闭时只保留 badge。
+  bool favoriteUpdateNotify = true;
+
   /// 默认更新通道：按安装的版本名推导（与发布脚本的预发布判定同一口径）。
   static String get defaultUpdateChannel =>
       isPrereleaseVersion(appVersion) ? 'beta' : 'stable';
@@ -216,6 +236,12 @@ class SettingsStore {
     motionMode = prefs.getString(_keyMotionMode) ?? 'auto';
     updateChannel = prefs.getString(_keyUpdateChannel) ?? defaultUpdateChannel;
     updateAutoCheck = prefs.getBool(_keyUpdateAutoCheck) ?? true;
+    favoriteAutoCheck = prefs.getBool(_keyFavoriteAutoCheck) ?? false;
+    favoriteCheckFrequency =
+        prefs.getString(_keyFavoriteCheckFrequency) ?? 'weekly';
+    favoriteCheckAll = prefs.getBool(_keyFavoriteCheckAll) ?? true;
+    favoriteCheckRefsJson = prefs.getString(_keyFavoriteCheckRefs) ?? '[]';
+    favoriteUpdateNotify = prefs.getBool(_keyFavoriteUpdateNotify) ?? true;
   }
 
   Future<void> setNavShowTransfers(bool value) async {
@@ -246,6 +272,35 @@ class SettingsStore {
     notifyDone = value;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyNotifyDone, value);
+  }
+
+  Future<void> setFavoriteAutoCheck(bool value) async {
+    favoriteAutoCheck = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyFavoriteAutoCheck, value);
+  }
+
+  Future<void> setFavoriteCheckFrequency(String value) async {
+    favoriteCheckFrequency = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyFavoriteCheckFrequency, value);
+  }
+
+  Future<void> setFavoriteCheckScope({
+    required bool all,
+    required String refsJson,
+  }) async {
+    favoriteCheckAll = all;
+    favoriteCheckRefsJson = refsJson;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyFavoriteCheckAll, all);
+    await prefs.setString(_keyFavoriteCheckRefs, refsJson);
+  }
+
+  Future<void> setFavoriteUpdateNotify(bool value) async {
+    favoriteUpdateNotify = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyFavoriteUpdateNotify, value);
   }
 
   Future<void> setSortMode(String value) async {
@@ -545,6 +600,11 @@ class SettingsStore {
     _keyNavTransfers: navShowTransfers,
     _keyNavFavorites: navShowFavorites,
     _keyMotionMode: motionMode,
+    _keyFavoriteAutoCheck: favoriteAutoCheck,
+    _keyFavoriteCheckFrequency: favoriteCheckFrequency,
+    _keyFavoriteCheckAll: favoriteCheckAll,
+    _keyFavoriteCheckRefs: favoriteCheckRefsJson,
+    _keyFavoriteUpdateNotify: favoriteUpdateNotify,
   };
 
   /// 恢复备份里的设置：只接受已知键，空值表示恢复为未设置，最后重新读取一次。

@@ -14,6 +14,7 @@ import '../core/api/lanzou_client.dart';
 import '../core/api/lanzou_client_registry.dart';
 import '../core/data/app_db_provider.dart';
 import '../core/drive_state.dart';
+import '../core/favorites/favorite_monitor.dart';
 import '../core/navigation_appearance_settings_state.dart';
 import '../core/navigation_state.dart';
 import '../core/platform_support.dart';
@@ -2433,6 +2434,7 @@ class Md3ListItem extends StatefulWidget {
     this.selected = false,
     this.iconBoxColor,
     this.iconColor,
+    this.iconIndicator,
     this.onIconTap,
     this.bottom,
     this.titleMaxLines = 1,
@@ -2466,6 +2468,9 @@ class Md3ListItem extends StatefulWidget {
 
   /// 图标颜色，默认主题强调色（文件夹用主色，文件传类型色）。
   final Color? iconColor;
+
+  /// 图标块右上角的状态标记；不参与读屏，状态语义由副标题表达。
+  final Widget? iconIndicator;
 
   /// 点图标块的回调（Windows 上用于「进入多选并选中」，等价长按）。
   final VoidCallback? onIconTap;
@@ -2594,24 +2599,43 @@ class _Md3ListItemState extends State<Md3ListItem>
                   children: [
                     IconBoxTap(
                       onTap: widget.onIconTap,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 220),
-                        curve: Curves.easeOutCubic,
+                      child: SizedBox(
                         width: 42,
                         height: 42,
-                        decoration: BoxDecoration(
-                          color: widget.selected
-                              ? scheme.surface
-                              : widget.iconBoxColor ??
-                                    scheme.surfaceContainerHigh,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(
-                          widget.selected ? Icons.check_circle : widget.icon,
-                          size: 22,
-                          color: widget.selected
-                              ? scheme.primary
-                              : widget.iconColor ?? scheme.primary,
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            AnimatedContainer(
+                              duration: const Duration(milliseconds: 220),
+                              curve: Curves.easeOutCubic,
+                              width: 42,
+                              height: 42,
+                              decoration: BoxDecoration(
+                                color: widget.selected
+                                    ? scheme.surface
+                                    : widget.iconBoxColor ??
+                                          scheme.surfaceContainerHigh,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(
+                                widget.selected
+                                    ? Icons.check_circle
+                                    : widget.icon,
+                                size: 22,
+                                color: widget.selected
+                                    ? scheme.primary
+                                    : widget.iconColor ?? scheme.primary,
+                              ),
+                            ),
+                            if (widget.iconIndicator != null)
+                              Positioned(
+                                top: -3,
+                                right: -3,
+                                child: ExcludeSemantics(
+                                  child: widget.iconIndicator!,
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                     ),
@@ -2731,6 +2755,7 @@ class ExpressiveIconButton extends StatefulWidget {
     required this.label,
     required this.onPressed,
     this.badge,
+    this.badgeSemanticsLabel,
     this.width = 72,
     this.height = 56,
   });
@@ -2741,6 +2766,9 @@ class ExpressiveIconButton extends StatefulWidget {
 
   /// 角标文字（例如进行中的传输数量）。
   final String? badge;
+
+  /// 角标的完整读屏名称；传输数量沿用旧文案时可以留空。
+  final String? badgeSemanticsLabel;
   final double width;
   final double height;
 
@@ -2776,9 +2804,12 @@ class _ExpressiveIconButtonState extends State<ExpressiveIconButton>
     // 角标数字单独读没有意义，并进标签：如「传输 · 3 个任务进行中」。
     final badge = widget.badge;
     final badgeCount = badge == null ? null : int.tryParse(badge);
-    final semanticsLabel = badgeCount == null
+    final semanticsLabel = badge == null
         ? widget.label
-        : '${widget.label} · ${context.l10n.notifProgressBody(badgeCount)}';
+        : widget.badgeSemanticsLabel ??
+              (badgeCount == null
+                  ? widget.label
+                  : '${widget.label} · ${context.l10n.notifProgressBody(badgeCount)}');
     return Semantics(
       label: semanticsLabel,
       button: true,
@@ -5549,11 +5580,30 @@ Future<bool?> toggleFavoriteByRef(
       sharer: sharer,
       requiresPassword: requiresPassword,
     );
+    if (!context.mounted) return true;
+    unawaited(captureFavoriteFolderBaseline(context, ref));
     if (context.mounted) showAppToast(context, l10n.favorited);
     return true;
   } catch (e) {
     if (context.mounted) showAppToast(context, '$e');
     return null;
+  }
+}
+
+/// 新收藏在后台补一次文件夹首项基线；失败不会影响收藏本身。
+Future<void> captureFavoriteFolderBaseline(
+  BuildContext context,
+  String ref,
+) async {
+  try {
+    final container = ProviderScope.containerOf(context, listen: false);
+    final favorite = await container.read(appDbProvider).favoriteByRef(ref);
+    if (favorite == null || favorite.kind != 'shareFolder') return;
+    await container
+        .read(favoriteMonitorProvider.notifier)
+        .initializeFolderBaseline(favorite);
+  } catch (_) {
+    // 基线是增强信息；网络或数据库失败时保留未检测状态，下次检测再补。
   }
 }
 

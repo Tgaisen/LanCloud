@@ -65,7 +65,7 @@ void main() {
 
     final columns = await database.rawQuery('PRAGMA table_info(recents)');
     expect(columns.where((row) => row['name'] == 'share_url'), hasLength(1));
-    expect(await database.getVersion(), 14);
+    expect(await database.getVersion(), 15);
 
     final recent = (await appDb.recents('legacy')).single;
     expect(recent.name, '旧目录');

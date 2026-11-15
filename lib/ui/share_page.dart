@@ -6,6 +6,7 @@ import '../core/api/lanzou_client_registry.dart';
 import '../core/api/models.dart';
 import '../core/account_state.dart';
 import '../core/data/app_db_provider.dart';
+import '../core/favorites/favorite_monitor.dart';
 import '../core/lanzou_link.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
@@ -37,11 +38,12 @@ Future<void> openShareSheet(
 
 /// 从已有分享链接直接打开文件夹：先显示解析中，密码缺失或失效时再弹
 /// 专用密码框。收藏页与首页快速访问共用，避免进入带编辑框的“打开链接”。
-Future<void> openShareFolderWithLoading(
+Future<bool> openShareFolderWithLoading(
   BuildContext context, {
   required String url,
   String pwd = '',
   Future<void> Function(String pwd)? onPasswordUpdated,
+  Future<void> Function(FolderShareDetail folder, String pwd)? onResolved,
 }) async {
   final container = ProviderScope.containerOf(context, listen: false);
   final client = container.read(lanzouClientRegistryProvider).publicClient;
@@ -60,26 +62,34 @@ Future<void> openShareFolderWithLoading(
   } on WrongPasswordException {
     folder = null;
   } on LanzouException catch (e) {
-    if (!context.mounted) return;
+    if (!context.mounted) return false;
     navigator.pop();
     messenger.showSnackBar(SnackBar(content: Text(l10n.lanzouError(e))));
-    return;
+    return false;
   } catch (e) {
-    if (!context.mounted) return;
+    if (!context.mounted) return false;
     navigator.pop();
     messenger.showSnackBar(SnackBar(content: Text(l10n.resolveFailed('$e'))));
-    return;
+    return false;
   }
-  if (!context.mounted) return;
+  if (!context.mounted) return false;
   navigator.pop();
   if (folder == null) {
     final result = await showFolderPasswordDialog(context, url: url);
-    if (result == null || !context.mounted) return;
+    if (result == null || !context.mounted) return false;
     folder = result.value;
     currentPwd = result.pwd;
     await onPasswordUpdated?.call(currentPwd);
-    if (!context.mounted) return;
+    if (!context.mounted) return false;
   }
+  final favorite = await db.favoriteByRef(url);
+  if (favorite != null && favorite.kind == 'shareFolder') {
+    await container
+        .read(favoriteMonitorProvider.notifier)
+        .markFolderOpened(favorite, folder);
+  }
+  await onResolved?.call(folder, currentPwd);
+  if (!context.mounted) return false;
   await db.addRecent(
     account: account,
     kind: 'shareFolder',
@@ -88,13 +98,14 @@ Future<void> openShareFolderWithLoading(
     pwd: currentPwd,
     shareUrl: url,
   );
-  if (!context.mounted) return;
+  if (!context.mounted) return false;
   await navigator.push(
     MaterialPageRoute<void>(
       builder: (_) =>
           ShareFolderPage(folder: folder!, link: url, pwd: currentPwd),
     ),
   );
+  return true;
 }
 
 class ShareLinkDialog extends ConsumerStatefulWidget {
@@ -188,9 +199,17 @@ class _ShareLinkDialogState extends ConsumerState<ShareLinkDialog> {
             link: link,
             pwd: pwd,
             sharer: folder.sharer,
+            folder: folder,
           );
           return;
         }
+        final favorite = await ref.read(appDbProvider).favoriteByRef(link);
+        if (favorite != null && favorite.kind == 'shareFolder') {
+          await ref
+              .read(favoriteMonitorProvider.notifier)
+              .markFolderOpened(favorite, folder);
+        }
+        if (!mounted) return;
         navigator.pop();
         await navigator.push(
           MaterialPageRoute<void>(
@@ -234,9 +253,17 @@ class _ShareLinkDialogState extends ConsumerState<ShareLinkDialog> {
               link: link,
               pwd: pwd,
               sharer: folder.sharer,
+              folder: folder,
             );
             return;
           }
+          final favorite = await ref.read(appDbProvider).favoriteByRef(link);
+          if (favorite != null && favorite.kind == 'shareFolder') {
+            await ref
+                .read(favoriteMonitorProvider.notifier)
+                .markFolderOpened(favorite, folder);
+          }
+          if (!mounted) return;
           navigator.pop();
           await navigator.push(
             MaterialPageRoute<void>(
@@ -293,6 +320,7 @@ class _ShareLinkDialogState extends ConsumerState<ShareLinkDialog> {
     String sharer = '',
     String size = '',
     String time = '',
+    FolderShareDetail? folder,
   }) async {
     final l10n = context.l10n;
     final db = ref.read(appDbProvider);
@@ -309,6 +337,14 @@ class _ShareLinkDialogState extends ConsumerState<ShareLinkDialog> {
       fileTime: time,
       requiresPassword: pwd.trim().isNotEmpty,
     );
+    if (folder != null) {
+      final favorite = await db.favoriteByRef(link);
+      if (favorite != null) {
+        await ref
+            .read(favoriteMonitorProvider.notifier)
+            .saveFolderBaselineFromDetail(favorite, folder);
+      }
+    }
     if (!mounted) return;
     if (navigator.canPop()) navigator.pop();
     messenger.showSnackBar(SnackBar(content: Text(l10n.addedToFavorites)));

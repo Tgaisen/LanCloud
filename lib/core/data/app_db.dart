@@ -8,6 +8,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart'
     show databaseFactoryFfi, sqfliteFfiInit;
 
 import '../platform_support.dart';
+import '../favorite_monitor_models.dart';
 import 'account_data.dart';
 
 /// 快速访问里固定的一个网盘目录（按账号区分）。
@@ -46,6 +47,11 @@ class FavoriteItem {
     this.title = '',
     this.sharer = '',
     this.createdAt = 0,
+    this.folderSnapshot,
+    this.folderHasUpdate = false,
+    this.folderUpdateAt,
+    this.shareStatus = FavoriteShareStatus.unchecked,
+    this.lastCheckedAt,
   });
 
   final int id;
@@ -63,6 +69,21 @@ class FavoriteItem {
   final String title;
   final String sharer;
   final int createdAt;
+
+  /// 文件夹首项快照；null 表示尚未完成首次基线检测。
+  final FavoriteFolderSnapshot? folderSnapshot;
+
+  /// 用户尚未打开收藏前持续保留的更新标记。
+  final bool folderHasUpdate;
+
+  /// 最近一次从无更新变成有更新的时间。
+  final int? folderUpdateAt;
+
+  /// 最近一次能够明确确认的分享访问状态。
+  final FavoriteShareStatus shareStatus;
+
+  /// 最近一次明确完成访问检测的时间。
+  final int? lastCheckedAt;
 
   /// 显示名称：用户改过「标题」就用它，否则用文件 / 文件夹名。
   String get displayName => title.isEmpty ? name : title;
@@ -110,7 +131,7 @@ class AppDb {
     final path = p.join(await _databaseDirectory(), 'lancloud.db');
     return openDatabase(
       path,
-      version: 14,
+      version: 15,
       onCreate: (db, version) async {
         await db.execute(
           'CREATE TABLE favorites('
@@ -124,6 +145,11 @@ class AppDb {
           'requires_password INTEGER,'
           'title TEXT DEFAULT "",'
           'sharer TEXT DEFAULT "",'
+          'folder_snapshot TEXT,'
+          'folder_has_update INTEGER DEFAULT 0,'
+          'folder_update_at INTEGER,'
+          'share_status TEXT DEFAULT "unchecked",'
+          'last_checked_at INTEGER,'
           'created_at INTEGER NOT NULL)',
         );
         // 收藏判定按 ref（分享链接）查，加索引省得整表扫
@@ -306,6 +332,39 @@ class AppDb {
             );
           }
         }
+        if (oldVersion < 15) {
+          // 收藏文件夹首发基线 / 更新标记 / 最近一次明确访问状态。
+          // 旧收藏保持未检测状态；升级本身不触发联网。
+          final columns = await db.rawQuery('PRAGMA table_info(favorites)');
+          final names = columns.map((row) => row['name']).toSet();
+          if (names.isNotEmpty) {
+            if (!names.contains('folder_snapshot')) {
+              await db.execute(
+                'ALTER TABLE favorites ADD COLUMN folder_snapshot TEXT',
+              );
+            }
+            if (!names.contains('folder_has_update')) {
+              await db.execute(
+                'ALTER TABLE favorites ADD COLUMN folder_has_update INTEGER DEFAULT 0',
+              );
+            }
+            if (!names.contains('folder_update_at')) {
+              await db.execute(
+                'ALTER TABLE favorites ADD COLUMN folder_update_at INTEGER',
+              );
+            }
+            if (!names.contains('share_status')) {
+              await db.execute(
+                'ALTER TABLE favorites ADD COLUMN share_status TEXT DEFAULT "unchecked"',
+              );
+            }
+            if (!names.contains('last_checked_at')) {
+              await db.execute(
+                'ALTER TABLE favorites ADD COLUMN last_checked_at INTEGER',
+              );
+            }
+          }
+        }
       },
     );
   }
@@ -470,6 +529,16 @@ class AppDb {
     bool? requiresPassword,
   }) async {
     final database = await db;
+    final current = await database.query(
+      'favorites',
+      columns: ['ref'],
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    final refChanged =
+        ref != null && current.isNotEmpty && '${current.single['ref']}' != ref;
+    final passwordChanged = pwd != null;
     final passwordFlag = requiresPassword ?? pwd?.isNotEmpty;
     await database.update(
       'favorites',
@@ -482,6 +551,11 @@ class AppDb {
         'size': ?size,
         'file_time': ?fileTime,
         if (passwordFlag != null) 'requires_password': passwordFlag ? 1 : 0,
+        if (refChanged) 'folder_snapshot': null,
+        if (refChanged) 'folder_has_update': 0,
+        if (refChanged) 'folder_update_at': null,
+        if (refChanged || passwordChanged) 'share_status': 'unchecked',
+        if (refChanged) 'last_checked_at': null,
       },
       where: 'id = ?',
       whereArgs: [id],
@@ -525,6 +599,18 @@ class AppDb {
     return rows.isNotEmpty;
   }
 
+  Future<FavoriteItem?> favoriteByRef(String ref) async {
+    final database = await db;
+    final rows = await database.query(
+      'favorites',
+      where: 'ref = ?',
+      whereArgs: [ref],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    return _favoriteItemFromRow(rows.single);
+  }
+
   Future<List<FavoriteItem>> favorites() async {
     final database = await db;
     final rows = await database.query(
@@ -533,26 +619,99 @@ class AppDb {
       whereArgs: ['pinFolder'],
       orderBy: 'created_at DESC',
     );
-    return rows
-        .map(
-          (r) => FavoriteItem(
-            id: r['id'] as int,
-            kind: '${r['kind']}',
-            name: '${r['name']}',
-            ref: '${r['ref']}',
-            pwd: '${r['pwd']}',
-            size: '${r['size']}',
-            fileTime: '${r['file_time'] ?? ''}',
-            requiresPassword: r['requires_password'] == null
-                ? null
-                : r['requires_password'] == true ||
-                      '${r['requires_password']}' == '1',
-            title: '${r['title'] ?? ''}',
-            sharer: '${r['sharer'] ?? ''}',
-            createdAt: r['created_at'] as int,
-          ),
-        )
-        .toList();
+    return rows.map(_favoriteItemFromRow).toList();
+  }
+
+  FavoriteItem _favoriteItemFromRow(Map<String, Object?> row) {
+    final updateAt = row['folder_update_at'];
+    final checkedAt = row['last_checked_at'];
+    return FavoriteItem(
+      id: row['id'] as int,
+      kind: '${row['kind']}',
+      name: '${row['name']}',
+      ref: '${row['ref']}',
+      pwd: '${row['pwd']}',
+      size: '${row['size']}',
+      fileTime: '${row['file_time'] ?? ''}',
+      requiresPassword: row['requires_password'] == null
+          ? null
+          : row['requires_password'] == true ||
+                '${row['requires_password']}' == '1',
+      title: '${row['title'] ?? ''}',
+      sharer: '${row['sharer'] ?? ''}',
+      createdAt: row['created_at'] as int,
+      folderSnapshot: FavoriteFolderSnapshot.tryDecode(row['folder_snapshot']),
+      folderHasUpdate:
+          row['folder_has_update'] == true ||
+          '${row['folder_has_update']}' == '1',
+      folderUpdateAt: updateAt is int ? updateAt : null,
+      shareStatus: favoriteShareStatusFromName(row['share_status']),
+      lastCheckedAt: checkedAt is int ? checkedAt : null,
+    );
+  }
+
+  /// 文件夹成功取得首项后保存基线，并一次性写入更新状态。
+  Future<void> saveFavoriteFolderSnapshot({
+    required int id,
+    required FavoriteFolderSnapshot snapshot,
+    required bool hasUpdate,
+    int? updateAt,
+  }) async {
+    final database = await db;
+    await database.update(
+      'favorites',
+      {
+        'folder_snapshot': snapshot.encode(),
+        'folder_has_update': hasUpdate ? 1 : 0,
+        'folder_update_at': updateAt,
+        'share_status': FavoriteShareStatus.valid.name,
+        'last_checked_at': snapshot.checkedAt,
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    _touch();
+  }
+
+  /// 文件或文件夹明确失效 / 提取码变更时保存访问状态。
+  Future<void> saveFavoriteShareStatus({
+    required int id,
+    required FavoriteShareStatus status,
+    required int checkedAt,
+  }) async {
+    final database = await db;
+    await database.update(
+      'favorites',
+      {'share_status': status.name, 'last_checked_at': checkedAt},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    _touch();
+  }
+
+  /// 用户成功进入收藏文件夹：用刚解析出的首项刷新基线并消除更新。
+  Future<void> clearFavoriteFolderUpdate({
+    required int id,
+    required FavoriteFolderSnapshot snapshot,
+  }) =>
+      saveFavoriteFolderSnapshot(id: id, snapshot: snapshot, hasUpdate: false);
+
+  /// 修改分享链接后，旧快照与访问结果都不再属于同一分享。
+  Future<void> resetFavoriteMonitor(int id) async {
+    final database = await db;
+    await database.update(
+      'favorites',
+      {
+        'folder_snapshot': null,
+        'folder_has_update': 0,
+        'folder_update_at': null,
+        'share_status': FavoriteShareStatus.unchecked.name,
+        'last_checked_at': null,
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    _touch();
   }
 
   // --------------------------------------------------------------------- pins
@@ -861,6 +1020,11 @@ class AppDb {
       'requires_password',
       'title',
       'sharer',
+      'folder_snapshot',
+      'folder_has_update',
+      'folder_update_at',
+      'share_status',
+      'last_checked_at',
       'created_at',
     ],
     'pins': ['id', 'account', 'name', 'ref', 'path', 'created_at'],

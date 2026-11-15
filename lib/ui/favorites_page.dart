@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/data/app_db_provider.dart';
 import '../core/drive_state.dart';
+import '../core/favorite_monitor_models.dart';
+import '../core/favorites/favorite_monitor.dart';
 import '../core/list_home_settings_state.dart';
 import '../core/navigation_appearance_settings_state.dart';
 import '../core/navigation_state.dart';
@@ -17,10 +19,15 @@ import 'share_file_sheet.dart';
 import 'share_page.dart';
 
 /// 收藏条目 ⋯ 菜单里的动作。
-enum _FavoriteItemAction { open, copyLink, edit, unfavorite }
+enum _FavoriteItemAction { open, copyLink, edit, checkUpdate, unfavorite }
 
 /// 收藏页顶栏菜单里的动作。
-enum _FavoritesMenuAction { multiSelect, newFavorite }
+enum _FavoritesMenuAction {
+  multiSelect,
+  newFavorite,
+  checkUpdates,
+  checkAccess,
+}
 
 /// 收藏视图：独立底栏页，布局与传输页一致（分组 + 多选删除）。
 class FavoritesPage extends ConsumerStatefulWidget {
@@ -129,6 +136,9 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
     try {
       final all = await _db.favorites();
       if (!mounted) return;
+      ref
+          .read(favoriteMonitorProvider.notifier)
+          .updateSummaryFromFavorites(all);
       setState(() {
         _folders = all.where((f) => f.kind == 'shareFolder').toList();
         _files = all.where((f) => f.kind == 'shareFile').toList();
@@ -251,8 +261,11 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
     );
   }
 
-  /// 顶栏 ⋯ 菜单：多选、添加收藏。
-  Future<void> _showMenu(BuildContext anchorContext) async {
+  /// 顶栏 ⋯ 菜单：多选、添加收藏、检测更新和失效。
+  Future<void> _showMenu(
+    BuildContext anchorContext, {
+    required bool checking,
+  }) async {
     final anchor = m3eMenuAnchorOf(anchorContext);
     if (anchor == null) return;
     final l10n = context.l10n;
@@ -260,16 +273,36 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
       context: context,
       anchor: anchor,
       alignEnd: true,
-      items: [
-        M3eMenuItem(
-          value: _FavoritesMenuAction.multiSelect,
-          label: l10n.multiSelect,
-          icon: Icons.checklist,
+      sections: [
+        M3eMenuSection(
+          items: [
+            M3eMenuItem(
+              value: _FavoritesMenuAction.multiSelect,
+              label: l10n.multiSelect,
+              icon: Icons.checklist,
+            ),
+            M3eMenuItem(
+              value: _FavoritesMenuAction.newFavorite,
+              label: l10n.newFavorite,
+              icon: Icons.playlist_add,
+            ),
+          ],
         ),
-        M3eMenuItem(
-          value: _FavoritesMenuAction.newFavorite,
-          label: l10n.newFavorite,
-          icon: Icons.playlist_add,
+        M3eMenuSection(
+          items: [
+            M3eMenuItem(
+              value: _FavoritesMenuAction.checkUpdates,
+              label: l10n.checkFavoriteFolderUpdates,
+              icon: Icons.search,
+              enabled: !checking,
+            ),
+            M3eMenuItem(
+              value: _FavoritesMenuAction.checkAccess,
+              label: l10n.checkFavoriteAccess,
+              icon: Icons.link,
+              enabled: !checking,
+            ),
+          ],
         ),
       ],
     );
@@ -279,7 +312,53 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
         _enterSelection();
       case _FavoritesMenuAction.newFavorite:
         await openShareSheet(context, addFavoriteOnResolve: true);
+      case _FavoritesMenuAction.checkUpdates:
+        await _checkFavoriteFolders();
+      case _FavoritesMenuAction.checkAccess:
+        await _checkFavoriteAccess();
     }
+  }
+
+  Future<void> _checkFavoriteFolders() async {
+    final result = await ref
+        .read(favoriteMonitorProvider.notifier)
+        .checkFolders();
+    if (!mounted) return;
+    _showCheckResult(result, folderCheck: true);
+  }
+
+  Future<void> _checkFavoriteAccess() async {
+    final result = await ref
+        .read(favoriteMonitorProvider.notifier)
+        .checkAllShareAccess();
+    if (!mounted) return;
+    _showCheckResult(result, folderCheck: false);
+  }
+
+  Future<void> _checkOneFolder(FavoriteItem item) async {
+    final result = await ref
+        .read(favoriteMonitorProvider.notifier)
+        .checkFolder(item);
+    if (!mounted) return;
+    _showCheckResult(result, folderCheck: true);
+  }
+
+  void _showCheckResult(
+    FavoriteMonitorRunResult? result, {
+    required bool folderCheck,
+  }) {
+    final l10n = context.l10n;
+    final message = switch (result) {
+      null => l10n.favoriteCheckAlreadyRunning,
+      FavoriteMonitorRunResult(total: 0) =>
+        folderCheck ? l10n.favoriteCheckNoFolders : l10n.favoritesHint,
+      FavoriteMonitorRunResult(:final succeeded, failed: 0) =>
+        l10n.favoriteCheckAllDone(succeeded),
+      FavoriteMonitorRunResult(:final succeeded, :final failed) =>
+        l10n.favoriteCheckPartial(succeeded, failed),
+    };
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   // ------------------------------------------------------------------ 多选
@@ -397,10 +476,8 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
 
   /// 条目的副标题：列表已经按「文件夹 / 文件」分组，这里不再重复类型；
   /// 文件保留体积信息。
-  String _subtitle(FavoriteItem item) {
-    if (item.kind == 'shareFolder' || item.size.isEmpty) return '';
-    return prettyLzSize(item.size);
-  }
+  String _subtitle(FavoriteItem item) =>
+      favoriteItemSubtitle(item, context.l10n);
 
   Future<void> _open(FavoriteItem item) async {
     if (_selecting) {
@@ -484,6 +561,13 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
               label: context.l10n.editInfo,
               icon: Icons.edit,
             ),
+            if (item.kind == 'shareFolder')
+              M3eMenuItem(
+                value: _FavoriteItemAction.checkUpdate,
+                label: context.l10n.checkFavoriteFolderUpdates,
+                icon: Icons.search,
+                enabled: !ref.read(favoriteCheckRunningProvider),
+              ),
             M3eMenuItem(
               value: _FavoriteItemAction.unfavorite,
               label: context.l10n.unfavorite,
@@ -505,6 +589,8 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
         );
       case _FavoriteItemAction.edit:
         await _editFavorite(item);
+      case _FavoriteItemAction.checkUpdate:
+        await _checkOneFolder(item);
       case _FavoriteItemAction.unfavorite:
         setState(() => _removing.add(item.id));
         await Future<void>.delayed(const Duration(milliseconds: 220));
@@ -593,6 +679,8 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
     final scheme = Theme.of(context).colorScheme;
     final selected = _selected.contains(item.id);
     final isFolder = item.kind == 'shareFolder';
+    final hasUpdate =
+        isFolder && item.folderHasUpdate && item.shareStatus.accessible;
     // 菜单要贴在被点的 ⋯ 下方，所以这里得拿到行 / 按钮各自的 context
     return Builder(
       builder: (BuildContext rowContext) => Md3ListItem(
@@ -607,6 +695,12 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
         iconColor: isFolder
             ? scheme.primary
             : fileIconColor(item.name, brightness: scheme.brightness),
+        iconIndicator: hasUpdate && !selected
+            ? _FavoriteUpdateDot(
+                key: ValueKey('favorite-update-dot-${item.id}'),
+                color: scheme.error,
+              )
+            : null,
         title: item.displayName,
         subtitle: _subtitle(item),
         titleMaxLines: 2,
@@ -646,10 +740,11 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
   Widget build(BuildContext context) {
     super.build(context);
     final appearance = ref.watch(navigationAppearanceSettingsStateProvider);
+    final checking = ref.watch(favoriteCheckRunningProvider);
     return ListenableBuilder(
       listenable: appearance.revision,
       builder: (context, _) =>
-          _buildPage(context, appearance.hideTopBar, _navigation),
+          _buildPage(context, appearance.hideTopBar, _navigation, checking),
     );
   }
 
@@ -657,6 +752,7 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
     BuildContext context,
     bool hideTopBar,
     NavigationState navigation,
+    bool checking,
   ) {
     final scheme = Theme.of(context).colorScheme;
     final l10n = context.l10n;
@@ -877,7 +973,10 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
                                   IconButton(
                                     tooltip: l10n.menu,
                                     icon: const Icon(Icons.more_vert),
-                                    onPressed: () => _showMenu(anchorContext),
+                                    onPressed: () => _showMenu(
+                                      anchorContext,
+                                      checking: checking,
+                                    ),
                                   ),
                             ),
                           ],
@@ -971,4 +1070,36 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
       ),
     );
   }
+}
+
+class _FavoriteUpdateDot extends StatelessWidget {
+  const _FavoriteUpdateDot({super.key, required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+    child: const SizedBox.square(dimension: 11),
+  );
+}
+
+String favoriteItemSubtitle(FavoriteItem item, AppLocalizations l10n) {
+  if (item.shareStatus == FavoriteShareStatus.unavailable) {
+    return l10n.favoriteShareUnavailable;
+  }
+  if (item.shareStatus == FavoriteShareStatus.passwordChanged) {
+    return l10n.favoritePasswordChanged;
+  }
+  if (item.kind == 'shareFolder') {
+    if (!item.folderHasUpdate) return '';
+    final snapshot = item.folderSnapshot;
+    if (snapshot is HeadFavoriteFolderSnapshot &&
+        snapshot.head.time.isNotEmpty) {
+      return l10n.favoriteFolderUpdated(snapshot.head.time);
+    }
+    return l10n.favoriteFolderUpdatedNoTime;
+  }
+  if (item.size.isEmpty) return '';
+  return prettyLzSize(item.size);
 }

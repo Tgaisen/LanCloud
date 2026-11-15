@@ -28,6 +28,16 @@
   `{info, text:[{id,name_all,time,size,downs,onof,is_des}]}`；`info==0` 表示没有更多页。
 - 文件夹列表：POST `doupload.php?uid=<ylogin>` `{task:47, folder_id:<id>}` → `{text:[{fol_id,name,onof,folder_des}], info:[{folderid,name}]}`（info 为路径）。
 
+## 分享文件夹分页
+- 分享页解析出 `fid / t / k / lx / uid / puid` 后，POST
+  `filemoreajax.php?file=<fid>`；第一页 `pg=1`，每页 50 条。
+- 当前蓝奏云把新文件排在前面。收藏更新检测只保存第一页首个文件的
+  `id/name_all/time/size` 指纹；`id` 是原始分享条目 id，收藏快照保存它而不是
+  随域名变化的完整 URL。
+- `zt=1` 返回 `text`；`zt=2` 表示已到末页；`zt=3` 表示提取码错误；
+  其它带 `info` 的响应按服务端提示处理。文件夹是否取消分享、需要提取码，
+  仍要先重新请求分享页，不能复用旧的 `t/k/fid`。
+
 ## 文件详情（doupload.php）
 - 读取详情/简介：POST doupload.php `{task:12, file_id:<id>}`。
   本客户端按 `{text:<展示名称>, info:<文件简介>}` 读取；`text` 可覆盖列表接口里的名称，

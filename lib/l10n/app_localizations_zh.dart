@@ -1731,6 +1731,34 @@ class AppLocalizationsZh extends AppLocalizations {
   String get notifChannelDoneDesc => '下载与上传完成或失败的提醒';
 
   @override
+  String get favoriteCheckProgressTitle => '正在检测收藏夹更新';
+
+  @override
+  String favoriteCheckProgressBody(int completed, int total, String name) {
+    return '$completed/$total · $name';
+  }
+
+  @override
+  String get favoriteCheckChannel => '收藏文件夹检测';
+
+  @override
+  String get favoriteCheckChannelDesc => '检测收藏夹更新时的进度';
+
+  @override
+  String get favoriteUpdateChannel => '收藏文件夹更新';
+
+  @override
+  String get favoriteUpdateChannelDesc => '收藏文件夹有更新时提醒';
+
+  @override
+  String favoriteFolderUpdateNotificationBody(String time) {
+    return '文件夹有更新 · $time';
+  }
+
+  @override
+  String get favoriteFolderUpdateNotificationBodyNoTime => '文件夹有更新';
+
+  @override
   String get files => '文件';
 
   @override
@@ -1757,6 +1785,104 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get favoriteTitleHint => '留空则使用默认名称';
+
+  @override
+  String favoriteFolderUpdated(String time) {
+    return '有更新 · $time';
+  }
+
+  @override
+  String get favoriteFolderUpdatedNoTime => '有更新';
+
+  @override
+  String get favoriteShareUnavailable => '已失效 · 不存在或已取消分享';
+
+  @override
+  String get favoritePasswordChanged => '提取码已变更';
+
+  @override
+  String get checkFavoriteFolderUpdates => '检测收藏文件夹更新';
+
+  @override
+  String get checkFavoriteAccess => '检测失效项目';
+
+  @override
+  String get favoriteCheckAlreadyRunning => '正在检测收藏夹，请稍候';
+
+  @override
+  String get favoriteNotificationTargetMissing => '该收藏已不存在';
+
+  @override
+  String favoriteCheckAllDone(int count) {
+    return '检测完成：$count 项正常';
+  }
+
+  @override
+  String favoriteCheckPartial(int ok, int failed) {
+    return '检测完成：$ok 项正常，$failed 项失败';
+  }
+
+  @override
+  String get favoriteCheckNoFolders => '没有可检测的收藏文件夹';
+
+  @override
+  String get favoriteCheckNoSelection => '请至少选择一个收藏文件夹';
+
+  @override
+  String get favoriteAutoCheck => '自动检测收藏文件夹更新';
+
+  @override
+  String get favoriteAutoCheckSubtitle => '启动或回到前台时按频率检查';
+
+  @override
+  String get favoriteCheckScope => '检测范围';
+
+  @override
+  String get favoriteCheckScopeAll => '全部收藏文件夹';
+
+  @override
+  String favoriteCheckScopeSelected(int count) {
+    return '已选择 $count 个文件夹';
+  }
+
+  @override
+  String get favoriteCheckScopeTitle => '选择检测范围';
+
+  @override
+  String get favoriteCheckFrequency => '检测频率';
+
+  @override
+  String get favoriteCheckDaily => '每天';
+
+  @override
+  String get favoriteCheckWeekly => '每周';
+
+  @override
+  String get favoriteCheckMonthly => '每月';
+
+  @override
+  String get favoriteLastCheckNever => '上次检测：尚未检测';
+
+  @override
+  String favoriteLastCheck(String time) {
+    return '上次检测：$time';
+  }
+
+  @override
+  String favoriteLastCheckFailed(String time, int count) {
+    return '上次检测：$time · $count 项失败';
+  }
+
+  @override
+  String get favoriteUpdateNotify => '收藏文件夹更新通知';
+
+  @override
+  String get favoriteUpdateNotifySubtitle => '检测完成后，每个有更新的文件夹发一条通知';
+
+  @override
+  String favoriteUpdateBadgeSemantics(int count) {
+    return '收藏，$count 个文件夹有更新';
+  }
 
   @override
   String get shareInvalid => '该分享已失效（已取消或删除）';

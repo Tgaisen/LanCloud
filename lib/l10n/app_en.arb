@@ -661,6 +661,34 @@
   "notifChannelProgressDesc": "Progress of downloads and uploads in progress",
   "notifChannelDone": "Transfers finished",
   "notifChannelDoneDesc": "Alerts when downloads and uploads finish or fail",
+  "favoriteCheckProgressTitle": "Checking favorite folder updates",
+  "favoriteCheckProgressBody": "{completed}/{total} · {name}",
+  "@favoriteCheckProgressBody": {
+    "placeholders": {
+      "completed": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "favoriteCheckChannel": "Favorite folder checks",
+  "favoriteCheckChannelDesc": "Progress while checking favorite folder updates",
+  "favoriteUpdateChannel": "Favorite folder updates",
+  "favoriteUpdateChannelDesc": "Alerts when favorite folders are updated",
+  "favoriteFolderUpdateNotificationBody": "Folder updated · {time}",
+  "@favoriteFolderUpdateNotificationBody": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "favoriteFolderUpdateNotificationBodyNoTime": "Folder updated",
   "files": "Files",
   "shareMessage": "Message from the sharer",
   "favoritedPartial": "{ok} favorited, {failed} failed",
@@ -686,6 +714,89 @@
   "editInfo": "Edit info",
   "favoriteTitle": "Custom title",
   "favoriteTitleHint": "Leave empty to use the default name",
+  "favoriteFolderUpdated": "Updated · {time}",
+  "@favoriteFolderUpdated": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "favoriteFolderUpdatedNoTime": "Updated",
+  "favoriteShareUnavailable": "Unavailable · deleted or sharing canceled",
+  "favoritePasswordChanged": "Extraction code changed",
+  "checkFavoriteFolderUpdates": "Check favorite folder updates",
+  "checkFavoriteAccess": "Check unavailable items",
+  "favoriteCheckAlreadyRunning": "Favorite folders are already being checked",
+  "favoriteNotificationTargetMissing": "This favorite no longer exists",
+  "favoriteCheckAllDone": "Check complete: {count} accessible",
+  "@favoriteCheckAllDone": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "favoriteCheckPartial": "Check complete: {ok} accessible, {failed} failed",
+  "@favoriteCheckPartial": {
+    "placeholders": {
+      "ok": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "favoriteCheckNoFolders": "No favorite folders to check",
+  "favoriteCheckNoSelection": "Select at least one favorite folder",
+  "favoriteAutoCheck": "Check favorite folder updates automatically",
+  "favoriteAutoCheckSubtitle": "Check on launch or resume when due",
+  "favoriteCheckScope": "Check scope",
+  "favoriteCheckScopeAll": "All favorite folders",
+  "favoriteCheckScopeSelected": "{count} folders selected",
+  "@favoriteCheckScopeSelected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "favoriteCheckScopeTitle": "Choose check scope",
+  "favoriteCheckFrequency": "Check frequency",
+  "favoriteCheckDaily": "Daily",
+  "favoriteCheckWeekly": "Weekly",
+  "favoriteCheckMonthly": "Monthly",
+  "favoriteLastCheckNever": "Last checked: never",
+  "favoriteLastCheck": "Last checked: {time}",
+  "@favoriteLastCheck": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "favoriteLastCheckFailed": "Last checked: {time} · {count} failed",
+  "@favoriteLastCheckFailed": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "favoriteUpdateNotify": "Favorite folder update notifications",
+  "favoriteUpdateNotifySubtitle": "Send one notification for each updated folder",
+  "favoriteUpdateBadgeSemantics": "Favorites, {count} folders updated",
+  "@favoriteUpdateBadgeSemantics": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "shareInvalid": "This share is no longer available (canceled or deleted)",
   "fileInvalid": "This file is no longer available",
   "logout": "Log out",

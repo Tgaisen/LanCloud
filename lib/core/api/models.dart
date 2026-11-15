@@ -105,6 +105,7 @@ class ShareInfo {
 
 class ShareFileItem {
   ShareFileItem({
+    this.remoteId = '',
     required this.name,
     required this.time,
     required this.size,
@@ -112,6 +113,10 @@ class ShareFileItem {
     this.invalid = false,
   });
 
+  /// 分享页文件接口返回的原始 id；失效条目的 id 可能是 `-1`。
+  ///
+  /// [url] 会随分享域名变化，检测收藏更新时用这个字段做稳定指纹。
+  final String remoteId;
   final String name;
   final String time;
   final String size;
