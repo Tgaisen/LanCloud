@@ -1765,7 +1765,9 @@ Future<T?> showAppSheet<T>(
     barrierOnTapHint: localizations.scrimOnTapHint(
       localizations.bottomSheetLabel,
     ),
-    enableDrag: fitContent,
+    // 手柄始终交给框架 BottomSheet 处理。固定高度内容里的列表会在自身
+    // 未到边界时赢得手势竞争，到顶后由 SheetNestedScrollView 交给路由。
+    enableDrag: true,
     modalBarrierColor: Theme.of(context).bottomSheetTheme.modalBarrierColor,
     sheetAnimationStyle: animationStyle,
     // 通铺整屏时让「弹窗窗体」整体避开左右挖孔：useSafeArea 作用在弹窗
@@ -2080,7 +2082,6 @@ class _MeasuredSheetState extends State<MeasuredSheet> {
   /// 指针速度采样：用于判断“快速下滑关闭”。
   VelocityTracker? _tracker;
   int? _pointer;
-  Offset? _lastPointerPosition;
   bool _draggedSheet = false;
   bool _routeDragStarted = false;
   final ScrollController _fixedScrollController = ScrollController();
@@ -2202,7 +2203,6 @@ class _MeasuredSheetState extends State<MeasuredSheet> {
 
   void _onPointerDown(PointerDownEvent event) {
     _pointer = event.pointer;
-    _lastPointerPosition = event.position;
     _draggedSheet = false;
     _tracker = VelocityTracker.withKind(event.kind)
       ..addPosition(event.timeStamp, event.position);
@@ -2210,23 +2210,11 @@ class _MeasuredSheetState extends State<MeasuredSheet> {
 
   void _onPointerMove(PointerMoveEvent event) {
     if (event.pointer != _pointer) return;
-    final previous = _lastPointerPosition;
-    _lastPointerPosition = event.position;
     _tracker?.addPosition(event.timeStamp, event.position);
-    if (!widget.fitContent &&
-        previous != null &&
-        _fixedScrollController.hasClients) {
-      final deltaY = event.position.dy - previous.dy;
-      final position = _fixedScrollController.position;
-      if (deltaY > 0 && position.extentBefore <= precisionErrorTolerance) {
-        _distributeDrag(deltaY, position);
-      }
-    }
   }
 
   void _clearPointer() {
     _pointer = null;
-    _lastPointerPosition = null;
     _tracker = null;
   }
 

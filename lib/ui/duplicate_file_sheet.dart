@@ -264,11 +264,6 @@ class _DuplicateFileTile extends StatelessWidget {
         index: index,
         animateIn: false,
         onTap: onTap,
-        trailing: ExcludeSemantics(
-          child: IgnorePointer(
-            child: Checkbox(value: selected, onChanged: (_) => onTap()),
-          ),
-        ),
       ),
     );
   }
