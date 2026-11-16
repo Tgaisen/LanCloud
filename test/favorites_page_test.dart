@@ -420,8 +420,9 @@ void main() {
     const ref = 'https://share.example/read-all-ui';
     addTearDown(() async {
       final favorite = await environment.db.favoriteByRef(ref);
-      if (favorite != null)
+      if (favorite != null) {
         await environment.db.removeFavoriteById(favorite.id);
+      }
     });
     await tester.runAsync(() async {
       await environment.db.addFavorite(
