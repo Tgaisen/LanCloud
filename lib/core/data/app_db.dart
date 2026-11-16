@@ -696,6 +696,22 @@ class AppDb {
   }) =>
       saveFavoriteFolderSnapshot(id: id, snapshot: snapshot, hasUpdate: false);
 
+  /// 用户从收藏菜单把全部文件夹的更新标记一次性视为已读。
+  ///
+  /// 保留现有首项快照，下一次检测仍能与最近一次已确认的内容比较；只清除
+  /// 未读状态，避免用户再从每条记录逐项打开后才能消掉 badge。
+  Future<int> clearFavoriteFolderUpdates() async {
+    final database = await db;
+    final changed = await database.update(
+      'favorites',
+      {'folder_has_update': 0, 'folder_update_at': null},
+      where: 'kind = ? AND folder_has_update = 1',
+      whereArgs: ['shareFolder'],
+    );
+    if (changed > 0) _touch();
+    return changed;
+  }
+
   /// 修改分享链接后，旧快照与访问结果都不再属于同一分享。
   Future<void> resetFavoriteMonitor(int id) async {
     final database = await db;

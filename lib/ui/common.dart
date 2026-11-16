@@ -2385,6 +2385,8 @@ class SheetNestedScrollView extends StatelessWidget {
 ///
 /// [actions] 固定靠右并保持单行；标题占用剩余宽度，可截断长文件名。
 /// [compact] 只影响垂直留白；移动端传输页可用它保留紧凑分栏高度。
+/// [stableActionHeight] 为真时，即使没有操作也预留最小触控高度，
+/// 让操作按钮进入 / 退出时不会把标题栏顶高。
 class SectionHeader extends StatelessWidget {
   const SectionHeader({
     super.key,
@@ -2392,12 +2394,14 @@ class SectionHeader extends StatelessWidget {
     required this.count,
     this.actions = const <Widget>[],
     this.compact = false,
+    this.stableActionHeight = false,
   });
 
   final String title;
   final int count;
   final List<Widget> actions;
   final bool compact;
+  final bool stableActionHeight;
 
   @override
   Widget build(BuildContext context) {
@@ -2431,22 +2435,30 @@ class SectionHeader extends StatelessWidget {
         ],
       ),
     );
+    final content = Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          child: Align(alignment: Alignment.centerLeft, child: titleBlock),
+        ),
+        if (actions.isNotEmpty) ...[
+          const SizedBox(width: 8),
+          Row(mainAxisSize: MainAxisSize.min, children: actions),
+        ],
+      ],
+    );
     return Padding(
       padding: compact
           ? const EdgeInsets.fromLTRB(4, 0, 4, 0)
           : const EdgeInsets.fromLTRB(4, 16, 4, 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Expanded(
-            child: Align(alignment: Alignment.centerLeft, child: titleBlock),
-          ),
-          if (actions.isNotEmpty) ...[
-            const SizedBox(width: 8),
-            Row(mainAxisSize: MainAxisSize.min, children: actions),
-          ],
-        ],
-      ),
+      child: stableActionHeight
+          ? ConstrainedBox(
+              constraints: const BoxConstraints(
+                minHeight: kMinInteractiveDimension,
+              ),
+              child: content,
+            )
+          : content,
     );
   }
 }

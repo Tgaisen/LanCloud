@@ -232,6 +232,61 @@ void main() {
     expect(reporter.events, contains('cleared:${favorite.ref}'));
   });
 
+  test('菜单批量消除更新标志会清空 badge 并撤掉全部通知', () async {
+    final first = await addFolder('https://share.example/read-all-a');
+    final second = await addFolder('https://share.example/read-all-b');
+    const firstSnapshot = HeadFavoriteFolderSnapshot(
+      head: FavoriteFolderHead(
+        remoteId: 'A',
+        name: 'A.zip',
+        time: '2026-11-15',
+        size: '3 M',
+      ),
+      checkedAt: 101,
+    );
+    const secondSnapshot = HeadFavoriteFolderSnapshot(
+      head: FavoriteFolderHead(
+        remoteId: 'B',
+        name: 'B.zip',
+        time: '2026-11-16',
+        size: '4 M',
+      ),
+      checkedAt: 202,
+    );
+    await db.saveFavoriteFolderSnapshot(
+      id: first.id,
+      snapshot: firstSnapshot,
+      hasUpdate: true,
+      updateAt: 301,
+    );
+    await db.saveFavoriteFolderSnapshot(
+      id: second.id,
+      snapshot: secondSnapshot,
+      hasUpdate: true,
+      updateAt: 302,
+    );
+    final monitor = container.read(favoriteMonitorProvider.notifier);
+    await monitor.initialize();
+    expect(container.read(favoriteUpdateCountProvider), 2);
+
+    expect(await monitor.markAllFolderUpdatesRead(), 2);
+
+    final firstSaved = await db.favoriteByRef(first.ref);
+    final secondSaved = await db.favoriteByRef(second.ref);
+    expect(firstSaved?.folderHasUpdate, isFalse);
+    expect(firstSaved?.folderUpdateAt, isNull);
+    expect(firstSaved?.folderSnapshot?.sameAs(firstSnapshot), isTrue);
+    expect(secondSaved?.folderHasUpdate, isFalse);
+    expect(secondSaved?.folderUpdateAt, isNull);
+    expect(secondSaved?.folderSnapshot?.sameAs(secondSnapshot), isTrue);
+    expect(container.read(favoriteUpdateCountProvider), 0);
+    expect(
+      reporter.events.where((event) => event.startsWith('cleared:')),
+      unorderedEquals(['cleared:${first.ref}', 'cleared:${second.ref}']),
+    );
+    expect(await monitor.markAllFolderUpdatesRead(), 0);
+  });
+
   test('提取码错误和取消分享分别保存为提取码变更与失效', () async {
     final favorite = await addFolder();
     final monitor = container.read(favoriteMonitorProvider.notifier);

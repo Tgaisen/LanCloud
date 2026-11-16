@@ -612,6 +612,36 @@ class FavoriteMonitor extends Notifier<FavoriteMonitorState> {
     await refreshSummary();
   }
 
+  /// 将当前全部文件夹更新一次性视为已读，并撤掉对应的更新通知。
+  ///
+  /// 与检测任务共用互斥标记，避免检测过程中刚清掉的 badge 又被本轮结果写回。
+  Future<int> markAllFolderUpdatesRead() async {
+    if (!_reserveRun()) return 0;
+    try {
+      await initialize();
+      final favorites = await _db.favorites();
+      final updated = [
+        for (final favorite in favorites)
+          if (favorite.kind == 'shareFolder' && favorite.folderHasUpdate)
+            favorite,
+      ];
+      if (updated.isEmpty) {
+        updateSummaryFromFavorites(favorites);
+        return 0;
+      }
+      await _db.clearFavoriteFolderUpdates();
+      for (final favorite in updated) {
+        await _safeReporter(
+          () => _reporter.folderUpdateCleared(ref: favorite.ref),
+        );
+      }
+      await refreshSummary();
+      return updated.length;
+    } finally {
+      _runReserved = false;
+    }
+  }
+
   Future<void> _safeReporter(Future<void> Function() action) async {
     try {
       await action();

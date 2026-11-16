@@ -2789,6 +2789,12 @@ abstract class AppLocalizations {
   /// **'新增收藏'**
   String get newFavorite;
 
+  /// No description provided for @clearFavoriteUpdateFlags.
+  ///
+  /// In zh, this message translates to:
+  /// **'消除更新标志'**
+  String get clearFavoriteUpdateFlags;
+
   /// No description provided for @moreActions.
   ///
   /// In zh, this message translates to:

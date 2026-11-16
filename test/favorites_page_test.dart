@@ -128,6 +128,24 @@ Future<void> _pumpUntilGone(
   }
 }
 
+Future<void> _pumpUntilFavoriteUpdateCleared(
+  WidgetTester tester,
+  AppEnvironment environment,
+  String ref, {
+  int attempts = 50,
+}) async {
+  for (var i = 0; i < attempts; i++) {
+    final favorite = await tester.runAsync(
+      () => environment.db.favoriteByRef(ref),
+    );
+    if (favorite?.folderHasUpdate == false) return;
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 10)),
+    );
+    await tester.pump(const Duration(milliseconds: 10));
+  }
+}
+
 void main() {
   testWidgets('收藏视图可独立打开，空收藏时显示提示', (tester) async {
     final environment = AppEnvironment();
@@ -192,10 +210,16 @@ void main() {
     // 空收藏也能进多选；批量检测项仍保留但会提示没有可检测项目。
     await tester.tap(find.byTooltip('菜单'));
     await tester.pumpAndSettle();
-    expect(menuLabels(), hasLength(4));
+    expect(menuLabels(), hasLength(5));
     expect(menuLabels().first, '多选');
+    expect(menuLabels()[2], '消除更新标志');
     expect(menuLabels(), contains('检测收藏文件夹更新'));
     expect(menuLabels(), contains('检测失效项目'));
+    final clearUpdatesRow = tester.widget<M3eMenuRow>(
+      find.widgetWithText(M3eMenuRow, '消除更新标志'),
+    );
+    expect(clearUpdatesRow.enabled, isFalse);
+    expect(clearUpdatesRow.icon, Icons.check_circle_unread);
     expect(
       tester
           .widget<Icon>(
@@ -349,12 +373,20 @@ void main() {
     );
     expect(find.text('选择'), findsNothing);
     expect(find.text('选择失效'), findsNothing);
+    final foldersHeader = find.byKey(
+      const ValueKey('favorites-folders-header'),
+    );
+    final filesHeader = find.byKey(const ValueKey('favorites-files-header'));
+    final foldersHeaderHeight = tester.getSize(foldersHeader).height;
+    final filesHeaderHeight = tester.getSize(filesHeader).height;
 
     await tester.tap(find.byTooltip('菜单'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('多选'));
     await tester.pumpAndSettle();
 
+    expect(tester.getSize(foldersHeader).height, foldersHeaderHeight);
+    expect(tester.getSize(filesHeader).height, filesHeaderHeight);
     expect(
       find.byKey(const ValueKey('favorites-folders-select-unavailable')),
       findsOneWidget,
@@ -375,6 +407,77 @@ void main() {
     );
     await tester.pump();
     expect(find.text('已选择 3 项'), findsOneWidget);
+  });
+
+  testWidgets('菜单可批量消除文件夹更新标志并随之置灰', (tester) async {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
+    final transfers = buildTransferManagerForEnvironment(environment);
+    addTearDown(transfers.dispose);
+    const ref = 'https://share.example/read-all-ui';
+    addTearDown(() async {
+      final favorite = await environment.db.favoriteByRef(ref);
+      if (favorite != null)
+        await environment.db.removeFavoriteById(favorite.id);
+    });
+    await tester.runAsync(() async {
+      await environment.db.addFavorite(
+        kind: 'shareFolder',
+        name: '待清理更新标记的目录',
+        ref: ref,
+      );
+      final favorite = await environment.db.favoriteByRef(ref);
+      await environment.db.saveFavoriteFolderSnapshot(
+        id: favorite!.id,
+        snapshot: const HeadFavoriteFolderSnapshot(
+          head: FavoriteFolderHead(
+            remoteId: 'latest',
+            name: 'latest.zip',
+            time: '2026-11-16',
+            size: '2 M',
+          ),
+          checkedAt: 101,
+        ),
+        hasUpdate: true,
+        updateAt: 201,
+      );
+    });
+
+    await tester.pumpWidget(
+      _host(environment, const FavoritesPage(), transfers: transfers),
+    );
+    await tester.pump();
+    await _pumpUntilFound(tester, find.text('待清理更新标记的目录'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('菜单'));
+    await tester.pumpAndSettle();
+    final clearUpdatesRow = find.widgetWithText(M3eMenuRow, '消除更新标志');
+    expect(tester.widget<M3eMenuRow>(clearUpdatesRow).enabled, isTrue);
+    await tester.tap(find.text('消除更新标志'));
+    await tester.pumpAndSettle();
+    expect(find.text('消除更新标志'), findsNothing);
+    await _pumpUntilFavoriteUpdateCleared(tester, environment, ref);
+    await _pumpUntilGone(tester, find.text('有更新 · 2026-11-16'));
+    await tester.pumpAndSettle();
+
+    final saved = await tester.runAsync(
+      () => environment.db.favoriteByRef(ref),
+    );
+    expect(saved?.folderHasUpdate, isFalse);
+    expect(find.text('有更新 · 2026-11-16'), findsNothing);
+
+    await tester.tap(find.byTooltip('菜单'));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<M3eMenuRow>(find.widgetWithText(M3eMenuRow, '消除更新标志'))
+          .enabled,
+      isFalse,
+    );
   });
 
   testWidgets('菜单检测更新显示批量进度弹窗并可取消', (tester) async {
