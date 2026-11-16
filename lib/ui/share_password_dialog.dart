@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart' show CancelToken, DioException, DioExceptionType;
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -24,7 +25,8 @@ Future<PasswordResult<FolderShareDetail>?> showFolderPasswordDialog(
     context: context,
     builder: (_) => _SharePasswordDialog<FolderShareDetail>(
       title: context.l10n.folderNeedsPassword,
-      resolve: (pwd) => client.resolveFolderShare(url, pwd: pwd),
+      resolve: (pwd, cancelToken) =>
+          client.resolveFolderShare(url, pwd: pwd, cancelToken: cancelToken),
     ),
   );
 }
@@ -43,8 +45,12 @@ Future<PasswordResult<DirectFile>?> showFilePasswordDialog(
     context: context,
     builder: (_) => _SharePasswordDialog<DirectFile>(
       title: context.l10n.fileNeedsPassword,
-      resolve: (pwd) =>
-          client.resolveFileShare(url, pwd: pwd, withDescription: true),
+      resolve: (pwd, cancelToken) => client.resolveFileShare(
+        url,
+        pwd: pwd,
+        withDescription: true,
+        cancelToken: cancelToken,
+      ),
     ),
   );
 }
@@ -55,7 +61,7 @@ class _SharePasswordDialog<T> extends StatefulWidget {
   const _SharePasswordDialog({required this.title, required this.resolve});
 
   final String title;
-  final Future<T> Function(String pwd) resolve;
+  final Future<T> Function(String pwd, CancelToken cancelToken) resolve;
 
   @override
   State<_SharePasswordDialog<T>> createState() =>
@@ -64,6 +70,7 @@ class _SharePasswordDialog<T> extends StatefulWidget {
 
 class _SharePasswordDialogState<T> extends State<_SharePasswordDialog<T>> {
   final TextEditingController _pwd = TextEditingController();
+  final CancelToken _cancel = CancelToken();
   bool _loading = false;
 
   /// 提取码输入框的 error state（空 / 提取码错误 / 其它解析失败）
@@ -71,6 +78,7 @@ class _SharePasswordDialogState<T> extends State<_SharePasswordDialog<T>> {
 
   @override
   void dispose() {
+    _cancel.cancel('提取码弹窗已关闭');
     _pwd.dispose();
     super.dispose();
   }
@@ -87,9 +95,17 @@ class _SharePasswordDialogState<T> extends State<_SharePasswordDialog<T>> {
       _error = null;
     });
     try {
-      final value = await widget.resolve(pwd);
+      final value = await widget.resolve(pwd, _cancel);
       if (!mounted) return;
       Navigator.of(context).pop((value: value, pwd: pwd));
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.cancel || _cancel.isCancelled) return;
+      if (mounted) {
+        setState(() {
+          _error = context.l10n.resolveFailed('$e');
+          _loading = false;
+        });
+      }
     } on WrongPasswordException catch (e) {
       // 「提取码错误」标在输入框上，与「打开链接」弹窗一致
       if (mounted) {
@@ -141,7 +157,7 @@ class _SharePasswordDialogState<T> extends State<_SharePasswordDialog<T>> {
       ),
       actions: [
         TextButton(
-          onPressed: _loading ? null : () => Navigator.of(context).pop(),
+          onPressed: () => Navigator.of(context).pop(),
           child: Text(l10n.cancel),
         ),
         FilledButton(

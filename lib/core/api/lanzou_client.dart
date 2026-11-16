@@ -114,7 +114,12 @@ class LanzouClient {
       InterceptorsWrapper(
         onRequest: (options, handler) async {
           if (requestInterval > Duration.zero) {
-            await Future<void>.delayed(requestInterval);
+            try {
+              await _waitForRequestSlot(requestInterval, options.cancelToken);
+            } on DioException catch (error) {
+              handler.reject(error);
+              return;
+            }
           }
           final cookie = _cookieHeaderFor(options.uri.host);
           if (cookie.isNotEmpty) options.headers['Cookie'] = cookie;
@@ -226,6 +231,30 @@ class LanzouClient {
     headers: referer == null ? null : {'Referer': referer},
   );
 
+  void _throwIfCancelled(CancelToken? cancelToken) {
+    if (cancelToken?.isCancelled ?? false) {
+      throw cancelToken!.cancelError!;
+    }
+  }
+
+  Future<void> _waitForRequestSlot(
+    Duration delay,
+    CancelToken? cancelToken,
+  ) async {
+    if (delay <= Duration.zero) return;
+    final token = cancelToken;
+    if (token == null) {
+      await Future<void>.delayed(delay);
+      return;
+    }
+    _throwIfCancelled(token);
+    await Future.any<void>([
+      Future<void>.delayed(delay),
+      token.whenCancel.then<void>((_) {}),
+    ]);
+    _throwIfCancelled(token);
+  }
+
   Map<String, dynamic> _asMap(dynamic data) {
     if (data is Map) return data.cast<String, dynamic>();
     final text = '$data'.trim();
@@ -266,19 +295,23 @@ class LanzouClient {
 
   // ---------------------------------------------------------------- account
 
-  Future<bool> verify() async =>
-      await validateLoginState() == LoginStateValidation.valid;
+  Future<bool> verify({CancelToken? cancelToken}) async =>
+      await validateLoginState(cancelToken: cancelToken) ==
+      LoginStateValidation.valid;
 
   /// 校验当前 Cookie 是否仍可登录。
   ///
   /// 与 [verify] 不同，这里不把所有失败都折叠成 `false`，恢复流程可以据此
   /// 区分「Cookie 已失效」「网络不可达」和「服务端异常」。
-  Future<LoginStateValidation> validateLoginState() async {
+  Future<LoginStateValidation> validateLoginState({
+    CancelToken? cancelToken,
+  }) async {
     try {
       final resp = await dio.post<String>(
         '$apiBase/doupload.php',
         data: {'task': 5, 'folder_id': -1, 'pg': 1},
         options: _options(),
+        cancelToken: cancelToken,
       );
       if (resp.statusCode != null && resp.statusCode! >= 500) {
         return LoginStateValidation.serverError;
@@ -287,6 +320,7 @@ class LanzouClient {
           ? LoginStateValidation.valid
           : LoginStateValidation.invalid;
     } on DioException catch (e) {
+      if (e.type == DioExceptionType.cancel) rethrow;
       final status = e.response?.statusCode;
       if (status != null && status >= 500) {
         return LoginStateValidation.serverError;
@@ -299,6 +333,7 @@ class LanzouClient {
         _ => LoginStateValidation.serverError,
       };
     } catch (_) {
+      _throwIfCancelled(cancelToken);
       return LoginStateValidation.serverError;
     }
   }
@@ -331,11 +366,19 @@ class LanzouClient {
     return (files: files, hasMore: info != 0 && files.isNotEmpty);
   }
 
-  Future<List<LzFile>> listFiles(String folderId) async {
+  Future<List<LzFile>> listFiles(
+    String folderId, {
+    CancelToken? cancelToken,
+  }) async {
     final all = <LzFile>[];
     var page = 1;
     while (page <= 60) {
-      final result = await listFilesPage(folderId, page);
+      _throwIfCancelled(cancelToken);
+      final result = await listFilesPage(
+        folderId,
+        page,
+        cancelToken: cancelToken,
+      );
       all.addAll(result.files);
       if (!result.hasMore) break;
       page += 1;
@@ -344,13 +387,15 @@ class LanzouClient {
   }
 
   Future<({List<LzFolder> folders, List<PathNode> path})> listFolders(
-    String folderId,
-  ) async {
+    String folderId, {
+    CancelToken? cancelToken,
+  }) async {
     final resp = await dio.post<String>(
       '$apiBase/doupload.php',
       queryParameters: {'uid': uid},
       data: {'task': 47, 'folder_id': folderId},
       options: _options(),
+      cancelToken: cancelToken,
     );
     final map = _asMap(resp.data);
     final folders = <LzFolder>[];
@@ -377,14 +422,21 @@ class LanzouClient {
   }
 
   /// 新建文件夹，返回新文件夹 id（同名文件夹已存在时直接复用其 id）。
-  Future<String> mkdir(String parentId, String name, {String desc = ''}) async {
+  Future<String> mkdir(
+    String parentId,
+    String name, {
+    String desc = '',
+    CancelToken? cancelToken,
+  }) async {
     final safe = name
         .replaceAll(' ', '_')
         .replaceAll(RegExp(r'''[\$%^!*<>)(+=`'"/:;,?]'''), '');
-    final existing = await listFolders(parentId);
+    _throwIfCancelled(cancelToken);
+    final existing = await listFolders(parentId, cancelToken: cancelToken);
     for (final folder in existing.folders) {
       if (folder.name == safe) return folder.id;
     }
+    _throwIfCancelled(cancelToken);
     final resp = await dio.post<String>(
       '$apiBase/doupload.php',
       data: {
@@ -394,6 +446,7 @@ class LanzouClient {
         'folder_description': desc,
       },
       options: _options(),
+      cancelToken: cancelToken,
     );
     if ('${_asMap(resp.data)['zt']}' != '1') {
       throw const LanzouException(
@@ -402,7 +455,8 @@ class LanzouClient {
       );
     }
     final beforeIds = existing.folders.map((f) => f.id).toSet();
-    final after = await listFolders(parentId);
+    _throwIfCancelled(cancelToken);
+    final after = await listFolders(parentId, cancelToken: cancelToken);
     final added = after.folders
         .where((f) => !beforeIds.contains(f.id))
         .toList();
@@ -415,11 +469,16 @@ class LanzouClient {
     return added.first.id;
   }
 
-  Future<void> deleteItem({required String id, required bool isFile}) async {
+  Future<void> deleteItem({
+    required String id,
+    required bool isFile,
+    CancelToken? cancelToken,
+  }) async {
     final resp = await dio.post<String>(
       '$apiBase/doupload.php',
       data: isFile ? {'task': 6, 'file_id': id} : {'task': 3, 'folder_id': id},
       options: _options(),
+      cancelToken: cancelToken,
     );
     if ('${_asMap(resp.data)['zt']}' != '1') {
       throw const LanzouException('删除失败', code: LanzouErrorCode.deleteFailed);
@@ -427,11 +486,16 @@ class LanzouClient {
   }
 
   /// 移动文件到目标文件夹（task 20）。
-  Future<void> moveFile(String fileId, String folderId) async {
+  Future<void> moveFile(
+    String fileId,
+    String folderId, {
+    CancelToken? cancelToken,
+  }) async {
     final resp = await dio.post<String>(
       '$apiBase/doupload.php',
       data: {'task': 20, 'file_id': fileId, 'folder_id': folderId},
       options: _options(),
+      cancelToken: cancelToken,
     );
     if ('${_asMap(resp.data)['zt']}' != '1') {
       throw const LanzouException(
@@ -441,56 +505,15 @@ class LanzouClient {
     }
   }
 
-  /// 移动文件夹到目标父目录。
-  /// 官方没有直接的文件夹移动接口，参照 LanZouCloud-API：
-  /// 在目标目录重建同名文件夹，迁移其中的文件后删除原文件夹。
-  /// 仅支持不含子文件夹的目录。
-  Future<void> moveFolder(String folderId, String parentId) async {
-    if (folderId == parentId) {
-      throw const LanzouException(
-        '不能移动到当前目录',
-        code: LanzouErrorCode.moveToCurrentFolder,
-      );
-    }
-    final subs = await listFolders(folderId);
-    if (subs.folders.isNotEmpty) {
-      throw const LanzouException(
-        '暂不支持移动含子文件夹的目录',
-        code: LanzouErrorCode.moveFolderWithSubfoldersUnsupported,
-      );
-    }
-    final info = await shareInfoOfFolder(folderId);
-    if (info.name.isEmpty) {
-      throw const LanzouException(
-        '无法读取文件夹信息',
-        code: LanzouErrorCode.readFolderInfoFailed,
-      );
-    }
-    final newId = await mkdir(parentId, info.name, desc: info.desc);
-    if (newId == folderId) {
-      throw const LanzouException(
-        '目标位置与当前位置相同',
-        code: LanzouErrorCode.sameTargetFolder,
-      );
-    }
-    if (info.pwd.isNotEmpty) {
-      await setFolderPasswd(newId, info.pwd);
-    }
-    for (final file in await listFiles(folderId)) {
-      await moveFile(file.id, newId);
-    }
-    await deleteItem(id: folderId, isFile: false);
-  }
-
-  /// 修改文件简介（task 11）。
   /// 网页版文件夹信息页：直接读取该文件夹的统计信息。
-  /// 解析失败返回 null，由调用方回退到遍历统计。
+  /// 解析失败返回 null，由界面显示「未知」，不遍历全部分页回退。
   Future<({String size, int count, String name, String desc, String url})?>
-  folderStats(String folderId) async {
+  folderStats(String folderId, {CancelToken? cancelToken}) async {
     try {
       final resp = await dio.get<String>(
         '$apiBase/myfile.php?item=3&folder_id=$folderId&v2',
         options: _options(referer: '$apiBase/mydisk.php'),
+        cancelToken: cancelToken,
       );
       final html = resp.data ?? '';
       if (html.isEmpty || html.contains('网盘用户登录')) {
@@ -530,27 +553,37 @@ class LanzouClient {
           '';
       if (size.isEmpty && count == 0) return null;
       return (size: size, count: count, name: name, desc: desc, url: url);
+    } on DioException catch (error) {
+      if (error.type == DioExceptionType.cancel) rethrow;
+      return null;
     } catch (_) {
+      _throwIfCancelled(cancelToken);
       return null;
     }
   }
 
   /// 读取文件简介（task 12 的 info 字段）。
-  Future<String> fileDesc(String fileId) async {
+  Future<String> fileDesc(String fileId, {CancelToken? cancelToken}) async {
     final resp = await dio.post<String>(
       '$apiBase/doupload.php',
       data: {'task': 12, 'file_id': fileId},
       options: _options(),
+      cancelToken: cancelToken,
     );
     final map = _asMap(resp.data);
     return '${map['info'] ?? ''}'.trim();
   }
 
-  Future<void> setDesc(String fileId, String desc) async {
+  Future<void> setDesc(
+    String fileId,
+    String desc, {
+    CancelToken? cancelToken,
+  }) async {
     final resp = await dio.post<String>(
       '$apiBase/doupload.php',
       data: {'task': 11, 'file_id': fileId, 'desc': desc},
       options: _options(),
+      cancelToken: cancelToken,
     );
     if ('${_asMap(resp.data)['zt']}' != '1') {
       throw const LanzouException(
@@ -564,7 +597,11 @@ class LanzouClient {
   ///
   /// 蓝奏云的重命名接口只对会员开放：免费账号服务端会返回失败，这里
   /// 把失败原因写清楚，免得用户以为是网络问题。
-  Future<void> setFileName(String fileId, String name) async {
+  Future<void> setFileName(
+    String fileId,
+    String name, {
+    CancelToken? cancelToken,
+  }) async {
     final trimmed = name.trim();
     if (trimmed.isEmpty) {
       throw const LanzouException(
@@ -581,6 +618,7 @@ class LanzouClient {
         'type': 2,
       },
       options: _options(),
+      cancelToken: cancelToken,
     );
     if ('${_asMap(resp.data)['zt']}' != '1') {
       throw const LanzouException(
@@ -591,7 +629,11 @@ class LanzouClient {
   }
 
   /// 设置文件访问密码（task 23，免费账号只能设置不能关闭）。
-  Future<void> setPasswd(String fileId, String pwd) async {
+  Future<void> setPasswd(
+    String fileId,
+    String pwd, {
+    CancelToken? cancelToken,
+  }) async {
     final resp = await dio.post<String>(
       '$apiBase/doupload.php',
       data: {
@@ -601,6 +643,7 @@ class LanzouClient {
         'shownames': pwd,
       },
       options: _options(),
+      cancelToken: cancelToken,
     );
     if ('${_asMap(resp.data)['zt']}' != '1') {
       throw const LanzouException(
@@ -611,26 +654,54 @@ class LanzouClient {
   }
 
   /// 修改文件夹简介：先 task 18 取当前名称，再 task 4 保存。
-  Future<void> setFolderDesc(String folderId, String desc) async {
-    final current = await _folderInfoForUpdate(folderId);
-    await setFolderInfo(folderId, name: current.name, desc: desc);
+  Future<void> setFolderDesc(
+    String folderId,
+    String desc, {
+    CancelToken? cancelToken,
+  }) async {
+    final current = await _folderInfoForUpdate(
+      folderId,
+      cancelToken: cancelToken,
+    );
+    _throwIfCancelled(cancelToken);
+    await setFolderInfo(
+      folderId,
+      name: current.name,
+      desc: desc,
+      cancelToken: cancelToken,
+    );
   }
 
   /// 修改文件夹名称：先 task 18 取当前简介，再 task 4 原样保存。
   ///
   /// task 4 会同时提交名称和简介，不能只传新名称，否则会覆盖已有简介。
-  Future<void> renameFolder(String folderId, String name) async {
-    final current = await _folderInfoForUpdate(folderId);
-    await setFolderInfo(folderId, name: name, desc: current.desc);
+  Future<void> renameFolder(
+    String folderId,
+    String name, {
+    CancelToken? cancelToken,
+  }) async {
+    final current = await _folderInfoForUpdate(
+      folderId,
+      cancelToken: cancelToken,
+    );
+    _throwIfCancelled(cancelToken);
+    await setFolderInfo(
+      folderId,
+      name: name,
+      desc: current.desc,
+      cancelToken: cancelToken,
+    );
   }
 
   Future<({String name, String desc})> _folderInfoForUpdate(
-    String folderId,
-  ) async {
+    String folderId, {
+    CancelToken? cancelToken,
+  }) async {
     final infoResp = await dio.post<String>(
       '$apiBase/doupload.php',
       data: {'task': 18, 'folder_id': folderId},
       options: _options(),
+      cancelToken: cancelToken,
     );
     final info = _requireMap(
       _asMap(infoResp.data)['info'],
@@ -647,6 +718,7 @@ class LanzouClient {
     String folderId, {
     required String name,
     required String desc,
+    CancelToken? cancelToken,
   }) async {
     if (name.trim().isEmpty) {
       throw const LanzouException(
@@ -663,6 +735,7 @@ class LanzouClient {
         'folder_description': desc,
       },
       options: _options(),
+      cancelToken: cancelToken,
     );
     if ('${_asMap(resp.data)['zt']}' != '1') {
       throw const LanzouException(
@@ -673,7 +746,11 @@ class LanzouClient {
   }
 
   /// 设置文件夹访问密码（task 16，免费账号只能设置不能关闭）。
-  Future<void> setFolderPasswd(String folderId, String pwd) async {
+  Future<void> setFolderPasswd(
+    String folderId,
+    String pwd, {
+    CancelToken? cancelToken,
+  }) async {
     final resp = await dio.post<String>(
       '$apiBase/doupload.php',
       data: {
@@ -683,6 +760,7 @@ class LanzouClient {
         'shownames': pwd,
       },
       options: _options(),
+      cancelToken: cancelToken,
     );
     if ('${_asMap(resp.data)['zt']}' != '1') {
       throw const LanzouException(
@@ -924,11 +1002,13 @@ class LanzouClient {
   Future<ShareInfo> shareInfoOfFile(
     String fileId, {
     bool withDetails = true,
+    CancelToken? cancelToken,
   }) async {
     final resp = await dio.post<String>(
       '$apiBase/doupload.php',
       data: {'task': 22, 'file_id': fileId},
       options: _options(),
+      cancelToken: cancelToken,
     );
     final info = _requireMap(
       _asMap(resp.data)['info'],
@@ -951,11 +1031,14 @@ class LanzouClient {
             '$apiBase/doupload.php',
             data: {'task': 12, 'file_id': fileId},
             options: _options(),
+            cancelToken: cancelToken,
           )).data,
         );
         name = '${extra['text'] ?? name}';
         desc = '${extra['info'] ?? ''}';
-      } catch (_) {}
+      } catch (_) {
+        _throwIfCancelled(cancelToken);
+      }
     }
     return ShareInfo(
       url: '${info['is_newd']}/$fId',
@@ -966,12 +1049,16 @@ class LanzouClient {
     );
   }
 
-  Future<ShareInfo> shareInfoOfFolder(String folderId) async {
+  Future<ShareInfo> shareInfoOfFolder(
+    String folderId, {
+    CancelToken? cancelToken,
+  }) async {
     final resp = await dio.post<String>(
       '$apiBase/doupload.php',
       queryParameters: {'uid': uid},
       data: {'task': 18, 'folder_id': folderId, 'pg': ''},
       options: _options(),
+      cancelToken: cancelToken,
     );
     final map = _asMap(resp.data);
     if ('${map['zt']}' != '1') {
@@ -995,10 +1082,15 @@ class LanzouClient {
     );
   }
 
-  Future<String> fetchSharePage(String url, {String? referer}) async {
+  Future<String> fetchSharePage(
+    String url, {
+    String? referer,
+    CancelToken? cancelToken,
+  }) async {
     var resp = await dio.get<String>(
       url,
       options: _options(referer: referer ?? url),
+      cancelToken: cancelToken,
     );
     var html = resp.data ?? '';
     if (html.contains('acw_sc__v2')) {
@@ -1008,6 +1100,7 @@ class LanzouClient {
         resp = await dio.get<String>(
           url,
           options: _options(referer: referer ?? url),
+          cancelToken: cancelToken,
         );
         html = resp.data ?? '';
       }
@@ -1038,8 +1131,9 @@ class LanzouClient {
   Future<String?> _followDownloadRedirect(
     String dom,
     String path,
-    String referer,
-  ) async {
+    String referer, {
+    CancelToken? cancelToken,
+  }) async {
     final target = path.startsWith('http')
         ? path
         : '$dom/file/${path.replaceAll(RegExp(r'^/+'), '')}';
@@ -1047,6 +1141,7 @@ class LanzouClient {
     final head = await dio.get<String>(
       target,
       options: _options(followRedirects: false, referer: referer),
+      cancelToken: cancelToken,
     );
     final location = head.headers.value('location');
     return (location != null && location.isNotEmpty) ? location : null;
@@ -1057,8 +1152,9 @@ class LanzouClient {
     String pageHtml,
     String pageUrl,
     String referer,
-    String pwd,
-  ) async {
+    String pwd, {
+    CancelToken? cancelToken,
+  }) async {
     final endpointRaw =
         _match(pageHtml, [
           r'''url\s*:\s*['"]([^'"]*ajaxfile\.php[^'"]*)['"]''',
@@ -1097,6 +1193,7 @@ class LanzouClient {
     }.where((e) => e.isNotEmpty).toList();
 
     for (final kd in kdCandidates) {
+      _throwIfCancelled(cancelToken);
       final resp = await dio.post<String>(
         endpoint,
         data: <String, dynamic>{
@@ -1109,6 +1206,7 @@ class LanzouClient {
           'ves': fields['ves'] ?? '1',
         },
         options: _options(referer: pageUrl),
+        cancelToken: cancelToken,
       );
       final map = _asMap(resp.data);
       if ('${map['zt']}' == '1') {
@@ -1119,11 +1217,16 @@ class LanzouClient {
           // 这个链接本身就是直链；先用 Range 请求过一次人机校验，
           // 把 acw_sc__v2 Cookie 存到该 CDN 域名下，下载时才能拿到文件本体。
           final directUrl = '$dom/file/$path';
-          await _primeDirectUrl(directUrl);
+          await _primeDirectUrl(directUrl, cancelToken: cancelToken);
           return directUrl;
         }
         if (dom.isNotEmpty && path.isNotEmpty) {
-          return _followDownloadRedirect(dom, path, pageUrl);
+          return _followDownloadRedirect(
+            dom,
+            path,
+            pageUrl,
+            cancelToken: cancelToken,
+          );
         }
       }
       final info = '${map['inf'] ?? map['info'] ?? ''}';
@@ -1133,7 +1236,7 @@ class LanzouClient {
   }
 
   /// 轻量访问一次直链，必要时解出 acw_sc__v2 并记住 Cookie。
-  Future<void> _primeDirectUrl(String url) async {
+  Future<void> _primeDirectUrl(String url, {CancelToken? cancelToken}) async {
     try {
       final uri = Uri.parse(url);
       final resp = await dio.get<String>(
@@ -1144,6 +1247,7 @@ class LanzouClient {
           receiveTimeout: const Duration(seconds: 20),
           headers: {'Range': 'bytes=0-0'},
         ),
+        cancelToken: cancelToken,
       );
       final body = resp.data ?? '';
       if (body.contains('acw_sc__v2')) {
@@ -1152,7 +1256,11 @@ class LanzouClient {
           _jar.putIfAbsent(uri.host, () => {})['acw_sc__v2'] = token;
         }
       }
+    } on DioException catch (error) {
+      if (error.type == DioExceptionType.cancel) rethrow;
+      // 预热失败不阻塞解析，下载阶段失败会有明确提示
     } catch (_) {
+      _throwIfCancelled(cancelToken);
       // 预热失败不阻塞解析，下载阶段失败会有明确提示
     }
   }
@@ -1185,15 +1293,18 @@ class LanzouClient {
     String shareUrl, {
     String pwd = '',
     bool withDescription = false,
+    CancelToken? cancelToken,
   }) async {
     Object? lastError;
     for (final candidate in _shareUrlCandidates(shareUrl)) {
+      _throwIfCancelled(cancelToken);
       try {
         final page = await _loadFileSharePageOn(
           candidate,
           pwd,
           withDescription: withDescription,
           requirePassword: false,
+          cancelToken: cancelToken,
         );
         return ShareFileDetails(
           name: page.nameResolved ? page.name : '',
@@ -1204,6 +1315,7 @@ class LanzouClient {
           requiresPassword: page.needPwd,
         );
       } catch (e) {
+        _throwIfCancelled(cancelToken);
         lastError = e;
       }
     }
@@ -1222,18 +1334,22 @@ class LanzouClient {
 
     /// 是否连下载页（/tp）一起取简介：属性弹窗打开，批量解析 / 下载不需要。
     bool withDescription = false,
+    CancelToken? cancelToken,
   }) async {
     Object? lastError;
     for (final candidate in _shareUrlCandidates(shareUrl)) {
+      _throwIfCancelled(cancelToken);
       try {
         return await _resolveFileShareOn(
           candidate,
           pwd,
           withDescription: withDescription,
+          cancelToken: cancelToken,
         );
       } on NeedPasswordException {
         rethrow;
       } catch (e) {
+        _throwIfCancelled(cancelToken);
         lastError = e;
       }
     }
@@ -1250,12 +1366,14 @@ class LanzouClient {
     String url,
     String pwd, {
     bool withDescription = false,
+    CancelToken? cancelToken,
   }) async {
     final page = await _loadFileSharePageOn(
       url,
       pwd,
       withDescription: withDescription,
       requirePassword: true,
+      cancelToken: cancelToken,
     );
     final uri = page.uri;
     final base = page.base;
@@ -1271,7 +1389,13 @@ class LanzouClient {
     final iframeHtml = page.iframeHtml;
 
     if (iframeHtml != null && iframeUrl != null) {
-      final direct = await _resolveViaAjaxFile(iframeHtml, iframeUrl, url, pwd);
+      final direct = await _resolveViaAjaxFile(
+        iframeHtml,
+        iframeUrl,
+        url,
+        pwd,
+        cancelToken: cancelToken,
+      );
       if (direct != null) {
         return DirectFile(
           name: name,
@@ -1292,6 +1416,7 @@ class LanzouClient {
         uri,
         base,
         pwd,
+        cancelToken: cancelToken,
       );
       if (passwordDirect != null) {
         return DirectFile(
@@ -1341,6 +1466,7 @@ class LanzouClient {
         if (needPwd) 'p': pwd,
       },
       options: _options(referer: iframeUrl ?? url),
+      cancelToken: cancelToken,
     );
     final link = _asMap(linkResp.data);
     if ('${link['zt']}' != '1') {
@@ -1358,7 +1484,12 @@ class LanzouClient {
     final path = '${link['url'] ?? ''}';
     final direct = path.startsWith('http')
         ? path
-        : await _followDownloadRedirect(dom, path, url);
+        : await _followDownloadRedirect(
+            dom,
+            path,
+            url,
+            cancelToken: cancelToken,
+          );
     if (direct == null || direct.isEmpty) {
       throw const LanzouException(
         '未获取到直链',
@@ -1384,10 +1515,11 @@ class LanzouClient {
     String pwd, {
     required bool withDescription,
     required bool requirePassword,
+    CancelToken? cancelToken,
   }) async {
     final uri = Uri.parse(url);
     final base = '${uri.scheme}://${uri.host}';
-    final html = await fetchSharePage(url);
+    final html = await fetchSharePage(url, cancelToken: cancelToken);
     if (html.contains('文件不存') || html.contains('文件取消')) {
       throw const LanzouException(
         '文件不存在或已取消分享',
@@ -1428,7 +1560,7 @@ class LanzouClient {
     String? iframeHtml;
     if (iframeRaw != null && (!needPwd || pwd.isNotEmpty)) {
       iframeUrl = _absoluteUrl(base, uri.scheme, iframeRaw);
-      iframeHtml = await fetchSharePage(iframeUrl);
+      iframeHtml = await fetchSharePage(iframeUrl, cancelToken: cancelToken);
       legacyHtml = iframeHtml;
       final frameTitle = _match(iframeHtml, [r'<title>(.+?)</title>']);
       if (frameTitle != null && frameTitle.trim().isNotEmpty) {
@@ -1450,7 +1582,13 @@ class LanzouClient {
     // exe / apk 等分享页模板没有简介节点：下载页（/tp）的 .mdo 才是简介。
     // 只在属性弹窗（需要简介）且分享页没解析到简介时多请求一次。
     if (withDescription && desc.isEmpty) {
-      final tpDesc = await _fetchTpDescription(html, base, uri.scheme, url);
+      final tpDesc = await _fetchTpDescription(
+        html,
+        base,
+        uri.scheme,
+        url,
+        cancelToken: cancelToken,
+      );
       if (tpDesc != null && tpDesc.isNotEmpty) desc = tpDesc;
     }
 
@@ -1480,17 +1618,26 @@ class LanzouClient {
     String pageHtml,
     String base,
     String scheme,
-    String pageUrl,
-  ) async {
+    String pageUrl, {
+    CancelToken? cancelToken,
+  }) async {
     final raw = RegExp(r"link\.href\s*=\s*'([^']+)'")
         .firstMatch(pageHtml)
         ?.group(1);
     if (raw == null || raw.isEmpty) return null;
     final tpUrl = _absoluteUrl(base, scheme, raw);
     try {
-      final html = await fetchSharePage(tpUrl, referer: pageUrl);
+      final html = await fetchSharePage(
+        tpUrl,
+        referer: pageUrl,
+        cancelToken: cancelToken,
+      );
       return tpDescriptionFromHtml(html);
+    } on DioException catch (error) {
+      if (error.type == DioExceptionType.cancel) rethrow;
+      return null;
     } catch (_) {
+      _throwIfCancelled(cancelToken);
       return null;
     }
   }
@@ -1501,8 +1648,9 @@ class LanzouClient {
     String url,
     Uri uri,
     String base,
-    String pwd,
-  ) async {
+    String pwd, {
+    CancelToken? cancelToken,
+  }) async {
     final signCandidates = RegExp(r"var\s+isngis\s*=\s*'([^']*)'")
         .allMatches(html)
         .map((m) => m.group(1)!)
@@ -1531,6 +1679,7 @@ class LanzouClient {
         'p': pwd,
       },
       options: _options(referer: url),
+      cancelToken: cancelToken,
     );
     final map = _asMap(resp.data);
     if ('${map['zt']}' != '1') {
@@ -1552,11 +1701,16 @@ class LanzouClient {
     if (path.startsWith('http')) return DirectFile(name: name, url: path);
     if (path.startsWith('?') && dom.isNotEmpty) {
       final directUrl = '$dom/file/$path';
-      await _primeDirectUrl(directUrl);
+      await _primeDirectUrl(directUrl, cancelToken: cancelToken);
       return DirectFile(name: name, url: directUrl);
     }
     if (dom.isNotEmpty && path.isNotEmpty) {
-      final direct = await _followDownloadRedirect(dom, path, url);
+      final direct = await _followDownloadRedirect(
+        dom,
+        path,
+        url,
+        cancelToken: cancelToken,
+      );
       if (direct != null && direct.isNotEmpty) {
         return DirectFile(name: name, url: direct);
       }
@@ -1568,11 +1722,12 @@ class LanzouClient {
   Future<FolderShareDetail> resolveFolderShare(
     String shareUrl, {
     String pwd = '',
+    CancelToken? cancelToken,
   }) async {
     final url = _normalizeUrl(shareUrl);
     final uri = Uri.parse(url);
     final base = '${uri.scheme}://${uri.host}';
-    final html = await fetchSharePage(url);
+    final html = await fetchSharePage(url, cancelToken: cancelToken);
     if (html.contains('文件不存') || html.contains('文件取消')) {
       throw const LanzouException(
         '文件夹不存在或已取消分享',
@@ -1624,7 +1779,11 @@ class LanzouClient {
     );
     // 只取第一页：文件夹里文件很多时不再等全部加载完才进浏览页，
     // 后续分页由浏览页按「自动加载全部目录内容」设置与滚动位置继续拉取。
-    final first = await fetchShareFolderFiles(paging, 1);
+    final first = await fetchShareFolderFiles(
+      paging,
+      1,
+      cancelToken: cancelToken,
+    );
     final folders = <SubFolder>[];
     for (final m in RegExp(
       r'mbxfolder"><a href="(.+?)".+class="filename">(.+?)<div class="filesize">(.*?)</div>',
@@ -1658,18 +1817,28 @@ class LanzouClient {
   /// 这里退避重试几次，避免偶发失败冒到界面上（真机上表现为底部闪「重试」）。
   Future<({List<ShareFileItem> files, bool hasMore})> fetchShareFolderFiles(
     ShareFolderPaging paging,
-    int page,
-  ) async {
+    int page, {
+    CancelToken? cancelToken,
+  }) async {
     const maxAttempts = 4;
+    final url = '${paging.base}/filemoreajax.php?file=${paging.fid}';
+
+    void throwIfCancelled() {
+      final token = cancelToken;
+      if (token == null || !token.isCancelled) return;
+      throw token.cancelError!;
+    }
+
     // 服务端忙时会回「请刷新，重试N」，要求把 N 填回 rep 再请求一次；
     // 其它「稍后再试」的情况（zt=4 / 未知状态）就自己把 rep 加一。
     var rep = 0;
     for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+      throwIfCancelled();
       final lastAttempt = attempt == maxAttempts;
       final Map<String, dynamic> map;
       try {
         final resp = await dio.post<String>(
-          '${paging.base}/filemoreajax.php?file=${paging.fid}',
+          url,
           data: <String, dynamic>{
             'lx': paging.lx,
             'fid': paging.fid,
@@ -1683,12 +1852,17 @@ class LanzouClient {
             if (paging.pwd.isNotEmpty) 'pwd': paging.pwd,
           },
           options: _options(referer: paging.referer),
+          cancelToken: cancelToken,
         );
         map = _asMap(resp.data);
       } catch (e) {
+        if (cancelToken?.isCancelled ?? false) rethrow;
         // 空响应 / 挑战页这类解析失败同样是「一时拿不到」
         if (lastAttempt) rethrow;
-        await Future<void>.delayed(Duration(milliseconds: 400 * attempt));
+        await _waitForRequestSlot(
+          Duration(milliseconds: 400 * attempt),
+          cancelToken,
+        );
         continue;
       }
       final zt = '${map['zt']}';
@@ -1739,7 +1913,11 @@ class LanzouClient {
       rep = hint == null ? rep + 1 : (int.tryParse(hint.group(1)!) ?? rep + 1);
       // zt=4 / 未知状态 / 「请刷新」：稍等后按新的 rep 重试同一页
       if (lastAttempt) break;
-      await Future<void>.delayed(Duration(milliseconds: 400 * attempt));
+      await _waitForRequestSlot(
+        Duration(milliseconds: 400 * attempt),
+        cancelToken,
+      );
+      throwIfCancelled();
     }
     throw const LanzouException(
       '获取分享文件列表失败',

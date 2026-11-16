@@ -1,9 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:dio/dio.dart' show CancelToken, DioException, DioExceptionType;
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import '../app_log.dart';
+import '../foreground_task_coordinator.dart';
+import '../notifications.dart';
 import 'backup_dependencies.dart';
 import 'backup_crypto.dart';
 import 'backup_sections.dart';
@@ -15,6 +20,14 @@ import 'webdav_store.dart';
 /// 2 → 3：支持可选的整包口令加密。
 const int backupFormatVersion = 3;
 const String backupAppTag = 'lancloud';
+
+typedef WebdavBackupClientFactory = WebdavClient Function();
+typedef WebdavBackupClock = DateTime Function();
+
+/// 已有 WebDAV 备份正在生成或上传。
+class BackupBusyException extends BackupException {
+  const BackupBusyException() : super('WebDAV 备份正在进行');
+}
 
 /// 备份中的一个账号条目。Cookie 只用于恢复流程的内存预检，不直接展示。
 class BackupAccountPreview {
@@ -71,8 +84,17 @@ class BackupPreview {
 
 /// 备份与恢复：本地 JSON 文件 + WebDAV 云端。
 class BackupService {
-  BackupService(this.dependencies, {WebdavStore? webdav})
-    : webdav = webdav ?? WebdavStore();
+  BackupService(
+    this.dependencies, {
+    WebdavStore? webdav,
+    WebdavBackupNotificationSink? notifications,
+    ForegroundTaskCoordinator? foregroundTasks,
+    this.clientFactory,
+    WebdavBackupClock? clock,
+  }) : webdav = webdav ?? WebdavStore(),
+       _notifications = notifications ?? NotificationService.instance,
+       _foregroundTasks = foregroundTasks ?? ForegroundTaskCoordinator.instance,
+       _clock = clock ?? DateTime.now;
 
   static BackupService? _instance;
 
@@ -85,9 +107,23 @@ class BackupService {
   static const filePrefix = 'lancloud-backup-';
   static const latestName = 'lancloud-latest.json';
   static const maxRemoteFiles = 5;
+  static const retryCooldown = Duration(hours: 1);
 
   final BackupDependencies dependencies;
   final WebdavStore webdav;
+  final WebdavBackupNotificationSink _notifications;
+  final ForegroundTaskCoordinator _foregroundTasks;
+  @visibleForTesting
+  final WebdavBackupClientFactory? clientFactory;
+  final WebdavBackupClock _clock;
+
+  /// 自动或手动 WebDAV 备份是否正在生成 / 上传。
+  ///
+  /// 备份页监听它，在自动备份期间禁用「上传备份」；服务内部也用它保证
+  /// 自动与手动入口不会同时运行。
+  final ValueNotifier<bool> webdavBackupRunning = ValueNotifier<bool>(false);
+
+  bool _backupTrackingStarted = false;
 
   /// 本次运行是否已通过敏感内容备份验证：首次通过后不再重复验证。
   bool sensitiveVerified = false;
@@ -335,13 +371,13 @@ class BackupService {
     return file;
   }
 
-  Future<void> testConnection() async {
+  Future<void> testConnection({CancelToken? cancelToken}) async {
     await webdav.load();
     if (!webdav.configured) throw const BackupException('请先填写 WebDAV 地址');
     final client = _client();
     // 备份目录可能还没建出来：先确保它可以创建 / 存在，再测连接
-    await client.ensureDirectory();
-    await client.check();
+    await client.ensureDirectory(cancelToken: cancelToken);
+    await client.check(cancelToken: cancelToken);
   }
 
   /// 立即上传备份，返回文件名。成功后同时更新 latest 文件并清理旧备份。
@@ -350,40 +386,58 @@ class BackupService {
     Set<BackupSection>? sections,
     DateTime? now,
     void Function()? onGenerated,
+    CancelToken? cancelToken,
   }) async {
-    await webdav.load();
-    if (!webdav.configured) throw const BackupException('请先填写 WebDAV 地址');
-    final picked = sections ?? webdav.backupSections;
-    if (picked.isEmpty) {
-      throw const BackupException('请先在「备份选项」里选择要备份的数据');
-    }
-    final content = await encode(
-      sections: picked,
-      passphrase: webdav.backupPassphrase,
-    );
-    onGenerated?.call();
-    final name = '$filePrefix${stamp(now)}.json';
-    final client = _client();
+    if (webdavBackupRunning.value) throw const BackupBusyException();
+    webdavBackupRunning.value = true;
     try {
-      // 路径可能是第一次使用：不存在的目录先建出来（已存在时服务器回 405）
-      await client.ensureDirectory();
-      await client.upload(name, content);
-      await client.upload(latestName, content);
-      await _prune(client);
-      await webdav.markBackup();
-    } catch (e) {
-      await webdav.markBackup(error: '$e');
-      rethrow;
+      await webdav.load();
+      if (!webdav.configured) {
+        throw const BackupException('请先填写 WebDAV 地址');
+      }
+      final picked = sections ?? webdav.backupSections;
+      if (picked.isEmpty) {
+        throw const BackupException('请先在「备份选项」里选择要备份的数据');
+      }
+      await _startBackupTracking();
+      try {
+        final content = await encode(
+          sections: picked,
+          passphrase: webdav.backupPassphrase,
+        );
+        if (cancelToken?.isCancelled ?? false) throw cancelToken!.cancelError!;
+        onGenerated?.call();
+        final name = '$filePrefix${stamp(now)}.json';
+        final client = _client();
+        // 路径可能是第一次使用：不存在的目录先建出来（已存在时服务器回 405）
+        await client.ensureDirectory(cancelToken: cancelToken);
+        await client.upload(name, content, cancelToken: cancelToken);
+        await client.upload(latestName, content, cancelToken: cancelToken);
+        await _prune(client, cancelToken: cancelToken);
+        await webdav.markBackup(now: _clock());
+        return name;
+      } on DioException catch (error) {
+        if (error.type == DioExceptionType.cancel) rethrow;
+        await _recordBackupFailure(error);
+        rethrow;
+      } catch (error) {
+        await _recordBackupFailure(error);
+        rethrow;
+      }
+    } finally {
+      await _stopBackupTracking();
+      webdavBackupRunning.value = false;
     }
-    return name;
   }
 
   /// 云端备份列表（latest 排最前，其余按修改时间倒序）。
-  Future<List<WebdavEntry>> remoteBackups() async {
+  Future<List<WebdavEntry>> remoteBackups({CancelToken? cancelToken}) async {
     await webdav.load();
     if (!webdav.configured) throw const BackupException('请先填写 WebDAV 地址');
     // 目录还没建出来时按「没有备份」处理，不把 404 当错误弹给用户
-    return _backupEntries(await _client().listOrEmpty());
+    return _backupEntries(
+      await _client().listOrEmpty(cancelToken: cancelToken),
+    );
   }
 
   /// 使用恢复向导中临时填写的 WebDAV 连接读取备份列表，不保存连接配置。
@@ -392,6 +446,7 @@ class BackupService {
     required String username,
     required String password,
     required String path,
+    CancelToken? cancelToken,
   }) async {
     final client = _temporaryClient(
       url: url,
@@ -399,7 +454,7 @@ class BackupService {
       password: password,
       path: path,
     );
-    return _backupEntries(await client.listOrEmpty());
+    return _backupEntries(await client.listOrEmpty(cancelToken: cancelToken));
   }
 
   List<WebdavEntry> _backupEntries(List<WebdavEntry> entries) {
@@ -420,16 +475,17 @@ class BackupService {
       });
   }
 
-  Future<void> restoreRemote(String name) async {
-    final content = await webdavDownload(name);
+  Future<void> restoreRemote(String name, {CancelToken? cancelToken}) async {
+    final content = await webdavDownload(name, cancelToken: cancelToken);
+    if (cancelToken?.isCancelled ?? false) throw cancelToken!.cancelError!;
     await restoreFromString(content);
   }
 
   /// 下载云端备份的内容（不直接恢复，便于先做确认）。
-  Future<String> webdavDownload(String name) async {
+  Future<String> webdavDownload(String name, {CancelToken? cancelToken}) async {
     await webdav.load();
     if (!webdav.configured) throw const BackupException('请先填写 WebDAV 地址');
-    return _client().download(name);
+    return _client().download(name, cancelToken: cancelToken);
   }
 
   /// 使用临时 WebDAV 连接下载备份，不写入本地连接配置。
@@ -439,17 +495,29 @@ class BackupService {
     required String username,
     required String password,
     required String path,
+    CancelToken? cancelToken,
   }) {
     return _temporaryClient(
       url: url,
       username: username,
       password: password,
       path: path,
-    ).download(name);
+    ).download(name, cancelToken: cancelToken);
   }
 
-  /// 启动时自动备份：按每天/每周的频率最多跑一次，失败只记录不打扰。
+  /// 启动或回到前台时自动备份：按每天/每周的频率最多跑一次。
+  ///
+  /// 成功时间决定频率是否到期；失败只启动一小时冷却，避免网络异常时
+  /// 每次回到前台都重复请求。失败原因仍写入 [WebdavStore.lastBackupError]。
   Future<void> maybeAutoBackup() async {
+    try {
+      await _maybeAutoBackup();
+    } catch (error, stack) {
+      AppLog.instance.error('webdav_backup_auto', error, stack);
+    }
+  }
+
+  Future<void> _maybeAutoBackup() async {
     await webdav.load();
     if (!webdav.autoBackup || !webdav.configured) return;
     if (webdav.backupSections.any((section) => section.sensitive) &&
@@ -461,22 +529,73 @@ class BackupService {
     final period = webdav.interval == 'weekly'
         ? const Duration(days: 7)
         : const Duration(days: 1);
-    final last = DateTime.fromMillisecondsSinceEpoch(webdav.lastBackupAt);
-    if (webdav.lastBackupAt > 0 && DateTime.now().difference(last) < period) {
+    final now = _clock();
+    final lastSuccess = DateTime.fromMillisecondsSinceEpoch(
+      webdav.lastSuccessAt,
+    );
+    if (webdav.lastSuccessAt > 0 && now.difference(lastSuccess) < period) {
       return;
     }
+    final lastAttempt = DateTime.fromMillisecondsSinceEpoch(
+      webdav.lastAttemptAt,
+    );
+    if (webdav.lastAttemptAt > 0 &&
+        now.difference(lastAttempt) < retryCooldown) {
+      return;
+    }
+    if (webdavBackupRunning.value) return;
     try {
       await uploadNow();
-    } on BackupException {
-      // 失败原因已由 uploadNow 写进 webdav.lastBackupError
+    } on BackupBusyException {
+      // 手动备份抢先启动；已经有任务在跑，不再重复。
     }
   }
 
-  WebdavClient _client() => WebdavClient(
-    url: webdav.backupUrl,
-    username: webdav.username,
-    password: webdav.password,
-  );
+  WebdavClient _client() {
+    final factory = clientFactory;
+    if (factory != null) return factory();
+    return WebdavClient(
+      url: webdav.backupUrl,
+      username: webdav.username,
+      password: webdav.password,
+    );
+  }
+
+  Future<void> _startBackupTracking() async {
+    _backupTrackingStarted = true;
+    final i18n = NotificationService.i18n;
+    _foregroundTasks.acquire(
+      ForegroundTaskReason.webdavBackup,
+      title: i18n?.foregroundServiceRunningTitle ?? '前台服务运行中',
+      text: i18n?.foregroundServiceRunningBody ?? '点按打开应用',
+    );
+    try {
+      await _notifications.showWebdavBackupProgress();
+    } catch (error, stack) {
+      AppLog.instance.error('webdav_backup_notification', error, stack);
+    }
+  }
+
+  Future<void> _stopBackupTracking() async {
+    if (!_backupTrackingStarted) return;
+    _backupTrackingStarted = false;
+    try {
+      await _notifications.cancelWebdavBackupProgress();
+    } catch (error, stack) {
+      AppLog.instance.error('webdav_backup_notification', error, stack);
+    } finally {
+      _foregroundTasks.release(ForegroundTaskReason.webdavBackup);
+    }
+  }
+
+  Future<void> _recordBackupFailure(Object error) async {
+    final message = error is BackupException ? error.message : '$error';
+    try {
+      await webdav.markBackup(error: message, now: _clock());
+    } catch (logError, stack) {
+      AppLog.instance.error('webdav_backup_mark_failed', logError, stack);
+    }
+  }
 
   WebdavClient _temporaryClient({
     required String url,
@@ -497,10 +616,13 @@ class BackupService {
   }
 
   /// 云端只保留最新的 maxRemoteFiles 份带时间戳的备份。
-  Future<void> _prune(WebdavClient client) async {
+  Future<void> _prune(WebdavClient client, {CancelToken? cancelToken}) async {
     List<WebdavEntry> entries;
     try {
-      entries = await client.list();
+      entries = await client.list(cancelToken: cancelToken);
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.cancel) rethrow;
+      return;
     } catch (_) {
       return;
     }
@@ -517,8 +639,11 @@ class BackupService {
                 ),
           );
     for (final entry in backups.skip(maxRemoteFiles)) {
+      if (cancelToken?.isCancelled ?? false) throw cancelToken!.cancelError!;
       try {
-        await client.delete(entry.name);
+        await client.delete(entry.name, cancelToken: cancelToken);
+      } on DioException catch (e) {
+        if (e.type == DioExceptionType.cancel) rethrow;
       } catch (_) {}
     }
   }

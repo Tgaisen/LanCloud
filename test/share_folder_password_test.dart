@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart' show CancelToken;
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -28,6 +29,7 @@ class _LockedSubfolderClient extends LanzouClient {
   Future<FolderShareDetail> resolveFolderShare(
     String shareUrl, {
     String pwd = '',
+    CancelToken? cancelToken,
   }) async {
     calls.add(pwd);
     if (pwd != 'gmi9') throw const WrongPasswordException();

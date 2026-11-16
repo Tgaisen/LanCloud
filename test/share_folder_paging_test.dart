@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:dio/dio.dart' show CancelToken;
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -30,8 +33,9 @@ class _FakeClient extends LanzouClient {
   @override
   Future<({List<ShareFileItem> files, bool hasMore})> fetchShareFolderFiles(
     ShareFolderPaging paging,
-    int page,
-  ) async {
+    int page, {
+    CancelToken? cancelToken,
+  }) async {
     calls.add(page);
     if (page == 2) {
       return (
@@ -60,14 +64,51 @@ class _FlakyClient extends LanzouClient {
   @override
   Future<({List<ShareFileItem> files, bool hasMore})> fetchShareFolderFiles(
     ShareFolderPaging paging,
-    int page,
-  ) async {
+    int page, {
+    CancelToken? cancelToken,
+  }) async {
     calls.add(page);
     if (page == 2 && failures > 0) {
       failures -= 1;
       throw const LanzouException('网络抖动');
     }
     return (files: const <ShareFileItem>[], hasMore: false);
+  }
+}
+
+/// 可控分页客户端：第二、三页由测试决定何时完成，用来观察加载弹窗和取消。
+class _ControlledPagingClient extends LanzouClient {
+  _ControlledPagingClient() : super(uid: '0');
+
+  final List<int> calls = [];
+  CancelToken? page2CancelToken;
+  CancelToken? page3CancelToken;
+  final Completer<({List<ShareFileItem> files, bool hasMore})> page2 =
+      Completer<({List<ShareFileItem> files, bool hasMore})>();
+  final Completer<({List<ShareFileItem> files, bool hasMore})> page3 =
+      Completer<({List<ShareFileItem> files, bool hasMore})>();
+
+  @override
+  Future<({List<ShareFileItem> files, bool hasMore})> fetchShareFolderFiles(
+    ShareFolderPaging paging,
+    int page, {
+    CancelToken? cancelToken,
+  }) {
+    calls.add(page);
+    if (page == 2) page2CancelToken = cancelToken;
+    if (page == 3) page3CancelToken = cancelToken;
+    final result = switch (page) {
+      2 => page2.future,
+      3 => page3.future,
+      _ => Future.value((files: const <ShareFileItem>[], hasMore: false)),
+    };
+    if (cancelToken == null) return result;
+    Future<({List<ShareFileItem> files, bool hasMore})> canceled() async {
+      final error = await cancelToken.whenCancel;
+      throw error;
+    }
+
+    return Future.any([result, canceled()]);
   }
 }
 
@@ -100,9 +141,16 @@ Future<void> pumpPage(
   required AppEnvironment environment,
   required LanzouClient client,
   required FolderShareDetail folder,
+  bool settle = true,
+  bool pushFromHost = false,
 }) async {
   final transfers = buildTransferManagerForEnvironment(environment);
   final clients = LanzouClientRegistry(factory: (_) => client);
+  final page = ShareFolderPage(
+    folder: folder,
+    link: 'https://example.com/s/abc',
+    pwd: '',
+  );
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = const Size(400, 700);
   addTearDown(tester.view.reset);
@@ -124,12 +172,39 @@ Future<void> pumpPage(
         localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         locale: const Locale('zh'),
-        home: ShareFolderPage(
-          folder: folder,
-          link: 'https://example.com/s/abc',
-          pwd: '',
-        ),
+        home: pushFromHost
+            ? Builder(
+                builder: (context) => Scaffold(
+                  body: Center(
+                    child: TextButton(
+                      onPressed: () => Navigator.of(context)
+                          .push(MaterialPageRoute<void>(builder: (_) => page)),
+                      child: const Text('打开分享'),
+                    ),
+                  ),
+                ),
+              )
+            : page,
       ),
+    ),
+  );
+  await tester.pump();
+  if (pushFromHost) {
+    await tester.tap(find.text('打开分享'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+  }
+  if (settle) await tester.pumpAndSettle();
+}
+
+Future<void> openTopBarMenu(
+  WidgetTester tester,
+  AppLocalizationsZh l10n,
+) async {
+  await tester.tap(
+    find.descendant(
+      of: find.byKey(const ValueKey('share-normal-appbar')),
+      matching: find.byTooltip(l10n.moreActions),
     ),
   );
   await tester.pumpAndSettle();
@@ -175,6 +250,191 @@ void main() {
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -2000));
     await tester.pumpAndSettle();
     expect(find.text('second-page.txt'), findsOneWidget);
+  });
+
+  testWidgets('分享文件夹：三点菜单分为两组并提供加载全部入口', (tester) async {
+    final l10n = AppLocalizationsZh();
+    final client = _FakeClient();
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
+    await pumpPage(
+      tester,
+      environment: environment,
+      client: client,
+      folder: _folder(),
+    );
+
+    await openTopBarMenu(tester, l10n);
+
+    final firstGroup = find.byKey(const ValueKey('adaptive-m3e-menu-group-0'));
+    final secondGroup = find.byKey(const ValueKey('adaptive-m3e-menu-group-1'));
+    expect(firstGroup, findsOneWidget);
+    expect(secondGroup, findsOneWidget);
+    expect(
+      find.descendant(of: firstGroup, matching: find.text(l10n.multiSelect)),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: firstGroup, matching: find.text(l10n.copyLink)),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: secondGroup, matching: find.text(l10n.favorite)),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: secondGroup,
+        matching: find.text(l10n.loadAllRemaining),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('分享文件夹：显式加载全部剩余内容逐页更新并在结束后禁用入口', (tester) async {
+    final l10n = AppLocalizationsZh();
+    final client = _ControlledPagingClient();
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
+    await pumpPage(
+      tester,
+      environment: environment,
+      client: client,
+      folder: _folder(),
+    );
+
+    await openTopBarMenu(tester, l10n);
+    await tester.tap(find.text(l10n.loadAllRemaining));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(client.calls, [2]);
+    expect(find.text('已加载 1 页'), findsOneWidget);
+
+    client.page2.complete((
+      files: [
+        ShareFileItem(
+          name: 'second-page.txt',
+          time: '',
+          size: '1 M',
+          url: 'https://example.com/b',
+        ),
+      ],
+      hasMore: true,
+    ));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 650));
+
+    expect(client.calls, [2, 3]);
+    expect(find.text('已加载 2 页'), findsOneWidget);
+
+    client.page3.complete((
+      files: [
+        ShareFileItem(
+          name: 'third-page.txt',
+          time: '',
+          size: '1 M',
+          url: 'https://example.com/c',
+        ),
+      ],
+      hasMore: false,
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('已加载 2 页'), findsNothing);
+    await openTopBarMenu(tester, l10n);
+    final loadAllTile = tester.widget<ListTile>(
+      find.ancestor(
+        of: find.text(l10n.loadAllRemaining),
+        matching: find.byType(ListTile),
+      ),
+    );
+    expect(loadAllTile.enabled, isFalse);
+  });
+
+  testWidgets('分享文件夹：自动加载复用页数弹窗，取消后丢弃在途页', (tester) async {
+    final client = _ControlledPagingClient();
+    final environment = AppEnvironment();
+    environment.settingsState.store.loadAllPages = true;
+    addTearDown(environment.dispose);
+    await pumpPage(
+      tester,
+      environment: environment,
+      client: client,
+      folder: _folder(),
+      settle: false,
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(client.calls, [2]);
+    expect(find.text('已加载 1 页'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('load-pages-cancel')));
+    await tester.pump();
+    expect(client.page2CancelToken?.isCancelled, isTrue);
+    client.page2.complete((
+      files: [
+        ShareFileItem(
+          name: 'cancelled-page.txt',
+          time: '',
+          size: '1 M',
+          url: 'https://example.com/cancelled',
+        ),
+      ],
+      hasMore: true,
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('cancelled-page.txt'), findsNothing);
+    expect(client.calls, [2]);
+    expect(find.text('已加载 1 页'), findsNothing);
+  });
+
+  testWidgets('分享文件夹：取消加载全部后保留当前页面和已加载内容', (tester) async {
+    final client = _ControlledPagingClient();
+    final environment = AppEnvironment();
+    environment.settingsState.store.loadAllPages = true;
+    addTearDown(environment.dispose);
+    await pumpPage(
+      tester,
+      environment: environment,
+      client: client,
+      folder: _folder(firstPageFiles: 3),
+      settle: false,
+      pushFromHost: true,
+    );
+
+    expect(client.calls, [2]);
+    expect(find.text('已加载 1 页'), findsOneWidget);
+
+    client.page2.complete((
+      files: [
+        ShareFileItem(
+          name: 'kept-page.txt',
+          time: '',
+          size: '1 M',
+          url: 'https://example.com/kept',
+        ),
+      ],
+      hasMore: true,
+    ));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 650));
+    expect(client.calls, [2, 3]);
+    expect(find.text('已加载 2 页'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('load-pages-cancel')));
+    await tester.pump();
+    expect(client.page3CancelToken?.isCancelled, isTrue);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ShareFolderPage), findsOneWidget);
+    expect(find.text('已加载 2 页'), findsNothing);
+    expect(find.text('kept-page.txt'), findsOneWidget);
+
+    client.page3.complete((files: const <ShareFileItem>[], hasMore: false));
+    await tester.pumpAndSettle();
   });
 
   testWidgets('分享文件夹：长列表只构建可见条目（懒加载）', (tester) async {

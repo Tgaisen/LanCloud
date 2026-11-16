@@ -8,6 +8,7 @@ import '../core/favorites/favorite_monitor.dart';
 import '../core/list_home_settings_state.dart';
 import '../core/navigation_appearance_settings_state.dart';
 import '../core/navigation_state.dart';
+import '../core/platform_support.dart';
 import 'download_mark.dart';
 import '../core/data/app_db.dart';
 import '../l10n/l10n.dart';
@@ -25,6 +26,7 @@ enum _FavoriteItemAction { open, copyLink, edit, checkUpdate, unfavorite }
 enum _FavoritesMenuAction {
   multiSelect,
   newFavorite,
+  clearUpdateFlags,
   checkUpdates,
   checkAccess,
 }
@@ -267,6 +269,7 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
   Future<void> _showMenu(
     BuildContext anchorContext, {
     required bool checking,
+    required bool hasUpdates,
   }) async {
     final anchor = m3eMenuAnchorOf(anchorContext);
     if (anchor == null) return;
@@ -287,6 +290,12 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
               value: _FavoritesMenuAction.newFavorite,
               label: l10n.newFavorite,
               icon: Icons.playlist_add,
+            ),
+            M3eMenuItem(
+              value: _FavoritesMenuAction.clearUpdateFlags,
+              label: l10n.clearFavoriteUpdateFlags,
+              icon: Icons.check_circle_unread,
+              enabled: hasUpdates && !checking,
             ),
           ],
         ),
@@ -314,6 +323,10 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
         _enterSelection();
       case _FavoritesMenuAction.newFavorite:
         await openShareSheet(context, addFavoriteOnResolve: true);
+      case _FavoritesMenuAction.clearUpdateFlags:
+        await ref
+            .read(favoriteMonitorProvider.notifier)
+            .markAllFolderUpdatesRead();
       case _FavoritesMenuAction.checkUpdates:
         await _checkFavoriteFolders();
       case _FavoritesMenuAction.checkAccess:
@@ -322,18 +335,70 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
   }
 
   Future<void> _checkFavoriteFolders() async {
-    final result = await ref
-        .read(favoriteMonitorProvider.notifier)
-        .checkFolders();
+    final l10n = context.l10n;
+    final monitor = ref.read(favoriteMonitorProvider.notifier);
+    final total = await monitor.updateCheckTargetCount();
     if (!mounted) return;
+    if (total == 0) {
+      _showCheckResult(
+        const FavoriteMonitorRunResult(total: 0, succeeded: 0, failed: 0),
+        mode: FavoriteCheckReportMode.batchUpdates,
+      );
+      return;
+    }
+    FavoriteMonitorRunResult? result;
+    final batch = await runBatchWithProgress(
+      context,
+      title: l10n.checkFavoriteFolderUpdates,
+      total: total,
+      cancelable: true,
+      run: (report, cancelToken) async {
+        result = await monitor.checkFolders(
+          cancelToken: cancelToken,
+          onProgress: (completed, total, name) => report(completed, name),
+        );
+      },
+    );
+    if (!mounted) return;
+    if (batch.canceled) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(l10n.canceled)));
+      return;
+    }
     _showCheckResult(result, mode: FavoriteCheckReportMode.batchUpdates);
   }
 
   Future<void> _checkFavoriteAccess() async {
-    final result = await ref
-        .read(favoriteMonitorProvider.notifier)
-        .checkAllShareAccess();
+    final l10n = context.l10n;
+    final monitor = ref.read(favoriteMonitorProvider.notifier);
+    final total = await monitor.accessCheckTargetCount();
     if (!mounted) return;
+    if (total == 0) {
+      _showCheckResult(
+        const FavoriteMonitorRunResult(total: 0, succeeded: 0, failed: 0),
+        mode: FavoriteCheckReportMode.access,
+      );
+      return;
+    }
+    FavoriteMonitorRunResult? result;
+    final batch = await runBatchWithProgress(
+      context,
+      title: l10n.checkFavoriteAccess,
+      total: total,
+      cancelable: true,
+      run: (report, cancelToken) async {
+        result = await monitor.checkAllShareAccess(
+          cancelToken: cancelToken,
+          onProgress: (completed, total, name) => report(completed, name),
+        );
+      },
+    );
+    if (!mounted) return;
+    if (batch.canceled) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(l10n.canceled)));
+      return;
+    }
     _showCheckResult(result, mode: FavoriteCheckReportMode.access);
   }
 
@@ -802,10 +867,16 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
     super.build(context);
     final appearance = ref.watch(navigationAppearanceSettingsStateProvider);
     final checking = ref.watch(favoriteCheckRunningProvider);
+    final hasUpdates = ref.watch(favoriteUpdateCountProvider) > 0;
     return ListenableBuilder(
       listenable: appearance.revision,
-      builder: (context, _) =>
-          _buildPage(context, appearance.hideTopBar, _navigation, checking),
+      builder: (context, _) => _buildPage(
+        context,
+        appearance.hideTopBar,
+        _navigation,
+        checking,
+        hasUpdates,
+      ),
     );
   }
 
@@ -814,6 +885,7 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
     bool hideTopBar,
     NavigationState navigation,
     bool checking,
+    bool hasUpdates,
   ) {
     final scheme = Theme.of(context).colorScheme;
     final l10n = context.l10n;
@@ -898,8 +970,13 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
                               if (folders.isNotEmpty) ...[
                                 SliverToBoxAdapter(
                                   child: SectionHeader(
+                                    key: const ValueKey(
+                                      'favorites-folders-header',
+                                    ),
                                     title: l10n.favoriteFolders,
                                     count: folders.length,
+                                    compact: !PlatformSupport.isDesktop,
+                                    stableActionHeight: true,
                                     actions: _sectionActions(
                                       l10n: l10n,
                                       keyPrefix: 'favorites-folders',
@@ -937,8 +1014,13 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
                               if (files.isNotEmpty) ...[
                                 SliverToBoxAdapter(
                                   child: SectionHeader(
+                                    key: const ValueKey(
+                                      'favorites-files-header',
+                                    ),
                                     title: l10n.favoriteFiles,
                                     count: files.length,
+                                    compact: !PlatformSupport.isDesktop,
+                                    stableActionHeight: true,
                                     actions: _sectionActions(
                                       l10n: l10n,
                                       keyPrefix: 'favorites-files',
@@ -1047,6 +1129,7 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
                                     onPressed: () => _showMenu(
                                       anchorContext,
                                       checking: checking,
+                                      hasUpdates: hasUpdates,
                                     ),
                                   ),
                             ),

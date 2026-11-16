@@ -697,7 +697,7 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
       context,
       title: l10n.batchRetry,
       total: failed.length,
-      run: (report) async {
+      run: (report, _) async {
         for (var i = 0; i < failed.length; i++) {
           final task = failed[i];
           report(i + 1, task.name);

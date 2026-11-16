@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart' show CancelToken, DioException, DioExceptionType;
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -52,28 +53,34 @@ Future<bool> openShareFolderWithLoading(
   final l10n = context.l10n;
   final navigator = Navigator.of(context);
   final messenger = ScaffoldMessenger.of(context);
-  showLoadingDialog(context, l10n.resolving);
   FolderShareDetail? folder;
   var currentPwd = pwd;
   try {
-    folder = await client.resolveFolderShare(url, pwd: currentPwd);
+    final resolved = await runWithCancelableLoadingDialog<FolderShareDetail>(
+      context,
+      text: l10n.resolving,
+      action: (cancelToken) => client.resolveFolderShare(
+        url,
+        pwd: currentPwd,
+        cancelToken: cancelToken,
+      ),
+    );
+    if (resolved.canceled) return false;
+    folder = resolved.value;
   } on NeedPasswordException {
     folder = null;
   } on WrongPasswordException {
     folder = null;
   } on LanzouException catch (e) {
     if (!context.mounted) return false;
-    navigator.pop();
     messenger.showSnackBar(SnackBar(content: Text(l10n.lanzouError(e))));
     return false;
   } catch (e) {
     if (!context.mounted) return false;
-    navigator.pop();
     messenger.showSnackBar(SnackBar(content: Text(l10n.resolveFailed('$e'))));
     return false;
   }
   if (!context.mounted) return false;
-  navigator.pop();
   if (folder == null) {
     final result = await showFolderPasswordDialog(context, url: url);
     if (result == null || !context.mounted) return false;
@@ -134,6 +141,7 @@ class _ShareLinkDialogState extends ConsumerState<ShareLinkDialog> {
     text: widget.initialPwd ?? '',
   );
   bool _loading = false;
+  final CancelToken _parseCancel = CancelToken();
 
   /// 分享链接输入框的 error state（空 / 格式不对 / 解析失败）
   String? _linkError;
@@ -152,6 +160,7 @@ class _ShareLinkDialogState extends ConsumerState<ShareLinkDialog> {
 
   @override
   void dispose() {
+    _parseCancel.cancel('分享链接弹窗已关闭');
     _linkController.dispose();
     _pwdController.dispose();
     super.dispose();
@@ -188,7 +197,11 @@ class _ShareLinkDialogState extends ConsumerState<ShareLinkDialog> {
     final navigator = Navigator.of(context);
     try {
       if (_looksLikeFolder(link)) {
-        final folder = await client.resolveFolderShare(link, pwd: pwd);
+        final folder = await client.resolveFolderShare(
+          link,
+          pwd: pwd,
+          cancelToken: _parseCancel,
+        );
         if (!mounted) return;
         await _saveRecent('shareFolder', folder.name, link, pwd);
         if (!mounted) return;
@@ -219,7 +232,11 @@ class _ShareLinkDialogState extends ConsumerState<ShareLinkDialog> {
         );
       } else {
         try {
-          final file = await client.resolveFileShare(link, pwd: pwd);
+          final file = await client.resolveFileShare(
+            link,
+            pwd: pwd,
+            cancelToken: _parseCancel,
+          );
           if (!mounted) return;
           await _saveRecent('shareFile', file.name, link, pwd);
           if (!mounted) return;
@@ -242,7 +259,11 @@ class _ShareLinkDialogState extends ConsumerState<ShareLinkDialog> {
         } on WrongPasswordException {
           rethrow;
         } on LanzouException {
-          final folder = await client.resolveFolderShare(link, pwd: pwd);
+          final folder = await client.resolveFolderShare(
+            link,
+            pwd: pwd,
+            cancelToken: _parseCancel,
+          );
           if (!mounted) return;
           await _saveRecent('shareFolder', folder.name, link, pwd);
           if (!mounted) return;
@@ -274,19 +295,30 @@ class _ShareLinkDialogState extends ConsumerState<ShareLinkDialog> {
         }
       }
     } on NeedPasswordException catch (e) {
+      if (!mounted || _parseCancel.isCancelled) return;
       setState(() {
         _linkError = null;
         _pwdError = context.l10n.lanzouError(e);
       });
     } on WrongPasswordException catch (e) {
+      if (!mounted || _parseCancel.isCancelled) return;
       // 与「该分享需要提取码」相同的样式：标在提取码输入框上
       setState(() {
         _linkError = null;
         _pwdError = context.l10n.lanzouError(e);
       });
+    } on DioException catch (error) {
+      if (_parseCancel.isCancelled || error.type == DioExceptionType.cancel) {
+        return;
+      }
+      if (mounted) {
+        setState(() => _linkError = context.l10n.resolveFailed('$error'));
+      }
     } on LanzouException catch (e) {
+      if (!mounted || _parseCancel.isCancelled) return;
       setState(() => _linkError = context.l10n.lanzouError(e));
     } catch (e) {
+      if (!mounted || _parseCancel.isCancelled) return;
       setState(() => _linkError = context.l10n.resolveFailed('$e'));
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -423,7 +455,10 @@ class _ShareLinkDialogState extends ConsumerState<ShareLinkDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: _loading ? null : () => Navigator.of(context).pop(),
+          onPressed: () {
+            _parseCancel.cancel('用户取消');
+            Navigator.of(context).pop();
+          },
           child: Text(l10n.cancel),
         ),
         FilledButton(

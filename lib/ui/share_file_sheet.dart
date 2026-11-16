@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart' show CancelToken, DioException, DioExceptionType;
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -80,6 +81,7 @@ class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
   /// 正在解析直链（点了下载、任务还没入队）：行尾显示不确定态小环，
   /// 解析失败恢复「下载」原状。
   bool _resolvingDownload = false;
+  final CancelToken _networkCancel = CancelToken();
 
   /// 点「下载 / 重新下载」：解析期间先在行尾显示不确定态小环；失败恢复原状。
   Future<void> _startDownload() async {
@@ -91,6 +93,7 @@ class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
       pwd: _pwd,
       fallbackName: _name,
       showLoading: false,
+      cancelToken: _networkCancel,
       // 提取码错误（例如上传者改过）：先补密码，验证通过再继续入队
       askPassword: _promptPassword,
     );
@@ -208,27 +211,36 @@ class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
     final cached = _directFile;
     if (cached != null && cached.url.isNotEmpty) return cached;
     final client = ref.read(lanzouClientRegistryProvider).publicClient;
-    final navigator = Navigator.of(context);
-    showLoadingDialog(context, context.l10n.resolving);
-    DirectFile? resolved;
+    CancelableLoadingResult<DirectFile> lookup;
     Object? error;
     var needsPassword = false;
     try {
-      resolved = await client.resolveFileShare(
-        widget.url,
-        pwd: _pwd,
-        withDescription: true,
+      lookup = await runWithCancelableLoadingDialog<DirectFile>(
+        context,
+        text: context.l10n.resolving,
+        action: (cancelToken) => client.resolveFileShare(
+          widget.url,
+          pwd: _pwd,
+          withDescription: true,
+          cancelToken: cancelToken,
+        ),
       );
     } on NeedPasswordException {
       needsPassword = true;
+      lookup = const CancelableLoadingResult.canceled();
     } on WrongPasswordException {
       needsPassword = true;
+      lookup = const CancelableLoadingResult.canceled();
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.cancel) return null;
+      error = e;
+      lookup = const CancelableLoadingResult.canceled();
     } catch (e) {
       error = e;
-    } finally {
-      if (navigator.canPop()) navigator.pop();
+      lookup = const CancelableLoadingResult.canceled();
     }
     if (!mounted) return null;
+    if (lookup.canceled && !needsPassword && error == null) return null;
     if (needsPassword) {
       final pwd = await _promptPassword();
       return pwd == null ? null : _directFile;
@@ -237,6 +249,7 @@ class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
       showAppToast(context, context.l10n.lanzouError(error));
       return null;
     }
+    final resolved = lookup.value;
     if (resolved != null) {
       final details = ShareFileDetails(
         name: resolved.name,
@@ -290,6 +303,12 @@ class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
     _loadFavorite();
   }
 
+  @override
+  void dispose() {
+    _networkCancel.cancel('分享文件属性弹窗已关闭');
+    super.dispose();
+  }
+
   Future<void> _loadFavorite() async {
     final favorited = await isFavoritedByRef(context, widget.url);
     if (mounted) setState(() => _favorite = favorited);
@@ -303,6 +322,7 @@ class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
         widget.url,
         pwd: _pwd,
         withDescription: true,
+        cancelToken: _networkCancel,
       );
       if (mounted) setState(() => _details = details);
       await widget.onResolved?.call(details);
@@ -314,6 +334,7 @@ class _ShareFileInfoSheetState extends ConsumerState<ShareFileInfoSheet> {
         );
       }
     } catch (_) {
+      if (_networkCancel.isCancelled) return;
       // 网络异常不视为失效，下载时会有明确提示。
     } finally {
       if (mounted) setState(() => _loading = false);

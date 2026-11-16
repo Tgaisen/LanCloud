@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:dio/dio.dart' show CancelToken;
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -87,7 +88,7 @@ class _FakeBackupService extends BackupService {
   }
 
   @override
-  Future<void> testConnection() async {
+  Future<void> testConnection({CancelToken? cancelToken}) async {
     testCount += 1;
   }
 
@@ -96,6 +97,7 @@ class _FakeBackupService extends BackupService {
     Set<BackupSection>? sections,
     DateTime? now,
     void Function()? onGenerated,
+    CancelToken? cancelToken,
   }) async {
     final generationGate = uploadGenerationGate;
     if (generationGate != null) await generationGate.future;
@@ -121,14 +123,17 @@ class _FakeBackupService extends BackupService {
   }
 
   @override
-  Future<List<WebdavEntry>> remoteBackups() async {
+  Future<List<WebdavEntry>> remoteBackups({CancelToken? cancelToken}) async {
     final gate = remoteGate;
     if (gate != null) await gate.future;
     return remoteEntries;
   }
 
   @override
-  Future<String> webdavDownload(String name) async => downloadedContent;
+  Future<String> webdavDownload(
+    String name, {
+    CancelToken? cancelToken,
+  }) async => downloadedContent;
 }
 
 /// 测试环境没有安全存储插件，密码改放内存。
@@ -801,6 +806,37 @@ void main() {
     );
   });
 
+  testWidgets('自动备份运行期间禁用上传备份', (tester) async {
+    await fake.webdav.saveServer(
+      url: 'https://dav.example.com/blue/',
+      username: 'user',
+      password: 'pwd',
+      backupPassphrase: 'backup-secret',
+      path: WebdavStore.defaultPath,
+    );
+    await fake.webdav.setBackupSections({BackupSection.favorites});
+    await pumpPage(tester);
+
+    expect(
+      tester.widget<ListTile>(find.widgetWithText(ListTile, '上传备份')).enabled,
+      isTrue,
+    );
+
+    fake.webdavBackupRunning.value = true;
+    await tester.pump();
+    expect(
+      tester.widget<ListTile>(find.widgetWithText(ListTile, '上传备份')).enabled,
+      isFalse,
+    );
+
+    fake.webdavBackupRunning.value = false;
+    await tester.pump();
+    expect(
+      tester.widget<ListTile>(find.widgetWithText(ListTile, '上传备份')).enabled,
+      isTrue,
+    );
+  });
+
   testWidgets('重置 WebDAV 账号同时清空备份选项和自动备份', (tester) async {
     await fake.webdav.saveServer(
       url: 'https://dav.example.com/blue/',
@@ -826,7 +862,8 @@ void main() {
     expect(fake.webdav.backupPassphrase, isEmpty);
     expect(fake.webdav.backupSections, isEmpty);
     expect(fake.webdav.autoBackup, isFalse);
-    expect(fake.webdav.lastBackupAt, 0);
+    expect(fake.webdav.lastSuccessAt, 0);
+    expect(fake.webdav.lastAttemptAt, 0);
     expect(fake.webdav.lastBackupError, isEmpty);
     expect(find.text('未配置 WebDAV'), findsOneWidget);
   });

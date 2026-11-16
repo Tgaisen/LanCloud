@@ -1,6 +1,6 @@
 # 回归基线
 
-> 当前快照日期：2026-11-15。
+> 当前快照日期：2026-11-16。
 >
 > 本文件只记录当前仓库状态；逐次迁移和增量测试历史见
 > [BASELINE_HISTORY.md](BASELINE_HISTORY.md)。
@@ -10,17 +10,18 @@
 | 命令 | 口径 | 结果 | 耗时 |
 | --- | --- | --- | --- |
 | `tools\agent.cmd analyze` | 全量 | No issues found | 约 2 min 1 s |
-| `tools\agent.cmd analyze` | 增量（多文件上传等待弹窗，5 个 Dart 文件） | No issues found | 约 16 s |
-| `tools\agent.cmd test` | 全量（用例总数） | **961 tests, all passed** | 约 3 min 18 s |
-| `tools\agent.cmd test` | 增量（上传进度与波浪条，21 个测试文件） | **229 tests, all passed** | 约 1 min 8 s |
-| `tools\agent.cmd format` | 全量 | 354 files，0 changed | 约 3 s |
+| `tools\agent.cmd analyze` | 增量（收藏更新已读与分享分页取消，9 个 Dart 文件） | No issues found | 约 6 s |
+| `tools\agent.cmd test` | 全量（用例总数） | **988 tests, all passed** | 约 2 min 23 s |
+| `tools\agent.cmd test` | 增量推断（收藏更新已读与分享分页取消） | 104 个测试文件，自动回退全量 | 约 2 min 23 s |
+| `tools\agent.cmd format` | 全量 | 355 files，0 changed | 约 3 s |
 | `tools\agent.cmd build-apk` | debug | `app-debug.apk` | 首次构建约 5 min 46 s |
 
 当前分析结果为 0 issue 是硬基线。出现红灯时，先判断是否为本次改动引入；
 不要把增量结果当成全量结论。Flutter 3.50.0 下全量分析已重跑并通过。
 
-当前用例总数为 961，比收藏监控改动前增加 62。最近一次全量 961 项通过；
-其中多文件上传等待弹窗新增 1 项；本轮因本地化生成文件触发全量回归。
+当前用例总数为 988，最近一次全量 988 项全部通过；新增覆盖收藏分栏高度稳定、
+批量消除更新标志、分享目录分页取消后保留当前页面与已加载内容，同时保留
+WebDAV 自动备份互斥和补检覆盖。
 测试入口在受影响文件超过 60 个时自动回退全量，避免 Windows 命令行长度上限导致
 测试尚未启动就报错。
 
@@ -29,13 +30,13 @@
 | 指标 | 当前值 |
 | --- | ---: |
 | `lib` Dart 文件 | 167 |
-| `lib` 总行数 | 63,128 |
-| `test` 测试文件 | 185（全部为 `*_test.dart`，平铺） |
-| `test` 总行数 | 36,382 |
-| `test` 用例数 | 956 |
+| `lib` 总行数 | 63,325 |
+| `test` 测试文件 | 186（全部为 `*_test.dart`，平铺） |
+| `test` 总行数 | 36,919 |
+| `test` 用例数 | 988 |
 | `lib/ui` 平铺文件 | 62 |
 | `lib/core` | 60 个平铺文件 + 6 个子系统目录 |
-| 文案（`app_zh.arb`） | 1,807 行 |
+| 文案（`app_zh.arb`） | 1,811 行 |
 
 ## 工具链与依赖
 
@@ -49,7 +50,7 @@
 
 ## 测试安全网
 
-- 当前全量总数为 940 个测试；项目仍没有
+- 当前全量总数为 988，最近一次全量全部通过；项目仍没有
   `integration_test` 和 golden test。
 - `tools\agent.cmd analyze|test` 默认走增量；全量结果必须按上表单独记录。
 - 增量推断出超过 60 个测试文件时，`agent.cmd test` 自动回退全量。
@@ -80,11 +81,14 @@
 - Windows 构建出现 `flutter_inappwebview_windows` 的 CMake `CMP0175` 开发警告；
   当前不影响构建与启动，继续跟随插件升级观察。
 - Windows OverlayPortal/UIA 上游间歇风险继续观察，不误判为业务回归。
-- 日志清理已增加 Windows 临时目录有界重试，分享密码恢复测试已改用 5 秒截止
-  时间轮询；当前全量与连续复跑均通过，后续继续观察较慢 CI 环境。
+- 日志清理已增加 Windows 临时目录有界重试，清理用例也会等待目录可见性与
+  新文件重建；分享密码恢复测试使用 5 秒截止时间轮询。当前全量通过，后续
+  继续观察较慢 CI 环境。
 - 收藏文件夹自动检测只在应用启动或回到前台且到期时执行；应用进程被系统
   结束后不会定时唤醒，Windows 关闭窗口后同样停止。检测期间的进度通知与
   前台服务只用于本轮临时后台保活。
+- WebDAV 自动备份同样只在应用启动或回到前台且到期时补做；应用被系统结束
+  后不会定时唤醒。自动与手动备份共用 single-flight，失败后冷却一小时再补试。
 - 开发环境 Flutter `3.50.0`，`pubspec.lock` 已记录 Dart `3.14.0` 与相同
   Flutter SDK 注记。
 

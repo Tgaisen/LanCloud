@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:dio/dio.dart' show CancelToken, DioException, DioExceptionType;
 import 'package:file_picker/file_picker.dart';
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:path/path.dart' as p;
@@ -36,11 +37,15 @@ class _BackupPageState extends State<BackupPage> {
 
   /// 顶栏那条线是否显示：只在 WebDAV 的网络操作上开（见 [BackupContent]）。
   final ValueNotifier<bool> _progress = ValueNotifier<bool>(false);
+  final ValueNotifier<VoidCallback?> _cancel = ValueNotifier<VoidCallback?>(
+    null,
+  );
 
   @override
   void dispose() {
     _scroll.dispose();
     _progress.dispose();
+    _cancel.dispose();
     super.dispose();
   }
 
@@ -49,24 +54,38 @@ class _BackupPageState extends State<BackupPage> {
     final l10n = context.l10n;
     return ValueListenableBuilder<bool>(
       valueListenable: _progress,
-      builder: (context, busy, _) => TopBarOverlayScaffold(
-        controller: _scroll,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          scrolledUnderElevation: 0,
-          leading: const AppBarBackButton(),
-          title: Text(l10n.backupAndRestore),
-          bottom: busy ? kBackupProgressBar : null,
-        ),
-        slivers: [
-          M3eReadingSliverPadding(
-            padding: kM3eSectionPagePadding,
-            // 整块布局：避免懒布局估算导致滚动条滑块抖动（见 SliverColumn）
-            sliver: SliverToBoxAdapter(
-              child: BackupContent(progress: _progress),
-            ),
+      builder: (context, busy, _) => ValueListenableBuilder<VoidCallback?>(
+        valueListenable: _cancel,
+        builder: (context, cancel, _) => TopBarOverlayScaffold(
+          controller: _scroll,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            scrolledUnderElevation: 0,
+            leading: const AppBarBackButton(),
+            title: Text(l10n.backupAndRestore),
+            actions: [
+              if (busy && cancel != null)
+                IconButton(
+                  tooltip: l10n.cancel,
+                  onPressed: () {
+                    _cancel.value = null;
+                    cancel();
+                  },
+                  icon: const Icon(Icons.close),
+                ),
+            ],
+            bottom: busy ? kBackupProgressBar : null,
           ),
-        ],
+          slivers: [
+            M3eReadingSliverPadding(
+              padding: kM3eSectionPagePadding,
+              // 整块布局：避免懒布局估算导致滚动条滑块抖动（见 SliverColumn）
+              sliver: SliverToBoxAdapter(
+                child: BackupContent(progress: _progress, cancel: _cancel),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -86,11 +105,13 @@ class BackupContent extends ConsumerStatefulWidget {
   const BackupContent({
     super.key,
     required this.progress,
+    this.cancel,
     this.backupOptionsOpener,
   });
 
   /// WebDAV 网络操作进行中时为 true。
   final ValueNotifier<bool> progress;
+  final ValueNotifier<VoidCallback?>? cancel;
 
   /// 大屏右窗格由宿主接管“备份选项”导航；为空时打开独立页面。
   final BackupOptionsPageOpener? backupOptionsOpener;
@@ -107,6 +128,7 @@ class _BackupContentState extends ConsumerState<BackupContent> {
   void dispose() {
     // 离开（切窗格 / 关页面）时别再让顶栏留着进度线
     widget.progress.value = false;
+    _service.webdavBackupRunning.removeListener(_onBackupRunningChanged);
     super.dispose();
   }
 
@@ -114,9 +136,14 @@ class _BackupContentState extends ConsumerState<BackupContent> {
   void initState() {
     super.initState();
     _service = ref.read(backupServiceProvider);
+    _service.webdavBackupRunning.addListener(_onBackupRunningChanged);
     _service.init().then((_) {
       if (mounted) setState(() {});
     });
+  }
+
+  void _onBackupRunningChanged() {
+    if (mounted) setState(() {});
   }
 
   void _snack(String text) {
@@ -131,14 +158,22 @@ class _BackupContentState extends ConsumerState<BackupContent> {
   /// 进度线只覆盖这次操作本身：操作之后才弹的窗（选择恢复版本 / 确认恢复）
   /// 要放在 `_run` 外面，否则线会一直亮在弹窗后面。
   Future<T?> _run<T>(
-    Future<T> Function() body, {
+    Future<T> Function(CancelToken? cancelToken) body, {
     bool showProgress = false,
   }) async {
     if (_busy) return null;
+    final cancelToken = showProgress ? CancelToken() : null;
     setState(() => _busy = true);
     widget.progress.value = showProgress;
+    widget.cancel?.value = cancelToken?.cancel;
     try {
-      return await body();
+      return await body(cancelToken);
+    } on DioException catch (error) {
+      if (cancelToken?.isCancelled ??
+          false || error.type == DioExceptionType.cancel) {
+        return null;
+      }
+      if (mounted) _snack(error.message ?? error.type.name);
     } on BackupException catch (e) {
       if (mounted) _snack(e.message);
     } catch (e) {
@@ -147,6 +182,7 @@ class _BackupContentState extends ConsumerState<BackupContent> {
       if (mounted) {
         setState(() => _busy = false);
         widget.progress.value = false;
+        widget.cancel?.value = null;
       }
     }
     return null;
@@ -265,7 +301,7 @@ class _BackupContentState extends ConsumerState<BackupContent> {
     _snack(l10n.backupSaved(saved));
   }
 
-  Future<void> _restoreFromFile() => _run(() async {
+  Future<void> _restoreFromFile() => _run((_) async {
     final l10n = context.l10n;
     final file = await FilePicker.pickFile(
       dialogTitle: l10n.chooseBackupFile,
@@ -297,7 +333,7 @@ class _BackupContentState extends ConsumerState<BackupContent> {
       ),
     );
     if (result == null) return;
-    await _run(() async {
+    await _run((_) async {
       if (result[0].isEmpty) {
         await store.reset();
         if (mounted) setState(() {});
@@ -315,8 +351,8 @@ class _BackupContentState extends ConsumerState<BackupContent> {
     });
   }
 
-  Future<void> _testConnection() => _run(() async {
-    await _service.testConnection();
+  Future<void> _testConnection() => _run((cancelToken) async {
+    await _service.testConnection(cancelToken: cancelToken);
     if (mounted) _snack(context.l10n.webdavTestOk);
   }, showProgress: true);
 
@@ -330,7 +366,7 @@ class _BackupContentState extends ConsumerState<BackupContent> {
       confirmLabel: l10n.save,
     );
     if (options == null || !mounted) return;
-    await _run(() async {
+    await _run((_) async {
       await store.setBackupOptions(
         sections: options.sections,
         backupPassphrase: options.encrypted ? options.passphrase : '',
@@ -340,12 +376,14 @@ class _BackupContentState extends ConsumerState<BackupContent> {
   }
 
   Future<void> _uploadNow() async {
-    if (_busy) return;
+    if (_busy || _service.webdavBackupRunning.value) return;
     if (!mounted) return;
 
     final navigator = Navigator.of(context);
     var generatingDialogOpen = true;
+    final cancelToken = CancelToken();
     setState(() => _busy = true);
+    widget.cancel?.value = cancelToken.cancel;
     unawaited(showLoadingDialog(context, context.l10n.generatingBackup));
     await WidgetsBinding.instance.endOfFrame;
     try {
@@ -358,10 +396,15 @@ class _BackupContentState extends ConsumerState<BackupContent> {
           // 生成阶段由弹窗表示；关闭后网络上传阶段再由顶栏进度线接管。
           if (mounted) widget.progress.value = true;
         },
+        cancelToken: cancelToken,
       );
       if (mounted) {
         setState(() {});
         _snack(context.l10n.webdavUploadDone(name));
+      }
+    } on DioException catch (error) {
+      if (error.type != DioExceptionType.cancel && mounted) {
+        _snack(error.message ?? error.type.name);
       }
     } on BackupException catch (error) {
       if (mounted) _snack(error.message);
@@ -371,6 +414,7 @@ class _BackupContentState extends ConsumerState<BackupContent> {
       if (generatingDialogOpen && navigator.mounted) navigator.pop();
       if (mounted) {
         widget.progress.value = false;
+        widget.cancel?.value = null;
         setState(() => _busy = false);
       }
     }
@@ -379,7 +423,10 @@ class _BackupContentState extends ConsumerState<BackupContent> {
   Future<void> _restoreFromCloud() async {
     final l10n = context.l10n;
     // 拉列表是网络操作：进度线只亮到列表回来为止
-    final entries = await _run(_service.remoteBackups, showProgress: true);
+    final entries = await _run(
+      (cancelToken) => _service.remoteBackups(cancelToken: cancelToken),
+      showProgress: true,
+    );
     if (!mounted) return;
     if (entries == null) return;
     if (entries.isEmpty) {
@@ -422,7 +469,8 @@ class _BackupContentState extends ConsumerState<BackupContent> {
     );
     if (picked == null || !mounted) return;
     final content = await _run(
-      () => _service.webdavDownload(picked.name),
+      (cancelToken) =>
+          _service.webdavDownload(picked.name, cancelToken: cancelToken),
       showProgress: true,
     );
     if (content == null || !mounted) return;
@@ -459,7 +507,8 @@ class _BackupContentState extends ConsumerState<BackupContent> {
         store.configured &&
         store.backupSections.isNotEmpty &&
         encryptionReady &&
-        !_busy;
+        !_busy &&
+        !_service.webdavBackupRunning.value;
     final canAutoBackup =
         store.configured &&
         store.backupSections.isNotEmpty &&
@@ -594,9 +643,9 @@ class _BackupContentState extends ConsumerState<BackupContent> {
     final store = _service.webdav;
     final current = store.interval;
     final lastBackup = l10n.lastBackupAt(
-      store.lastBackupAt == 0
+      store.lastSuccessAt == 0
           ? l10n.neverBackedUp
-          : _backupDayLabel(context, store.lastBackupAt),
+          : _backupDayLabel(context, store.lastSuccessAt),
     );
     final value = await showDialog<String>(
       context: context,
