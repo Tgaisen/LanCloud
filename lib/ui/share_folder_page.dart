@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:dio/dio.dart' show CancelToken;
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -23,7 +26,12 @@ import 'share_password_dialog.dart';
 enum _ShareItemAction { open, download, copyLink, favorite }
 
 /// 分享文件夹顶栏菜单里的动作。
-enum _ShareFolderMenuAction { multiSelect, favorite, copyLink }
+enum _ShareFolderMenuAction {
+  multiSelect,
+  copyLink,
+  loadAllRemaining,
+  favorite,
+}
 
 /// 分享文件夹浏览页：布局类似网盘页，支持子文件夹与多选批量操作。
 class ShareFolderPage extends ConsumerStatefulWidget {
@@ -63,6 +71,7 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
   int _page = 1;
   late bool _hasMore = widget.folder.hasMore;
   bool _loadingMore = false;
+  CancelToken? _pageLoadCancelToken;
 
   /// 上一次拉取失败且还有下一页：底部给出「重试」入口，
   /// 不能一直挂着「加载下一页」的转圈（转圈只代表"正在加载"）。
@@ -86,7 +95,7 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         if (ref.read(cachePageSettingsStateProvider).loadAllPages) {
-          _autoLoadAll();
+          _loadAllRemaining();
         } else {
           _fillViewportIfNeeded();
         }
@@ -96,6 +105,7 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
 
   @override
   void dispose() {
+    _pageLoadCancelToken?.cancel('页面已销毁');
     _scroll.dispose();
     _search.dispose();
     _enter.dispose();
@@ -111,7 +121,11 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
 
   /// 加载下一页文件；没有分页上下文 / 搜索过滤 / 已到底时直接返回。
   /// [auto] 表示这次是「内容不满一屏，自动补页」发起的（失败会自动重试）。
-  Future<void> _loadMore({bool auto = false}) async {
+  Future<void> _loadMore({
+    bool auto = false,
+    bool Function()? shouldCommit,
+    CancelToken? cancelToken,
+  }) async {
     final paging = widget.folder.paging;
     if (paging == null || _loadingMore || !_hasMore) return;
     if (_filter.isNotEmpty) return;
@@ -123,8 +137,12 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
       final next = await ref
           .read(lanzouClientRegistryProvider)
           .publicClient
-          .fetchShareFolderFiles(paging, _page + 1);
+          .fetchShareFolderFiles(paging, _page + 1, cancelToken: cancelToken);
       if (!mounted) return;
+      if (!(shouldCommit?.call() ?? true)) {
+        setState(() => _loadingMore = false);
+        return;
+      }
       setState(() {
         _files = [..._files, ...next.files];
         _page += 1;
@@ -136,6 +154,10 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
       _fillViewportIfNeeded();
     } catch (_) {
       if (!mounted) return;
+      if (!(shouldCommit?.call() ?? true)) {
+        setState(() => _loadingMore = false);
+        return;
+      }
       setState(() {
         _loadingMore = false;
         _loadFailed = true;
@@ -180,28 +202,65 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
     }
   }
 
-  /// 「自动加载全部目录内容」：按页把剩余文件补完（页间隔与原来的解析逻辑一致）。
-  Future<void> _autoLoadAll() async {
-    if (_autoLoading) return;
+  /// 加载当前分享文件夹的剩余全部分页；自动设置和显式菜单共用这一入口。
+  Future<void> _loadAllRemaining() async {
+    if (_autoLoading || _loadingMore || !_hasMore) return;
+    if (widget.folder.paging == null) return;
+
     _autoLoading = true;
+    final cancelToken = CancelToken();
+    _pageLoadCancelToken = cancelToken;
+    final loadedPages = ValueNotifier<int>(_page);
+    var cancelRequested = false;
+    var progressOpen = true;
+    final navigator = Navigator.of(context);
+    final progressDone = showPageLoadProgressDialog(
+      context,
+      loadedPages: loadedPages,
+      onCancel: () {
+        cancelRequested = true;
+        cancelToken.cancel('用户取消');
+      },
+    );
+    unawaited(
+      progressDone.then(
+        (_) => progressOpen = false,
+        onError: (Object _, StackTrace _) => progressOpen = false,
+      ),
+    );
+
     var failures = 0;
-    while (mounted && _hasMore) {
-      final before = _page;
-      await _loadMore();
-      if (!mounted) break;
-      if (_page == before) {
-        // 本轮没有进展：失败就退避重试几次，重试完还不行就把底部
-        // 交回「重试」入口，避免死循环
-        if (++failures > _maxAutoRetries) break;
-        await Future<void>.delayed(Duration(milliseconds: 600 * failures));
-        continue;
+    try {
+      while (mounted && !cancelRequested && _hasMore) {
+        final before = _page;
+        await _loadMore(
+          shouldCommit: () => !cancelRequested,
+          cancelToken: cancelToken,
+        );
+        if (!mounted || cancelRequested) break;
+        loadedPages.value = _page;
+        if (_page == before) {
+          // 本轮没有进展：失败就退避重试几次，重试完还不行就把底部
+          // 交回「重试」入口，避免死循环
+          if (++failures > _maxAutoRetries) break;
+          await Future<void>.delayed(Duration(milliseconds: 600 * failures));
+          continue;
+        }
+        failures = 0;
+        if (_hasMore) {
+          await Future<void>.delayed(const Duration(milliseconds: 600));
+        }
       }
-      failures = 0;
-      if (_hasMore) {
-        await Future<void>.delayed(const Duration(milliseconds: 600));
+    } finally {
+      if (identical(_pageLoadCancelToken, cancelToken)) {
+        _pageLoadCancelToken = null;
       }
+      _autoLoading = false;
+      if (progressOpen && mounted && navigator.canPop()) {
+        navigator.pop();
+      }
+      await progressDone;
     }
-    _autoLoading = false;
   }
 
   void _exitSearch() {
@@ -340,21 +399,35 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
       context: context,
       anchor: anchor,
       alignEnd: true,
-      items: [
-        M3eMenuItem(
-          value: _ShareFolderMenuAction.multiSelect,
-          label: l10n.multiSelect,
-          icon: Icons.checklist,
+      sections: [
+        M3eMenuSection(
+          items: [
+            M3eMenuItem(
+              value: _ShareFolderMenuAction.multiSelect,
+              label: l10n.multiSelect,
+              icon: Icons.checklist,
+            ),
+            M3eMenuItem(
+              value: _ShareFolderMenuAction.copyLink,
+              label: l10n.copyLink,
+              icon: Icons.copy,
+            ),
+          ],
         ),
-        M3eMenuItem(
-          value: _ShareFolderMenuAction.favorite,
-          label: favorited ? l10n.unfavorite : l10n.favorite,
-          icon: favorited ? Icons.star_off_line : Icons.star_outline,
-        ),
-        M3eMenuItem(
-          value: _ShareFolderMenuAction.copyLink,
-          label: l10n.copyLink,
-          icon: Icons.copy,
+        M3eMenuSection(
+          items: [
+            M3eMenuItem(
+              value: _ShareFolderMenuAction.loadAllRemaining,
+              label: l10n.loadAllRemaining,
+              icon: Icons.last_page,
+              enabled: _hasMore && !_loadingMore && !_autoLoading,
+            ),
+            M3eMenuItem(
+              value: _ShareFolderMenuAction.favorite,
+              label: favorited ? l10n.unfavorite : l10n.favorite,
+              icon: favorited ? Icons.star_off_line : Icons.star_outline,
+            ),
+          ],
         ),
       ],
     );
@@ -362,6 +435,10 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
     switch (action) {
       case _ShareFolderMenuAction.multiSelect:
         _toggleSelecting();
+      case _ShareFolderMenuAction.copyLink:
+        await copyText(context, widget.link);
+      case _ShareFolderMenuAction.loadAllRemaining:
+        await _loadAllRemaining();
       case _ShareFolderMenuAction.favorite:
         await toggleFavoriteByRef(
           context,
@@ -371,8 +448,6 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
           pwd: widget.pwd,
           sharer: widget.folder.sharer,
         );
-      case _ShareFolderMenuAction.copyLink:
-        await copyText(context, widget.link);
     }
   }
 

@@ -4,7 +4,6 @@ import 'dart:math' as math;
 
 import 'package:dio/dio.dart' show CancelToken;
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:path/path.dart' as p;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -103,75 +102,6 @@ enum _AddMenuAction { newFolder, uploadFile, uploadFromApp }
 
 /// 网盘多选操作栏“更多”菜单里的动作。
 enum _BatchMoreAction { password, move, rename, editDescription }
-
-/// “加载全部剩余内容”的进度弹窗：总页数未知，只持续更新已成功加载的页数。
-Future<void> showPageLoadProgressDialog(
-  BuildContext context, {
-  required ValueListenable<int> loadedPages,
-  required VoidCallback onCancel,
-}) {
-  final l10n = context.l10n;
-  final textStyle = Theme.of(context).textTheme.bodyLarge;
-  return showDialog<void>(
-    context: context,
-    barrierDismissible: false,
-    builder: (dialogContext) {
-      var closed = false;
-      void cancel() {
-        if (closed) return;
-        closed = true;
-        onCancel();
-        Navigator.of(dialogContext).pop();
-      }
-
-      return PopScope(
-        canPop: false,
-        onPopInvokedWithResult: (didPop, _) {
-          if (!didPop) cancel();
-        },
-        child: Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(28),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 12, 20),
-            child: SizedBox(
-              key: const ValueKey('load-pages-progress-row'),
-              width: (MediaQuery.sizeOf(dialogContext).width - 80)
-                  .clamp(240.0, 360.0)
-                  .toDouble(),
-              child: Row(
-                children: [
-                  const M3eCircularProgressIndicator(size: 28, strokeWidth: 3),
-                  const SizedBox(width: 20),
-                  Expanded(
-                    child: ValueListenableBuilder<int>(
-                      valueListenable: loadedPages,
-                      builder: (context, count, _) => Semantics(
-                        liveRegion: true,
-                        child: Text(
-                          l10n.loadAllRemainingProgress(count),
-                          style: textStyle,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  M3eIconButton(
-                    key: const ValueKey('load-pages-cancel'),
-                    tooltip: l10n.cancel,
-                    icon: Icons.close,
-                    onPressed: cancel,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    },
-  );
-}
 
 /// 文件条目和文件属性页共用的动作菜单。
 ///
