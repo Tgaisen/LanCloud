@@ -5669,6 +5669,9 @@ Future<BatchProgressResult> runBatchWithProgress(
 }
 
 class _BatchProgressDialog extends StatelessWidget {
+  static const double _contentLeftInset = 24;
+  static const double _cancelRightInset = 12;
+
   const _BatchProgressDialog({
     required this.title,
     required this.total,
@@ -5701,7 +5704,12 @@ class _BatchProgressDialog extends StatelessWidget {
       },
       child: AlertDialog(
         title: Text(title),
-        contentPadding: const EdgeInsets.fromLTRB(24, 20, 12, 24),
+        contentPadding: const EdgeInsets.fromLTRB(
+          _contentLeftInset,
+          20,
+          _cancelRightInset,
+          24,
+        ),
         content: SizedBox(
           width: (MediaQuery.sizeOf(dialogContext).width - 80)
               .clamp(240.0, 360.0)
@@ -5750,12 +5758,24 @@ class _BatchProgressDialog extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    Text(
-                      '${value.current}/$total',
-                      maxLines: 1,
-                      softWrap: false,
-                      textAlign: TextAlign.end,
-                      style: progressTextStyle,
+                    Padding(
+                      // 让完成数右缘距弹窗边界与左侧名称同为 24dp。
+                      padding: const EdgeInsets.only(
+                        right: _contentLeftInset - _cancelRightInset,
+                      ),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(minWidth: 48),
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            '${value.current}/$total',
+                            maxLines: 1,
+                            softWrap: false,
+                            textAlign: TextAlign.end,
+                            style: progressTextStyle,
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),

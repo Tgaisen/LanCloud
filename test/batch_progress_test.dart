@@ -59,6 +59,12 @@ void main() {
     expect(detailText.overflow, TextOverflow.ellipsis);
     expect(countText.softWrap, isFalse);
     expect(countText.style, same(detailText.style));
+    final cancel = find.byKey(const ValueKey('batch-progress-cancel'));
+    expect(
+      tester.getRect(find.text('1/20')).right,
+      closeTo(tester.getRect(cancel).right - 12, 0.1),
+      reason: '完成数右侧留白应与当前名称左侧 24dp 留白一致',
+    );
     final dialog = tester.widget<AlertDialog>(find.byType(AlertDialog));
     expect(
       dialog.contentPadding!.resolve(TextDirection.ltr).right,
