@@ -133,6 +133,16 @@ Future<void> _smoothDrag(
   }
 }
 
+int _selectedDuplicateCount(WidgetTester tester) {
+  final items = tester.widgetList<Md3ListItem>(
+    find.descendant(
+      of: find.byType(M3EBottomSheet),
+      matching: find.byType(Md3ListItem),
+    ),
+  );
+  return items.where((item) => item.selected).length;
+}
+
 void main() {
   testWidgets('同名文件弹窗按服务端顺序保留最新并批量删除其余文件', (tester) async {
     final client = _CleanupClient(
@@ -179,14 +189,17 @@ void main() {
       find.byKey(const ValueKey('same-name-delete')),
     );
     expect(deleteButton.onPressed, isNull);
+    expect(
+      find.descendant(
+        of: find.byType(M3EBottomSheet),
+        matching: find.byType(Checkbox),
+      ),
+      findsNothing,
+    );
 
     await tester.tap(find.text('保留最新'));
     await tester.pump();
-    final checked = tester
-        .widgetList<Checkbox>(find.byType(Checkbox))
-        .where((checkbox) => checkbox.value == true)
-        .length;
-    expect(checked, 2);
+    expect(_selectedDuplicateCount(tester), 2);
 
     await tester.tap(find.byKey(const ValueKey('same-name-delete')));
     await tester.pumpAndSettle();
@@ -221,13 +234,7 @@ void main() {
     await tester.pump();
     await tester.tap(find.byKey(const ValueKey('same-name-file-newest')).last);
     await tester.pump();
-    expect(
-      tester
-          .widgetList<Checkbox>(find.byType(Checkbox))
-          .where((checkbox) => checkbox.value == true)
-          .length,
-      3,
-    );
+    expect(_selectedDuplicateCount(tester), 3);
 
     await tester.tap(find.byKey(const ValueKey('same-name-delete')));
     await tester.pumpAndSettle();
