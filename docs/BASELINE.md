@@ -11,7 +11,7 @@
 | --- | --- | --- | --- |
 | `tools\agent.cmd analyze` | 全量 | No issues found | 约 2 min 1 s |
 | `tools\agent.cmd analyze` | 增量（分享分页 CancelToken，2 个 Dart 文件） | No issues found | 约 13 s |
-| `tools\agent.cmd test` | 全量（上一提交，用例 964） | **964 tests, all passed** | 约 3 min 19 s |
+| `tools\agent.cmd test` | 全量（用例总数） | **965 tests, all passed** | 约 2 min 43 s |
 | `tools\agent.cmd test` | 增量（分享分页 CancelToken，30 个测试文件） | **274 tests, all passed** | 约 50 s |
 | `tools\agent.cmd format` | 全量 | 354 files，0 changed | 约 3 s |
 | `tools\agent.cmd build-apk` | debug | `app-debug.apk` | 首次构建约 5 min 46 s |
@@ -19,8 +19,8 @@
 当前分析结果为 0 issue 是硬基线。出现红灯时，先判断是否为本次改动引入；
 不要把增量结果当成全量结论。Flutter 3.50.0 下全量分析已重跑并通过。
 
-当前用例总数为 965。最近一次全量 964 项通过；随后新增分享分页取消测试 1 项，
-取消链路命中 30 个测试文件，增量 274 项全部通过。当前改动尚需由人工补跑全量。
+当前用例总数为 965，最近一次全量 965 项全部通过；其中新增分享分页取消测试 1 项，
+取消链路命中的 30 个测试文件增量 274 项也已通过。
 测试入口在受影响文件超过 60 个时自动回退全量，避免 Windows 命令行长度上限导致
 测试尚未启动就报错。
 
@@ -49,7 +49,7 @@
 
 ## 测试安全网
 
-- 当前定义用例总数为 965，最近全量为上一提交的 964 项；项目仍没有
+- 当前全量总数为 965，最近一次全量全部通过；项目仍没有
   `integration_test` 和 golden test。
 - `tools\agent.cmd analyze|test` 默认走增量；全量结果必须按上表单独记录。
 - 增量推断出超过 60 个测试文件时，`agent.cmd test` 自动回退全量。
