@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart' show CancelToken;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../api/lanzou_client.dart';
@@ -12,10 +13,15 @@ abstract interface class FavoriteCheckGateway {
   Future<FolderShareDetail> resolveFolder({
     required String url,
     required String pwd,
+    CancelToken? cancelToken,
   });
 
   /// 返回 true 表示能明确确认分享仍可访问；提取码问题通过异常向上抛出。
-  Future<bool> validateFile({required String url, required String pwd});
+  Future<bool> validateFile({
+    required String url,
+    required String pwd,
+    CancelToken? cancelToken,
+  });
 }
 
 class LanzouFavoriteCheckGateway implements FavoriteCheckGateway {
@@ -29,15 +35,24 @@ class LanzouFavoriteCheckGateway implements FavoriteCheckGateway {
   Future<FolderShareDetail> resolveFolder({
     required String url,
     required String pwd,
-  }) => _client.resolveFolderShare(url, pwd: pwd);
+    CancelToken? cancelToken,
+  }) => _client.resolveFolderShare(url, pwd: pwd, cancelToken: cancelToken);
 
   @override
-  Future<bool> validateFile({required String url, required String pwd}) async {
-    final details = await _client.fetchFileShareDetails(url, pwd: pwd);
+  Future<bool> validateFile({
+    required String url,
+    required String pwd,
+    CancelToken? cancelToken,
+  }) async {
+    final details = await _client.fetchFileShareDetails(
+      url,
+      pwd: pwd,
+      cancelToken: cancelToken,
+    );
     if (details.requiresPassword) {
       // fetchFileShareDetails 只确认分享页存在，不校验提取码；再走一次完整
       // 解析，才能区分密码已变更与真正失效。
-      await _client.resolveFileShare(url, pwd: pwd);
+      await _client.resolveFileShare(url, pwd: pwd, cancelToken: cancelToken);
     }
     return true;
   }

@@ -322,18 +322,70 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
   }
 
   Future<void> _checkFavoriteFolders() async {
-    final result = await ref
-        .read(favoriteMonitorProvider.notifier)
-        .checkFolders();
+    final l10n = context.l10n;
+    final monitor = ref.read(favoriteMonitorProvider.notifier);
+    final total = await monitor.updateCheckTargetCount();
     if (!mounted) return;
+    if (total == 0) {
+      _showCheckResult(
+        const FavoriteMonitorRunResult(total: 0, succeeded: 0, failed: 0),
+        mode: FavoriteCheckReportMode.batchUpdates,
+      );
+      return;
+    }
+    FavoriteMonitorRunResult? result;
+    final batch = await runBatchWithProgress(
+      context,
+      title: l10n.checkFavoriteFolderUpdates,
+      total: total,
+      cancelable: true,
+      run: (report, cancelToken) async {
+        result = await monitor.checkFolders(
+          cancelToken: cancelToken,
+          onProgress: (completed, total, name) => report(completed, name),
+        );
+      },
+    );
+    if (!mounted) return;
+    if (batch.canceled) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(l10n.canceled)));
+      return;
+    }
     _showCheckResult(result, mode: FavoriteCheckReportMode.batchUpdates);
   }
 
   Future<void> _checkFavoriteAccess() async {
-    final result = await ref
-        .read(favoriteMonitorProvider.notifier)
-        .checkAllShareAccess();
+    final l10n = context.l10n;
+    final monitor = ref.read(favoriteMonitorProvider.notifier);
+    final total = await monitor.accessCheckTargetCount();
     if (!mounted) return;
+    if (total == 0) {
+      _showCheckResult(
+        const FavoriteMonitorRunResult(total: 0, succeeded: 0, failed: 0),
+        mode: FavoriteCheckReportMode.access,
+      );
+      return;
+    }
+    FavoriteMonitorRunResult? result;
+    final batch = await runBatchWithProgress(
+      context,
+      title: l10n.checkFavoriteAccess,
+      total: total,
+      cancelable: true,
+      run: (report, cancelToken) async {
+        result = await monitor.checkAllShareAccess(
+          cancelToken: cancelToken,
+          onProgress: (completed, total, name) => report(completed, name),
+        );
+      },
+    );
+    if (!mounted) return;
+    if (batch.canceled) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(l10n.canceled)));
+      return;
+    }
     _showCheckResult(result, mode: FavoriteCheckReportMode.access);
   }
 

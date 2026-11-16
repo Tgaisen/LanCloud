@@ -93,6 +93,41 @@ void main() {
     expect(reloaded.backupPassphrase, 'backup-secret');
   });
 
+  test('旧版上次备份时间迁移为成功时间与尝试时间', () async {
+    final legacyAt = DateTime(2026, 11, 15, 10).millisecondsSinceEpoch;
+    SharedPreferences.setMockInitialValues(<String, Object>{
+      'webdav_last_backup_at': legacyAt,
+    });
+    final store = _MemoryWebdavStore();
+    await store.load();
+
+    expect(store.lastSuccessAt, legacyAt);
+    expect(store.lastAttemptAt, legacyAt);
+  });
+
+  test('备份成功更新成功时间，失败只更新尝试时间并保留成功时间', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final store = _MemoryWebdavStore();
+    final successAt = DateTime(2026, 11, 16, 9, 30);
+    final failedAt = DateTime(2026, 11, 16, 10, 30);
+
+    await store.markBackup(now: successAt);
+    expect(store.lastSuccessAt, successAt.millisecondsSinceEpoch);
+    expect(store.lastAttemptAt, successAt.millisecondsSinceEpoch);
+    expect(store.lastBackupError, isEmpty);
+
+    await store.markBackup(error: 'network failed', now: failedAt);
+    expect(store.lastSuccessAt, successAt.millisecondsSinceEpoch);
+    expect(store.lastAttemptAt, failedAt.millisecondsSinceEpoch);
+    expect(store.lastBackupError, 'network failed');
+
+    final reloaded = _MemoryWebdavStore();
+    await reloaded.load();
+    expect(reloaded.lastSuccessAt, successAt.millisecondsSinceEpoch);
+    expect(reloaded.lastAttemptAt, failedAt.millisecondsSinceEpoch);
+    expect(reloaded.lastBackupError, 'network failed');
+  });
+
   test('密码丢失：禁用 WebDAV 操作并关闭自动备份', () async {
     SharedPreferences.setMockInitialValues(<String, Object>{
       'webdav_url': 'https://dav.example.com/dav/',
@@ -187,7 +222,8 @@ void main() {
     expect(store.backupSections, isEmpty);
     expect(store.autoBackup, isFalse);
     expect(store.interval, 'daily');
-    expect(store.lastBackupAt, 0);
+    expect(store.lastSuccessAt, 0);
+    expect(store.lastAttemptAt, 0);
     expect(store.lastBackupError, isEmpty);
     expect(store.secureAccount, isNull);
   });

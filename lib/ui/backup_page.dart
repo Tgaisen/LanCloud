@@ -128,6 +128,7 @@ class _BackupContentState extends ConsumerState<BackupContent> {
   void dispose() {
     // 离开（切窗格 / 关页面）时别再让顶栏留着进度线
     widget.progress.value = false;
+    _service.webdavBackupRunning.removeListener(_onBackupRunningChanged);
     super.dispose();
   }
 
@@ -135,9 +136,14 @@ class _BackupContentState extends ConsumerState<BackupContent> {
   void initState() {
     super.initState();
     _service = ref.read(backupServiceProvider);
+    _service.webdavBackupRunning.addListener(_onBackupRunningChanged);
     _service.init().then((_) {
       if (mounted) setState(() {});
     });
+  }
+
+  void _onBackupRunningChanged() {
+    if (mounted) setState(() {});
   }
 
   void _snack(String text) {
@@ -370,7 +376,7 @@ class _BackupContentState extends ConsumerState<BackupContent> {
   }
 
   Future<void> _uploadNow() async {
-    if (_busy) return;
+    if (_busy || _service.webdavBackupRunning.value) return;
     if (!mounted) return;
 
     final navigator = Navigator.of(context);
@@ -501,7 +507,8 @@ class _BackupContentState extends ConsumerState<BackupContent> {
         store.configured &&
         store.backupSections.isNotEmpty &&
         encryptionReady &&
-        !_busy;
+        !_busy &&
+        !_service.webdavBackupRunning.value;
     final canAutoBackup =
         store.configured &&
         store.backupSections.isNotEmpty &&
@@ -636,9 +643,9 @@ class _BackupContentState extends ConsumerState<BackupContent> {
     final store = _service.webdav;
     final current = store.interval;
     final lastBackup = l10n.lastBackupAt(
-      store.lastBackupAt == 0
+      store.lastSuccessAt == 0
           ? l10n.neverBackedUp
-          : _backupDayLabel(context, store.lastBackupAt),
+          : _backupDayLabel(context, store.lastSuccessAt),
     );
     final value = await showDialog<String>(
       context: context,

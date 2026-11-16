@@ -1861,6 +1861,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get favoriteCheckProgressTitle => 'Checking favorite folder updates';
 
   @override
+  String get favoriteAccessCheckProgressTitle =>
+      'Checking favorite items for availability';
+
+  @override
   String favoriteCheckProgressBody(int completed, int total, String name) {
     return '$completed/$total · $name';
   }
@@ -2686,7 +2690,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get webdavAutoBackup => 'Auto backup';
 
   @override
-  String get webdavAutoBackupSubtitle => 'Upload automatically at launch';
+  String get webdavAutoBackupSubtitle =>
+      'Catch up at launch or when returning to the app';
+
+  @override
+  String get webdavBackupProgressTitle => 'WebDAV backup';
+
+  @override
+  String get webdavBackupProgressBody => 'Backing up';
 
   @override
   String get webdavInterval => 'Backup frequency';

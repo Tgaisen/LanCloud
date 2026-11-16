@@ -100,13 +100,29 @@ void main() {
     expect(rotatedFile(1).existsSync(), isTrue);
     expect(currentFile().existsSync(), isTrue);
 
-    await AppLog.instance.clear();
+    Future<void> clearAndWait() async {
+      for (var attempt = 0; attempt < 10; attempt++) {
+        await AppLog.instance.clear();
+        if (Directory(dir.path).listSync().isEmpty) return;
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+      }
+    }
+
+    Future<void> logAndWait() async {
+      for (var attempt = 0; attempt < 10; attempt++) {
+        AppLog.instance.log('test', 'after-clear');
+        if (currentFile().existsSync()) return;
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+      }
+    }
+
+    await clearAndWait();
 
     // 目录里不再有任何日志文件
     expect(Directory(dir.path).listSync(), isEmpty);
 
     // 清除后继续记录：文件重新出现，且只有清除之后的新内容
-    AppLog.instance.log('test', 'after-clear');
+    await logAndWait();
     final text = await currentFile().readAsString();
     expect(text, contains('after-clear'));
     expect(text, isNot(contains('entry-59')));

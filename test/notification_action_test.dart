@@ -1,9 +1,24 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lancloud/core/favorites/favorite_monitor_reporter.dart';
+import 'package:lancloud/core/favorites/favorite_monitor_reporter_adapter.dart';
 import 'package:lancloud/core/notifications.dart';
 import 'package:lancloud/l10n/l10n.dart';
+import 'package:lancloud/l10n/app_localizations_zh.dart';
 
 void main() {
+  test('收藏检测进度通知区分更新与失效项目', () {
+    final strings = AppLocalizationsZh();
+    expect(
+      favoriteCheckProgressTitle(FavoriteCheckOperation.folderUpdates, strings),
+      '正在检测收藏夹更新',
+    );
+    expect(
+      favoriteCheckProgressTitle(FavoriteCheckOperation.shareAccess, strings),
+      '正在检测收藏夹失效项目',
+    );
+  });
+
   group('NotificationAction', () {
     test('should 保持旧版 transfers payload 兼容', () {
       final action = NotificationAction.decode('transfers');

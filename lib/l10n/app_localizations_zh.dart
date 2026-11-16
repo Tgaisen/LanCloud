@@ -1789,6 +1789,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get favoriteCheckProgressTitle => '正在检测收藏夹更新';
 
   @override
+  String get favoriteAccessCheckProgressTitle => '正在检测收藏夹失效项目';
+
+  @override
   String favoriteCheckProgressBody(int completed, int total, String name) {
     return '$completed/$total · $name';
   }
@@ -2575,7 +2578,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get webdavAutoBackup => '自动备份';
 
   @override
-  String get webdavAutoBackupSubtitle => '启动应用时按频率自动上传';
+  String get webdavAutoBackupSubtitle => '启动或回到前台时按频率补做备份';
+
+  @override
+  String get webdavBackupProgressTitle => 'WebDAV 备份';
+
+  @override
+  String get webdavBackupProgressBody => '正在备份';
 
   @override
   String get webdavInterval => '备份频率';

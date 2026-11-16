@@ -1111,6 +1111,7 @@
   "notifChannelDone": "传输完成",
   "notifChannelDoneDesc": "下载与上传完成或失败的提醒",
   "favoriteCheckProgressTitle": "正在检测收藏夹更新",
+  "favoriteAccessCheckProgressTitle": "正在检测收藏夹失效项目",
   "favoriteCheckProgressBody": "{completed}/{total} · {name}",
   "@favoriteCheckProgressBody": {
     "placeholders": {
@@ -1539,7 +1540,9 @@
   "selectRestoreVersion": "选择恢复版本",
   "restoreLatestTag": "最新版本",
   "webdavAutoBackup": "自动备份",
-  "webdavAutoBackupSubtitle": "启动应用时按频率自动上传",
+  "webdavAutoBackupSubtitle": "启动或回到前台时按频率补做备份",
+  "webdavBackupProgressTitle": "WebDAV 备份",
+  "webdavBackupProgressBody": "正在备份",
   "webdavInterval": "备份频率",
   "webdavDaily": "每天",
   "webdavWeekly": "每周",

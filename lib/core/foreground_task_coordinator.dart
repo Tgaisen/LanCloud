@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'platform_support.dart';
 
-enum ForegroundTaskReason { transfers, favoriteCheck }
+enum ForegroundTaskReason { transfers, favoriteCheck, webdavBackup }
 
 abstract interface class ForegroundTaskBackend {
   void start({required String title, required String text});
@@ -50,7 +50,7 @@ class FlutterForegroundTaskBackend implements ForegroundTaskBackend {
   }
 }
 
-/// 传输和收藏检测共享的唯一前台服务。
+/// 传输、收藏检测和 WebDAV 备份共享的唯一前台服务。
 ///
 /// 每个功能只持有自己的 reason；只有所有 reason 都释放后才停止服务，避免
 /// 收藏检测结束时误停仍在运行的传输保活。
@@ -102,7 +102,8 @@ class ForegroundTaskCoordinator {
     }
     final details =
         _active[ForegroundTaskReason.transfers] ??
-        _active[ForegroundTaskReason.favoriteCheck]!;
+        _active[ForegroundTaskReason.favoriteCheck] ??
+        _active[ForegroundTaskReason.webdavBackup]!;
     if (_running) {
       _backend.update(title: details.title, text: details.text);
     } else {

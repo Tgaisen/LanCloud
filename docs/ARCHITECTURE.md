@@ -14,12 +14,14 @@
 2. `SystemChrome.setEnabledSystemUIMode(edgeToEdge)`（仅移动端）
 3. `PlatformSupport.loadAndroidSdkInt()` — 预热，影响 WebView 合成方式
 4. `AppLog.instance.init()` — 接管 `FlutterError.onError` / `PlatformDispatcher.onError` / `debugPrint`
-5. `FlutterForegroundTask.init()`（仅移动端）— 传输 / 收藏检测期间后台保活
+5. `FlutterForegroundTask.init()`（仅移动端）— 传输 / 收藏检测 / WebDAV
+   备份期间后台保活
 6. `AppEnvironment()` + `AppStartup.initialize()` — 组装并初始化应用级状态
 7. `AppCompositionRoot` 用已初始化的 `AppEnvironment`、恢复回调和平台能力构造
    `BackupService`、`TransferDependencies` 与应用 `ProviderContainer`；
 8. `SystemMotion.init()`、`NotificationService.init()`、`SharedInbox`、`IncomingLinks`
-9. `BackupService.maybeAutoBackup()`（不阻塞）
+9. `BackupService.maybeAutoBackup()`（不阻塞；冷启动和 `RootShell` 回到前台
+   共用同一到期判断）
 10. 创建更新容器、恢复传输管理器并初始化更新服务，再初始化收藏监控与
     启动到期补检，最后执行
     `runApp(UncontrolledProviderScope(...))` — 用 `AppEnvironment` 已初始化的
@@ -49,13 +51,13 @@
 | `TransferDependencies` | `core/transfer/transfer_dependencies.dart` | 四个传输端口组成的显式应用级依赖集合；生产入口直接构造 |
 | `transferManagerProvider` | `core/transfer/transfer_manager_provider.dart` | 应用级、非 autoDispose 的 `TransferManager` 唯一实例；容器负责释放 |
 | `UpdateService` | `core/update/update_service.dart` | `Notifier<UpdateState>`；更新检查、缓存、失败冷却和一次性提醒的唯一所有者 |
-| `FavoriteMonitor` | `core/favorites/favorite_monitor.dart` | 收藏文件夹首项快照、更新 / 失效检测、启动补检和批量互斥的唯一任务所有者 |
+| `FavoriteMonitor` | `core/favorites/favorite_monitor.dart` | 收藏文件夹首项快照、更新 / 失效检测、启动补检、批量互斥与取消传播的唯一任务所有者 |
 | `FavoriteCheckGateway` | `core/favorites/favorite_check_gateway.dart` | 收藏检测的公开分享探测端口；文件夹走 `resolveFolderShare`，文件走分享页校验 |
-| `FavoriteMonitorReporter` | `core/favorites/favorite_monitor_reporter.dart` | 检测进度、更新通知和前台保活的窄副作用端口；测试使用 no-op 实现 |
-| `AppFavoriteMonitorReporter` | `core/favorites/favorite_monitor_reporter_adapter.dart` | 组合通知服务与前台服务租约的生产 reporter |
+| `FavoriteMonitorReporter` | `core/favorites/favorite_monitor_reporter.dart` | 按更新 / 失效模式报告检测进度、更新通知和前台保活的窄副作用端口；测试使用 no-op 实现 |
+| `AppFavoriteMonitorReporter` | `core/favorites/favorite_monitor_reporter_adapter.dart` | 组合通知服务与前台服务租约，并为更新 / 失效检测选择对应进度标题的生产 reporter |
 | `FavoriteMonitorSettingsState` | `core/favorite_monitor_settings_state.dart` | 自动检测开关、范围、频率和更新通知开关的读写边界 |
-| `ForegroundTaskCoordinator` | `core/foreground_task_coordinator.dart` | 传输与收藏检测共享的唯一前台服务；按 reason 持有，最后一个释放后停止 |
-| `BackupService` | `core/backup/backup_service.dart` | 本地 / WebDAV 备份恢复服务；只依赖 `BackupDependencies`，应用入口通过 `backupServiceProvider` 暴露与自动备份共用的同一实例 |
+| `ForegroundTaskCoordinator` | `core/foreground_task_coordinator.dart` | 传输、收藏检测与 WebDAV 备份共享的唯一前台服务；按 reason 持有，最后一个释放后停止 |
+| `BackupService` | `core/backup/backup_service.dart` | 本地 / WebDAV 备份恢复服务；自动与手动备份共用 single-flight，应用入口通过 `backupServiceProvider` 暴露与自动备份共用的同一实例 |
 | `BackupDependencies` | `core/backup/backup_dependencies.dart` | 备份所需的账号、设置、数据库和恢复后重载窄接口 |
 | `BackupStoreDependencies` | `core/backup/backup_dependencies.dart` | 用既有存储与显式重载回调组装备份依赖；生产启动直接使用该实现 |
 | `AppDb` | `core/data/app_db_provider.dart` | 普通 `Provider` 暴露既有单例，不监听、不自动销毁 |

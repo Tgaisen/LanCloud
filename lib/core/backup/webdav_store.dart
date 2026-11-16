@@ -20,7 +20,9 @@ class WebdavStore {
   static const _keyAuto = 'webdav_auto';
   static const _keyInterval = 'webdav_interval';
   static const _keyBackupSections = 'webdav_backup_sections';
-  static const _keyLastAt = 'webdav_last_backup_at';
+  static const _legacyKeyLastAt = 'webdav_last_backup_at';
+  static const _keyLastSuccessAt = 'webdav_last_success_at';
+  static const _keyLastAttemptAt = 'webdav_last_attempt_at';
   static const _keyLastError = 'webdav_last_backup_error';
   static const _storage = lanCloudSecureStorage;
 
@@ -50,7 +52,13 @@ class WebdavStore {
   /// WebDAV 备份内容（只影响 WebDAV 上传，与本地备份的每次勾选互不影响）。
   Set<BackupSection> backupSections = <BackupSection>{};
 
-  int lastBackupAt = 0;
+  /// 最近一次成功备份完成的时间；用于自动备份频率和「上次备份」展示。
+  int lastSuccessAt = 0;
+
+  /// 最近一次自动或手动备份尝试的时间；失败后用于短冷却，避免回到前台后
+  /// 因为网络异常反复重试。
+  int lastAttemptAt = 0;
+
   String lastBackupError = '';
 
   /// 已存在地址但四项连接信息不完整：保留看得见的信息并等待重新配置。
@@ -103,7 +111,11 @@ class WebdavStore {
     backupSections = BackupSection.fromIds(
       prefs.getStringList(_keyBackupSections) ?? const [],
     );
-    lastBackupAt = prefs.getInt(_keyLastAt) ?? 0;
+    final storedSuccess = prefs.getInt(_keyLastSuccessAt);
+    final legacyLastAt = prefs.getInt(_legacyKeyLastAt);
+    lastSuccessAt = storedSuccess ?? legacyLastAt ?? 0;
+    // 旧版本只有一个「上次备份」时间，迁移时当作最近一次尝试。
+    lastAttemptAt = prefs.getInt(_keyLastAttemptAt) ?? lastSuccessAt;
     lastBackupError = prefs.getString(_keyLastError) ?? '';
 
     final stored = await readSecureAccount();
@@ -328,7 +340,8 @@ class WebdavStore {
     backupSections = <BackupSection>{};
     autoBackup = false;
     interval = 'daily';
-    lastBackupAt = 0;
+    lastSuccessAt = 0;
+    lastAttemptAt = 0;
     lastBackupError = '';
 
     await deleteSecureAccount();
@@ -339,7 +352,9 @@ class WebdavStore {
     await prefs.remove(_keyAuto);
     await prefs.remove(_keyInterval);
     await prefs.remove(_keyBackupSections);
-    await prefs.remove(_keyLastAt);
+    await prefs.remove(_legacyKeyLastAt);
+    await prefs.remove(_keyLastSuccessAt);
+    await prefs.remove(_keyLastAttemptAt);
     await prefs.remove(_keyLastError);
     await deleteLegacyPassword();
   }
@@ -349,12 +364,15 @@ class WebdavStore {
       setBackupSections({...backupSections, section});
 
   /// 记录一次备份结果（[error] 为空表示成功）。
-  Future<void> markBackup({String error = ''}) async {
-    lastBackupAt = DateTime.now().millisecondsSinceEpoch;
+  Future<void> markBackup({String error = '', DateTime? now}) async {
+    final attemptedAt = (now ?? DateTime.now()).millisecondsSinceEpoch;
+    lastAttemptAt = attemptedAt;
     lastBackupError = error;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_keyLastAt, lastBackupAt);
+    await prefs.setInt(_keyLastAttemptAt, lastAttemptAt);
     if (error.isEmpty) {
+      lastSuccessAt = attemptedAt;
+      await prefs.setInt(_keyLastSuccessAt, lastSuccessAt);
       await prefs.remove(_keyLastError);
     } else {
       await prefs.setString(_keyLastError, error);

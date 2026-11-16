@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart' show CancelToken;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/api/lanzou_client.dart';
@@ -23,21 +24,38 @@ class _FakeGateway implements FavoriteCheckGateway {
   int folderCalls = 0;
   int fileCalls = 0;
   Completer<void>? folderGate;
+  Completer<void>? folderStarted;
 
   @override
   Future<FolderShareDetail> resolveFolder({
     required String url,
     required String pwd,
+    CancelToken? cancelToken,
   }) async {
     folderCalls += 1;
-    await folderGate?.future;
+    if (folderStarted != null && !folderStarted!.isCompleted) {
+      folderStarted!.complete();
+    }
+    final gate = folderGate;
+    if (gate != null) {
+      if (cancelToken == null) {
+        await gate.future;
+      } else {
+        await Future.any([gate.future, cancelToken.whenCancel]);
+        if (cancelToken.isCancelled) throw cancelToken.cancelError!;
+      }
+    }
     final error = folderError;
     if (error != null) throw error;
     return folder;
   }
 
   @override
-  Future<bool> validateFile({required String url, required String pwd}) async {
+  Future<bool> validateFile({
+    required String url,
+    required String pwd,
+    CancelToken? cancelToken,
+  }) async {
     fileCalls += 1;
     final error = fileError;
     if (error != null) throw error;
@@ -49,8 +67,11 @@ class _FakeReporter implements FavoriteMonitorReporter {
   final List<String> events = [];
 
   @override
-  Future<void> start({required int total}) async {
-    events.add('start:$total');
+  Future<void> start({
+    required int total,
+    required FavoriteCheckOperation operation,
+  }) async {
+    events.add('start:${operation.name}:$total');
   }
 
   @override
@@ -58,8 +79,9 @@ class _FakeReporter implements FavoriteMonitorReporter {
     required int completed,
     required int total,
     required String name,
+    required FavoriteCheckOperation operation,
   }) async {
-    events.add('progress:$completed/$total:$name');
+    events.add('progress:${operation.name}:$completed/$total:$name');
   }
 
   @override
@@ -257,6 +279,33 @@ void main() {
     expect((await first)?.succeeded, 1);
   });
 
+  test('取消批量检测后停止后续项目且不把剩余项计为失败', () async {
+    await addFolder('https://share.example/folder-a');
+    await addFolder('https://share.example/folder-b');
+    final monitor = container.read(favoriteMonitorProvider.notifier);
+    gateway.folderGate = Completer<void>();
+    gateway.folderStarted = Completer<void>();
+    final cancelToken = CancelToken();
+    final progress = <String>[];
+
+    final checking = monitor.checkFolders(
+      cancelToken: cancelToken,
+      onProgress: (completed, total, name) {
+        progress.add('$completed/$total:$name');
+      },
+    );
+    await gateway.folderStarted!.future;
+    cancelToken.cancel('用户取消');
+
+    final result = await checking;
+    expect(result?.total, 2);
+    expect(result?.succeeded, 0);
+    expect(result?.failed, 0);
+    expect(gateway.folderCalls, 1);
+    expect(progress, ['1/2:收藏目录']);
+    expect(reporter.events, contains('start:folderUpdates:2'));
+  });
+
   test('手动失效检测覆盖文件和文件夹，但不改已有文件夹快照', () async {
     final folder = await addFolder();
     await db.addFavorite(
@@ -273,6 +322,7 @@ void main() {
     final result = await monitor.checkAllShareAccess();
 
     final savedFolder = await db.favoriteByRef(folder.ref);
+    expect(reporter.events, contains('start:shareAccess:2'));
     expect(result?.succeeded, 2);
     expect(gateway.fileCalls, 1);
     expect(savedFolder?.folderSnapshot!.encode(), before);

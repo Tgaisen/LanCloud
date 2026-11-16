@@ -718,6 +718,7 @@
   "notifChannelDone": "Transfers finished",
   "notifChannelDoneDesc": "Alerts when downloads and uploads finish or fail",
   "favoriteCheckProgressTitle": "Checking favorite folder updates",
+  "favoriteAccessCheckProgressTitle": "Checking favorite items for availability",
   "favoriteCheckProgressBody": "{completed}/{total} · {name}",
   "@favoriteCheckProgressBody": {
     "placeholders": {
@@ -1146,7 +1147,9 @@
   "selectRestoreVersion": "Select a version to restore",
   "restoreLatestTag": "Latest",
   "webdavAutoBackup": "Auto backup",
-  "webdavAutoBackupSubtitle": "Upload automatically at launch",
+  "webdavAutoBackupSubtitle": "Catch up at launch or when returning to the app",
+  "webdavBackupProgressTitle": "WebDAV backup",
+  "webdavBackupProgressBody": "Backing up",
   "webdavInterval": "Backup frequency",
   "webdavDaily": "Daily",
   "webdavWeekly": "Weekly",
