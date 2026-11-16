@@ -505,63 +505,6 @@ class LanzouClient {
     }
   }
 
-  /// 移动文件夹到目标父目录。
-  /// 官方没有直接的文件夹移动接口，参照 LanZouCloud-API：
-  /// 在目标目录重建同名文件夹，迁移其中的文件后删除原文件夹。
-  /// 仅支持不含子文件夹的目录。
-  Future<void> moveFolder(
-    String folderId,
-    String parentId, {
-    CancelToken? cancelToken,
-  }) async {
-    if (folderId == parentId) {
-      throw const LanzouException(
-        '不能移动到当前目录',
-        code: LanzouErrorCode.moveToCurrentFolder,
-      );
-    }
-    _throwIfCancelled(cancelToken);
-    final subs = await listFolders(folderId, cancelToken: cancelToken);
-    if (subs.folders.isNotEmpty) {
-      throw const LanzouException(
-        '暂不支持移动含子文件夹的目录',
-        code: LanzouErrorCode.moveFolderWithSubfoldersUnsupported,
-      );
-    }
-    _throwIfCancelled(cancelToken);
-    final info = await shareInfoOfFolder(folderId, cancelToken: cancelToken);
-    if (info.name.isEmpty) {
-      throw const LanzouException(
-        '无法读取文件夹信息',
-        code: LanzouErrorCode.readFolderInfoFailed,
-      );
-    }
-    _throwIfCancelled(cancelToken);
-    final newId = await mkdir(
-      parentId,
-      info.name,
-      desc: info.desc,
-      cancelToken: cancelToken,
-    );
-    if (newId == folderId) {
-      throw const LanzouException(
-        '目标位置与当前位置相同',
-        code: LanzouErrorCode.sameTargetFolder,
-      );
-    }
-    if (info.pwd.isNotEmpty) {
-      _throwIfCancelled(cancelToken);
-      await setFolderPasswd(newId, info.pwd, cancelToken: cancelToken);
-    }
-    final files = await listFiles(folderId, cancelToken: cancelToken);
-    for (final file in files) {
-      _throwIfCancelled(cancelToken);
-      await moveFile(file.id, newId, cancelToken: cancelToken);
-    }
-    _throwIfCancelled(cancelToken);
-    await deleteItem(id: folderId, isFile: false, cancelToken: cancelToken);
-  }
-
   /// 网页版文件夹信息页：直接读取该文件夹的统计信息。
   /// 解析失败返回 null，由界面显示「未知」，不遍历全部分页回退。
   Future<({String size, int count, String name, String desc, String url})?>

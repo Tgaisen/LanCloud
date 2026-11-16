@@ -904,6 +904,19 @@ void main() {
     expect(client.deletedItems, [(id: 'f1', isFile: true)]);
   });
 
+  testWidgets('网盘多选只有文件夹时“移动”置灰', (tester) async {
+    final app = _FakeApp(_FakeClient());
+    await _pumpDrive(tester, app);
+
+    await tester.longPress(find.text('子文件夹'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('更多'));
+    await _settleSheet(tester);
+
+    final row = tester.widget<ListTile>(find.widgetWithText(ListTile, '移动'));
+    expect(row.enabled, isFalse);
+  });
+
   testWidgets('网盘多选：操作栏顺序与批量重命名预览生效', (tester) async {
     final client = _ManyFilesClient();
     final app = _FakeApp(client);

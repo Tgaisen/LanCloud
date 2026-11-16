@@ -5691,6 +5691,9 @@ class _BatchProgressDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final progressTextStyle = textTheme.bodyMedium?.copyWith(
+      color: scheme.onSurfaceVariant,
+    );
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
@@ -5698,6 +5701,7 @@ class _BatchProgressDialog extends StatelessWidget {
       },
       child: AlertDialog(
         title: Text(title),
+        contentPadding: const EdgeInsets.fromLTRB(24, 20, 12, 24),
         content: SizedBox(
           width: (MediaQuery.sizeOf(dialogContext).width - 80)
               .clamp(240.0, 360.0)
@@ -5742,9 +5746,7 @@ class _BatchProgressDialog extends StatelessWidget {
                         value.detail.isEmpty ? ' ' : value.detail,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                        ),
+                        style: progressTextStyle,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -5752,7 +5754,8 @@ class _BatchProgressDialog extends StatelessWidget {
                       '${value.current}/$total',
                       maxLines: 1,
                       softWrap: false,
-                      style: textTheme.labelLarge,
+                      textAlign: TextAlign.end,
+                      style: progressTextStyle,
                     ),
                   ],
                 ),

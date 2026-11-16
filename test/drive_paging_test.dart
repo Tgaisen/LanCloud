@@ -450,6 +450,42 @@ void main() {
     expect(find.textContaining('网络'), findsNothing);
   });
 
+  testWidgets('首页直达目录加载中返回会恢复原网盘位置', (tester) async {
+    final client = _HangingDirectoryClient();
+    final app = _FakeApp();
+    final manager = buildTransferManagerForEnvironment(app.environment);
+    addTearDown(app.dispose);
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(420, 900);
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: _overrides(app, manager, client),
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const DrivePage(tabIndex: 0),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    app.environment.drive.folderRequest.value = 'sub';
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(client.subdirectoryToken, isNotNull);
+
+    final handled = await app.environment.navigation.onDriveBack!.call();
+    expect(handled, isTrue);
+    expect(client.subdirectoryToken!.isCancelled, isTrue);
+    await tester.pumpAndSettle();
+
+    expect(find.text('子目录'), findsOneWidget);
+    expect(find.byType(CustomScrollView), findsOneWidget);
+  });
+
   testWidgets('返回上级目录时保留滚动位置并展开顶栏', (tester) async {
     Future<void> pumpFrames() async {
       await tester.pump();

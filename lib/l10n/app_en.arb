@@ -533,7 +533,7 @@
   "passwordLabel": "Password: {pwd}",
   "favoritedCount": "Favorited {count} items",
   "move": "Move",
-  "moveSubtitle": "Move selected files/folders to another folder",
+  "moveSubtitle": "Move selected files to another folder",
   "editDesc": "Edit description",
   "editDescBatchSubtitle": "Set the description for selected files/folders",
   "setPassword": "Set access password",

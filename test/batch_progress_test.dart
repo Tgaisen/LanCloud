@@ -54,11 +54,17 @@ void main() {
     final detail = tester.getRect(find.text('a.zip'));
     final count = tester.getRect(find.text('1/20'));
     expect(detail.left, lessThan(count.left));
+    final detailText = tester.widget<Text>(find.text('a.zip'));
+    final countText = tester.widget<Text>(find.text('1/20'));
+    expect(detailText.overflow, TextOverflow.ellipsis);
+    expect(countText.softWrap, isFalse);
+    expect(countText.style, same(detailText.style));
+    final dialog = tester.widget<AlertDialog>(find.byType(AlertDialog));
     expect(
-      tester.widget<Text>(find.text('a.zip')).overflow,
-      TextOverflow.ellipsis,
+      dialog.contentPadding!.resolve(TextDirection.ltr).right,
+      12,
+      reason: '取消按钮右边距应与解析弹窗的 12dp 一致',
     );
-    expect(tester.widget<Text>(find.text('1/20')).softWrap, isFalse);
     // 进度条是确定值（不是无限循环）
     final indicator = tester.widget<M3eLinearProgressIndicator>(
       find.byType(M3eLinearProgressIndicator),

@@ -323,6 +323,10 @@ class _DrivePageState extends ConsumerState<DrivePage>
   int _directoryNavGeneration = 0;
   String? _pendingDirectoryId;
 
+  /// 首页跨 Tab 直达目录时，在目标目录路径返回前保留原位置。
+  String? _directoryOriginId;
+  List<PathNode>? _directoryOriginPath;
+
   /// 上一次拉取下一页失败（且还有下一页）：底部给出「重试」入口。
   bool _loadFailed = false;
 
@@ -472,6 +476,8 @@ class _DrivePageState extends ConsumerState<DrivePage>
   Future<void> _openFolderById(String folderId) async {
     if (_directorySwitching || folderId == _folderId) return;
     final navGeneration = ++_directoryNavGeneration;
+    _directoryOriginId = _folderId;
+    _directoryOriginPath = List<PathNode>.of(_path);
     _directorySwitching = true;
     _pendingDirectoryId = folderId;
     _publishCanHandleBack();
@@ -490,6 +496,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
       });
       await _load();
       if (!mounted || navGeneration != _directoryNavGeneration) return;
+      _clearDirectoryOrigin();
       _restoreFolderOffset(folderId);
     } finally {
       if (navGeneration == _directoryNavGeneration) {
@@ -524,6 +531,33 @@ class _DrivePageState extends ConsumerState<DrivePage>
 
   void _throwIfCancelled(CancelToken cancelToken) {
     if (cancelToken.isCancelled) throw cancelToken.cancelError!;
+  }
+
+  void _clearDirectoryOrigin() {
+    _directoryOriginId = null;
+    _directoryOriginPath = null;
+  }
+
+  void _restoreDirectoryOrigin() {
+    final originId = _directoryOriginId;
+    final originPath = _directoryOriginPath;
+    if (originId == null || originPath == null) return;
+    ++_directoryNavGeneration;
+    ++_listingGeneration;
+    _pendingDirectoryId = null;
+    _directorySwitching = false;
+    _cancelListingRequest();
+    setState(() {
+      _folderId = originId;
+      _path = List<PathNode>.of(originPath);
+      _filter = '';
+      _searchController.clear();
+      _loading = false;
+      _loadingMore = false;
+      _error = null;
+    });
+    _clearDirectoryOrigin();
+    _restoreFolderOffset(originId);
   }
 
   /// 局部刷新：保持当前列表可见，拉取完成后按差异播放新增/移除动画。
@@ -885,16 +919,11 @@ class _DrivePageState extends ConsumerState<DrivePage>
       return true;
     }
     if (_pendingDirectoryId != null) {
-      _directoryNavGeneration += 1;
-      _pendingDirectoryId = null;
-      _cancelListingRequest();
-      _directorySwitching = false;
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          _error = null;
-        });
-      }
+      _restoreDirectoryOrigin();
+      return true;
+    }
+    if (_path.isEmpty && _directoryOriginId != null) {
+      _restoreDirectoryOrigin();
       return true;
     }
     if (_path.isNotEmpty) {
@@ -2351,6 +2380,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
           value: _BatchMoreAction.move,
           label: l10n.move,
           icon: Icons.drive_file_move_outline,
+          enabled: _selectedFiles.isNotEmpty,
         ),
         M3eMenuItem(
           value: _BatchMoreAction.rename,
@@ -2383,22 +2413,20 @@ class _DrivePageState extends ConsumerState<DrivePage>
     final client = _activeClient();
     if (client == null) return;
     final fileIds = _selectedFiles.toList();
-    final folderIds = _selectedFolders.toList();
-    if (fileIds.isEmpty && folderIds.isEmpty) return;
+    if (fileIds.isEmpty) return;
     final target = await showFolderPicker(
       context,
       client: client,
-      excludeIds: {...fileIds, ...folderIds},
+      excludeIds: fileIds.toSet(),
     );
     if (target == null || !mounted) return;
     final fileNames = {for (final f in _files) f.id: f.name};
-    final folderNames = {for (final f in _folders) f.id: f.name};
     var failed = 0;
     var moved = 0;
     final batch = await runBatchWithProgress(
       context,
       title: context.l10n.move,
-      total: fileIds.length + folderIds.length,
+      total: fileIds.length,
       cancelable: true,
       run: (report, cancelToken) async {
         var done = 0;
@@ -2407,24 +2435,6 @@ class _DrivePageState extends ConsumerState<DrivePage>
           report(++done, fileNames[id] ?? '');
           try {
             await client.moveFile(
-              id,
-              target.folderId,
-              cancelToken: cancelToken,
-            );
-            moved += 1;
-          } on DioException catch (error) {
-            if (error.type == DioExceptionType.cancel) rethrow;
-            failed += 1;
-          } catch (_) {
-            if (cancelToken.isCancelled) rethrow;
-            failed += 1;
-          }
-        }
-        for (final id in folderIds) {
-          if (cancelToken.isCancelled) break;
-          report(++done, folderNames[id] ?? '');
-          try {
-            await client.moveFolder(
               id,
               target.folderId,
               cancelToken: cancelToken,
