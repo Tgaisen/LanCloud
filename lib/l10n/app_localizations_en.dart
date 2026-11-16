@@ -2686,7 +2686,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get webdavAutoBackup => 'Auto backup';
 
   @override
-  String get webdavAutoBackupSubtitle => 'Upload automatically at launch';
+  String get webdavAutoBackupSubtitle =>
+      'Catch up at launch or when returning to the app';
+
+  @override
+  String get webdavBackupProgressTitle => 'WebDAV backup';
+
+  @override
+  String get webdavBackupProgressBody => 'Backing up';
 
   @override
   String get webdavInterval => 'Backup frequency';

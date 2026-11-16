@@ -10,17 +10,17 @@
 | 命令 | 口径 | 结果 | 耗时 |
 | --- | --- | --- | --- |
 | `tools\agent.cmd analyze` | 全量 | No issues found | 约 2 min 1 s |
-| `tools\agent.cmd analyze` | 增量（网络取消细节，6 个 Dart 文件） | No issues found | 约 12 s |
-| `tools\agent.cmd test` | 全量（用例总数） | **973 tests, all passed** | 约 2 min 17 s |
-| `tools\agent.cmd test` | 增量推断（网络取消细节） | 106 个测试文件，自动回退全量 | 约 2 min 17 s |
-| `tools\agent.cmd format` | 全量 | 354 files，0 changed | 约 3 s |
+| `tools\agent.cmd analyze` | 增量（WebDAV 备份补检与互斥，10 个 Dart 文件） | No issues found | 约 6 s |
+| `tools\agent.cmd test` | 全量（用例总数） | **980 tests, all passed** | 约 2 min 19 s |
+| `tools\agent.cmd test` | 增量推断（WebDAV 备份补检与互斥） | 84 个测试文件，自动回退全量 | 约 2 min 19 s |
+| `tools\agent.cmd format` | 全量 | 355 files，0 changed | 约 3 s |
 | `tools\agent.cmd build-apk` | debug | `app-debug.apk` | 首次构建约 5 min 46 s |
 
 当前分析结果为 0 issue 是硬基线。出现红灯时，先判断是否为本次改动引入；
 不要把增量结果当成全量结论。Flutter 3.50.0 下全量分析已重跑并通过。
 
-当前用例总数为 973，最近一次全量 973 项全部通过；新增覆盖批量进度取消、
-目录加载返回、分享解析取消、文件夹统计不回退和 WebDAV 取消。
+当前用例总数为 980，最近一次全量 980 项全部通过；新增覆盖 WebDAV 自动 /
+手动备份互斥、成功时间与失败冷却、前台进度通知租约和自动备份期间 UI 置灰。
 测试入口在受影响文件超过 60 个时自动回退全量，避免 Windows 命令行长度上限导致
 测试尚未启动就报错。
 
@@ -30,12 +30,12 @@
 | --- | ---: |
 | `lib` Dart 文件 | 167 |
 | `lib` 总行数 | 63,325 |
-| `test` 测试文件 | 185（全部为 `*_test.dart`，平铺） |
+| `test` 测试文件 | 186（全部为 `*_test.dart`，平铺） |
 | `test` 总行数 | 36,919 |
-| `test` 用例数 | 973 |
+| `test` 用例数 | 980 |
 | `lib/ui` 平铺文件 | 62 |
 | `lib/core` | 60 个平铺文件 + 6 个子系统目录 |
-| 文案（`app_zh.arb`） | 1,807 行 |
+| 文案（`app_zh.arb`） | 1,810 行 |
 
 ## 工具链与依赖
 
@@ -49,7 +49,7 @@
 
 ## 测试安全网
 
-- 当前全量总数为 973，最近一次全量全部通过；项目仍没有
+- 当前全量总数为 980，最近一次全量全部通过；项目仍没有
   `integration_test` 和 golden test。
 - `tools\agent.cmd analyze|test` 默认走增量；全量结果必须按上表单独记录。
 - 增量推断出超过 60 个测试文件时，`agent.cmd test` 自动回退全量。
@@ -85,6 +85,8 @@
 - 收藏文件夹自动检测只在应用启动或回到前台且到期时执行；应用进程被系统
   结束后不会定时唤醒，Windows 关闭窗口后同样停止。检测期间的进度通知与
   前台服务只用于本轮临时后台保活。
+- WebDAV 自动备份同样只在应用启动或回到前台且到期时补做；应用被系统结束
+  后不会定时唤醒。自动与手动备份共用 single-flight，失败后冷却一小时再补试。
 - 开发环境 Flutter `3.50.0`，`pubspec.lock` 已记录 Dart `3.14.0` 与相同
   Flutter SDK 注记。
 

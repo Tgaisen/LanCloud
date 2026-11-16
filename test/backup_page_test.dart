@@ -806,6 +806,37 @@ void main() {
     );
   });
 
+  testWidgets('自动备份运行期间禁用上传备份', (tester) async {
+    await fake.webdav.saveServer(
+      url: 'https://dav.example.com/blue/',
+      username: 'user',
+      password: 'pwd',
+      backupPassphrase: 'backup-secret',
+      path: WebdavStore.defaultPath,
+    );
+    await fake.webdav.setBackupSections({BackupSection.favorites});
+    await pumpPage(tester);
+
+    expect(
+      tester.widget<ListTile>(find.widgetWithText(ListTile, '上传备份')).enabled,
+      isTrue,
+    );
+
+    fake.webdavBackupRunning.value = true;
+    await tester.pump();
+    expect(
+      tester.widget<ListTile>(find.widgetWithText(ListTile, '上传备份')).enabled,
+      isFalse,
+    );
+
+    fake.webdavBackupRunning.value = false;
+    await tester.pump();
+    expect(
+      tester.widget<ListTile>(find.widgetWithText(ListTile, '上传备份')).enabled,
+      isTrue,
+    );
+  });
+
   testWidgets('重置 WebDAV 账号同时清空备份选项和自动备份', (tester) async {
     await fake.webdav.saveServer(
       url: 'https://dav.example.com/blue/',
@@ -831,7 +862,8 @@ void main() {
     expect(fake.webdav.backupPassphrase, isEmpty);
     expect(fake.webdav.backupSections, isEmpty);
     expect(fake.webdav.autoBackup, isFalse);
-    expect(fake.webdav.lastBackupAt, 0);
+    expect(fake.webdav.lastSuccessAt, 0);
+    expect(fake.webdav.lastAttemptAt, 0);
     expect(fake.webdav.lastBackupError, isEmpty);
     expect(find.text('未配置 WebDAV'), findsOneWidget);
   });

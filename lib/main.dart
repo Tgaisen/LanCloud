@@ -70,7 +70,7 @@ Future<void> main() async {
       androidNotificationOptions: AndroidNotificationOptions(
         channelId: 'foreground_service',
         channelName: '蓝云',
-        channelDescription: '传输或收藏检测进行中时保持后台运行',
+        channelDescription: '传输、收藏检测或 WebDAV 备份进行中时保持后台运行',
         channelImportance: NotificationChannelImportance.LOW,
         priority: NotificationPriority.LOW,
         onlyAlertOnce: true,
@@ -111,7 +111,7 @@ Future<void> main() async {
   await NotificationService.instance.consumeLaunchDetails();
   await SharedInbox.instance.init();
   await IncomingLinks.instance.init();
-  // 自动备份：按每天/每周频率在启动时补一次，失败只记录不打扰。
+  // 自动备份：按每天/每周频率在启动和回到前台时补一次，失败只记录不打扰。
   unawaited(composition.backupService.maybeAutoBackup());
   // Riverpod 更新试点：沿用已加载的设置对象，先恢复缓存再非阻塞检查更新。
   final updateContainer = composition.createContainer();

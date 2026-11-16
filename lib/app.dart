@@ -12,6 +12,7 @@ import 'core/account_state.dart';
 import 'core/agreements.dart';
 import 'core/app_runtime_state.dart';
 import 'core/api/lanzou_client_registry.dart';
+import 'core/backup/backup_service_provider.dart';
 import 'core/cache_page_settings_state.dart';
 import 'core/data/app_db_provider.dart';
 import 'core/drag_drop.dart';
@@ -938,6 +939,7 @@ class _RootShellState extends ConsumerState<RootShell>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _checkClipboard();
+      unawaited(ref.read(backupServiceProvider).maybeAutoBackup());
       unawaited(ref.read(favoriteMonitorProvider.notifier).maybeAutoCheck());
     }
   }

@@ -4820,8 +4820,20 @@ abstract class AppLocalizations {
   /// No description provided for @webdavAutoBackupSubtitle.
   ///
   /// In zh, this message translates to:
-  /// **'启动应用时按频率自动上传'**
+  /// **'启动或回到前台时按频率补做备份'**
   String get webdavAutoBackupSubtitle;
+
+  /// No description provided for @webdavBackupProgressTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'WebDAV 备份'**
+  String get webdavBackupProgressTitle;
+
+  /// No description provided for @webdavBackupProgressBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在备份'**
+  String get webdavBackupProgressBody;
 
   /// No description provided for @webdavInterval.
   ///
