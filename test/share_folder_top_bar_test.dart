@@ -167,7 +167,7 @@ void main() {
     );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
-    expect(menuLabels(), ['多选', '收藏', '复制链接']);
+    expect(menuLabels(), ['多选', '复制链接', '加载全部剩余内容', '收藏']);
     await tester.tapAt(const Offset(5, 300));
     await tester.pumpAndSettle();
 

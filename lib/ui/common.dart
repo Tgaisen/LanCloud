@@ -5717,6 +5717,75 @@ Future<void> showLoadingDialog(BuildContext context, String text) {
   );
 }
 
+/// “加载全部剩余内容”的进度弹窗：总页数未知，只持续更新已成功加载的页数。
+Future<void> showPageLoadProgressDialog(
+  BuildContext context, {
+  required ValueListenable<int> loadedPages,
+  required VoidCallback onCancel,
+}) {
+  final l10n = context.l10n;
+  final textStyle = Theme.of(context).textTheme.bodyLarge;
+  return showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (dialogContext) {
+      var closed = false;
+      void cancel() {
+        if (closed) return;
+        closed = true;
+        onCancel();
+        Navigator.of(dialogContext).pop();
+      }
+
+      return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) cancel();
+        },
+        child: Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(28),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 12, 20),
+            child: SizedBox(
+              key: const ValueKey('load-pages-progress-row'),
+              width: (MediaQuery.sizeOf(dialogContext).width - 80)
+                  .clamp(240.0, 360.0)
+                  .toDouble(),
+              child: Row(
+                children: [
+                  const M3eCircularProgressIndicator(size: 28, strokeWidth: 3),
+                  const SizedBox(width: 20),
+                  Expanded(
+                    child: ValueListenableBuilder<int>(
+                      valueListenable: loadedPages,
+                      builder: (context, count, _) => Semantics(
+                        liveRegion: true,
+                        child: Text(
+                          l10n.loadAllRemainingProgress(count),
+                          style: textStyle,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  M3eIconButton(
+                    key: const ValueKey('load-pages-cancel'),
+                    tooltip: l10n.cancel,
+                    icon: Icons.close,
+                    onPressed: cancel,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    },
+  );
+}
+
 /// 在异步操作期间显示与「解析中」同款的模态等待弹窗。
 ///
 /// [enabled] 为假时直接执行操作，适合只有单文件、无需额外反馈的入口。
