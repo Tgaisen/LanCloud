@@ -129,6 +129,9 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
     final paging = widget.folder.paging;
     if (paging == null || _loadingMore || !_hasMore) return;
     if (_filter.isNotEmpty) return;
+    final token = cancelToken ?? CancelToken();
+    final ownsToken = cancelToken == null;
+    if (ownsToken) _pageLoadCancelToken = token;
     setState(() {
       _loadingMore = true;
       _loadFailed = false;
@@ -137,8 +140,8 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
       final next = await ref
           .read(lanzouClientRegistryProvider)
           .publicClient
-          .fetchShareFolderFiles(paging, _page + 1, cancelToken: cancelToken);
-      if (!mounted) return;
+          .fetchShareFolderFiles(paging, _page + 1, cancelToken: token);
+      if (!mounted || token.isCancelled) return;
       if (!(shouldCommit?.call() ?? true)) {
         setState(() => _loadingMore = false);
         return;
@@ -153,7 +156,7 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
       // 第一页没填满屏幕时继续补页，避免出现「没有滚动条就再也加载不了」
       _fillViewportIfNeeded();
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || token.isCancelled) return;
       if (!(shouldCommit?.call() ?? true)) {
         setState(() => _loadingMore = false);
         return;
@@ -166,11 +169,17 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
       // 时底部会一直停在转圈上，直到用户自己滑一下才重新触发加载。
       if (auto && _autoRetriesLeft > 0) {
         _autoRetriesLeft -= 1;
-        Future<void>.delayed(const Duration(milliseconds: 700), () {
-          if (!mounted) return;
-          // 定时器链路上没有帧在跑，直接查一次（不用等 post-frame）
-          _fillViewportIfNeeded(immediate: true);
-        });
+        await Future.any<void>([
+          Future<void>.delayed(const Duration(milliseconds: 700)),
+          token.whenCancel.then<void>((_) {}),
+        ]);
+        if (!mounted || token.isCancelled) return;
+        // 定时器链路上没有帧在跑，直接查一次（不用等 post-frame）
+        _fillViewportIfNeeded(immediate: true);
+      }
+    } finally {
+      if (ownsToken && identical(_pageLoadCancelToken, token)) {
+        _pageLoadCancelToken = null;
       }
     }
   }
@@ -243,12 +252,20 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
           // 本轮没有进展：失败就退避重试几次，重试完还不行就把底部
           // 交回「重试」入口，避免死循环
           if (++failures > _maxAutoRetries) break;
-          await Future<void>.delayed(Duration(milliseconds: 600 * failures));
+          await Future.any<void>([
+            Future<void>.delayed(Duration(milliseconds: 600 * failures)),
+            cancelToken.whenCancel.then<void>((_) {}),
+          ]);
+          if (cancelToken.isCancelled) break;
           continue;
         }
         failures = 0;
         if (_hasMore) {
-          await Future<void>.delayed(const Duration(milliseconds: 600));
+          await Future.any<void>([
+            Future<void>.delayed(const Duration(milliseconds: 600)),
+            cancelToken.whenCancel.then<void>((_) {}),
+          ]);
+          if (cancelToken.isCancelled) break;
         }
       }
     } finally {
@@ -585,30 +602,36 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
   Future<void> _openSubfolder(SubFolder sub) async {
     final client = ref.read(lanzouClientRegistryProvider).publicClient;
     final l10n = context.l10n;
-    showLoadingDialog(context, l10n.resolving);
     // 子文件夹可能是独立分享、带自己的提取码：先按父文件夹的提取码试一次
     // （沿用原行为），拿到「需要提取码 / 提取码错误」再弹输入框，不要把
     // 父提取码当成错误直接报出去。
     FolderShareDetail? detail;
     var pwd = widget.pwd;
     try {
-      detail = await client.resolveFolderShare(sub.url, pwd: pwd);
+      final resolved = await runWithCancelableLoadingDialog<FolderShareDetail>(
+        context,
+        text: l10n.resolving,
+        action: (cancelToken) => client.resolveFolderShare(
+          sub.url,
+          pwd: pwd,
+          cancelToken: cancelToken,
+        ),
+      );
+      if (resolved.canceled) return;
+      detail = resolved.value;
     } on NeedPasswordException {
       detail = null;
     } on WrongPasswordException {
       detail = null;
     } on LanzouException catch (e) {
       if (!mounted) return;
-      Navigator.of(context).pop();
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(context.l10n.lanzouError(e))));
     } catch (_) {
       if (!mounted) return;
-      Navigator.of(context).pop();
       return;
     }
     if (!mounted) return;
-    Navigator.of(context).pop();
     if (detail == null) {
       // 子文件夹有自己的密码：弹框输入，解析成功后用这次的提取码进入
       final result = await showFolderPasswordDialog(context, url: sub.url);

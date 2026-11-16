@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:dio/dio.dart' show CancelToken;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_environment.dart';
@@ -42,6 +43,7 @@ class _RestoreBackupService extends BackupService {
     required String username,
     required String password,
     required String path,
+    CancelToken? cancelToken,
   }) async => const [
     WebdavEntry(name: 'lancloud-latest.json', href: '', size: 100),
   ];
@@ -53,6 +55,7 @@ class _RestoreBackupService extends BackupService {
     required String username,
     required String password,
     required String path,
+    CancelToken? cancelToken,
   }) async => content;
 }
 

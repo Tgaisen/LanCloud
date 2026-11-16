@@ -1,4 +1,5 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:dio/dio.dart' show CancelToken;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/account_login.dart';
 import 'package:lancloud/core/account_state.dart';
@@ -61,7 +62,7 @@ class _FakeClient extends LanzouClient {
   final bool valid;
 
   @override
-  Future<bool> verify() async => valid;
+  Future<bool> verify({CancelToken? cancelToken}) async => valid;
 
   @override
   Future<({String? nickname, String level, LanzouUploadPolicy uploadPolicy})>

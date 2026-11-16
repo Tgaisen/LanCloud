@@ -2570,7 +2570,7 @@ abstract class AppLocalizations {
   /// No description provided for @moveSubtitle.
   ///
   /// In zh, this message translates to:
-  /// **'把选中的文件/文件夹移动到其他目录'**
+  /// **'把选中的文件移动到其他目录'**
   String get moveSubtitle;
 
   /// No description provided for @editDesc.

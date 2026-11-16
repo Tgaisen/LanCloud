@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart' show CancelToken;
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -22,8 +23,9 @@ class _FakeClient extends LanzouClient {
 
   @override
   Future<({List<LzFolder> folders, List<PathNode> path})> listFolders(
-    String folderId,
-  ) async {
+    String folderId, {
+    CancelToken? cancelToken,
+  }) async {
     requestedFolders.add(folderId);
     return (
       folders: folders,

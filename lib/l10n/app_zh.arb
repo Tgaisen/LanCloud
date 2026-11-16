@@ -844,7 +844,7 @@
     }
   },
   "move": "移动",
-  "moveSubtitle": "把选中的文件/文件夹移动到其他目录",
+  "moveSubtitle": "把选中的文件移动到其他目录",
   "editDesc": "修改简介",
   "editDescBatchSubtitle": "批量设置选中的文件/文件夹简介",
   "setPassword": "设置访问密码",

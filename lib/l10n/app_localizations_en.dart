@@ -1424,7 +1424,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get move => 'Move';
 
   @override
-  String get moveSubtitle => 'Move selected files/folders to another folder';
+  String get moveSubtitle => 'Move selected files to another folder';
 
   @override
   String get editDesc => 'Edit description';

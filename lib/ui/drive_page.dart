@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 
-import 'package:dio/dio.dart' show CancelToken;
+import 'package:dio/dio.dart' show CancelToken, DioException, DioExceptionType;
 import 'package:file_picker/file_picker.dart';
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:path/path.dart' as p;
@@ -317,7 +317,15 @@ class _DrivePageState extends ConsumerState<DrivePage>
 
   /// 目录快照的代数：刷新、切目录或换账号后，旧请求不得再写入当前列表。
   int _listingGeneration = 0;
-  CancelToken? _pageLoadCancelToken;
+  CancelToken? _listingCancelToken;
+
+  /// 目录导航代数：返回键可以立即取代正在进行的进入目录动作。
+  int _directoryNavGeneration = 0;
+  String? _pendingDirectoryId;
+
+  /// 首页跨 Tab 直达目录时，在目标目录路径返回前保留原位置。
+  String? _directoryOriginId;
+  List<PathNode>? _directoryOriginPath;
 
   /// 上一次拉取下一页失败（且还有下一页）：底部给出「重试」入口。
   bool _loadFailed = false;
@@ -421,7 +429,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
     _keyboardUp.dispose();
     _drive.folderRequest.removeListener(_onDriveFolderRequest);
     _transfers.removeTaskListener(_onTaskDone);
-    _pageLoadCancelToken?.cancel();
+    _listingCancelToken?.cancel();
     if (_isShellPage) {
       _navigation.onDriveBack = null;
       // 外壳里的网盘页卸载后不再拦截返回，交回系统（预测性返回桌面）。
@@ -467,23 +475,33 @@ class _DrivePageState extends ConsumerState<DrivePage>
   /// 直接定位到指定目录（路径由接口返回，从根目录算起）。
   Future<void> _openFolderById(String folderId) async {
     if (_directorySwitching || folderId == _folderId) return;
+    final navGeneration = ++_directoryNavGeneration;
+    _directoryOriginId = _folderId;
+    _directoryOriginPath = List<PathNode>.of(_path);
     _directorySwitching = true;
+    _pendingDirectoryId = folderId;
+    _publishCanHandleBack();
+    _cancelListingRequest();
     try {
       _revealTopBarForDirectoryChange();
       _rememberFolderOffset();
       await _animateDirectorySwitch(folderId);
-      if (!mounted) return;
+      if (!mounted || navGeneration != _directoryNavGeneration) return;
       setState(() {
         _folderId = folderId;
         _filter = '';
         _searchController.clear();
         _path = const [];
+        _pendingDirectoryId = null;
       });
       await _load();
-      if (!mounted) return;
+      if (!mounted || navGeneration != _directoryNavGeneration) return;
+      _clearDirectoryOrigin();
       _restoreFolderOffset(folderId);
     } finally {
-      _endDirectorySwitch();
+      if (navGeneration == _directoryNavGeneration) {
+        _endDirectorySwitch();
+      }
     }
   }
 
@@ -506,12 +524,50 @@ class _DrivePageState extends ConsumerState<DrivePage>
         .clientFor(uid, cookie: accounts.byUid(uid)?.cookie);
   }
 
+  void _cancelListingRequest() {
+    _listingCancelToken?.cancel('目录已切换');
+    _listingCancelToken = null;
+  }
+
+  void _throwIfCancelled(CancelToken cancelToken) {
+    if (cancelToken.isCancelled) throw cancelToken.cancelError!;
+  }
+
+  void _clearDirectoryOrigin() {
+    _directoryOriginId = null;
+    _directoryOriginPath = null;
+  }
+
+  void _restoreDirectoryOrigin() {
+    final originId = _directoryOriginId;
+    final originPath = _directoryOriginPath;
+    if (originId == null || originPath == null) return;
+    ++_directoryNavGeneration;
+    ++_listingGeneration;
+    _pendingDirectoryId = null;
+    _directorySwitching = false;
+    _cancelListingRequest();
+    setState(() {
+      _folderId = originId;
+      _path = List<PathNode>.of(originPath);
+      _filter = '';
+      _searchController.clear();
+      _loading = false;
+      _loadingMore = false;
+      _error = null;
+    });
+    _clearDirectoryOrigin();
+    _restoreFolderOffset(originId);
+  }
+
   /// 局部刷新：保持当前列表可见，拉取完成后按差异播放新增/移除动画。
   /// [refreshFolders] 为 true 时同时重新拉取文件夹列表（新建/移动之后需要）。
   Future<bool> _refreshInPlace({bool refreshFolders = false}) async {
     final client = _activeClient();
     if (client == null) return false;
-    _pageLoadCancelToken?.cancel();
+    _cancelListingRequest();
+    final cancelToken = CancelToken();
+    _listingCancelToken = cancelToken;
     final generation = ++_listingGeneration;
     try {
       // 已经加载过几页就刷新几页，避免局部刷新把后面的条目吞掉
@@ -519,6 +575,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
         client,
         maxPages: math.max(_page, 1),
         withFolders: refreshFolders,
+        cancelToken: cancelToken,
       );
       if (!mounted || generation != _listingGeneration) return false;
       _applyListing(
@@ -529,8 +586,13 @@ class _DrivePageState extends ConsumerState<DrivePage>
       );
       return true;
     } catch (_) {
+      if (cancelToken.isCancelled) return false;
       // 局部刷新失败不打扰用户，下拉或菜单刷新可兜底
       return false;
+    } finally {
+      if (identical(_listingCancelToken, cancelToken)) {
+        _listingCancelToken = null;
+      }
     }
   }
 
@@ -540,19 +602,23 @@ class _DrivePageState extends ConsumerState<DrivePage>
     int? maxPages,
     bool withFolders = true,
     bool showProgress = false,
+    required CancelToken cancelToken,
   }) async {
     final foldersResult = withFolders
-        ? await client.listFolders(_folderId)
+        ? await client.listFolders(_folderId, cancelToken: cancelToken)
         : null;
     final limit = maxPages ?? (_cacheSettings.loadAllPages ? 60 : 1);
-    final first = await client.listFilesPage(_folderId, 1);
+    _throwIfCancelled(cancelToken);
+    final first = await client.listFilesPage(
+      _folderId,
+      1,
+      cancelToken: cancelToken,
+    );
     var files = first.files;
     var hasMore = first.hasMore;
     var page = 1;
     var canceled = false;
     if (mounted && showProgress && hasMore && limit > 1) {
-      final cancelToken = CancelToken();
-      _pageLoadCancelToken = cancelToken;
       final loadedPages = ValueNotifier<int>(page);
       var progressOpen = true;
       final navigator = Navigator.of(context);
@@ -587,14 +653,12 @@ class _DrivePageState extends ConsumerState<DrivePage>
       } catch (_) {
         if (!canceled) rethrow;
       } finally {
-        if (identical(_pageLoadCancelToken, cancelToken)) {
-          _pageLoadCancelToken = null;
-        }
         if (progressOpen && mounted && navigator.canPop()) {
           navigator.pop();
         }
         await progressDone;
       }
+      loadedPages.dispose();
     }
     return _Listing(
       folders: foldersResult?.folders ?? const [],
@@ -828,7 +892,11 @@ class _DrivePageState extends ConsumerState<DrivePage>
       widget.initialFolderId == '-1' && widget.initialName == null;
 
   /// 当前网盘页是否要自己消费返回手势：多选 > 搜索栏 > 上一级目录。
-  bool get _canHandleBack => _selecting || _searching || _path.isNotEmpty;
+  bool get _canHandleBack =>
+      _selecting ||
+      _searching ||
+      _path.isNotEmpty ||
+      _pendingDirectoryId != null;
 
   /// 上报给 RootShell（见 NavigationState.driveCanHandleBack）：需要消费返回时
   /// 置 true，由 Flutter 拦截手势；false 时交给系统，系统才会播放
@@ -850,9 +918,26 @@ class _DrivePageState extends ConsumerState<DrivePage>
       _closeSearch();
       return true;
     }
-    if (_path.isNotEmpty) {
-      await _jumpTo(_path.length - 2);
+    if (_pendingDirectoryId != null) {
+      _restoreDirectoryOrigin();
       return true;
+    }
+    if (_path.isEmpty && _directoryOriginId != null) {
+      _restoreDirectoryOrigin();
+      return true;
+    }
+    if (_path.isNotEmpty) {
+      await _jumpTo(_path.length - 2, supersede: true);
+      return true;
+    }
+    // 根目录没有上一级可去：先停掉在途请求，再交给外壳决定切页或退出。
+    final hadListingRequest = _listingCancelToken != null;
+    _cancelListingRequest();
+    if (hadListingRequest && mounted) {
+      setState(() {
+        _loading = false;
+        _loadingMore = false;
+      });
     }
     return false;
   }
@@ -892,7 +977,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
   Future<void> _load({bool force = false}) async {
     final client = _activeClient();
     if (client == null) return;
-    _pageLoadCancelToken?.cancel();
+    _cancelListingRequest();
     final generation = ++_listingGeneration;
 
     final cached = _cacheSettings.cacheFolders
@@ -929,12 +1014,16 @@ class _DrivePageState extends ConsumerState<DrivePage>
     _exitAnim.value = 0;
     setState(() {
       _loading = true;
+      _loadingMore = false;
       _error = null;
     });
+    final cancelToken = CancelToken();
+    _listingCancelToken = cancelToken;
     try {
       final listing = await _fetchListing(
         client,
         showProgress: _cacheSettings.loadAllPages,
+        cancelToken: cancelToken,
       );
       if (!mounted || generation != _listingGeneration) return;
       _exitAnim.value = 0;
@@ -966,12 +1055,29 @@ class _DrivePageState extends ConsumerState<DrivePage>
       if (_cacheSettings.cacheFolders) {
         _drive.cache.put(_folderId, _snapshot());
       }
+    } on DioException catch (error) {
+      if (error.type == DioExceptionType.cancel || cancelToken.isCancelled) {
+        return;
+      }
+      if (!mounted || generation != _listingGeneration) return;
+      setState(() {
+        _error = context.l10n.lanzouError(error);
+        _loading = false;
+      });
     } catch (e) {
+      if (cancelToken.isCancelled) return;
       if (!mounted || generation != _listingGeneration) return;
       setState(() {
         _error = context.l10n.lanzouError(e);
         _loading = false;
       });
+    } finally {
+      if (identical(_listingCancelToken, cancelToken)) {
+        _listingCancelToken = null;
+        if (mounted && cancelToken.isCancelled && _loadingMore) {
+          setState(() => _loadingMore = false);
+        }
+      }
     }
   }
 
@@ -981,13 +1087,28 @@ class _DrivePageState extends ConsumerState<DrivePage>
     if (_filter.isNotEmpty) return;
     final client = _activeClient();
     if (client == null) return;
+    final folderId = _folderId;
+    final uid = _loadedUid;
+    final generation = _listingGeneration;
+    final cancelToken = CancelToken();
+    _listingCancelToken = cancelToken;
     setState(() {
       _loadingMore = true;
       _loadFailed = false;
     });
     try {
-      final next = await client.listFilesPage(_folderId, _page + 1);
-      if (!mounted) return;
+      final next = await client.listFilesPage(
+        folderId,
+        _page + 1,
+        cancelToken: cancelToken,
+      );
+      if (!mounted ||
+          cancelToken.isCancelled ||
+          generation != _listingGeneration ||
+          _folderId != folderId ||
+          _loadedUid != uid) {
+        return;
+      }
       setState(() {
         _files = [..._files, ...next.files];
         _page += 1;
@@ -1001,7 +1122,13 @@ class _DrivePageState extends ConsumerState<DrivePage>
       // 内容还不满一屏时继续补页：否则「已经到底了」要等用户滑一下才出现
       _fillViewportIfNeeded();
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted ||
+          cancelToken.isCancelled ||
+          generation != _listingGeneration ||
+          _folderId != folderId ||
+          _loadedUid != uid) {
+        return;
+      }
       setState(() {
         _loadingMore = false;
         _loadFailed = true;
@@ -1009,11 +1136,17 @@ class _DrivePageState extends ConsumerState<DrivePage>
       // 自动补页失败：退避重试几次，别让短目录停在「什么都没有」的状态
       if (auto && _autoRetriesLeft > 0) {
         _autoRetriesLeft -= 1;
-        Future<void>.delayed(const Duration(milliseconds: 700), () {
-          if (!mounted) return;
-          // 定时器链路上没有帧在跑，直接查一次（不用等 post-frame）
-          _fillViewportIfNeeded(immediate: true);
-        });
+        await Future.any<void>([
+          Future<void>.delayed(const Duration(milliseconds: 700)),
+          cancelToken.whenCancel.then<void>((_) {}),
+        ]);
+        if (!mounted || cancelToken.isCancelled) return;
+        // 定时器链路上没有帧在跑，直接查一次（不用等 post-frame）
+        _fillViewportIfNeeded(immediate: true);
+      }
+    } finally {
+      if (identical(_listingCancelToken, cancelToken)) {
+        _listingCancelToken = null;
       }
     }
   }
@@ -1028,7 +1161,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
     final uid = _loadedUid;
     final generation = ++_listingGeneration;
     final cancelToken = CancelToken();
-    _pageLoadCancelToken = cancelToken;
+    _listingCancelToken = cancelToken;
     final loadedPages = ValueNotifier<int>(_page);
     var cancelRequested = false;
     var progressOpen = true;
@@ -1080,6 +1213,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
     } catch (e) {
       if (mounted &&
           !cancelRequested &&
+          !cancelToken.isCancelled &&
           generation == _listingGeneration &&
           _folderId == folderId &&
           _loadedUid == uid) {
@@ -1088,8 +1222,8 @@ class _DrivePageState extends ConsumerState<DrivePage>
             .showSnackBar(SnackBar(content: Text(context.l10n.lanzouError(e))));
       }
     } finally {
-      if (identical(_pageLoadCancelToken, cancelToken)) {
-        _pageLoadCancelToken = null;
+      if (identical(_listingCancelToken, cancelToken)) {
+        _listingCancelToken = null;
       }
       if (mounted) {
         setState(() => _loadingMore = false);
@@ -1098,6 +1232,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
         navigator.pop();
       }
       await progressDone;
+      loadedPages.dispose();
     }
   }
 
@@ -1262,7 +1397,11 @@ class _DrivePageState extends ConsumerState<DrivePage>
       return;
     }
     if (_directorySwitching) return;
+    final navGeneration = ++_directoryNavGeneration;
     _directorySwitching = true;
+    _pendingDirectoryId = folder.id;
+    _publishCanHandleBack();
+    _cancelListingRequest();
     try {
       await _db.addRecent(
         account: _accounts.store.activeUid ?? '',
@@ -1276,42 +1415,52 @@ class _DrivePageState extends ConsumerState<DrivePage>
       _revealTopBarForDirectoryChange();
       _rememberFolderOffset();
       await _animateDirectorySwitch(folder.id);
-      if (!mounted) return;
+      if (!mounted || navGeneration != _directoryNavGeneration) return;
       setState(() {
         _folderId = folder.id;
         _path = [..._path, PathNode(id: folder.id, name: folder.name)];
         _filter = '';
         _searchController.clear();
+        _pendingDirectoryId = null;
       });
       await _load();
-      if (!mounted) return;
+      if (!mounted || navGeneration != _directoryNavGeneration) return;
       _restoreFolderOffset(folder.id);
     } finally {
-      _endDirectorySwitch();
+      if (navGeneration == _directoryNavGeneration) {
+        _endDirectorySwitch();
+      }
     }
   }
 
-  Future<void> _jumpTo(int index) async {
-    if (_directorySwitching) return;
+  Future<void> _jumpTo(int index, {bool supersede = false}) async {
+    if (_directorySwitching && !supersede) return;
+    final navGeneration = ++_directoryNavGeneration;
     _directorySwitching = true;
+    final newPath = index < 0 ? <PathNode>[] : _path.sublist(0, index + 1);
+    final targetId = newPath.isEmpty ? '-1' : newPath.last.id;
+    _pendingDirectoryId = targetId;
+    _publishCanHandleBack();
+    _cancelListingRequest();
     try {
       _revealTopBarForDirectoryChange();
-      final newPath = index < 0 ? <PathNode>[] : _path.sublist(0, index + 1);
-      final targetId = newPath.isEmpty ? '-1' : newPath.last.id;
       _rememberFolderOffset();
       await _animateDirectorySwitch(targetId);
-      if (!mounted) return;
+      if (!mounted || navGeneration != _directoryNavGeneration) return;
       setState(() {
         _path = newPath;
         _folderId = targetId;
         _filter = '';
         _searchController.clear();
+        _pendingDirectoryId = null;
       });
       await _load();
-      if (!mounted) return;
+      if (!mounted || navGeneration != _directoryNavGeneration) return;
       _restoreFolderOffset(targetId);
     } finally {
-      _endDirectorySwitch();
+      if (navGeneration == _directoryNavGeneration) {
+        _endDirectorySwitch();
+      }
     }
   }
 
@@ -1853,7 +2002,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
     if (_selectedFiles.isEmpty && _selectedFolders.isEmpty) {
       _exitSelection();
     }
-    if (result.failed > 0) {
+    if (!result.canceled && result.failed > 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -1865,11 +2014,22 @@ class _DrivePageState extends ConsumerState<DrivePage>
         ),
       );
     }
+    if (result.canceled) {
+      await _refreshInPlace(refreshFolders: true);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(context.l10n.canceled)));
+    }
   }
 
   /// 按 id 删除文件和文件夹；单项失败不会中断其余项。
   Future<
-    ({Set<String> deletedFileIds, Set<String> deletedFolderIds, int failed})
+    ({
+      Set<String> deletedFileIds,
+      Set<String> deletedFolderIds,
+      int failed,
+      bool canceled,
+    })
   >
   _deleteItemIds({
     Iterable<String> fileIds = const <String>[],
@@ -1883,6 +2043,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
         deletedFileIds: const <String>{},
         deletedFolderIds: const <String>{},
         failed: 0,
+        canceled: false,
       );
     }
     final client = _activeClient();
@@ -1891,6 +2052,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
         deletedFileIds: const <String>{},
         deletedFolderIds: const <String>{},
         failed: total,
+        canceled: false,
       );
     }
 
@@ -1899,27 +2061,46 @@ class _DrivePageState extends ConsumerState<DrivePage>
     final deletedFileIds = <String>{};
     final deletedFolderIds = <String>{};
     var failed = 0;
-    await runBatchWithProgress(
+    final batch = await runBatchWithProgress(
       context,
       title: context.l10n.delete,
       total: total,
-      run: (report) async {
+      cancelable: true,
+      run: (report, cancelToken) async {
         var done = 0;
         for (final id in fileIdList) {
+          if (cancelToken.isCancelled) break;
           report(++done, fileNames[id] ?? '');
           try {
-            await client.deleteItem(id: id, isFile: true);
+            await client.deleteItem(
+              id: id,
+              isFile: true,
+              cancelToken: cancelToken,
+            );
             deletedFileIds.add(id);
+          } on DioException catch (error) {
+            if (error.type == DioExceptionType.cancel) rethrow;
+            failed += 1;
           } catch (_) {
+            if (cancelToken.isCancelled) rethrow;
             failed += 1;
           }
         }
         for (final id in folderIdList) {
+          if (cancelToken.isCancelled) break;
           report(++done, folderNames[id] ?? '');
           try {
-            await client.deleteItem(id: id, isFile: false);
+            await client.deleteItem(
+              id: id,
+              isFile: false,
+              cancelToken: cancelToken,
+            );
             deletedFolderIds.add(id);
+          } on DioException catch (error) {
+            if (error.type == DioExceptionType.cancel) rethrow;
+            failed += 1;
           } catch (_) {
+            if (cancelToken.isCancelled) rethrow;
             failed += 1;
           }
         }
@@ -1938,6 +2119,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
       deletedFileIds: Set<String>.unmodifiable(deletedFileIds),
       deletedFolderIds: Set<String>.unmodifiable(deletedFolderIds),
       failed: failed,
+      canceled: batch.canceled,
     );
   }
 
@@ -1953,12 +2135,14 @@ class _DrivePageState extends ConsumerState<DrivePage>
     var skipped = 0;
     var failed = 0;
     final messenger = ScaffoldMessenger.of(context);
-    await runBatchWithProgress(
+    final batch = await runBatchWithProgress(
       context,
       title: l10n.batchDownload,
       total: ids.length,
-      run: (report) async {
+      cancelable: true,
+      run: (report, cancelToken) async {
         for (var i = 0; i < ids.length; i++) {
+          if (cancelToken.isCancelled) break;
           final id = ids[i];
           final name = names[id] ?? '';
           final ref = '$activeUid:$id';
@@ -1968,7 +2152,11 @@ class _DrivePageState extends ConsumerState<DrivePage>
             continue;
           }
           try {
-            final info = await client!.shareInfoOfFile(id, withDetails: false);
+            final info = await client!.shareInfoOfFile(
+              id,
+              withDetails: false,
+              cancelToken: cancelToken,
+            );
             transfers.addDownload(
               url: '',
               name: info.name.isEmpty ? name : info.name,
@@ -1977,7 +2165,11 @@ class _DrivePageState extends ConsumerState<DrivePage>
               refId: ref,
             );
             added += 1;
+          } on DioException catch (error) {
+            if (error.type == DioExceptionType.cancel) rethrow;
+            failed += 1;
           } catch (_) {
+            if (cancelToken.isCancelled) rethrow;
             failed += 1;
           }
         }
@@ -1985,6 +2177,10 @@ class _DrivePageState extends ConsumerState<DrivePage>
     );
     if (!mounted) return;
     _exitSelection();
+    if (batch.canceled) {
+      messenger.showSnackBar(SnackBar(content: Text(l10n.canceled)));
+      return;
+    }
     final summary = switch ((skipped, failed)) {
       (0, 0) => l10n.addedDownloads(added),
       (0, _) => l10n.addedDownloadsPartial(added, failed),
@@ -2004,41 +2200,63 @@ class _DrivePageState extends ConsumerState<DrivePage>
     final lines = <String>[];
     final fileNames = {for (final f in _files) f.id: f.name};
     final folderNames = {for (final f in _folders) f.id: f.name};
-    await runBatchWithProgress(
+    final batch = await runBatchWithProgress(
       context,
       title: l10n.copyLink,
       total: fileIds.length + folderIds.length,
-      run: (report) async {
+      cancelable: true,
+      run: (report, cancelToken) async {
         var done = 0;
         for (final id in fileIds) {
+          if (cancelToken.isCancelled) break;
           final name = fileNames[id] ?? '';
           report(++done, name);
           try {
-            final info = await client!.shareInfoOfFile(id);
+            final info = await client!.shareInfoOfFile(
+              id,
+              cancelToken: cancelToken,
+            );
             lines.add(
               info.pwd.isEmpty
                   ? '$name ${info.url}'
                   : l10n.linkWithPassword('$name ${info.url}', info.pwd),
             );
-          } catch (_) {}
+          } on DioException catch (error) {
+            if (error.type == DioExceptionType.cancel) rethrow;
+          } catch (_) {
+            if (cancelToken.isCancelled) rethrow;
+          }
         }
         for (final id in folderIds) {
+          if (cancelToken.isCancelled) break;
           final name = folderNames[id] ?? '';
           report(++done, name);
           try {
-            final info = await client!.shareInfoOfFolder(id);
+            final info = await client!.shareInfoOfFolder(
+              id,
+              cancelToken: cancelToken,
+            );
             final linkName = info.name.isEmpty ? name : info.name;
             lines.add(
               info.pwd.isEmpty
                   ? '$linkName ${info.url}'
                   : l10n.linkWithPassword('$linkName ${info.url}', info.pwd),
             );
-          } catch (_) {}
+          } on DioException catch (error) {
+            if (error.type == DioExceptionType.cancel) rethrow;
+          } catch (_) {
+            if (cancelToken.isCancelled) rethrow;
+          }
         }
       },
     );
     if (!mounted) return;
     _exitSelection();
+    if (batch.canceled) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(l10n.canceled)));
+      return;
+    }
     if (lines.isEmpty) {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(l10n.noLinksToCopy)));
@@ -2058,17 +2276,22 @@ class _DrivePageState extends ConsumerState<DrivePage>
     if (client != null) {
       final files = {for (final f in _files) f.id: f};
       final folders = {for (final f in _folders) f.id: f};
-      await runBatchWithProgress(
+      final batch = await runBatchWithProgress(
         context,
         title: context.l10n.favorite,
         total: fileIds.length + folderIds.length,
-        run: (report) async {
+        cancelable: true,
+        run: (report, cancelToken) async {
           var done = 0;
           for (final id in fileIds) {
+            if (cancelToken.isCancelled) break;
             final file = files[id];
             report(++done, file?.name ?? '');
             try {
-              final info = await client.shareInfoOfFile(id);
+              final info = await client.shareInfoOfFile(
+                id,
+                cancelToken: cancelToken,
+              );
               await db.addFavorite(
                 kind: 'shareFile',
                 name: file?.name ?? '',
@@ -2080,15 +2303,23 @@ class _DrivePageState extends ConsumerState<DrivePage>
                 requiresPassword: info.pwd.isNotEmpty,
               );
               count += 1;
+            } on DioException catch (error) {
+              if (error.type == DioExceptionType.cancel) rethrow;
+              failed += 1;
             } catch (_) {
+              if (cancelToken.isCancelled) rethrow;
               failed += 1;
             }
           }
           for (final id in folderIds) {
+            if (cancelToken.isCancelled) break;
             final folder = folders[id];
             report(++done, folder?.name ?? '');
             try {
-              final info = await client.shareInfoOfFolder(id);
+              final info = await client.shareInfoOfFolder(
+                id,
+                cancelToken: cancelToken,
+              );
               await db.addFavorite(
                 kind: 'shareFolder',
                 name: folder?.name ?? '',
@@ -2100,12 +2331,23 @@ class _DrivePageState extends ConsumerState<DrivePage>
               if (!mounted) return;
               await captureFavoriteFolderBaseline(context, info.url);
               count += 1;
+            } on DioException catch (error) {
+              if (error.type == DioExceptionType.cancel) rethrow;
+              failed += 1;
             } catch (_) {
+              if (cancelToken.isCancelled) rethrow;
               failed += 1;
             }
           }
         },
       );
+      if (batch.canceled) {
+        if (!mounted) return;
+        _exitSelection();
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(context.l10n.canceled)));
+        return;
+      }
     }
     if (mounted) _exitSelection();
     if (!mounted) return;
@@ -2138,6 +2380,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
           value: _BatchMoreAction.move,
           label: l10n.move,
           icon: Icons.drive_file_move_outline,
+          enabled: _selectedFiles.isNotEmpty,
         ),
         M3eMenuItem(
           value: _BatchMoreAction.rename,
@@ -2170,54 +2413,60 @@ class _DrivePageState extends ConsumerState<DrivePage>
     final client = _activeClient();
     if (client == null) return;
     final fileIds = _selectedFiles.toList();
-    final folderIds = _selectedFolders.toList();
-    if (fileIds.isEmpty && folderIds.isEmpty) return;
+    if (fileIds.isEmpty) return;
     final target = await showFolderPicker(
       context,
       client: client,
-      excludeIds: {...fileIds, ...folderIds},
+      excludeIds: fileIds.toSet(),
     );
     if (target == null || !mounted) return;
     final fileNames = {for (final f in _files) f.id: f.name};
-    final folderNames = {for (final f in _folders) f.id: f.name};
     var failed = 0;
-    await runBatchWithProgress(
+    var moved = 0;
+    final batch = await runBatchWithProgress(
       context,
       title: context.l10n.move,
-      total: fileIds.length + folderIds.length,
-      run: (report) async {
+      total: fileIds.length,
+      cancelable: true,
+      run: (report, cancelToken) async {
         var done = 0;
         for (final id in fileIds) {
+          if (cancelToken.isCancelled) break;
           report(++done, fileNames[id] ?? '');
           try {
-            await client.moveFile(id, target.folderId);
-          } catch (_) {
+            await client.moveFile(
+              id,
+              target.folderId,
+              cancelToken: cancelToken,
+            );
+            moved += 1;
+          } on DioException catch (error) {
+            if (error.type == DioExceptionType.cancel) rethrow;
             failed += 1;
-          }
-        }
-        for (final id in folderIds) {
-          report(++done, folderNames[id] ?? '');
-          try {
-            await client.moveFolder(id, target.folderId);
           } catch (_) {
+            if (cancelToken.isCancelled) rethrow;
             failed += 1;
           }
         }
       },
     );
     if (!mounted) return;
-    final count = fileIds.length + folderIds.length;
     _exitSelection();
     // 局部刷新：移走的条目原位淡出，其余条目保持不动
     final ok = await _refreshInPlace(refreshFolders: true);
     if (!ok) await _reloadAfterChange();
     if (!mounted) return;
+    if (batch.canceled) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(context.l10n.canceled)));
+      return;
+    }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
           failed == 0
-              ? context.l10n.movedTo(count, target.name)
-              : context.l10n.movedPartial(count - failed, failed),
+              ? context.l10n.movedTo(moved, target.name)
+              : context.l10n.movedPartial(moved, failed),
         ),
       ),
     );
@@ -2268,24 +2517,38 @@ class _DrivePageState extends ConsumerState<DrivePage>
     if (client == null) return;
     final successful = <String, String>{};
     var failed = 0;
-    await runBatchWithProgress(
+    final batch = await runBatchWithProgress(
       context,
       title: context.l10n.rename,
       total: changes.length,
-      run: (report) async {
+      cancelable: true,
+      run: (report, cancelToken) async {
         var done = 0;
         for (final change in changes) {
+          if (cancelToken.isCancelled) break;
           report(++done, change.originalName);
           try {
             if (fileTargets[change.id] case final file?) {
-              await client.setFileName(file.id, change.newName);
+              await client.setFileName(
+                file.id,
+                change.newName,
+                cancelToken: cancelToken,
+              );
             } else {
               final folder = folderTargets[change.id];
               if (folder == null) continue;
-              await client.renameFolder(folder.id, change.newName);
+              await client.renameFolder(
+                folder.id,
+                change.newName,
+                cancelToken: cancelToken,
+              );
             }
             successful[change.id] = change.newName;
+          } on DioException catch (error) {
+            if (error.type == DioExceptionType.cancel) rethrow;
+            failed += 1;
           } catch (_) {
+            if (cancelToken.isCancelled) rethrow;
             failed += 1;
           }
         }
@@ -2349,6 +2612,11 @@ class _DrivePageState extends ConsumerState<DrivePage>
       _updateCacheSnapshot();
     }
     if (!mounted) return;
+    if (batch.canceled) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(context.l10n.canceled)));
+      return;
+    }
     final renamed = successful.length;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -2374,38 +2642,52 @@ class _DrivePageState extends ConsumerState<DrivePage>
     final folderIds = _selectedFolders.toList();
     final fileNames = {for (final f in _files) f.id: f.name};
     final folderNames = {for (final f in _folders) f.id: f.name};
+    final successfulFileIds = <String>{};
+    final successfulFolderIds = <String>{};
     var failed = 0;
-    await runBatchWithProgress(
+    final batch = await runBatchWithProgress(
       context,
       title: context.l10n.editDesc,
       total: fileIds.length + folderIds.length,
-      run: (report) async {
+      cancelable: true,
+      run: (report, cancelToken) async {
         var done = 0;
         for (final id in fileIds) {
+          if (cancelToken.isCancelled) break;
           report(++done, fileNames[id] ?? '');
           try {
-            await client.setDesc(id, desc);
+            await client.setDesc(id, desc, cancelToken: cancelToken);
+            successfulFileIds.add(id);
+          } on DioException catch (error) {
+            if (error.type == DioExceptionType.cancel) rethrow;
+            failed += 1;
           } catch (_) {
+            if (cancelToken.isCancelled) rethrow;
             failed += 1;
           }
         }
         for (final id in folderIds) {
+          if (cancelToken.isCancelled) break;
           report(++done, folderNames[id] ?? '');
           try {
-            await client.setFolderDesc(id, desc);
+            await client.setFolderDesc(id, desc, cancelToken: cancelToken);
+            successfulFolderIds.add(id);
+          } on DioException catch (error) {
+            if (error.type == DioExceptionType.cancel) rethrow;
+            failed += 1;
           } catch (_) {
+            if (cancelToken.isCancelled) rethrow;
             failed += 1;
           }
         }
       },
     );
     if (!mounted) return;
-    final count = fileIds.length + folderIds.length;
     _exitSelection();
     setState(() {
       _files = [
         for (final f in _files)
-          fileIds.contains(f.id)
+          successfulFileIds.contains(f.id)
               ? LzFile(
                   id: f.id,
                   name: f.name,
@@ -2419,7 +2701,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
       ];
       _folders = [
         for (final fo in _folders)
-          folderIds.contains(fo.id)
+          successfulFolderIds.contains(fo.id)
               ? LzFolder(
                   id: fo.id,
                   name: fo.name,
@@ -2429,15 +2711,23 @@ class _DrivePageState extends ConsumerState<DrivePage>
               : fo,
       ];
     });
-    _pulseItems(fileIds: fileIds.toSet(), folderIds: folderIds.toSet());
+    _pulseItems(fileIds: successfulFileIds, folderIds: successfulFolderIds);
     _updateCacheSnapshot();
     if (!mounted) return;
+    if (batch.canceled) {
+      await _refreshInPlace(refreshFolders: true);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(context.l10n.canceled)));
+      return;
+    }
+    final count = successfulFileIds.length + successfulFolderIds.length;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
           failed == 0
               ? context.l10n.descUpdatedCount(count)
-              : context.l10n.descUpdatedPartial(count - failed, failed),
+              : context.l10n.descUpdatedPartial(count, failed),
         ),
       ),
     );
@@ -2474,39 +2764,57 @@ class _DrivePageState extends ConsumerState<DrivePage>
     if (client == null) return;
     final fileNames = {for (final f in _files) f.id: f.name};
     final folderNames = {for (final f in _folders) f.id: f.name};
+    final successfulFileIds = <String>{};
+    final successfulFolderIds = <String>{};
     var failed = 0;
-    await runBatchWithProgress(
+    final batch = await runBatchWithProgress(
       context,
       title: context.l10n.setPassword,
       total: fileIds.length + folderIds.length,
-      run: (report) async {
+      cancelable: true,
+      run: (report, cancelToken) async {
         var done = 0;
         for (final id in fileIds) {
+          if (cancelToken.isCancelled) break;
           report(++done, fileNames[id] ?? '');
           try {
-            await client.setPasswd(id, filePwd);
+            await client.setPasswd(id, filePwd, cancelToken: cancelToken);
+            successfulFileIds.add(id);
+          } on DioException catch (error) {
+            if (error.type == DioExceptionType.cancel) rethrow;
+            failed += 1;
           } catch (_) {
+            if (cancelToken.isCancelled) rethrow;
             failed += 1;
           }
         }
         for (final id in folderIds) {
+          if (cancelToken.isCancelled) break;
           report(++done, folderNames[id] ?? '');
           try {
-            await client.setFolderPasswd(id, folderPwd);
+            await client.setFolderPasswd(
+              id,
+              folderPwd,
+              cancelToken: cancelToken,
+            );
+            successfulFolderIds.add(id);
+          } on DioException catch (error) {
+            if (error.type == DioExceptionType.cancel) rethrow;
+            failed += 1;
           } catch (_) {
+            if (cancelToken.isCancelled) rethrow;
             failed += 1;
           }
         }
       },
     );
     if (!mounted) return;
-    final count = fileIds.length + folderIds.length;
     _exitSelection();
     if (!mounted) return;
     setState(() {
       _files = [
         for (final f in _files)
-          fileIds.contains(f.id)
+          successfulFileIds.contains(f.id)
               ? LzFile(
                   id: f.id,
                   name: f.name,
@@ -2520,7 +2828,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
       ];
       _folders = [
         for (final fo in _folders)
-          folderIds.contains(fo.id)
+          successfulFolderIds.contains(fo.id)
               ? LzFolder(
                   id: fo.id,
                   name: fo.name,
@@ -2530,8 +2838,16 @@ class _DrivePageState extends ConsumerState<DrivePage>
               : fo,
       ];
     });
-    _pulseItems(fileIds: fileIds.toSet(), folderIds: folderIds.toSet());
+    _pulseItems(fileIds: successfulFileIds, folderIds: successfulFolderIds);
     _updateCacheSnapshot();
+    if (batch.canceled) {
+      await _refreshInPlace(refreshFolders: true);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(context.l10n.canceled)));
+      return;
+    }
+    final count = successfulFileIds.length + successfulFolderIds.length;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -2539,7 +2855,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
               ? (filePwd.isEmpty && folderPwd.isEmpty
                     ? context.l10n.passwordClearedCount(count)
                     : context.l10n.passwordSetCount(count))
-              : context.l10n.passwordSetPartial(count - failed, failed),
+              : context.l10n.passwordSetPartial(count, failed),
         ),
       ),
     );
@@ -2556,14 +2872,21 @@ class _DrivePageState extends ConsumerState<DrivePage>
   ///
   /// [share] 是属性弹窗已经取回来的分享信息（打开弹窗时为了收藏判定取过），
   /// 传进来就不再重复请求。
-  Future<void> _showFileQr(LzFile file, {ShareInfo? share}) async {
+  Future<void> _showFileQr(
+    LzFile file, {
+    ShareInfo? share,
+    CancelToken? cancelToken,
+  }) async {
     final client = _activeClient();
     if (client == null) return;
     try {
-      final info = share ?? await client.shareInfoOfFile(file.id);
+      final info =
+          share ??
+          await client.shareInfoOfFile(file.id, cancelToken: cancelToken);
       if (!mounted) return;
       await _showQr(file.name, info.url, info.pwd);
     } catch (e) {
+      if (cancelToken?.isCancelled ?? false) return;
       if (!mounted) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(context.l10n.lanzouError(e))));
@@ -2571,14 +2894,21 @@ class _DrivePageState extends ConsumerState<DrivePage>
   }
 
   /// 显示文件夹的分享链接二维码；[share] 同上，属性弹窗取过就直接用。
-  Future<void> _showFolderQr(LzFolder folder, {ShareInfo? share}) async {
+  Future<void> _showFolderQr(
+    LzFolder folder, {
+    ShareInfo? share,
+    CancelToken? cancelToken,
+  }) async {
     final client = _activeClient();
     if (client == null) return;
     try {
-      final info = share ?? await client.shareInfoOfFolder(folder.id);
+      final info =
+          share ??
+          await client.shareInfoOfFolder(folder.id, cancelToken: cancelToken);
       if (!mounted) return;
       await _showQr(folder.name, info.url, info.pwd);
     } catch (e) {
+      if (cancelToken?.isCancelled ?? false) return;
       if (!mounted) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(context.l10n.lanzouError(e))));
@@ -2609,18 +2939,26 @@ class _DrivePageState extends ConsumerState<DrivePage>
   /// 取文件所在分页的最新条目（下载数等字段变化快，不做缓存）。
   ///
   /// 只扫描已经加载的前几页；找不到或出错时返回 null，由调用方沿用现有信息。
-  Future<LzFile?> _freshFileEntry(String fileId) async {
+  Future<LzFile?> _freshFileEntry(
+    String fileId, {
+    CancelToken? cancelToken,
+  }) async {
     final client = _activeClient();
     if (client == null) return null;
     final maxPage = math.max(1, math.min(_page, 3));
     for (var page = 1; page <= maxPage; page++) {
       try {
-        final result = await client.listFilesPage(_folderId, page);
+        final result = await client.listFilesPage(
+          _folderId,
+          page,
+          cancelToken: cancelToken,
+        );
         for (final item in result.files) {
           if (item.id == fileId) return item;
         }
         if (!result.hasMore) break;
       } catch (_) {
+        if (cancelToken?.isCancelled ?? false) throw cancelToken!.cancelError!;
         return null;
       }
     }
@@ -2750,15 +3088,23 @@ class _DrivePageState extends ConsumerState<DrivePage>
     final client = _activeClient();
     if (client == null) return;
     // 先取当前是否启用与密码，用于预填开关和输入框
-    final navigator = Navigator.of(context);
-    showLoadingDialog(context, context.l10n.resolving);
     String currentPwd = '';
     try {
-      currentPwd = (await client.shareInfoOfFile(file.id)).pwd;
+      final lookup = await runWithCancelableLoadingDialog<String>(
+        context,
+        text: context.l10n.resolving,
+        action: (cancelToken) async {
+          final info = await client.shareInfoOfFile(
+            file.id,
+            cancelToken: cancelToken,
+          );
+          return info.pwd;
+        },
+      );
+      if (lookup.canceled) return;
+      currentPwd = lookup.value ?? '';
     } catch (_) {
       // 取不到就按未启用处理
-    } finally {
-      navigator.pop();
     }
     if (!mounted) return;
     final result = await showPasswordDialog(
@@ -2844,15 +3190,23 @@ class _DrivePageState extends ConsumerState<DrivePage>
   Future<void> _setFolderPasswd(LzFolder folder) async {
     final client = _activeClient();
     if (client == null) return;
-    final navigator = Navigator.of(context);
-    showLoadingDialog(context, context.l10n.resolving);
     var currentPwd = '';
     try {
-      currentPwd = (await client.shareInfoOfFolder(folder.id)).pwd;
+      final lookup = await runWithCancelableLoadingDialog<String>(
+        context,
+        text: context.l10n.resolving,
+        action: (cancelToken) async {
+          final info = await client.shareInfoOfFolder(
+            folder.id,
+            cancelToken: cancelToken,
+          );
+          return info.pwd;
+        },
+      );
+      if (lookup.canceled) return;
+      currentPwd = lookup.value ?? '';
     } catch (_) {
       // 取不到就按未启用处理
-    } finally {
-      navigator.pop();
     }
     if (!mounted) return;
     final result = await showPasswordDialog(
@@ -3109,18 +3463,25 @@ class _DrivePageState extends ConsumerState<DrivePage>
   /// 直接复用可以省掉 2 个请求。
   /// 解析分享信息 + 直链并入队。返回值给属性弹窗用：false = 没入队
   /// （解析失败 / 未登录），调用方据此把「解析中」状态恢复原状。
-  Future<bool> _downloadOwnFile(LzFile file, {ShareInfo? share}) async {
+  Future<bool> _downloadOwnFile(
+    LzFile file, {
+    ShareInfo? share,
+    CancelToken? cancelToken,
+  }) async {
     final transfers = _transfers;
     final client = _activeClient();
     if (client == null) return false;
     final publicClient = ref.read(lanzouClientRegistryProvider).publicClient;
     final accountUid = _accounts.store.activeUid ?? '';
     try {
-      final info = share ?? await client.shareInfoOfFile(file.id);
+      final info =
+          share ??
+          await client.shareInfoOfFile(file.id, cancelToken: cancelToken);
       if (!mounted) return false;
       final direct = await publicClient.resolveFileShare(
         info.url,
         pwd: info.pwd,
+        cancelToken: cancelToken,
       );
       transfers.addDownload(
         url: direct.url,
@@ -3135,17 +3496,24 @@ class _DrivePageState extends ConsumerState<DrivePage>
       showAppToast(context, context.l10n.addedToQueue);
       return true;
     } catch (e) {
+      if (cancelToken?.isCancelled ?? false) return false;
       if (!mounted) return false;
       showAppToast(context, context.l10n.lanzouError(e));
       return false;
     }
   }
 
-  Future<void> _copyShareLink(LzFile file, {ShareInfo? share}) async {
+  Future<void> _copyShareLink(
+    LzFile file, {
+    ShareInfo? share,
+    CancelToken? cancelToken,
+  }) async {
     final client = _activeClient();
     if (client == null) return;
     try {
-      final info = share ?? await client.shareInfoOfFile(file.id);
+      final info =
+          share ??
+          await client.shareInfoOfFile(file.id, cancelToken: cancelToken);
       if (!mounted) return;
       await copyText(
         context,
@@ -3155,16 +3523,23 @@ class _DrivePageState extends ConsumerState<DrivePage>
         asToast: true,
       );
     } catch (e) {
+      if (cancelToken?.isCancelled ?? false) return;
       if (!mounted) return;
       showAppToast(context, context.l10n.lanzouError(e));
     }
   }
 
-  Future<void> _copyFolderShareLink(LzFolder folder, {ShareInfo? share}) async {
+  Future<void> _copyFolderShareLink(
+    LzFolder folder, {
+    ShareInfo? share,
+    CancelToken? cancelToken,
+  }) async {
     final client = _activeClient();
     if (client == null) return;
     try {
-      final info = share ?? await client.shareInfoOfFolder(folder.id);
+      final info =
+          share ??
+          await client.shareInfoOfFolder(folder.id, cancelToken: cancelToken);
       if (!mounted) return;
       await copyText(
         context,
@@ -3174,6 +3549,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
         asToast: true,
       );
     } catch (e) {
+      if (cancelToken?.isCancelled ?? false) return;
       if (!mounted) return;
       showAppToast(context, context.l10n.lanzouError(e));
     }
@@ -3184,46 +3560,64 @@ class _DrivePageState extends ConsumerState<DrivePage>
   Future<String?> _resolveFileDirectLink(
     LzFile file, {
     ShareInfo? share,
+    CancelToken? cancelToken,
   }) async {
     final client = _activeClient();
     if (client == null) return null;
     final publicClient = ref.read(lanzouClientRegistryProvider).publicClient;
-    final info = share ?? await client.shareInfoOfFile(file.id);
-    final direct = await publicClient.resolveFileShare(info.url, pwd: info.pwd);
+    final info =
+        share ??
+        await client.shareInfoOfFile(file.id, cancelToken: cancelToken);
+    final direct = await publicClient.resolveFileShare(
+      info.url,
+      pwd: info.pwd,
+      cancelToken: cancelToken,
+    );
     return direct.url;
   }
 
   /// 复制下载直链。
   Future<void> _copyDirectLink(LzFile file, {ShareInfo? share}) async {
-    // 直链要现解析（分享信息 + 直链两次请求）：给个「解析中…」等待弹窗，
-    // 和设置访问密码同一个样式
-    final navigator = Navigator.of(context);
-    showLoadingDialog(context, context.l10n.resolving);
-    String? url;
+    CancelableLoadingResult<String?> resolved;
     try {
-      url = await _resolveFileDirectLink(file, share: share);
+      resolved = await runWithCancelableLoadingDialog<String?>(
+        context,
+        text: context.l10n.resolving,
+        action: (cancelToken) => _resolveFileDirectLink(
+          file,
+          share: share,
+          cancelToken: cancelToken,
+        ),
+      );
     } catch (e) {
       if (mounted) showAppToast(context, context.l10n.lanzouError(e));
-    } finally {
-      navigator.pop();
+      return;
     }
+    if (resolved.canceled) return;
+    final url = resolved.value;
     if (!mounted || url == null) return;
     await copyText(context, url, asToast: true);
   }
 
   /// 用二维码显示下载直链。
   Future<void> _showDirectLinkQr(LzFile file, {ShareInfo? share}) async {
-    // 同上：解析期间先转圈
-    final navigator = Navigator.of(context);
-    showLoadingDialog(context, context.l10n.resolving);
-    String? url;
+    CancelableLoadingResult<String?> resolved;
     try {
-      url = await _resolveFileDirectLink(file, share: share);
+      resolved = await runWithCancelableLoadingDialog<String?>(
+        context,
+        text: context.l10n.resolving,
+        action: (cancelToken) => _resolveFileDirectLink(
+          file,
+          share: share,
+          cancelToken: cancelToken,
+        ),
+      );
     } catch (e) {
       if (mounted) showAppToast(context, context.l10n.lanzouError(e));
-    } finally {
-      navigator.pop();
+      return;
     }
+    if (resolved.canceled) return;
+    final url = resolved.value;
     if (!mounted || url == null) return;
     await _showQr(file.name, url, '');
   }
@@ -3231,16 +3625,20 @@ class _DrivePageState extends ConsumerState<DrivePage>
   /// 取消收藏（收藏表按分享链接去重，所以要先取回分享信息）。
   ///
   /// 返回是否成功：调用方（属性弹窗）要按结果回滚按钮的选中态。
-  Future<bool> _unfavoriteFile(LzFile file) async {
+  Future<bool> _unfavoriteFile(LzFile file, {CancelToken? cancelToken}) async {
     final client = _activeClient();
     if (client == null) return false;
     try {
-      final info = await client.shareInfoOfFile(file.id);
+      final info = await client.shareInfoOfFile(
+        file.id,
+        cancelToken: cancelToken,
+      );
       await _db.removeFavorite(info.url);
       if (!mounted) return false;
       showAppToast(context, context.l10n.unfavorited);
       return true;
     } catch (e) {
+      if (cancelToken?.isCancelled ?? false) return false;
       if (!mounted) return false;
       showAppToast(context, context.l10n.lanzouError(e));
       return false;
@@ -3248,16 +3646,23 @@ class _DrivePageState extends ConsumerState<DrivePage>
   }
 
   /// 取消收藏文件夹。
-  Future<bool> _unfavoriteFolder(LzFolder folder) async {
+  Future<bool> _unfavoriteFolder(
+    LzFolder folder, {
+    CancelToken? cancelToken,
+  }) async {
     final client = _activeClient();
     if (client == null) return false;
     try {
-      final info = await client.shareInfoOfFolder(folder.id);
+      final info = await client.shareInfoOfFolder(
+        folder.id,
+        cancelToken: cancelToken,
+      );
       await _db.removeFavorite(info.url);
       if (!mounted) return false;
       showAppToast(context, context.l10n.unfavorited);
       return true;
     } catch (e) {
+      if (cancelToken?.isCancelled ?? false) return false;
       if (!mounted) return false;
       showAppToast(context, context.l10n.lanzouError(e));
       return false;
@@ -3265,11 +3670,14 @@ class _DrivePageState extends ConsumerState<DrivePage>
   }
 
   /// 收藏文件。返回是否成功，供属性弹窗按结果回滚选中态。
-  Future<bool> _favoriteFile(LzFile file) async {
+  Future<bool> _favoriteFile(LzFile file, {CancelToken? cancelToken}) async {
     final client = _activeClient();
     if (client == null) return false;
     try {
-      final info = await client.shareInfoOfFile(file.id);
+      final info = await client.shareInfoOfFile(
+        file.id,
+        cancelToken: cancelToken,
+      );
       await _db.addFavorite(
         kind: 'shareFile',
         name: file.name,
@@ -3284,6 +3692,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
       showAppToast(context, context.l10n.favorited);
       return true;
     } catch (e) {
+      if (cancelToken?.isCancelled ?? false) return false;
       if (!mounted) return false;
       showAppToast(context, context.l10n.lanzouError(e));
       return false;
@@ -3291,11 +3700,17 @@ class _DrivePageState extends ConsumerState<DrivePage>
   }
 
   /// 收藏文件夹。返回是否成功，供属性弹窗按结果回滚选中态。
-  Future<bool> _favoriteFolder(LzFolder folder) async {
+  Future<bool> _favoriteFolder(
+    LzFolder folder, {
+    CancelToken? cancelToken,
+  }) async {
     final client = _activeClient();
     if (client == null) return false;
     try {
-      final info = await client.shareInfoOfFolder(folder.id);
+      final info = await client.shareInfoOfFolder(
+        folder.id,
+        cancelToken: cancelToken,
+      );
       await _db.addFavorite(
         kind: 'shareFolder',
         name: folder.name,
@@ -3310,6 +3725,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
       showAppToast(context, context.l10n.favorited);
       return true;
     } catch (e) {
+      if (cancelToken?.isCancelled ?? false) return false;
       if (!mounted) return false;
       showAppToast(context, context.l10n.lanzouError(e));
       return false;
@@ -5016,41 +5432,68 @@ class _FileInfoSheetState extends ConsumerState<_FileInfoSheet> {
   /// 解析失败恢复原状。
   bool _resolvingDownload = false;
 
+  final CancelToken _networkCancel = CancelToken();
+
   @override
   void initState() {
     super.initState();
     _refresh();
   }
 
+  @override
+  void dispose() {
+    _networkCancel.cancel('文件属性弹窗已关闭');
+    super.dispose();
+  }
+
   Future<void> _refresh() async {
     final client = widget.page._activeClient();
     final db = ref.read(appDbProvider);
     // 下载数：重新取文件所在分页的条目，命中后同步列表（找不到就沿用现值）
-    final fresh = await widget.page._freshFileEntry(widget.file.id);
+    LzFile? fresh;
+    try {
+      fresh = await widget.page._freshFileEntry(
+        widget.file.id,
+        cancelToken: _networkCancel,
+      );
+    } catch (_) {
+      if (_networkCancel.isCancelled) return;
+    }
     if (!mounted) return;
     if (fresh != null) {
+      final current = fresh;
       setState(() {
-        _file = fresh;
-        _name = fresh.name;
+        _file = current;
+        _name = current.name;
       });
-      widget.page._replaceFileEntry(fresh);
+      widget.page._replaceFileEntry(current);
     }
     if (client != null) {
       // 简介：每次都现取，不做缓存
       try {
-        final desc = await client.fileDesc(widget.file.id);
+        final desc = await client.fileDesc(
+          widget.file.id,
+          cancelToken: _networkCancel,
+        );
         if (mounted) setState(() => _desc = desc);
-      } catch (_) {}
+      } catch (_) {
+        if (_networkCancel.isCancelled) return;
+      }
       // 分享信息 + 收藏态：收藏表按分享链接去重，所以先取回分享信息再查；
       // 取回的这份顺便给下载 / 复制链接 / 二维码用
       try {
-        final info = await client.shareInfoOfFile(widget.file.id);
+        final info = await client.shareInfoOfFile(
+          widget.file.id,
+          cancelToken: _networkCancel,
+        );
         if (mounted) setState(() => _share = info);
         // 收藏表查不到（例如库不可用）就保持未知：收藏按钮继续置灰，
         // 但不影响已经拿到分享信息的几个按钮
         final favorite = await db.isFavorite(info.url);
         if (mounted) setState(() => _favorite = favorite);
-      } catch (_) {}
+      } catch (_) {
+        if (_networkCancel.isCancelled) return;
+      }
     }
     if (mounted) setState(() => _loading = false);
   }
@@ -5084,7 +5527,11 @@ class _FileInfoSheetState extends ConsumerState<_FileInfoSheet> {
   Future<void> _startDownload() async {
     if (_resolvingDownload) return;
     setState(() => _resolvingDownload = true);
-    await widget.page._downloadOwnFile(_currentFile, share: _share);
+    await widget.page._downloadOwnFile(
+      _currentFile,
+      share: _share,
+      cancelToken: _networkCancel,
+    );
     if (!mounted) return;
     // 成功的话任务已经入队（标记接管显示）；失败恢复原状
     setState(() => _resolvingDownload = false);
@@ -5202,13 +5649,13 @@ class _FileInfoSheetState extends ConsumerState<_FileInfoSheet> {
       if (direct) {
         page._showDirectLinkQr(file, share: _share);
       } else {
-        page._showFileQr(file, share: _share);
+        page._showFileQr(file, share: _share, cancelToken: _networkCancel);
       }
     } else {
       if (direct) {
         page._copyDirectLink(file, share: _share);
       } else {
-        page._copyShareLink(file, share: _share);
+        page._copyShareLink(file, share: _share, cancelToken: _networkCancel);
       }
     }
   }
@@ -5240,8 +5687,8 @@ class _FileInfoSheetState extends ConsumerState<_FileInfoSheet> {
     final file = _currentFile;
     setState(() => _favorite = checked);
     final ok = checked
-        ? await page._favoriteFile(file)
-        : await page._unfavoriteFile(file);
+        ? await page._favoriteFile(file, cancelToken: _networkCancel)
+        : await page._unfavoriteFile(file, cancelToken: _networkCancel);
     if (!mounted || ok) return;
     setState(() => _favorite = !checked);
   }
@@ -5480,12 +5927,19 @@ class _FolderInfoSheetState extends ConsumerState<_FolderInfoSheet> {
   /// 打开弹窗时取回的分享信息：复制链接 / 二维码直接复用，不再各请求一次。
   ShareInfo? _share;
   late bool _hasPwd = widget.folder.hasPwd;
+  final CancelToken _networkCancel = CancelToken();
 
   @override
   void initState() {
     super.initState();
     _loadPinned();
     _fetch();
+  }
+
+  @override
+  void dispose() {
+    _networkCancel.cancel('文件夹属性弹窗已关闭');
+    super.dispose();
   }
 
   /// 读「是否已固定到快速访问」。读不到就按未固定显示——属性弹窗的其它
@@ -5519,9 +5973,13 @@ class _FolderInfoSheetState extends ConsumerState<_FolderInfoSheet> {
     switch (action) {
       case _FolderQuickAction.link:
         // 不关弹窗：复制完弹轻提示，可以接着扫码 / 收藏
-        page._copyFolderShareLink(folder, share: _share);
+        page._copyFolderShareLink(
+          folder,
+          share: _share,
+          cancelToken: _networkCancel,
+        );
       case _FolderQuickAction.qr:
-        page._showFolderQr(folder, share: _share);
+        page._showFolderQr(folder, share: _share, cancelToken: _networkCancel);
       case _FolderQuickAction.quickAccess:
         // 开关型留在弹窗里，选中态即时更新（提示条不参与）
         _toggleQuickAccess();
@@ -5539,8 +5997,8 @@ class _FolderInfoSheetState extends ConsumerState<_FolderInfoSheet> {
     final folder = _folder;
     setState(() => _favorite = checked);
     final ok = checked
-        ? await page._favoriteFolder(folder)
-        : await page._unfavoriteFolder(folder);
+        ? await page._favoriteFolder(folder, cancelToken: _networkCancel)
+        : await page._unfavoriteFolder(folder, cancelToken: _networkCancel);
     if (!mounted || ok) return;
     setState(() => _favorite = !checked);
   }
@@ -5600,7 +6058,10 @@ class _FolderInfoSheetState extends ConsumerState<_FolderInfoSheet> {
     final db = ref.read(appDbProvider);
     // 简介：每次打开都现取，不做缓存
     try {
-      final info = await client?.shareInfoOfFolder(id);
+      final info = await client?.shareInfoOfFolder(
+        id,
+        cancelToken: _networkCancel,
+      );
       if (info != null && info.desc.isNotEmpty && mounted) {
         setState(() => _desc = info.desc);
       }
@@ -5613,10 +6074,12 @@ class _FolderInfoSheetState extends ConsumerState<_FolderInfoSheet> {
         final favorite = await db.isFavorite(info.url);
         if (mounted) setState(() => _favorite = favorite);
       }
-    } catch (_) {}
-    // 统计信息：同样现取；接口取不到时回退到遍历目录统计
+    } catch (_) {
+      if (_networkCancel.isCancelled) return;
+    }
+    // 统计信息：同样现取；接口失败时保持 null，界面显示「未知」。
     try {
-      final stats = await client?.folderStats(id);
+      final stats = await client?.folderStats(id, cancelToken: _networkCancel);
       // 这个方法是 initState 里同步调用的：initState 结束前读 context.l10n 在
       // debug 下会抛 "called before ...initState() completed"，导致 _fetch 中断、
       // _loading 永远为 true（属性弹窗一直转圈）。放到首次 await 之后再取。
@@ -5629,22 +6092,10 @@ class _FolderInfoSheetState extends ConsumerState<_FolderInfoSheet> {
           _folderSize = stats.size.isEmpty ? null : stats.size;
           _fileCount = stats.count;
         });
-      } else {
-        final files = client == null
-            ? const <LzFile>[]
-            : await client.listFiles(id);
-        if (mounted) {
-          final total = files.fold<int>(
-            0,
-            (sum, file) => sum + lzSizeToBytes(file.size),
-          );
-          setState(() {
-            _folderSize = formatBytes(total);
-            _fileCount = files.length;
-          });
-        }
       }
-    } catch (_) {}
+    } catch (_) {
+      if (_networkCancel.isCancelled) return;
+    }
     if (mounted) setState(() => _loading = false);
   }
 

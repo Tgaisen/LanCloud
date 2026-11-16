@@ -1365,7 +1365,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get move => '移动';
 
   @override
-  String get moveSubtitle => '把选中的文件/文件夹移动到其他目录';
+  String get moveSubtitle => '把选中的文件移动到其他目录';
 
   @override
   String get editDesc => '修改简介';
