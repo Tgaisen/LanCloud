@@ -1658,18 +1658,28 @@ class LanzouClient {
   /// 这里退避重试几次，避免偶发失败冒到界面上（真机上表现为底部闪「重试」）。
   Future<({List<ShareFileItem> files, bool hasMore})> fetchShareFolderFiles(
     ShareFolderPaging paging,
-    int page,
-  ) async {
+    int page, {
+    CancelToken? cancelToken,
+  }) async {
     const maxAttempts = 4;
+    final url = '${paging.base}/filemoreajax.php?file=${paging.fid}';
+
+    void throwIfCancelled() {
+      final token = cancelToken;
+      if (token == null || !token.isCancelled) return;
+      throw token.cancelError!;
+    }
+
     // 服务端忙时会回「请刷新，重试N」，要求把 N 填回 rep 再请求一次；
     // 其它「稍后再试」的情况（zt=4 / 未知状态）就自己把 rep 加一。
     var rep = 0;
     for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+      throwIfCancelled();
       final lastAttempt = attempt == maxAttempts;
       final Map<String, dynamic> map;
       try {
         final resp = await dio.post<String>(
-          '${paging.base}/filemoreajax.php?file=${paging.fid}',
+          url,
           data: <String, dynamic>{
             'lx': paging.lx,
             'fid': paging.fid,
@@ -1683,9 +1693,11 @@ class LanzouClient {
             if (paging.pwd.isNotEmpty) 'pwd': paging.pwd,
           },
           options: _options(referer: paging.referer),
+          cancelToken: cancelToken,
         );
         map = _asMap(resp.data);
       } catch (e) {
+        if (cancelToken?.isCancelled ?? false) rethrow;
         // 空响应 / 挑战页这类解析失败同样是「一时拿不到」
         if (lastAttempt) rethrow;
         await Future<void>.delayed(Duration(milliseconds: 400 * attempt));
@@ -1740,6 +1752,7 @@ class LanzouClient {
       // zt=4 / 未知状态 / 「请刷新」：稍等后按新的 rep 重试同一页
       if (lastAttempt) break;
       await Future<void>.delayed(Duration(milliseconds: 400 * attempt));
+      throwIfCancelled();
     }
     throw const LanzouException(
       '获取分享文件列表失败',

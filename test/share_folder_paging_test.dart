@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart' show CancelToken;
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -32,8 +33,9 @@ class _FakeClient extends LanzouClient {
   @override
   Future<({List<ShareFileItem> files, bool hasMore})> fetchShareFolderFiles(
     ShareFolderPaging paging,
-    int page,
-  ) async {
+    int page, {
+    CancelToken? cancelToken,
+  }) async {
     calls.add(page);
     if (page == 2) {
       return (
@@ -62,8 +64,9 @@ class _FlakyClient extends LanzouClient {
   @override
   Future<({List<ShareFileItem> files, bool hasMore})> fetchShareFolderFiles(
     ShareFolderPaging paging,
-    int page,
-  ) async {
+    int page, {
+    CancelToken? cancelToken,
+  }) async {
     calls.add(page);
     if (page == 2 && failures > 0) {
       failures -= 1;
@@ -78,6 +81,8 @@ class _ControlledPagingClient extends LanzouClient {
   _ControlledPagingClient() : super(uid: '0');
 
   final List<int> calls = [];
+  CancelToken? page2CancelToken;
+  CancelToken? page3CancelToken;
   final Completer<({List<ShareFileItem> files, bool hasMore})> page2 =
       Completer<({List<ShareFileItem> files, bool hasMore})>();
   final Completer<({List<ShareFileItem> files, bool hasMore})> page3 =
@@ -86,9 +91,12 @@ class _ControlledPagingClient extends LanzouClient {
   @override
   Future<({List<ShareFileItem> files, bool hasMore})> fetchShareFolderFiles(
     ShareFolderPaging paging,
-    int page,
-  ) {
+    int page, {
+    CancelToken? cancelToken,
+  }) {
     calls.add(page);
+    if (page == 2) page2CancelToken = cancelToken;
+    if (page == 3) page3CancelToken = cancelToken;
     return switch (page) {
       2 => page2.future,
       3 => page3.future,
@@ -338,6 +346,7 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('load-pages-cancel')));
     await tester.pump();
+    expect(client.page2CancelToken?.isCancelled, isTrue);
     client.page2.complete((
       files: [
         ShareFileItem(

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart' show CancelToken;
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -70,6 +71,7 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
   int _page = 1;
   late bool _hasMore = widget.folder.hasMore;
   bool _loadingMore = false;
+  CancelToken? _pageLoadCancelToken;
 
   /// 上一次拉取失败且还有下一页：底部给出「重试」入口，
   /// 不能一直挂着「加载下一页」的转圈（转圈只代表"正在加载"）。
@@ -103,6 +105,7 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
 
   @override
   void dispose() {
+    _pageLoadCancelToken?.cancel('页面已销毁');
     _scroll.dispose();
     _search.dispose();
     _enter.dispose();
@@ -121,6 +124,7 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
   Future<void> _loadMore({
     bool auto = false,
     bool Function()? shouldCommit,
+    CancelToken? cancelToken,
   }) async {
     final paging = widget.folder.paging;
     if (paging == null || _loadingMore || !_hasMore) return;
@@ -133,7 +137,7 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
       final next = await ref
           .read(lanzouClientRegistryProvider)
           .publicClient
-          .fetchShareFolderFiles(paging, _page + 1);
+          .fetchShareFolderFiles(paging, _page + 1, cancelToken: cancelToken);
       if (!mounted) return;
       if (!(shouldCommit?.call() ?? true)) {
         setState(() => _loadingMore = false);
@@ -204,6 +208,8 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
     if (widget.folder.paging == null) return;
 
     _autoLoading = true;
+    final cancelToken = CancelToken();
+    _pageLoadCancelToken = cancelToken;
     final loadedPages = ValueNotifier<int>(_page);
     var cancelRequested = false;
     var progressOpen = true;
@@ -211,7 +217,10 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
     final progressDone = showPageLoadProgressDialog(
       context,
       loadedPages: loadedPages,
-      onCancel: () => cancelRequested = true,
+      onCancel: () {
+        cancelRequested = true;
+        cancelToken.cancel('用户取消');
+      },
     );
     unawaited(
       progressDone.then(
@@ -224,7 +233,10 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
     try {
       while (mounted && !cancelRequested && _hasMore) {
         final before = _page;
-        await _loadMore(shouldCommit: () => !cancelRequested);
+        await _loadMore(
+          shouldCommit: () => !cancelRequested,
+          cancelToken: cancelToken,
+        );
         if (!mounted || cancelRequested) break;
         loadedPages.value = _page;
         if (_page == before) {
@@ -240,6 +252,9 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
         }
       }
     } finally {
+      if (identical(_pageLoadCancelToken, cancelToken)) {
+        _pageLoadCancelToken = null;
+      }
       _autoLoading = false;
       if (progressOpen && mounted && navigator.canPop()) {
         navigator.pop();
