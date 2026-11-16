@@ -718,6 +718,7 @@
   "notifChannelDone": "Transfers finished",
   "notifChannelDoneDesc": "Alerts when downloads and uploads finish or fail",
   "favoriteCheckProgressTitle": "Checking favorite folder updates",
+  "favoriteAccessCheckProgressTitle": "Checking favorite items for availability",
   "favoriteCheckProgressBody": "{completed}/{total} · {name}",
   "@favoriteCheckProgressBody": {
     "placeholders": {

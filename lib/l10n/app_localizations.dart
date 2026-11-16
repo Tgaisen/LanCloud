@@ -3347,6 +3347,12 @@ abstract class AppLocalizations {
   /// **'正在检测收藏夹更新'**
   String get favoriteCheckProgressTitle;
 
+  /// No description provided for @favoriteAccessCheckProgressTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在检测收藏夹失效项目'**
+  String get favoriteAccessCheckProgressTitle;
+
   /// No description provided for @favoriteCheckProgressBody.
   ///
   /// In zh, this message translates to:

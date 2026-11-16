@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart' show CancelToken, DioException, DioExceptionType;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,6 +14,11 @@ import 'favorite_check_gateway.dart';
 import 'favorite_monitor_reporter.dart';
 
 typedef FavoriteMonitorClock = DateTime Function();
+typedef FavoriteCheckProgressCallback = void Function(
+  int completed,
+  int total,
+  String name,
+);
 
 final favoriteMonitorClockProvider = Provider<FavoriteMonitorClock>(
   (_) => DateTime.now,
@@ -216,53 +222,96 @@ class FavoriteMonitor extends Notifier<FavoriteMonitorState> {
     return await checkFolders() != null;
   }
 
+  /// 当前设置范围下预计要检测的收藏文件夹数量，用于先确定批量弹窗总数。
+  Future<int> updateCheckTargetCount() async {
+    await initialize();
+    final favorites = await _db.favorites();
+    return _updateTargets(favorites).length;
+  }
+
+  /// 当前收藏中预计要检查分享可用性的项目数量。
+  Future<int> accessCheckTargetCount() async {
+    await initialize();
+    final favorites = await _db.favorites();
+    return _accessTargets(favorites).length;
+  }
+
   /// 按设置范围检测收藏文件夹更新。
-  Future<FavoriteMonitorRunResult?> checkFolders() async {
+  Future<FavoriteMonitorRunResult?> checkFolders({
+    FavoriteCheckProgressCallback? onProgress,
+    CancelToken? cancelToken,
+  }) async {
     if (!_reserveRun()) return null;
     try {
       await initialize();
-      final settings = _settings;
-      final scopedRefs = settings.checkRefs;
       final favorites = await _db.favorites();
-      final targets = [
-        for (final favorite in favorites)
-          if (favorite.kind == 'shareFolder' &&
-              (settings.checkAll || scopedRefs.contains(favorite.ref)))
-            favorite,
-      ];
-      return await _run(targets, updateFolders: true);
+      return await _run(
+        _updateTargets(favorites),
+        operation: FavoriteCheckOperation.folderUpdates,
+        onProgress: onProgress,
+        cancelToken: cancelToken,
+      );
     } finally {
       _finishReservedRun();
     }
   }
 
   /// 手动检测单个收藏文件夹；与批量任务共用同一把互斥锁。
-  Future<FavoriteMonitorRunResult?> checkFolder(FavoriteItem favorite) async {
+  Future<FavoriteMonitorRunResult?> checkFolder(
+    FavoriteItem favorite, {
+    FavoriteCheckProgressCallback? onProgress,
+    CancelToken? cancelToken,
+  }) async {
     if (favorite.kind != 'shareFolder' || !_reserveRun()) return null;
     try {
       await initialize();
-      return await _run([favorite], updateFolders: true);
+      return await _run(
+        [favorite],
+        operation: FavoriteCheckOperation.folderUpdates,
+        onProgress: onProgress,
+        cancelToken: cancelToken,
+      );
     } finally {
       _finishReservedRun();
     }
   }
 
   /// 检测所有分享文件 / 文件夹是否仍可访问。
-  Future<FavoriteMonitorRunResult?> checkAllShareAccess() async {
+  Future<FavoriteMonitorRunResult?> checkAllShareAccess({
+    FavoriteCheckProgressCallback? onProgress,
+    CancelToken? cancelToken,
+  }) async {
     if (!_reserveRun()) return null;
     try {
       await initialize();
       final favorites = await _db.favorites();
-      final targets = [
-        for (final favorite in favorites)
-          if (favorite.kind == 'shareFolder' || favorite.kind == 'shareFile')
-            favorite,
-      ];
-      return await _run(targets, updateFolders: false);
+      return await _run(
+        _accessTargets(favorites),
+        operation: FavoriteCheckOperation.shareAccess,
+        onProgress: onProgress,
+        cancelToken: cancelToken,
+      );
     } finally {
       _finishReservedRun();
     }
   }
+
+  List<FavoriteItem> _updateTargets(List<FavoriteItem> favorites) {
+    final settings = _settings;
+    final scopedRefs = settings.checkRefs;
+    return [
+      for (final favorite in favorites)
+        if (favorite.kind == 'shareFolder' &&
+            (settings.checkAll || scopedRefs.contains(favorite.ref)))
+          favorite,
+    ];
+  }
+
+  List<FavoriteItem> _accessTargets(List<FavoriteItem> favorites) => [
+    for (final favorite in favorites)
+      if (favorite.kind == 'shareFolder' || favorite.kind == 'shareFile')
+        favorite,
+  ];
 
   bool _reserveRun() {
     if (state.checking || _runReserved) return false;
@@ -279,8 +328,11 @@ class FavoriteMonitor extends Notifier<FavoriteMonitorState> {
 
   Future<FavoriteMonitorRunResult?> _run(
     List<FavoriteItem> targets, {
-    required bool updateFolders,
+    required FavoriteCheckOperation operation,
+    FavoriteCheckProgressCallback? onProgress,
+    CancelToken? cancelToken,
   }) async {
+    final updateFolders = operation == FavoriteCheckOperation.folderUpdates;
     final startedAt = _now;
     state = state.copyWith(
       checking: true,
@@ -290,7 +342,9 @@ class FavoriteMonitor extends Notifier<FavoriteMonitorState> {
       lastAttemptAt: startedAt,
     );
     await _persistLastAttempt(startedAt);
-    await _safeReporter(() => _reporter.start(total: targets.length));
+    await _safeReporter(
+      () => _reporter.start(total: targets.length, operation: operation),
+    );
 
     var succeeded = 0;
     var failed = 0;
@@ -299,7 +353,7 @@ class FavoriteMonitor extends Notifier<FavoriteMonitorState> {
     var completed = 0;
     try {
       for (final target in targets) {
-        if (_disposed) break;
+        if (_disposed || (cancelToken?.isCancelled ?? false)) break;
         final favorite = await _db.favoriteByRef(target.ref);
         if (favorite == null) {
           completed += 1;
@@ -310,11 +364,13 @@ class FavoriteMonitor extends Notifier<FavoriteMonitorState> {
           completed: completed,
           currentName: favorite.displayName,
         );
+        onProgress?.call(completed + 1, targets.length, favorite.displayName);
         await _safeReporter(
           () => _reporter.progress(
             completed: completed,
             total: targets.length,
             name: favorite.displayName,
+            operation: operation,
           ),
         );
 
@@ -325,9 +381,14 @@ class FavoriteMonitor extends Notifier<FavoriteMonitorState> {
             favorite,
             checkedAt: checkedAt,
             updateSnapshot: updateFolders,
+            cancelToken: cancelToken,
           );
         } else if (favorite.kind == 'shareFile') {
-          targetResult = await _checkFileTarget(favorite, checkedAt: checkedAt);
+          targetResult = await _checkFileTarget(
+            favorite,
+            checkedAt: checkedAt,
+            cancelToken: cancelToken,
+          );
         }
         completed += 1;
         if (targetResult.succeeded) {
@@ -338,6 +399,14 @@ class FavoriteMonitor extends Notifier<FavoriteMonitorState> {
         if (targetResult.updated) updated += 1;
         if (targetResult.invalid) invalid += 1;
         state = state.copyWith(completed: completed, currentName: '');
+      }
+    } on DioException catch (error, stack) {
+      if (!(cancelToken?.isCancelled ?? false) ||
+          error.type != DioExceptionType.cancel) {
+        ref.read(appLogProvider).error('favorite_monitor_run', error, stack);
+        final remaining = targets.length - completed;
+        failed += remaining < 0 ? 0 : remaining;
+        completed = targets.length;
       }
     } catch (error, stack) {
       ref.read(appLogProvider).error('favorite_monitor_run', error, stack);
@@ -378,11 +447,13 @@ class FavoriteMonitor extends Notifier<FavoriteMonitorState> {
     FavoriteItem favorite, {
     required int checkedAt,
     required bool updateSnapshot,
+    CancelToken? cancelToken,
   }) async {
     try {
       final folder = await _gateway.resolveFolder(
         url: favorite.ref,
         pwd: favorite.pwd,
+        cancelToken: cancelToken,
       );
       final snapshot = favoriteFolderSnapshotFromDetail(
         folder,
@@ -425,6 +496,7 @@ class FavoriteMonitor extends Notifier<FavoriteMonitorState> {
       }
       return (succeeded: true, updated: hasUpdate, invalid: false);
     } catch (error, stack) {
+      if (cancelToken?.isCancelled ?? false) rethrow;
       final status = await _recordAccessError(
         favorite,
         error,
@@ -442,9 +514,14 @@ class FavoriteMonitor extends Notifier<FavoriteMonitorState> {
   Future<({bool succeeded, bool updated, bool invalid})> _checkFileTarget(
     FavoriteItem favorite, {
     required int checkedAt,
+    CancelToken? cancelToken,
   }) async {
     try {
-      await _gateway.validateFile(url: favorite.ref, pwd: favorite.pwd);
+      await _gateway.validateFile(
+        url: favorite.ref,
+        pwd: favorite.pwd,
+        cancelToken: cancelToken,
+      );
       await _db.saveFavoriteShareStatus(
         id: favorite.id,
         status: FavoriteShareStatus.valid,
@@ -452,6 +529,7 @@ class FavoriteMonitor extends Notifier<FavoriteMonitorState> {
       );
       return (succeeded: true, updated: false, invalid: false);
     } catch (error, stack) {
+      if (cancelToken?.isCancelled ?? false) rethrow;
       final status = await _recordAccessError(
         favorite,
         error,

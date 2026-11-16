@@ -51,10 +51,10 @@
 | `TransferDependencies` | `core/transfer/transfer_dependencies.dart` | 四个传输端口组成的显式应用级依赖集合；生产入口直接构造 |
 | `transferManagerProvider` | `core/transfer/transfer_manager_provider.dart` | 应用级、非 autoDispose 的 `TransferManager` 唯一实例；容器负责释放 |
 | `UpdateService` | `core/update/update_service.dart` | `Notifier<UpdateState>`；更新检查、缓存、失败冷却和一次性提醒的唯一所有者 |
-| `FavoriteMonitor` | `core/favorites/favorite_monitor.dart` | 收藏文件夹首项快照、更新 / 失效检测、启动补检和批量互斥的唯一任务所有者 |
+| `FavoriteMonitor` | `core/favorites/favorite_monitor.dart` | 收藏文件夹首项快照、更新 / 失效检测、启动补检、批量互斥与取消传播的唯一任务所有者 |
 | `FavoriteCheckGateway` | `core/favorites/favorite_check_gateway.dart` | 收藏检测的公开分享探测端口；文件夹走 `resolveFolderShare`，文件走分享页校验 |
-| `FavoriteMonitorReporter` | `core/favorites/favorite_monitor_reporter.dart` | 检测进度、更新通知和前台保活的窄副作用端口；测试使用 no-op 实现 |
-| `AppFavoriteMonitorReporter` | `core/favorites/favorite_monitor_reporter_adapter.dart` | 组合通知服务与前台服务租约的生产 reporter |
+| `FavoriteMonitorReporter` | `core/favorites/favorite_monitor_reporter.dart` | 按更新 / 失效模式报告检测进度、更新通知和前台保活的窄副作用端口；测试使用 no-op 实现 |
+| `AppFavoriteMonitorReporter` | `core/favorites/favorite_monitor_reporter_adapter.dart` | 组合通知服务与前台服务租约，并为更新 / 失效检测选择对应进度标题的生产 reporter |
 | `FavoriteMonitorSettingsState` | `core/favorite_monitor_settings_state.dart` | 自动检测开关、范围、频率和更新通知开关的读写边界 |
 | `ForegroundTaskCoordinator` | `core/foreground_task_coordinator.dart` | 传输、收藏检测与 WebDAV 备份共享的唯一前台服务；按 reason 持有，最后一个释放后停止 |
 | `BackupService` | `core/backup/backup_service.dart` | 本地 / WebDAV 备份恢复服务；自动与手动备份共用 single-flight，应用入口通过 `backupServiceProvider` 暴露与自动备份共用的同一实例 |

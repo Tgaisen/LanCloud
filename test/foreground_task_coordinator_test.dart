@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/favorites/favorite_monitor_reporter_adapter.dart';
+import 'package:lancloud/core/favorites/favorite_monitor_reporter.dart';
 import 'package:lancloud/core/foreground_task_coordinator.dart';
 import 'package:lancloud/core/notifications.dart';
 
@@ -78,7 +79,10 @@ void main() {
       foregroundTasks: coordinator,
     );
 
-    await reporter.start(total: 3);
+    await reporter.start(
+      total: 3,
+      operation: FavoriteCheckOperation.folderUpdates,
+    );
     expect(coordinator.activeReasons, {ForegroundTaskReason.favoriteCheck});
     expect(backend.events.single, 'start:前台服务运行中:点按打开应用');
 

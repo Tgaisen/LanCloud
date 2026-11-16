@@ -471,6 +471,7 @@ class NotificationService
   static const String favoriteUpdateGroupKey = 'favorite_folder_updates';
 
   Future<void> showFavoriteCheckProgress({
+    required String title,
     required int completed,
     required int total,
     required String name,
@@ -479,7 +480,7 @@ class NotificationService
     final strings = i18n;
     await _plugin.show(
       id: favoriteCheckProgressNotificationId,
-      title: strings?.favoriteCheckProgressTitle ?? '正在检测收藏夹更新',
+      title: title,
       body:
           strings?.favoriteCheckProgressBody(completed, total, name) ??
           '$completed/$total · $name',

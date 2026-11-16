@@ -1789,6 +1789,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get favoriteCheckProgressTitle => '正在检测收藏夹更新';
 
   @override
+  String get favoriteAccessCheckProgressTitle => '正在检测收藏夹失效项目';
+
+  @override
   String favoriteCheckProgressBody(int completed, int total, String name) {
     return '$completed/$total · $name';
   }

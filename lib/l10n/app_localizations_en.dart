@@ -1861,6 +1861,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get favoriteCheckProgressTitle => 'Checking favorite folder updates';
 
   @override
+  String get favoriteAccessCheckProgressTitle =>
+      'Checking favorite items for availability';
+
+  @override
   String favoriteCheckProgressBody(int completed, int total, String name) {
     return '$completed/$total · $name';
   }
