@@ -1554,6 +1554,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get newFavorite => 'New favorite';
 
   @override
+  String get clearFavoriteUpdateFlags => 'Clear update markers';
+
+  @override
   String get moreActions => 'More actions';
 
   @override

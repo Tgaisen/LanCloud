@@ -577,6 +577,7 @@
   "directLinkQr": "Direct link QR code",
   "addFavorite": "Add to favorites",
   "newFavorite": "New favorite",
+  "clearFavoriteUpdateFlags": "Clear update markers",
   "moreActions": "More actions",
   "freeAccountPasswordNote": "Free accounts can only set a password, not remove it",
   "descUpdated": "Description updated",

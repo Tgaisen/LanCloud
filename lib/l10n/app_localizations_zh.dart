@@ -1492,6 +1492,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get newFavorite => '新增收藏';
 
   @override
+  String get clearFavoriteUpdateFlags => '消除更新标志';
+
+  @override
   String get moreActions => '更多操作';
 
   @override

@@ -384,6 +384,56 @@ void main() {
     expect(favorite.shareStatus, FavoriteShareStatus.valid);
   });
 
+  test('批量消除文件夹更新标志时保留快照并只通知一次刷新', () async {
+    final db = AppDb.instance;
+    const firstRef = 'https://share.example/read-all-first';
+    const secondRef = 'https://share.example/read-all-second';
+    await db.addFavorite(kind: 'shareFolder', name: '更新文件夹 1', ref: firstRef);
+    await db.addFavorite(kind: 'shareFolder', name: '更新文件夹 2', ref: secondRef);
+    final favorites = await db.favorites();
+    final first = favorites.singleWhere((item) => item.ref == firstRef);
+    final second = favorites.singleWhere((item) => item.ref == secondRef);
+    const firstSnapshot = HeadFavoriteFolderSnapshot(
+      head: FavoriteFolderHead(
+        remoteId: 'first',
+        name: 'first.zip',
+        time: '2026-11-16',
+        size: '1 M',
+      ),
+      checkedAt: 101,
+    );
+    const secondSnapshot = EmptyFavoriteFolderSnapshot(checkedAt: 202);
+    await db.saveFavoriteFolderSnapshot(
+      id: first.id,
+      snapshot: firstSnapshot,
+      hasUpdate: true,
+      updateAt: 301,
+    );
+    await db.saveFavoriteFolderSnapshot(
+      id: second.id,
+      snapshot: secondSnapshot,
+      hasUpdate: true,
+      updateAt: 302,
+    );
+
+    final revision = db.revision.value;
+    expect(await db.clearFavoriteFolderUpdates(), 2);
+    expect(db.revision.value, revision + 1);
+
+    final cleared = await db.favorites();
+    final clearedFirst = cleared.singleWhere((item) => item.ref == firstRef);
+    final clearedSecond = cleared.singleWhere((item) => item.ref == secondRef);
+    expect(clearedFirst.folderHasUpdate, isFalse);
+    expect(clearedFirst.folderUpdateAt, isNull);
+    expect(clearedFirst.folderSnapshot?.sameAs(firstSnapshot), isTrue);
+    expect(clearedSecond.folderHasUpdate, isFalse);
+    expect(clearedSecond.folderUpdateAt, isNull);
+    expect(clearedSecond.folderSnapshot?.sameAs(secondSnapshot), isTrue);
+
+    expect(await db.clearFavoriteFolderUpdates(), 0);
+    expect(db.revision.value, revision + 1);
+  });
+
   test('修改收藏链接会清空旧分享的检测快照和状态', () async {
     final db = AppDb.instance;
     const ref = 'https://share.example/old-folder';

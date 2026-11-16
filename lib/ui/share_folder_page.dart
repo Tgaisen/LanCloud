@@ -178,6 +178,11 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
         _fillViewportIfNeeded(immediate: true);
       }
     } finally {
+      // 取消时 Dio 路径会提前 return，不能只在成功 / 失败分支复位；
+      // 否则底部会一直停在加载转圈上。
+      if (mounted && token.isCancelled && _loadingMore) {
+        setState(() => _loadingMore = false);
+      }
       if (ownsToken && identical(_pageLoadCancelToken, token)) {
         _pageLoadCancelToken = null;
       }
@@ -227,6 +232,9 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
       context,
       loadedPages: loadedPages,
       onCancel: () {
+        // 弹窗自身会先 pop；同步清掉此标记，避免 finally 把它当成仍开着
+        // 的进度弹窗再 pop 一次，从而误退出下面的分享文件夹页面。
+        progressOpen = false;
         cancelRequested = true;
         cancelToken.cancel('用户取消');
       },
@@ -277,6 +285,7 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
         navigator.pop();
       }
       await progressDone;
+      loadedPages.dispose();
     }
   }
 

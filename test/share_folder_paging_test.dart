@@ -97,11 +97,18 @@ class _ControlledPagingClient extends LanzouClient {
     calls.add(page);
     if (page == 2) page2CancelToken = cancelToken;
     if (page == 3) page3CancelToken = cancelToken;
-    return switch (page) {
+    final result = switch (page) {
       2 => page2.future,
       3 => page3.future,
       _ => Future.value((files: const <ShareFileItem>[], hasMore: false)),
     };
+    if (cancelToken == null) return result;
+    Future<({List<ShareFileItem> files, bool hasMore})> canceled() async {
+      final error = await cancelToken.whenCancel;
+      throw error;
+    }
+
+    return Future.any([result, canceled()]);
   }
 }
 
@@ -135,9 +142,15 @@ Future<void> pumpPage(
   required LanzouClient client,
   required FolderShareDetail folder,
   bool settle = true,
+  bool pushFromHost = false,
 }) async {
   final transfers = buildTransferManagerForEnvironment(environment);
   final clients = LanzouClientRegistry(factory: (_) => client);
+  final page = ShareFolderPage(
+    folder: folder,
+    link: 'https://example.com/s/abc',
+    pwd: '',
+  );
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = const Size(400, 700);
   addTearDown(tester.view.reset);
@@ -159,15 +172,28 @@ Future<void> pumpPage(
         localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         locale: const Locale('zh'),
-        home: ShareFolderPage(
-          folder: folder,
-          link: 'https://example.com/s/abc',
-          pwd: '',
-        ),
+        home: pushFromHost
+            ? Builder(
+                builder: (context) => Scaffold(
+                  body: Center(
+                    child: TextButton(
+                      onPressed: () => Navigator.of(context)
+                          .push(MaterialPageRoute<void>(builder: (_) => page)),
+                      child: const Text('打开分享'),
+                    ),
+                  ),
+                ),
+              )
+            : page,
       ),
     ),
   );
   await tester.pump();
+  if (pushFromHost) {
+    await tester.tap(find.text('打开分享'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+  }
   if (settle) await tester.pumpAndSettle();
 }
 
@@ -363,6 +389,52 @@ void main() {
     expect(find.text('cancelled-page.txt'), findsNothing);
     expect(client.calls, [2]);
     expect(find.text('已加载 1 页'), findsNothing);
+  });
+
+  testWidgets('分享文件夹：取消加载全部后保留当前页面和已加载内容', (tester) async {
+    final client = _ControlledPagingClient();
+    final environment = AppEnvironment();
+    environment.settingsState.store.loadAllPages = true;
+    addTearDown(environment.dispose);
+    await pumpPage(
+      tester,
+      environment: environment,
+      client: client,
+      folder: _folder(firstPageFiles: 3),
+      settle: false,
+      pushFromHost: true,
+    );
+
+    expect(client.calls, [2]);
+    expect(find.text('已加载 1 页'), findsOneWidget);
+
+    client.page2.complete((
+      files: [
+        ShareFileItem(
+          name: 'kept-page.txt',
+          time: '',
+          size: '1 M',
+          url: 'https://example.com/kept',
+        ),
+      ],
+      hasMore: true,
+    ));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 650));
+    expect(client.calls, [2, 3]);
+    expect(find.text('已加载 2 页'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('load-pages-cancel')));
+    await tester.pump();
+    expect(client.page3CancelToken?.isCancelled, isTrue);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ShareFolderPage), findsOneWidget);
+    expect(find.text('已加载 2 页'), findsNothing);
+    expect(find.text('kept-page.txt'), findsOneWidget);
+
+    client.page3.complete((files: const <ShareFileItem>[], hasMore: false));
+    await tester.pumpAndSettle();
   });
 
   testWidgets('分享文件夹：长列表只构建可见条目（懒加载）', (tester) async {
