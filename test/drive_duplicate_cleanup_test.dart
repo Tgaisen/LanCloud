@@ -121,6 +121,18 @@ Future<void> _openCleanup(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> _smoothDrag(
+  WidgetTester tester,
+  TestGesture gesture,
+  double dy, {
+  int steps = 10,
+}) async {
+  for (var i = 0; i < steps; i++) {
+    await gesture.moveBy(Offset(0, dy / steps));
+    await tester.pump(const Duration(milliseconds: 16));
+  }
+}
+
 void main() {
   testWidgets('同名文件弹窗按服务端顺序保留最新并批量删除其余文件', (tester) async {
     final client = _CleanupClient(
@@ -271,7 +283,7 @@ void main() {
     expect(find.byKey(const ValueKey('same-name-delete')), findsOneWidget);
   });
 
-  testWidgets('列表到顶后继续下拉会带动弹窗并在松手后回弹', (tester) async {
+  testWidgets('同名文件弹窗的列表与手柄拖拽均跟手，并在松手后回弹', (tester) async {
     final client = _CleanupClient(
       hasMore: false,
       files: [
@@ -292,11 +304,24 @@ void main() {
     final gesture = await tester.startGesture(
       tester.getCenter(find.byType(CustomScrollView).last),
     );
-    await gesture.moveBy(const Offset(0, 160));
+    await _smoothDrag(tester, gesture, 160);
+    await tester.pump();
+    final movedBy = tester.getTopLeft(title).dy - initialY;
+    expect(movedBy, greaterThan(40));
+    expect(movedBy, lessThanOrEqualTo(160), reason: '面板不应重复消费同一次滚动位移');
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(title).dy, closeTo(initialY, 1));
+    final sheet = tester.getRect(find.byType(M3EBottomSheet));
+    final handleGesture = await tester.startGesture(
+      Offset(sheet.center.dx, sheet.top + 24),
+    );
+    await _smoothDrag(tester, handleGesture, 160);
     await tester.pump();
     expect(tester.getTopLeft(title).dy, greaterThan(initialY + 40));
 
-    await gesture.up();
+    await handleGesture.up();
     await tester.pumpAndSettle();
     expect(tester.getTopLeft(title).dy, closeTo(initialY, 1));
   });
