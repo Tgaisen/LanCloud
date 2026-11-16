@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart' show CancelToken;
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -26,14 +27,17 @@ class _FakeClient extends LanzouClient {
 
   /// 真正发出去的解析请求次数：用来验「格式不对根本不用请求」。
   int resolveCalls = 0;
+  CancelToken? activeCancelToken;
 
   @override
   Future<DirectFile> resolveFileShare(
     String shareUrl, {
     String pwd = '',
     bool withDescription = false,
+    CancelToken? cancelToken,
   }) async {
     resolveCalls += 1;
+    activeCancelToken = cancelToken;
     final pending = gate;
     if (pending != null) await pending.future;
     throw error;
@@ -44,8 +48,10 @@ class _FakeClient extends LanzouClient {
     String shareUrl, {
     String pwd = '',
     bool withDescription = false,
+    CancelToken? cancelToken,
   }) async {
     resolveCalls += 1;
+    activeCancelToken = cancelToken;
     final pending = gate;
     if (pending != null) await pending.future;
     throw error;
@@ -109,6 +115,29 @@ void main() {
     gate.complete();
     await tester.pumpAndSettle();
     expect(find.byType(M3eCircularProgressIndicator), findsNothing);
+  });
+
+  testWidgets('打开链接：解析中取消会中止请求并关闭弹窗', (tester) async {
+    final gate = Completer<void>();
+    final client = await _pumpDialog(
+      tester,
+      const LanzouException('已取消'),
+      gate: gate,
+    );
+    await tester.enterText(
+      find.byType(TextField).first,
+      'https://wwa.lanzoua.com/iabcdefg',
+    );
+    await tester.tap(find.text('解析'));
+    await tester.pump();
+
+    await tester.tap(find.text('取消'));
+    await tester.pumpAndSettle();
+
+    expect(client.activeCancelToken?.isCancelled, isTrue);
+    expect(find.byType(ShareLinkDialog), findsNothing);
+    gate.complete();
+    await tester.pump();
   });
 
   testWidgets('打开链接：提取码错误标在提取码输入框上，不用红卡片', (tester) async {

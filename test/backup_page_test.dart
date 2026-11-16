@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:dio/dio.dart' show CancelToken;
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -87,7 +88,7 @@ class _FakeBackupService extends BackupService {
   }
 
   @override
-  Future<void> testConnection() async {
+  Future<void> testConnection({CancelToken? cancelToken}) async {
     testCount += 1;
   }
 
@@ -96,6 +97,7 @@ class _FakeBackupService extends BackupService {
     Set<BackupSection>? sections,
     DateTime? now,
     void Function()? onGenerated,
+    CancelToken? cancelToken,
   }) async {
     final generationGate = uploadGenerationGate;
     if (generationGate != null) await generationGate.future;
@@ -121,14 +123,17 @@ class _FakeBackupService extends BackupService {
   }
 
   @override
-  Future<List<WebdavEntry>> remoteBackups() async {
+  Future<List<WebdavEntry>> remoteBackups({CancelToken? cancelToken}) async {
     final gate = remoteGate;
     if (gate != null) await gate.future;
     return remoteEntries;
   }
 
   @override
-  Future<String> webdavDownload(String name) async => downloadedContent;
+  Future<String> webdavDownload(
+    String name, {
+    CancelToken? cancelToken,
+  }) async => downloadedContent;
 }
 
 /// 测试环境没有安全存储插件，密码改放内存。

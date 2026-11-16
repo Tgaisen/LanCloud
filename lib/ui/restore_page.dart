@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:dio/dio.dart' show CancelToken, DioException, DioExceptionType;
 import 'package:file_picker/file_picker.dart';
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -65,6 +66,7 @@ class _RestorePageState extends ConsumerState<RestorePage> {
   bool _showPassword = false;
   bool _sensitiveAuthorized = false;
   bool _forward = true;
+  CancelToken? _networkCancel;
 
   @override
   void initState() {
@@ -79,6 +81,7 @@ class _RestorePageState extends ConsumerState<RestorePage> {
     _password.dispose();
     _path.dispose();
     _topBarHide.dispose();
+    _networkCancel?.cancel('恢复页已关闭');
     super.dispose();
   }
 
@@ -116,15 +119,24 @@ class _RestorePageState extends ConsumerState<RestorePage> {
     }
   }
 
-  Future<void> _run(Future<void> Function() action) async {
+  Future<void> _run(
+    Future<void> Function(CancelToken cancelToken) action,
+  ) async {
     if (_busy) return;
+    final cancelToken = CancelToken();
+    _networkCancel = cancelToken;
     setState(() {
       _busy = true;
       _showProgress = true;
       _error = null;
     });
     try {
-      await action();
+      await action(cancelToken);
+    } on DioException catch (error) {
+      if (cancelToken.isCancelled || error.type == DioExceptionType.cancel) {
+        return;
+      }
+      if (mounted) setState(() => _error = error.message ?? error.type.name);
     } on BackupException catch (error) {
       if (mounted) setState(() => _error = error.message);
     } on FormatException {
@@ -134,6 +146,7 @@ class _RestorePageState extends ConsumerState<RestorePage> {
     } catch (error) {
       if (mounted) setState(() => _error = '$error');
     } finally {
+      if (identical(_networkCancel, cancelToken)) _networkCancel = null;
       if (mounted) {
         setState(() {
           _busy = false;
@@ -158,7 +171,7 @@ class _RestorePageState extends ConsumerState<RestorePage> {
     final selectedFile = file;
     if (selectedFile == null || !mounted) return;
     // 系统文件选择器本身不显示页面内进度；用户选中文件后才进入读取阶段。
-    await _run(() async {
+    await _run((_) async {
       final content = utf8.decode(await selectedFile.readAsBytes());
       _source = _RestoreSource.local;
       await _inspectAndPreview(content, selectedFile.name);
@@ -210,12 +223,13 @@ class _RestorePageState extends ConsumerState<RestorePage> {
       return;
     }
     if (!await _confirmInsecureConnection(url) || !mounted) return;
-    await _run(() async {
+    await _run((cancelToken) async {
       final entries = await _service.remoteBackupsWithConnection(
         url: url,
         username: username,
         password: password,
         path: path.isEmpty ? WebdavStore.defaultPath : path,
+        cancelToken: cancelToken,
       );
       if (!mounted) return;
       if (entries.isEmpty) {
@@ -233,7 +247,7 @@ class _RestorePageState extends ConsumerState<RestorePage> {
   }
 
   Future<void> _selectRemote(WebdavEntry entry) async {
-    await _run(() async {
+    await _run((cancelToken) async {
       final content = await _service.webdavDownloadWithConnection(
         entry.name,
         url: _url.text.trim(),
@@ -242,6 +256,7 @@ class _RestorePageState extends ConsumerState<RestorePage> {
         path: _path.text.trim().isEmpty
             ? WebdavStore.defaultPath
             : _path.text.trim(),
+        cancelToken: cancelToken,
       );
       await _inspectAndPreview(content, entry.name);
     });
@@ -307,10 +322,10 @@ class _RestorePageState extends ConsumerState<RestorePage> {
   Future<void> _recheckLogin() async {
     final candidate = _candidate;
     if (candidate == null) return;
-    await _run(() async {
+    await _run((cancelToken) async {
       final client = LanzouClient(uid: candidate.uid)
         ..setCookieHeader(candidate.cookie);
-      final status = await client.validateLoginState();
+      final status = await client.validateLoginState(cancelToken: cancelToken);
       if (mounted) setState(() => _loginStatus = status);
     });
   }
@@ -342,7 +357,7 @@ class _RestorePageState extends ConsumerState<RestorePage> {
           return;
       }
     }
-    await _run(() async {
+    await _run((_) async {
       await _service.restoreFromString(
         _content,
         mergeFavorites: true,
@@ -400,11 +415,20 @@ class _RestorePageState extends ConsumerState<RestorePage> {
         child: Builder(
           builder: (context) {
             final scheme = Theme.of(context).colorScheme;
+            final cancelToken = _networkCancel;
             final appBar = AppBar(
               backgroundColor: Colors.transparent,
               scrolledUnderElevation: 0,
               title: Text(title),
               leading: AppBarBackButton(onPressed: _busy ? () {} : _goBack),
+              actions: [
+                if (_busy && cancelToken != null)
+                  IconButton(
+                    tooltip: l10n.cancel,
+                    onPressed: () => cancelToken.cancel('用户取消'),
+                    icon: const Icon(Icons.close),
+                  ),
+              ],
               bottom: _showProgress
                   ? const PreferredSize(
                       preferredSize: Size.fromHeight(4),

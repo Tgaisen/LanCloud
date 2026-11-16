@@ -36,8 +36,9 @@ class _CleanupClient extends LanzouClient {
 
   @override
   Future<({List<LzFolder> folders, List<PathNode> path})> listFolders(
-    String folderId,
-  ) async => (folders: const <LzFolder>[], path: const <PathNode>[]);
+    String folderId, {
+    CancelToken? cancelToken,
+  }) async => (folders: const <LzFolder>[], path: const <PathNode>[]);
 
   @override
   Future<({List<LzFile> files, bool hasMore})> listFilesPage(
@@ -49,7 +50,11 @@ class _CleanupClient extends LanzouClient {
       : (files: const <LzFile>[], hasMore: false);
 
   @override
-  Future<void> deleteItem({required String id, required bool isFile}) async {
+  Future<void> deleteItem({
+    required String id,
+    required bool isFile,
+    CancelToken? cancelToken,
+  }) async {
     if (failingIds.contains(id)) {
       throw const LanzouException('delete failed');
     }

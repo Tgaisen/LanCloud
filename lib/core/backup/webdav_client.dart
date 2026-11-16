@@ -128,61 +128,76 @@ class WebdavClient {
 
   Uri _fileUri(String name) => baseUri.resolve(name);
 
-  Future<void> check() => _guard(() async {
+  Future<void> check({CancelToken? cancelToken}) => _guard(() async {
     final response = await _request(
       'PROPFIND',
       baseUri,
       headers: const {'Depth': '0'},
       plain: true,
+      cancelToken: cancelToken,
     );
     _ensureOk(response, '连接失败');
-  });
+  }, cancelToken: cancelToken);
 
-  Future<List<WebdavEntry>> list() => _guard(() async {
-    final response = await _request(
-      'PROPFIND',
-      baseUri,
-      headers: const {'Depth': '1'},
-      plain: true,
-    );
-    _ensureOk(response, '读取云端目录失败');
-    return parsePropfind('${response.data}', baseUri);
-  });
+  Future<List<WebdavEntry>> list({CancelToken? cancelToken}) =>
+      _guard(() async {
+        final response = await _request(
+          'PROPFIND',
+          baseUri,
+          headers: const {'Depth': '1'},
+          plain: true,
+          cancelToken: cancelToken,
+        );
+        _ensureOk(response, '读取云端目录失败');
+        return parsePropfind('${response.data}', baseUri);
+      }, cancelToken: cancelToken);
 
   /// 列目录；目录还不存在（一次都还没备份过）时返回空列表，而不是报 404。
-  Future<List<WebdavEntry>> listOrEmpty() => _guard(() async {
-    try {
-      final response = await _request(
-        'PROPFIND',
-        baseUri,
-        headers: const {'Depth': '1'},
-        plain: true,
-      );
-      _ensureOk(response, '读取云端目录失败');
-      return parsePropfind('${response.data}', baseUri);
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 404) return const [];
-      rethrow;
-    }
-  });
+  Future<List<WebdavEntry>> listOrEmpty({CancelToken? cancelToken}) =>
+      _guard(() async {
+        try {
+          final response = await _request(
+            'PROPFIND',
+            baseUri,
+            headers: const {'Depth': '1'},
+            plain: true,
+            cancelToken: cancelToken,
+          );
+          _ensureOk(response, '读取云端目录失败');
+          return parsePropfind('${response.data}', baseUri);
+        } on DioException catch (e) {
+          if (e.type == DioExceptionType.cancel) rethrow;
+          if (e.response?.statusCode == 404) return const [];
+          rethrow;
+        }
+      }, cancelToken: cancelToken);
 
   /// 确认备份目录存在：不存在就建（MKCOL）。
   ///
   /// 目录已存在时按 RFC 4918 服务器会回 405 Method Not Allowed（部分服务器
   /// 用 301/302 指到既有目录），都按成功处理；其它状态码 / 网络错误交给
   /// [_guard] 统一翻译成用户能看懂的提示。
-  Future<void> ensureDirectory() => _guard(() async {
+  Future<void> ensureDirectory({CancelToken? cancelToken}) => _guard(() async {
     try {
-      final response = await _request('MKCOL', baseUri);
+      final response = await _request(
+        'MKCOL',
+        baseUri,
+        cancelToken: cancelToken,
+      );
       _ensureOk(response, '创建备份目录失败');
     } on DioException catch (e) {
+      if (e.type == DioExceptionType.cancel) rethrow;
       final code = e.response?.statusCode;
       if (code == 405 || code == 301 || code == 302) return;
       rethrow;
     }
-  });
+  }, cancelToken: cancelToken);
 
-  Future<void> upload(String name, String content) => _guard(() async {
+  Future<void> upload(
+    String name,
+    String content, {
+    CancelToken? cancelToken,
+  }) => _guard(() async {
     final response = await _dio.putUri<dynamic>(
       _fileUri(name),
       data: content,
@@ -192,32 +207,38 @@ class WebdavClient {
           'Content-Type': 'application/json; charset=utf-8',
         },
       ),
+      cancelToken: cancelToken,
     );
     _ensureOk(response, '上传失败');
-  });
+  }, cancelToken: cancelToken);
 
-  Future<String> download(String name) => _guard(() async {
-    final response = await _dio.getUri<String>(
-      _fileUri(name),
-      options: Options(headers: _headers, responseType: ResponseType.plain),
-    );
-    _ensureOk(response, '下载失败');
-    return '${response.data}';
-  });
+  Future<String> download(String name, {CancelToken? cancelToken}) =>
+      _guard(() async {
+        final response = await _dio.getUri<String>(
+          _fileUri(name),
+          options: Options(headers: _headers, responseType: ResponseType.plain),
+          cancelToken: cancelToken,
+        );
+        _ensureOk(response, '下载失败');
+        return '${response.data}';
+      }, cancelToken: cancelToken);
 
-  Future<void> delete(String name) => _guard(() async {
-    final response = await _dio.deleteUri<dynamic>(
-      _fileUri(name),
-      options: Options(headers: _headers),
-    );
-    _ensureOk(response, '删除失败');
-  });
+  Future<void> delete(String name, {CancelToken? cancelToken}) =>
+      _guard(() async {
+        final response = await _dio.deleteUri<dynamic>(
+          _fileUri(name),
+          options: Options(headers: _headers),
+          cancelToken: cancelToken,
+        );
+        _ensureOk(response, '删除失败');
+      }, cancelToken: cancelToken);
 
   Future<Response<dynamic>> _request(
     String method,
     Uri uri, {
     Map<String, String>? headers,
     bool plain = false,
+    CancelToken? cancelToken,
   }) {
     return _dio.requestUri<dynamic>(
       uri,
@@ -226,6 +247,7 @@ class WebdavClient {
         headers: {..._headers, ...?headers},
         responseType: plain ? ResponseType.plain : ResponseType.json,
       ),
+      cancelToken: cancelToken,
     );
   }
 
@@ -235,13 +257,19 @@ class WebdavClient {
     throw BackupException('$action（HTTP $code）');
   }
 
-  Future<T> _guard<T>(Future<T> Function() run) async {
+  Future<T> _guard<T>(
+    Future<T> Function() run, {
+    CancelToken? cancelToken,
+  }) async {
     try {
+      if (cancelToken?.isCancelled ?? false) throw cancelToken!.cancelError!;
       await ensureLocalNetworkPermission();
+      if (cancelToken?.isCancelled ?? false) throw cancelToken!.cancelError!;
       return await run();
     } on BackupException {
       rethrow;
     } on DioException catch (e) {
+      if (e.type == DioExceptionType.cancel) rethrow;
       final code = e.response?.statusCode;
       if (code == 401 || code == 403) {
         throw const BackupException('认证失败，请检查用户名与密码');

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -13,9 +14,36 @@ class _PageClient extends LanzouClient {
   final List<String> requests = [];
 
   @override
-  Future<String> fetchSharePage(String url, {String? referer}) async {
+  Future<String> fetchSharePage(
+    String url, {
+    String? referer,
+    CancelToken? cancelToken,
+  }) async {
     requests.add(url);
     return pages[url] ?? html;
+  }
+}
+
+class _GatedPageClient extends LanzouClient {
+  _GatedPageClient() : super(uid: '0');
+
+  final Completer<void> gate = Completer<void>();
+  CancelToken? activeCancelToken;
+
+  @override
+  Future<String> fetchSharePage(
+    String url, {
+    String? referer,
+    CancelToken? cancelToken,
+  }) async {
+    activeCancelToken = cancelToken;
+    final token = cancelToken;
+    await Future.any<void>([
+      gate.future,
+      if (token != null) token.whenCancel.then<void>((_) {}),
+    ]);
+    if (token?.isCancelled ?? false) throw token!.cancelError!;
+    return '<html></html>';
   }
 }
 
@@ -45,6 +73,30 @@ class _JsonAdapter implements HttpClientAdapter {
 }
 
 void main() {
+  test('分享直链解析取消后会停止候选域名回退', () async {
+    final client = _GatedPageClient();
+    final cancelToken = CancelToken();
+    final pending = client.resolveFileShare(
+      'https://wwa.lanzoua.com/iabcdefg',
+      cancelToken: cancelToken,
+    );
+
+    await Future<void>.delayed(Duration.zero);
+    expect(client.activeCancelToken, same(cancelToken));
+    cancelToken.cancel('用户取消');
+
+    await expectLater(
+      pending,
+      throwsA(
+        isA<DioException>().having(
+          (error) => error.type,
+          'type',
+          DioExceptionType.cancel,
+        ),
+      ),
+    );
+  });
+
   test('分享文件页：大小取 meta description，不会被页内日期带偏', () {
     // 真实页面里日期 `2026-06-22` 出现在大小之后，旧正则 `大小.+?(\d...)<`
     // 会跨行匹配到日期里的 22，导致所有文件都显示 22.0 MB。

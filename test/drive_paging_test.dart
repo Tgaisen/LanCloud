@@ -39,8 +39,9 @@ class _FakeClient extends LanzouClient {
 
   @override
   Future<({List<LzFolder> folders, List<PathNode> path})> listFolders(
-    String folderId,
-  ) async {
+    String folderId, {
+    CancelToken? cancelToken,
+  }) async {
     // 根目录里放一个子目录，用来测「进入目录」这条路径
     if (folderId == '-1') {
       return (
@@ -88,8 +89,9 @@ class _IncompleteSearchClient extends LanzouClient {
 
   @override
   Future<({List<LzFolder> folders, List<PathNode> path})> listFolders(
-    String folderId,
-  ) async => (folders: const <LzFolder>[], path: const <PathNode>[]);
+    String folderId, {
+    CancelToken? cancelToken,
+  }) async => (folders: const <LzFolder>[], path: const <PathNode>[]);
 
   @override
   Future<({List<LzFile> files, bool hasMore})> listFilesPage(
@@ -122,8 +124,9 @@ class _LoadAllClient extends LanzouClient {
 
   @override
   Future<({List<LzFolder> folders, List<PathNode> path})> listFolders(
-    String folderId,
-  ) async => (folders: const <LzFolder>[], path: const <PathNode>[]);
+    String folderId, {
+    CancelToken? cancelToken,
+  }) async => (folders: const <LzFolder>[], path: const <PathNode>[]);
 
   @override
   Future<({List<LzFile> files, bool hasMore})> listFilesPage(
@@ -180,6 +183,28 @@ class _ScrollMemoryClient extends _FakeClient {
       ));
     }
     return super.listFilesPage(folderId, page);
+  }
+}
+
+/// 子目录第一页一直挂起，直到页面返回时取消 token。
+class _HangingDirectoryClient extends _FakeClient {
+  CancelToken? subdirectoryToken;
+
+  @override
+  Future<({List<LzFile> files, bool hasMore})> listFilesPage(
+    String folderId,
+    int page, {
+    CancelToken? cancelToken,
+  }) async {
+    if (folderId != 'sub') {
+      return super.listFilesPage(folderId, page, cancelToken: cancelToken);
+    }
+    subdirectoryToken = cancelToken;
+    await cancelToken!.whenCancel;
+    throw DioException.requestCancelled(
+      requestOptions: RequestOptions(path: '/sub'),
+      reason: cancelToken.cancelError,
+    );
   }
 }
 
@@ -385,6 +410,44 @@ void main() {
     );
     expect(client.filePages, contains(2), reason: '内容不满一屏时要自动补第二页');
     expect(find.text('已加载全部'), findsOneWidget);
+  });
+
+  testWidgets('目录加载中返回会取消请求并回到上一级', (tester) async {
+    final client = _HangingDirectoryClient();
+    final app = _FakeApp();
+    app.environment.settingsState.store.recentLimit = 0;
+    final manager = buildTransferManagerForEnvironment(app.environment);
+    addTearDown(app.dispose);
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(420, 900);
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: _overrides(app, manager, client),
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const DrivePage(tabIndex: 0),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('子目录'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(client.subdirectoryToken, isNotNull);
+    expect(client.subdirectoryToken!.isCancelled, isFalse);
+
+    final handled = await app.environment.navigation.onDriveBack!.call();
+    expect(handled, isTrue);
+    expect(client.subdirectoryToken!.isCancelled, isTrue);
+    await tester.pumpAndSettle();
+
+    expect(find.text('子目录'), findsOneWidget);
+    expect(find.textContaining('网络'), findsNothing);
   });
 
   testWidgets('返回上级目录时保留滚动位置并展开顶栏', (tester) async {

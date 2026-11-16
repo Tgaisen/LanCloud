@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:dio/dio.dart' show CancelToken, DioException, DioExceptionType;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
@@ -335,13 +336,13 @@ class BackupService {
     return file;
   }
 
-  Future<void> testConnection() async {
+  Future<void> testConnection({CancelToken? cancelToken}) async {
     await webdav.load();
     if (!webdav.configured) throw const BackupException('请先填写 WebDAV 地址');
     final client = _client();
     // 备份目录可能还没建出来：先确保它可以创建 / 存在，再测连接
-    await client.ensureDirectory();
-    await client.check();
+    await client.ensureDirectory(cancelToken: cancelToken);
+    await client.check(cancelToken: cancelToken);
   }
 
   /// 立即上传备份，返回文件名。成功后同时更新 latest 文件并清理旧备份。
@@ -350,6 +351,7 @@ class BackupService {
     Set<BackupSection>? sections,
     DateTime? now,
     void Function()? onGenerated,
+    CancelToken? cancelToken,
   }) async {
     await webdav.load();
     if (!webdav.configured) throw const BackupException('请先填写 WebDAV 地址');
@@ -361,16 +363,21 @@ class BackupService {
       sections: picked,
       passphrase: webdav.backupPassphrase,
     );
+    if (cancelToken?.isCancelled ?? false) throw cancelToken!.cancelError!;
     onGenerated?.call();
     final name = '$filePrefix${stamp(now)}.json';
     final client = _client();
     try {
       // 路径可能是第一次使用：不存在的目录先建出来（已存在时服务器回 405）
-      await client.ensureDirectory();
-      await client.upload(name, content);
-      await client.upload(latestName, content);
-      await _prune(client);
+      await client.ensureDirectory(cancelToken: cancelToken);
+      await client.upload(name, content, cancelToken: cancelToken);
+      await client.upload(latestName, content, cancelToken: cancelToken);
+      await _prune(client, cancelToken: cancelToken);
       await webdav.markBackup();
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.cancel) rethrow;
+      await webdav.markBackup(error: '$e');
+      rethrow;
     } catch (e) {
       await webdav.markBackup(error: '$e');
       rethrow;
@@ -379,11 +386,13 @@ class BackupService {
   }
 
   /// 云端备份列表（latest 排最前，其余按修改时间倒序）。
-  Future<List<WebdavEntry>> remoteBackups() async {
+  Future<List<WebdavEntry>> remoteBackups({CancelToken? cancelToken}) async {
     await webdav.load();
     if (!webdav.configured) throw const BackupException('请先填写 WebDAV 地址');
     // 目录还没建出来时按「没有备份」处理，不把 404 当错误弹给用户
-    return _backupEntries(await _client().listOrEmpty());
+    return _backupEntries(
+      await _client().listOrEmpty(cancelToken: cancelToken),
+    );
   }
 
   /// 使用恢复向导中临时填写的 WebDAV 连接读取备份列表，不保存连接配置。
@@ -392,6 +401,7 @@ class BackupService {
     required String username,
     required String password,
     required String path,
+    CancelToken? cancelToken,
   }) async {
     final client = _temporaryClient(
       url: url,
@@ -399,7 +409,7 @@ class BackupService {
       password: password,
       path: path,
     );
-    return _backupEntries(await client.listOrEmpty());
+    return _backupEntries(await client.listOrEmpty(cancelToken: cancelToken));
   }
 
   List<WebdavEntry> _backupEntries(List<WebdavEntry> entries) {
@@ -420,16 +430,17 @@ class BackupService {
       });
   }
 
-  Future<void> restoreRemote(String name) async {
-    final content = await webdavDownload(name);
+  Future<void> restoreRemote(String name, {CancelToken? cancelToken}) async {
+    final content = await webdavDownload(name, cancelToken: cancelToken);
+    if (cancelToken?.isCancelled ?? false) throw cancelToken!.cancelError!;
     await restoreFromString(content);
   }
 
   /// 下载云端备份的内容（不直接恢复，便于先做确认）。
-  Future<String> webdavDownload(String name) async {
+  Future<String> webdavDownload(String name, {CancelToken? cancelToken}) async {
     await webdav.load();
     if (!webdav.configured) throw const BackupException('请先填写 WebDAV 地址');
-    return _client().download(name);
+    return _client().download(name, cancelToken: cancelToken);
   }
 
   /// 使用临时 WebDAV 连接下载备份，不写入本地连接配置。
@@ -439,13 +450,14 @@ class BackupService {
     required String username,
     required String password,
     required String path,
+    CancelToken? cancelToken,
   }) {
     return _temporaryClient(
       url: url,
       username: username,
       password: password,
       path: path,
-    ).download(name);
+    ).download(name, cancelToken: cancelToken);
   }
 
   /// 启动时自动备份：按每天/每周的频率最多跑一次，失败只记录不打扰。
@@ -497,10 +509,13 @@ class BackupService {
   }
 
   /// 云端只保留最新的 maxRemoteFiles 份带时间戳的备份。
-  Future<void> _prune(WebdavClient client) async {
+  Future<void> _prune(WebdavClient client, {CancelToken? cancelToken}) async {
     List<WebdavEntry> entries;
     try {
-      entries = await client.list();
+      entries = await client.list(cancelToken: cancelToken);
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.cancel) rethrow;
+      return;
     } catch (_) {
       return;
     }
@@ -517,8 +532,11 @@ class BackupService {
                 ),
           );
     for (final entry in backups.skip(maxRemoteFiles)) {
+      if (cancelToken?.isCancelled ?? false) throw cancelToken!.cancelError!;
       try {
-        await client.delete(entry.name);
+        await client.delete(entry.name, cancelToken: cancelToken);
+      } on DioException catch (e) {
+        if (e.type == DioExceptionType.cancel) rethrow;
       } catch (_) {}
     }
   }
