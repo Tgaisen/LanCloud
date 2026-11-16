@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart' show CancelToken;
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -35,6 +36,7 @@ class _StalePwdClient extends LanzouClient {
     String shareUrl, {
     String pwd = '',
     bool withDescription = false,
+    CancelToken? cancelToken,
   }) async {
     if (pwd != 'newpass') throw const WrongPasswordException();
     return FolderShareDetail(
@@ -55,6 +57,7 @@ class _StalePwdClient extends LanzouClient {
     String shareUrl, {
     String pwd = '',
     bool withDescription = false,
+    CancelToken? cancelToken,
   }) async => const ShareFileDetails(
     name: 'fav-renamed.txt',
     size: '2 M',
@@ -68,6 +71,7 @@ class _StalePwdClient extends LanzouClient {
     String shareUrl, {
     String pwd = '',
     bool withDescription = false,
+    CancelToken? cancelToken,
   }) async {
     if (pwd != 'newpass') throw const WrongPasswordException();
     return DirectFile(
@@ -90,6 +94,7 @@ class _BrokenFolderClient extends LanzouClient {
     String shareUrl, {
     String pwd = '',
     bool withDescription = false,
+    CancelToken? cancelToken,
   }) async {
     throw Exception('网络连接中断');
   }
@@ -108,6 +113,7 @@ class _PwdThenHangClient extends LanzouClient {
     String shareUrl, {
     String pwd = '',
     bool withDescription = false,
+    CancelToken? cancelToken,
   }) {
     calls.add(pwd);
     if (pwd != 'newpass') return Future.error(const WrongPasswordException());

@@ -60,8 +60,9 @@ class _FakeClient extends LanzouClient {
 
   @override
   Future<({List<LzFolder> folders, List<PathNode> path})> listFolders(
-    String folderId,
-  ) async => (
+    String folderId, {
+    CancelToken? cancelToken,
+  }) async => (
     folders: folderId == '-1'
         ? [LzFolder(id: 'fd1', name: '子文件夹', desc: '')]
         : const <LzFolder>[],
@@ -90,34 +91,58 @@ class _FakeClient extends LanzouClient {
   );
 
   @override
-  Future<List<LzFile>> listFiles(String folderId) async => const <LzFile>[];
+  Future<List<LzFile>> listFiles(
+    String folderId, {
+    CancelToken? cancelToken,
+  }) async => const <LzFile>[];
 
   @override
-  Future<String> fileDesc(String fileId) async => '文件简介';
+  Future<String> fileDesc(String fileId, {CancelToken? cancelToken}) async =>
+      '文件简介';
 
   @override
-  Future<void> setFileName(String fileId, String name) async =>
-      renamedFiles.add(name);
+  Future<void> setFileName(
+    String fileId,
+    String name, {
+    CancelToken? cancelToken,
+  }) async => renamedFiles.add(name);
 
   @override
-  Future<void> setDesc(String fileId, String desc) async =>
-      savedDescs.add(desc);
+  Future<void> setDesc(
+    String fileId,
+    String desc, {
+    CancelToken? cancelToken,
+  }) async => savedDescs.add(desc);
 
   @override
-  Future<void> renameFolder(String folderId, String name) async =>
-      renamedFolders.add(name);
+  Future<void> renameFolder(
+    String folderId,
+    String name, {
+    CancelToken? cancelToken,
+  }) async => renamedFolders.add(name);
 
   @override
-  Future<void> setFolderDesc(String folderId, String desc) async =>
-      savedFolderDescs.add(desc);
+  Future<void> setFolderDesc(
+    String folderId,
+    String desc, {
+    CancelToken? cancelToken,
+  }) async => savedFolderDescs.add(desc);
 
   @override
-  Future<void> deleteItem({required String id, required bool isFile}) async {
+  Future<void> deleteItem({
+    required String id,
+    required bool isFile,
+    CancelToken? cancelToken,
+  }) async {
     deletedItems.add((id: id, isFile: isFile));
   }
 
   @override
-  Future<void> moveFile(String fileId, String folderId) async {
+  Future<void> moveFile(
+    String fileId,
+    String folderId, {
+    CancelToken? cancelToken,
+  }) async {
     movedFiles.add((id: fileId, folderId: folderId));
   }
 
@@ -125,6 +150,7 @@ class _FakeClient extends LanzouClient {
   Future<ShareInfo> shareInfoOfFile(
     String fileId, {
     bool withDetails = true,
+    CancelToken? cancelToken,
   }) async {
     shareFileCalls += 1;
     return ShareInfo(
@@ -137,7 +163,10 @@ class _FakeClient extends LanzouClient {
   }
 
   @override
-  Future<ShareInfo> shareInfoOfFolder(String folderId) async {
+  Future<ShareInfo> shareInfoOfFolder(
+    String folderId, {
+    CancelToken? cancelToken,
+  }) async {
     shareFolderCalls += 1;
     return ShareInfo(
       url: folderUrl,
@@ -150,18 +179,28 @@ class _FakeClient extends LanzouClient {
 
   @override
   Future<({String size, int count, String name, String desc, String url})?>
-  folderStats(String folderId) async =>
+  folderStats(String folderId, {CancelToken? cancelToken}) async =>
       (size: '2 M', count: 7, name: '子文件夹', desc: '文件夹简介', url: folderUrl);
 }
 
 class _MemberRenameClient extends _FakeClient {
   @override
-  Future<void> setFileName(String fileId, String name) async {
+  Future<void> setFileName(
+    String fileId,
+    String name, {
+    CancelToken? cancelToken,
+  }) async {
     throw const LanzouException(
       'fallback',
       code: LanzouErrorCode.renameRequiresMembership,
     );
   }
+}
+
+class _NoStatsClient extends _FakeClient {
+  @override
+  Future<({String size, int count, String name, String desc, String url})?>
+  folderStats(String folderId, {CancelToken? cancelToken}) async => null;
 }
 
 class _ManyFilesClient extends _FakeClient {
@@ -191,8 +230,9 @@ class _ManyFilesClient extends _FakeClient {
 class _PartialBatchRenameClient extends _ManyFilesClient {
   @override
   Future<({List<LzFolder> folders, List<PathNode> path})> listFolders(
-    String folderId,
-  ) async => (
+    String folderId, {
+    CancelToken? cancelToken,
+  }) async => (
     folders: folderId == '-1'
         ? [LzFolder(id: 'fd1', name: 'file-folder', desc: '')]
         : const <LzFolder>[],
@@ -200,7 +240,11 @@ class _PartialBatchRenameClient extends _ManyFilesClient {
   );
 
   @override
-  Future<void> setFileName(String fileId, String name) async {
+  Future<void> setFileName(
+    String fileId,
+    String name, {
+    CancelToken? cancelToken,
+  }) async {
     throw const LanzouException(
       'fallback',
       code: LanzouErrorCode.renameRequiresMembership,
@@ -228,6 +272,7 @@ class _FakePublic extends LanzouClient {
     String shareUrl, {
     String pwd = '',
     bool withDescription = false,
+    CancelToken? cancelToken,
   }) async => DirectFile(name: 'a.zip', url: 'https://cdn.example/a.zip');
 }
 
@@ -242,6 +287,7 @@ class _GatedPublic extends LanzouClient {
     String shareUrl, {
     String pwd = '',
     bool withDescription = false,
+    CancelToken? cancelToken,
   }) => gate.future;
 }
 
@@ -250,16 +296,20 @@ class _GatedClient extends _FakeClient {
   final Completer<ShareInfo> share = Completer<ShareInfo>();
 
   @override
-  Future<ShareInfo> shareInfoOfFile(String fileId, {bool withDetails = true}) =>
-      share.future;
+  Future<ShareInfo> shareInfoOfFile(
+    String fileId, {
+    bool withDetails = true,
+    CancelToken? cancelToken,
+  }) => share.future;
 }
 
 /// 固定服务端时间升序顺序，用于验证升降序与文件夹特殊规则。
 class _OrderedClient extends _FakeClient {
   @override
   Future<({List<LzFolder> folders, List<PathNode> path})> listFolders(
-    String folderId,
-  ) async => (
+    String folderId, {
+    CancelToken? cancelToken,
+  }) async => (
     folders: folderId == '-1'
         ? [
             LzFolder(id: 'fb', name: '文件夹 B', desc: ''),
@@ -852,6 +902,19 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(client.deletedItems, [(id: 'f1', isFile: true)]);
+  });
+
+  testWidgets('网盘多选只有文件夹时“移动”置灰', (tester) async {
+    final app = _FakeApp(_FakeClient());
+    await _pumpDrive(tester, app);
+
+    await tester.longPress(find.text('子文件夹'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('更多'));
+    await _settleSheet(tester);
+
+    final row = tester.widget<ListTile>(find.widgetWithText(ListTile, '移动'));
+    expect(row.enabled, isFalse);
   });
 
   testWidgets('网盘多选：操作栏顺序与批量重命名预览生效', (tester) async {
@@ -1973,6 +2036,20 @@ void main() {
     expect(_menuRowText('打开'), findsNothing);
     expect(_menuRowText('属性'), findsNothing);
     expect(_menuRowText('添加到快速访问'), findsNothing);
+  });
+
+  testWidgets('文件夹统计失败时直接显示未知，不再遍历全部分页', (tester) async {
+    final app = _FakeApp(_NoStatsClient());
+    await _pumpDrive(tester, app, folderId: 'fd1', folderName: '子文件夹');
+
+    await tester.tap(find.byTooltip('菜单'));
+    await _settleSheet(tester);
+    await tester.tap(find.text('目录属性'));
+    await _settleSheet(tester);
+
+    expect(find.text('未知'), findsNWidgets(2));
+    expect(find.text('2.0 MB'), findsNothing);
+    expect(find.text('7'), findsNothing);
   });
 
   testWidgets('弹窗里的列表组：容器色比弹窗底高一档、窗体边距 16dp', (tester) async {

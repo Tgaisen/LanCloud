@@ -32,6 +32,7 @@ class Icons {
   static const IconData cards_star = Symbols.cards_star;
   static const IconData check = Symbols.check;
   static const IconData check_circle = Symbols.check_circle;
+  static const IconData check_circle_unread = Symbols.check_circle_unread;
   static const IconData checklist = Symbols.checklist;
   static const IconData chevron_right = Symbols.chevron_right;
   static const IconData cleaning_services_outlined = Symbols.cleaning_services;

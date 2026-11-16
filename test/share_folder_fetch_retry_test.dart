@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
@@ -28,6 +29,30 @@ class _ScriptedAdapter implements HttpClientAdapter {
         Headers.contentTypeHeader: [Headers.jsonContentType],
       },
     );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+/// 一直挂起请求，直到 CancelToken 被取消；用来验证取消不会进入重试。
+class _CancellableAdapter implements HttpClientAdapter {
+  final List<RequestOptions> requests = [];
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) {
+    requests.add(options);
+    final response = Completer<ResponseBody>();
+    unawaited(
+      options.cancelToken!.whenCancel.then((error) {
+        if (!response.isCompleted) response.completeError(error);
+      }),
+    );
+    return response.future;
   }
 
   @override
@@ -171,5 +196,38 @@ void main() {
     );
 
     expect(adapter.requests.length, 4, reason: '首次请求加 3 次退避重试');
+  });
+
+  test('CancelToken 取消后停止请求且不进入自动重试', () async {
+    final client = LanzouClient(uid: '0');
+    final adapter = _CancellableAdapter();
+    client.dio.httpClientAdapter = adapter;
+    final cancelToken = CancelToken();
+
+    final pending = client.fetchShareFolderFiles(
+      _paging(),
+      2,
+      cancelToken: cancelToken,
+    );
+    for (var i = 0; i < 10 && adapter.requests.isEmpty; i++) {
+      await Future<void>.delayed(Duration.zero);
+    }
+
+    expect(adapter.requests, hasLength(1));
+    expect(adapter.requests.single.cancelToken, same(cancelToken));
+
+    cancelToken.cancel('用户取消');
+    await expectLater(
+      pending,
+      throwsA(
+        isA<DioException>().having(
+          (error) => error.type,
+          'type',
+          DioExceptionType.cancel,
+        ),
+      ),
+    );
+
+    expect(adapter.requests, hasLength(1), reason: '取消后不能继续退避重试');
   });
 }

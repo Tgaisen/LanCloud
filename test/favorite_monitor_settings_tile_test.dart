@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart' show CancelToken;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/api/models.dart';
@@ -22,11 +23,15 @@ class _FakeGateway implements FavoriteCheckGateway {
   Future<FolderShareDetail> resolveFolder({
     required String url,
     required String pwd,
+    CancelToken? cancelToken,
   }) async => FolderShareDetail(name: '文件夹');
 
   @override
-  Future<bool> validateFile({required String url, required String pwd}) async =>
-      true;
+  Future<bool> validateFile({
+    required String url,
+    required String pwd,
+    CancelToken? cancelToken,
+  }) async => true;
 }
 
 Widget _host(AppEnvironment environment, Widget child) => ProviderScope(

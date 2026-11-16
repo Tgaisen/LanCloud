@@ -1365,7 +1365,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get move => '移动';
 
   @override
-  String get moveSubtitle => '把选中的文件/文件夹移动到其他目录';
+  String get moveSubtitle => '把选中的文件移动到其他目录';
 
   @override
   String get editDesc => '修改简介';
@@ -1490,6 +1490,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get newFavorite => '新增收藏';
+
+  @override
+  String get clearFavoriteUpdateFlags => '消除更新标志';
 
   @override
   String get moreActions => '更多操作';
@@ -1787,6 +1790,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get favoriteCheckProgressTitle => '正在检测收藏夹更新';
+
+  @override
+  String get favoriteAccessCheckProgressTitle => '正在检测收藏夹失效项目';
 
   @override
   String favoriteCheckProgressBody(int completed, int total, String name) {
@@ -2575,7 +2581,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get webdavAutoBackup => '自动备份';
 
   @override
-  String get webdavAutoBackupSubtitle => '启动应用时按频率自动上传';
+  String get webdavAutoBackupSubtitle => '启动或回到前台时按频率补做备份';
+
+  @override
+  String get webdavBackupProgressTitle => 'WebDAV 备份';
+
+  @override
+  String get webdavBackupProgressBody => '正在备份';
 
   @override
   String get webdavInterval => '备份频率';

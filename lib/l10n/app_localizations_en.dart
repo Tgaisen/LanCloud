@@ -1424,7 +1424,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get move => 'Move';
 
   @override
-  String get moveSubtitle => 'Move selected files/folders to another folder';
+  String get moveSubtitle => 'Move selected files to another folder';
 
   @override
   String get editDesc => 'Edit description';
@@ -1552,6 +1552,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get newFavorite => 'New favorite';
+
+  @override
+  String get clearFavoriteUpdateFlags => 'Clear update markers';
 
   @override
   String get moreActions => 'More actions';
@@ -1859,6 +1862,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get favoriteCheckProgressTitle => 'Checking favorite folder updates';
+
+  @override
+  String get favoriteAccessCheckProgressTitle =>
+      'Checking favorite items for availability';
 
   @override
   String favoriteCheckProgressBody(int completed, int total, String name) {
@@ -2686,7 +2693,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get webdavAutoBackup => 'Auto backup';
 
   @override
-  String get webdavAutoBackupSubtitle => 'Upload automatically at launch';
+  String get webdavAutoBackupSubtitle =>
+      'Catch up at launch or when returning to the app';
+
+  @override
+  String get webdavBackupProgressTitle => 'WebDAV backup';
+
+  @override
+  String get webdavBackupProgressBody => 'Backing up';
 
   @override
   String get webdavInterval => 'Backup frequency';

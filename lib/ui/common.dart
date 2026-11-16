@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:dio/dio.dart' show CancelToken, DioException, DioExceptionType;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
@@ -1765,7 +1766,9 @@ Future<T?> showAppSheet<T>(
     barrierOnTapHint: localizations.scrimOnTapHint(
       localizations.bottomSheetLabel,
     ),
-    enableDrag: fitContent,
+    // 手柄始终交给框架 BottomSheet 处理。固定高度内容里的列表会在自身
+    // 未到边界时赢得手势竞争，到顶后由 SheetNestedScrollView 交给路由。
+    enableDrag: true,
     modalBarrierColor: Theme.of(context).bottomSheetTheme.modalBarrierColor,
     sheetAnimationStyle: animationStyle,
     // 通铺整屏时让「弹窗窗体」整体避开左右挖孔：useSafeArea 作用在弹窗
@@ -2080,7 +2083,6 @@ class _MeasuredSheetState extends State<MeasuredSheet> {
   /// 指针速度采样：用于判断“快速下滑关闭”。
   VelocityTracker? _tracker;
   int? _pointer;
-  Offset? _lastPointerPosition;
   bool _draggedSheet = false;
   bool _routeDragStarted = false;
   final ScrollController _fixedScrollController = ScrollController();
@@ -2202,7 +2204,6 @@ class _MeasuredSheetState extends State<MeasuredSheet> {
 
   void _onPointerDown(PointerDownEvent event) {
     _pointer = event.pointer;
-    _lastPointerPosition = event.position;
     _draggedSheet = false;
     _tracker = VelocityTracker.withKind(event.kind)
       ..addPosition(event.timeStamp, event.position);
@@ -2210,23 +2211,11 @@ class _MeasuredSheetState extends State<MeasuredSheet> {
 
   void _onPointerMove(PointerMoveEvent event) {
     if (event.pointer != _pointer) return;
-    final previous = _lastPointerPosition;
-    _lastPointerPosition = event.position;
     _tracker?.addPosition(event.timeStamp, event.position);
-    if (!widget.fitContent &&
-        previous != null &&
-        _fixedScrollController.hasClients) {
-      final deltaY = event.position.dy - previous.dy;
-      final position = _fixedScrollController.position;
-      if (deltaY > 0 && position.extentBefore <= precisionErrorTolerance) {
-        _distributeDrag(deltaY, position);
-      }
-    }
   }
 
   void _clearPointer() {
     _pointer = null;
-    _lastPointerPosition = null;
     _tracker = null;
   }
 
@@ -2396,6 +2385,8 @@ class SheetNestedScrollView extends StatelessWidget {
 ///
 /// [actions] 固定靠右并保持单行；标题占用剩余宽度，可截断长文件名。
 /// [compact] 只影响垂直留白；移动端传输页可用它保留紧凑分栏高度。
+/// [stableActionHeight] 为真时，即使没有操作也预留最小触控高度，
+/// 让操作按钮进入 / 退出时不会把标题栏顶高。
 class SectionHeader extends StatelessWidget {
   const SectionHeader({
     super.key,
@@ -2403,12 +2394,14 @@ class SectionHeader extends StatelessWidget {
     required this.count,
     this.actions = const <Widget>[],
     this.compact = false,
+    this.stableActionHeight = false,
   });
 
   final String title;
   final int count;
   final List<Widget> actions;
   final bool compact;
+  final bool stableActionHeight;
 
   @override
   Widget build(BuildContext context) {
@@ -2442,22 +2435,30 @@ class SectionHeader extends StatelessWidget {
         ],
       ),
     );
+    final content = Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          child: Align(alignment: Alignment.centerLeft, child: titleBlock),
+        ),
+        if (actions.isNotEmpty) ...[
+          const SizedBox(width: 8),
+          Row(mainAxisSize: MainAxisSize.min, children: actions),
+        ],
+      ],
+    );
     return Padding(
       padding: compact
           ? const EdgeInsets.fromLTRB(4, 0, 4, 0)
           : const EdgeInsets.fromLTRB(4, 16, 4, 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Expanded(
-            child: Align(alignment: Alignment.centerLeft, child: titleBlock),
-          ),
-          if (actions.isNotEmpty) ...[
-            const SizedBox(width: 8),
-            Row(mainAxisSize: MainAxisSize.min, children: actions),
-          ],
-        ],
-      ),
+      child: stableActionHeight
+          ? ConstrainedBox(
+              constraints: const BoxConstraints(
+                minHeight: kMinInteractiveDimension,
+              ),
+              child: content,
+            )
+          : content,
     );
   }
 }
@@ -5175,6 +5176,13 @@ class _ConnectedSegmentedButtonState<T>
 /// 批量操作进度报告：current 为当前处理到第几项（从 1 起），detail 为当前项说明。
 typedef BatchProgressReport = void Function(int current, String detail);
 
+/// 批量操作的最终结果。取消只表示本地停止等待和后续请求，不回滚已完成项。
+class BatchProgressResult {
+  const BatchProgressResult({required this.canceled});
+
+  final bool canceled;
+}
+
 /// 访问密码编辑结果：enabled 为是否启用，pwd 为密码（关闭时为空）。
 typedef PasswordEditResult = ({bool enabled, String pwd});
 
@@ -5604,101 +5612,187 @@ class _FormDialogPanShellState extends State<_FormDialogPanShell> {
   }
 }
 
-/// 批量操作进度弹窗（MD3E 风格，内容居中）：
-/// 圆角进度条 + “1/20” 计数 + 当前处理项，[run] 完成后自动关闭。
-/// 操作进行中不可用返回键关闭。
-Future<void> runBatchWithProgress(
+/// 批量操作进度弹窗：标准 MD3 标题、波浪进度条和当前项。
+///
+/// [run] 收到同一个 [CancelToken]；可取消操作应在每项之间和每次请求中传递它，
+/// 并在捕获普通失败时检查 token，避免把用户取消计为失败。
+Future<BatchProgressResult> runBatchWithProgress(
   BuildContext context, {
   required String title,
   required int total,
-  required Future<void> Function(BatchProgressReport report) run,
+  required Future<void> Function(
+    BatchProgressReport report,
+    CancelToken cancelToken,
+  )
+  run,
+  bool cancelable = false,
 }) async {
   final navigator = Navigator.of(context);
-  final current = ValueNotifier<int>(1);
-  final detail = ValueNotifier<String>('');
-  showDialog<void>(
+  final progress = ValueNotifier<({int current, String detail})>((
+    current: 1,
+    detail: '',
+  ));
+  final canceling = ValueNotifier<bool>(false);
+  final cancelToken = CancelToken();
+  var dialogOpen = true;
+  void cancel() {
+    if (!cancelable || cancelToken.isCancelled) return;
+    canceling.value = true;
+    cancelToken.cancel('用户取消');
+  }
+
+  final dialogDone = showDialog<void>(
     context: context,
     barrierDismissible: false,
-    builder: (_) => _BatchProgressDialog(
+    builder: (dialogContext) => _BatchProgressDialog(
       title: title,
       total: total,
-      current: current,
-      detail: detail,
+      progress: progress,
+      canceling: canceling,
+      onCancel: cancelable ? cancel : null,
+      onSystemBack: cancelable ? cancel : null,
+      dialogContext: dialogContext,
+    ),
+  );
+  unawaited(
+    dialogDone.then(
+      (_) => dialogOpen = false,
+      onError: (Object _, StackTrace _) => dialogOpen = false,
     ),
   );
   try {
     await run((value, text) {
-      current.value = value.clamp(1, total);
-      detail.value = text;
-    });
+      progress.value = (current: value.clamp(1, total), detail: text);
+    }, cancelToken);
+    return BatchProgressResult(canceled: cancelToken.isCancelled);
+  } on DioException catch (error) {
+    if (cancelToken.isCancelled && error.type == DioExceptionType.cancel) {
+      return const BatchProgressResult(canceled: true);
+    }
+    rethrow;
   } finally {
-    if (navigator.canPop()) navigator.pop();
+    if (dialogOpen && navigator.mounted && navigator.canPop()) {
+      navigator.pop();
+    }
+    await dialogDone;
+    progress.dispose();
+    canceling.dispose();
   }
 }
 
 class _BatchProgressDialog extends StatelessWidget {
+  static const double _contentLeftInset = 24;
+  static const double _cancelRightInset = 12;
+
   const _BatchProgressDialog({
     required this.title,
     required this.total,
-    required this.current,
-    required this.detail,
+    required this.progress,
+    required this.canceling,
+    required this.onCancel,
+    required this.onSystemBack,
+    required this.dialogContext,
   });
 
   final String title;
   final int total;
-  final ValueListenable<int> current;
-  final ValueListenable<String> detail;
+  final ValueListenable<({int current, String detail})> progress;
+  final ValueListenable<bool> canceling;
+  final VoidCallback? onCancel;
+  final VoidCallback? onSystemBack;
+  final BuildContext dialogContext;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final progressTextStyle = textTheme.bodyMedium?.copyWith(
+      color: scheme.onSurfaceVariant,
+    );
     return PopScope(
       canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) onSystemBack?.call();
+      },
       child: AlertDialog(
-        title: Text(title, textAlign: TextAlign.center),
+        title: Text(title),
+        contentPadding: const EdgeInsets.fromLTRB(
+          _contentLeftInset,
+          20,
+          _cancelRightInset,
+          24,
+        ),
         content: SizedBox(
-          width: 240,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              ValueListenableBuilder<int>(
-                valueListenable: current,
-                builder: (context, value, _) => Column(
-                  mainAxisSize: MainAxisSize.min,
+          width: (MediaQuery.sizeOf(dialogContext).width - 80)
+              .clamp(240.0, 360.0)
+              .toDouble(),
+          child: ValueListenableBuilder<({int current, String detail})>(
+            valueListenable: progress,
+            builder: (context, value, _) => Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
                   children: [
-                    // 批量操作往往要跑一会儿：MD3E 波浪进度条，长任务不显得呆板。
-                    M3eLinearProgressIndicator(
-                      value: total <= 0
-                          ? null
-                          : (value / total).clamp(0.0, 1.0),
-                      wavy: true,
-                      height: 12,
-                      backgroundColor: scheme.surfaceContainerHighest,
+                    Expanded(
+                      child: M3eLinearProgressIndicator(
+                        value: total <= 0
+                            ? null
+                            : (value.current / total).clamp(0.0, 1.0),
+                        wavy: true,
+                        height: 12,
+                        backgroundColor: scheme.surfaceContainerHighest,
+                      ),
                     ),
-                    const SizedBox(height: 10),
-                    Text('$value/$total', style: textTheme.labelLarge),
+                    if (onCancel != null) ...[
+                      const SizedBox(width: 8),
+                      ValueListenableBuilder<bool>(
+                        valueListenable: canceling,
+                        builder: (context, isCanceling, _) => M3eIconButton(
+                          key: const ValueKey('batch-progress-cancel'),
+                          tooltip: context.l10n.cancel,
+                          icon: Icons.close,
+                          onPressed: isCanceling ? null : onCancel,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
-              ),
-              const SizedBox(height: 6),
-              ValueListenableBuilder<String>(
-                valueListenable: detail,
-                builder: (context, text, _) => SizedBox(
-                  width: double.infinity,
-                  child: Text(
-                    text.isEmpty ? ' ' : text,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        value.detail.isEmpty ? ' ' : value.detail,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: progressTextStyle,
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 12),
+                    Padding(
+                      // 让完成数右缘距弹窗边界与左侧名称同为 24dp。
+                      padding: const EdgeInsets.only(
+                        right: _contentLeftInset - _cancelRightInset,
+                      ),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(minWidth: 48),
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            '${value.current}/$total',
+                            maxLines: 1,
+                            softWrap: false,
+                            textAlign: TextAlign.end,
+                            style: progressTextStyle,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -5726,6 +5820,174 @@ Future<void> showLoadingDialog(BuildContext context, String text) {
         ),
       ),
     ),
+  );
+}
+
+/// 可取消异步操作的结果。取消不包含业务值，也不等同于失败。
+class CancelableLoadingResult<T> {
+  const CancelableLoadingResult.completed(this.value) : canceled = false;
+
+  const CancelableLoadingResult.canceled() : value = null, canceled = true;
+
+  final T? value;
+  final bool canceled;
+}
+
+/// 显示可取消的「解析中」弹窗，并让 [action] 与取消按钮共用同一个 token。
+///
+/// 弹窗由本函数负责关闭，调用方不要再手动 `Navigator.pop`。取消是只读解析的
+/// 正常结束路径：不显示网络错误，也不继续执行后续导航或提示。
+Future<CancelableLoadingResult<T>> runWithCancelableLoadingDialog<T>(
+  BuildContext context, {
+  required String text,
+  required Future<T> Function(CancelToken cancelToken) action,
+  CancelToken? cancelToken,
+}) async {
+  final navigator = Navigator.of(context);
+  final operationToken = cancelToken ?? CancelToken();
+  var dialogOpen = true;
+  final dialogDone = showDialog<bool>(
+    context: context,
+    barrierDismissible: false,
+    builder: (dialogContext) {
+      void cancel() {
+        if (!dialogOpen) return;
+        dialogOpen = false;
+        operationToken.cancel('用户取消');
+        Navigator.of(dialogContext).pop(true);
+      }
+
+      return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) cancel();
+        },
+        child: Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(28),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 12, 20),
+            child: SizedBox(
+              width: (MediaQuery.sizeOf(dialogContext).width - 80)
+                  .clamp(240.0, 360.0)
+                  .toDouble(),
+              child: Row(
+                children: [
+                  const M3eCircularProgressIndicator(size: 28, strokeWidth: 3),
+                  const SizedBox(width: 20),
+                  Expanded(
+                    child: Text(
+                      text,
+                      style: Theme.of(context).textTheme.bodyLarge,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  M3eIconButton(
+                    key: const ValueKey('cancelable-loading-cancel'),
+                    tooltip: context.l10n.cancel,
+                    icon: Icons.close,
+                    onPressed: cancel,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    },
+  );
+  unawaited(
+    dialogDone.then(
+      (_) => dialogOpen = false,
+      onError: (Object _, StackTrace _) => dialogOpen = false,
+    ),
+  );
+  try {
+    final value = await action(operationToken);
+    return operationToken.isCancelled
+        ? const CancelableLoadingResult.canceled()
+        : CancelableLoadingResult.completed(value);
+  } on DioException catch (error) {
+    if (operationToken.isCancelled && error.type == DioExceptionType.cancel) {
+      return const CancelableLoadingResult.canceled();
+    }
+    rethrow;
+  } finally {
+    if (dialogOpen && navigator.mounted && navigator.canPop()) {
+      dialogOpen = false;
+      navigator.pop();
+    }
+    await dialogDone;
+  }
+}
+
+/// “加载全部剩余内容”的进度弹窗：总页数未知，只持续更新已成功加载的页数。
+Future<void> showPageLoadProgressDialog(
+  BuildContext context, {
+  required ValueListenable<int> loadedPages,
+  required VoidCallback onCancel,
+}) {
+  final l10n = context.l10n;
+  final textStyle = Theme.of(context).textTheme.bodyLarge;
+  return showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (dialogContext) {
+      var closed = false;
+      void cancel() {
+        if (closed) return;
+        closed = true;
+        onCancel();
+        Navigator.of(dialogContext).pop();
+      }
+
+      return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) cancel();
+        },
+        child: Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(28),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 12, 20),
+            child: SizedBox(
+              key: const ValueKey('load-pages-progress-row'),
+              width: (MediaQuery.sizeOf(dialogContext).width - 80)
+                  .clamp(240.0, 360.0)
+                  .toDouble(),
+              child: Row(
+                children: [
+                  const M3eCircularProgressIndicator(size: 28, strokeWidth: 3),
+                  const SizedBox(width: 20),
+                  Expanded(
+                    child: ValueListenableBuilder<int>(
+                      valueListenable: loadedPages,
+                      builder: (context, count, _) => Semantics(
+                        liveRegion: true,
+                        child: Text(
+                          l10n.loadAllRemainingProgress(count),
+                          style: textStyle,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  M3eIconButton(
+                    key: const ValueKey('load-pages-cancel'),
+                    tooltip: l10n.cancel,
+                    icon: Icons.close,
+                    onPressed: cancel,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    },
   );
 }
 
@@ -5831,6 +6093,7 @@ Future<bool> downloadShareFile(
   String pwd = '',
   String? fallbackName,
   bool showLoading = true,
+  CancelToken? cancelToken,
 
   /// 提取码缺失 / 错误时调用：返回新提取码就用它重试一次，返回 null 放弃。
   ///
@@ -5840,9 +6103,9 @@ Future<bool> downloadShareFile(
   final container = ProviderScope.containerOf(context, listen: false);
   final client = container.read(lanzouClientRegistryProvider).publicClient;
   final transfers = container.read(transferManagerProvider);
-  final navigator = Navigator.of(context);
   final messenger = ScaffoldMessenger.of(context);
   final l10n = context.l10n;
+  final operationToken = cancelToken ?? CancelToken();
   void notify(String message) {
     if (showLoading) {
       messenger.showSnackBar(SnackBar(content: Text(message)));
@@ -5851,15 +6114,31 @@ Future<bool> downloadShareFile(
     }
   }
 
-  if (showLoading) showLoadingDialog(context, l10n.resolvingDownload);
   var currentPwd = pwd;
   // 只补一次密码：用户改完仍不对就按错误提示，避免反复弹框
   var asked = false;
   while (true) {
     String? passwordError;
     try {
-      final direct = await client.resolveFileShare(url, pwd: currentPwd);
-      if (showLoading) navigator.pop();
+      final DirectFile? direct;
+      if (showLoading) {
+        final result = await runWithCancelableLoadingDialog<DirectFile>(
+          context,
+          text: l10n.resolvingDownload,
+          cancelToken: operationToken,
+          action: (token) =>
+              client.resolveFileShare(url, pwd: currentPwd, cancelToken: token),
+        );
+        if (result.canceled) return false;
+        direct = result.value;
+      } else {
+        direct = await client.resolveFileShare(
+          url,
+          pwd: currentPwd,
+          cancelToken: operationToken,
+        );
+      }
+      if (direct == null) return false;
       transfers.addDownload(
         url: direct.url,
         name: direct.name.isEmpty ? (fallbackName ?? 'download') : direct.name,
@@ -5873,28 +6152,29 @@ Future<bool> downloadShareFile(
       passwordError = l10n.lanzouError(e);
     } on WrongPasswordException catch (e) {
       passwordError = l10n.lanzouError(e);
+    } on DioException catch (error) {
+      if (operationToken.isCancelled && error.type == DioExceptionType.cancel) {
+        return false;
+      }
+      notify(l10n.resolveFailed('$error'));
+      return false;
     } on LanzouException catch (e) {
-      if (showLoading) navigator.pop();
       notify(l10n.lanzouError(e));
       return false;
     } catch (e) {
-      if (showLoading) navigator.pop();
       notify(l10n.resolveFailed('$e'));
       return false;
     }
     // 需要提取码 / 提取码错误
     if (askPassword == null || asked || !context.mounted) {
-      if (showLoading) navigator.pop();
       notify(passwordError);
       return false;
     }
     asked = true;
-    if (showLoading) navigator.pop();
     final next = await askPassword();
     if (next == null || next.trim().isEmpty) return false;
     if (!context.mounted) return false;
     currentPwd = next.trim();
-    if (showLoading) showLoadingDialog(context, l10n.resolvingDownload);
   }
 }
 
@@ -5913,15 +6193,21 @@ Future<void> downloadShareFiles(
   final l10n = context.l10n;
   var added = 0;
   var failed = 0;
-  await runBatchWithProgress(
+  final result = await runBatchWithProgress(
     context,
     title: l10n.batchDownload,
     total: urls.length,
-    run: (report) async {
+    cancelable: true,
+    run: (report, cancelToken) async {
       for (var i = 0; i < urls.length; i++) {
+        if (cancelToken.isCancelled) break;
         report(i + 1, names[i]);
         try {
-          final direct = await client.resolveFileShare(urls[i], pwd: pwd);
+          final direct = await client.resolveFileShare(
+            urls[i],
+            pwd: pwd,
+            cancelToken: cancelToken,
+          );
           transfers.addDownload(
             url: direct.url,
             name: direct.name.isEmpty ? names[i] : direct.name,
@@ -5930,13 +6216,21 @@ Future<void> downloadShareFiles(
             via: client,
           );
           added += 1;
+        } on DioException catch (error) {
+          if (error.type == DioExceptionType.cancel) rethrow;
+          failed += 1;
         } catch (_) {
+          if (cancelToken.isCancelled) rethrow;
           failed += 1;
         }
       }
     },
   );
   if (!context.mounted) return;
+  if (result.canceled) {
+    messenger.showSnackBar(SnackBar(content: Text(l10n.canceled)));
+    return;
+  }
   messenger.showSnackBar(
     SnackBar(
       content: Text(

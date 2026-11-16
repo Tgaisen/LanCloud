@@ -63,6 +63,13 @@ abstract interface class TransferNotificationSink {
   void cancelTransferTask(String taskId);
 }
 
+/// WebDAV 备份期间的常驻进度通知端口。
+abstract interface class WebdavBackupNotificationSink {
+  Future<void> showWebdavBackupProgress();
+
+  Future<void> cancelWebdavBackupProgress();
+}
+
 /// 通知点击后的类型化动作。
 ///
 /// 兼容旧版本保存的 `transfers` payload；下载完成通知使用 JSON，避免
@@ -139,11 +146,12 @@ class NotificationAction {
   }
 }
 
-/// 通知服务：传输进度、收藏检测进度和完成提醒。
+/// 通知服务：传输进度、收藏检测进度、WebDAV 备份进度和完成提醒。
 ///
 /// 通知文案通过 [i18n] 跟随界面语言，由 RootShell 在每次构建时刷新；
 /// 初始化时也会按当前设置的语言加载一次。
-class NotificationService implements TransferNotificationSink {
+class NotificationService
+    implements TransferNotificationSink, WebdavBackupNotificationSink {
   NotificationService._();
 
   static final NotificationService instance = NotificationService._();
@@ -181,6 +189,7 @@ class NotificationService implements TransferNotificationSink {
   static const progressChannelId = 'transfers_progress';
   static const favoriteCheckProgressChannelId = 'favorites_check_progress';
   static const favoriteUpdateChannelId = 'favorites_updates';
+  static const webdavBackupProgressChannelId = 'webdav_backup_progress';
 
   /// Windows 通知在 HKCU\Software\Classes\AppUserModelId 下注册的标识，
   /// 决定通知里显示的应用名。
@@ -322,6 +331,17 @@ class NotificationService implements TransferNotificationSink {
           showBadge: true,
         ),
       );
+      await androidImpl?.createNotificationChannel(
+        AndroidNotificationChannel(
+          webdavBackupProgressChannelId,
+          i18n?.webdavBackupProgressTitle ?? 'WebDAV 备份',
+          description: i18n?.webdavBackupProgressBody ?? '正在备份',
+          importance: Importance.low,
+          playSound: false,
+          enableVibration: false,
+          showBadge: false,
+        ),
+      );
       _ready = true;
     } catch (_) {
       _ready = false;
@@ -451,6 +471,7 @@ class NotificationService implements TransferNotificationSink {
   static const String favoriteUpdateGroupKey = 'favorite_folder_updates';
 
   Future<void> showFavoriteCheckProgress({
+    required String title,
     required int completed,
     required int total,
     required String name,
@@ -459,7 +480,7 @@ class NotificationService implements TransferNotificationSink {
     final strings = i18n;
     await _plugin.show(
       id: favoriteCheckProgressNotificationId,
-      title: strings?.favoriteCheckProgressTitle ?? '正在检测收藏夹更新',
+      title: title,
       body:
           strings?.favoriteCheckProgressBody(completed, total, name) ??
           '$completed/$total · $name',
@@ -486,6 +507,42 @@ class NotificationService implements TransferNotificationSink {
   Future<void> cancelFavoriteCheckProgress() async {
     if (!_ready) return;
     await _plugin.cancel(id: favoriteCheckProgressNotificationId);
+  }
+
+  static const int webdavBackupProgressNotificationId = 1160000000;
+
+  @override
+  Future<void> showWebdavBackupProgress() async {
+    if (!_ready || PlatformSupport.isDesktop) return;
+    final strings = i18n;
+    await _plugin.show(
+      id: webdavBackupProgressNotificationId,
+      title: strings?.webdavBackupProgressTitle ?? 'WebDAV 备份',
+      body: strings?.webdavBackupProgressBody ?? '正在备份',
+      notificationDetails: NotificationDetails(
+        android: AndroidNotificationDetails(
+          webdavBackupProgressChannelId,
+          strings?.webdavBackupProgressTitle ?? 'WebDAV 备份',
+          importance: Importance.low,
+          priority: Priority.low,
+          playSound: false,
+          enableVibration: false,
+          onlyAlertOnce: true,
+          ongoing: true,
+          autoCancel: false,
+          showProgress: true,
+          indeterminate: true,
+          maxProgress: 100,
+          progress: 0,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Future<void> cancelWebdavBackupProgress() async {
+    if (!_ready || PlatformSupport.isDesktop) return;
+    await _plugin.cancel(id: webdavBackupProgressNotificationId);
   }
 
   Future<void> showFavoriteFolderUpdate({

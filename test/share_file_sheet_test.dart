@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart' show CancelToken;
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -31,6 +32,7 @@ class _NoNetClient extends LanzouClient {
     String shareUrl, {
     String pwd = '',
     bool withDescription = false,
+    CancelToken? cancelToken,
   }) async {
     throw const LanzouException('网络异常');
   }
@@ -40,6 +42,7 @@ class _NoNetClient extends LanzouClient {
     String shareUrl, {
     String pwd = '',
     bool withDescription = false,
+    CancelToken? cancelToken,
   }) async {
     throw const LanzouException('网络异常');
   }
@@ -68,6 +71,7 @@ class _GateSecondPublic extends LanzouClient {
     String shareUrl, {
     String pwd = '',
     bool withDescription = false,
+    CancelToken? cancelToken,
   }) async {
     throw const LanzouException('网络异常');
   }
@@ -77,6 +81,7 @@ class _GateSecondPublic extends LanzouClient {
     String shareUrl, {
     String pwd = '',
     bool withDescription = false,
+    CancelToken? cancelToken,
   }) => gate.future;
 }
 
@@ -91,6 +96,7 @@ class _SizeClient extends LanzouClient {
     String shareUrl, {
     String pwd = '',
     bool withDescription = false,
+    CancelToken? cancelToken,
   }) async =>
       ShareFileDetails(size: size, time: '2026-06-22', requiresPassword: true);
 
@@ -99,6 +105,7 @@ class _SizeClient extends LanzouClient {
     String shareUrl, {
     String pwd = '',
     bool withDescription = false,
+    CancelToken? cancelToken,
   }) async {
     return DirectFile(name: 'a.zip', url: 'https://example.com/a', size: size);
   }
@@ -116,6 +123,7 @@ class _DescClient extends LanzouClient {
     String shareUrl, {
     String pwd = '',
     bool withDescription = false,
+    CancelToken? cancelToken,
   }) async {
     detailCalls += 1;
     return const ShareFileDetails(name: 'a.zip', size: '1 M', desc: '这是文件简介');
@@ -126,6 +134,7 @@ class _DescClient extends LanzouClient {
     String shareUrl, {
     String pwd = '',
     bool withDescription = false,
+    CancelToken? cancelToken,
   }) async {
     resolveCalls += 1;
     return DirectFile(

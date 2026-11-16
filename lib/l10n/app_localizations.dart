@@ -2570,7 +2570,7 @@ abstract class AppLocalizations {
   /// No description provided for @moveSubtitle.
   ///
   /// In zh, this message translates to:
-  /// **'把选中的文件/文件夹移动到其他目录'**
+  /// **'把选中的文件移动到其他目录'**
   String get moveSubtitle;
 
   /// No description provided for @editDesc.
@@ -2788,6 +2788,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'新增收藏'**
   String get newFavorite;
+
+  /// No description provided for @clearFavoriteUpdateFlags.
+  ///
+  /// In zh, this message translates to:
+  /// **'消除更新标志'**
+  String get clearFavoriteUpdateFlags;
 
   /// No description provided for @moreActions.
   ///
@@ -3346,6 +3352,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'正在检测收藏夹更新'**
   String get favoriteCheckProgressTitle;
+
+  /// No description provided for @favoriteAccessCheckProgressTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在检测收藏夹失效项目'**
+  String get favoriteAccessCheckProgressTitle;
 
   /// No description provided for @favoriteCheckProgressBody.
   ///
@@ -4820,8 +4832,20 @@ abstract class AppLocalizations {
   /// No description provided for @webdavAutoBackupSubtitle.
   ///
   /// In zh, this message translates to:
-  /// **'启动应用时按频率自动上传'**
+  /// **'启动或回到前台时按频率补做备份'**
   String get webdavAutoBackupSubtitle;
+
+  /// No description provided for @webdavBackupProgressTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'WebDAV 备份'**
+  String get webdavBackupProgressTitle;
+
+  /// No description provided for @webdavBackupProgressBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在备份'**
+  String get webdavBackupProgressBody;
 
   /// No description provided for @webdavInterval.
   ///

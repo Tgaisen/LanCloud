@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:dio/dio.dart' show CancelToken;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:material_ui/material_ui.dart';
@@ -74,8 +75,9 @@ class _FolderPickerClient extends LanzouClient {
 
   @override
   Future<({List<LzFolder> folders, List<PathNode> path})> listFolders(
-    String folderId,
-  ) async => (
+    String folderId, {
+    CancelToken? cancelToken,
+  }) async => (
     folders: const <LzFolder>[],
     path: folderId == '-1'
         ? const <PathNode>[]

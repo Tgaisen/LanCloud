@@ -2,6 +2,7 @@ import '../data/app_db.dart';
 import '../favorite_monitor_models.dart';
 import '../foreground_task_coordinator.dart';
 import '../notifications.dart';
+import '../../l10n/l10n.dart';
 import 'favorite_monitor_reporter.dart';
 
 class AppFavoriteMonitorReporter implements FavoriteMonitorReporter {
@@ -14,7 +15,10 @@ class AppFavoriteMonitorReporter implements FavoriteMonitorReporter {
   final ForegroundTaskCoordinator foregroundTasks;
 
   @override
-  Future<void> start({required int total}) async {
+  Future<void> start({
+    required int total,
+    required FavoriteCheckOperation operation,
+  }) async {
     final title =
         NotificationService.i18n?.foregroundServiceRunningTitle ?? '前台服务运行中';
     final text =
@@ -25,6 +29,7 @@ class AppFavoriteMonitorReporter implements FavoriteMonitorReporter {
       text: text,
     );
     await notifications.showFavoriteCheckProgress(
+      title: favoriteCheckProgressTitle(operation, NotificationService.i18n),
       completed: 0,
       total: total,
       name: '',
@@ -36,6 +41,7 @@ class AppFavoriteMonitorReporter implements FavoriteMonitorReporter {
     required int completed,
     required int total,
     required String name,
+    required FavoriteCheckOperation operation,
   }) async {
     final title =
         NotificationService.i18n?.foregroundServiceRunningTitle ?? '前台服务运行中';
@@ -47,6 +53,7 @@ class AppFavoriteMonitorReporter implements FavoriteMonitorReporter {
       text: text,
     );
     await notifications.showFavoriteCheckProgress(
+      title: favoriteCheckProgressTitle(operation, NotificationService.i18n),
       completed: completed,
       total: total,
       name: name,
@@ -77,3 +84,13 @@ class AppFavoriteMonitorReporter implements FavoriteMonitorReporter {
     await notifications.cancelFavoriteCheckProgress();
   }
 }
+
+String favoriteCheckProgressTitle(
+  FavoriteCheckOperation operation,
+  AppLocalizations? strings,
+) => switch (operation) {
+  FavoriteCheckOperation.folderUpdates =>
+    strings?.favoriteCheckProgressTitle ?? '正在检测收藏夹更新',
+  FavoriteCheckOperation.shareAccess =>
+    strings?.favoriteAccessCheckProgressTitle ?? '正在检测收藏夹失效项目',
+};
