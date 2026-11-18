@@ -122,6 +122,10 @@ void main() {
 
     expect(find.byKey(const ValueKey('m3e-menu-divider-1')), findsOneWidget);
     expect(find.byKey(const ValueKey('m3e-menu-group-gap-1')), findsNothing);
+    expect(
+      tester.getSize(find.byKey(const ValueKey('m3e-menu-divider-1'))).height,
+      9,
+    );
     final scheme = Theme.of(tester.element(find.byType(M3eMenuRow).first))
         .colorScheme;
     final outer = tester.widget<Material>(

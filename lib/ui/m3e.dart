@@ -2171,8 +2171,9 @@ class _M3eMenuRoute<T, R> extends PopupRoute<R> {
   /// 项目之间的间隔：M3E vertical menu 里每一项是各自独立的圆角块。
   static const double _itemGap = 4;
 
-  /// 分组菜单使用 divider；保留 M3 baseline 的 8dp 上下留白 + 1dp 线。
-  static const double _dividerExtent = 17;
+  /// M3 baseline 的 divider 上下留白为 8dp；选中项自身仍有约 4dp 视觉内缩，
+  /// 若两侧都留 8dp 会显得偏松。这里按项目观感收紧为 4dp + 1dp 线 + 4dp。
+  static const double _dividerExtent = 9;
 
   /// 项目相对卡片的左右内缩；同时决定项目自己的圆角（16 − 4 = 12dp）。
   static const double _itemInset = 4;

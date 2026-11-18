@@ -10,9 +10,9 @@
 | 命令 | 口径 | 结果 | 耗时 |
 | --- | --- | --- | --- |
 | `tools\agent.cmd analyze` | 全量 | No issues found | 约 2 min 1 s |
-| `tools\agent.cmd analyze` | 增量（M3E 菜单 divider 与文案，5 个 Dart 文件） | No issues found | 约 18 s |
+| `tools\agent.cmd analyze` | 增量（M3E 菜单 divider 间距，1 个 Dart 文件） | No issues found | 约 5 s |
 | `tools\agent.cmd test` | 全量（用例总数） | **990 tests, all passed** | 约 3 min 59 s |
-| `tools\agent.cmd test` | 增量（M3E 菜单高度回归，43 个测试文件） | **350 tests, all passed** | 约 1 min 40 s |
+| `tools\agent.cmd test` | 增量（M3E 菜单 divider 间距，43 个测试文件） | **350 tests, all passed** | 约 1 min 15 s |
 | `tools\agent.cmd format` | 全量 | 355 files，0 changed | 约 3 s |
 | `tools\agent.cmd build-apk` | debug | `app-debug.apk` | 首次构建约 5 min 46 s |
 
