@@ -5922,7 +5922,7 @@ Future<CancelableLoadingResult<T>> runWithCancelableLoadingDialog<T>(
   }
 }
 
-/// “加载全部剩余内容”的进度弹窗：总页数未知，只持续更新已成功加载的页数。
+/// “加载剩余内容”的进度弹窗：总页数未知，只持续更新已成功加载的页数。
 Future<void> showPageLoadProgressDialog(
   BuildContext context, {
   required ValueListenable<int> loadedPages,

@@ -987,7 +987,7 @@
   "toggleLayout": "切换布局样式",
   "multiSelect": "多选",
   "refresh": "刷新",
-  "loadAllRemaining": "加载全部剩余内容",
+  "loadAllRemaining": "加载剩余内容",
   "loadAllRemainingProgress": "已加载 {count} 页",
   "@loadAllRemainingProgress": {
     "placeholders": {

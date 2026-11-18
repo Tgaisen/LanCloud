@@ -297,7 +297,7 @@ void main() {
     await tester.tap(find.byTooltip('菜单'));
     await tester.pumpAndSettle();
     expect(find.byIcon(app_icons.Icons.last_page), findsOneWidget);
-    await tester.tap(find.text('加载全部剩余内容'));
+    await tester.tap(find.text('加载剩余内容'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
   }
@@ -639,7 +639,7 @@ void main() {
     expect(app.environment.navigation.topBarHide.value, 0);
   });
 
-  testWidgets('加载全部剩余内容显示页数，取消时保留已完成页面并丢弃在途页', (tester) async {
+  testWidgets('加载剩余内容显示页数，取消时保留已完成页面并丢弃在途页', (tester) async {
     final client = _LoadAllClient();
     final app = _FakeApp();
     final manager = buildTransferManagerForEnvironment(app.environment);
@@ -688,12 +688,12 @@ void main() {
     await tester.tap(find.byTooltip('菜单'));
     await tester.pumpAndSettle();
     final loadAllTile = tester.widget<ListTile>(
-      find.ancestor(of: find.text('加载全部剩余内容'), matching: find.byType(ListTile)),
+      find.ancestor(of: find.text('加载剩余内容'), matching: find.byType(ListTile)),
     );
     expect(loadAllTile.enabled, isTrue);
   });
 
-  testWidgets('加载全部剩余内容逐页更新并在服务端结束后禁用入口', (tester) async {
+  testWidgets('加载剩余内容逐页更新并在服务端结束后禁用入口', (tester) async {
     final client = _LoadAllClient();
     final app = _FakeApp();
     final manager = buildTransferManagerForEnvironment(app.environment);
@@ -745,7 +745,7 @@ void main() {
     await tester.tap(find.byTooltip('菜单'));
     await tester.pumpAndSettle();
     final loadAllTile = tester.widget<ListTile>(
-      find.ancestor(of: find.text('加载全部剩余内容'), matching: find.byType(ListTile)),
+      find.ancestor(of: find.text('加载剩余内容'), matching: find.byType(ListTile)),
     );
     expect(loadAllTile.enabled, isFalse);
   });

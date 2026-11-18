@@ -3020,7 +3020,7 @@ abstract class AppLocalizations {
   /// No description provided for @loadAllRemaining.
   ///
   /// In zh, this message translates to:
-  /// **'加载全部剩余内容'**
+  /// **'加载剩余内容'**
   String get loadAllRemaining;
 
   /// No description provided for @loadAllRemainingProgress.

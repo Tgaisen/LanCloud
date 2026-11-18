@@ -10,8 +10,8 @@
 | 命令 | 口径 | 结果 | 耗时 |
 | --- | --- | --- | --- |
 | `tools\agent.cmd analyze` | 全量 | No issues found | 约 2 min 1 s |
-| `tools\agent.cmd analyze` | 增量（M3E 菜单高度回归，1 个 Dart 文件） | No issues found | 约 15 s |
-| `tools\agent.cmd test` | 全量（用例总数） | **988 tests, all passed** | 约 2 min 23 s |
+| `tools\agent.cmd analyze` | 增量（M3E 菜单 divider 与文案，5 个 Dart 文件） | No issues found | 约 18 s |
+| `tools\agent.cmd test` | 全量（用例总数） | **990 tests, all passed** | 约 3 min 59 s |
 | `tools\agent.cmd test` | 增量（M3E 菜单高度回归，43 个测试文件） | **350 tests, all passed** | 约 1 min 40 s |
 | `tools\agent.cmd format` | 全量 | 355 files，0 changed | 约 3 s |
 | `tools\agent.cmd build-apk` | debug | `app-debug.apk` | 首次构建约 5 min 46 s |
@@ -19,8 +19,8 @@
 当前分析结果为 0 issue 是硬基线。出现红灯时，先判断是否为本次改动引入；
 不要把增量结果当成全量结论。Flutter 3.50.0 下全量分析已重跑并通过。
 
-当前用例总数为 990；最近一次全量 988 项全部通过。之后新增的目录路径胶囊
-抢占和 M3E 菜单高度回归分别通过 78 项、350 项增量测试。988 项全量覆盖
+当前用例总数为 990；最近一次全量 990 项全部通过。M3E 菜单 divider 与文案
+改动由全量测试覆盖，990 项全量覆盖
 收藏分栏高度稳定、批量消除更新标志、分享目录分页取消后保留当前页面与已加载
 内容，同时保留 WebDAV 自动备份互斥和补检覆盖。
 测试入口在受影响文件超过 60 个时自动回退全量，避免 Windows 命令行长度上限导致
@@ -51,8 +51,8 @@
 
 ## 测试安全网
 
-- 当前用例总数为 990；最近一次全量 988 项全部通过，新增路径胶囊与
-  M3E 菜单高度回归的 78 项、350 项增量测试也已通过；项目仍没有
+- 当前用例总数为 990；最近一次全量 990 项全部通过；M3E 菜单 divider 与
+  文案改动已由全量测试覆盖；项目仍没有
   `integration_test` 和 golden test。
 - `tools\agent.cmd analyze|test` 默认走增量；全量结果必须按上表单独记录。
 - 增量推断出超过 60 个测试文件时，`agent.cmd test` 自动回退全量。
