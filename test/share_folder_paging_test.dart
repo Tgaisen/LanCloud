@@ -291,7 +291,7 @@ void main() {
     );
   });
 
-  testWidgets('分享文件夹：显式加载全部剩余内容逐页更新并在结束后禁用入口', (tester) async {
+  testWidgets('分享文件夹：显式加载剩余内容逐页更新并在结束后禁用入口', (tester) async {
     final l10n = AppLocalizationsZh();
     final client = _ControlledPagingClient();
     final environment = AppEnvironment();

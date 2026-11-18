@@ -1606,7 +1606,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get refresh => '刷新';
 
   @override
-  String get loadAllRemaining => '加载全部剩余内容';
+  String get loadAllRemaining => '加载剩余内容';
 
   @override
   String loadAllRemainingProgress(int count) {

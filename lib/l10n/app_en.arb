@@ -615,7 +615,7 @@
   "toggleLayout": "Toggle layout style",
   "multiSelect": "Select",
   "refresh": "Refresh",
-  "loadAllRemaining": "Load all remaining",
+  "loadAllRemaining": "Load remaining",
   "loadAllRemainingProgress": "{count} pages loaded",
   "@loadAllRemainingProgress": {
     "placeholders": {

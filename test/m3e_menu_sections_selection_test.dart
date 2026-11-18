@@ -106,7 +106,7 @@ SemanticsData _semanticsDataForLabel(WidgetTester tester, String label) {
 }
 
 void main() {
-  testWidgets('宽菜单分组可放下时使用 gap', (tester) async {
+  testWidgets('宽菜单多分组始终使用 divider', (tester) async {
     final semantics = tester.ensureSemantics();
     await _pumpTrigger(
       tester,
@@ -120,69 +120,34 @@ void main() {
       },
     );
 
-    expect(find.byKey(const ValueKey('m3e-menu-group-gap-1')), findsOneWidget);
-    expect(find.byKey(const ValueKey('m3e-menu-divider-1')), findsNothing);
+    expect(find.byKey(const ValueKey('m3e-menu-divider-1')), findsOneWidget);
+    expect(find.byKey(const ValueKey('m3e-menu-group-gap-1')), findsNothing);
     expect(
-      tester.getSize(find.byKey(const ValueKey('m3e-menu-group-gap-1'))).height,
-      2,
+      tester.getSize(find.byKey(const ValueKey('m3e-menu-divider-1'))).height,
+      9,
     );
     final scheme = Theme.of(tester.element(find.byType(M3eMenuRow).first))
         .colorScheme;
     final outer = tester.widget<Material>(
       find.byKey(const ValueKey('m3e-menu-card')),
     );
-    expect(outer.color, Colors.transparent);
-    expect(outer.elevation, 0);
-    expect(outer.clipBehavior, Clip.none);
-    final shadowClipFinder = find.byKey(const ValueKey('m3e-menu-shadow-clip'));
-    expect(shadowClipFinder, findsOneWidget);
-    final shadowClip = tester.widget<ClipRect>(shadowClipFinder);
-    final shadowClipRect = shadowClip.clipper!.getClip(
-      tester.getSize(shadowClipFinder),
-    );
-    expect(shadowClipRect.left, -16);
-    expect(shadowClipRect.top, -16);
-    expect(shadowClipRect.right, tester.getSize(shadowClipFinder).width + 16);
-    expect(shadowClipRect.bottom, tester.getSize(shadowClipFinder).height + 16);
+    expect(outer.color, scheme.surfaceContainerLow);
+    expect(outer.elevation, 3);
+    expect(outer.clipBehavior, Clip.antiAlias);
+    expect(find.byKey(const ValueKey('m3e-menu-shadow-clip')), findsNothing);
     expect(
       tester
           .widget<SingleChildScrollView>(find.byType(SingleChildScrollView))
           .padding,
-      const EdgeInsets.symmetric(horizontal: 4),
+      const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
     );
-    for (var i = 0; i < 2; i++) {
-      final group = tester.widget<Material>(
-        find.byKey(ValueKey('m3e-menu-group-surface-$i')),
-      );
-      expect(group.color, scheme.surfaceContainerLow);
-      expect(group.elevation, 3);
-      expect(group.borderRadius, BorderRadius.circular(16));
-      final groupRect = tester.getRect(
-        find.byKey(ValueKey('m3e-menu-group-surface-$i')),
-      );
-      final rowRect = tester.getRect(
-        find.descendant(
-          of: find.byKey(ValueKey('m3e-menu-group-surface-$i')),
-          matching: find.byType(M3eMenuRow),
-        ),
-      );
-      expect(rowRect.top - groupRect.top, closeTo(4, 0.1));
-      expect(groupRect.bottom - rowRect.bottom, closeTo(4, 0.1));
-      if (i == 0) {
-        expect(
-          groupRect.top,
-          100 + 48 + 4,
-          reason: 'gap 菜单第一个分组表面与锚点的距离和无 gap 卡片一致',
-        );
-      }
-    }
     expect(
       find.byKey(const ValueKey('m3e-menu-group-surface-0')),
-      findsOneWidget,
+      findsNothing,
     );
     expect(
       find.byKey(const ValueKey('m3e-menu-group-surface-1')),
-      findsOneWidget,
+      findsNothing,
     );
     final actionSemantics = _semanticsDataForLabel(tester, '选项 A');
     expect(actionSemantics.role, SemanticsRole.menuItem);
@@ -211,7 +176,50 @@ void main() {
     semantics.dispose();
   });
 
-  testWidgets('宽菜单需要滚动时改用 divider 分组', (tester) async {
+  testWidgets('宽菜单内容超过原 380dp 上限但屏幕放得下时仍完整展示', (tester) async {
+    await _pumpTrigger(
+      tester,
+      size: const Size(800, 800),
+      open: (BuildContext context) async {
+        await showM3eMenu<String>(
+          context: context,
+          anchor: const Rect.fromLTWH(300, 100, 48, 48),
+          sections: [
+            M3eMenuSection(
+              items: [
+                for (var i = 0; i < 4; i++)
+                  M3eMenuItem(
+                    value: 'a$i',
+                    label: '只读操作 A$i',
+                    icon: Icons.circle_outlined,
+                  ),
+              ],
+            ),
+            M3eMenuSection(
+              items: [
+                for (var i = 0; i < 4; i++)
+                  M3eMenuItem(
+                    value: 'b$i',
+                    label: '修改操作 B$i',
+                    icon: Icons.square_outlined,
+                  ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+
+    expect(
+      tester.getSize(find.byKey(const ValueKey('m3e-menu-card'))).height,
+      greaterThan(380),
+      reason: '屏幕高度足够时应完整展示内容，不再受固定 380dp 上限约束',
+    );
+    expect(find.byKey(const ValueKey('m3e-menu-divider-1')), findsOneWidget);
+    expect(find.byKey(const ValueKey('m3e-menu-group-gap-1')), findsNothing);
+  });
+
+  testWidgets('宽菜单需要滚动时保持 divider 分组', (tester) async {
     await _pumpTrigger(
       tester,
       size: const Size(800, 600),

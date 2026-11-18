@@ -1701,8 +1701,8 @@ class M3eMenuItem<T> {
 
 /// 菜单里的一个视觉分组。
 ///
-/// 多个分组在大屏菜单里用组间 gap 分隔；菜单需要滚动时自动改用 divider。
-/// Compact 底部面板则为每个分组绘制一个独立的弹窗列表组。
+/// 多个分组在大屏菜单里始终用 divider 分隔；Compact 底部面板则为每个分组
+/// 绘制一个独立的弹窗列表组。
 class M3eMenuSection<T> {
   const M3eMenuSection({required this.items});
 
@@ -2163,7 +2163,6 @@ class _M3eMenuRoute<T, R> extends PopupRoute<R> {
   /// M3 菜单：宽度 180–280、项高 48、上下内边距 8、离屏幕边缘 12。
   static const double _minWidth = 180;
   static const double _maxWidth = 280;
-  static const double _maxHeight = 380;
   static const double _rowHeight = 48;
 
   /// 卡片上下内边距：和项目间隔一致，首 / 末项到卡片的距离 = 项目之间的距离。
@@ -2172,19 +2171,9 @@ class _M3eMenuRoute<T, R> extends PopupRoute<R> {
   /// 项目之间的间隔：M3E vertical menu 里每一项是各自独立的圆角块。
   static const double _itemGap = 4;
 
-  /// M3E segmented menu 的组间固定间隔。
-  static const double _groupGap = 2;
-
-  /// 可滚动菜单使用 divider 分组；保留 M3 baseline 的 8dp 上下留白 + 1dp 线。
-  static const double _dividerExtent = 17;
-
-  /// 非滚动分组菜单的组卡片：内边距与组内圆角。
-  static const double _groupVerticalPadding = 4;
-  static const double _groupHorizontalPadding = 4;
-  static const double _groupRadius = 16;
-
-  /// 分组卡片阴影的绘制缓冲区；裁剪只限制滚动溢出，不裁掉 3dp elevation 阴影。
-  static const double _shadowClipExtent = 16;
+  /// M3 baseline 的 divider 上下留白为 8dp；选中项自身仍有约 4dp 视觉内缩，
+  /// 若两侧都留 8dp 会显得偏松。这里按项目观感收紧为 4dp + 1dp 线 + 4dp。
+  static const double _dividerExtent = 9;
 
   /// 项目相对卡片的左右内缩；同时决定项目自己的圆角（16 − 4 = 12dp）。
   static const double _itemInset = 4;
@@ -2284,25 +2273,18 @@ class _M3eMenuRoute<T, R> extends PopupRoute<R> {
     required int itemCount,
     required int sectionCount,
     required double rowHeight,
-    required double groupExtent,
-    required bool groupedSurfaces,
   }) {
     final int itemGapCount = math.max(0, itemCount - sectionCount);
-    final int groupGapCount = math.max(0, sectionCount - 1);
+    final int dividerCount = math.max(0, sectionCount - 1);
     return itemCount * rowHeight +
         itemGapCount * _itemGap +
-        groupGapCount * groupExtent +
-        (groupedSurfaces ? sectionCount * _groupVerticalPadding * 2 : 0) +
-        (groupedSurfaces ? 0 : _verticalPadding * 2);
+        dividerCount * _dividerExtent +
+        _verticalPadding * 2;
   }
 
-  Widget _buildSection(
-    BuildContext context,
-    int sectionIndex, {
-    required bool groupedSurface,
-  }) {
+  Widget _buildSection(BuildContext context, int sectionIndex) {
     final List<M3eMenuItem<T>> items = sections[sectionIndex].items;
-    final Widget rows = Column(
+    return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -2311,24 +2293,6 @@ class _M3eMenuRoute<T, R> extends PopupRoute<R> {
           _buildRow(context, items[itemIndex]),
         ],
       ],
-    );
-    if (!groupedSurface) return rows;
-    final ColorScheme scheme = Theme.of(context).colorScheme;
-    return Material(
-      key: ValueKey('m3e-menu-group-surface-$sectionIndex'),
-      color: scheme.surfaceContainerLow,
-      elevation: 3,
-      shadowColor: scheme.shadow,
-      surfaceTintColor: Colors.transparent,
-      borderRadius: BorderRadius.circular(_groupRadius),
-      clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: _groupHorizontalPadding,
-          vertical: _groupVerticalPadding,
-        ),
-        child: rows,
-      ),
     );
   }
 
@@ -2370,37 +2334,19 @@ class _M3eMenuRoute<T, R> extends PopupRoute<R> {
     final double rowHeight =
         _rowHeight + Theme.of(context).visualDensity.baseSizeAdjustment.dy;
     final int itemCount = _allItems.length;
-    bool groupedSurfaces = sections.length > 1;
-    double contentHeight = _menuContentHeight(
+    final double contentHeight = _menuContentHeight(
       itemCount: itemCount,
       sectionCount: sections.length,
       rowHeight: rowHeight,
-      groupExtent: _groupGap,
-      groupedSurfaces: groupedSurfaces,
     );
     final double below = bottomLimit - (effectiveAnchor.bottom + anchorGap);
     final double above = (effectiveAnchor.top - anchorGap) - topLimit;
     // 先试锚点下方；放不下且上方更宽敞时才翻到上方，避免菜单贴屏幕边
     final bool opensAbove = below < contentHeight && above > below;
     final double available = opensAbove ? above : below;
-    // M3 不允许在滚动菜单里使用 gap 分组；组数超过 3 时 gap 也会超过推荐的
-    // 一到两个，因此这两种情况统一回退到 divider。
-    final bool useDividers =
-        sections.length > 1 &&
-        (sections.length > 3 || contentHeight > available);
-    groupedSurfaces = groupedSurfaces && !useDividers;
-    if (useDividers) {
-      contentHeight = _menuContentHeight(
-        itemCount: itemCount,
-        sectionCount: sections.length,
-        rowHeight: rowHeight,
-        groupExtent: _dividerExtent,
-        groupedSurfaces: false,
-      );
-    }
-    // 卡片最高只能到「可用空间」和 M3 上限，具体多高由内容决定：放得下就贴着
-    // 内容（不留多余空白），放不下才在里面滚。
-    final double maxHeight = available.clamp(0.0, _maxHeight);
+    // 卡片最高只能到锚点一侧的可用空间；长菜单在这个高度内滚动。
+    final double maxHeight = math.max(0, available);
+    // 具体多高由内容决定：放得下就贴着内容（不留多余空白），放不下才在里面滚。
     final double width = _contentWidth(context, screen);
     final bool opensLeft =
         pointer != null && pointer.dx + width + _screenPadding > screen.width;
@@ -2453,14 +2399,12 @@ class _M3eMenuRoute<T, R> extends PopupRoute<R> {
             },
             child: Material(
               key: const ValueKey('m3e-menu-card'),
-              color: groupedSurfaces
-                  ? Colors.transparent
-                  : scheme.surfaceContainerLow,
+              color: scheme.surfaceContainerLow,
               // M3 给菜单的是 elevation level 2；这里按需求用 3
-              elevation: groupedSurfaces ? 0 : 3,
+              elevation: 3,
               surfaceTintColor: Colors.transparent,
               borderRadius: BorderRadius.circular(_radius),
-              clipBehavior: groupedSurfaces ? Clip.none : Clip.antiAlias,
+              clipBehavior: Clip.antiAlias,
               child: ConstrainedBox(
                 constraints: BoxConstraints(maxHeight: maxHeight),
                 // 卡片固定，超出高度的部分在卡片里面滚：滚动条沿用应用同款
@@ -2477,12 +2421,6 @@ class _M3eMenuRoute<T, R> extends PopupRoute<R> {
                       trackColor: WidgetStatePropertyAll(Colors.transparent),
                     ),
                     child: ClipRect(
-                      key: groupedSurfaces
-                          ? const ValueKey('m3e-menu-shadow-clip')
-                          : null,
-                      clipper: groupedSurfaces
-                          ? const _MenuShadowClipper(_shadowClipExtent)
-                          : null,
                       child: Scrollbar(
                         controller: _scroll,
                         thickness: 6,
@@ -2501,13 +2439,9 @@ class _M3eMenuRoute<T, R> extends PopupRoute<R> {
                                 // 语义，同时不产生列表计数。
                                 SingleChildScrollView(
                                   controller: _scroll,
-                                  clipBehavior: groupedSurfaces
-                                      ? Clip.none
-                                      : Clip.hardEdge,
-                                  padding: EdgeInsets.symmetric(
-                                    vertical: groupedSurfaces
-                                        ? 0
-                                        : _verticalPadding,
+                                  clipBehavior: Clip.hardEdge,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: _verticalPadding,
                                     horizontal: _itemInset,
                                   ),
                                   child: Column(
@@ -2521,32 +2455,19 @@ class _M3eMenuRoute<T, R> extends PopupRoute<R> {
                                         sectionIndex++
                                       ) ...[
                                         if (sectionIndex > 0)
-                                          if (useDividers)
-                                            Padding(
-                                              key: ValueKey(
-                                                'm3e-menu-divider-$sectionIndex',
-                                              ),
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 8,
-                                                  ),
-                                              child: Divider(
-                                                height: _dividerExtent,
-                                                thickness: 1,
-                                              ),
-                                            )
-                                          else
-                                            SizedBox(
-                                              key: ValueKey(
-                                                'm3e-menu-group-gap-$sectionIndex',
-                                              ),
-                                              height: _groupGap,
+                                          Padding(
+                                            key: ValueKey(
+                                              'm3e-menu-divider-$sectionIndex',
                                             ),
-                                        _buildSection(
-                                          context,
-                                          sectionIndex,
-                                          groupedSurface: groupedSurfaces,
-                                        ),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                            ),
+                                            child: Divider(
+                                              height: _dividerExtent,
+                                              thickness: 1,
+                                            ),
+                                          ),
+                                        _buildSection(context, sectionIndex),
                                       ],
                                     ],
                                   ),
@@ -2564,25 +2485,6 @@ class _M3eMenuRoute<T, R> extends PopupRoute<R> {
       ],
     );
   }
-}
-
-/// 分组菜单的滚动裁剪层：向外扩一圈，既保留卡片阴影，又限制 iOS 回弹溢出。
-class _MenuShadowClipper extends CustomClipper<Rect> {
-  const _MenuShadowClipper(this.extent);
-
-  final double extent;
-
-  @override
-  Rect getClip(Size size) => Rect.fromLTRB(
-    -extent,
-    -extent,
-    size.width + extent,
-    size.height + extent,
-  );
-
-  @override
-  bool shouldReclip(_MenuShadowClipper oldClipper) =>
-      oldClipper.extent != extent;
 }
 
 /// 取 [context] 对应渲染对象的全局矩形，给 [showM3eMenu] 当锚点。

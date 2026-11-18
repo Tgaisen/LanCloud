@@ -1669,7 +1669,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get refresh => 'Refresh';
 
   @override
-  String get loadAllRemaining => 'Load all remaining';
+  String get loadAllRemaining => 'Load remaining';
 
   @override
   String loadAllRemainingProgress(int count) {
