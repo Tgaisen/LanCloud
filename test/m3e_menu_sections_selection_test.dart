@@ -211,6 +211,49 @@ void main() {
     semantics.dispose();
   });
 
+  testWidgets('宽菜单内容超过原 380dp 上限但屏幕放得下时仍使用 gap', (tester) async {
+    await _pumpTrigger(
+      tester,
+      size: const Size(800, 800),
+      open: (BuildContext context) async {
+        await showM3eMenu<String>(
+          context: context,
+          anchor: const Rect.fromLTWH(300, 100, 48, 48),
+          sections: [
+            M3eMenuSection(
+              items: [
+                for (var i = 0; i < 4; i++)
+                  M3eMenuItem(
+                    value: 'a$i',
+                    label: '只读操作 A$i',
+                    icon: Icons.circle_outlined,
+                  ),
+              ],
+            ),
+            M3eMenuSection(
+              items: [
+                for (var i = 0; i < 4; i++)
+                  M3eMenuItem(
+                    value: 'b$i',
+                    label: '修改操作 B$i',
+                    icon: Icons.square_outlined,
+                  ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+
+    expect(
+      tester.getSize(find.byKey(const ValueKey('m3e-menu-card'))).height,
+      greaterThan(380),
+      reason: '屏幕高度足够时应完整展示内容，不再受固定 380dp 上限约束',
+    );
+    expect(find.byKey(const ValueKey('m3e-menu-group-gap-1')), findsOneWidget);
+    expect(find.byKey(const ValueKey('m3e-menu-divider-1')), findsNothing);
+  });
+
   testWidgets('宽菜单需要滚动时改用 divider 分组', (tester) async {
     await _pumpTrigger(
       tester,

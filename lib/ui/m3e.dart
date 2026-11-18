@@ -2163,7 +2163,6 @@ class _M3eMenuRoute<T, R> extends PopupRoute<R> {
   /// M3 菜单：宽度 180–280、项高 48、上下内边距 8、离屏幕边缘 12。
   static const double _minWidth = 180;
   static const double _maxWidth = 280;
-  static const double _maxHeight = 380;
   static const double _rowHeight = 48;
 
   /// 卡片上下内边距：和项目间隔一致，首 / 末项到卡片的距离 = 项目之间的距离。
@@ -2383,11 +2382,13 @@ class _M3eMenuRoute<T, R> extends PopupRoute<R> {
     // 先试锚点下方；放不下且上方更宽敞时才翻到上方，避免菜单贴屏幕边
     final bool opensAbove = below < contentHeight && above > below;
     final double available = opensAbove ? above : below;
+    // 卡片最高只能到锚点一侧的可用空间；长菜单在这个高度内滚动。
+    final double maxHeight = math.max(0, available);
     // M3 不允许在滚动菜单里使用 gap 分组；组数超过 3 时 gap 也会超过推荐的
     // 一到两个，因此这两种情况统一回退到 divider。
     final bool useDividers =
         sections.length > 1 &&
-        (sections.length > 3 || contentHeight > available);
+        (sections.length > 3 || contentHeight > maxHeight);
     groupedSurfaces = groupedSurfaces && !useDividers;
     if (useDividers) {
       contentHeight = _menuContentHeight(
@@ -2398,9 +2399,7 @@ class _M3eMenuRoute<T, R> extends PopupRoute<R> {
         groupedSurfaces: false,
       );
     }
-    // 卡片最高只能到「可用空间」和 M3 上限，具体多高由内容决定：放得下就贴着
-    // 内容（不留多余空白），放不下才在里面滚。
-    final double maxHeight = available.clamp(0.0, _maxHeight);
+    // 具体多高由内容决定：放得下就贴着内容（不留多余空白），放不下才在里面滚。
     final double width = _contentWidth(context, screen);
     final bool opensLeft =
         pointer != null && pointer.dx + width + _screenPadding > screen.width;
