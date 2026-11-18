@@ -538,10 +538,10 @@ class _DrivePageState extends ConsumerState<DrivePage>
     _directoryOriginPath = null;
   }
 
-  void _restoreDirectoryOrigin() {
+  bool _restoreDirectoryOrigin() {
     final originId = _directoryOriginId;
     final originPath = _directoryOriginPath;
-    if (originId == null || originPath == null) return;
+    if (originId == null || originPath == null) return false;
     ++_directoryNavGeneration;
     ++_listingGeneration;
     _pendingDirectoryId = null;
@@ -558,6 +558,20 @@ class _DrivePageState extends ConsumerState<DrivePage>
     });
     _clearDirectoryOrigin();
     _restoreFolderOffset(originId);
+    return true;
+  }
+
+  void _cancelPendingDirectoryNavigation() {
+    ++_directoryNavGeneration;
+    _pendingDirectoryId = null;
+    _directorySwitching = false;
+    _cancelListingRequest();
+    setState(() {
+      _loading = false;
+      _loadingMore = false;
+      _error = null;
+    });
+    unawaited(_load(force: true));
   }
 
   /// 局部刷新：保持当前列表可见，拉取完成后按差异播放新增/移除动画。
@@ -919,7 +933,9 @@ class _DrivePageState extends ConsumerState<DrivePage>
       return true;
     }
     if (_pendingDirectoryId != null) {
-      _restoreDirectoryOrigin();
+      if (!_restoreDirectoryOrigin()) {
+        _cancelPendingDirectoryNavigation();
+      }
       return true;
     }
     if (_path.isEmpty && _directoryOriginId != null) {
@@ -4158,7 +4174,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
                 // 点当前目录 = 刷新；点上一级 = 返回该目录
                 onTap: (index) => index == _path.length
                     ? _reloadAfterChange()
-                    : _jumpTo(index - 1),
+                    : _jumpTo(index - 1, supersede: true),
               ),
             ),
           ),

@@ -208,6 +208,56 @@ class _HangingDirectoryClient extends _FakeClient {
   }
 }
 
+/// root/aaa/bbb：bbb 第一页一直挂起，用于验证路径胶囊能抢占加载。
+class _PathJumpClient extends LanzouClient {
+  _PathJumpClient() : super(uid: '1');
+
+  final List<CancelToken> bbbTokens = [];
+
+  @override
+  Future<({List<LzFolder> folders, List<PathNode> path})> listFolders(
+    String folderId, {
+    CancelToken? cancelToken,
+  }) async {
+    return switch (folderId) {
+      '-1' => (
+        folders: [LzFolder(id: 'aaa', name: 'aaa', desc: '')],
+        path: const <PathNode>[],
+      ),
+      'aaa' => (
+        folders: [LzFolder(id: 'bbb', name: 'bbb', desc: '')],
+        path: [PathNode(id: 'aaa', name: 'aaa')],
+      ),
+      'bbb' => (
+        folders: const <LzFolder>[],
+        path: [
+          PathNode(id: 'aaa', name: 'aaa'),
+          PathNode(id: 'bbb', name: 'bbb'),
+        ],
+      ),
+      _ => (folders: const <LzFolder>[], path: const <PathNode>[]),
+    };
+  }
+
+  @override
+  Future<({List<LzFile> files, bool hasMore})> listFilesPage(
+    String folderId,
+    int page, {
+    CancelToken? cancelToken,
+  }) async {
+    if (folderId != 'bbb') {
+      return (files: const <LzFile>[], hasMore: false);
+    }
+    final token = cancelToken!;
+    bbbTokens.add(token);
+    await token.whenCancel;
+    throw DioException.requestCancelled(
+      requestOptions: RequestOptions(path: '/bbb'),
+      reason: token.cancelError,
+    );
+  }
+}
+
 class _FakeApp {
   _FakeApp() {
     environment.accountState.store.activeUid = '1';
@@ -484,6 +534,54 @@ void main() {
 
     expect(find.text('子目录'), findsOneWidget);
     expect(find.byType(CustomScrollView), findsOneWidget);
+  });
+
+  testWidgets('新目录加载中点击上级路径胶囊可抢占并继续切换', (tester) async {
+    final client = _PathJumpClient();
+    final app = _FakeApp();
+    app.environment.settingsState.store.recentLimit = 0;
+    final manager = buildTransferManagerForEnvironment(app.environment);
+    addTearDown(app.dispose);
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(420, 900);
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: _overrides(app, manager, client),
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const DrivePage(tabIndex: 0),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('aaa'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('bbb'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(client.bbbTokens, hasLength(1));
+    expect(client.bbbTokens.single.isCancelled, isFalse);
+
+    await tester.tap(find.text('aaa'));
+    await tester.pumpAndSettle();
+    expect(client.bbbTokens.single.isCancelled, isTrue);
+    expect(find.text('bbb'), findsOneWidget);
+
+    await tester.tap(find.text('bbb'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(client.bbbTokens, hasLength(2));
+
+    final handled = await app.environment.navigation.onDriveBack!.call();
+    expect(handled, isTrue);
+    await tester.pumpAndSettle();
+    expect(client.bbbTokens.last.isCancelled, isTrue);
+    expect(find.text('bbb'), findsOneWidget);
   });
 
   testWidgets('返回上级目录时保留滚动位置并展开顶栏', (tester) async {
