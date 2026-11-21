@@ -14,7 +14,7 @@
 #   format  [目录...]   格式化 Dart 代码，默认 lib test tool
 #   gen-l10n           生成本地化代码
 #   pub-get             pub get（需要联网，会被沙箱拦，属预期）
-#   build-android [参数] 直接编译 Android APK，默认 --debug
+#   build-android [参数] 默认 --debug 并拆 ABI；--install 构建后安装，--universal 不拆
 #   build-windows [参数] 直接编译 Windows 应用，默认 --debug
 #   package-android     正式拆 ABI 构建并校验 release 签名
 #   package-windows     正式构建 Windows x64 便携版
@@ -181,6 +181,36 @@ function Resolve-BuildArgs {
   @($extra)
 }
 
+function Resolve-AndroidBuildArgs {
+  param([string[]]$Arguments)
+  $universal = $Arguments -contains '--universal'
+  $filtered = @(
+    $Arguments |
+      Where-Object { $_ -notin @('--install', '--universal') }
+  )
+  $extra = @(Resolve-BuildArgs -Arguments $filtered)
+  if ($universal) {
+    return @($extra | Where-Object { $_ -ne '--split-per-abi' })
+  }
+  if ($extra -notcontains '--split-per-abi') {
+    $extra += '--split-per-abi'
+  }
+  @($extra)
+}
+
+function Add-BuildTimeArg {
+  param([string[]]$Arguments)
+  $filtered = @(
+    $Arguments |
+      Where-Object { $_ -notlike '--dart-define=BUILD_TIME=*' }
+  )
+  $buildTime = [DateTime]::UtcNow.ToString(
+    "yyyy-MM-dd'T'HH:mm:ss'Z'",
+    [System.Globalization.CultureInfo]::InvariantCulture
+  )
+  @($filtered + "--dart-define=BUILD_TIME=$buildTime")
+}
+
 function Show-Help {
   $lines = Get-Content $PSCommandPath
   $inUsage = $false
@@ -229,25 +259,30 @@ function Select-CompatibleApk {
       Sort-Object LastWriteTime -Descending |
       Select-Object -First 1
   )
-  if ($specific.Count -gt 0) {
-    return $specific[0]
-  }
   $universal = @(
     $Candidates |
       Where-Object { !(Get-ApkAbi -Name $_.Name) } |
       Sort-Object LastWriteTime -Descending |
       Select-Object -First 1
   )
-  if ($universal.Count -gt 0) {
-    return $universal[0]
+  if ($specific.Count -eq 0) {
+    if ($universal.Count -gt 0) {
+      return $universal[0]
+    }
+    return $null
   }
-  return $null
+  if ($universal.Count -eq 0 -or
+      $specific[0].LastWriteTime -ge $universal[0].LastWriteTime) {
+    return $specific[0]
+  }
+  return $universal[0]
 }
 
 function Install-AndroidApks {
   param(
     [ValidateSet('build', 'package')][string]$Source,
-    [switch]$DryRun
+    [switch]$DryRun,
+    [datetime]$Since = [datetime]::MinValue
   )
   if (!$adb) {
     Write-Output '找不到 adb；检查 C:\dev\android-sdk\platform-tools\adb.exe'
@@ -259,6 +294,16 @@ function Install-AndroidApks {
     $apkDir = Join-Path $root 'build\app\outputs\flutter-apk'
     $candidates = @(Get-ChildItem -LiteralPath $apkDir -File -Filter '*.apk' -ErrorAction SilentlyContinue)
     $sourceLabel = 'build'
+    if ($Since -gt [datetime]::MinValue) {
+      $builtCandidates = @(
+        $candidates |
+          Where-Object { $_.LastWriteTime -ge $Since.AddSeconds(-2) }
+      )
+      if ($builtCandidates.Count -gt 0) {
+        $candidates = $builtCandidates
+        $sourceLabel = '本次 build'
+      }
+    }
   } else {
     $apkDir = Join-Path $root 'outputs'
     $versionText = Get-Content -Raw -LiteralPath (Join-Path $root 'pubspec.yaml')
@@ -382,13 +427,20 @@ switch ($Verb) {
     Invoke-Flutter -FlutterArgs (@('pub', 'get') + @($Rest | Where-Object { $_ })) -Tail 6
   }
   'build-android' {
-    # 平台、拆分等附加参数不能隐式切换到 Flutter 的 release 默认值：
-    # 只有显式传入 debug/profile/release 时才沿用调用方模式，否则始终补 --debug。
-    $buildArgs = @(Resolve-BuildArgs -Arguments $Rest)
+    $rawArgs = @($Rest | Where-Object { $_ })
+    $installAfterBuild = $rawArgs -contains '--install'
+    $showHelp = $rawArgs -contains '--help' -or $rawArgs -contains '-h'
+    $buildArgs = @(Resolve-AndroidBuildArgs -Arguments $rawArgs)
+    $buildArgs = @(Add-BuildTimeArg -Arguments $buildArgs)
+    $buildStartedAt = Get-Date
     Invoke-Flutter -FlutterArgs (@('build', 'apk', '--no-pub') + $buildArgs) -Tail 20 -FailureDetails
+    if ($installAfterBuild -and !$showHelp -and $script:ExitCode -eq 0) {
+      Install-AndroidApks -Source build -Since $buildStartedAt
+    }
   }
   'build-windows' {
     $buildArgs = @(Resolve-BuildArgs -Arguments $Rest)
+    $buildArgs = @(Add-BuildTimeArg -Arguments $buildArgs)
     Invoke-Flutter -FlutterArgs (@('build', 'windows', '--no-pub') + $buildArgs) -Tail 20 -FailureDetails
   }
   'package-android' {

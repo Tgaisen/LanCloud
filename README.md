@@ -84,8 +84,14 @@ tools\agent.cmd test
 ### Android
 
 ```powershell
-# 快速本地编译，默认 debug
+# 快速本地编译，默认 debug 并拆分 ABI
 tools\agent.cmd build-android
+
+# 构建后直接安装匹配设备 ABI 的本次产物
+tools\agent.cmd build-android --install
+
+# 需要 universal APK 时显式关闭拆分
+tools\agent.cmd build-android --universal
 
 # 正式拆分 APK、复制到 outputs 并校验签名
 tools\agent.cmd package-android

@@ -125,19 +125,23 @@ if (!$SkipTests) {
 
 # ---------------------------------------------------------------- 构建
 $buildTime = Format-BuildTime
-$commitHash = if ($env:GITHUB_SHA) {
+$commitHash = if ((Test-IsCI) -and $env:GITHUB_SHA) {
   $env:GITHUB_SHA
 } else {
-  Get-GitCommit -Root $root
+  ''
 }
-Info "构建信息：$buildTime · $commitHash"
+$buildInfo = if ($commitHash) { "$buildTime · $commitHash" } else { $buildTime }
+Info "构建信息：$buildInfo"
 Info 'flutter build windows --release'
-Invoke-ReleaseTool -Exe $flutter -Arguments @(
+$buildArguments = @(
   'build', 'windows', '--release',
   '--no-pub',
-  "--dart-define=BUILD_TIME=$buildTime",
-  "--dart-define=GIT_COMMIT=$commitHash"
-) -DryRun:$DryRun
+  "--dart-define=BUILD_TIME=$buildTime"
+)
+if ($commitHash) {
+  $buildArguments += "--dart-define=GIT_COMMIT=$commitHash"
+}
+Invoke-ReleaseTool -Exe $flutter -Arguments $buildArguments -DryRun:$DryRun
 
 if (!$OutputDir) {
   $OutputDir = Join-Path $root 'outputs'
