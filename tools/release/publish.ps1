@@ -31,7 +31,7 @@ param(
   [string]$AssetsDir = '',
   # 手动指定产物列表（不传则按版本号在 AssetsDir 中查找）
   [string[]]$Assets = @(),
-  # 发布说明；不传时优先找 docs/releases/<版本>.md，再回退到自动生成
+  # 显式发布说明；不传时使用 GitHub 自动生成的说明
   [string]$NotesFile = '',
   # 默认创建 draft；本地想直接发布时传 -Draft:$false
   [bool]$Draft = $true,
@@ -298,13 +298,6 @@ if ($existingRelease) {
   Invoke-ReleaseTool -Exe $gh -Arguments $editArgs -DryRun:$DryRun
 } else {
   Info "创建 Release：$Tag"
-  if (!$NotesFile) {
-    $candidate = Join-Path (Join-Path $root 'docs/releases') "$($version.Name).md"
-    if (Test-Path -LiteralPath $candidate) {
-      $NotesFile = $candidate
-    }
-  }
-
   $createArgs = @(
     'release', 'create', $Tag,
     '--verify-tag',

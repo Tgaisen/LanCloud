@@ -13,8 +13,8 @@ GitHub Actions 的发布流程由 [`.github/workflows/release.yml`](../.github/w
 发版脚本已拆成校验、Android 构建、Windows 构建、产物发布四段；日常发版走
 CI，本地一键发布也复用同一组脚本。
 
-`tools/release.ps1` 仍然保留，作为本地一键发版的编排入口；
-`tools/build_windows.ps1` 是兼容入口，会转发到拆分后的 Windows 构建脚本。
+`tools/release.ps1` 仍然保留，作为本地一键发版的编排入口；日常构建与发布
+统一使用 `tools\agent.cmd` 和 `tools/release/` 下的正式脚本。
 
 ## 触发方式
 
@@ -165,7 +165,8 @@ minor/patch 更新互相阻塞。
 - `CI: Flutter` 会根据改动路径统一调度 Flutter、Android、Windows 和
   Workflow Lint；只有全部命中或跳过都符合预期时，`CI required` 才会成功。
 - Workflow Lint 在 `.github/**` 或 `tools/**` 改动时运行 Actionlint、YAML
-  语法检查，并用 PowerShell Parser 检查 `tools` 下的脚本语法。
+  语法检查，并用 PowerShell Parser 检查 `tools` 下的脚本语法；Android 与
+  Windows 的工具安装步骤分别由 `.github/actions/setup-*` 共用。
 - 纯文档、`.github/**` 或 `tools/**` 改动不会额外运行完整的 Flutter
   format/analyze/test，相关脚本由 Workflow Lint 覆盖。
 - `CI: Dependency Review` 在每个 PR 检查新引入的依赖漏洞，高危问题会阻止合并。
@@ -173,8 +174,9 @@ minor/patch 更新互相阻塞。
   保留 main 分支和长期 Flutter SDK 缓存。
 - `CI: Flutter` 在 `windows/**`、`pubspec.yaml`、`pubspec.lock` 或对应
   workflow 改动时执行 Windows release 构建，避免原生插件问题拖到正式发版
-  才暴露。该 job 会上传与正式发布结构一致的 `windows-portable` 便携版
-  Artifact，保留 3 天。
+  才暴露。构建 job 会上传与正式发布结构一致的 `windows-portable` 便携版
+  Artifact，独立的冒烟 job 下载解压后执行 15 秒启动检查，便于单独定位构建
+  或启动问题。
 - 仓库默认 `GITHUB_TOKEN` 权限应为只读；只有创建 Release 的任务显式申请
   `contents: write`。
 
@@ -222,11 +224,11 @@ Windows 产物是绿色便携版，解压后运行；内嵌网页功能仍需要
 本地流程与 CI 共用同一组脚本：
 
 ```powershell
-# 校验 + Android + Windows + 创建正式 Release
+# 校验 + Android + Windows + 创建 draft Release
 powershell -ExecutionPolicy Bypass -File tools/release.ps1
 
-# 先建 draft
-powershell -ExecutionPolicy Bypass -File tools/release.ps1 -Draft
+# 确认无需人工检查时，直接创建正式 Release
+powershell -ExecutionPolicy Bypass -File tools/release.ps1 -Draft:$false
 
 # 只做检查，不构建、不发布
 powershell -ExecutionPolicy Bypass -File tools/release.ps1 -DryRun
@@ -236,7 +238,7 @@ powershell -ExecutionPolicy Bypass -File tools/release.ps1 -DryRun
 
 | 参数 | 用途 |
 | --- | --- |
-| `-Draft` | 本地创建 draft Release |
+| `-Draft:$false` | 跳过草稿，直接创建正式 Release |
 | `-SkipTests` | 跳过格式检查、静态分析和测试 |
 | `-SkipWindows` | 只构建 Android |
 | `-SkipAndroid` | 只构建 Windows |
@@ -247,17 +249,18 @@ powershell -ExecutionPolicy Bypass -File tools/release.ps1 -DryRun
 远端 tag 是否已经存在。CI 会从 `main` 的提交直接构建，不需要你在本地手动
 打 tag 或推送 tag；`release` job 会在产物齐全后创建并推送 `v<版本>`。
 
-`tools/release.ps1` 默认创建正式 Release，只有加 `-Draft` 才建草稿；
-CI 的默认行为正好相反，自动和手动触发都默认建草稿。
+本地脚本和 CI 都默认创建 draft Release，避免误公开。确认产物和说明后，再到
+GitHub Releases 页面点击发布。
 
 ## 发布说明
 
-本地发布时，`-NotesFile` 优先级最高；不传时先找
-`docs/releases/<版本>.md`，再回退到 `gh --generate-notes`。
+发布说明以 GitHub Releases 为唯一归档，不再在仓库中保存各版本副本。CI 和本地
+默认都使用 `gh --generate-notes`，分类规则见
+[`.github/release.yml`](../.github/release.yml)。
 
-CI 默认使用自动生成的发布说明。仓库目前忽略 `docs/releases/*.md`，所以
-普通提交不会把自定义说明带进 CI；如果确实要在 CI 使用固定文案，需要在发布
-前提交该文件（例如 `git add -f`），或调整 `.gitignore` 规则。
+需要临时覆盖时，可给 `tools/release.ps1` 或 `tools/release/publish.ps1` 传入
+显式的 `-NotesFile <路径>`。文件格式和 App 更新日志的截取约定见
+[RELEASE_NOTES.md](RELEASE_NOTES.md)。
 
 ## 常见问题
 

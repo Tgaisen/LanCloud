@@ -14,19 +14,18 @@
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File tools/release.ps1
 .EXAMPLE
-  powershell -ExecutionPolicy Bypass -File tools/release.ps1 -Draft
+  powershell -ExecutionPolicy Bypass -File tools/release.ps1 -Draft:$false
 .EXAMPLE
-  powershell -ExecutionPolicy Bypass -File tools/release.ps1 -NotesFile docs/releases/26.1.0-snapshot.1.md
+  powershell -ExecutionPolicy Bypass -File tools/release.ps1 -NotesFile .\release-notes.md
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File tools/release.ps1 -DryRun
 #>
 [CmdletBinding()]
 param(
-  # 手写发布说明（markdown，格式见 docs/releases/TEMPLATE.md）；
-  # 不传则优先用 docs/releases/<版本>.md，再回退到自动生成
+  # 显式发布说明；不传时使用 GitHub 自动生成的说明
   [string]$NotesFile = '',
-  # 先建草稿，确认无误再到网页里发布
-  [switch]$Draft,
+  # 默认创建草稿；确认无需人工检查时显式传 -Draft:$false
+  [switch]$Draft = $true,
   # 跳过 dart format 检查与 flutter analyze / test
   [switch]$SkipTests,
   # 跳过 Windows 便携版（默认一起构建并挂到 Release）

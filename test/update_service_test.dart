@@ -221,6 +221,15 @@ void main() {
       expect(changelogLines(body), ['• 第一条', '• 第二条']);
     });
 
+    test('支持 GitHub 自动生成说明中的更新日志分类', () {
+      const body =
+          '## What\'s Changed\n\n'
+          '### 更新日志\n\n'
+          '* 修复示例问题 by @alice in #123\n\n'
+          '> Full Changelog: [x](https://example.com)';
+      expect(changelogLines(body), ['• 修复示例问题 by @alice in #123']);
+    });
+
     test('没有标题行时整段显示（以后正文只含列表项也照样能显示）', () {
       expect(changelogLines('- 只有列表\n- 第二条'), ['• 只有列表', '• 第二条']);
     });

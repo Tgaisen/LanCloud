@@ -1,0 +1,30 @@
+name: Setup Android release toolchain
+description: Install JDK, Android SDK, Flutter, Gradle and locked dependencies.
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-java@v6
+      with:
+        distribution: temurin
+        java-version: "17"
+    - name: 安装 Android SDK 组件
+      uses: android-actions/setup-android@v4
+    - name: 安装构建组件
+      shell: bash
+      run: |
+        sdkmanager \
+          "platforms;android-37.0" \
+          "build-tools;36.0.0" \
+          "ndk;28.2.13676358" \
+          "cmake;3.22.1"
+    - uses: subosito/flutter-action@v2
+      with:
+        flutter-version-file: pubspec.yaml
+        channel: stable
+        cache: true
+        pub-cache: ${{ github.event_name == 'push' }}
+    - uses: gradle/actions/setup-gradle@v6
+    - name: 获取锁定依赖
+      shell: bash
+      run: flutter pub get --enforce-lockfile

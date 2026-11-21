@@ -12,34 +12,12 @@ env:
 
 jobs:
   build:
-    name: Windows release 构建检查
+    name: Windows release 构建
     runs-on: windows-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
-      - name: 启用开发者模式（符号链接）
-        shell: pwsh
-        run: |
-          $key = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock'
-          New-Item -Path $key -Force | Out-Null
-          New-ItemProperty `
-            -Path $key `
-            -Name AllowDevelopmentWithoutDevLicense `
-            -PropertyType DWord `
-            -Value 1 `
-            -Force | Out-Null
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version-file: pubspec.yaml
-          channel: stable
-          cache: true
-          pub-cache: ${{ github.event_name == 'push' }}
-      - name: 获取锁定依赖
-        run: flutter pub get --enforce-lockfile
-      - name: 准备 NuGet CLI
-        shell: pwsh
-        run: |
-          ./tools/release/install_nuget.ps1
+      - uses: ./.github/actions/setup-windows
       - name: 构建 Windows 便携版
         shell: pwsh
         run: |
@@ -47,21 +25,6 @@ jobs:
             -SkipTests `
             -SkipPubGet `
             -CI
-      - name: Windows 便携版启动冒烟
-        shell: pwsh
-        run: |
-          $packageDir = Get-ChildItem `
-            -LiteralPath 'outputs' `
-            -Directory `
-            -Filter 'LanCloud_windows_*_x64_portable' |
-            Sort-Object LastWriteTime -Descending |
-            Select-Object -First 1
-          if (!$packageDir) {
-            throw '找不到 Windows 便携版目录'
-          }
-          ./tools/release/smoke_windows.ps1 `
-            -Executable (Join-Path $packageDir.FullName 'lancloud.exe') `
-            -TimeoutSeconds 15
       - uses: actions/upload-artifact@v7
         with:
           name: windows-portable
@@ -69,3 +32,43 @@ jobs:
           if-no-files-found: error
           retention-days: 3
           compression-level: 0
+
+  smoke:
+    name: Windows release 冷启动冒烟
+    needs: build
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: windows-portable
+          path: windows-artifact
+      - name: 解压并检查启动
+        shell: pwsh
+        run: |
+          $zip = Get-ChildItem `
+            -LiteralPath 'windows-artifact' `
+            -File `
+            -Filter '*.zip' |
+            Select-Object -First 1
+          if (!$zip) {
+            throw '找不到 Windows 便携版 zip'
+          }
+          $extractDir = Join-Path $env:GITHUB_WORKSPACE 'windows-smoke'
+          Expand-Archive `
+            -LiteralPath $zip.FullName `
+            -DestinationPath $extractDir `
+            -Force
+          $executable = Get-ChildItem `
+            -LiteralPath $extractDir `
+            -Recurse `
+            -File `
+            -Filter 'lancloud.exe' |
+            Select-Object -First 1
+          if (!$executable) {
+            throw '解压后找不到 lancloud.exe'
+          }
+          ./tools/release/smoke_windows.ps1 `
+            -Executable $executable.FullName `
+            -TimeoutSeconds 15

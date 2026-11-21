@@ -34,6 +34,24 @@
 
 > HarmonyOS NEXT 未来数月将维持搁置状态。因目前 Flutter OpenHarmony 适配的[主要社区](https://atomgit.com/CPF-Flutter/flutter_flutter)暂未适配 Flutter 3.47，而社区分支版本经测试性能表现欠佳，且无法对齐部分关键功能。
 
+## 仓库结构
+
+```text
+.
+├─ lib/                 应用源码（core / ui / l10n）
+├─ test/                单元与组件测试
+├─ tool/                Dart 仓库工具，由 dart run 调用
+├─ tools/               Windows 开发、构建与发布脚本
+├─ .github/             Workflow、复合 Action 与 Release 分类
+├─ android/ windows/    产品构建平台
+├─ ios/                 保留目录，当前不在验收范围
+├─ assets/              图标、截图等应用资源
+└─ docs/                架构、协议、版本与发布说明
+```
+
+`build/`、`outputs/`、`refs/` 和 `.dart_tool/` 都是本地生成或引用内容，不属于
+源码结构。更详细的模块职责见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
+
 ## 获取
 
 可以从 [Releases](https://github.com/Tgaisen/LanCloud/releases) 下载，或克隆仓库后自行编译。
@@ -47,12 +65,35 @@
 
 细节见 [docs/VERSIONING.md](docs/VERSIONING.md)。
 
+### 开发工具链
+
+日常分析与测试统一通过项目入口执行；它会固定 Flutter、JDK 和 Android SDK
+环境：
+
+```powershell
+tools\agent.cmd help
+tools\agent.cmd pub-get
+tools\agent.cmd format
+tools\agent.cmd analyze
+tools\agent.cmd test
+```
+
 ### Android
 
 ```powershell
-flutter pub get
-flutter build apk --release --split-per-abi
+# 快速本地编译，默认 debug
+tools\agent.cmd build-android
+
+# 正式拆分 APK、复制到 outputs 并校验签名
+tools\agent.cmd package-android
+
+# 按已连接设备的 ABI 安装
+tools\agent.cmd install-build-android
+tools\agent.cmd install-package-android
 ```
+
+`package-android` 会校验 release 签名指纹；本地签名材料准备方式见
+[docs/CI_RELEASE.md](docs/CI_RELEASE.md)。
 
 本仓库的 Android 签名公钥如下，可验证是否为本仓库产物：
 
@@ -63,7 +104,11 @@ flutter build apk --release --split-per-abi
 ### Windows
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File tools/build_windows.ps1
+# 快速本地编译，默认 debug
+tools\agent.cmd build-windows
+
+# 正式生成 x64 portable 包
+tools\agent.cmd package-windows
 ```
 
 ### 发布

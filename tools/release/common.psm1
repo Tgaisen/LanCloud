@@ -1,6 +1,10 @@
 ﻿#requires -Version 5.1
 Set-StrictMode -Version 2.0
 
+$script:toolsRoot = Split-Path -Parent $PSScriptRoot
+$script:localToolchainLoaded = $false
+$script:localToolchain = $null
+
 # 发布脚本共用逻辑：版本号、Flutter/Android 工具定位、命令执行与 CI 输出。
 # 这里的脚本同时兼容 Windows PowerShell 5.1、PowerShell 7 和 GitHub Actions 的
 # Ubuntu / Windows runner。
@@ -177,8 +181,31 @@ function Find-Executable {
   return $null
 }
 
+function Get-LocalToolchain {
+  if ($script:localToolchainLoaded) {
+    return $script:localToolchain
+  }
+  $script:localToolchainLoaded = $true
+  if (!(Test-WindowsHost) -or (Test-IsCI)) {
+    return $null
+  }
+
+  $toolchainModule = Join-Path $script:toolsRoot 'toolchain.psm1'
+  if (!(Test-Path -LiteralPath $toolchainModule)) {
+    return $null
+  }
+  Import-Module $toolchainModule -Force
+  $script:localToolchain = Get-LanCloudToolchain
+  return $script:localToolchain
+}
+
 function Get-FlutterCommand {
   param([Parameter(Mandatory = $true)][string]$Root)
+
+  $localToolchain = Get-LocalToolchain
+  if ($localToolchain) {
+    return $localToolchain.Flutter
+  }
 
   $localProperties = Join-Path (Join-Path $Root 'android') 'local.properties'
   $properties = Read-JavaProperties -Path $localProperties
@@ -204,6 +231,11 @@ function Get-FlutterCommand {
 function Get-DartCommand {
   param([Parameter(Mandatory = $true)][string]$Root)
 
+  $localToolchain = Get-LocalToolchain
+  if ($localToolchain -and $localToolchain.Dart) {
+    return $localToolchain.Dart
+  }
+
   $flutter = Get-FlutterCommand -Root $Root
   $binDir = Split-Path -Parent $flutter
   $names = if (Test-WindowsHost) { @('dart.bat', 'dart') } else { @('dart') }
@@ -222,6 +254,11 @@ function Get-DartCommand {
 
 function Get-AndroidSdk {
   param([Parameter(Mandatory = $true)][string]$Root)
+
+  $localToolchain = Get-LocalToolchain
+  if ($localToolchain -and $localToolchain.AndroidSdk) {
+    return (Resolve-Path -LiteralPath $localToolchain.AndroidSdk).Path
+  }
 
   $candidates = @()
   $localProperties = Join-Path (Join-Path $Root 'android') 'local.properties'
