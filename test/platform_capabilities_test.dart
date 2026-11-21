@@ -16,6 +16,7 @@ void main() {
           supportsIncomingShare: true,
           supportsForegroundTask: true,
           supportsLocalNotifications: true,
+          supportsPersistentProgressNotifications: true,
           supportsEdgeToEdgeSystemUi: true,
           supportsSystemShare: true,
           supportsSystemFileSave: true,
@@ -43,6 +44,7 @@ void main() {
           supportsIncomingShare: false,
           supportsForegroundTask: false,
           supportsLocalNotifications: true,
+          supportsPersistentProgressNotifications: false,
           supportsEdgeToEdgeSystemUi: false,
           supportsSystemShare: false,
           supportsSystemFileSave: true,
@@ -70,6 +72,7 @@ void main() {
           supportsIncomingShare: false,
           supportsForegroundTask: false,
           supportsLocalNotifications: false,
+          supportsPersistentProgressNotifications: false,
           supportsEdgeToEdgeSystemUi: false,
           supportsSystemShare: false,
           supportsSystemFileSave: true,
@@ -97,6 +100,7 @@ void main() {
           supportsIncomingShare: false,
           supportsForegroundTask: false,
           supportsLocalNotifications: false,
+          supportsPersistentProgressNotifications: false,
           supportsEdgeToEdgeSystemUi: false,
           supportsSystemShare: false,
           supportsSystemFileSave: false,
@@ -124,6 +128,7 @@ void main() {
           supportsIncomingShare: false,
           supportsForegroundTask: false,
           supportsLocalNotifications: false,
+          supportsPersistentProgressNotifications: false,
           supportsEdgeToEdgeSystemUi: false,
           supportsSystemShare: false,
           supportsSystemFileSave: false,
@@ -151,6 +156,7 @@ void main() {
           supportsIncomingShare: false,
           supportsForegroundTask: false,
           supportsLocalNotifications: false,
+          supportsPersistentProgressNotifications: false,
           supportsEdgeToEdgeSystemUi: false,
           supportsSystemShare: false,
           supportsSystemFileSave: false,
@@ -269,6 +275,10 @@ void _expectCapabilities(
   expect(
     actual.supportsLocalNotifications,
     expected.supportsLocalNotifications,
+  );
+  expect(
+    actual.supportsPersistentProgressNotifications,
+    expected.supportsPersistentProgressNotifications,
   );
   expect(
     actual.supportsEdgeToEdgeSystemUi,

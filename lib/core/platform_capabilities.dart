@@ -28,6 +28,7 @@ final class PlatformCapabilities {
     required this.supportsIncomingShare,
     required this.supportsForegroundTask,
     required this.supportsLocalNotifications,
+    required this.supportsPersistentProgressNotifications,
     required this.supportsEdgeToEdgeSystemUi,
     required this.supportsSystemShare,
     required this.supportsSystemFileSave,
@@ -50,6 +51,7 @@ final class PlatformCapabilities {
     supportsIncomingShare: true,
     supportsForegroundTask: true,
     supportsLocalNotifications: true,
+    supportsPersistentProgressNotifications: true,
     supportsEdgeToEdgeSystemUi: true,
     supportsSystemShare: true,
     supportsSystemFileSave: true,
@@ -72,6 +74,7 @@ final class PlatformCapabilities {
     supportsIncomingShare: false,
     supportsForegroundTask: false,
     supportsLocalNotifications: true,
+    supportsPersistentProgressNotifications: false,
     supportsEdgeToEdgeSystemUi: false,
     supportsSystemShare: false,
     supportsSystemFileSave: true,
@@ -94,6 +97,7 @@ final class PlatformCapabilities {
     supportsIncomingShare: false,
     supportsForegroundTask: false,
     supportsLocalNotifications: false,
+    supportsPersistentProgressNotifications: false,
     supportsEdgeToEdgeSystemUi: false,
     supportsSystemShare: false,
     supportsSystemFileSave: true,
@@ -116,6 +120,7 @@ final class PlatformCapabilities {
     supportsIncomingShare: false,
     supportsForegroundTask: false,
     supportsLocalNotifications: false,
+    supportsPersistentProgressNotifications: false,
     supportsEdgeToEdgeSystemUi: false,
     supportsSystemShare: false,
     supportsSystemFileSave: false,
@@ -138,6 +143,7 @@ final class PlatformCapabilities {
     supportsIncomingShare: false,
     supportsForegroundTask: false,
     supportsLocalNotifications: false,
+    supportsPersistentProgressNotifications: false,
     supportsEdgeToEdgeSystemUi: false,
     supportsSystemShare: false,
     supportsSystemFileSave: false,
@@ -161,6 +167,7 @@ final class PlatformCapabilities {
     supportsIncomingShare: false,
     supportsForegroundTask: false,
     supportsLocalNotifications: false,
+    supportsPersistentProgressNotifications: false,
     supportsEdgeToEdgeSystemUi: false,
     supportsSystemShare: false,
     supportsSystemFileSave: false,
@@ -182,6 +189,7 @@ final class PlatformCapabilities {
   final bool supportsIncomingShare;
   final bool supportsForegroundTask;
   final bool supportsLocalNotifications;
+  final bool supportsPersistentProgressNotifications;
   final bool supportsEdgeToEdgeSystemUi;
   final bool supportsSystemShare;
   final bool supportsSystemFileSave;

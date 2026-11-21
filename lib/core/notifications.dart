@@ -163,6 +163,10 @@ class NotificationService
   /// 当前平台是否有完整接线的本地通知实现。
   bool get supported => _capabilities.supportsLocalNotifications;
 
+  /// 当前平台是否支持传输、收藏检测和备份的常驻进度通知。
+  bool get supportsProgressNotifications =>
+      _capabilities.supportsPersistentProgressNotifications;
+
   /// 通知插件是否已完成初始化；测试可在不触碰插件时读取。
   @visibleForTesting
   bool get ready => _ready;
@@ -407,8 +411,7 @@ class NotificationService
   @override
   void showTransferTask(TransferNotificationSnapshot task) {
     if (!_ready) return;
-    // Windows toast 没有常驻进度语义，桌面端仍只显示完成 / 失败提醒。
-    if (PlatformSupport.isDesktop && !task.isTerminal) return;
+    if (!shouldShowTransferTask(task)) return;
 
     final strings = i18n;
     final hasTotal = task.total > 0;
@@ -479,6 +482,11 @@ class NotificationService
     );
   }
 
+  /// 传输进度只在支持常驻进度的平台显示；完成 / 失败提醒仍需本地通知能力。
+  @visibleForTesting
+  bool shouldShowTransferTask(TransferNotificationSnapshot task) =>
+      supported && (task.isTerminal || supportsProgressNotifications);
+
   @override
   void cancelTransferTask(String taskId) {
     if (!_ready) return;
@@ -494,7 +502,7 @@ class NotificationService
     required int total,
     required String name,
   }) async {
-    if (!_ready) return;
+    if (!_ready || !supportsProgressNotifications) return;
     final strings = i18n;
     await _plugin.show(
       id: favoriteCheckProgressNotificationId,
@@ -523,7 +531,7 @@ class NotificationService
   }
 
   Future<void> cancelFavoriteCheckProgress() async {
-    if (!_ready) return;
+    if (!_ready || !supportsProgressNotifications) return;
     await _plugin.cancel(id: favoriteCheckProgressNotificationId);
   }
 
@@ -531,7 +539,7 @@ class NotificationService
 
   @override
   Future<void> showWebdavBackupProgress() async {
-    if (!_ready || PlatformSupport.isDesktop) return;
+    if (!_ready || !supportsProgressNotifications) return;
     final strings = i18n;
     await _plugin.show(
       id: webdavBackupProgressNotificationId,
@@ -559,7 +567,7 @@ class NotificationService
 
   @override
   Future<void> cancelWebdavBackupProgress() async {
-    if (!_ready || PlatformSupport.isDesktop) return;
+    if (!_ready || !supportsProgressNotifications) return;
     await _plugin.cancel(id: webdavBackupProgressNotificationId);
   }
 

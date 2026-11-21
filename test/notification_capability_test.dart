@@ -5,36 +5,79 @@ import 'package:lancloud/core/platform_capabilities.dart';
 void main() {
   group('NotificationService', () {
     test('应该按平台能力暴露静态通知支持', () {
-      for (final (:name, :capabilities, :supported) in [
+      for (final (:name, :capabilities, :supported, :progressNotifications) in [
         (
           name: 'Android',
           capabilities: PlatformCapabilities.android,
           supported: true,
+          progressNotifications: true,
         ),
         (
           name: 'Windows',
           capabilities: PlatformCapabilities.windows,
           supported: true,
+          progressNotifications: false,
         ),
-        (name: 'iOS', capabilities: PlatformCapabilities.ios, supported: false),
+        (
+          name: 'iOS',
+          capabilities: PlatformCapabilities.ios,
+          supported: false,
+          progressNotifications: false,
+        ),
         (
           name: 'macOS',
           capabilities: PlatformCapabilities.macOS,
           supported: false,
+          progressNotifications: false,
         ),
         (
           name: 'Linux',
           capabilities: PlatformCapabilities.linux,
           supported: false,
+          progressNotifications: false,
         ),
         (
           name: 'unknown',
           capabilities: PlatformCapabilities.unsupported,
           supported: false,
+          progressNotifications: false,
         ),
       ]) {
         final service = NotificationService(capabilities: capabilities);
         expect(service.supported, supported, reason: name);
+        expect(
+          service.supportsProgressNotifications,
+          progressNotifications,
+          reason: name,
+        );
+        expect(
+          service.shouldShowTransferTask(
+            const TransferNotificationSnapshot(
+              taskId: 'progress',
+              name: 'file.zip',
+              kind: TransferNotificationKind.download,
+              state: TransferNotificationState.downloading,
+              received: 1,
+              total: 2,
+            ),
+          ),
+          progressNotifications,
+          reason: '$name progress',
+        );
+        expect(
+          service.shouldShowTransferTask(
+            const TransferNotificationSnapshot(
+              taskId: 'done',
+              name: 'file.zip',
+              kind: TransferNotificationKind.download,
+              state: TransferNotificationState.done,
+              received: 2,
+              total: 2,
+            ),
+          ),
+          supported,
+          reason: '$name terminal',
+        );
       }
     });
 
