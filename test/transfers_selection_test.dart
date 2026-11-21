@@ -17,6 +17,7 @@ import 'package:lancloud/core/file_open_result.dart';
 import 'package:lancloud/core/list_home_settings_state.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
+import 'package:lancloud/core/platform_capabilities.dart';
 import 'package:lancloud/core/transfer/transfer_issue.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
@@ -35,6 +36,7 @@ Widget _transferTestHost({
   required AppEnvironment app,
   required TransferManager manager,
   required Widget child,
+  PlatformCapabilities capabilities = PlatformCapabilities.android,
 }) {
   return ProviderScope(
     overrides: [
@@ -45,6 +47,7 @@ Widget _transferTestHost({
         app.navigationAppearanceSettings,
       ),
       navigationStateProvider.overrideWithValue(app.navigation),
+      platformCapabilitiesProvider.overrideWithValue(capabilities),
     ],
     child: child,
   );
@@ -115,6 +118,7 @@ Future<(AppEnvironment, TransferManager)> hostWithTasks(
   WidgetTester tester,
   List<TransferTask> tasks, {
   LanzouClient? uploadClient,
+  PlatformCapabilities capabilities = PlatformCapabilities.android,
 }) async {
   final app = AppEnvironment();
   final manager = buildTransferManagerForEnvironment(app);
@@ -123,6 +127,7 @@ Future<(AppEnvironment, TransferManager)> hostWithTasks(
     _transferTestHost(
       app: app,
       manager: manager,
+      capabilities: capabilities,
       child: MaterialApp(
         localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
@@ -1414,6 +1419,44 @@ void main() {
     app.dispose();
   });
 
+  testWidgets('Windows 下载完成菜单使用资源管理器定位文案', (tester) async {
+    final (app, _) = await hostWithTasks(tester, [
+      TransferTask(
+          id: 'd-win',
+          kind: TransferKind.download,
+          name: 'windows.zip',
+          accountUid: '',
+        )
+        ..status = TransferStatus.done
+        ..savedPath = '/tmp/windows.zip',
+    ], capabilities: PlatformCapabilities.windows);
+    await tester.tap(find.text('下载').hitTestable());
+    await pumpTransferUi(tester);
+
+    await openRowMenu(tester, 'windows.zip');
+    expect(menuLabels(tester), ['打开', '打开所在文件夹', '删除此条记录', '删除记录与文件']);
+    app.dispose();
+  });
+
+  testWidgets('iOS 下载完成菜单隐藏不可用的分享入口', (tester) async {
+    final (app, _) = await hostWithTasks(tester, [
+      TransferTask(
+          id: 'd-ios',
+          kind: TransferKind.download,
+          name: 'ios.zip',
+          accountUid: '',
+        )
+        ..status = TransferStatus.done
+        ..savedPath = '/tmp/ios.zip',
+    ], capabilities: PlatformCapabilities.ios);
+    await tester.tap(find.text('下载').hitTestable());
+    await pumpTransferUi(tester);
+
+    await openRowMenu(tester, 'ios.zip');
+    expect(menuLabels(tester), ['打开', '删除此条记录', '删除记录与文件']);
+    app.dispose();
+  });
+
   testWidgets('下载多选分享一次提交全部已完成文件，忽略不可分享任务', (tester) async {
     final (app, manager) = await hostWithTasks(tester, [
       task(
@@ -2093,7 +2136,7 @@ void main() {
           status: TransferStatus.done,
           kind: TransferKind.download,
         )..savedPath = '/tmp/download.zip',
-      ]);
+      ], capabilities: PlatformCapabilities.windows);
       app = environment;
       await tester.tap(find.text('下载').hitTestable());
       await tester.pumpAndSettle();

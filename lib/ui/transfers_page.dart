@@ -9,7 +9,7 @@ import '../core/api/lanzou_client_registry.dart';
 import '../core/file_open_result.dart';
 import '../core/navigation_appearance_settings_state.dart';
 import '../core/navigation_state.dart';
-import '../core/platform_support.dart';
+import '../core/platform_capabilities.dart';
 import '../core/saved_file.dart';
 import '../core/system_open.dart';
 import '../core/system_share.dart';
@@ -625,7 +625,12 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
     final subject = context.l10n.share;
     final mime = tasks.length == 1 ? _shareMimeFor(tasks.single.name) : null;
     _exitSelection();
-    await SystemShare.shareFiles(paths, subject: subject, mime: mime);
+    await SystemShare.shareFiles(
+      paths,
+      subject: subject,
+      mime: mime,
+      capabilities: ref.read(platformCapabilitiesProvider),
+    );
   }
 
   void _pauseAll() {
@@ -764,94 +769,100 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
         task.status != TransferStatus.queued &&
         task.status != TransferStatus.resolving &&
         task.status != TransferStatus.resuming;
-    final desktop = PlatformSupport.isDesktop;
-    final _TransferMenuAction? action =
-        await showAdaptiveM3eMenu<_TransferMenuAction>(
-          context: context,
-          anchor: anchor,
-          pointerPosition: pointerPosition,
-          // ⋯ 贴着右边缘：菜单右缘对齐，免得被屏幕右上角夹歪
-          alignEnd: true,
-          items: [
-            if (task.kind == TransferKind.download && done) ...[
-              M3eMenuItem(
-                value: _TransferMenuAction.open,
-                label: l10n.open,
-                icon: Icons.open_in_new,
-              ),
-              M3eMenuItem(
-                value: _TransferMenuAction.share,
-                // 桌面端没有分享面板：SystemShare.shareFile 在桌面端就是资源管理器定位
-                label: desktop ? l10n.openContainingFolder : l10n.share,
-                icon: desktop ? Icons.folder_open : Icons.share_outlined,
-              ),
-            ],
-            if (failed)
-              M3eMenuItem(
-                value: _TransferMenuAction.retry,
-                label: l10n.retry,
-                icon: Icons.refresh,
-              ),
-            if (pending || skipped)
-              M3eMenuItem(
-                value: _TransferMenuAction.rename,
-                label: l10n.rename,
-                icon: Icons.input_field,
-              ),
-            if (pending)
-              M3eMenuItem(
-                value: _TransferMenuAction.changeFolder,
-                label: l10n.changeUploadFolder,
-                icon: Icons.drive_file_move_outline,
-              ),
-            if (skipped)
-              M3eMenuItem(
-                value: _TransferMenuAction.uploadAnyway,
-                label: l10n.uploadAnyway,
-                icon: Icons.upload,
-              ),
-            if (task.kind == TransferKind.download && active)
-              M3eMenuItem(
-                value: _TransferMenuAction.pause,
-                label: l10n.pauseDownload,
-                icon: Icons.pause,
-              ),
-            if (task.kind == TransferKind.download && paused)
-              M3eMenuItem(
-                value: _TransferMenuAction.resume,
-                label: l10n.resumeDownload,
-                icon: Icons.play_arrow,
-              ),
-            if (task.kind == TransferKind.download &&
-                (active || resolving || resuming || paused))
-              M3eMenuItem(
-                value: _TransferMenuAction.cancel,
-                label: l10n.cancelDownload,
-                icon: Icons.close,
-              ),
-            if (pending)
-              M3eMenuItem(
-                value: _TransferMenuAction.cancel,
-                label: l10n.cancelUpload,
-                icon: Icons.close,
-              )
-            else
-              M3eMenuItem(
-                value: _TransferMenuAction.removeRecord,
-                label: l10n.deleteRecord,
-                icon: Icons.playlist_remove,
-              ),
-            if (task.kind == TransferKind.download &&
-                stopped &&
-                path != null &&
-                path.isNotEmpty)
-              M3eMenuItem(
-                value: _TransferMenuAction.removeRecordAndFile,
-                label: l10n.deleteRecordAndFile,
-                icon: Icons.delete_outline,
-              ),
-          ],
-        );
+    final capabilities = ref.read(platformCapabilitiesProvider);
+    final canShare =
+        capabilities.supportsSystemShare ||
+        capabilities.formFactor == PlatformFormFactor.desktop;
+    final revealFallback =
+        !capabilities.supportsSystemShare &&
+        capabilities.formFactor == PlatformFormFactor.desktop;
+    final _TransferMenuAction?
+    action = await showAdaptiveM3eMenu<_TransferMenuAction>(
+      context: context,
+      anchor: anchor,
+      pointerPosition: pointerPosition,
+      // ⋯ 贴着右边缘：菜单右缘对齐，免得被屏幕右上角夹歪
+      alignEnd: true,
+      items: [
+        if (task.kind == TransferKind.download && done) ...[
+          M3eMenuItem(
+            value: _TransferMenuAction.open,
+            label: l10n.open,
+            icon: Icons.open_in_new,
+          ),
+          if (canShare)
+            M3eMenuItem(
+              value: _TransferMenuAction.share,
+              label: revealFallback ? l10n.openContainingFolder : l10n.share,
+              icon: revealFallback ? Icons.folder_open : Icons.share_outlined,
+            ),
+        ],
+        if (failed)
+          M3eMenuItem(
+            value: _TransferMenuAction.retry,
+            label: l10n.retry,
+            icon: Icons.refresh,
+          ),
+        if (pending || skipped)
+          M3eMenuItem(
+            value: _TransferMenuAction.rename,
+            label: l10n.rename,
+            icon: Icons.input_field,
+          ),
+        if (pending)
+          M3eMenuItem(
+            value: _TransferMenuAction.changeFolder,
+            label: l10n.changeUploadFolder,
+            icon: Icons.drive_file_move_outline,
+          ),
+        if (skipped)
+          M3eMenuItem(
+            value: _TransferMenuAction.uploadAnyway,
+            label: l10n.uploadAnyway,
+            icon: Icons.upload,
+          ),
+        if (task.kind == TransferKind.download && active)
+          M3eMenuItem(
+            value: _TransferMenuAction.pause,
+            label: l10n.pauseDownload,
+            icon: Icons.pause,
+          ),
+        if (task.kind == TransferKind.download && paused)
+          M3eMenuItem(
+            value: _TransferMenuAction.resume,
+            label: l10n.resumeDownload,
+            icon: Icons.play_arrow,
+          ),
+        if (task.kind == TransferKind.download &&
+            (active || resolving || resuming || paused))
+          M3eMenuItem(
+            value: _TransferMenuAction.cancel,
+            label: l10n.cancelDownload,
+            icon: Icons.close,
+          ),
+        if (pending)
+          M3eMenuItem(
+            value: _TransferMenuAction.cancel,
+            label: l10n.cancelUpload,
+            icon: Icons.close,
+          )
+        else
+          M3eMenuItem(
+            value: _TransferMenuAction.removeRecord,
+            label: l10n.deleteRecord,
+            icon: Icons.playlist_remove,
+          ),
+        if (task.kind == TransferKind.download &&
+            stopped &&
+            path != null &&
+            path.isNotEmpty)
+          M3eMenuItem(
+            value: _TransferMenuAction.removeRecordAndFile,
+            label: l10n.deleteRecordAndFile,
+            icon: Icons.delete_outline,
+          ),
+      ],
+    );
     if (!mounted || action == null) return;
     switch (action) {
       case _TransferMenuAction.open:
@@ -873,6 +884,7 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
           path!,
           subject: task.name,
           mime: _shareMimeFor(task.name),
+          capabilities: capabilities,
         );
       case _TransferMenuAction.pause:
         manager.pause(task.id);
@@ -947,14 +959,20 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
     final accountState = ref.watch(accountStateProvider);
     final appearance = ref.watch(navigationAppearanceSettingsStateProvider);
     final manager = ref.watch(transferManagerProvider);
+    final capabilities = ref.watch(platformCapabilitiesProvider);
     return ListenableBuilder(
       listenable: accountState,
       builder: (context, _) => ListenableBuilder(
         listenable: appearance.revision,
         builder: (context, _) => ListenableBuilder(
           listenable: manager,
-          builder: (context, _) =>
-              _buildPage(context, appearance.hideTopBar, _navigation, manager),
+          builder: (context, _) => _buildPage(
+            context,
+            appearance.hideTopBar,
+            _navigation,
+            manager,
+            capabilities,
+          ),
         ),
       ),
     );
@@ -965,6 +983,7 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
     bool hideTopBar,
     NavigationState navigation,
     TransferManager manager,
+    PlatformCapabilities capabilities,
   ) {
     final scheme = Theme.of(context).colorScheme;
     final l10n = context.l10n;
@@ -1240,7 +1259,7 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
                               : _changeSelectedUploadFolder,
                         ),
                       ],
-                      if (!uploadTab && PlatformSupport.isAndroid)
+                      if (!uploadTab && capabilities.supportsSystemShare)
                         BatchAction(
                           icon: Icons.share_outlined,
                           label: l10n.share,
