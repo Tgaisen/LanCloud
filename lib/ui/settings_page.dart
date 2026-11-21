@@ -314,6 +314,7 @@ class _SettingsCategoryPageState extends ConsumerState<SettingsCategoryPage>
           l10n,
           dynamicColor: settings.dynamicColor,
           seed: settings.themeSeed,
+          dynamicColorSource: capabilities.dynamicColorSource,
         ),
         keywords: [
           ...l10n.themeColorKeywords.split(' '),
