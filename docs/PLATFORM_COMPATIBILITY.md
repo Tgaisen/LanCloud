@@ -12,6 +12,9 @@ CI 与发布脚本整理。**“已接入”表示代码和平台配置存在，
 逐项人工验收。** Android、Windows 的构建状态见
 [BASELINE.md](./BASELINE.md)，功能级人工验收仍需另行记录。
 
+Dart 侧可先实施的拆分、能力开关和分批改造计划见
+[DART_PLATFORM_ADAPTER_ROADMAP.md](./DART_PLATFORM_ADAPTER_ROADMAP.md)。
+
 ## 1. 先说结论
 
 - 业务、网络、模型、状态管理、本地化、备份格式和绝大部分 UI 都在共享 Dart
