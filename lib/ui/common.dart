@@ -76,6 +76,9 @@ enum ProfileSubPage {
 bool isLargeLayout(BuildContext context) =>
     MediaQuery.sizeOf(context).width >= kLargeLayoutBreakpoint;
 
+/// 分栏标题是否使用紧凑排版；由实际可用宽度决定，而不是操作系统。
+bool useCompactSectionHeader(BuildContext context) => !isLargeLayout(context);
+
 /// 普通 `Md3ListItem` 能完整容纳图标、文字和一个尾部操作的最小列宽。
 ///
 /// 这是应用自己的内容约束，不是 M3 规定的固定列宽。

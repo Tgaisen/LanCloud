@@ -8,7 +8,6 @@ import '../core/favorites/favorite_monitor.dart';
 import '../core/list_home_settings_state.dart';
 import '../core/navigation_appearance_settings_state.dart';
 import '../core/navigation_state.dart';
-import '../core/platform_support.dart';
 import 'download_mark.dart';
 import '../core/data/app_db.dart';
 import '../l10n/l10n.dart';
@@ -975,7 +974,7 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
                                     ),
                                     title: l10n.favoriteFolders,
                                     count: folders.length,
-                                    compact: !PlatformSupport.isDesktop,
+                                    compact: useCompactSectionHeader(context),
                                     stableActionHeight: true,
                                     actions: _sectionActions(
                                       l10n: l10n,
@@ -1019,7 +1018,7 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
                                     ),
                                     title: l10n.favoriteFiles,
                                     count: files.length,
-                                    compact: !PlatformSupport.isDesktop,
+                                    compact: useCompactSectionHeader(context),
                                     stableActionHeight: true,
                                     actions: _sectionActions(
                                       l10n: l10n,

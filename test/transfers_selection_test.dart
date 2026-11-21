@@ -835,6 +835,26 @@ void main() {
     expect(padding.padding, const EdgeInsets.fromLTRB(4, 16, 4, 8));
   });
 
+  testWidgets('分栏标题密度跟随实际宽度而不是平台', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    for (final (:width, :compact) in [
+      (width: 639.0, compact: true),
+      (width: 640.0, compact: false),
+    ]) {
+      tester.view.physicalSize = Size(width, 800);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => Text('${useCompactSectionHeader(context)}'),
+          ),
+        ),
+      );
+      expect(find.text('$compact'), findsOneWidget);
+    }
+  });
+
   // 多选期间切换上传 / 下载：不禁用按钮组，切换后自动退出多选。
   testWidgets('多选时切换上传 / 下载会退出多选', (tester) async {
     await host(tester);
@@ -1107,6 +1127,9 @@ void main() {
   });
 
   testWidgets('下载进行中分栏：全部暂停后并排显示取消和恢复', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(420, 800);
+    addTearDown(tester.view.reset);
     final (app, manager) = await hostWithTasks(tester, [
       TransferTask(
         id: 'd1',

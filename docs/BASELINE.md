@@ -10,16 +10,16 @@
 | 命令 | 口径 | 结果 | 耗时 |
 | --- | --- | --- | --- |
 | `tools\agent.cmd analyze` | 全量 | No issues found | 约 26 s |
-| `tools\agent.cmd analyze` | 增量（自适应菜单输入路由，1 个 Dart 文件） | No issues found | 约 9 s |
-| `tools\agent.cmd test` | 全量（用例总数） | **1055 tests, all passed** | 约 4 min 42 s |
-| `tools\agent.cmd test` | 增量（自适应菜单输入路由，58 个测试文件） | **434 tests, all passed** | 约 2 min 29 s |
+| `tools\agent.cmd analyze` | 增量（分栏标题宽度语义，3 个 Dart 文件） | No issues found | 约 11 s |
+| `tools\agent.cmd test` | 全量（用例总数） | **1056 tests, all passed** | 约 2 min 15 s |
+| `tools\agent.cmd test` | 增量（61 个测试文件，自动回退全量） | **1056 tests, all passed** | 约 2 min 15 s |
 | `tools\agent.cmd format` | 全量 | 369 files，0 changed | 约 3 s |
 | `tools\agent.cmd build-android` | debug | `app-debug.apk` | 首次构建约 5 min 46 s |
 
 当前分析结果为 0 issue 是硬基线。出现红灯时，先判断是否为本次改动引入；
 不要把增量结果当成全量结论。Flutter 3.50.0 下全量分析已重跑并通过。
 
-当前用例总数为 1055；最近一次全量 1055 项全部通过。平台能力矩阵覆盖
+当前用例总数为 1056；最近一次全量 1056 项全部通过。平台能力矩阵覆盖
 Android、Windows、iOS、macOS、Linux 与未知 TargetPlatform 的 fail-closed
 行为，以及动态色来源、更新产物、只读 const 能力和 Riverpod 测试覆盖。设置页、
 网盘添加菜单、普通文件选择、系统另存为、二维码来源与分享收件箱已改为按具体
@@ -31,7 +31,7 @@ Android、Windows、iOS、macOS、Linux 与未知 TargetPlatform 的 fail-closed
 由私有临时目录与 SAF 能力选择，设备信息分支统一走 `PlatformSupport`。
 WebView 登录 UA 由 `usesMobileWebUserAgent` 决定，动态色插件探测由
 `DynamicColorSource` 选择；全局滚动条和自适应菜单改由运行时鼠标信号控制。
-1055 项全量覆盖
+收藏与传输分栏标题改由实际宽度决定。1056 项全量覆盖
 收藏分栏高度稳定、批量消除更新标志、分享目录分页取消后保留当前页面与已加载
 内容，同时保留 WebDAV 自动备份互斥和补检覆盖。
 测试入口在受影响文件超过 60 个时自动回退全量，避免 Windows 命令行长度上限导致
@@ -42,10 +42,10 @@ WebView 登录 UA 由 `usesMobileWebUserAgent` 决定，动态色插件探测由
 | 指标 | 当前值 |
 | --- | ---: |
 | `lib` Dart 文件 | 168 |
-| `lib` 总行数 | 65,540 |
+| `lib` 总行数 | 65,542 |
 | `test` 测试文件 | 198（全部为 `*_test.dart`，平铺） |
-| `test` 总行数 | 40,101 |
-| `test` 用例数 | 1055 |
+| `test` 总行数 | 40,124 |
+| `test` 用例数 | 1056 |
 | `lib/ui` 平铺文件 | 62 |
 | `lib/core` | 61 个平铺文件 + 6 个子系统目录 |
 | 文案（`app_zh.arb`） | 1,812 行 |
@@ -62,10 +62,10 @@ WebView 登录 UA 由 `usesMobileWebUserAgent` 决定，动态色插件探测由
 
 ## 测试安全网
 
-- 当前用例总数为 1055；最近一次全量 1055 项全部通过；平台能力矩阵与 UI、
+- 当前用例总数为 1056；最近一次全量 1056 项全部通过；平台能力矩阵与 UI、
   扫码、分享、文件、下载、启动、系统分享、系统设置、更新交付、本地通知门控
   通知设置可见性、缓存清理、设备信息分支、WebView 登录 UA、动态色来源路由
-  鼠标滚动条及自适应菜单输入路由已由全量测试覆盖；项目仍没有
+  鼠标滚动条、自适应菜单及分栏宽度语义已由全量测试覆盖；项目仍没有
   `integration_test` 和 golden test。
 - `tools\agent.cmd analyze|test` 默认走增量；全量结果必须按上表单独记录。
 - 增量推断出超过 60 个测试文件时，`agent.cmd test` 自动回退全量。

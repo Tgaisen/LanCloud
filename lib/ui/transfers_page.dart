@@ -1475,7 +1475,7 @@ class _TransferListSliver extends StatelessWidget {
               child: SectionHeader(
                 title: l10n.inProgress,
                 count: active.length,
-                compact: !PlatformSupport.isDesktop,
+                compact: useCompactSectionHeader(context),
                 actions: _sectionActions(
                   l10n: l10n,
                   key: 'transfers-select-active',
@@ -1525,7 +1525,7 @@ class _TransferListSliver extends StatelessWidget {
               child: SectionHeader(
                 title: l10n.pendingUploads,
                 count: pending.length,
-                compact: !PlatformSupport.isDesktop,
+                compact: useCompactSectionHeader(context),
                 actions: _sectionActions(
                   l10n: l10n,
                   key: 'transfers-select-pending',
@@ -1583,7 +1583,7 @@ class _TransferListSliver extends StatelessWidget {
               child: SectionHeader(
                 title: l10n.skippedUploads,
                 count: skipped.length,
-                compact: !PlatformSupport.isDesktop,
+                compact: useCompactSectionHeader(context),
                 actions: _sectionActions(
                   l10n: l10n,
                   key: 'transfers-select-skipped',
@@ -1636,7 +1636,7 @@ class _TransferListSliver extends StatelessWidget {
               child: SectionHeader(
                 title: l10n.failed,
                 count: failed.length,
-                compact: !PlatformSupport.isDesktop,
+                compact: useCompactSectionHeader(context),
                 actions: _sectionActions(
                   l10n: l10n,
                   key: 'transfers-select-failed',
@@ -1689,7 +1689,7 @@ class _TransferListSliver extends StatelessWidget {
               child: SectionHeader(
                 title: l10n.finished,
                 count: completed.length,
-                compact: !PlatformSupport.isDesktop,
+                compact: useCompactSectionHeader(context),
                 actions: _sectionActions(
                   l10n: l10n,
                   key: 'transfers-select-finished',
