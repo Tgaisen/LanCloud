@@ -19,9 +19,11 @@ import 'package:lancloud/core/drive_state.dart';
 import 'package:lancloud/core/list_home_settings_state.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
+import 'package:lancloud/core/platform_capabilities.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
+import 'package:lancloud/l10n/app_localizations_zh.dart';
 import 'package:lancloud/l10n/delegates.dart';
 import 'package:lancloud/ui/app_icons.dart';
 import 'package:lancloud/ui/common.dart';
@@ -33,6 +35,8 @@ import 'package:material_ui/material_ui.dart' hide Icons;
 
 import 'transfer_dependencies_test.dart'
     show buildTransferManagerForEnvironment;
+
+final _zh = AppLocalizationsZh();
 
 /// 固定返回一个文件 + 一个文件夹，并给出可预测的分享信息。
 ///
@@ -418,6 +422,7 @@ Future<void> _pumpDrive(
   Size viewSize = const Size(420, 900),
   Locale locale = const Locale('zh'),
   bool freeTier = false,
+  PlatformCapabilities capabilities = PlatformCapabilities.android,
 }) async {
   final environment = app.environment;
   final transfers = manager ?? buildTransferManagerForEnvironment(environment);
@@ -456,6 +461,7 @@ Future<void> _pumpDrive(
           environment.navigationAppearanceSettings,
         ),
         navigationStateProvider.overrideWithValue(environment.navigation),
+        platformCapabilitiesProvider.overrideWithValue(capabilities),
       ],
       child: MaterialApp(
         theme: ThemeData(visualDensity: density),
@@ -479,6 +485,12 @@ Future<void> _pumpDrive(
   await tester.pump(const Duration(milliseconds: 800));
 }
 
+Future<void> _openAddMenu(WidgetTester tester) async {
+  await tester.tap(find.text(_zh.add));
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 600));
+}
+
 /// 打开一个弹窗：等进场动画播完（有界 pump）。
 Future<void> _settleSheet(WidgetTester tester) async {
   await tester.pump();
@@ -486,6 +498,35 @@ Future<void> _settleSheet(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets('Android 能力下添加菜单包含从其他应用上传', (tester) async {
+    final app = _FakeApp(_FakeClient());
+    await _pumpDrive(tester, app);
+
+    await _openAddMenu(tester);
+
+    expect(find.text(_zh.uploadFromApp), findsOneWidget);
+  });
+
+  testWidgets('Windows 能力下添加菜单隐藏从其他应用上传', (tester) async {
+    final app = _FakeApp(_FakeClient());
+    await _pumpDrive(tester, app, capabilities: PlatformCapabilities.windows);
+
+    await _openAddMenu(tester);
+
+    expect(find.text(_zh.uploadFromApp), findsNothing);
+    expect(find.text(_zh.uploadFile), findsOneWidget);
+  });
+
+  testWidgets('iOS 能力下添加菜单隐藏从其他应用上传', (tester) async {
+    final app = _FakeApp(_FakeClient());
+    await _pumpDrive(tester, app, capabilities: PlatformCapabilities.ios);
+
+    await _openAddMenu(tester);
+
+    expect(find.text(_zh.uploadFromApp), findsNothing);
+    expect(find.text(_zh.uploadFile), findsOneWidget);
+  });
+
   testWidgets('网盘列表模式在宽窗口下仍保持单列', (tester) async {
     final app = _FakeApp(_ManyFilesClient());
     app.environment.cachePageSettings.store.gridView = false;

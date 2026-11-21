@@ -1,7 +1,9 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/app_permissions.dart';
+import 'package:lancloud/core/platform_capabilities.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/app_localizations_zh.dart';
 import 'package:lancloud/ui/common.dart';
@@ -44,18 +46,22 @@ Future<AppEnvironment> pumpSettings(
   WidgetTester tester, {
   bool hideTopBar = false,
   SettingsCategory category = SettingsCategory.behaviorPermissions,
+  PlatformCapabilities capabilities = PlatformCapabilities.android,
 }) async {
   final environment = AppEnvironment();
   environment.settingsState.store.hideTopBar = hideTopBar;
   addTearDown(environment.dispose);
   await tester.pumpWidget(
-    appEnvironmentTestTree(
-      environment: environment,
-      child: MaterialApp(
-        localizationsDelegates: appLocalizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        locale: const Locale('zh'),
-        home: SettingsCategoryPage(category: category),
+    ProviderScope(
+      overrides: [platformCapabilitiesProvider.overrideWithValue(capabilities)],
+      child: appEnvironmentTestTree(
+        environment: environment,
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: SettingsCategoryPage(category: category),
+        ),
       ),
     ),
   );
@@ -70,6 +76,27 @@ Future<void> scrollToSetting(WidgetTester tester, String text) async {
   // 正好被顶栏盖住（点不到），这里往回拖一段让它落在顶栏下方。
   await tester.drag(scrollable, const Offset(0, 120));
   await tester.pumpAndSettle();
+}
+
+Future<void> expectSystemSettingsEntries(
+  WidgetTester tester, {
+  required bool visible,
+}) async {
+  await tester.tap(find.byTooltip(_zh.searchSettings));
+  await tester.pumpAndSettle();
+  for (final label in [
+    _zh.managePermissions,
+    _zh.manageDefaultLinks,
+    _zh.openSystemSettings,
+  ]) {
+    await tester.enterText(find.byType(TextField), label);
+    await tester.pumpAndSettle();
+    expect(
+      find.widgetWithText(ListTile, label),
+      visible ? findsOneWidget : findsNothing,
+      reason: label,
+    );
+  }
 }
 
 void main() {
@@ -101,6 +128,24 @@ void main() {
     expect(find.text(_zh.permissionBattery), findsOneWidget);
     expect(find.text(_zh.permissionInstallDenied), findsOneWidget);
     expect(find.text(_zh.permissionBatteryRestricted), findsOneWidget);
+  });
+
+  testWidgets('Android 能力下显式保留三个系统设置入口', (tester) async {
+    await pumpSettings(tester);
+
+    await expectSystemSettingsEntries(tester, visible: true);
+  });
+
+  testWidgets('Windows 能力下隐藏三个 Android 专属设置入口', (tester) async {
+    await pumpSettings(tester, capabilities: PlatformCapabilities.windows);
+
+    await expectSystemSettingsEntries(tester, visible: false);
+  });
+
+  testWidgets('iOS 能力下隐藏三个 Android 专属设置入口', (tester) async {
+    await pumpSettings(tester, capabilities: PlatformCapabilities.ios);
+
+    await expectSystemSettingsEntries(tester, visible: false);
   });
 
   testWidgets('设置页顶栏同样是浮层：上滑随手指渐隐，底色不渐隐', (tester) async {
