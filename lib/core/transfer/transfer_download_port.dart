@@ -7,7 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import '../data/settings_store.dart';
 import '../download_path_service.dart';
 import '../download_target.dart';
-import '../platform_support.dart';
+import '../platform_capabilities.dart';
 import '../shared_downloads_gateway.dart';
 
 /// `TransferManager` 需要的下载目标与路径解析能力。
@@ -24,15 +24,17 @@ abstract interface class TransferDownloadPort {
 
 /// 生产下载端口：从实时设置和注入的平台能力解析目标与路径。
 class DefaultTransferDownloadPort implements TransferDownloadPort {
-  const DefaultTransferDownloadPort({
+  DefaultTransferDownloadPort({
     required this.downloadPaths,
     required this.sharedDownloads,
     required this.settings,
-  });
+    PlatformCapabilities? capabilities,
+  }) : capabilities = capabilities ?? PlatformCapabilities.current;
 
   final DownloadPathService downloadPaths;
   final SharedDownloadsGateway sharedDownloads;
   final SettingsStore settings;
+  final PlatformCapabilities capabilities;
 
   static bool _safTmpSwept = false;
 
@@ -41,13 +43,13 @@ class DefaultTransferDownloadPort implements TransferDownloadPort {
     final directory = settings.downloadDir;
     final treeUri = settings.downloadDirTree;
     var supportsSharedDownloads = false;
-    if (PlatformSupport.isAndroid &&
+    if (capabilities.supportsSafDirectory &&
         (directory == null || directory.isEmpty) &&
         (treeUri == null || treeUri.isEmpty)) {
       supportsSharedDownloads = await sharedDownloads.isSupported();
     }
     return resolveDownloadTargetMode(
-      isAndroid: PlatformSupport.isAndroid,
+      isAndroid: capabilities.supportsSafDirectory,
       supportsSharedDownloads: supportsSharedDownloads,
       directory: directory,
       treeUri: treeUri,
@@ -68,7 +70,7 @@ class DefaultTransferDownloadPort implements TransferDownloadPort {
 
   @override
   String? get safTreeUri {
-    if (!PlatformSupport.isAndroid) return null;
+    if (!capabilities.supportsSafDirectory) return null;
     final uri = settings.downloadDirTree;
     return (uri == null || uri.isEmpty) ? null : uri;
   }

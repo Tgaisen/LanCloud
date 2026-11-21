@@ -10,20 +10,20 @@
 | 命令 | 口径 | 结果 | 耗时 |
 | --- | --- | --- | --- |
 | `tools\agent.cmd analyze` | 全量 | No issues found | 约 26 s |
-| `tools\agent.cmd analyze` | 增量（系统另存为能力路由，2 个 Dart 文件） | No issues found | 约 2 s |
-| `tools\agent.cmd test` | 全量（用例总数） | **1018 tests, all passed** | 约 2 min 22 s |
-| `tools\agent.cmd test` | 增量（系统另存为能力路由，7 个测试文件） | **70 tests, all passed** | 约 41 s |
+| `tools\agent.cmd analyze` | 增量（默认下载目录与传输路由，2 个 Dart 文件） | No issues found | 约 2 s |
+| `tools\agent.cmd test` | 全量（用例总数） | **1022 tests, all passed** | 约 2 min 22 s |
+| `tools\agent.cmd test` | 增量（默认下载目录与传输路由，8 个测试文件） | **55 tests, all passed** | 约 15 s |
 | `tools\agent.cmd format` | 全量 | 360 files，0 changed | 约 3 s |
 | `tools\agent.cmd build-android` | debug | `app-debug.apk` | 首次构建约 5 min 46 s |
 
 当前分析结果为 0 issue 是硬基线。出现红灯时，先判断是否为本次改动引入；
 不要把增量结果当成全量结论。Flutter 3.50.0 下全量分析已重跑并通过。
 
-当前用例总数为 1018；最近一次全量 1018 项全部通过。平台能力矩阵覆盖
+当前用例总数为 1022；最近一次全量 1022 项全部通过。平台能力矩阵覆盖
 Android、Windows、iOS、macOS、Linux 与未知 TargetPlatform 的 fail-closed
 行为，以及动态色来源、更新产物、只读 const 能力和 Riverpod 测试覆盖。设置页、
 网盘添加菜单、普通文件选择、系统另存为、二维码来源与分享收件箱已改为按具体
-能力执行，1018 项全量覆盖
+能力执行，默认下载目录与传输 SAF 路由也按能力矩阵选择，1022 项全量覆盖
 收藏分栏高度稳定、批量消除更新标志、分享目录分页取消后保留当前页面与已加载
 内容，同时保留 WebDAV 自动备份互斥和补检覆盖。
 测试入口在受影响文件超过 60 个时自动回退全量，避免 Windows 命令行长度上限导致
@@ -34,10 +34,10 @@ Android、Windows、iOS、macOS、Linux 与未知 TargetPlatform 的 fail-closed
 | 指标 | 当前值 |
 | --- | ---: |
 | `lib` Dart 文件 | 168 |
-| `lib` 总行数 | 65,102 |
+| `lib` 总行数 | 65,138 |
 | `test` 测试文件 | 190（全部为 `*_test.dart`，平铺） |
-| `test` 总行数 | 38,977 |
-| `test` 用例数 | 1018 |
+| `test` 总行数 | 39,102 |
+| `test` 用例数 | 1022 |
 | `lib/ui` 平铺文件 | 62 |
 | `lib/core` | 61 个平铺文件 + 6 个子系统目录 |
 | 文案（`app_zh.arb`） | 1,812 行 |
@@ -54,8 +54,8 @@ Android、Windows、iOS、macOS、Linux 与未知 TargetPlatform 的 fail-closed
 
 ## 测试安全网
 
-- 当前用例总数为 1018；最近一次全量 1018 项全部通过；平台能力矩阵与前三批 UI、
-  扫码、分享、普通文件选择及系统另存为条件已由全量测试覆盖；项目仍没有
+- 当前用例总数为 1022；最近一次全量 1022 项全部通过；平台能力矩阵与前三批 UI、
+  扫码、分享、文件及下载条件已由全量测试覆盖；项目仍没有
   `integration_test` 和 golden test。
 - `tools\agent.cmd analyze|test` 默认走增量；全量结果必须按上表单独记录。
 - 增量推断出超过 60 个测试文件时，`agent.cmd test` 自动回退全量。
