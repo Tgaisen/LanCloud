@@ -1,7 +1,7 @@
 # Flutter/Dart 平台能力适配改造清单
 
-> 文档状态：平台能力审查、实施路线与当前完成快照。Batch 1–7 及其后的
-> 纯 Dart 收口已完成；仍需原生工程或人工验收的项目在下文单独列出。
+> 文档状态：平台能力审查、实施路线与当前完成快照。Batch 1–11 的纯 Dart
+> 收口已完成；仍需原生工程或人工验收的项目在下文单独列出。
 >
 > 核验日期：2026-11-21。
 >
@@ -25,11 +25,17 @@
 | Batch 6 | ✅ 完成 | edge-to-edge 与前台任务仅在能力支持时初始化 |
 | Batch 7 | ✅ 完成 | 新增系统分享、系统设置、更新交付和本地通知窄接口；通知设置入口按能力显示 |
 | 后续小批 | ✅ 完成 | 缓存清理、设备信息、WebView UA、动态色来源、鼠标交互、栏宽布局和文件分享入口继续收口 |
+| Batch 8A | ✅ 完成 | 下载目录和桌面拖拽分别使用 `supportsSafDirectory` / `supportsDesktopDrop` |
+| Batch 8B | ✅ 完成 | 动态色文案使用 `DynamicColorSource`；Cookie 导出消费分享 gateway |
+| Batch 9 | ✅ 完成 | 拆分本地通知与常驻进度能力；Windows 隐藏进度设置和进度上报 |
+| Batch 10 | ✅ 完成 | 外部链接与系统文件动作收敛到可注入 gateway/adapter |
+| Batch 11 | ✅ 完成 | 核对剩余例外，统一更新架构、基线、兼容矩阵和交接文档 |
 
-截至功能提交 `ff3ea87`，仍有 15 个 Dart 文件引用 `PlatformSupport` 的分支
-getter，共 28 处：`isDesktop` 9 处、`isWindows` 13 处、`isAndroid` 6 处、
+当前仍有 11 个 Dart 文件引用 `PlatformSupport` 的分支
+getter，共 19 处：`isDesktop` 4 处、`isWindows` 10 处、`isAndroid` 5 处、
 `isMobile` 0 处。`lib/` 中直接 `Platform.is*` 分支已清零。剩余引用多数是
-低层实现选择或明确的产品形态，不再直接等于“是否支持某个功能”。
+低层实现选择或明确的产品形态，不再直接等于“是否支持某个功能”，也不再作为
+常规迁移待办。
 
 本阶段未新增依赖、未修改 Android/Windows/iOS 原生工程，也未改变版本号。
 iOS 的普通文件选择、保存和下载目录虽然已有共享 Dart 路径，但仍需构建和真机验收。

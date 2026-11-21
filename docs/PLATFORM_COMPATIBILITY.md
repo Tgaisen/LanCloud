@@ -25,7 +25,8 @@ Dart 侧可先实施的拆分、能力开关和分批改造计划见
   文件选择/保存、系统分享、深链、后台保活、通知和更新方式。
 - 产品级静态能力已集中在 `PlatformCapabilities`，未知平台 fail closed；
   Android SDK、ABI、WebView 合成方式等底层探测仍由 `PlatformSupport` 负责。
-  当前仍剩 15 个 Dart 文件、28 处分支 getter，不再以“清零引用”为验收目标。
+  当前仍剩 11 个 Dart 文件、19 处分支 getter，均为低层实现或 adapter factory
+  例外，不再以“清零引用”为验收目标。
 - HarmonyOS NEXT 当前没有 `ohos/` 工程，不能把“Dart 代码可复用”理解为
   “已经支持”。依赖替换、原生通道、HAP 签名和发布流程仍按
   [OHOS_ADAPTATION.md](./OHOS_ADAPTATION.md) 的草案执行。
@@ -119,7 +120,7 @@ Dart 侧可先实施的拆分、能力开关和分批改造计划见
 | 识别剪贴板中的蓝奏云链接 | ✅ 默认关闭，回前台时读取 | ✅ | — 共享逻辑可复用 | ◐ 共享逻辑可复用，系统剪贴板提示待验收 | — 共享逻辑可复用 |
 | 打开外部网页 | ✅ 优先 Custom Tabs，失败回退默认浏览器 | ✅ 默认浏览器 | — 系统浏览器/Ability | ◐ 默认浏览器路径可复用 | — 默认浏览器 |
 | 生物识别/锁屏验证 | ✅ | ✅ Windows Hello 路径 | — 需 `local_auth` OHOS 适配 | ◐ 插件可走 Face ID/密码；缺 Face ID 用途声明，未验收 | — 插件声明支持，无工程 |
-| 本地通知 | ✅ 传输进度、完成、收藏检测/更新、WebDAV 进度 | ✅ 完成/失败和消息提醒；不显示常驻进度 | — 基础通知优先，进度能力待验证 | ○ `supportsLocalNotifications=false`；Darwin 初始化未接入 | ○ 未初始化 |
+| 本地通知 | ✅ 传输进度、完成、收藏检测/更新、WebDAV 进度 | ✅ 完成/失败和收藏更新提醒；不显示常驻进度，进度设置入口隐藏 | — 基础通知优先，进度能力待验证 | ○ `supportsLocalNotifications=false`；Darwin 初始化未接入 | ○ 未初始化 |
 | 通知权限管理 | ✅ | N/A | — | ○ 能力关闭；设置入口隐藏 | — |
 | 安装未知来源应用 | ✅ | N/A | — HAP 不能复用 APK 安装流程 | N/A | N/A |
 | 忽略电池优化 | ✅ | N/A | — | N/A | N/A |
@@ -250,8 +251,8 @@ Dart 侧可先实施的拆分、能力开关和分批改造计划见
 
 - 先创建 `macos/` 目标，逐个确认 `sqflite`、WebView、安全存储、文件选择、
   `desktop_drop` 和 `local_auth` 的 macOS 实现可用。
-- `PlatformSupport.isDesktop` 会让文件打开、目录选择、拖拽等共享路径自动走桌面
-  分支，但这只是起点；系统分享、通知和窗口主题仍需单独接入。
+- 桌面 adapter factory 会让文件打开和目录选择走桌面实现；拖拽仍需显式打开
+  `supportsDesktopDrop`。系统分享、通知和窗口主题仍需单独接入。
 - 决定是否启用 `dynamic_color`。插件支持 macOS，但当前代码明确关闭了非 Windows
   桌面的动态取色。
 - 补 macOS 通知初始化、沙盒网络/文件权限、签名和 notarization。
@@ -262,7 +263,7 @@ Dart 侧可先实施的拆分、能力开关和分批改造计划见
 | 风险 | 影响 | 处理方向 |
 | --- | --- | --- |
 | iOS `file_picker` 普通选择/保存未构建验收 | 共享测试通过不代表 iOS 权限、sandbox 与文件 URI 行为已验证 | 做 iOS 构建和真机文件读写验收后再评估发布 |
-| 剩余 15 个文件、28 处 `PlatformSupport` 分支 getter | 低层实现、UI 形态和产品能力仍可能在新增平台时被混用 | 只迁移有明确语义的入口；其余保留在窄适配器、指针/宽度判断或平台实现内部 |
+| 剩余 11 个文件、19 处 `PlatformSupport` 分支 getter | 已确认均为低层实现或 adapter factory；新增平台时仍可能误复用 | 默认保留；只在出现明确产品语义或新平台实现时拆窄接口 |
 | 通知初始化只声明 Android/Windows | iOS/macOS 即使接入目标也无法正常发本地通知 | 增加 Darwin 初始化与权限分支 |
 | 全桌面平台共用“分享 = 复制文本/定位文件” | macOS 会失去原生分享体验 | 增加桌面分享能力适配，保留降级 |
 | HAP 与 APK 更新语义不同 | 直接复用更新服务会向鸿蒙用户展示错误制品 | 使用独立 `UpdateAdapter` 和发布通道 |

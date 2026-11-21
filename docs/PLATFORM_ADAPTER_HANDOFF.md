@@ -1,7 +1,7 @@
 # LanCloud 平台适配交接
 
-> 用途：新对话的唯一接力入口。先读本文件，再按仓库规则读取架构、基线、
-> 兼容矩阵和本轮涉及的代码，不要从 Batch 1 重做。
+> 用途：新对话的唯一接力入口。先读本文件，再按仓库规则读取架构、基线和
+> 兼容矩阵。纯 Dart 平台能力批次已经收口，不要从 Batch 1 重做。
 >
 > 更新时间：2026-11-21。
 
@@ -11,16 +11,21 @@
 - 分支：`codex/platform-capabilities-batch1`
 - 平台适配功能基线：`ff3ea87 fix(share): 按能力显示文件分享入口`
 - 功能提交范围：`02c55c0..ff3ea87`，共 20 个提交
-- 本交接文档提交位于 `ff3ea87` 之后；开工前以 `git log -1` 和
-  `git status --short --branch` 为准
+- 后续功能提交：
+  - `5466324 fix(platform): 按能力选择目录与拖拽语义`
+  - `094fee3 fix(platform): 按能力显示动态色与分享提示`
+  - `153642a fix(notifications): 区分常驻进度与终态提醒`
+  - `31d9eec fix(settings): 隐藏 Windows 进度通知入口`
+  - `a59a1e3 refactor(platform): 收敛系统动作适配器`
+- 开工前仍以 `git log -1` 和 `git status --short --branch` 为准
 - 未 push、未创建 PR
 
 最新全量基线：
 
 - `tools\agent.cmd format`：369 files，0 changed
 - `tools\agent.cmd analyze`：全量 0 issue
-- `tools\agent.cmd test`：**1061 tests, all passed**，约 2 min 17 s
-- 最近增量：6 个测试文件、86 tests passed，约 51 s
+- `tools\agent.cmd test`：**1064 tests, all passed**，约 2 min 31 s
+- 最近增量：系统动作 adapter，2 个测试文件、5 tests passed，约 1 s
 
 当前规模与风险以 [BASELINE.md](./BASELINE.md) 为准，不在本文件重复维护。
 
@@ -36,7 +41,7 @@ Batch 1–7 的纯 Dart 范围已完成：
 5. edge-to-edge、前台任务、本地通知初始化与设置入口按能力门控。
 6. 系统分享、系统设置和更新交付收敛到窄接口或 adapter。
 
-后续纯 Dart 小批还完成了：
+Batch 8–10 及通知设置收口也已完成：
 
 - 缓存清理按私有临时目录与 SAF 能力选择。
 - 设备信息的直接 `Platform.is*` 收口到 `PlatformSupport`。
@@ -44,6 +49,13 @@ Batch 1–7 的纯 Dart 范围已完成：
 - 动态色按 `DynamicColorSource` 探测，实际可用性继续运行时判断。
 - 滚动条和菜单改为鼠标运行时信号，栏标题改为实际宽度。
 - 文件分享入口区分原生分享、桌面定位和 unsupported 三种语义。
+- 下载目录使用 `supportsSafDirectory`，窗口拖拽使用 `supportsDesktopDrop`。
+- 动态色文案使用 `DynamicColorSource`；Cookie 导出消费分享 gateway 结果。
+- 通知拆分 `supportsLocalNotifications` 与
+  `supportsPersistentProgressNotifications`。
+- Windows 隐藏进度通知设置，只保留完成/失败与收藏更新提醒。
+- 外部链接和系统文件动作收敛到可注入 `ExternalLinkGateway` /
+  `SystemOpenAdapter`。
 
 ## 当前能力快照
 
@@ -53,9 +65,9 @@ Batch 1–7 的纯 Dart 范围已完成：
 - Android：除桌面拖拽外，建议覆盖的相机、文档提供器、分享接收、前台任务、
   本地通知、系统分享/保存、SAF、Android 设置入口、移动临时目录和移动 UA
   均为 true；动态色来源为壁纸，更新产物为 APK。
-- Windows：本地通知、系统另存为和桌面拖拽为 true；相机、分享接收、前台任务、
-  SAF、Android 设置入口和系统分享面板为 false；动态色来源为系统强调色，
-  更新产物为 portable ZIP。
+- Windows：本地通知、系统另存为和桌面拖拽为 true；常驻进度通知、相机、分享
+  接收、前台任务、SAF、Android 设置入口和系统分享面板为 false；动态色来源
+  为系统强调色，更新产物为 portable ZIP。
 - iOS：只有系统另存为、私有移动临时目录和移动 UA 为 true；相机、分享接收、
   前台任务、本地通知、edge-to-edge、系统分享和系统设置入口为 false；
   动态色来源与更新产物为 none。文件选择/保存路径仍需构建和真机验收。
@@ -66,12 +78,12 @@ Batch 1–7 的纯 Dart 范围已完成：
 
 ## 剩余平台分支
 
-截至功能提交 `ff3ea87`，`lib/` 中仍有 **15 个 Dart 文件、28 处**
+当前 `lib/` 中仍有 **11 个 Dart 文件、19 处**
 `PlatformSupport` 分支 getter：
 
-- `isDesktop` 9
-- `isWindows` 13
-- `isAndroid` 6
+- `isDesktop` 4
+- `isWindows` 10
+- `isAndroid` 5
 - `isMobile` 0
 - 直接 `Platform.is*` 分支 0
 
@@ -87,84 +99,29 @@ rg -n "Platform\.is(Android|iOS|Windows|macOS|Linux)" lib
 | `lib/app.dart` | 2 | Windows 鼠标侧键、中文兜底字体 | 保留为 Windows 专属实现 |
 | `lib/core/data/app_db.dart` | 1 | 桌面 sqflite FFI 初始化 | 保留为数据库实现选择 |
 | `lib/core/device_info.dart` | 5 | Android/Windows/桌面系统信息数据源 | 保留，或后续单独做设备信息适配器 |
-| `lib/core/external_link.dart` | 1 | Android Custom Tabs 与普通浏览器回退 | 候选：系统动作 gateway |
+| `lib/core/external_link.dart` | 1 | factory 选择 Custom Tabs gateway | 保留在 adapter 内部 |
 | `lib/core/file_picker_channel.dart` | 1 | 桌面禁止进入拍照原生通道 | 保留为底层 defensive guard |
-| `lib/core/notifications.dart` | 5 | Windows AUMID/图标、桌面无常驻进度 | 候选：通知形态与权限配置拆分 |
+| `lib/core/notifications.dart` | 2 | Windows AUMID 与通知图标配置 | 保留在通知平台实现内部 |
 | `lib/core/saf_storage.dart` | 1 | Android SAF 通道保护 | 保留 |
 | `lib/core/shared_downloads_storage.dart` | 1 | Android 公共 Downloads 通道保护 | 保留 |
-| `lib/core/system_open.dart` | 4 | Android 文件打开、桌面 shell、资源管理器 | 候选：系统动作 gateway |
+| `lib/core/system_open.dart` | 3 | factory 选择 Android/iOS/桌面 adapter | 保留在 adapter 内部 |
 | `lib/core/window_frame.dart` | 1 | Windows DWM 边框 | 保留 |
-| `lib/ui/cookie_sheet.dart` | 1 | 桌面复制后提示 | 候选：消费分享 gateway 结果或平台形态 |
-| `lib/ui/desktop_drop_target.dart` | 1 | 是否包桌面拖拽目标 | 候选：改为 `supportsDesktopDrop` |
-| `lib/ui/download_directory_settings_tile.dart` | 1 | 是否显示 Android SAF 目录 | 候选：改为 `supportsSafDirectory` |
-| `lib/ui/settings_page.dart` | 1 | Windows 通知注册表清理项 | 保留，除非新增独立产品能力字段 |
-| `lib/ui/theme_settings_tile.dart` | 2 | Windows 动态色文案 | 候选：改为 `DynamicColorSource` |
+| `lib/ui/settings_page.dart` | 1 | Windows 通知注册表清理项 | 保留，属于 Windows 数据清理实现 |
 
-目标不是把 28 处机械清零。低层通道实现和平台专属 UI 留在窄适配器内部，
+目标不是把 19 处机械清零。低层通道实现和平台专属配置留在窄适配器内部，
 通常比塞进能力对象更清楚。
 
-## 推荐后续批次
+## 后续工作
 
-保守估计还需要 **4–6 个批次**；如果决定拆分深链收件和完整设备信息，取上限。
-每批仍控制在 5 个文件以内，且一次只改一个模块。
+Batch 8A、8B、9、10 与 Batch 11 文档收口均已完成，没有剩余的常规纯 Dart
+能力迁移批次。
 
-### Batch 8A：目录与拖拽语义
-
-候选文件（含测试，最多 5 个）：
-
-- `lib/ui/download_directory_settings_tile.dart`
-- `lib/ui/desktop_drop_target.dart`
-- 对应 UI/provider 测试
-
-重点：分别用 `supportsSafDirectory` 和 `supportsDesktopDrop` 替换能明确表达的
-平台判断，同时保留 Android SAF 通道和桌面拖放实现本身。
-
-### Batch 8B：动态色与分享提示
-
-候选文件（含测试，最多 5 个）：
-
-- `lib/ui/theme_settings_tile.dart`
-- `lib/ui/cookie_sheet.dart`
-- 对应测试
-
-重点：动态色文案跟随 `DynamicColorSource`；Cookie 提示优先消费现有分享
-gateway 的结果或明确形态，不再单独猜测桌面端。若需要新增能力字段，先说明
-已有字段为何不足。
-
-### Batch 9：通知边界
-
-候选文件：
-
-- `lib/core/notifications.dart`
-- `test/notifications_*` 或现有通知能力测试
-- 如确有必要，只增加已消费的通知形态字段和
-  `test/platform_capabilities_test.dart`
-
-重点是把“能否初始化通知”“是否有常驻进度”和 Windows AUMID/图标写入分开。
-通知权限仍是运行时查询；不要把所有 Windows 注册表代码搬进能力对象。
-
-### Batch 10：系统动作边界
-
-候选文件：
-
-- `lib/core/external_link.dart`
-- `lib/core/system_open.dart`
-- 对应 gateway/UI 测试
-
-重点：保持 Android Custom Tabs、iOS `open_filex`、Windows 资源管理器行为不变，
-把系统动作选择放到可注入 adapter；不要新增原生通道。
-
-### Batch 11：最终例外清单与验收
-
-候选文件：
-
-- 本文
-- [DART_PLATFORM_ADAPTER_ROADMAP.md](./DART_PLATFORM_ADAPTER_ROADMAP.md)
-- [PLATFORM_COMPATIBILITY.md](./PLATFORM_COMPATIBILITY.md)
-- 必要时 `docs/ARCHITECTURE.md`、`docs/BASELINE.md` / `BASELINE_HISTORY.md`
-
-逐项确认剩余引用是低层实现、输入形态还是产品能力，并记录“保留原因”。
-若没有代码/测试变化，只需核对统计和文档；不要为清零而扩大范围。
+- 新增平台时，先按能力矩阵和现有 adapter/gateway 接线，不要逐项搜
+  `isAndroid` / `isDesktop` 后机械替换。
+- 只有设备信息、深链收件或某个保留例外出现真实产品需求时，才拆成新的
+  单模块批次；修改前仍执行 5 文件上限和跨层确认规则。
+- iOS 自定义通道、Share Extension、Darwin 通知、真机构建验收，以及 HarmonyOS
+  原生工程都属于后续原生适配，不属于本 Dart 路线。
 
 ## 必须保留的边界
 
@@ -222,9 +179,8 @@ C:\Users\Potato\Desktop\LanCloud
 分支：
 codex/platform-capabilities-batch1
 
-上一轮已完成 PlatformCapabilities、原路线 Batch 1–7 及后续纯 Dart 小批。
-平台适配功能基线是 ff3ea87；其后只增加了交接文档。全量基线为 1061 tests
-passed。不要重做已完成批次。
+PlatformCapabilities、原路线 Batch 1–7、Batch 8A/8B/9/10 和文档收口均已完成。
+当前全量基线为 1064 tests passed。不要重做已完成批次。
 
 开始前必须完整读取：
 1. AGENTS.md
@@ -239,13 +195,13 @@ passed。不要重做已完成批次。
 rg -n "PlatformSupport\.(isMobile|isDesktop|isAndroid|isWindows)" lib
 rg -n "Platform\.is(Android|iOS|Windows|macOS|Linux)" lib
 
-当前预期为 15 个 Dart 文件、28 处分支 getter：isDesktop 9、isWindows 13、
-isAndroid 6、isMobile 0；直接 Platform.is* 为 0。不要为了清零引用而机械
-能力化。低层通道、SAF、窗口、数据库和设备信息实现应优先保留。
+当前预期为 11 个 Dart 文件、19 处分支 getter：isDesktop 4、isWindows 10、
+isAndroid 5、isMobile 0；直接 Platform.is* 为 0。这些是已确认的低层实现、
+平台专属配置或 adapter factory 例外，不要为了清零而机械能力化。
 
-从 docs/PLATFORM_ADAPTER_HANDOFF.md 的 Batch 8A 开始。若该批实际跨
-core × ui，修改前先给文件清单、Android/Windows/iOS 行为变化、测试方案和遗留风险，
-等待我明确确认后再修改。单批最多 5 个文件。
+先确认实际需求；若确实需要新增能力或拆 adapter，单批最多 5 个文件。跨
+core × ui 时，修改前先给文件清单、Android/Windows/iOS 行为变化、测试方案和
+遗留风险，等待明确确认后再修改。
 
 完成后必须原样运行：
 tools\agent.cmd format

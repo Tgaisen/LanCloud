@@ -252,8 +252,9 @@ User-Agent 也迁入 `AdvancedConnectionSettingsTile`；对应 setter 统一同�
   迁移门禁。
 - 产品能力先问 `PlatformCapabilities`；输入形态用 `PointerSupport` 与可用宽度；
   Android SDK、ABI、WebView 合成方式和具体原生通道实现继续留在
-  `PlatformSupport` 或对应适配器内部。截至功能提交 `ff3ea87`，仍有 15 个
-  Dart 文件、28 处分支 getter，其中 `isMobile` 已为 0。
+  `PlatformSupport` 或对应适配器内部。当前仍有 11 个 Dart 文件、19 处分支
+  getter，其中 `isMobile` 已为 0；这些是已确认的低层实现和 adapter factory
+  例外，不再作为常规迁移待办。
 - 下一轮对话先读 [PLATFORM_ADAPTER_HANDOFF.md](./PLATFORM_ADAPTER_HANDOFF.md)；
   它保留精确文件清单、推荐批次和必须保留的例外。
 - **没有** `web/`、`macos/`、`linux/`，不要创建，也不要写只在 web 生效的分支
