@@ -1,9 +1,9 @@
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_cache.dart';
+import 'package:lancloud/core/platform_capabilities.dart';
 import 'package:path/path.dart' as p;
 
 void main() {
@@ -18,6 +18,7 @@ void main() {
 
   tearDown(() {
     AppCache.directoryProvider = null;
+    AppCache.capabilitiesProvider = null;
     if (dir.existsSync()) dir.deleteSync(recursive: true);
   });
 
@@ -28,8 +29,7 @@ void main() {
   }
 
   test('移动端：缓存目录是应用私有的，整个目录都可清理', () async {
-    debugDefaultTargetPlatformOverride = TargetPlatform.android;
-    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    AppCache.capabilitiesProvider = () => PlatformCapabilities.android;
 
     write('picked/a.bin', 100); // 本应用：选文件副本
     write('drop/b.bin', 50); // 本应用：拖拽副本
@@ -43,8 +43,7 @@ void main() {
   });
 
   test('Android：优先通过原生缓存目录删除路径别名中的文件', () async {
-    debugDefaultTargetPlatformOverride = TargetPlatform.android;
-    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    AppCache.capabilitiesProvider = () => PlatformCapabilities.android;
     final file = File(p.join(dir.path, 'file_picker', 'aliased', 'a.bin'))
       ..createSync(recursive: true);
     const channel = MethodChannel('lancloud/file_picker');
@@ -71,8 +70,7 @@ void main() {
   });
 
   test('桌面端：只清理本应用自己的条目，不碰 %TEMP% 里的其它文件', () async {
-    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
-    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    AppCache.capabilitiesProvider = () => PlatformCapabilities.windows;
 
     write('picked/a.bin', 100); // 本应用：选文件副本
     write('lancloud-backup-x.json', 25); // 本应用：备份导出残留
@@ -87,6 +85,21 @@ void main() {
     );
     // 其它应用的临时文件必须保留
     expect(File(p.join(dir.path, 'other-app', 'tmp.bin')).existsSync(), isTrue);
+  });
+
+  test('iOS：私有临时目录整体清理，删除文件不需要 Android 通道', () async {
+    AppCache.capabilitiesProvider = () => PlatformCapabilities.ios;
+    write('picked/a.bin', 100);
+    write('WebView/cache.bin', 1000);
+
+    expect(
+      await AppCache.deleteTemporaryFile(p.join(dir.path, 'picked', 'a.bin')),
+      isTrue,
+    );
+    expect(File(p.join(dir.path, 'picked', 'a.bin')).existsSync(), isFalse);
+    expect(await AppCache.size(), 1000);
+    expect(await AppCache.clear(), 1000);
+    expect(dir.listSync(), isEmpty);
   });
 
   test('拿不到临时目录时返回 null，不抛异常', () async {
