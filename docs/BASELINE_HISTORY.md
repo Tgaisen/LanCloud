@@ -1,9 +1,26 @@
 # 回归基线历史
 
-> 本文件保留 2026-10-30 至 2026-10-31 的逐次迁移、增量和全量验证记录。
+> 本文件保留 2026-10-30 起的主要逐次迁移、增量和全量验证记录。
 > 当前仓库基线、规模与已知风险见 [BASELINE.md](BASELINE.md)。
 >
 > 历史数字只代表对应提交时点，不应直接作为当前仓库状态。
+
+## 2026-11-21 Dart 平台适配
+
+- Batch 1–7 的纯 Dart 范围完成，提交范围 `02c55c0..bd19cdf`：
+  新增 `PlatformCapabilities` 与不可变能力矩阵；设置页、网盘上传、扫码、
+  分享收件箱、普通文件选择、系统另存为、默认下载目录、传输 SAF 路由、
+  edge-to-edge、前台任务、系统分享、系统设置、更新产物和本地通知均已收口到
+  能力判断或窄接口。
+- 本阶段没有新增依赖、修改版本号或改 Android/Windows/iOS 原生工程。
+  iOS 的普通文件选择/保存、默认下载目录和共享 UI 路径已接线，但构建与真机验收
+  仍未完成；Darwin 通知、分享扩展、深链和原生分享仍缺原生实现。
+- 收口后仍有 24 个 Dart 文件使用 42 处 `PlatformSupport` 分支 getter：
+  `isDesktop` 19、`isWindows` 12、`isAndroid` 8、`isMobile` 3。
+  `core/device_info.dart` 另有 5 处直接 `Platform.is*`。这些主要是布局/输入偏好
+  或低层实现选择，留作后续独立清理。
+- 最终全量验证为分析 0 issue、**1044 tests all passed**（约 2 min 18 s）；
+  当前规模与风险快照见 [BASELINE.md](BASELINE.md)。
 
 ## 实测结果
 

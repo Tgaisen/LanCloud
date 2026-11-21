@@ -1,6 +1,7 @@
 # Flutter/Dart 平台能力适配改造清单
 
-> 文档状态：代码审查与实施建议，尚未修改业务代码。
+> 文档状态：平台能力审查、实施路线与当前完成快照。Batch 1–7 的纯 Dart
+> 范围已实施；仍需原生工程或人工验收的项目在下文单独列出。
 >
 > 核验日期：2026-11-21。
 >
@@ -9,6 +10,26 @@
 
 本文配合 [PLATFORM_COMPATIBILITY.md](./PLATFORM_COMPATIBILITY.md) 使用：
 前者说明各平台现在有什么，本文说明哪些 Dart 侧结构适合先改、怎么拆、先改什么。
+
+## 实施状态（2026-11-21）
+
+| 批次 | 状态 | 当前结果 |
+| --- | --- | --- |
+| Batch 1 | ✅ 完成 | 新增不可变 `PlatformCapabilities`、平台矩阵、Riverpod provider 与纯 Dart 测试 |
+| Batch 2 | ✅ 完成 | 设置页 Android 专属入口、网盘“从其他应用上传”改按具体能力显示 |
+| Batch 3 | ✅ 完成 | 二维码来源和分享收件箱按能力选择；iOS 不再进入缺通道路径 |
+| Batch 4 | ✅ 完成 | 普通文件选择与另存为在 Android/其他平台分别路由；iOS 使用 `file_picker` |
+| Batch 5 | ✅ 完成 | 默认下载目录与传输 SAF 路由收口；iOS 不再调用 external storage |
+| Batch 6 | ✅ 完成 | edge-to-edge 与前台任务仅在能力支持时初始化 |
+| Batch 7 | ✅ 完成 | 新增系统分享、系统设置、更新交付和本地通知窄接口；通知设置入口按能力显示 |
+
+当前仍有 24 个 Dart 文件引用 `PlatformSupport` 的分支 getter，共 42 处：
+`isDesktop` 19 处、`isWindows` 12 处、`isAndroid` 8 处、`isMobile` 3 处。
+其中多数是布局/输入偏好或低层实现选择，不再直接等于产品能力。
+`core/device_info.dart` 仍直接使用 5 处 `dart:io Platform.is*`，留给独立清理。
+
+本阶段未新增依赖、未修改 Android/Windows/iOS 原生工程，也未改变版本号。
+iOS 的普通文件选择、保存和下载目录虽然已有共享 Dart 路径，但仍需构建和真机验收。
 
 ## 1. 结论
 
@@ -52,15 +73,15 @@ C++ 或 iOS Swift。
 生物识别硬件”不能等同于 `isAndroid == true`。反过来，如果当前 iOS 还没有
 Swift 实现，也不能因为插件在 pub.dev 声明支持 iOS，就把静态能力提前标成 `true`。
 
-## 3. 建议的能力模型
+## 3. 当前能力模型
 
-第一版建议使用一个不可变的能力对象，并允许 Riverpod 测试覆盖。只加入当前已经
-有消费者、会导致 UI 或分支变化的字段，不要提前做几十个布尔值。
+当前实现使用一个不可变能力对象，并允许 Riverpod 测试覆盖。只加入已经实际
+影响 UI、启动或实现选择的字段，没有提前做几十个布尔值。
 
 ```dart
-enum PlatformFormFactor { mobile, desktop }
+enum PlatformFormFactor { mobile, desktop, unknown }
 
-enum PlatformInputStyle { touchFirst, pointerFirst }
+enum PlatformInputStyle { touchFirst, pointerFirst, unknown }
 
 enum DynamicColorSource { none, wallpaper, systemAccent }
 
@@ -75,6 +96,7 @@ final class PlatformCapabilities {
     required this.supportsDocumentProviderUpload,
     required this.supportsIncomingShare,
     required this.supportsForegroundTask,
+    required this.supportsLocalNotifications,
     required this.supportsEdgeToEdgeSystemUi,
     required this.supportsSystemShare,
     required this.supportsSystemFileSave,
@@ -93,7 +115,7 @@ final class PlatformCapabilities {
 }
 
 final platformCapabilitiesProvider = Provider<PlatformCapabilities>(
-  (ref) => PlatformCapabilities.current,
+  (_) => PlatformCapabilities.current,
 );
 ```
 
@@ -363,9 +385,9 @@ tools\agent.cmd test
 - 纯重构不能只靠“已编译”：至少验证 Android 默认路径、Windows 桌面路径和
   iOS unsupported/可用路径的测试结果。
 
-## 10. 推荐决策
+## 10. 原推荐决策（已执行）
 
-建议先批准并实施 Batch 1–3。它们能立即修复几个真实风险，同时不触碰原生工程：
+Batch 1–3 已按以下顺序完成，并继续完成 Batch 4–7 的纯 Dart 范围：
 
 1. 先建立能力矩阵和测试基线。
 2. 修复 iOS 设置入口、上传入口、扫码入口的错误展示。

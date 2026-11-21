@@ -11,11 +11,12 @@
 ## 启动顺序（`lib/main.dart`，按实际代码）
 
 1. `registerThirdPartyLicenses()` — 先登记素材许可证，开源许可页要用
-2. `SystemChrome.setEnabledSystemUIMode(edgeToEdge)`（仅移动端）
+2. `initializePlatformSystemUi()` — 仅在 `supportsEdgeToEdgeSystemUi` 时启用
+   `SystemUiMode.edgeToEdge`
 3. `PlatformSupport.loadAndroidSdkInt()` — 预热，影响 WebView 合成方式
 4. `AppLog.instance.init()` — 接管 `FlutterError.onError` / `PlatformDispatcher.onError` / `debugPrint`
-5. `FlutterForegroundTask.init()`（仅移动端）— 传输 / 收藏检测 / WebDAV
-   备份期间后台保活
+5. `initializePlatformForegroundService()` — 仅在 `supportsForegroundTask` 时
+   初始化传输 / 收藏检测 / WebDAV 备份共用的后台服务
 6. `AppEnvironment()` + `AppStartup.initialize()` — 组装并初始化应用级状态
 7. `AppCompositionRoot` 用已初始化的 `AppEnvironment`、恢复回调和平台能力构造
    `BackupService`、`TransferDependencies` 与应用 `ProviderContainer`；
@@ -50,13 +51,14 @@
 | `TransferSettingsPort` | `core/transfer/transfer_settings_port.dart` | 并发数、进度/完成通知和传输设置读取端口 |
 | `TransferDependencies` | `core/transfer/transfer_dependencies.dart` | 四个传输端口组成的显式应用级依赖集合；生产入口直接构造 |
 | `transferManagerProvider` | `core/transfer/transfer_manager_provider.dart` | 应用级、非 autoDispose 的 `TransferManager` 唯一实例；容器负责释放 |
-| `UpdateService` | `core/update/update_service.dart` | `Notifier<UpdateState>`；更新检查、缓存、失败冷却和一次性提醒的唯一所有者 |
+| `UpdateService` | `core/update/update_service.dart` | `Notifier<UpdateState>`；更新检查、缓存、失败冷却和一次性提醒的唯一所有者；`UpdateDeliveryAdapter` 按 `UpdateArtifact` 选择 APK、ZIP 或页面回退 |
 | `FavoriteMonitor` | `core/favorites/favorite_monitor.dart` | 收藏文件夹首项快照、更新 / 失效检测、启动补检、批量互斥与取消传播的唯一任务所有者 |
 | `FavoriteCheckGateway` | `core/favorites/favorite_check_gateway.dart` | 收藏检测的公开分享探测端口；文件夹走 `resolveFolderShare`，文件走分享页校验 |
 | `FavoriteMonitorReporter` | `core/favorites/favorite_monitor_reporter.dart` | 按更新 / 失效模式报告检测进度、更新通知和前台保活的窄副作用端口；测试使用 no-op 实现 |
 | `AppFavoriteMonitorReporter` | `core/favorites/favorite_monitor_reporter_adapter.dart` | 组合通知服务与前台服务租约，并为更新 / 失效检测选择对应进度标题的生产 reporter |
 | `FavoriteMonitorSettingsState` | `core/favorite_monitor_settings_state.dart` | 自动检测开关、范围、频率和更新通知开关的读写边界 |
 | `ForegroundTaskCoordinator` | `core/foreground_task_coordinator.dart` | 传输、收藏检测与 WebDAV 备份共享的唯一前台服务；按 reason 持有，最后一个释放后停止 |
+| `PlatformCapabilities` | `core/platform_capabilities.dart` | 不可变静态能力矩阵、`forPlatform()`、当前平台能力与 Riverpod provider；SDK/ABI 等底层探测仍由 `PlatformSupport` 负责 |
 | `BackupService` | `core/backup/backup_service.dart` | 本地 / WebDAV 备份恢复服务；自动与手动备份共用 single-flight，应用入口通过 `backupServiceProvider` 暴露与自动备份共用的同一实例 |
 | `BackupDependencies` | `core/backup/backup_dependencies.dart` | 备份所需的账号、设置、数据库和恢复后重载窄接口 |
 | `BackupStoreDependencies` | `core/backup/backup_dependencies.dart` | 用既有存储与显式重载回调组装备份依赖；生产启动直接使用该实现 |
@@ -211,7 +213,8 @@ User-Agent 也迁入 `AdvancedConnectionSettingsTile`；对应 setter 统一同�
 | `core/backup/` | 本地备份与恢复：`backup_service`（编排）、`backup_crypto`（加解密）、`backup_sections`、`webdav_client` / `webdav_store` |
 | `core/update/` | 更新检查：`update_service`、`release_info`、`changelog` |
 | `core/favorites/` | 收藏文件夹更新与分享失效检测：快照比较、公开分享探测、任务互斥和报告端口 |
-| `core/platform_support.dart` | 平台判定与 Android SDK 级别，所有平台分支的唯一入口 |
+| `core/platform_capabilities.dart` | 产品级静态能力矩阵；UI、启动与服务选择能力的统一来源 |
+| `core/platform_support.dart` | 底层平台判定、Android SDK/ABI 与 WebView 合成方式 |
 | `core/cookie_auth.dart` | 登录态与 cookie |
 | `core/lanzou_link.dart` | 分享链接解析 |
 | `ui/m3e.dart` | MD3E 组件统一出口（`export` + 薄封装）与外壳悬浮导航栏；页面只从这里取 MD3E 控件 |
@@ -233,8 +236,8 @@ User-Agent 也迁入 `AdvancedConnectionSettingsTile`；对应 setter 统一同�
 | 备份 / 恢复 / WebDAV | `core/backup/*`、`ui/backup_page.dart`、`ui/backup_options_page.dart`、`ui/restore_page.dart`、`ui/restore_dialogs.dart` |
 | 自动更新 / APK 安装 | `core/update/*`、`core/apk_installer.dart`、`ui/update_page.dart`、`ui/update_prompt.dart` |
 | 本地数据 / 设置项 | `core/data/*`（先看 `app_db.dart` 表结构，再看 `settings_store.dart`） |
-| 平台差异（Android / Windows） | `core/platform_support.dart`、`core/saf_storage.dart`、`core/system_open.dart`、`core/system_share.dart`、`core/window_frame.dart`、`core/drag_drop.dart` |
-| 平台能力矩阵 / Dart 适配路线 | `docs/PLATFORM_COMPATIBILITY.md`、`docs/DART_PLATFORM_ADAPTER_ROADMAP.md`、`core/platform_support.dart` |
+| 平台差异（Android / Windows） | `core/platform_capabilities.dart`、`core/platform_support.dart`、`core/saf_storage.dart`、`core/system_open.dart`、`core/system_share.dart`、`core/window_frame.dart`、`core/drag_drop.dart` |
+| 平台能力矩阵 / Dart 适配路线 | `docs/PLATFORM_COMPATIBILITY.md`、`docs/DART_PLATFORM_ADAPTER_ROADMAP.md`、`core/platform_capabilities.dart`、`core/platform_support.dart` |
 | 主题 / 动效 / 无障碍 | `app.dart`（主题）、`ui/m3e.dart`、`core/dynamic_color_support.dart`、`core/system_motion.dart`、`ui/reduce_motion.dart` |
 | 日志 / 崩溃 / 诊断 | `core/app_log.dart`、`core/webview_diagnostics.dart` |
 | 文案 / 国际化 | `lib/l10n/app_zh.arb`（模板）、`app_en.arb`、`l10n.yaml` |
