@@ -1,7 +1,28 @@
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/services.dart';
 
-import 'platform_support.dart';
+import 'platform_capabilities.dart';
+
+/// 动态色插件的运行时可用性探测端口。
+abstract interface class DynamicColorProbe {
+  Future<bool> hasCorePalette();
+
+  Future<bool> hasAccentColor();
+}
+
+final class DynamicColorPluginProbe implements DynamicColorProbe {
+  const DynamicColorPluginProbe();
+
+  @override
+  Future<bool> hasCorePalette() async {
+    return await DynamicColorPlugin.getCorePalette() != null;
+  }
+
+  @override
+  Future<bool> hasAccentColor() async {
+    return await DynamicColorPlugin.getAccentColor() != null;
+  }
+}
 
 /// 系统主题色支持探测，结果带缓存。
 ///
@@ -11,32 +32,39 @@ import 'platform_support.dart';
 class DynamicColorSupport {
   DynamicColorSupport._();
 
+  static DynamicColorSource? _cachedSource;
   static bool? _supported;
 
   /// 设备是否支持动态取色；[refresh] 为 true 时重新探测。
-  static Future<bool> isSupported({bool refresh = false}) async {
-    if (!refresh && _supported != null) return _supported!;
-    // 当前只适配 Windows 桌面端；它没有 Android 的完整 CorePalette，
-    // 但插件可返回系统强调色，DynamicColorBuilder 会据此生成完整色板。
-    if (PlatformSupport.isDesktop && !PlatformSupport.isWindows) {
-      _supported = false;
-      return false;
+  static Future<bool> isSupported({
+    bool refresh = false,
+    PlatformCapabilities? capabilities,
+    DynamicColorProbe probe = const DynamicColorPluginProbe(),
+  }) async {
+    final source =
+        (capabilities ?? PlatformCapabilities.current).dynamicColorSource;
+    if (!refresh && _cachedSource == source && _supported != null) {
+      return _supported!;
     }
     var supported = false;
     try {
-      if (PlatformSupport.isWindows) {
-        supported = await DynamicColorPlugin.getAccentColor() != null;
-      } else {
-        supported = await DynamicColorPlugin.getCorePalette() != null;
-        if (!supported) {
-          supported = await DynamicColorPlugin.getAccentColor() != null;
-        }
+      switch (source) {
+        case DynamicColorSource.none:
+          supported = false;
+        case DynamicColorSource.systemAccent:
+          supported = await probe.hasAccentColor();
+        case DynamicColorSource.wallpaper:
+          supported =
+              await probe.hasCorePalette() || await probe.hasAccentColor();
       }
     } on PlatformException {
       supported = false;
     } on MissingPluginException {
       supported = false;
+    } catch (_) {
+      supported = false;
     }
+    _cachedSource = source;
     _supported = supported;
     return supported;
   }
