@@ -1,8 +1,10 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/cookie_auth.dart';
 import 'package:lancloud/core/data/account_store.dart';
+import 'package:lancloud/core/platform_capabilities.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/cookie_sheet.dart';
 import 'package:local_auth_android/local_auth_android.dart';
@@ -31,18 +33,24 @@ const _cookie =
 
 final _account = Account(uid: '1234567', cookie: _cookie, nickname: '测试账号');
 
-Future<void> pumpHost(WidgetTester tester) async {
+Future<void> pumpHost(
+  WidgetTester tester, {
+  PlatformCapabilities capabilities = PlatformCapabilities.android,
+}) async {
   await tester.pumpWidget(
-    MaterialApp(
-      localizationsDelegates: appLocalizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      locale: const Locale('zh'),
-      home: Scaffold(
-        body: Builder(
-          builder: (context) => Center(
-            child: ElevatedButton(
-              onPressed: () => showCookieFlow(context, _account),
-              child: const Text('open'),
+    ProviderScope(
+      overrides: [platformCapabilitiesProvider.overrideWithValue(capabilities)],
+      child: MaterialApp(
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('zh'),
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => Center(
+              child: ElevatedButton(
+                onPressed: () => showCookieFlow(context, _account),
+                child: const Text('open'),
+              ),
             ),
           ),
         ),
@@ -161,8 +169,34 @@ void main() {
     expect(shared?.method, 'shareText');
     expect((shared!.arguments as Map)['text'], _cookie);
 
+    await tester.tap(find.text('关闭'));
+    await tester.pumpAndSettle();
     tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
       const MethodChannel('lancloud/share'),
+      null,
+    );
+
+    MethodCall? clipboard;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'Clipboard.setData') clipboard = call;
+        return null;
+      },
+    );
+
+    await pumpHost(tester, capabilities: PlatformCapabilities.windows);
+    await openFlow(tester);
+    await tester.tap(find.text('继续'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('导出'));
+    await tester.pumpAndSettle();
+
+    expect((clipboard!.arguments as Map)['text'], _cookie);
+    expect(find.text('已复制到剪贴板'), findsOneWidget);
+
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
       null,
     );
   });

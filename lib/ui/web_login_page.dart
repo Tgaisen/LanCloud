@@ -6,12 +6,23 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/account_login.dart';
 import '../core/api/lanzou_client.dart';
+import '../core/platform_capabilities.dart';
 import '../core/platform_support.dart';
 import '../core/webview_diagnostics.dart';
 import 'app_icons.dart';
 import 'common.dart';
 import 'm3e.dart';
 import '../l10n/l10n.dart';
+
+const _mobileWebLoginUserAgent =
+    'Mozilla/5.0 (Linux; Android 13; Pixel 7) '
+    'AppleWebKit/537.36 (KHTML, like Gecko) '
+    'Chrome/124.0.0.0 Mobile Safari/537.36';
+
+/// 移动版登录页 UA；其它平台返回 null，交给 WebView 使用默认 UA。
+String? webLoginUserAgentFor(PlatformCapabilities capabilities) {
+  return capabilities.usesMobileWebUserAgent ? _mobileWebLoginUserAgent : null;
+}
 
 /// 用内嵌浏览器完成登录，登录成功后读取系统 Cookie 并保存账号。
 class WebLoginPage extends ConsumerStatefulWidget {
@@ -121,6 +132,7 @@ class _WebLoginPageState extends ConsumerState<WebLoginPage> {
     final scheme = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     final large = isLargeLayout(context);
+    final capabilities = ref.watch(platformCapabilitiesProvider);
     return Scaffold(
       backgroundColor: large ? scheme.surfaceContainer : null,
       appBar: AppBar(
@@ -162,11 +174,7 @@ class _WebLoginPageState extends ConsumerState<WebLoginPage> {
                     useHybridComposition: PlatformSupport.useHybridComposition,
                     // 移动端伪装成手机浏览器，拿到的是移动版登录页；
                     // 桌面端（WebView2）用默认 UA，避免被当成手机渲染。
-                    userAgent: PlatformSupport.isMobile
-                        ? 'Mozilla/5.0 (Linux; Android 13; Pixel 7) '
-                              'AppleWebKit/537.36 (KHTML, like Gecko) '
-                              'Chrome/124.0.0.0 Mobile Safari/537.36'
-                        : null,
+                    userAgent: webLoginUserAgentFor(capabilities),
                   ),
                   onWebViewCreated: (controller) {
                     _diagnostics.created();

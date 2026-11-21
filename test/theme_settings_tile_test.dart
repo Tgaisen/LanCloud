@@ -1,9 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/data/settings_store.dart';
+import 'package:lancloud/core/platform_capabilities.dart';
 import 'package:lancloud/core/system_motion.dart';
 import 'package:lancloud/core/theme_settings_state.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
+import 'package:lancloud/l10n/app_localizations_zh.dart';
 import 'package:lancloud/l10n/delegates.dart';
 import 'package:lancloud/ui/m3e.dart';
 import 'package:lancloud/ui/theme_settings_tile.dart';
@@ -12,13 +14,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 Future<(SettingsStore, ThemeSettingsState)> _pump(
   WidgetTester tester,
-  Widget Function(ThemeSettingsState state) build,
-) async {
+  Widget Function(ThemeSettingsState state) build, {
+  PlatformCapabilities capabilities = PlatformCapabilities.android,
+}) async {
   SharedPreferences.setMockInitialValues(<String, Object>{});
   final store = SettingsStore();
   final state = ThemeSettingsState(store);
   final container = ProviderContainer(
-    overrides: [themeSettingsStateProvider.overrideWithValue(state)],
+    overrides: [
+      themeSettingsStateProvider.overrideWithValue(state),
+      platformCapabilitiesProvider.overrideWithValue(capabilities),
+    ],
   );
   addTearDown(container.dispose);
 
@@ -110,15 +116,35 @@ void main() {
   });
 
   testWidgets('主题色弹窗使用 Riverpod 状态，并保持动态色与 seed 互斥', (tester) async {
+    final l10n = AppLocalizationsZh();
+    expect(
+      themeColorSettingLabel(
+        l10n,
+        dynamicColor: true,
+        seed: 0xFF2E6BE6,
+        dynamicColorSource: DynamicColorSource.wallpaper,
+      ),
+      l10n.dynamicColor,
+    );
+    expect(
+      themeColorSettingLabel(
+        l10n,
+        dynamicColor: true,
+        seed: 0xFF2E6BE6,
+        dynamicColorSource: DynamicColorSource.systemAccent,
+      ),
+      l10n.followSystem,
+    );
     final (store, state) = await _pump(
       tester,
       (_) => const ThemeColorSettingsTile(dynamicSupported: true),
+      capabilities: PlatformCapabilities.windows,
     );
 
     final entry = find.widgetWithText(ListTile, '主题色');
     await tester.tap(entry);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('动态取色'));
+    await tester.tap(find.text('跟随系统'));
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 10)),
     );
@@ -126,7 +152,7 @@ void main() {
 
     expect(store.dynamicColor, isTrue);
     expect(state.revision.value, 1);
-    expect(find.text('动态取色'), findsOneWidget);
+    expect(find.text('跟随系统'), findsOneWidget);
 
     await tester.tap(entry);
     await tester.pumpAndSettle();

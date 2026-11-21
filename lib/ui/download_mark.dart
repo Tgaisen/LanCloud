@@ -2,7 +2,7 @@ import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/file_open_result.dart';
-import '../core/platform_support.dart';
+import '../core/platform_capabilities.dart';
 import '../core/saved_file.dart';
 import '../core/system_open.dart';
 import '../core/system_share.dart';
@@ -104,10 +104,9 @@ Future<void> showDownloadTaskMenu(
   required Future<void> Function() onRedownload,
 }) async {
   if (task.status == TransferStatus.saving) return;
-  final manager = ProviderScope.containerOf(
-    context,
-    listen: false,
-  ).read(transferManagerProvider);
+  final container = ProviderScope.containerOf(context, listen: false);
+  final manager = container.read(transferManagerProvider);
+  final capabilities = container.read(platformCapabilitiesProvider);
   final l10n = context.l10n;
   final bool running =
       task.status == TransferStatus.queued ||
@@ -121,7 +120,12 @@ Future<void> showDownloadTaskMenu(
       task.status == TransferStatus.done &&
       savedPath != null &&
       savedPath.isNotEmpty;
-  final bool desktop = PlatformSupport.isDesktop;
+  final bool canShare =
+      capabilities.supportsSystemShare ||
+      capabilities.formFactor == PlatformFormFactor.desktop;
+  final bool revealFallback =
+      !capabilities.supportsSystemShare &&
+      capabilities.formFactor == PlatformFormFactor.desktop;
   // 打开菜单时的状态快照：只有这条任务自己的状态变了 / 被删了，才自动收起
   // 菜单（别的任务完成不该把用户正看着的菜单关掉）
   final TransferStatus openedStatus = task.status;
@@ -141,12 +145,13 @@ Future<void> showDownloadTaskMenu(
         icon: Icons.open_in_new,
         enabled: hasFile,
       ),
-      M3eMenuItem(
-        value: _DownloadMenuAction.share,
-        label: desktop ? l10n.openContainingFolder : l10n.share,
-        icon: desktop ? Icons.folder_open : Icons.share_outlined,
-        enabled: hasFile,
-      ),
+      if (canShare)
+        M3eMenuItem(
+          value: _DownloadMenuAction.share,
+          label: revealFallback ? l10n.openContainingFolder : l10n.share,
+          icon: revealFallback ? Icons.folder_open : Icons.share_outlined,
+          enabled: hasFile,
+        ),
       // 进行中才是「取消下载」，其余状态是删掉这条任务记录（M3 规范：不用的
       // 操作置灰或换说法，而不是留一个点了没反应的入口）
       if (running)
@@ -200,15 +205,12 @@ Future<void> showDownloadTaskMenu(
         );
       }
     case _DownloadMenuAction.share:
-      if (desktop) {
-        await revealInExplorer(savedPath!);
-      } else {
-        await SystemShare.shareFile(
-          savedPath!,
-          subject: task.name,
-          mime: _shareMimeFor(task.name),
-        );
-      }
+      await SystemShare.shareFile(
+        savedPath!,
+        subject: task.name,
+        mime: _shareMimeFor(task.name),
+        capabilities: capabilities,
+      );
     case _DownloadMenuAction.pause:
       manager.pause(task.id);
     case _DownloadMenuAction.resume:

@@ -9,7 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import '../core/download_dir.dart';
 import '../core/download_directory_settings_state.dart';
 import '../core/download_path_service.dart';
-import '../core/platform_support.dart';
+import '../core/platform_capabilities.dart';
 import '../core/saf_storage.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
@@ -21,7 +21,7 @@ enum DownloadDirectoryAction { restoreDefault, change }
 Future<DownloadDirectoryAction?> showDownloadDirectoryDialog(
   BuildContext context, {
   required String current,
-  required bool android,
+  required bool supportsSafDirectory,
 }) {
   final l10n = context.l10n;
   return showDialog<DownloadDirectoryAction>(
@@ -33,7 +33,7 @@ Future<DownloadDirectoryAction?> showDownloadDirectoryDialog(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(current),
-          if (android) ...[
+          if (supportsSafDirectory) ...[
             const SizedBox(height: 12),
             Text(
               l10n.downloadDirHint,
@@ -63,13 +63,10 @@ Future<DownloadDirectoryAction?> showDownloadDirectoryDialog(
 class DownloadDirectorySettingsTile extends ConsumerStatefulWidget {
   const DownloadDirectorySettingsTile({
     super.key,
-    this.android,
     this.pickSafDirectory,
     this.pickDirectoryPath,
   });
 
-  /// 测试注入；生产环境按平台能力判断。
-  final bool? android;
   final Future<SafDirectory?> Function(String? initialUri)? pickSafDirectory;
   final Future<String?> Function()? pickDirectoryPath;
 
@@ -84,11 +81,14 @@ class _DownloadDirectorySettingsTileState
   List<String> _privateRoots = const [];
   String? _publicRoot;
 
-  bool get _isAndroid => widget.android ?? PlatformSupport.isAndroid;
+  late final bool _supportsSafDirectory;
 
   @override
   void initState() {
     super.initState();
+    _supportsSafDirectory = ref
+        .read(platformCapabilitiesProvider)
+        .supportsSafDirectory;
     unawaited(_loadDefaultPath());
   }
 
@@ -97,7 +97,7 @@ class _DownloadDirectorySettingsTileState
       final path = await ref
           .read(downloadPathServiceProvider)
           .defaultDownloadDirPath();
-      if (_isAndroid) {
+      if (_supportsSafDirectory) {
         final roots = <String>{};
         try {
           final external = await getExternalStorageDirectory();
@@ -150,11 +150,11 @@ class _DownloadDirectorySettingsTileState
     if (treeUri != null && treeUri.isNotEmpty) {
       final label = settings.safariLabel;
       final path = (label == null || label.isEmpty) ? treeUri : label;
-      return _isAndroid ? l10n.customDownloadDir(path) : path;
+      return _supportsSafDirectory ? l10n.customDownloadDir(path) : path;
     }
     final custom = settings.directoryPath;
     if (custom != null && custom.isNotEmpty) {
-      if (!_isAndroid) return custom;
+      if (!_supportsSafDirectory) return custom;
       return switch (classifyDownloadDir(
         custom,
         privateRoots: _privateRoots,
@@ -174,7 +174,7 @@ class _DownloadDirectorySettingsTileState
   ) async {
     final l10n = context.l10n;
     var defaultPath = _defaultPath;
-    if (defaultPath == null && _isAndroid) {
+    if (defaultPath == null && _supportsSafDirectory) {
       try {
         defaultPath = await ref
             .read(downloadPathServiceProvider)
@@ -187,7 +187,7 @@ class _DownloadDirectorySettingsTileState
     final action = await showDownloadDirectoryDialog(
       context,
       current: _directoryLabel(l10n, settings, defaultPath),
-      android: _isAndroid,
+      supportsSafDirectory: _supportsSafDirectory,
     );
     if (action == null || !context.mounted) return;
     if (action == DownloadDirectoryAction.restoreDefault) {
@@ -200,7 +200,7 @@ class _DownloadDirectorySettingsTileState
     }
 
     try {
-      if (_isAndroid) {
+      if (_supportsSafDirectory) {
         final pick =
             widget.pickSafDirectory ??
             ((initialUri) => SafStorage.pickDirectory(initialUri: initialUri));

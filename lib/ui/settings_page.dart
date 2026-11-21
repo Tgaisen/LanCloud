@@ -14,6 +14,7 @@ import '../core/data/settings_store_provider.dart';
 import '../core/dynamic_color_support.dart';
 import '../core/drive_state.dart';
 import '../core/notifications.dart';
+import '../core/platform_capabilities.dart';
 import '../core/platform_support.dart';
 import '../core/system_file_saver.dart';
 import '../l10n/l10n.dart';
@@ -266,7 +267,10 @@ class _SettingsCategoryPageState extends ConsumerState<SettingsCategoryPage>
     if (mounted) setState(() => _permissions = snapshot);
   }
 
-  List<_Entry> _entries(SettingsStore settings) {
+  List<_Entry> _entries(
+    SettingsStore settings,
+    PlatformCapabilities capabilities,
+  ) {
     final l10n = context.l10n;
     String themeModeName() => switch (settings.themeMode) {
       'light' => l10n.light,
@@ -310,6 +314,7 @@ class _SettingsCategoryPageState extends ConsumerState<SettingsCategoryPage>
           l10n,
           dynamicColor: settings.dynamicColor,
           seed: settings.themeSeed,
+          dynamicColorSource: capabilities.dynamicColorSource,
         ),
         keywords: [
           ...l10n.themeColorKeywords.split(' '),
@@ -432,6 +437,7 @@ class _SettingsCategoryPageState extends ConsumerState<SettingsCategoryPage>
         subtitle: l10n.notifProgressSubtitle,
         keywords: l10n.notifProgressKeywords.split(' '),
         section: SettingsSection.notification,
+        visible: (_) => capabilities.supportsPersistentProgressNotifications,
         build: (context) => NotificationSettingsTile(
           done: false,
           onPermissionChanged: (granted) {
@@ -445,6 +451,7 @@ class _SettingsCategoryPageState extends ConsumerState<SettingsCategoryPage>
         subtitle: l10n.notifDoneSubtitle,
         keywords: l10n.notifDoneKeywords.split(' '),
         section: SettingsSection.notification,
+        visible: (_) => capabilities.supportsLocalNotifications,
         build: (context) => NotificationSettingsTile(
           done: true,
           onPermissionChanged: (granted) {
@@ -458,6 +465,7 @@ class _SettingsCategoryPageState extends ConsumerState<SettingsCategoryPage>
         subtitle: l10n.favoriteUpdateNotifySubtitle,
         keywords: const ['收藏', '文件夹', '更新', '通知'],
         section: SettingsSection.notification,
+        visible: (_) => capabilities.supportsLocalNotifications,
         build: (context) => FavoriteUpdateNotificationSettingsTile(
           onPermissionChanged: (granted) {
             if (mounted) setState(() => _notifGranted = granted);
@@ -513,6 +521,7 @@ class _SettingsCategoryPageState extends ConsumerState<SettingsCategoryPage>
           ...l10n.notifPermissionKeywords.split(' '),
         ],
         section: SettingsSection.permissions,
+        visible: (_) => capabilities.supportsPermissionManagement,
         build: (context) => ListTile(
           leading: const Icon(Icons.shield),
           title: Text(context.l10n.managePermissions),
@@ -525,6 +534,7 @@ class _SettingsCategoryPageState extends ConsumerState<SettingsCategoryPage>
         subtitle: l10n.manageDefaultLinksSubtitle,
         keywords: l10n.manageDefaultLinksKeywords.split(' '),
         section: SettingsSection.permissions,
+        visible: (_) => capabilities.supportsDefaultLinkSettings,
         build: (context) => ListTile(
           leading: const Icon(Icons.link_outlined),
           title: Text(context.l10n.manageDefaultLinks),
@@ -538,6 +548,7 @@ class _SettingsCategoryPageState extends ConsumerState<SettingsCategoryPage>
         subtitle: '',
         keywords: l10n.openSystemSettingsKeywords.split(' '),
         section: SettingsSection.permissions,
+        visible: (_) => capabilities.supportsAppSettingsPage,
         build: (context) => ListTile(
           leading: const Icon(Icons.page_info),
           title: Text(context.l10n.openSystemSettings),
@@ -754,20 +765,8 @@ class _SettingsCategoryPageState extends ConsumerState<SettingsCategoryPage>
           onTap: () => _showA11yFeedbackDialog(context),
         ),
       ),
-    ]..removeWhere(
-      // 权限 / 安装 / 默认链接是 Android 原生通道的能力，动态取色只有
-      // Android 12+ 有，这些在桌面端都直接不显示。
-      (entry) =>
-          !PlatformSupport.isMobile && _androidOnlyEntries.contains(entry.id),
-    );
+    ];
   }
-
-  /// 只有 Android 才有对应实现的设置项。
-  static const _androidOnlyEntries = {
-    'manage_permissions',
-    'default_links',
-    'app_settings',
-  };
 
   /// 退出搜索：清空关键词并切回分类列表（与收藏页同一套行为）。
   void _exitSearch() {
@@ -799,10 +798,12 @@ class _SettingsCategoryPageState extends ConsumerState<SettingsCategoryPage>
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsStoreProvider);
+    final capabilities = ref.watch(platformCapabilitiesProvider);
     final l10n = context.l10n;
-    final entries = _entries(settings)
-        .where((e) => e.visible?.call(context) ?? true)
-        .toList();
+    final entries = _entries(
+      settings,
+      capabilities,
+    ).where((e) => e.visible?.call(context) ?? true).toList();
     final query = _searchText.trim().toLowerCase();
 
     final matching = entries

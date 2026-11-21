@@ -1,9 +1,66 @@
 # 回归基线历史
 
-> 本文件保留 2026-10-30 至 2026-10-31 的逐次迁移、增量和全量验证记录。
+> 本文件保留 2026-10-30 起的主要逐次迁移、增量和全量验证记录。
 > 当前仓库基线、规模与已知风险见 [BASELINE.md](BASELINE.md)。
 >
 > 历史数字只代表对应提交时点，不应直接作为当前仓库状态。
+
+## 2026-11-21 Dart 平台适配
+
+- 平台适配交接文档合并：将原交接文档中的分支与提交、1064 tests 基线、
+  能力快照、最终保留例外和后续维护规则合并到
+  `DART_PLATFORM_ADAPTER_ROADMAP.md`，并删除独立交接文件。架构与兼容文档的
+  入口同步改指路线图；本轮只改文档，不改变代码或测试基线。
+- Batch 11 文档收口提交为 `8e3f7e7 docs(platform): 收口平台适配最终状态`。
+  同步架构、基线、兼容矩阵、路线图和交接文档；最终剩余
+  `PlatformSupport` 分支 getter 为 11 个文件 / 19 处（`isDesktop` 4、
+  `isWindows` 10、`isAndroid` 5、`isMobile` 0），直接 `Platform.is*` 为 0。
+  全量 `format` 为 369 files / 0 changed，全量分析 0 issue，
+  **1064 tests all passed**（约 2 min 31 s）。
+- `a59a1e3 refactor(platform): 收敛系统动作适配器` 完成 Batch 10：
+  外部网页拆成 Custom Tabs 与默认浏览器 gateway，文件打开拆成 Android
+  FileProvider、iOS `open_filex`、Windows Explorer 和 Unix desktop adapter；
+  保留可注入入口与原有系统参数。4 个文件，增量分析 2 个 Dart 文件无问题，
+  2 个测试文件 / 5 tests passed；平台引用降为 11 个文件 / 19 处。
+- `31d9eec fix(settings): 隐藏 Windows 进度通知入口`：设置页进度通知改用
+  `supportsPersistentProgressNotifications`，Windows 只保留完成/失败和收藏更新
+  通知，Android 行为不变。2 个文件，增量分析 1 个 Dart 文件无问题，
+  7 个测试文件 / 57 tests passed；用例总数保持 1064。
+- `153642a fix(notifications): 区分常驻进度与终态提醒` 完成 Batch 9：
+  能力矩阵新增 `supportsPersistentProgressNotifications`；Windows 可初始化本地
+  通知并显示终态提醒，但不再上报传输、收藏检测或 WebDAV 常驻进度。
+  4 个文件，增量分析 2 个 Dart 文件无问题，27 个测试文件 / 268 tests passed；
+  平台引用降为 11 个文件 / 20 处，用例总数保持 1064。
+- `094fee3 fix(platform): 按能力显示动态色与分享提示` 完成 Batch 8B：
+  动态色文案、图标和提示跟随 `DynamicColorSource`；Cookie 导出直接消费
+  `SystemShareGateway`，只在桌面剪贴板降级结果命中时提示。5 个文件，
+  增量分析 3 个 Dart 文件无问题，9 个测试文件 / 67 tests passed；
+  平台引用降为 11 个文件 / 23 处，用例总数保持 1064。
+- `5466324 fix(platform): 按能力选择目录与拖拽语义` 完成 Batch 8A：
+  下载目录改用 `supportsSafDirectory`，拖拽目标改用 `supportsDesktopDrop`；
+  Android SAF、Windows 拖放实现保持不变。5 个文件，增量分析 2 个 Dart 文件
+  无问题，2 个测试文件 / 17 tests passed，新增 3 项测试，用例总数由 1061
+  增至 1064；平台引用降为 13 个文件 / 26 处。
+- Batch 1–7 的纯 Dart 范围完成，提交范围 `02c55c0..bd19cdf`：
+  新增 `PlatformCapabilities` 与不可变能力矩阵；设置页、网盘上传、扫码、
+  分享收件箱、普通文件选择、系统另存为、默认下载目录、传输 SAF 路由、
+  edge-to-edge、前台任务、系统分享、系统设置、更新产物和本地通知均已收口到
+  能力判断或窄接口。
+- `349a958` 先同步了当时的能力完成状态；随后 `349a958..ff3ea87` 的 8 个
+  小批继续完成缓存清理、设备信息、WebView 登录 UA、动态色来源、鼠标滚动条、
+  自适应菜单、按宽度布局的栏标题以及文件分享入口三态语义。
+- 本阶段没有新增依赖、修改版本号或改 Android/Windows/iOS 原生工程。
+  iOS 的普通文件选择/保存、默认下载目录和共享 UI 路径已接线，但构建与真机验收
+  仍未完成；Darwin 通知、分享扩展、深链和原生分享仍缺原生实现。
+- 截至功能提交 `ff3ea87`，仍有 15 个 Dart 文件使用 28 处
+  `PlatformSupport` 分支 getter：`isDesktop` 9、`isWindows` 13、
+  `isAndroid` 6、`isMobile` 0；`lib/` 中直接 `Platform.is*` 分支已清零。
+  这些主要是低层实现、平台专属 UI 形态或系统动作边界，后续只迁移有明确
+  产品语义的入口。
+- 最终全量验证为分析 0 issue、**1061 tests all passed**（约 2 min 17 s），
+  `format` 为 369 files / 0 changed。最后一次文件分享入口批次的增量为
+  2 个 Dart 文件分析无问题、6 个测试文件 / 86 tests passed（约 51 s）。
+  当时规模与风险快照见 [BASELINE.md](BASELINE.md)。
 
 ## 实测结果
 

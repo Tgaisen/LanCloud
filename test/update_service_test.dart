@@ -4,8 +4,10 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/data/settings_store.dart';
+import 'package:lancloud/core/platform_capabilities.dart';
 import 'package:lancloud/core/update/changelog.dart';
 import 'package:lancloud/core/update/release_info.dart';
 import 'package:lancloud/core/update/update_service.dart';
@@ -206,6 +208,130 @@ void main() {
       expect(release.windowsAsset!.url, contains('x64_portable.zip'));
       // 真实正文的截取结果：只剩更新日志一行（引用行与「下载选择」小节不显示）
       expect(changelogLines(release.body), ['• 支持自行开关应用全局动画']);
+    });
+  });
+
+  group('更新产物适配器', () {
+    test('支持状态应该跟随 UpdateArtifact', () {
+      for (final (:name, :capabilities, :supported) in [
+        (
+          name: 'Android',
+          capabilities: PlatformCapabilities.android,
+          supported: true,
+        ),
+        (
+          name: 'Windows',
+          capabilities: PlatformCapabilities.windows,
+          supported: true,
+        ),
+        (name: 'iOS', capabilities: PlatformCapabilities.ios, supported: false),
+        (
+          name: 'unknown',
+          capabilities: PlatformCapabilities.unsupported,
+          supported: false,
+        ),
+      ]) {
+        final container = ProviderContainer(
+          overrides: [
+            platformCapabilitiesProvider.overrideWithValue(capabilities),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        expect(
+          container.read(updateSupportedProvider),
+          supported,
+          reason: name,
+        );
+      }
+    });
+
+    test('Android adapter 应该按 ABI 选择 APK 并回退 Release 页面', () async {
+      final release = rel(
+        '99.0.0',
+        assets: const [
+          ReleaseAsset(
+            name: 'LanCloud_android_99.0.0_arm64-v8a.apk',
+            url: 'https://example.com/arm64',
+            size: 1,
+          ),
+          ReleaseAsset(
+            name: 'LanCloud_android_99.0.0_armeabi-v7a.apk',
+            url: 'https://example.com/v7a',
+            size: 1,
+          ),
+        ],
+      );
+      var abiLoads = 0;
+      final container = ProviderContainer(
+        overrides: [
+          platformCapabilitiesProvider.overrideWithValue(
+            PlatformCapabilities.android,
+          ),
+          updateSupportedAbisProvider.overrideWithValue(() async {
+            abiLoads += 1;
+            return ['arm64-v8a', 'armeabi-v7a'];
+          }),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final adapter = container.read(updateDeliveryProvider);
+      expect(await adapter.downloadUrl(release), 'https://example.com/arm64');
+      expect(abiLoads, 1);
+
+      final missingContainer = ProviderContainer(
+        overrides: [
+          platformCapabilitiesProvider.overrideWithValue(
+            PlatformCapabilities.android,
+          ),
+          updateSupportedAbisProvider.overrideWithValue(() async => ['x86_64']),
+        ],
+      );
+      addTearDown(missingContainer.dispose);
+      expect(
+        await missingContainer
+            .read(updateDeliveryProvider)
+            .downloadUrl(release),
+        release.htmlUrl,
+      );
+    });
+
+    test('Windows adapter 应该选择 portable ZIP 并回退 Release 页面', () async {
+      final release = rel(
+        '99.0.0',
+        assets: const [
+          ReleaseAsset(
+            name: 'LanCloud_windows_99.0.0_x64_portable.zip',
+            url: 'https://example.com/windows.zip',
+            size: 1,
+          ),
+        ],
+      );
+      final container = ProviderContainer(
+        overrides: [
+          platformCapabilitiesProvider.overrideWithValue(
+            PlatformCapabilities.windows,
+          ),
+          updateSupportedAbisProvider.overrideWithValue(
+            () async => throw StateError('ABI should not be queried'),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      expect(
+        await container.read(updateDeliveryProvider).downloadUrl(release),
+        'https://example.com/windows.zip',
+      );
+
+      final missingRelease = rel('99.0.0');
+      expect(
+        await container
+            .read(updateDeliveryProvider)
+            .downloadUrl(missingRelease),
+        missingRelease.htmlUrl,
+      );
     });
   });
 

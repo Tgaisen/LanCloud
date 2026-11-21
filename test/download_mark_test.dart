@@ -2,14 +2,66 @@ import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_environment.dart';
+import 'package:lancloud/core/platform_capabilities.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
+import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/app_icons.dart';
 import 'package:lancloud/ui/download_mark.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'transfer_dependencies_test.dart'
     show buildTransferManagerForEnvironment;
+
+import 'package:lancloud/l10n/delegates.dart';
+
+Future<void> _pumpDownloadMenu(
+  WidgetTester tester, {
+  required PlatformCapabilities capabilities,
+}) async {
+  final environment = AppEnvironment();
+  addTearDown(environment.dispose);
+  final manager = buildTransferManagerForEnvironment(environment);
+  final task =
+      TransferTask(
+          id: 'download-menu',
+          kind: TransferKind.download,
+          name: 'a.zip',
+          accountUid: '',
+        )
+        ..status = TransferStatus.done
+        ..savedPath = '/tmp/a.zip';
+  manager.tasks.add(task);
+
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        transferManagerProvider.overrideWithValue(manager),
+        platformCapabilitiesProvider.overrideWithValue(capabilities),
+      ],
+      child: MaterialApp(
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('zh'),
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: () => showDownloadTaskMenu(
+                context,
+                anchor: const Rect.fromLTWH(100, 100, 48, 48),
+                task: task,
+                onRedownload: () async {},
+              ),
+              child: const Text('menu'),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+  await tester.tap(find.text('menu'));
+  await tester.pumpAndSettle();
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -170,5 +222,25 @@ void main() {
       ),
     );
     expect(find.byIcon(Icons.download_done), findsNothing);
+  });
+
+  testWidgets('下载菜单 Android 显示系统分享入口', (tester) async {
+    await _pumpDownloadMenu(tester, capabilities: PlatformCapabilities.android);
+
+    expect(find.text('分享'), findsOneWidget);
+  });
+
+  testWidgets('下载菜单 Windows 显示资源管理器定位入口', (tester) async {
+    await _pumpDownloadMenu(tester, capabilities: PlatformCapabilities.windows);
+
+    expect(find.text('打开所在文件夹'), findsOneWidget);
+    expect(find.text('分享'), findsNothing);
+  });
+
+  testWidgets('下载菜单 iOS 隐藏不可用的分享入口', (tester) async {
+    await _pumpDownloadMenu(tester, capabilities: PlatformCapabilities.ios);
+
+    expect(find.text('分享'), findsNothing);
+    expect(find.text('打开所在文件夹'), findsNothing);
   });
 }

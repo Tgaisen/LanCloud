@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
-import 'platform_support.dart';
+import 'platform_capabilities.dart';
 
 /// 应用缓存：统计与清理。
 ///
@@ -27,6 +27,13 @@ class AppCache {
   @visibleForTesting
   static Future<Directory?> Function()? directoryProvider;
 
+  /// 测试注入用；默认为当前平台能力。
+  @visibleForTesting
+  static PlatformCapabilities Function()? capabilitiesProvider;
+
+  static PlatformCapabilities get _capabilities =>
+      capabilitiesProvider?.call() ?? PlatformCapabilities.current;
+
   static Future<Directory?> _dir() async {
     try {
       return await (directoryProvider?.call() ?? getTemporaryDirectory());
@@ -38,7 +45,8 @@ class AppCache {
 
   /// 移动端的缓存目录是应用私有的，可以整体清理；
   /// 桌面端的临时目录是系统共享的（Windows 的 %TEMP%），只删本应用自己的条目。
-  static bool get _wholeDirectory => PlatformSupport.isMobile;
+  static bool get _wholeDirectory =>
+      _capabilities.usesPrivateMobileTemporaryDirectory;
 
   /// 条目是否属于本应用：按「相对缓存目录的第一段」判断，
   /// 这样自己目录里的文件（`picked/xxx`）也算自己的。
@@ -98,7 +106,7 @@ class AppCache {
   /// 通过这个方法删除文件；缓存根目录之外的路径也一律拒绝。
   static Future<bool> deleteTemporaryFile(String path) async {
     if (!_wholeDirectory || path.isEmpty) return false;
-    if (PlatformSupport.isAndroid) {
+    if (_capabilities.supportsSafDirectory) {
       try {
         final deleted = await _pickerChannel.invokeMethod<bool>(
           'deleteCacheFile',

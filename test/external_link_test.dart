@@ -19,6 +19,16 @@ class _FakeUrlLauncher extends UrlLauncherPlatform {
   }
 }
 
+class _FakeExternalLinkGateway implements ExternalLinkGateway {
+  final List<Uri> opened = [];
+
+  @override
+  Future<bool> open(Uri url) async {
+    opened.add(url);
+    return true;
+  }
+}
+
 void main() {
   const channel = MethodChannel('lancloud/external_link');
   late _FakeUrlLauncher launcher;
@@ -87,6 +97,17 @@ void main() {
       expect(await openExternalUrl(Uri.parse('https://example.com')), isTrue);
       expect(channelCalls, 0);
       expect(launcher.launched, ['https://example.com']);
+
+      final gateway = _FakeExternalLinkGateway();
+      expect(
+        await openExternalUrl(
+          Uri.parse('https://example.com/injected'),
+          gateway: gateway,
+        ),
+        isTrue,
+      );
+      expect(gateway.opened, [Uri.parse('https://example.com/injected')]);
+      expect(channelCalls, 0);
     } finally {
       debugDefaultTargetPlatformOverride = null;
     }

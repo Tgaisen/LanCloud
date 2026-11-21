@@ -23,7 +23,7 @@ import '../core/file_name_collation.dart';
 import '../core/list_home_settings_state.dart';
 import '../core/navigation_appearance_settings_state.dart';
 import '../core/navigation_state.dart';
-import '../core/platform_support.dart';
+import '../core/platform_capabilities.dart';
 import '../core/rename_rule.dart';
 import '../core/transfer/transfer_manager.dart';
 import '../core/transfer/transfer_manager_provider.dart';
@@ -1806,6 +1806,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
     final anchor = m3eMenuAnchorOf(anchorContext);
     if (anchor == null) return;
     final l10n = context.l10n;
+    final capabilities = ref.read(platformCapabilitiesProvider);
     final action = await showAdaptiveM3eMenu<_AddMenuAction>(
       context: context,
       anchor: anchor,
@@ -1821,9 +1822,8 @@ class _DrivePageState extends ConsumerState<DrivePage>
           label: l10n.uploadFile,
           icon: Icons.upload_file_outlined,
         ),
-        // 桌面端没有 ACTION_OPEN_DOCUMENT 那套「从其他应用/文档提供器选取」，
-        // 系统选择器与「上传文件」完全一样，这里不重复给入口。
-        if (PlatformSupport.isMobile)
+        // 只有当前平台具备文档提供器上传通道时才显示独立入口。
+        if (capabilities.supportsDocumentProviderUpload)
           M3eMenuItem(
             value: _AddMenuAction.uploadFromApp,
             label: l10n.uploadFromApp,

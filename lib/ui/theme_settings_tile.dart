@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart' hide Icons;
 
-import '../core/platform_support.dart';
+import '../core/platform_capabilities.dart';
 import '../core/theme_settings_state.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
@@ -35,8 +35,9 @@ String themeColorSettingLabel(
   AppLocalizations l10n, {
   required bool dynamicColor,
   required int seed,
+  required DynamicColorSource dynamicColorSource,
 }) => dynamicColor
-    ? PlatformSupport.isWindows
+    ? dynamicColorSource == DynamicColorSource.systemAccent
           ? l10n.followSystem
           : l10n.dynamicColor
     : themeSeedLabel(l10n, seed);
@@ -54,6 +55,7 @@ Future<ThemeColorSelection?> showThemeColorPicker(
   required bool dynamicSupported,
   required bool dynamicColor,
   required int seed,
+  required DynamicColorSource dynamicColorSource,
 }) {
   final l10n = context.l10n;
   final presets = <int, String>{
@@ -69,11 +71,12 @@ Future<ThemeColorSelection?> showThemeColorPicker(
   };
   // 不支持时动态取色按未选中处理（也点不动）。
   final dynamicSelected = dynamicSupported && dynamicColor;
-  final isWindows = PlatformSupport.isWindows;
-  final dynamicLabel = isWindows ? l10n.followSystem : l10n.dynamicColor;
+  final usesSystemAccent =
+      dynamicColorSource == DynamicColorSource.systemAccent;
+  final dynamicLabel = usesSystemAccent ? l10n.followSystem : l10n.dynamicColor;
   final dynamicSubtitle = !dynamicSupported
       ? l10n.dynamicColorUnsupported
-      : isWindows
+      : usesSystemAccent
       ? l10n.followSystemColorRestartHint
       : l10n.dynamicColorSubtitle;
   return showDialog<ThemeColorSelection>(
@@ -97,7 +100,7 @@ Future<ThemeColorSelection?> showThemeColorPicker(
                   singleSelect: true,
                   enabled: dynamicSupported,
                   leading: Icon(
-                    isWindows ? Icons.colors : Icons.wallpaper_outlined,
+                    usesSystemAccent ? Icons.colors : Icons.wallpaper_outlined,
                   ),
                   onTap: () => Navigator.of(
                     dialogContext,
@@ -255,6 +258,9 @@ class ThemeColorSettingsTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(themeSettingsStateProvider);
+    final dynamicColorSource = ref
+        .watch(platformCapabilitiesProvider)
+        .dynamicColorSource;
     final l10n = context.l10n;
     return ValueListenableBuilder<int>(
       valueListenable: settings.revision,
@@ -268,6 +274,7 @@ class ThemeColorSettingsTile extends ConsumerWidget {
               l10n,
               dynamicColor: dynamicColor,
               seed: settings.themeSeed,
+              dynamicColorSource: dynamicColorSource,
             ),
           ),
           // 动态取色时没有固定颜色可展示，尾部不再画色块。
@@ -277,7 +284,8 @@ class ThemeColorSettingsTile extends ConsumerWidget {
                   radius: 12,
                   backgroundColor: Color(settings.themeSeed),
                 ),
-          onTap: () => unawaited(_pickColor(context, settings)),
+          onTap: () =>
+              unawaited(_pickColor(context, settings, dynamicColorSource)),
         );
       },
     );
@@ -286,12 +294,14 @@ class ThemeColorSettingsTile extends ConsumerWidget {
   Future<void> _pickColor(
     BuildContext context,
     ThemeSettingsState settings,
+    DynamicColorSource dynamicColorSource,
   ) async {
     final selection = await showThemeColorPicker(
       context,
       dynamicSupported: dynamicSupported,
       dynamicColor: settings.dynamicColor,
       seed: settings.themeSeed,
+      dynamicColorSource: dynamicColorSource,
     );
     if (!context.mounted || selection == null) return;
     if (selection.dynamicColor) {

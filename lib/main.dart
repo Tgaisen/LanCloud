@@ -15,6 +15,7 @@ import 'core/download_path_service.dart';
 import 'core/favorites/favorite_monitor.dart';
 import 'core/incoming_links.dart';
 import 'core/notifications.dart';
+import 'core/platform_capabilities.dart';
 import 'core/platform_support.dart';
 import 'core/share_inbox.dart';
 import 'core/shared_downloads_gateway.dart';
@@ -23,6 +24,51 @@ import 'core/third_party_licenses.dart';
 import 'core/transfer/transfer_manager_provider.dart';
 import 'core/update/update_service.dart';
 
+@visibleForTesting
+Future<void> initializePlatformSystemUi({
+  PlatformCapabilities? capabilities,
+  Future<void> Function(SystemUiMode mode)? setSystemUiMode,
+}) async {
+  final currentCapabilities = capabilities ?? PlatformCapabilities.current;
+  if (!currentCapabilities.supportsEdgeToEdgeSystemUi) return;
+  await (setSystemUiMode ?? SystemChrome.setEnabledSystemUIMode)(
+    SystemUiMode.edgeToEdge,
+  );
+}
+
+@visibleForTesting
+void initializePlatformForegroundService({
+  PlatformCapabilities? capabilities,
+  void Function()? initialize,
+}) {
+  final currentCapabilities = capabilities ?? PlatformCapabilities.current;
+  if (!currentCapabilities.supportsForegroundTask) return;
+  (initialize ?? _initializeForegroundService)();
+}
+
+void _initializeForegroundService() {
+  FlutterForegroundTask.initCommunicationPort();
+  FlutterForegroundTask.init(
+    androidNotificationOptions: AndroidNotificationOptions(
+      channelId: 'foreground_service',
+      channelName: '蓝云',
+      channelDescription: '传输、收藏检测或 WebDAV 备份进行中时保持后台运行',
+      channelImportance: NotificationChannelImportance.LOW,
+      priority: NotificationPriority.LOW,
+      onlyAlertOnce: true,
+      playSound: false,
+      showBadge: false,
+      showWhen: false,
+    ),
+    iosNotificationOptions: const IOSNotificationOptions(),
+    foregroundTaskOptions: ForegroundTaskOptions(
+      eventAction: ForegroundTaskEventAction.nothing(),
+      allowWakeLock: true,
+      allowWifiLock: true,
+    ),
+  );
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // 开源许可页要展示的素材许可证（第三方图标集等）：先登记再运行
@@ -30,10 +76,8 @@ Future<void> main() async {
   // 导航栏沉浸：Android 15+（API 35）系统强制 edge-to-edge，14 及以下
   // 需要显式开启，否则系统导航栏/状态栏会不透明地占掉一条（内容被顶开）。
   // 非 edgeToEdge 模式在 API 36 上会被系统忽略，这里保持与系统一致。
-  // 桌面端没有系统栏，跳过。
-  if (PlatformSupport.isMobile) {
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-  }
+  // 桌面端没有系统栏，iOS 当前也不走 Android 的 edge-to-edge 初始化。
+  unawaited(initializePlatformSystemUi());
   // 平台能力预热：Android SDK 级别（WebView 的合成方式按它判定，
   // 见 web_page.dart / web_login_page.dart）。留一行日志，
   // 排查「为什么这台设备的 WebView 表现不同」时能对上号。
@@ -62,30 +106,8 @@ Future<void> main() async {
     }
     defaultDebugPrint(message, wrapWidth: wrapWidth);
   };
-  // 前台服务只有 Android / iOS 需要（也是只有它们才有的插件）。
-  // 桌面端窗口关掉 = 进程结束，不存在后台保活问题。
-  if (PlatformSupport.isMobile) {
-    FlutterForegroundTask.initCommunicationPort();
-    FlutterForegroundTask.init(
-      androidNotificationOptions: AndroidNotificationOptions(
-        channelId: 'foreground_service',
-        channelName: '蓝云',
-        channelDescription: '传输、收藏检测或 WebDAV 备份进行中时保持后台运行',
-        channelImportance: NotificationChannelImportance.LOW,
-        priority: NotificationPriority.LOW,
-        onlyAlertOnce: true,
-        playSound: false,
-        showBadge: false,
-        showWhen: false,
-      ),
-      iosNotificationOptions: const IOSNotificationOptions(),
-      foregroundTaskOptions: ForegroundTaskOptions(
-        eventAction: ForegroundTaskEventAction.nothing(),
-        allowWakeLock: true,
-        allowWifiLock: true,
-      ),
-    );
-  }
+  // 只有能力矩阵确认前台任务后端完整时才初始化插件；桌面端关闭窗口即结束。
+  initializePlatformForegroundService();
   const sharedDownloads = PlatformSharedDownloadsGateway();
   final downloadPaths = PlatformDownloadPathService(
     sharedDownloads: sharedDownloads,

@@ -1,5 +1,7 @@
 import 'package:flutter/services.dart';
 
+import 'platform_capabilities.dart';
+
 /// 权限状态。
 enum PermissionState {
   /// 已授权 / 已允许。
@@ -30,18 +32,73 @@ class PermissionSnapshot {
   );
 }
 
-/// 权限管理：查询状态与发起请求（Android 原生通道）。
-/// 测试中可以替换 [instance] 注入桩实现。
-class AppPermissions {
-  AppPermissions();
+/// Android 原生权限与系统设置通道。
+abstract interface class SystemSettingsTransport {
+  Future<Map<Object?, Object?>?> status();
 
-  static AppPermissions instance = AppPermissions();
+  Future<bool?> openInstallSettings();
+
+  Future<bool?> requestBattery();
+
+  Future<bool?> requestLocalNetwork();
+
+  Future<bool?> openAppSettings();
+
+  Future<bool?> openDefaultLinkSettings();
+}
+
+final class _ChannelSystemSettingsTransport implements SystemSettingsTransport {
+  const _ChannelSystemSettingsTransport();
 
   static const _channel = MethodChannel('lancloud/permissions');
 
+  @override
+  Future<Map<Object?, Object?>?> status() =>
+      _channel.invokeMethod<Map<Object?, Object?>>('status');
+
+  @override
+  Future<bool?> openInstallSettings() =>
+      _channel.invokeMethod<bool>('openInstallSettings');
+
+  @override
+  Future<bool?> requestBattery() =>
+      _channel.invokeMethod<bool>('requestBattery');
+
+  @override
+  Future<bool?> requestLocalNetwork() =>
+      _channel.invokeMethod<bool>('requestLocalNetwork');
+
+  @override
+  Future<bool?> openAppSettings() =>
+      _channel.invokeMethod<bool>('openAppSettings');
+
+  @override
+  Future<bool?> openDefaultLinkSettings() =>
+      _channel.invokeMethod<bool>('openDefaultLinksSettings');
+}
+
+/// 权限管理：查询状态并发起系统设置动作。
+///
+/// Android 原生能力由静态平台矩阵控制；测试中可以替换 [instance] 或注入
+/// [SystemSettingsTransport]。
+class AppPermissions {
+  AppPermissions({
+    PlatformCapabilities? capabilities,
+    SystemSettingsTransport? transport,
+  }) : capabilities = capabilities ?? PlatformCapabilities.current,
+       _transport = transport ?? const _ChannelSystemSettingsTransport();
+
+  static AppPermissions instance = AppPermissions();
+
+  final PlatformCapabilities capabilities;
+  final SystemSettingsTransport _transport;
+
   Future<PermissionSnapshot> status() async {
+    if (!capabilities.supportsPermissionManagement) {
+      return PermissionSnapshot.unknown;
+    }
     try {
-      final raw = await _channel.invokeMethod<Map<Object?, Object?>>('status');
+      final raw = await _transport.status();
       if (raw == null) return PermissionSnapshot.unknown;
       return PermissionSnapshot(
         install: _parse(raw['install']),
@@ -51,40 +108,65 @@ class AppPermissions {
       return PermissionSnapshot.unknown;
     } on MissingPluginException {
       return PermissionSnapshot.unknown;
+    } catch (_) {
+      return PermissionSnapshot.unknown;
     }
   }
 
   /// 打开「安装未知应用」设置页。
-  Future<bool> openInstallSettings() => _invokeBool('openInstallSettings');
+  Future<bool> openInstallSettings() {
+    if (!capabilities.supportsPermissionManagement) {
+      return Future<bool>.value(false);
+    }
+    return _invokeBool(_transport.openInstallSettings);
+  }
 
   /// 请求忽略电池优化（系统弹窗）。
-  Future<bool> requestBattery() => _invokeBool('requestBattery');
+  Future<bool> requestBattery() {
+    if (!capabilities.supportsPermissionManagement) {
+      return Future<bool>.value(false);
+    }
+    return _invokeBool(_transport.requestBattery);
+  }
 
   /// 请求「本地网络」权限：Android 17（API 37）/ targetSdk 37 起访问局域网必需。
   /// 低版本 Android 与桌面平台没有这个限制，视为已授权。
   Future<bool> requestLocalNetwork() async {
     try {
-      return await _channel.invokeMethod<bool>('requestLocalNetwork') ?? true;
+      return await _transport.requestLocalNetwork() ?? true;
     } on PlatformException {
       return false;
     } on MissingPluginException {
       return true;
+    } catch (_) {
+      return false;
     }
   }
 
   /// 打开应用详情设置页。
-  Future<bool> openAppSettings() => _invokeBool('openAppSettings');
+  Future<bool> openAppSettings() {
+    if (!capabilities.supportsAppSettingsPage) {
+      return Future<bool>.value(false);
+    }
+    return _invokeBool(_transport.openAppSettings);
+  }
 
   /// 打开系统的「默认打开链接」设置页（把蓝奏云分享链接交给本应用）。
-  Future<bool> openDefaultLinkSettings() =>
-      _invokeBool('openDefaultLinksSettings');
+  Future<bool> openDefaultLinkSettings() {
+    if (!capabilities.supportsDefaultLinkSettings) {
+      return Future<bool>.value(false);
+    }
+    return _invokeBool(_transport.openDefaultLinkSettings);
+  }
 
-  Future<bool> _invokeBool(String method) async {
+  Future<bool> _invokeBool(Future<bool?> Function() invoke) async {
     try {
-      return await _channel.invokeMethod<bool>(method) ?? false;
+      return await invoke() ?? false;
     } on PlatformException {
       return false;
     } on MissingPluginException {
+      return false;
+    } catch (_) {
       return false;
     }
   }

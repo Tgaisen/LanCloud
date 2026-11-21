@@ -10,6 +10,7 @@ import '../app_info.dart';
 import '../app_log_provider.dart';
 import '../data/settings_store.dart';
 import '../data/settings_store_provider.dart';
+import '../platform_capabilities.dart';
 import '../platform_support.dart';
 import 'release_info.dart';
 import 'update_state.dart';
@@ -22,6 +23,9 @@ typedef UpdateClock = DateTime Function();
 /// 可注入的 Release 拉取函数，测试无需访问真实网络。
 typedef UpdateFetcher = Future<List<ReleaseInfo>> Function();
 
+/// 可注入的设备 ABI 读取函数。
+typedef SupportedAbisLoader = Future<List<String>> Function();
+
 /// 更新服务的时间源。
 final updateClockProvider = Provider<UpdateClock>((ref) => DateTime.now);
 
@@ -30,9 +34,48 @@ final updateFetcherProvider = Provider<UpdateFetcher>(
   (ref) => _fetchGitHubReleases,
 );
 
+/// Android 设备 ABI；读取失败时按空列表处理，回退 Release 页面。
+final updateSupportedAbisProvider = Provider<SupportedAbisLoader>(
+  (ref) =>
+      () async => await PlatformSupport.loadSupportedAbis() ?? const [],
+);
+
+/// 按平台产物类型解析当前 Release 的下载地址。
+final class UpdateDeliveryAdapter {
+  const UpdateDeliveryAdapter({
+    required this.artifact,
+    required this.loadSupportedAbis,
+  });
+
+  final UpdateArtifact artifact;
+  final SupportedAbisLoader loadSupportedAbis;
+
+  Future<String> downloadUrl(ReleaseInfo release) async {
+    switch (artifact) {
+      case UpdateArtifact.androidApk:
+        final abis = await loadSupportedAbis();
+        return release.androidAssetFor(abis)?.url ?? release.htmlUrl;
+      case UpdateArtifact.windowsPortable:
+        return release.windowsAsset?.url ?? release.htmlUrl;
+      case UpdateArtifact.none:
+        return release.htmlUrl;
+    }
+  }
+}
+
+/// 当前平台更新产物解析器。
+final updateDeliveryProvider = Provider<UpdateDeliveryAdapter>((ref) {
+  return UpdateDeliveryAdapter(
+    artifact: ref.watch(platformCapabilitiesProvider).updateArtifact,
+    loadSupportedAbis: ref.watch(updateSupportedAbisProvider),
+  );
+});
+
 /// 当前平台是否有可安装的更新产物。
 final updateSupportedProvider = Provider<bool>(
-  (ref) => PlatformSupport.isAndroid || PlatformSupport.isWindows,
+  (ref) =>
+      ref.watch(platformCapabilitiesProvider).updateArtifact !=
+      UpdateArtifact.none,
 );
 
 /// 应用级更新状态；固定常驻，不使用 `autoDispose`。
@@ -230,15 +273,7 @@ class UpdateService extends Notifier<UpdateState> {
   Future<String> downloadUrl() async {
     final release = state.cachedRelease;
     if (release == null) return '';
-    if (PlatformSupport.isAndroid) {
-      final abis = await PlatformSupport.loadSupportedAbis() ?? const [];
-      final asset = release.androidAssetFor(abis);
-      return asset?.url ?? release.htmlUrl;
-    }
-    if (PlatformSupport.isWindows) {
-      return release.windowsAsset?.url ?? release.htmlUrl;
-    }
-    return release.htmlUrl;
+    return ref.read(updateDeliveryProvider).downloadUrl(release);
   }
 
   Future<void> _persist({

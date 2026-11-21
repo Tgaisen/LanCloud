@@ -1,6 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
-import '../core/platform_support.dart';
+import 'pointer_support.dart';
 
 /// 全局滚动行为：所有滚动视图默认使用网盘页同款的 BouncingScrollPhysics，
 /// 并叠加 AlwaysScrollableScrollPhysics，内容不足一屏时也能拖出回弹。
@@ -24,23 +24,30 @@ class AppScrollBehavior extends MaterialScrollBehavior {
     Widget child,
     ScrollableDetails details,
   ) {
-    // 桌面端由这里统一提供滚动条：所有页面同一套厚度 / 圆角 / 动画，
+    // 检测到鼠标时由这里统一提供滚动条：所有页面同一套厚度 / 圆角 / 动画，
     // 不会出现「某个页面的滚动条长得不一样」，也不需要各页面自己挂。
     // 轨道上下留白读的是 MediaQuery.padding：页面把浮层顶栏 / 底栏高度
     // 通过 FastScrollbar 传下来，滑块因此不会被顶栏截断。
-    if (!PlatformSupport.isDesktop) return child;
-    return ScrollbarTheme(
-      // 不画轨道：只剩一条圆角滑块，避免和窗口边框 / 卡片边缘混在一起像两条
-      data: const ScrollbarThemeData(
-        trackColor: WidgetStatePropertyAll(Colors.transparent),
-      ),
-      child: Scrollbar(
-        controller: details.controller,
-        thickness: 6,
-        radius: const Radius.circular(3),
-        interactive: true,
-        child: child,
-      ),
+    return ValueListenableBuilder<bool>(
+      valueListenable: PointerSupport.hasMouse,
+      child: child,
+      builder: (context, hasMouse, child) {
+        final content = child ?? const SizedBox.shrink();
+        if (!hasMouse) return content;
+        return ScrollbarTheme(
+          // 不画轨道：只剩一条圆角滑块，避免和窗口边框 / 卡片边缘混在一起
+          data: const ScrollbarThemeData(
+            trackColor: WidgetStatePropertyAll(Colors.transparent),
+          ),
+          child: Scrollbar(
+            controller: details.controller,
+            thickness: 6,
+            radius: const Radius.circular(3),
+            interactive: true,
+            child: content,
+          ),
+        );
+      },
     );
   }
 

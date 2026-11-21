@@ -55,5 +55,17 @@ void main() {
         DownloadTargetMode.fixedDirectory,
       );
     });
+
+    test('非 Android 平台即使带目录字段也不会选择 SAF', () {
+      expect(
+        resolveDownloadTargetMode(
+          isAndroid: false,
+          supportsSharedDownloads: true,
+          directory: '/downloads',
+          treeUri: 'content://tree/unexpected',
+        ),
+        DownloadTargetMode.fixedDirectory,
+      );
+    });
   });
 }

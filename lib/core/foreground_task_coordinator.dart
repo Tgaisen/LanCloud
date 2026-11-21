@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'platform_support.dart';
+import 'platform_capabilities.dart';
 
 enum ForegroundTaskReason { transfers, favoriteCheck, webdavBackup }
 
@@ -16,12 +16,19 @@ abstract interface class ForegroundTaskBackend {
   void stop();
 }
 
-class FlutterForegroundTaskBackend implements ForegroundTaskBackend {
-  const FlutterForegroundTaskBackend();
+abstract interface class ForegroundTaskPlatform {
+  void start({required String title, required String text});
+
+  void update({required String title, required String text});
+
+  void stop();
+}
+
+final class _FlutterForegroundTaskPlatform implements ForegroundTaskPlatform {
+  const _FlutterForegroundTaskPlatform();
 
   @override
   void start({required String title, required String text}) {
-    if (!PlatformSupport.isMobile) return;
     unawaited(
       FlutterForegroundTask.startService(
         serviceId: 1000,
@@ -34,7 +41,6 @@ class FlutterForegroundTaskBackend implements ForegroundTaskBackend {
 
   @override
   void update({required String title, required String text}) {
-    if (!PlatformSupport.isMobile) return;
     unawaited(
       FlutterForegroundTask.updateService(
         notificationTitle: title,
@@ -45,8 +51,36 @@ class FlutterForegroundTaskBackend implements ForegroundTaskBackend {
 
   @override
   void stop() {
-    if (!PlatformSupport.isMobile) return;
     unawaited(FlutterForegroundTask.stopService());
+  }
+}
+
+class FlutterForegroundTaskBackend implements ForegroundTaskBackend {
+  FlutterForegroundTaskBackend({
+    PlatformCapabilities? capabilities,
+    ForegroundTaskPlatform? platform,
+  }) : _capabilities = capabilities ?? PlatformCapabilities.current,
+       _platform = platform ?? const _FlutterForegroundTaskPlatform();
+
+  final PlatformCapabilities _capabilities;
+  final ForegroundTaskPlatform _platform;
+
+  @override
+  void start({required String title, required String text}) {
+    if (!_capabilities.supportsForegroundTask) return;
+    _platform.start(title: title, text: text);
+  }
+
+  @override
+  void update({required String title, required String text}) {
+    if (!_capabilities.supportsForegroundTask) return;
+    _platform.update(title: title, text: text);
+  }
+
+  @override
+  void stop() {
+    if (!_capabilities.supportsForegroundTask) return;
+    _platform.stop();
   }
 }
 
@@ -58,7 +92,7 @@ class ForegroundTaskCoordinator {
   ForegroundTaskCoordinator(this._backend);
 
   static final ForegroundTaskCoordinator instance = ForegroundTaskCoordinator(
-    const FlutterForegroundTaskBackend(),
+    FlutterForegroundTaskBackend(),
   );
 
   final ForegroundTaskBackend _backend;

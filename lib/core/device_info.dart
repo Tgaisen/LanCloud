@@ -66,7 +66,7 @@ class DeviceInfo {
         // 通道不可用（测试 / 异常）：走下面的通用信息
       }
     }
-    if (Platform.isWindows) {
+    if (PlatformSupport.isWindows) {
       final manufacturer = _regString(_winBios, 'SystemManufacturer');
       final model = _regString(_winBios, 'SystemProductName');
       final device = [
@@ -108,17 +108,19 @@ class DeviceInfo {
       );
     }
     return DeviceInfo(
-      device: Platform.isWindows || Platform.isMacOS || Platform.isLinux
+      device: PlatformSupport.isDesktop
           ? Platform.localHostname
           : Platform.operatingSystem,
       // Windows 的 operatingSystemVersion 已经带系统名（`"Windows 10 …"`），
       // 不再重复前缀；其它平台按「系统 + 版本」拼接。
-      system: Platform.isWindows
+      system: PlatformSupport.isWindows
           ? Platform.operatingSystemVersion
           : '${Platform.operatingSystem} ${Platform.operatingSystemVersion}',
       systemBuild: '',
       // 桌面端只发 x64 构建；移动端非 Android 只做兜底展示
-      architectures: Platform.isWindows ? 'x64' : Platform.operatingSystem,
+      architectures: PlatformSupport.isWindows
+          ? 'x64'
+          : Platform.operatingSystem,
       packageAbi: abiLabel(Abi.current()),
     );
   }

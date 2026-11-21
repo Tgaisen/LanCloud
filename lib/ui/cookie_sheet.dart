@@ -1,8 +1,9 @@
 import 'package:material_ui/material_ui.dart' hide Icons;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/cookie_auth.dart';
 import '../core/data/account_store.dart';
-import '../core/platform_support.dart';
+import '../core/platform_capabilities.dart';
 import '../core/system_share.dart';
 import '../l10n/l10n.dart';
 import 'common.dart';
@@ -116,7 +117,12 @@ Future<void> showCookieDialog(BuildContext context, Account account) {
 
 Future<void> _exportCookie(BuildContext context, Account account) async {
   final l10n = context.l10n;
-  final ok = await SystemShare.shareText(
+  final capabilities = ProviderScope.containerOf(
+    context,
+    listen: false,
+  ).read(platformCapabilitiesProvider);
+  final gateway = systemShareGatewayFor(capabilities);
+  final ok = await gateway.shareText(
     account.cookie,
     subject: '${l10n.currentAppDisplayName} · UID ${account.uid}',
   );
@@ -126,8 +132,8 @@ Future<void> _exportCookie(BuildContext context, Account account) async {
         .showSnackBar(SnackBar(content: Text(l10n.cookieExportFailed)));
     return;
   }
-  // 桌面端没有系统分享面板，导出退化成复制到剪贴板，补一句提示
-  if (PlatformSupport.isDesktop) {
+  // 只有实际选中桌面剪贴板降级时才提示，不再根据平台形态另行猜测。
+  if (gateway is DesktopSystemShareGateway) {
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(l10n.copiedToClipboard)));
   }

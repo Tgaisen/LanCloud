@@ -9,18 +9,35 @@
 
 | 命令 | 口径 | 结果 | 耗时 |
 | --- | --- | --- | --- |
-| `tools\agent.cmd analyze` | 全量 | No issues found | 约 26 s |
-| `tools\agent.cmd analyze` | 增量（M3E 菜单 divider 间距，1 个 Dart 文件） | No issues found | 约 5 s |
-| `tools\agent.cmd test` | 全量（用例总数） | **991 tests, all passed** | 约 2 min 37 s |
-| `tools\agent.cmd test` | 增量（M3E 菜单 divider 间距，43 个测试文件） | **350 tests, all passed** | 约 1 min 15 s |
-| `tools\agent.cmd format` | 全量 | 355 files，0 changed | 约 3 s |
+| `tools\agent.cmd analyze` | 全量 | No issues found | 约 25 s |
+| `tools\agent.cmd analyze` | 增量（系统动作 adapter，2 个 Dart 文件） | No issues found | 约 1 s |
+| `tools\agent.cmd test` | 全量（用例总数） | **1064 tests, all passed** | 约 2 min 31 s |
+| `tools\agent.cmd test` | 增量（系统动作 adapter，2 个测试文件） | **5 tests, all passed** | 约 1 s |
+| `tools\agent.cmd format` | Batch 10 最终状态 | 369 files，0 changed | 约 3 s |
 | `tools\agent.cmd build-android` | debug | `app-debug.apk` | 首次构建约 5 min 46 s |
 
 当前分析结果为 0 issue 是硬基线。出现红灯时，先判断是否为本次改动引入；
 不要把增量结果当成全量结论。Flutter 3.50.0 下全量分析已重跑并通过。
 
-当前用例总数为 991；最近一次全量 991 项全部通过。M3E 菜单 divider 与文案
-改动由全量测试覆盖，991 项全量覆盖
+当前用例总数为 1064，最近一次全量 1064 项全部通过。相比 `ff3ea87` 的
+1061 项增加了 3 项目录与拖拽组件测试；Batch 8B–10 均通过各自受影响测试。
+平台能力矩阵覆盖
+Android、Windows、iOS、macOS、Linux 与未知 TargetPlatform 的 fail-closed
+行为，以及动态色来源、更新产物、只读 const 能力和 Riverpod 测试覆盖。设置页、
+网盘添加菜单、普通文件选择、系统另存为、二维码来源与分享收件箱已改为按具体
+能力执行，默认下载目录、传输 SAF 路由、启动系统栏与前台任务也按能力矩阵选择，
+系统分享已收敛为 Android 原生、桌面降级与 unsupported gateway，权限与系统设置
+通道已收敛为可注入 transport 并按能力 fail closed，更新检查与下载产物已由
+`UpdateArtifact` 和 adapter 统一解析，本地通知初始化与权限入口由
+`supportsLocalNotifications` 门控，常驻进度通知另由
+`supportsPersistentProgressNotifications` 控制，Windows 进度设置和上报均隐藏；
+应用缓存清理由私有临时目录与 SAF 能力选择，设备信息分支统一走
+`PlatformSupport`。
+WebView 登录 UA 由 `usesMobileWebUserAgent` 决定，动态色插件探测由
+`DynamicColorSource` 选择；全局滚动条和自适应菜单改由运行时鼠标信号控制。
+收藏与传输分栏标题改由实际宽度决定，文件分享入口按原生分享、桌面定位和
+unsupported 三态显示；外部网页与文件打开动作已收敛到可注入 gateway/adapter。
+1064 项全量覆盖
 收藏分栏高度稳定、批量消除更新标志、分享目录分页取消后保留当前页面与已加载
 内容，同时保留 WebDAV 自动备份互斥和补检覆盖。
 测试入口在受影响文件超过 60 个时自动回退全量，避免 Windows 命令行长度上限导致
@@ -30,13 +47,13 @@
 
 | 指标 | 当前值 |
 | --- | ---: |
-| `lib` Dart 文件 | 167 |
-| `lib` 总行数 | 64,803 |
-| `test` 测试文件 | 186（全部为 `*_test.dart`，平铺） |
-| `test` 总行数 | 38,296 |
-| `test` 用例数 | 991 |
+| `lib` Dart 文件 | 168 |
+| `lib` 总行数 | 65,563 |
+| `test` 测试文件 | 198（全部为 `*_test.dart`，平铺） |
+| `test` 总行数 | 40,239 |
+| `test` 用例数 | 1064 |
 | `lib/ui` 平铺文件 | 62 |
-| `lib/core` | 60 个平铺文件 + 6 个子系统目录 |
+| `lib/core` | 61 个平铺文件 + 6 个子系统目录 |
 | 文案（`app_zh.arb`） | 1,812 行 |
 
 ## 工具链与依赖
@@ -51,8 +68,11 @@
 
 ## 测试安全网
 
-- 当前用例总数为 991；最近一次全量 991 项全部通过；M3E 菜单 divider 与
-  文案改动已由全量测试覆盖；项目仍没有
+- 当前用例总数为 1064；最近一次全量 1064 项全部通过；平台能力矩阵与 UI、
+  扫码、分享、文件、下载、启动、系统分享、系统设置、更新交付、本地通知门控
+  通知设置可见性、缓存清理、设备信息分支、WebView 登录 UA、动态色来源路由
+  鼠标滚动条、自适应菜单、分栏宽度及文件分享入口语义已由全量测试覆盖；
+  项目仍没有
   `integration_test` 和 golden test。
 - `tools\agent.cmd analyze|test` 默认走增量；全量结果必须按上表单独记录。
 - 增量推断出超过 60 个测试文件时，`agent.cmd test` 自动回退全量。
@@ -89,6 +109,9 @@
 - 收藏文件夹自动检测只在应用启动或回到前台且到期时执行；应用进程被系统
   结束后不会定时唤醒，Windows 关闭窗口后同样停止。检测期间的进度通知与
   前台服务只用于本轮临时后台保活。
+- 2026-11-21 自适应菜单批次的全量测试耗时 4 min 42 s、对应增量耗时
+  2 min 29 s，明显高于相邻批次且无测试失败；后续继续观察是否为临时系统负载
+  或测试并行度变化。
 - WebDAV 自动备份同样只在应用启动或回到前台且到期时补做；应用被系统结束
   后不会定时唤醒。自动与手动备份共用 single-flight，失败后冷却一小时再补试。
 - 开发环境 Flutter `3.50.0`，`pubspec.lock` 已记录 Dart `3.14.0` 与相同

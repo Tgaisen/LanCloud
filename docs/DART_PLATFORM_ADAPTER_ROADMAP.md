@@ -1,6 +1,7 @@
 # Flutter/Dart 平台能力适配改造清单
 
-> 文档状态：代码审查与实施建议，尚未修改业务代码。
+> 文档状态：平台能力审查、实施路线与当前完成快照。Batch 1–11 的纯 Dart
+> 收口已完成；仍需原生工程或人工验收的项目在下文单独列出。
 >
 > 核验日期：2026-11-21。
 >
@@ -9,12 +10,116 @@
 
 本文配合 [PLATFORM_COMPATIBILITY.md](./PLATFORM_COMPATIBILITY.md) 使用：
 前者说明各平台现在有什么，本文说明哪些 Dart 侧结构适合先改、怎么拆、先改什么。
+当前分支、已完成提交、最终例外和后续维护规则也统一记录在本文。
+
+## 当前接力状态（2026-11-21）
+
+### Git 与基线
+
+- 仓库：`C:\Users\Potato\Desktop\LanCloud`
+- 分支：`codex/platform-capabilities-batch1`
+- 平台适配功能基线：`ff3ea87 fix(share): 按能力显示文件分享入口`
+- 后续完成提交：
+  - `5466324 fix(platform): 按能力选择目录与拖拽语义`
+  - `094fee3 fix(platform): 按能力显示动态色与分享提示`
+  - `153642a fix(notifications): 区分常驻进度与终态提醒`
+  - `31d9eec fix(settings): 隐藏 Windows 进度通知入口`
+  - `a59a1e3 refactor(platform): 收敛系统动作适配器`
+  - `8e3f7e7 docs(platform): 收口平台适配最终状态`
+- 最新全量基线：`format` 369 files / 0 changed，`analyze` 0 issue，
+  **1064 tests all passed**（约 2 min 31 s）。
+
+开工前仍以 `git status --short --branch`、`git log -1` 和
+[BASELINE.md](./BASELINE.md) 为准。
+
+### 当前能力快照
+
+- Android：相机、文档提供器、分享接收、前台任务、本地通知及常驻进度、系统
+  分享/保存、SAF、Android 设置入口、移动临时目录和移动 UA 为 true；动态色
+  来源为壁纸，更新产物为 APK。
+- Windows：本地通知、系统另存为和桌面拖拽为 true；常驻进度通知、相机、分享
+  接收、前台任务、SAF、Android 设置入口和系统分享面板为 false；动态色来源
+  为系统强调色，更新产物为 portable ZIP。
+- iOS：只有系统另存为、私有移动临时目录和移动 UA 为 true；其余可选能力继续
+  fail closed。普通文件选择/保存仍需构建和真机验收。
+- macOS/Linux：只记录保守形态，可选能力关闭；仓库没有对应平台工程。
+- 未知 `TargetPlatform`：所有可选能力关闭。
+
+通知权限、生物识别硬件和动态色实际可用性仍属于运行时探测，不进入静态能力
+对象。
+
+### 最终保留例外
+
+当前 `lib/` 仍有 11 个 Dart 文件、19 处 `PlatformSupport` 分支 getter：
+`isDesktop` 4、`isWindows` 10、`isAndroid` 5、`isMobile` 0；直接
+`Platform.is*` 为 0。
+
+| 文件 | 引用 | 保留原因 |
+| --- | ---: | --- |
+| `lib/app.dart` | 2 | Windows 鼠标侧键与中文兜底字体 |
+| `lib/core/data/app_db.dart` | 1 | 桌面 sqflite FFI 初始化 |
+| `lib/core/device_info.dart` | 5 | Android/Windows/桌面系统信息数据源 |
+| `lib/core/external_link.dart` | 1 | 外部链接 adapter factory |
+| `lib/core/file_picker_channel.dart` | 1 | 阻止桌面进入拍照原生通道的防御检查 |
+| `lib/core/notifications.dart` | 2 | Windows AUMID 与通知图标配置 |
+| `lib/core/saf_storage.dart` | 1 | Android SAF 通道保护 |
+| `lib/core/shared_downloads_storage.dart` | 1 | Android 公共 Downloads 通道保护 |
+| `lib/core/system_open.dart` | 3 | 文件打开 adapter factory |
+| `lib/core/window_frame.dart` | 1 | Windows DWM 边框 |
+| `lib/ui/settings_page.dart` | 1 | Windows 通知注册表清理项 |
+
+这些引用是已确认的低层实现、平台专属配置或 adapter factory 例外，不再为了
+清零而机械能力化。
+
+### 后续维护规则
+
+- 新增平台时，优先复用 `PlatformCapabilities` 和现有 gateway/adapter，不要
+  逐项搜索 `isAndroid` / `isDesktop` 后机械替换。
+- 只有设备信息、深链收件或某个保留例外出现真实产品需求时，才拆新的单模块
+  批次；单批最多 5 个文件。
+- 修改跨 `core × ui` 前，先给出文件清单、Android/Windows/iOS 行为变化、
+  测试方案和遗留风险，等待明确确认。
+- `PlatformSupport` 不删除；Android SDK、ABI、WebView 合成方式和低层通道
+  判断继续保留。
+- 没有 `ohos/`、`macos/`、`linux/` 工程，不创建对应目录；没有原生实现时
+  不提前翻转能力值。
+- 以下工作需要原生工程与真机验收，不属于本轮 Dart 路线：iOS 自定义通道、
+  Share Extension、App Group、Universal Links、Darwin 通知、后台模式；
+  HarmonyOS NEXT 工程、HAP 与持续任务；各平台原生分享和产品更新策略。
+
+## 实施状态（2026-11-21）
+
+| 批次 | 状态 | 当前结果 |
+| --- | --- | --- |
+| Batch 1 | ✅ 完成 | 新增不可变 `PlatformCapabilities`、平台矩阵、Riverpod provider 与纯 Dart 测试 |
+| Batch 2 | ✅ 完成 | 设置页 Android 专属入口、网盘“从其他应用上传”改按具体能力显示 |
+| Batch 3 | ✅ 完成 | 二维码来源和分享收件箱按能力选择；iOS 不再进入缺通道路径 |
+| Batch 4 | ✅ 完成 | 普通文件选择与另存为在 Android/其他平台分别路由；iOS 使用 `file_picker` |
+| Batch 5 | ✅ 完成 | 默认下载目录与传输 SAF 路由收口；iOS 不再调用 external storage |
+| Batch 6 | ✅ 完成 | edge-to-edge 与前台任务仅在能力支持时初始化 |
+| Batch 7 | ✅ 完成 | 新增系统分享、系统设置、更新交付和本地通知窄接口；通知设置入口按能力显示 |
+| 后续小批 | ✅ 完成 | 缓存清理、设备信息、WebView UA、动态色来源、鼠标交互、栏宽布局和文件分享入口继续收口 |
+| Batch 8A | ✅ 完成 | 下载目录和桌面拖拽分别使用 `supportsSafDirectory` / `supportsDesktopDrop` |
+| Batch 8B | ✅ 完成 | 动态色文案使用 `DynamicColorSource`；Cookie 导出消费分享 gateway |
+| Batch 9 | ✅ 完成 | 拆分本地通知与常驻进度能力；Windows 隐藏进度设置和进度上报 |
+| Batch 10 | ✅ 完成 | 外部链接与系统文件动作收敛到可注入 gateway/adapter |
+| Batch 11 | ✅ 完成 | 核对剩余例外，统一更新架构、基线、兼容矩阵和路线图 |
+
+当前仍有 11 个 Dart 文件引用 `PlatformSupport` 的分支
+getter，共 19 处：`isDesktop` 4 处、`isWindows` 10 处、`isAndroid` 5 处、
+`isMobile` 0 处。`lib/` 中直接 `Platform.is*` 分支已清零。剩余引用多数是
+低层实现选择或明确的产品形态，不再直接等于“是否支持某个功能”，也不再作为
+常规迁移待办。
+
+本阶段未新增依赖、未修改 Android/Windows/iOS 原生工程，也未改变版本号。
+iOS 的普通文件选择、保存和下载目录虽然已有共享 Dart 路径，但仍需构建和真机验收。
 
 ## 1. 结论
 
-当前仓库已经有 35 个 Dart 文件引用 `PlatformSupport`，共约 71 处引用；其中
-`isMobile` 有 13 处、分布在 9 个文件，`isDesktop` 有 24 处。数量本身不是问题，
-问题在于同一个判断经常同时表达不同含义：
+改造启动前的审查快照中，仓库有 35 个 Dart 文件引用 `PlatformSupport`，共约
+71 处引用；其中 `isMobile` 有 13 处、分布在 9 个文件，`isDesktop` 有 24 处。
+这组数字保留为后续审查背景。数量本身不是问题，问题在于同一个判断经常同时
+表达不同含义：
 
 - 系统形态：手机或桌面。
 - 输入方式：触摸或鼠标。
@@ -52,15 +157,15 @@ C++ 或 iOS Swift。
 生物识别硬件”不能等同于 `isAndroid == true`。反过来，如果当前 iOS 还没有
 Swift 实现，也不能因为插件在 pub.dev 声明支持 iOS，就把静态能力提前标成 `true`。
 
-## 3. 建议的能力模型
+## 3. 当前能力模型
 
-第一版建议使用一个不可变的能力对象，并允许 Riverpod 测试覆盖。只加入当前已经
-有消费者、会导致 UI 或分支变化的字段，不要提前做几十个布尔值。
+当前实现使用一个不可变能力对象，并允许 Riverpod 测试覆盖。只加入已经实际
+影响 UI、启动或实现选择的字段，没有提前做几十个布尔值。
 
 ```dart
-enum PlatformFormFactor { mobile, desktop }
+enum PlatformFormFactor { mobile, desktop, unknown }
 
-enum PlatformInputStyle { touchFirst, pointerFirst }
+enum PlatformInputStyle { touchFirst, pointerFirst, unknown }
 
 enum DynamicColorSource { none, wallpaper, systemAccent }
 
@@ -75,6 +180,8 @@ final class PlatformCapabilities {
     required this.supportsDocumentProviderUpload,
     required this.supportsIncomingShare,
     required this.supportsForegroundTask,
+    required this.supportsLocalNotifications,
+    required this.supportsPersistentProgressNotifications,
     required this.supportsEdgeToEdgeSystemUi,
     required this.supportsSystemShare,
     required this.supportsSystemFileSave,
@@ -93,7 +200,7 @@ final class PlatformCapabilities {
 }
 
 final platformCapabilitiesProvider = Provider<PlatformCapabilities>(
-  (ref) => PlatformCapabilities.current,
+  (_) => PlatformCapabilities.current,
 );
 ```
 
@@ -115,9 +222,10 @@ final platformCapabilitiesProvider = Provider<PlatformCapabilities>(
 | 相机拍照 | true | false | false |
 | 从其他应用选择文件 | true | false | false |
 | 系统分享 | true | false；当前是复制/定位降级 | false |
-| 系统另存为 | true | true | false；可优先通过 Dart 改走 `file_picker` |
+| 系统另存为 | true | true | true；Dart 已接 `file_picker`，构建与真机待验收 |
 | 接收其他应用分享 | true | false | false |
 | 前台任务 | true | false | false |
+| 常驻进度通知 | true | false | false |
 | Android 权限/默认链接设置 | true | false | false |
 | 桌面拖拽 | false | true | false |
 | 私有临时目录可整体清理 | true | false | true |
@@ -128,9 +236,10 @@ final platformCapabilitiesProvider = Provider<PlatformCapabilities>(
 当某平台补齐原生实现后，只修改能力矩阵并增加测试，不需要继续在页面里寻找
 `isMobile`。
 
-## 4. `isMobile` 逐项拆分
+## 4. 改造前 `isMobile` 记录
 
-当前 13 处 `isMobile` 不应统一替换成同一个新布尔值。建议按下表拆分：
+改造前 13 处 `isMobile` 不应统一替换成同一个新布尔值。下表保留当时的
+拆分依据；当前生产代码中该 getter 已为 0 处：
 
 | 位置 | 当前含义 | 建议语义 |
 | --- | --- | --- |
@@ -151,7 +260,7 @@ final platformCapabilitiesProvider = Provider<PlatformCapabilities>(
 `supportsPermissionManagement`、`supportsDefaultLinkSettings` 和
 `supportsAppSettingsPage` 即可修复，不必等待完整适配器迁移。
 
-当前 24 处 `isDesktop` 可分为四类，不能按同一种方式迁移：
+改造前 24 处 `isDesktop` 可分为四类，不能按同一种方式迁移：
 
 | 类别 | 典型位置 | 建议 |
 | --- | --- | --- |
@@ -160,14 +269,14 @@ final platformCapabilitiesProvider = Provider<PlatformCapabilities>(
 | 实现选择 | `file_picker_channel.dart`、`system_file_saver.dart`、`data/app_db.dart` | 下沉到文件或数据库适配器 |
 | 平台专属实现 | `notifications.dart`、`window_frame.dart` | 留在通知或窗口适配器内部 |
 
-`lib/core/device_info.dart` 是当前 `lib/core` 中仍直接使用
-`dart:io Platform.isWindows/isMacOS/isLinux` 的文件，与“平台判断集中在
-`PlatformSupport`”的约定不完全一致。它适合作为低风险的后续清理项，不需要改动
-设备信息展示协议。
+改造前 `lib/core/device_info.dart` 曾直接使用
+`dart:io Platform.isWindows/isMacOS/isLinux`；后续批次已收口到
+`PlatformSupport`，`lib/` 中直接 `Platform.is*` 分支现为 0。该文件仍保留
+5 处数据源选择，属于设备信息实现细节，不需要改动展示协议。
 
-## 5. 现在就能做的 Dart 改造
+## 5. 已实施的 Dart 改造
 
-### 5.1 P0：低风险，先做
+### 5.1 P0：低风险，已完成
 
 | 项目 | 当前文件 | 改造内容 | 风险/验证 |
 | --- | --- | --- | --- |
@@ -181,7 +290,10 @@ final platformCapabilitiesProvider = Provider<PlatformCapabilities>(
 | 下载目录 | `core/download_path_service.dart` | Android 走公共 Downloads/外部存储；其他平台优先 `getDownloadsDirectory()` | `path_provider` 声明 iOS Downloads 可用 |
 | 启动能力 | `main.dart`、`foreground_task_coordinator.dart` | 分别判断系统栏、前台任务、分享收件箱 | 不影响 Windows 生命周期语义 |
 
-### 5.2 P1：仍需纯 Dart，但需要接口拆分
+### 5.2 P1：接口拆分记录（已实施与剩余）
+
+系统分享、系统设置、更新交付、通知门控、文件选择和文件保存已按窄接口或
+可注入入口收口；分享收件箱、深链和设备信息的进一步生命周期拆分仍可单独评估。
 
 | 项目 | 建议接口 | 为什么现在适合 |
 | --- | --- | --- |
@@ -189,14 +301,15 @@ final platformCapabilitiesProvider = Provider<PlatformCapabilities>(
 | 权限设置 | `SystemSettingsGateway` | 已有 `AppPermissions.instance` 测试注入模式，可改成正式接口 |
 | 前台任务 | `ForegroundTaskBackend` + no-op 实现 | 接口已存在，只需在组合根按能力选择后端 |
 | 通知 | `NotificationCapability` / sink | 现有传输通知和收藏通知已经通过窄 sink 注入 |
+| 系统动作 | `ExternalLinkGateway` / `SystemOpenAdapter` | 已拆分 Custom Tabs、默认浏览器和不同平台文件打开实现，可继续注入测试替身 |
 | 更新 | `UpdateDeliveryAdapter` | `updateSupportedProvider` 和 `downloadUrl()` 已集中，适合抽制品类型 |
 | 分享收件箱/深链 | `IncomingContentGateway` | 两个单例都在启动时初始化，可在不改原生的前提下先隔离生命周期 |
 | 文件服务 | `FileSelectionGateway` / `FileSaveGateway` | `SharedDownloadsGateway` 已证明这种窄接口模式适合项目 |
-| 设备信息平台判断 | `DeviceInfo` 适配器或 `PlatformSupport` 语义 getter | 当前只有一个文件直接使用 `dart:io Platform.is*`，可独立清理 |
+| 设备信息平台判断 | 现有 `PlatformSupport` 语义 getter；如继续拆分再做 `DeviceInfo` 适配器 | 直接 `dart:io Platform.is*` 已清零，剩余 5 处为 Android/Windows/桌面数据源选择 |
 
 这些改造先保持 Android/Windows 行为不变，只把平台判断从页面搬到组合层。
 
-## 6. 推荐实施批次
+## 6. 原推荐实施批次（1–7 已完成）
 
 以下批次都按“单次改动一个模块、尽量不超过 5 个文件”拆分。
 
@@ -363,9 +476,9 @@ tools\agent.cmd test
 - 纯重构不能只靠“已编译”：至少验证 Android 默认路径、Windows 桌面路径和
   iOS unsupported/可用路径的测试结果。
 
-## 10. 推荐决策
+## 10. 原推荐决策（已执行）
 
-建议先批准并实施 Batch 1–3。它们能立即修复几个真实风险，同时不触碰原生工程：
+Batch 1–3 已按以下顺序完成，并继续完成 Batch 4–7 的纯 Dart 范围：
 
 1. 先建立能力矩阵和测试基线。
 2. 修复 iOS 设置入口、上传入口、扫码入口的错误展示。
@@ -379,6 +492,7 @@ tools\agent.cmd test
 
 | 主题 | 代码 |
 | --- | --- |
+| 实现状态与保留例外 | 本文“当前接力状态”与“实施状态” |
 | 当前平台判断 | [`lib/core/platform_support.dart`](../lib/core/platform_support.dart) |
 | 设置页过滤 | [`lib/ui/settings_page.dart`](../lib/ui/settings_page.dart) |
 | 上传入口 | [`lib/ui/drive_page.dart`](../lib/ui/drive_page.dart) |

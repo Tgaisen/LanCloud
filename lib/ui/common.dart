@@ -19,15 +19,17 @@ import '../core/drive_state.dart';
 import '../core/favorites/favorite_monitor.dart';
 import '../core/navigation_appearance_settings_state.dart';
 import '../core/navigation_state.dart';
-import '../core/platform_support.dart';
 import '../core/transfer/transfer_manager_provider.dart';
 import '../l10n/l10n.dart';
 import 'app_scroll.dart';
 import 'app_icons.dart';
 import 'm3e.dart';
+import 'pointer_support.dart';
 import 'qr_painter.dart';
 import 'reduce_motion.dart';
 import 'scroll_tint.dart';
+
+export 'pointer_support.dart' show PointerSupport;
 
 /// 顶栏路由观察器：页面从二级页面路由返回时展开顶栏。
 ///
@@ -73,6 +75,9 @@ enum ProfileSubPage {
 /// 是否是大屏布局（侧栏 + 圆角主视图）。
 bool isLargeLayout(BuildContext context) =>
     MediaQuery.sizeOf(context).width >= kLargeLayoutBreakpoint;
+
+/// 分栏标题是否使用紧凑排版；由实际可用宽度决定，而不是操作系统。
+bool useCompactSectionHeader(BuildContext context) => !isLargeLayout(context);
 
 /// 普通 `Md3ListItem` 能完整容纳图标、文字和一个尾部操作的最小列宽。
 ///
@@ -2020,7 +2025,7 @@ bool _usesAdaptiveM3eMenuSheet(
   return pointerPosition == null &&
       allowSheet &&
       compact &&
-      PlatformSupport.isMobile;
+      !PointerSupport.hasMouse.value;
 }
 
 List<M3eMenuSection<T>> _resolveAdaptiveM3eMenuSections<T>({
@@ -2522,15 +2527,6 @@ class IconBoxTap extends StatelessWidget {
       ),
     );
   }
-}
-
-/// 是否检测到鼠标。悬停事件只来自鼠标 / 触控板，触摸屏不会触发，
-/// 所以用它给桌面端交互（点图标块进入多选）做运行时开关：
-/// Android 插上鼠标也能用，纯触摸时行为保持不变。
-class PointerSupport {
-  PointerSupport._();
-
-  static final ValueNotifier<bool> hasMouse = ValueNotifier<bool>(false);
 }
 
 /// 全局检测鼠标：鼠标悬停 / 按下时把 [PointerSupport.hasMouse] 置真
