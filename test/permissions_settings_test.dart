@@ -105,21 +105,23 @@ Future<void> expectSystemSettingsEntries(
 
 Future<void> expectNotificationEntries(
   WidgetTester tester, {
-  required bool notificationsVisible,
+  required bool progressVisible,
+  required bool doneVisible,
+  required bool favoriteUpdateVisible,
   required bool favoriteAutoCheckVisible,
 }) async {
   await tester.tap(find.byTooltip(_zh.searchSettings));
   await tester.pumpAndSettle();
-  for (final label in [
-    _zh.notifProgress,
-    _zh.notifDone,
-    _zh.favoriteUpdateNotify,
+  for (final (:label, :visible) in [
+    (label: _zh.notifProgress, visible: progressVisible),
+    (label: _zh.notifDone, visible: doneVisible),
+    (label: _zh.favoriteUpdateNotify, visible: favoriteUpdateVisible),
   ]) {
     await tester.enterText(find.byType(TextField), label);
     await tester.pumpAndSettle();
     expect(
       find.widgetWithText(ListTile, label),
-      notificationsVisible ? findsOneWidget : findsNothing,
+      visible ? findsOneWidget : findsNothing,
       reason: label,
     );
   }
@@ -189,12 +191,14 @@ void main() {
 
     await expectNotificationEntries(
       tester,
-      notificationsVisible: true,
+      progressVisible: true,
+      doneVisible: true,
+      favoriteUpdateVisible: true,
       favoriteAutoCheckVisible: true,
     );
   });
 
-  testWidgets('Windows 通知能力下保留三个通知设置入口', (tester) async {
+  testWidgets('Windows 通知能力下隐藏进度通知，保留终态与收藏更新', (tester) async {
     await pumpSettings(
       tester,
       category: SettingsCategory.notificationsReminders,
@@ -203,7 +207,9 @@ void main() {
 
     await expectNotificationEntries(
       tester,
-      notificationsVisible: true,
+      progressVisible: false,
+      doneVisible: true,
+      favoriteUpdateVisible: true,
       favoriteAutoCheckVisible: true,
     );
   });
@@ -217,7 +223,9 @@ void main() {
 
     await expectNotificationEntries(
       tester,
-      notificationsVisible: false,
+      progressVisible: false,
+      doneVisible: false,
+      favoriteUpdateVisible: false,
       favoriteAutoCheckVisible: true,
     );
   });

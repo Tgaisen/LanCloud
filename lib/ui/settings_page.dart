@@ -437,7 +437,7 @@ class _SettingsCategoryPageState extends ConsumerState<SettingsCategoryPage>
         subtitle: l10n.notifProgressSubtitle,
         keywords: l10n.notifProgressKeywords.split(' '),
         section: SettingsSection.notification,
-        visible: (_) => capabilities.supportsLocalNotifications,
+        visible: (_) => capabilities.supportsPersistentProgressNotifications,
         build: (context) => NotificationSettingsTile(
           done: false,
           onPermissionChanged: (granted) {
