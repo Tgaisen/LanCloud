@@ -12,7 +12,7 @@ env:
 
 jobs:
   build:
-    name: Windows release 构建检查
+    name: Windows release 构建
     runs-on: windows-latest
     timeout-minutes: 30
     steps:
@@ -25,21 +25,6 @@ jobs:
             -SkipTests `
             -SkipPubGet `
             -CI
-      - name: Windows 便携版启动冒烟
-        shell: pwsh
-        run: |
-          $packageDir = Get-ChildItem `
-            -LiteralPath 'outputs' `
-            -Directory `
-            -Filter 'LanCloud_windows_*_x64_portable' |
-            Sort-Object LastWriteTime -Descending |
-            Select-Object -First 1
-          if (!$packageDir) {
-            throw '找不到 Windows 便携版目录'
-          }
-          ./tools/release/smoke_windows.ps1 `
-            -Executable (Join-Path $packageDir.FullName 'lancloud.exe') `
-            -TimeoutSeconds 15
       - uses: actions/upload-artifact@v7
         with:
           name: windows-portable
@@ -47,3 +32,43 @@ jobs:
           if-no-files-found: error
           retention-days: 3
           compression-level: 0
+
+  smoke:
+    name: Windows release 冷启动冒烟
+    needs: build
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: windows-portable
+          path: windows-artifact
+      - name: 解压并检查启动
+        shell: pwsh
+        run: |
+          $zip = Get-ChildItem `
+            -LiteralPath 'windows-artifact' `
+            -File `
+            -Filter '*.zip' |
+            Select-Object -First 1
+          if (!$zip) {
+            throw '找不到 Windows 便携版 zip'
+          }
+          $extractDir = Join-Path $env:GITHUB_WORKSPACE 'windows-smoke'
+          Expand-Archive `
+            -LiteralPath $zip.FullName `
+            -DestinationPath $extractDir `
+            -Force
+          $executable = Get-ChildItem `
+            -LiteralPath $extractDir `
+            -Recurse `
+            -File `
+            -Filter 'lancloud.exe' |
+            Select-Object -First 1
+          if (!$executable) {
+            throw '解压后找不到 lancloud.exe'
+          }
+          ./tools/release/smoke_windows.ps1 `
+            -Executable $executable.FullName `
+            -TimeoutSeconds 15
