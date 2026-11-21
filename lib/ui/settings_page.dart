@@ -436,6 +436,7 @@ class _SettingsCategoryPageState extends ConsumerState<SettingsCategoryPage>
         subtitle: l10n.notifProgressSubtitle,
         keywords: l10n.notifProgressKeywords.split(' '),
         section: SettingsSection.notification,
+        visible: (_) => capabilities.supportsLocalNotifications,
         build: (context) => NotificationSettingsTile(
           done: false,
           onPermissionChanged: (granted) {
@@ -449,6 +450,7 @@ class _SettingsCategoryPageState extends ConsumerState<SettingsCategoryPage>
         subtitle: l10n.notifDoneSubtitle,
         keywords: l10n.notifDoneKeywords.split(' '),
         section: SettingsSection.notification,
+        visible: (_) => capabilities.supportsLocalNotifications,
         build: (context) => NotificationSettingsTile(
           done: true,
           onPermissionChanged: (granted) {
@@ -462,6 +464,7 @@ class _SettingsCategoryPageState extends ConsumerState<SettingsCategoryPage>
         subtitle: l10n.favoriteUpdateNotifySubtitle,
         keywords: const ['收藏', '文件夹', '更新', '通知'],
         section: SettingsSection.notification,
+        visible: (_) => capabilities.supportsLocalNotifications,
         build: (context) => FavoriteUpdateNotificationSettingsTile(
           onPermissionChanged: (granted) {
             if (mounted) setState(() => _notifGranted = granted);

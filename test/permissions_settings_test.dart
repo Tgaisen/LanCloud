@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/app_permissions.dart';
 import 'package:lancloud/core/platform_capabilities.dart';
+import 'package:lancloud/core/settings_state.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/app_localizations_zh.dart';
 import 'package:lancloud/ui/common.dart';
@@ -53,7 +54,10 @@ Future<AppEnvironment> pumpSettings(
   addTearDown(environment.dispose);
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [platformCapabilitiesProvider.overrideWithValue(capabilities)],
+      overrides: [
+        platformCapabilitiesProvider.overrideWithValue(capabilities),
+        settingsStateProvider.overrideWithValue(environment.settingsState),
+      ],
       child: appEnvironmentTestTree(
         environment: environment,
         child: MaterialApp(
@@ -97,6 +101,34 @@ Future<void> expectSystemSettingsEntries(
       reason: label,
     );
   }
+}
+
+Future<void> expectNotificationEntries(
+  WidgetTester tester, {
+  required bool notificationsVisible,
+  required bool favoriteAutoCheckVisible,
+}) async {
+  await tester.tap(find.byTooltip(_zh.searchSettings));
+  await tester.pumpAndSettle();
+  for (final label in [
+    _zh.notifProgress,
+    _zh.notifDone,
+    _zh.favoriteUpdateNotify,
+  ]) {
+    await tester.enterText(find.byType(TextField), label);
+    await tester.pumpAndSettle();
+    expect(
+      find.widgetWithText(ListTile, label),
+      notificationsVisible ? findsOneWidget : findsNothing,
+      reason: label,
+    );
+  }
+  await tester.enterText(find.byType(TextField), _zh.favoriteAutoCheck);
+  await tester.pumpAndSettle();
+  expect(
+    find.widgetWithText(ListTile, _zh.favoriteAutoCheck),
+    favoriteAutoCheckVisible ? findsOneWidget : findsNothing,
+  );
 }
 
 void main() {
@@ -146,6 +178,48 @@ void main() {
     await pumpSettings(tester, capabilities: PlatformCapabilities.ios);
 
     await expectSystemSettingsEntries(tester, visible: false);
+  });
+
+  testWidgets('Android 通知能力下保留三个通知设置入口', (tester) async {
+    await pumpSettings(
+      tester,
+      category: SettingsCategory.notificationsReminders,
+      capabilities: PlatformCapabilities.android,
+    );
+
+    await expectNotificationEntries(
+      tester,
+      notificationsVisible: true,
+      favoriteAutoCheckVisible: true,
+    );
+  });
+
+  testWidgets('Windows 通知能力下保留三个通知设置入口', (tester) async {
+    await pumpSettings(
+      tester,
+      category: SettingsCategory.notificationsReminders,
+      capabilities: PlatformCapabilities.windows,
+    );
+
+    await expectNotificationEntries(
+      tester,
+      notificationsVisible: true,
+      favoriteAutoCheckVisible: true,
+    );
+  });
+
+  testWidgets('iOS 通知能力下隐藏通知开关但保留收藏自动检测', (tester) async {
+    await pumpSettings(
+      tester,
+      category: SettingsCategory.notificationsReminders,
+      capabilities: PlatformCapabilities.ios,
+    );
+
+    await expectNotificationEntries(
+      tester,
+      notificationsVisible: false,
+      favoriteAutoCheckVisible: true,
+    );
   });
 
   testWidgets('设置页顶栏同样是浮层：上滑随手指渐隐，底色不渐隐', (tester) async {
