@@ -92,7 +92,7 @@ final class PlatformCapabilities {
     supportsForegroundTask: false,
     supportsEdgeToEdgeSystemUi: false,
     supportsSystemShare: false,
-    supportsSystemFileSave: false,
+    supportsSystemFileSave: true,
     supportsSafDirectory: false,
     supportsPermissionManagement: false,
     supportsDefaultLinkSettings: false,

@@ -57,7 +57,7 @@ void main() {
       );
     });
 
-    test('应该为 iOS 保守关闭所有尚未实现的可选能力', () {
+    test('应该为 iOS 开启已实现的文件另存为并关闭其余可选能力', () {
       _expectCapabilities(
         PlatformCapabilities.forPlatform(TargetPlatform.iOS),
         const PlatformCapabilities(
@@ -69,7 +69,7 @@ void main() {
           supportsForegroundTask: false,
           supportsEdgeToEdgeSystemUi: false,
           supportsSystemShare: false,
-          supportsSystemFileSave: false,
+          supportsSystemFileSave: true,
           supportsSafDirectory: false,
           supportsPermissionManagement: false,
           supportsDefaultLinkSettings: false,
