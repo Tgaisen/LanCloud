@@ -1,7 +1,12 @@
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 
-$sdkRoot = 'C:\dev\android-sdk'
+Import-Module (Join-Path $PSScriptRoot 'toolchain.psm1') -Force
+$toolchain = Get-LanCloudToolchain
+$sdkRoot = $toolchain.AndroidSdk
+if (!$sdkRoot) {
+    throw '找不到 Android SDK；请检查 C:\dev\android-sdk'
+}
 $version = '28.2.13676358'
 $dest = Join-Path $sdkRoot "ndk\$version"
 

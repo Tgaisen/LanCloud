@@ -14,6 +14,8 @@
 #   gen                 gen-l10n
 #   pubget              pub get（需要联网，会被沙箱拦，属预期）
 #   build-apk [参数]    默认 --debug
+#   build-android [参数] 构建拆 ABI 的 release APK，并校验发布签名
+#   build-windows [参数] 构建 Windows x64 便携版
 #   install             安装 build 目录里最新的 apk 到设备
 #   logcat              拉最近 500 行并筛 flutter 相关
 #   devices / doctor / emulators / run ...   透传给 flutter
@@ -29,14 +31,18 @@ if ($PSBoundParameters.ContainsKey('Debug') -and $Rest -notcontains '--debug') {
   $Rest = @($Rest) + @('--debug')
 }
 
-$ErrorActionPreference = 'Continue'
+$ErrorActionPreference = 'Stop'
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch { }
 
 $tools   = $PSScriptRoot
 $root    = Split-Path -Parent $tools
-$flutter = Join-Path $tools 'flutter.cmd'
-$dart    = 'C:\dev\flutter\bin\cache\dart-sdk\bin\dart.exe'
-$adb     = 'C:\dev\android-sdk\platform-tools\adb.exe'
+Import-Module (Join-Path $tools 'toolchain.psm1') -Force
+$toolchain = Get-LanCloudToolchain
+$flutter = $toolchain.Flutter
+$dart = $toolchain.Dart
+$adb = $toolchain.Adb
+$powershell = (Get-Process -Id $PID).Path
+$ErrorActionPreference = 'Continue'
 $script:ExitCode = 0
 
 function Invoke-Flutter {
@@ -103,6 +109,28 @@ function Invoke-Dart {
   Write-Output "---- exit=$($script:ExitCode)"
 }
 
+function Invoke-ProjectScript {
+  param(
+    [string]$Path,
+    [string[]]$ScriptArgs,
+    [int]$Tail = 160
+  )
+  if (!(Test-Path -LiteralPath $Path)) {
+    Write-Output "找不到脚本：$Path"
+    $script:ExitCode = 1
+    return
+  }
+  $raw = & $powershell -NoProfile -ExecutionPolicy Bypass -File $Path @ScriptArgs 2>&1
+  $script:ExitCode = $LASTEXITCODE
+  $flat = (@($raw | ForEach-Object {
+    if ($_ -is [System.Management.Automation.ErrorRecord]) { $_.Exception.Message } else { [string]$_ }
+  }) -join "`n")
+  ($flat -split "\r?\n") |
+    Where-Object { $_ -match '\S' } |
+    Select-Object -Last $Tail
+  Write-Output "---- exit=$($script:ExitCode)"
+}
+
 function Get-DirtyDart {
   $raw = & git -C $root status --porcelain -- lib test 2>$null
   $paths = foreach ($l in $raw) {
@@ -117,7 +145,8 @@ function Resolve-Tests {
   param([string[]]$Dirty)
   $testDir = Join-Path $root 'test'
   if (-not (Test-Path $testDir)) { return @() }
-  $all = @(Get-ChildItem $testDir -Filter '*_test.dart' -File | Select-Object -ExpandProperty FullName)
+  $all = @(Get-ChildItem $testDir -Filter '*_test.dart' -File -Recurse |
+    Select-Object -ExpandProperty FullName)
   $picked = New-Object System.Collections.Generic.List[string]
   foreach ($d in $Dirty) {
     if ($d -like 'test*') {
@@ -190,7 +219,30 @@ switch ($Verb) {
     }
     Invoke-Flutter -FlutterArgs ((@('build', 'apk', '--no-pub') + $extra)) -Tail 20 -FailureDetails
   }
+  'build-android' {
+    $scriptArgs = @($Rest | Where-Object { $_ })
+    if ($scriptArgs -notcontains '-SkipPubGet') {
+      $scriptArgs += '-SkipPubGet'
+    }
+    Invoke-ProjectScript `
+      -Path (Join-Path $tools 'release\build_android.ps1') `
+      -ScriptArgs $scriptArgs
+  }
+  'build-windows' {
+    $scriptArgs = @($Rest | Where-Object { $_ })
+    if ($scriptArgs -notcontains '-SkipPubGet') {
+      $scriptArgs += '-SkipPubGet'
+    }
+    Invoke-ProjectScript `
+      -Path (Join-Path $tools 'release\build_windows.ps1') `
+      -ScriptArgs $scriptArgs
+  }
   'install' {
+    if (!$adb) {
+      Write-Output '找不到 adb；检查 C:\dev\android-sdk\platform-tools\adb.exe'
+      $script:ExitCode = 1
+      break
+    }
     $apk = Get-ChildItem (Join-Path $root 'build\app\outputs\flutter-apk') -Filter '*.apk' -ErrorAction SilentlyContinue |
       Sort-Object LastWriteTime -Descending | Select-Object -First 1
     if (-not $apk) { Write-Output '没找到 apk，先跑 build-apk'; $script:ExitCode = 1; break }
@@ -200,13 +252,20 @@ switch ($Verb) {
     Write-Output "---- exit=$($script:ExitCode)"
   }
   'logcat' {
+    if (!$adb) {
+      Write-Output '找不到 adb；检查 C:\dev\android-sdk\platform-tools\adb.exe'
+      $script:ExitCode = 1
+      break
+    }
     & $adb logcat -d -t 500 2>&1 |
       Select-String -Pattern 'flutter|DioException|FormatException|Lanzou|SocketException|FATAL' |
       Select-Object -Last 30 | ForEach-Object { $_.Line }
     Write-Output "---- exit=$LASTEXITCODE"
   }
   'help' {
-    Get-Content $PSCommandPath | Select-Object -First 22 | Where-Object { $_ -like '#*' } | ForEach-Object { $_ -replace '^#\s?', '' }
+    Get-Content $PSCommandPath | Select-Object -First 22 |
+      Where-Object { $_ -like '#*' } |
+      ForEach-Object { $_ -replace '^#\s?', '' }
   }
   default {
     # 透传：devices / doctor / emulators / run 等（这些会弹一次批准）

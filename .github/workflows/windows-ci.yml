@@ -17,29 +17,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
-      - name: 启用开发者模式（符号链接）
-        shell: pwsh
-        run: |
-          $key = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock'
-          New-Item -Path $key -Force | Out-Null
-          New-ItemProperty `
-            -Path $key `
-            -Name AllowDevelopmentWithoutDevLicense `
-            -PropertyType DWord `
-            -Value 1 `
-            -Force | Out-Null
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version-file: pubspec.yaml
-          channel: stable
-          cache: true
-          pub-cache: ${{ github.event_name == 'push' }}
-      - name: 获取锁定依赖
-        run: flutter pub get --enforce-lockfile
-      - name: 准备 NuGet CLI
-        shell: pwsh
-        run: |
-          ./tools/release/install_nuget.ps1
+      - uses: ./.github/actions/setup-windows
       - name: 构建 Windows 便携版
         shell: pwsh
         run: |

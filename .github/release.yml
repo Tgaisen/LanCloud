@@ -1,0 +1,5 @@
+changelog:
+  categories:
+    - title: 更新日志
+      labels:
+        - "*"

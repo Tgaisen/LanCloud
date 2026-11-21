@@ -77,30 +77,7 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: '17'
-      - name: 安装 Android SDK 组件
-        uses: android-actions/setup-android@v4
-      - name: 接受 Android SDK 许可
-        run: yes | sdkmanager --licenses > /dev/null
-      - name: 安装 Android SDK 组件
-        run: |
-          sdkmanager \
-            "platforms;android-37.0" \
-            "build-tools;36.0.0" \
-            "ndk;28.2.13676358" \
-            "cmake;3.22.1"
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version-file: pubspec.yaml
-          channel: stable
-          cache: true
-          pub-cache: ${{ github.event_name == 'push' }}
-      - uses: gradle/actions/setup-gradle@v6
-      - name: 获取依赖
-        run: flutter pub get --enforce-lockfile
+      - uses: ./.github/actions/setup-android
       - name: 配置 release 签名
         shell: pwsh
         env:
@@ -162,29 +139,7 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v7
-      - name: 启用开发者模式（符号链接）
-        shell: pwsh
-        run: |
-          $key = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock'
-          New-Item -Path $key -Force | Out-Null
-          New-ItemProperty `
-            -Path $key `
-            -Name AllowDevelopmentWithoutDevLicense `
-            -PropertyType DWord `
-            -Value 1 `
-            -Force | Out-Null
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version-file: pubspec.yaml
-          channel: stable
-          cache: true
-          pub-cache: ${{ github.event_name == 'push' }}
-      - name: 获取依赖
-        run: flutter pub get --enforce-lockfile
-      - name: 准备 NuGet CLI
-        shell: pwsh
-        run: |
-          ./tools/release/install_nuget.ps1
+      - uses: ./.github/actions/setup-windows
       - name: 构建 Windows 便携版
         shell: pwsh
         run: |

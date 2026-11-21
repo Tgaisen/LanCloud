@@ -1,0 +1,29 @@
+name: Setup Windows release toolchain
+description: Enable symlinks, install Flutter and NuGet, and fetch locked dependencies.
+
+runs:
+  using: composite
+  steps:
+    - name: 启用开发者模式（符号链接）
+      shell: pwsh
+      run: |
+        $key = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock'
+        New-Item -Path $key -Force | Out-Null
+        New-ItemProperty `
+          -Path $key `
+          -Name AllowDevelopmentWithoutDevLicense `
+          -PropertyType DWord `
+          -Value 1 `
+          -Force | Out-Null
+    - uses: subosito/flutter-action@v2
+      with:
+        flutter-version-file: pubspec.yaml
+        channel: stable
+        cache: true
+        pub-cache: ${{ github.event_name == 'push' }}
+    - name: 获取锁定依赖
+      shell: pwsh
+      run: flutter pub get --enforce-lockfile
+    - name: 准备 NuGet CLI
+      shell: pwsh
+      run: ./tools/release/install_nuget.ps1

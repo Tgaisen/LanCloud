@@ -1,8 +1,8 @@
 # AGENTS.md — LanCloud（蓝云）
 
-蓝奏云第三方 Flutter 客户端。个人维护的**生产项目**：`lib` 44,481 行 / 145 个文件，
-`test` 22,435 行 / 163 个测试文件 / 720 个测试。改动的默认要求是
-「不破坏现有行为」，不是「尽量多写」。
+蓝奏云第三方 Flutter 客户端，个人维护的**生产项目**。当前规模、测试数量和
+耗时快照以 `docs/BASELINE.md` 为准，不在这里维护容易过期的行数。改动的默认
+要求是「不破坏现有行为」，不是「尽量多写」。
 
 ## 动手前先读
 
@@ -18,8 +18,9 @@
 
 ## 工具链：唯一入口是 `tools\agent.cmd`
 
-`tools\agent.cmd` 是唯一入口。它内部调用 `tools\flutter.cmd`，后者钉住了
-`JAVA_HOME=C:\dev\java17`、`ANDROID_HOME`、`PUB_HOSTED_URL`。
+`tools\agent.cmd` 是唯一入口。它和本地发布脚本通过 `tools/toolchain.psm1`
+共用同一套 Flutter、JDK、Android SDK 与 Pub 环境；`tools\flutter.cmd` 只保留
+兼容调用能力。
 **不要直接调用 `flutter` / `dart`，也不要绕过 agent.cmd 去调 flutter.cmd 跑日常任务**
 ——会用到另一套环境（`flutter doctor` 报的是 Android Studio 自带的 JDK 25），出问题极难排查。
 
@@ -28,6 +29,8 @@ C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd analyze   # 有未提交改动�
 C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd test      # 自动推断受影响的测试；推断不出→全量
 C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd format    # 格式化 lib / test / tool，与 CI 一致
 C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd gen       # 改完 arb 之后
+C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd build-android
+C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd build-windows
 C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd help      # 全部动词
 ```
 
@@ -51,7 +54,10 @@ C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd help      # 全部动词
 - 改版本只能 `dart run tool/bump_version.dart`（同时改 `pubspec.yaml` 与
   `lib/core/app_info.dart`，有测试校验）。禁止手改这两个文件的版本行，
   禁止用 `--build-number` 顶 versionCode。
-- `tool/` 放 Dart 脚本，`tools/` 放 PowerShell 脚本。不要另建第三种位置。
+- `tool/` 只放 Dart 脚本，使用 `dart run tool/...`；`tools/` 放 PowerShell、
+  CMD 和 Node 等平台工具。两个目录名称接近但职责不同，不要合并。
+- 本地 Windows 工具链路径只在 `tools/toolchain.psm1` 中维护；Agent、本地发布
+  脚本和 `tools/flutter.cmd` 共用同一套解析结果。
   新增 `tools\agent.cmd` 动词时，必须同时在 `~/.codex/rules/default.rules` 加一条规则。
 
 ## 结构
@@ -67,6 +73,8 @@ lib/core/backup/       backup_service / backup_crypto / webdav_client / webdav_s
 lib/core/update/       update_service / release_info / changelog
 lib/ui/                页面与组件（40 个平铺文件）
 lib/l10n/              arb + 生成文件
+tool/                  Dart 仓库工具（版本号、登录检查）
+tools/                 Windows 工具链、Agent、构建和发布入口
 ```
 
 ## 依赖锁定（不得擅自增删升降）
