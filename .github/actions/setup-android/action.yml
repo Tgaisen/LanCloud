@@ -10,9 +10,6 @@ runs:
         java-version: "17"
     - name: 安装 Android SDK 组件
       uses: android-actions/setup-android@v4
-    - name: 接受 Android SDK 许可
-      shell: bash
-      run: yes | sdkmanager --licenses > /dev/null
     - name: 安装构建组件
       shell: bash
       run: |
