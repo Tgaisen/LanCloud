@@ -12,14 +12,20 @@
   分享收件箱、普通文件选择、系统另存为、默认下载目录、传输 SAF 路由、
   edge-to-edge、前台任务、系统分享、系统设置、更新产物和本地通知均已收口到
   能力判断或窄接口。
+- `349a958` 先同步了当时的能力完成状态；随后 `349a958..ff3ea87` 的 8 个
+  小批继续完成缓存清理、设备信息、WebView 登录 UA、动态色来源、鼠标滚动条、
+  自适应菜单、按宽度布局的栏标题以及文件分享入口三态语义。
 - 本阶段没有新增依赖、修改版本号或改 Android/Windows/iOS 原生工程。
   iOS 的普通文件选择/保存、默认下载目录和共享 UI 路径已接线，但构建与真机验收
   仍未完成；Darwin 通知、分享扩展、深链和原生分享仍缺原生实现。
-- 收口后仍有 24 个 Dart 文件使用 42 处 `PlatformSupport` 分支 getter：
-  `isDesktop` 19、`isWindows` 12、`isAndroid` 8、`isMobile` 3。
-  `core/device_info.dart` 另有 5 处直接 `Platform.is*`。这些主要是布局/输入偏好
-  或低层实现选择，留作后续独立清理。
-- 最终全量验证为分析 0 issue、**1044 tests all passed**（约 2 min 18 s）；
+- 截至功能提交 `ff3ea87`，仍有 15 个 Dart 文件使用 28 处
+  `PlatformSupport` 分支 getter：`isDesktop` 9、`isWindows` 13、
+  `isAndroid` 6、`isMobile` 0；`lib/` 中直接 `Platform.is*` 分支已清零。
+  这些主要是低层实现、平台专属 UI 形态或系统动作边界，后续只迁移有明确
+  产品语义的入口。
+- 最终全量验证为分析 0 issue、**1061 tests all passed**（约 2 min 17 s），
+  `format` 为 369 files / 0 changed。最后一次文件分享入口批次的增量为
+  2 个 Dart 文件分析无问题、6 个测试文件 / 86 tests passed（约 51 s）。
   当前规模与风险快照见 [BASELINE.md](BASELINE.md)。
 
 ## 实测结果

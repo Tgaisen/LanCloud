@@ -1,7 +1,7 @@
 # Flutter/Dart 平台能力适配改造清单
 
-> 文档状态：平台能力审查、实施路线与当前完成快照。Batch 1–7 的纯 Dart
-> 范围已实施；仍需原生工程或人工验收的项目在下文单独列出。
+> 文档状态：平台能力审查、实施路线与当前完成快照。Batch 1–7 及其后的
+> 纯 Dart 收口已完成；仍需原生工程或人工验收的项目在下文单独列出。
 >
 > 核验日期：2026-11-21。
 >
@@ -10,6 +10,8 @@
 
 本文配合 [PLATFORM_COMPATIBILITY.md](./PLATFORM_COMPATIBILITY.md) 使用：
 前者说明各平台现在有什么，本文说明哪些 Dart 侧结构适合先改、怎么拆、先改什么。
+新一轮对话从 [PLATFORM_ADAPTER_HANDOFF.md](./PLATFORM_ADAPTER_HANDOFF.md)
+读取当前分支、剩余分支和推荐批次。
 
 ## 实施状态（2026-11-21）
 
@@ -22,20 +24,22 @@
 | Batch 5 | ✅ 完成 | 默认下载目录与传输 SAF 路由收口；iOS 不再调用 external storage |
 | Batch 6 | ✅ 完成 | edge-to-edge 与前台任务仅在能力支持时初始化 |
 | Batch 7 | ✅ 完成 | 新增系统分享、系统设置、更新交付和本地通知窄接口；通知设置入口按能力显示 |
+| 后续小批 | ✅ 完成 | 缓存清理、设备信息、WebView UA、动态色来源、鼠标交互、栏宽布局和文件分享入口继续收口 |
 
-当前仍有 24 个 Dart 文件引用 `PlatformSupport` 的分支 getter，共 42 处：
-`isDesktop` 19 处、`isWindows` 12 处、`isAndroid` 8 处、`isMobile` 3 处。
-其中多数是布局/输入偏好或低层实现选择，不再直接等于产品能力。
-`core/device_info.dart` 仍直接使用 5 处 `dart:io Platform.is*`，留给独立清理。
+截至功能提交 `ff3ea87`，仍有 15 个 Dart 文件引用 `PlatformSupport` 的分支
+getter，共 28 处：`isDesktop` 9 处、`isWindows` 13 处、`isAndroid` 6 处、
+`isMobile` 0 处。`lib/` 中直接 `Platform.is*` 分支已清零。剩余引用多数是
+低层实现选择或明确的产品形态，不再直接等于“是否支持某个功能”。
 
 本阶段未新增依赖、未修改 Android/Windows/iOS 原生工程，也未改变版本号。
 iOS 的普通文件选择、保存和下载目录虽然已有共享 Dart 路径，但仍需构建和真机验收。
 
 ## 1. 结论
 
-当前仓库已经有 35 个 Dart 文件引用 `PlatformSupport`，共约 71 处引用；其中
-`isMobile` 有 13 处、分布在 9 个文件，`isDesktop` 有 24 处。数量本身不是问题，
-问题在于同一个判断经常同时表达不同含义：
+改造启动前的审查快照中，仓库有 35 个 Dart 文件引用 `PlatformSupport`，共约
+71 处引用；其中 `isMobile` 有 13 处、分布在 9 个文件，`isDesktop` 有 24 处。
+这组数字保留为后续审查背景。数量本身不是问题，问题在于同一个判断经常同时
+表达不同含义：
 
 - 系统形态：手机或桌面。
 - 输入方式：触摸或鼠标。
@@ -137,7 +141,7 @@ final platformCapabilitiesProvider = Provider<PlatformCapabilities>(
 | 相机拍照 | true | false | false |
 | 从其他应用选择文件 | true | false | false |
 | 系统分享 | true | false；当前是复制/定位降级 | false |
-| 系统另存为 | true | true | false；可优先通过 Dart 改走 `file_picker` |
+| 系统另存为 | true | true | true；Dart 已接 `file_picker`，构建与真机待验收 |
 | 接收其他应用分享 | true | false | false |
 | 前台任务 | true | false | false |
 | Android 权限/默认链接设置 | true | false | false |
@@ -150,9 +154,10 @@ final platformCapabilitiesProvider = Provider<PlatformCapabilities>(
 当某平台补齐原生实现后，只修改能力矩阵并增加测试，不需要继续在页面里寻找
 `isMobile`。
 
-## 4. `isMobile` 逐项拆分
+## 4. 改造前 `isMobile` 记录
 
-当前 13 处 `isMobile` 不应统一替换成同一个新布尔值。建议按下表拆分：
+改造前 13 处 `isMobile` 不应统一替换成同一个新布尔值。下表保留当时的
+拆分依据；当前生产代码中该 getter 已为 0 处：
 
 | 位置 | 当前含义 | 建议语义 |
 | --- | --- | --- |
@@ -173,7 +178,7 @@ final platformCapabilitiesProvider = Provider<PlatformCapabilities>(
 `supportsPermissionManagement`、`supportsDefaultLinkSettings` 和
 `supportsAppSettingsPage` 即可修复，不必等待完整适配器迁移。
 
-当前 24 处 `isDesktop` 可分为四类，不能按同一种方式迁移：
+改造前 24 处 `isDesktop` 可分为四类，不能按同一种方式迁移：
 
 | 类别 | 典型位置 | 建议 |
 | --- | --- | --- |
@@ -182,14 +187,14 @@ final platformCapabilitiesProvider = Provider<PlatformCapabilities>(
 | 实现选择 | `file_picker_channel.dart`、`system_file_saver.dart`、`data/app_db.dart` | 下沉到文件或数据库适配器 |
 | 平台专属实现 | `notifications.dart`、`window_frame.dart` | 留在通知或窗口适配器内部 |
 
-`lib/core/device_info.dart` 是当前 `lib/core` 中仍直接使用
-`dart:io Platform.isWindows/isMacOS/isLinux` 的文件，与“平台判断集中在
-`PlatformSupport`”的约定不完全一致。它适合作为低风险的后续清理项，不需要改动
-设备信息展示协议。
+改造前 `lib/core/device_info.dart` 曾直接使用
+`dart:io Platform.isWindows/isMacOS/isLinux`；后续批次已收口到
+`PlatformSupport`，`lib/` 中直接 `Platform.is*` 分支现为 0。该文件仍保留
+5 处数据源选择，属于设备信息实现细节，不需要改动展示协议。
 
-## 5. 现在就能做的 Dart 改造
+## 5. 已实施的 Dart 改造
 
-### 5.1 P0：低风险，先做
+### 5.1 P0：低风险，已完成
 
 | 项目 | 当前文件 | 改造内容 | 风险/验证 |
 | --- | --- | --- | --- |
@@ -203,7 +208,10 @@ final platformCapabilitiesProvider = Provider<PlatformCapabilities>(
 | 下载目录 | `core/download_path_service.dart` | Android 走公共 Downloads/外部存储；其他平台优先 `getDownloadsDirectory()` | `path_provider` 声明 iOS Downloads 可用 |
 | 启动能力 | `main.dart`、`foreground_task_coordinator.dart` | 分别判断系统栏、前台任务、分享收件箱 | 不影响 Windows 生命周期语义 |
 
-### 5.2 P1：仍需纯 Dart，但需要接口拆分
+### 5.2 P1：接口拆分记录（已实施与剩余）
+
+系统分享、系统设置、更新交付、通知门控、文件选择和文件保存已按窄接口或
+可注入入口收口；分享收件箱、深链和设备信息的进一步生命周期拆分仍可单独评估。
 
 | 项目 | 建议接口 | 为什么现在适合 |
 | --- | --- | --- |
@@ -214,11 +222,11 @@ final platformCapabilitiesProvider = Provider<PlatformCapabilities>(
 | 更新 | `UpdateDeliveryAdapter` | `updateSupportedProvider` 和 `downloadUrl()` 已集中，适合抽制品类型 |
 | 分享收件箱/深链 | `IncomingContentGateway` | 两个单例都在启动时初始化，可在不改原生的前提下先隔离生命周期 |
 | 文件服务 | `FileSelectionGateway` / `FileSaveGateway` | `SharedDownloadsGateway` 已证明这种窄接口模式适合项目 |
-| 设备信息平台判断 | `DeviceInfo` 适配器或 `PlatformSupport` 语义 getter | 当前只有一个文件直接使用 `dart:io Platform.is*`，可独立清理 |
+| 设备信息平台判断 | 现有 `PlatformSupport` 语义 getter；如继续拆分再做 `DeviceInfo` 适配器 | 直接 `dart:io Platform.is*` 已清零，剩余 5 处为 Android/Windows/桌面数据源选择 |
 
 这些改造先保持 Android/Windows 行为不变，只把平台判断从页面搬到组合层。
 
-## 6. 推荐实施批次
+## 6. 原推荐实施批次（1–7 已完成）
 
 以下批次都按“单次改动一个模块、尽量不超过 5 个文件”拆分。
 
@@ -401,6 +409,7 @@ Batch 1–3 已按以下顺序完成，并继续完成 Batch 4–7 的纯 Dart �
 
 | 主题 | 代码 |
 | --- | --- |
+| 交接状态与后续批次 | [`docs/PLATFORM_ADAPTER_HANDOFF.md`](./PLATFORM_ADAPTER_HANDOFF.md) |
 | 当前平台判断 | [`lib/core/platform_support.dart`](../lib/core/platform_support.dart) |
 | 设置页过滤 | [`lib/ui/settings_page.dart`](../lib/ui/settings_page.dart) |
 | 上传入口 | [`lib/ui/drive_page.dart`](../lib/ui/drive_page.dart) |

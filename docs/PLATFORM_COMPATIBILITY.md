@@ -14,6 +14,8 @@ CI 与发布脚本整理。**“已接入”表示代码和平台配置存在，
 
 Dart 侧可先实施的拆分、能力开关和分批改造计划见
 [DART_PLATFORM_ADAPTER_ROADMAP.md](./DART_PLATFORM_ADAPTER_ROADMAP.md)。
+当前分支、已提交范围、剩余分支和下一轮 prompt 见
+[PLATFORM_ADAPTER_HANDOFF.md](./PLATFORM_ADAPTER_HANDOFF.md)。
 
 ## 1. 先说结论
 
@@ -21,6 +23,9 @@ Dart 侧可先实施的拆分、能力开关和分批改造计划见
   代码中，新平台的主要工作是补齐系统能力，不是重写产品。
 - Android 与 Windows 已经形成可构建、可发布的交付链。两者最大的差异集中在
   文件选择/保存、系统分享、深链、后台保活、通知和更新方式。
+- 产品级静态能力已集中在 `PlatformCapabilities`，未知平台 fail closed；
+  Android SDK、ABI、WebView 合成方式等底层探测仍由 `PlatformSupport` 负责。
+  当前仍剩 15 个 Dart 文件、28 处分支 getter，不再以“清零引用”为验收目标。
 - HarmonyOS NEXT 当前没有 `ohos/` 工程，不能把“Dart 代码可复用”理解为
   “已经支持”。依赖替换、原生通道、HAP 签名和发布流程仍按
   [OHOS_ADAPTATION.md](./OHOS_ADAPTATION.md) 的草案执行。
@@ -257,7 +262,7 @@ Dart 侧可先实施的拆分、能力开关和分批改造计划见
 | 风险 | 影响 | 处理方向 |
 | --- | --- | --- |
 | iOS `file_picker` 普通选择/保存未构建验收 | 共享测试通过不代表 iOS 权限、sandbox 与文件 URI 行为已验证 | 做 iOS 构建和真机文件读写验收后再评估发布 |
-| 剩余 `isMobile` / `isDesktop` 仍是粗粒度判断 | 新增平台可能误走触摸或桌面交互分支 | 输入/布局改用指针与宽度；系统动作继续收口到能力/适配器 |
+| 剩余 15 个文件、28 处 `PlatformSupport` 分支 getter | 低层实现、UI 形态和产品能力仍可能在新增平台时被混用 | 只迁移有明确语义的入口；其余保留在窄适配器、指针/宽度判断或平台实现内部 |
 | 通知初始化只声明 Android/Windows | iOS/macOS 即使接入目标也无法正常发本地通知 | 增加 Darwin 初始化与权限分支 |
 | 全桌面平台共用“分享 = 复制文本/定位文件” | macOS 会失去原生分享体验 | 增加桌面分享能力适配，保留降级 |
 | HAP 与 APK 更新语义不同 | 直接复用更新服务会向鸿蒙用户展示错误制品 | 使用独立 `UpdateAdapter` 和发布通道 |
@@ -267,8 +272,10 @@ Dart 侧可先实施的拆分、能力开关和分批改造计划见
 
 | 领域 | 先看 |
 | --- | --- |
+| 交接与下一轮入口 | [`docs/PLATFORM_ADAPTER_HANDOFF.md`](./PLATFORM_ADAPTER_HANDOFF.md) |
 | 静态能力矩阵 | [`lib/core/platform_capabilities.dart`](../lib/core/platform_capabilities.dart) |
 | 底层平台探测 | [`lib/core/platform_support.dart`](../lib/core/platform_support.dart) |
+| 指针与输入形态 | [`lib/ui/pointer_support.dart`](../lib/ui/pointer_support.dart) |
 | 主题与动态色 | [`lib/app.dart`](../lib/app.dart)、[`lib/core/dynamic_color_support.dart`](../lib/core/dynamic_color_support.dart)、[`lib/ui/theme_settings_tile.dart`](../lib/ui/theme_settings_tile.dart) |
 | 文件选择与保存 | [`lib/core/file_picker_channel.dart`](../lib/core/file_picker_channel.dart)、[`lib/core/system_file_saver.dart`](../lib/core/system_file_saver.dart)、[`lib/core/saf_storage.dart`](../lib/core/saf_storage.dart) |
 | 下载目标与公开 Downloads | [`lib/core/download_target.dart`](../lib/core/download_target.dart)、[`lib/core/download_path_service.dart`](../lib/core/download_path_service.dart)、[`lib/core/shared_downloads_storage.dart`](../lib/core/shared_downloads_storage.dart) |
@@ -287,6 +294,8 @@ Dart 侧可先实施的拆分、能力开关和分批改造计划见
 - `✅` 只用于已有平台实现/注册的当前平台；新增插件候选不能提前标为 `✅`。
 - 每次完成 Android/Windows 的人工功能验收，可在对应格补“已验收”，并优先更新
   `BASELINE.md`，不要把构建成功当成功能验收。
+- 每次完成能力批次后同步路线文档与交接文档；引用数量必须重新用 `rg` 核对，
+  不手工沿用上一轮数字。
 - HarmonyOS NEXT 的平台方案改变时，先更新
   [OHOS_ADAPTATION.md](./OHOS_ADAPTATION.md)，再同步本文摘要。
 - 新增第三方依赖或平台插件前，先确认已阅读 AGENTS.md 的依赖锁定规则并取得确认。

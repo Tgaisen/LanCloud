@@ -215,6 +215,7 @@ User-Agent 也迁入 `AdvancedConnectionSettingsTile`；对应 setter 统一同�
 | `core/favorites/` | 收藏文件夹更新与分享失效检测：快照比较、公开分享探测、任务互斥和报告端口 |
 | `core/platform_capabilities.dart` | 产品级静态能力矩阵；UI、启动与服务选择能力的统一来源 |
 | `core/platform_support.dart` | 底层平台判定、Android SDK/ABI 与 WebView 合成方式 |
+| `ui/pointer_support.dart` | 运行时鼠标信号；滚动条、菜单形态等输入偏好使用它，不按平台猜测 |
 | `core/cookie_auth.dart` | 登录态与 cookie |
 | `core/lanzou_link.dart` | 分享链接解析 |
 | `ui/m3e.dart` | MD3E 组件统一出口（`export` + 薄封装）与外壳悬浮导航栏；页面只从这里取 MD3E 控件 |
@@ -236,8 +237,8 @@ User-Agent 也迁入 `AdvancedConnectionSettingsTile`；对应 setter 统一同�
 | 备份 / 恢复 / WebDAV | `core/backup/*`、`ui/backup_page.dart`、`ui/backup_options_page.dart`、`ui/restore_page.dart`、`ui/restore_dialogs.dart` |
 | 自动更新 / APK 安装 | `core/update/*`、`core/apk_installer.dart`、`ui/update_page.dart`、`ui/update_prompt.dart` |
 | 本地数据 / 设置项 | `core/data/*`（先看 `app_db.dart` 表结构，再看 `settings_store.dart`） |
-| 平台差异（Android / Windows） | `core/platform_capabilities.dart`、`core/platform_support.dart`、`core/saf_storage.dart`、`core/system_open.dart`、`core/system_share.dart`、`core/window_frame.dart`、`core/drag_drop.dart` |
-| 平台能力矩阵 / Dart 适配路线 | `docs/PLATFORM_COMPATIBILITY.md`、`docs/DART_PLATFORM_ADAPTER_ROADMAP.md`、`core/platform_capabilities.dart`、`core/platform_support.dart` |
+| 平台差异（Android / Windows） | `core/platform_capabilities.dart`、`core/platform_support.dart`、`ui/pointer_support.dart`、`core/saf_storage.dart`、`core/system_open.dart`、`core/system_share.dart`、`core/window_frame.dart`、`core/drag_drop.dart` |
+| 平台能力矩阵 / Dart 适配路线 / 新对话交接 | `docs/PLATFORM_COMPATIBILITY.md`、`docs/DART_PLATFORM_ADAPTER_ROADMAP.md`、`docs/PLATFORM_ADAPTER_HANDOFF.md`、`core/platform_capabilities.dart`、`core/platform_support.dart` |
 | 主题 / 动效 / 无障碍 | `app.dart`（主题）、`ui/m3e.dart`、`core/dynamic_color_support.dart`、`core/system_motion.dart`、`ui/reduce_motion.dart` |
 | 日志 / 崩溃 / 诊断 | `core/app_log.dart`、`core/webview_diagnostics.dart` |
 | 文案 / 国际化 | `lib/l10n/app_zh.arb`（模板）、`app_en.arb`、`l10n.yaml` |
@@ -249,6 +250,12 @@ User-Agent 也迁入 `AdvancedConnectionSettingsTile`；对应 setter 统一同�
 - 有平台目录：`android/`、`ios/`、`windows/`。当前产品范围只验收 Android 与
   Windows；`ios/` 目录继续保留，但暂无适配或验收计划，不作为 Riverpod
   迁移门禁。
+- 产品能力先问 `PlatformCapabilities`；输入形态用 `PointerSupport` 与可用宽度；
+  Android SDK、ABI、WebView 合成方式和具体原生通道实现继续留在
+  `PlatformSupport` 或对应适配器内部。截至功能提交 `ff3ea87`，仍有 15 个
+  Dart 文件、28 处分支 getter，其中 `isMobile` 已为 0。
+- 下一轮对话先读 [PLATFORM_ADAPTER_HANDOFF.md](./PLATFORM_ADAPTER_HANDOFF.md)；
+  它保留精确文件清单、推荐批次和必须保留的例外。
 - **没有** `web/`、`macos/`、`linux/`，不要创建，也不要写只在 web 生效的分支
 - OHOS 适配见 `docs/OHOS_ADAPTATION.md`；仓库当前未跟踪 `ohos/` 目录，相关改动先问
 
