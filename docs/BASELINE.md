@@ -14,7 +14,7 @@
 | `tools\agent.cmd test` | 全量（用例总数） | **1064 tests, all passed** | 约 2 min 31 s |
 | `tools\agent.cmd test` | 增量（系统动作 adapter，2 个测试文件） | **5 tests, all passed** | 约 1 s |
 | `tools\agent.cmd format` | Batch 10 最终状态 | 369 files，0 changed | 约 3 s |
-| `tools\agent.cmd build-android` | debug | `app-debug.apk` | 首次构建约 5 min 46 s |
+| `tools\agent.cmd build-android` | debug，拆分 ABI | `app-<abi>-debug.apk` | 首次构建约 5 min 46 s |
 
 当前分析结果为 0 issue 是硬基线。出现红灯时，先判断是否为本次改动引入；
 不要把增量结果当成全量结论。Flutter 3.50.0 下全量分析已重跑并通过。

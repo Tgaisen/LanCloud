@@ -117,7 +117,8 @@ Library projects cannot set applicationIdSuffix
 2. 运行 `tools\agent.cmd pub-get` 生成锁文件。
 3. 运行 `tools\agent.cmd gen-l10n`，确认本地化生成 diff 可重复。
 4. 运行 `tools\agent.cmd format`、`analyze`、`test`。
-5. 运行 `tools\agent.cmd build-android`，并核对 debug 包名与 versionCode。
+5. 运行 `tools\agent.cmd build-android`，核对三个 `app-<abi>-debug.apk`
+   的包名与 versionCode。
 6. 手动构建 profile，核对 `com.lancloud.lancloud.profile`。
 7. 通过 CI 覆盖 Android release/冷启动和 Windows release/启动冒烟。
 8. 人工回归网页登录 WebView、分享 Intent、后台传输通知、生物识别和 Windows 拖放。
