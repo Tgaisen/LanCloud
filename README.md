@@ -34,6 +34,9 @@
 
 > HarmonyOS NEXT 未来数月将维持搁置状态。因目前 Flutter OpenHarmony 适配的[主要社区](https://atomgit.com/CPF-Flutter/flutter_flutter)暂未适配 Flutter 3.47，而社区分支版本经测试性能表现欠佳，且无法对齐部分关键功能。
 
+各平台当前能力、已知缺口和后续适配清单见
+[docs/PLATFORM_COMPATIBILITY.md](docs/PLATFORM_COMPATIBILITY.md)。
+
 ## 仓库结构
 
 ```text
