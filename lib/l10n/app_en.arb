@@ -871,7 +871,7 @@
   "appBuildDebug": "Debug",
   "appBuildProfile": "Profile",
   "appBuildRelease": "Release",
-  "shareReceivedFiles": "Received {count} files; starting upload",
+  "shareReceivedFiles": "Received {count} files",
   "@shareReceivedFiles": {
     "placeholders": {
       "count": {

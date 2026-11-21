@@ -1985,7 +1985,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String shareReceivedFiles(int count) {
-    return '已接收 $count 个文件，开始上传';
+    return '已接收 $count 个文件';
   }
 
   @override

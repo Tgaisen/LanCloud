@@ -1264,7 +1264,7 @@
   "appBuildDebug": "Debug",
   "appBuildProfile": "Profile",
   "appBuildRelease": "Release",
-  "shareReceivedFiles": "已接收 {count} 个文件，开始上传",
+  "shareReceivedFiles": "已接收 {count} 个文件",
   "@shareReceivedFiles": {
     "placeholders": {
       "count": {
