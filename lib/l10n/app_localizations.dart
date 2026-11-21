@@ -3692,7 +3692,7 @@ abstract class AppLocalizations {
   /// No description provided for @shareReceivedFiles.
   ///
   /// In zh, this message translates to:
-  /// **'已接收 {count} 个文件，开始上传'**
+  /// **'已接收 {count} 个文件'**
   String shareReceivedFiles(int count);
 
   /// No description provided for @shareReceivedFilesSkipped.

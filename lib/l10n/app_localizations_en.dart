@@ -2064,7 +2064,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String shareReceivedFiles(int count) {
-    return 'Received $count files; starting upload';
+    return 'Received $count files';
   }
 
   @override
