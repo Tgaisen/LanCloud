@@ -9,12 +9,12 @@
 
 | 命令 | 口径 | 结果 | 耗时 |
 | --- | --- | --- | --- |
-| `tools\agent.cmd analyze` | 全量 | No issues found | 约 2 min 1 s |
+| `tools\agent.cmd analyze` | 全量 | No issues found | 约 26 s |
 | `tools\agent.cmd analyze` | 增量（M3E 菜单 divider 间距，1 个 Dart 文件） | No issues found | 约 5 s |
-| `tools\agent.cmd test` | 全量（用例总数） | **991 tests, all passed** | 约 3 min 11 s |
+| `tools\agent.cmd test` | 全量（用例总数） | **991 tests, all passed** | 约 2 min 37 s |
 | `tools\agent.cmd test` | 增量（M3E 菜单 divider 间距，43 个测试文件） | **350 tests, all passed** | 约 1 min 15 s |
 | `tools\agent.cmd format` | 全量 | 355 files，0 changed | 约 3 s |
-| `tools\agent.cmd build-apk` | debug | `app-debug.apk` | 首次构建约 5 min 46 s |
+| `tools\agent.cmd build-android` | debug | `app-debug.apk` | 首次构建约 5 min 46 s |
 
 当前分析结果为 0 issue 是硬基线。出现红灯时，先判断是否为本次改动引入；
 不要把增量结果当成全量结论。Flutter 3.50.0 下全量分析已重跑并通过。
@@ -56,7 +56,7 @@
   `integration_test` 和 golden test。
 - `tools\agent.cmd analyze|test` 默认走增量；全量结果必须按上表单独记录。
 - 增量推断出超过 60 个测试文件时，`agent.cmd test` 自动回退全量。
-- `tools\agent.cmd` 已内置 `--no-pub`；需要安装依赖时使用 `agent.cmd pubget`。
+- `tools\agent.cmd` 已内置 `--no-pub`；需要安装依赖时使用 `agent.cmd pub-get`。
 
 ## 构建与安装快照
 

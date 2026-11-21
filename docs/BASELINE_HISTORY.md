@@ -302,7 +302,7 @@
   `tools\agent.cmd analyze|test` 会自动走增量：改完就跑这两个无参命令，全量由人兜底
   （见 `AGENTS.md`）。注意增量跑的是**受影响的子集**，不能拿它推断全量是否通过。
 - `flutter analyze` / `flutter test` 默认会隐式执行 `pub get`；沙箱内联网被拦时会直接失败。
-  `tools\agent.cmd` 已内置 `--no-pub`；需要装依赖时用 `agent.cmd pubget`。
+  `tools\agent.cmd` 已内置 `--no-pub`；需要装依赖时用 `agent.cmd pub-get`。
 - 插件在 Stop 时会自动跑 `dart format` + `dart analyze`，其超时（90 s）与全量 analyze
   冷缓存耗时（58 s）贴得比较近：机器忙的时候可能超时，属已知情况，不算改动失败。
 - 当前分析结果为 0 issue 是**硬基线**，不是「再看看」。新增告警要按类型修好，

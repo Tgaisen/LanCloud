@@ -6,17 +6,20 @@
 #      字符串整串匹配，命令一变就得加规则，规则文件会重新膨胀。
 #   2. 一律带 --no-pub：隐式 pub get 又慢又需要联网，沙箱内会直接失败。
 #   3. 动词是固定白名单。新增动词必须同时在 rules 文件里加一条，否则会弹批准。
+#   4. build-* 只做原始编译；package-* 生成可分发产物并写入 outputs。
 #
 # 用法：tools\agent.cmd <动词> [参数...]
 #   analyze [文件...]   有未提交改动就只分析这些文件，否则全量
 #   test    [文件...]   按未提交改动推断受影响的测试文件，推断不出则全量
 #   format  [目录...]   格式化 Dart 代码，默认 lib test tool
-#   gen                 gen-l10n
-#   pubget              pub get（需要联网，会被沙箱拦，属预期）
-#   build-apk [参数]    默认 --debug
-#   build-android [参数] 构建拆 ABI 的 release APK，并校验发布签名
-#   build-windows [参数] 构建 Windows x64 便携版
-#   install             安装 build 目录里最新的 apk 到设备
+#   gen-l10n           生成本地化代码
+#   pub-get             pub get（需要联网，会被沙箱拦，属预期）
+#   build-android [参数] 直接编译 Android APK，默认 --debug
+#   build-windows [参数] 直接编译 Windows 应用，默认 --debug
+#   package-android     正式拆 ABI 构建并校验 release 签名
+#   package-windows     正式构建 Windows x64 便携版
+#   install-build-android   把 build 目录中匹配设备 ABI 的 APK 装到设备
+#   install-package-android 把 outputs 中匹配设备 ABI 的 APK 装到设备
 #   logcat              拉最近 500 行并筛 flutter 相关
 #   devices / doctor / emulators / run ...   透传给 flutter
 
@@ -166,6 +169,177 @@ function Resolve-Tests {
   @($picked | Select-Object -Unique)
 }
 
+function Resolve-BuildArgs {
+  param([string[]]$Arguments)
+  $extra = @($Arguments | Where-Object { $_ })
+  $hasBuildMode = @(
+    $extra | Where-Object { $_ -in @('--debug', '--profile', '--release') }
+  ).Count -gt 0
+  if (-not $hasBuildMode) {
+    $extra = @('--debug') + $extra
+  }
+  @($extra)
+}
+
+function Show-Help {
+  $lines = Get-Content $PSCommandPath
+  $inUsage = $false
+  foreach ($line in $lines) {
+    if ($line -eq '# 用法：tools\agent.cmd <动词> [参数...]') {
+      $inUsage = $true
+    }
+    if (!$inUsage) {
+      continue
+    }
+    if ($line -notlike '#*') {
+      break
+    }
+    $line -replace '^#\s?', ''
+  }
+}
+
+function Get-ApkAbi {
+  param([string]$Name)
+  foreach ($abi in @('arm64-v8a', 'armeabi-v7a', 'x86_64')) {
+    if ($Name -match [regex]::Escape($abi)) {
+      return $abi
+    }
+  }
+  return $null
+}
+
+function Resolve-DeviceApkAbi {
+  param([string]$Abi)
+  switch -Regex ($Abi.ToLowerInvariant()) {
+    '^arm64' { return 'arm64-v8a' }
+    '^armeabi' { return 'armeabi-v7a' }
+    '^x86_64' { return 'x86_64' }
+    default { return $null }
+  }
+}
+
+function Select-CompatibleApk {
+  param(
+    [object[]]$Candidates,
+    [string]$Abi
+  )
+  $specific = @(
+    $Candidates |
+      Where-Object { (Get-ApkAbi -Name $_.Name) -eq $Abi } |
+      Sort-Object LastWriteTime -Descending |
+      Select-Object -First 1
+  )
+  if ($specific.Count -gt 0) {
+    return $specific[0]
+  }
+  $universal = @(
+    $Candidates |
+      Where-Object { !(Get-ApkAbi -Name $_.Name) } |
+      Sort-Object LastWriteTime -Descending |
+      Select-Object -First 1
+  )
+  if ($universal.Count -gt 0) {
+    return $universal[0]
+  }
+  return $null
+}
+
+function Install-AndroidApks {
+  param(
+    [ValidateSet('build', 'package')][string]$Source,
+    [switch]$DryRun
+  )
+  if (!$adb) {
+    Write-Output '找不到 adb；检查 C:\dev\android-sdk\platform-tools\adb.exe'
+    $script:ExitCode = 1
+    return
+  }
+
+  if ($Source -eq 'build') {
+    $apkDir = Join-Path $root 'build\app\outputs\flutter-apk'
+    $candidates = @(Get-ChildItem -LiteralPath $apkDir -File -Filter '*.apk' -ErrorAction SilentlyContinue)
+    $sourceLabel = 'build'
+  } else {
+    $apkDir = Join-Path $root 'outputs'
+    $versionText = Get-Content -Raw -LiteralPath (Join-Path $root 'pubspec.yaml')
+    $versionMatch = [regex]::Match($versionText, '(?m)^version:\s*([^+\s]+)\+')
+    if (!$versionMatch.Success) {
+      Write-Output '无法从 pubspec.yaml 读取当前版本号'
+      $script:ExitCode = 1
+      return
+    }
+    $version = $versionMatch.Groups[1].Value
+    $prefix = "LanCloud_android_${version}_"
+    $candidates = @(
+      Get-ChildItem -LiteralPath $apkDir -File -Filter '*.apk' -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase) }
+    )
+    $sourceLabel = "outputs（$version）"
+  }
+
+  if ($candidates.Count -eq 0) {
+    $action = if ($Source -eq 'build') { 'build-android' } else { 'package-android' }
+    Write-Output "找不到可安装的 APK；先运行 $action"
+    $script:ExitCode = 1
+    return
+  }
+
+  $rawDevices = & $adb devices 2>&1
+  if ($LASTEXITCODE -ne 0) {
+    Write-Output 'adb devices 执行失败'
+    $script:ExitCode = 1
+    return
+  }
+  $devices = @(
+    $rawDevices |
+      ForEach-Object {
+        if ($_.ToString() -match '^(\S+)\s+device(?:\s|$)') {
+          $Matches[1]
+        }
+      }
+  )
+  if ($devices.Count -eq 0) {
+    Write-Output '没有已授权的 Android 设备'
+    $script:ExitCode = 1
+    return
+  }
+
+  foreach ($serial in $devices) {
+    $rawAbi = (& $adb -s $serial shell getprop ro.product.cpu.abi 2>$null | Out-String).Trim()
+    if (!$rawAbi) {
+      $rawAbi = (& $adb -s $serial shell getprop ro.product.cpu.abilist 2>$null |
+        Out-String).Trim().Split(',')[0]
+    }
+    $deviceAbi = Resolve-DeviceApkAbi -Abi $rawAbi
+    if (!$deviceAbi) {
+      Write-Output "跳过 $serial：不支持的 ABI $rawAbi（当前只提供 arm64-v8a / armeabi-v7a / x86_64）"
+      $script:ExitCode = 1
+      continue
+    }
+
+    $apk = Select-CompatibleApk -Candidates $candidates -Abi $deviceAbi
+    if (!$apk) {
+      Write-Output "设备 $serial（$deviceAbi）在 $sourceLabel 中没有兼容 APK"
+      $script:ExitCode = 1
+      continue
+    }
+    $relative = $apk.FullName.Substring($root.Length).TrimStart('\')
+    if ($DryRun) {
+      Write-Output "[dry-run] $serial（$deviceAbi）← $relative"
+      continue
+    }
+
+    Write-Output "安装 $relative 到 $serial（$deviceAbi）"
+    $installOutput = @(& $adb -s $serial install -r -d $apk.FullName 2>&1)
+    $installExit = $LASTEXITCODE
+    $installOutput | Select-Object -Last 3
+    if ($installExit -ne 0) {
+      Write-Output "安装失败：$serial（exit $installExit）"
+      $script:ExitCode = 1
+    }
+  }
+}
+
 switch ($Verb) {
   'analyze' {
     $targets = @($Rest | Where-Object { $_ })
@@ -201,25 +375,23 @@ switch ($Verb) {
     }
     Invoke-Dart -DartArgs (@('format') + $targets) -Tail 12
   }
-  'gen' {
-    Invoke-Flutter -FlutterArgs @('gen-l10n') -Tail 6
+  'gen-l10n' {
+    Invoke-Flutter -FlutterArgs (@('gen-l10n') + @($Rest | Where-Object { $_ })) -Tail 6
   }
-  'pubget' {
-    Invoke-Flutter -FlutterArgs @('pub', 'get') -Tail 6
-  }
-  'build-apk' {
-    # 平台、拆分等附加参数不能隐式切换到 Flutter 的 release 默认值：
-    # 只有显式传入 debug/profile/release 时才沿用调用方模式，否则始终补 --debug。
-    $extra = @($Rest | Where-Object { $_ })
-    $hasBuildMode = @(
-      $extra | Where-Object { $_ -in @('--debug', '--profile', '--release') }
-    ).Count -gt 0
-    if (-not $hasBuildMode) {
-      $extra = @('--debug') + $extra
-    }
-    Invoke-Flutter -FlutterArgs ((@('build', 'apk', '--no-pub') + $extra)) -Tail 20 -FailureDetails
+  'pub-get' {
+    Invoke-Flutter -FlutterArgs (@('pub', 'get') + @($Rest | Where-Object { $_ })) -Tail 6
   }
   'build-android' {
+    # 平台、拆分等附加参数不能隐式切换到 Flutter 的 release 默认值：
+    # 只有显式传入 debug/profile/release 时才沿用调用方模式，否则始终补 --debug。
+    $buildArgs = @(Resolve-BuildArgs -Arguments $Rest)
+    Invoke-Flutter -FlutterArgs (@('build', 'apk', '--no-pub') + $buildArgs) -Tail 20 -FailureDetails
+  }
+  'build-windows' {
+    $buildArgs = @(Resolve-BuildArgs -Arguments $Rest)
+    Invoke-Flutter -FlutterArgs (@('build', 'windows', '--no-pub') + $buildArgs) -Tail 20 -FailureDetails
+  }
+  'package-android' {
     $scriptArgs = @($Rest | Where-Object { $_ })
     if ($scriptArgs -notcontains '-SkipPubGet') {
       $scriptArgs += '-SkipPubGet'
@@ -228,7 +400,7 @@ switch ($Verb) {
       -Path (Join-Path $tools 'release\build_android.ps1') `
       -ScriptArgs $scriptArgs
   }
-  'build-windows' {
+  'package-windows' {
     $scriptArgs = @($Rest | Where-Object { $_ })
     if ($scriptArgs -notcontains '-SkipPubGet') {
       $scriptArgs += '-SkipPubGet'
@@ -237,19 +409,11 @@ switch ($Verb) {
       -Path (Join-Path $tools 'release\build_windows.ps1') `
       -ScriptArgs $scriptArgs
   }
-  'install' {
-    if (!$adb) {
-      Write-Output '找不到 adb；检查 C:\dev\android-sdk\platform-tools\adb.exe'
-      $script:ExitCode = 1
-      break
-    }
-    $apk = Get-ChildItem (Join-Path $root 'build\app\outputs\flutter-apk') -Filter '*.apk' -ErrorAction SilentlyContinue |
-      Sort-Object LastWriteTime -Descending | Select-Object -First 1
-    if (-not $apk) { Write-Output '没找到 apk，先跑 build-apk'; $script:ExitCode = 1; break }
-    Write-Output "安装 $($apk.Name)"
-    & $adb install -r -d $apk.FullName 2>&1 | Select-Object -Last 3
-    $script:ExitCode = $LASTEXITCODE
-    Write-Output "---- exit=$($script:ExitCode)"
+  'install-build-android' {
+    Install-AndroidApks -Source build -DryRun:($Rest -contains '-DryRun')
+  }
+  'install-package-android' {
+    Install-AndroidApks -Source package -DryRun:($Rest -contains '-DryRun')
   }
   'logcat' {
     if (!$adb) {
@@ -263,9 +427,11 @@ switch ($Verb) {
     Write-Output "---- exit=$LASTEXITCODE"
   }
   'help' {
-    Get-Content $PSCommandPath | Select-Object -First 22 |
-      Where-Object { $_ -like '#*' } |
-      ForEach-Object { $_ -replace '^#\s?', '' }
+    Show-Help
+  }
+  { $_ -in @('gen', 'pubget', 'build-apk', 'install', 'install-android') } {
+    Write-Output '动词已重命名：gen→gen-l10n，pubget→pub-get，build-apk→build-android；install/install-android→install-build-android 或 install-package-android'
+    $script:ExitCode = 1
   }
   default {
     # 透传：devices / doctor / emulators / run 等（这些会弹一次批准）

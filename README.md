@@ -72,7 +72,7 @@
 
 ```powershell
 tools\agent.cmd help
-tools\agent.cmd pubget
+tools\agent.cmd pub-get
 tools\agent.cmd format
 tools\agent.cmd analyze
 tools\agent.cmd test
@@ -81,10 +81,18 @@ tools\agent.cmd test
 ### Android
 
 ```powershell
+# 快速本地编译，默认 debug
 tools\agent.cmd build-android
+
+# 正式拆分 APK、复制到 outputs 并校验签名
+tools\agent.cmd package-android
+
+# 按已连接设备的 ABI 安装
+tools\agent.cmd install-build-android
+tools\agent.cmd install-package-android
 ```
 
-该入口会校验 release 签名指纹；本地签名材料准备方式见
+`package-android` 会校验 release 签名指纹；本地签名材料准备方式见
 [docs/CI_RELEASE.md](docs/CI_RELEASE.md)。
 
 本仓库的 Android 签名公钥如下，可验证是否为本仓库产物：
@@ -96,7 +104,11 @@ tools\agent.cmd build-android
 ### Windows
 
 ```powershell
+# 快速本地编译，默认 debug
 tools\agent.cmd build-windows
+
+# 正式生成 x64 portable 包
+tools\agent.cmd package-windows
 ```
 
 ### 发布

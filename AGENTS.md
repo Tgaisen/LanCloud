@@ -28,14 +28,19 @@
 C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd analyze   # 有未提交改动→只分析它们；否则全量
 C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd test      # 自动推断受影响的测试；推断不出→全量
 C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd format    # 格式化 lib / test / tool，与 CI 一致
-C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd gen       # 改完 arb 之后
-C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd build-android
-C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd build-windows
+C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd gen-l10n  # 改完 arb 之后
+C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd build-android  # 默认 debug
+C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd build-windows  # 默认 debug
+C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd package-android
+C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd package-windows
 C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd help      # 全部动词
 ```
 
-其他动词：`pubget`、`build-apk`、`install`、`logcat`、`devices`，
+其他动词：`pub-get`、`install-build-android`、`install-package-android`、
+`logcat`、`devices`，
 其余名字（`run`、`doctor`、`emulators`…）透传给 flutter。
+`build-*` 只做原始编译；`package-*` 才生成正式分发包并写入 `outputs/`。
+两个 `install-*-android` 都会读取已连接设备的主 ABI，只安装匹配的 APK。
 
 - **原样执行，不要追加 `| Select-Object`、`2>&1`、`;` 等修饰，也不要带参数。**
   免批准规则对「整条 PowerShell 脚本」做整串相等匹配（Codex 不拆分 `pwsh -Command`
@@ -47,7 +52,7 @@ C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd help      # 全部动词
   `codex execpolicy check --rules <该文件> -- <pwsh 路径> -Command "<命令>"`
   自检，并重启 Codex 生效。新增 `agent.cmd` 动词时必须同步加一条规则。
 - 一律 `--no-pub`（脚本已内置）：隐式 `pub get` 又慢又需要联网，沙箱里会直接失败。
-  确实需要装依赖时用 `agent.cmd pubget`。
+  确实需要装依赖时用 `agent.cmd pub-get`。
 - 改完 Dart 文件后先跑 `tools\agent.cmd format`，再跑 analyze / test。CI 使用
   `dart format --output=none --set-exit-if-changed lib test tool`，未格式化会直接失败。
 - 全量分析/测试留给人工兜底；你改完只需跑这两个无参命令（已是增量的）。

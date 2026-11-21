@@ -61,7 +61,7 @@ Flutter 3.50.0 的 `gen-l10n` 模板仍从 `flutter_localizations` 生成：
 
 1. 检查新的 `gen-l10n` 模板是否改为从 `material_ui` / `cupertino_ui` 生成 delegate。
 2. 删除 `l10n.yaml` 的 `header` 兼容配置。
-3. 运行 `tools\agent.cmd gen`，确认生成文件不再引用旧 delegate。
+3. 运行 `tools\agent.cmd gen-l10n`，确认生成文件不再引用旧 delegate。
 4. 运行 `tools\agent.cmd analyze`，确认不需要任何 `deprecated_member_use` 豁免。
 5. 保持在 `lib/l10n/delegates.dart` 中使用新组件栈的 delegate。
 
@@ -114,10 +114,10 @@ Library projects cannot set applicationIdSuffix
 ## 每次升级 3.50.x 的检查清单
 
 1. 更新 `pubspec.yaml` 中精确的 Flutter 版本。
-2. 运行 `tools\agent.cmd pubget` 生成锁文件。
-3. 运行 `tools\agent.cmd gen`，确认本地化生成 diff 可重复。
+2. 运行 `tools\agent.cmd pub-get` 生成锁文件。
+3. 运行 `tools\agent.cmd gen-l10n`，确认本地化生成 diff 可重复。
 4. 运行 `tools\agent.cmd format`、`analyze`、`test`。
-5. 运行 `tools\agent.cmd build-apk`，并核对 debug 包名与 versionCode。
+5. 运行 `tools\agent.cmd build-android`，并核对 debug 包名与 versionCode。
 6. 手动构建 profile，核对 `com.lancloud.lancloud.profile`。
 7. 通过 CI 覆盖 Android release/冷启动和 Windows release/启动冒烟。
 8. 人工回归网页登录 WebView、分享 Intent、后台传输通知、生物识别和 Windows 拖放。
