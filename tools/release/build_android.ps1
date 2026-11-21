@@ -68,22 +68,26 @@ if (!$SkipTests) {
   Invoke-ReleaseTool -Exe $flutter -Arguments @('test', '--no-pub') -DryRun:$DryRun
 }
 
-# 构建信息注入「关于 - 构建信息」弹窗：构建时间 + 提交号
+# 构建信息注入「关于 - 构建信息」弹窗：构建时间总是注入，提交号只来自 CI。
 $buildTime = Format-BuildTime
-$commitHash = if ($env:GITHUB_SHA) {
+$commitHash = if ((Test-IsCI) -and $env:GITHUB_SHA) {
   $env:GITHUB_SHA
 } else {
-  Get-GitCommit -Root $root
+  ''
 }
-Info "构建信息：$buildTime · $commitHash"
+$buildInfo = if ($commitHash) { "$buildTime · $commitHash" } else { $buildTime }
+Info "构建信息：$buildInfo"
 
 Info 'flutter build apk --release --split-per-abi'
-Invoke-ReleaseTool -Exe $flutter -Arguments @(
+$buildArguments = @(
   'build', 'apk', '--release', '--split-per-abi',
   '--no-pub',
-  "--dart-define=BUILD_TIME=$buildTime",
-  "--dart-define=GIT_COMMIT=$commitHash"
-) -DryRun:$DryRun
+  "--dart-define=BUILD_TIME=$buildTime"
+)
+if ($commitHash) {
+  $buildArguments += "--dart-define=GIT_COMMIT=$commitHash"
+}
+Invoke-ReleaseTool -Exe $flutter -Arguments $buildArguments -DryRun:$DryRun
 
 if (!$OutputDir) {
   $OutputDir = Join-Path $root 'outputs'

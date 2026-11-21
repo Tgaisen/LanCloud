@@ -219,6 +219,10 @@ Windows 产物是绿色便携版，解压后运行；内嵌网页功能仍需要
 运行时。构建目录中的 `lancloud.exe.WebView2` 属于本机运行数据，不会被打进
 发布 zip。
 
+构建时间会写入「关于 → 构建信息」和「相关信息」的 `BUILD_TIME`。本地
+`build-*` / `package-*` 只注入构建时间；`GIT_COMMIT` 只由 GitHub Actions
+根据 `GITHUB_SHA` 注入，本地构建不会把工作区 HEAD 当作发布提交号。
+
 ## 本地发版
 
 本地流程与 CI 共用同一组脚本：

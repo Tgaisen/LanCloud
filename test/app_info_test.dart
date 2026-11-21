@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_info.dart';
 
 void main() {
-  test('构建时间显示：UTC 转本机时区，旧格式原样，空 / 非法原样', () {
+  test('Agent / 发布脚本注入的构建时间：UTC 转本机时区，旧格式原样', () {
     expect(formatBuildTimeForDisplay(''), '');
     expect(formatBuildTimeForDisplay('  '), '');
     // 早期构建没有时区标记：按本地时间理解并保持格式

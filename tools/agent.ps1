@@ -198,6 +198,19 @@ function Resolve-AndroidBuildArgs {
   @($extra)
 }
 
+function Add-BuildTimeArg {
+  param([string[]]$Arguments)
+  $filtered = @(
+    $Arguments |
+      Where-Object { $_ -notlike '--dart-define=BUILD_TIME=*' }
+  )
+  $buildTime = [DateTime]::UtcNow.ToString(
+    "yyyy-MM-dd'T'HH:mm:ss'Z'",
+    [System.Globalization.CultureInfo]::InvariantCulture
+  )
+  @($filtered + "--dart-define=BUILD_TIME=$buildTime")
+}
+
 function Show-Help {
   $lines = Get-Content $PSCommandPath
   $inUsage = $false
@@ -418,6 +431,7 @@ switch ($Verb) {
     $installAfterBuild = $rawArgs -contains '--install'
     $showHelp = $rawArgs -contains '--help' -or $rawArgs -contains '-h'
     $buildArgs = @(Resolve-AndroidBuildArgs -Arguments $rawArgs)
+    $buildArgs = @(Add-BuildTimeArg -Arguments $buildArgs)
     $buildStartedAt = Get-Date
     Invoke-Flutter -FlutterArgs (@('build', 'apk', '--no-pub') + $buildArgs) -Tail 20 -FailureDetails
     if ($installAfterBuild -and !$showHelp -and $script:ExitCode -eq 0) {
@@ -426,6 +440,7 @@ switch ($Verb) {
   }
   'build-windows' {
     $buildArgs = @(Resolve-BuildArgs -Arguments $Rest)
+    $buildArgs = @(Add-BuildTimeArg -Arguments $buildArgs)
     Invoke-Flutter -FlutterArgs (@('build', 'windows', '--no-pub') + $buildArgs) -Tail 20 -FailureDetails
   }
   'package-android' {

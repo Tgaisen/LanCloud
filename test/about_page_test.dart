@@ -147,7 +147,7 @@ void main() {
     expect(text, contains('Version code: 260107210'));
     expect(text, contains('Package: '));
     expect(text, contains('(Debug)'));
-    // 本地测试构建没有注入构建时间 / 提交号：显示占位符
+    // 测试进程本身没有注入构建时间 / 提交号：显示占位符
     expect(text, contains('Build time: —'));
     expect(text, contains('Commit: —'));
     expect(text, contains('Device: HUAWEI NOH-AN00'));

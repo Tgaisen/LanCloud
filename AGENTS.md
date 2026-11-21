@@ -43,6 +43,8 @@ C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd help      # 全部动词
 两个 `install-*-android` 都会读取已连接设备的主 ABI，只安装匹配的 APK。
 `build-android --install` 会在本次构建成功后安装匹配 ABI 的新产物；
 `build-android --universal` 用于显式生成不拆 ABI 的 universal APK。
+本地 `build-*` / `package-*` 会注入 `BUILD_TIME`；`GIT_COMMIT` 只允许由
+GitHub Actions 的 `GITHUB_SHA` 注入。
 
 - **原样执行，不要追加 `| Select-Object`、`2>&1`、`;` 等修饰，也不要带参数。**
   免批准规则对「整条 PowerShell 脚本」做整串相等匹配（Codex 不拆分 `pwsh -Command`
