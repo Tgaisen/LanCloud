@@ -1508,6 +1508,7 @@ void main() {
 
   testWidgets('桌面端紧凑密度：菜单首尾贴近卡片内边距', (tester) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    PointerSupport.hasMouse.value = true;
     try {
       final app = _FakeApp(_FakeClient());
       // Windows 桌面默认 visualDensity.compact：行高被压到 40dp 而不是 48dp。
@@ -1532,6 +1533,7 @@ void main() {
       expect(last.height, 40, reason: '滚动后末项仍保持紧凑行高');
       expect(card.bottom - last.bottom, 4, reason: '末项到卡片底边也是 4dp');
     } finally {
+      PointerSupport.hasMouse.value = false;
       debugDefaultTargetPlatformOverride = null;
     }
   });

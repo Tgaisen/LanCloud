@@ -19,7 +19,6 @@ import '../core/drive_state.dart';
 import '../core/favorites/favorite_monitor.dart';
 import '../core/navigation_appearance_settings_state.dart';
 import '../core/navigation_state.dart';
-import '../core/platform_support.dart';
 import '../core/transfer/transfer_manager_provider.dart';
 import '../l10n/l10n.dart';
 import 'app_scroll.dart';
@@ -2023,7 +2022,7 @@ bool _usesAdaptiveM3eMenuSheet(
   return pointerPosition == null &&
       allowSheet &&
       compact &&
-      PlatformSupport.isMobile;
+      !PointerSupport.hasMouse.value;
 }
 
 List<M3eMenuSection<T>> _resolveAdaptiveM3eMenuSections<T>({

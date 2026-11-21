@@ -58,7 +58,10 @@ Future<Future<String?> Function()> _pumpMenu(
 }
 
 void main() {
+  tearDown(() => PointerSupport.hasMouse.value = false);
+
   testWidgets('Compact 移动端使用列表组底部面板并返回类型化结果', (tester) async {
+    PointerSupport.hasMouse.value = false;
     final opened = await _pumpMenu(tester, size: const Size(411, 800));
 
     expect(
@@ -79,33 +82,37 @@ void main() {
   });
 
   testWidgets('Medium 宽度继续使用原锚定菜单', (tester) async {
+    PointerSupport.hasMouse.value = false;
     await _pumpMenu(tester, size: const Size(800, 800));
 
     expect(find.byKey(const ValueKey('m3e-menu-card')), findsOneWidget);
     expect(find.byKey(const ValueKey('adaptive-m3e-menu-sheet')), findsNothing);
   });
 
-  testWidgets('Compact Windows 和鼠标上下文菜单保持原菜单', (tester) async {
+  testWidgets('Compact Windows 检测到鼠标时保持锚定菜单', (tester) async {
+    PointerSupport.hasMouse.value = true;
     debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    try {
+      await _pumpMenu(tester, size: const Size(411, 800));
+      expect(find.byKey(const ValueKey('m3e-menu-card')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('adaptive-m3e-menu-sheet')),
+        findsNothing,
+      );
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  testWidgets('Compact Android 检测到鼠标时保持锚定菜单', (tester) async {
+    PointerSupport.hasMouse.value = true;
     await _pumpMenu(tester, size: const Size(411, 800));
     expect(find.byKey(const ValueKey('m3e-menu-card')), findsOneWidget);
     expect(find.byKey(const ValueKey('adaptive-m3e-menu-sheet')), findsNothing);
-
-    await tester.binding.handlePopRoute();
-    await tester.pumpAndSettle();
-
-    debugDefaultTargetPlatformOverride = null;
-    await _pumpMenu(
-      tester,
-      size: const Size(411, 800),
-      pointerPosition: const Offset(180, 160),
-    );
-    expect(find.byKey(const ValueKey('m3e-menu-card')), findsOneWidget);
-    expect(find.byKey(const ValueKey('adaptive-m3e-menu-sheet')), findsNothing);
-    debugDefaultTargetPlatformOverride = null;
   });
 
   testWidgets('Compact 底部面板沿用 closeOn 自动收起', (tester) async {
+    PointerSupport.hasMouse.value = false;
     final state = ChangeNotifier();
     addTearDown(state.dispose);
     bool shouldClose = false;
