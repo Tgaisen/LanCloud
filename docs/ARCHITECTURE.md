@@ -238,7 +238,7 @@ User-Agent 也迁入 `AdvancedConnectionSettingsTile`；对应 setter 统一同�
 | 自动更新 / APK 安装 | `core/update/*`、`core/apk_installer.dart`、`ui/update_page.dart`、`ui/update_prompt.dart` |
 | 本地数据 / 设置项 | `core/data/*`（先看 `app_db.dart` 表结构，再看 `settings_store.dart`） |
 | 平台差异（Android / Windows） | `core/platform_capabilities.dart`、`core/platform_support.dart`、`ui/pointer_support.dart`、`core/saf_storage.dart`、`core/system_open.dart`、`core/system_share.dart`、`core/window_frame.dart`、`core/drag_drop.dart` |
-| 平台能力矩阵 / Dart 适配路线 / 新对话交接 | `docs/PLATFORM_COMPATIBILITY.md`、`docs/DART_PLATFORM_ADAPTER_ROADMAP.md`、`docs/PLATFORM_ADAPTER_HANDOFF.md`、`core/platform_capabilities.dart`、`core/platform_support.dart` |
+| 平台能力矩阵 / Dart 适配路线 / 当前例外 | `docs/PLATFORM_COMPATIBILITY.md`、`docs/DART_PLATFORM_ADAPTER_ROADMAP.md`、`core/platform_capabilities.dart`、`core/platform_support.dart` |
 | 主题 / 动效 / 无障碍 | `app.dart`（主题）、`ui/m3e.dart`、`core/dynamic_color_support.dart`、`core/system_motion.dart`、`ui/reduce_motion.dart` |
 | 日志 / 崩溃 / 诊断 | `core/app_log.dart`、`core/webview_diagnostics.dart` |
 | 文案 / 国际化 | `lib/l10n/app_zh.arb`（模板）、`app_en.arb`、`l10n.yaml` |
@@ -255,8 +255,8 @@ User-Agent 也迁入 `AdvancedConnectionSettingsTile`；对应 setter 统一同�
   `PlatformSupport` 或对应适配器内部。当前仍有 11 个 Dart 文件、19 处分支
   getter，其中 `isMobile` 已为 0；这些是已确认的低层实现和 adapter factory
   例外，不再作为常规迁移待办。
-- 下一轮对话先读 [PLATFORM_ADAPTER_HANDOFF.md](./PLATFORM_ADAPTER_HANDOFF.md)；
-  它保留精确文件清单、推荐批次和必须保留的例外。
+- 下一轮对话先读 [DART_PLATFORM_ADAPTER_ROADMAP.md](./DART_PLATFORM_ADAPTER_ROADMAP.md)；
+  它保留当前接力状态、精确例外清单和后续维护规则。
 - **没有** `web/`、`macos/`、`linux/`，不要创建，也不要写只在 web 生效的分支
 - OHOS 适配见 `docs/OHOS_ADAPTATION.md`；仓库当前未跟踪 `ohos/` 目录，相关改动先问
 

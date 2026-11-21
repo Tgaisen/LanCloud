@@ -10,8 +10,82 @@
 
 本文配合 [PLATFORM_COMPATIBILITY.md](./PLATFORM_COMPATIBILITY.md) 使用：
 前者说明各平台现在有什么，本文说明哪些 Dart 侧结构适合先改、怎么拆、先改什么。
-新一轮对话从 [PLATFORM_ADAPTER_HANDOFF.md](./PLATFORM_ADAPTER_HANDOFF.md)
-读取当前分支、剩余分支和推荐批次。
+当前分支、已完成提交、最终例外和后续维护规则也统一记录在本文。
+
+## 当前接力状态（2026-11-21）
+
+### Git 与基线
+
+- 仓库：`C:\Users\Potato\Desktop\LanCloud`
+- 分支：`codex/platform-capabilities-batch1`
+- 平台适配功能基线：`ff3ea87 fix(share): 按能力显示文件分享入口`
+- 后续完成提交：
+  - `5466324 fix(platform): 按能力选择目录与拖拽语义`
+  - `094fee3 fix(platform): 按能力显示动态色与分享提示`
+  - `153642a fix(notifications): 区分常驻进度与终态提醒`
+  - `31d9eec fix(settings): 隐藏 Windows 进度通知入口`
+  - `a59a1e3 refactor(platform): 收敛系统动作适配器`
+  - `8e3f7e7 docs(platform): 收口平台适配最终状态`
+- 最新全量基线：`format` 369 files / 0 changed，`analyze` 0 issue，
+  **1064 tests all passed**（约 2 min 31 s）。
+
+开工前仍以 `git status --short --branch`、`git log -1` 和
+[BASELINE.md](./BASELINE.md) 为准。
+
+### 当前能力快照
+
+- Android：相机、文档提供器、分享接收、前台任务、本地通知及常驻进度、系统
+  分享/保存、SAF、Android 设置入口、移动临时目录和移动 UA 为 true；动态色
+  来源为壁纸，更新产物为 APK。
+- Windows：本地通知、系统另存为和桌面拖拽为 true；常驻进度通知、相机、分享
+  接收、前台任务、SAF、Android 设置入口和系统分享面板为 false；动态色来源
+  为系统强调色，更新产物为 portable ZIP。
+- iOS：只有系统另存为、私有移动临时目录和移动 UA 为 true；其余可选能力继续
+  fail closed。普通文件选择/保存仍需构建和真机验收。
+- macOS/Linux：只记录保守形态，可选能力关闭；仓库没有对应平台工程。
+- 未知 `TargetPlatform`：所有可选能力关闭。
+
+通知权限、生物识别硬件和动态色实际可用性仍属于运行时探测，不进入静态能力
+对象。
+
+### 最终保留例外
+
+当前 `lib/` 仍有 11 个 Dart 文件、19 处 `PlatformSupport` 分支 getter：
+`isDesktop` 4、`isWindows` 10、`isAndroid` 5、`isMobile` 0；直接
+`Platform.is*` 为 0。
+
+| 文件 | 引用 | 保留原因 |
+| --- | ---: | --- |
+| `lib/app.dart` | 2 | Windows 鼠标侧键与中文兜底字体 |
+| `lib/core/data/app_db.dart` | 1 | 桌面 sqflite FFI 初始化 |
+| `lib/core/device_info.dart` | 5 | Android/Windows/桌面系统信息数据源 |
+| `lib/core/external_link.dart` | 1 | 外部链接 adapter factory |
+| `lib/core/file_picker_channel.dart` | 1 | 阻止桌面进入拍照原生通道的防御检查 |
+| `lib/core/notifications.dart` | 2 | Windows AUMID 与通知图标配置 |
+| `lib/core/saf_storage.dart` | 1 | Android SAF 通道保护 |
+| `lib/core/shared_downloads_storage.dart` | 1 | Android 公共 Downloads 通道保护 |
+| `lib/core/system_open.dart` | 3 | 文件打开 adapter factory |
+| `lib/core/window_frame.dart` | 1 | Windows DWM 边框 |
+| `lib/ui/settings_page.dart` | 1 | Windows 通知注册表清理项 |
+
+这些引用是已确认的低层实现、平台专属配置或 adapter factory 例外，不再为了
+清零而机械能力化。
+
+### 后续维护规则
+
+- 新增平台时，优先复用 `PlatformCapabilities` 和现有 gateway/adapter，不要
+  逐项搜索 `isAndroid` / `isDesktop` 后机械替换。
+- 只有设备信息、深链收件或某个保留例外出现真实产品需求时，才拆新的单模块
+  批次；单批最多 5 个文件。
+- 修改跨 `core × ui` 前，先给出文件清单、Android/Windows/iOS 行为变化、
+  测试方案和遗留风险，等待明确确认。
+- `PlatformSupport` 不删除；Android SDK、ABI、WebView 合成方式和低层通道
+  判断继续保留。
+- 没有 `ohos/`、`macos/`、`linux/` 工程，不创建对应目录；没有原生实现时
+  不提前翻转能力值。
+- 以下工作需要原生工程与真机验收，不属于本轮 Dart 路线：iOS 自定义通道、
+  Share Extension、App Group、Universal Links、Darwin 通知、后台模式；
+  HarmonyOS NEXT 工程、HAP 与持续任务；各平台原生分享和产品更新策略。
 
 ## 实施状态（2026-11-21）
 
@@ -29,7 +103,7 @@
 | Batch 8B | ✅ 完成 | 动态色文案使用 `DynamicColorSource`；Cookie 导出消费分享 gateway |
 | Batch 9 | ✅ 完成 | 拆分本地通知与常驻进度能力；Windows 隐藏进度设置和进度上报 |
 | Batch 10 | ✅ 完成 | 外部链接与系统文件动作收敛到可注入 gateway/adapter |
-| Batch 11 | ✅ 完成 | 核对剩余例外，统一更新架构、基线、兼容矩阵和交接文档 |
+| Batch 11 | ✅ 完成 | 核对剩余例外，统一更新架构、基线、兼容矩阵和路线图 |
 
 当前仍有 11 个 Dart 文件引用 `PlatformSupport` 的分支
 getter，共 19 处：`isDesktop` 4 处、`isWindows` 10 处、`isAndroid` 5 处、
@@ -107,6 +181,7 @@ final class PlatformCapabilities {
     required this.supportsIncomingShare,
     required this.supportsForegroundTask,
     required this.supportsLocalNotifications,
+    required this.supportsPersistentProgressNotifications,
     required this.supportsEdgeToEdgeSystemUi,
     required this.supportsSystemShare,
     required this.supportsSystemFileSave,
@@ -150,6 +225,7 @@ final platformCapabilitiesProvider = Provider<PlatformCapabilities>(
 | 系统另存为 | true | true | true；Dart 已接 `file_picker`，构建与真机待验收 |
 | 接收其他应用分享 | true | false | false |
 | 前台任务 | true | false | false |
+| 常驻进度通知 | true | false | false |
 | Android 权限/默认链接设置 | true | false | false |
 | 桌面拖拽 | false | true | false |
 | 私有临时目录可整体清理 | true | false | true |
@@ -225,6 +301,7 @@ final platformCapabilitiesProvider = Provider<PlatformCapabilities>(
 | 权限设置 | `SystemSettingsGateway` | 已有 `AppPermissions.instance` 测试注入模式，可改成正式接口 |
 | 前台任务 | `ForegroundTaskBackend` + no-op 实现 | 接口已存在，只需在组合根按能力选择后端 |
 | 通知 | `NotificationCapability` / sink | 现有传输通知和收藏通知已经通过窄 sink 注入 |
+| 系统动作 | `ExternalLinkGateway` / `SystemOpenAdapter` | 已拆分 Custom Tabs、默认浏览器和不同平台文件打开实现，可继续注入测试替身 |
 | 更新 | `UpdateDeliveryAdapter` | `updateSupportedProvider` 和 `downloadUrl()` 已集中，适合抽制品类型 |
 | 分享收件箱/深链 | `IncomingContentGateway` | 两个单例都在启动时初始化，可在不改原生的前提下先隔离生命周期 |
 | 文件服务 | `FileSelectionGateway` / `FileSaveGateway` | `SharedDownloadsGateway` 已证明这种窄接口模式适合项目 |
@@ -415,7 +492,7 @@ Batch 1–3 已按以下顺序完成，并继续完成 Batch 4–7 的纯 Dart �
 
 | 主题 | 代码 |
 | --- | --- |
-| 交接状态与后续批次 | [`docs/PLATFORM_ADAPTER_HANDOFF.md`](./PLATFORM_ADAPTER_HANDOFF.md) |
+| 实现状态与保留例外 | 本文“当前接力状态”与“实施状态” |
 | 当前平台判断 | [`lib/core/platform_support.dart`](../lib/core/platform_support.dart) |
 | 设置页过滤 | [`lib/ui/settings_page.dart`](../lib/ui/settings_page.dart) |
 | 上传入口 | [`lib/ui/drive_page.dart`](../lib/ui/drive_page.dart) |

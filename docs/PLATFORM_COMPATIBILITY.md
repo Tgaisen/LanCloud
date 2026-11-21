@@ -14,8 +14,7 @@ CI 与发布脚本整理。**“已接入”表示代码和平台配置存在，
 
 Dart 侧可先实施的拆分、能力开关和分批改造计划见
 [DART_PLATFORM_ADAPTER_ROADMAP.md](./DART_PLATFORM_ADAPTER_ROADMAP.md)。
-当前分支、已提交范围、剩余分支和下一轮 prompt 见
-[PLATFORM_ADAPTER_HANDOFF.md](./PLATFORM_ADAPTER_HANDOFF.md)。
+当前分支、已提交范围、最终例外和后续维护规则也统一记录在该路线图中。
 
 ## 1. 先说结论
 
@@ -273,7 +272,7 @@ Dart 侧可先实施的拆分、能力开关和分批改造计划见
 
 | 领域 | 先看 |
 | --- | --- |
-| 交接与下一轮入口 | [`docs/PLATFORM_ADAPTER_HANDOFF.md`](./PLATFORM_ADAPTER_HANDOFF.md) |
+| 实现状态与保留例外 | [`docs/DART_PLATFORM_ADAPTER_ROADMAP.md`](./DART_PLATFORM_ADAPTER_ROADMAP.md) |
 | 静态能力矩阵 | [`lib/core/platform_capabilities.dart`](../lib/core/platform_capabilities.dart) |
 | 底层平台探测 | [`lib/core/platform_support.dart`](../lib/core/platform_support.dart) |
 | 指针与输入形态 | [`lib/ui/pointer_support.dart`](../lib/ui/pointer_support.dart) |
