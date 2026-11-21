@@ -27,6 +27,7 @@ final class PlatformCapabilities {
     required this.supportsDocumentProviderUpload,
     required this.supportsIncomingShare,
     required this.supportsForegroundTask,
+    required this.supportsLocalNotifications,
     required this.supportsEdgeToEdgeSystemUi,
     required this.supportsSystemShare,
     required this.supportsSystemFileSave,
@@ -48,6 +49,7 @@ final class PlatformCapabilities {
     supportsDocumentProviderUpload: true,
     supportsIncomingShare: true,
     supportsForegroundTask: true,
+    supportsLocalNotifications: true,
     supportsEdgeToEdgeSystemUi: true,
     supportsSystemShare: true,
     supportsSystemFileSave: true,
@@ -69,6 +71,7 @@ final class PlatformCapabilities {
     supportsDocumentProviderUpload: false,
     supportsIncomingShare: false,
     supportsForegroundTask: false,
+    supportsLocalNotifications: true,
     supportsEdgeToEdgeSystemUi: false,
     supportsSystemShare: false,
     supportsSystemFileSave: true,
@@ -90,6 +93,7 @@ final class PlatformCapabilities {
     supportsDocumentProviderUpload: false,
     supportsIncomingShare: false,
     supportsForegroundTask: false,
+    supportsLocalNotifications: false,
     supportsEdgeToEdgeSystemUi: false,
     supportsSystemShare: false,
     supportsSystemFileSave: true,
@@ -111,6 +115,7 @@ final class PlatformCapabilities {
     supportsDocumentProviderUpload: false,
     supportsIncomingShare: false,
     supportsForegroundTask: false,
+    supportsLocalNotifications: false,
     supportsEdgeToEdgeSystemUi: false,
     supportsSystemShare: false,
     supportsSystemFileSave: false,
@@ -132,6 +137,7 @@ final class PlatformCapabilities {
     supportsDocumentProviderUpload: false,
     supportsIncomingShare: false,
     supportsForegroundTask: false,
+    supportsLocalNotifications: false,
     supportsEdgeToEdgeSystemUi: false,
     supportsSystemShare: false,
     supportsSystemFileSave: false,
@@ -154,6 +160,7 @@ final class PlatformCapabilities {
     supportsDocumentProviderUpload: false,
     supportsIncomingShare: false,
     supportsForegroundTask: false,
+    supportsLocalNotifications: false,
     supportsEdgeToEdgeSystemUi: false,
     supportsSystemShare: false,
     supportsSystemFileSave: false,
@@ -174,6 +181,7 @@ final class PlatformCapabilities {
   final bool supportsDocumentProviderUpload;
   final bool supportsIncomingShare;
   final bool supportsForegroundTask;
+  final bool supportsLocalNotifications;
   final bool supportsEdgeToEdgeSystemUi;
   final bool supportsSystemShare;
   final bool supportsSystemFileSave;

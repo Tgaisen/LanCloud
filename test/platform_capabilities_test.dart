@@ -15,6 +15,7 @@ void main() {
           supportsDocumentProviderUpload: true,
           supportsIncomingShare: true,
           supportsForegroundTask: true,
+          supportsLocalNotifications: true,
           supportsEdgeToEdgeSystemUi: true,
           supportsSystemShare: true,
           supportsSystemFileSave: true,
@@ -41,6 +42,7 @@ void main() {
           supportsDocumentProviderUpload: false,
           supportsIncomingShare: false,
           supportsForegroundTask: false,
+          supportsLocalNotifications: true,
           supportsEdgeToEdgeSystemUi: false,
           supportsSystemShare: false,
           supportsSystemFileSave: true,
@@ -67,6 +69,7 @@ void main() {
           supportsDocumentProviderUpload: false,
           supportsIncomingShare: false,
           supportsForegroundTask: false,
+          supportsLocalNotifications: false,
           supportsEdgeToEdgeSystemUi: false,
           supportsSystemShare: false,
           supportsSystemFileSave: true,
@@ -93,6 +96,7 @@ void main() {
           supportsDocumentProviderUpload: false,
           supportsIncomingShare: false,
           supportsForegroundTask: false,
+          supportsLocalNotifications: false,
           supportsEdgeToEdgeSystemUi: false,
           supportsSystemShare: false,
           supportsSystemFileSave: false,
@@ -119,6 +123,7 @@ void main() {
           supportsDocumentProviderUpload: false,
           supportsIncomingShare: false,
           supportsForegroundTask: false,
+          supportsLocalNotifications: false,
           supportsEdgeToEdgeSystemUi: false,
           supportsSystemShare: false,
           supportsSystemFileSave: false,
@@ -145,6 +150,7 @@ void main() {
           supportsDocumentProviderUpload: false,
           supportsIncomingShare: false,
           supportsForegroundTask: false,
+          supportsLocalNotifications: false,
           supportsEdgeToEdgeSystemUi: false,
           supportsSystemShare: false,
           supportsSystemFileSave: false,
@@ -260,6 +266,10 @@ void _expectCapabilities(
   );
   expect(actual.supportsIncomingShare, expected.supportsIncomingShare);
   expect(actual.supportsForegroundTask, expected.supportsForegroundTask);
+  expect(
+    actual.supportsLocalNotifications,
+    expected.supportsLocalNotifications,
+  );
   expect(
     actual.supportsEdgeToEdgeSystemUi,
     expected.supportsEdgeToEdgeSystemUi,
