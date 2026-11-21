@@ -10,16 +10,16 @@
 | 命令 | 口径 | 结果 | 耗时 |
 | --- | --- | --- | --- |
 | `tools\agent.cmd analyze` | 全量 | No issues found | 约 26 s |
-| `tools\agent.cmd analyze` | 增量（动态色来源路由，1 个 Dart 文件） | No issues found | 约 2 s |
-| `tools\agent.cmd test` | 全量（用例总数） | **1052 tests, all passed** | 约 2 min 23 s |
-| `tools\agent.cmd test` | 增量（动态色来源路由，2 个测试文件） | **20 tests, all passed** | 约 19 s |
-| `tools\agent.cmd format` | 全量 | 367 files，0 changed | 约 3 s |
+| `tools\agent.cmd analyze` | 增量（指针支持拆分与滚动条路由，3 个 Dart 文件） | No issues found | 约 4 s |
+| `tools\agent.cmd test` | 全量（用例总数） | **1054 tests, all passed** | 约 2 min 19 s |
+| `tools\agent.cmd test` | 增量（滚动条与指针支持，60 个测试文件） | **445 tests, all passed** | 约 86 s |
+| `tools\agent.cmd format` | 全量 | 369 files，0 changed | 约 3 s |
 | `tools\agent.cmd build-android` | debug | `app-debug.apk` | 首次构建约 5 min 46 s |
 
 当前分析结果为 0 issue 是硬基线。出现红灯时，先判断是否为本次改动引入；
 不要把增量结果当成全量结论。Flutter 3.50.0 下全量分析已重跑并通过。
 
-当前用例总数为 1052；最近一次全量 1052 项全部通过。平台能力矩阵覆盖
+当前用例总数为 1054；最近一次全量 1054 项全部通过。平台能力矩阵覆盖
 Android、Windows、iOS、macOS、Linux 与未知 TargetPlatform 的 fail-closed
 行为，以及动态色来源、更新产物、只读 const 能力和 Riverpod 测试覆盖。设置页、
 网盘添加菜单、普通文件选择、系统另存为、二维码来源与分享收件箱已改为按具体
@@ -30,7 +30,7 @@ Android、Windows、iOS、macOS、Linux 与未知 TargetPlatform 的 fail-closed
 `supportsLocalNotifications` 门控，通知设置入口也按同一能力隐藏，应用缓存清理
 由私有临时目录与 SAF 能力选择，设备信息分支统一走 `PlatformSupport`。
 WebView 登录 UA 由 `usesMobileWebUserAgent` 决定，动态色插件探测由
-`DynamicColorSource` 选择。1052 项全量覆盖
+`DynamicColorSource` 选择；全局滚动条改由运行时鼠标信号控制。1054 项全量覆盖
 收藏分栏高度稳定、批量消除更新标志、分享目录分页取消后保留当前页面与已加载
 内容，同时保留 WebDAV 自动备份互斥和补检覆盖。
 测试入口在受影响文件超过 60 个时自动回退全量，避免 Windows 命令行长度上限导致
@@ -41,10 +41,10 @@ WebView 登录 UA 由 `usesMobileWebUserAgent` 决定，动态色插件探测由
 | 指标 | 当前值 |
 | --- | ---: |
 | `lib` Dart 文件 | 168 |
-| `lib` 总行数 | 65,530 |
-| `test` 测试文件 | 197（全部为 `*_test.dart`，平铺） |
-| `test` 总行数 | 40,055 |
-| `test` 用例数 | 1052 |
+| `lib` 总行数 | 65,541 |
+| `test` 测试文件 | 198（全部为 `*_test.dart`，平铺） |
+| `test` 总行数 | 40,092 |
+| `test` 用例数 | 1054 |
 | `lib/ui` 平铺文件 | 62 |
 | `lib/core` | 61 个平铺文件 + 6 个子系统目录 |
 | 文案（`app_zh.arb`） | 1,812 行 |
@@ -61,10 +61,10 @@ WebView 登录 UA 由 `usesMobileWebUserAgent` 决定，动态色插件探测由
 
 ## 测试安全网
 
-- 当前用例总数为 1052；最近一次全量 1052 项全部通过；平台能力矩阵与 UI、
+- 当前用例总数为 1054；最近一次全量 1054 项全部通过；平台能力矩阵与 UI、
   扫码、分享、文件、下载、启动、系统分享、系统设置、更新交付、本地通知门控
-  通知设置可见性、缓存清理、设备信息分支、WebView 登录 UA 及动态色来源路由
-  已由全量测试覆盖；项目仍没有
+  通知设置可见性、缓存清理、设备信息分支、WebView 登录 UA、动态色来源路由
+  及鼠标滚动条路由已由全量测试覆盖；项目仍没有
   `integration_test` 和 golden test。
 - `tools\agent.cmd analyze|test` 默认走增量；全量结果必须按上表单独记录。
 - 增量推断出超过 60 个测试文件时，`agent.cmd test` 自动回退全量。

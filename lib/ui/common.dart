@@ -25,9 +25,12 @@ import '../l10n/l10n.dart';
 import 'app_scroll.dart';
 import 'app_icons.dart';
 import 'm3e.dart';
+import 'pointer_support.dart';
 import 'qr_painter.dart';
 import 'reduce_motion.dart';
 import 'scroll_tint.dart';
+
+export 'pointer_support.dart' show PointerSupport;
 
 /// 顶栏路由观察器：页面从二级页面路由返回时展开顶栏。
 ///
@@ -2522,15 +2525,6 @@ class IconBoxTap extends StatelessWidget {
       ),
     );
   }
-}
-
-/// 是否检测到鼠标。悬停事件只来自鼠标 / 触控板，触摸屏不会触发，
-/// 所以用它给桌面端交互（点图标块进入多选）做运行时开关：
-/// Android 插上鼠标也能用，纯触摸时行为保持不变。
-class PointerSupport {
-  PointerSupport._();
-
-  static final ValueNotifier<bool> hasMouse = ValueNotifier<bool>(false);
 }
 
 /// 全局检测鼠标：鼠标悬停 / 按下时把 [PointerSupport.hasMouse] 置真
