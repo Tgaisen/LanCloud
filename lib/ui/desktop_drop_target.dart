@@ -1,10 +1,11 @@
 import 'dart:async';
 
 import 'package:desktop_drop/desktop_drop.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../core/drag_drop.dart';
-import '../core/platform_support.dart';
+import '../core/platform_capabilities.dart';
 
 /// 桌面端窗口级拖拽：把文件从资源管理器拖进窗口。
 ///
@@ -14,14 +15,17 @@ import '../core/platform_support.dart';
 ///
 /// 注意：desktop_drop 在 Windows 上拿不到拖拽的文本内容（rawText 为 null），
 /// 所以桌面端只支持拖文件，不支持把链接文字拖进来（仍可用粘贴 / 剪贴板识别）。
-class DesktopDropTarget extends StatelessWidget {
+class DesktopDropTarget extends ConsumerWidget {
   const DesktopDropTarget({super.key, required this.child});
 
   final Widget child;
 
   @override
-  Widget build(BuildContext context) {
-    if (!PlatformSupport.isDesktop) return child;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final supportsDesktopDrop = ref
+        .watch(platformCapabilitiesProvider)
+        .supportsDesktopDrop;
+    if (!supportsDesktopDrop) return child;
     final hover = DragDropChannel.instance.hover;
     return DropTarget(
       onDragEntered: (_) => hover.value = const DropHover(files: 1),

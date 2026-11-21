@@ -1,3 +1,4 @@
+import 'package:desktop_drop/desktop_drop.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -8,8 +9,10 @@ import 'package:lancloud/core/data/app_db_provider.dart';
 import 'package:lancloud/core/drag_drop.dart';
 import 'package:lancloud/core/drive_state.dart';
 import 'package:lancloud/core/lanzou_link.dart';
+import 'package:lancloud/core/platform_capabilities.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/app_localizations_zh.dart';
+import 'package:lancloud/ui/desktop_drop_target.dart';
 import 'package:lancloud/ui/drop_actions.dart';
 import 'package:lancloud/ui/share_page.dart';
 
@@ -29,6 +32,12 @@ Widget _host(AppEnvironment environment, Widget home) => ProviderScope(
     home: home,
   ),
 );
+
+Widget _dropTargetHost(PlatformCapabilities capabilities, Widget child) =>
+    ProviderScope(
+      overrides: [platformCapabilitiesProvider.overrideWithValue(capabilities)],
+      child: MaterialApp(home: Scaffold(body: child)),
+    );
 
 void main() {
   test('parseAll：一段文本里提取多条链接、去重，密码按就近原则', () {
@@ -111,6 +120,30 @@ void main() {
     expect(const DropHover(texts: 2).hasText, isTrue);
     expect(DropHover.empty.isEmpty, isTrue);
     expect(const DropHover(files: 1), const DropHover(files: 1));
+  });
+
+  testWidgets('Windows 拖拽能力启用时挂载窗口 drop target', (tester) async {
+    await tester.pumpWidget(
+      _dropTargetHost(
+        PlatformCapabilities.windows,
+        const DesktopDropTarget(child: Text('拖拽内容')),
+      ),
+    );
+
+    expect(find.byType(DropTarget), findsOneWidget);
+    expect(find.text('拖拽内容'), findsOneWidget);
+  });
+
+  testWidgets('不支持拖拽的平台保持原始子组件', (tester) async {
+    await tester.pumpWidget(
+      _dropTargetHost(
+        PlatformCapabilities.ios,
+        const DesktopDropTarget(child: Text('拖拽内容')),
+      ),
+    );
+
+    expect(find.byType(DropTarget), findsNothing);
+    expect(find.text('拖拽内容'), findsOneWidget);
   });
 
   testWidgets('其它页面拖入链接：走「打开链接」弹窗', (tester) async {

@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/data/settings_store.dart';
 import 'package:lancloud/core/download_directory_settings_state.dart';
 import 'package:lancloud/core/download_path_service.dart';
+import 'package:lancloud/core/platform_capabilities.dart';
+import 'package:lancloud/core/saf_storage.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/delegates.dart';
 import 'package:lancloud/ui/download_directory_settings_tile.dart';
@@ -22,11 +24,14 @@ Future<void> _pump(
   WidgetTester tester, {
   required DownloadDirectorySettingsState state,
   required String defaultPath,
+  PlatformCapabilities capabilities = PlatformCapabilities.windows,
+  Future<SafDirectory?> Function(String? initialUri)? pickSafDirectory,
   Future<String?> Function()? pickDirectoryPath,
 }) async {
   final container = ProviderContainer(
     overrides: [
       downloadDirectorySettingsStateProvider.overrideWithValue(state),
+      platformCapabilitiesProvider.overrideWithValue(capabilities),
       downloadPathServiceProvider.overrideWithValue(
         _FakeDownloadPathService(defaultPath),
       ),
@@ -42,7 +47,7 @@ Future<void> _pump(
         locale: const Locale('zh'),
         home: Scaffold(
           body: DownloadDirectorySettingsTile(
-            android: false,
+            pickSafDirectory: pickSafDirectory,
             pickDirectoryPath: pickDirectoryPath,
           ),
         ),
@@ -76,6 +81,38 @@ void main() {
     expect(store.downloadDir, '/downloads/new');
     expect(state.revision.value, 1);
     expect(find.text('/downloads/new'), findsOneWidget);
+  });
+
+  testWidgets('SAF 能力启用时选择内容目录并保存授权', (tester) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final store = SettingsStore()
+      ..downloadDirTree = 'content://tree/old'
+      ..downloadDirLabel = 'Old';
+    final state = DownloadDirectorySettingsState(
+      store,
+      releaseSaf: (_) async {},
+    );
+    String? initialUri;
+    await _pump(
+      tester,
+      state: state,
+      defaultPath: '/default/LanCloud',
+      capabilities: PlatformCapabilities.android,
+      pickSafDirectory: (uri) async {
+        initialUri = uri;
+        return const SafDirectory(uri: 'content://tree/new', label: 'New');
+      },
+    );
+
+    await tester.tap(find.widgetWithText(ListTile, '下载目录'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('更改'));
+    await tester.pumpAndSettle();
+
+    expect(initialUri, 'content://tree/old');
+    expect(store.downloadDirTree, 'content://tree/new');
+    expect(store.downloadDirLabel, 'New');
+    expect(state.revision.value, 1);
   });
 
   testWidgets('恢复默认目录会释放旧 SAF 授权并局部刷新', (tester) async {

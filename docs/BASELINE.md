@@ -10,16 +10,18 @@
 | 命令 | 口径 | 结果 | 耗时 |
 | --- | --- | --- | --- |
 | `tools\agent.cmd analyze` | 全量 | No issues found | 约 26 s |
-| `tools\agent.cmd analyze` | 增量（文件分享入口能力语义，2 个 Dart 文件） | No issues found | 约 7 s |
-| `tools\agent.cmd test` | 全量（用例总数） | **1061 tests, all passed** | 约 2 min 17 s |
-| `tools\agent.cmd test` | 增量（文件分享入口能力语义，6 个测试文件） | **86 tests, all passed** | 约 51 s |
-| `tools\agent.cmd format` | 全量 | 369 files，0 changed | 约 3 s |
+| `tools\agent.cmd analyze` | 增量（目录与拖拽能力语义，2 个 Dart 文件） | No issues found | 约 6 s |
+| `tools\agent.cmd test` | 全量（上一功能基线 `ff3ea87`） | **1061 tests, all passed** | 约 2 min 17 s |
+| `tools\agent.cmd test` | 增量（目录与拖拽能力语义，2 个测试文件） | **17 tests, all passed** | 约 3 s |
+| `tools\agent.cmd format` | Batch 8A 最终状态 | 369 files，0 changed | 约 3 s |
 | `tools\agent.cmd build-android` | debug | `app-debug.apk` | 首次构建约 5 min 46 s |
 
 当前分析结果为 0 issue 是硬基线。出现红灯时，先判断是否为本次改动引入；
 不要把增量结果当成全量结论。Flutter 3.50.0 下全量分析已重跑并通过。
 
-当前用例总数为 1061；最近一次全量 1061 项全部通过。平台能力矩阵覆盖
+当前用例总数为 1064；最近一次全量仍是 `ff3ea87` 的 1061 项全部通过。
+Batch 8A 新增的 3 项目录与拖拽组件测试已通过增量验证，1064 项全量待人工补跑。
+平台能力矩阵覆盖
 Android、Windows、iOS、macOS、Linux 与未知 TargetPlatform 的 fail-closed
 行为，以及动态色来源、更新产物、只读 const 能力和 Riverpod 测试覆盖。设置页、
 网盘添加菜单、普通文件选择、系统另存为、二维码来源与分享收件箱已改为按具体
@@ -46,7 +48,7 @@ unsupported 三态显示。1061 项全量覆盖
 | `lib` 总行数 | 65,563 |
 | `test` 测试文件 | 198（全部为 `*_test.dart`，平铺） |
 | `test` 总行数 | 40,239 |
-| `test` 用例数 | 1061 |
+| `test` 用例数 | 1064（其中 3 项为 Batch 8A 新增，待全量复验） |
 | `lib/ui` 平铺文件 | 62 |
 | `lib/core` | 61 个平铺文件 + 6 个子系统目录 |
 | 文案（`app_zh.arb`） | 1,812 行 |
@@ -63,7 +65,8 @@ unsupported 三态显示。1061 项全量覆盖
 
 ## 测试安全网
 
-- 当前用例总数为 1061；最近一次全量 1061 项全部通过；平台能力矩阵与 UI、
+- 当前用例总数为 1064；最近一次全量仍是 `ff3ea87` 的 1061 项全部通过；
+  Batch 8A 新增 3 项已增量通过，1064 项全量待人工补跑；平台能力矩阵与 UI、
   扫码、分享、文件、下载、启动、系统分享、系统设置、更新交付、本地通知门控
   通知设置可见性、缓存清理、设备信息分支、WebView 登录 UA、动态色来源路由
   鼠标滚动条、自适应菜单、分栏宽度及文件分享入口语义已由全量测试覆盖；
