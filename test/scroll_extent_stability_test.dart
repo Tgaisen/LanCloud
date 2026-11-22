@@ -11,7 +11,7 @@ import 'package:lancloud/ui/settings_page.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
-import 'update_test_scope_test.dart';
+import 'support/app_test_scope.dart';
 
 /// 设置页各分组的条目高度差异很大（开关 / 二级入口 / 图标），
 /// 如果用 SliverList 懒布局，maxScrollExtent 会随滑动不断被"平均高度"修正，

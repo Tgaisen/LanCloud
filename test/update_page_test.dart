@@ -18,7 +18,7 @@ import 'package:lancloud/ui/update_page.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'update_test_scope_test.dart';
+import 'support/app_test_scope.dart';
 
 ReleaseInfo rel(String version, {String body = ''}) => ReleaseInfo(
   tag: 'v$version',

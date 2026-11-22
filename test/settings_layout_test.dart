@@ -15,7 +15,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
-import 'update_test_scope_test.dart';
+import 'support/app_test_scope.dart';
 
 /// 动态取色插件的通道：返回非空即表示设备支持动态取色。
 const _dynamicColorChannel = MethodChannel('io.material.plugins/dynamic_color');

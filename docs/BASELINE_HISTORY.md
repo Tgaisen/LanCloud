@@ -5,6 +5,20 @@
 >
 > 历史数字只代表对应提交时点，不应直接作为当前仓库状态。
 
+## 2026-11-22 测试结构整理
+
+- 将应用测试树与传输装配 helper 从 `_test.dart` 迁到 `test/support/`，
+  更新 29 个测试文件的导入；增量选择器现在在共享 helper 改动时同时选中
+  所有依赖测试，避免只运行 helper 文件本身。
+- 将 2575 行的 `transfers_selection_test.dart` 拆为 6 个功能文件，将
+  2131 行的 `property_sheet_quick_actions_test.dart` 拆为 6 个功能文件；
+  用例没有删除或合并。
+- 分享密码恢复测试的真实 sqlite 轮询上限由 5 秒调整为 30 秒，避免全量并行
+  负载把等待超时误报为业务失败。
+- 全量 `format` 为 383 files / 0 changed，全量分析 0 issue，
+  **1064 tests all passed**（约 2 min 48 s）；无参增量为
+  41 个测试文件 / 339 tests passed（约 1 min 8 s）。
+
 ## 2026-11-21 Dart 平台适配
 
 - 平台适配交接文档合并：将原交接文档中的分支与提交、1064 tests 基线、

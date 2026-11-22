@@ -29,7 +29,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
-import 'transfer_dependencies_test.dart'
+import 'support/transfer_test_support.dart'
     show buildTransferManagerForEnvironment;
 
 Widget _rootShellHost(

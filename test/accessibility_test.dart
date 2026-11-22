@@ -13,7 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
-import 'update_test_scope_test.dart';
+import 'support/app_test_scope.dart';
 
 Widget host(Widget child) {
   return MaterialApp(

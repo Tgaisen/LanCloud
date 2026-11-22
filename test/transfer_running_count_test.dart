@@ -4,7 +4,7 @@ import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/ui/transfer_running_count.dart';
 import 'package:material_ui/material_ui.dart';
 
-import 'transfer_dependencies_test.dart'
+import 'support/transfer_test_support.dart'
     show buildTransferManagerForEnvironment;
 
 void main() {

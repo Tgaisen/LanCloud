@@ -65,8 +65,10 @@ function Invoke-Flutter {
   }) -join "`n")
   $lines = ($flat -split "\r?\n") | Where-Object { $_ -match '\S' }
   if ($OnlyIssues) {
-    $hits = $lines | Where-Object { $_ -match '(error|warning|info)\s+\u2022' }
-    if ($hits) { $hits | Select-Object -First 40 | ForEach-Object { $_.Trim() } }
+    $hits = $lines | Where-Object {
+      $_ -match '(error|warning|info)\s+(?:\u2022|-)\s+'
+    }
+    if ($hits) { $hits | Select-Object -First 300 | ForEach-Object { $_.Trim() } }
   }
   if ($script:ExitCode -ne 0 -and $FailureDetails) {
     $lineArray = @($lines)
@@ -135,7 +137,7 @@ function Invoke-ProjectScript {
 }
 
 function Get-DirtyDart {
-  $raw = & git -C $root status --porcelain -- lib test 2>$null
+  $raw = & git -C $root status --porcelain --untracked-files=all -- lib test 2>$null
   $paths = foreach ($l in $raw) {
     if ($null -eq $l -or $l.Length -lt 4) { continue }
     $p = $l.Substring(3).Trim() -replace '^.* -> ', ''
@@ -154,7 +156,14 @@ function Resolve-Tests {
   foreach ($d in $Dirty) {
     if ($d -like 'test*') {
       $full = Join-Path $root $d
-      if (Test-Path $full) { $picked.Add($full) }
+      foreach ($t in $all) {
+        if ($picked -contains $t) { continue }
+        if ($t -eq $full) { $picked.Add($t); continue }
+        $needle = [System.IO.Path]::GetFileName($d)
+        if (Select-String -Path $t -Pattern $needle -SimpleMatch -Quiet -ErrorAction SilentlyContinue) {
+          $picked.Add($t)
+        }
+      }
       continue
     }
     if ($d -notlike 'lib*') { continue }

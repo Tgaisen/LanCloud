@@ -22,7 +22,7 @@ import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/drive_page.dart';
 import 'package:lancloud/ui/m3e.dart';
 
-import 'transfer_dependencies_test.dart'
+import 'support/transfer_test_support.dart'
     show buildTransferManagerForEnvironment;
 
 class _CleanupClient extends LanzouClient {
