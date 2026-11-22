@@ -176,6 +176,9 @@ class Icons {
   static const IconData timer_outlined = Symbols.timer;
   static const IconData translate = Symbols.translate;
   static const IconData tune = Symbols.tune;
+  static const IconData match_case = Symbols.match_case;
+  static const IconData match_word = Symbols.match_word;
+  static const IconData regular_expression = Symbols.regular_expression;
   static const IconData trackpad_input = Symbols.trackpad_input;
   static const IconData upload = Symbols.upload;
   static const IconData upload_file = Symbols.upload_file;

@@ -119,13 +119,39 @@ class AppDb {
   static final AppDb instance = AppDb._();
 
   Database? _db;
+  bool _deletedForReset = false;
 
   /// 收藏/最近使用发生变化时自增，供首页即时刷新。
   final ValueNotifier<int> revision = ValueNotifier(0);
 
   void _touch() => revision.value += 1;
 
-  Future<Database> get db async => _db ??= await _open();
+  Future<Database> get db async {
+    final existing = _db;
+    if (existing != null) return existing;
+    if (_deletedForReset) {
+      throw StateError('数据库已在删除所有数据时关闭');
+    }
+    final opened = await _open();
+    if (_deletedForReset) {
+      await opened.close();
+      throw StateError('数据库已在删除所有数据时关闭');
+    }
+    return _db = opened;
+  }
+
+  /// 关闭并删除整个本地数据库，供 Windows「删除所有数据」使用。
+  ///
+  /// 调用前必须先停止所有传输等数据库写入者；删除后若进程未退出，
+  /// 下一次 [db] 访问会重新创建空库。
+  Future<void> closeAndDelete() async {
+    _deletedForReset = true;
+    final database = _db;
+    _db = null;
+    if (database != null) await database.close();
+    final path = p.join(await _databaseDirectory(), 'lancloud.db');
+    await databaseFactory.deleteDatabase(path);
+  }
 
   Future<Database> _open() async {
     final path = p.join(await _databaseDirectory(), 'lancloud.db');
@@ -299,9 +325,15 @@ class AppDb {
         }
         if (oldVersion < 12) {
           // 待开始上传的副标题需要目录名称；旧记录无法可靠回填，保留空串。
-          await db.execute(
-            'ALTER TABLE transfers ADD COLUMN folder_name TEXT DEFAULT ""',
-          );
+          //
+          // 曾运行过高版本、随后被 v11 构建把 user_version 写回的数据库，
+          // 可能已经带有 folder_name 列；再次升级时只补缺失列。
+          final columns = await db.rawQuery('PRAGMA table_info(transfers)');
+          if (columns.every((row) => row['name'] != 'folder_name')) {
+            await db.execute(
+              'ALTER TABLE transfers ADD COLUMN folder_name TEXT DEFAULT ""',
+            );
+          }
         }
         if (oldVersion < 13) {
           // 首页最近使用菜单优先用本地缓存的分享链接判断收藏，避免每次

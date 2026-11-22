@@ -13,6 +13,7 @@ import 'list_home_settings_state.dart';
 import 'navigation_appearance_settings_state.dart';
 import 'navigation_state.dart';
 import 'notification_settings_state.dart';
+import 'search_settings_state.dart';
 import 'settings_state.dart';
 import 'system_motion.dart';
 import 'theme_settings_state.dart';
@@ -66,6 +67,9 @@ final class AppEnvironment {
   final DriveState drive;
   final AccountState accountState;
   final SettingsState settingsState;
+  late final SearchSettingsState searchSettings = SearchSettingsState(
+    settingsState.store,
+  );
   final AppRuntimeState runtimeState;
   final LanzouClientRegistry clientRegistry;
   late final UpdateSettingsState updateSettings;
@@ -109,5 +113,6 @@ final class AppEnvironment {
     navigation.dispose();
     drive.dispose();
     runtimeState.dispose();
+    searchSettings.dispose();
   }
 }

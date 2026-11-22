@@ -26,6 +26,7 @@ import 'navigation_state.dart';
 import 'notification_settings_state.dart';
 import 'notifications.dart';
 import 'notifications_provider.dart';
+import 'search_settings_state.dart';
 import 'settings_state.dart';
 import 'shared_downloads_gateway.dart';
 import 'theme_settings_state.dart';
@@ -98,6 +99,9 @@ final class AppCompositionRoot {
         accountStateProvider.overrideWithValue(environment.accountState),
         accountSessionProvider.overrideWithValue(environment.accountSession),
         settingsStateProvider.overrideWithValue(environment.settingsState),
+        searchSettingsStateProvider.overrideWithValue(
+          environment.searchSettings,
+        ),
         updateSettingsStateProvider.overrideWithValue(
           environment.updateSettings,
         ),

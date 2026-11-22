@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app.dart';
 import 'core/app_composition_root.dart';
+import 'core/app_data_reset.dart';
 import 'core/app_environment.dart';
 import 'core/app_log.dart';
 import 'core/app_startup.dart';
@@ -71,6 +72,12 @@ void _initializeForegroundService() {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // 上次“删除所有数据”若遇文件占用，会在日志和数据库初始化前补删。
+  try {
+    await PlatformAppDataResetService().completePendingReset();
+  } catch (_) {
+    // 清理失败不能阻止应用启动；保留重置标记，下次继续尝试。
+  }
   // 开源许可页要展示的素材许可证（第三方图标集等）：先登记再运行
   registerThirdPartyLicenses();
   // 导航栏沉浸：Android 15+（API 35）系统强制 edge-to-edge，14 及以下

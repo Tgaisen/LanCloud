@@ -8,12 +8,15 @@ import '../core/favorites/favorite_monitor.dart';
 import '../core/list_home_settings_state.dart';
 import '../core/navigation_appearance_settings_state.dart';
 import '../core/navigation_state.dart';
+import '../core/search_options.dart';
+import '../core/search_settings_state.dart';
 import 'download_mark.dart';
 import '../core/data/app_db.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
 import 'common.dart';
 import 'm3e.dart';
+import 'search_options_button.dart';
 import 'scroll_tint.dart';
 import 'share_file_sheet.dart';
 import 'share_page.dart';
@@ -73,6 +76,7 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
   late final NavigationState _navigation;
   late final DriveState _drive;
   late final ListHomeSettingsState _listHome;
+  late final SearchSettingsState _searchSettings;
 
   /// 拖拽判定用的探针：当前是否"可见地"处于收藏页（底栏 tab 或独立路由）。
   late final bool Function() _dropProbe = _visibleAsDropTarget;
@@ -106,6 +110,8 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
     _navigation = ref.read(navigationStateProvider);
     _drive = ref.read(driveStateProvider);
     _listHome = ref.read(listHomeSettingsStateProvider);
+    _searchSettings = ref.read(searchSettingsStateProvider)
+      ..options.addListener(_onSearchOptionsChanged);
     _sort = _listHome.favoritesSortMode;
     _sortAscending = _listHome.favoritesSortAscending;
     _db.revision.addListener(_load);
@@ -119,6 +125,7 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
     _db.revision.removeListener(_load);
     _drive.removeFavoritesProbe(_dropProbe);
     _navigation.activeTab.removeListener(_onActiveTabChanged);
+    _searchSettings.options.removeListener(_onSearchOptionsChanged);
     if (_selecting) {
       _navigation.setSelectionMode(false);
       _navigation.onRequestExitSelection = null;
@@ -171,14 +178,13 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
 
   /// 过滤 + 排序：默认按收藏时间新到旧（数据库本身就是这个顺序）。
   List<FavoriteItem> _visible(List<FavoriteItem> source) {
-    final query = _filter.trim().toLowerCase();
-    final items = query.isEmpty
+    final matcher = SearchQuery.parse(_filter, _searchSettings.options.value);
+    final items = matcher.isEmpty
         ? List<FavoriteItem>.of(source)
         : source
               .where(
                 (item) =>
-                    item.name.toLowerCase().contains(query) ||
-                    item.title.toLowerCase().contains(query),
+                    matcher.matches(item.name) || matcher.matches(item.title),
               )
               .toList();
     final direction = _sortAscending ? 1 : -1;
@@ -198,6 +204,10 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
         items.sort((a, b) => direction * a.createdAt.compareTo(b.createdAt));
     }
     return items;
+  }
+
+  void _onSearchOptionsChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _showSortMenu(BuildContext anchorContext) async {
@@ -1103,7 +1113,7 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
                       ),
                     ),
                     actions: _searching
-                        ? const <Widget>[]
+                        ? [SearchOptionsButton(settings: _searchSettings)]
                         : [
                             IconButton(
                               tooltip: l10n.search,

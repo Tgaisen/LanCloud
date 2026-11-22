@@ -9,6 +9,8 @@ import '../core/api/lanzou_client_registry.dart';
 import '../core/api/models.dart';
 import '../core/cache_page_settings_state.dart';
 import '../core/data/app_db_provider.dart';
+import '../core/search_options.dart';
+import '../core/search_settings_state.dart';
 import '../core/transfer/transfer_manager_provider.dart';
 import '../l10n/l10n.dart';
 import 'app_icons.dart';
@@ -16,6 +18,7 @@ import 'common.dart';
 import 'download_mark.dart';
 import 'm3e.dart';
 import 'reduce_motion.dart';
+import 'search_options_button.dart';
 import 'share_file_sheet.dart';
 import 'share_password_dialog.dart';
 
@@ -57,6 +60,7 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
   final Set<String> _selected = {};
   final TextEditingController _search = TextEditingController();
   String _filter = '';
+  late final SearchSettingsState _searchSettings;
 
   /// 长列表的入场动画：只播一次，之后滑进来的条目直接显示。
   late final AnimationController _enter = AnimationController(
@@ -90,6 +94,8 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
   @override
   void initState() {
     super.initState();
+    _searchSettings = ref.read(searchSettingsStateProvider)
+      ..options.addListener(_onSearchOptionsChanged);
     _scroll.addListener(_onScroll);
     if (widget.folder.hasMore) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -106,6 +112,7 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
   @override
   void dispose() {
     _pageLoadCancelToken?.cancel('页面已销毁');
+    _searchSettings.options.removeListener(_onSearchOptionsChanged);
     _scroll.dispose();
     _search.dispose();
     _enter.dispose();
@@ -117,6 +124,10 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
     if (_scroll.position.pixels >= _scroll.position.maxScrollExtent - 320) {
       _loadMore();
     }
+  }
+
+  void _onSearchOptionsChanged() {
+    if (mounted) setState(() {});
   }
 
   /// 加载下一页文件；没有分页上下文 / 搜索过滤 / 已到底时直接返回。
@@ -686,7 +697,7 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
       ),
     ),
     actions: _searching
-        ? const <Widget>[]
+        ? [SearchOptionsButton(settings: _searchSettings)]
         : [
             IconButton(
               tooltip: l10n.search,
@@ -732,15 +743,13 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final folder = widget.folder;
-    final query = _filter.trim().toLowerCase();
-    final folders = query.isEmpty
+    final matcher = SearchQuery.parse(_filter, _searchSettings.options.value);
+    final folders = matcher.isEmpty
         ? folder.folders
-        : folder.folders
-              .where((f) => f.name.toLowerCase().contains(query))
-              .toList();
-    final files = query.isEmpty
+        : folder.folders.where((f) => matcher.matches(f.name)).toList();
+    final files = matcher.isEmpty
         ? _files
-        : _files.where((f) => f.name.toLowerCase().contains(query)).toList();
+        : _files.where((f) => matcher.matches(f.name)).toList();
     final isEmpty =
         _files.isEmpty && folder.folders.isEmpty && folder.desc.isEmpty;
     // 分页尾部：正在拉下一页才转圈，全部加载完提示到底。
@@ -752,7 +761,7 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
     //
     // 还有下一页但当前没在加载时不要转圈：转圈只表示「正在加载」，
     // 否则内容不满一屏、自动补页又没跑起来时会一直停在转圈上。
-    final footer = query.isNotEmpty && (_hasMore || _loadingMore)
+    final footer = !matcher.isEmpty && (_hasMore || _loadingMore)
         ? _footerText(l10n.searchIncomplete)
         // 失败后的自动重试还在排队时继续显示转圈：这时候马上会再试一次，
         // 闪一下「重试」反而像是让用户去点
@@ -768,7 +777,7 @@ class _ShareFolderPageState extends ConsumerState<ShareFolderPage>
         ? (_loadFailed
               ? _footerRetry(() => _loadMore())
               : const SizedBox.shrink())
-        : (_files.isNotEmpty && query.isEmpty
+        : (_files.isNotEmpty && matcher.isEmpty
               ? _footerText(l10n.reachedEnd)
               : const SizedBox.shrink());
     return PopScope(

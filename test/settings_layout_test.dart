@@ -3,11 +3,13 @@ import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lancloud/core/app_environment.dart';
+import 'package:lancloud/core/app_data_reset.dart';
 import 'package:lancloud/core/data/account_store.dart';
 import 'package:lancloud/core/dynamic_color_support.dart';
 import 'package:lancloud/core/shared_downloads_storage.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/app_icons.dart';
+import 'package:lancloud/ui/clear_data_dialog.dart';
 import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/m3e.dart';
 import 'package:lancloud/ui/settings_page.dart';
@@ -16,6 +18,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lancloud/l10n/delegates.dart';
 
 import 'support/app_test_scope.dart';
+import 'support/transfer_test_support.dart'
+    show buildTransferManagerForEnvironment;
 
 /// 动态取色插件的通道：返回非空即表示设备支持动态取色。
 const _dynamicColorChannel = MethodChannel('io.material.plugins/dynamic_color');
@@ -43,17 +47,24 @@ void mockDynamicColorSupport({required bool supported}) {
 /// 打开某个设置大类页（设置拆成 5 页后，各用例只关心自己那一页）。
 Future<AppEnvironment> pumpSettings(
   WidgetTester tester,
-  SettingsCategory category,
-) async {
+  SettingsCategory category, {
+  AppDataResetService? appDataReset,
+}) async {
   SharedPreferences.setMockInitialValues({});
   final environment = AppEnvironment();
   addTearDown(environment.dispose);
+  final transfers = appDataReset == null
+      ? null
+      : buildTransferManagerForEnvironment(environment);
+  if (transfers != null) addTearDown(transfers.dispose);
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = const Size(420, 900);
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
     appEnvironmentTestTree(
       environment: environment,
+      appDataReset: appDataReset,
+      transferManager: transfers,
       // 主题跟随设置（同真实外壳）：切深色模式要真的变主题，
       // 「纯黑深色主题」这类跟随亮度的设置项才测得到
       child: ValueListenableBuilder<int>(
@@ -96,6 +107,41 @@ Future<void> scrollTo(WidgetTester tester, String text) async {
   await tester.scrollUntilVisible(find.text(text), 400, scrollable: scrollable);
   await tester.drag(scrollable, const Offset(0, 120));
   await tester.pumpAndSettle();
+}
+
+class _RecordingAppDataReset implements AppDataResetService {
+  int appDataDirectoryOpens = 0;
+  int logsDirectoryOpens = 0;
+  int resetCalls = 0;
+  int cancelCalls = 0;
+  int deleteCalls = 0;
+
+  @override
+  Future<bool> openAppDataDirectory() async {
+    appDataDirectoryOpens += 1;
+    return true;
+  }
+
+  @override
+  Future<bool> openLogsDirectory() async {
+    logsDirectoryOpens += 1;
+    return true;
+  }
+
+  @override
+  Future<bool> completePendingReset() async => true;
+
+  @override
+  Future<void> resetAndExit({
+    required Future<void> Function() cancelTransfers,
+    required Future<void> Function() deleteDatabase,
+  }) async {
+    resetCalls += 1;
+    cancelCalls += 1;
+    await cancelTransfers();
+    deleteCalls += 1;
+    await deleteDatabase();
+  }
 }
 
 void main() {
@@ -594,11 +640,172 @@ void main() {
 
       expect(find.text('注册表项目'), findsOneWidget);
       expect(find.text('为显示系统通知图标而创建的注册表项'), findsOneWidget);
+      expect(find.text('数据目录'), findsOneWidget);
+      expect(find.text('应用数据目录'), findsOneWidget);
+      expect(find.text('运行日志目录'), findsOneWidget);
+      expect(find.byIcon(Icons.open_in_new), findsNWidgets(2));
+      expect(find.text('危险区'), findsOneWidget);
+      expect(find.text('删除所有数据'), findsOneWidget);
+      final deleteRow = find
+          .byKey(const ValueKey('clear-data-delete-all'))
+          .first;
+      final deleteTitle = tester.widget<Text>(
+        find.descendant(of: deleteRow, matching: find.text('删除所有数据')),
+      );
+      expect(
+        deleteTitle.style?.color,
+        Theme.of(tester.element(deleteRow)).colorScheme.error,
+      );
+      expect(
+        find.descendant(
+          of: deleteRow,
+          matching: find.byIcon(Icons.delete_outline),
+        ),
+        findsNothing,
+      );
 
       await tester.tap(find.text('取消'));
       await tester.pumpAndSettle();
     } finally {
       debugDefaultTargetPlatformOverride = null;
     }
+  });
+
+  testWidgets('Windows 删除所有数据：二次确认后取消传输并删除数据库', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    try {
+      final reset = _RecordingAppDataReset();
+      await pumpSettings(
+        tester,
+        SettingsCategory.privacyData,
+        appDataReset: reset,
+      );
+      final entry = find.text('清除数据');
+      await tester.drag(
+        find.byType(SettingsCategoryPage),
+        const Offset(0, -1200),
+      );
+      await tester.pumpAndSettle();
+      await tester.drag(
+        find.byType(SettingsCategoryPage),
+        const Offset(0, -1200),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(entry);
+      await tester.pumpAndSettle();
+
+      final deleteRow = find
+          .byKey(const ValueKey('clear-data-delete-all'))
+          .first;
+      await tester.ensureVisible(deleteRow);
+      await tester.tap(deleteRow);
+      await tester.pumpAndSettle();
+
+      expect(find.text('删除所有数据？'), findsOneWidget);
+      expect(find.textContaining('清理完成后应用自动退出'), findsOneWidget);
+      expect(find.textContaining('确认后将全部取消'), findsNothing);
+      await tester.tap(find.text('取消'));
+      await tester.pumpAndSettle();
+      expect(reset.resetCalls, 0);
+
+      await tester.tap(entry);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(deleteRow);
+      await tester.tap(deleteRow);
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey('clear-data-delete-all-confirm')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(reset.resetCalls, 1);
+      expect(reset.cancelCalls, 1);
+      expect(reset.deleteCalls, 1);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  testWidgets('Windows 数据目录入口会分别打开应用数据与日志目录', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    try {
+      final reset = _RecordingAppDataReset();
+      await pumpSettings(
+        tester,
+        SettingsCategory.privacyData,
+        appDataReset: reset,
+      );
+      final entry = find.text('清除数据');
+      await tester.drag(
+        find.byType(SettingsCategoryPage),
+        const Offset(0, -1200),
+      );
+      await tester.pumpAndSettle();
+      await tester.drag(
+        find.byType(SettingsCategoryPage),
+        const Offset(0, -1200),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(entry);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('应用数据目录'));
+      await tester.tap(find.text('应用数据目录'));
+      await tester.pumpAndSettle();
+      expect(reset.appDataDirectoryOpens, 1);
+
+      await tester.tap(entry);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('运行日志目录'));
+      await tester.tap(find.text('运行日志目录'));
+      await tester.pumpAndSettle();
+      expect(reset.logsDirectoryOpens, 1);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  testWidgets('删除所有数据确认弹窗：有传输时额外提示全部取消', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('zh'),
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () => showDeleteAllDataConfirmation(
+                context,
+                hasActiveTransfers: true,
+              ),
+              child: const Text('打开确认'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('打开确认'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('确认后将全部取消'), findsOneWidget);
+    expect(find.textContaining('清理完成后应用自动退出'), findsOneWidget);
+    final dialog = tester.widget<AlertDialog>(find.byType(AlertDialog));
+    expect(dialog.icon, isNull);
+    final confirm = tester.widget<FilledButton>(
+      find.byKey(const ValueKey('clear-data-delete-all-confirm')),
+    );
+    final colorScheme = Theme.of(
+      tester.element(
+        find.byKey(const ValueKey('clear-data-delete-all-confirm')),
+      ),
+    ).colorScheme;
+    expect(
+      confirm.style?.backgroundColor?.resolve(<WidgetState>{}),
+      colorScheme.error,
+    );
+    expect(
+      confirm.style?.foregroundColor?.resolve(<WidgetState>{}),
+      colorScheme.onError,
+    );
   });
 }

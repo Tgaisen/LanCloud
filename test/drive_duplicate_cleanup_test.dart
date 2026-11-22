@@ -14,6 +14,7 @@ import 'package:lancloud/core/drive_state.dart';
 import 'package:lancloud/core/list_home_settings_state.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
+import 'package:lancloud/core/search_settings_state.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
@@ -94,6 +95,7 @@ List<Override> _overrides(
     app.environment.navigationAppearanceSettings,
   ),
   navigationStateProvider.overrideWithValue(app.environment.navigation),
+  searchSettingsStateProvider.overrideWithValue(app.environment.searchSettings),
 ];
 
 Future<_FakeApp> _pumpDrive(WidgetTester tester, LanzouClient client) async {

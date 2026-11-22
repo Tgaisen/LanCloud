@@ -18,6 +18,9 @@ void main() {
     expect(store.favoritesSortAscending, isFalse);
     expect(store.folderPickerSortMode, 'time');
     expect(store.folderPickerSortAscending, isTrue);
+    expect(store.searchMatchCase, isFalse);
+    expect(store.searchWholeWord, isFalse);
+    expect(store.searchRegex, isFalse);
   });
 
   test('收藏页与选择文件夹排序可独立持久化并进入设置备份', () async {
@@ -59,6 +62,26 @@ void main() {
     final store = SettingsStore();
     await store.load();
     expect(store.clipboardLinkPrompt, isTrue);
+  });
+
+  test('名称搜索增强选项可持久化并进入设置备份', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final store = SettingsStore();
+    await store.load();
+    await store.setSearchMatchCase(true);
+    await store.setSearchWholeWord(true);
+    await store.setSearchRegex(true);
+
+    final backup = store.toJson();
+    expect(backup['search_match_case'], isTrue);
+    expect(backup['search_whole_word'], isTrue);
+    expect(backup['search_regex'], isTrue);
+
+    final restored = SettingsStore();
+    await restored.applyJson(backup);
+    expect(restored.searchMatchCase, isTrue);
+    expect(restored.searchWholeWord, isTrue);
+    expect(restored.searchRegex, isTrue);
   });
 
   test('SAF 下载目录（tree URI + 展示名）可持久化与清除', () async {

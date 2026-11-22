@@ -47,6 +47,7 @@ final class AppStartup {
     final accountStore = environment.accountState.store;
     await _loadAccounts();
     await _loadSettings();
+    environment.searchSettings.refresh();
     _syncRuntimeSettings();
     await _bindDriveCache(accountStore.activeUid);
     environment.runtimeState.ready.value = true;
@@ -64,6 +65,7 @@ final class AppStartup {
       environment.runtimeState.secureStorageNeedsReauthentication.value = false;
     }
     await _loadSettings();
+    environment.searchSettings.refresh();
     await _normalizeDynamicColorAfterRestore();
     _syncRuntimeSettings();
     environment.themeSettings.refresh();

@@ -16,6 +16,8 @@ import 'package:lancloud/core/favorites/favorite_check_gateway.dart';
 import 'package:lancloud/core/list_home_settings_state.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
+import 'package:lancloud/core/search_options.dart';
+import 'package:lancloud/core/search_settings_state.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
@@ -51,6 +53,7 @@ Widget _host(
       environment.navigationAppearanceSettings,
     ),
     navigationStateProvider.overrideWithValue(environment.navigation),
+    searchSettingsStateProvider.overrideWithValue(environment.searchSettings),
     if (favoriteCheckGateway != null)
       favoriteCheckGatewayProvider.overrideWithValue(favoriteCheckGateway),
     if (transfers != null) transferManagerProvider.overrideWithValue(transfers),
@@ -316,6 +319,60 @@ void main() {
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
     expect(find.byType(FavoritesPage), findsNothing);
+  });
+
+  testWidgets('收藏搜索选项会立即应用大小写条件', (tester) async {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
+    await environment.settingsState.store.load();
+    environment.searchSettings.refresh();
+    final transfers = buildTransferManagerForEnvironment(environment);
+    addTearDown(transfers.dispose);
+    await tester.runAsync(() async {
+      await environment.db.addFavorite(
+        kind: 'shareFile',
+        name: 'REPORT.TXT',
+        ref: 'https://example.com/report-upper',
+      );
+      await environment.db.addFavorite(
+        kind: 'shareFile',
+        name: 'report.txt',
+        ref: 'https://example.com/report-lower',
+      );
+    });
+    addTearDown(() async {
+      await environment.db.removeFavorite('https://example.com/report-upper');
+      await environment.db.removeFavorite('https://example.com/report-lower');
+    });
+
+    await tester.pumpWidget(
+      _host(
+        environment,
+        const FavoritesPage(tabIndex: 3),
+        transfers: transfers,
+      ),
+    );
+    await _pumpUntilFound(tester, find.text('REPORT.TXT'));
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.tap(find.byTooltip('搜索'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.enterText(find.byType(TextField), 'REPORT');
+    await tester.pump();
+
+    expect(find.text('REPORT.TXT'), findsOneWidget);
+    expect(find.text('report.txt'), findsOneWidget);
+
+    await environment.searchSettings.setOptions(
+      const SearchOptions(matchCase: true),
+    );
+    await tester.pump();
+
+    expect(find.text('REPORT.TXT'), findsOneWidget);
+    expect(find.text('report.txt'), findsNothing);
   });
 
   testWidgets('收藏多选：分区可选择全部或仅选择已失效项', (tester) async {

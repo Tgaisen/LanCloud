@@ -10,6 +10,7 @@ import 'package:lancloud/core/cache_page_settings_state.dart';
 import 'package:lancloud/core/data/app_db_provider.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
+import 'package:lancloud/core/search_settings_state.dart';
 import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/delegates.dart';
@@ -77,6 +78,9 @@ Future<void> _pumpPage(
           environment.navigationAppearanceSettings,
         ),
         navigationStateProvider.overrideWithValue(environment.navigation),
+        searchSettingsStateProvider.overrideWithValue(
+          environment.searchSettings,
+        ),
       ],
       child: MaterialApp(
         localizationsDelegates: appLocalizationsDelegates,

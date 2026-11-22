@@ -18,6 +18,8 @@ import 'package:lancloud/core/drive_state.dart';
 import 'package:lancloud/core/list_home_settings_state.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
+import 'package:lancloud/core/search_options.dart';
+import 'package:lancloud/core/search_settings_state.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
@@ -25,6 +27,7 @@ import 'package:lancloud/l10n/app_localizations_zh.dart';
 import 'package:lancloud/l10n/delegates.dart';
 import 'package:lancloud/ui/app_icons.dart' as app_icons;
 import 'package:lancloud/ui/drive_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'support/transfer_test_support.dart'
     show buildTransferManagerForEnvironment;
@@ -290,6 +293,7 @@ List<Override> _overrides(
     app.environment.navigationAppearanceSettings,
   ),
   navigationStateProvider.overrideWithValue(app.environment.navigation),
+  searchSettingsStateProvider.overrideWithValue(app.environment.searchSettings),
 ];
 
 void main() {
@@ -341,6 +345,58 @@ void main() {
     expect(find.text('file0.zip'), findsOneWidget);
     expect(find.text(AppLocalizationsZh().searchIncomplete), findsOneWidget);
     expect(client.filePages, [1]);
+  });
+
+  testWidgets('网盘搜索选项菜单位于菜单按钮位置并立即应用条件', (tester) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final client = _IncompleteSearchClient();
+    final app = _FakeApp();
+    await app.environment.settingsState.store.load();
+    app.environment.searchSettings.refresh();
+    final manager = buildTransferManagerForEnvironment(app.environment);
+    addTearDown(app.dispose);
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(1200, 800);
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: _overrides(app, manager, client),
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const DrivePage(tabIndex: 0),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final menuRight = tester.getRect(find.byTooltip('菜单')).right;
+
+    await tester.tap(find.byTooltip('搜索'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('菜单'), findsNothing);
+    expect(find.byTooltip('搜索选项'), findsOneWidget);
+    expect(tester.getRect(find.byTooltip('搜索选项')).right, menuRight);
+
+    await tester.enterText(find.byType(TextField), 'FILE0');
+    await tester.pumpAndSettle();
+    expect(find.text('file0.zip'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('搜索选项'));
+    await tester.pumpAndSettle();
+    expect(find.text('区分大小写'), findsOneWidget);
+    expect(find.text('全字匹配'), findsOneWidget);
+    expect(find.text('正则表达式'), findsOneWidget);
+    await tester.tapAt(const Offset(4, 4));
+    await tester.pumpAndSettle();
+
+    await app.environment.searchSettings.setOptions(
+      const SearchOptions(matchCase: true),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('file0.zip'), findsNothing);
   });
 
   testWidgets('目录内容不满一屏时自动补页：进入即显示「已加载全部」', (tester) async {

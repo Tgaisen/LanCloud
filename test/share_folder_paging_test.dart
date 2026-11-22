@@ -12,6 +12,7 @@ import 'package:lancloud/core/cache_page_settings_state.dart';
 import 'package:lancloud/core/data/app_db_provider.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
+import 'package:lancloud/core/search_settings_state.dart';
 import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/app_localizations_zh.dart';
@@ -167,6 +168,9 @@ Future<void> pumpPage(
           environment.navigationAppearanceSettings,
         ),
         navigationStateProvider.overrideWithValue(environment.navigation),
+        searchSettingsStateProvider.overrideWithValue(
+          environment.searchSettings,
+        ),
       ],
       child: MaterialApp(
         localizationsDelegates: appLocalizationsDelegates,
@@ -588,6 +592,76 @@ void main() {
     await tester.pumpAndSettle();
     expect(client.calls, isEmpty);
     expect(find.text(AppLocalizationsZh().searchIncomplete), findsOneWidget);
+  });
+
+  testWidgets('分享文件夹：搜索模式提供 Tune 选项并立即应用大小写条件', (tester) async {
+    final l10n = AppLocalizationsZh();
+    final client = _FakeClient();
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
+    await pumpPage(
+      tester,
+      environment: environment,
+      client: client,
+      folder: FolderShareDetail(
+        name: '测试分享',
+        files: [
+          ShareFileItem(
+            name: 'REPORT.TXT',
+            time: '2026-10-01',
+            size: '1 M',
+            url: 'https://example.com/report-upper',
+          ),
+          ShareFileItem(
+            name: 'report.txt',
+            time: '2026-10-01',
+            size: '1 M',
+            url: 'https://example.com/report-lower',
+          ),
+        ],
+      ),
+    );
+
+    final appBar = find.byKey(const ValueKey('share-normal-appbar'));
+    final appBarMenu = find.descendant(
+      of: appBar,
+      matching: find.byTooltip(l10n.moreActions),
+    );
+    final appBarSearch = find.descendant(
+      of: appBar,
+      matching: find.byTooltip(l10n.search),
+    );
+    final appBarSearchOptions = find.descendant(
+      of: appBar,
+      matching: find.byTooltip(l10n.searchOptions),
+    );
+    final menuRight = tester.getRect(appBarMenu).right;
+    await tester.tap(appBarSearch);
+    await tester.pumpAndSettle();
+
+    expect(appBarMenu, findsNothing);
+    expect(appBarSearchOptions, findsOneWidget);
+    expect(tester.getRect(appBarSearchOptions).right, menuRight);
+
+    await tester.enterText(find.byType(TextField), 'REPORT');
+    await tester.pumpAndSettle();
+    expect(find.text('REPORT.TXT'), findsOneWidget);
+    expect(find.text('report.txt'), findsOneWidget);
+
+    await tester.tap(appBarSearchOptions);
+    await tester.pumpAndSettle();
+    expect(find.text(l10n.searchMatchCase), findsOneWidget);
+    expect(find.text(l10n.searchMatchWholeWord), findsOneWidget);
+    expect(find.text(l10n.searchUseRegex), findsOneWidget);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    environment.settingsState.store.searchMatchCase = true;
+    environment.searchSettings.refresh();
+    await tester.pump();
+
+    expect(find.text('REPORT.TXT'), findsOneWidget);
+    expect(find.text('report.txt'), findsNothing);
   });
 
   // 回归：内容不满一屏时要自动补页才能知道「到底了」。补页请求失败时
