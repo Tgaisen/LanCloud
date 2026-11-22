@@ -17,6 +17,7 @@
 | `tools\agent.cmd integration-test` | Windows `RootShell` smoke | **1 test, all passed** | 首次构建约 50 s |
 | `tools\agent.cmd format` | Golden / integration 基座加入后 | 385 files，0 changed | 约 3 s |
 | `tools\agent.cmd build-android` | debug，拆分 ABI | `app-<abi>-debug.apk` | 首次构建约 5 min 46 s |
+| `tools\agent.cmd build-android --release --universal` | release，含插件注册兼容步骤 | `app-release.apk`（74.8 MB） | 约 4 min 17 s |
 
 当前分析结果为 0 issue 是硬基线。出现红灯时，先判断是否为本次改动引入；
 不要把增量结果当成全量结论。Flutter 3.50.0 下全量分析已重跑并通过。
@@ -99,6 +100,9 @@ unsupported 三态显示；外部网页与文件打开动作已收敛到可注�
 - `transfers_selection_test.dart` 与 `property_sheet_quick_actions_test.dart`
   已按功能拆分；用例总数不变，但单文件范围更大程度地对齐页面行为。
 - `tools\agent.cmd` 已内置 `--no-pub`；需要安装依赖时使用 `agent.cmd pub-get`。
+  Android release 的唯一例外是构建前执行
+  `flutter build apk --config-only --release`，用于刷新 dev dependency 的 release
+  插件注册；实际 APK 构建仍使用 `--no-pub`。
 
 ## 构建与安装快照
 
@@ -128,6 +132,10 @@ unsupported 三态显示；外部网页与文件打开动作已收敛到可注�
 - Flutter 3.50.0 会把 app 的 `profile.applicationIdSuffix` 复制给插件库并导致
   Android 配置失败（上游 issue #196412）。当前通过 Variant API 设置 profile
   包名，保留独立安装能力；上游修复后应移除该兼容逻辑。
+- Flutter 3.50.0 的 `--no-pub` release 构建会排除 `integration_test` 原生模块，
+  却保留开发态插件注册（上游 issue #169336 / #163774）。当前在 CI、Agent 和发布
+  脚本中先执行不带 `--no-pub` 的 `build apk --config-only --release`，再执行
+  `--no-pub` 实际构建；升级 Flutter 后应验证并移除该兼容步骤。
 - Windows 构建出现 `flutter_inappwebview_windows` 的 CMake `CMP0175` 开发警告；
   当前不影响构建与启动，继续跟随插件升级观察。
 - Windows OverlayPortal/UIA 上游间歇风险继续观察，不误判为业务回归。

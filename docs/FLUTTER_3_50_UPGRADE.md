@@ -97,6 +97,36 @@ Library projects cannot set applicationIdSuffix
 - 不要只验证 debug 配置；这个问题最初会在 debug 任务配置阶段触发，但最终必须验证
   profile 产物。
 
+## Android release dev dependency 注册
+
+### 现象
+
+Flutter 3.50.0 在 `--no-pub` release 构建中会排除 `integration_test` 这类
+dev dependency 原生插件，但如果先执行过普通 `flutter pub get`，生成的
+`GeneratedPluginRegistrant.java` 仍可能包含：
+
+```text
+dev.flutter.plugins.integration_test.IntegrationTestPlugin
+```
+
+最终 `compileReleaseJavaWithJavac` 报 package 不存在。上游相关记录：
+[flutter/flutter#169336](https://github.com/flutter/flutter/issues/169336) 和
+[flutter/flutter#163774](https://github.com/flutter/flutter/issues/163774)。
+
+### 当前处理
+
+- 实际 APK 构建仍使用 `--no-pub`。
+- 构建前先执行 `flutter build apk --config-only --release`，且这一步**不能**
+  添加 `--no-pub`；否则 Flutter 会跳过 release 平台工具生成。
+- CI、`tools\agent.cmd build-android --release` 和 `package-android` 已内置该步骤。
+- `integration_test` 继续留在 `dev_dependencies`，不能为了绕过问题改成生产依赖。
+
+### 后续检查
+
+- Flutter 修复 `--no-pub` 的 release 插件注册后，删除三处 `--config-only` 兼容步骤。
+- 每次升级 Flutter 后至少跑一次 release APK 构建，并确认生成的
+  `GeneratedPluginRegistrant.java` 不含 `integration_test`。
+
 ## Material 组件栈规则
 
 `material_ui`、`m3e_core`、`cupertino_ui` 必须作为一组升级，但不再设置固定的

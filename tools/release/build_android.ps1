@@ -58,7 +58,8 @@ if (!$SkipPubGet) {
 if (!$SkipTests) {
   Info 'dart format 检查'
   Invoke-ReleaseTool -Exe $dart -Arguments @(
-    'format', '--output=none', '--set-exit-if-changed', 'lib', 'test', 'tool'
+    'format', '--output=none', '--set-exit-if-changed',
+    'lib', 'test', 'integration_test', 'tool'
   ) -DryRun:$DryRun
   Info 'flutter analyze'
   Invoke-ReleaseTool -Exe $flutter -Arguments @(
@@ -77,6 +78,14 @@ $commitHash = if ((Test-IsCI) -and $env:GITHUB_SHA) {
 }
 $buildInfo = if ($commitHash) { "$buildTime · $commitHash" } else { $buildTime }
 Info "构建信息：$buildInfo"
+
+# Flutter 3.50 的 --no-pub release 构建会排除 dev dependency 插件，
+# 却可能保留带 integration_test 的旧 registrant。配置阶段必须允许 Flutter
+# 执行平台工具生成；实际 APK 构建仍使用 --no-pub。
+Info 'flutter build apk --config-only --release'
+Invoke-ReleaseTool -Exe $flutter -Arguments @(
+  'build', 'apk', '--config-only', '--release'
+) -DryRun:$DryRun
 
 Info 'flutter build apk --release --split-per-abi'
 $buildArguments = @(

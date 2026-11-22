@@ -5,6 +5,7 @@
 #      命令字符串因此永久稳定 —— ~/.codex/rules/default.rules 里的免批准规则就按这些
 #      字符串整串匹配，命令一变就得加规则，规则文件会重新膨胀。
 #   2. 一律带 --no-pub：隐式 pub get 又慢又需要联网，沙箱内会直接失败。
+#      唯一例外是 Android release 的 --config-only 平台注册刷新；实际构建仍 no-pub。
 #   3. 动词是固定白名单。新增动词必须同时在 rules 文件里加一条，否则会弹批准。
 #   4. build-* 只做原始编译；package-* 生成可分发产物并写入 outputs。
 #
@@ -457,7 +458,18 @@ switch ($Verb) {
     $buildArgs = @(Resolve-AndroidBuildArgs -Arguments $rawArgs)
     $buildArgs = @(Add-BuildTimeArg -Arguments $buildArgs)
     $buildStartedAt = Get-Date
-    Invoke-Flutter -FlutterArgs (@('build', 'apk', '--no-pub') + $buildArgs) -Tail 20 -FailureDetails
+    # Flutter 3.50 的 --no-pub release 构建会排除 dev dependency 插件，
+    # 却可能保留带 integration_test 的旧 registrant。配置阶段必须允许 Flutter
+    # 执行平台工具生成；实际 APK 构建仍使用 --no-pub。
+    if ($buildArgs -contains '--release' -and !$showHelp) {
+      Invoke-Flutter `
+        -FlutterArgs @('build', 'apk', '--config-only', '--release') `
+        -Tail 12 `
+        -FailureDetails
+    }
+    if ($script:ExitCode -eq 0) {
+      Invoke-Flutter -FlutterArgs (@('build', 'apk', '--no-pub') + $buildArgs) -Tail 20 -FailureDetails
+    }
     if ($installAfterBuild -and !$showHelp -and $script:ExitCode -eq 0) {
       Install-AndroidApks -Source build -Since $buildStartedAt
     }
