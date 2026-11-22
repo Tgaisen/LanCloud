@@ -9,6 +9,8 @@ import 'package:lancloud/core/app_permissions.dart';
 import 'package:lancloud/core/notifications.dart';
 import 'package:lancloud/core/platform_capabilities.dart';
 import 'package:lancloud/core/platform_support.dart';
+import 'package:lancloud/core/saf_storage.dart';
+import 'package:lancloud/core/shared_downloads_storage.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/delegates.dart';
 import 'package:lancloud/main.dart';
@@ -77,6 +79,40 @@ void main() {
 
       expect(status.install, isNot(PermissionState.unknown));
       expect(status.battery, isNot(PermissionState.unknown));
+    }, skip: !Platform.isAndroid);
+  });
+
+  group('SharedDownloadsStorage', () {
+    testWidgets('should write and delete a file in public Downloads', (
+      _,
+    ) async {
+      SharedDownloadsStorage.resetCacheForTesting();
+      final directory = Directory.systemTemp.createTempSync(
+        'lancloud_shared_downloads_',
+      );
+      addTearDown(() {
+        try {
+          if (directory.existsSync()) {
+            directory.deleteSync(recursive: true);
+          }
+        } catch (_) {}
+      });
+      final fileName =
+          'lancloud_android_smoke_${DateTime.now().microsecondsSinceEpoch}.txt';
+      final source = File('${directory.path}/$fileName');
+      await source.writeAsString('LanCloud MediaStore smoke', flush: true);
+
+      expect(await SharedDownloadsStorage.isSupported(), isTrue);
+      expect(await SharedDownloadsStorage.defaultDirectoryPath(), isNotNull);
+
+      final saved = await SharedDownloadsStorage.save(
+        sourcePath: source.path,
+        fileName: fileName,
+        mime: 'text/plain',
+      );
+      expect(saved.uri, startsWith('content://'));
+      expect(saved.name, contains('lancloud_android_smoke_'));
+      expect(await SafStorage.deleteFile(saved.uri), isTrue);
     }, skip: !Platform.isAndroid);
   });
 

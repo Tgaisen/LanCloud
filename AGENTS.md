@@ -15,6 +15,7 @@
 | `docs/PROTOCOL.md` | 改 `core/api/` 的网络与协议逻辑 |
 | `docs/RIVERPOD_MIGRATION_ASSESSMENT.md` | 需要了解 Riverpod 迁移决策与历史；当前状态约定以本文件和架构文档为准 |
 | `docs/FLUTTER_3_50_UPGRADE.md` | 升级 Flutter、Material 组件栈、Android 构建工具或本地化生成器 |
+| `docs/DEVICE_ACCEPTANCE.md` | Android 系统选择器、运行时权限、深链或 Share Inbox 相关改动 |
 
 ## 工具链：唯一入口是 `tools\agent.cmd`
 

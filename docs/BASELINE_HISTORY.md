@@ -25,6 +25,12 @@
 - Android 原生 smoke 继续扩展到 4 项：新增安装/电池优化权限状态读取，以及
   前台服务按 reason 启停验证；API 37 下 4/4 通过。Windows integration 相应为
   3 项通过、4 项 Android-only 跳过。
+- Android 原生 smoke 扩展到 5 项：新增公共 Downloads 的 MediaStore 写入与
+  content URI 删除验证，API 37 下 5/5 通过。Windows integration 为 3 项通过、
+  5 项 Android-only 跳过。
+- SAF 目录选择器、运行时通知授权、Android 17 本地网络权限和深链/Share Inbox
+  保留为人工设备验收，清单记录在 `docs/DEVICE_ACCEPTANCE.md`，不伪装成稳定
+  自动化用例。
 
 ## 2026-11-22 测试分层第二批
 
