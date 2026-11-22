@@ -5,13 +5,16 @@
 #      命令字符串因此永久稳定 —— ~/.codex/rules/default.rules 里的免批准规则就按这些
 #      字符串整串匹配，命令一变就得加规则，规则文件会重新膨胀。
 #   2. 一律带 --no-pub：隐式 pub get 又慢又需要联网，沙箱内会直接失败。
+#      唯一例外是 Android release 的 --config-only 平台注册刷新；实际构建仍 no-pub。
 #   3. 动词是固定白名单。新增动词必须同时在 rules 文件里加一条，否则会弹批准。
 #   4. build-* 只做原始编译；package-* 生成可分发产物并写入 outputs。
 #
 # 用法：tools\agent.cmd <动词> [参数...]
 #   analyze [文件...]   有未提交改动就只分析这些文件，否则全量
 #   test    [文件...]   按未提交改动推断受影响的测试文件，推断不出则全量
-#   format  [目录...]   格式化 Dart 代码，默认 lib test tool
+#   golden-update      更新 test\golden 下的 golden 基准图
+#   integration-test [设备] 运行 integration_test，默认 Windows 桌面
+#   format  [目录...]   格式化 Dart 代码，默认 lib test integration_test tool
 #   gen-l10n           生成本地化代码
 #   pub-get             pub get（需要联网，会被沙箱拦，属预期）
 #   build-android [参数] 默认 --debug 并拆 ABI；--install 构建后安装，--universal 不拆
@@ -422,10 +425,23 @@ switch ($Verb) {
       Invoke-Flutter -FlutterArgs @('test', '--no-pub') -Tail 16 -FailureDetails
     }
   }
+  'golden-update' {
+    Invoke-Flutter `
+      -FlutterArgs @('test', '--no-pub', '--update-goldens', 'test\golden') `
+      -Tail 16 `
+      -FailureDetails
+  }
+  'integration-test' {
+    $device = if ($Rest.Count -gt 0) { $Rest[0] } else { 'windows' }
+    Invoke-Flutter `
+      -FlutterArgs @('test', '--no-pub', 'integration_test', '-d', $device) `
+      -Tail 20 `
+      -FailureDetails
+  }
   'format' {
     $targets = @($Rest | Where-Object { $_ })
     if ($targets.Count -eq 0) {
-      $targets = @('lib', 'test', 'tool')
+      $targets = @('lib', 'test', 'integration_test', 'tool')
     }
     Invoke-Dart -DartArgs (@('format') + $targets) -Tail 12
   }
@@ -442,7 +458,18 @@ switch ($Verb) {
     $buildArgs = @(Resolve-AndroidBuildArgs -Arguments $rawArgs)
     $buildArgs = @(Add-BuildTimeArg -Arguments $buildArgs)
     $buildStartedAt = Get-Date
-    Invoke-Flutter -FlutterArgs (@('build', 'apk', '--no-pub') + $buildArgs) -Tail 20 -FailureDetails
+    # Flutter 3.50 的 --no-pub release 构建会排除 dev dependency 插件，
+    # 却可能保留带 integration_test 的旧 registrant。配置阶段必须允许 Flutter
+    # 执行平台工具生成；实际 APK 构建仍使用 --no-pub。
+    if ($buildArgs -contains '--release' -and !$showHelp) {
+      Invoke-Flutter `
+        -FlutterArgs @('build', 'apk', '--config-only', '--release') `
+        -Tail 12 `
+        -FailureDetails
+    }
+    if ($script:ExitCode -eq 0) {
+      Invoke-Flutter -FlutterArgs (@('build', 'apk', '--no-pub') + $buildArgs) -Tail 20 -FailureDetails
+    }
     if ($installAfterBuild -and !$showHelp -and $script:ExitCode -eq 0) {
       Install-AndroidApks -Source build -Since $buildStartedAt
     }

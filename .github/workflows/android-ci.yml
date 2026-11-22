@@ -21,6 +21,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-android
+      - name: 预生成 release 插件注册
+        shell: bash
+        run: flutter build apk --config-only --release
       - name: 构建 Android release APK
         shell: bash
         run: |

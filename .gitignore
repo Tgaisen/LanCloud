@@ -37,6 +37,9 @@ migrate_working_dir/
 /refs/
 /coverage/
 
+# Golden 测试失败时在测试同级目录生成的基准/实际差异图
+/test/**/failures/
+
 # 历史本地发布说明不再入库；正式归档在 GitHub Releases
 /docs/releases/
 

@@ -27,7 +27,9 @@
 ```powershell
 C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd analyze   # 有未提交改动→只分析它们；否则全量
 C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd test      # 自动推断受影响的测试；推断不出→全量
-C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd format    # 格式化 lib / test / tool，与 CI 一致
+C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd golden-update   # 更新 Windows golden 基准图
+C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd integration-test # 默认在 Windows 跑 integration_test
+C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd format    # 格式化 lib / test / integration_test / tool，与 CI 一致
 C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd gen-l10n  # 改完 arb 之后
 C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd build-android  # 默认 debug + 拆 ABI
 C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd build-windows  # 默认 debug
@@ -36,7 +38,8 @@ C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd package-windows
 C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd help      # 全部动词
 ```
 
-其他动词：`pub-get`、`install-build-android`、`install-package-android`、
+其他动词：`pub-get`、`golden-update`、`integration-test`、
+`install-build-android`、`install-package-android`、
 `logcat`、`devices`，
 其余名字（`run`、`doctor`、`emulators`…）透传给 flutter。
 `build-*` 只做原始编译；`package-*` 才生成正式分发包并写入 `outputs/`。
@@ -57,8 +60,13 @@ GitHub Actions 的 `GITHUB_SHA` 注入。
   自检，并重启 Codex 生效。新增 `agent.cmd` 动词时必须同步加一条规则。
 - 一律 `--no-pub`（脚本已内置）：隐式 `pub get` 又慢又需要联网，沙箱里会直接失败。
   确实需要装依赖时用 `agent.cmd pub-get`。
+  **唯一例外**：Android release 构建前必须先运行
+  `flutter build apk --config-only --release`，此时不能加 `--no-pub`，否则 Flutter
+  3.50 不会重建 release 插件注册，`integration_test` dev 插件会令
+  `compileReleaseJavaWithJavac` 失败；实际 APK 构建仍坚持 `--no-pub`。
 - 改完 Dart 文件后先跑 `tools\agent.cmd format`，再跑 analyze / test。CI 使用
-  `dart format --output=none --set-exit-if-changed lib test tool`，未格式化会直接失败。
+  `dart format --output=none --set-exit-if-changed lib test integration_test tool`，
+  未格式化会直接失败。
 - 全量分析/测试留给人工兜底；你改完只需跑这两个无参命令（已是增量的）。
 - 改版本只能 `dart run tool/bump_version.dart`（同时改 `pubspec.yaml` 与
   `lib/core/app_info.dart`，有测试校验）。禁止手改这两个文件的版本行，
