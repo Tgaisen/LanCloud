@@ -250,6 +250,8 @@ User-Agent 也迁入 `AdvancedConnectionSettingsTile`；对应 setter 统一同�
 - 有平台目录：`android/`、`ios/`、`windows/`。当前产品范围只验收 Android 与
   Windows；`ios/` 目录继续保留，但暂无适配或验收计划，不作为 Riverpod
   迁移门禁。
+- Android 系统选择器、运行时权限、深链和 Share Inbox 的人工验收清单见
+  [DEVICE_ACCEPTANCE.md](./DEVICE_ACCEPTANCE.md)。
 - 产品能力先问 `PlatformCapabilities`；输入形态用 `PointerSupport` 与可用宽度；
   Android SDK、ABI、WebView 合成方式和具体原生通道实现继续留在
   `PlatformSupport` 或对应适配器内部。当前仍有 11 个 Dart 文件、19 处分支

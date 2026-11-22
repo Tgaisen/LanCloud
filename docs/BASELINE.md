@@ -11,21 +11,23 @@
 | --- | --- | --- | --- |
 | `tools\agent.cmd analyze` | 全量 | No issues found | 约 15–22 s |
 | `tools\agent.cmd analyze` | 增量（系统动作 adapter，2 个 Dart 文件） | No issues found | 约 1 s |
-| `tools\agent.cmd test` | 全量（Golden 基座加入前） | **1064 tests, all passed** | 约 2 min 48 s |
-| `tools\agent.cmd test` | 增量（Golden 基座，1 个测试文件） | **1 test, passed** | 约 14 s |
+| `tools\agent.cmd test` | 全量（Windows，含 Golden） | **1068 tests, all passed** | 约 2 min 27 s |
+| `tools\agent.cmd test` | 增量（Golden，2 个测试文件） | **4 tests, all passed** | 约 13 s |
 | `tools\agent.cmd test` | 增量（测试基座与拆分文件，41 个测试文件） | **339 tests, all passed** | 约 1 min 8 s |
-| `tools\agent.cmd integration-test` | Windows `RootShell` smoke | **1 test, all passed** | 首次构建约 50 s |
-| `tools\agent.cmd format` | Golden / integration 基座加入后 | 385 files，0 changed | 约 3 s |
+| `tools\agent.cmd coverage` | 全量 | **1068 tests, all passed**；生产代码行覆盖 79.7% | 约 4 min 11 s |
+| `tools\agent.cmd integration-test` | Windows；Android-only 用例跳过 | **3 tests passed, 5 skipped** | 缓存构建约 1 min 8 s |
+| `tools\agent.cmd integration-test emulator-5554` | Android 17 / API 37，逐文件验证 | `app_smoke` 2/2、备份 1/1、Android 原生 5/5 | 构建约 2–4 min |
+| `tools\agent.cmd format` | Android 原生 smoke 加入后 | 405 files，0 changed | 约 3 s |
 | `tools\agent.cmd build-android` | debug，拆分 ABI | `app-<abi>-debug.apk` | 首次构建约 5 min 46 s |
 | `tools\agent.cmd build-android --release --universal` | release，含插件注册兼容步骤 | `app-release.apk`（74.8 MB） | 约 4 min 17 s |
 
 当前分析结果为 0 issue 是硬基线。出现红灯时，先判断是否为本次改动引入；
 不要把增量结果当成全量结论。Flutter 3.50.0 下全量分析已重跑并通过。
 
-普通测试用例总数为 1065，新增 1 项 `SectionHeader` golden 测试并已在
-Windows 增量通过；1065 项全量尚未重跑，最近一次全量仍为 Golden 基座加入前
-的 1064 项全部通过。另有 1 项 Windows `RootShell` integration smoke，独立
-通过且不计入 1065。此前相比 `ff3ea87` 的 1061 项增加了 3 项目录与拖拽
+普通测试用例总数为 1068，包含 4 项 Windows golden 测试；最近一次 Windows
+全量为 1068 项全部通过。另有 3 项 Windows integration smoke，独立通过且
+不计入 1068。此前相比 `ff3ea87` 的 1061 项增加了目录与拖拽、Golden、
+首次启动 integration 等覆盖；
 组件测试；Batch 8B–10 均通过各自受影响测试。
 平台能力矩阵覆盖
 Android、Windows、iOS、macOS、Linux 与未知 TargetPlatform 的 fail-closed
@@ -43,7 +45,7 @@ WebView 登录 UA 由 `usesMobileWebUserAgent` 决定，动态色插件探测由
 `DynamicColorSource` 选择；全局滚动条和自适应菜单改由运行时鼠标信号控制。
 收藏与传输分栏标题改由实际宽度决定，文件分享入口按原生分享、桌面定位和
 unsupported 三态显示；外部网页与文件打开动作已收敛到可注入 gateway/adapter。
-此前的 1064 项全量覆盖
+全量覆盖
 收藏分栏高度稳定、批量消除更新标志、分享目录分页取消后保留当前页面与已加载
 内容，同时保留 WebDAV 自动备份互斥和补检覆盖。
 测试入口在受影响文件超过 60 个时自动回退全量，避免 Windows 命令行长度上限导致
@@ -55,10 +57,10 @@ unsupported 三态显示；外部网页与文件打开动作已收敛到可注�
 | --- | ---: |
 | `lib` Dart 文件 | 168 |
 | `lib` 总行数 | 65,563 |
-| `test` 测试文件 | 209 个 `*_test.dart` + 4 个 `test/support/*.dart` |
-| `test` 总行数 | 40,722（测试 39,876 + 辅助 846） |
-| `test` 用例数 | 1065 |
-| `integration_test` 文件 / 用例 | 1 / 1（Windows `RootShell` smoke） |
+| `test` 测试文件 | 224 个 `*_test.dart` + 7 个 `test/support/*.dart` |
+| `test` 总行数 | 41,087（测试 39,438 + 辅助 1,649） |
+| `test` 用例数 | 1068 |
+| `integration_test` 文件 / 用例 | 3 / 8（Windows 3 项 + Android 原生 5 项） |
 | `lib/ui` 平铺文件 | 62 |
 | `lib/core` | 61 个平铺文件 + 6 个子系统目录 |
 | 文案（`app_zh.arb`） | 1,812 行 |
@@ -76,22 +78,34 @@ unsupported 三态显示；外部网页与文件打开动作已收敛到可注�
 
 ## 测试安全网
 
-- 当前用例总数为 1065；本轮 Golden 增量 1 项通过，1065 项全量尚未重跑；
+- 当前用例总数为 1068；最近一次 Windows 全量 1068 项通过；
   平台能力矩阵与 UI、
   扫码、分享、文件、下载、启动、系统分享、系统设置、更新交付、本地通知门控
   通知设置可见性、缓存清理、设备信息分支、WebView 登录 UA、动态色来源路由
   鼠标滚动条、自适应菜单、分栏宽度及文件分享入口语义已由全量测试覆盖；
-  项目已有 1 个 Windows golden test 和 1 个 Windows integration smoke。
-- 首个 golden 固定 420×96、DPR 1、中文 locale、浅色主题和 `SectionHeader`
-  操作区布局；当前基准图在 Windows 生成，其他平台跳过，避免字体与光栅差异
-  造成跨平台误报。
+  项目已有 4 个 Windows golden test、3 个跨平台 integration smoke，以及
+  5 个 Android-only 原生插件 smoke。
+- Golden 覆盖 `SectionHeader` 与 `EmptyHint` 的明暗主题，固定 DPR 1 和中文
+  locale；当前基准图在 Windows 生成，其他平台跳过，避免字体与光栅差异造成
+  跨平台误报。
 - 更新 golden 基准图使用 `tools\agent.cmd golden-update`；普通
   `tools\agent.cmd test` 仍负责校验 golden。
 - `tools\agent.cmd integration-test` 无参数时在 `windows` 设备运行
   `integration_test`；其他平台或 Android 设备可在命令后显式指定设备 ID。
+- `tools\agent.cmd coverage` 默认跑全量并写入 `coverage/lcov.info`；该目录
+  已被 `.gitignore` 排除，不会进入提交。
 - Integration smoke 使用 `AppEnvironment` 和现有测试宿主，不运行生产
   `main()`；数据库目录强制指向用例创建的临时目录并在结束时清理。
-- CI 的 Windows 测试任务在 PR 中校验 golden，在 `main` push 时再运行
+- 最近一次覆盖率审计排除生成的 `app_localizations*.dart` 后，生产代码行覆盖
+  为 79.7%（`core` 79.8%、`ui` 80.8%）。该结果只作诊断，不作为硬门禁。
+- Android 17 / API 37 模拟器上，`app_smoke_test.dart` 2 项、
+  `backup_roundtrip_test.dart` 1 项和 `android_native_smoke_test.dart` 5 项
+  分别通过；目录级一次运行曾因模拟器掉线和 Gradle daemon 退出未完成，
+  不视为应用断言失败。
+- Android 原生 smoke 覆盖真实 WebView 插件加载、本地通知 channel 初始化、
+  安装/电池优化权限状态读取、公共 Downloads 写入/删除，以及前台服务按
+  reason 启停；不依赖外部网络或系统权限弹窗。
+- CI 的 Windows 测试任务在 PR 和 `main` push 中同时校验 golden 并运行
   integration smoke；Ubuntu 单元测试任务不执行 Windows golden 像素比较。
 - `tools\agent.cmd analyze|test` 默认走增量；全量结果必须按上表单独记录。
 - 增量推断出超过 60 个测试文件时，`agent.cmd test` 自动回退全量。
@@ -121,9 +135,19 @@ unsupported 三态显示；外部网页与文件打开动作已收敛到可注�
 - 首个 golden 使用 Flutter 测试默认 Ahem 字体，图中的文字会显示为方块；
   当前覆盖布局、尺寸、间距与颜色，不覆盖真实字形。若后续需要文字级视觉回归，
   应单独评估统一测试字体及其许可证。
-- Integration smoke 当前只覆盖 `RootShell` 的主页、传输与“我的”页切换，
-  尚未覆盖生产 `main()` 启动、真实账号网络请求、通知、前台服务、WebDAV
-  或文件选择等原生链路；这些仍依赖后续拆分和人工验收。
+- Integration smoke 当前覆盖 `RootShell` 主标签切换、首次启动条款门到
+  RootShell / 登录页，以及收藏夹的本地备份导出与恢复 round-trip；尚未覆盖
+  生产 `main()` 启动、真实账号网络请求、通知、前台服务、WebDAV 或文件选择
+  等原生链路。
+- Android-only smoke 当前覆盖 WebView、通知 channel、权限状态、MediaStore
+  Downloads 和前台服务；SAF 目录选择器、运行时授权弹窗和深链仍需后续设备级
+  UI 编排。
+- 上述设备 UI 流程已保留为
+  [DEVICE_ACCEPTANCE.md](DEVICE_ACCEPTANCE.md) 人工验收清单；发布 Android
+  版本前应完成并记录，不计入自动化用例数。
+- 覆盖率低值主要集中在 `web_page` / `web_login_page`、`main`、
+  `device_info` 和通知等 WebView / 原生通道适配层；这些路径仍依赖设备级
+  Android 测试或人工验收，不能只看行覆盖数字判断风险。
 - Android 构建仍对 `desktop_drop`、`m3e_core` 报 Kotlin Gradle Plugin（KGP）
   未来兼容警告；当前不影响构建，后续插件升级时需要处理。
 - Flutter 3.50.0 的 `gen-l10n` 仍生成旧 `flutter_localizations` delegates

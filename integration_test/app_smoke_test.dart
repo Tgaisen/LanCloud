@@ -13,9 +13,11 @@ import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/delegates.dart';
 import 'package:lancloud/ui/home_page.dart';
+import 'package:lancloud/ui/login_page.dart';
 import 'package:lancloud/ui/profile_page.dart';
 import 'package:lancloud/ui/transfers_page.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../test/support/app_test_scope.dart';
 import '../test/support/transfer_test_support.dart';
@@ -71,10 +73,63 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(HomePage), findsOneWidget);
     });
+
+    testWidgets('should accept first-run terms and reach login', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      tester.view
+        ..physicalSize = const Size(400, 800)
+        ..devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      final databaseDirectory = Directory.systemTemp.createTempSync(
+        'lancloud_integration_terms_db_',
+      );
+      AppDb.debugDatabaseDirectory = databaseDirectory.path;
+      addTearDown(() {
+        AppDb.debugDatabaseDirectory = null;
+        if (databaseDirectory.existsSync()) {
+          databaseDirectory.deleteSync(recursive: true);
+        }
+      });
+
+      final environment = AppEnvironment();
+      addTearDown(environment.dispose);
+      environment.runtimeState.ready.value = true;
+      final transfers = buildTransferManagerForEnvironment(environment);
+      addTearDown(transfers.dispose);
+
+      await tester.pumpWidget(
+        _shellHost(environment, transfers, home: const AgreementGate()),
+      );
+      await _pumpUntilFound(tester, find.byType(Checkbox));
+      await tester.pumpAndSettle();
+
+      final next = find.widgetWithText(FilledButton, '下一步');
+      expect(tester.widget<FilledButton>(next).onPressed, isNull);
+
+      await tester.tap(find.byType(Checkbox));
+      await tester.pumpAndSettle();
+      expect(tester.widget<FilledButton>(next).onPressed, isNotNull);
+
+      await tester.tap(next);
+      await tester.pumpAndSettle();
+      expect(find.byType(RootShell), findsOneWidget);
+      await _pumpUntilFound(tester, find.byType(LoginPage));
+      expect(find.byType(LoginPage), findsOneWidget);
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getInt('terms_accepted_version'), isNotNull);
+    });
   });
 }
 
-Widget _shellHost(AppEnvironment environment, TransferManager transfers) {
+Widget _shellHost(
+  AppEnvironment environment,
+  TransferManager transfers, {
+  Widget home = const RootShell(),
+}) {
   return appEnvironmentTestTree(
     environment: environment,
     transferManager: transfers,
@@ -95,7 +150,7 @@ Widget _shellHost(AppEnvironment environment, TransferManager transfers) {
         locale: const Locale('zh'),
         supportedLocales: AppLocalizations.supportedLocales,
         localizationsDelegates: appLocalizationsDelegates,
-        home: const RootShell(),
+        home: home,
       ),
     ),
   );

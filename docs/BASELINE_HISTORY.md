@@ -5,6 +5,46 @@
 >
 > 历史数字只代表对应提交时点，不应直接作为当前仓库状态。
 
+## 2026-11-22 覆盖率审计与备份 integration
+
+- 新增 `tools\agent.cmd coverage`，默认跑全量测试并生成
+  `coverage/lcov.info`；同步增加对应免批准规则与自检。
+- 覆盖率审计排除生成的本地化文件后，生产代码行覆盖为 79.7%：
+  `core` 79.8%、`ui` 80.8%。审计结果只作改进参考，不加入 CI 硬门禁。
+- 新增 Windows integration 备份 round-trip：真实 sqlite 收藏数据导出后删除，
+  再通过 `BackupService.restoreFromString` 恢复并校验内容。
+- 当前 Windows integration 为 2 个文件 / 3 项测试。覆盖率全量
+  **1068 tests all passed**（约 4 min 11 s），integration
+  **3 tests all passed**（约 1 min 15 s）。
+- Android 17 / API 37（`emulator-5554`）逐文件验证：`app_smoke_test.dart`
+  2/2 通过，`backup_roundtrip_test.dart` 1/1 通过。目录级运行出现过一次
+  模拟器 ADB 掉线和 Gradle daemon 退出，属于近期环境稳定性风险。
+- 新增 `android_native_smoke_test.dart`：在 API 37 模拟器上通过真实 WebView
+  插件加载本地 `data:` URL，并完成本地通知插件与 channel 初始化，2/2 通过。
+  Windows integration 为 3 项通过、2 项 Android-only 跳过。
+- Android 原生 smoke 继续扩展到 4 项：新增安装/电池优化权限状态读取，以及
+  前台服务按 reason 启停验证；API 37 下 4/4 通过。Windows integration 相应为
+  3 项通过、4 项 Android-only 跳过。
+- Android 原生 smoke 扩展到 5 项：新增公共 Downloads 的 MediaStore 写入与
+  content URI 删除验证，API 37 下 5/5 通过。Windows integration 为 3 项通过、
+  5 项 Android-only 跳过。
+- SAF 目录选择器、运行时通知授权、Android 17 本地网络权限和深链/Share Inbox
+  保留为人工设备验收，清单记录在 `docs/DEVICE_ACCEPTANCE.md`，不伪装成稳定
+  自动化用例。
+
+## 2026-11-22 测试分层第二批
+
+- 将 `profile_page_test.dart` 拆为 6 个文件、`transfer_pause_resume_test.dart`
+  拆为 6 个文件、`backup_page_test.dart` 拆为 5 个文件；原 63 项测试名称与
+  行为保持不变，共享 fake / harness 迁入 `test/support/`。
+- Golden 从 1 项扩展到 4 项：新增 `SectionHeader` 深色基准，以及
+  `EmptyHint` 明暗基准；`golden-update` 现在拒绝在非 Windows 平台执行。
+- Windows integration 从 1 项扩展到 2 项，新增“首次启动条款门 → RootShell
+  → 登录页”旅程；CI 在 PR 和 `main` push 中都运行 golden 与 integration。
+- 全量 `format` 为 403 files / 0 changed，全量分析 0 issue，
+  **1068 tests all passed**（约 2 min 27 s）；Windows integration
+  2 tests all passed（缓存构建约 48 s）。
+
 ## 2026-11-22 测试结构整理
 
 - 将应用测试树与传输装配 helper 从 `_test.dart` 迁到 `test/support/`，

@@ -15,6 +15,7 @@
 | `docs/PROTOCOL.md` | 改 `core/api/` 的网络与协议逻辑 |
 | `docs/RIVERPOD_MIGRATION_ASSESSMENT.md` | 需要了解 Riverpod 迁移决策与历史；当前状态约定以本文件和架构文档为准 |
 | `docs/FLUTTER_3_50_UPGRADE.md` | 升级 Flutter、Material 组件栈、Android 构建工具或本地化生成器 |
+| `docs/DEVICE_ACCEPTANCE.md` | Android 系统选择器、运行时权限、深链或 Share Inbox 相关改动 |
 
 ## 工具链：唯一入口是 `tools\agent.cmd`
 
@@ -27,6 +28,7 @@
 ```powershell
 C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd analyze   # 有未提交改动→只分析它们；否则全量
 C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd test      # 自动推断受影响的测试；推断不出→全量
+C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd coverage  # 全量测试并生成 coverage\lcov.info
 C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd golden-update   # 更新 Windows golden 基准图
 C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd integration-test # 默认在 Windows 跑 integration_test
 C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd format    # 格式化 lib / test / integration_test / tool，与 CI 一致
