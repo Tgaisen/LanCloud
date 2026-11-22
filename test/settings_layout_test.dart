@@ -7,7 +7,6 @@ import 'package:lancloud/core/app_data_reset.dart';
 import 'package:lancloud/core/data/account_store.dart';
 import 'package:lancloud/core/dynamic_color_support.dart';
 import 'package:lancloud/core/shared_downloads_storage.dart';
-import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/ui/app_icons.dart';
 import 'package:lancloud/ui/clear_data_dialog.dart';
