@@ -12,6 +12,7 @@
 # 用法：tools\agent.cmd <动词> [参数...]
 #   analyze [文件...]   有未提交改动就只分析这些文件，否则全量
 #   test    [文件...]   按未提交改动推断受影响的测试文件，推断不出则全量
+#   coverage [文件...] 跑覆盖率并生成 coverage\lcov.info；默认全量
 #   golden-update      更新 test\golden 下的 golden 基准图
 #   integration-test [设备] 运行 integration_test，默认 Windows 桌面
 #   format  [目录...]   格式化 Dart 代码，默认 lib test integration_test tool
@@ -424,6 +425,18 @@ switch ($Verb) {
       Write-Output '推断不出受影响的测试文件，跑全量（约 1.5 分钟）'
       Invoke-Flutter -FlutterArgs @('test', '--no-pub') -Tail 16 -FailureDetails
     }
+  }
+  'coverage' {
+    $targets = @($Rest | Where-Object { $_ })
+    if ($targets.Count -gt 0) {
+      Write-Output "生成 $($targets.Count) 个测试文件的覆盖率"
+    } else {
+      Write-Output '生成全量测试覆盖率'
+    }
+    Invoke-Flutter `
+      -FlutterArgs (@('test', '--no-pub', '--coverage') + $targets) `
+      -Tail 16 `
+      -FailureDetails
   }
   'golden-update' {
     if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) {

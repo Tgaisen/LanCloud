@@ -5,6 +5,21 @@
 >
 > 历史数字只代表对应提交时点，不应直接作为当前仓库状态。
 
+## 2026-11-22 覆盖率审计与备份 integration
+
+- 新增 `tools\agent.cmd coverage`，默认跑全量测试并生成
+  `coverage/lcov.info`；同步增加对应免批准规则与自检。
+- 覆盖率审计排除生成的本地化文件后，生产代码行覆盖为 79.7%：
+  `core` 79.8%、`ui` 80.8%。审计结果只作改进参考，不加入 CI 硬门禁。
+- 新增 Windows integration 备份 round-trip：真实 sqlite 收藏数据导出后删除，
+  再通过 `BackupService.restoreFromString` 恢复并校验内容。
+- 当前 Windows integration 为 2 个文件 / 3 项测试。覆盖率全量
+  **1068 tests all passed**（约 4 min 11 s），integration
+  **3 tests all passed**（约 1 min 15 s）。
+- Android 17 / API 37（`emulator-5554`）逐文件验证：`app_smoke_test.dart`
+  2/2 通过，`backup_roundtrip_test.dart` 1/1 通过。目录级运行出现过一次
+  模拟器 ADB 掉线和 Gradle daemon 退出，属于近期环境稳定性风险。
+
 ## 2026-11-22 测试分层第二批
 
 - 将 `profile_page_test.dart` 拆为 6 个文件、`transfer_pause_resume_test.dart`

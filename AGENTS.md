@@ -27,6 +27,7 @@
 ```powershell
 C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd analyze   # 有未提交改动→只分析它们；否则全量
 C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd test      # 自动推断受影响的测试；推断不出→全量
+C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd coverage  # 全量测试并生成 coverage\lcov.info
 C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd golden-update   # 更新 Windows golden 基准图
 C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd integration-test # 默认在 Windows 跑 integration_test
 C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd format    # 格式化 lib / test / integration_test / tool，与 CI 一致
