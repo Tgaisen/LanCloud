@@ -1546,6 +1546,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get search => '搜索';
 
   @override
+  String get searchOptions => '搜索选项';
+
+  @override
+  String get searchMatchCase => '区分大小写';
+
+  @override
+  String get searchMatchWholeWord => '全字匹配';
+
+  @override
+  String get searchUseRegex => '正则表达式';
+
+  @override
   String get menu => '菜单';
 
   @override

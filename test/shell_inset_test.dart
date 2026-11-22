@@ -16,6 +16,7 @@ import 'package:lancloud/core/language_clipboard_settings_state.dart';
 import 'package:lancloud/core/list_home_settings_state.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
+import 'package:lancloud/core/search_settings_state.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
@@ -58,6 +59,7 @@ Widget _rootShellHost(
       environment.navigationAppearanceSettings,
     ),
     navigationStateProvider.overrideWithValue(environment.navigation),
+    searchSettingsStateProvider.overrideWithValue(environment.searchSettings),
   ],
   child: MaterialApp(
     localizationsDelegates: appLocalizationsDelegates,
@@ -67,31 +69,32 @@ Widget _rootShellHost(
   ),
 );
 
-Widget _favoritesHost(AppEnvironment environment, TransferManager transfers) =>
-    ProviderScope(
-      overrides: [
-        accountStateProvider.overrideWithValue(environment.accountState),
-        lanzouClientRegistryProvider.overrideWithValue(
-          environment.clientRegistry,
-        ),
-        appDbProvider.overrideWithValue(environment.db),
-        driveStateProvider.overrideWithValue(environment.drive),
-        listHomeSettingsStateProvider.overrideWithValue(
-          environment.listHomeSettings,
-        ),
-        navigationAppearanceSettingsStateProvider.overrideWithValue(
-          environment.navigationAppearanceSettings,
-        ),
-        navigationStateProvider.overrideWithValue(environment.navigation),
-        transferManagerProvider.overrideWithValue(transfers),
-      ],
-      child: MaterialApp(
-        localizationsDelegates: appLocalizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        locale: const Locale('zh'),
-        home: const ScrollTint(child: FavoritesPage(tabIndex: 3)),
-      ),
-    );
+Widget _favoritesHost(
+  AppEnvironment environment,
+  TransferManager transfers,
+) => ProviderScope(
+  overrides: [
+    accountStateProvider.overrideWithValue(environment.accountState),
+    lanzouClientRegistryProvider.overrideWithValue(environment.clientRegistry),
+    appDbProvider.overrideWithValue(environment.db),
+    driveStateProvider.overrideWithValue(environment.drive),
+    listHomeSettingsStateProvider.overrideWithValue(
+      environment.listHomeSettings,
+    ),
+    navigationAppearanceSettingsStateProvider.overrideWithValue(
+      environment.navigationAppearanceSettings,
+    ),
+    navigationStateProvider.overrideWithValue(environment.navigation),
+    searchSettingsStateProvider.overrideWithValue(environment.searchSettings),
+    transferManagerProvider.overrideWithValue(transfers),
+  ],
+  child: MaterialApp(
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    locale: const Locale('zh'),
+    home: const ScrollTint(child: FavoritesPage(tabIndex: 3)),
+  ),
+);
 
 /// 外壳页面末尾要补的底栏留白 = 底栏总高度（含系统导航栏）。
 /// CustomScrollView 不会自动消费 MediaQuery 的 padding，各页都得显式补这一段，

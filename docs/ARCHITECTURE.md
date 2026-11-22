@@ -80,6 +80,7 @@
 | `SettingsState` | `core/settings_state.dart` | 唯一持有 `SettingsStore`；`settingsStoreProvider` 从它派生 |
 | `UpdateSettingsState` | `core/update/update_settings_state.dart` | 设置子组：更新通道与自动检查开关的读写边界，持久化仍由 `SettingsStore` 独占 |
 | `NotificationSettingsState` | `core/notification_settings_state.dart` | 设置子组：进度通知与完成通知开关 |
+| `SearchSettingsState` | `core/search_settings_state.dart` | 设置子组：网盘、收藏与分享文件夹共享的大小写 / 全字 / 正则搜索条件；`SearchQuery` 统一编译并执行名称匹配 |
 | `NavigationAppearanceSettingsState` | `core/navigation_appearance_settings_state.dart` | 设置子组：侧滑、顶/底栏隐藏、悬浮导航、转场与导航项显示开关 |
 | `ThemeSettingsState` | `core/theme_settings_state.dart` | 设置子组：主题模式/种子、OLED、动态取色与全局动画开关 |
 | `TransferConnectionSettingsState` | `core/transfer_connection_settings_state.dart` | 设置子组：请求间隔、并发数、API 域名、UA、上传路径、自动开始与上传前筛选 |

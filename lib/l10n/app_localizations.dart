@@ -2897,6 +2897,30 @@ abstract class AppLocalizations {
   /// **'搜索'**
   String get search;
 
+  /// No description provided for @searchOptions.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索选项'**
+  String get searchOptions;
+
+  /// No description provided for @searchMatchCase.
+  ///
+  /// In zh, this message translates to:
+  /// **'区分大小写'**
+  String get searchMatchCase;
+
+  /// No description provided for @searchMatchWholeWord.
+  ///
+  /// In zh, this message translates to:
+  /// **'全字匹配'**
+  String get searchMatchWholeWord;
+
+  /// No description provided for @searchUseRegex.
+  ///
+  /// In zh, this message translates to:
+  /// **'正则表达式'**
+  String get searchUseRegex;
+
   /// No description provided for @menu.
   ///
   /// In zh, this message translates to:

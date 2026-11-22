@@ -10,6 +10,7 @@ import 'package:lancloud/core/drive_state.dart';
 import 'package:lancloud/core/list_home_settings_state.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
+import 'package:lancloud/core/search_settings_state.dart';
 import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
 import 'package:lancloud/l10n/app_localizations.dart';
 import 'package:lancloud/l10n/delegates.dart';
@@ -59,6 +60,9 @@ void main() {
             environment.navigationAppearanceSettings,
           ),
           navigationStateProvider.overrideWithValue(environment.navigation),
+          searchSettingsStateProvider.overrideWithValue(
+            environment.searchSettings,
+          ),
         ],
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
@@ -94,6 +98,9 @@ void main() {
             environment.navigationAppearanceSettings,
           ),
           navigationStateProvider.overrideWithValue(environment.navigation),
+          searchSettingsStateProvider.overrideWithValue(
+            environment.searchSettings,
+          ),
         ],
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
@@ -126,6 +133,9 @@ void main() {
             environment.navigationAppearanceSettings,
           ),
           navigationStateProvider.overrideWithValue(environment.navigation),
+          searchSettingsStateProvider.overrideWithValue(
+            environment.searchSettings,
+          ),
         ],
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,

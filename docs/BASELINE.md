@@ -10,23 +10,24 @@
 | 命令 | 口径 | 结果 | 耗时 |
 | --- | --- | --- | --- |
 | `tools\agent.cmd analyze` | 全量 | No issues found | 约 15–22 s |
-| `tools\agent.cmd analyze` | 增量（系统动作 adapter，2 个 Dart 文件） | No issues found | 约 1 s |
-| `tools\agent.cmd test` | 全量（Windows，含 Golden） | **1068 tests, all passed** | 约 2 min 27 s |
+| `tools\agent.cmd analyze` | 增量（搜索选项，14 个 Dart 文件） | No issues found | 约 15 s |
+| `tools\agent.cmd test` | 全量（Windows，含 Golden） | **1082 tests, all passed** | 约 3 min 13 s |
 | `tools\agent.cmd test` | 增量（Golden，2 个测试文件） | **4 tests, all passed** | 约 13 s |
 | `tools\agent.cmd test` | 增量（测试基座与拆分文件，41 个测试文件） | **339 tests, all passed** | 约 1 min 8 s |
-| `tools\agent.cmd coverage` | 全量 | **1068 tests, all passed**；生产代码行覆盖 79.7% | 约 4 min 11 s |
+| `tools\agent.cmd coverage` | 全量（最近审计，未随本轮重跑） | **1068 tests, all passed**；生产代码行覆盖 79.7% | 约 4 min 11 s |
 | `tools\agent.cmd integration-test` | Windows；Android-only 用例跳过 | **3 tests passed, 5 skipped** | 缓存构建约 1 min 8 s |
 | `tools\agent.cmd integration-test emulator-5554` | Android 17 / API 37，逐文件验证 | `app_smoke` 2/2、备份 1/1、Android 原生 5/5 | 构建约 2–4 min |
-| `tools\agent.cmd format` | Android 原生 smoke 加入后 | 405 files，0 changed | 约 3 s |
+| `tools\agent.cmd format` | 搜索选项接入后 | 411 files，0 changed | 约 5 s |
 | `tools\agent.cmd build-android` | debug，拆分 ABI | `app-<abi>-debug.apk` | 首次构建约 5 min 46 s |
 | `tools\agent.cmd build-android --release --universal` | release，含插件注册兼容步骤 | `app-release.apk`（74.8 MB） | 约 4 min 17 s |
 
 当前分析结果为 0 issue 是硬基线。出现红灯时，先判断是否为本次改动引入；
 不要把增量结果当成全量结论。Flutter 3.50.0 下全量分析已重跑并通过。
 
-普通测试用例总数为 1068，包含 4 项 Windows golden 测试；最近一次 Windows
-全量为 1068 项全部通过。另有 3 项 Windows integration smoke，独立通过且
-不计入 1068。此前相比 `ff3ea87` 的 1061 项增加了目录与拖拽、Golden、
+普通测试用例总数为 1082，包含 4 项 Windows golden 测试；最近一次 Windows
+全量为 1082 项全部通过。另有 3 项 Windows integration smoke，独立通过且
+不计入 1082。本轮新增搜索增强条件解析、持久化、Tune 按钮与三个页面入口覆盖；
+此前相比 `ff3ea87` 的 1061 项增加了目录与拖拽、Golden、
 首次启动 integration 等覆盖；
 组件测试；Batch 8B–10 均通过各自受影响测试。
 平台能力矩阵覆盖
@@ -55,15 +56,15 @@ unsupported 三态显示；外部网页与文件打开动作已收敛到可注�
 
 | 指标 | 当前值 |
 | --- | ---: |
-| `lib` Dart 文件 | 168 |
-| `lib` 总行数 | 65,563 |
-| `test` 测试文件 | 224 个 `*_test.dart` + 7 个 `test/support/*.dart` |
-| `test` 总行数 | 41,087（测试 39,438 + 辅助 1,649） |
-| `test` 用例数 | 1068 |
+| `lib` Dart 文件 | 172 |
+| `lib` 总行数 | 66,094 |
+| `test` 测试文件 | 227 个 `*_test.dart` + 7 个 `test/support/*.dart` |
+| `test` 总行数 | 41,572（测试 39,917 + 辅助 1,655） |
+| `test` 用例数 | 1082 |
 | `integration_test` 文件 / 用例 | 3 / 8（Windows 3 项 + Android 原生 5 项） |
-| `lib/ui` 平铺文件 | 62 |
-| `lib/core` | 61 个平铺文件 + 6 个子系统目录 |
-| 文案（`app_zh.arb`） | 1,812 行 |
+| `lib/ui` 平铺文件 | 64 |
+| `lib/core` | 63 个平铺文件 + 6 个子系统目录 |
+| 文案（`app_zh.arb`） | 1,816 行 |
 
 ## 工具链与依赖
 
@@ -78,7 +79,7 @@ unsupported 三态显示；外部网页与文件打开动作已收敛到可注�
 
 ## 测试安全网
 
-- 当前用例总数为 1068；最近一次 Windows 全量 1068 项通过；
+- 当前用例总数为 1082；最近一次 Windows 全量 1082 项通过；
   平台能力矩阵与 UI、
   扫码、分享、文件、下载、启动、系统分享、系统设置、更新交付、本地通知门控
   通知设置可见性、缓存清理、设备信息分支、WebView 登录 UA、动态色来源路由

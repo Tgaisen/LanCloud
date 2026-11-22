@@ -16,6 +16,7 @@ import 'package:lancloud/core/list_home_settings_state.dart';
 import 'package:lancloud/core/navigation_appearance_settings_state.dart';
 import 'package:lancloud/core/navigation_state.dart';
 import 'package:lancloud/core/notification_settings_state.dart';
+import 'package:lancloud/core/search_settings_state.dart';
 import 'package:lancloud/core/theme_settings_state.dart';
 import 'package:lancloud/core/transfer/transfer_manager.dart';
 import 'package:lancloud/core/transfer/transfer_manager_provider.dart';
@@ -100,6 +101,7 @@ Widget appEnvironmentTestTree({
       notificationSettingsStateProvider.overrideWithValue(
         environment.notificationSettings,
       ),
+      searchSettingsStateProvider.overrideWithValue(environment.searchSettings),
       languageClipboardSettingsStateProvider.overrideWithValue(
         environment.languageClipboardSettings,
       ),

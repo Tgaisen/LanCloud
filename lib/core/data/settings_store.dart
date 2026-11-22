@@ -43,6 +43,9 @@ class SettingsStore {
   static const _keyFavoritesSortAscending = 'favorites_sort_ascending';
   static const _keyFolderPickerSortMode = 'folder_picker_sort_mode';
   static const _keyFolderPickerSortAscending = 'folder_picker_sort_ascending';
+  static const _keySearchMatchCase = 'search_match_case';
+  static const _keySearchWholeWord = 'search_whole_word';
+  static const _keySearchRegex = 'search_regex';
   static const _keyQuickExpanded = 'quick_access_expanded';
   static const _keyRecentsExpanded = 'recents_expanded';
   static const _keyRecentLimit = 'recent_limit';
@@ -128,6 +131,11 @@ class SettingsStore {
   /// 选择目标文件夹弹窗的排序，默认沿用服务端时间顺序。
   String folderPickerSortMode = 'time';
   bool folderPickerSortAscending = true;
+
+  /// 名称搜索增强条件，默认全部关闭。
+  bool searchMatchCase = false;
+  bool searchWholeWord = false;
+  bool searchRegex = false;
 
   /// 首页「快速访问」/「最近使用」是否展开（重启后保持）。
   bool quickExpanded = true;
@@ -227,6 +235,9 @@ class SettingsStore {
     folderPickerSortMode = prefs.getString(_keyFolderPickerSortMode) ?? 'time';
     folderPickerSortAscending =
         prefs.getBool(_keyFolderPickerSortAscending) ?? true;
+    searchMatchCase = prefs.getBool(_keySearchMatchCase) ?? false;
+    searchWholeWord = prefs.getBool(_keySearchWholeWord) ?? false;
+    searchRegex = prefs.getBool(_keySearchRegex) ?? false;
     quickExpanded = prefs.getBool(_keyQuickExpanded) ?? true;
     recentsExpanded = prefs.getBool(_keyRecentsExpanded) ?? true;
     recentLimit = prefs.getInt(_keyRecentLimit) ?? 50;
@@ -337,6 +348,24 @@ class SettingsStore {
     folderPickerSortAscending = value;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyFolderPickerSortAscending, value);
+  }
+
+  Future<void> setSearchMatchCase(bool value) async {
+    searchMatchCase = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keySearchMatchCase, value);
+  }
+
+  Future<void> setSearchWholeWord(bool value) async {
+    searchWholeWord = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keySearchWholeWord, value);
+  }
+
+  Future<void> setSearchRegex(bool value) async {
+    searchRegex = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keySearchRegex, value);
   }
 
   Future<void> setQuickExpanded(bool value) async {
@@ -593,6 +622,9 @@ class SettingsStore {
     _keyFavoritesSortAscending: favoritesSortAscending,
     _keyFolderPickerSortMode: folderPickerSortMode,
     _keyFolderPickerSortAscending: folderPickerSortAscending,
+    _keySearchMatchCase: searchMatchCase,
+    _keySearchWholeWord: searchWholeWord,
+    _keySearchRegex: searchRegex,
     _keyQuickExpanded: quickExpanded,
     _keyRecentsExpanded: recentsExpanded,
     _keyRecentLimit: recentLimit,

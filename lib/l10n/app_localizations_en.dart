@@ -1609,6 +1609,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get search => 'Search';
 
   @override
+  String get searchOptions => 'Search options';
+
+  @override
+  String get searchMatchCase => 'Match case';
+
+  @override
+  String get searchMatchWholeWord => 'Match whole word';
+
+  @override
+  String get searchUseRegex => 'Use regular expression';
+
+  @override
   String get menu => 'Menu';
 
   @override

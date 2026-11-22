@@ -25,6 +25,8 @@ import '../core/navigation_appearance_settings_state.dart';
 import '../core/navigation_state.dart';
 import '../core/platform_capabilities.dart';
 import '../core/rename_rule.dart';
+import '../core/search_options.dart';
+import '../core/search_settings_state.dart';
 import '../core/transfer/transfer_manager.dart';
 import '../core/transfer/transfer_manager_provider.dart';
 import '../l10n/l10n.dart';
@@ -35,6 +37,7 @@ import 'duplicate_file_sheet.dart';
 import 'm3e.dart';
 import 'reduce_motion.dart';
 import 'rename_dialogs.dart';
+import 'search_options_button.dart';
 import 'scroll_tint.dart';
 
 /// 目录进入动画：总时长要容纳常见一屏条目的错峰起点；单项动画与步长
@@ -356,6 +359,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
   late final CachePageSettingsState _cacheSettings;
   late final ListHomeSettingsState _listHome;
   late final NavigationAppearanceSettingsState _appearance;
+  late final SearchSettingsState _searchSettings;
 
   /// 传输管理器：注册与注销监听成对，dispose 时不能再读 context
   /// （元素正在卸载，InheritedWidget 查询会抛 "Null check operator used
@@ -403,6 +407,8 @@ class _DrivePageState extends ConsumerState<DrivePage>
     _cacheSettings = ref.read(cachePageSettingsStateProvider);
     _listHome = ref.read(listHomeSettingsStateProvider);
     _appearance = ref.read(navigationAppearanceSettingsStateProvider);
+    _searchSettings = ref.read(searchSettingsStateProvider)
+      ..options.addListener(_onSearchOptionsChanged);
     _sortMode = _listHome.sortMode;
     _sortAscending = _listHome.sortAscending;
     _transfers = ref.read(transferManagerProvider)
@@ -429,6 +435,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
     _keyboardUp.dispose();
     _drive.folderRequest.removeListener(_onDriveFolderRequest);
     _transfers.removeTaskListener(_onTaskDone);
+    _searchSettings.options.removeListener(_onSearchOptionsChanged);
     _listingCancelToken?.cancel();
     if (_isShellPage) {
       _navigation.onDriveBack = null;
@@ -1283,10 +1290,8 @@ class _DrivePageState extends ConsumerState<DrivePage>
   }
 
   List<LzFolder> get _visibleFolders {
-    final query = _filter.toLowerCase();
-    final list = _folders
-        .where((f) => query.isEmpty || f.name.toLowerCase().contains(query))
-        .toList();
+    final matcher = SearchQuery.parse(_filter, _searchSettings.options.value);
+    final list = _folders.where((f) => matcher.matches(f.name)).toList();
     return _sortLzFoldersForDisplay(
       list,
       sortMode: _sortMode,
@@ -1295,10 +1300,8 @@ class _DrivePageState extends ConsumerState<DrivePage>
   }
 
   List<LzFile> get _visibleFiles {
-    final query = _filter.toLowerCase();
-    var list = _files
-        .where((f) => query.isEmpty || f.name.toLowerCase().contains(query))
-        .toList();
+    final matcher = SearchQuery.parse(_filter, _searchSettings.options.value);
+    var list = _files.where((f) => matcher.matches(f.name)).toList();
     final direction = _sortAscending ? 1 : -1;
     switch (_sortMode) {
       case 'size':
@@ -1320,6 +1323,10 @@ class _DrivePageState extends ConsumerState<DrivePage>
         );
     }
     return list;
+  }
+
+  void _onSearchOptionsChanged() {
+    if (mounted) setState(() {});
   }
 
   void _enterSelection({String? fileId, String? folderId}) {
@@ -4055,7 +4062,7 @@ class _DrivePageState extends ConsumerState<DrivePage>
           ),
         ),
         actions: _searching
-            ? const <Widget>[]
+            ? [SearchOptionsButton(settings: _searchSettings)]
             : [
                 IconButton(
                   tooltip: context.l10n.search,

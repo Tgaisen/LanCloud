@@ -9,6 +9,7 @@ void main() {
 
     expect(environment.updateSettings.store, same(settings));
     expect(environment.notificationSettings.store, same(settings));
+    expect(environment.searchSettings.store, same(settings));
     expect(environment.navigationAppearanceSettings.store, same(settings));
     expect(environment.themeSettings.store, same(settings));
     expect(environment.transferConnectionSettings.store, same(settings));
