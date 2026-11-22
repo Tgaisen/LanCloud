@@ -19,6 +19,12 @@
 - Android 17 / API 37（`emulator-5554`）逐文件验证：`app_smoke_test.dart`
   2/2 通过，`backup_roundtrip_test.dart` 1/1 通过。目录级运行出现过一次
   模拟器 ADB 掉线和 Gradle daemon 退出，属于近期环境稳定性风险。
+- 新增 `android_native_smoke_test.dart`：在 API 37 模拟器上通过真实 WebView
+  插件加载本地 `data:` URL，并完成本地通知插件与 channel 初始化，2/2 通过。
+  Windows integration 为 3 项通过、2 项 Android-only 跳过。
+- Android 原生 smoke 继续扩展到 4 项：新增安装/电池优化权限状态读取，以及
+  前台服务按 reason 启停验证；API 37 下 4/4 通过。Windows integration 相应为
+  3 项通过、4 项 Android-only 跳过。
 
 ## 2026-11-22 测试分层第二批
 
