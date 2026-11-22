@@ -98,11 +98,28 @@ jobs:
             lib/l10n/app_localizations_en.dart \
             lib/l10n/app_localizations_zh.dart
       - name: 代码格式检查（dart format）
-        run: dart format --output=none --set-exit-if-changed lib test tool
+        run: dart format --output=none --set-exit-if-changed lib test integration_test tool
       - name: 静态分析（flutter analyze）
         run: flutter analyze --fatal-infos --no-pub
       - name: 单元测试（flutter test）
         run: flutter test --no-pub
+
+  windows_tests:
+    name: Windows Golden / Integration
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-windows
+      - name: Golden 测试（Windows 基准）
+        shell: pwsh
+        run: flutter test --no-pub test/golden
+      - name: Integration smoke（main）
+        if: github.event_name == 'push'
+        shell: pwsh
+        run: flutter test --no-pub integration_test -d windows
 
   android:
     name: Android release 构建检查
@@ -130,7 +147,7 @@ jobs:
 
   required:
     name: CI required
-    needs: [changes, check, android, windows, workflow_lint]
+    needs: [changes, check, windows_tests, android, windows, workflow_lint]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -144,6 +161,7 @@ jobs:
           fi
           for result in \
             "${{ needs.check.result }}" \
+            "${{ needs.windows_tests.result }}" \
             "${{ needs.android.result }}" \
             "${{ needs.windows.result }}" \
             "${{ needs.workflow_lint.result }}"; do

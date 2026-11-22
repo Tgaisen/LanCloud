@@ -11,7 +11,9 @@
 # 用法：tools\agent.cmd <动词> [参数...]
 #   analyze [文件...]   有未提交改动就只分析这些文件，否则全量
 #   test    [文件...]   按未提交改动推断受影响的测试文件，推断不出则全量
-#   format  [目录...]   格式化 Dart 代码，默认 lib test tool
+#   golden-update      更新 test\golden 下的 golden 基准图
+#   integration-test [设备] 运行 integration_test，默认 Windows 桌面
+#   format  [目录...]   格式化 Dart 代码，默认 lib test integration_test tool
 #   gen-l10n           生成本地化代码
 #   pub-get             pub get（需要联网，会被沙箱拦，属预期）
 #   build-android [参数] 默认 --debug 并拆 ABI；--install 构建后安装，--universal 不拆
@@ -422,10 +424,23 @@ switch ($Verb) {
       Invoke-Flutter -FlutterArgs @('test', '--no-pub') -Tail 16 -FailureDetails
     }
   }
+  'golden-update' {
+    Invoke-Flutter `
+      -FlutterArgs @('test', '--no-pub', '--update-goldens', 'test\golden') `
+      -Tail 16 `
+      -FailureDetails
+  }
+  'integration-test' {
+    $device = if ($Rest.Count -gt 0) { $Rest[0] } else { 'windows' }
+    Invoke-Flutter `
+      -FlutterArgs @('test', '--no-pub', 'integration_test', '-d', $device) `
+      -Tail 20 `
+      -FailureDetails
+  }
   'format' {
     $targets = @($Rest | Where-Object { $_ })
     if ($targets.Count -eq 0) {
-      $targets = @('lib', 'test', 'tool')
+      $targets = @('lib', 'test', 'integration_test', 'tool')
     }
     Invoke-Dart -DartArgs (@('format') + $targets) -Tail 12
   }

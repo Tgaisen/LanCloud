@@ -27,7 +27,9 @@
 ```powershell
 C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd analyze   # 有未提交改动→只分析它们；否则全量
 C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd test      # 自动推断受影响的测试；推断不出→全量
-C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd format    # 格式化 lib / test / tool，与 CI 一致
+C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd golden-update   # 更新 Windows golden 基准图
+C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd integration-test # 默认在 Windows 跑 integration_test
+C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd format    # 格式化 lib / test / integration_test / tool，与 CI 一致
 C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd gen-l10n  # 改完 arb 之后
 C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd build-android  # 默认 debug + 拆 ABI
 C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd build-windows  # 默认 debug
@@ -36,7 +38,8 @@ C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd package-windows
 C:\Users\Potato\Desktop\LanCloud\tools\agent.cmd help      # 全部动词
 ```
 
-其他动词：`pub-get`、`install-build-android`、`install-package-android`、
+其他动词：`pub-get`、`golden-update`、`integration-test`、
+`install-build-android`、`install-package-android`、
 `logcat`、`devices`，
 其余名字（`run`、`doctor`、`emulators`…）透传给 flutter。
 `build-*` 只做原始编译；`package-*` 才生成正式分发包并写入 `outputs/`。
