@@ -426,10 +426,15 @@ switch ($Verb) {
     }
   }
   'golden-update' {
-    Invoke-Flutter `
-      -FlutterArgs @('test', '--no-pub', '--update-goldens', 'test\golden') `
-      -Tail 16 `
-      -FailureDetails
+    if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) {
+      Write-Output 'Golden 基准图由 Windows 生成；golden-update 仅支持 Windows。'
+      $script:ExitCode = 1
+    } else {
+      Invoke-Flutter `
+        -FlutterArgs @('test', '--no-pub', '--update-goldens', 'test\golden') `
+        -Tail 16 `
+        -FailureDetails
+    }
   }
   'integration-test' {
     $device = if ($Rest.Count -gt 0) { $Rest[0] } else { 'windows' }

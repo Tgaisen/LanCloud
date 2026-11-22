@@ -116,8 +116,7 @@ jobs:
       - name: Golden 测试（Windows 基准）
         shell: pwsh
         run: flutter test --no-pub test/golden
-      - name: Integration smoke（main）
-        if: github.event_name == 'push'
+      - name: Integration smoke
         shell: pwsh
         run: flutter test --no-pub integration_test -d windows
 

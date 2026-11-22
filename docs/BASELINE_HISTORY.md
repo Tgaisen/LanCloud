@@ -5,6 +5,19 @@
 >
 > 历史数字只代表对应提交时点，不应直接作为当前仓库状态。
 
+## 2026-11-22 测试分层第二批
+
+- 将 `profile_page_test.dart` 拆为 6 个文件、`transfer_pause_resume_test.dart`
+  拆为 6 个文件、`backup_page_test.dart` 拆为 5 个文件；原 63 项测试名称与
+  行为保持不变，共享 fake / harness 迁入 `test/support/`。
+- Golden 从 1 项扩展到 4 项：新增 `SectionHeader` 深色基准，以及
+  `EmptyHint` 明暗基准；`golden-update` 现在拒绝在非 Windows 平台执行。
+- Windows integration 从 1 项扩展到 2 项，新增“首次启动条款门 → RootShell
+  → 登录页”旅程；CI 在 PR 和 `main` push 中都运行 golden 与 integration。
+- 全量 `format` 为 403 files / 0 changed，全量分析 0 issue，
+  **1068 tests all passed**（约 2 min 27 s）；Windows integration
+  2 tests all passed（缓存构建约 48 s）。
+
 ## 2026-11-22 测试结构整理
 
 - 将应用测试树与传输装配 helper 从 `_test.dart` 迁到 `test/support/`，
