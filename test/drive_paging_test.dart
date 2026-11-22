@@ -26,7 +26,7 @@ import 'package:lancloud/l10n/delegates.dart';
 import 'package:lancloud/ui/app_icons.dart' as app_icons;
 import 'package:lancloud/ui/drive_page.dart';
 
-import 'transfer_dependencies_test.dart'
+import 'support/transfer_test_support.dart'
     show buildTransferManagerForEnvironment;
 
 /// 第一页只有几条、且服务端说「还有下一页」的目录：真机上必须自动补一页，

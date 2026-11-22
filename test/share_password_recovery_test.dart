@@ -24,8 +24,12 @@ import 'package:lancloud/ui/favorites_page.dart';
 import 'package:lancloud/ui/m3e.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-import 'transfer_dependencies_test.dart'
+import 'support/transfer_test_support.dart'
     show buildTransferManagerForEnvironment;
+
+/// 真实 sqlite 的回包不归 fake-async 时钟控制。全量测试并行时机器可能短暂
+/// 繁忙，给真实异步留出足够窗口，避免把 CI 负载误报为业务失败。
+const _realAsyncTimeout = Duration(seconds: 30);
 
 /// 收藏里存的是旧提取码：只有新提取码能解析成功。
 class _StalePwdClient extends LanzouClient {
@@ -178,7 +182,7 @@ Future<void> _pumpFavorites(
 /// 交替推进真实事件循环与帧：sqflite 的回包是真实异步，单靠 pump 不会到。
 Future<void> _until(WidgetTester tester, Finder finder) async {
   final stopwatch = Stopwatch()..start();
-  while (stopwatch.elapsed < const Duration(seconds: 5)) {
+  while (stopwatch.elapsed < _realAsyncTimeout) {
     if (finder.evaluate().isNotEmpty) return;
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 10)),
@@ -190,7 +194,7 @@ Future<void> _until(WidgetTester tester, Finder finder) async {
 
 Future<void> _untilGone(WidgetTester tester, Finder finder) async {
   final stopwatch = Stopwatch()..start();
-  while (stopwatch.elapsed < const Duration(seconds: 5)) {
+  while (stopwatch.elapsed < _realAsyncTimeout) {
     if (finder.evaluate().isEmpty) return;
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 10)),
@@ -207,17 +211,16 @@ Future<FavoriteItem> _eventuallyFavorite(
   String ref, {
   required bool Function(FavoriteItem item) done,
 }) async {
-  late FavoriteItem last;
   final stopwatch = Stopwatch()..start();
-  while (stopwatch.elapsed < const Duration(seconds: 5)) {
+  while (stopwatch.elapsed < _realAsyncTimeout) {
     final all = await tester.runAsync(() => app.db.favorites());
-    last = all!.firstWhere((f) => f.ref == ref);
-    if (done(last)) return last;
+    final item = all!.firstWhere((f) => f.ref == ref);
+    if (done(item)) return item;
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 10)),
     );
   }
-  return last;
+  fail('等待收藏写回超时：$ref');
 }
 
 void main() {

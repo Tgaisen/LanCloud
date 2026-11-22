@@ -13,7 +13,7 @@ import 'package:lancloud/core/update/release_info.dart';
 import 'package:lancloud/core/update/update_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'update_test_scope_test.dart';
+import 'support/app_test_scope.dart';
 
 /// 构造一条 Release 记录：tag 带 v 前缀（与发布脚本一致），预发布标记按
 /// 版本名推导（与 tools/release/publish.ps1 的预发布判定同一口径）。

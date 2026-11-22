@@ -1,6 +1,6 @@
 # 回归基线
 
-> 当前快照日期：2026-11-21。
+> 当前快照日期：2026-11-22。
 >
 > 本文件只记录当前仓库状态；逐次迁移和增量测试历史见
 > [BASELINE_HISTORY.md](BASELINE_HISTORY.md)。
@@ -9,11 +9,11 @@
 
 | 命令 | 口径 | 结果 | 耗时 |
 | --- | --- | --- | --- |
-| `tools\agent.cmd analyze` | 全量 | No issues found | 约 25 s |
+| `tools\agent.cmd analyze` | 全量 | No issues found | 约 14 s |
 | `tools\agent.cmd analyze` | 增量（系统动作 adapter，2 个 Dart 文件） | No issues found | 约 1 s |
-| `tools\agent.cmd test` | 全量（用例总数） | **1064 tests, all passed** | 约 2 min 31 s |
-| `tools\agent.cmd test` | 增量（系统动作 adapter，2 个测试文件） | **5 tests, all passed** | 约 1 s |
-| `tools\agent.cmd format` | Batch 10 最终状态 | 369 files，0 changed | 约 3 s |
+| `tools\agent.cmd test` | 全量（用例总数） | **1064 tests, all passed** | 约 2 min 48 s |
+| `tools\agent.cmd test` | 增量（测试基座与拆分文件，41 个测试文件） | **339 tests, all passed** | 约 1 min 8 s |
+| `tools\agent.cmd format` | 测试结构整理后 | 383 files，0 changed | 约 3 s |
 | `tools\agent.cmd build-android` | debug，拆分 ABI | `app-<abi>-debug.apk` | 首次构建约 5 min 46 s |
 
 当前分析结果为 0 issue 是硬基线。出现红灯时，先判断是否为本次改动引入；
@@ -49,8 +49,8 @@ unsupported 三态显示；外部网页与文件打开动作已收敛到可注�
 | --- | ---: |
 | `lib` Dart 文件 | 168 |
 | `lib` 总行数 | 65,563 |
-| `test` 测试文件 | 198（全部为 `*_test.dart`，平铺） |
-| `test` 总行数 | 40,239 |
+| `test` 测试文件 | 208 个 `*_test.dart` + 4 个 `test/support/*.dart` |
+| `test` 总行数 | 40,652（测试 39,806 + 辅助 846） |
 | `test` 用例数 | 1064 |
 | `lib/ui` 平铺文件 | 62 |
 | `lib/core` | 61 个平铺文件 + 6 个子系统目录 |
@@ -76,6 +76,10 @@ unsupported 三态显示；外部网页与文件打开动作已收敛到可注�
   `integration_test` 和 golden test。
 - `tools\agent.cmd analyze|test` 默认走增量；全量结果必须按上表单独记录。
 - 增量推断出超过 60 个测试文件时，`agent.cmd test` 自动回退全量。
+- 共享测试基座位于 `test/support/`；修改其中的 helper 时，选择器会带上
+  所有导入该 helper 的测试文件，避免只运行非测试 helper 本身。
+- `transfers_selection_test.dart` 与 `property_sheet_quick_actions_test.dart`
+  已按功能拆分；用例总数不变，但单文件范围更大程度地对齐页面行为。
 - `tools\agent.cmd` 已内置 `--no-pub`；需要安装依赖时使用 `agent.cmd pub-get`。
 
 ## 构建与安装快照
@@ -104,8 +108,8 @@ unsupported 三态显示；外部网页与文件打开动作已收敛到可注�
   当前不影响构建与启动，继续跟随插件升级观察。
 - Windows OverlayPortal/UIA 上游间歇风险继续观察，不误判为业务回归。
 - 日志清理已增加 Windows 临时目录有界重试，清理用例也会等待目录可见性与
-  新文件重建；分享密码恢复测试使用 5 秒截止时间轮询。当前全量通过，后续
-  继续观察较慢 CI 环境。
+  新文件重建；分享密码恢复测试的真实 sqlite 等待上限已从 5 秒调整为 30 秒。
+  当前全量通过，后续继续观察较慢 CI 环境。
 - 收藏文件夹自动检测只在应用启动或回到前台且到期时执行；应用进程被系统
   结束后不会定时唤醒，Windows 关闭窗口后同样停止。检测期间的进度通知与
   前台服务只用于本轮临时后台保活。

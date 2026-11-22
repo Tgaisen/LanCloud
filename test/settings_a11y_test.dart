@@ -14,7 +14,7 @@ import 'package:url_launcher_platform_interface/url_launcher_platform_interface.
 
 import 'package:lancloud/l10n/delegates.dart';
 
-import 'update_test_scope_test.dart';
+import 'support/app_test_scope.dart';
 
 /// 文案以中文本地化为准，避免改文案就要改测试。
 final _zh = AppLocalizationsZh();

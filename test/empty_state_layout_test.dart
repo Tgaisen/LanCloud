@@ -17,7 +17,7 @@ import 'package:lancloud/ui/favorites_page.dart';
 import 'package:lancloud/ui/share_folder_page.dart';
 import 'package:lancloud/ui/transfers_page.dart';
 
-import 'transfer_dependencies_test.dart'
+import 'support/transfer_test_support.dart'
     show buildTransferManagerForEnvironment;
 
 /// 空白提示（暂无任务 / 还没有收藏 …）应该在可见区域里居中显示，

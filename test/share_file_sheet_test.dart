@@ -19,7 +19,7 @@ import 'package:lancloud/ui/share_file_sheet.dart';
 
 import 'package:lancloud/l10n/delegates.dart';
 
-import 'transfer_dependencies_test.dart'
+import 'support/transfer_test_support.dart'
     show buildTransferManagerForEnvironment;
 
 /// 解析一定失败的假客户端：测试里不联网；错误信息不含「不存在 / 取消」，

@@ -22,7 +22,7 @@ import 'package:lancloud/ui/common.dart';
 import 'package:lancloud/ui/drive_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'transfer_dependencies_test.dart'
+import 'support/transfer_test_support.dart'
     show buildTransferManagerForEnvironment;
 
 /// 网盘页挂载在目录缓存上（不进网络）：给个账号让 `app.client` 非空，
