@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:path/path.dart' as p;
@@ -6,8 +8,10 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../core/account_state.dart';
 import '../core/app_cache.dart';
+import '../core/app_data_reset.dart';
 import '../core/app_log.dart';
 import '../core/app_permissions.dart';
+import '../core/data/app_db.dart';
 import '../core/data/app_db_provider.dart';
 import '../core/data/settings_store.dart';
 import '../core/data/settings_store_provider.dart';
@@ -17,12 +21,14 @@ import '../core/notifications.dart';
 import '../core/platform_capabilities.dart';
 import '../core/platform_support.dart';
 import '../core/system_file_saver.dart';
+import '../core/transfer/transfer_manager_provider.dart';
 import '../l10n/l10n.dart';
 import 'advanced_connection_settings_tile.dart';
 import 'auto_start_upload_settings_tile.dart';
 import 'app_icons.dart';
 import 'backup_page.dart';
 import 'cache_page_settings_tile.dart';
+import 'clear_data_dialog.dart';
 import 'clipboard_link_prompt_tile.dart';
 import 'common.dart';
 import 'download_directory_settings_tile.dart';
@@ -39,9 +45,6 @@ import 'show_cookie_settings_tile.dart';
 import 'theme_settings_tile.dart';
 import 'transfer_concurrency_settings_tile.dart';
 import 'upload_filter_settings_tile.dart';
-
-/// 「清除数据」弹窗里可勾选的清除项。
-enum _ClearDataOption { quickAccess, recents, otherAccounts, logs, registry }
 
 /// 「无障碍相关问题」反馈邮箱。
 const String _kA11yFeedbackEmail = 'lancloud_feedback@outlook.com';
@@ -1061,74 +1064,49 @@ class _SettingsCategoryPageState extends ConsumerState<SettingsCategoryPage>
     final accountState = ref.read(accountStateProvider);
     final db = ref.read(appDbProvider);
     final l10n = context.l10n;
-    final selected = <_ClearDataOption>{};
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (dialogContext, setDialogState) {
-          Widget group(String name, List<_ClearDataOption> options) => Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // 弹窗里列表组外边距为 0：标题也无缩进，与外沿对齐
-              M3eSectionHeader(name, horizontalInset: 0),
-              DialogListGroup(
-                children: [
-                  for (final option in options)
-                    M3ePickTile(
-                      label: _clearDataName(l10n, option),
-                      subtitle: _clearDataSubtitle(l10n, option),
-                      selected: selected.contains(option),
-                      onTap: () => setDialogState(() {
-                        if (!selected.remove(option)) selected.add(option);
-                      }),
-                    ),
-                ],
-              ),
-            ],
-          );
-
-          return AlertDialog(
-            title: Text(l10n.clearData),
-            // M3 对话框内容边距 24dp；列表组自带 0 外边距，组沿落在 24dp 上
-            contentPadding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // 「此账号」两项只有登录状态下才有意义
-                  if (accountState.store.activeUid != null)
-                    group(l10n.clearDataGroupAccount, const [
-                      _ClearDataOption.quickAccess,
-                      _ClearDataOption.recents,
-                    ]),
-                  group(l10n.clearDataGroupOthers, [
-                    _ClearDataOption.otherAccounts,
-                    _ClearDataOption.logs,
-                    // 通知注册表键只有 Windows 端才会创建
-                    if (PlatformSupport.isWindows) _ClearDataOption.registry,
-                  ]),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(false),
-                child: Text(l10n.cancel),
-              ),
-              FilledButton(
-                // 一项都没勾选时置灰：先选内容再清除
-                onPressed: selected.isEmpty
-                    ? null
-                    : () => Navigator.of(dialogContext).pop(true),
-                child: Text(l10n.clear),
-              ),
-            ],
-          );
-        },
-      ),
+    final result = await showClearDataDialog(
+      context,
+      signedIn: accountState.store.activeUid != null,
+      showWindowsActions: PlatformSupport.isWindows,
     );
-    if (ok != true || !context.mounted) return;
+    if (result == null || !context.mounted) return;
+    switch (result.action) {
+      case ClearDataAction.openAppDataDirectory:
+        final openedData = await ref
+            .read(appDataResetProvider)
+            .openAppDataDirectory();
+        if (!openedData && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(l10n.clearDataOpenDirectoryFailed)),
+          );
+        }
+        break;
+      case ClearDataAction.openLogsDirectory:
+        final openedLogs = await ref
+            .read(appDataResetProvider)
+            .openLogsDirectory();
+        if (!openedLogs && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(l10n.clearDataOpenDirectoryFailed)),
+          );
+        }
+        break;
+      case ClearDataAction.deleteAll:
+        await _deleteAllData(context);
+        break;
+      case ClearDataAction.clearSelected:
+        await _clearSelectedData(context, db, result.selected);
+        break;
+    }
+  }
+
+  Future<void> _clearSelectedData(
+    BuildContext context,
+    AppDb db,
+    Set<ClearDataOption> selected,
+  ) async {
+    final accountState = ref.read(accountStateProvider);
+    final l10n = context.l10n;
     if (selected.isEmpty) {
       // 什么都没选就点「清除」：明确提示未选择，而不是假装清空成功
       ScaffoldMessenger.of(context)
@@ -1137,22 +1115,22 @@ class _SettingsCategoryPageState extends ConsumerState<SettingsCategoryPage>
     }
     final uid = accountState.store.activeUid ?? '';
     try {
-      if (selected.contains(_ClearDataOption.quickAccess)) {
+      if (selected.contains(ClearDataOption.quickAccess)) {
         await db.clearPins(uid);
       }
-      if (selected.contains(_ClearDataOption.recents)) {
+      if (selected.contains(ClearDataOption.recents)) {
         await db.clearRecents(uid);
       }
-      if (selected.contains(_ClearDataOption.otherAccounts)) {
+      if (selected.contains(ClearDataOption.otherAccounts)) {
         await db.clearOtherUsageData(uid);
       }
     } catch (_) {
       // 本地库出错时静默跳过：清除是尽力而为，不打断用户
     }
-    if (selected.contains(_ClearDataOption.logs)) {
+    if (selected.contains(ClearDataOption.logs)) {
       await AppLog.instance.clear();
     }
-    if (selected.contains(_ClearDataOption.registry)) {
+    if (selected.contains(ClearDataOption.registry)) {
       NotificationService.removeWindowsRegistryEntry();
     }
     if (!context.mounted) return;
@@ -1160,21 +1138,35 @@ class _SettingsCategoryPageState extends ConsumerState<SettingsCategoryPage>
         .showSnackBar(SnackBar(content: Text(l10n.cleared)));
   }
 
-  String _clearDataName(AppLocalizations l10n, _ClearDataOption option) =>
-      switch (option) {
-        _ClearDataOption.quickAccess => l10n.quickAccess,
-        _ClearDataOption.recents => l10n.recent,
-        _ClearDataOption.otherAccounts => l10n.clearDataOtherAccounts,
-        _ClearDataOption.logs => l10n.clearDataLogs,
-        _ClearDataOption.registry => l10n.clearDataRegistry,
-      };
+  Future<void> _deleteAllData(BuildContext context) async {
+    final transfers = ref.read(transferManagerProvider);
+    final confirmed = await showDeleteAllDataConfirmation(
+      context,
+      hasActiveTransfers: transfers.hasActiveTransfers,
+    );
+    if (confirmed != true || !context.mounted) return;
 
-  String? _clearDataSubtitle(AppLocalizations l10n, _ClearDataOption option) =>
-      switch (option) {
-        _ClearDataOption.otherAccounts => l10n.clearDataOtherAccountsSubtitle,
-        _ClearDataOption.registry => l10n.clearDataRegistrySubtitle,
-        _ => null,
-      };
+    final navigator = Navigator.of(context, rootNavigator: true);
+    final l10n = context.l10n;
+    final db = ref.read(appDbProvider);
+    final reset = ref.read(appDataResetProvider);
+    unawaited(showLoadingDialog(context, l10n.clearDataClearingAll));
+    var failed = false;
+    try {
+      await reset.resetAndExit(
+        cancelTransfers: transfers.cancelAllForDataReset,
+        deleteDatabase: db.closeAndDelete,
+      );
+    } catch (_) {
+      failed = true;
+    } finally {
+      if (navigator.mounted) navigator.pop();
+    }
+    if (failed && context.mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(l10n.clearDataDeleteAllFailed)));
+    }
+  }
 
   Future<void> _requestBatteryOptimization() async {
     final l10n = context.l10n;

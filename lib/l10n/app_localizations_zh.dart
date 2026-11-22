@@ -984,13 +984,56 @@ class AppLocalizationsZh extends AppLocalizations {
   String get clearData => '清除数据';
 
   @override
-  String get clearDataKeywords => '清除 数据 快速访问 最近 日志 注册表';
+  String get clearDataKeywords => '清除 数据 快速访问 最近 日志 注册表 目录 删除 全部';
 
   @override
   String get clearDataGroupAccount => '此账号';
 
   @override
   String get clearDataGroupOthers => '其他数据';
+
+  @override
+  String get clearDataGroupDataDirectory => '数据目录';
+
+  @override
+  String get clearDataAppDataDirectory => '应用数据目录';
+
+  @override
+  String get clearDataAppDataDirectorySubtitle => '设置、账号、本地数据库与通知图标';
+
+  @override
+  String get clearDataLogsDirectory => '运行日志目录';
+
+  @override
+  String get clearDataLogsDirectorySubtitle => '运行与崩溃日志';
+
+  @override
+  String get clearDataOpenDirectoryFailed => '无法打开目录';
+
+  @override
+  String get clearDataGroupDanger => '危险区';
+
+  @override
+  String get clearDataDeleteAll => '删除所有数据';
+
+  @override
+  String get clearDataDeleteAllSubtitle => '清除账号、设置、收藏、传输记录与系统集成数据';
+
+  @override
+  String get clearDataDeleteAllTitle => '删除所有数据？';
+
+  @override
+  String get clearDataDeleteAllBody =>
+      '将永久删除本机上的账号、设置、收藏、传输记录、运行日志、缓存和系统集成数据。已下载到其他目录的文件不会被删除。清理完成后应用自动退出。';
+
+  @override
+  String get clearDataDeleteAllTransferWarning => '当前有正在运行的传输任务。确认后将全部取消。';
+
+  @override
+  String get clearDataClearingAll => '正在清理所有数据…';
+
+  @override
+  String get clearDataDeleteAllFailed => '清理未完成，请重试';
 
   @override
   String get clearDataOtherAccounts => '其他账号数据';

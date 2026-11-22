@@ -1033,13 +1033,59 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get clearDataKeywords =>
-      'clear data quick access recent logs registry';
+      'clear data quick access recent logs registry directory delete all';
 
   @override
   String get clearDataGroupAccount => 'This account';
 
   @override
   String get clearDataGroupOthers => 'Other data';
+
+  @override
+  String get clearDataGroupDataDirectory => 'Data directories';
+
+  @override
+  String get clearDataAppDataDirectory => 'App data directory';
+
+  @override
+  String get clearDataAppDataDirectorySubtitle =>
+      'Settings, accounts, local database and notification icon';
+
+  @override
+  String get clearDataLogsDirectory => 'Logs directory';
+
+  @override
+  String get clearDataLogsDirectorySubtitle => 'Runtime and crash logs';
+
+  @override
+  String get clearDataOpenDirectoryFailed => 'Could not open the directory';
+
+  @override
+  String get clearDataGroupDanger => 'Danger zone';
+
+  @override
+  String get clearDataDeleteAll => 'Delete all data';
+
+  @override
+  String get clearDataDeleteAllSubtitle =>
+      'Erase accounts, settings, favorites, transfers and system integration data';
+
+  @override
+  String get clearDataDeleteAllTitle => 'Delete all data?';
+
+  @override
+  String get clearDataDeleteAllBody =>
+      'This permanently deletes accounts, settings, favorites, transfer records, runtime logs, caches and system integration data on this device. Files already downloaded elsewhere are not deleted. The app will exit automatically when cleanup finishes.';
+
+  @override
+  String get clearDataDeleteAllTransferWarning =>
+      'Transfers are currently running. They will all be canceled after confirmation.';
+
+  @override
+  String get clearDataClearingAll => 'Clearing all data…';
+
+  @override
+  String get clearDataDeleteAllFailed => 'Cleanup did not complete. Try again';
 
   @override
   String get clearDataOtherAccounts => 'Other accounts\' data';

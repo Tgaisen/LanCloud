@@ -210,16 +210,26 @@ class AppLog {
     final file = _file;
     if (file == null) return;
     try {
-      final dir = file.parent.path;
-      for (var index = 1; index <= _rotatedCount; index++) {
-        final part = File(_partPath(dir, index));
-        if (part.existsSync()) part.deleteSync();
-      }
-      if (file.existsSync()) file.deleteSync();
+      await clearOwnedFiles(file.parent);
       _size = 0;
     } catch (_) {
       // 删不掉时保留现状，下次导出还能拿到日志
     }
+  }
+
+  /// 删除指定目录里的 LanCloud 日志。
+  ///
+  /// Windows 日志目录位于通用的 `Documents\logs`，可能同时包含其他程序
+  /// 的文件；这里只按固定文件名删除本应用条目。
+  static Future<void> clearOwnedFiles(Directory directory) async {
+    for (var index = 1; index <= _rotatedCount; index++) {
+      final part = File(
+        p.join(directory.path, '$_rotatedPrefix$index$_rotatedSuffix'),
+      );
+      if (await part.exists()) await part.delete();
+    }
+    final current = File(p.join(directory.path, _fileName));
+    if (await current.exists()) await current.delete();
   }
 }
 

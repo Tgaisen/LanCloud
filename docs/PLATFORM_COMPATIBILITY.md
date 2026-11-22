@@ -124,6 +124,7 @@ Dart 侧可先实施的拆分、能力开关和分批改造计划见
 | 安装未知来源应用 | ✅ | N/A | — HAP 不能复用 APK 安装流程 | N/A | N/A |
 | 忽略电池优化 | ✅ | N/A | — | N/A | N/A |
 | 系统设置跳转/权限入口 | ✅ 通知、安装、电池优化；另有本地网络请求 | ○ 设置页隐藏 Android 专用入口 | — | ○ Android 专用入口已按能力隐藏 | — |
+| 清除应用数据 / 打开数据目录 | ✅ 由系统应用设置提供 | ✅ 清除数据弹窗可打开应用数据与日志目录，并可删除全部本机数据 | — | ○ 无应用内入口；由系统卸载管理 | — |
 | 单实例窗口 | ✅ `singleTask` | ✅ 命名 Mutex + 激活已有窗口 | — | N/A | — |
 
 ### 4.5 更新与分发
@@ -189,6 +190,12 @@ Dart 侧可先实施的拆分、能力开关和分批改造计划见
   可恢复任务，再单独验证持续任务能力。
 - 自动收藏检测和自动备份不是在系统后台常驻定时任务，所有平台都应沿用“启动/
   回前台补检”的产品语义。
+
+Windows 没有 Android 的“系统设置 → 存储 → 清除数据”入口，因此设置页额外提供
+应用数据目录、运行日志目录和危险区。删除全部数据会取消全部传输、关闭数据库、
+清理安全存储 / 设置 / SQLite / 日志 / 缓存及通知注册项，然后退出应用；用户已
+下载到其他目录的文件和 WebDAV 远程备份不在删除范围内。若文件仍被系统占用，
+应用在下次启动初始化日志与数据库之前继续补清理。
 
 ### 5.6 生物识别与权限
 
@@ -282,6 +289,7 @@ Dart 侧可先实施的拆分、能力开关和分批改造计划见
 | 打开、分享、拖拽 | [`lib/core/system_open.dart`](../lib/core/system_open.dart)、[`lib/core/system_share.dart`](../lib/core/system_share.dart)、[`lib/core/drag_drop.dart`](../lib/core/drag_drop.dart)、[`lib/ui/desktop_drop_target.dart`](../lib/ui/desktop_drop_target.dart) |
 | 分享接收与深链 | [`lib/core/share_inbox.dart`](../lib/core/share_inbox.dart)、[`lib/core/incoming_links.dart`](../lib/core/incoming_links.dart) |
 | 通知与前台任务 | [`lib/core/notifications.dart`](../lib/core/notifications.dart)、[`lib/core/foreground_task_coordinator.dart`](../lib/core/foreground_task_coordinator.dart)、[`lib/main.dart`](../lib/main.dart) |
+| 清除应用数据 | [`lib/core/app_data_reset.dart`](../lib/core/app_data_reset.dart)、[`lib/ui/clear_data_dialog.dart`](../lib/ui/clear_data_dialog.dart)、[`lib/main.dart`](../lib/main.dart) |
 | 生物识别与权限 | [`lib/core/cookie_auth.dart`](../lib/core/cookie_auth.dart)、[`lib/core/app_permissions.dart`](../lib/core/app_permissions.dart) |
 | 更新与发布 | [`lib/core/update/update_service.dart`](../lib/core/update/update_service.dart)、[`.github/workflows/release.yml`](../.github/workflows/release.yml) |
 | Android 原生实现 | [`MainActivity.kt`](../android/app/src/main/kotlin/com/lancloud/lancloud/MainActivity.kt)、[`AndroidManifest.xml`](../android/app/src/main/AndroidManifest.xml) |

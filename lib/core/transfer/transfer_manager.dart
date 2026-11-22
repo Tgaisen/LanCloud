@@ -163,6 +163,7 @@ class TransferManager extends ChangeNotifier {
   final List<void Function(TransferTask)> _taskListeners = [];
   final Map<String, Future<void>> _activeStarts = {};
   int _seq = 0;
+  bool _resettingForDataReset = false;
 
   /// 测试注入：重启后重试时用来重新解析直链；默认走账号端口的公开客户端。
   @visibleForTesting
@@ -175,6 +176,7 @@ class TransferManager extends ChangeNotifier {
   void _bumpMarks() => marksRevision.value += 1;
 
   void _reportProgress(TransferTask task, int received, int total) {
+    if (_resettingForDataReset) return;
     if (!task.shouldNotifyProgress(DateTime.now(), _progressUpdateInterval)) {
       return;
     }
@@ -271,7 +273,7 @@ class TransferManager extends ChangeNotifier {
   }
 
   Future<void> _persist(TransferTask task) async {
-    if (task.removed) return;
+    if (_resettingForDataReset || task.removed) return;
     try {
       await _dependencies.store.saveTransfer(
         id: task.id,
@@ -1000,7 +1002,46 @@ class TransferManager extends ChangeNotifier {
     return active.length;
   }
 
+  /// 是否存在排队、解析、传输或保存中的任务。
+  bool get hasActiveTransfers =>
+      tasks.any((task) => _isActiveTransferStatus(task.status));
+
+  /// 删除全部本机数据前停止调度、取消全部传输并等待在途请求退出。
+  ///
+  /// 这里不删除数据库记录，因为调用方随后会直接删除整个数据库。
+  Future<void> cancelAllForDataReset() async {
+    if (_resettingForDataReset) return;
+    _resettingForDataReset = true;
+    final running = _activeStarts.values.toList(growable: false);
+    final cancelledTasks = List<TransferTask>.of(tasks);
+    for (final task in cancelledTasks) {
+      task.removed = true;
+      if (!task.cancelToken.isCancelled) {
+        task.cancelToken.cancel('data-reset');
+      }
+      _notifications.cancelTransferTask(task.id);
+    }
+    tasks.clear();
+    _bumpMarks();
+    notifyListeners();
+    if (running.isNotEmpty) {
+      await Future.wait(running);
+    }
+    final cleanup = <Future<void>>[];
+    for (final task in cancelledTasks) {
+      cleanup.add(_deletePartial(task));
+      if (task.kind == TransferKind.upload) {
+        cleanup.add(_deleteTemporaryUploadSource(task));
+      }
+    }
+    if (cleanup.isNotEmpty) {
+      await Future.wait(cleanup);
+    }
+    _syncForegroundService();
+  }
+
   void _pump() {
+    if (_resettingForDataReset) return;
     var runningUploads = tasks
         .where(
           (t) =>
@@ -1059,6 +1100,7 @@ class TransferManager extends ChangeNotifier {
       status == TransferStatus.saving;
 
   Future<void> _start(TransferTask task) async {
+    if (_resettingForDataReset) return;
     if (task.cancelToken.isCancelled) task.cancelToken = CancelToken();
     task.restartProgressWindow();
     final needsResolution =
@@ -1174,14 +1216,16 @@ class TransferManager extends ChangeNotifier {
               task.removed)) {
         await _deleteTemporaryUploadSource(task);
       }
-      _bumpMarks();
-      _persist(task);
-      notifyListeners();
-      _pump();
-      _syncTaskNotification(task);
-      if (task.status == TransferStatus.done) {
-        for (final listener in _taskListeners) {
-          listener(task);
+      if (!_resettingForDataReset) {
+        _bumpMarks();
+        _persist(task);
+        notifyListeners();
+        _pump();
+        _syncTaskNotification(task);
+        if (task.status == TransferStatus.done) {
+          for (final listener in _taskListeners) {
+            listener(task);
+          }
         }
       }
     }
@@ -1190,6 +1234,10 @@ class TransferManager extends ChangeNotifier {
   /// 按任务和设置同步单条通知。进行中任务受“传输进度通知”控制，
   /// 完成 / 失败受“传输完成通知”控制。
   void _syncTaskNotification(TransferTask task) {
+    if (_resettingForDataReset) {
+      _notifications.cancelTransferTask(task.id);
+      return;
+    }
     if (task.interruptedByAccountSwitch) {
       _notifications.cancelTransferTask(task.id);
       return;

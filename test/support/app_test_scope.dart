@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lancloud/core/account_state.dart';
 import 'package:lancloud/core/account_session.dart';
+import 'package:lancloud/core/app_data_reset.dart';
 import 'package:lancloud/core/app_environment.dart';
 import 'package:lancloud/core/backup/backup_service.dart';
 import 'package:lancloud/core/backup/backup_service_provider.dart';
@@ -69,6 +70,7 @@ Widget appEnvironmentTestTree({
   required Widget child,
   BackupService? backupService,
   TransferManager? transferManager,
+  AppDataResetService? appDataReset,
 }) {
   return ProviderScope(
     overrides: [
@@ -76,6 +78,8 @@ Widget appEnvironmentTestTree({
         backupServiceProvider.overrideWithValue(backupService),
       if (transferManager != null)
         transferManagerProvider.overrideWithValue(transferManager),
+      if (appDataReset != null)
+        appDataResetProvider.overrideWithValue(appDataReset),
       accountStateProvider.overrideWithValue(environment.accountState),
       accountSessionProvider.overrideWithValue(environment.accountSession),
       appDbProvider.overrideWithValue(environment.db),

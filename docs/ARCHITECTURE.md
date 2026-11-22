@@ -10,6 +10,9 @@
 
 ## 启动顺序（`lib/main.dart`，按实际代码）
 
+启动前先检查 `%TEMP%\lancloud_reset_pending`：若上次 Windows「删除所有数据」
+因文件占用未删净，会在 AppLog、数据库和插件初始化之前补清理。
+
 1. `registerThirdPartyLicenses()` — 先登记素材许可证，开源许可页要用
 2. `initializePlatformSystemUi()` — 仅在 `supportsEdgeToEdgeSystemUi` 时启用
    `SystemUiMode.edgeToEdge`
@@ -41,6 +44,7 @@
 | --- | --- | --- |
 | `AppCompositionRoot` | `core/app_composition_root.dart` | 用 `AppEnvironment` 与显式恢复回调组装备份、传输依赖和 Riverpod 容器；不触发启动副作用 |
 | `AppEnvironment` | `core/app_environment.dart` | 唯一组装导航、账号、设置、运行时、客户端与应用级服务，只保存实例，不触发启动副作用 |
+| `PlatformAppDataResetService` | `core/app_data_reset.dart` | Windows 应用数据 / 日志目录入口与「删除所有数据」；取消传输、关闭数据库、清理账号设置日志缓存和通知注册项，并用启动标记补删占用文件 |
 | `AppStartup` | `core/app_startup.dart` | 编排安全存储检查、账号/设置加载、运行时同步、目录绑定、ready、恢复重载与后台任务 |
 | `TransferManager` | `core/transfer/transfer_manager.dart` | 上传/下载任务队列、待开始/手动开始、重命名、暂停/继续、保存阶段、进度与重试 |
 | `TransferStore` | `core/transfer/transfer_store.dart` | 传输记录恢复、保存与删除端口；`AppDbTransferStore` 适配既有数据库 |

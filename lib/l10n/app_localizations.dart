@@ -1910,7 +1910,7 @@ abstract class AppLocalizations {
   /// No description provided for @clearDataKeywords.
   ///
   /// In zh, this message translates to:
-  /// **'清除 数据 快速访问 最近 日志 注册表'**
+  /// **'清除 数据 快速访问 最近 日志 注册表 目录 删除 全部'**
   String get clearDataKeywords;
 
   /// No description provided for @clearDataGroupAccount.
@@ -1924,6 +1924,90 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'其他数据'**
   String get clearDataGroupOthers;
+
+  /// No description provided for @clearDataGroupDataDirectory.
+  ///
+  /// In zh, this message translates to:
+  /// **'数据目录'**
+  String get clearDataGroupDataDirectory;
+
+  /// No description provided for @clearDataAppDataDirectory.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用数据目录'**
+  String get clearDataAppDataDirectory;
+
+  /// No description provided for @clearDataAppDataDirectorySubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'设置、账号、本地数据库与通知图标'**
+  String get clearDataAppDataDirectorySubtitle;
+
+  /// No description provided for @clearDataLogsDirectory.
+  ///
+  /// In zh, this message translates to:
+  /// **'运行日志目录'**
+  String get clearDataLogsDirectory;
+
+  /// No description provided for @clearDataLogsDirectorySubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'运行与崩溃日志'**
+  String get clearDataLogsDirectorySubtitle;
+
+  /// No description provided for @clearDataOpenDirectoryFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法打开目录'**
+  String get clearDataOpenDirectoryFailed;
+
+  /// No description provided for @clearDataGroupDanger.
+  ///
+  /// In zh, this message translates to:
+  /// **'危险区'**
+  String get clearDataGroupDanger;
+
+  /// No description provided for @clearDataDeleteAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除所有数据'**
+  String get clearDataDeleteAll;
+
+  /// No description provided for @clearDataDeleteAllSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'清除账号、设置、收藏、传输记录与系统集成数据'**
+  String get clearDataDeleteAllSubtitle;
+
+  /// No description provided for @clearDataDeleteAllTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除所有数据？'**
+  String get clearDataDeleteAllTitle;
+
+  /// No description provided for @clearDataDeleteAllBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'将永久删除本机上的账号、设置、收藏、传输记录、运行日志、缓存和系统集成数据。已下载到其他目录的文件不会被删除。清理完成后应用自动退出。'**
+  String get clearDataDeleteAllBody;
+
+  /// No description provided for @clearDataDeleteAllTransferWarning.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前有正在运行的传输任务。确认后将全部取消。'**
+  String get clearDataDeleteAllTransferWarning;
+
+  /// No description provided for @clearDataClearingAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在清理所有数据…'**
+  String get clearDataClearingAll;
+
+  /// No description provided for @clearDataDeleteAllFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'清理未完成，请重试'**
+  String get clearDataDeleteAllFailed;
 
   /// No description provided for @clearDataOtherAccounts.
   ///
