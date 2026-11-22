@@ -657,6 +657,13 @@ void main() {
         deleteTitle.style?.color,
         Theme.of(tester.element(deleteRow)).colorScheme.error,
       );
+      expect(
+        find.descendant(
+          of: deleteRow,
+          matching: find.byIcon(Icons.delete_outline),
+        ),
+        findsNothing,
+      );
 
       await tester.tap(find.text('取消'));
       await tester.pumpAndSettle();
@@ -783,5 +790,23 @@ void main() {
 
     expect(find.textContaining('确认后将全部取消'), findsOneWidget);
     expect(find.textContaining('清理完成后应用自动退出'), findsOneWidget);
+    final dialog = tester.widget<AlertDialog>(find.byType(AlertDialog));
+    expect(dialog.icon, isNull);
+    final confirm = tester.widget<FilledButton>(
+      find.byKey(const ValueKey('clear-data-delete-all-confirm')),
+    );
+    final colorScheme = Theme.of(
+      tester.element(
+        find.byKey(const ValueKey('clear-data-delete-all-confirm')),
+      ),
+    ).colorScheme;
+    expect(
+      confirm.style?.backgroundColor?.resolve(<WidgetState>{}),
+      colorScheme.error,
+    );
+    expect(
+      confirm.style?.foregroundColor?.resolve(<WidgetState>{}),
+      colorScheme.onError,
+    );
   });
 }

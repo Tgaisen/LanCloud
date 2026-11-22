@@ -141,7 +141,6 @@ Future<bool?> showDeleteAllDataConfirmation(
   return showDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      icon: Icon(app_icons.Icons.delete_outline, color: colorScheme.error),
       title: Text(l10n.clearDataDeleteAllTitle),
       content: Column(
         mainAxisSize: MainAxisSize.min,
@@ -162,9 +161,12 @@ Future<bool?> showDeleteAllDataConfirmation(
           onPressed: () => Navigator.of(dialogContext).pop(false),
           child: Text(l10n.cancel),
         ),
-        TextButton(
+        FilledButton(
           key: const ValueKey('clear-data-delete-all-confirm'),
-          style: TextButton.styleFrom(foregroundColor: colorScheme.error),
+          style: FilledButton.styleFrom(
+            backgroundColor: colorScheme.error,
+            foregroundColor: colorScheme.onError,
+          ),
           onPressed: () => Navigator.of(dialogContext).pop(true),
           child: Text(l10n.clearDataDeleteAll),
         ),
@@ -194,7 +196,6 @@ Widget _deleteAllDataRow({
   final color = Theme.of(context).colorScheme.error;
   return ListTile(
     key: const ValueKey('clear-data-delete-all'),
-    leading: Icon(app_icons.Icons.delete_outline, color: color),
     title: Text(l10n.clearDataDeleteAll, style: TextStyle(color: color)),
     subtitle: Text(l10n.clearDataDeleteAllSubtitle),
     onTap: onTap,
