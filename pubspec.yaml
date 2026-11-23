@@ -81,8 +81,8 @@ dependencies:
   # MD3E 控件，material_ui 和 cupertino_ui 承接设计组件。三者作为一组升级，
   # 兼容与后续清理事项见 docs/FLUTTER_3_50_UPGRADE.md。
   m3e_core: ^1.1.5
-  material_ui: ^1.11.0
-  cupertino_ui: ^1.1.6
+  material_ui: ^1.11.1
+  cupertino_ui: ^1.1.7
   cryptography: ^2.9.0
   # 应用级状态与依赖注入统一使用 Riverpod。
   flutter_riverpod: ^3.5.0
