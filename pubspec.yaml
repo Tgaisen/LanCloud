@@ -60,7 +60,7 @@ dependencies:
   flutter_inappwebview: 6.2.0-beta.3
   qr: ^4.0.1
   material_symbols_icons: ^4.2960.0
-  flutter_local_notifications: ^23.0.1
+  flutter_local_notifications: ^23.0.3
   lpinyin: ^2.0.3
   receive_sharing_intent: ^1.9.0
   flutter_foreground_task: ^11.0.3
@@ -71,7 +71,7 @@ dependencies:
   # 2.x 起基于 material_ui（1.x 给的是框架版 ColorScheme，迁移后类型对不上）
   dynamic_color: 2.1.0
   zxing2: ^0.2.4
-  image: ^4.12.0
+  image: ^4.13.1
   # Windows / macOS / Linux 的窗口级拖拽（拖文件或链接进来）
   # 0.9.x 改用 cross_file 0.4 / Win32 6；file_picker 13 尚未跟进
   # cross_file 0.4（但已依赖 Win32 6），两者暂时无法同时解析。
@@ -81,8 +81,8 @@ dependencies:
   # MD3E 控件，material_ui 和 cupertino_ui 承接设计组件。三者作为一组升级，
   # 兼容与后续清理事项见 docs/FLUTTER_3_50_UPGRADE.md。
   m3e_core: ^1.1.5
-  material_ui: ^1.11.0
-  cupertino_ui: ^1.1.6
+  material_ui: ^1.11.1
+  cupertino_ui: ^1.1.7
   cryptography: ^2.9.0
   # 应用级状态与依赖注入统一使用 Riverpod。
   flutter_riverpod: ^3.5.0
