@@ -1349,12 +1349,42 @@ class _ProfileDetailPaneSurface extends StatelessWidget {
                 ),
               ),
             ),
-            Positioned.fill(child: child!),
+            Positioned.fill(
+              child: ClipPath(
+                key: const ValueKey('profile-detail-content-clip'),
+                clipper: _ProfileDetailContentClipper(
+                  top: headerHeight * (1 - t),
+                ),
+                child: child!,
+              ),
+            ),
           ],
         );
       },
     );
   }
+}
+
+/// 右窗格内容与卡片底使用完全相同的顶部位置和 16dp 圆角。
+class _ProfileDetailContentClipper extends CustomClipper<Path> {
+  const _ProfileDetailContentClipper({required this.top});
+
+  final double top;
+
+  @override
+  Path getClip(Size size) {
+    final clippedTop = top.clamp(0.0, size.height).toDouble();
+    return Path()..addRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTRB(0, clippedTop, size.width, size.height),
+        const Radius.circular(16),
+      ),
+    );
+  }
+
+  @override
+  bool shouldReclip(_ProfileDetailContentClipper oldClipper) =>
+      oldClipper.top != top;
 }
 
 /// 账号信息卡（单栏与两栏详情窗格共用）；只订阅账号摘要字段。

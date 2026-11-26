@@ -289,6 +289,36 @@ class Md3eBodyCard extends StatelessWidget {
 ///
 /// 与横屏大屏的 [Md3eBodyCard] 一致的是"整体让位"，不同的是小屏空间紧张：
 /// 正文区直接铺满，不加 8dp 边距、也没有圆角，只把两侧的 inset 让出来。
+/// 大屏外壳里正文区域的圆角裁剪参数。
+///
+/// 页面顶栏位于正文之外，不能用 [Md3eBodyCard.clipContent] 直接裁整页；
+/// [BodySideInset] 通过该作用域只裁剪正文，保留顶栏完整显示。
+class ShellBodyClipScope extends InheritedWidget {
+  const ShellBodyClipScope({
+    super.key,
+    required this.topBarHeight,
+    required this.hide,
+    required this.hideTopBar,
+    required this.clipContent,
+    required super.child,
+  });
+
+  final double topBarHeight;
+  final ValueListenable<double> hide;
+  final bool hideTopBar;
+  final bool clipContent;
+
+  static ShellBodyClipScope? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<ShellBodyClipScope>();
+
+  @override
+  bool updateShouldNotify(ShellBodyClipScope oldWidget) =>
+      topBarHeight != oldWidget.topBarHeight ||
+      hide != oldWidget.hide ||
+      hideTopBar != oldWidget.hideTopBar ||
+      clipContent != oldWidget.clipContent;
+}
+
 class BodySideInset extends StatelessWidget {
   const BodySideInset({super.key, required this.child});
 
@@ -300,7 +330,7 @@ class BodySideInset extends StatelessWidget {
     final hasSideInset = padding.left > 0 || padding.right > 0;
     // 即使当前没有左右 inset 也保留这层包装。横竖屏 / 折叠切换时
     // 左右 inset 可能从 0 变为非 0，直接替换 child 会重建整页正文。
-    return ColoredBox(
+    final content = ColoredBox(
       // 只有真的让出侧边空间时才铺底色；否则会盖住大屏圆角卡片。
       color: hasSideInset
           ? Theme.of(context).scaffoldBackgroundColor
@@ -316,7 +346,48 @@ class BodySideInset extends StatelessWidget {
         ),
       ),
     );
+    final shellClip = ShellBodyClipScope.maybeOf(context);
+    if (shellClip == null) return content;
+    return ValueListenableBuilder<double>(
+      valueListenable: shellClip.hide,
+      child: content,
+      builder: (context, value, child) {
+        final t = shellClip.hideTopBar ? value.clamp(0.0, 1.0) : 0.0;
+        final clip = shellClip.clipContent && isLargeLayout(context);
+        return ClipPath(
+          key: const ValueKey('shell-body-content-clip'),
+          clipper: _ShellBodyContentClipper(
+            top: clip ? shellClip.topBarHeight * (1 - t) : 0,
+            clip: clip,
+          ),
+          child: child!,
+        );
+      },
+    );
   }
+}
+
+class _ShellBodyContentClipper extends CustomClipper<Path> {
+  const _ShellBodyContentClipper({required this.top, required this.clip});
+
+  final double top;
+  final bool clip;
+
+  @override
+  Path getClip(Size size) {
+    if (!clip) return Path()..addRect(Offset.zero & size);
+    final clippedTop = top.clamp(0.0, size.height).toDouble();
+    return Path()..addRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTRB(0, clippedTop, size.width, size.height),
+        const Radius.circular(16),
+      ),
+    );
+  }
+
+  @override
+  bool shouldReclip(_ShellBodyContentClipper oldClipper) =>
+      oldClipper.top != top || oldClipper.clip != clip;
 }
 
 /// 使用 [NavigationState.topBarHide] 的独立页面：从二级页面路由返回时

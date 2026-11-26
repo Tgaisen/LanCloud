@@ -1270,6 +1270,7 @@ class _RootShellState extends ConsumerState<RootShell>
         _floatingNavigationBottomGap;
     final barHeight =
         (shell.floatingNavBar ? floatingBarHeight : 80.0) + bottomInset;
+    final width = MediaQuery.sizeOf(context).width;
     final bodyColor = Theme.of(context).scaffoldBackgroundColor;
     final keyed = KeyedSubtree(
       key: ValueKey('shell-${shell.activeUid}'),
@@ -1306,13 +1307,21 @@ class _RootShellState extends ConsumerState<RootShell>
               child: _withBodyCardGap(
                 context,
                 id,
-                ScrollTint(
-                  hideDistance: barHeight,
-                  readBarsHidden: () => _navigation.barsHide.value,
-                  onBarsHidden: (shell.hideTopBar || shell.hideBottomBar)
-                      ? _navigation.setBarsHideFromScroll
-                      : null,
-                  child: _pageFor(id),
+                ShellBodyClipScope(
+                  topBarHeight: _topBarHeightFor(id),
+                  hide: _navigation.topBarHide,
+                  hideTopBar: shell.hideTopBar,
+                  clipContent:
+                      !(id == _viewProfile &&
+                          width >= kProfileTwoPaneBreakpoint),
+                  child: ScrollTint(
+                    hideDistance: barHeight,
+                    readBarsHidden: () => _navigation.barsHide.value,
+                    onBarsHidden: (shell.hideTopBar || shell.hideBottomBar)
+                        ? _navigation.setBarsHideFromScroll
+                        : null,
+                    child: _pageFor(id),
+                  ),
                 ),
               ),
             ),
@@ -1343,7 +1352,6 @@ class _RootShellState extends ConsumerState<RootShell>
       );
     }
 
-    final width = MediaQuery.sizeOf(context).width;
     final scheme = Theme.of(context).colorScheme;
     // 大屏卡片顶边跟着当前视图的顶栏高度走，切换视图时平滑过渡
     if (width >= kLargeLayoutBreakpoint && _ids.isNotEmpty) {

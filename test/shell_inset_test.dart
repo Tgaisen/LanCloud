@@ -262,7 +262,20 @@ void main() {
     double cardTop() => tester
         .widget<Positioned>(find.byKey(const ValueKey('shell-body-card')))
         .top!;
+    final bodyClipFinder = find.byKey(
+      const ValueKey('shell-body-content-clip'),
+    );
+    double bodyClipTop() {
+      final clip = tester.widget<ClipPath>(bodyClipFinder);
+      return clip.clipper!
+          .getClip(tester.getSize(bodyClipFinder))
+          .getBounds()
+          .top;
+    }
+
     final homeTop = cardTop();
+    expect(bodyClipFinder, findsOneWidget);
+    expect(bodyClipTop(), closeTo(homeTop, 0.01));
     final transfersDestination = find.descendant(
       of: find.byType(NavigationRail),
       matching: find.text('传输'),
@@ -278,6 +291,7 @@ void main() {
     await tester.pump();
     expect(pager.page, 2);
     expect(cardTop(), closeTo(homeTop + kTransfersTabBarHeight, 0.01));
+    expect(bodyClipTop(), closeTo(cardTop(), 0.01));
 
     await tester.pumpAndSettle();
   });

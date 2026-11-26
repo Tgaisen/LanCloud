@@ -386,6 +386,25 @@ void main() {
       Colors.transparent,
     );
     expect(find.byKey(const ValueKey('profile-detail-card')), findsOneWidget);
+    final contentClipFinder = find.byKey(
+      const ValueKey('profile-detail-content-clip'),
+    );
+    expect(contentClipFinder, findsOneWidget);
+    final contentClip = tester.widget<ClipPath>(contentClipFinder);
+    final clipBounds = contentClip.clipper!
+        .getClip(tester.getSize(contentClipFinder))
+        .getBounds();
+    final cardTop = tester
+        .widget<Positioned>(find.byKey(const ValueKey('profile-detail-card')))
+        .top!;
+    expect(clipBounds.top, closeTo(cardTop, 0.01));
+    expect(
+      find.descendant(
+        of: contentClipFinder,
+        matching: find.byType(CustomScrollView),
+      ),
+      findsOneWidget,
+    );
 
     // 同级类别切换无方向性，使用 Fade Through。
     await tester.tap(find.text('行为与权限'));
