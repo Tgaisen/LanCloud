@@ -1,3 +1,4 @@
+import 'package:animations/animations.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -195,6 +196,10 @@ void main() {
     await tester.pumpWidget(_rootShellHost(environment, transfers));
     await tester.pumpAndSettle();
 
+    expect(
+      tester.widget<TopBarOverlay>(find.byType(TopBarOverlay)).background,
+      Colors.transparent,
+    );
     expect(find.byIcon(app_icons.Icons.browse_outlined), findsWidgets);
 
     // 首页（外壳里的页面）：正文让开卡片底部的 8dp
@@ -211,6 +216,128 @@ void main() {
     expect(panes, findsNWidgets(2));
     expect(tester.getRect(panes.at(0)).bottom, 800);
     expect(tester.getRect(panes.at(1)).bottom, 792);
+  });
+
+  testWidgets('关闭横滑时直接跳到目标页，卡片高度在透明接缝处切换', (tester) async {
+    tester.view.physicalSize = const Size(900, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
+    environment.runtimeState.ready.value = true;
+    environment.settingsState.store
+      ..swipeTabs = false
+      ..navShowTransfers = true;
+    environment.accountState.store.accounts.add(
+      Account(uid: '556911', cookie: 'c', nickname: '土豆'),
+    );
+    environment.accountState.store.activeUid = '556911';
+    final transfers = buildTransferManagerForEnvironment(environment);
+    addTearDown(transfers.dispose);
+
+    await tester.pumpWidget(_rootShellHost(environment, transfers));
+    await tester.pumpAndSettle();
+
+    final pager = tester.widget<PageView>(find.byType(PageView)).controller!;
+    expect(
+      tester
+          .widget<FadeThroughTransition>(find.byType(FadeThroughTransition))
+          .fillColor,
+      Colors.transparent,
+    );
+    expect(
+      find.descendant(
+        of: find.byType(FadeThroughTransition),
+        matching: find.byType(PageView),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byType(FadeThroughTransition),
+        matching: find.byKey(const ValueKey('shell-body-card')),
+      ),
+      findsOneWidget,
+    );
+    double cardTop() => tester
+        .widget<Positioned>(find.byKey(const ValueKey('shell-body-card')))
+        .top!;
+    final bodyClipFinder = find.byKey(
+      const ValueKey('shell-body-content-clip'),
+    );
+    double bodyClipTop() {
+      final clip = tester.widget<ClipPath>(bodyClipFinder);
+      return clip.clipper!
+          .getClip(tester.getSize(bodyClipFinder))
+          .getBounds()
+          .top;
+    }
+
+    final homeTop = cardTop();
+    expect(bodyClipFinder, findsOneWidget);
+    expect(bodyClipTop(), closeTo(homeTop, 0.01));
+    final transfersDestination = find.descendant(
+      of: find.byType(NavigationRail),
+      matching: find.text('传输'),
+    );
+
+    await tester.tap(transfersDestination);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 45));
+    expect(pager.page, 0);
+    expect(cardTop(), homeTop);
+
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump();
+    expect(pager.page, 2);
+    expect(cardTop(), closeTo(homeTop + kTransfersTabBarHeight, 0.01));
+    expect(bodyClipTop(), closeTo(cardTop(), 0.01));
+
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('开启横滑时保留水平翻页与卡片高度过渡', (tester) async {
+    tester.view.physicalSize = const Size(900, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
+    environment.runtimeState.ready.value = true;
+    environment.settingsState.store
+      ..swipeTabs = true
+      ..navShowTransfers = true;
+    environment.accountState.store.accounts.add(
+      Account(uid: '556911', cookie: 'c', nickname: '土豆'),
+    );
+    environment.accountState.store.activeUid = '556911';
+    final transfers = buildTransferManagerForEnvironment(environment);
+    addTearDown(transfers.dispose);
+
+    await tester.pumpWidget(_rootShellHost(environment, transfers));
+    await tester.pumpAndSettle();
+
+    final pager = tester.widget<PageView>(find.byType(PageView)).controller!;
+    double cardTop() => tester
+        .widget<Positioned>(find.byKey(const ValueKey('shell-body-card')))
+        .top!;
+    final homeTop = cardTop();
+    final transfersTop = homeTop + kTransfersTabBarHeight;
+
+    await tester.tap(
+      find.descendant(
+        of: find.byType(NavigationRail),
+        matching: find.text('传输'),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 60));
+
+    expect(pager.page, inExclusiveRange(0, 2));
+    expect(cardTop(), inExclusiveRange(homeTop, transfersTop));
+
+    await tester.pumpAndSettle();
+    expect(pager.page, 2);
+    expect(cardTop(), closeTo(transfersTop, 0.01));
   });
 
   testWidgets('外壳任务角标随运行中任务数更新', (tester) async {
@@ -250,8 +377,8 @@ void main() {
     );
   });
 
-  testWidgets('隐藏底栏的传输页从首页打开时，已收起的顶栏会完全展开', (tester) async {
-    tester.view.physicalSize = const Size(400, 800);
+  testWidgets('隐藏底栏的传输 / 收藏页在大屏独立打开时裁剪正文并展开顶栏', (tester) async {
+    tester.view.physicalSize = const Size(900, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
     final environment = AppEnvironment();
@@ -285,6 +412,26 @@ void main() {
         )
         .first;
     expect(tester.getTopLeft(transfersAppBar).dy, closeTo(0, 0.5));
+
+    double clipTop() {
+      final clipFinder = find.byKey(const ValueKey('shell-body-content-clip'));
+      expect(clipFinder, findsOneWidget);
+      final clip = tester.widget<ClipPath>(clipFinder);
+      return clip.clipper!.getClip(tester.getSize(clipFinder)).getBounds().top;
+    }
+
+    double frameCardTop() => tester
+        .widget<Positioned>(find.byKey(const ValueKey('md3e-card-background')))
+        .top!;
+    expect(clipTop(), closeTo(frameCardTop(), 0.01));
+
+    Navigator.of(tester.element(find.byType(TransfersPage))).pop();
+    await tester.pumpAndSettle();
+    environment.navigation.switchTab(3);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(FavoritesPage), findsOneWidget);
+    expect(clipTop(), closeTo(frameCardTop(), 0.01));
   });
 
   testWidgets('跨越宽窄布局阈值时，标签页、滚动与多选状态保持', (tester) async {

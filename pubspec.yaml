@@ -83,6 +83,7 @@ dependencies:
   m3e_core: ^1.1.5
   material_ui: ^1.11.1
   cupertino_ui: ^1.1.7
+  animations: ^3.0.0
   cryptography: ^2.9.0
   # 应用级状态与依赖注入统一使用 Riverpod。
   flutter_riverpod: ^3.5.0

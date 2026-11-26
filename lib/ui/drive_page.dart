@@ -3883,9 +3883,9 @@ class _DrivePageState extends ConsumerState<DrivePage>
                     opacity: _selAnim.value,
                     child: Material(
                       elevation: 0,
-                      // 与顶栏同一底色：小屏跟随滚动渐变色，大屏（侧栏布局）
-                      // 固定 surfaceContainer，多选条不会和 AppBar 出现色差
-                      color: topBarBackgroundColor(
+                      // 多选条需要独立不透明底：小屏跟随滚动渐变色，大屏
+                      // 固定侧栏同色 surfaceContainer。
+                      color: selectionBarBackgroundColor(
                         context,
                         Theme.of(context).colorScheme,
                       ),

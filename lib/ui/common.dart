@@ -131,10 +131,11 @@ bool transparentPageBackground(BuildContext context) =>
     isLargeLayout(context) &&
     ((ModalRoute.of(context)?.isFirst ?? true) || Md3eFramedScope.of(context));
 
-/// 顶栏底色：大屏布局固定用 surfaceContainer（导航区颜色，与侧栏一致），
+/// 顶栏底色：大屏布局保持透明，让外壳 / 页面 Scaffold 的 surfaceContainer
+/// 导航区底色直接透上来，避免整页过渡缩放时再叠一层同步缩放的灰底；
 /// 手机布局保持随滚动在 surface → surfaceContainer 之间过渡。
 Color topBarBackgroundColor(BuildContext context, ColorScheme scheme) {
-  if (isLargeLayout(context)) return scheme.surfaceContainer;
+  if (isLargeLayout(context)) return Colors.transparent;
   return Color.lerp(
         scheme.surface,
         scheme.surfaceContainer,
@@ -142,6 +143,12 @@ Color topBarBackgroundColor(BuildContext context, ColorScheme scheme) {
       ) ??
       scheme.surface;
 }
+
+/// 多选条是独立不透明浮层，不与大屏透明 AppBar 共用背景语义。
+Color selectionBarBackgroundColor(BuildContext context, ColorScheme scheme) =>
+    isLargeLayout(context)
+    ? scheme.surfaceContainer
+    : topBarBackgroundColor(context, scheme);
 
 /// 是否在标签外壳（第一个路由）里；push 出来的独立页面返回 false。
 bool inRootShell(BuildContext context) =>
@@ -282,6 +289,36 @@ class Md3eBodyCard extends StatelessWidget {
 ///
 /// 与横屏大屏的 [Md3eBodyCard] 一致的是"整体让位"，不同的是小屏空间紧张：
 /// 正文区直接铺满，不加 8dp 边距、也没有圆角，只把两侧的 inset 让出来。
+/// 大屏外壳里正文区域的圆角裁剪参数。
+///
+/// 页面顶栏位于正文之外，不能用 [Md3eBodyCard.clipContent] 直接裁整页；
+/// [BodySideInset] 通过该作用域只裁剪正文，保留顶栏完整显示。
+class ShellBodyClipScope extends InheritedWidget {
+  const ShellBodyClipScope({
+    super.key,
+    required this.topBarHeight,
+    required this.hide,
+    required this.hideTopBar,
+    required this.clipContent,
+    required super.child,
+  });
+
+  final double topBarHeight;
+  final ValueListenable<double> hide;
+  final bool hideTopBar;
+  final bool clipContent;
+
+  static ShellBodyClipScope? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<ShellBodyClipScope>();
+
+  @override
+  bool updateShouldNotify(ShellBodyClipScope oldWidget) =>
+      topBarHeight != oldWidget.topBarHeight ||
+      hide != oldWidget.hide ||
+      hideTopBar != oldWidget.hideTopBar ||
+      clipContent != oldWidget.clipContent;
+}
+
 class BodySideInset extends StatelessWidget {
   const BodySideInset({super.key, required this.child});
 
@@ -293,7 +330,7 @@ class BodySideInset extends StatelessWidget {
     final hasSideInset = padding.left > 0 || padding.right > 0;
     // 即使当前没有左右 inset 也保留这层包装。横竖屏 / 折叠切换时
     // 左右 inset 可能从 0 变为非 0，直接替换 child 会重建整页正文。
-    return ColoredBox(
+    final content = ColoredBox(
       // 只有真的让出侧边空间时才铺底色；否则会盖住大屏圆角卡片。
       color: hasSideInset
           ? Theme.of(context).scaffoldBackgroundColor
@@ -309,7 +346,48 @@ class BodySideInset extends StatelessWidget {
         ),
       ),
     );
+    final shellClip = ShellBodyClipScope.maybeOf(context);
+    if (shellClip == null) return content;
+    return ValueListenableBuilder<double>(
+      valueListenable: shellClip.hide,
+      child: content,
+      builder: (context, value, child) {
+        final t = shellClip.hideTopBar ? value.clamp(0.0, 1.0) : 0.0;
+        final clip = shellClip.clipContent && isLargeLayout(context);
+        return ClipPath(
+          key: const ValueKey('shell-body-content-clip'),
+          clipper: _ShellBodyContentClipper(
+            top: clip ? shellClip.topBarHeight * (1 - t) : 0,
+            clip: clip,
+          ),
+          child: child!,
+        );
+      },
+    );
   }
+}
+
+class _ShellBodyContentClipper extends CustomClipper<Path> {
+  const _ShellBodyContentClipper({required this.top, required this.clip});
+
+  final double top;
+  final bool clip;
+
+  @override
+  Path getClip(Size size) {
+    if (!clip) return Path()..addRect(Offset.zero & size);
+    final clippedTop = top.clamp(0.0, size.height).toDouble();
+    return Path()..addRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTRB(0, clippedTop, size.width, size.height),
+        const Radius.circular(16),
+      ),
+    );
+  }
+
+  @override
+  bool shouldReclip(_ShellBodyContentClipper oldClipper) =>
+      oldClipper.top != top || oldClipper.clip != clip;
 }
 
 /// 使用 [NavigationState.topBarHide] 的独立页面：从二级页面路由返回时
@@ -384,6 +462,7 @@ class Md3ePageFrame extends StatelessWidget {
     super.key,
     this.topBarHeight = 0,
     this.hide,
+    this.clipBodyContent = true,
     required this.child,
   });
 
@@ -392,6 +471,9 @@ class Md3ePageFrame extends StatelessWidget {
 
   /// 顶栏收起进度 0..1；不收起时传 null。
   final ValueListenable<double>? hide;
+
+  /// 是否把页面正文裁到圆角卡片内；两栏「我的」页由右窗格自行裁剪。
+  final bool clipBodyContent;
 
   final Widget child;
 
@@ -408,7 +490,13 @@ class Md3ePageFrame extends StatelessWidget {
         child: Md3eBodyCard(
           topBarHeight: topBarHeight,
           hide: hide,
-          child: ScrollTint(child: SharedTopBarRouteReveal(child: child)),
+          child: ShellBodyClipScope(
+            topBarHeight: topBarHeight,
+            hide: hide ?? const AlwaysStoppedAnimation<double>(0),
+            hideTopBar: hide != null,
+            clipContent: clipBodyContent,
+            child: ScrollTint(child: SharedTopBarRouteReveal(child: child)),
+          ),
         ),
       ),
     );
@@ -1228,12 +1316,12 @@ class TopBarOverlay extends StatelessWidget {
   /// 顶栏完整高度（状态栏 + 工具栏 + bottom），用于计算滑出距离。
   final double height;
 
-  /// 顶栏底色：和设置/关于页一样，只随滚动从 surface 过渡到
-  /// surfaceContainer，不参与渐隐。页面里的 AppBar 用透明底。
+  /// 顶栏底色：小屏只随滚动从 surface 过渡到 surfaceContainer，不参与
+  /// 渐隐；大屏保持透明，由下层导航区提供统一底色。页面里的 AppBar 用透明底。
   final Color background;
 
   /// 构建顶栏。位移与内容渐隐由本组件统一处理：标题、按钮、路径栏
-  /// 1:1 跟随手指淡出，底色始终保持不透明。
+  /// 1:1 跟随手指淡出。
   final WidgetBuilder builder;
 
   /// 收起进度来源；为空时用外壳的 [NavigationState.topBarHide]
@@ -1270,7 +1358,7 @@ class TopBarOverlay extends StatelessWidget {
             offset: Offset(0, -height * t),
             child: Stack(
               children: [
-                // 不透明底色（参数同设置/关于页），渐隐只作用于内容
+                // 小屏渐变底色 / 大屏透明，渐隐只作用于内容
                 Positioned.fill(child: ColoredBox(color: background)),
                 Opacity(
                   opacity: (1 - t).clamp(0.0, 1.0),
@@ -1289,9 +1377,9 @@ class TopBarOverlay extends StatelessWidget {
 }
 
 /// 独立页面的顶栏脚手架（设置 / 高级 / 备份 / 关于 / 分享文件夹 / 登录页）：
-/// 顶栏不占布局，上滑时内容 1:1 随手指渐隐并整体滑出，底色保持不透明
-/// （手机布局只做 surface → surfaceContainer 过渡），与首页、网盘、传输、
-/// 收藏、我的五个视图完全一致。
+/// 顶栏不占布局，上滑时内容 1:1 随手指渐隐并整体滑出；小屏底色做
+/// surface → surfaceContainer 过渡，大屏由下层导航区着色。行为与首页、
+/// 网盘、传输、收藏、我的五个视图完全一致。
 ///
 /// [slivers] 不需要自己留顶栏占位，本组件会在最前面插入等高的 spacer。
 ///

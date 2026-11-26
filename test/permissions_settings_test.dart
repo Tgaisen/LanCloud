@@ -231,6 +231,9 @@ void main() {
   });
 
   testWidgets('设置页顶栏同样是浮层：上滑随手指渐隐，底色不渐隐', (tester) async {
+    tester.view.physicalSize = const Size(400, 600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
     final environment = await pumpSettings(tester, hideTopBar: true);
 
     double barTop() =>

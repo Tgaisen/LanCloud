@@ -495,8 +495,8 @@ class _RestorePageState extends ConsumerState<RestorePage> {
                     child: TopBarOverlay(
                       height: topInset,
                       progress: _topBarHide,
-                      // 顶栏背景随滚动从 surface 渐变到 surfaceContainer；
-                      // 内容再随收起进度一起滑出。
+                      // 小屏顶栏背景随滚动从 surface 渐变到 surfaceContainer；
+                      // 大屏透明并使用下层导航区色。内容随收起进度滑出。
                       background: topBarBackgroundColor(context, scheme),
                       builder: (context) => appBar,
                     ),
