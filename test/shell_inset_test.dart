@@ -245,6 +245,20 @@ void main() {
           .fillColor,
       Colors.transparent,
     );
+    expect(
+      find.descendant(
+        of: find.byType(FadeThroughTransition),
+        matching: find.byType(PageView),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byType(FadeThroughTransition),
+        matching: find.byKey(const ValueKey('shell-body-card')),
+      ),
+      findsOneWidget,
+    );
     double cardTop() => tester
         .widget<Positioned>(find.byKey(const ValueKey('shell-body-card')))
         .top!;

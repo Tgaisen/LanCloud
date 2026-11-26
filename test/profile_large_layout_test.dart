@@ -385,6 +385,7 @@ void main() {
           .fillColor,
       Colors.transparent,
     );
+    expect(find.byKey(const ValueKey('profile-detail-card')), findsOneWidget);
 
     // 同级类别切换无方向性，使用 Fade Through。
     await tester.tap(find.text('行为与权限'));
@@ -395,6 +396,13 @@ void main() {
     )) {
       expect(transition.fillColor, Colors.transparent);
     }
+    expect(
+      find.descendant(
+        of: find.byType(FadeThroughTransition),
+        matching: find.byKey(const ValueKey('profile-detail-card')),
+      ),
+      findsNWidgets(2),
+    );
     expect(
       tester
           .widget<PageTransitionSwitcher>(find.byType(PageTransitionSwitcher))
@@ -423,6 +431,13 @@ void main() {
     )) {
       expect(transition.fillColor, Colors.transparent);
     }
+    expect(
+      find.descendant(
+        of: find.byType(SharedAxisTransition),
+        matching: find.byKey(const ValueKey('profile-detail-card')),
+      ),
+      findsNWidgets(2),
+    );
     expect(
       tester
           .widget<PageTransitionSwitcher>(find.byType(PageTransitionSwitcher))

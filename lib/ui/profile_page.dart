@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:animations/animations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' as riverpod;
 import 'package:material_ui/material_ui.dart' hide Icons;
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/services.dart';
 
 import '../core/account_state.dart';
@@ -866,60 +867,37 @@ class _ProfilePageState extends riverpod.ConsumerState<ProfilePage>
                 // 底部那 8dp（独立页面外面已经套了卡片，helper 返回 0）
                 child: Padding(
                   padding: EdgeInsets.only(bottom: shellBodyCardGap(context)),
-                  child: ValueListenableBuilder<double>(
-                    valueListenable: navigation.topBarHide,
-                    builder: (context, hide, content) {
-                      final t = hideTopBar ? hide.clamp(0.0, 1.0) : 0.0;
-                      return Stack(
-                        children: [
-                          // 卡片底：顶边贴着顶栏下沿（静止时圆角完整露出），
-                          // 顶栏收起时跟着上移——和外壳内容卡片同一节奏。
-                          // 内容层不跟着动（滚动仍 1:1），避免两倍阻尼。
-                          Positioned(
-                            left: 0,
-                            right: 0,
-                            top: headerHeight * (1 - t),
-                            bottom: 0,
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
-                              child: ColoredBox(
-                                color: Theme.of(context)
-                                    .scaffoldBackgroundColor,
-                              ),
-                            ),
-                          ),
-                          Positioned.fill(child: content!),
-                        ],
-                      );
-                    },
-                    child: ScrollTint(
-                      hideDistance: headerHeight,
-                      readBarsHidden: () => navigation.topBarHide.value,
-                      onBarsHidden: hideTopBar
-                          ? navigation.setTopBarHideFromScroll
-                          : null,
-                      // 同级内容之间没有强关联，使用官方 Fade Through；
-                      // 进入 / 返回二级页和详情页属于层级导航，使用官方
-                      // 横向 Shared Axis。时长取 Standard 300ms。
-                      // 外面包的 Focus 是「右窗格内容的焦点落点」：切类别 /
-                      // 进二级页后键盘焦点移到这里（见 _focusDetailPane），
-                      // skipTraversal：它不占 Tab 位置，Tab 直接进新内容
-                      child: Focus(
-                        focusNode: _paneFocus,
-                        skipTraversal: true,
-                        child: PageTransitionSwitcher(
-                          duration: reduceMotionOf(context)
-                              ? Duration.zero
-                              : const Duration(milliseconds: 300),
-                          reverse:
-                              _paneTransition ==
-                              _ProfilePaneTransition.backward,
-                          layoutBuilder: (entries) =>
-                              Stack(fit: StackFit.expand, children: entries),
-                          transitionBuilder:
-                              _paneTransitionBuilders[_paneTransition]!,
-                          child: KeyedSubtree(
-                            key: switcherKey,
+                  child: ScrollTint(
+                    hideDistance: headerHeight,
+                    readBarsHidden: () => navigation.topBarHide.value,
+                    onBarsHidden: hideTopBar
+                        ? navigation.setTopBarHideFromScroll
+                        : null,
+                    // 卡片底与内容必须作为同一个过渡层：同级内容使用官方
+                    // Fade Through，进入 / 返回层级使用横向 Shared Axis。
+                    // 这样旧窗格整体淡出，新窗格连同圆角卡片一起进入。
+                    // 外面包的 Focus 是「右窗格内容的焦点落点」：切类别 /
+                    // 进二级页后键盘焦点移到这里（见 _focusDetailPane），
+                    // skipTraversal：它不占 Tab 位置，Tab 直接进新内容
+                    child: Focus(
+                      focusNode: _paneFocus,
+                      skipTraversal: true,
+                      child: PageTransitionSwitcher(
+                        duration: reduceMotionOf(context)
+                            ? Duration.zero
+                            : const Duration(milliseconds: 300),
+                        reverse:
+                            _paneTransition == _ProfilePaneTransition.backward,
+                        layoutBuilder: (entries) =>
+                            Stack(fit: StackFit.expand, children: entries),
+                        transitionBuilder:
+                            _paneTransitionBuilders[_paneTransition]!,
+                        child: KeyedSubtree(
+                          key: switcherKey,
+                          child: _ProfileDetailPaneSurface(
+                            hide: navigation.topBarHide,
+                            hideTopBar: hideTopBar,
+                            headerHeight: headerHeight,
                             child: _buildDetailPane(context),
                           ),
                         ),
@@ -1330,6 +1308,52 @@ class _ProfilePageState extends riverpod.ConsumerState<ProfilePage>
     if (ok != true) return;
     if (!await _confirmAccountChange()) return;
     await session.removeAccount(uid, clearData: clearData);
+  }
+}
+
+/// 右窗格的完整视觉层：圆角卡片底与详情内容使用同一套页面切换动画。
+class _ProfileDetailPaneSurface extends StatelessWidget {
+  const _ProfileDetailPaneSurface({
+    required this.hide,
+    required this.hideTopBar,
+    required this.headerHeight,
+    required this.child,
+  });
+
+  final ValueListenable<double> hide;
+  final bool hideTopBar;
+  final double headerHeight;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<double>(
+      valueListenable: hide,
+      child: child,
+      builder: (context, value, child) {
+        final t = hideTopBar ? value.clamp(0.0, 1.0) : 0.0;
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            // 卡片底：顶边贴着顶栏下沿，顶栏收起时跟着上移。
+            Positioned(
+              key: const ValueKey('profile-detail-card'),
+              left: 0,
+              right: 0,
+              top: headerHeight * (1 - t),
+              bottom: 0,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: ColoredBox(
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                ),
+              ),
+            ),
+            Positioned.fill(child: child!),
+          ],
+        );
+      },
+    );
   }
 }
 

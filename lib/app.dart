@@ -1273,61 +1273,50 @@ class _RootShellState extends ConsumerState<RootShell>
     final bodyColor = Theme.of(context).scaffoldBackgroundColor;
     final keyed = KeyedSubtree(
       key: ValueKey('shell-${shell.activeUid}'),
-      child: FadeThroughTransition(
-        animation: _pageInAnim,
-        secondaryAnimation: _pageOutAnim,
-        // 大屏正文是带圆角的卡片，FadeThroughTransition 内部会用
-        // ColoredBox 填满整页；这里必须保持透明，否则方形底色会盖住
-        // 卡片四角。小屏下方本来就是 Scaffold 背景，透明同样正确。
-        fillColor: Colors.transparent,
-        // 横向滑动切换视图；设置里可关闭手势，关闭后由 Fade Through
-        // 负责程序化切页。
-        child: PageView(
-          key: _pageViewKey,
-          controller: _pageController,
-          physics: shell.swipeTabs
-              ? const PageScrollPhysics()
-              : const NeverScrollableScrollPhysics(),
-          onPageChanged: (i) {
-            // 程序化跳转经过中间页时保持指示器停留在目标，避免底栏按钮闪烁
-            if (_programmaticJump && i != _index) return;
-            // 横滑切换视图时同样退出多选
-            if (shell.selectionMode) {
-              _navigation.onRequestExitSelection?.call();
-            }
-            FocusManager.instance.primaryFocus?.unfocus();
-            // 视图真正切换后：恢复底栏并通知页面把折叠的顶栏调出来
-            _navigation.animateBarsHide(
-              0,
-              reduceMotion: reduceMotionOf(context),
-            );
-            _navigation.activeTab.value = _ids[i];
-            setState(() {
-              _index = i;
-              _displayedIndex = i;
-            });
-          },
-          children: [
-            for (final id in _ids)
-              // 切走后离屏页面不销毁：滚动位置、列表入场动画状态都保留
-              //（PageView 默认会把离屏页销毁重建）
-              KeepAlivePage(
-                key: ValueKey('view-$id'),
-                child: _withBodyCardGap(
-                  context,
-                  id,
-                  ScrollTint(
-                    hideDistance: barHeight,
-                    readBarsHidden: () => _navigation.barsHide.value,
-                    onBarsHidden: (shell.hideTopBar || shell.hideBottomBar)
-                        ? _navigation.setBarsHideFromScroll
-                        : null,
-                    child: _pageFor(id),
-                  ),
+      // 横向滑动切换视图；设置里可关闭手势，关闭后由 Fade Through
+      // 负责程序化切页。
+      child: PageView(
+        key: _pageViewKey,
+        controller: _pageController,
+        physics: shell.swipeTabs
+            ? const PageScrollPhysics()
+            : const NeverScrollableScrollPhysics(),
+        onPageChanged: (i) {
+          // 程序化跳转经过中间页时保持指示器停留在目标，避免底栏按钮闪烁
+          if (_programmaticJump && i != _index) return;
+          // 横滑切换视图时同样退出多选
+          if (shell.selectionMode) {
+            _navigation.onRequestExitSelection?.call();
+          }
+          FocusManager.instance.primaryFocus?.unfocus();
+          // 视图真正切换后：恢复底栏并通知页面把折叠的顶栏调出来
+          _navigation.animateBarsHide(0, reduceMotion: reduceMotionOf(context));
+          _navigation.activeTab.value = _ids[i];
+          setState(() {
+            _index = i;
+            _displayedIndex = i;
+          });
+        },
+        children: [
+          for (final id in _ids)
+            // 切走后离屏页面不销毁：滚动位置、列表入场动画状态都保留
+            //（PageView 默认会把离屏页销毁重建）
+            KeepAlivePage(
+              key: ValueKey('view-$id'),
+              child: _withBodyCardGap(
+                context,
+                id,
+                ScrollTint(
+                  hideDistance: barHeight,
+                  readBarsHidden: () => _navigation.barsHide.value,
+                  onBarsHidden: (shell.hideTopBar || shell.hideBottomBar)
+                      ? _navigation.setBarsHideFromScroll
+                      : null,
+                  child: _pageFor(id),
                 ),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
 
@@ -1462,42 +1451,51 @@ class _RootShellState extends ConsumerState<RootShell>
                 builder: (context, pageView) {
                   final hide = _navigation.topBarHide.value;
                   final t = shell.hideTopBar ? hide.clamp(0.0, 1.0) : 0.0;
-                  return Stack(
-                    children: [
-                      if (largeLayout)
+                  return FadeThroughTransition(
+                    animation: _pageInAnim,
+                    secondaryAnimation: _pageOutAnim,
+                    // 只让窗格视觉层参与 Fade Through；下层 Scaffold 的
+                    // surfaceContainer 导航区保持静止。
+                    fillColor: Colors.transparent,
+                    // 圆角卡片和 PageView 必须放在同一过渡层里，这样
+                    // 高度在完全透明时切换，再随新窗格一起放大入场。
+                    child: Stack(
+                      children: [
+                        if (largeLayout)
+                          Positioned(
+                            key: const ValueKey('shell-body-card'),
+                            left: 0,
+                            top: _animatedCardTop * (1 - t),
+                            // 卡片四周的 8dp 留白之外，再让开系统导航栏：
+                            // 横屏时它可能在底部（手势导航）或在右侧（三键导航），
+                            // 否则卡片底部/右侧会被系统栏压住
+                            right: 8 + systemPadding.right,
+                            bottom: 8 + systemPadding.bottom,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: ColoredBox(color: bodyColor),
+                            ),
+                          ),
                         Positioned(
-                          key: const ValueKey('shell-body-card'),
                           left: 0,
-                          top: _animatedCardTop * (1 - t),
-                          // 卡片四周的 8dp 留白之外，再让开系统导航栏：
-                          // 横屏时它可能在底部（手势导航）或在右侧（三键导航），
-                          // 否则卡片底部/右侧会被系统栏压住
-                          right: 8 + systemPadding.right,
-                          bottom: 8 + systemPadding.bottom,
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(16),
-                            child: ColoredBox(color: bodyColor),
+                          top: 0,
+                          right: largeLayout ? 8 + systemPadding.right : 0,
+                          // 大屏正文只让系统导航栏，底部那 8dp 由页面自己让
+                          //（见 _withBodyCardGap）——「我的」页两栏态的
+                          // 左窗格是导航区，要一直通到窗口底边
+                          bottom: largeLayout ? systemPadding.bottom : 0,
+                          // 卡片已经按 left/right inset 让过位了，
+                          // 页面内（AppBar / SafeArea / Scrollbar）不要再让一次
+                          child: MediaQuery.removePadding(
+                            context: context,
+                            removeLeft: largeLayout,
+                            removeRight: largeLayout,
+                            removeBottom: largeLayout,
+                            child: pageView!,
                           ),
                         ),
-                      Positioned(
-                        left: 0,
-                        top: 0,
-                        right: largeLayout ? 8 + systemPadding.right : 0,
-                        // 大屏正文只让系统导航栏，底部那 8dp 由页面自己让
-                        //（见 _withBodyCardGap）——「我的」页两栏态的
-                        // 左窗格是导航区，要一直通到窗口底边
-                        bottom: largeLayout ? systemPadding.bottom : 0,
-                        // 卡片已经按 left/right inset 让过位了，
-                        // 页面内（AppBar / SafeArea / Scrollbar）不要再让一次
-                        child: MediaQuery.removePadding(
-                          context: context,
-                          removeLeft: largeLayout,
-                          removeRight: largeLayout,
-                          removeBottom: largeLayout,
-                          child: pageView!,
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   );
                 },
               ),
