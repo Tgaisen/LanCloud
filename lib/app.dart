@@ -796,6 +796,9 @@ class _RootShellState extends ConsumerState<RootShell>
     // 独立页面与底栏视图共用同一份顶/底栏收起进度。从已滚动的首页进入时，
     // 先把进度带动画归零，避免新页顶栏沿用旧页未完全展开的位置。
     _navigation.animateBarsHide(0, reduceMotion: reduceMotionOf(context));
+    final profileTwoPane =
+        viewId == _viewProfile &&
+        MediaQuery.sizeOf(context).width >= kProfileTwoPaneBreakpoint;
     Navigator.of(context).push(
       // 大屏（横屏 / 平板）下独立打开的标签页也套 MD3E 卡片：
       // 顶栏高度与外壳里一致，顶栏收起进度共用 NavigationState.topBarHide
@@ -803,6 +806,7 @@ class _RootShellState extends ConsumerState<RootShell>
         builder: (_) => Md3ePageFrame(
           topBarHeight: _topBarHeightFor(viewId),
           hide: _navigation.topBarHide,
+          clipBodyContent: !profileTwoPane,
           child: _pageFor(viewId),
         ),
       ),

@@ -462,6 +462,7 @@ class Md3ePageFrame extends StatelessWidget {
     super.key,
     this.topBarHeight = 0,
     this.hide,
+    this.clipBodyContent = true,
     required this.child,
   });
 
@@ -470,6 +471,9 @@ class Md3ePageFrame extends StatelessWidget {
 
   /// 顶栏收起进度 0..1；不收起时传 null。
   final ValueListenable<double>? hide;
+
+  /// 是否把页面正文裁到圆角卡片内；两栏「我的」页由右窗格自行裁剪。
+  final bool clipBodyContent;
 
   final Widget child;
 
@@ -486,7 +490,13 @@ class Md3ePageFrame extends StatelessWidget {
         child: Md3eBodyCard(
           topBarHeight: topBarHeight,
           hide: hide,
-          child: ScrollTint(child: SharedTopBarRouteReveal(child: child)),
+          child: ShellBodyClipScope(
+            topBarHeight: topBarHeight,
+            hide: hide ?? const AlwaysStoppedAnimation<double>(0),
+            hideTopBar: hide != null,
+            clipContent: clipBodyContent,
+            child: ScrollTint(child: SharedTopBarRouteReveal(child: child)),
+          ),
         ),
       ),
     );

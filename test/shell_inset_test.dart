@@ -377,8 +377,8 @@ void main() {
     );
   });
 
-  testWidgets('隐藏底栏的传输页从首页打开时，已收起的顶栏会完全展开', (tester) async {
-    tester.view.physicalSize = const Size(400, 800);
+  testWidgets('隐藏底栏的传输 / 收藏页在大屏独立打开时裁剪正文并展开顶栏', (tester) async {
+    tester.view.physicalSize = const Size(900, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
     final environment = AppEnvironment();
@@ -412,6 +412,26 @@ void main() {
         )
         .first;
     expect(tester.getTopLeft(transfersAppBar).dy, closeTo(0, 0.5));
+
+    double clipTop() {
+      final clipFinder = find.byKey(const ValueKey('shell-body-content-clip'));
+      expect(clipFinder, findsOneWidget);
+      final clip = tester.widget<ClipPath>(clipFinder);
+      return clip.clipper!.getClip(tester.getSize(clipFinder)).getBounds().top;
+    }
+
+    double frameCardTop() => tester
+        .widget<Positioned>(find.byKey(const ValueKey('md3e-card-background')))
+        .top!;
+    expect(clipTop(), closeTo(frameCardTop(), 0.01));
+
+    Navigator.of(tester.element(find.byType(TransfersPage))).pop();
+    await tester.pumpAndSettle();
+    environment.navigation.switchTab(3);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(FavoritesPage), findsOneWidget);
+    expect(clipTop(), closeTo(frameCardTop(), 0.01));
   });
 
   testWidgets('跨越宽窄布局阈值时，标签页、滚动与多选状态保持', (tester) async {
