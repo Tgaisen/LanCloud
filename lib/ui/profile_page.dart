@@ -169,7 +169,8 @@ class _ProfilePageState extends riverpod.ConsumerState<ProfilePage>
     return FadeThroughTransition(
       animation: primaryAnimation,
       secondaryAnimation: secondaryAnimation,
-      fillColor: Theme.of(context).scaffoldBackgroundColor,
+      // 右窗格本体由外层圆角卡片绘制，方形实色会盖住四角。
+      fillColor: Colors.transparent,
       child: child,
     );
   }
@@ -183,7 +184,7 @@ class _ProfilePageState extends riverpod.ConsumerState<ProfilePage>
       animation: primaryAnimation,
       secondaryAnimation: secondaryAnimation,
       transitionType: SharedAxisTransitionType.horizontal,
-      fillColor: Theme.of(context).scaffoldBackgroundColor,
+      fillColor: Colors.transparent,
       child: child,
     );
   }

@@ -379,11 +379,22 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<FadeThroughTransition>(find.byType(FadeThroughTransition))
+          .fillColor,
+      Colors.transparent,
+    );
 
     // 同级类别切换无方向性，使用 Fade Through。
     await tester.tap(find.text('行为与权限'));
     await tester.pump();
     expect(find.byType(FadeThroughTransition), findsNWidgets(2));
+    for (final transition in tester.widgetList<FadeThroughTransition>(
+      find.byType(FadeThroughTransition),
+    )) {
+      expect(transition.fillColor, Colors.transparent);
+    }
     expect(
       tester
           .widget<PageTransitionSwitcher>(find.byType(PageTransitionSwitcher))
@@ -407,6 +418,11 @@ void main() {
       forwardTransition.transitionType,
       SharedAxisTransitionType.horizontal,
     );
+    for (final transition in tester.widgetList<SharedAxisTransition>(
+      find.byType(SharedAxisTransition),
+    )) {
+      expect(transition.fillColor, Colors.transparent);
+    }
     expect(
       tester
           .widget<PageTransitionSwitcher>(find.byType(PageTransitionSwitcher))

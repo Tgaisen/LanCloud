@@ -1187,8 +1187,8 @@ class _TransfersPageState extends ConsumerState<TransfersPage>
                   curve: Curves.easeInOut,
                   child: Material(
                     elevation: 0,
-                    // 与网盘页多选条一致：小屏随滚动渐变，大屏保持侧栏同色
-                    color: topBarBackgroundColor(context, scheme),
+                    // 与网盘页多选条一致：小屏随滚动渐变，大屏保持侧栏同色。
+                    color: selectionBarBackgroundColor(context, scheme),
                     // 显式高度：Stack 的 Positioned 不提供高度约束
                     child: GestureDetector(
                       behavior: HitTestBehavior.translucent,

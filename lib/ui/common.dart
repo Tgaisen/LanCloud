@@ -131,10 +131,11 @@ bool transparentPageBackground(BuildContext context) =>
     isLargeLayout(context) &&
     ((ModalRoute.of(context)?.isFirst ?? true) || Md3eFramedScope.of(context));
 
-/// 顶栏底色：大屏布局固定用 surfaceContainer（导航区颜色，与侧栏一致），
+/// 顶栏底色：大屏布局保持透明，让外壳 / 页面 Scaffold 的 surfaceContainer
+/// 导航区底色直接透上来，避免整页过渡缩放时再叠一层同步缩放的灰底；
 /// 手机布局保持随滚动在 surface → surfaceContainer 之间过渡。
 Color topBarBackgroundColor(BuildContext context, ColorScheme scheme) {
-  if (isLargeLayout(context)) return scheme.surfaceContainer;
+  if (isLargeLayout(context)) return Colors.transparent;
   return Color.lerp(
         scheme.surface,
         scheme.surfaceContainer,
@@ -142,6 +143,12 @@ Color topBarBackgroundColor(BuildContext context, ColorScheme scheme) {
       ) ??
       scheme.surface;
 }
+
+/// 多选条是独立不透明浮层，不与大屏透明 AppBar 共用背景语义。
+Color selectionBarBackgroundColor(BuildContext context, ColorScheme scheme) =>
+    isLargeLayout(context)
+    ? scheme.surfaceContainer
+    : topBarBackgroundColor(context, scheme);
 
 /// 是否在标签外壳（第一个路由）里；push 出来的独立页面返回 false。
 bool inRootShell(BuildContext context) =>
@@ -1228,12 +1235,12 @@ class TopBarOverlay extends StatelessWidget {
   /// 顶栏完整高度（状态栏 + 工具栏 + bottom），用于计算滑出距离。
   final double height;
 
-  /// 顶栏底色：和设置/关于页一样，只随滚动从 surface 过渡到
-  /// surfaceContainer，不参与渐隐。页面里的 AppBar 用透明底。
+  /// 顶栏底色：小屏只随滚动从 surface 过渡到 surfaceContainer，不参与
+  /// 渐隐；大屏保持透明，由下层导航区提供统一底色。页面里的 AppBar 用透明底。
   final Color background;
 
   /// 构建顶栏。位移与内容渐隐由本组件统一处理：标题、按钮、路径栏
-  /// 1:1 跟随手指淡出，底色始终保持不透明。
+  /// 1:1 跟随手指淡出。
   final WidgetBuilder builder;
 
   /// 收起进度来源；为空时用外壳的 [NavigationState.topBarHide]
@@ -1270,7 +1277,7 @@ class TopBarOverlay extends StatelessWidget {
             offset: Offset(0, -height * t),
             child: Stack(
               children: [
-                // 不透明底色（参数同设置/关于页），渐隐只作用于内容
+                // 小屏渐变底色 / 大屏透明，渐隐只作用于内容
                 Positioned.fill(child: ColoredBox(color: background)),
                 Opacity(
                   opacity: (1 - t).clamp(0.0, 1.0),
@@ -1289,9 +1296,9 @@ class TopBarOverlay extends StatelessWidget {
 }
 
 /// 独立页面的顶栏脚手架（设置 / 高级 / 备份 / 关于 / 分享文件夹 / 登录页）：
-/// 顶栏不占布局，上滑时内容 1:1 随手指渐隐并整体滑出，底色保持不透明
-/// （手机布局只做 surface → surfaceContainer 过渡），与首页、网盘、传输、
-/// 收藏、我的五个视图完全一致。
+/// 顶栏不占布局，上滑时内容 1:1 随手指渐隐并整体滑出；小屏底色做
+/// surface → surfaceContainer 过渡，大屏由下层导航区着色。行为与首页、
+/// 网盘、传输、收藏、我的五个视图完全一致。
 ///
 /// [slivers] 不需要自己留顶栏占位，本组件会在最前面插入等高的 spacer。
 ///

@@ -1160,8 +1160,8 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
                   curve: Curves.easeInOut,
                   child: Material(
                     elevation: 0,
-                    // 与网盘页多选条一致：小屏随滚动渐变，大屏保持侧栏同色
-                    color: topBarBackgroundColor(context, scheme),
+                    // 与网盘页多选条一致：小屏随滚动渐变，大屏保持侧栏同色。
+                    color: selectionBarBackgroundColor(context, scheme),
                     child: GestureDetector(
                       behavior: HitTestBehavior.translucent,
                       onTap: _scrollToTop,

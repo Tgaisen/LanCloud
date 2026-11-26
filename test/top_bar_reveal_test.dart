@@ -329,6 +329,9 @@ void main() {
   });
 
   testWidgets('独立页面顶栏 1:1 跟随滚动：内容渐隐、底色不渐隐，不动外壳进度', (tester) async {
+    tester.view.physicalSize = const Size(400, 600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
     SharedPreferences.setMockInitialValues(<String, Object>{});
     final app = AppEnvironment();
     addTearDown(app.dispose);

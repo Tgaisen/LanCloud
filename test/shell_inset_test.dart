@@ -196,6 +196,10 @@ void main() {
     await tester.pumpWidget(_rootShellHost(environment, transfers));
     await tester.pumpAndSettle();
 
+    expect(
+      tester.widget<TopBarOverlay>(find.byType(TopBarOverlay)).background,
+      Colors.transparent,
+    );
     expect(find.byIcon(app_icons.Icons.browse_outlined), findsWidgets);
 
     // 首页（外壳里的页面）：正文让开卡片底部的 8dp
