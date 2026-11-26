@@ -1276,7 +1276,10 @@ class _RootShellState extends ConsumerState<RootShell>
       child: FadeThroughTransition(
         animation: _pageInAnim,
         secondaryAnimation: _pageOutAnim,
-        fillColor: bodyColor,
+        // 大屏正文是带圆角的卡片，FadeThroughTransition 内部会用
+        // ColoredBox 填满整页；这里必须保持透明，否则方形底色会盖住
+        // 卡片四角。小屏下方本来就是 Scaffold 背景，透明同样正确。
+        fillColor: Colors.transparent,
         // 横向滑动切换视图；设置里可关闭手势，关闭后由 Fade Through
         // 负责程序化切页。
         child: PageView(

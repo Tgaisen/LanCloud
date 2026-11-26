@@ -1,3 +1,4 @@
+import 'package:animations/animations.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -234,6 +235,12 @@ void main() {
     await tester.pumpAndSettle();
 
     final pager = tester.widget<PageView>(find.byType(PageView)).controller!;
+    expect(
+      tester
+          .widget<FadeThroughTransition>(find.byType(FadeThroughTransition))
+          .fillColor,
+      Colors.transparent,
+    );
     double cardTop() => tester
         .widget<Positioned>(find.byKey(const ValueKey('shell-body-card')))
         .top!;
