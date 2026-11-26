@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:animations/animations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' as riverpod;
 import 'package:material_ui/material_ui.dart' hide Icons;
 import 'package:flutter/services.dart';
@@ -29,6 +30,8 @@ import 'update_page.dart';
 import 'web_page.dart';
 
 enum _ProfileDeepPage { backupOptions, licenseDetail }
+
+enum _ProfilePaneTransition { fadeThrough, forward, backward }
 
 /// 切换账号会中断上传时使用的确认弹窗。
 Future<bool> showAccountSwitchUploadDialog(
@@ -84,10 +87,6 @@ class _ProfilePageState extends riverpod.ConsumerState<ProfilePage>
   static const double _listPaneWidthMin = 180;
   static const double _listPaneWidthMax = 320;
 
-  /// 右窗格前进 / 后退动画的位移量（占窗格宽度的比例）。
-  /// 6% ≈ 原生 shared-axis 的 30dp 量级。
-  static const double _paneSlide = 0.06;
-
   /// 当前选中的详情（默认「账号」，与 M3「父-子」列表-详情一致）。
   _ProfileDetail _detail = _ProfileDetail.account;
 
@@ -108,9 +107,13 @@ class _ProfilePageState extends riverpod.ConsumerState<ProfilePage>
 
   LicensePackageGroup? _licensePackage;
 
-  /// 右窗格切换方向：新选中项在列表里更靠下（index 更大）= 前进。
-  /// 用来决定 forward/backward 动画从哪一侧滑入。
-  bool _forward = true;
+  /// 同级内容用 Fade Through；进入 / 返回层级用横向 Shared Axis。
+  _ProfilePaneTransition _paneTransition = _ProfilePaneTransition.fadeThrough;
+  late final Map<
+    _ProfilePaneTransition,
+    PageTransitionSwitcherTransitionBuilder
+  >
+  _paneTransitionBuilders;
 
   /// 两栏顶栏上的搜索状态：搜索针对当前设置类别，结果在右窗格。
   bool _searching = false;
@@ -140,16 +143,6 @@ class _ProfilePageState extends riverpod.ConsumerState<ProfilePage>
   Object get _paneSwitcherKey =>
       _subPage == ProfileSubPage.backup ? (_detail, _subPage) : _paneKey;
 
-  /// 右窗格内容的排序值：类别按枚举顺序、二级页比所在类别深一层。
-  /// 用来判断前后方向（新值更大 = 前进）。
-  int get _paneOrder =>
-      _detail.index * 3 +
-      (_deepPage != null
-          ? 2
-          : _subPage != null
-          ? 1
-          : 0);
-
   ScrollController _paneScroll(Object key) =>
       _paneScrolls.putIfAbsent(key, () => ScrollController());
 
@@ -159,8 +152,40 @@ class _ProfilePageState extends riverpod.ConsumerState<ProfilePage>
   @override
   void initState() {
     super.initState();
+    _paneTransitionBuilders = {
+      _ProfilePaneTransition.fadeThrough: _buildFadeThroughPaneTransition,
+      _ProfilePaneTransition.forward: _buildSharedAxisPaneTransition,
+      _ProfilePaneTransition.backward: _buildSharedAxisPaneTransition,
+    };
     _navigation = ref.read(navigationStateProvider);
     _subPageProgress.addListener(_onSubPageProgress);
+  }
+
+  Widget _buildFadeThroughPaneTransition(
+    Widget child,
+    Animation<double> primaryAnimation,
+    Animation<double> secondaryAnimation,
+  ) {
+    return FadeThroughTransition(
+      animation: primaryAnimation,
+      secondaryAnimation: secondaryAnimation,
+      fillColor: Theme.of(context).scaffoldBackgroundColor,
+      child: child,
+    );
+  }
+
+  Widget _buildSharedAxisPaneTransition(
+    Widget child,
+    Animation<double> primaryAnimation,
+    Animation<double> secondaryAnimation,
+  ) {
+    return SharedAxisTransition(
+      animation: primaryAnimation,
+      secondaryAnimation: secondaryAnimation,
+      transitionType: SharedAxisTransitionType.horizontal,
+      fillColor: Theme.of(context).scaffoldBackgroundColor,
+      child: child,
+    );
   }
 
   void _onSubPageProgress() {
@@ -212,12 +237,11 @@ class _ProfilePageState extends riverpod.ConsumerState<ProfilePage>
   void _select(_ProfileDetail detail) {
     if (_detail == detail) return;
     _discardDeepPage();
-    final forward = detail.index * 3 > _paneOrder;
     setState(() {
       _detail = detail;
       // 换类别 = 回到类别层（关掉可能开着的二级页）
       _subPage = null;
-      _forward = forward;
+      _paneTransition = _ProfilePaneTransition.fadeThrough;
       // 切换窗格内容时收掉搜索：搜索只服务于「当前设置类别」
       _searching = false;
       _search.clear();
@@ -232,7 +256,7 @@ class _ProfilePageState extends riverpod.ConsumerState<ProfilePage>
     _discardDeepPage();
     setState(() {
       _subPage = sub;
-      _forward = true; // 更深一层 = 前进
+      _paneTransition = _ProfilePaneTransition.forward;
       _searching = false;
       _search.clear();
     });
@@ -249,7 +273,7 @@ class _ProfilePageState extends riverpod.ConsumerState<ProfilePage>
     if (_subPage == null) return;
     setState(() {
       _subPage = null;
-      _forward = false; // 回到上一层 = 后退
+      _paneTransition = _ProfilePaneTransition.backward;
     });
     _publishProfileBack();
     _showTopBar();
@@ -290,7 +314,7 @@ class _ProfilePageState extends riverpod.ConsumerState<ProfilePage>
     final controller = _backupOptionsController;
     setState(() {
       _clearDeepPageFields();
-      _forward = false;
+      _paneTransition = _ProfilePaneTransition.backward;
     });
     _disposePaneController(controller);
     if (completer != null && !completer.isCompleted) {
@@ -322,7 +346,7 @@ class _ProfilePageState extends riverpod.ConsumerState<ProfilePage>
       _backupVerifySensitive = verifySensitive;
       _backupConfirmLabel = confirmLabel;
       _licensePackage = null;
-      _forward = true;
+      _paneTransition = _ProfilePaneTransition.forward;
     });
     _publishProfileBack();
     _showTopBar();
@@ -336,7 +360,7 @@ class _ProfilePageState extends riverpod.ConsumerState<ProfilePage>
     if (completer == null) return;
     setState(() {
       _clearDeepPageFields();
-      _forward = false;
+      _paneTransition = _ProfilePaneTransition.backward;
     });
     _disposePaneController(controller);
     if (!completer.isCompleted) completer.complete(result);
@@ -350,7 +374,7 @@ class _ProfilePageState extends riverpod.ConsumerState<ProfilePage>
       _deepPage = _ProfileDeepPage.licenseDetail;
       _deepTitle = package.name;
       _licensePackage = package;
-      _forward = true;
+      _paneTransition = _ProfilePaneTransition.forward;
     });
     _publishProfileBack();
     _showTopBar();
@@ -873,47 +897,26 @@ class _ProfilePageState extends riverpod.ConsumerState<ProfilePage>
                       onBarsHidden: hideTopBar
                           ? navigation.setTopBarHideFromScroll
                           : null,
-                      // 切换详情（账号 / 各设置类别 / 二级页 / 关于）：
-                      // forward/backward 式滑动 + 淡入淡出——在列表里往下选
-                      // 或进二级页 = 前进（新内容从右侧滑入、旧内容向左淡出），
-                      // 往上选或返回则相反。
-                      // 时长取规范里「起止都在屏内」的 Standard 300ms。
+                      // 同级内容之间没有强关联，使用官方 Fade Through；
+                      // 进入 / 返回二级页和详情页属于层级导航，使用官方
+                      // 横向 Shared Axis。时长取 Standard 300ms。
                       // 外面包的 Focus 是「右窗格内容的焦点落点」：切类别 /
                       // 进二级页后键盘焦点移到这里（见 _focusDetailPane），
                       // skipTraversal：它不占 Tab 位置，Tab 直接进新内容
                       child: Focus(
                         focusNode: _paneFocus,
                         skipTraversal: true,
-                        child: AnimatedSwitcher(
+                        child: PageTransitionSwitcher(
                           duration: reduceMotionOf(context)
                               ? Duration.zero
                               : const Duration(milliseconds: 300),
-                          switchInCurve: Curves.easeOutCubic,
-                          switchOutCurve: Curves.easeInCubic,
-                          layoutBuilder: (currentChild, previousChildren) =>
-                              Stack(
-                                fit: StackFit.expand,
-                                children: [...previousChildren, ?currentChild],
-                              ),
-                          transitionBuilder: (child, animation) {
-                            final incoming = child.key == switcherKey;
-                            final slide = Offset(
-                              _forward ? _paneSlide : -_paneSlide,
-                              0,
-                            );
-                            // 新内容从 dx 侧滑入；旧内容反向滑出
-                            //（AnimatedSwitcher 对旧内容反向播放同一段动画）
-                            return SlideTransition(
-                              position: Tween<Offset>(
-                                begin: incoming ? slide : -slide,
-                                end: Offset.zero,
-                              ).animate(animation),
-                              child: FadeTransition(
-                                opacity: animation,
-                                child: child,
-                              ),
-                            );
-                          },
+                          reverse:
+                              _paneTransition ==
+                              _ProfilePaneTransition.backward,
+                          layoutBuilder: (entries) =>
+                              Stack(fit: StackFit.expand, children: entries),
+                          transitionBuilder:
+                              _paneTransitionBuilders[_paneTransition]!,
                           child: KeyedSubtree(
                             key: switcherKey,
                             child: _buildDetailPane(context),

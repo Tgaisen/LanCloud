@@ -213,6 +213,94 @@ void main() {
     expect(tester.getRect(panes.at(1)).bottom, 792);
   });
 
+  testWidgets('关闭横滑时直接跳到目标页，卡片高度在透明接缝处切换', (tester) async {
+    tester.view.physicalSize = const Size(900, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
+    environment.runtimeState.ready.value = true;
+    environment.settingsState.store
+      ..swipeTabs = false
+      ..navShowTransfers = true;
+    environment.accountState.store.accounts.add(
+      Account(uid: '556911', cookie: 'c', nickname: '土豆'),
+    );
+    environment.accountState.store.activeUid = '556911';
+    final transfers = buildTransferManagerForEnvironment(environment);
+    addTearDown(transfers.dispose);
+
+    await tester.pumpWidget(_rootShellHost(environment, transfers));
+    await tester.pumpAndSettle();
+
+    final pager = tester.widget<PageView>(find.byType(PageView)).controller!;
+    double cardTop() => tester
+        .widget<Positioned>(find.byKey(const ValueKey('shell-body-card')))
+        .top!;
+    final homeTop = cardTop();
+    final transfersDestination = find.descendant(
+      of: find.byType(NavigationRail),
+      matching: find.text('传输'),
+    );
+
+    await tester.tap(transfersDestination);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 45));
+    expect(pager.page, 0);
+    expect(cardTop(), homeTop);
+
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump();
+    expect(pager.page, 2);
+    expect(cardTop(), closeTo(homeTop + kTransfersTabBarHeight, 0.01));
+
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('开启横滑时保留水平翻页与卡片高度过渡', (tester) async {
+    tester.view.physicalSize = const Size(900, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final environment = AppEnvironment();
+    addTearDown(environment.dispose);
+    environment.runtimeState.ready.value = true;
+    environment.settingsState.store
+      ..swipeTabs = true
+      ..navShowTransfers = true;
+    environment.accountState.store.accounts.add(
+      Account(uid: '556911', cookie: 'c', nickname: '土豆'),
+    );
+    environment.accountState.store.activeUid = '556911';
+    final transfers = buildTransferManagerForEnvironment(environment);
+    addTearDown(transfers.dispose);
+
+    await tester.pumpWidget(_rootShellHost(environment, transfers));
+    await tester.pumpAndSettle();
+
+    final pager = tester.widget<PageView>(find.byType(PageView)).controller!;
+    double cardTop() => tester
+        .widget<Positioned>(find.byKey(const ValueKey('shell-body-card')))
+        .top!;
+    final homeTop = cardTop();
+    final transfersTop = homeTop + kTransfersTabBarHeight;
+
+    await tester.tap(
+      find.descendant(
+        of: find.byType(NavigationRail),
+        matching: find.text('传输'),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 60));
+
+    expect(pager.page, inExclusiveRange(0, 2));
+    expect(cardTop(), inExclusiveRange(homeTop, transfersTop));
+
+    await tester.pumpAndSettle();
+    expect(pager.page, 2);
+    expect(cardTop(), closeTo(transfersTop, 0.01));
+  });
+
   testWidgets('外壳任务角标随运行中任务数更新', (tester) async {
     tester.view.physicalSize = const Size(400, 800);
     tester.view.devicePixelRatio = 1.0;

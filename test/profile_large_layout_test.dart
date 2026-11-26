@@ -1,3 +1,4 @@
+import 'package:animations/animations.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -360,7 +361,7 @@ void main() {
     expect(app.navigation.topBarHide.value, 0);
   });
 
-  testWidgets('大屏右窗格切换动画：前进从右滑入、后退从左滑入', (tester) async {
+  testWidgets('大屏右窗格：同级切换用 FadeThrough，层级进出用 SharedAxis', (tester) async {
     tester.view.physicalSize = const Size(1200, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -379,34 +380,51 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    /// 某个文案当前所在窗格的滑动位移（相对窗格宽度的比例）。
-    double slideDxOf(String text) => tester
-        .widget<SlideTransition>(
-          find
-              .ancestor(
-                of: find.text(text),
-                matching: find.byType(SlideTransition),
-              )
-              .first,
-        )
-        .position
-        .value
-        .dx;
-
-    // 前进：账号 → 行为与权限（列表往下选），新内容从右侧滑入、
-    // 旧内容向左滑出
+    // 同级类别切换无方向性，使用 Fade Through。
     await tester.tap(find.text('行为与权限'));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 90));
-    expect(slideDxOf('行为'), greaterThan(0)); // 新内容：从右滑入
-    expect(slideDxOf('切换'), lessThan(0)); // 旧内容：向左滑出
+    expect(find.byType(FadeThroughTransition), findsNWidgets(2));
+    expect(
+      tester
+          .widget<PageTransitionSwitcher>(find.byType(PageTransitionSwitcher))
+          .reverse,
+      isFalse,
+    );
     await tester.pumpAndSettle();
 
-    // 后退：行为与权限 → 外观与布局（列表往上选），新内容从左侧滑入
-    await tester.tap(find.text('外观与布局'));
+    // 类别 → 二级页是前进导航，使用水平 Shared Axis。
+    await tester.tap(find.text('传输与连接'));
+    await tester.pumpAndSettle();
+    final advancedTile = find.widgetWithText(ListTile, '高级覆盖项');
+    await tester.ensureVisible(advancedTile);
+    await tester.pumpAndSettle();
+    await tester.tap(advancedTile);
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 90));
-    expect(slideDxOf('外观'), lessThan(0));
+    final forwardTransition = tester.widget<SharedAxisTransition>(
+      find.byType(SharedAxisTransition).first,
+    );
+    expect(
+      forwardTransition.transitionType,
+      SharedAxisTransitionType.horizontal,
+    );
+    expect(
+      tester
+          .widget<PageTransitionSwitcher>(find.byType(PageTransitionSwitcher))
+          .reverse,
+      isFalse,
+    );
+    await tester.pumpAndSettle();
+
+    // 返回上一级是反向 Shared Axis。
+    await tester.tap(find.byTooltip('返回'));
+    await tester.pump();
+    expect(find.byType(SharedAxisTransition), findsNWidgets(2));
+    expect(
+      tester
+          .widget<PageTransitionSwitcher>(find.byType(PageTransitionSwitcher))
+          .reverse,
+      isTrue,
+    );
     await tester.pumpAndSettle();
   });
 }

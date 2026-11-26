@@ -1,6 +1,6 @@
 # 回归基线
 
-> 当前快照日期：2026-11-22。
+> 当前快照日期：2026-11-26。
 >
 > 本文件只记录当前仓库状态；逐次迁移和增量测试历史见
 > [BASELINE_HISTORY.md](BASELINE_HISTORY.md)。
@@ -10,8 +10,10 @@
 | 命令 | 口径 | 结果 | 耗时 |
 | --- | --- | --- | --- |
 | `tools\agent.cmd analyze` | 全量 | No issues found | 约 15–22 s |
+| `tools\agent.cmd analyze` | 增量（顶部切页与右窗格动效，2 个 Dart 文件） | No issues found | 约 19 s |
 | `tools\agent.cmd analyze` | 增量（数据清理与迁移，10 个 Dart 文件） | No issues found | 约 19 s |
-| `tools\agent.cmd test` | 全量（Windows，含 Golden） | **1091 tests, all passed** | 约 3 min 15 s |
+| `tools\agent.cmd test` | 全量（Windows，含 Golden） | 当前 1093 tests；本轮未重跑，更改前 1091 tests 全部通过 | 约 3 min 15 s |
+| `tools\agent.cmd test` | 增量（顶部切页与右窗格动效，17 个测试文件） | **71 tests, all passed** | 约 23 s |
 | `tools\agent.cmd test` | 增量（Golden，2 个测试文件） | **4 tests, all passed** | 约 13 s |
 | `tools\agent.cmd test` | 增量（测试基座与拆分文件，41 个测试文件） | **339 tests, all passed** | 约 1 min 8 s |
 | `tools\agent.cmd coverage` | 全量（最近审计，未随本轮重跑） | **1068 tests, all passed**；生产代码行覆盖 79.7% | 约 4 min 11 s |
@@ -24,10 +26,10 @@
 当前分析结果为 0 issue 是硬基线。出现红灯时，先判断是否为本次改动引入；
 不要把增量结果当成全量结论。Flutter 3.50.0 下全量分析已重跑并通过。
 
-普通测试用例总数为 1091，包含 4 项 Windows golden 测试；最近一次 Windows
-全量为 1091 项全部通过。另有 3 项 Windows integration smoke，独立通过且
-不计入 1091。本轮新增降级数据库幂等迁移、Windows 数据目录入口、全量数据
-清理、传输取消与启动补清理覆盖；
+普通测试用例总数为 1093，包含 4 项 Windows golden 测试；最近一次 Windows
+全量是本次改动前的 1091 项全部通过，本轮增量 71 项通过。另有 3 项 Windows
+integration smoke，独立通过且不计入 1093。既有基线包含降级数据库幂等迁移、
+Windows 数据目录入口、全量数据清理、传输取消与启动补清理覆盖；
 此前相比 `ff3ea87` 的 1061 项增加了目录与拖拽、Golden、
 首次启动 integration 等覆盖；
 组件测试；Batch 8B–10 均通过各自受影响测试。
@@ -61,7 +63,7 @@ unsupported 三态显示；外部网页与文件打开动作已收敛到可注�
 | `lib` 总行数 | 66,788 |
 | `test` 测试文件 | 231 个 `*_test.dart` + 7 个 `test/support/*.dart` |
 | `test` 总行数 | 42,096（测试 40,437 + 辅助 1,659） |
-| `test` 用例数 | 1091 |
+| `test` 用例数 | 1093 |
 | `integration_test` 文件 / 用例 | 3 / 8（Windows 3 项 + Android 原生 5 项） |
 | `lib/ui` 平铺文件 | 65 |
 | `lib/core` | 64 个平铺文件 + 6 个子系统目录 |
@@ -71,6 +73,7 @@ unsupported 三态显示；外部网页与文件打开动作已收敛到可注�
 
 - Flutter `3.50.0` stable / Dart `3.14.0` / DevTools `2.61.0`。
 - `flutter_riverpod: ^3.5.0`。
+- `animations: ^3.0.0`（Flutter 官方包，用于顶部导航 Fade Through 与右窗格 Shared Axis）。
 - `integration_test` 作为 Flutter SDK 开发依赖接入；未引入第三方测试框架。
 - `provider` 依赖和 `ChangeNotifierProvider` 已移除。
 - `AppController` 已删除；应用级对象由 `AppEnvironment` 组装，
@@ -80,7 +83,8 @@ unsupported 三态显示；外部网页与文件打开动作已收敛到可注�
 
 ## 测试安全网
 
-- 当前用例总数为 1091；最近一次 Windows 全量 1091 项通过；
+- 当前用例总数为 1093；最近一次 Windows 全量是本次改动前的 1091 项通过，
+  本轮增量 71 项通过；
   平台能力矩阵与 UI、
   扫码、分享、文件、下载、启动、系统分享、系统设置、更新交付、本地通知门控
   通知设置可见性、缓存清理、设备信息分支、WebView 登录 UA、动态色来源路由
